@@ -1,0 +1,119 @@
+import CloakOfDarkness
+import Testing
+
+@testable import Gnusto
+
+struct ParserTests {
+    static func makeParser() throws -> StandardParser {
+        let (definition, _) = try Bootstrap.build(OperaHouse())
+        return StandardParser(
+            vocabulary: definition.vocabulary,
+            syntaxRules: definition.syntaxRules)
+    }
+
+    static let fullScope = Scope(reachableItems: [
+        EntityID("cloak"), EntityID("hook"), EntityID("message"),
+    ])
+
+    // MARK: - Commands that must parse
+
+    struct Expected {
+        let intent: Intent
+        var direct: String? = nil
+        var indirect: String? = nil
+        var direction: Direction? = nil
+    }
+
+    @Test(arguments: [
+        ("take cloak", Expected(intent: .take, direct: "cloak")),
+        ("get the cloak", Expected(intent: .take, direct: "cloak")),
+        ("pick up the velvet cloak", Expected(intent: .take, direct: "cloak")),
+        ("pick cloak up", Expected(intent: .take, direct: "cloak")),
+        ("drop cloak", Expected(intent: .drop, direct: "cloak")),
+        ("put down cloak", Expected(intent: .drop, direct: "cloak")),
+        ("put cloak down", Expected(intent: .drop, direct: "cloak")),
+        ("x hook", Expected(intent: .examine, direct: "hook")),
+        ("examine brass hook", Expected(intent: .examine, direct: "hook")),
+        ("look at peg", Expected(intent: .examine, direct: "hook")),
+        ("read message", Expected(intent: .read, direct: "message")),
+        ("read sawdust", Expected(intent: .read, direct: "message")),
+        ("wear cloak", Expected(intent: .wear, direct: "cloak")),
+        ("put on cloak", Expected(intent: .wear, direct: "cloak")),
+        ("take off cloak", Expected(intent: .doff, direct: "cloak")),
+        ("take cloak off", Expected(intent: .doff, direct: "cloak")),
+        ("hang cloak on hook", Expected(intent: .putOn, direct: "cloak", indirect: "hook")),
+        ("put cloak on hook", Expected(intent: .putOn, direct: "cloak", indirect: "hook")),
+        ("put the velvet cloak onto the small brass hook",
+         Expected(intent: .putOn, direct: "cloak", indirect: "hook")),
+        ("n", Expected(intent: .go, direction: .north)),
+        ("south", Expected(intent: .go, direction: .south)),
+        ("go north", Expected(intent: .go, direction: .north)),
+        ("walk w", Expected(intent: .go, direction: .west)),
+        ("look", Expected(intent: .look)),
+        ("l", Expected(intent: .look)),
+        ("i", Expected(intent: .inventory)),
+        ("score", Expected(intent: .score)),
+        ("quit", Expected(intent: .quit)),
+    ])
+    func parses(_ input: String, _ expected: Expected) throws {
+        let parser = try Self.makeParser()
+        let parsed = try parser.parse(input, scope: Self.fullScope).get()
+        #expect(parsed.intent == expected.intent, "input: \(input)")
+        #expect(parsed.directObject?.raw == expected.direct, "input: \(input)")
+        #expect(parsed.indirectObject?.raw == expected.indirect, "input: \(input)")
+        #expect(parsed.direction == expected.direction, "input: \(input)")
+    }
+
+    // MARK: - Errors with classic tone
+
+    @Test func emptyInput() throws {
+        let parser = try Self.makeParser()
+        #expect(parser.parse("", scope: Self.fullScope) == .failure(.empty))
+        #expect(parser.parse("   ", scope: Self.fullScope) == .failure(.empty))
+    }
+
+    @Test func unknownWord() throws {
+        let parser = try Self.makeParser()
+        #expect(
+            parser.parse("frotz the cloak", scope: Self.fullScope)
+                == .failure(.unknownWord("frotz")))
+        #expect(
+            parser.parse("take grue", scope: Self.fullScope)
+                == .failure(.unknownWord("grue")))
+    }
+
+    @Test func knownWordOutOfScope() throws {
+        // From the foyer only the carried cloak is in scope; the message is
+        // a known word but not visible.
+        let foyerScope = Scope(reachableItems: [EntityID("cloak")])
+        let parser = try Self.makeParser()
+        #expect(
+            parser.parse("read message", scope: foyerScope)
+                == .failure(.notInScope))
+    }
+
+    @Test func missingObjects() throws {
+        let parser = try Self.makeParser()
+        #expect(
+            parser.parse("take", scope: Self.fullScope)
+                == .failure(.missingObject(verb: "take")))
+        #expect(
+            parser.parse("hang cloak", scope: Self.fullScope)
+                == .failure(
+                    .missingIndirect(
+                        verb: "hang", objectName: "velvet cloak", preposition: "on")))
+    }
+
+    @Test func adjectiveAloneDoesNotResolve() throws {
+        let parser = try Self.makeParser()
+        let result = parser.parse("take velvet", scope: Self.fullScope)
+        #expect(result == .failure(.notInScope))
+    }
+
+    @Test func parseErrorMessagesReadClassically() {
+        #expect(ParseError.unknownWord("frotz").playerMessage == "I don't know the word \"frotz\".")
+        #expect(ParseError.notInScope.playerMessage == "You can't see any such thing.")
+        #expect(ParseError.empty.playerMessage == "I beg your pardon?")
+        #expect(ParseError.missingObject(verb: "take").playerMessage == "What do you want to take?")
+    }
+}
