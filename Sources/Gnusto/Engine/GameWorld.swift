@@ -34,11 +34,7 @@ public actor GameWorld {
         let frame = TurnFrame(definition: definition, state: state)
         Ctx.$frame.withValue(frame) {
             frame.say(definition.intro)
-            var banner = definition.title
-            if !definition.tagline.isEmpty {
-                banner += "\n\(definition.tagline)"
-            }
-            frame.say(banner)
+            frame.say(Messages.banner(title: definition.title, tagline: definition.tagline))
             RoomDescriber.describeCurrentLocation(mode: .entry, frame: frame)
         }
         return commit(frame)
@@ -113,16 +109,10 @@ public actor GameWorld {
                 frame.with { $0.state.moves += 1 }
             }
 
-            // Game over: append the final score.
-            let status = frame.with { $0.state.status }
-            if status == .won || status == .lost {
-                let line = frame.with { scratch in
-                    Messages.scoreLine(
-                        score: scratch.state.score,
-                        maxScore: definition.maxScore,
-                        moves: scratch.state.moves)
-                }
-                frame.say(line)
+            // End-of-game epilogue: one place reports the final score,
+            // whether the game was won, lost, or quit.
+            if frame.with({ $0.state.status }) != .playing {
+                DefaultActions.score(frame)
             }
         }
 
@@ -179,7 +169,7 @@ public actor GameWorld {
             reachable.insert(id)
         }
 
-        if state.litRooms.contains(here) {
+        if !state.isDark(at: here) {
             for (id, placement) in state.placements {
                 switch placement {
                 case .room(here):

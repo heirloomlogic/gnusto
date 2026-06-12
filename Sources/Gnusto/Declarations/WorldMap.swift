@@ -45,33 +45,3 @@ public struct WorldMap: Sendable {
     let entries: [MapEntry]
 }
 
-@resultBuilder
-public enum MapBuilder {
-    public static func buildExpression(_ entry: MapEntry) -> [MapEntry] {
-        [entry]
-    }
-
-    public static func buildExpression(_ map: WorldMap) -> [MapEntry] {
-        map.entries
-    }
-
-    public static func buildBlock(_ entries: [MapEntry]...) -> WorldMap {
-        WorldMap(entries: entries.flatMap(\.self))
-    }
-
-    public static func buildOptional(_ entries: [MapEntry]?) -> [MapEntry] {
-        entries ?? []
-    }
-
-    public static func buildEither(first entries: [MapEntry]) -> [MapEntry] {
-        entries
-    }
-
-    public static func buildEither(second entries: [MapEntry]) -> [MapEntry] {
-        entries
-    }
-
-    public static func buildArray(_ entries: [[MapEntry]]) -> [MapEntry] {
-        entries.flatMap(\.self)
-    }
-}

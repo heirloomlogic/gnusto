@@ -181,13 +181,8 @@ enum Bootstrap {
         vocabulary.directions = Vocabulary.standardDirections
         for rule in syntaxRules {
             vocabulary.verbWords.formUnion(rule.verb)
-            switch rule.slots {
-            case .directThenParticle(let particle):
-                vocabulary.prepositions.insert(particle)
-            case .directPrepIndirect(let preposition):
-                vocabulary.prepositions.insert(preposition)
-            default:
-                break
+            if let word = rule.extraWord {
+                vocabulary.prepositions.insert(word)
             }
         }
         for (id, item) in items {
@@ -202,10 +197,11 @@ enum Bootstrap {
             vocabulary.itemLexicons[id] = lexicon
             vocabulary.displayNames[id] = item.name ?? id.raw
         }
+        vocabulary.finalize()
 
         // Phase 4 — evaluate the rules block inside a registration frame, so
         // any stray live reads see the initial state rather than trapping.
-        let preliminary = GameDefinition(
+        var definition = GameDefinition(
             title: game.title,
             tagline: game.tagline,
             intro: game.intro,
@@ -220,7 +216,7 @@ enum Bootstrap {
             vocabulary: vocabulary,
             syntaxRules: syntaxRules)
 
-        let registrationFrame = TurnFrame(definition: preliminary, state: state)
+        let registrationFrame = TurnFrame(definition: definition, state: state)
         let declaredRules = Ctx.$frame.withValue(registrationFrame) {
             game.rules.rules
         }
@@ -273,21 +269,7 @@ enum Bootstrap {
             throw BootstrapError(diagnostics: ruleDiagnostics)
         }
 
-        let definition = GameDefinition(
-            title: preliminary.title,
-            tagline: preliminary.tagline,
-            intro: preliminary.intro,
-            maxScore: preliminary.maxScore,
-            locations: preliminary.locations,
-            items: preliminary.items,
-            exits: preliminary.exits,
-            globalDefaults: preliminary.globalDefaults,
-            playerStart: preliminary.playerStart,
-            rules: table,
-            registry: preliminary.registry,
-            vocabulary: preliminary.vocabulary,
-            syntaxRules: preliminary.syntaxRules)
-
+        definition.rules = table
         return (definition, state)
     }
 }

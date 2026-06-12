@@ -9,8 +9,6 @@ struct ItemLexicon: Sendable {
         guard let last = tokens.last, nouns.contains(last) else { return false }
         return tokens.allSatisfy { nouns.contains($0) || adjectives.contains($0) }
     }
-
-    var allWords: Set<String> { nouns.union(adjectives) }
 }
 
 /// Every word the game understands, assembled once at bootstrap from item
@@ -23,13 +21,25 @@ struct Vocabulary: Sendable {
     var prepositions: Set<String> = []
     var noiseWords: Set<String> = ["the", "a", "an", "my", "that", "this", "some"]
 
+    /// Every word in the game, flattened once at bootstrap so `knows` is a
+    /// single set lookup (it runs per token on parse-failure paths).
+    var allKnownWords: Set<String> = []
+
     /// True if the word appears anywhere in the game's vocabulary.
     func knows(_ word: String) -> Bool {
-        verbWords.contains(word)
-            || directions.keys.contains(word)
-            || prepositions.contains(word)
-            || noiseWords.contains(word)
-            || itemLexicons.values.contains { $0.allWords.contains(word) }
+        allKnownWords.contains(word)
+    }
+
+    /// Called once at bootstrap, after all words are registered.
+    mutating func finalize() {
+        allKnownWords = verbWords
+            .union(directions.keys)
+            .union(prepositions)
+            .union(noiseWords)
+        for lexicon in itemLexicons.values {
+            allKnownWords.formUnion(lexicon.nouns)
+            allKnownWords.formUnion(lexicon.adjectives)
+        }
     }
 
     static let standardDirections: [String: Direction] = [

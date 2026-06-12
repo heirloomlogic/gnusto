@@ -108,6 +108,8 @@ struct OrderProbeGame: Game {
     }
 
     var rules: Rules {
+        world.beforeEachTurn { say("[worldBefore]") }
+        world.afterEachTurn { say("[worldAfter]") }
         lab.beforeEachTurn { say("[locEachBefore]") }
         lab.before(.take) { say("[locBefore]") }
         widget.before(.take) {

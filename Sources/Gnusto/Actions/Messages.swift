@@ -41,11 +41,19 @@ enum Messages {
     }
 
     static func itemHere(_ name: String) -> String {
-        "There is a \(article(for: name)) here."
+        "There is \(indefinite(name)) here."
     }
 
     static func itemOnSurface(_ name: String, _ surface: String) -> String {
-        "On the \(surface) is a \(article(for: name))."
+        "On the \(surface) is \(indefinite(name))."
+    }
+
+    static func inventoryLine(_ name: String, isWorn: Bool) -> String {
+        "  \(indefinite(name))\(isWorn ? " (being worn)" : "")"
+    }
+
+    static func banner(title: String, tagline: String) -> String {
+        tagline.isEmpty ? title : "\(title)\n\(tagline)"
     }
 
     static func scoreLine(score: Int, maxScore: Int, moves: Int) -> String {
@@ -72,9 +80,13 @@ enum Messages {
         "Which do you mean: \(names.map { "the \($0)" }.joined(separator: " or "))?"
     }
 
-    /// Just the name; articles in standard messages are uniformly "the"
-    /// except listings, which read better indefinite.
-    private static func article(for name: String) -> String {
-        name
+    /// The name with its indefinite article, for listings ("a velvet cloak",
+    /// "an apple"). Standard action messages use "the" instead.
+    private static func indefinite(_ name: String) -> String {
+        if let first = name.lowercased().first, "aeiou".contains(first) {
+            "an \(name)"
+        } else {
+            "a \(name)"
+        }
     }
 }

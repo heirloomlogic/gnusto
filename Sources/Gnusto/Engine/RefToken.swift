@@ -8,7 +8,7 @@ final class RefToken: Sendable {}
 
 /// A stable, human-readable entity name derived from the Swift property label
 /// at registration time (`let bar = Location { … }` → `EntityID("bar")`).
-public struct EntityID: Hashable, Sendable, Codable, CustomStringConvertible {
+public struct EntityID: Hashable, Comparable, Sendable, Codable, CustomStringConvertible {
     public let raw: String
 
     init(_ raw: String) {
@@ -16,15 +16,19 @@ public struct EntityID: Hashable, Sendable, Codable, CustomStringConvertible {
     }
 
     public var description: String { raw }
+
+    public static func < (lhs: EntityID, rhs: EntityID) -> Bool {
+        lhs.raw < rhs.raw
+    }
 }
 
-/// A value that can live in `WorldState`'s global storage.
+/// A value that can live in `WorldState`'s global storage. Cases exist only
+/// for types with a `GlobalValue` conformance — add both together.
 public enum StateValue: Hashable, Sendable, Codable {
     case bool(Bool)
     case int(Int)
     case double(Double)
     case string(String)
-    case id(EntityID)
 }
 
 /// Types usable with the `@Global` property wrapper.

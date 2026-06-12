@@ -1,8 +1,7 @@
 /// The built-in behavior of each intent, running under the same frame and
 /// with the same helpers as author rules — no privileged path.
 enum DefaultActions {
-    /// Runs the default action for a command. Returns the rules-pipeline
-    /// continuation: `onEnter` rules to run when the player moved.
+    /// Runs the default action for a command.
     static func run(_ command: Command, frame: TurnFrame) throws {
         switch command.intent {
         case .take: try take(command, frame: frame)
@@ -134,34 +133,32 @@ enum DefaultActions {
     }
 
     private static func examine(_ command: Command, frame: TurnFrame) throws {
-        let item = try requireDirectObject(command)
-        let text = item.description
-        if text.isEmpty {
-            frame.say(Messages.nothingSpecial(item.name))
-        } else {
-            frame.say(text)
-        }
+        try describeItem(command, frame: frame) { Messages.nothingSpecial($0.name) }
     }
 
     private static func read(_ command: Command, frame: TurnFrame) throws {
+        try describeItem(command, frame: frame) { _ in Messages.nothingWritten }
+    }
+
+    private static func describeItem(
+        _ command: Command,
+        frame: TurnFrame,
+        fallback: (Item) -> String
+    ) throws {
         let item = try requireDirectObject(command)
         let text = item.description
-        if text.isEmpty {
-            frame.say(Messages.nothingWritten)
-        } else {
-            frame.say(text)
-        }
+        frame.say(text.isEmpty ? fallback(item) : text)
     }
 
     private static func inventory(_ frame: TurnFrame) {
         let held = frame.with { scratch in
             frame.definition.items.keys
                 .filter { scratch.state.placements[$0] == .held }
-                .sorted { $0.raw < $1.raw }
-                .map { id -> String in
-                    let name = frame.definition.items[id]?.name ?? id.raw
-                    let worn = scratch.state.wornItems.contains(id) ? " (being worn)" : ""
-                    return "  a \(name)\(worn)"
+                .sorted()
+                .map { id in
+                    Messages.inventoryLine(
+                        frame.definition.items[id]?.name ?? id.raw,
+                        isWorn: scratch.state.wornItems.contains(id))
                 }
         }
         if held.isEmpty {
@@ -173,7 +170,9 @@ enum DefaultActions {
 
     // MARK: - Meta
 
-    private static func score(_ frame: TurnFrame) {
+    /// Also used by the pipeline's end-of-game epilogue, so the score-report
+    /// format lives in exactly one place.
+    static func score(_ frame: TurnFrame) {
         let line = frame.with { scratch in
             Messages.scoreLine(
                 score: scratch.state.score,
@@ -184,13 +183,11 @@ enum DefaultActions {
     }
 
     private static func version(_ frame: TurnFrame) {
-        let definition = frame.definition
-        let tagline = definition.tagline.isEmpty ? "" : "\n\(definition.tagline)"
-        frame.say("\(definition.title)\(tagline)")
+        frame.say(Messages.banner(title: frame.definition.title, tagline: frame.definition.tagline))
     }
 
     private static func quit(_ frame: TurnFrame) {
-        score(frame)
+        // The pipeline's end-of-game epilogue reports the score.
         frame.with { $0.state.status = .quit }
     }
 

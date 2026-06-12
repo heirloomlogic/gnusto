@@ -38,33 +38,3 @@ public struct Rules: Sendable {
     let rules: [Rule]
 }
 
-@resultBuilder
-public enum RuleBuilder {
-    public static func buildExpression(_ rule: Rule) -> [Rule] {
-        [rule]
-    }
-
-    public static func buildExpression(_ rules: Rules) -> [Rule] {
-        rules.rules
-    }
-
-    public static func buildBlock(_ rules: [Rule]...) -> Rules {
-        Rules(rules: rules.flatMap(\.self))
-    }
-
-    public static func buildOptional(_ rules: [Rule]?) -> [Rule] {
-        rules ?? []
-    }
-
-    public static func buildEither(first rules: [Rule]) -> [Rule] {
-        rules
-    }
-
-    public static func buildEither(second rules: [Rule]) -> [Rule] {
-        rules
-    }
-
-    public static func buildArray(_ rules: [[Rule]]) -> [Rule] {
-        rules.flatMap(\.self)
-    }
-}

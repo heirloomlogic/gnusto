@@ -24,6 +24,15 @@ struct SyntaxRule: Sendable {
         self.intent = intent
     }
 
+    /// The structural word (particle or preposition) this rule's shape
+    /// consumes, if any — vocabulary the parser must recognize.
+    var extraWord: String? {
+        switch slots {
+        case .directThenParticle(let word), .directPrepIndirect(let word): word
+        case .none, .direction, .direct: nil
+        }
+    }
+
     /// Specificity for rule-selection order: shapes that consume more
     /// structure are tried first.
     var specificity: Int {

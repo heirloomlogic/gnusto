@@ -88,7 +88,10 @@ struct GameDefinition: Sendable {
     let exits: [EntityID: [Direction: ExitTarget]]
     let globalDefaults: [EntityID: StateValue]
     let playerStart: EntityID
-    let rules: RuleTable
+    /// `var` so the bootstrap can install the rule table after evaluating the
+    /// `rules` block inside a registration frame (which needs the rest of the
+    /// definition to exist first).
+    var rules: RuleTable
     let registry: Registry
     let vocabulary: Vocabulary
     let syntaxRules: [SyntaxRule]

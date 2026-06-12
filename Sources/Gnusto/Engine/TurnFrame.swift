@@ -62,11 +62,20 @@ final class TurnFrame: Sendable {
         return location
     }
 
-    func item(for id: EntityID) -> Item {
-        guard let item = definition.registry.items[id] else {
-            fatalError("Gnusto: no item named \"\(id)\" exists in this game.")
-        }
-        return item
+    /// The declared display name of any entity.
+    func displayName(of id: EntityID) -> String {
+        definition.items[id]?.name
+            ?? definition.locations[id]?.name
+            ?? id.raw
+    }
+
+    /// The current description of any entity: the runtime override if one
+    /// has been assigned, else the declared text.
+    func describedText(of id: EntityID) -> String {
+        with { $0.state.descriptionOverrides[id] }
+            ?? definition.items[id]?.description
+            ?? definition.locations[id]?.description
+            ?? ""
     }
 
     var command: Command {

@@ -27,6 +27,9 @@ extension Game {
     /// `rules` blocks.
     public var player: Player { Player() }
 
+    /// The whole world — for rules that apply everywhere, like daemons.
+    public var world: World { World() }
+
     /// The command currently being performed — usable as a bare identifier
     /// in rule bodies.
     public var command: Command { Ctx.current.command }

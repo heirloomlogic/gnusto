@@ -21,20 +21,25 @@ public struct Location: Sendable, Equatable {
         Ctx.current.id(for: token, describing: "Location")
     }
 
+    /// Binds the frame once per access. `id` resolution itself takes the
+    /// frame lock, so it must never be evaluated inside a `with` closure.
+    private var resolved: (frame: TurnFrame, id: EntityID) {
+        let frame = Ctx.current
+        return (frame, frame.id(for: token, describing: "Location"))
+    }
+
     // MARK: - Live state
 
     /// Whether the location currently has light. Locations declared `dark`
     /// start unlit; all others start lit.
     public var isLit: Bool {
         get {
-            // `id` resolves through the frame, so it must be evaluated
-            // before entering the lock (here and in every accessor below).
-            let id = self.id
-            return Ctx.current.with { $0.state.litRooms.contains(id) }
+            let (frame, id) = resolved
+            return frame.with { $0.state.litRooms.contains(id) }
         }
         nonmutating set {
-            let id = self.id
-            Ctx.current.with { scratch in
+            let (frame, id) = resolved
+            frame.with { scratch in
                 if newValue {
                     scratch.state.litRooms.insert(id)
                 } else {
@@ -46,37 +51,34 @@ public struct Location: Sendable, Equatable {
 
     /// Whether the player has seen this location (set on the first lit visit).
     public var isVisited: Bool {
-        let id = self.id
-        return Ctx.current.with { $0.state.visited.contains(id) }
+        let (frame, id) = resolved
+        return frame.with { $0.state.visited.contains(id) }
     }
 
     /// The location's long description. Assigning replaces it for the rest
     /// of the game.
     public var description: String {
         get {
-            let id = self.id
-            let frame = Ctx.current
-            return frame.with { $0.state.descriptionOverrides[id] }
-                ?? frame.definition.locations[id]?.description
-                ?? ""
+            let (frame, id) = resolved
+            return frame.describedText(of: id)
         }
         nonmutating set {
-            let id = self.id
-            Ctx.current.with { $0.state.descriptionOverrides[id] = newValue }
+            let (frame, id) = resolved
+            frame.with { $0.state.descriptionOverrides[id] = newValue }
         }
     }
 
     /// The location's display name.
     public var name: String {
-        let id = self.id
-        return Ctx.current.definition.locations[id]?.name ?? id.raw
+        let (frame, id) = resolved
+        return frame.displayName(of: id)
     }
 
     /// True if the item is directly in this location.
     public func contains(_ item: Item) -> Bool {
-        let locationID = id
+        let (frame, locationID) = resolved
         let itemID = item.id
-        return Ctx.current.with { $0.state.placements[itemID] == .room(locationID) }
+        return frame.with { $0.state.placements[itemID] == .room(locationID) }
     }
 
     // MARK: - Map factories
@@ -107,12 +109,23 @@ public struct Location: Sendable, Equatable {
     public func `in`(blocked message: String) -> MapEntry { blockedExit(.in, message) }
     public func out(blocked message: String) -> MapEntry { blockedExit(.out, message) }
 
+    /// The general form behind the per-direction sugar, for exits chosen
+    /// dynamically (e.g. built in a loop).
+    public func exit(_ direction: Direction, to destination: Location) -> MapEntry {
+        MapEntry(kind: .exit(from: token, direction: direction, to: destination.token))
+    }
+
+    /// The general form of a blocked exit.
+    public func exit(_ direction: Direction, blocked message: String) -> MapEntry {
+        MapEntry(kind: .blockedExit(from: token, direction: direction, message: message))
+    }
+
     private func exit(_ direction: Direction, _ to: Location) -> MapEntry {
-        MapEntry(kind: .exit(from: token, direction: direction, to: to.token))
+        exit(direction, to: to)
     }
 
     private func blockedExit(_ direction: Direction, _ message: String) -> MapEntry {
-        MapEntry(kind: .blockedExit(from: token, direction: direction, message: message))
+        exit(direction, blocked: message)
     }
 
     // MARK: - Rule factories

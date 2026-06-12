@@ -19,7 +19,14 @@ struct Scope: Sendable {
 /// → syntax-rule fit by specificity → scoped noun resolution.
 struct StandardParser {
     let vocabulary: Vocabulary
+    /// Sorted by specificity (descending) once here, so per-parse candidate
+    /// selection is a stable filter rather than a sort.
     let syntaxRules: [SyntaxRule]
+
+    init(vocabulary: Vocabulary, syntaxRules: [SyntaxRule]) {
+        self.vocabulary = vocabulary
+        self.syntaxRules = syntaxRules.sorted { $0.specificity > $1.specificity }
+    }
 
     func parse(_ input: String, scope: Scope) -> Result<ParsedCommand, ParseError> {
         let tokens = tokenize(input)
@@ -35,10 +42,8 @@ struct StandardParser {
                     rawInput: input))
         }
 
-        // Verb match, longest token sequence first.
-        let candidates = syntaxRules
-            .filter { tokens.starts(with: $0.verb) }
-            .sorted { $0.specificity > $1.specificity }
+        // Verb match; the table is pre-sorted most-specific-first.
+        let candidates = syntaxRules.filter { tokens.starts(with: $0.verb) }
 
         guard !candidates.isEmpty else {
             let first = tokens[0]

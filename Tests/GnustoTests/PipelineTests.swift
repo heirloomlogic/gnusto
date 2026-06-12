@@ -8,6 +8,7 @@ struct PipelineTests {
         expectInOrder(
             transcript,
             [
+                "[worldBefore]",
                 "[locEachBefore]",
                 "[locBefore]",
                 "[itemBefore]",
@@ -15,6 +16,7 @@ struct PipelineTests {
                 "[itemAfter]",
                 "[locAfter]",
                 "[locEachAfter]",
+                "[worldAfter]",
             ])
     }
 

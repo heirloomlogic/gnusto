@@ -20,55 +20,57 @@ public struct Item: Sendable, Equatable {
         Ctx.current.id(for: token, describing: "Item")
     }
 
+    /// Binds the frame once per access. `id` resolution itself takes the
+    /// frame lock, so it must never be evaluated inside a `with` closure.
+    private var resolved: (frame: TurnFrame, id: EntityID) {
+        let frame = Ctx.current
+        return (frame, frame.id(for: token, describing: "Item"))
+    }
+
     // MARK: - Live state
 
     /// The item's display name.
     public var name: String {
-        let id = self.id
-        return Ctx.current.definition.items[id]?.name ?? id.raw
+        let (frame, id) = resolved
+        return frame.displayName(of: id)
     }
 
     /// The item's examine/read text. Assigning replaces it for the rest of
     /// the game.
     public var description: String {
         get {
-            let id = self.id
-            let frame = Ctx.current
-            return frame.with { $0.state.descriptionOverrides[id] }
-                ?? frame.definition.items[id]?.description
-                ?? ""
+            let (frame, id) = resolved
+            return frame.describedText(of: id)
         }
         nonmutating set {
-            let id = self.id
-            Ctx.current.with { $0.state.descriptionOverrides[id] = newValue }
+            let (frame, id) = resolved
+            frame.with { $0.state.descriptionOverrides[id] = newValue }
         }
     }
 
     /// True if the player is carrying the item (including worn items).
     public var isHeld: Bool {
-        // `id` resolves through the frame, so it must be evaluated before
-        // entering the lock (here and in every accessor below).
-        let id = self.id
-        return Ctx.current.with { $0.state.placements[id] == .held }
+        let (frame, id) = resolved
+        return frame.with { $0.state.placements[id] == .held }
     }
 
     /// True if the player is wearing the item.
     public var isWorn: Bool {
-        let id = self.id
-        return Ctx.current.with { $0.state.wornItems.contains(id) }
+        let (frame, id) = resolved
+        return frame.with { $0.state.wornItems.contains(id) }
     }
 
     /// True if the player has ever picked up or moved the item.
     public var isTouched: Bool {
-        let id = self.id
-        return Ctx.current.with { $0.state.touched.contains(id) }
+        let (frame, id) = resolved
+        return frame.with { $0.state.touched.contains(id) }
     }
 
     /// True if the other item is on or inside this one.
     public func holds(_ item: Item) -> Bool {
-        let myID = id
+        let (frame, myID) = resolved
         let itemID = item.id
-        return Ctx.current.with { scratch in
+        return frame.with { scratch in
             scratch.state.placements[itemID] == .on(myID)
                 || scratch.state.placements[itemID] == .inside(myID)
         }
@@ -81,15 +83,15 @@ public struct Item: Sendable, Equatable {
 
     /// Moves the item directly to a location, bypassing the usual actions.
     public func move(to location: Location) {
-        let id = self.id
+        let (frame, id) = resolved
         let locationID = location.id
-        Ctx.current.with { $0.state.placements[id] = .room(locationID) }
+        frame.with { $0.state.placements[id] = .room(locationID) }
     }
 
     /// Removes the item from play.
     public func vanish() {
-        let id = self.id
-        Ctx.current.with { scratch in
+        let (frame, id) = resolved
+        frame.with { scratch in
             scratch.state.placements[id] = .nowhere
             scratch.state.wornItems.remove(id)
         }
