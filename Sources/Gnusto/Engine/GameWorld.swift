@@ -1,12 +1,21 @@
+/// The status line a handler can display: location, score, and turn count.
 public struct StatusLine: Sendable {
+    /// The current location's name.
     public let locationName: String
+    /// The player's current score.
     public let score: Int
+    /// The number of turns taken so far.
     public let moves: Int
 }
 
+/// The outcome of a single turn: text to show, whether the game ended, and the
+/// status line to display.
 public struct TurnResult: Sendable {
+    /// The text to present to the player.
     public let output: String
+    /// True once the game has ended.
     public let isFinished: Bool
+    /// The status line to display alongside the output.
     public let status: StatusLine
     // Seam: a `pendingQuery` field will later carry quit-confirmation and
     // disambiguation round-trips.
@@ -20,6 +29,7 @@ public actor GameWorld {
     var state: WorldState
     private let parser: StandardParser
 
+    /// Builds the world from a game definition, validating it up front.
     public init(game: some Game) throws {
         let (definition, state) = try Bootstrap.build(game)
         self.definition = definition
@@ -151,8 +161,8 @@ public actor GameWorld {
     private func command(from parsed: ParsedCommand) -> Command {
         Command(
             intent: parsed.intent,
-            directObject: parsed.directObject.map { definition.registry.items[$0]! },
-            indirectObject: parsed.indirectObject.map { definition.registry.items[$0]! },
+            directObject: parsed.directObject.flatMap { definition.registry.items[$0] },
+            indirectObject: parsed.indirectObject.flatMap { definition.registry.items[$0] },
             preposition: parsed.preposition,
             direction: parsed.direction,
             verbPhrase: parsed.verbPhrase,

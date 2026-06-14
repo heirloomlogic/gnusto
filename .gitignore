@@ -1,11 +1,10 @@
+.context/
+.dev-tooling
 .DS_Store
+.netrc
+.swiftpm
 /.build
 /Packages
-xcuserdata/
 DerivedData/
-.swiftpm/configuration/registries.json
-.swiftpm/xcode/package.xcworkspace/contents.xcworkspacedata
-.netrc
-
-# Conductor workspace scratch
-.context/
+Package.resolved
+xcuserdata/

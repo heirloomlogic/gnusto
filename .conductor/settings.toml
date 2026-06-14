@@ -1,0 +1,8 @@
+"$schema" = "https://conductor.build/schemas/settings.repo.schema.json"
+
+[scripts]
+# Create the gitignored `.dev-tooling` sentinel so Package.swift's dev gate
+# activates and Persnoop (swift-format) lints on every build in this workspace.
+# Running it at workspace creation means the sentinel exists before the first
+# manifest evaluation, sidestepping the `swift package purge-cache` cache gotcha.
+setup = "touch .dev-tooling"

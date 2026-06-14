@@ -37,4 +37,3 @@ public struct Rule: Sendable {
 public struct Rules: Sendable {
     let rules: [Rule]
 }
-

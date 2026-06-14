@@ -177,18 +177,17 @@ struct StandardParser {
             vocabulary.itemLexicons[id]?.matches(tokens) == true
         }
 
-        switch matches.count {
-        case 1:
-            return .success(matches.first!)
-        case 0:
+        if matches.count > 1 {
+            let names = matches.map { displayName(of: $0) }.sorted()
+            return .failure(.ambiguous(names: names))
+        }
+        guard let match = matches.first else {
             if let unknown = tokens.first(where: { !vocabulary.knows($0) }) {
                 return .failure(.unknownWord(unknown))
             }
             return .failure(.notInScope)
-        default:
-            let names = matches.map { displayName(of: $0) }.sorted()
-            return .failure(.ambiguous(names: names))
         }
+        return .success(match)
     }
 
     private func displayName(of id: EntityID) -> String {

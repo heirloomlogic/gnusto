@@ -45,7 +45,8 @@ final class TurnFrame: Sendable {
 
     func id(for token: RefToken, describing kind: String) -> EntityID {
         guard let id = definition.registry.id(for: token) else {
-            fatalError("""
+            fatalError(
+                """
                 Gnusto: this \(kind) is not part of the running game. Entities \
                 must be declared as stored properties of your Game type so the \
                 bootstrap can discover them; a \(kind) constructed inline has \
@@ -80,7 +81,8 @@ final class TurnFrame: Sendable {
 
     var command: Command {
         guard let command = with({ $0.command }) else {
-            fatalError("""
+            fatalError(
+                """
                 Gnusto: `command` is only available inside rule bodies while \
                 the engine is performing a player command.
                 """)
@@ -99,7 +101,8 @@ enum Ctx {
     /// The live frame, or a clear diagnostic about why there isn't one.
     static var current: TurnFrame {
         guard let frame else {
-            fatalError("""
+            fatalError(
+                """
                 Gnusto: live world state was accessed outside a game turn. \
                 Properties like `isLit`, `score`, and @Global values are only \
                 available inside rule bodies while the engine is running a \
@@ -107,7 +110,8 @@ enum Ctx {
                 """)
         }
         guard frame.isAlive else {
-            fatalError("""
+            fatalError(
+                """
                 Gnusto: a rule closure outlived its turn. World state was \
                 accessed after the turn committed — typically from a Task or \
                 escaping closure spawned inside a rule body. Rule bodies must \

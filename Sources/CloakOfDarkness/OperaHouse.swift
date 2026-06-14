@@ -4,11 +4,16 @@ import Gnusto
 /// ported to Gnusto. This file is the engine's acceptance benchmark: every
 /// API decision serves how this reads.
 public struct OperaHouse: Game {
+    /// Creates the game.
     public init() {}
 
+    /// The game's title.
     public let title = "Cloak of Darkness"
+    /// The game's one-line tagline.
     public let tagline = "A basic IF demonstration."
+    /// The maximum achievable score.
     public let maxScore = 2
+    /// The opening text shown when play begins.
     public let intro = """
         Hurrying through the rainswept November night, you're glad to see the
         bright lights of the Opera House. It's surprising that there aren't
@@ -17,26 +22,29 @@ public struct OperaHouse: Game {
 
     // MARK: - Rooms
 
-    public let foyer = Location {
+    let foyer = Location {
         name("Foyer of the Opera House")
-        description("""
+        description(
+            """
             You are standing in a spacious hall, splendidly decorated in red
             and gold, with glittering chandeliers overhead. The entrance from
             the street is to the north, and there are doorways south and west.
             """)
     }
 
-    public let cloakroom = Location {
+    let cloakroom = Location {
         name("Cloakroom")
-        description("""
+        description(
+            """
             The walls of this small room were clearly once lined with hooks,
             though now only one remains. The exit is a door to the east.
             """)
     }
 
-    public let bar = Location {
+    let bar = Location {
         name("Foyer Bar")
-        description("""
+        description(
+            """
             The bar, much rougher than you'd have guessed after the opulence
             of the foyer to the north, is completely empty.
             """)
@@ -45,11 +53,12 @@ public struct OperaHouse: Game {
 
     // MARK: - Things
 
-    public let cloak = Item {
+    let cloak = Item {
         name("velvet cloak")
         adjectives("handsome", "dark", "black", "velvet", "satin")
         synonyms("cape")
-        description("""
+        description(
+            """
             A handsome cloak, of velvet trimmed with satin, and slightly
             spattered with raindrops. Its blackness is so deep that it
             almost seems to suck light from the room.
@@ -57,7 +66,7 @@ public struct OperaHouse: Game {
         wearable
     }
 
-    public let hook = Item {
+    let hook = Item {
         name("small brass hook")
         adjectives("small", "brass")
         synonyms("peg")
@@ -66,15 +75,17 @@ public struct OperaHouse: Game {
         surface
     }
 
-    public let message = Item {
+    let message = Item {
         name("scrawled message")
         adjectives("scrawled")
         synonyms("sawdust", "floor")
-        firstSight("""
+        firstSight(
+            """
             There seems to be some sort of message scrawled in the sawdust
             on the floor.
             """)
-        description("""
+        description(
+            """
             The message, neatly marked in the sawdust, reads...
 
                 "You win."
@@ -89,11 +100,13 @@ public struct OperaHouse: Game {
 
     // MARK: - Map
 
+    /// Geography and initial entity placement.
     public var map: WorldMap {
-        foyer.north(blocked: """
-            You've only just arrived, and besides, the weather outside
-            seems to be getting worse.
-            """)
+        foyer.north(
+            blocked: """
+                You've only just arrived, and besides, the weather outside
+                seems to be getting worse.
+                """)
         foyer.south(bar)
         foyer.west(cloakroom)
         cloakroom.east(foyer)
@@ -107,6 +120,7 @@ public struct OperaHouse: Game {
 
     // MARK: - Rules
 
+    /// All game logic.
     public var rules: Rules {
         cloak.before(.drop, .putOn) {
             guard player.location == cloakroom else {
@@ -127,9 +141,10 @@ public struct OperaHouse: Game {
         }
 
         hook.before(.examine) {
-            try reply(hook.holds(cloak)
-                ? "It's just a small brass hook, with a cloak hanging on it."
-                : "It's just a small brass hook, screwed to the wall.")
+            try reply(
+                hook.holds(cloak)
+                    ? "It's just a small brass hook, with a cloak hanging on it."
+                    : "It's just a small brass hook, screwed to the wall.")
         }
 
         bar.beforeEachTurn {

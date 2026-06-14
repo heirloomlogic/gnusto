@@ -17,6 +17,7 @@ public struct Player: Sendable {
         }
     }
 
+    /// The player's current score.
     public var score: Int {
         get { Ctx.current.with { $0.state.score } }
         nonmutating set { Ctx.current.with { $0.state.score = newValue } }
