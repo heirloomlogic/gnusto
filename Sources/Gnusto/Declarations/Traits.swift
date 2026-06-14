@@ -77,4 +77,3 @@ public let scenery = ItemTrait(kind: .scenery)
 
 /// Other items can be put on this item.
 public let surface = ItemTrait(kind: .surface)
-

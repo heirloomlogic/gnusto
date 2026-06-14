@@ -7,11 +7,13 @@ public struct Item: Sendable, Equatable {
     let token: RefToken
     let traits: [ItemTrait]
 
+    /// Declares an item from a block of traits (`Item { name(…) }`).
     public init(@ItemBuilder _ traits: () -> [ItemTrait] = { [] }) {
         self.token = RefToken()
         self.traits = traits()
     }
 
+    /// Two items are equal when they share the same declaration identity.
     public static func == (lhs: Item, rhs: Item) -> Bool {
         lhs.token === rhs.token
     }

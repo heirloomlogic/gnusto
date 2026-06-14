@@ -32,7 +32,8 @@ struct Vocabulary: Sendable {
 
     /// Called once at bootstrap, after all words are registered.
     mutating func finalize() {
-        allKnownWords = verbWords
+        allKnownWords =
+            verbWords
             .union(directions.keys)
             .union(prepositions)
             .union(noiseWords)

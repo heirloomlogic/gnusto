@@ -17,7 +17,9 @@ public protocol Game: Sendable {
 }
 
 extension Game {
+    /// Defaults to an empty tagline.
     public var tagline: String { "" }
+    /// Defaults to a maximum score of zero.
     public var maxScore: Int { 0 }
 
     /// Games without custom logic can omit the `rules` block.

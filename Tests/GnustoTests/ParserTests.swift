@@ -43,8 +43,10 @@ struct ParserTests {
         ("take cloak off", Expected(intent: .doff, direct: "cloak")),
         ("hang cloak on hook", Expected(intent: .putOn, direct: "cloak", indirect: "hook")),
         ("put cloak on hook", Expected(intent: .putOn, direct: "cloak", indirect: "hook")),
-        ("put the velvet cloak onto the small brass hook",
-         Expected(intent: .putOn, direct: "cloak", indirect: "hook")),
+        (
+            "put the velvet cloak onto the small brass hook",
+            Expected(intent: .putOn, direct: "cloak", indirect: "hook")
+        ),
         ("n", Expected(intent: .go, direction: .north)),
         ("south", Expected(intent: .go, direction: .south)),
         ("go north", Expected(intent: .go, direction: .north)),

@@ -4,11 +4,13 @@ public struct REPL: Sendable {
     private let world: GameWorld
     private let io: any IOHandler
 
+    /// Creates a REPL driving the given world through the given IO handler.
     public init(world: GameWorld, io: any IOHandler) {
         self.world = world
         self.io = io
     }
 
+    /// Runs the prompt/parse/perform/print loop until the game ends.
     public func run() async {
         var result = await world.begin()
         io.write("\(result.output)\n\n")

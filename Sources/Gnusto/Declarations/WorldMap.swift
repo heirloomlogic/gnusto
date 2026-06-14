@@ -1,3 +1,4 @@
+/// A compass or vertical direction of travel between locations.
 public enum Direction: String, CaseIterable, Sendable, Codable {
     case north, south, east, west
     case northeast, northwest, southeast, southwest
@@ -44,4 +45,3 @@ public struct MapEntry: Sendable {
 public struct WorldMap: Sendable {
     let entries: [MapEntry]
 }
-

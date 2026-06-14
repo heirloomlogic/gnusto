@@ -13,5 +13,6 @@ public protocol IOHandler: Sendable {
 }
 
 extension IOHandler {
+    /// Defaults to showing no status line.
     public func showStatus(_ status: StatusLine) {}
 }

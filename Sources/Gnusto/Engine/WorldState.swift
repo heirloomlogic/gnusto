@@ -8,6 +8,7 @@ public enum Placement: Hashable, Sendable, Codable {
     case nowhere
 }
 
+/// Whether the game is in progress or how it ended.
 public enum GameStatus: Hashable, Sendable, Codable {
     case playing
     case won

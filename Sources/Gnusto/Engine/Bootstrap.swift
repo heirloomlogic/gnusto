@@ -1,7 +1,9 @@
 /// All problems with a game definition, reported at once.
 public struct BootstrapError: Error, CustomStringConvertible {
+    /// Every problem found in the game definition.
     public let diagnostics: [String]
 
+    /// A human-readable summary listing every diagnostic.
     public var description: String {
         """
         Gnusto: the game definition is invalid (\(diagnostics.count) problem(s)):

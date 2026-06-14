@@ -8,8 +8,6 @@
 /// World `before` rules run before any location or item rules; world `after`
 /// rules run at the very end of the turn, after location each-turn rules.
 public struct World: Sendable {
-    init() {}
-
     /// Runs at the start of every turn, anywhere.
     public func beforeEachTurn(
         perform body: @escaping @Sendable () throws -> Void

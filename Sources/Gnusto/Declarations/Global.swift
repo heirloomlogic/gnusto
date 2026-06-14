@@ -19,6 +19,7 @@ public struct Global<Value: GlobalValue>: Sendable, AnyGlobal {
     let token = RefToken()
     let defaultValue: Value
 
+    /// Declares custom game state with the given initial value.
     public init(wrappedValue: Value) {
         self.defaultValue = wrappedValue
     }
@@ -27,6 +28,7 @@ public struct Global<Value: GlobalValue>: Sendable, AnyGlobal {
         defaultValue.stateValue
     }
 
+    /// The current value, read from and written to the live turn's state.
     public var wrappedValue: Value {
         get {
             let frame = Ctx.current
@@ -35,7 +37,8 @@ public struct Global<Value: GlobalValue>: Sendable, AnyGlobal {
                 return defaultValue
             }
             guard let value = Value(stateValue: stored) else {
-                fatalError("""
+                fatalError(
+                    """
                     Gnusto: @Global \"\(id)\" holds a \(stored) which cannot \
                     be read as \(Value.self).
                     """)
