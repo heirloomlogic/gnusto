@@ -1,6 +1,6 @@
-import CloakOfDarkness
 import Testing
 
+@testable import CloakOfDarkness
 @testable import Gnusto
 
 struct BootstrapTests {

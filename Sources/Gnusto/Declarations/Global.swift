@@ -1,6 +1,10 @@
 /// Internal face of `@Global` used by the bootstrap's Mirror walk.
 protocol AnyGlobal {
+    /// Identity token the bootstrap maps to an ``EntityID`` drawn from the
+    /// wrapped property's name.
     var token: RefToken { get }
+
+    /// The wrapped value boxed for seeding the world state's global storage.
     var defaultStateValue: StateValue { get }
 }
 

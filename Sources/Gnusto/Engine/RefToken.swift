@@ -35,8 +35,17 @@ public enum StateValue: Hashable, Sendable, Codable {
 }
 
 /// Types usable with the `@Global` property wrapper.
+///
+/// A conformance is a boxing pair: ``stateValue`` packs the value into a
+/// ``StateValue`` case for storage in the world state, and
+/// ``init(stateValue:)`` unpacks it again. The built-in cases (`Bool`,
+/// `Int`, `Double`, `String`) already conform.
 public protocol GlobalValue: Sendable, Codable {
+    /// This value boxed into its ``StateValue`` case for global storage.
     var stateValue: StateValue { get }
+
+    /// Unboxes a value from global storage, returning `nil` if the stored
+    /// case doesn't match this type.
     init?(stateValue: StateValue)
 }
 
