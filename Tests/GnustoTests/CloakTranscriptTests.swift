@@ -1,7 +1,8 @@
-import CloakOfDarkness
 import Foundation
 import Gnusto
 import Testing
+
+@testable import CloakOfDarkness
 
 /// End-to-end playthroughs of the canonical Cloak of Darkness paths.
 struct CloakTranscriptTests {

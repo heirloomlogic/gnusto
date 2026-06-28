@@ -3,18 +3,15 @@ import Gnusto
 /// "Cloak of Darkness" — the classic IF demonstration game by Roger Firth,
 /// ported to Gnusto. This file is the engine's acceptance benchmark: every
 /// API decision serves how this reads.
-public struct OperaHouse: Game {
-    /// Creates the game.
-    public init() {}
-
+struct OperaHouse: Game {
     /// The game's title.
-    public let title = "Cloak of Darkness"
+    let title = "Cloak of Darkness"
     /// The game's one-line tagline.
-    public let tagline = "A basic IF demonstration."
+    let tagline = "A basic IF demonstration."
     /// The maximum achievable score.
-    public let maxScore = 2
+    let maxScore = 2
     /// The opening text shown when play begins.
-    public let intro = """
+    let intro = """
         Hurrying through the rainswept November night, you're glad to see the
         bright lights of the Opera House. It's surprising that there aren't
         more people about but, hey, what do you expect in a cheap demo game...?
@@ -101,7 +98,7 @@ public struct OperaHouse: Game {
     // MARK: - Map
 
     /// Geography and initial entity placement.
-    public var map: WorldMap {
+    var map: WorldMap {
         foyer.north(
             blocked: """
                 You've only just arrived, and besides, the weather outside
@@ -121,7 +118,7 @@ public struct OperaHouse: Game {
     // MARK: - Rules
 
     /// All game logic.
-    public var rules: Rules {
+    var rules: Rules {
         cloak.before(.drop, .putOn) {
             guard player.location == cloakroom else {
                 try refuse("This isn't the best place to leave a smart cloak lying around.")
