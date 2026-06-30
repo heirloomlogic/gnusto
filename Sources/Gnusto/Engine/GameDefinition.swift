@@ -95,4 +95,7 @@ struct GameDefinition: Sendable {
     let registry: Registry
     let vocabulary: Vocabulary
     let syntaxRules: [SyntaxRule]
+    /// Non-fatal bootstrap notes — e.g. a custom verb shadowing a built-in.
+    /// Surfaced for tooling and tests; play proceeds regardless.
+    let warnings: [String]
 }

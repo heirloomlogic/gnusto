@@ -48,6 +48,8 @@ public typealias ItemBuilder = GnustoBuilder<ItemTrait>
 public typealias RuleBuilder = GnustoBuilder<Rule>
 /// The result builder for `map` blocks.
 public typealias MapBuilder = GnustoBuilder<MapEntry>
+/// The result builder for `verbs` blocks.
+public typealias VerbBuilder = GnustoBuilder<SyntaxRule>
 
 extension GnustoBuilder where Element == Rule {
     /// Lets `rules` blocks compose: `var rules: Rules { cloakRules; barRules }`.
@@ -58,6 +60,14 @@ extension GnustoBuilder where Element == Rule {
     /// Packages the collected rules into a `Rules` value.
     public static func buildFinalResult(_ rules: [Rule]) -> Rules {
         Rules(rules: rules)
+    }
+}
+
+extension GnustoBuilder where Element == SyntaxRule {
+    /// Lets `verbs` blocks splice a whole table at once — e.g. a plugin's
+    /// `combat.verbs` — alongside individual `SyntaxRule` rows.
+    public static func buildExpression(_ table: [SyntaxRule]) -> [SyntaxRule] {
+        table
     }
 }
 

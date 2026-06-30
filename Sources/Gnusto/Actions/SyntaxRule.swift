@@ -1,7 +1,9 @@
 /// One row of the verb table: a verb token sequence, the sentence shape it
-/// accepts, and the intent it produces. Data, not code — games can add rows.
-struct SyntaxRule: Sendable {
-    enum Slots: Sendable {
+/// accepts, and the intent it produces. Data, not code — games can add rows
+/// through their `verbs` block to teach the parser new player-typeable verbs.
+public struct SyntaxRule: Sendable {
+    /// The sentence shape a verb accepts after its verb tokens.
+    public enum Slots: Sendable, Hashable {
         /// `look`, `inventory`, `score`
         case none
         /// `go north`
@@ -18,11 +20,23 @@ struct SyntaxRule: Sendable {
     let slots: Slots
     let intent: Intent
 
-    init(_ verb: String..., slots: Slots, intent: Intent) {
+    /// Builds a verb row: one or more verb tokens, the sentence shape that
+    /// follows them, and the intent the parser emits on a match.
+    public init(_ verb: String..., slots: Slots, intent: Intent) {
         self.verb = verb
         self.slots = slots
         self.intent = intent
     }
+
+    /// Identifies a row by what the player types — verb tokens plus slot
+    /// shape — so the merged table can dedupe and a game can reclaim a
+    /// built-in verb (last-wins). Independent of the intent produced.
+    struct Key: Hashable {
+        let verb: [String]
+        let slots: Slots
+    }
+
+    var key: Key { Key(verb: verb, slots: slots) }
 
     /// The structural word (particle or preposition) this rule's shape
     /// consumes, if any — vocabulary the parser must recognize.
