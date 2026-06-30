@@ -1,6 +1,8 @@
 .context/
 .dev-tooling
 .DS_Store
+.github/swift-format-matcher.json
+.swift-format
 .netrc
 .swiftpm
 /.build
