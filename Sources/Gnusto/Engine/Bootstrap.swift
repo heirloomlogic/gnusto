@@ -177,8 +177,18 @@ enum Bootstrap {
         state.wornItems = wornItems
         state.litRooms = Set(locations.filter(\.value.inherentlyLit).keys)
 
-        // Phase 3 — assemble vocabulary.
-        let syntaxRules = SyntaxRule.standardTable
+        // Phase 3 — assemble the verb table and vocabulary. Built-ins first,
+        // then the game's own verbs. A game row whose verb and shape match a
+        // built-in reclaims it (last-wins) with a non-fatal warning, so an
+        // author can override a verb while keeping the override visible.
+        var verbWarnings: [String] = []
+        let builtInKeys = Set(SyntaxRule.standardTable.map(\.key))
+        for verb in game.verbs where builtInKeys.contains(verb.key) {
+            verbWarnings.append(
+                "custom verb \"\(verb.verb.joined(separator: " "))\" overrides a "
+                    + "built-in verb of the same shape.")
+        }
+        let syntaxRules = Self.dedupedLastWins(SyntaxRule.standardTable + game.verbs)
         var vocabulary = Vocabulary()
         vocabulary.directions = Vocabulary.standardDirections
         for rule in syntaxRules {
@@ -216,7 +226,8 @@ enum Bootstrap {
             rules: RuleTable(),
             registry: registry,
             vocabulary: vocabulary,
-            syntaxRules: syntaxRules)
+            syntaxRules: syntaxRules,
+            warnings: verbWarnings)
 
         let registrationFrame = TurnFrame(definition: definition, state: state)
         let declaredRules = Ctx.$frame.withValue(registrationFrame) {
@@ -273,5 +284,19 @@ enum Bootstrap {
 
         definition.rules = table
         return (definition, state)
+    }
+
+    /// Keeps the last row for each `(verb, shape)` key, preserving relative
+    /// order. Because the game's verbs follow the built-ins, a colliding game
+    /// row replaces the built-in. Order is otherwise irrelevant — the parser
+    /// re-sorts the table by specificity.
+    private static func dedupedLastWins(_ rules: [SyntaxRule]) -> [SyntaxRule] {
+        var lastIndex: [SyntaxRule.Key: Int] = [:]
+        for (index, rule) in rules.enumerated() {
+            lastIndex[rule.key] = index
+        }
+        return rules.enumerated()
+            .filter { lastIndex[$0.element.key] == $0.offset }
+            .map(\.element)
     }
 }

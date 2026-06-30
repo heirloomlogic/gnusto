@@ -45,6 +45,14 @@ public protocol Game: Sendable {
     /// Games without custom behavior can omit it; the default is an empty
     /// rule set.
     @RuleBuilder var rules: Rules { get }
+
+    /// Player-typeable verbs this game adds on top of the built-in table.
+    ///
+    /// Each row teaches the parser a verb and the sentence shape it accepts,
+    /// producing a custom `Intent` that a `before` rule then handles with
+    /// `reply(…)`/`refuse(…)`. Defaults to empty. A row whose verb and shape
+    /// match a built-in reclaims it (last-wins, with a non-fatal warning).
+    @VerbBuilder var verbs: [SyntaxRule] { get }
 }
 
 extension Game {
@@ -56,6 +64,9 @@ extension Game {
 
     /// Games without custom logic can omit the `rules` block.
     public var rules: Rules { Rules(rules: []) }
+
+    /// Games that add no verbs of their own can omit the `verbs` block.
+    public var verbs: [SyntaxRule] { [] }
 
     /// The player character — usable as a bare identifier in `map` and
     /// `rules` blocks.
