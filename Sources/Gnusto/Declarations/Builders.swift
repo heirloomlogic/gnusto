@@ -50,6 +50,8 @@ public typealias RuleBuilder = GnustoBuilder<Rule>
 public typealias MapBuilder = GnustoBuilder<MapEntry>
 /// The result builder for `verbs` blocks.
 public typealias VerbBuilder = GnustoBuilder<SyntaxRule>
+/// The result builder for `content` blocks.
+public typealias ContentBuilder = GnustoBuilder<any GameContent>
 
 extension GnustoBuilder where Element == Rule {
     /// Lets `rules` blocks compose: `var rules: Rules { cloakRules; barRules }`.
@@ -80,5 +82,12 @@ extension GnustoBuilder where Element == MapEntry {
     /// Packages the collected entries into a `WorldMap` value.
     public static func buildFinalResult(_ entries: [MapEntry]) -> WorldMap {
         WorldMap(entries: entries)
+    }
+}
+
+extension GnustoBuilder where Element == any GameContent {
+    /// Packages the collected bundles into a `GameContents` value.
+    public static func buildFinalResult(_ modules: [any GameContent]) -> GameContents {
+        GameContents(modules: modules)
     }
 }
