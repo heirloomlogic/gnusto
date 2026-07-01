@@ -10,6 +10,12 @@ final class RefToken: Sendable {}
 
 /// A stable, human-readable entity name derived from the Swift property label
 /// at registration time (`let bar = Location { … }` → `EntityID("bar")`).
+///
+/// Entities owned by a content bundle are namespaced by the bundle to keep them
+/// from colliding with the host, so their `raw` is dotted
+/// (`EntityID("AtticContent.hall")`); a game's own entities stay bare. The raw
+/// string is internal — display and parsing use the entity's `name(…)`, not this
+/// ID — so the namespace never reaches the player.
 public struct EntityID: Hashable, Comparable, Sendable, Codable, CustomStringConvertible {
     /// The underlying identifier string.
     public let raw: String

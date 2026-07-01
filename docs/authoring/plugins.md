@@ -110,17 +110,68 @@ var rules: Rules {
 }
 ```
 
-## Content-bearing plugins are bundles
+## Content-bearing plugins own their region
 
-A plugin that needs to ship its *own* rooms and items — not just logic over the
-host's — isn't a `GamePlugin`; it's a [content bundle](content-bundles.md). A
-`GameContent` bundle already carries `map`, `rules`, and `verbs`, and the
-bootstrap discovers and names its entities by reflection. Package the system as
-a bundle and list it in the game's `content`. Reach for a plugin when the system
-is pure logic over the host's world, and a bundle when it owns content.
+A logic-only `GamePlugin` declares no world of its own — it operates entirely
+over entities the host passes it. A plugin that needs to ship its *own* rooms,
+items, and `@Global` state is a [content bundle](content-bundles.md) instead: a
+`GameContent` carries `map`, `rules`, and `verbs`, and the bootstrap discovers
+its entities by reflection, [namespacing](content-bundles.md#entityids-are-namespaced-by-the-bundle)
+them under the bundle so a reusable plugin can't collide with the host. List it
+in the game's `content`.
 
-## Worked example
+The two roles compose in one type. A single struct can conform to `GameContent`
+(for its auto-namespaced region and self-contained rules) **and** expose
+host-facing rule factories exactly like a `GamePlugin` — factories are just
+methods returning `Rules`, so any type can offer them:
 
-`Tests/GnustoTests/Support/CommerceGame.swift` is the full commerce plugin —
-`buy`/`sell` verbs, `purchase`/`sale` factories, and a `LampShop` host — with
-`PluginTests` driving a buy/sell turn end to end.
+```swift
+struct ShrineContent: GameContent {
+    static let donate = Intent("donate")
+
+    let shrine = Location { name("Stone Shrine"); description("…") }   // its own room
+    @Global var visits = 0                                             // its own state
+
+    var verbs: [SyntaxRule] { SyntaxRule("donate", slots: .direct, intent: Self.donate) }
+    var rules: Rules { shrine.onEnter { visits += 1; try reply("…") } }  // self-contained
+
+    // Host-facing factory over a host item + host global — the GamePlugin pattern.
+    func offering(of item: Item,
+                  merit: @escaping @Sendable () -> Int,
+                  credit: @escaping @Sendable (Int) -> Void) -> Rules {
+        item.before(Self.donate) { credit(item.trait("value", as: Int.self) ?? 0)
+            try reply("Your merit rises to \(merit()).") }
+    }
+}
+```
+
+The host lists it in `content` (registering the namespaced region) **and**
+splices the factory into its own `rules`, wiring it to host declarations:
+
+```swift
+struct PilgrimGame: Game {
+    let shrineKit = ShrineContent()
+    @Global var merit = 0
+    let coin = Item { name("brass coin"); trait("value", 7) }
+
+    var content: GameContents { shrineKit }
+    var verbs: [SyntaxRule] { shrineKit.verbs }
+    var rules: Rules {
+        shrineKit.offering(of: coin, merit: { merit }, credit: { merit += $0 })
+    }
+    // map: place coin in shrineKit.shrine, wire plaza ↔ shrineKit.shrine, …
+}
+```
+
+References stay token-based across the boundary, so a host item can sit in a
+plugin room and a plugin rule can hook a host entity regardless of the namespace.
+
+## Worked examples
+
+- `Tests/GnustoTests/Support/CommerceGame.swift` — the logic-only commerce
+  plugin (`buy`/`sell` verbs, `purchase`/`sale` factories, `LampShop` host);
+  `PluginTests` drives a buy/sell turn end to end.
+- `Tests/GnustoTests/Support/ShrineContent.swift` — the content-bearing
+  `ShrineContent` plugin (owns a namespaced shrine region *and* exposes an
+  `offering` factory) with its `PilgrimGame` host; `ContentPluginTests` drives a
+  donate turn across the namespace boundary and checks the namespacing.

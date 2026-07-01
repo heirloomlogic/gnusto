@@ -121,7 +121,7 @@ This split — closed core the engine switches on; open `custom`/`@Global` for p
   }
   ```
   Host opts in by splicing: `var verbs { combat.verbs }`, `var rules { combat.rules(against: troll) }`. Worked example (commerce): plugin defines `Intent.buy/.sell` + `SyntaxRule` rows; host declares `@Global var coins` and `let lamp = Item { trait("price", 5) }`; a `lamp.before(.buy)` rule checks the wallet and replies. Every line readable in source.
-- **v2 — content-bearing plugins (needs Phase 2).** A plugin ships its own rooms/items by being a `GameContent` bundle the host lists in `content`; bootstrap's bundle recursion already discovers and namespaces its entities. Defer until a plugin genuinely needs to own content.
+- **v2 — content-bearing plugins (needs Phase 2). DONE (Phase 4b).** A plugin ships its own rooms/items by being a `GameContent` bundle the host lists in `content`. The bootstrap now namespaces each bundle's entity IDs by the bundle's `namespace` (defaulting to its type name; overridable for two instances of one type), so a reusable plugin can't collide with the host — game-owned entities stay bare. One type can be both content-bearing (conform to `GameContent`) and expose host-facing rule factories like a `GamePlugin`. Worked example: `Support/ShrineContent.swift` (`ShrineContent` + `PilgrimGame`), tests `ContentPluginTests`.
 
 **Critical files:** new `Declarations/GamePlugin.swift`; reuses everything from Phases 1–3.
 
@@ -147,6 +147,6 @@ Phases 1–3 are independent enough to reorder or parallelize if priorities shif
 
 - P1: verb override policy — confirm "last-wins + diagnostic" vs. hard-reject.
 - P1: do we want a `proceed()` sentinel so custom verbs can run `after` rules? (defer unless needed)
-- P2: bare EntityIDs (collisions = error) vs. namespaced by default — recommend bare; confirm save-file contract.
+- P2: bare EntityIDs (collisions = error) vs. namespaced by default — **resolved (Phase 4b):** game-owned entities stay bare; bundle-owned entities are namespaced by the bundle's type name (overridable). Save-file contract preserved because the only shipped game (Cloak) owns all its entities, so no ID changed; bundle-owned IDs/`@Global` keys are namespaced going forward.
 - P2: should shared `@Global`s live only at top level by convention? (simplest)
 - P3: save-format versioning for opaque `.data` state — convention now, versioned codecs later.

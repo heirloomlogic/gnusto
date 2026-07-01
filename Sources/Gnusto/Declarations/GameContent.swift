@@ -35,6 +35,18 @@ public protocol GameContent: Sendable {
     /// `verbs`. Defaults to empty. Merged with the game's verbs and the
     /// built-in table under the same last-wins policy.
     @VerbBuilder var verbs: [SyntaxRule] { get }
+
+    /// Prefixes this bundle's entity IDs so its rooms/items/`@Global`s can't
+    /// collide with the host game's or another bundle's. A bundle entity stored
+    /// as `let hall = Location { … }` becomes `EntityID("\(namespace).hall")`,
+    /// while the game's own entities stay bare. This is what lets a reusable
+    /// content-bearing plugin be dropped into any host without name clashes.
+    ///
+    /// Defaults to the bundle's type name (`AtticContent`). A host that stores
+    /// **two instances of the same bundle type** must override this to give each
+    /// a distinct namespace, since two instances would otherwise derive the same
+    /// prefix and collide.
+    var namespace: String { get }
 }
 
 extension GameContent {
@@ -46,6 +58,10 @@ extension GameContent {
 
     /// Bundles that add no verbs of their own can omit the `verbs` block.
     public var verbs: [SyntaxRule] { [] }
+
+    /// By default a bundle namespaces its entities under its own type name, so
+    /// each distinct bundle type gets a distinct prefix automatically.
+    public var namespace: String { String(describing: type(of: self)) }
 }
 
 /// The collected content bundles a game declares, in declaration order.
