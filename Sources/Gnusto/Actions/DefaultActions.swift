@@ -34,7 +34,7 @@ enum DefaultActions {
             try refuse(Messages.cantTake)
         }
         frame.with { scratch in
-            scratch.state.placements[id] = .held
+            scratch.state.placements[id] = .heldBy(.player)
             scratch.state.touched.insert(id)
         }
         frame.say(Messages.taken)
@@ -153,7 +153,7 @@ enum DefaultActions {
     private static func inventory(_ frame: TurnFrame) {
         let held = frame.with { scratch in
             frame.definition.items.keys
-                .filter { scratch.state.placements[$0] == .held }
+                .filter { scratch.state.placements[$0] == .heldBy(.player) }
                 .sorted()
                 .map { id in
                     Messages.inventoryLine(

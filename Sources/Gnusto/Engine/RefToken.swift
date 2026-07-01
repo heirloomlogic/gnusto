@@ -33,6 +33,14 @@ public struct EntityID: Hashable, Comparable, Sendable, Codable, CustomStringCon
     }
 }
 
+extension EntityID {
+    /// The player's reserved entity ID — the `Placement.heldBy` target for
+    /// carried items today, and an NPC's own ID once characters gain
+    /// inventories of their own. No declared entity may claim this bare ID;
+    /// the bootstrap reports it as a fatal collision.
+    public static let player = EntityID("player")
+}
+
 /// A value that can live in `WorldState`'s global storage. The scalar cases
 /// each pair with a dedicated `GlobalValue` conformance; ``data(typeName:bytes:)``
 /// is the type-erased case that carries any other `Codable` value, so custom

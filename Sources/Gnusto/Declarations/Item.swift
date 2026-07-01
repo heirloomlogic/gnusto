@@ -53,7 +53,7 @@ public struct Item: Sendable, Equatable {
     /// True if the player is carrying the item (including worn items).
     public var isHeld: Bool {
         let (frame, id) = resolved
-        return frame.with { $0.state.placements[id] == .held }
+        return frame.with { $0.state.placements[id] == .heldBy(.player) }
     }
 
     /// True if the player is wearing the item.

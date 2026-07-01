@@ -175,7 +175,7 @@ public actor GameWorld {
         var reachable: Set<EntityID> = []
         let here = state.playerLocation
 
-        for (id, placement) in state.placements where placement == .held {
+        for (id, placement) in state.placements where placement == .heldBy(.player) {
             reachable.insert(id)
         }
 

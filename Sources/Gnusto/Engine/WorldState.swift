@@ -1,7 +1,9 @@
 /// Where an item currently is.
 public enum Placement: Hashable, Sendable, Codable {
     case room(EntityID)
-    case held
+    /// Carried by the entity with this ID — the player today; an NPC once
+    /// characters gain inventories of their own.
+    case heldBy(EntityID)
     case on(EntityID)
     case inside(EntityID)
     /// Offstage — declared but not yet in play.

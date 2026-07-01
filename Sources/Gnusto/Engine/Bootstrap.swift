@@ -39,8 +39,14 @@ enum Bootstrap {
             let owner = namespace ?? "\(type(of: subject))"
 
             // Claims `id` for this owner, or records a collision and returns
-            // false if another declaration already took it.
+            // false if another declaration already took it. The bare `player`
+            // ID is reserved for the player's own placements (`Placement.heldBy`),
+            // so a host declaration (never namespaced) can't claim it.
             func claim(_ id: EntityID) -> Bool {
+                if id == .player {
+                    diagnostics.append(Self.reservedPlayerID(owner))
+                    return false
+                }
                 if let prior = declaredBy[id] {
                     diagnostics.append(Self.collision(id, prior, owner))
                     return false
@@ -180,10 +186,10 @@ enum Bootstrap {
                     else { continue }
                     placements[itemID] = .inside(containerID)
                 case .worn:
-                    placements[itemID] = .held
+                    placements[itemID] = .heldBy(.player)
                     wornItems.insert(itemID)
                 case .held:
-                    placements[itemID] = .held
+                    placements[itemID] = .heldBy(.player)
                 }
 
             case .playerStart(let token):
@@ -325,6 +331,12 @@ enum Bootstrap {
     /// game and a bundle, or two different bundles.
     private static func collision(_ id: EntityID, _ first: String, _ second: String) -> String {
         "entity \"\(id)\" is declared by both \(first) and \(second)."
+    }
+
+    /// The diagnostic for a declaration that claims the reserved `"player"`
+    /// ID, which `Placement.heldBy(.player)` needs for itself.
+    private static func reservedPlayerID(_ owner: String) -> String {
+        "\"player\" is a reserved entity ID (declared by \(owner)); rename this declaration."
     }
 
     /// Keeps the last row for each `(verb, shape)` key, preserving relative
