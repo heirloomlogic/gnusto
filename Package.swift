@@ -17,9 +17,15 @@ let packageDir = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
 let devSentinel = packageDir.appendingPathComponent(".dev-tooling").path
 let isDevBuild = FileManager.default.fileExists(atPath: devSentinel)
 
+// The DocC plugin is a command plugin (`swift package generate-documentation`),
+// invoked only when building the documentation — never on a normal build. Like
+// Persnicket, it is gated behind the dev sentinel so it doesn't leak into
+// downstream consumers' dependency graphs; the Documentation CI workflow creates
+// `.dev-tooling` before generating the docs.
 let devDependencies: [Package.Dependency] = isDevBuild
     ? [
-        .package(url: "https://github.com/HeirloomLogic/Persnicket", from: "2.0.0")
+        .package(url: "https://github.com/HeirloomLogic/Persnicket", from: "2.1.0"),
+        .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.5.0"),
     ]
     : []
 

@@ -1,10 +1,14 @@
-# Splitting a game across files
+# Splitting a Game Across Files
 
-A Gnusto game is one type conforming to `Game`. That does **not** mean it must live in one file. A large game splits cleanly along two of its three parts today; the third has a known boundary worth understanding.
+Keep a large game readable by composing its map and rules from per-region helpers.
+
+## Overview
+
+A Gnusto game is one type conforming to ``Game``. That does **not** mean it must live in one file. A large game splits cleanly along two of its three parts today; the third has a known boundary worth understanding.
 
 ## The one rule: declarations stay in the struct body
 
-Locations, items, and `@Global` state are **stored properties**, and Swift requires stored properties to be declared in a type's main body — not in an extension. The bootstrap also discovers every entity by reflecting over the single `Game` type and naming each entity after its property (`let foyer = Location { … }` becomes `EntityID("foyer")`). So all entity declarations live together, in the file that declares the struct:
+Locations, items, and `@Global` state are **stored properties**, and Swift requires stored properties to be declared in a type's main body — not in an extension. The bootstrap also discovers every entity by reflecting over the single ``Game`` type and naming each entity after its property (`let foyer = Location { … }` becomes ``EntityID`` `"foyer"`). So all entity declarations live together, in the file that declares the struct:
 
 ```swift
 struct OperaHouse: Game {
@@ -16,11 +20,11 @@ struct OperaHouse: Game {
 }
 ```
 
-(If you reach the point where even the *declarations* need to span files or ship in a separate package, reach for **content bundles** — a region declared as its own `GameContent` type. See [Content bundles](content-bundles.md).)
+(If you reach the point where even the *declarations* need to span files or ship in a separate package, reach for **content bundles** — a region declared as its own ``GameContent`` type. See <doc:ContentBundles>.)
 
 ## `map` and `rules` compose across files
 
-Both `map` and `rules` are result-builder properties, and the builder accepts whole `WorldMap` / `Rules` values as well as individual entries. That means you can break each one into per-region helper properties and splice them together:
+Both `map` and `rules` are result-builder properties, and the builder accepts whole ``WorldMap`` / ``Rules`` values as well as individual entries. That means you can break each one into per-region helper properties and splice them together:
 
 ```swift
 extension OperaHouse {
@@ -79,11 +83,9 @@ The struct file stays a readable table of contents — what exists and how the r
 
 | Part | Splits across files? |
 |---|---|
-| `rules` | Yes — compose from per-region `Rules` helpers. |
-| `map` | Yes — compose from per-region `WorldMap` helpers. |
+| `rules` | Yes — compose from per-region ``Rules`` helpers. |
+| `map` | Yes — compose from per-region ``WorldMap`` helpers. |
 | Custom verbs | Yes — a game's `verbs` block, and any bundle's. |
-| Entity declarations | In the struct body by default; across types/packages via [content bundles](content-bundles.md). |
+| Entity declarations | In the struct body by default; across types/packages via <doc:ContentBundles>. |
 
-The table above is the extension-based split: one `Game` struct, declarations in its body, `map`/`rules`/`verbs` composed from per-region helpers. When a region needs to own its *declarations* too — or ship as a package — promote it to a [content bundle](content-bundles.md).
-
-See `docs/superpowers/specs/2026-06-28-scaling-gnusto-design.md` for the full scaling roadmap.
+The table above is the extension-based split: one ``Game`` struct, declarations in its body, `map`/`rules`/`verbs` composed from per-region helpers. When a region needs to own its *declarations* too — or ship as a package — promote it to a <doc:ContentBundles>.
