@@ -83,6 +83,14 @@ public struct Item: Sendable, Equatable {
         location.contains(self)
     }
 
+    /// Reads a custom trait declared with `trait("key", value)`, or `nil` if
+    /// the item has no trait by that key or it was stored as a different type.
+    public func trait<T: GlobalValue>(_ key: String, as type: T.Type) -> T? {
+        let (frame, id) = resolved
+        guard let stored = frame.customTrait(key, of: id) else { return nil }
+        return T(stateValue: stored)
+    }
+
     /// Moves the item directly to a location, bypassing the usual actions.
     public func move(to location: Location) {
         let (frame, id) = resolved

@@ -4,6 +4,7 @@ public struct LocationTrait: Sendable {
         case name(String)
         case description(String)
         case dark
+        case custom(key: String, value: StateValue)
     }
 
     let kind: Kind
@@ -20,6 +21,7 @@ public struct ItemTrait: Sendable {
         case wearable
         case scenery
         case surface
+        case custom(key: String, value: StateValue)
     }
 
     let kind: Kind
@@ -77,3 +79,21 @@ public let scenery = ItemTrait(kind: .scenery)
 
 /// Other items can be put on this item.
 public let surface = ItemTrait(kind: .surface)
+
+// MARK: - Custom traits
+
+/// A custom, plugin-defined property of a location (`trait("region", "docks")`).
+/// The value is boxed like a `@Global`; read it back with
+/// `location.trait("region", as: String.self)`. The engine never branches on
+/// custom traits — they are declarative data for game/plugin code to read.
+public func trait(_ key: String, _ value: some GlobalValue) -> LocationTrait {
+    LocationTrait(kind: .custom(key: key, value: value.stateValue))
+}
+
+/// A custom, plugin-defined property of an item (`trait("price", 5)`). The
+/// value is boxed like a `@Global`; read it back with
+/// `item.trait("price", as: Int.self)`. The engine never branches on custom
+/// traits — they are declarative data for game/plugin code to read.
+public func trait(_ key: String, _ value: some GlobalValue) -> ItemTrait {
+    ItemTrait(kind: .custom(key: key, value: value.stateValue))
+}

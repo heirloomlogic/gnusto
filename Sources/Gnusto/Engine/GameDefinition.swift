@@ -9,6 +9,7 @@ struct LocationDefinition: Sendable {
     var name: String?
     var description: String?
     var inherentlyLit = true
+    var customTraits: [String: StateValue] = [:]
 
     init(traits: [LocationTrait]) {
         for trait in traits {
@@ -16,6 +17,7 @@ struct LocationDefinition: Sendable {
             case .name(let text): name = text
             case .description(let text): description = text
             case .dark: inherentlyLit = false
+            case .custom(let key, let value): customTraits[key] = value
             }
         }
     }
@@ -31,6 +33,7 @@ struct ItemDefinition: Sendable {
     var isWearable = false
     var isScenery = false
     var isSurface = false
+    var customTraits: [String: StateValue] = [:]
 
     /// Items are takable unless they're scenery.
     var isTakable: Bool { !isScenery }
@@ -46,6 +49,7 @@ struct ItemDefinition: Sendable {
             case .wearable: isWearable = true
             case .scenery: isScenery = true
             case .surface: isSurface = true
+            case .custom(let key, let value): customTraits[key] = value
             }
         }
     }
