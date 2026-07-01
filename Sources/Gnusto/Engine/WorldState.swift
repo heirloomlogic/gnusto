@@ -35,11 +35,4 @@ struct WorldState: Sendable, Codable {
     var descriptionOverrides: [EntityID: String] = [:]
     var globals: [EntityID: StateValue] = [:]
     var status: GameStatus = .playing
-
-    /// The one darkness predicate, shared by the room describer, the parser
-    /// scope, and the perception defaults.
-    /// Seam: when light-providing items exist, check their presence here.
-    func isDark(at locationID: EntityID) -> Bool {
-        !litRooms.contains(locationID)
-    }
 }

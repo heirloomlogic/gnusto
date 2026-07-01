@@ -172,28 +172,8 @@ public actor GameWorld {
     /// What the player can currently refer to: carried and worn items always;
     /// the room's contents (one surface/container level deep) only with light.
     private func currentScope() -> Scope {
-        var reachable: Set<EntityID> = []
         let here = state.playerLocation
-
-        for (id, placement) in state.placements where placement == .heldBy(.player) {
-            reachable.insert(id)
-        }
-
-        if !state.isDark(at: here) {
-            for (id, placement) in state.placements {
-                switch placement {
-                case .room(here):
-                    reachable.insert(id)
-                case .on(let surface) where state.placements[surface] == .room(here):
-                    reachable.insert(id)
-                case .inside(let container) where state.placements[container] == .room(here):
-                    reachable.insert(id)
-                default:
-                    break
-                }
-            }
-        }
-
+        let reachable = Visibility.reachableItems(at: here, definition: definition, state: state)
         return Scope(reachableItems: reachable)
     }
 

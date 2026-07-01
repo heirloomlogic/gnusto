@@ -15,7 +15,7 @@ enum RoomDescriber {
         let (locationID, isDark, wasVisited, override, placements, touched) = frame.with {
             scratch -> (EntityID, Bool, Bool, String?, [EntityID: Placement], Set<EntityID>) in
             let id = scratch.state.playerLocation
-            let dark = scratch.state.isDark(at: id)
+            let dark = Visibility.isDark(at: id, definition: definition, state: scratch.state)
             let visited = scratch.state.visited.contains(id)
             if !dark {
                 scratch.state.visited.insert(id)
