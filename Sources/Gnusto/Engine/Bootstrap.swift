@@ -22,45 +22,73 @@ enum Bootstrap {
         var locations: [EntityID: LocationDefinition] = [:]
         var items: [EntityID: ItemDefinition] = [:]
         var globalDefaults: [EntityID: StateValue] = [:]
+        var declaredBy: [EntityID: String] = [:]
 
-        // Phase 1 — discover stored declarations by reflection. The property
-        // name is the entity's ID.
-        for child in Mirror(reflecting: game).children {
-            guard var label = child.label else { continue }
-            if label.hasPrefix("_") { label.removeFirst() }  // property wrappers
-            let id = EntityID(label)
+        // The game's content bundles, read once so every phase below sees the
+        // same bundle instances — and therefore the same reference tokens the
+        // bundles' own map/rules reference.
+        let modules = game.content.modules
 
-            switch child.value {
-            case let location as Location:
-                if let existing = registry.id(for: location.token) {
-                    diagnostics.append(
-                        "\"\(id)\" and \"\(existing)\" are the same Location value; "
-                            + "each location must be its own declaration.")
+        // Phase 1 — discover stored declarations by reflection, over the game
+        // itself and each of its content bundles. The property name is the
+        // entity's ID; a name claimed by two declarations is a fatal collision.
+        func register(_ subject: Any) {
+            let owner = "\(type(of: subject))"
+
+            // Claims `id` for this owner, or records a collision and returns
+            // false if another declaration already took it.
+            func claim(_ id: EntityID) -> Bool {
+                if let prior = declaredBy[id] {
+                    diagnostics.append(Self.collision(id, prior, owner))
+                    return false
+                }
+                declaredBy[id] = owner
+                return true
+            }
+
+            for child in Mirror(reflecting: subject).children {
+                guard var label = child.label else { continue }
+                if label.hasPrefix("_") { label.removeFirst() }  // property wrappers
+                let id = EntityID(label)
+
+                switch child.value {
+                case let location as Location:
+                    guard claim(id) else { continue }
+                    if let existing = registry.id(for: location.token) {
+                        diagnostics.append(
+                            "\"\(id)\" and \"\(existing)\" are the same Location value; "
+                                + "each location must be its own declaration.")
+                        continue
+                    }
+                    registry.ids[ObjectIdentifier(location.token)] = id
+                    registry.locations[id] = location
+                    locations[id] = LocationDefinition(traits: location.traits)
+
+                case let item as Item:
+                    guard claim(id) else { continue }
+                    if let existing = registry.id(for: item.token) {
+                        diagnostics.append(
+                            "\"\(id)\" and \"\(existing)\" are the same Item value; "
+                                + "each item must be its own declaration.")
+                        continue
+                    }
+                    registry.ids[ObjectIdentifier(item.token)] = id
+                    registry.items[id] = item
+                    items[id] = ItemDefinition(traits: item.traits)
+
+                case let global as AnyGlobal:
+                    guard claim(id) else { continue }
+                    registry.ids[ObjectIdentifier(global.token)] = id
+                    globalDefaults[id] = global.defaultStateValue
+
+                default:
                     continue
                 }
-                registry.ids[ObjectIdentifier(location.token)] = id
-                registry.locations[id] = location
-                locations[id] = LocationDefinition(traits: location.traits)
-
-            case let item as Item:
-                if let existing = registry.id(for: item.token) {
-                    diagnostics.append(
-                        "\"\(id)\" and \"\(existing)\" are the same Item value; "
-                            + "each item must be its own declaration.")
-                    continue
-                }
-                registry.ids[ObjectIdentifier(item.token)] = id
-                registry.items[id] = item
-                items[id] = ItemDefinition(traits: item.traits)
-
-            case let global as AnyGlobal:
-                registry.ids[ObjectIdentifier(global.token)] = id
-                globalDefaults[id] = global.defaultStateValue
-
-            default:
-                continue
             }
         }
+
+        register(game)
+        modules.forEach(register)
 
         for (id, definition) in locations where definition.name == nil {
             diagnostics.append("location \"\(id)\" has no name(…) trait.")
@@ -79,7 +107,7 @@ enum Bootstrap {
             guard let id = registry.id(for: token), registry.locations[id] != nil else {
                 diagnostics.append(
                     "\(role) references a location that is not a stored property "
-                        + "of \(type(of: game)).")
+                        + "of the game or any of its content bundles.")
                 return nil
             }
             return id
@@ -89,13 +117,14 @@ enum Bootstrap {
             guard let id = registry.id(for: token), registry.items[id] != nil else {
                 diagnostics.append(
                     "\(role) references an item that is not a stored property "
-                        + "of \(type(of: game)).")
+                        + "of the game or any of its content bundles.")
                 return nil
             }
             return id
         }
 
-        for entry in game.map.entries {
+        let mapEntries = game.map.entries + modules.flatMap { $0.map.entries }
+        for entry in mapEntries {
             switch entry.kind {
             case .exit(let from, let direction, let to):
                 guard let fromID = resolveLocation(from, role: "an exit"),
@@ -178,17 +207,18 @@ enum Bootstrap {
         state.litRooms = Set(locations.filter(\.value.inherentlyLit).keys)
 
         // Phase 3 — assemble the verb table and vocabulary. Built-ins first,
-        // then the game's own verbs. A game row whose verb and shape match a
-        // built-in reclaims it (last-wins) with a non-fatal warning, so an
-        // author can override a verb while keeping the override visible.
+        // then the verbs of the game and its bundles. A custom row whose verb
+        // and shape match a built-in reclaims it (last-wins) with a non-fatal
+        // warning, so an author can override a verb while keeping it visible.
+        let customVerbs = game.verbs + modules.flatMap { $0.verbs }
         var verbWarnings: [String] = []
         let builtInKeys = Set(SyntaxRule.standardTable.map(\.key))
-        for verb in game.verbs where builtInKeys.contains(verb.key) {
+        for verb in customVerbs where builtInKeys.contains(verb.key) {
             verbWarnings.append(
                 "custom verb \"\(verb.verb.joined(separator: " "))\" overrides a "
                     + "built-in verb of the same shape.")
         }
-        let syntaxRules = Self.dedupedLastWins(SyntaxRule.standardTable + game.verbs)
+        let syntaxRules = Self.dedupedLastWins(SyntaxRule.standardTable + customVerbs)
         var vocabulary = Vocabulary()
         vocabulary.directions = Vocabulary.standardDirections
         for rule in syntaxRules {
@@ -231,7 +261,7 @@ enum Bootstrap {
 
         let registrationFrame = TurnFrame(definition: definition, state: state)
         let declaredRules = Ctx.$frame.withValue(registrationFrame) {
-            game.rules.rules
+            game.rules.rules + modules.flatMap { $0.rules.rules }
         }
         _ = registrationFrame.retire()  // discard any stray writes
 
@@ -243,7 +273,7 @@ enum Bootstrap {
                 guard let id = registry.id(for: token), registry.items[id] != nil else {
                     ruleDiagnostics.append(
                         "a rule is attached to an item that is not a stored property "
-                            + "of \(type(of: game)).")
+                            + "of the game or any of its content bundles.")
                     continue
                 }
                 switch rule.phase {
@@ -258,7 +288,7 @@ enum Bootstrap {
                 guard let id = registry.id(for: token), registry.locations[id] != nil else {
                     ruleDiagnostics.append(
                         "a rule is attached to a location that is not a stored "
-                            + "property of \(type(of: game)).")
+                            + "property of the game or any of its content bundles.")
                     continue
                 }
                 switch rule.phase {
@@ -284,6 +314,12 @@ enum Bootstrap {
 
         definition.rules = table
         return (definition, state)
+    }
+
+    /// The diagnostic for an `EntityID` claimed by two declarations — the
+    /// game and a bundle, or two different bundles.
+    private static func collision(_ id: EntityID, _ first: String, _ second: String) -> String {
+        "entity \"\(id)\" is declared by both \(first) and \(second)."
     }
 
     /// Keeps the last row for each `(verb, shape)` key, preserving relative

@@ -53,6 +53,14 @@ public protocol Game: Sendable {
     /// `reply(…)`/`refuse(…)`. Defaults to empty. A row whose verb and shape
     /// match a built-in reclaims it (last-wins, with a non-fatal warning).
     @VerbBuilder var verbs: [SyntaxRule] { get }
+
+    /// Content bundles this game composes itself from: each carries its own
+    /// rooms, items, `@Global` state, rules, and verbs.
+    ///
+    /// List the bundles the game stores as properties — `var content { attic;
+    /// cellar }` — so the bootstrap discovers those exact instances. Defaults
+    /// to empty, in which case the game's own declarations are all there is.
+    @ContentBuilder var content: GameContents { get }
 }
 
 extension Game {
@@ -67,6 +75,9 @@ extension Game {
 
     /// Games that add no verbs of their own can omit the `verbs` block.
     public var verbs: [SyntaxRule] { [] }
+
+    /// Games authored as a single struct can omit the `content` block.
+    public var content: GameContents { GameContents(modules: []) }
 
     /// The player character — usable as a bare identifier in `map` and
     /// `rules` blocks.

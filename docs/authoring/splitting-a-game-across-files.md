@@ -16,7 +16,7 @@ struct OperaHouse: Game {
 }
 ```
 
-(If you reach the point where even the *declarations* need to span files or ship in a separate package, that's a planned capability — "content bundles" — not yet built. See the scaling roadmap.)
+(If you reach the point where even the *declarations* need to span files or ship in a separate package, reach for **content bundles** — a region declared as its own `GameContent` type. See [Content bundles](content-bundles.md).)
 
 ## `map` and `rules` compose across files
 
@@ -75,13 +75,15 @@ The struct file stays a readable table of contents — what exists and how the r
 
 `Tests/GnustoTests/Support/SplitGame/` is a minimal game authored exactly this way: declarations in `SplitGame.swift`, with `gardenMap`/`gardenRules` in `SplitGame+Garden.swift` and `houseMap`/`houseRules` in `SplitGame+House.swift`. `MultiFileCompositionTests` boots it and confirms that the map entries and rules from every file take effect at runtime.
 
-## What does *not* split yet
+## What splits, and how
 
 | Part | Splits across files? |
 |---|---|
 | `rules` | Yes — compose from per-region `Rules` helpers. |
 | `map` | Yes — compose from per-region `WorldMap` helpers. |
-| Entity declarations | No — stored properties must stay in the struct body. |
-| Custom verbs / vocabulary | Not yet author-extensible (planned). |
+| Custom verbs | Yes — a game's `verbs` block, and any bundle's. |
+| Entity declarations | In the struct body by default; across types/packages via [content bundles](content-bundles.md). |
 
-See `docs/superpowers/specs/2026-06-28-scaling-gnusto-design.md` for the roadmap that lifts the remaining limits.
+The table above is the extension-based split: one `Game` struct, declarations in its body, `map`/`rules`/`verbs` composed from per-region helpers. When a region needs to own its *declarations* too — or ship as a package — promote it to a [content bundle](content-bundles.md).
+
+See `docs/superpowers/specs/2026-06-28-scaling-gnusto-design.md` for the full scaling roadmap.
