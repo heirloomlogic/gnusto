@@ -28,6 +28,11 @@ struct WorldState: Sendable, Codable {
     var playerLocation: EntityID
     var litRooms: Set<EntityID> = []
     var wornItems: Set<EntityID> = []
+    /// Openable containers that are currently open. A container without the
+    /// `openable` trait is always open and never appears here.
+    var openItems: Set<EntityID> = []
+    /// Lockable items that are currently locked.
+    var lockedItems: Set<EntityID> = []
     var score = 0
     var moves = 0
     var touched: Set<EntityID> = []

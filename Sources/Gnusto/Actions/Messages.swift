@@ -48,6 +48,10 @@ enum Messages {
         "On the \(surface) is \(indefinite(name))."
     }
 
+    static func itemInContainer(_ name: String, _ container: String) -> String {
+        "In the \(container) is \(indefinite(name))."
+    }
+
     static func inventoryLine(_ name: String, isWorn: Bool) -> String {
         "  \(indefinite(name))\(isWorn ? " (being worn)" : "")"
     }

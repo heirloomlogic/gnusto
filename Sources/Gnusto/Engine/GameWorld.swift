@@ -170,11 +170,14 @@ public actor GameWorld {
     }
 
     /// What the player can currently refer to: carried and worn items always;
-    /// the room's contents (one surface/container level deep) only with light.
+    /// with light, the room's contents descended through surfaces and visible
+    /// containers. Parser scope keys off *visible* items — you can name what you
+    /// can see, even through a shut glass jar; the actions enforce
+    /// reachability.
     private func currentScope() -> Scope {
         let here = state.playerLocation
-        let reachable = Visibility.reachableItems(at: here, definition: definition, state: state)
-        return Scope(reachableItems: reachable)
+        let visible = Visibility.visibleItems(at: here, definition: definition, state: state)
+        return Scope(reachableItems: visible)
     }
 
     private func commit(_ frame: TurnFrame) -> TurnResult {

@@ -62,6 +62,57 @@ public struct Item: Sendable, Equatable {
         return frame.with { $0.state.wornItems.contains(id) }
     }
 
+    /// True if the item is a container (things can be put inside it).
+    public var isContainer: Bool {
+        let (frame, id) = resolved
+        return frame.definition.items[id]?.isContainer == true
+    }
+
+    /// Whether the item is open. A container without the `openable` trait is
+    /// always open; assigning to it is a no-op. An openable item reflects and
+    /// updates the current open state.
+    public var isOpen: Bool {
+        get {
+            let (frame, id) = resolved
+            let definition = frame.definition
+            return frame.with {
+                Visibility.isOpen(id, definition: definition, state: $0.state)
+            }
+        }
+        nonmutating set {
+            let (frame, id) = resolved
+            // Only openable items track an open flag; for anything else the
+            // set is a no-op (a bare container is permanently open).
+            guard frame.definition.items[id]?.isOpenable == true else { return }
+            frame.with { scratch in
+                if newValue {
+                    scratch.state.openItems.insert(id)
+                } else {
+                    scratch.state.openItems.remove(id)
+                }
+            }
+        }
+    }
+
+    /// Whether the item is locked. Assigning to a non-lockable item is a no-op.
+    public var isLocked: Bool {
+        get {
+            let (frame, id) = resolved
+            return frame.with { $0.state.lockedItems.contains(id) }
+        }
+        nonmutating set {
+            let (frame, id) = resolved
+            guard frame.definition.items[id]?.isLockable == true else { return }
+            frame.with { scratch in
+                if newValue {
+                    scratch.state.lockedItems.insert(id)
+                } else {
+                    scratch.state.lockedItems.remove(id)
+                }
+            }
+        }
+    }
+
     /// True if the player has ever picked up or moved the item.
     public var isTouched: Bool {
         let (frame, id) = resolved
@@ -96,6 +147,37 @@ public struct Item: Sendable, Equatable {
         let (frame, id) = resolved
         let locationID = location.id
         frame.with { $0.state.placements[id] = .room(locationID) }
+    }
+
+    /// Moves the item inside a container, bypassing the usual actions. Traps if
+    /// the target is not a container.
+    public func move(inside container: Item) {
+        let (frame, id) = resolved
+        let containerID = container.id
+        guard frame.definition.items[containerID]?.isContainer == true else {
+            fatalError(
+                "Gnusto: move(inside:) target \"\(containerID)\" is not a container.")
+        }
+        frame.with { $0.state.placements[id] = .inside(containerID) }
+    }
+
+    /// Moves the item onto a surface, bypassing the usual actions. Traps if the
+    /// target is not a surface.
+    public func move(onto surface: Item) {
+        let (frame, id) = resolved
+        let surfaceID = surface.id
+        guard frame.definition.items[surfaceID]?.isSurface == true else {
+            fatalError(
+                "Gnusto: move(onto:) target \"\(surfaceID)\" is not a surface.")
+        }
+        frame.with { $0.state.placements[id] = .on(surfaceID) }
+    }
+
+    /// Moves the item into an entity's inventory, bypassing the usual actions.
+    public func move(heldBy holder: Item) {
+        let (frame, id) = resolved
+        let holderID = holder.id
+        frame.with { $0.state.placements[id] = .heldBy(holderID) }
     }
 
     /// Removes the item from play.

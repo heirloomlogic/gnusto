@@ -12,8 +12,10 @@ enum RoomDescriber {
 
         // One snapshot of everything this function reads; the visited mark
         // (lit visits only) is the one write and happens in the same lock.
-        let (locationID, isDark, wasVisited, override, placements, touched) = frame.with {
-            scratch -> (EntityID, Bool, Bool, String?, [EntityID: Placement], Set<EntityID>) in
+        let (locationID, isDark, wasVisited, override, placements, touched, state) = frame.with {
+            scratch -> (
+                EntityID, Bool, Bool, String?, [EntityID: Placement], Set<EntityID>, WorldState
+            ) in
             let id = scratch.state.playerLocation
             let dark = Visibility.isDark(at: id, definition: definition, state: scratch.state)
             let visited = scratch.state.visited.contains(id)
@@ -24,7 +26,8 @@ enum RoomDescriber {
                 id, dark, visited,
                 scratch.state.descriptionOverrides[id],
                 scratch.state.placements,
-                scratch.state.touched
+                scratch.state.touched,
+                scratch.state
             )
         }
 
@@ -65,6 +68,31 @@ enum RoomDescriber {
                     frame.say(Messages.itemOnSurface(topName, item.name ?? itemID.raw))
                 }
             }
+
+            // "In the X is a Y." for containers whose contents are visible —
+            // open containers and closed transparent ones. Closed opaque
+            // containers stay silent, so their contents never leak into the
+            // room description.
+            if item.isContainer, contentsVisible(itemID, definition: definition, state: state) {
+                let inside = definition.items.keys
+                    .filter { placements[$0] == .inside(itemID) }
+                    .sorted()
+                for insideID in inside {
+                    let insideName = definition.items[insideID]?.name ?? insideID.raw
+                    frame.say(Messages.itemInContainer(insideName, item.name ?? itemID.raw))
+                }
+            }
         }
+    }
+
+    /// Whether a container's direct contents are perceivable in a room
+    /// description: an open container, or a closed transparent one.
+    private static func contentsVisible(
+        _ id: EntityID,
+        definition: GameDefinition,
+        state: WorldState
+    ) -> Bool {
+        if Visibility.isOpen(id, definition: definition, state: state) { return true }
+        return definition.items[id]?.isTransparent == true
     }
 }

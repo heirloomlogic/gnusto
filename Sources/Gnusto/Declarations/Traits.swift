@@ -21,6 +21,15 @@ public struct ItemTrait: Sendable {
         case wearable
         case scenery
         case surface
+        case container
+        case openable
+        case startsOpen
+        case transparent
+        /// Stores the key's reference token; Bootstrap resolves it to an
+        /// `EntityID` once the registry exists.
+        case lockable(key: RefToken)
+        case startsUnlocked
+        case capacity(Int)
         case custom(key: String, value: StateValue)
     }
 
@@ -79,6 +88,40 @@ public let scenery = ItemTrait(kind: .scenery)
 
 /// Other items can be put on this item.
 public let surface = ItemTrait(kind: .surface)
+
+/// Other items can be placed inside this item. A container without `openable`
+/// is always open; with `openable` it starts closed unless `startsOpen`. Its
+/// contents are visible and reachable only while it is open (or, for
+/// `transparent` containers, visible while closed but never reachable).
+public let container = ItemTrait(kind: .container)
+
+/// The item can be opened and closed. An `openable` item **starts closed**
+/// unless it also declares `startsOpen`.
+public let openable = ItemTrait(kind: .openable)
+
+/// An `openable` item begins the game open rather than closed.
+public let startsOpen = ItemTrait(kind: .startsOpen)
+
+/// A container's contents are visible even while it is closed (but still not
+/// reachable until it is opened) — a glass jar, a display case.
+public let transparent = ItemTrait(kind: .transparent)
+
+/// The item can be locked and unlocked with the given key item. A `lockable`
+/// item **starts locked** unless it also declares `startsUnlocked`. The key is
+/// captured by reference; Bootstrap resolves it to a concrete item and reports
+/// a fatal diagnostic if the key is not a declared item.
+public func lockable(with key: Item) -> ItemTrait {
+    ItemTrait(kind: .lockable(key: key.token))
+}
+
+/// A `lockable` item begins the game unlocked rather than locked.
+public let startsUnlocked = ItemTrait(kind: .startsUnlocked)
+
+/// The maximum number of items that may be placed directly inside a container
+/// (enforced by the put-in action).
+public func capacity(_ n: Int) -> ItemTrait {
+    ItemTrait(kind: .capacity(n))
+}
 
 // MARK: - Custom traits
 

@@ -184,6 +184,11 @@ enum Bootstrap {
                         let containerID = resolveItem(
                             token, role: "the placement of \"\(itemID)\"")
                     else { continue }
+                    if items[containerID]?.isContainer != true {
+                        diagnostics.append(
+                            "\"\(itemID)\" is placed inside \"\(containerID)\", which is "
+                                + "not declared as a container.")
+                    }
                     placements[itemID] = .inside(containerID)
                 case .worn:
                     placements[itemID] = .heldBy(.player)
@@ -204,6 +209,20 @@ enum Bootstrap {
             diagnostics.append("the map block never declares player.starts(in:).")
         }
 
+        // Resolve each lockable item's key token → EntityID onto its
+        // definition, mirroring how exit targets resolve their tokens. A key
+        // that is not a declared item is a fatal diagnostic.
+        for (id, definition) in items {
+            guard let keyToken = definition.lockKeyToken else { continue }
+            guard let keyID = registry.id(for: keyToken), registry.items[keyID] != nil else {
+                diagnostics.append(
+                    "\"\(id)\" is lockable with a key that is not a stored property "
+                        + "of the game or any of its content bundles.")
+                continue
+            }
+            items[id]?.lockKey = keyID
+        }
+
         guard diagnostics.isEmpty, let playerStart else {
             throw BootstrapError(diagnostics: diagnostics)
         }
@@ -216,6 +235,13 @@ enum Bootstrap {
         state.placements = placements
         state.wornItems = wornItems
         state.litRooms = Set(locations.filter(\.value.inherentlyLit).keys)
+        // Openable containers start open only with `startsOpen`; lockable items
+        // start locked unless `startsUnlocked`. Non-openable containers are
+        // implicitly open and never tracked in `openItems`.
+        state.openItems = Set(
+            items.filter { $0.value.isOpenable && $0.value.startsOpen }.keys)
+        state.lockedItems = Set(
+            items.filter { $0.value.isLockable && !$0.value.startsUnlocked }.keys)
 
         // Phase 3 — assemble the verb table and vocabulary. Built-ins first,
         // then the verbs of the game and its bundles. A custom row whose verb

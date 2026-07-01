@@ -33,6 +33,19 @@ struct ItemDefinition: Sendable {
     var isWearable = false
     var isScenery = false
     var isSurface = false
+    var isContainer = false
+    var isOpenable = false
+    var startsOpen = false
+    var isTransparent = false
+    var isLockable = false
+    var startsUnlocked = false
+    var capacity: Int?
+    /// The lock key's reference token, captured at declaration time. Bootstrap
+    /// resolves it into `lockKey` once the registry exists.
+    var lockKeyToken: RefToken?
+    /// The resolved lock key, filled in by Bootstrap. `nil` until then (and for
+    /// non-lockable items).
+    var lockKey: EntityID?
     var customTraits: [String: StateValue] = [:]
 
     /// Items are takable unless they're scenery.
@@ -49,6 +62,15 @@ struct ItemDefinition: Sendable {
             case .wearable: isWearable = true
             case .scenery: isScenery = true
             case .surface: isSurface = true
+            case .container: isContainer = true
+            case .openable: isOpenable = true
+            case .startsOpen: startsOpen = true
+            case .transparent: isTransparent = true
+            case .lockable(let key):
+                isLockable = true
+                lockKeyToken = key
+            case .startsUnlocked: startsUnlocked = true
+            case .capacity(let n): capacity = n
             case .custom(let key, let value): customTraits[key] = value
             }
         }
