@@ -70,6 +70,13 @@ final class TurnFrame: Sendable {
             ?? id.raw
     }
 
+    /// A declared custom trait of any entity, or `nil` if it has none by that
+    /// key. Custom traits are immutable definition data, so no lock is taken.
+    func customTrait(_ key: String, of id: EntityID) -> StateValue? {
+        definition.items[id]?.customTraits[key]
+            ?? definition.locations[id]?.customTraits[key]
+    }
+
     /// The current description of any entity: the runtime override if one
     /// has been assigned, else the declared text.
     func describedText(of id: EntityID) -> String {

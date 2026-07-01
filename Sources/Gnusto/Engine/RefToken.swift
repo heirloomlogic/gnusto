@@ -1,3 +1,5 @@
+import Foundation
+
 /// Pure identity for a declared entity (location, item, or global).
 ///
 /// Created when an author writes `Location { … }`, `Item { … }`, or `@Global`.
@@ -25,13 +27,16 @@ public struct EntityID: Hashable, Comparable, Sendable, Codable, CustomStringCon
     }
 }
 
-/// A value that can live in `WorldState`'s global storage. Cases exist only
-/// for types with a `GlobalValue` conformance — add both together.
+/// A value that can live in `WorldState`'s global storage. The scalar cases
+/// each pair with a dedicated `GlobalValue` conformance; ``data(typeName:bytes:)``
+/// is the type-erased case that carries any other `Codable` value, so custom
+/// state structs and custom traits need no new case of their own.
 public enum StateValue: Hashable, Sendable, Codable {
     case bool(Bool)
     case int(Int)
     case double(Double)
     case string(String)
+    case data(typeName: String, bytes: Data)
 }
 
 /// Types usable with the `@Global` property wrapper.
@@ -47,6 +52,34 @@ public protocol GlobalValue: Sendable, Codable {
     /// Unboxes a value from global storage, returning `nil` if the stored
     /// case doesn't match this type.
     init?(stateValue: StateValue)
+}
+
+extension GlobalValue {
+    /// Default boxing for any `Codable` type without a dedicated ``StateValue``
+    /// case: JSON-encode into the type-erased ``StateValue/data(typeName:bytes:)``
+    /// case. A bare `struct Wallet: Codable, Sendable, GlobalValue {}` picks
+    /// this up; the scalar conformances below override it with their own case.
+    public var stateValue: StateValue {
+        let bytes: Data
+        do {
+            bytes = try JSONEncoder().encode(self)
+        } catch {
+            fatalError(
+                "Gnusto: @Global value of type \(Self.self) is not encodable: \(error)")
+        }
+        return .data(typeName: String(reflecting: Self.self), bytes: bytes)
+    }
+
+    /// Default unboxing: decode the JSON stored in the type-erased `.data`
+    /// case. Returns `nil` if the stored case isn't `.data` or the bytes no
+    /// longer decode as this type (e.g. a plugin changed its state struct).
+    public init?(stateValue: StateValue) {
+        guard case .data(_, let bytes) = stateValue else { return nil }
+        guard let value = try? JSONDecoder().decode(Self.self, from: bytes) else {
+            return nil
+        }
+        self = value
+    }
 }
 
 extension Bool: GlobalValue {
