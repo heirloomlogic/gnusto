@@ -1,0 +1,46 @@
+name: Documentation
+
+on:
+  push:
+    tags:
+      - "[0-9]+.[0-9]+.[0-9]+*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  documentation:
+    runs-on: macos-26
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # The swift-docc-plugin is gated behind the dev sentinel in Package.swift,
+      # so it must exist before the plugin command is available. Resolving here
+      # also surfaces dependency errors as their own step.
+      - name: Enable dev tooling
+        run: |
+          touch .dev-tooling
+          swift package resolve
+
+      - name: Clean docs directory
+        run: rm -rf ./docs
+
+      - name: Build documentation
+        run: |
+          swift package --allow-writing-to-directory ./docs \
+            generate-documentation --target Gnusto \
+            --disable-indexing \
+            --transform-for-static-hosting \
+            --hosting-base-path /Gnusto \
+            --output-path ./docs
+
+      - name: Create .nojekyll file
+        run: touch ./docs/.nojekyll
+
+      - name: Deploy to GitHub Pages
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          branch: gh-pages
+          folder: docs
