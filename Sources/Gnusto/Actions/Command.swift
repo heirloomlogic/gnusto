@@ -23,6 +23,20 @@ public struct Intent: Hashable, Sendable {
     public static let doff = Intent("doff")
     /// Put an item onto a surface.
     public static let putOn = Intent("putOn")
+    /// Put an item inside a container.
+    public static let putIn = Intent("putIn")
+    /// Open a container or door.
+    public static let open = Intent("open")
+    /// Close a container or door.
+    public static let close = Intent("close")
+    /// Lock an item with a key.
+    public static let lock = Intent("lock")
+    /// Unlock an item with a key.
+    public static let unlock = Intent("unlock")
+    /// Look inside a container.
+    public static let lookIn = Intent("lookIn")
+    /// Push an item.
+    public static let push = Intent("push")
     /// Move in a direction.
     public static let go = Intent("go")
     /// Look at the current location.

@@ -55,11 +55,17 @@ enum Visibility {
         }
 
         var result: Set<EntityID> = []
+        // Guards against a runtime-created placement cycle (e.g. a container
+        // moved inside its own contents) sending this walk into an infinite
+        // recursion — the containment graph should never have cycles, but the
+        // walk must not trust that invariant blindly.
+        var visited: Set<EntityID> = []
 
         /// Adds `id` and, if it is a surface or a see-through/open container,
         /// its qualifying descendants.
         func descend(into id: EntityID) {
-            for child in childrenOf[id] ?? [] {
+            guard visited.insert(id).inserted else { return }
+            for child in childrenOf[id] ?? [] where isPerceivable(child, definition: definition, state: state) {
                 result.insert(child)
                 if shouldDescend(into: child) {
                     descend(into: child)
@@ -80,6 +86,7 @@ enum Visibility {
 
         // Held items are always perceivable, and we descend into what they hold.
         for (id, placement) in state.placements where placement == .heldBy(.player) {
+            guard isPerceivable(id, definition: definition, state: state) else { continue }
             result.insert(id)
             if shouldDescend(into: id) { descend(into: id) }
         }
@@ -89,11 +96,24 @@ enum Visibility {
         }
 
         for (id, placement) in state.placements where placement == .room(location) {
+            guard isPerceivable(id, definition: definition, state: state) else { continue }
             result.insert(id)
             if shouldDescend(into: id) { descend(into: id) }
         }
 
         return result
+    }
+
+    /// Whether an item should be included in any visibility/description walk
+    /// at all: it exists and, if `hidden`, has been revealed. Shared by this
+    /// module's own walks and `RoomDescriber`'s listings.
+    static func isPerceivable(
+        _ id: EntityID,
+        definition: GameDefinition,
+        state: WorldState
+    ) -> Bool {
+        guard let item = definition.items[id] else { return false }
+        return !item.isHidden || state.revealedItems.contains(id)
     }
 
     /// Whether a container is currently open. A container without the

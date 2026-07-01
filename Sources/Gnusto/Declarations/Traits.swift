@@ -30,6 +30,7 @@ public struct ItemTrait: Sendable {
         case lockable(key: RefToken)
         case startsUnlocked
         case capacity(Int)
+        case hidden
         case custom(key: String, value: StateValue)
     }
 
@@ -122,6 +123,10 @@ public let startsUnlocked = ItemTrait(kind: .startsUnlocked)
 public func capacity(_ n: Int) -> ItemTrait {
     ItemTrait(kind: .capacity(n))
 }
+
+/// The item is excluded from visibility and room descriptions until revealed
+/// (`item.reveal()`), even though it exists and is placed like any other item.
+public let hidden = ItemTrait(kind: .hidden)
 
 // MARK: - Custom traits
 

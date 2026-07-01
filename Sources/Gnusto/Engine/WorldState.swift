@@ -33,6 +33,8 @@ struct WorldState: Sendable, Codable {
     var openItems: Set<EntityID> = []
     /// Lockable items that are currently locked.
     var lockedItems: Set<EntityID> = []
+    /// Hidden items that have been revealed and are now perceivable normally.
+    var revealedItems: Set<EntityID> = []
     var score = 0
     var moves = 0
     var touched: Set<EntityID> = []

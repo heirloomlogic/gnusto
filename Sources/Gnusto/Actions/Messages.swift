@@ -20,6 +20,57 @@ enum Messages {
     static let carrying = "You are carrying:"
     static let nothingWritten = "There's nothing written on that."
 
+    // MARK: - Containers
+
+    static let opened = "Opened."
+    static let closed = "Closed."
+    static let lockedMessage = "Locked."
+    static let unlockedMessage = "Unlocked."
+    static let cantOpenThat = "You can't open that."
+    static let cantCloseThat = "You can't close that."
+    static let alreadyOpen = "That's already open."
+    static let alreadyClosed = "That's already closed."
+    static let cantLockThat = "You can't lock that."
+    static let cantUnlockThat = "You can't unlock that."
+    static let alreadyLocked = "That's already locked."
+    static let alreadyUnlocked = "That's already unlocked."
+    static let wrongKey = "That doesn't fit the lock."
+    static let cantPutInThat = "You can't put things in that."
+    static let cantPutInItself = "You can't put something in itself."
+    static let noRoom = "There's no room."
+    static let cantMoveThat = "You can't move that."
+
+    static func locked(_ name: String) -> String {
+        "The \(name) is locked."
+    }
+
+    static func closedContainer(_ name: String) -> String {
+        "The \(name) is closed."
+    }
+
+    static func emptyContainer(_ name: String) -> String {
+        "The \(name) is empty."
+    }
+
+    static func keyNotHeld(_ name: String) -> String {
+        "You aren't holding the \(name)."
+    }
+
+    static func putItemIn(_ name: String, _ container: String) -> String {
+        "You put the \(name) in the \(container)."
+    }
+
+    static func openingReveals(_ name: String, _ contentNames: [String]) -> String {
+        "Opening the \(name) reveals \(indefiniteList(contentNames))."
+    }
+
+    /// "In the X is a Y." / "In the X are a Y and a Z." — verb agreement
+    /// follows the content count.
+    static func inTheContainer(_ name: String, _ contentNames: [String]) -> String {
+        let verb = contentNames.count == 1 ? "is" : "are"
+        return "In the \(name) \(verb) \(indefiniteList(contentNames))."
+    }
+
     static func firstTakingOff(_ name: String) -> String {
         "(first taking off the \(name))"
     }
@@ -86,11 +137,25 @@ enum Messages {
 
     /// The name with its indefinite article, for listings ("a velvet cloak",
     /// "an apple"). Standard action messages use "the" instead.
-    private static func indefinite(_ name: String) -> String {
+    static func indefinite(_ name: String) -> String {
         if let first = name.lowercased().first, "aeiou".contains(first) {
             "an \(name)"
         } else {
             "a \(name)"
+        }
+    }
+
+    /// Joins names with their indefinite articles into an English list ("a Y",
+    /// "a Y and a Z", "a Y, a Z, and a W") for contents listings.
+    static func indefiniteList(_ names: [String]) -> String {
+        let articled = names.map(indefinite)
+        switch articled.count {
+        case 0: return ""
+        case 1: return articled[0]
+        case 2: return "\(articled[0]) and \(articled[1])"
+        default:
+            let allButLast = articled.dropLast().joined(separator: ", ")
+            return "\(allButLast), and \(articled.last!)"
         }
     }
 }

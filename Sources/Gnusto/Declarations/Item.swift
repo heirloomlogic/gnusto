@@ -119,6 +119,21 @@ public struct Item: Sendable, Equatable {
         return frame.with { $0.state.touched.contains(id) }
     }
 
+    /// True if a `hidden` item has been revealed. Always true for an item
+    /// that was never declared `hidden`.
+    public var isRevealed: Bool {
+        let (frame, id) = resolved
+        guard frame.definition.items[id]?.isHidden == true else { return true }
+        return frame.with { $0.state.revealedItems.contains(id) }
+    }
+
+    /// Reveals a `hidden` item: it becomes perceivable in visibility and room
+    /// descriptions from now on. A no-op for an item that isn't `hidden`.
+    public func reveal() {
+        let (frame, id) = resolved
+        frame.with { _ = $0.state.revealedItems.insert(id) }
+    }
+
     /// True if the other item is on or inside this one.
     public func holds(_ item: Item) -> Bool {
         let (frame, myID) = resolved

@@ -9,6 +9,13 @@ enum DefaultActions {
         case .wear: try wear(command, frame: frame)
         case .doff: try doff(command, frame: frame)
         case .putOn: try putOn(command, frame: frame)
+        case .putIn: try putIn(command, frame: frame)
+        case .open: try open(command, frame: frame)
+        case .close: try close(command, frame: frame)
+        case .lock: try lock(command, frame: frame)
+        case .unlock: try unlock(command, frame: frame)
+        case .lookIn: try lookIn(command, frame: frame)
+        case .push: try push(command, frame: frame)
         case .go: try go(command, frame: frame)
         case .look: RoomDescriber.describeCurrentLocation(mode: .look, frame: frame)
         case .examine: try examine(command, frame: frame)
@@ -32,6 +39,12 @@ enum DefaultActions {
         }
         guard frame.definition.items[id]?.isTakable == true else {
             try refuse(Messages.cantTake)
+        }
+        // The parser's scope is *visible* items, which also admits a closed
+        // transparent container's contents (seen through the glass but not
+        // touchable) — take needs the stricter reachable set to refuse those.
+        guard isReachable(id, frame: frame) else {
+            try refuse(Messages.cantSeeAnySuchThing)
         }
         frame.with { scratch in
             scratch.state.placements[id] = .heldBy(.player)
@@ -109,6 +122,189 @@ enum DefaultActions {
             scratch.state.touched.insert(id)
         }
         frame.say(Messages.putItemOn(item.name, surface.name))
+    }
+
+    private static func putIn(_ command: Command, frame: TurnFrame) throws {
+        let item = try requireDirectObject(command)
+        guard let container = command.indirectObject else {
+            try refuse(Messages.didntUnderstand)
+        }
+        guard item.isHeld else {
+            try refuse(Messages.notHolding)
+        }
+        if item == container {
+            try refuse(Messages.cantPutInItself)
+        }
+        guard frame.definition.items[container.id]?.isContainer == true,
+            isReachable(container.id, frame: frame)
+        else {
+            try refuse(Messages.cantPutInThat)
+        }
+        guard container.isOpen else {
+            try refuse(Messages.closedContainer(container.name))
+        }
+        let id = item.id
+        let containerID = container.id
+        if frame.with({ isOrContains($0.state, containerID, id) }) {
+            try refuse(Messages.cantPutInItself)
+        }
+        if let capacity = frame.definition.items[containerID]?.capacity {
+            let occupants = frame.with { scratch in
+                scratch.state.placements.values.filter { $0 == .inside(containerID) }.count
+            }
+            guard occupants < capacity else {
+                try refuse(Messages.noRoom)
+            }
+        }
+        if item.isWorn {
+            frame.say(Messages.firstTakingOff(item.name))
+            frame.with { _ = $0.state.wornItems.remove(id) }
+        }
+        frame.with { scratch in
+            scratch.state.placements[id] = .inside(containerID)
+            scratch.state.touched.insert(id)
+        }
+        frame.say(Messages.putItemIn(item.name, container.name))
+    }
+
+    /// True if `candidate` is `target` itself, or sits somewhere inside
+    /// `target`'s containment subtree (on a surface or inside a container,
+    /// to any depth) — the shape a `putIn` cycle would take. Guards against
+    /// putting a container into itself or into one of its own contents.
+    private static func isOrContains(_ state: WorldState, _ candidate: EntityID, _ target: EntityID) -> Bool {
+        if candidate == target { return true }
+        var frontier = [target]
+        var seen: Set<EntityID> = []
+        while let id = frontier.popLast() {
+            guard seen.insert(id).inserted else { continue }
+            for (childID, placement) in state.placements {
+                switch placement {
+                case .on(id), .inside(id):
+                    if childID == candidate { return true }
+                    frontier.append(childID)
+                default:
+                    break
+                }
+            }
+        }
+        return false
+    }
+
+    private static func open(_ command: Command, frame: TurnFrame) throws {
+        let item = try requireDirectObject(command)
+        let id = item.id
+        guard frame.definition.items[id]?.isOpenable == true, isReachable(id, frame: frame) else {
+            try refuse(Messages.cantOpenThat)
+        }
+        if item.isLocked {
+            try refuse(Messages.locked(item.name))
+        }
+        if item.isOpen {
+            try refuse(Messages.alreadyOpen)
+        }
+        let contents = frame.with { scratch -> [String] in
+            scratch.state.openItems.insert(id)
+            return scratch.state.placements.keys
+                .filter { scratch.state.placements[$0] == .inside(id) }
+                .filter { Visibility.isPerceivable($0, definition: frame.definition, state: scratch.state) }
+                .sorted()
+                .map { frame.definition.items[$0]?.name ?? $0.raw }
+        }
+        if contents.isEmpty {
+            frame.say(Messages.opened)
+        } else {
+            frame.say(Messages.openingReveals(item.name, contents))
+        }
+    }
+
+    private static func close(_ command: Command, frame: TurnFrame) throws {
+        let item = try requireDirectObject(command)
+        let id = item.id
+        guard frame.definition.items[id]?.isOpenable == true, isReachable(id, frame: frame) else {
+            try refuse(Messages.cantCloseThat)
+        }
+        guard item.isOpen else {
+            try refuse(Messages.alreadyClosed)
+        }
+        frame.with { _ = $0.state.openItems.remove(id) }
+        frame.say(Messages.closed)
+    }
+
+    private static func lock(_ command: Command, frame: TurnFrame) throws {
+        let item = try requireDirectObject(command)
+        guard let key = command.indirectObject else {
+            try refuse(Messages.didntUnderstand)
+        }
+        let id = item.id
+        guard frame.definition.items[id]?.isLockable == true, isReachable(id, frame: frame) else {
+            try refuse(Messages.cantLockThat)
+        }
+        if item.isLocked {
+            try refuse(Messages.alreadyLocked)
+        }
+        guard key.isHeld else {
+            try refuse(Messages.keyNotHeld(key.name))
+        }
+        guard frame.definition.items[id]?.lockKey == key.id else {
+            try refuse(Messages.wrongKey)
+        }
+        frame.with { _ = $0.state.lockedItems.insert(id) }
+        frame.say(Messages.lockedMessage)
+    }
+
+    private static func unlock(_ command: Command, frame: TurnFrame) throws {
+        let item = try requireDirectObject(command)
+        guard let key = command.indirectObject else {
+            try refuse(Messages.didntUnderstand)
+        }
+        let id = item.id
+        guard frame.definition.items[id]?.isLockable == true, isReachable(id, frame: frame) else {
+            try refuse(Messages.cantUnlockThat)
+        }
+        guard item.isLocked else {
+            try refuse(Messages.alreadyUnlocked)
+        }
+        guard key.isHeld else {
+            try refuse(Messages.keyNotHeld(key.name))
+        }
+        guard frame.definition.items[id]?.lockKey == key.id else {
+            try refuse(Messages.wrongKey)
+        }
+        frame.with { _ = $0.state.lockedItems.remove(id) }
+        frame.say(Messages.unlockedMessage)
+    }
+
+    private static func lookIn(_ command: Command, frame: TurnFrame) throws {
+        let item = try requireDirectObject(command)
+        let id = item.id
+        guard frame.definition.items[id]?.isContainer == true, isReachable(id, frame: frame) else {
+            try refuse(Messages.cantSeeAnySuchThing)
+        }
+        if frame.definition.items[id]?.isOpenable == true, !item.isOpen,
+            frame.definition.items[id]?.isTransparent != true
+        {
+            try refuse(Messages.closedContainer(item.name))
+        }
+        let contents = frame.with { scratch -> [String] in
+            scratch.state.placements.keys
+                .filter { scratch.state.placements[$0] == .inside(id) }
+                .filter { Visibility.isPerceivable($0, definition: frame.definition, state: scratch.state) }
+                .sorted()
+                .map { frame.definition.items[$0]?.name ?? $0.raw }
+        }
+        if contents.isEmpty {
+            frame.say(Messages.emptyContainer(item.name))
+        } else {
+            frame.say(Messages.inTheContainer(item.name, contents))
+        }
+    }
+
+    private static func push(_ command: Command, frame: TurnFrame) throws {
+        let item = try requireDirectObject(command)
+        guard isReachable(item.id, frame: frame) else {
+            try refuse(Messages.cantSeeAnySuchThing)
+        }
+        frame.say(Messages.cantMoveThat)
     }
 
     // MARK: - Movement & perception
@@ -198,5 +394,14 @@ enum DefaultActions {
             try refuse(Messages.didntUnderstand)
         }
         return item
+    }
+
+    /// Whether `id` is currently reachable by the player — the stricter set
+    /// than parser scope (which is *visible* items, and so also admits a
+    /// closed transparent container's contents).
+    private static func isReachable(_ id: EntityID, frame: TurnFrame) -> Bool {
+        let (here, state) = frame.with { ($0.state.playerLocation, $0.state) }
+        return Visibility.reachableItems(at: here, definition: frame.definition, state: state)
+            .contains(id)
     }
 }

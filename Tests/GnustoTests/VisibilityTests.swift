@@ -138,4 +138,42 @@ struct VisibilityTests {
         #expect(visible.contains(EntityID("sack")))
         #expect(!visible.contains(EntityID("bottle")))
     }
+
+    /// A runtime-created placement cycle must not send the recursive descent
+    /// into an infinite loop.
+    ///
+    /// `WorldState.placements` is a `[EntityID: Placement]` dictionary, so an
+    /// item has exactly one placement at a time — which means a cycle
+    /// reachable from a room/held root is not constructible through the
+    /// normal placement API (every member of a cycle would need an
+    /// `.inside`/`.on` placement pointing to the next member, which leaves
+    /// none of them able to also declare `.room`/`.heldBy(.player)`). That
+    /// invariant is exactly why the model has stayed cycle-free so far. This
+    /// test targets the walk's robustness if that invariant is ever broken
+    /// anyway — by a hand-edited save file, a future direct-placement API, or
+    /// a bug — by wiring two containers into a mutual cycle and confirming
+    /// `visibleItems`/`reachableItems` still return promptly rather than
+    /// recursing forever.
+    @Test func placementCycleDoesNotInfiniteLoopTheWalk() throws {
+        var (definition, state) = try pantry()
+        state.placements[EntityID("crate")] = .inside(EntityID("can"))
+        state.placements[EntityID("can")] = .inside(EntityID("crate"))
+        state.openItems.insert(EntityID("crate"))
+
+        // The call itself returning is the assertion: without the
+        // visited-set guard in `Visibility.descend`, a walk that ever
+        // reached this pair would recurse forever.
+        let visible = Visibility.visibleItems(
+            at: EntityID("pantry"), definition: definition, state: state)
+        let reachable = Visibility.reachableItems(
+            at: EntityID("pantry"), definition: definition, state: state)
+
+        // Orphaned from every room/held root (by construction, per the note
+        // above), the cycle pair is simply absent from both sets — the rest
+        // of the pantry is unaffected.
+        #expect(!visible.contains(EntityID("crate")))
+        #expect(!visible.contains(EntityID("can")))
+        #expect(visible.contains(EntityID("basket")))
+        #expect(reachable.contains(EntityID("basket")))
+    }
 }

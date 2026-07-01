@@ -179,3 +179,46 @@ struct BadContainerGame: Game {
         vault.starts(in: room)
     }
 }
+
+/// The push-to-reveal fixture named in the Task 4 brief: pushing the rug
+/// reveals a hidden trap door beneath it. Uses `before(.push)` + `reply(...)`
+/// rather than `after(.push)` — the after-hook alternative would print the
+/// stock "You can't move that." ahead of "Moving the rug reveals a trap door
+/// beneath it.", which reads as if the push failed before it actually
+/// succeeded. `before` + `reply` fully replaces the default push message with
+/// the authored one, which reads cleanly as a single beat.
+struct RugGame: Game {
+    let title = "Rug"
+    let intro = ""
+
+    let room = Location {
+        name("Room")
+        description("A bare room.")
+    }
+
+    let rug = Item {
+        name("oriental rug")
+        scenery
+    }
+
+    let trapDoor = Item {
+        name("trap door")
+        openable
+        scenery
+        hidden
+    }
+
+    var map: WorldMap {
+        player.starts(in: room)
+        rug.starts(in: room)
+        trapDoor.starts(in: room)
+    }
+
+    var rules: Rules {
+        rug.before(.push) {
+            guard !trapDoor.isRevealed else { try reply("The rug has already been moved.") }
+            trapDoor.reveal()
+            try reply("Moving the rug reveals a trap door beneath it.")
+        }
+    }
+}

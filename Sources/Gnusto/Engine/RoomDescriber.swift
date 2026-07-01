@@ -47,7 +47,10 @@ enum RoomDescriber {
         // Item paragraphs: firstSight text until touched (even for scenery),
         // then a standard mention for non-scenery items.
         let roomItems = definition.items.keys
-            .filter { placements[$0] == .room(locationID) }
+            .filter {
+                placements[$0] == .room(locationID)
+                    && Visibility.isPerceivable($0, definition: definition, state: state)
+            }
             .sorted()
 
         for itemID in roomItems {
@@ -61,7 +64,10 @@ enum RoomDescriber {
             // One level of "On the X is a Y." for surfaces in the room.
             if item.isSurface {
                 let onTop = definition.items.keys
-                    .filter { placements[$0] == .on(itemID) }
+                    .filter {
+                        placements[$0] == .on(itemID)
+                            && Visibility.isPerceivable($0, definition: definition, state: state)
+                    }
                     .sorted()
                 for topID in onTop {
                     let topName = definition.items[topID]?.name ?? topID.raw
@@ -75,7 +81,10 @@ enum RoomDescriber {
             // room description.
             if item.isContainer, contentsVisible(itemID, definition: definition, state: state) {
                 let inside = definition.items.keys
-                    .filter { placements[$0] == .inside(itemID) }
+                    .filter {
+                        placements[$0] == .inside(itemID)
+                            && Visibility.isPerceivable($0, definition: definition, state: state)
+                    }
                     .sorted()
                 for insideID in inside {
                     let insideName = definition.items[insideID]?.name ?? insideID.raw

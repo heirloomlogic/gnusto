@@ -46,6 +46,7 @@ struct ItemDefinition: Sendable {
     /// The resolved lock key, filled in by Bootstrap. `nil` until then (and for
     /// non-lockable items).
     var lockKey: EntityID?
+    var isHidden = false
     var customTraits: [String: StateValue] = [:]
 
     /// Items are takable unless they're scenery.
@@ -71,6 +72,7 @@ struct ItemDefinition: Sendable {
                 lockKeyToken = key
             case .startsUnlocked: startsUnlocked = true
             case .capacity(let n): capacity = n
+            case .hidden: isHidden = true
             case .custom(let key, let value): customTraits[key] = value
             }
         }
