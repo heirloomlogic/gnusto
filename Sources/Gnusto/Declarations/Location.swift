@@ -197,7 +197,13 @@ public struct Location: Sendable, Equatable {
         Rule(scope: .location(token), phase: .afterEachTurn, intents: [], body: body)
     }
 
-    /// Runs when the player enters this location.
+    /// Runs when the player enters this location, just before the room is
+    /// automatically described.
+    ///
+    /// Use `say(_:)` to add a line of ambiance and still let the room's name and
+    /// description print. Use `reply(_:)`/`refuse(_:)` only to *replace* the
+    /// automatic description entirely (a cutscene, blacking out, a room too dark
+    /// to see) — they end the turn before the room is described.
     public func onEnter(
         perform body: @escaping @Sendable () throws -> Void
     ) -> Rule {

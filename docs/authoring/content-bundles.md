@@ -23,7 +23,7 @@ struct Attic: GameContent {
 }
 ```
 
-`map`, `rules`, and `verbs` all default to empty, so a bundle declares only what it needs. The bundle stores its declarations exactly as a game does, and the bootstrap discovers them by reflecting over the bundle, naming each entity after its property (`trunk` → `EntityID("trunk")`).
+`map`, `rules`, and `verbs` all default to empty, so a bundle declares only what it needs. The bundle stores its declarations exactly as a game does, and the bootstrap discovers them by reflecting over the bundle. Each entity is named after its property, prefixed by the bundle's [namespace](#entityids-are-namespaced-by-the-bundle) (`trunk` → `EntityID("Attic.trunk")`), so a reusable bundle can't collide with the host.
 
 ## The game lists its bundles in `content`
 
@@ -52,9 +52,21 @@ The game's own `map`/`rules`/`verbs` still work and are merged with every bundle
 
 Each `Location`/`Item`/`@Global` mints a reference token when it's created, and the bootstrap matches the tokens it discovers against the tokens a bundle's `map`/`rules` reference. A freshly constructed bundle carries *different* tokens than the one the game stored, so its references wouldn't resolve. Listing the stored instances keeps the identities aligned. (The bootstrap reads `content` once and reuses it, so a single build is always self-consistent; the contract matters because the game's top-level `map` references the stored `attic`.)
 
-## EntityIDs are bare property names — collisions are fatal
+## EntityIDs are namespaced by the bundle
 
-A bundle's entities get the same bare property-name IDs the game's do, so save-file keys stay stable and `attic.landing` is just `EntityID("landing")`. The flip side: if two bundles (or a bundle and the game) both declare an entity named `landing`, the bootstrap rejects the game with a fatal diagnostic — `entity "landing" is declared by both Attic and Cellar.` — rather than letting one silently shadow the other. Rename one of the two declarations. (Per-bundle namespacing is a possible future addition; for now, keep names distinct.)
+A bundle's entities are namespaced by the bundle, while the game's own entities stay bare. `attic.landing` becomes `EntityID("Attic.landing")`; the game's `foyer` stays `EntityID("foyer")`. The namespace defaults to the bundle's **type name**, so each distinct bundle type gets a distinct prefix automatically and a reusable bundle dropped into any host can't clash — even if the host and the bundle both declare a `landing`, they resolve to `EntityID("landing")` and `EntityID("Attic.landing")`. References at the authoring site are token-based (`attic.landing`), so the namespace is invisible there; it only shows up in the raw ID string, which is internal (display and parsing use each entity's `name(…)`).
+
+Collisions are still fatal, but now only when two bundles share a namespace **and** a property name. That happens when a host stores **two instances of the same bundle type** — both default to the type-name namespace, so `Attic.landing` is declared twice and the bootstrap rejects the game: `entity "Attic.landing" is declared by both Attic and Attic.` Give each instance a distinct namespace by overriding `var namespace`:
+
+```swift
+struct Attic: GameContent {
+    let name: String
+    var namespace: String { name }   // "NorthAttic", "SouthAttic", …
+    // …
+}
+```
+
+Because bundle-owned entity IDs are namespaced, so are their save-file keys — a bundle's `@Global` persists under `Bundle.flag`. Nothing shipped before this change owned bundle content, so there's no migration; keep a plugin's own state additive as usual.
 
 ## Cross-bundle references
 
@@ -67,4 +79,6 @@ Because a bundle is a self-contained `Sendable` value type, it can live in its o
 
 ## Worked example
 
-`Tests/GnustoTests/Support/BundleGame/` is a minimal game built this way: `AtticContent` and `CellarContent` each own a room, an item, and rules (the attic also adds a `rummage` verb), and `BundleGame` composes them with a cross-bundle exit. `BundleCompositionTests` boots it and confirms every bundle's rules and verbs fire, the cross-bundle exit traverses both ways, the IDs are bare property names, and a colliding ID is rejected.
+`Tests/GnustoTests/Support/BundleGame/` is a minimal game built this way: `AtticContent` and `CellarContent` each own a room, an item, and rules (the attic also adds a `rummage` verb), and `BundleGame` composes them with a cross-bundle exit. `BundleCompositionTests` boots it and confirms every bundle's rules and verbs fire, the cross-bundle exit traverses both ways, each bundle's IDs are namespaced by its type, and two instances sharing a namespace are rejected.
+
+For a bundle that also carries logic over the *host's* world — a content-bearing plugin — see [Plugins](plugins.md).

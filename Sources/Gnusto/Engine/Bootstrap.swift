@@ -32,8 +32,11 @@ enum Bootstrap {
         // Phase 1 — discover stored declarations by reflection, over the game
         // itself and each of its content bundles. The property name is the
         // entity's ID; a name claimed by two declarations is a fatal collision.
-        func register(_ subject: Any) {
-            let owner = "\(type(of: subject))"
+        // A bundle passes its `namespace`, which prefixes its entity IDs so a
+        // reusable bundle can't collide with the host; the game passes `nil` and
+        // keeps bare IDs.
+        func register(_ subject: Any, namespace: String?) {
+            let owner = namespace ?? "\(type(of: subject))"
 
             // Claims `id` for this owner, or records a collision and returns
             // false if another declaration already took it.
@@ -49,7 +52,7 @@ enum Bootstrap {
             for child in Mirror(reflecting: subject).children {
                 guard var label = child.label else { continue }
                 if label.hasPrefix("_") { label.removeFirst() }  // property wrappers
-                let id = EntityID(label)
+                let id = namespace.map { EntityID("\($0).\(label)") } ?? EntityID(label)
 
                 switch child.value {
                 case let location as Location:
@@ -87,8 +90,10 @@ enum Bootstrap {
             }
         }
 
-        register(game)
-        modules.forEach(register)
+        register(game, namespace: nil)
+        for module in modules {
+            register(module, namespace: module.namespace)
+        }
 
         for (id, definition) in locations where definition.name == nil {
             diagnostics.append("location \"\(id)\" has no name(…) trait.")

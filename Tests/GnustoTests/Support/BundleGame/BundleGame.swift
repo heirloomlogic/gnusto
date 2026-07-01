@@ -30,7 +30,7 @@ struct BundleGame: Game {
     }
 }
 
-/// A first bundle that declares an entity named `foyer`.
+/// A bundle that declares an entity named `foyer`.
 struct AlphaBundle: GameContent {
     let foyer = Location {
         name("Alpha Foyer")
@@ -38,23 +38,17 @@ struct AlphaBundle: GameContent {
     }
 }
 
-/// A second bundle that also declares `foyer` — colliding with ``AlphaBundle``.
-struct BetaBundle: GameContent {
-    let foyer = Location {
-        name("Beta Foyer")
-        description("The beta foyer.")
-    }
-}
-
-/// A deliberately invalid game: two bundles claim the same `EntityID`. The
-/// bootstrap must reject it with a fatal collision diagnostic naming both
-/// bundles, rather than silently letting one overwrite the other.
+/// A deliberately invalid game: two instances of the *same* bundle type share
+/// the default type-name namespace, so both mint `EntityID("AlphaBundle.foyer")`.
+/// The bootstrap must reject it with a fatal collision diagnostic rather than
+/// silently letting one overwrite the other — the case a host resolves by giving
+/// each instance a distinct `namespace`.
 struct CollidingBundleGame: Game {
     let title = "Collision"
-    let intro = "Two foyers, one name."
+    let intro = "Two foyers, one namespace."
 
     let alpha = AlphaBundle()
-    let beta = BetaBundle()
+    let beta = AlphaBundle()
 
     var content: GameContents {
         alpha
