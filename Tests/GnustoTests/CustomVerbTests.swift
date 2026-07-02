@@ -49,7 +49,7 @@ struct CustomVerbTests {
         // The resolved table holds exactly one `take <thing>` row, and it is
         // the game's (intent "steal"), not the built-in (intent "take").
         let takeRows = definition.syntaxRules.filter {
-            $0.verb == ["take"] && $0.slots == .direct
+            $0.elements == [.word("take"), .directObject]
         }
         #expect(takeRows.count == 1)
         #expect(takeRows.first?.intent == Intent("steal"))

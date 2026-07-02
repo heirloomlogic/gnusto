@@ -17,21 +17,38 @@ struct Scope: Sendable {
     let visibleItems: Set<EntityID>
 }
 
-/// Pure-function parser: tokenize → noise strip → verb match (longest first)
-/// → syntax-rule fit by specificity → scoped noun resolution.
+/// Pure-function parser: tokenize → noise strip → candidate rules by leading
+/// verb words (most specific first) → pattern fit → scoped noun resolution.
 struct StandardParser {
     let vocabulary: Vocabulary
     /// Sorted by specificity (descending) once here, so per-parse candidate
-    /// selection is a stable filter rather than a sort.
+    /// selection is a stable filter rather than a sort. The sort itself is
+    /// made stable by hand — `sorted(by:)` doesn't guarantee it — so rows of
+    /// equal specificity keep their table order.
     let syntaxRules: [SyntaxRule]
 
     init(vocabulary: Vocabulary, syntaxRules: [SyntaxRule]) {
         self.vocabulary = vocabulary
-        self.syntaxRules = syntaxRules.sorted { $0.specificity > $1.specificity }
+        self.syntaxRules =
+            syntaxRules
+            .enumerated()
+            .sorted { lhs, rhs in
+                lhs.element.specificity == rhs.element.specificity
+                    ? lhs.offset < rhs.offset
+                    : lhs.element.specificity > rhs.element.specificity
+            }
+            .map(\.element)
     }
 
     func parse(_ input: String, scope: Scope) -> Result<ParsedCommand, ParseError> {
-        let tokens = tokenize(input)
+        parse(tokens: tokenize(input), rawInput: input, scope: scope)
+    }
+
+    /// The token-level entry: `perform` re-parses augmented token lists when
+    /// the player answers a clarifying question, without re-tokenizing.
+    func parse(
+        tokens: [String], rawInput: String, scope: Scope
+    ) -> Result<ParsedCommand, ParseError> {
         guard !tokens.isEmpty else {
             return .failure(.empty)
         }
@@ -41,11 +58,12 @@ struct StandardParser {
             return .success(
                 ParsedCommand(
                     intent: .go, direction: direction, verbPhrase: tokens[0],
-                    rawInput: input))
+                    rawInput: rawInput))
         }
 
-        // Verb match; the table is pre-sorted most-specific-first.
-        let candidates = syntaxRules.filter { tokens.starts(with: $0.verb) }
+        // Candidate rules: those whose leading verb words prefix the tokens.
+        // The table is pre-sorted most-specific-first.
+        let candidates = syntaxRules.filter { tokens.starts(with: $0.leadingWords) }
 
         guard !candidates.isEmpty else {
             let first = tokens[0]
@@ -58,104 +76,179 @@ struct StandardParser {
         // Try each candidate rule; remember the most specific near-miss.
         var bestFailure: ParseError?
         for rule in candidates {
-            let rest = Array(tokens.dropFirst(rule.verb.count))
-            let verbPhrase = rule.verb.joined(separator: " ")
-
-            switch rule.slots {
-            case .none:
-                guard rest.isEmpty else { continue }
-                return .success(
-                    ParsedCommand(intent: rule.intent, verbPhrase: verbPhrase, rawInput: input))
-
-            case .direction:
-                if rest.isEmpty {
-                    // "go" alone: the default action asks "Which way?"
-                    return .success(
-                        ParsedCommand(
-                            intent: rule.intent, verbPhrase: verbPhrase, rawInput: input))
-                }
-                guard rest.count == 1, let direction = vocabulary.directions[rest[0]] else {
-                    continue
-                }
-                return .success(
-                    ParsedCommand(
-                        intent: rule.intent, direction: direction, verbPhrase: verbPhrase,
-                        rawInput: input))
-
-            case .direct:
-                guard !rest.isEmpty else {
-                    bestFailure = bestFailure ?? .missingObject(verb: verbPhrase)
-                    continue
-                }
-                switch resolve(rest, in: scope) {
-                case .success(let id):
-                    return .success(
-                        ParsedCommand(
-                            intent: rule.intent, directObject: id, verbPhrase: verbPhrase,
-                            rawInput: input))
-                case .failure(let error):
-                    bestFailure = bestFailure ?? error
-                    continue
-                }
-
-            case .directThenParticle(let particle):
-                guard rest.count >= 2, rest.last == particle else { continue }
-                switch resolve(Array(rest.dropLast()), in: scope) {
-                case .success(let id):
-                    return .success(
-                        ParsedCommand(
-                            intent: rule.intent, directObject: id, verbPhrase: verbPhrase,
-                            rawInput: input))
-                case .failure(let error):
-                    bestFailure = bestFailure ?? error
-                    continue
-                }
-
-            case .directPrepIndirect(let preposition):
-                guard !rest.isEmpty else {
-                    bestFailure = bestFailure ?? .missingObject(verb: verbPhrase)
-                    continue
-                }
-                guard let split = rest.firstIndex(of: preposition), split > 0 else {
-                    // "hang cloak" — resolvable object but no preposition.
-                    if case .success(let id) = resolve(rest, in: scope) {
-                        bestFailure =
-                            bestFailure
-                            ?? .missingIndirect(
-                                verb: verbPhrase,
-                                objectName: displayName(of: id),
-                                preposition: preposition)
-                    }
-                    continue
-                }
-                let directTokens = Array(rest[..<split])
-                let indirectTokens = Array(rest[(split + 1)...])
-                guard !indirectTokens.isEmpty else {
-                    if case .success(let id) = resolve(directTokens, in: scope) {
-                        bestFailure =
-                            bestFailure
-                            ?? .missingIndirect(
-                                verb: verbPhrase,
-                                objectName: displayName(of: id),
-                                preposition: preposition)
-                    }
-                    continue
-                }
-                switch (resolve(directTokens, in: scope), resolve(indirectTokens, in: scope)) {
-                case (.success(let directID), .success(let indirectID)):
-                    return .success(
-                        ParsedCommand(
-                            intent: rule.intent, directObject: directID,
-                            indirectObject: indirectID, preposition: preposition,
-                            verbPhrase: verbPhrase, rawInput: input))
-                case (.failure(let error), _), (_, .failure(let error)):
-                    bestFailure = bestFailure ?? error
-                    continue
-                }
+            switch fit(rule, tokens: tokens, rawInput: rawInput, scope: scope) {
+            case .command(let parsed):
+                return .success(parsed)
+            case .mismatch:
+                continue
+            case .nearMiss(let error):
+                bestFailure = bestFailure ?? error
+                continue
             }
         }
 
         return .failure(bestFailure ?? .unmatchedSyntax)
+    }
+
+    // MARK: - Pattern fitting
+
+    /// How one rule relates to one token list: it matches, it's structurally
+    /// wrong (try the next rule silently), or it's a near-miss worth telling
+    /// the player about if nothing matches.
+    private enum FitOutcome {
+        case command(ParsedCommand)
+        case mismatch
+        case nearMiss(ParseError)
+    }
+
+    /// Walks the rule's elements over the tokens: literal words must appear
+    /// where the pattern puts them, object slots swallow the tokens in
+    /// between, a direction slot takes one direction token.
+    private func fit(
+        _ rule: SyntaxRule, tokens: [String], rawInput: String, scope: Scope
+    ) -> FitOutcome {
+        let verbPhrase = rule.leadingWords.joined(separator: " ")
+        var cursor = rule.leadingWords.count
+
+        var directPhrase: [String]?
+        var indirectPhrase: [String]?
+        var direction: Direction?
+        var preposition: String?
+        /// An object slot waiting for the next literal word to close it.
+        var openSlot: SyntaxElement?
+
+        for (index, element) in rule.elements.enumerated().dropFirst(rule.leadingWords.count) {
+            switch element {
+            case .word(let word):
+                if let slot = openSlot {
+                    // The literal closes the open object slot: the tokens up
+                    // to its first occurrence are the slot's phrase.
+                    guard
+                        let split = tokens[cursor...].firstIndex(of: word),
+                        split > cursor
+                    else {
+                        // "hang cloak" — an object phrase with the preposition
+                        // missing. If the phrase resolves, ask for the rest.
+                        if slot == .directObject, cursor < tokens.count,
+                            case .success(let id) = resolve(
+                                Array(tokens[cursor...]), in: scope)
+                        {
+                            return .nearMiss(
+                                .missingIndirect(
+                                    verb: verbPhrase,
+                                    objectName: displayName(of: id),
+                                    preposition: word))
+                        }
+                        return .mismatch
+                    }
+                    let phrase = Array(tokens[cursor..<split])
+                    if slot == .directObject {
+                        directPhrase = phrase
+                        // The word sealing the direct object ahead of a second
+                        // object is the command's preposition.
+                        if rule.elements.contains(.indirectObject) {
+                            preposition = word
+                        }
+                    } else {
+                        indirectPhrase = phrase
+                    }
+                    cursor = split + 1
+                    openSlot = nil
+                } else {
+                    guard cursor < tokens.count, tokens[cursor] == word else {
+                        return .mismatch
+                    }
+                    cursor += 1
+                }
+
+            case .directObject, .indirectObject:
+                if index == rule.elements.count - 1 {
+                    // A slot ending the pattern takes everything left.
+                    guard cursor < tokens.count else {
+                        return missingSlotOutcome(
+                            element, verbPhrase: verbPhrase,
+                            directPhrase: directPhrase, preposition: preposition,
+                            scope: scope)
+                    }
+                    let phrase = Array(tokens[cursor...])
+                    if element == .directObject {
+                        directPhrase = phrase
+                    } else {
+                        indirectPhrase = phrase
+                    }
+                    cursor = tokens.count
+                } else {
+                    // Mid-pattern: the next literal word closes it. (Bootstrap
+                    // validation guarantees a literal follows.)
+                    openSlot = element
+                }
+
+            case .direction:
+                guard cursor < tokens.count else {
+                    // "go" alone: the default action asks "Which way?"
+                    return .command(
+                        ParsedCommand(
+                            intent: rule.intent, verbPhrase: verbPhrase,
+                            rawInput: rawInput))
+                }
+                guard let matched = vocabulary.directions[tokens[cursor]] else {
+                    return .mismatch
+                }
+                direction = matched
+                cursor += 1
+            }
+        }
+
+        guard openSlot == nil, cursor == tokens.count else {
+            return .mismatch
+        }
+
+        // Structure fits; resolve the noun phrases against scope.
+        var directID: EntityID?
+        if let phrase = directPhrase {
+            switch resolve(phrase, in: scope) {
+            case .success(let id): directID = id
+            case .failure(let error): return .nearMiss(error)
+            }
+        }
+        var indirectID: EntityID?
+        if let phrase = indirectPhrase {
+            switch resolve(phrase, in: scope) {
+            case .success(let id): indirectID = id
+            case .failure(let error): return .nearMiss(error)
+            }
+        }
+
+        return .command(
+            ParsedCommand(
+                intent: rule.intent,
+                directObject: directID,
+                indirectObject: indirectID,
+                preposition: preposition,
+                direction: direction,
+                verbPhrase: verbPhrase,
+                rawInput: rawInput))
+    }
+
+    /// The near-miss for a pattern whose final object slot got no tokens:
+    /// "take" asks for an object; "put cloak on" asks what to put it on.
+    private func missingSlotOutcome(
+        _ slot: SyntaxElement, verbPhrase: String,
+        directPhrase: [String]?, preposition: String?, scope: Scope
+    ) -> FitOutcome {
+        if slot == .directObject {
+            return .nearMiss(.missingObject(verb: verbPhrase))
+        }
+        if let directPhrase,
+            case .success(let id) = resolve(directPhrase, in: scope)
+        {
+            return .nearMiss(
+                .missingIndirect(
+                    verb: verbPhrase,
+                    objectName: displayName(of: id),
+                    preposition: preposition ?? ""))
+        }
+        return .mismatch
     }
 
     // MARK: - Pieces

@@ -10,7 +10,7 @@
 ///     static let buy = Intent("buy")
 ///
 ///     var verbs: [SyntaxRule] {
-///         SyntaxRule("buy", slots: .direct, intent: Self.buy)
+///         SyntaxRule("buy", .directObject, intent: Self.buy)
 ///     }
 /// }
 /// ```

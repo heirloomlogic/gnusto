@@ -157,7 +157,7 @@ struct TrophyCaseGame: Game {
     }
 
     var verbs: [SyntaxRule] {
-        SyntaxRule("seal", slots: .direct, intent: Intent("seal"))
+        SyntaxRule("seal", .directObject, intent: Intent("seal"))
     }
 }
 
@@ -208,8 +208,8 @@ struct LampGame: Game {
     }
 
     var verbs: [SyntaxRule] {
-        SyntaxRule("light", slots: .direct, intent: Intent("light"))
-        SyntaxRule("douse", slots: .direct, intent: Intent("douse"))
+        SyntaxRule("light", .directObject, intent: Intent("light"))
+        SyntaxRule("douse", .directObject, intent: Intent("douse"))
     }
 
     var rules: Rules {

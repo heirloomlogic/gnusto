@@ -1,63 +1,135 @@
-/// One row of the verb table: a verb token sequence, the sentence shape it
-/// accepts, and the intent it produces. Data, not code — games can add rows
-/// through their `verbs` block to teach the parser new player-typeable verbs.
-public struct SyntaxRule: Sendable {
-    /// The sentence shape a verb accepts after its verb tokens.
-    public enum Slots: Sendable, Hashable {
-        /// `look`, `inventory`, `score`
-        case none
-        /// `go north`
-        case direction
-        /// `take cloak`
-        case direct
-        /// `pick cloak up`, `take cloak off` — direct object then a trailing particle
-        case directThenParticle(String)
-        /// `put cloak on hook`, `hang cloak on hook`
-        case directPrepIndirect(String)
-    }
+/// One element of a verb pattern: a literal word the player must type, or a
+/// slot the parser fills from the rest of the sentence. String literals in a
+/// pattern are `.word`s, so rows read the way they're typed:
+///
+/// ```swift
+/// SyntaxRule("give", .directObject, "to", .indirectObject, intent: Intent("give"))
+/// ```
+public enum SyntaxElement: Sendable, Hashable, ExpressibleByStringLiteral {
+    /// A literal token: the verb word itself, a particle, or a preposition.
+    case word(String)
+    /// The primary noun phrase.
+    case directObject
+    /// The secondary noun phrase.
+    case indirectObject
+    /// A compass direction.
+    case direction
 
-    let verb: [String]
-    let slots: Slots
+    public init(stringLiteral value: String) {
+        self = .word(value)
+    }
+}
+
+/// One row of the verb table: a pattern of literal words and slots, and the
+/// intent a match produces. Data, not code — games can add rows through their
+/// `verbs` block to teach the parser new player-typeable verbs.
+public struct SyntaxRule: Sendable {
+    let elements: [SyntaxElement]
     let intent: Intent
 
-    /// Builds a verb row: one or more verb tokens, the sentence shape that
-    /// follows them, and the intent the parser emits on a match.
-    public init(_ verb: String..., slots: Slots, intent: Intent) {
-        self.verb = verb
-        self.slots = slots
+    /// Builds a verb row from its pattern. The pattern must start with a
+    /// literal word; the bootstrap validates custom rows and reports
+    /// malformed patterns as fatal diagnostics.
+    public init(_ elements: SyntaxElement..., intent: Intent) {
+        self.elements = elements
         self.intent = intent
     }
 
-    /// Identifies a row by what the player types — verb tokens plus slot
-    /// shape — so the merged table can dedupe and a game can reclaim a
-    /// built-in verb (last-wins). Independent of the intent produced.
+    /// Identifies a row by what the player types — the full pattern — so the
+    /// merged table can dedupe and a game can reclaim a built-in verb
+    /// (last-wins). Independent of the intent produced.
     struct Key: Hashable {
-        let verb: [String]
-        let slots: Slots
+        let elements: [SyntaxElement]
     }
 
-    var key: Key { Key(verb: verb, slots: slots) }
+    var key: Key { Key(elements: elements) }
 
-    /// The structural word (particle or preposition) this rule's shape
-    /// consumes, if any — vocabulary the parser must recognize.
-    var extraWord: String? {
-        switch slots {
-        case .directThenParticle(let word), .directPrepIndirect(let word): word
-        case .none, .direction, .direct: nil
+    /// The row's leading run of literal words: what identifies the verb when
+    /// filtering candidates, and the `verbPhrase` shown in messages.
+    var leadingWords: [String] {
+        var words: [String] = []
+        for element in elements {
+            guard case .word(let word) = element else { break }
+            words.append(word)
+        }
+        return words
+    }
+
+    /// Every literal word in the pattern, in order.
+    var literalWords: [String] {
+        elements.compactMap { element in
+            if case .word(let word) = element { word } else { nil }
         }
     }
 
-    /// Specificity for rule-selection order: shapes that consume more
-    /// structure are tried first.
+    /// The number of slot elements (anything that isn't a literal word).
+    var slotCount: Int {
+        elements.count - literalWords.count
+    }
+
+    /// Specificity for rule-selection order: rows with more literal structure
+    /// are tried first, and among those, rows that consume more slots. Ties
+    /// keep their table order (the parser's sort is stable by construction).
     var specificity: Int {
-        let slotWeight: Int
-        switch slots {
-        case .directPrepIndirect: slotWeight = 3
-        case .directThenParticle: slotWeight = 2
-        case .direct, .direction: slotWeight = 1
-        case .none: slotWeight = 0
+        literalWords.count * 10 + slotCount
+    }
+
+    /// The pattern rendered for diagnostics: `give <object> to <second object>`.
+    var patternDescription: String {
+        elements.map { element in
+            switch element {
+            case .word(let word): word
+            case .directObject: "<object>"
+            case .indirectObject: "<second object>"
+            case .direction: "<direction>"
+            }
+        }.joined(separator: " ")
+    }
+
+    /// The ways a pattern can be malformed, reported all at once by the
+    /// bootstrap for each custom row. The standard table is covered by the
+    /// parser test suite instead.
+    var patternProblems: [String] {
+        var problems: [String] = []
+        let pattern = "verb pattern \"\(patternDescription)\""
+
+        guard case .word = elements.first else {
+            problems.append("\(pattern) must start with a literal word.")
+            return problems
         }
-        return verb.count * 10 + slotWeight
+
+        let objectSlots = elements.filter { $0 == .directObject || $0 == .indirectObject }
+        if elements.filter({ $0 == .directObject }).count > 1 {
+            problems.append("\(pattern) has more than one <object> slot.")
+        }
+        if elements.filter({ $0 == .indirectObject }).count > 1 {
+            problems.append("\(pattern) has more than one <second object> slot.")
+        }
+        if objectSlots.first == .indirectObject {
+            problems.append("\(pattern) puts the <second object> slot before <object>.")
+        }
+        if elements.contains(.direction) {
+            if !objectSlots.isEmpty {
+                problems.append("\(pattern) combines a direction slot with an object slot.")
+            }
+            if elements.last != .direction {
+                problems.append("\(pattern) must end with its direction slot.")
+            }
+            if elements.filter({ $0 == .direction }).count > 1 {
+                problems.append("\(pattern) has more than one direction slot.")
+            }
+        }
+        for (index, element) in elements.enumerated()
+        where element == .directObject || element == .indirectObject {
+            guard index < elements.count - 1 else { continue }
+            guard case .word = elements[index + 1] else {
+                problems.append(
+                    "\(pattern) needs a literal word between an object slot "
+                        + "and whatever follows it.")
+                continue
+            }
+        }
+        return problems
     }
 }
 
@@ -66,82 +138,82 @@ extension SyntaxRule {
     /// the parser sorts candidate rules by specificity.
     static let standardTable: [SyntaxRule] = [
         // take
-        .init("take", slots: .direct, intent: .take),
-        .init("get", slots: .direct, intent: .take),
-        .init("grab", slots: .direct, intent: .take),
-        .init("hold", slots: .direct, intent: .take),
-        .init("carry", slots: .direct, intent: .take),
-        .init("pick", "up", slots: .direct, intent: .take),
-        .init("pick", slots: .directThenParticle("up"), intent: .take),
+        .init("take", .directObject, intent: .take),
+        .init("get", .directObject, intent: .take),
+        .init("grab", .directObject, intent: .take),
+        .init("hold", .directObject, intent: .take),
+        .init("carry", .directObject, intent: .take),
+        .init("pick", "up", .directObject, intent: .take),
+        .init("pick", .directObject, "up", intent: .take),
 
         // drop
-        .init("drop", slots: .direct, intent: .drop),
-        .init("discard", slots: .direct, intent: .drop),
-        .init("put", "down", slots: .direct, intent: .drop),
-        .init("put", slots: .directThenParticle("down"), intent: .drop),
+        .init("drop", .directObject, intent: .drop),
+        .init("discard", .directObject, intent: .drop),
+        .init("put", "down", .directObject, intent: .drop),
+        .init("put", .directObject, "down", intent: .drop),
 
         // examine
-        .init("examine", slots: .direct, intent: .examine),
-        .init("x", slots: .direct, intent: .examine),
-        .init("inspect", slots: .direct, intent: .examine),
-        .init("look", "at", slots: .direct, intent: .examine),
-        .init("l", "at", slots: .direct, intent: .examine),
+        .init("examine", .directObject, intent: .examine),
+        .init("x", .directObject, intent: .examine),
+        .init("inspect", .directObject, intent: .examine),
+        .init("look", "at", .directObject, intent: .examine),
+        .init("l", "at", .directObject, intent: .examine),
 
         // read
-        .init("read", slots: .direct, intent: .read),
+        .init("read", .directObject, intent: .read),
 
         // wear
-        .init("wear", slots: .direct, intent: .wear),
-        .init("don", slots: .direct, intent: .wear),
-        .init("put", "on", slots: .direct, intent: .wear),
+        .init("wear", .directObject, intent: .wear),
+        .init("don", .directObject, intent: .wear),
+        .init("put", "on", .directObject, intent: .wear),
 
         // doff
-        .init("remove", slots: .direct, intent: .doff),
-        .init("doff", slots: .direct, intent: .doff),
-        .init("take", "off", slots: .direct, intent: .doff),
-        .init("take", slots: .directThenParticle("off"), intent: .doff),
+        .init("remove", .directObject, intent: .doff),
+        .init("doff", .directObject, intent: .doff),
+        .init("take", "off", .directObject, intent: .doff),
+        .init("take", .directObject, "off", intent: .doff),
 
         // putOn
-        .init("put", slots: .directPrepIndirect("on"), intent: .putOn),
-        .init("put", slots: .directPrepIndirect("onto"), intent: .putOn),
-        .init("hang", slots: .directPrepIndirect("on"), intent: .putOn),
-        .init("place", slots: .directPrepIndirect("on"), intent: .putOn),
+        .init("put", .directObject, "on", .indirectObject, intent: .putOn),
+        .init("put", .directObject, "onto", .indirectObject, intent: .putOn),
+        .init("hang", .directObject, "on", .indirectObject, intent: .putOn),
+        .init("place", .directObject, "on", .indirectObject, intent: .putOn),
 
         // putIn
-        .init("put", slots: .directPrepIndirect("in"), intent: .putIn),
-        .init("put", slots: .directPrepIndirect("into"), intent: .putIn),
+        .init("put", .directObject, "in", .indirectObject, intent: .putIn),
+        .init("put", .directObject, "into", .indirectObject, intent: .putIn),
 
         // open / close
-        .init("open", slots: .direct, intent: .open),
-        .init("close", slots: .direct, intent: .close),
-        .init("shut", slots: .direct, intent: .close),
+        .init("open", .directObject, intent: .open),
+        .init("close", .directObject, intent: .close),
+        .init("shut", .directObject, intent: .close),
 
         // lock / unlock
-        .init("lock", slots: .directPrepIndirect("with"), intent: .lock),
-        .init("unlock", slots: .directPrepIndirect("with"), intent: .unlock),
+        .init("lock", .directObject, "with", .indirectObject, intent: .lock),
+        .init("unlock", .directObject, "with", .indirectObject, intent: .unlock),
 
         // lookIn / search
-        .init("look", "in", slots: .direct, intent: .lookIn),
-        .init("search", slots: .direct, intent: .lookIn),
+        .init("look", "in", .directObject, intent: .lookIn),
+        .init("search", .directObject, intent: .lookIn),
 
         // push
-        .init("push", slots: .direct, intent: .push),
-        .init("move", slots: .direct, intent: .push),
+        .init("push", .directObject, intent: .push),
+        .init("move", .directObject, intent: .push),
 
         // movement
-        .init("go", slots: .direction, intent: .go),
-        .init("walk", slots: .direction, intent: .go),
-        .init("run", slots: .direction, intent: .go),
+        .init("go", .direction, intent: .go),
+        .init("walk", .direction, intent: .go),
+        .init("run", .direction, intent: .go),
 
         // perception & meta
-        .init("look", slots: .none, intent: .look),
-        .init("l", slots: .none, intent: .look),
-        .init("inventory", slots: .none, intent: .inventory),
-        .init("inv", slots: .none, intent: .inventory),
-        .init("i", slots: .none, intent: .inventory),
-        .init("score", slots: .none, intent: .score),
-        .init("quit", slots: .none, intent: .quit),
-        .init("q", slots: .none, intent: .quit),
-        .init("version", slots: .none, intent: .version),
+        .init("look", intent: .look),
+        .init("l", intent: .look),
+        .init("inventory", intent: .inventory),
+        .init("inv", intent: .inventory),
+        .init("i", intent: .inventory),
+        .init("score", intent: .score),
+        .init("quit", intent: .quit),
+        .init("q", intent: .quit),
+        .init("version", intent: .version),
     ]
 }

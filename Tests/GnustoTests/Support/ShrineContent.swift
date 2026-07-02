@@ -48,7 +48,7 @@ struct ShrineContent: GameContent {
 
     /// The plugin's player-typeable vocabulary.
     var verbs: [SyntaxRule] {
-        SyntaxRule("donate", slots: .direct, intent: Self.donate)
+        SyntaxRule("donate", .directObject, intent: Self.donate)
     }
 
     /// A self-contained, bundle-owned rule: entering the shrine counts the

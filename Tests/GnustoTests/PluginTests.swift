@@ -57,7 +57,7 @@ struct PluginTests {
         // A plugin implementing only `verbs` uses the protocol's default empty
         // `rules`; the host still bootstraps cleanly.
         let (definition, _) = try Bootstrap.build(AppraiseShop())
-        #expect(definition.syntaxRules.contains { $0.verb == ["appraise"] })
+        #expect(definition.syntaxRules.contains { $0.leadingWords == ["appraise"] })
     }
 
     // MARK: - Vocabulary reaches the parser
@@ -66,8 +66,8 @@ struct PluginTests {
         // The host spliced `commerce.verbs`, so both rows land in the resolved
         // table and their verb words are known to the parser.
         let (definition, _) = try Bootstrap.build(LampShop())
-        #expect(definition.syntaxRules.contains { $0.verb == ["buy"] })
-        #expect(definition.syntaxRules.contains { $0.verb == ["sell"] })
+        #expect(definition.syntaxRules.contains { $0.leadingWords == ["buy"] })
+        #expect(definition.syntaxRules.contains { $0.leadingWords == ["sell"] })
         #expect(definition.warnings.isEmpty)
     }
 }

@@ -101,6 +101,14 @@ enum Bootstrap {
             register(module, namespace: module.namespace)
         }
 
+        // Custom verb rows are validated up front: a malformed pattern is a
+        // wiring error, reported alongside every other fatal diagnostic. The
+        // rows themselves are merged into the table in phase 3 below.
+        let customVerbs = modules.flatMap { $0.verbs } + game.verbs
+        for rule in customVerbs {
+            diagnostics.append(contentsOf: rule.patternProblems)
+        }
+
         for (id, definition) in locations where definition.name == nil {
             diagnostics.append("location \"\(id)\" has no name(…) trait.")
         }
@@ -290,22 +298,23 @@ enum Bootstrap {
         // beats a bundle that claims the same shape. A custom row whose verb
         // and shape match a built-in reclaims it (last-wins) with a non-fatal
         // warning, so an author can override a verb while keeping it visible.
-        let customVerbs = modules.flatMap { $0.verbs } + game.verbs
         var verbWarnings: [String] = []
         let builtInKeys = Set(SyntaxRule.standardTable.map(\.key))
         for verb in customVerbs where builtInKeys.contains(verb.key) {
             verbWarnings.append(
-                "custom verb \"\(verb.verb.joined(separator: " "))\" overrides a "
+                "custom verb \"\(verb.patternDescription)\" overrides a "
                     + "built-in verb of the same shape.")
         }
         let syntaxRules = Self.dedupedLastWins(SyntaxRule.standardTable + customVerbs)
         var vocabulary = Vocabulary()
         vocabulary.directions = Vocabulary.standardDirections
         for rule in syntaxRules {
-            vocabulary.verbWords.formUnion(rule.verb)
-            if let word = rule.extraWord {
-                vocabulary.prepositions.insert(word)
-            }
+            // Leading words identify the verb; literals deeper in the pattern
+            // (particles, prepositions) are structural words the parser must
+            // still recognize as known.
+            vocabulary.verbWords.formUnion(rule.leadingWords)
+            vocabulary.prepositions.formUnion(
+                rule.literalWords.dropFirst(rule.leadingWords.count))
         }
         for (id, item) in items {
             var lexicon = ItemLexicon()

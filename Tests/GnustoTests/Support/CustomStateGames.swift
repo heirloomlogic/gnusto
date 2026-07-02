@@ -47,7 +47,7 @@ struct ShopGame: Game {
     }
 
     var verbs: [SyntaxRule] {
-        SyntaxRule("buy", slots: .direct, intent: Intent("buy"))
+        SyntaxRule("buy", .directObject, intent: Intent("buy"))
     }
 
     var rules: Rules {
