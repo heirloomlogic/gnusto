@@ -194,4 +194,53 @@ struct Zork1Tests {
                 "It is pitch black. You can't see a thing.",
             ])
     }
+
+    /// Phase 6 on the slice: "take all"/"drop all" with labeled lines, the
+    /// pronoun "it" through a container, and the reach/see distinction —
+    /// water is visible through the closed glass bottle but not takable.
+    @Test func kitchenSweepWithAllAndPronouns() async throws {
+        let transcript = try await play(
+            Zork1(),
+            [
+                "south", "east", "open window", "west",
+                "take all",
+                "drop all",
+                "take bottle", "open it", "look in it",
+                "west",
+                "take all",
+                "inventory",
+            ])
+        expectInOrder(
+            transcript,
+            [
+                "Kitchen",
+                // take all: name-sorted, per-object results; the scenery
+                // window is skipped, and the water — visible through the
+                // shut glass — refuses with "can't reach", not "can't see".
+                "brown sack: Taken.",
+                "clove of garlic: Taken.",
+                "glass bottle: Taken.",
+                "lunch: Taken.",
+                "quantity of water: You can't reach the quantity of water.",
+                // drop all: everything just taken goes back down.
+                "brown sack: Dropped.",
+                "clove of garlic: Dropped.",
+                "glass bottle: Dropped.",
+                "lunch: Dropped.",
+                // "it" rides along from "take bottle".
+                "Opening the glass bottle reveals a quantity of water.",
+                "In the glass bottle is a quantity of water.",
+                // Living room: the scenery rug, trophy case, and the still
+                // hidden trap door are all skipped by "all".
+                "Living Room",
+                "brass lantern: Taken.",
+                "elvish sword: Taken.",
+                "You are carrying:",
+                "brass lantern",
+                "elvish sword",
+            ])
+        #expect(!transcript.contains("window: "))
+        #expect(!transcript.contains("trap door: "))
+        #expect(!transcript.contains("trophy case: Taken."))
+    }
 }
