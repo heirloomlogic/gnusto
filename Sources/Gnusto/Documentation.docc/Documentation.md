@@ -114,6 +114,14 @@ A game need not live in one file — or even one package. Compose `map` and `rul
 
 - <doc:AddingCustomVerbs>
 - ``SyntaxRule``
+- ``SyntaxElement``
+
+### Text and Randomness
+
+- <doc:TextAndRandomness>
+- ``GameText``
+- ``random(_:)``
+- ``chance(_:)``
 
 ### Running a Game
 

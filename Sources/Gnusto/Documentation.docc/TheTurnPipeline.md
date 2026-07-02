@@ -12,6 +12,14 @@ The ``REPL`` reads a line and hands it to ``GameWorld/perform(_:)``. The parser 
 
 Parsing can fail: an unknown word, nothing in scope, a verb with no object. **Parse failures are free.** No rules run, the state is untouched, and the turn counter does not advance — the player just sees a message ("I don't understand that." / "You can't see any such thing here.") and a fresh prompt. Only a successfully parsed command enters the pipeline below.
 
+## How the parser converses
+
+Three parser behaviors go beyond one-line-in, one-command-out:
+
+- **Questions stay open.** When the parser asks a clarifying question — "Which do you mean: the brass lantern or the rusty lantern?", "What do you want to take?" — the next input line is first tried as its *answer*: an adjective (`brass`), a fuller phrase, or the missing object completes the original command. Narrowing can take several rounds; a line that isn't an answer simply runs as a fresh command and the question is forgotten. Questions, like all parse failures, are free turns.
+- **Pronouns.** `it` refers to the last direct object the player named (naming binds even if the action was refused); `them` refers to the group of the last multi-object command. A pronoun whose referent is gone from view fails in scope like any other noun.
+- **Multi-object commands.** `all` (or `everything`) in the direct-object slot of `take`, `drop`, `put … in`, or `put … on` expands to the eligible objects — for `take`, everything visible, takable, and not already held; for the rest, everything held. Each object then runs stages 1–7 of the pipeline below as its own single-object ``Command`` with a labeled result line (`brass lantern: Taken.`), so `before`/`after` rules never see "all". The each-turn stages (8–9) still run **once** for the whole command — a burning lantern loses one turn of fuel, not one per object. Other verbs refuse multiple objects, and `all` never fills an indirect slot.
+
 ## The stages of a turn
 
 Once a command parses, the engine runs these stages in order. Rules are matched by **scope** (world, the current location, or one of the command's objects) and by **intent** (a rule with no intents listed matches any).
