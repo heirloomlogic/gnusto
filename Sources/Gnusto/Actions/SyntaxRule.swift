@@ -63,16 +63,12 @@ public struct SyntaxRule: Sendable {
         }
     }
 
-    /// The number of slot elements (anything that isn't a literal word).
-    var slotCount: Int {
-        elements.count - literalWords.count
-    }
-
     /// Specificity for rule-selection order: rows with more literal structure
     /// are tried first, and among those, rows that consume more slots. Ties
     /// keep their table order (the parser's sort is stable by construction).
     var specificity: Int {
-        literalWords.count * 10 + slotCount
+        let literals = literalWords.count
+        return literals * 10 + (elements.count - literals)
     }
 
     /// The pattern rendered for diagnostics: `give <object> to <second object>`.
@@ -99,11 +95,15 @@ public struct SyntaxRule: Sendable {
             return problems
         }
 
+        func count(of element: SyntaxElement) -> Int {
+            elements.filter { $0 == element }.count
+        }
+
         let objectSlots = elements.filter { $0 == .directObject || $0 == .indirectObject }
-        if elements.filter({ $0 == .directObject }).count > 1 {
+        if count(of: .directObject) > 1 {
             problems.append("\(pattern) has more than one <object> slot.")
         }
-        if elements.filter({ $0 == .indirectObject }).count > 1 {
+        if count(of: .indirectObject) > 1 {
             problems.append("\(pattern) has more than one <second object> slot.")
         }
         if objectSlots.first == .indirectObject {
@@ -116,7 +116,7 @@ public struct SyntaxRule: Sendable {
             if elements.last != .direction {
                 problems.append("\(pattern) must end with its direction slot.")
             }
-            if elements.filter({ $0 == .direction }).count > 1 {
+            if count(of: .direction) > 1 {
                 problems.append("\(pattern) has more than one direction slot.")
             }
         }

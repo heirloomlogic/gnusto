@@ -126,8 +126,9 @@ struct StandardParser {
     private func fit(
         _ rule: SyntaxRule, tokens: [String], rawInput: String, scope: Scope
     ) -> FitOutcome {
-        let verbPhrase = rule.leadingWords.joined(separator: " ")
-        var cursor = rule.leadingWords.count
+        let leadingWords = rule.leadingWords
+        let verbPhrase = leadingWords.joined(separator: " ")
+        var cursor = leadingWords.count
 
         var directPhrase: [String]?
         var indirectPhrase: [String]?
@@ -140,7 +141,7 @@ struct StandardParser {
         /// An object slot waiting for the next literal word to close it.
         var openSlot: SyntaxElement?
 
-        for (index, element) in rule.elements.enumerated().dropFirst(rule.leadingWords.count) {
+        for (index, element) in rule.elements.enumerated().dropFirst(leadingWords.count) {
             switch element {
             case .word(let word):
                 if let slot = openSlot {

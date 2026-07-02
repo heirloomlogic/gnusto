@@ -147,13 +147,10 @@ public actor GameWorld {
         var objects: [EntityID]
         switch multiple {
         case .all:
-            if intent == .take {
-                objects = visible.filter { id in
-                    definition.items[id]?.isTakable == true && !held.contains(id)
-                }
-            } else {
-                objects = Array(held)
-            }
+            objects =
+                intent == .take
+                ? visible.filter { definition.items[$0]?.isTakable == true && !held.contains($0) }
+                : Array(held)
         case .them:
             guard !state.pronounThem.isEmpty else {
                 return freeReply(definition.text.noReferent("them"))
@@ -406,7 +403,7 @@ public actor GameWorld {
     }
 
     private func displayName(of id: EntityID) -> String {
-        definition.items[id]?.name ?? id.raw
+        definition.vocabulary.displayNames[id] ?? id.raw
     }
 
     private func statusLine() -> StatusLine {
