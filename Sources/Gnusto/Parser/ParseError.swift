@@ -17,26 +17,26 @@ enum ParseError: Error, Equatable {
     /// "all"/"them" in the indirect slot — only the direct slot is multiple.
     case multipleNotAllowed
 
-    var playerMessage: String {
+    func playerMessage(_ text: GameText) -> String {
         switch self {
         case .empty:
-            Messages.beg
+            text.beg
         case .unknownWord(let word):
-            Messages.unknownWord(word)
+            text.unknownWord(word)
         case .notInScope:
-            Messages.cantSeeAnySuchThing
+            text.cantSeeAnySuchThing
         case .notAVerb, .unmatchedSyntax:
-            Messages.didntUnderstand
+            text.didntUnderstand
         case .noReferent(let word):
-            Messages.noReferent(word)
+            text.noReferent(word)
         case .missingObject(let verb, _):
-            Messages.missingObject(verb)
+            text.missingObject(verb)
         case .missingIndirect(let verb, let objectName, let preposition, _):
-            Messages.missingIndirect(verb, objectName, preposition)
+            text.missingIndirect(verb, objectName, preposition)
         case .ambiguous(let names, _, _):
-            Messages.ambiguous(names)
+            text.ambiguous(names)
         case .multipleNotAllowed:
-            Messages.multipleNotAllowedThere
+            text.multipleNotAllowedThere
         }
     }
 

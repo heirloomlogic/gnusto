@@ -48,7 +48,7 @@ public actor GameWorld {
         let frame = TurnFrame(definition: definition, state: state)
         Ctx.$frame.withValue(frame) {
             frame.say(definition.intro)
-            frame.say(Messages.banner(title: definition.title, tagline: definition.tagline))
+            frame.say(definition.text.banner(definition.title, definition.tagline))
             RoomDescriber.describeCurrentLocation(mode: .entry, frame: frame)
         }
         return commit(frame)
@@ -74,7 +74,7 @@ public actor GameWorld {
                 // fall through and parse it as a fresh command.
                 if let context = error.clarification {
                     pendingClarification = context
-                    return freeReply(error.playerMessage)
+                    return freeReply(error.playerMessage(definition.text))
                 }
             }
         }
@@ -82,7 +82,7 @@ public actor GameWorld {
         switch parser.parse(tokens: tokens, rawInput: input, scope: scope) {
         case .failure(let error):
             pendingClarification = error.clarification
-            return freeReply(error.playerMessage)
+            return freeReply(error.playerMessage(definition.text))
         case .success(let parsed):
             return run(parsed)
         }
@@ -126,7 +126,7 @@ public actor GameWorld {
     ) -> TurnResult {
         let intent = parsed.intent
         guard Self.multiObjectIntents.contains(intent) else {
-            return freeReply(Messages.multipleNotAllowedWith(parsed.verbPhrase))
+            return freeReply(definition.text.multipleNotAllowedWith(parsed.verbPhrase))
         }
 
         let visible = Visibility.visibleItems(
@@ -146,11 +146,11 @@ public actor GameWorld {
             }
         case .them:
             guard !state.pronounThem.isEmpty else {
-                return freeReply(Messages.noReferent("them"))
+                return freeReply(definition.text.noReferent("them"))
             }
             objects = state.pronounThem.filter { visible.contains($0) }
             guard !objects.isEmpty else {
-                return freeReply(Messages.cantSeeAnySuchThing)
+                return freeReply(definition.text.cantSeeAnySuchThing)
             }
         }
         if intent == .putIn || intent == .putOn, let indirect = parsed.indirectObject {
@@ -158,7 +158,7 @@ public actor GameWorld {
         }
         guard !objects.isEmpty else {
             return freeReply(
-                intent == .take ? Messages.nothingToTakeHere : Messages.notCarryingAnything)
+                intent == .take ? definition.text.nothingToTakeHere : definition.text.notCarryingAnything)
         }
 
         // Stable, player-legible order: by display name, then ID.

@@ -33,6 +33,12 @@ public protocol Game: Sendable {
     /// Defaults to zero, which omits the "of a possible" suffix.
     var maxScore: Int { get }
 
+    /// The engine's stock player-facing lines, re-skinnable per game.
+    ///
+    /// Defaults to the classic voice; override any subset by mutating a
+    /// fresh ``GameText`` value.
+    var text: GameText { get }
+
     /// The game's geography and initial entity placement: room exits,
     /// blocked directions, and where the player, items, and scenery start.
     ///
@@ -77,6 +83,9 @@ extension Game {
 
     /// Defaults to a maximum score of zero.
     public var maxScore: Int { 0 }
+
+    /// Defaults to the engine's classic voice.
+    public var text: GameText { GameText() }
 
     /// Games without custom logic can omit the `rules` block.
     public var rules: Rules { Rules(rules: []) }

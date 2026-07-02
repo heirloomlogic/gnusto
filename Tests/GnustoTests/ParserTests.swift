@@ -114,11 +114,14 @@ struct ParserTests {
     }
 
     @Test func parseErrorMessagesReadClassically() {
-        #expect(ParseError.unknownWord("frotz").playerMessage == "I don't know the word \"frotz\".")
-        #expect(ParseError.notInScope.playerMessage == "You can't see any such thing.")
-        #expect(ParseError.empty.playerMessage == "I beg your pardon?")
+        let text = GameText()
         #expect(
-            ParseError.missingObject(verb: "take", prefix: ["take"]).playerMessage
+            ParseError.unknownWord("frotz").playerMessage(text)
+                == "I don't know the word \"frotz\".")
+        #expect(ParseError.notInScope.playerMessage(text) == "You can't see any such thing.")
+        #expect(ParseError.empty.playerMessage(text) == "I beg your pardon?")
+        #expect(
+            ParseError.missingObject(verb: "take", prefix: ["take"]).playerMessage(text)
                 == "What do you want to take?")
     }
 }

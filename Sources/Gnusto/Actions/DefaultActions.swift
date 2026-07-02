@@ -39,7 +39,7 @@ enum DefaultActions {
         case .version: version(frame)
         case .quit: quit(frame)
         default:
-            frame.say(Messages.didntUnderstand)
+            frame.say(frame.definition.text.didntUnderstand)
         }
     }
 
@@ -49,10 +49,10 @@ enum DefaultActions {
         let item = try requireDirectObject(command)
         let id = item.id
         if item.isHeld {
-            try refuse(item.isWorn ? Messages.alreadyWearing : Messages.alreadyHave)
+            try refuse(item.isWorn ? frame.definition.text.alreadyWearing : frame.definition.text.alreadyHave)
         }
         guard frame.definition.items[id]?.isTakable == true else {
-            try refuse(Messages.cantTake)
+            try refuse(frame.definition.text.cantTake)
         }
         // The parser's scope is *visible* items, which also admits a closed
         // transparent container's contents (seen through the glass but not
@@ -60,133 +60,133 @@ enum DefaultActions {
         // The item resolved, so it's visible: refuse with "can't reach", not
         // "can't see".
         guard isReachable(id, frame: frame) else {
-            try refuse(Messages.cantReach(item.name))
+            try refuse(frame.definition.text.cantReach(item.name))
         }
         frame.with { scratch in
             scratch.state.placements[id] = .heldBy(.player)
             scratch.state.touched.insert(id)
         }
-        frame.say(Messages.taken)
+        frame.say(frame.definition.text.taken)
     }
 
     private static func drop(_ command: Command, frame: TurnFrame) throws {
         let item = try requireDirectObject(command)
         let id = item.id
         guard item.isHeld else {
-            try refuse(Messages.notCarrying)
+            try refuse(frame.definition.text.notCarrying)
         }
         if item.isWorn {
-            frame.say(Messages.firstTakingOff(item.name))
+            frame.say(frame.definition.text.firstTakingOff(item.name))
             frame.with { _ = $0.state.wornItems.remove(id) }
         }
         frame.with { scratch in
             scratch.state.placements[id] = .room(scratch.state.playerLocation)
             scratch.state.touched.insert(id)
         }
-        frame.say(Messages.dropped)
+        frame.say(frame.definition.text.dropped)
     }
 
     private static func wear(_ command: Command, frame: TurnFrame) throws {
         let item = try requireDirectObject(command)
         if item.isWorn {
-            try refuse(Messages.alreadyWearing)
+            try refuse(frame.definition.text.alreadyWearing)
         }
         guard item.isHeld else {
-            try refuse(Messages.notHolding)
+            try refuse(frame.definition.text.notHolding)
         }
         guard frame.definition.items[item.id]?.isWearable == true else {
-            try refuse(Messages.cantWear)
+            try refuse(frame.definition.text.cantWear)
         }
         let id = item.id
         frame.with { _ = $0.state.wornItems.insert(id) }
-        frame.say(Messages.putOn(item.name))
+        frame.say(frame.definition.text.putOn(item.name))
     }
 
     private static func doff(_ command: Command, frame: TurnFrame) throws {
         let item = try requireDirectObject(command)
         guard item.isWorn else {
-            try refuse(Messages.notWearing)
+            try refuse(frame.definition.text.notWearing)
         }
         let id = item.id
         frame.with { _ = $0.state.wornItems.remove(id) }
-        frame.say(Messages.takeOff(item.name))
+        frame.say(frame.definition.text.takeOff(item.name))
     }
 
     private static func putOn(_ command: Command, frame: TurnFrame) throws {
         let item = try requireDirectObject(command)
         guard let surface = command.indirectObject else {
-            try refuse(Messages.didntUnderstand)
+            try refuse(frame.definition.text.didntUnderstand)
         }
         guard item.isHeld else {
-            try refuse(Messages.notHolding)
+            try refuse(frame.definition.text.notHolding)
         }
         if item == surface {
-            try refuse(Messages.cantPutOnItself)
+            try refuse(frame.definition.text.cantPutOnItself)
         }
         guard frame.definition.items[surface.id]?.isSurface == true else {
-            try refuse(Messages.cantPutOnThat)
+            try refuse(frame.definition.text.cantPutOnThat)
         }
         guard isReachable(surface.id, frame: frame) else {
-            try refuse(Messages.cantReach(surface.name))
+            try refuse(frame.definition.text.cantReach(surface.name))
         }
         let id = item.id
         let surfaceID = surface.id
         if frame.with({ isOrContains($0.state, surfaceID, id) }) {
-            try refuse(Messages.cantPutOntoOwnContents(item.name))
+            try refuse(frame.definition.text.cantPutOntoOwnContents(item.name))
         }
         if item.isWorn {
-            frame.say(Messages.firstTakingOff(item.name))
+            frame.say(frame.definition.text.firstTakingOff(item.name))
             frame.with { _ = $0.state.wornItems.remove(id) }
         }
         frame.with { scratch in
             scratch.state.placements[id] = .on(surfaceID)
             scratch.state.touched.insert(id)
         }
-        frame.say(Messages.putItemOn(item.name, surface.name))
+        frame.say(frame.definition.text.putItemOn(item.name, surface.name))
     }
 
     private static func putIn(_ command: Command, frame: TurnFrame) throws {
         let item = try requireDirectObject(command)
         guard let container = command.indirectObject else {
-            try refuse(Messages.didntUnderstand)
+            try refuse(frame.definition.text.didntUnderstand)
         }
         guard item.isHeld else {
-            try refuse(Messages.notHolding)
+            try refuse(frame.definition.text.notHolding)
         }
         if item == container {
-            try refuse(Messages.cantPutInItself)
+            try refuse(frame.definition.text.cantPutInItself)
         }
         guard frame.definition.items[container.id]?.isContainer == true else {
-            try refuse(Messages.cantPutInThat)
+            try refuse(frame.definition.text.cantPutInThat)
         }
         guard isReachable(container.id, frame: frame) else {
-            try refuse(Messages.cantReach(container.name))
+            try refuse(frame.definition.text.cantReach(container.name))
         }
         guard container.isOpen else {
-            try refuse(Messages.closedContainer(container.name))
+            try refuse(frame.definition.text.closedContainer(container.name))
         }
         let id = item.id
         let containerID = container.id
         if frame.with({ isOrContains($0.state, containerID, id) }) {
-            try refuse(Messages.cantPutInsideOwnContents(item.name))
+            try refuse(frame.definition.text.cantPutInsideOwnContents(item.name))
         }
         if let capacity = frame.definition.items[containerID]?.capacity {
             let occupants = frame.with { scratch in
                 scratch.state.placements.values.filter { $0 == .inside(containerID) }.count
             }
             guard occupants < capacity else {
-                try refuse(Messages.noRoom)
+                try refuse(frame.definition.text.noRoom)
             }
         }
         if item.isWorn {
-            frame.say(Messages.firstTakingOff(item.name))
+            frame.say(frame.definition.text.firstTakingOff(item.name))
             frame.with { _ = $0.state.wornItems.remove(id) }
         }
         frame.with { scratch in
             scratch.state.placements[id] = .inside(containerID)
             scratch.state.touched.insert(id)
         }
-        frame.say(Messages.putItemIn(item.name, container.name))
+        frame.say(frame.definition.text.putItemIn(item.name, container.name))
     }
 
     /// True if `candidate` is `target` itself, or sits somewhere inside
@@ -233,25 +233,25 @@ enum DefaultActions {
         let item = try requireDirectObject(command)
         let id = item.id
         guard frame.definition.items[id]?.isOpenable == true else {
-            try refuse(Messages.cantOpenThat)
+            try refuse(frame.definition.text.cantOpenThat)
         }
         guard isReachable(id, frame: frame) else {
-            try refuse(Messages.cantReach(item.name))
+            try refuse(frame.definition.text.cantReach(item.name))
         }
         if item.isLocked {
-            try refuse(Messages.locked(item.name))
+            try refuse(frame.definition.text.locked(item.name))
         }
         if item.isOpen {
-            try refuse(Messages.alreadyOpen)
+            try refuse(frame.definition.text.alreadyOpen)
         }
         let contents = frame.with { scratch -> [String] in
             scratch.state.openItems.insert(id)
             return perceivableContents(of: id, in: scratch, frame: frame)
         }
         if contents.isEmpty {
-            frame.say(Messages.opened)
+            frame.say(frame.definition.text.opened)
         } else {
-            frame.say(Messages.openingReveals(item.name, contents))
+            frame.say(frame.definition.text.openingReveals(item.name, contents))
         }
     }
 
@@ -259,16 +259,16 @@ enum DefaultActions {
         let item = try requireDirectObject(command)
         let id = item.id
         guard frame.definition.items[id]?.isOpenable == true else {
-            try refuse(Messages.cantCloseThat)
+            try refuse(frame.definition.text.cantCloseThat)
         }
         guard isReachable(id, frame: frame) else {
-            try refuse(Messages.cantReach(item.name))
+            try refuse(frame.definition.text.cantReach(item.name))
         }
         guard item.isOpen else {
-            try refuse(Messages.alreadyClosed)
+            try refuse(frame.definition.text.alreadyClosed)
         }
         frame.with { _ = $0.state.openItems.remove(id) }
-        frame.say(Messages.closed)
+        frame.say(frame.definition.text.closed)
     }
 
     private static func lock(_ command: Command, frame: TurnFrame) throws {
@@ -284,23 +284,23 @@ enum DefaultActions {
     private static func setLocked(_ command: Command, frame: TurnFrame, to locked: Bool) throws {
         let item = try requireDirectObject(command)
         guard let key = command.indirectObject else {
-            try refuse(Messages.didntUnderstand)
+            try refuse(frame.definition.text.didntUnderstand)
         }
         let id = item.id
         guard frame.definition.items[id]?.isLockable == true else {
-            try refuse(locked ? Messages.cantLockThat : Messages.cantUnlockThat)
+            try refuse(locked ? frame.definition.text.cantLockThat : frame.definition.text.cantUnlockThat)
         }
         guard isReachable(id, frame: frame) else {
-            try refuse(Messages.cantReach(item.name))
+            try refuse(frame.definition.text.cantReach(item.name))
         }
         guard item.isLocked != locked else {
-            try refuse(locked ? Messages.alreadyLocked : Messages.alreadyUnlocked)
+            try refuse(locked ? frame.definition.text.alreadyLocked : frame.definition.text.alreadyUnlocked)
         }
         guard key.isHeld else {
-            try refuse(Messages.keyNotHeld(key.name))
+            try refuse(frame.definition.text.keyNotHeld(key.name))
         }
         guard frame.definition.items[id]?.lockKey == key.id else {
-            try refuse(Messages.wrongKey)
+            try refuse(frame.definition.text.wrongKey)
         }
         frame.with { scratch in
             if locked {
@@ -309,49 +309,49 @@ enum DefaultActions {
                 _ = scratch.state.lockedItems.remove(id)
             }
         }
-        frame.say(locked ? Messages.lockedMessage : Messages.unlockedMessage)
+        frame.say(locked ? frame.definition.text.lockedMessage : frame.definition.text.unlockedMessage)
     }
 
     private static func lookIn(_ command: Command, frame: TurnFrame) throws {
         let item = try requireDirectObject(command)
         let id = item.id
         guard frame.definition.items[id]?.isContainer == true else {
-            try refuse(Messages.cantSeeAnySuchThing)
+            try refuse(frame.definition.text.cantSeeAnySuchThing)
         }
         guard isReachable(id, frame: frame) else {
-            try refuse(Messages.cantReach(item.name))
+            try refuse(frame.definition.text.cantReach(item.name))
         }
         if frame.definition.items[id]?.isOpenable == true, !item.isOpen,
             frame.definition.items[id]?.isTransparent != true
         {
-            try refuse(Messages.closedContainer(item.name))
+            try refuse(frame.definition.text.closedContainer(item.name))
         }
         let contents = frame.with { perceivableContents(of: id, in: $0, frame: frame) }
         if contents.isEmpty {
-            frame.say(Messages.emptyContainer(item.name))
+            frame.say(frame.definition.text.emptyContainer(item.name))
         } else {
-            frame.say(Messages.inTheContainer(item.name, contents))
+            frame.say(frame.definition.text.inTheContainer(item.name, contents))
         }
     }
 
     private static func push(_ command: Command, frame: TurnFrame) throws {
         let item = try requireDirectObject(command)
         guard isReachable(item.id, frame: frame) else {
-            try refuse(Messages.cantReach(item.name))
+            try refuse(frame.definition.text.cantReach(item.name))
         }
-        frame.say(Messages.cantMoveThat)
+        frame.say(frame.definition.text.cantMoveThat)
     }
 
     // MARK: - Movement & perception
 
     private static func go(_ command: Command, frame: TurnFrame) throws {
         guard let direction = command.direction else {
-            try refuse(Messages.whichWay)
+            try refuse(frame.definition.text.whichWay)
         }
         let here = frame.with { $0.state.playerLocation }
         switch frame.definition.exits[here]?[direction] {
         case nil:
-            try refuse(Messages.cantGoThatWay)
+            try refuse(frame.definition.text.cantGoThatWay)
         case .blocked(let message):
             try refuse(message)
         case .to(let destination):
@@ -367,8 +367,8 @@ enum DefaultActions {
                     frame.definition.items[doorID]?.name ?? doorID.raw
                 )
             }
-            guard revealed else { try refuse(Messages.cantGoThatWay) }
-            guard isOpen else { try refuse(Messages.closedContainer(name)) }
+            guard revealed else { try refuse(frame.definition.text.cantGoThatWay) }
+            guard isOpen else { try refuse(frame.definition.text.closedContainer(name)) }
             try enter(destination, frame: frame)
         case .conditional(let destination, let condition, let blocked):
             // Evaluate the gate inside the live frame so its closure sees the
@@ -389,11 +389,11 @@ enum DefaultActions {
     }
 
     private static func examine(_ command: Command, frame: TurnFrame) throws {
-        try describeItem(command, frame: frame) { Messages.nothingSpecial($0.name) }
+        try describeItem(command, frame: frame) { frame.definition.text.nothingSpecial($0.name) }
     }
 
     private static func read(_ command: Command, frame: TurnFrame) throws {
-        try describeItem(command, frame: frame) { _ in Messages.nothingWritten }
+        try describeItem(command, frame: frame) { _ in frame.definition.text.nothingWritten }
     }
 
     private static func describeItem(
@@ -412,15 +412,15 @@ enum DefaultActions {
                 .filter { scratch.state.placements[$0] == .heldBy(.player) }
                 .sorted()
                 .map { id in
-                    Messages.inventoryLine(
+                    frame.definition.text.inventoryLine(
                         frame.definition.items[id]?.name ?? id.raw,
-                        isWorn: scratch.state.wornItems.contains(id))
+                        scratch.state.wornItems.contains(id))
                 }
         }
         if held.isEmpty {
-            frame.say(Messages.emptyHanded)
+            frame.say(frame.definition.text.emptyHanded)
         } else {
-            frame.say(([Messages.carrying] + held).joined(separator: "\n"))
+            frame.say(([frame.definition.text.carrying] + held).joined(separator: "\n"))
         }
     }
 
@@ -430,16 +430,17 @@ enum DefaultActions {
     /// format lives in exactly one place.
     static func score(_ frame: TurnFrame) {
         let line = frame.with { scratch in
-            Messages.scoreLine(
-                score: scratch.state.score,
-                maxScore: frame.definition.maxScore,
-                moves: scratch.state.moves)
+            frame.definition.text.scoreLine(
+                scratch.state.score,
+                frame.definition.maxScore,
+                scratch.state.moves)
         }
         frame.say(line)
     }
 
     private static func version(_ frame: TurnFrame) {
-        frame.say(Messages.banner(title: frame.definition.title, tagline: frame.definition.tagline))
+        frame.say(
+            frame.definition.text.banner(frame.definition.title, frame.definition.tagline))
     }
 
     private static func quit(_ frame: TurnFrame) {
@@ -451,7 +452,7 @@ enum DefaultActions {
         guard let item = command.directObject else {
             // The parser supplies objects for object-bearing rules; this is a
             // safety net, not a player-facing path.
-            try refuse(Messages.didntUnderstand)
+            try refuse(Ctx.current.definition.text.didntUnderstand)
         }
         return item
     }

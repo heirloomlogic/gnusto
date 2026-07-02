@@ -371,6 +371,7 @@ enum Bootstrap {
             tagline: game.tagline,
             intro: game.intro,
             maxScore: game.maxScore,
+            text: game.text,
             locations: locations,
             items: items,
             exits: exits,

@@ -138,6 +138,8 @@ struct GameDefinition: Sendable {
     let tagline: String
     let intro: String
     let maxScore: Int
+    /// The stock player-facing lines, as the game re-skinned them.
+    let text: GameText
     let locations: [EntityID: LocationDefinition]
     let items: [EntityID: ItemDefinition]
     let exits: [EntityID: [Direction: ExitTarget]]
