@@ -15,6 +15,7 @@ public enum SyntaxElement: Sendable, Hashable, ExpressibleByStringLiteral {
     /// A compass direction.
     case direction
 
+    /// A string literal in a pattern is a literal word.
     public init(stringLiteral value: String) {
         self = .word(value)
     }
