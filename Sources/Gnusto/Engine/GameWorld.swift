@@ -34,10 +34,20 @@ public actor GameWorld {
     private var pendingClarification: (prefix: [String], suffix: [String])?
 
     /// Builds the world from a game definition, validating it up front.
+    /// The random stream is seeded fresh each run; use `init(game:seed:)`
+    /// to replay a specific one.
     public init(game: some Game) throws {
+        try self.init(game: game, seed: UInt64.random(in: .min ... .max))
+    }
+
+    /// Builds the world with a fixed random seed: the same seed and the same
+    /// commands replay the same game, on any platform — for transcripts,
+    /// tests, and bug reports.
+    public init(game: some Game, seed: UInt64) throws {
         let (definition, state) = try Bootstrap.build(game)
         self.definition = definition
         self.state = state
+        self.state.rngState = seed
         self.parser = StandardParser(
             vocabulary: definition.vocabulary,
             syntaxRules: definition.syntaxRules)

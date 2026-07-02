@@ -48,4 +48,7 @@ struct WorldState: Sendable, Codable {
     var descriptionOverrides: [EntityID: String] = [:]
     var globals: [EntityID: StateValue] = [:]
     var status: GameStatus = .playing
+    /// The random stream's position. Part of the saved state, so a restored
+    /// game replays the exact same randomness it would have had.
+    var rngState: UInt64 = 0
 }
