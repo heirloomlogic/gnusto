@@ -195,21 +195,38 @@ enum DefaultActions {
     /// putting a container into itself or into one of its own contents.
     private static func isOrContains(_ state: WorldState, _ candidate: EntityID, _ target: EntityID) -> Bool {
         if candidate == target { return true }
+        var childrenOf: [EntityID: [EntityID]] = [:]
+        for (childID, placement) in state.placements {
+            switch placement {
+            case .on(let parent), .inside(let parent):
+                childrenOf[parent, default: []].append(childID)
+            default:
+                break
+            }
+        }
         var frontier = [target]
         var seen: Set<EntityID> = []
         while let id = frontier.popLast() {
             guard seen.insert(id).inserted else { continue }
-            for (childID, placement) in state.placements {
-                switch placement {
-                case .on(id), .inside(id):
-                    if childID == candidate { return true }
-                    frontier.append(childID)
-                default:
-                    break
-                }
+            for childID in childrenOf[id] ?? [] {
+                if childID == candidate { return true }
+                frontier.append(childID)
             }
         }
         return false
+    }
+
+    /// Names of the perceivable items directly inside `container`, sorted for
+    /// stable listings — the one query behind both `open`'s reveal line and
+    /// `lookIn`'s contents report.
+    private static func perceivableContents(
+        of container: EntityID, in scratch: Scratch, frame: TurnFrame
+    ) -> [String] {
+        scratch.state.placements.keys
+            .filter { scratch.state.placements[$0] == .inside(container) }
+            .filter { Visibility.isPerceivable($0, definition: frame.definition, state: scratch.state) }
+            .sorted()
+            .map { frame.definition.items[$0]?.name ?? $0.raw }
     }
 
     private static func open(_ command: Command, frame: TurnFrame) throws {
@@ -229,11 +246,7 @@ enum DefaultActions {
         }
         let contents = frame.with { scratch -> [String] in
             scratch.state.openItems.insert(id)
-            return scratch.state.placements.keys
-                .filter { scratch.state.placements[$0] == .inside(id) }
-                .filter { Visibility.isPerceivable($0, definition: frame.definition, state: scratch.state) }
-                .sorted()
-                .map { frame.definition.items[$0]?.name ?? $0.raw }
+            return perceivableContents(of: id, in: scratch, frame: frame)
         }
         if contents.isEmpty {
             frame.say(Messages.opened)
@@ -259,44 +272,29 @@ enum DefaultActions {
     }
 
     private static func lock(_ command: Command, frame: TurnFrame) throws {
-        let item = try requireDirectObject(command)
-        guard let key = command.indirectObject else {
-            try refuse(Messages.didntUnderstand)
-        }
-        let id = item.id
-        guard frame.definition.items[id]?.isLockable == true else {
-            try refuse(Messages.cantLockThat)
-        }
-        guard isReachable(id, frame: frame) else {
-            try refuse(Messages.cantReach(item.name))
-        }
-        if item.isLocked {
-            try refuse(Messages.alreadyLocked)
-        }
-        guard key.isHeld else {
-            try refuse(Messages.keyNotHeld(key.name))
-        }
-        guard frame.definition.items[id]?.lockKey == key.id else {
-            try refuse(Messages.wrongKey)
-        }
-        frame.with { _ = $0.state.lockedItems.insert(id) }
-        frame.say(Messages.lockedMessage)
+        try setLocked(command, frame: frame, to: true)
     }
 
     private static func unlock(_ command: Command, frame: TurnFrame) throws {
+        try setLocked(command, frame: frame, to: false)
+    }
+
+    /// Shared body of `lock`/`unlock`: the guards are identical, only the
+    /// polarity, refusal texts, and set operation differ.
+    private static func setLocked(_ command: Command, frame: TurnFrame, to locked: Bool) throws {
         let item = try requireDirectObject(command)
         guard let key = command.indirectObject else {
             try refuse(Messages.didntUnderstand)
         }
         let id = item.id
         guard frame.definition.items[id]?.isLockable == true else {
-            try refuse(Messages.cantUnlockThat)
+            try refuse(locked ? Messages.cantLockThat : Messages.cantUnlockThat)
         }
         guard isReachable(id, frame: frame) else {
             try refuse(Messages.cantReach(item.name))
         }
-        guard item.isLocked else {
-            try refuse(Messages.alreadyUnlocked)
+        guard item.isLocked != locked else {
+            try refuse(locked ? Messages.alreadyLocked : Messages.alreadyUnlocked)
         }
         guard key.isHeld else {
             try refuse(Messages.keyNotHeld(key.name))
@@ -304,8 +302,14 @@ enum DefaultActions {
         guard frame.definition.items[id]?.lockKey == key.id else {
             try refuse(Messages.wrongKey)
         }
-        frame.with { _ = $0.state.lockedItems.remove(id) }
-        frame.say(Messages.unlockedMessage)
+        frame.with { scratch in
+            if locked {
+                _ = scratch.state.lockedItems.insert(id)
+            } else {
+                _ = scratch.state.lockedItems.remove(id)
+            }
+        }
+        frame.say(locked ? Messages.lockedMessage : Messages.unlockedMessage)
     }
 
     private static func lookIn(_ command: Command, frame: TurnFrame) throws {
@@ -322,13 +326,7 @@ enum DefaultActions {
         {
             try refuse(Messages.closedContainer(item.name))
         }
-        let contents = frame.with { scratch -> [String] in
-            scratch.state.placements.keys
-                .filter { scratch.state.placements[$0] == .inside(id) }
-                .filter { Visibility.isPerceivable($0, definition: frame.definition, state: scratch.state) }
-                .sorted()
-                .map { frame.definition.items[$0]?.name ?? $0.raw }
-        }
+        let contents = frame.with { perceivableContents(of: id, in: $0, frame: frame) }
         if contents.isEmpty {
             frame.say(Messages.emptyContainer(item.name))
         } else {
