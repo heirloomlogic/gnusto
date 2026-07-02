@@ -285,10 +285,12 @@ enum Bootstrap {
             items.filter { $0.value.isLockable && !$0.value.startsUnlocked }.keys)
 
         // Phase 3 — assemble the verb table and vocabulary. Built-ins first,
-        // then the verbs of the game and its bundles. A custom row whose verb
+        // then bundle verbs, then the host game's — so precedence runs
+        // built-ins < bundles/plugins < host game, and with last-wins the host
+        // beats a bundle that claims the same shape. A custom row whose verb
         // and shape match a built-in reclaims it (last-wins) with a non-fatal
         // warning, so an author can override a verb while keeping it visible.
-        let customVerbs = game.verbs + modules.flatMap { $0.verbs }
+        let customVerbs = modules.flatMap { $0.verbs } + game.verbs
         var verbWarnings: [String] = []
         let builtInKeys = Set(SyntaxRule.standardTable.map(\.key))
         for verb in customVerbs where builtInKeys.contains(verb.key) {
@@ -322,20 +324,23 @@ enum Bootstrap {
         // Phase 3b — assemble the stage-4 default-action overrides. Bundle
         // actions are auto-collected like bundle verbs; a plugin's actions
         // reach here only if the host splices them into its own `actions`
-        // block. Last-wins by intent: a row whose intent matches a built-in
-        // reclaims it, with the same non-fatal warning policy as verbs.
-        let customActions = game.actions + modules.flatMap { $0.actions }
+        // block. Bundle actions come first, then the host game's — so
+        // precedence runs built-ins < bundles/plugins < host game, and a host
+        // action for the same intent beats a bundle's (last-wins), matching
+        // the verb merge. A row whose intent matches a built-in reclaims it,
+        // with the same non-fatal warning policy as verbs.
+        let customActions = modules.flatMap { $0.actions } + game.actions
         var actionWarnings: [String] = []
         var actionOverrides: [Intent: IntentAction] = [:]
         for action in customActions {
             if DefaultActions.builtInIntents.contains(action.intent) {
                 actionWarnings.append(
-                    "custom action for intent \"\(action.intent.raw)\" overrides its "
-                        + "built-in default behavior.")
+                    "custom action for intent \"\(action.intent.raw)\" overrides the "
+                        + "built-in default of the same intent.")
             } else if actionOverrides[action.intent] != nil {
                 actionWarnings.append(
                     "custom action for intent \"\(action.intent.raw)\" overrides an "
-                        + "earlier custom action for the same intent.")
+                        + "earlier custom action of the same intent.")
             }
             actionOverrides[action.intent] = action
         }

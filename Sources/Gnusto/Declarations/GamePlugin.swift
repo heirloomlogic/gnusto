@@ -57,15 +57,16 @@
 /// declarations — every line still readable in the host's source.
 public protocol GamePlugin: Sendable {
     /// Player-typeable verbs the plugin contributes, in the same form as a
-    /// game's `verbs`. Defaults to empty. Merged with the host's verbs and the
-    /// built-in table under the same last-wins policy.
+    /// game's `verbs`. Defaults to empty. Precedence runs built-ins <
+    /// bundles/plugins < host game, so a host verb of the same shape beats
+    /// this one.
     @VerbBuilder var verbs: [SyntaxRule] { get }
 
     /// Stage-4 default actions the plugin contributes, in the same form as a
-    /// game's `actions`. Defaults to empty. Merged with the host's actions and
-    /// the built-in switch under the same last-wins policy — this is what
-    /// lets a plugin's verbs (like Phase 8's combat `attack`) actually do
-    /// something by default, not just parse.
+    /// game's `actions`. Defaults to empty. Precedence runs built-ins <
+    /// bundles/plugins < host game, so a host action for the same intent beats
+    /// this one — and this is what lets a plugin's verbs (like Phase 8's
+    /// combat `attack`) actually do something by default, not just parse.
     @ActionBuilder var actions: [IntentAction] { get }
 
     /// Self-contained, world-scoped rules the plugin adds without needing
