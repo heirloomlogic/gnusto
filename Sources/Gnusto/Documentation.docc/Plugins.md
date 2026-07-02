@@ -28,11 +28,13 @@ struct CommercePlugin: GamePlugin {
 
 The host stores the plugin as a plain property and splices its vocabulary into its own `verbs` block. A plain plugin property is neither a ``Location``, ``Item``, nor `@Global`, so the bootstrap's reflection walk ignores it — it never becomes an entity and never collides.
 
+`.price` below is a `TraitKey<Int>` declared once (`extension TraitKey<Int> { static let price = Self("price") }`) — see <doc:CustomStateAndTraits>.
+
 ```swift
 struct LampShop: Game {
     let commerce = CommercePlugin()
     @Global var purse = Purse(coins: 10)          // the HOST owns the wallet
-    let lantern = Item { name("brass lantern"); trait("price", 5) }
+    let lantern = Item { name("brass lantern"); trait(.price, 5) }
 
     var verbs: [SyntaxRule] { commerce.verbs }    // splice the vocabulary
     // rules below
@@ -52,7 +54,7 @@ extension CommercePlugin {
         charge:  @escaping @Sendable (Int) -> Void
     ) -> Rules {
         item.before(Self.buy) {
-            let price = item.trait("price", as: Int.self) ?? 0
+            let price = item[.price] ?? 0
             guard balance() >= price else {
                 try refuse("You can't afford the \(item.name); it costs \(price) coins.")
             }
@@ -86,7 +88,7 @@ struct Appraiser: GamePlugin {
 // in the host:
 var rules: Rules {
     gem.before(Intent("appraise")) {
-        try reply("The \(gem.name) is worth \(gem.trait("price", as: Int.self) ?? 0) coins.")
+        try reply("The \(gem.name) is worth \(gem[.price] ?? 0) coins.")
     }
 }
 ```
@@ -111,7 +113,7 @@ struct ShrineContent: GameContent {
     func offering(of item: Item,
                   merit: @escaping @Sendable () -> Int,
                   credit: @escaping @Sendable (Int) -> Void) -> Rules {
-        item.before(Self.donate) { credit(item.trait("value", as: Int.self) ?? 0)
+        item.before(Self.donate) { credit(item[.value] ?? 0)
             try reply("Your merit rises to \(merit()).") }
     }
 }
@@ -123,7 +125,7 @@ The host lists it in `content` (registering the namespaced region) **and** splic
 struct PilgrimGame: Game {
     let shrineKit = ShrineContent()
     @Global var merit = 0
-    let coin = Item { name("brass coin"); trait("value", 7) }
+    let coin = Item { name("brass coin"); trait(.value, 7) }
 
     var content: GameContents { shrineKit }
     var verbs: [SyntaxRule] { shrineKit.verbs }

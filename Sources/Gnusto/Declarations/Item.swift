@@ -24,7 +24,7 @@ public struct Item: Sendable, Equatable {
 
     /// Binds the frame once per access. `id` resolution itself takes the
     /// frame lock, so it must never be evaluated inside a `with` closure.
-    private var resolved: (frame: TurnFrame, id: EntityID) {
+    var resolved: (frame: TurnFrame, id: EntityID) {
         let frame = Ctx.current
         return (frame, frame.id(for: token, describing: "Item"))
     }
@@ -147,14 +147,6 @@ public struct Item: Sendable, Equatable {
     /// True if the item is directly in the location.
     public func isIn(_ location: Location) -> Bool {
         location.contains(self)
-    }
-
-    /// Reads a custom trait declared with `trait("key", value)`, or `nil` if
-    /// the item has no trait by that key or it was stored as a different type.
-    public func trait<T: GlobalValue>(_ key: String, as type: T.Type) -> T? {
-        let (frame, id) = resolved
-        guard let stored = frame.customTrait(key, of: id) else { return nil }
-        return T(stateValue: stored)
     }
 
     /// Moves the item directly to a location, bypassing the usual actions.

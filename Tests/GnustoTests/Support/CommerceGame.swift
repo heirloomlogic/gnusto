@@ -32,7 +32,7 @@ public struct CommercePlugin: GamePlugin {
         charge: @escaping @Sendable (Int) -> Void
     ) -> Rules {
         item.before(Self.buy) {
-            let price = item.trait("price", as: Int.self) ?? 0
+            let price = item[.price] ?? 0
             guard balance() >= price else {
                 try refuse("You can't afford the \(item.name); it costs \(price) coins.")
             }
@@ -49,7 +49,7 @@ public struct CommercePlugin: GamePlugin {
         credit: @escaping @Sendable (Int) -> Void
     ) -> Rules {
         item.before(Self.sell) {
-            let price = item.trait("price", as: Int.self) ?? 0
+            let price = item[.price] ?? 0
             credit(price)
             try reply("You sell the \(item.name) for \(price) coins.")
         }
@@ -79,7 +79,7 @@ struct LampShop: Game {
         name("brass lantern")
         adjectives("brass")
         description("A well-made brass lantern.")
-        trait("price", 5)
+        trait(.price, 5)
     }
 
     var map: WorldMap {
@@ -134,7 +134,7 @@ struct AppraiseShop: Game {
         name("green gem")
         adjectives("green")
         description("A glittering green gem.")
-        trait("price", 42)
+        trait(.price, 42)
     }
 
     var map: WorldMap {
@@ -148,7 +148,7 @@ struct AppraiseShop: Game {
 
     var rules: Rules {
         gem.before(VocabularyOnlyPlugin.appraise) {
-            let price = gem.trait("price", as: Int.self) ?? 0
+            let price = gem[.price] ?? 0
             try reply("The \(gem.name) is worth \(price) coins.")
         }
     }

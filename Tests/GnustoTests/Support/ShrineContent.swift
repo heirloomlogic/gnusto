@@ -75,7 +75,7 @@ struct ShrineContent: GameContent {
         credit: @escaping @Sendable (Int) -> Void
     ) -> Rules {
         item.before(Self.donate) {
-            let value = item.trait("value", as: Int.self) ?? 0
+            let value = item[.value] ?? 0
             credit(value)
             try reply(
                 "You lay the \(item.name) in the offering bowl. "
@@ -110,7 +110,7 @@ struct PilgrimGame: Game {
         name("brass coin")
         adjectives("brass")
         description("A heavy brass coin.")
-        trait("value", 7)
+        trait(.value, 7)
     }
 
     /// Shares the `bell` property label with ``ShrineContent``; the two stay

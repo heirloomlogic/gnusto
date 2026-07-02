@@ -13,6 +13,12 @@ enum ExitTarget: Sendable {
 struct LocationDefinition: Sendable {
     var name: String?
     var description: String?
+    /// A live description supplied via `description { … }`. Mutually
+    /// exclusive with `description` (a static string); Bootstrap reports a
+    /// diagnostic if both are declared. `hasDynamicDescriptionConflict`
+    /// records that conflict without losing which trait won.
+    var dynamicDescription: (@Sendable () -> String)?
+    var hasDynamicDescriptionConflict = false
     var inherentlyLit = true
     var customTraits: [String: StateValue] = [:]
 
@@ -20,7 +26,12 @@ struct LocationDefinition: Sendable {
         for trait in traits {
             switch trait.kind {
             case .name(let text): name = text
-            case .description(let text): description = text
+            case .description(let text):
+                if dynamicDescription != nil { hasDynamicDescriptionConflict = true }
+                description = text
+            case .dynamicDescription(let closure):
+                if description != nil { hasDynamicDescriptionConflict = true }
+                dynamicDescription = closure
             case .dark: inherentlyLit = false
             case .custom(let key, let value): customTraits[key] = value
             }
@@ -32,6 +43,12 @@ struct LocationDefinition: Sendable {
 struct ItemDefinition: Sendable {
     var name: String?
     var description: String?
+    /// A live description supplied via `description { … }`. Mutually
+    /// exclusive with `description` (a static string); Bootstrap reports a
+    /// diagnostic if both are declared. `hasDynamicDescriptionConflict`
+    /// records that conflict without losing which trait won.
+    var dynamicDescription: (@Sendable () -> String)?
+    var hasDynamicDescriptionConflict = false
     var adjectives: [String] = []
     var synonyms: [String] = []
     var firstSight: String?
@@ -61,7 +78,12 @@ struct ItemDefinition: Sendable {
         for trait in traits {
             switch trait.kind {
             case .name(let text): name = text
-            case .description(let text): description = text
+            case .description(let text):
+                if dynamicDescription != nil { hasDynamicDescriptionConflict = true }
+                description = text
+            case .dynamicDescription(let closure):
+                if description != nil { hasDynamicDescriptionConflict = true }
+                dynamicDescription = closure
             case .adjectives(let words): adjectives += words
             case .synonyms(let words): synonyms += words
             case .firstSight(let text): firstSight = text

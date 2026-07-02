@@ -3,6 +3,9 @@ public struct LocationTrait: Sendable {
     enum Kind: Sendable {
         case name(String)
         case description(String)
+        /// A live description recomputed on every read. See
+        /// `description(_:)` (the closure overload) for the authoring shape.
+        case dynamicDescription(@Sendable () -> String)
         case dark
         case custom(key: String, value: StateValue)
     }
@@ -15,6 +18,9 @@ public struct ItemTrait: Sendable {
     enum Kind: Sendable {
         case name(String)
         case description(String)
+        /// A live description recomputed on every read. See
+        /// `description(_:)` (the closure overload) for the authoring shape.
+        case dynamicDescription(@Sendable () -> String)
         case adjectives([String])
         case synonyms([String])
         case firstSight(String)
@@ -58,6 +64,45 @@ public func description(_ text: String) -> LocationTrait {
 /// The text shown when the item is examined (or read).
 public func description(_ text: String) -> ItemTrait {
     ItemTrait(kind: .description(text))
+}
+
+/// A long description recomputed every time the location is described, so it
+/// can react to live world state:
+///
+/// ```swift
+/// let vault = Location {
+///     name("Vault")
+///     description { vaultOpen ? "The vault stands open." : "A sealed vault door." }
+/// }
+/// ```
+///
+/// Declaring both a static `description("…")` and a closure on the same
+/// location is ambiguous and reported as a bootstrap diagnostic. A runtime
+/// override (`location.description = "…"`) still wins over either.
+public func description(_ text: @escaping @Sendable () -> String) -> LocationTrait {
+    LocationTrait(kind: .dynamicDescription(text))
+}
+
+/// A description recomputed every time the item is examined, so it can react
+/// to live world state:
+///
+/// ```swift
+/// let trophyCase = Item {
+///     name("trophy case")
+///     description { trophyCase.holds(egg) ? "…gleams…" : "…empty…" }
+/// }
+/// ```
+///
+/// The closure captures other entities or `@Global`s freely; it cannot
+/// capture the item being declared (a stored-property initializer can't
+/// reference `self` or a sibling property) — use the file-scope-`let` idiom
+/// (see `lockable(with:)`) if an item's description must reference itself.
+///
+/// Declaring both a static `description("…")` and a closure on the same item
+/// is ambiguous and reported as a bootstrap diagnostic. A runtime override
+/// (`item.description = "…"`) still wins over either.
+public func description(_ text: @escaping @Sendable () -> String) -> ItemTrait {
+    ItemTrait(kind: .dynamicDescription(text))
 }
 
 /// Additional words the parser accepts before the item's noun.
@@ -128,20 +173,9 @@ public func capacity(_ n: Int) -> ItemTrait {
 /// (`item.reveal()`), even though it exists and is placed like any other item.
 public let hidden = ItemTrait(kind: .hidden)
 
-// MARK: - Custom traits
-
-/// A custom, plugin-defined property of a location (`trait("region", "docks")`).
-/// The value is boxed like a `@Global`; read it back with
-/// `location.trait("region", as: String.self)`. The engine never branches on
-/// custom traits — they are declarative data for game/plugin code to read.
-public func trait(_ key: String, _ value: some GlobalValue) -> LocationTrait {
-    LocationTrait(kind: .custom(key: key, value: value.stateValue))
-}
-
-/// A custom, plugin-defined property of an item (`trait("price", 5)`). The
-/// value is boxed like a `@Global`; read it back with
-/// `item.trait("price", as: Int.self)`. The engine never branches on custom
-/// traits — they are declarative data for game/plugin code to read.
-public func trait(_ key: String, _ value: some GlobalValue) -> ItemTrait {
-    ItemTrait(kind: .custom(key: key, value: value.stateValue))
-}
+// Custom traits are declared with a typed `TraitKey` (`trait(.price, 5)`,
+// read back with `item[.price]`) — see `TraitKey.swift`. The underlying
+// storage (`ItemDefinition`/`LocationDefinition.customTraits: [String:
+// StateValue]`) is still keyed by the trait's name string, since that's what
+// `TraitKey` itself boils down to; only the stringly-typed authoring API
+// (`trait("price", 5)` / `item.trait("price", as:)`) is gone.

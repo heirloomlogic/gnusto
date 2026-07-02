@@ -63,8 +63,8 @@ struct CustomStateTests {
     }
 
     @Test func customTraitReadsBackThroughTypedAccessor() async throws {
-        // The buy rule reads the price via `lantern.trait("price", as: Int.self)`;
-        // the "5 coins" in the reply is that read-back value.
+        // The buy rule reads the price via `lantern[.price]`; the "5 coins"
+        // in the reply is that read-back value.
         let transcript = try await play(ShopGame(), ["buy lantern"])
         expectInOrder(transcript, ["for 5 coins"])
     }

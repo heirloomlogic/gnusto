@@ -39,7 +39,7 @@
 /// struct LampShop: Game {
 ///     let commerce = CommercePlugin()
 ///     @Global var purse = Purse(coins: 10)
-///     let lantern = Item { name("brass lantern"); trait("price", 5) }
+///     let lantern = Item { name("brass lantern"); trait(.price, 5) }
 ///
 ///     var verbs: [SyntaxRule] { commerce.verbs }
 ///     var rules: Rules {

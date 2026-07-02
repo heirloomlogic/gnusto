@@ -19,6 +19,22 @@ public func refuse(_ message: String) throws -> Never {
     throw TurnInterrupt.refused(message: message)
 }
 
+/// Refuses the current action with `message` unless `condition` holds —
+/// `guard … else { try refuse(…) }`, in one call:
+///
+/// ```swift
+/// try require(player.location == cloakroom, else: "This isn't the best place…")
+/// ```
+///
+/// Shares nothing with Swift Testing's `#require` macro (different
+/// namespaces; that one lives in test targets and traps the test on
+/// failure) — this one is ordinary game-rule flow control.
+public func require(_ condition: Bool, else message: String) throws {
+    guard condition else {
+        try refuse(message)
+    }
+}
+
 /// Fully handles the current action with a response, skipping the default
 /// behavior. Mechanically identical to `refuse(_:)` — two names exist so
 /// game code reads correctly: `refuse` for "no, you can't", `reply` for

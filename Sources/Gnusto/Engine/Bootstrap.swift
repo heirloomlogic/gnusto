@@ -107,6 +107,16 @@ enum Bootstrap {
         for (id, definition) in items where definition.name == nil {
             diagnostics.append("item \"\(id)\" has no name(…) trait.")
         }
+        for (id, definition) in locations where definition.hasDynamicDescriptionConflict {
+            diagnostics.append(
+                "location \"\(id)\" declares both a static description(…) and a "
+                    + "closure description { … }; a location may have only one.")
+        }
+        for (id, definition) in items where definition.hasDynamicDescriptionConflict {
+            diagnostics.append(
+                "item \"\(id)\" declares both a static description(…) and a "
+                    + "closure description { … }; an item may have only one.")
+        }
 
         // Phase 2 — evaluate the map block.
         var exits: [EntityID: [Direction: ExitTarget]] = [:]

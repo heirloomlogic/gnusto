@@ -12,9 +12,9 @@ enum RoomDescriber {
 
         // One snapshot of everything this function reads; the visited mark
         // (lit visits only) is the one write and happens in the same lock.
-        let (locationID, isDark, wasVisited, override, placements, touched, state) = frame.with {
+        let (locationID, isDark, wasVisited, placements, touched, state) = frame.with {
             scratch -> (
-                EntityID, Bool, Bool, String?, [EntityID: Placement], Set<EntityID>, WorldState
+                EntityID, Bool, Bool, [EntityID: Placement], Set<EntityID>, WorldState
             ) in
             let id = scratch.state.playerLocation
             let dark = Visibility.isDark(at: id, definition: definition, state: scratch.state)
@@ -24,7 +24,6 @@ enum RoomDescriber {
             }
             return (
                 id, dark, visited,
-                scratch.state.descriptionOverrides[id],
                 scratch.state.placements,
                 scratch.state.touched,
                 scratch.state
@@ -40,8 +39,15 @@ enum RoomDescriber {
         let verbose = mode == .look || !wasVisited
 
         frame.say(location?.name ?? locationID.raw)
-        if verbose, let text = override ?? location?.description {
-            frame.say(text)
+        if verbose {
+            // Reads outside the lock above: `describedText` may call a
+            // `description { … }` closure, which typically re-enters the
+            // frame via `Ctx.current` (proxies, `@Global`s) and would
+            // deadlock if called while still holding the scratch lock.
+            let text = frame.describedText(of: locationID)
+            if !text.isEmpty {
+                frame.say(text)
+            }
         }
 
         // Item paragraphs: firstSight text until touched (even for scenery),
