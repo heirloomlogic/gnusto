@@ -77,20 +77,25 @@ public actor GameWorld {
                 // Meta intents talk to the game program; no rules see them.
                 // `inBeforeRule` is set for the span of these stages so
                 // `proceed()` can recognize a legal call site; a rule that
-                // calls it runs stage 4 early and flips `defaultRan`, which
-                // stage 4 below checks to avoid running it twice.
+                // calls it runs stage 4 early and flips `defaultRan`. Once
+                // that flag is set, `run` (below) skips every remaining
+                // before-phase for the rest of this sequence — `proceed()`
+                // means "run the default now", so later before-guards for
+                // this command are moot and must not run. Stage 4's own
+                // call site (further down) checks the same flag to avoid
+                // running the default a second time.
                 if !intent.isMeta {
                     frame.with { $0.inBeforeRule = true }
                     defer { frame.with { $0.inBeforeRule = false } }
                     let here = frame.with { $0.state.playerLocation }
-                    try run(rules.worldBefore, matching: intent)
-                    try run(rules.locationBeforeEachTurn[here] ?? [], matching: intent)
-                    try run(rules.locationBefore[here] ?? [], matching: intent)
+                    try runBefore(rules.worldBefore, matching: intent, frame: frame)
+                    try runBefore(rules.locationBeforeEachTurn[here] ?? [], matching: intent, frame: frame)
+                    try runBefore(rules.locationBefore[here] ?? [], matching: intent, frame: frame)
                     if let indirect = command.indirectObject {
-                        try run(rules.itemBefore[indirect.id] ?? [], matching: intent)
+                        try runBefore(rules.itemBefore[indirect.id] ?? [], matching: intent, frame: frame)
                     }
                     if let direct = command.directObject {
-                        try run(rules.itemBefore[direct.id] ?? [], matching: intent)
+                        try runBefore(rules.itemBefore[direct.id] ?? [], matching: intent, frame: frame)
                     }
                 }
 
@@ -136,6 +141,19 @@ public actor GameWorld {
         }
 
         return commit(frame)
+    }
+
+    /// Runs a stage 1–3 before-phase's rules — but not if a rule earlier in
+    /// this same sequence already called `proceed()`. Once the default
+    /// action has run early, every later before-phase for this command is
+    /// skipped: `proceed()` means "run the default now, I take
+    /// responsibility," so a guard that hasn't run yet never gets the
+    /// chance to refuse an action that already happened.
+    private func runBefore(_ rules: [Rule], matching intent: Intent, frame: TurnFrame) throws {
+        guard !frame.with({ $0.defaultRan }) else { return }
+        for rule in rules where rule.matches(intent) {
+            try rule.body()
+        }
     }
 
     private func run(_ rules: [Rule], matching intent: Intent) throws {

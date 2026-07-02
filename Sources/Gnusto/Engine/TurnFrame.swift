@@ -112,7 +112,10 @@ final class TurnFrame: Sendable {
     /// Runs the stage-4 default action for the current command immediately,
     /// on behalf of `proceed()`. Only valid from inside a `before` rule body,
     /// and only once per turn; both are programmer errors, not player-facing
-    /// conditions, so they trap.
+    /// conditions, so they trap. Setting `defaultRan` here is also what tells
+    /// the pipeline's stage 1–3 sequence (see `GameWorld.runBefore`) to skip
+    /// every before-phase still ahead of the calling rule — see `proceed()`'s
+    /// doc comment for the full behavior.
     func proceedToDefaultAction() throws {
         let (inBeforeRule, alreadyRan) = with { scratch in
             (scratch.inBeforeRule, scratch.defaultRan)

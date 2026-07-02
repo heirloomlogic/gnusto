@@ -37,11 +37,18 @@ public func end(won: Bool) throws -> Never {
 /// so the calling rule can embellish the result — print something more, read
 /// state the default action changed, and so on.
 ///
-/// Callable only from a `before` rule, and only once per turn: the pipeline
-/// skips its own stage-4 step once `proceed()` has run it. Calling it from an
-/// `after`/each-turn rule, or calling it twice, is a programmer error and
-/// traps with a clear message rather than silently double-running the
-/// default action.
+/// Callable from any stage 1–3 `before`-phase rule — `world.before`,
+/// `location.beforeEachTurn`, `location.before`, or `item.before`, on either
+/// the indirect or direct object — and only once per turn. `proceed()` means
+/// "run the default now; I take responsibility": once it runs, the pipeline
+/// skips its own stage-4 step (so the default doesn't run twice) *and*
+/// skips every remaining stage 1–3 before-phase still ahead of the calling
+/// rule in this turn's sequence. A guard written as a later `before` rule —
+/// for example an `item.before` rule on the direct object when `proceed()`
+/// was called from `world.before` — never gets to run, so it can't refuse an
+/// action that has already happened. Calling it from an `after`/each-turn
+/// rule, or calling it twice, is a programmer error and traps with a clear
+/// message rather than silently double-running the default action.
 ///
 /// ```swift
 /// mailbox.before(.open) {

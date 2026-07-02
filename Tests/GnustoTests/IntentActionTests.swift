@@ -67,6 +67,22 @@ struct IntentActionTests {
         #expect(!transcript.contains("This line must never print."))
     }
 
+    // MARK: - `proceed()` from an early phase skips later before-phases
+
+    @Test func proceedFromWorldBeforeSkipsLaterItemBeforeGuard() async throws {
+        // `world.before(.take)` calls `proceed()`, running the built-in take
+        // immediately. The `item.before(.take)` guard on the wrench runs
+        // later in the stage 1-3 sequence and would normally refuse the
+        // take — but since the default already ran, the pipeline must skip
+        // it entirely: no "GUARD RAN" marker, no refusal message, and the
+        // take's own success text still appears.
+        let transcript = try await play(EarlyProceedSkipsLaterGuardsGame(), ["take wrench"])
+        expectInOrder(transcript, ["The world itself lets you take it."])
+        #expect(transcript.contains("Taken."))
+        #expect(!transcript.contains("GUARD RAN"))
+        #expect(!transcript.contains("bolted down"))
+    }
+
     // MARK: - `proceed()` misuse traps
     //
     // `proceed()`'s misuse paths (calling it twice, or from an `after`/

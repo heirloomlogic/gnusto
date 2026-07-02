@@ -193,3 +193,40 @@ struct LockedMailboxGame: Game {
         }
     }
 }
+
+/// A fixture proving that once `proceed()` runs the default action early
+/// from an *earlier* before-phase (here, `world.before`), the pipeline skips
+/// every remaining stage 1–3 before-phase for the rest of the turn — an
+/// `item.before` guard declared on the direct object must never run once the
+/// default has already fired. If the guard ran, its refusal/marker would
+/// appear in the transcript after the take succeeds; it must not.
+struct EarlyProceedSkipsLaterGuardsGame: Game {
+    let title = "Early Proceed"
+    let intro = "A workshop."
+
+    let workshop = Location {
+        name("Workshop")
+        description("A cluttered workshop.")
+    }
+
+    let wrench = Item {
+        name("iron wrench")
+        adjectives("iron")
+    }
+
+    var map: WorldMap {
+        player.starts(in: workshop)
+        wrench.starts(in: workshop)
+    }
+
+    var rules: Rules {
+        world.before(.take) {
+            try proceed()
+            say("The world itself lets you take it.")
+        }
+        wrench.before(.take) {
+            say("GUARD RAN")
+            try refuse("The wrench is bolted down.")
+        }
+    }
+}
