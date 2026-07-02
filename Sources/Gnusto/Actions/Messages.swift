@@ -40,6 +40,26 @@ enum Messages {
     static let noRoom = "There's no room."
     static let cantMoveThat = "You can't move that."
 
+    /// The item resolved (it was visible to the parser), but a reachability
+    /// guard failed — you can see it, you just can't touch it (e.g. through a
+    /// shut glass jar). Distinct from `cantSeeAnySuchThing`, which is for a
+    /// noun that isn't in scope at all.
+    static func cantReach(_ name: String) -> String {
+        "You can't reach the \(name)."
+    }
+
+    /// Refusal for putting a container into something it (transitively)
+    /// contains — the ancestor-chain cycle case, distinct from putting an item
+    /// directly into itself.
+    static func cantPutInsideOwnContents(_ name: String) -> String {
+        "You can't put the \(name) inside something it contains."
+    }
+
+    /// The `putOn` counterpart to `cantPutInsideOwnContents`.
+    static func cantPutOntoOwnContents(_ name: String) -> String {
+        "You can't put the \(name) onto something it contains."
+    }
+
     static func locked(_ name: String) -> String {
         "The \(name) is locked."
     }

@@ -411,7 +411,8 @@ struct ContainerTests {
             }
         }
         // Both the direct self-cycle and putting a container into its own
-        // contents chain must be rejected.
+        // contents chain must be rejected — the self case keeps the "in
+        // itself" wording, the chain case gets the dedicated message.
         let transcript = try await play(
             NestedBoxesGame(),
             ["put outer box in outer box", "put outer box in inner box"])
@@ -419,7 +420,42 @@ struct ContainerTests {
             transcript,
             [
                 "You can't put something in itself.",
-                "You can't put something in itself.",
+                "You can't put the outer box inside something it contains.",
+            ])
+    }
+
+    // MARK: - putOn parity (reachability + ancestor-chain cycle)
+
+    @Test func putOnUnreachableSurfaceRefuses() async throws {
+        // The shelf sits inside a closed transparent case: visible (the parser
+        // resolves it) but not reachable. `putOn` must refuse with "can't
+        // reach", and both items stay in scope for the follow-up examine.
+        let transcript = try await play(
+            SurfaceReachGame(),
+            ["put coin on shelf", "examine shelf", "examine coin"])
+        expectInOrder(
+            transcript,
+            [
+                "You can't reach the display shelf.",
+                // Still in scope afterward — the refusal didn't consume them.
+                "You see nothing special about the display shelf.",
+                "You see nothing special about the bronze coin.",
+            ])
+    }
+
+    @Test func putOnRejectsAncestorChainCycle() async throws {
+        // The box sits on the held tray; `put tray on box` would drop the tray
+        // onto its own contents — refused with the dedicated message, and both
+        // items remain in scope.
+        let transcript = try await play(
+            SurfaceReachGame(),
+            ["put tray on box", "examine tray", "examine box"])
+        expectInOrder(
+            transcript,
+            [
+                "You can't put the serving tray onto something it contains.",
+                "You see nothing special about the serving tray.",
+                "You see nothing special about the wooden box.",
             ])
     }
 
@@ -472,8 +508,9 @@ struct ContainerTests {
             transcript,
             [
                 // The jar is transparent but closed: the pickle is visible
-                // (parser scope resolves it) but not reachable — refused.
-                "You can't see any such thing.",
+                // (parser scope resolves it) but not reachable — refused with
+                // "can't reach" (it's seen, just untouchable), not "can't see".
+                "You can't reach the green pickle.",
                 "Opening the glass jar reveals a green pickle.",
                 "Taken.",
                 "a green pickle",

@@ -180,6 +180,63 @@ struct BadContainerGame: Game {
     }
 }
 
+/// A fixture for `putOn`'s parity guards (reachability + ancestor-chain
+/// cycle). A `display shelf` (a surface) sits inside a closed transparent
+/// `display case`, so the shelf is *visible* (parser resolves it) but not
+/// *reachable*. A `serving tray` (also a surface) is held, and a `wooden box`
+/// starts on the tray — so `put tray on box` would drop the tray onto its own
+/// contents.
+struct SurfaceReachGame: Game {
+    let title = "SurfaceReach"
+    let intro = ""
+
+    let gallery = Location {
+        name("Gallery")
+        description("A quiet gallery.")
+    }
+
+    /// Transparent, openable, starts closed — holds the shelf, seen but not
+    /// touched.
+    let displayCase = Item {
+        name("display case")
+        container
+        openable
+        transparent
+    }
+
+    let shelf = Item {
+        name("display shelf")
+        surface
+    }
+
+    let coin = Item {
+        name("bronze coin")
+    }
+
+    /// A held surface with a box on it, for the ancestor-chain cycle case.
+    let tray = Item {
+        name("serving tray")
+        surface
+    }
+
+    let box = Item {
+        name("wooden box")
+        surface
+    }
+
+    var map: WorldMap {
+        player.starts(in: gallery)
+
+        displayCase.starts(in: gallery)
+        shelf.starts(inside: displayCase)
+
+        coin.startsHeld
+
+        tray.startsHeld
+        box.starts(on: tray)
+    }
+}
+
 /// The push-to-reveal fixture named in the Task 4 brief: pushing the rug
 /// reveals a hidden trap door beneath it. Uses `before(.push)` + `reply(...)`
 /// rather than `after(.push)` — the after-hook alternative would print the

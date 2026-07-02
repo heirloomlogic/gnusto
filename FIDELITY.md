@@ -64,11 +64,14 @@ entry below is grouped by the task that introduced it.
   standing in the dark cellar is genuinely pitch black even while carrying
   it. Phase 7 is expected to make `dark`-location lighting react to a
   carried lit lantern.
-- **The trap door can still be opened from the cellar side.** In the
+- **The trap door is mechanically unbarred from the cellar side.** In the
   finished game, the thief eventually bars it from below; that arrives with
   the thief in Phase 8. For now, `livingRoom.down(cellar, via: trapDoor)` /
   `cellar.up(livingRoom, via: trapDoor)` share one door state with no extra
-  restriction once it's open again.
+  restriction — so nothing in the *state model* keeps it shut. In practice,
+  though, the cellar's darkness makes the door unreachable to a lightless
+  player (it never enters scope), so it can't actually be reopened from below
+  today; see the "Known soft-lock" entry immediately after this one for why.
 - **Known soft-lock, not a Task 8 bug — a solo player without a light
   source who descends the trap door is stuck, full stop, until Phase 7.**
   `cellar.onEnter` (`Sources/Zork1/House.swift`) slams and closes the trap

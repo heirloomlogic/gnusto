@@ -11,7 +11,7 @@ struct ParserTests {
             syntaxRules: definition.syntaxRules)
     }
 
-    static let fullScope = Scope(reachableItems: [
+    static let fullScope = Scope(visibleItems: [
         EntityID("cloak"), EntityID("hook"), EntityID("message"),
     ])
 
@@ -87,7 +87,7 @@ struct ParserTests {
     @Test func knownWordOutOfScope() throws {
         // From the foyer only the carried cloak is in scope; the message is
         // a known word but not visible.
-        let foyerScope = Scope(reachableItems: [EntityID("cloak")])
+        let foyerScope = Scope(visibleItems: [EntityID("cloak")])
         let parser = try Self.makeParser()
         #expect(
             parser.parse("read message", scope: foyerScope)

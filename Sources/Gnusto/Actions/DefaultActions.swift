@@ -57,8 +57,10 @@ enum DefaultActions {
         // The parser's scope is *visible* items, which also admits a closed
         // transparent container's contents (seen through the glass but not
         // touchable) — take needs the stricter reachable set to refuse those.
+        // The item resolved, so it's visible: refuse with "can't reach", not
+        // "can't see".
         guard isReachable(id, frame: frame) else {
-            try refuse(Messages.cantSeeAnySuchThing)
+            try refuse(Messages.cantReach(item.name))
         }
         frame.with { scratch in
             scratch.state.placements[id] = .heldBy(.player)
@@ -124,13 +126,18 @@ enum DefaultActions {
         guard frame.definition.items[surface.id]?.isSurface == true else {
             try refuse(Messages.cantPutOnThat)
         }
-        if item.isWorn {
-            frame.say(Messages.firstTakingOff(item.name))
-            let id = item.id
-            frame.with { _ = $0.state.wornItems.remove(id) }
+        guard isReachable(surface.id, frame: frame) else {
+            try refuse(Messages.cantReach(surface.name))
         }
         let id = item.id
         let surfaceID = surface.id
+        if frame.with({ isOrContains($0.state, surfaceID, id) }) {
+            try refuse(Messages.cantPutOntoOwnContents(item.name))
+        }
+        if item.isWorn {
+            frame.say(Messages.firstTakingOff(item.name))
+            frame.with { _ = $0.state.wornItems.remove(id) }
+        }
         frame.with { scratch in
             scratch.state.placements[id] = .on(surfaceID)
             scratch.state.touched.insert(id)
@@ -149,10 +156,11 @@ enum DefaultActions {
         if item == container {
             try refuse(Messages.cantPutInItself)
         }
-        guard frame.definition.items[container.id]?.isContainer == true,
-            isReachable(container.id, frame: frame)
-        else {
+        guard frame.definition.items[container.id]?.isContainer == true else {
             try refuse(Messages.cantPutInThat)
+        }
+        guard isReachable(container.id, frame: frame) else {
+            try refuse(Messages.cantReach(container.name))
         }
         guard container.isOpen else {
             try refuse(Messages.closedContainer(container.name))
@@ -160,7 +168,7 @@ enum DefaultActions {
         let id = item.id
         let containerID = container.id
         if frame.with({ isOrContains($0.state, containerID, id) }) {
-            try refuse(Messages.cantPutInItself)
+            try refuse(Messages.cantPutInsideOwnContents(item.name))
         }
         if let capacity = frame.definition.items[containerID]?.capacity {
             let occupants = frame.with { scratch in
@@ -207,8 +215,11 @@ enum DefaultActions {
     private static func open(_ command: Command, frame: TurnFrame) throws {
         let item = try requireDirectObject(command)
         let id = item.id
-        guard frame.definition.items[id]?.isOpenable == true, isReachable(id, frame: frame) else {
+        guard frame.definition.items[id]?.isOpenable == true else {
             try refuse(Messages.cantOpenThat)
+        }
+        guard isReachable(id, frame: frame) else {
+            try refuse(Messages.cantReach(item.name))
         }
         if item.isLocked {
             try refuse(Messages.locked(item.name))
@@ -234,8 +245,11 @@ enum DefaultActions {
     private static func close(_ command: Command, frame: TurnFrame) throws {
         let item = try requireDirectObject(command)
         let id = item.id
-        guard frame.definition.items[id]?.isOpenable == true, isReachable(id, frame: frame) else {
+        guard frame.definition.items[id]?.isOpenable == true else {
             try refuse(Messages.cantCloseThat)
+        }
+        guard isReachable(id, frame: frame) else {
+            try refuse(Messages.cantReach(item.name))
         }
         guard item.isOpen else {
             try refuse(Messages.alreadyClosed)
@@ -250,8 +264,11 @@ enum DefaultActions {
             try refuse(Messages.didntUnderstand)
         }
         let id = item.id
-        guard frame.definition.items[id]?.isLockable == true, isReachable(id, frame: frame) else {
+        guard frame.definition.items[id]?.isLockable == true else {
             try refuse(Messages.cantLockThat)
+        }
+        guard isReachable(id, frame: frame) else {
+            try refuse(Messages.cantReach(item.name))
         }
         if item.isLocked {
             try refuse(Messages.alreadyLocked)
@@ -272,8 +289,11 @@ enum DefaultActions {
             try refuse(Messages.didntUnderstand)
         }
         let id = item.id
-        guard frame.definition.items[id]?.isLockable == true, isReachable(id, frame: frame) else {
+        guard frame.definition.items[id]?.isLockable == true else {
             try refuse(Messages.cantUnlockThat)
+        }
+        guard isReachable(id, frame: frame) else {
+            try refuse(Messages.cantReach(item.name))
         }
         guard item.isLocked else {
             try refuse(Messages.alreadyUnlocked)
@@ -291,8 +311,11 @@ enum DefaultActions {
     private static func lookIn(_ command: Command, frame: TurnFrame) throws {
         let item = try requireDirectObject(command)
         let id = item.id
-        guard frame.definition.items[id]?.isContainer == true, isReachable(id, frame: frame) else {
+        guard frame.definition.items[id]?.isContainer == true else {
             try refuse(Messages.cantSeeAnySuchThing)
+        }
+        guard isReachable(id, frame: frame) else {
+            try refuse(Messages.cantReach(item.name))
         }
         if frame.definition.items[id]?.isOpenable == true, !item.isOpen,
             frame.definition.items[id]?.isTransparent != true
@@ -316,7 +339,7 @@ enum DefaultActions {
     private static func push(_ command: Command, frame: TurnFrame) throws {
         let item = try requireDirectObject(command)
         guard isReachable(item.id, frame: frame) else {
-            try refuse(Messages.cantSeeAnySuchThing)
+            try refuse(Messages.cantReach(item.name))
         }
         frame.say(Messages.cantMoveThat)
     }
