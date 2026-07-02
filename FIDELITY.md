@@ -69,20 +69,36 @@ entry below is grouped by the task that introduced it.
   the thief in Phase 8. For now, `livingRoom.down(cellar, via: trapDoor)` /
   `cellar.up(livingRoom, via: trapDoor)` share one door state with no extra
   restriction once it's open again.
-- **Known engine interaction, not a Task 8 bug**: because a `dark` room's
-  scope collapses entirely (`Visibility.collect` returns early under
-  darkness, before even door-folding runs — see
-  `Sources/Gnusto/Engine/Visibility.swift`), the trap door is **not**
-  actually reachable from inside the unlit cellar — the parser itself
-  reports "You can't see any such thing" for `open trap door` while inside,
-  rather than a `refuse`-level "it's dark" message. Escaping the cellar in
-  this slice therefore requires re-opening the trap door from the Living
-  Room side (or, later, carrying a lit light source, once Phase 7 exists).
-  `Tests/GnustoTests/Zork1Tests.swift` asserts this actual behavior rather
-  than the idealized "open it blind" version, so the test suite reflects
-  what the engine does today. Worth a follow-up: either a documented
-  "doors stay in scope regardless of light" carve-out, or an explicit
-  light-source mechanic that makes the cellar non-dark once lit.
+- **Known soft-lock, not a Task 8 bug — a solo player without a light
+  source who descends the trap door is stuck, full stop, until Phase 7.**
+  `cellar.onEnter` (`Sources/Zork1/House.swift`) slams and closes the trap
+  door behind the player on entry. The cellar is `dark`, and
+  `Visibility.collect` (`Sources/Gnusto/Engine/Visibility.swift`) has a
+  single early-return guard for darkness (`guard !isDark(...) else {
+  return result }`) that sits *before* both the room-contents walk and the
+  door-folding loop later in the same function — so under darkness neither
+  one runs, and a door referenced only by an exit (never placed `in:` a
+  room) never enters scope. Concretely: `open trap door` from inside the
+  cellar fails at the parser with "You can't see any such thing," not a
+  `refuse`-level "it's dark" message, because the trap door was never a
+  candidate noun to begin with. Nothing else in this slice can reopen it
+  from below. This is a genuine, intentional soft-lock in the current
+  build — not a death, and not (yet) recoverable — pending Phase 7's light
+  sources (lantern) and grue, which is when darkness in this cellar
+  becomes survivable (lit) or lethal (grue) rather than merely stuck.
+  Worth noting for calibration: the original Zork 1 doesn't let you reopen
+  the trap door from below either — the thief bars it once he arrives —
+  but the original handles a lightless cellar by killing the player to the
+  grue after a few dark turns, so unlit descent is never a stable state
+  there. Our engine has no grue yet, so the same starting conditions
+  produce a stuck state instead of a game over; that gap is what makes
+  this "soft-lock" rather than "death," and it closes when Phase 7 lands.
+  `Tests/GnustoTests/Zork1Tests.swift`
+  (`darkCellarSoftLockIsThePhase7Seam`) pins this as current intended
+  behavior end to end: the slam, the refusal of `up` while closed, the
+  parser's inability to resolve `open trap door` as a noun, and a further
+  `look` that still reports pitch black rather than a room, confirming no
+  other command reopens a path out.
 - **The white house exterior is four separate scenery items**
   (`whiteHouseAtWest`/`AtNorth`/`AtSouth`/`AtBehind`), one per house-side
   room, all sharing the same name and `Prose.whiteHouse` text. A single

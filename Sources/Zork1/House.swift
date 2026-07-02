@@ -201,6 +201,11 @@ struct ZorkHouse: GameContent {
     // MARK: - Rules
 
     var rules: Rules {
+        // Not `require`: that helper is hardwired to `refuse` (see
+        // `Sources/Gnusto/Declarations/Helpers.swift`), but "already moved"
+        // needs to fully own the turn's response (`reply`), not just block
+        // a default action with a complaint. Same reasoning at
+        // `leaves.before` in `AboveGround.swift`.
         rug.before(.push) {
             guard !trapDoor.isRevealed else { try reply(Prose.rugAlreadyMoved) }
             trapDoor.reveal()

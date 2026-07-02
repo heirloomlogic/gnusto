@@ -288,6 +288,11 @@ struct ZorkAboveGround: GameContent {
             say(Prose.mailboxEmbellishment)
         }
 
+        // Not `require`: that helper is hardwired to `refuse` (see
+        // `Sources/Gnusto/Declarations/Helpers.swift`), but "already moved"
+        // needs to fully own the turn's response (`reply`), not just block
+        // a default action with a complaint. Same reasoning at `rug.before`
+        // in `House.swift`.
         leaves.before(.push) {
             guard !grating.isRevealed else { try reply(Prose.leavesAlreadyMoved) }
             grating.reveal()

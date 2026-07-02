@@ -39,7 +39,25 @@ struct Zork1Tests {
             ])
     }
 
-    @Test func rugRevealsTrapDoorWhichSlamsShutInTheDarkCellar() async throws {
+    /// Documented Phase 7 seam, not a bug: a solo player who descends the
+    /// trap door without a light source is genuinely stuck in the cellar,
+    /// full stop, until Phase 7 lands light sources (a lit lantern) and the
+    /// grue. See the "Known soft-lock" entry in `FIDELITY.md` for the full
+    /// causal explanation — in short, `cellar.onEnter`
+    /// (`Sources/Zork1/House.swift`) slams the trap door shut on entry, the
+    /// cellar is `dark`, and the single early-return dark guard in
+    /// `Visibility.collect` (`Sources/Gnusto/Engine/Visibility.swift`) skips
+    /// both the room-contents walk and the door-folding loop, so the trap
+    /// door never becomes a resolvable noun from inside. Nothing in this
+    /// slice can reopen it from below.
+    ///
+    /// This test pins that current behavior end to end so a future engine
+    /// change (Phase 7) has to touch this assertion deliberately rather
+    /// than silently regress it: the slam, `up` refusing while the door is
+    /// closed, `open trap door` failing to resolve at all, and a further
+    /// `look` still reporting pitch black rather than a room — i.e. no
+    /// other command escapes either.
+    @Test func darkCellarSoftLockIsThePhase7Seam() async throws {
         // Reaches the Living Room via the kitchen window, then exercises the
         // Task 4 push-to-reveal pattern on the rug, opens the newly revealed
         // trap door, and descends into the (dark, stubbed) cellar — where
@@ -48,7 +66,7 @@ struct Zork1Tests {
             Zork1(),
             [
                 "south", "east", "open window", "west", "west",
-                "push rug", "open trap door", "down", "up", "open trap door",
+                "push rug", "open trap door", "down", "up", "open trap door", "look",
             ])
 
         expectInOrder(
@@ -63,14 +81,20 @@ struct Zork1Tests {
                 "The trap door is closed.",
             ])
 
-        // The final `open trap door`, attempted from inside the dark cellar:
-        // a dark room's scope collapses entirely (see
-        // `Sources/Gnusto/Engine/Visibility.swift`), so the door isn't even
-        // resolvable as a noun from in here — a real engine/content
-        // interaction, documented in FIDELITY.md, not an oversight in this
-        // test. The parser reports it can't see the door at all, rather than
-        // a `refuse`-level "it's locked"/"it's dark" message.
-        #expect(transcript.hasSuffix("You can't see any such thing.\n\n"))
+        // `open trap door`, attempted from inside the dark cellar: a dark
+        // room's scope collapses entirely (one early-return guard in
+        // `Visibility.collect` skips both the room-contents walk and the
+        // door-folding loop), so the door isn't even resolvable as a noun
+        // from in here — a real engine/content interaction, documented in
+        // FIDELITY.md, not an oversight in this test. The parser reports it
+        // can't see the door at all, rather than a `refuse`-level "it's
+        // locked"/"it's dark" message.
+        expectInOrder(transcript, ["You can't see any such thing."])
+
+        // No further escape: `look` from inside the sealed, dark cellar
+        // still reports pitch black rather than a room description — the
+        // soft-lock holds under repeated attempts, not just the first one.
+        #expect(transcript.hasSuffix("It is pitch black. You can't see a thing.\n\n"))
     }
 
     @Test func treeEggAndTrophyCase() async throws {
