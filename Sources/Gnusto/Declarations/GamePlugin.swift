@@ -27,9 +27,13 @@
 ///
 /// ## The host opts in by splicing
 ///
-/// The host stores the plugin as a plain property and splices its vocabulary
-/// and rules into its own blocks. `verbs` merges just like a game's own, and
-/// the plugin's rule factories return ``Rules`` the host composes in:
+/// The host stores the plugin as a plain property and splices its vocabulary,
+/// default actions, and rules into its own blocks. `verbs` and `actions` each
+/// merge just like a game's own, and the plugin's rule factories return
+/// ``Rules`` the host composes in. Together, `verbs` + `actions` let a plugin
+/// ship a whole verb behavior — vocabulary and stage-4 default — without any
+/// host rules at all; a host only needs its own rules to embellish or
+/// override that default for specific entities.
 ///
 /// ```swift
 /// struct LampShop: Game {
@@ -57,6 +61,13 @@ public protocol GamePlugin: Sendable {
     /// built-in table under the same last-wins policy.
     @VerbBuilder var verbs: [SyntaxRule] { get }
 
+    /// Stage-4 default actions the plugin contributes, in the same form as a
+    /// game's `actions`. Defaults to empty. Merged with the host's actions and
+    /// the built-in switch under the same last-wins policy — this is what
+    /// lets a plugin's verbs (like Phase 8's combat `attack`) actually do
+    /// something by default, not just parse.
+    @ActionBuilder var actions: [IntentAction] { get }
+
     /// Self-contained, world-scoped rules the plugin adds without needing
     /// anything from the host. Defaults to empty. Rules that must reference the
     /// host's own entities are exposed as parameterized methods instead.
@@ -66,6 +77,10 @@ public protocol GamePlugin: Sendable {
 extension GamePlugin {
     /// Plugins that add no verbs of their own can omit the `verbs` block.
     public var verbs: [SyntaxRule] { [] }
+
+    /// Plugins that replace or add no default actions can omit the `actions`
+    /// block.
+    public var actions: [IntentAction] { [] }
 
     /// Plugins with no self-contained rules can omit the `rules` block.
     public var rules: Rules { Rules(rules: []) }

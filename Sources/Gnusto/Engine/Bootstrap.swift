@@ -278,6 +278,27 @@ enum Bootstrap {
         }
         vocabulary.finalize()
 
+        // Phase 3b — assemble the stage-4 default-action overrides. Bundle
+        // actions are auto-collected like bundle verbs; a plugin's actions
+        // reach here only if the host splices them into its own `actions`
+        // block. Last-wins by intent: a row whose intent matches a built-in
+        // reclaims it, with the same non-fatal warning policy as verbs.
+        let customActions = game.actions + modules.flatMap { $0.actions }
+        var actionWarnings: [String] = []
+        var actionOverrides: [Intent: IntentAction] = [:]
+        for action in customActions {
+            if DefaultActions.builtInIntents.contains(action.intent) {
+                actionWarnings.append(
+                    "custom action for intent \"\(action.intent.raw)\" overrides its "
+                        + "built-in default behavior.")
+            } else if actionOverrides[action.intent] != nil {
+                actionWarnings.append(
+                    "custom action for intent \"\(action.intent.raw)\" overrides an "
+                        + "earlier custom action for the same intent.")
+            }
+            actionOverrides[action.intent] = action
+        }
+
         // Phase 4 — evaluate the rules block inside a registration frame, so
         // any stray live reads see the initial state rather than trapping.
         var definition = GameDefinition(
@@ -294,7 +315,8 @@ enum Bootstrap {
             registry: registry,
             vocabulary: vocabulary,
             syntaxRules: syntaxRules,
-            warnings: verbWarnings)
+            actionOverrides: actionOverrides,
+            warnings: verbWarnings + actionWarnings)
 
         let registrationFrame = TurnFrame(definition: definition, state: state)
         let declaredRules = Ctx.$frame.withValue(registrationFrame) {

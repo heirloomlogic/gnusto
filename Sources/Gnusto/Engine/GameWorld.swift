@@ -75,7 +75,13 @@ public actor GameWorld {
             do {
                 // Stages 1–3: world, location, and item `before` rules.
                 // Meta intents talk to the game program; no rules see them.
+                // `inBeforeRule` is set for the span of these stages so
+                // `proceed()` can recognize a legal call site; a rule that
+                // calls it runs stage 4 early and flips `defaultRan`, which
+                // stage 4 below checks to avoid running it twice.
                 if !intent.isMeta {
+                    frame.with { $0.inBeforeRule = true }
+                    defer { frame.with { $0.inBeforeRule = false } }
                     let here = frame.with { $0.state.playerLocation }
                     try run(rules.worldBefore, matching: intent)
                     try run(rules.locationBeforeEachTurn[here] ?? [], matching: intent)
@@ -88,8 +94,11 @@ public actor GameWorld {
                     }
                 }
 
-                // Stage 4: the default action.
-                try DefaultActions.run(command, frame: frame)
+                // Stage 4: the default action — skipped if a `before` rule
+                // already ran it early via `proceed()`.
+                if !frame.with({ $0.defaultRan }) {
+                    try DefaultActions.run(command, frame: frame)
+                }
 
                 // Stage 5: item and location `after` rules.
                 if !intent.isMeta {

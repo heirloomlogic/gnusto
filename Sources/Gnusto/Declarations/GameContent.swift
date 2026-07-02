@@ -36,6 +36,11 @@ public protocol GameContent: Sendable {
     /// built-in table under the same last-wins policy.
     @VerbBuilder var verbs: [SyntaxRule] { get }
 
+    /// Stage-4 default actions the bundle replaces or adds, in the same form
+    /// as a game's `actions`. Defaults to empty. Merged with the game's
+    /// actions and the built-in switch under the same last-wins policy.
+    @ActionBuilder var actions: [IntentAction] { get }
+
     /// Prefixes this bundle's entity IDs so its rooms/items/`@Global`s can't
     /// collide with the host game's or another bundle's. A bundle entity stored
     /// as `let hall = Location { … }` becomes `EntityID("\(namespace).hall")`,
@@ -58,6 +63,10 @@ extension GameContent {
 
     /// Bundles that add no verbs of their own can omit the `verbs` block.
     public var verbs: [SyntaxRule] { [] }
+
+    /// Bundles that replace or add no default actions can omit the `actions`
+    /// block.
+    public var actions: [IntentAction] { [] }
 
     /// By default a bundle namespaces its entities under its own type name, so
     /// each distinct bundle type gets a distinct prefix automatically.

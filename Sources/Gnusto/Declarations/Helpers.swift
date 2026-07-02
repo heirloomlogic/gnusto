@@ -31,3 +31,28 @@ public func reply(_ message: String) throws -> Never {
 public func end(won: Bool) throws -> Never {
     throw TurnInterrupt.gameOver(won: won)
 }
+
+/// Runs the stage-4 default action (a game/plugin override if one is
+/// registered for this intent, else the built-in) immediately, then returns
+/// so the calling rule can embellish the result — print something more, read
+/// state the default action changed, and so on.
+///
+/// Callable only from a `before` rule, and only once per turn: the pipeline
+/// skips its own stage-4 step once `proceed()` has run it. Calling it from an
+/// `after`/each-turn rule, or calling it twice, is a programmer error and
+/// traps with a clear message rather than silently double-running the
+/// default action.
+///
+/// ```swift
+/// mailbox.before(.open) {
+///     try proceed()                    // built-in open runs here
+///     say("A city map is tucked inside the lid.")
+/// }
+/// ```
+///
+/// If the default action throws (e.g. a built-in `open` refuses because the
+/// item is locked), that `TurnInterrupt` propagates out of `proceed()`
+/// exactly as it would have out of the pipeline's own stage 4.
+public func proceed() throws {
+    try Ctx.current.proceedToDefaultAction()
+}

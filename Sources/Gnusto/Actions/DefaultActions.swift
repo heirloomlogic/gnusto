@@ -1,8 +1,22 @@
 /// The built-in behavior of each intent, running under the same frame and
 /// with the same helpers as author rules — no privileged path.
 enum DefaultActions {
-    /// Runs the default action for a command.
+    /// Every intent the built-in switch below handles itself. Used by
+    /// Bootstrap to decide whether a game/bundle/plugin action row is
+    /// overriding a built-in (warning) or giving a fresh intent its first
+    /// default behavior (no warning).
+    static let builtInIntents: Set<Intent> = [
+        .take, .drop, .wear, .doff, .putOn, .putIn, .open, .close, .lock, .unlock,
+        .lookIn, .push, .go, .look, .examine, .read, .inventory, .score, .version, .quit,
+    ]
+
+    /// Runs the default action for a command: a game/bundle/plugin override
+    /// if one is registered for this intent, else the built-in switch.
     static func run(_ command: Command, frame: TurnFrame) throws {
+        if let override = frame.definition.actionOverrides[command.intent] {
+            try override.body()
+            return
+        }
         switch command.intent {
         case .take: try take(command, frame: frame)
         case .drop: try drop(command, frame: frame)

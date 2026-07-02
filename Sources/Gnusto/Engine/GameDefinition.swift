@@ -123,6 +123,11 @@ struct GameDefinition: Sendable {
     let registry: Registry
     let vocabulary: Vocabulary
     let syntaxRules: [SyntaxRule]
+    /// Stage-4 default actions supplied by the game and its bundles/plugins,
+    /// keyed by intent. Consulted before the built-in switch in
+    /// `DefaultActions.run`; an intent absent here falls through to the
+    /// built-in behavior (or "I didn't understand" for an unknown intent).
+    let actionOverrides: [Intent: IntentAction]
     /// Non-fatal bootstrap notes — e.g. a custom verb shadowing a built-in.
     /// Surfaced for tooling and tests; play proceeds regardless.
     let warnings: [String]
