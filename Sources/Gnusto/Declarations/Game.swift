@@ -61,6 +61,14 @@ public protocol Game: Sendable {
     /// cellar }` — so the bootstrap discovers those exact instances. Defaults
     /// to empty, in which case the game's own declarations are all there is.
     @ContentBuilder var content: GameContents { get }
+
+    /// Stage-4 default actions this game replaces or adds, keyed by intent.
+    ///
+    /// Each row gives an intent its default behavior — new, for a custom
+    /// intent the built-in switch doesn't know; or replacing a built-in's own
+    /// default. Defaults to empty. A row whose intent matches a built-in
+    /// reclaims it (last-wins, with a non-fatal warning).
+    @ActionBuilder var actions: [IntentAction] { get }
 }
 
 extension Game {
@@ -78,6 +86,10 @@ extension Game {
 
     /// Games authored as a single struct can omit the `content` block.
     public var content: GameContents { GameContents(modules: []) }
+
+    /// Games that replace or add no default actions can omit the `actions`
+    /// block.
+    public var actions: [IntentAction] { [] }
 
     /// The player character — usable as a bare identifier in `map` and
     /// `rules` blocks.

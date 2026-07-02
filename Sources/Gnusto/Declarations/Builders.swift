@@ -73,6 +73,14 @@ extension GnustoBuilder where Element == SyntaxRule {
     }
 }
 
+extension GnustoBuilder where Element == IntentAction {
+    /// Lets `actions` blocks splice a whole table at once — e.g. a plugin's
+    /// `combat.actions` — alongside individual `IntentAction` rows.
+    public static func buildExpression(_ table: [IntentAction]) -> [IntentAction] {
+        table
+    }
+}
+
 extension GnustoBuilder where Element == MapEntry {
     /// Lets `map` blocks compose from sub-maps.
     public static func buildExpression(_ map: WorldMap) -> [MapEntry] {

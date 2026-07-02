@@ -39,8 +39,14 @@ enum Bootstrap {
             let owner = namespace ?? "\(type(of: subject))"
 
             // Claims `id` for this owner, or records a collision and returns
-            // false if another declaration already took it.
+            // false if another declaration already took it. The bare `player`
+            // ID is reserved for the player's own placements (`Placement.heldBy`),
+            // so a host declaration (never namespaced) can't claim it.
             func claim(_ id: EntityID) -> Bool {
+                if id == .player {
+                    diagnostics.append(Self.reservedPlayerID(owner))
+                    return false
+                }
                 if let prior = declaredBy[id] {
                     diagnostics.append(Self.collision(id, prior, owner))
                     return false
@@ -101,6 +107,16 @@ enum Bootstrap {
         for (id, definition) in items where definition.name == nil {
             diagnostics.append("item \"\(id)\" has no name(…) trait.")
         }
+        for (id, definition) in locations where definition.hasDynamicDescriptionConflict {
+            diagnostics.append(
+                "location \"\(id)\" declares both a static description(…) and a "
+                    + "closure description { … }; a location may have only one.")
+        }
+        for (id, definition) in items where definition.hasDynamicDescriptionConflict {
+            diagnostics.append(
+                "item \"\(id)\" declares both a static description(…) and a "
+                    + "closure description { … }; an item may have only one.")
+        }
 
         // Phase 2 — evaluate the map block.
         var exits: [EntityID: [Direction: ExitTarget]] = [:]
@@ -151,6 +167,37 @@ enum Bootstrap {
                 }
                 exits[fromID, default: [:]][direction] = .blocked(message)
 
+            case .doorExit(let from, let direction, let to, let doorToken):
+                guard let fromID = resolveLocation(from, role: "a door exit"),
+                    let toID = resolveLocation(to, role: "the \(direction) exit")
+                else { continue }
+                guard let doorID = resolveItem(doorToken, role: "the \(direction) door") else {
+                    continue
+                }
+                // A door must be openable — otherwise `go` has no open state to
+                // gate on and the closed/open refusal is meaningless.
+                if items[doorID]?.isOpenable != true {
+                    diagnostics.append(
+                        "\"\(fromID)\"'s \(direction) exit uses \"\(doorID)\" as a door, "
+                            + "which is not declared openable.")
+                }
+                if exits[fromID]?[direction] != nil {
+                    diagnostics.append(
+                        "\"\(fromID)\" declares its \(direction) exit more than once.")
+                }
+                exits[fromID, default: [:]][direction] = .door(to: toID, door: doorID)
+
+            case .conditionalExit(let from, let direction, let to, let condition, let blocked):
+                guard let fromID = resolveLocation(from, role: "a conditional exit"),
+                    let toID = resolveLocation(to, role: "the \(direction) exit")
+                else { continue }
+                if exits[fromID]?[direction] != nil {
+                    diagnostics.append(
+                        "\"\(fromID)\" declares its \(direction) exit more than once.")
+                }
+                exits[fromID, default: [:]][direction] = .conditional(
+                    to: toID, condition: condition, blocked: blocked)
+
             case .placement(let itemToken, let target):
                 guard let itemID = resolveItem(itemToken, role: "a placement") else {
                     continue
@@ -178,12 +225,17 @@ enum Bootstrap {
                         let containerID = resolveItem(
                             token, role: "the placement of \"\(itemID)\"")
                     else { continue }
+                    if items[containerID]?.isContainer != true {
+                        diagnostics.append(
+                            "\"\(itemID)\" is placed inside \"\(containerID)\", which is "
+                                + "not declared as a container.")
+                    }
                     placements[itemID] = .inside(containerID)
                 case .worn:
-                    placements[itemID] = .held
+                    placements[itemID] = .heldBy(.player)
                     wornItems.insert(itemID)
                 case .held:
-                    placements[itemID] = .held
+                    placements[itemID] = .heldBy(.player)
                 }
 
             case .playerStart(let token):
@@ -198,6 +250,20 @@ enum Bootstrap {
             diagnostics.append("the map block never declares player.starts(in:).")
         }
 
+        // Resolve each lockable item's key token → EntityID onto its
+        // definition, mirroring how exit targets resolve their tokens. A key
+        // that is not a declared item is a fatal diagnostic.
+        for (id, definition) in items {
+            guard let keyToken = definition.lockKeyToken else { continue }
+            guard let keyID = registry.id(for: keyToken), registry.items[keyID] != nil else {
+                diagnostics.append(
+                    "\"\(id)\" is lockable with a key that is not a stored property "
+                        + "of the game or any of its content bundles.")
+                continue
+            }
+            items[id]?.lockKey = keyID
+        }
+
         guard diagnostics.isEmpty, let playerStart else {
             throw BootstrapError(diagnostics: diagnostics)
         }
@@ -210,12 +276,21 @@ enum Bootstrap {
         state.placements = placements
         state.wornItems = wornItems
         state.litRooms = Set(locations.filter(\.value.inherentlyLit).keys)
+        // Openable containers start open only with `startsOpen`; lockable items
+        // start locked unless `startsUnlocked`. Non-openable containers are
+        // implicitly open and never tracked in `openItems`.
+        state.openItems = Set(
+            items.filter { $0.value.isOpenable && $0.value.startsOpen }.keys)
+        state.lockedItems = Set(
+            items.filter { $0.value.isLockable && !$0.value.startsUnlocked }.keys)
 
         // Phase 3 — assemble the verb table and vocabulary. Built-ins first,
-        // then the verbs of the game and its bundles. A custom row whose verb
+        // then bundle verbs, then the host game's — so precedence runs
+        // built-ins < bundles/plugins < host game, and with last-wins the host
+        // beats a bundle that claims the same shape. A custom row whose verb
         // and shape match a built-in reclaims it (last-wins) with a non-fatal
         // warning, so an author can override a verb while keeping it visible.
-        let customVerbs = game.verbs + modules.flatMap { $0.verbs }
+        let customVerbs = modules.flatMap { $0.verbs } + game.verbs
         var verbWarnings: [String] = []
         let builtInKeys = Set(SyntaxRule.standardTable.map(\.key))
         for verb in customVerbs where builtInKeys.contains(verb.key) {
@@ -246,6 +321,30 @@ enum Bootstrap {
         }
         vocabulary.finalize()
 
+        // Phase 3b — assemble the stage-4 default-action overrides. Bundle
+        // actions are auto-collected like bundle verbs; a plugin's actions
+        // reach here only if the host splices them into its own `actions`
+        // block. Bundle actions come first, then the host game's — so
+        // precedence runs built-ins < bundles/plugins < host game, and a host
+        // action for the same intent beats a bundle's (last-wins), matching
+        // the verb merge. A row whose intent matches a built-in reclaims it,
+        // with the same non-fatal warning policy as verbs.
+        let customActions = modules.flatMap { $0.actions } + game.actions
+        var actionWarnings: [String] = []
+        var actionOverrides: [Intent: IntentAction] = [:]
+        for action in customActions {
+            if DefaultActions.builtInIntents.contains(action.intent) {
+                actionWarnings.append(
+                    "custom action for intent \"\(action.intent.raw)\" overrides the "
+                        + "built-in default of the same intent.")
+            } else if actionOverrides[action.intent] != nil {
+                actionWarnings.append(
+                    "custom action for intent \"\(action.intent.raw)\" overrides an "
+                        + "earlier custom action of the same intent.")
+            }
+            actionOverrides[action.intent] = action
+        }
+
         // Phase 4 — evaluate the rules block inside a registration frame, so
         // any stray live reads see the initial state rather than trapping.
         var definition = GameDefinition(
@@ -262,7 +361,8 @@ enum Bootstrap {
             registry: registry,
             vocabulary: vocabulary,
             syntaxRules: syntaxRules,
-            warnings: verbWarnings)
+            actionOverrides: actionOverrides,
+            warnings: verbWarnings + actionWarnings)
 
         let registrationFrame = TurnFrame(definition: definition, state: state)
         let declaredRules = Ctx.$frame.withValue(registrationFrame) {
@@ -325,6 +425,12 @@ enum Bootstrap {
     /// game and a bundle, or two different bundles.
     private static func collision(_ id: EntityID, _ first: String, _ second: String) -> String {
         "entity \"\(id)\" is declared by both \(first) and \(second)."
+    }
+
+    /// The diagnostic for a declaration that claims the reserved `"player"`
+    /// ID, which `Placement.heldBy(.player)` needs for itself.
+    private static func reservedPlayerID(_ owner: String) -> String {
+        "\"player\" is a reserved entity ID (declared by \(owner)); rename this declaration."
     }
 
     /// Keeps the last row for each `(verb, shape)` key, preserving relative

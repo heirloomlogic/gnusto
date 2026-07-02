@@ -2,12 +2,23 @@
 enum ExitTarget: Sendable {
     case to(EntityID)
     case blocked(String)
+    /// An exit through a shared door item; passable only while the door is open.
+    case door(to: EntityID, door: EntityID)
+    /// An exit gated by a live condition evaluated at `go` time; when the
+    /// condition is false the player is refused with `blocked`.
+    case conditional(to: EntityID, condition: @Sendable () -> Bool, blocked: String)
 }
 
 /// The immutable, declared facts about a location.
 struct LocationDefinition: Sendable {
     var name: String?
     var description: String?
+    /// A live description supplied via `description { … }`. Mutually
+    /// exclusive with `description` (a static string); Bootstrap reports a
+    /// diagnostic if both are declared. `hasDynamicDescriptionConflict`
+    /// records that conflict without losing which trait won.
+    var dynamicDescription: (@Sendable () -> String)?
+    var hasDynamicDescriptionConflict = false
     var inherentlyLit = true
     var customTraits: [String: StateValue] = [:]
 
@@ -15,7 +26,12 @@ struct LocationDefinition: Sendable {
         for trait in traits {
             switch trait.kind {
             case .name(let text): name = text
-            case .description(let text): description = text
+            case .description(let text):
+                if dynamicDescription != nil { hasDynamicDescriptionConflict = true }
+                description = text
+            case .dynamicDescription(let closure):
+                if description != nil { hasDynamicDescriptionConflict = true }
+                dynamicDescription = closure
             case .dark: inherentlyLit = false
             case .custom(let key, let value): customTraits[key] = value
             }
@@ -27,12 +43,32 @@ struct LocationDefinition: Sendable {
 struct ItemDefinition: Sendable {
     var name: String?
     var description: String?
+    /// A live description supplied via `description { … }`. Mutually
+    /// exclusive with `description` (a static string); Bootstrap reports a
+    /// diagnostic if both are declared. `hasDynamicDescriptionConflict`
+    /// records that conflict without losing which trait won.
+    var dynamicDescription: (@Sendable () -> String)?
+    var hasDynamicDescriptionConflict = false
     var adjectives: [String] = []
     var synonyms: [String] = []
     var firstSight: String?
     var isWearable = false
     var isScenery = false
     var isSurface = false
+    var isContainer = false
+    var isOpenable = false
+    var startsOpen = false
+    var isTransparent = false
+    var isLockable = false
+    var startsUnlocked = false
+    var capacity: Int?
+    /// The lock key's reference token, captured at declaration time. Bootstrap
+    /// resolves it into `lockKey` once the registry exists.
+    var lockKeyToken: RefToken?
+    /// The resolved lock key, filled in by Bootstrap. `nil` until then (and for
+    /// non-lockable items).
+    var lockKey: EntityID?
+    var isHidden = false
     var customTraits: [String: StateValue] = [:]
 
     /// Items are takable unless they're scenery.
@@ -42,13 +78,28 @@ struct ItemDefinition: Sendable {
         for trait in traits {
             switch trait.kind {
             case .name(let text): name = text
-            case .description(let text): description = text
+            case .description(let text):
+                if dynamicDescription != nil { hasDynamicDescriptionConflict = true }
+                description = text
+            case .dynamicDescription(let closure):
+                if description != nil { hasDynamicDescriptionConflict = true }
+                dynamicDescription = closure
             case .adjectives(let words): adjectives += words
             case .synonyms(let words): synonyms += words
             case .firstSight(let text): firstSight = text
             case .wearable: isWearable = true
             case .scenery: isScenery = true
             case .surface: isSurface = true
+            case .container: isContainer = true
+            case .openable: isOpenable = true
+            case .startsOpen: startsOpen = true
+            case .transparent: isTransparent = true
+            case .lockable(let key):
+                isLockable = true
+                lockKeyToken = key
+            case .startsUnlocked: startsUnlocked = true
+            case .capacity(let n): capacity = n
+            case .hidden: isHidden = true
             case .custom(let key, let value): customTraits[key] = value
             }
         }
@@ -99,6 +150,11 @@ struct GameDefinition: Sendable {
     let registry: Registry
     let vocabulary: Vocabulary
     let syntaxRules: [SyntaxRule]
+    /// Stage-4 default actions supplied by the game and its bundles/plugins,
+    /// keyed by intent. Consulted before the built-in switch in
+    /// `DefaultActions.run`; an intent absent here falls through to the
+    /// built-in behavior (or "I didn't understand" for an unknown intent).
+    let actionOverrides: [Intent: IntentAction]
     /// Non-fatal bootstrap notes — e.g. a custom verb shadowing a built-in.
     /// Surfaced for tooling and tests; play proceeds regardless.
     let warnings: [String]

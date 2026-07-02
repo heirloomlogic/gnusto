@@ -20,6 +20,77 @@ enum Messages {
     static let carrying = "You are carrying:"
     static let nothingWritten = "There's nothing written on that."
 
+    // MARK: - Containers
+
+    static let opened = "Opened."
+    static let closed = "Closed."
+    static let lockedMessage = "Locked."
+    static let unlockedMessage = "Unlocked."
+    static let cantOpenThat = "You can't open that."
+    static let cantCloseThat = "You can't close that."
+    static let alreadyOpen = "That's already open."
+    static let alreadyClosed = "That's already closed."
+    static let cantLockThat = "You can't lock that."
+    static let cantUnlockThat = "You can't unlock that."
+    static let alreadyLocked = "That's already locked."
+    static let alreadyUnlocked = "That's already unlocked."
+    static let wrongKey = "That doesn't fit the lock."
+    static let cantPutInThat = "You can't put things in that."
+    static let cantPutInItself = "You can't put something in itself."
+    static let noRoom = "There's no room."
+    static let cantMoveThat = "You can't move that."
+
+    /// The item resolved (it was visible to the parser), but a reachability
+    /// guard failed — you can see it, you just can't touch it (e.g. through a
+    /// shut glass jar). Distinct from `cantSeeAnySuchThing`, which is for a
+    /// noun that isn't in scope at all.
+    static func cantReach(_ name: String) -> String {
+        "You can't reach the \(name)."
+    }
+
+    /// Refusal for putting a container into something it (transitively)
+    /// contains — the ancestor-chain cycle case, distinct from putting an item
+    /// directly into itself.
+    static func cantPutInsideOwnContents(_ name: String) -> String {
+        "You can't put the \(name) inside something it contains."
+    }
+
+    /// The `putOn` counterpart to `cantPutInsideOwnContents`.
+    static func cantPutOntoOwnContents(_ name: String) -> String {
+        "You can't put the \(name) onto something it contains."
+    }
+
+    static func locked(_ name: String) -> String {
+        "The \(name) is locked."
+    }
+
+    static func closedContainer(_ name: String) -> String {
+        "The \(name) is closed."
+    }
+
+    static func emptyContainer(_ name: String) -> String {
+        "The \(name) is empty."
+    }
+
+    static func keyNotHeld(_ name: String) -> String {
+        "You aren't holding the \(name)."
+    }
+
+    static func putItemIn(_ name: String, _ container: String) -> String {
+        "You put the \(name) in the \(container)."
+    }
+
+    static func openingReveals(_ name: String, _ contentNames: [String]) -> String {
+        "Opening the \(name) reveals \(indefiniteList(contentNames))."
+    }
+
+    /// "In the X is a Y." / "In the X are a Y and a Z." — verb agreement
+    /// follows the content count.
+    static func inTheContainer(_ name: String, _ contentNames: [String]) -> String {
+        let verb = contentNames.count == 1 ? "is" : "are"
+        return "In the \(name) \(verb) \(indefiniteList(contentNames))."
+    }
+
     static func firstTakingOff(_ name: String) -> String {
         "(first taking off the \(name))"
     }
@@ -46,6 +117,10 @@ enum Messages {
 
     static func itemOnSurface(_ name: String, _ surface: String) -> String {
         "On the \(surface) is \(indefinite(name))."
+    }
+
+    static func itemInContainer(_ name: String, _ container: String) -> String {
+        "In the \(container) is \(indefinite(name))."
     }
 
     static func inventoryLine(_ name: String, isWorn: Bool) -> String {
@@ -82,11 +157,25 @@ enum Messages {
 
     /// The name with its indefinite article, for listings ("a velvet cloak",
     /// "an apple"). Standard action messages use "the" instead.
-    private static func indefinite(_ name: String) -> String {
+    static func indefinite(_ name: String) -> String {
         if let first = name.lowercased().first, "aeiou".contains(first) {
             "an \(name)"
         } else {
             "a \(name)"
+        }
+    }
+
+    /// Joins names with their indefinite articles into an English list ("a Y",
+    /// "a Y and a Z", "a Y, a Z, and a W") for contents listings.
+    static func indefiniteList(_ names: [String]) -> String {
+        let articled = names.map(indefinite)
+        guard let last = articled.last else { return "" }
+        switch articled.count {
+        case 1: return last
+        case 2: return "\(articled[0]) and \(last)"
+        default:
+            let allButLast = articled.dropLast().joined(separator: ", ")
+            return "\(allButLast), and \(last)"
         }
     }
 }

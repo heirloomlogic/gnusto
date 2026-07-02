@@ -6,6 +6,14 @@ struct Scratch: Sendable {
     var output: [String] = []
     var command: Command?
     var isLive = true
+    /// True while a stage 1–3 `before` rule body is executing — the only
+    /// context `proceed()` may be called from.
+    var inBeforeRule = false
+    /// Set once the stage-4 default action has run, whether via the
+    /// pipeline itself or a `proceed()` call from a `before` rule. Guards
+    /// against running it twice and tells the pipeline to skip its own
+    /// stage-4 step after a `proceed()`.
+    var defaultRan = false
 }
 
 /// The per-turn context every proxy reads and writes through.
@@ -78,10 +86,23 @@ final class TurnFrame: Sendable {
     }
 
     /// The current description of any entity: the runtime override if one
-    /// has been assigned, else the declared text.
+    /// has been assigned, else the live `description { … }` closure result
+    /// if one was declared, else the static declared text.
+    ///
+    /// The closure is called outside `with { … }` — it typically captures
+    /// proxies or `@Global`s that resolve via `Ctx.current`, which takes the
+    /// frame lock itself, so calling it while already holding the lock would
+    /// deadlock.
     func describedText(of id: EntityID) -> String {
-        with { $0.state.descriptionOverrides[id] }
-            ?? definition.items[id]?.description
+        if let override = with({ $0.state.descriptionOverrides[id] }) {
+            return override
+        }
+        if let dynamic = definition.items[id]?.dynamicDescription
+            ?? definition.locations[id]?.dynamicDescription
+        {
+            return dynamic()
+        }
+        return definition.items[id]?.description
             ?? definition.locations[id]?.description
             ?? ""
     }
@@ -99,6 +120,38 @@ final class TurnFrame: Sendable {
 
     func say(_ text: String) {
         with { $0.output.append(text) }
+    }
+
+    /// Runs the stage-4 default action for the current command immediately,
+    /// on behalf of `proceed()`. Only valid from inside a `before` rule body,
+    /// and only once per turn; both are programmer errors, not player-facing
+    /// conditions, so they trap. Setting `defaultRan` here is also what tells
+    /// the pipeline's stage 1–3 sequence (see `GameWorld.runBefore`) to skip
+    /// every before-phase still ahead of the calling rule — see `proceed()`'s
+    /// doc comment for the full behavior.
+    func proceedToDefaultAction() throws {
+        let (inBeforeRule, alreadyRan) = with { scratch in
+            (scratch.inBeforeRule, scratch.defaultRan)
+        }
+        guard inBeforeRule else {
+            fatalError(
+                """
+                Gnusto: proceed() was called outside a `before` rule. It runs \
+                the stage-4 default action early, so it only makes sense from \
+                a rule that runs ahead of that stage — not from an `after` or \
+                each-turn rule, and not from the default action itself.
+                """)
+        }
+        guard !alreadyRan else {
+            fatalError(
+                """
+                Gnusto: proceed() was called twice in the same turn. The \
+                stage-4 default action already ran; calling it again would run \
+                it a second time.
+                """)
+        }
+        with { $0.defaultRan = true }
+        try DefaultActions.run(command, frame: self)
     }
 }
 

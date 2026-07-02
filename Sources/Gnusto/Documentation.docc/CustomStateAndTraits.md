@@ -40,25 +40,30 @@ The type needs only `Codable` and `Sendable` — not `Hashable`. The boxed bytes
 
 ## Custom traits
 
-Declare a custom property inside an `Item { … }` or `Location { … }` block with `trait(_:_:)`. The value is boxed with the same rule as a `@Global`, so a scalar or a whole struct both work:
+Declare a typed key once, then use it to declare a custom property inside an `Item { … }` or `Location { … }` block with `trait(_:_:)`. The value is boxed with the same rule as a `@Global`, so a scalar or a whole struct both work:
 
 ```swift
+extension TraitKey<Int> { static let price = Self("price") }
+extension TraitKey<String> { static let region = Self("region") }
+
 let lantern = Item {
     name("brass lantern")
-    trait("price", 5)
+    trait(.price, 5)
 }
 
 let docks = Location {
     name("The Docks")
-    trait("region", "waterfront")
+    trait(.region, "waterfront")
 }
 ```
 
-Read it back on the live proxy with the typed accessor, which returns `nil` when the trait is absent or stored as a different type:
+Read it back on the live proxy with the typed subscript, which returns `nil` when the trait is absent or stored as a different type:
 
 ```swift
-let price = lantern.trait("price", as: Int.self) ?? 0
+let price = lantern[.price] ?? 0
 ```
+
+A key declared with a default (`TraitKey("weight", default: 1)`) can be read as a non-optional `V` through `item[default: .weight]` instead.
 
 Custom traits are **immutable declared facts** — they never touch the world state. For per-entity state that *changes* during play (an item's current charge, a creature's HP), use a `@Global` keyed however your system needs; traits are for the fixed properties an entity is born with.
 
@@ -68,7 +73,7 @@ The engine never switches on a custom trait or a `.data` global — it only bran
 
 ## Worked example
 
-`Tests/GnustoTests/Support/CustomStateGames.swift` builds `ShopGame`: a `Purse` struct held in a `@Global`, a lantern with a `trait("price", 5)`, and a game-defined `buy` verb whose rule reads the price and debits the purse — the commerce plugin in miniature. `CustomStateTests` boots it and confirms the struct global round-trips through save/restore, the custom trait reads back through the typed accessor, and absent/wrong-type reads return `nil`.
+`Tests/GnustoTests/Support/CustomStateGames.swift` builds `ShopGame`: a `Purse` struct held in a `@Global`, a lantern with a `trait(.price, 5)`, and a game-defined `buy` verb whose rule reads the price and debits the purse — the commerce plugin in miniature. `CustomStateTests` boots it and confirms the struct global round-trips through save/restore, the custom trait reads back through the typed subscript, and absent/wrong-type reads return `nil`.
 
 ## See also
 

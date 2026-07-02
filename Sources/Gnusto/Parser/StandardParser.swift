@@ -10,9 +10,11 @@ struct ParsedCommand: Equatable {
     var rawInput: String
 }
 
-/// What the player can currently refer to.
+/// What the player can currently refer to: the *visible* item set. You can
+/// name what you can see (even through a shut glass jar); the actions enforce
+/// reachability separately.
 struct Scope: Sendable {
-    let reachableItems: Set<EntityID>
+    let visibleItems: Set<EntityID>
 }
 
 /// Pure-function parser: tokenize → noise strip → verb match (longest first)
@@ -173,7 +175,7 @@ struct StandardParser {
     /// Resolves a noun phrase against scope: every token must be one of the
     /// item's words, and the final token must be a noun.
     private func resolve(_ tokens: [String], in scope: Scope) -> Result<EntityID, ParseError> {
-        let matches = scope.reachableItems.filter { id in
+        let matches = scope.visibleItems.filter { id in
             vocabulary.itemLexicons[id]?.matches(tokens) == true
         }
 

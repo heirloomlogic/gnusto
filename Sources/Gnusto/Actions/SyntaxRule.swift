@@ -107,6 +107,27 @@ extension SyntaxRule {
         .init("hang", slots: .directPrepIndirect("on"), intent: .putOn),
         .init("place", slots: .directPrepIndirect("on"), intent: .putOn),
 
+        // putIn
+        .init("put", slots: .directPrepIndirect("in"), intent: .putIn),
+        .init("put", slots: .directPrepIndirect("into"), intent: .putIn),
+
+        // open / close
+        .init("open", slots: .direct, intent: .open),
+        .init("close", slots: .direct, intent: .close),
+        .init("shut", slots: .direct, intent: .close),
+
+        // lock / unlock
+        .init("lock", slots: .directPrepIndirect("with"), intent: .lock),
+        .init("unlock", slots: .directPrepIndirect("with"), intent: .unlock),
+
+        // lookIn / search
+        .init("look", "in", slots: .direct, intent: .lookIn),
+        .init("search", slots: .direct, intent: .lookIn),
+
+        // push
+        .init("push", slots: .direct, intent: .push),
+        .init("move", slots: .direct, intent: .push),
+
         // movement
         .init("go", slots: .direction, intent: .go),
         .init("walk", slots: .direction, intent: .go),

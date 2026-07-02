@@ -84,6 +84,27 @@ struct BrokenGame: Game {
     }
 }
 
+/// Declares a stored `Item` property literally named `player`, which collides
+/// with the reserved `EntityID("player")` that `Placement.heldBy` uses for the
+/// player character. The bootstrap must report this as a fatal diagnostic.
+struct PlayerIDCollisionGame: Game {
+    let title = "PlayerIDCollision"
+    let intro = ""
+
+    let hall = Location {
+        name("Hall")
+        description("A hall.")
+    }
+
+    let player = Item {
+        name("impostor")
+    }
+
+    var map: WorldMap {
+        hall.east(hall)
+    }
+}
+
 /// Rules that emit stage markers so tests can assert pipeline ordering and
 /// refusal semantics from the transcript alone.
 struct OrderProbeGame: Game {
@@ -168,7 +189,9 @@ struct ProxyProbeGame: Game {
             counter += 3
             candle.description = "Now dusted with fingerprints."
             player.score += 5
-            say("lit=\(porch.isLit) here=\(player.location == porch) counter=\(counter)")
+            say(
+                "lit=\(porch.isLit) here=\(player.location == porch) "
+                    + "counter=\(counter) heldBefore=\(candle.isHeld)")
         }
         candle.after(.take) {
             porch.isLit = false

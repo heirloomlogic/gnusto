@@ -32,7 +32,7 @@ struct BootstrapTests {
         #expect(state.litRooms.contains(EntityID("den")))
         #expect(!state.litRooms.contains(EntityID("cellar")))
         #expect(state.placements[EntityID("coin")] == .on(EntityID("table")))
-        #expect(state.placements[EntityID("hat")] == .held)
+        #expect(state.placements[EntityID("hat")] == .heldBy(.player))
     }
 
     @Test func brokenGameReportsAllProblemsAtOnce() {
@@ -46,6 +46,15 @@ struct BootstrapTests {
                 && text.contains("player.starts(in:)")  // missing start
                 && text.contains("no name(…) trait")  // nameless item
                 && bootstrapError.diagnostics.count >= 4
+        }
+    }
+
+    @Test func storedPropertyNamedPlayerIsRejected() {
+        #expect {
+            try Bootstrap.build(PlayerIDCollisionGame())
+        } throws: { error in
+            guard let bootstrapError = error as? BootstrapError else { return false }
+            return bootstrapError.description.contains("\"player\" is a reserved entity ID")
         }
     }
 

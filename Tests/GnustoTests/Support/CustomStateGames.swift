@@ -8,6 +8,16 @@ struct Purse: Codable, Sendable, Equatable, GlobalValue {
     var coins: Int
 }
 
+/// Typed keys for the custom traits these fixtures share across files —
+/// `price` (an item's cost in coins) and `weight` — declared once here so
+/// `CommerceGame.swift` and `ShrineContent.swift` can reuse them instead of
+/// redeclaring the same `TraitKey` under a different name.
+extension TraitKey<Int> {
+    static let price = Self("price")
+    static let weight = Self("weight")
+    static let value = Self("value")
+}
+
 /// Exercises Phase 3: rich custom `@Global` state (a `Purse` struct) plus a
 /// custom item trait (`price`), driven by a game-defined `buy` verb whose
 /// rule reads the trait and mutates the struct global. This is the Phase 4
@@ -28,7 +38,7 @@ struct ShopGame: Game {
         name("brass lantern")
         adjectives("brass")
         description("A well-made brass lantern.")
-        trait("price", 5)
+        trait(.price, 5)
     }
 
     var map: WorldMap {
@@ -42,7 +52,7 @@ struct ShopGame: Game {
 
     var rules: Rules {
         lantern.before(Intent("buy")) {
-            let price = lantern.trait("price", as: Int.self) ?? 0
+            let price = lantern[.price] ?? 0
             guard purse.coins >= price else {
                 try refuse("You can't afford the brass lantern; it costs \(price) coins.")
             }
@@ -50,6 +60,13 @@ struct ShopGame: Game {
             try reply("You buy the brass lantern for \(price) coins. You have \(purse.coins) left.")
         }
     }
+}
+
+extension TraitKey<String> {
+    /// Never actually stored under this key by any fixture — used only to
+    /// probe the wrong-type read below (the sign's `weight` is stored as an
+    /// `.int`, so reading it back as `String` must yield `nil`).
+    static let weightAsWrongType = Self("weight")
 }
 
 /// A probe game for the `nil` paths of the custom-trait accessor: the sign
@@ -68,7 +85,7 @@ struct TraitProbeGame: Game {
         name("iron sign")
         adjectives("iron")
         description("A heavy iron sign.")
-        trait("weight", 40)
+        trait(.weight, 40)
     }
 
     var map: WorldMap {
@@ -78,8 +95,8 @@ struct TraitProbeGame: Game {
 
     var rules: Rules {
         sign.before(.examine) {
-            let missing = sign.trait("price", as: Int.self)
-            let wrongType = sign.trait("weight", as: String.self)
+            let missing = sign[.price]
+            let wrongType = sign[.weightAsWrongType]
             try reply("missing=\(missing as Int?) wrongType=\(wrongType as String?)")
         }
     }

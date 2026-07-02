@@ -32,9 +32,15 @@ public protocol GameContent: Sendable {
     @RuleBuilder var rules: Rules { get }
 
     /// Player-typeable verbs the bundle adds, in the same form as a game's
-    /// `verbs`. Defaults to empty. Merged with the game's verbs and the
-    /// built-in table under the same last-wins policy.
+    /// `verbs`. Defaults to empty. Precedence runs built-ins < bundles/plugins
+    /// < host game, so a host verb of the same shape beats this one.
     @VerbBuilder var verbs: [SyntaxRule] { get }
+
+    /// Stage-4 default actions the bundle replaces or adds, in the same form
+    /// as a game's `actions`. Defaults to empty. Precedence runs built-ins <
+    /// bundles/plugins < host game, so a host action for the same intent beats
+    /// this one.
+    @ActionBuilder var actions: [IntentAction] { get }
 
     /// Prefixes this bundle's entity IDs so its rooms/items/`@Global`s can't
     /// collide with the host game's or another bundle's. A bundle entity stored
@@ -58,6 +64,10 @@ extension GameContent {
 
     /// Bundles that add no verbs of their own can omit the `verbs` block.
     public var verbs: [SyntaxRule] { [] }
+
+    /// Bundles that replace or add no default actions can omit the `actions`
+    /// block.
+    public var actions: [IntentAction] { [] }
 
     /// By default a bundle namespaces its entities under its own type name, so
     /// each distinct bundle type gets a distinct prefix automatically.

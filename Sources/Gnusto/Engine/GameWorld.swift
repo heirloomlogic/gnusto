@@ -75,21 +75,35 @@ public actor GameWorld {
             do {
                 // Stages 1–3: world, location, and item `before` rules.
                 // Meta intents talk to the game program; no rules see them.
+                // `inBeforeRule` is set for the span of these stages so
+                // `proceed()` can recognize a legal call site; a rule that
+                // calls it runs stage 4 early and flips `defaultRan`. Once
+                // that flag is set, `run` (below) skips every remaining
+                // before-phase for the rest of this sequence — `proceed()`
+                // means "run the default now", so later before-guards for
+                // this command are moot and must not run. Stage 4's own
+                // call site (further down) checks the same flag to avoid
+                // running the default a second time.
                 if !intent.isMeta {
+                    frame.with { $0.inBeforeRule = true }
+                    defer { frame.with { $0.inBeforeRule = false } }
                     let here = frame.with { $0.state.playerLocation }
-                    try run(rules.worldBefore, matching: intent)
-                    try run(rules.locationBeforeEachTurn[here] ?? [], matching: intent)
-                    try run(rules.locationBefore[here] ?? [], matching: intent)
+                    try runBefore(rules.worldBefore, matching: intent, frame: frame)
+                    try runBefore(rules.locationBeforeEachTurn[here] ?? [], matching: intent, frame: frame)
+                    try runBefore(rules.locationBefore[here] ?? [], matching: intent, frame: frame)
                     if let indirect = command.indirectObject {
-                        try run(rules.itemBefore[indirect.id] ?? [], matching: intent)
+                        try runBefore(rules.itemBefore[indirect.id] ?? [], matching: intent, frame: frame)
                     }
                     if let direct = command.directObject {
-                        try run(rules.itemBefore[direct.id] ?? [], matching: intent)
+                        try runBefore(rules.itemBefore[direct.id] ?? [], matching: intent, frame: frame)
                     }
                 }
 
-                // Stage 4: the default action.
-                try DefaultActions.run(command, frame: frame)
+                // Stage 4: the default action — skipped if a `before` rule
+                // already ran it early via `proceed()`.
+                if !frame.with({ $0.defaultRan }) {
+                    try DefaultActions.run(command, frame: frame)
+                }
 
                 // Stage 5: item and location `after` rules.
                 if !intent.isMeta {
@@ -127,6 +141,20 @@ public actor GameWorld {
         }
 
         return commit(frame)
+    }
+
+    /// Runs a stage 1–3 before-phase's rules — but not once a rule earlier in
+    /// this turn's before-sequence has already called `proceed()`. Once the
+    /// default action has run early, every remaining before rule is skipped:
+    /// `proceed()` means "run the default now, I take responsibility," so a
+    /// guard that hasn't run yet never gets the chance to refuse an action
+    /// that already happened. The check sits *inside* the loop so a sibling
+    /// rule later in this same phase is skipped too, not just later phases.
+    private func runBefore(_ rules: [Rule], matching intent: Intent, frame: TurnFrame) throws {
+        for rule in rules where rule.matches(intent) {
+            guard !frame.with({ $0.defaultRan }) else { return }
+            try rule.body()
+        }
     }
 
     private func run(_ rules: [Rule], matching intent: Intent) throws {
@@ -170,31 +198,14 @@ public actor GameWorld {
     }
 
     /// What the player can currently refer to: carried and worn items always;
-    /// the room's contents (one surface/container level deep) only with light.
+    /// with light, the room's contents descended through surfaces and visible
+    /// containers. Parser scope keys off *visible* items — you can name what you
+    /// can see, even through a shut glass jar; the actions enforce
+    /// reachability.
     private func currentScope() -> Scope {
-        var reachable: Set<EntityID> = []
         let here = state.playerLocation
-
-        for (id, placement) in state.placements where placement == .held {
-            reachable.insert(id)
-        }
-
-        if !state.isDark(at: here) {
-            for (id, placement) in state.placements {
-                switch placement {
-                case .room(here):
-                    reachable.insert(id)
-                case .on(let surface) where state.placements[surface] == .room(here):
-                    reachable.insert(id)
-                case .inside(let container) where state.placements[container] == .room(here):
-                    reachable.insert(id)
-                default:
-                    break
-                }
-            }
-        }
-
-        return Scope(reachableItems: reachable)
+        let visible = Visibility.visibleItems(at: here, definition: definition, state: state)
+        return Scope(visibleItems: visible)
     }
 
     private func commit(_ frame: TurnFrame) -> TurnResult {

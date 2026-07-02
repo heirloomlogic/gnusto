@@ -1,7 +1,9 @@
 /// Where an item currently is.
 public enum Placement: Hashable, Sendable, Codable {
     case room(EntityID)
-    case held
+    /// Carried by the entity with this ID — the player today; an NPC once
+    /// characters gain inventories of their own.
+    case heldBy(EntityID)
     case on(EntityID)
     case inside(EntityID)
     /// Offstage — declared but not yet in play.
@@ -26,6 +28,13 @@ struct WorldState: Sendable, Codable {
     var playerLocation: EntityID
     var litRooms: Set<EntityID> = []
     var wornItems: Set<EntityID> = []
+    /// Openable containers that are currently open. A container without the
+    /// `openable` trait is always open and never appears here.
+    var openItems: Set<EntityID> = []
+    /// Lockable items that are currently locked.
+    var lockedItems: Set<EntityID> = []
+    /// Hidden items that have been revealed and are now perceivable normally.
+    var revealedItems: Set<EntityID> = []
     var score = 0
     var moves = 0
     var touched: Set<EntityID> = []
@@ -33,11 +42,4 @@ struct WorldState: Sendable, Codable {
     var descriptionOverrides: [EntityID: String] = [:]
     var globals: [EntityID: StateValue] = [:]
     var status: GameStatus = .playing
-
-    /// The one darkness predicate, shared by the room describer, the parser
-    /// scope, and the perception defaults.
-    /// Seam: when light-providing items exist, check their presence here.
-    func isDark(at locationID: EntityID) -> Bool {
-        !litRooms.contains(locationID)
-    }
 }

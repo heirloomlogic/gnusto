@@ -11,11 +11,12 @@ struct ProxyFrameTests {
             ["take candle", "examine candle", "score", "look"])
 
         // Inside the take turn: reads of isLit, player.location equality,
-        // and the @Global increment all see live values.
+        // and the @Global increment all see live values. `isHeld` reflects
+        // `Placement.heldBy(.player)`: false before the take, true after.
         expectInOrder(
             transcript,
             [
-                "lit=true here=true counter=3",
+                "lit=true here=true counter=3 heldBefore=false",
                 "Taken.",
                 "held=true worn=false",
             ])
