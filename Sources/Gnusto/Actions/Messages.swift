@@ -169,13 +169,13 @@ enum Messages {
     /// "a Y and a Z", "a Y, a Z, and a W") for contents listings.
     static func indefiniteList(_ names: [String]) -> String {
         let articled = names.map(indefinite)
+        guard let last = articled.last else { return "" }
         switch articled.count {
-        case 0: return ""
-        case 1: return articled[0]
-        case 2: return "\(articled[0]) and \(articled[1])"
+        case 1: return last
+        case 2: return "\(articled[0]) and \(last)"
         default:
             let allButLast = articled.dropLast().joined(separator: ", ")
-            return "\(allButLast), and \(articled.last!)"
+            return "\(allButLast), and \(last)"
         }
     }
 }
