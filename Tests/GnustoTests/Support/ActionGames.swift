@@ -230,3 +230,40 @@ struct EarlyProceedSkipsLaterGuardsGame: Game {
         }
     }
 }
+
+/// A fixture proving `proceed()` also skips a *sibling* rule in the SAME
+/// before-phase — not just later phases. Two `world.before(.take)` rules land
+/// in the one `worldBefore` sequence; the first calls `proceed()`, and the
+/// second (which would mark itself and refuse) must never run once the default
+/// has fired. If the sibling ran, "SIBLING RAN" would appear after the take
+/// succeeds; it must not.
+struct EarlyProceedSkipsSiblingInSamePhaseGame: Game {
+    let title = "Early Proceed Sibling"
+    let intro = "A workshop."
+
+    let workshop = Location {
+        name("Workshop")
+        description("A cluttered workshop.")
+    }
+
+    let wrench = Item {
+        name("iron wrench")
+        adjectives("iron")
+    }
+
+    var map: WorldMap {
+        player.starts(in: workshop)
+        wrench.starts(in: workshop)
+    }
+
+    var rules: Rules {
+        world.before(.take) {
+            try proceed()
+            say("The first world rule lets you take it.")
+        }
+        world.before(.take) {
+            say("SIBLING RAN")
+            try refuse("The second world rule refuses.")
+        }
+    }
+}

@@ -143,15 +143,16 @@ public actor GameWorld {
         return commit(frame)
     }
 
-    /// Runs a stage 1–3 before-phase's rules — but not if a rule earlier in
-    /// this same sequence already called `proceed()`. Once the default
-    /// action has run early, every later before-phase for this command is
-    /// skipped: `proceed()` means "run the default now, I take
-    /// responsibility," so a guard that hasn't run yet never gets the
-    /// chance to refuse an action that already happened.
+    /// Runs a stage 1–3 before-phase's rules — but not once a rule earlier in
+    /// this turn's before-sequence has already called `proceed()`. Once the
+    /// default action has run early, every remaining before rule is skipped:
+    /// `proceed()` means "run the default now, I take responsibility," so a
+    /// guard that hasn't run yet never gets the chance to refuse an action
+    /// that already happened. The check sits *inside* the loop so a sibling
+    /// rule later in this same phase is skipped too, not just later phases.
     private func runBefore(_ rules: [Rule], matching intent: Intent, frame: TurnFrame) throws {
-        guard !frame.with({ $0.defaultRan }) else { return }
         for rule in rules where rule.matches(intent) {
+            guard !frame.with({ $0.defaultRan }) else { return }
             try rule.body()
         }
     }
@@ -204,7 +205,7 @@ public actor GameWorld {
     private func currentScope() -> Scope {
         let here = state.playerLocation
         let visible = Visibility.visibleItems(at: here, definition: definition, state: state)
-        return Scope(reachableItems: visible)
+        return Scope(visibleItems: visible)
     }
 
     private func commit(_ frame: TurnFrame) -> TurnResult {

@@ -58,11 +58,12 @@ public func end(won: Bool) throws -> Never {
 /// the indirect or direct object — and only once per turn. `proceed()` means
 /// "run the default now; I take responsibility": once it runs, the pipeline
 /// skips its own stage-4 step (so the default doesn't run twice) *and*
-/// skips every remaining stage 1–3 before-phase still ahead of the calling
-/// rule in this turn's sequence. A guard written as a later `before` rule —
-/// for example an `item.before` rule on the direct object when `proceed()`
-/// was called from `world.before` — never gets to run, so it can't refuse an
-/// action that has already happened. Calling it from an `after`/each-turn
+/// skips every remaining before rule still ahead of the calling rule in this
+/// turn's sequence — including later rules in the same before-phase, not just
+/// later phases. A guard written as a later `before` rule — whether a sibling
+/// in the same phase or an `item.before` rule on the direct object when
+/// `proceed()` was called from `world.before` — never gets to run, so it
+/// can't refuse an action that has already happened. Calling it from an `after`/each-turn
 /// rule, or calling it twice, is a programmer error and traps with a clear
 /// message rather than silently double-running the default action.
 ///
