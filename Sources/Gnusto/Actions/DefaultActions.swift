@@ -334,12 +334,37 @@ enum DefaultActions {
         case .blocked(let message):
             try refuse(message)
         case .to(let destination):
-            frame.with { $0.state.playerLocation = destination }
-            for rule in frame.definition.rules.locationOnEnter[destination] ?? [] {
-                try rule.body()
+            try enter(destination, frame: frame)
+        case .door(let destination, let doorID):
+            // A hidden door isn't there yet: behave as if the exit doesn't
+            // exist until it's revealed. Once revealed, a closed door blocks
+            // (its locked state only surfaces when the player tries to OPEN it).
+            let (revealed, isOpen, name) = frame.with { scratch -> (Bool, Bool, String) in
+                (
+                    Visibility.isPerceivable(doorID, definition: frame.definition, state: scratch.state),
+                    Visibility.isOpen(doorID, definition: frame.definition, state: scratch.state),
+                    frame.definition.items[doorID]?.name ?? doorID.raw
+                )
             }
-            RoomDescriber.describeCurrentLocation(mode: .entry, frame: frame)
+            guard revealed else { try refuse(Messages.cantGoThatWay) }
+            guard isOpen else { try refuse(Messages.closedContainer(name)) }
+            try enter(destination, frame: frame)
+        case .conditional(let destination, let condition, let blocked):
+            // Evaluate the gate inside the live frame so its closure sees the
+            // current turn's state (globals, proxies) via `Ctx.current`.
+            guard condition() else { try refuse(blocked) }
+            try enter(destination, frame: frame)
         }
+    }
+
+    /// Moves the player into `destination`, running its onEnter rules and then
+    /// describing the room. Shared by every passable exit kind.
+    private static func enter(_ destination: EntityID, frame: TurnFrame) throws {
+        frame.with { $0.state.playerLocation = destination }
+        for rule in frame.definition.rules.locationOnEnter[destination] ?? [] {
+            try rule.body()
+        }
+        RoomDescriber.describeCurrentLocation(mode: .entry, frame: frame)
     }
 
     private static func examine(_ command: Command, frame: TurnFrame) throws {

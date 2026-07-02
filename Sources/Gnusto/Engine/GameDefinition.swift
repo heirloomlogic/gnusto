@@ -2,6 +2,11 @@
 enum ExitTarget: Sendable {
     case to(EntityID)
     case blocked(String)
+    /// An exit through a shared door item; passable only while the door is open.
+    case door(to: EntityID, door: EntityID)
+    /// An exit gated by a live condition evaluated at `go` time; when the
+    /// condition is false the player is refused with `blocked`.
+    case conditional(to: EntityID, condition: @Sendable () -> Bool, blocked: String)
 }
 
 /// The immutable, declared facts about a location.

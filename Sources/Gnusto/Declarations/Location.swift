@@ -93,73 +93,42 @@ public struct Location: Sendable, Equatable {
 
     // MARK: - Map factories
 
-    /// An exit leading north to `to`.
-    public func north(_ to: Location) -> MapEntry { exit(.north, to) }
-    /// An exit leading south to `to`.
-    public func south(_ to: Location) -> MapEntry { exit(.south, to) }
-    /// An exit leading east to `to`.
-    public func east(_ to: Location) -> MapEntry { exit(.east, to) }
-    /// An exit leading west to `to`.
-    public func west(_ to: Location) -> MapEntry { exit(.west, to) }
-    /// An exit leading northeast to `to`.
-    public func northeast(_ to: Location) -> MapEntry { exit(.northeast, to) }
-    /// An exit leading northwest to `to`.
-    public func northwest(_ to: Location) -> MapEntry { exit(.northwest, to) }
-    /// An exit leading southeast to `to`.
-    public func southeast(_ to: Location) -> MapEntry { exit(.southeast, to) }
-    /// An exit leading southwest to `to`.
-    public func southwest(_ to: Location) -> MapEntry { exit(.southwest, to) }
-    /// An exit leading up to `to`.
-    public func up(_ to: Location) -> MapEntry { exit(.up, to) }
-    /// An exit leading down to `to`.
-    public func down(_ to: Location) -> MapEntry { exit(.down, to) }
-    /// An exit leading in to `to`.
-    public func `in`(_ to: Location) -> MapEntry { exit(.in, to) }
-    /// An exit leading out to `to`.
-    public func out(_ to: Location) -> MapEntry { exit(.out, to) }
+    // Per-direction sugar (`north`, `down`, `west`, …) lives in
+    // `LocationExits.swift`, generated from one private helper per exit kind so
+    // the direction names stay a single family and this file stays lean. All of
+    // it funnels into the four general `exit(_:…)` forms below.
 
-    /// A north exit blocked with the given refusal message.
-    public func north(blocked message: String) -> MapEntry { blockedExit(.north, message) }
-    /// A south exit blocked with the given refusal message.
-    public func south(blocked message: String) -> MapEntry { blockedExit(.south, message) }
-    /// An east exit blocked with the given refusal message.
-    public func east(blocked message: String) -> MapEntry { blockedExit(.east, message) }
-    /// A west exit blocked with the given refusal message.
-    public func west(blocked message: String) -> MapEntry { blockedExit(.west, message) }
-    /// A northeast exit blocked with the given refusal message.
-    public func northeast(blocked message: String) -> MapEntry { blockedExit(.northeast, message) }
-    /// A northwest exit blocked with the given refusal message.
-    public func northwest(blocked message: String) -> MapEntry { blockedExit(.northwest, message) }
-    /// A southeast exit blocked with the given refusal message.
-    public func southeast(blocked message: String) -> MapEntry { blockedExit(.southeast, message) }
-    /// A southwest exit blocked with the given refusal message.
-    public func southwest(blocked message: String) -> MapEntry { blockedExit(.southwest, message) }
-    /// An up exit blocked with the given refusal message.
-    public func up(blocked message: String) -> MapEntry { blockedExit(.up, message) }
-    /// A down exit blocked with the given refusal message.
-    public func down(blocked message: String) -> MapEntry { blockedExit(.down, message) }
-    /// An in exit blocked with the given refusal message.
-    public func `in`(blocked message: String) -> MapEntry { blockedExit(.in, message) }
-    /// An out exit blocked with the given refusal message.
-    public func out(blocked message: String) -> MapEntry { blockedExit(.out, message) }
-
-    /// The general form behind the per-direction sugar, for exits chosen
-    /// dynamically (e.g. built in a loop).
+    /// The general destination exit, for directions chosen dynamically
+    /// (e.g. built in a loop).
     public func exit(_ direction: Direction, to destination: Location) -> MapEntry {
         MapEntry(kind: .exit(from: token, direction: direction, to: destination.token))
     }
 
-    /// The general form of a blocked exit.
+    /// The general blocked exit.
     public func exit(_ direction: Direction, blocked message: String) -> MapEntry {
         MapEntry(kind: .blockedExit(from: token, direction: direction, message: message))
     }
 
-    private func exit(_ direction: Direction, _ to: Location) -> MapEntry {
-        exit(direction, to: to)
+    /// The general door exit: passable only while `door` (an `openable` item
+    /// shared between both rooms) is open.
+    public func exit(_ direction: Direction, to destination: Location, via door: Item) -> MapEntry {
+        MapEntry(
+            kind: .doorExit(
+                from: token, direction: direction, to: destination.token, door: door.token))
     }
 
-    private func blockedExit(_ direction: Direction, _ message: String) -> MapEntry {
-        exit(direction, blocked: message)
+    /// The general conditional exit: `condition` is evaluated at `go` time, and
+    /// the player is refused with `blocked` while it is false.
+    public func exit(
+        _ direction: Direction,
+        to destination: Location,
+        when condition: @escaping @Sendable () -> Bool,
+        otherwise blocked: String
+    ) -> MapEntry {
+        MapEntry(
+            kind: .conditionalExit(
+                from: token, direction: direction, to: destination.token,
+                condition: condition, blocked: blocked))
     }
 
     // MARK: - Rule factories

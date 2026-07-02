@@ -12,6 +12,10 @@ public struct MapEntry: Sendable {
     enum Kind: Sendable {
         case exit(from: RefToken, direction: Direction, to: RefToken)
         case blockedExit(from: RefToken, direction: Direction, message: String)
+        case doorExit(from: RefToken, direction: Direction, to: RefToken, door: RefToken)
+        case conditionalExit(
+            from: RefToken, direction: Direction, to: RefToken,
+            condition: @Sendable () -> Bool, blocked: String)
         case placement(item: RefToken, target: PlacementTarget)
         case playerStart(RefToken)
     }

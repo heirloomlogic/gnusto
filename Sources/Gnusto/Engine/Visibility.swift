@@ -101,6 +101,18 @@ enum Visibility {
             if shouldDescend(into: id) { descend(into: id) }
         }
 
+        // Doors are referenced by exits, not placed in the room — but the
+        // player can examine/open/close/lock/unlock them from either side, so
+        // fold every door on the current room's exits into scope. A `hidden`
+        // door stays out until revealed (isPerceivable), which is also what
+        // keeps `go` treating it as no exit at all.
+        for target in definition.exits[location]?.values ?? [:].values {
+            guard case .door(_, let doorID) = target,
+                isPerceivable(doorID, definition: definition, state: state)
+            else { continue }
+            result.insert(doorID)
+        }
+
         return result
     }
 
@@ -116,17 +128,18 @@ enum Visibility {
         return !item.isHidden || state.revealedItems.contains(id)
     }
 
-    /// Whether a container is currently open. A container without the
-    /// `openable` trait is always open; an openable one is open exactly when it
-    /// is in `openItems`.
+    /// Whether an openable thing is currently open. An `openable` item (a
+    /// container or a door) is open exactly when it is in `openItems`. A
+    /// container that isn't `openable` is permanently open; any other
+    /// non-openable item has no open state and reads closed.
     static func isOpen(
         _ id: EntityID,
         definition: GameDefinition,
         state: WorldState
     ) -> Bool {
-        guard let item = definition.items[id], item.isContainer else { return false }
-        guard item.isOpenable else { return true }
-        return state.openItems.contains(id)
+        guard let item = definition.items[id] else { return false }
+        if item.isOpenable { return state.openItems.contains(id) }
+        return item.isContainer
     }
 
     /// The one darkness predicate, shared by the room describer, the parser

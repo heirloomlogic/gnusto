@@ -157,6 +157,37 @@ enum Bootstrap {
                 }
                 exits[fromID, default: [:]][direction] = .blocked(message)
 
+            case .doorExit(let from, let direction, let to, let doorToken):
+                guard let fromID = resolveLocation(from, role: "a door exit"),
+                    let toID = resolveLocation(to, role: "the \(direction) exit")
+                else { continue }
+                guard let doorID = resolveItem(doorToken, role: "the \(direction) door") else {
+                    continue
+                }
+                // A door must be openable — otherwise `go` has no open state to
+                // gate on and the closed/open refusal is meaningless.
+                if items[doorID]?.isOpenable != true {
+                    diagnostics.append(
+                        "\"\(fromID)\"'s \(direction) exit uses \"\(doorID)\" as a door, "
+                            + "which is not declared openable.")
+                }
+                if exits[fromID]?[direction] != nil {
+                    diagnostics.append(
+                        "\"\(fromID)\" declares its \(direction) exit more than once.")
+                }
+                exits[fromID, default: [:]][direction] = .door(to: toID, door: doorID)
+
+            case .conditionalExit(let from, let direction, let to, let condition, let blocked):
+                guard let fromID = resolveLocation(from, role: "a conditional exit"),
+                    let toID = resolveLocation(to, role: "the \(direction) exit")
+                else { continue }
+                if exits[fromID]?[direction] != nil {
+                    diagnostics.append(
+                        "\"\(fromID)\" declares its \(direction) exit more than once.")
+                }
+                exits[fromID, default: [:]][direction] = .conditional(
+                    to: toID, condition: condition, blocked: blocked)
+
             case .placement(let itemToken, let target):
                 guard let itemID = resolveItem(itemToken, role: "a placement") else {
                     continue
