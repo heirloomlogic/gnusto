@@ -15,6 +15,8 @@ struct ParsedCommand: Equatable {
 /// reachability separately.
 struct Scope: Sendable {
     let visibleItems: Set<EntityID>
+    /// What "it" currently refers to, if anything.
+    var pronounIt: EntityID?
 }
 
 /// Pure-function parser: tokenize → noise strip → candidate rules by leading
@@ -268,6 +270,18 @@ struct StandardParser {
     /// Resolves a noun phrase against scope: every token must be one of the
     /// item's words, and the final token must be a noun.
     private func resolve(_ tokens: [String], in scope: Scope) -> Result<EntityID, ParseError> {
+        // Pronouns resolve ahead of any item lexicon: "it" is whatever the
+        // player last named — if it's still in sight.
+        if tokens == ["it"] {
+            guard let referent = scope.pronounIt else {
+                return .failure(.noReferent("it"))
+            }
+            guard scope.visibleItems.contains(referent) else {
+                return .failure(.notInScope)
+            }
+            return .success(referent)
+        }
+
         let matches = scope.visibleItems.filter { id in
             vocabulary.itemLexicons[id]?.matches(tokens) == true
         }

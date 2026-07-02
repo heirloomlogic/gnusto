@@ -6,6 +6,8 @@ enum ParseError: Error, Equatable {
     /// Every word is in the game's vocabulary, but nothing in scope matches.
     case notInScope
     case notAVerb(String)
+    /// A pronoun with nothing bound to it yet ("x it" before naming anything).
+    case noReferent(String)
     case unmatchedSyntax
     case missingObject(verb: String)
     case missingIndirect(verb: String, objectName: String, preposition: String)
@@ -21,6 +23,8 @@ enum ParseError: Error, Equatable {
             Messages.cantSeeAnySuchThing
         case .notAVerb, .unmatchedSyntax:
             Messages.didntUnderstand
+        case .noReferent(let word):
+            Messages.noReferent(word)
         case .missingObject(let verb):
             Messages.missingObject(verb)
         case .missingIndirect(let verb, let objectName, let preposition):

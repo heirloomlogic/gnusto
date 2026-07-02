@@ -140,6 +140,10 @@ enum Messages {
         "I don't know the word \"\(word)\"."
     }
 
+    static func noReferent(_ word: String) -> String {
+        "I don't know what \"\(word)\" refers to."
+    }
+
     static let cantSeeAnySuchThing = "You can't see any such thing."
     static let didntUnderstand = "I didn't understand that sentence."
 

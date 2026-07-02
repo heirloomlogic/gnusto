@@ -60,6 +60,10 @@ public actor GameWorld {
                 isFinished: state.status != .playing,
                 status: statusLine())
         case .success(let parsed):
+            // Naming a thing binds "it" — even if the action then refuses.
+            if let direct = parsed.directObject {
+                state.pronounIt = direct
+            }
             return runTurn(command(from: parsed))
         }
     }
@@ -205,7 +209,7 @@ public actor GameWorld {
     private func currentScope() -> Scope {
         let here = state.playerLocation
         let visible = Visibility.visibleItems(at: here, definition: definition, state: state)
-        return Scope(visibleItems: visible)
+        return Scope(visibleItems: visible, pronounIt: state.pronounIt)
     }
 
     private func commit(_ frame: TurnFrame) -> TurnResult {

@@ -35,6 +35,9 @@ struct WorldState: Sendable, Codable {
     var lockedItems: Set<EntityID> = []
     /// Hidden items that have been revealed and are now perceivable normally.
     var revealedItems: Set<EntityID> = []
+    /// What "it" currently refers to: the last direct object the player
+    /// named (naming binds, even when the action then refuses).
+    var pronounIt: EntityID?
     var score = 0
     var moves = 0
     var touched: Set<EntityID> = []

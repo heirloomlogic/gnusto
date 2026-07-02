@@ -316,6 +316,7 @@ enum Bootstrap {
             vocabulary.prepositions.formUnion(
                 rule.literalWords.dropFirst(rule.leadingWords.count))
         }
+        var vocabularyWarnings: [String] = []
         for (id, item) in items {
             var lexicon = ItemLexicon()
             let nameWords = (item.name ?? "").lowercased().split(separator: " ").map(String.init)
@@ -325,6 +326,15 @@ enum Bootstrap {
             lexicon.adjectives.formUnion(nameWords.dropLast())
             lexicon.adjectives.formUnion(item.adjectives.map { $0.lowercased() })
             lexicon.nouns.formUnion(item.synonyms.map { $0.lowercased() })
+            // Pronouns and multi-object keywords resolve before any lexicon,
+            // so a word claimed here would never reach this item.
+            for word in lexicon.nouns.union(lexicon.adjectives)
+            where Vocabulary.reservedWords.contains(word) {
+                vocabularyWarnings.append(
+                    "item \"\(id)\" answers to \"\(word)\", a reserved parser word "
+                        + "(pronoun or multi-object keyword); the parser will never "
+                        + "match it to this item.")
+            }
             vocabulary.itemLexicons[id] = lexicon
             vocabulary.displayNames[id] = item.name ?? id.raw
         }
@@ -371,7 +381,7 @@ enum Bootstrap {
             vocabulary: vocabulary,
             syntaxRules: syntaxRules,
             actionOverrides: actionOverrides,
-            warnings: verbWarnings + actionWarnings)
+            warnings: verbWarnings + vocabularyWarnings + actionWarnings)
 
         let registrationFrame = TurnFrame(definition: definition, state: state)
         let declaredRules = Ctx.$frame.withValue(registrationFrame) {
