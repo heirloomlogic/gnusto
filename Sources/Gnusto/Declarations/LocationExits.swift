@@ -62,29 +62,53 @@ extension Location {
     public func out(_ to: Location, via door: Item) -> MapEntry { exit(.out, to: to, via: door) }
 
     /// A north exit gated by `condition`, refused with `otherwise` while false.
-    public func north(_ to: Location, when condition: @escaping @Sendable () -> Bool, otherwise: String) -> MapEntry { exit(.north, to: to, when: condition, otherwise: otherwise) }
+    public func north(_ to: Location, when condition: @escaping @Sendable () -> Bool, otherwise: String) -> MapEntry {
+        exit(.north, to: to, when: condition, otherwise: otherwise)
+    }
     /// A south exit gated by `condition`, refused with `otherwise` while false.
-    public func south(_ to: Location, when condition: @escaping @Sendable () -> Bool, otherwise: String) -> MapEntry { exit(.south, to: to, when: condition, otherwise: otherwise) }
+    public func south(_ to: Location, when condition: @escaping @Sendable () -> Bool, otherwise: String) -> MapEntry {
+        exit(.south, to: to, when: condition, otherwise: otherwise)
+    }
     /// An east exit gated by `condition`, refused with `otherwise` while false.
-    public func east(_ to: Location, when condition: @escaping @Sendable () -> Bool, otherwise: String) -> MapEntry { exit(.east, to: to, when: condition, otherwise: otherwise) }
+    public func east(_ to: Location, when condition: @escaping @Sendable () -> Bool, otherwise: String) -> MapEntry {
+        exit(.east, to: to, when: condition, otherwise: otherwise)
+    }
     /// A west exit gated by `condition`, refused with `otherwise` while false.
-    public func west(_ to: Location, when condition: @escaping @Sendable () -> Bool, otherwise: String) -> MapEntry { exit(.west, to: to, when: condition, otherwise: otherwise) }
+    public func west(_ to: Location, when condition: @escaping @Sendable () -> Bool, otherwise: String) -> MapEntry {
+        exit(.west, to: to, when: condition, otherwise: otherwise)
+    }
     /// A northeast exit gated by `condition`, refused with `otherwise` while false.
-    public func northeast(_ to: Location, when condition: @escaping @Sendable () -> Bool, otherwise: String) -> MapEntry { exit(.northeast, to: to, when: condition, otherwise: otherwise) }
+    public func northeast(_ to: Location, when condition: @escaping @Sendable () -> Bool, otherwise: String) -> MapEntry {
+        exit(.northeast, to: to, when: condition, otherwise: otherwise)
+    }
     /// A northwest exit gated by `condition`, refused with `otherwise` while false.
-    public func northwest(_ to: Location, when condition: @escaping @Sendable () -> Bool, otherwise: String) -> MapEntry { exit(.northwest, to: to, when: condition, otherwise: otherwise) }
+    public func northwest(_ to: Location, when condition: @escaping @Sendable () -> Bool, otherwise: String) -> MapEntry {
+        exit(.northwest, to: to, when: condition, otherwise: otherwise)
+    }
     /// A southeast exit gated by `condition`, refused with `otherwise` while false.
-    public func southeast(_ to: Location, when condition: @escaping @Sendable () -> Bool, otherwise: String) -> MapEntry { exit(.southeast, to: to, when: condition, otherwise: otherwise) }
+    public func southeast(_ to: Location, when condition: @escaping @Sendable () -> Bool, otherwise: String) -> MapEntry {
+        exit(.southeast, to: to, when: condition, otherwise: otherwise)
+    }
     /// A southwest exit gated by `condition`, refused with `otherwise` while false.
-    public func southwest(_ to: Location, when condition: @escaping @Sendable () -> Bool, otherwise: String) -> MapEntry { exit(.southwest, to: to, when: condition, otherwise: otherwise) }
+    public func southwest(_ to: Location, when condition: @escaping @Sendable () -> Bool, otherwise: String) -> MapEntry {
+        exit(.southwest, to: to, when: condition, otherwise: otherwise)
+    }
     /// An up exit gated by `condition`, refused with `otherwise` while false.
-    public func up(_ to: Location, when condition: @escaping @Sendable () -> Bool, otherwise: String) -> MapEntry { exit(.up, to: to, when: condition, otherwise: otherwise) }
+    public func up(_ to: Location, when condition: @escaping @Sendable () -> Bool, otherwise: String) -> MapEntry {
+        exit(.up, to: to, when: condition, otherwise: otherwise)
+    }
     /// A down exit gated by `condition`, refused with `otherwise` while false.
-    public func down(_ to: Location, when condition: @escaping @Sendable () -> Bool, otherwise: String) -> MapEntry { exit(.down, to: to, when: condition, otherwise: otherwise) }
+    public func down(_ to: Location, when condition: @escaping @Sendable () -> Bool, otherwise: String) -> MapEntry {
+        exit(.down, to: to, when: condition, otherwise: otherwise)
+    }
     /// An in exit gated by `condition`, refused with `otherwise` while false.
-    public func `in`(_ to: Location, when condition: @escaping @Sendable () -> Bool, otherwise: String) -> MapEntry { exit(.in, to: to, when: condition, otherwise: otherwise) }
+    public func `in`(_ to: Location, when condition: @escaping @Sendable () -> Bool, otherwise: String) -> MapEntry {
+        exit(.in, to: to, when: condition, otherwise: otherwise)
+    }
     /// An out exit gated by `condition`, refused with `otherwise` while false.
-    public func out(_ to: Location, when condition: @escaping @Sendable () -> Bool, otherwise: String) -> MapEntry { exit(.out, to: to, when: condition, otherwise: otherwise) }
+    public func out(_ to: Location, when condition: @escaping @Sendable () -> Bool, otherwise: String) -> MapEntry {
+        exit(.out, to: to, when: condition, otherwise: otherwise)
+    }
 
     /// A north exit blocked with the given refusal message.
     public func north(blocked message: String) -> MapEntry { exit(.north, blocked: message) }
