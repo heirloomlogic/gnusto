@@ -23,7 +23,7 @@ struct ChimeBundle: GameContent {
     }
 
     var verbs: [SyntaxRule] {
-        SyntaxRule("chime", slots: .direct, intent: chimeIntent)
+        SyntaxRule("chime", .directObject, intent: chimeIntent)
     }
 
     var actions: [IntentAction] {

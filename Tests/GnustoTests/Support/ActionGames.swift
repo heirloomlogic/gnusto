@@ -27,7 +27,7 @@ struct CustomActionGame: Game {
     }
 
     var verbs: [SyntaxRule] {
-        SyntaxRule("ring", slots: .direct, intent: Self.ring)
+        SyntaxRule("ring", .directObject, intent: Self.ring)
     }
 
     var actions: [IntentAction] {
@@ -74,7 +74,7 @@ struct GreetingPlugin: GamePlugin {
     static let greet = Intent("greet")
 
     var verbs: [SyntaxRule] {
-        SyntaxRule("greet", slots: .direct, intent: Self.greet)
+        SyntaxRule("greet", .directObject, intent: Self.greet)
     }
 
     var actions: [IntentAction] {

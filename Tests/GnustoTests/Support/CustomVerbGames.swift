@@ -35,9 +35,9 @@ struct CustomVerbGame: Game {
     /// verb with no handling rule (proving the unhandled path falls through to
     /// the default "I didn't understand").
     var verbs: [SyntaxRule] {
-        SyntaxRule("ring", slots: .direct, intent: Intent("ring"))
-        SyntaxRule("polish", slots: .directPrepIndirect("with"), intent: Intent("polish"))
-        SyntaxRule("sing", slots: .none, intent: Intent("sing"))
+        SyntaxRule("ring", .directObject, intent: Intent("ring"))
+        SyntaxRule("polish", .directObject, "with", .indirectObject, intent: Intent("polish"))
+        SyntaxRule("sing", intent: Intent("sing"))
     }
 
     var rules: Rules {
@@ -78,7 +78,7 @@ struct VerbOverrideGame: Game {
     var verbs: [SyntaxRule] {
         // Same verb token and slot shape as the built-in `take`, so this row
         // reclaims it (last-wins) and emits Intent("steal") instead.
-        SyntaxRule("take", slots: .direct, intent: Intent("steal"))
+        SyntaxRule("take", .directObject, intent: Intent("steal"))
     }
 
     var rules: Rules {

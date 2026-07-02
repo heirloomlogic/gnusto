@@ -21,6 +21,12 @@ struct Vocabulary: Sendable {
     var prepositions: Set<String> = []
     var noiseWords: Set<String> = ["the", "a", "an", "my", "that", "this", "some"]
 
+    /// Words the parser claims for itself — pronouns and the multi-object
+    /// keywords. They resolve before any item lexicon is consulted, so an
+    /// item using one as a noun or synonym could never be referred to by it
+    /// (the bootstrap warns).
+    static let reservedWords: Set<String> = ["it", "them", "all", "everything"]
+
     /// Every word in the game, flattened once at bootstrap so `knows` is a
     /// single set lookup (it runs per token on parse-failure paths).
     var allKnownWords: Set<String> = []
@@ -37,6 +43,7 @@ struct Vocabulary: Sendable {
             .union(directions.keys)
             .union(prepositions)
             .union(noiseWords)
+            .union(Self.reservedWords)
         for lexicon in itemLexicons.values {
             allKnownWords.formUnion(lexicon.nouns)
             allKnownWords.formUnion(lexicon.adjectives)

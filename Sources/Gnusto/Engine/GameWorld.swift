@@ -28,12 +28,26 @@ public actor GameWorld {
     let definition: GameDefinition
     var state: WorldState
     private let parser: StandardParser
+    /// An open clarifying question ("Which do you mean…?", "What do you want
+    /// to take?"): the next input line is first tried as its answer,
+    /// re-parsed as `prefix + answer + suffix`.
+    private var pendingClarification: (prefix: [String], suffix: [String])?
 
     /// Builds the world from a game definition, validating it up front.
+    /// The random stream is seeded fresh each run; use `init(game:seed:)`
+    /// to replay a specific one.
     public init(game: some Game) throws {
+        try self.init(game: game, seed: UInt64.random(in: .min ... .max))
+    }
+
+    /// Builds the world with a fixed random seed: the same seed and the same
+    /// commands replay the same game, on any platform — for transcripts,
+    /// tests, and bug reports.
+    public init(game: some Game, seed: UInt64) throws {
         let (definition, state) = try Bootstrap.build(game)
         self.definition = definition
         self.state = state
+        self.state.rngState = seed
         self.parser = StandardParser(
             vocabulary: definition.vocabulary,
             syntaxRules: definition.syntaxRules)
@@ -44,103 +58,274 @@ public actor GameWorld {
         let frame = TurnFrame(definition: definition, state: state)
         Ctx.$frame.withValue(frame) {
             frame.say(definition.intro)
-            frame.say(Messages.banner(title: definition.title, tagline: definition.tagline))
+            frame.say(definition.text.banner(definition.title, definition.tagline))
             RoomDescriber.describeCurrentLocation(mode: .entry, frame: frame)
         }
         return commit(frame)
     }
 
     /// Parses and performs one line of player input. Parse errors are free:
-    /// no rules run and the turn counter doesn't advance.
+    /// no rules run and the turn counter doesn't advance. Question-type
+    /// errors ("Which do you mean…?") stay open: the next line is first
+    /// tried as their answer, and falls back to being a fresh command.
     public func perform(_ input: String) -> TurnResult {
-        switch parser.parse(input, scope: currentScope()) {
-        case .failure(let error):
-            return TurnResult(
-                output: error.playerMessage,
-                isFinished: state.status != .playing,
-                status: statusLine())
-        case .success(let parsed):
-            return runTurn(command(from: parsed))
+        let scope = currentScope()
+        let tokens = parser.tokenize(input)
+
+        if let pending = pendingClarification {
+            pendingClarification = nil
+            let augmented = pending.prefix + tokens + pending.suffix
+            switch parser.parse(tokens: augmented, rawInput: input, scope: scope) {
+            case .success(let parsed):
+                return run(parsed)
+            case .failure(let error):
+                // Still ambiguous ("brass" matched two): ask the narrower
+                // question. Anything else means the line wasn't an answer —
+                // fall through and parse it as a fresh command.
+                if let context = error.clarification {
+                    pendingClarification = context
+                    return freeReply(error.playerMessage(definition.text))
+                }
+            }
         }
+
+        switch parser.parse(tokens: tokens, rawInput: input, scope: scope) {
+        case .failure(let error):
+            pendingClarification = error.clarification
+            return freeReply(error.playerMessage(definition.text))
+        case .success(let parsed):
+            return run(parsed)
+        }
+    }
+
+    /// Runs a successfully parsed command: pronoun bookkeeping, then the
+    /// single- or multi-object turn.
+    private func run(_ parsed: ParsedCommand) -> TurnResult {
+        // Naming a thing binds "it" — even if the action then refuses.
+        if let direct = parsed.directObject {
+            state.pronounIt = direct
+        }
+        if let multiple = parsed.multiple {
+            return runMultiTurn(parsed, multiple)
+        }
+        return runTurn(command(from: parsed))
     }
 
     // MARK: - The turn pipeline
 
     private func runTurn(_ command: Command) -> TurnResult {
         let frame = TurnFrame(definition: definition, state: state, command: command)
-        let intent = command.intent
-        let rules = definition.rules
+        Ctx.$frame.withValue(frame) {
+            performStages(command, frame: frame, upkeep: true)
+            finishTurn(intent: command.intent, frame: frame)
+        }
+        return commit(frame)
+    }
 
+    /// The intents that accept "all"/"them" in the direct slot. Everything
+    /// else refuses multiple objects up front.
+    static let multiObjectIntents: Set<Intent> = [.take, .drop, .putIn, .putOn]
+
+    /// A multi-object turn: expand the marker against the current state,
+    /// then run stages 1–5 once per object with `name:`-labeled output.
+    /// Once-per-turn upkeep (the each-turn `before` phases and all of
+    /// stage 6) runs once for the whole command, so a daemon doesn't tick
+    /// once per object.
+    private func runMultiTurn(
+        _ parsed: ParsedCommand, _ multiple: ParsedCommand.MultiObject
+    ) -> TurnResult {
+        let intent = parsed.intent
+        guard Self.multiObjectIntents.contains(intent) else {
+            return freeReply(definition.text.multipleNotAllowedWith(parsed.verbPhrase))
+        }
+
+        let visible = Visibility.visibleItems(
+            at: state.playerLocation, definition: definition, state: state)
+        let held = Set(
+            state.placements.filter { $0.value == .heldBy(.player) }.keys)
+
+        var objects: [EntityID]
+        switch multiple {
+        case .all:
+            objects =
+                intent == .take
+                ? visible.filter { definition.items[$0]?.isTakable == true && !held.contains($0) }
+                : Array(held)
+        case .them:
+            guard !state.pronounThem.isEmpty else {
+                return freeReply(definition.text.noReferent("them"))
+            }
+            objects = state.pronounThem.filter { visible.contains($0) }
+            guard !objects.isEmpty else {
+                return freeReply(definition.text.cantSeeAnySuchThing)
+            }
+        }
+        if intent == .putIn || intent == .putOn, let indirect = parsed.indirectObject {
+            objects.removeAll { $0 == indirect }
+        }
+        guard !objects.isEmpty else {
+            return freeReply(
+                intent == .take ? definition.text.nothingToTakeHere : definition.text.notCarryingAnything)
+        }
+
+        // Stable, player-legible order: by display name, then ID.
+        objects.sort { lhs, rhs in
+            let (lhsName, rhsName) = (displayName(of: lhs), displayName(of: rhs))
+            return lhsName == rhsName ? lhs < rhs : lhsName < rhsName
+        }
+        state.pronounThem = objects
+
+        let indirectItem = parsed.indirectObject.flatMap { definition.registry.items[$0] }
+        let frame = TurnFrame(definition: definition, state: state)
         Ctx.$frame.withValue(frame) {
             do {
-                // Stages 1–3: world, location, and item `before` rules.
-                // Meta intents talk to the game program; no rules see them.
-                // `inBeforeRule` is set for the span of these stages so
-                // `proceed()` can recognize a legal call site; a rule that
-                // calls it runs stage 4 early and flips `defaultRan`. Once
-                // that flag is set, `run` (below) skips every remaining
-                // before-phase for the rest of this sequence — `proceed()`
-                // means "run the default now", so later before-guards for
-                // this command are moot and must not run. Stage 4's own
-                // call site (further down) checks the same flag to avoid
-                // running the default a second time.
-                if !intent.isMeta {
-                    frame.with { $0.inBeforeRule = true }
-                    defer { frame.with { $0.inBeforeRule = false } }
-                    let here = frame.with { $0.state.playerLocation }
-                    try runBefore(rules.worldBefore, matching: intent, frame: frame)
-                    try runBefore(rules.locationBeforeEachTurn[here] ?? [], matching: intent, frame: frame)
-                    try runBefore(rules.locationBefore[here] ?? [], matching: intent, frame: frame)
-                    if let indirect = command.indirectObject {
-                        try runBefore(rules.itemBefore[indirect.id] ?? [], matching: intent, frame: frame)
+                try runUpkeepBefore(intent, frame: frame)
+                for id in objects {
+                    guard frame.with({ $0.state.status }) == .playing else { break }
+                    guard let item = definition.registry.items[id] else { continue }
+                    let command = Command(
+                        intent: intent,
+                        directObject: item,
+                        indirectObject: indirectItem,
+                        preposition: parsed.preposition,
+                        verbPhrase: parsed.verbPhrase,
+                        rawInput: parsed.rawInput)
+                    frame.with { scratch in
+                        scratch.command = command
+                        scratch.defaultRan = false
                     }
-                    if let direct = command.directObject {
-                        try runBefore(rules.itemBefore[direct.id] ?? [], matching: intent, frame: frame)
-                    }
-                }
-
-                // Stage 4: the default action — skipped if a `before` rule
-                // already ran it early via `proceed()`.
-                if !frame.with({ $0.defaultRan }) {
-                    try DefaultActions.run(command, frame: frame)
-                }
-
-                // Stage 5: item and location `after` rules.
-                if !intent.isMeta {
-                    if let direct = command.directObject {
-                        try run(rules.itemAfter[direct.id] ?? [], matching: intent)
-                    }
-                    if let indirect = command.indirectObject {
-                        try run(rules.itemAfter[indirect.id] ?? [], matching: intent)
-                    }
-                    let here = frame.with { $0.state.playerLocation }
-                    try run(rules.locationAfter[here] ?? [], matching: intent)
+                    let start = frame.with { $0.output.count }
+                    performStages(command, frame: frame, upkeep: false)
+                    label(outputFrom: start, as: displayName(of: id), frame: frame)
                 }
             } catch let interrupt as TurnInterrupt {
+                // Upkeep refused: the whole command is off.
                 handle(interrupt, frame: frame)
             } catch {
                 frame.say("\(error)")
             }
+            finishTurn(intent: intent, frame: frame)
+        }
+        return commit(frame)
+    }
 
-            // Stage 6: world time passes even on refused turns — but not for
-            // meta intents, and not once the game has ended.
-            if !intent.isMeta {
-                if frame.with({ $0.state.status }) == .playing {
-                    let here = frame.with { $0.state.playerLocation }
-                    runCatching(rules.locationAfterEachTurn[here] ?? [], matching: intent, frame: frame)
-                    runCatching(rules.worldAfter, matching: intent, frame: frame)
-                }
-                frame.with { $0.state.moves += 1 }
-            }
-
-            // End-of-game epilogue: one place reports the final score,
-            // whether the game was won, lost, or quit.
-            if frame.with({ $0.state.status }) != .playing {
-                DefaultActions.score(frame)
+    /// Merges everything one object's run said into a single
+    /// `brass lantern: Taken.` line.
+    private func label(outputFrom start: Int, as name: String, frame: TurnFrame) {
+        frame.with { scratch in
+            let said = scratch.output[start...].joined(separator: " ")
+            scratch.output.removeSubrange(start...)
+            if !said.isEmpty {
+                scratch.output.append("\(name): \(said)")
             }
         }
+    }
 
-        return commit(frame)
+    /// A parse-error-style response: message only, no rules, no turn.
+    private func freeReply(_ message: String) -> TurnResult {
+        TurnResult(
+            output: message,
+            isFinished: state.status != .playing,
+            status: statusLine())
+    }
+
+    /// The once-per-turn `before` upkeep — `world.beforeEachTurn` and the
+    /// location's `beforeEachTurn` rules — run separately from the per-object
+    /// stages during a multi-object command.
+    private func runUpkeepBefore(_ intent: Intent, frame: TurnFrame) throws {
+        frame.with { $0.inBeforeRule = true }
+        defer { frame.with { $0.inBeforeRule = false } }
+        let here = frame.with { $0.state.playerLocation }
+        try runBefore(
+            definition.rules.worldBefore.filter { $0.phase == .beforeEachTurn },
+            matching: intent, frame: frame)
+        try runBefore(
+            definition.rules.locationBeforeEachTurn[here] ?? [], matching: intent, frame: frame)
+    }
+
+    /// Stages 1–5 for one command. With `upkeep` the each-turn `before`
+    /// phases are included (the single-command turn); without it they're the
+    /// caller's job (`runMultiTurn` runs them once, outside its object loop).
+    private func performStages(_ command: Command, frame: TurnFrame, upkeep: Bool) {
+        let intent = command.intent
+        let rules = definition.rules
+
+        do {
+            // Stages 1–3: world, location, and item `before` rules.
+            // Meta intents talk to the game program; no rules see them.
+            // `inBeforeRule` is set for the span of these stages so
+            // `proceed()` can recognize a legal call site; a rule that
+            // calls it runs stage 4 early and flips `defaultRan`. Once
+            // that flag is set, `run` (below) skips every remaining
+            // before-phase for the rest of this sequence — `proceed()`
+            // means "run the default now", so later before-guards for
+            // this command are moot and must not run. Stage 4's own
+            // call site (further down) checks the same flag to avoid
+            // running the default a second time.
+            if !intent.isMeta {
+                frame.with { $0.inBeforeRule = true }
+                defer { frame.with { $0.inBeforeRule = false } }
+                let here = frame.with { $0.state.playerLocation }
+                let worldBefore =
+                    upkeep
+                    ? rules.worldBefore
+                    : rules.worldBefore.filter { $0.phase == .before }
+                try runBefore(worldBefore, matching: intent, frame: frame)
+                if upkeep {
+                    try runBefore(rules.locationBeforeEachTurn[here] ?? [], matching: intent, frame: frame)
+                }
+                try runBefore(rules.locationBefore[here] ?? [], matching: intent, frame: frame)
+                if let indirect = command.indirectObject {
+                    try runBefore(rules.itemBefore[indirect.id] ?? [], matching: intent, frame: frame)
+                }
+                if let direct = command.directObject {
+                    try runBefore(rules.itemBefore[direct.id] ?? [], matching: intent, frame: frame)
+                }
+            }
+
+            // Stage 4: the default action — skipped if a `before` rule
+            // already ran it early via `proceed()`.
+            if !frame.with({ $0.defaultRan }) {
+                try DefaultActions.run(command, frame: frame)
+            }
+
+            // Stage 5: item and location `after` rules.
+            if !intent.isMeta {
+                if let direct = command.directObject {
+                    try run(rules.itemAfter[direct.id] ?? [], matching: intent)
+                }
+                if let indirect = command.indirectObject {
+                    try run(rules.itemAfter[indirect.id] ?? [], matching: intent)
+                }
+                let here = frame.with { $0.state.playerLocation }
+                try run(rules.locationAfter[here] ?? [], matching: intent)
+            }
+        } catch let interrupt as TurnInterrupt {
+            handle(interrupt, frame: frame)
+        } catch {
+            frame.say("\(error)")
+        }
+    }
+
+    /// Stage 6 and the epilogue: world time passes even on refused turns —
+    /// but not for meta intents, and not once the game has ended. Runs once
+    /// per typed command, however many objects it covered.
+    private func finishTurn(intent: Intent, frame: TurnFrame) {
+        let rules = definition.rules
+        if !intent.isMeta {
+            if frame.with({ $0.state.status }) == .playing {
+                let here = frame.with { $0.state.playerLocation }
+                runCatching(rules.locationAfterEachTurn[here] ?? [], matching: intent, frame: frame)
+                runCatching(rules.worldAfter, matching: intent, frame: frame)
+            }
+            frame.with { $0.state.moves += 1 }
+        }
+
+        // End-of-game epilogue: one place reports the final score,
+        // whether the game was won, lost, or quit.
+        if frame.with({ $0.state.status }) != .playing {
+            DefaultActions.score(frame)
+        }
     }
 
     /// Runs a stage 1–3 before-phase's rules — but not once a rule earlier in
@@ -205,7 +390,7 @@ public actor GameWorld {
     private func currentScope() -> Scope {
         let here = state.playerLocation
         let visible = Visibility.visibleItems(at: here, definition: definition, state: state)
-        return Scope(visibleItems: visible)
+        return Scope(visibleItems: visible, pronounIt: state.pronounIt)
     }
 
     private func commit(_ frame: TurnFrame) -> TurnResult {
@@ -215,6 +400,10 @@ public actor GameWorld {
             output: scratch.output.joined(separator: "\n\n"),
             isFinished: scratch.state.status != .playing,
             status: statusLine())
+    }
+
+    private func displayName(of id: EntityID) -> String {
+        definition.vocabulary.displayNames[id] ?? id.raw
     }
 
     private func statusLine() -> StatusLine {

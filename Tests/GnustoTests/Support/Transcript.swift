@@ -3,8 +3,9 @@ import Gnusto
 import Testing
 
 /// Boots a game, feeds it a list of commands, and returns the full transcript.
-func play(_ game: some Game, _ commands: [String]) async throws -> String {
-    let world = try GameWorld(game: game)
+/// Pass `seed` to pin the random stream for reproducible runs.
+func play(_ game: some Game, _ commands: [String], seed: UInt64? = nil) async throws -> String {
+    let world = try seed.map { try GameWorld(game: game, seed: $0) } ?? GameWorld(game: game)
     let io = ScriptedIOHandler(lines: commands)
     await REPL(world: world, io: io).run()
     return io.transcript

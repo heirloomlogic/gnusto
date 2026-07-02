@@ -32,6 +32,6 @@ struct AtticContent: GameContent {
     /// A verb contributed by the bundle, proving bundle verbs reach the parser
     /// and their rules fire just like a game's own.
     var verbs: [SyntaxRule] {
-        SyntaxRule("rummage", slots: .direct, intent: Intent("rummage"))
+        SyntaxRule("rummage", .directObject, intent: Intent("rummage"))
     }
 }

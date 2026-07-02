@@ -17,8 +17,8 @@ public struct CommercePlugin: GamePlugin {
 
     /// The player-typeable verbs the plugin contributes.
     public var verbs: [SyntaxRule] {
-        SyntaxRule("buy", slots: .direct, intent: Self.buy)
-        SyntaxRule("sell", slots: .direct, intent: Self.sell)
+        SyntaxRule("buy", .directObject, intent: Self.buy)
+        SyntaxRule("sell", .directObject, intent: Self.sell)
     }
 
     /// Lets the player buy `item` for its `price` trait, paying from a wallet
@@ -112,7 +112,7 @@ struct VocabularyOnlyPlugin: GamePlugin {
     static let appraise = Intent("appraise")
 
     var verbs: [SyntaxRule] {
-        SyntaxRule("appraise", slots: .direct, intent: Self.appraise)
+        SyntaxRule("appraise", .directObject, intent: Self.appraise)
     }
 }
 

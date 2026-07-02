@@ -31,7 +31,7 @@ enum RoomDescriber {
         }
 
         guard !isDark else {
-            frame.say(Messages.pitchBlack)
+            frame.say(frame.definition.text.pitchBlack)
             return
         }
 
@@ -64,7 +64,7 @@ enum RoomDescriber {
             if !touched.contains(itemID), let firstSight = item.firstSight {
                 frame.say(firstSight)
             } else if !item.isScenery {
-                frame.say(Messages.itemHere(item.name ?? itemID.raw))
+                frame.say(frame.definition.text.itemHere(item.name ?? itemID.raw))
             }
 
             // One level of "On the X is a Y." for surfaces in the room.
@@ -77,7 +77,7 @@ enum RoomDescriber {
                     .sorted()
                 for topID in onTop {
                     let topName = definition.items[topID]?.name ?? topID.raw
-                    frame.say(Messages.itemOnSurface(topName, item.name ?? itemID.raw))
+                    frame.say(frame.definition.text.itemOnSurface(topName, item.name ?? itemID.raw))
                 }
             }
 
@@ -94,7 +94,7 @@ enum RoomDescriber {
                     .sorted()
                 for insideID in inside {
                     let insideName = definition.items[insideID]?.name ?? insideID.raw
-                    frame.say(Messages.itemInContainer(insideName, item.name ?? itemID.raw))
+                    frame.say(frame.definition.text.itemInContainer(insideName, item.name ?? itemID.raw))
                 }
             }
         }

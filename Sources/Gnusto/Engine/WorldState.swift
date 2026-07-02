@@ -35,6 +35,12 @@ struct WorldState: Sendable, Codable {
     var lockedItems: Set<EntityID> = []
     /// Hidden items that have been revealed and are now perceivable normally.
     var revealedItems: Set<EntityID> = []
+    /// What "it" currently refers to: the last direct object the player
+    /// named (naming binds, even when the action then refuses).
+    var pronounIt: EntityID?
+    /// What "them" currently refers to: the group the last multi-object
+    /// command expanded to.
+    var pronounThem: [EntityID] = []
     var score = 0
     var moves = 0
     var touched: Set<EntityID> = []
@@ -42,4 +48,7 @@ struct WorldState: Sendable, Codable {
     var descriptionOverrides: [EntityID: String] = [:]
     var globals: [EntityID: StateValue] = [:]
     var status: GameStatus = .playing
+    /// The random stream's position. Part of the saved state, so a restored
+    /// game replays the exact same randomness it would have had.
+    var rngState: UInt64 = 0
 }
