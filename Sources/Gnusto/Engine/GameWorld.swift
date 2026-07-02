@@ -28,6 +28,10 @@ public actor GameWorld {
     let definition: GameDefinition
     var state: WorldState
     private let parser: StandardParser
+    /// An open clarifying question ("Which do you mean…?", "What do you want
+    /// to take?"): the next input line is first tried as its answer,
+    /// re-parsed as `prefix + answer + suffix`.
+    private var pendingClarification: (prefix: [String], suffix: [String])?
 
     /// Builds the world from a game definition, validating it up front.
     public init(game: some Game) throws {
@@ -51,24 +55,50 @@ public actor GameWorld {
     }
 
     /// Parses and performs one line of player input. Parse errors are free:
-    /// no rules run and the turn counter doesn't advance.
+    /// no rules run and the turn counter doesn't advance. Question-type
+    /// errors ("Which do you mean…?") stay open: the next line is first
+    /// tried as their answer, and falls back to being a fresh command.
     public func perform(_ input: String) -> TurnResult {
-        switch parser.parse(input, scope: currentScope()) {
-        case .failure(let error):
-            return TurnResult(
-                output: error.playerMessage,
-                isFinished: state.status != .playing,
-                status: statusLine())
-        case .success(let parsed):
-            // Naming a thing binds "it" — even if the action then refuses.
-            if let direct = parsed.directObject {
-                state.pronounIt = direct
+        let scope = currentScope()
+        let tokens = parser.tokenize(input)
+
+        if let pending = pendingClarification {
+            pendingClarification = nil
+            let augmented = pending.prefix + tokens + pending.suffix
+            switch parser.parse(tokens: augmented, rawInput: input, scope: scope) {
+            case .success(let parsed):
+                return run(parsed)
+            case .failure(let error):
+                // Still ambiguous ("brass" matched two): ask the narrower
+                // question. Anything else means the line wasn't an answer —
+                // fall through and parse it as a fresh command.
+                if let context = error.clarification {
+                    pendingClarification = context
+                    return freeReply(error.playerMessage)
+                }
             }
-            if let multiple = parsed.multiple {
-                return runMultiTurn(parsed, multiple)
-            }
-            return runTurn(command(from: parsed))
         }
+
+        switch parser.parse(tokens: tokens, rawInput: input, scope: scope) {
+        case .failure(let error):
+            pendingClarification = error.clarification
+            return freeReply(error.playerMessage)
+        case .success(let parsed):
+            return run(parsed)
+        }
+    }
+
+    /// Runs a successfully parsed command: pronoun bookkeeping, then the
+    /// single- or multi-object turn.
+    private func run(_ parsed: ParsedCommand) -> TurnResult {
+        // Naming a thing binds "it" — even if the action then refuses.
+        if let direct = parsed.directObject {
+            state.pronounIt = direct
+        }
+        if let multiple = parsed.multiple {
+            return runMultiTurn(parsed, multiple)
+        }
+        return runTurn(command(from: parsed))
     }
 
     // MARK: - The turn pipeline

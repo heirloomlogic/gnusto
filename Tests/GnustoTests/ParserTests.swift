@@ -98,12 +98,13 @@ struct ParserTests {
         let parser = try Self.makeParser()
         #expect(
             parser.parse("take", scope: Self.fullScope)
-                == .failure(.missingObject(verb: "take")))
+                == .failure(.missingObject(verb: "take", prefix: ["take"])))
         #expect(
             parser.parse("hang cloak", scope: Self.fullScope)
                 == .failure(
                     .missingIndirect(
-                        verb: "hang", objectName: "velvet cloak", preposition: "on")))
+                        verb: "hang", objectName: "velvet cloak", preposition: "on",
+                        prefix: ["hang", "cloak", "on"])))
     }
 
     @Test func adjectiveAloneDoesNotResolve() throws {
@@ -116,6 +117,8 @@ struct ParserTests {
         #expect(ParseError.unknownWord("frotz").playerMessage == "I don't know the word \"frotz\".")
         #expect(ParseError.notInScope.playerMessage == "You can't see any such thing.")
         #expect(ParseError.empty.playerMessage == "I beg your pardon?")
-        #expect(ParseError.missingObject(verb: "take").playerMessage == "What do you want to take?")
+        #expect(
+            ParseError.missingObject(verb: "take", prefix: ["take"]).playerMessage
+                == "What do you want to take?")
     }
 }

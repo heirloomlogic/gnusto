@@ -131,6 +131,10 @@ struct StandardParser {
 
         var directPhrase: [String]?
         var indirectPhrase: [String]?
+        /// Where each phrase begins in `tokens` — a clarifying answer is
+        /// inserted there (`prefix + answer + suffix`).
+        var directStart = 0
+        var indirectStart = 0
         var direction: Direction?
         var preposition: String?
         /// An object slot waiting for the next literal word to close it.
@@ -147,7 +151,8 @@ struct StandardParser {
                         split > cursor
                     else {
                         // "hang cloak" — an object phrase with the preposition
-                        // missing. If the phrase resolves, ask for the rest.
+                        // missing. If the phrase resolves, ask for the rest;
+                        // the answer belongs after the never-typed preposition.
                         if slot == .directObject, cursor < tokens.count,
                             case .success(let id) = resolve(
                                 Array(tokens[cursor...]), in: scope)
@@ -156,13 +161,15 @@ struct StandardParser {
                                 .missingIndirect(
                                     verb: verbPhrase,
                                     objectName: displayName(of: id),
-                                    preposition: word))
+                                    preposition: word,
+                                    prefix: tokens + [word]))
                         }
                         return .mismatch
                     }
                     let phrase = Array(tokens[cursor..<split])
                     if slot == .directObject {
                         directPhrase = phrase
+                        directStart = cursor
                         // The word sealing the direct object ahead of a second
                         // object is the command's preposition.
                         if rule.elements.contains(.indirectObject) {
@@ -170,6 +177,7 @@ struct StandardParser {
                         }
                     } else {
                         indirectPhrase = phrase
+                        indirectStart = cursor
                     }
                     cursor = split + 1
                     openSlot = nil
@@ -185,15 +193,17 @@ struct StandardParser {
                     // A slot ending the pattern takes everything left.
                     guard cursor < tokens.count else {
                         return missingSlotOutcome(
-                            element, verbPhrase: verbPhrase,
+                            element, verbPhrase: verbPhrase, tokens: tokens,
                             directPhrase: directPhrase, preposition: preposition,
                             scope: scope)
                     }
                     let phrase = Array(tokens[cursor...])
                     if element == .directObject {
                         directPhrase = phrase
+                        directStart = cursor
                     } else {
                         indirectPhrase = phrase
+                        indirectStart = cursor
                     }
                     cursor = tokens.count
                 } else {
@@ -232,7 +242,8 @@ struct StandardParser {
             } else {
                 switch resolve(phrase, in: scope) {
                 case .success(let id): directID = id
-                case .failure(let error): return .nearMiss(error)
+                case .failure(let error):
+                    return .nearMiss(positioned(error, tokens: tokens, phraseStart: directStart))
                 }
             }
         }
@@ -243,7 +254,8 @@ struct StandardParser {
             }
             switch resolve(phrase, in: scope) {
             case .success(let id): indirectID = id
-            case .failure(let error): return .nearMiss(error)
+            case .failure(let error):
+                return .nearMiss(positioned(error, tokens: tokens, phraseStart: indirectStart))
             }
         }
 
@@ -261,12 +273,13 @@ struct StandardParser {
 
     /// The near-miss for a pattern whose final object slot got no tokens:
     /// "take" asks for an object; "put cloak on" asks what to put it on.
+    /// Either way the answer belongs after everything already typed.
     private func missingSlotOutcome(
-        _ slot: SyntaxElement, verbPhrase: String,
+        _ slot: SyntaxElement, verbPhrase: String, tokens: [String],
         directPhrase: [String]?, preposition: String?, scope: Scope
     ) -> FitOutcome {
         if slot == .directObject {
-            return .nearMiss(.missingObject(verb: verbPhrase))
+            return .nearMiss(.missingObject(verb: verbPhrase, prefix: tokens))
         }
         if let directPhrase,
             case .success(let id) = resolve(directPhrase, in: scope)
@@ -275,9 +288,22 @@ struct StandardParser {
                 .missingIndirect(
                     verb: verbPhrase,
                     objectName: displayName(of: id),
-                    preposition: preposition ?? ""))
+                    preposition: preposition ?? "",
+                    prefix: tokens))
         }
         return .mismatch
+    }
+
+    /// Fills an `ambiguous` error's answer-insertion context: the reply's
+    /// adjectives belong just ahead of the phrase that was ambiguous.
+    private func positioned(
+        _ error: ParseError, tokens: [String], phraseStart: Int
+    ) -> ParseError {
+        guard case .ambiguous(let names, _, _) = error else { return error }
+        return .ambiguous(
+            names: names,
+            prefix: Array(tokens[..<phraseStart]),
+            suffix: Array(tokens[phraseStart...]))
     }
 
     // MARK: - Pieces
@@ -315,7 +341,9 @@ struct StandardParser {
 
         if matches.count > 1 {
             let names = matches.map { displayName(of: $0) }.sorted()
-            return .failure(.ambiguous(names: names))
+            // The caller (`fit`) fills the answer-insertion context via
+            // `positioned` — only it knows the phrase's place in the line.
+            return .failure(.ambiguous(names: names, prefix: [], suffix: []))
         }
         guard let match = matches.first else {
             if let unknown = tokens.first(where: { !vocabulary.knows($0) }) {
