@@ -144,6 +144,16 @@ enum Messages {
         "I don't know what \"\(word)\" refers to."
     }
 
+    // MARK: - Multi-object commands
+
+    static let multipleNotAllowedThere = "You can't use multiple objects there."
+    static let nothingToTakeHere = "There is nothing here to take."
+    static let notCarryingAnything = "You aren't carrying anything."
+
+    static func multipleNotAllowedWith(_ verb: String) -> String {
+        "You can't use multiple objects with \"\(verb)\"."
+    }
+
     static let cantSeeAnySuchThing = "You can't see any such thing."
     static let didntUnderstand = "I didn't understand that sentence."
 

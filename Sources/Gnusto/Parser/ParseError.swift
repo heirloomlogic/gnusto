@@ -12,6 +12,8 @@ enum ParseError: Error, Equatable {
     case missingObject(verb: String)
     case missingIndirect(verb: String, objectName: String, preposition: String)
     case ambiguous(names: [String])
+    /// "all"/"them" in the indirect slot — only the direct slot is multiple.
+    case multipleNotAllowed
 
     var playerMessage: String {
         switch self {
@@ -31,6 +33,8 @@ enum ParseError: Error, Equatable {
             Messages.missingIndirect(verb, objectName, preposition)
         case .ambiguous(let names):
             Messages.ambiguous(names)
+        case .multipleNotAllowed:
+            Messages.multipleNotAllowedThere
         }
     }
 }

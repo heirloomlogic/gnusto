@@ -1,9 +1,26 @@
 /// A parsed command in ID form; `GameWorld` converts it to the author-facing
 /// `Command` by attaching canonical proxies.
 struct ParsedCommand: Equatable {
+    /// A multi-object marker in the direct slot: "take all", "drop them".
+    /// The parser only flags it; expansion needs world state, so it happens
+    /// in `GameWorld`.
+    enum MultiObject: Equatable {
+        case all
+        case them
+
+        init?(phrase: [String]) {
+            switch phrase {
+            case ["all"], ["everything"]: self = .all
+            case ["them"]: self = .them
+            default: return nil
+            }
+        }
+    }
+
     var intent: Intent
     var directObject: EntityID?
     var indirectObject: EntityID?
+    var multiple: MultiObject?
     var preposition: String?
     var direction: Direction?
     var verbPhrase: String
@@ -205,16 +222,25 @@ struct StandardParser {
             return .mismatch
         }
 
-        // Structure fits; resolve the noun phrases against scope.
+        // Structure fits; resolve the noun phrases against scope. Multi-object
+        // keywords are flagged in the direct slot and refused in the indirect.
         var directID: EntityID?
+        var multiple: ParsedCommand.MultiObject?
         if let phrase = directPhrase {
-            switch resolve(phrase, in: scope) {
-            case .success(let id): directID = id
-            case .failure(let error): return .nearMiss(error)
+            if let keyword = ParsedCommand.MultiObject(phrase: phrase) {
+                multiple = keyword
+            } else {
+                switch resolve(phrase, in: scope) {
+                case .success(let id): directID = id
+                case .failure(let error): return .nearMiss(error)
+                }
             }
         }
         var indirectID: EntityID?
         if let phrase = indirectPhrase {
+            guard ParsedCommand.MultiObject(phrase: phrase) == nil else {
+                return .nearMiss(.multipleNotAllowed)
+            }
             switch resolve(phrase, in: scope) {
             case .success(let id): indirectID = id
             case .failure(let error): return .nearMiss(error)
@@ -226,6 +252,7 @@ struct StandardParser {
                 intent: rule.intent,
                 directObject: directID,
                 indirectObject: indirectID,
+                multiple: multiple,
                 preposition: preposition,
                 direction: direction,
                 verbPhrase: verbPhrase,

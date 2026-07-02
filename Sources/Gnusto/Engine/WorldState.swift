@@ -38,6 +38,9 @@ struct WorldState: Sendable, Codable {
     /// What "it" currently refers to: the last direct object the player
     /// named (naming binds, even when the action then refuses).
     var pronounIt: EntityID?
+    /// What "them" currently refers to: the group the last multi-object
+    /// command expanded to.
+    var pronounThem: [EntityID] = []
     var score = 0
     var moves = 0
     var touched: Set<EntityID> = []
