@@ -73,6 +73,21 @@ public protocol GamePlugin: Sendable {
     /// anything from the host. Defaults to empty. Rules that must reference the
     /// host's own entities are exposed as parameterized methods instead.
     @RuleBuilder var rules: Rules { get }
+
+    /// Fuses and daemons the plugin contributes, in the same form as a game's
+    /// `timers`. Defaults to empty. The host opts in by splicing:
+    ///
+    /// ```swift
+    /// var timers: [TimedEvent] { actors.timers }
+    /// ```
+    ///
+    /// Timer names are global to the game — a plugin should prefix its names
+    /// by convention (`"actors.roam"`); a duplicate name is the same fatal
+    /// bootstrap diagnostic as anywhere else. Actor turns are daemons on the
+    /// end-of-turn clock, not a separate engine phase — parameterized timer
+    /// factories (returning `TimedEvent` for the host's own `timers` block)
+    /// are how a plugin animates the host's actors.
+    @TimerBuilder var timers: [TimedEvent] { get }
 }
 
 extension GamePlugin {
@@ -85,4 +100,18 @@ extension GamePlugin {
 
     /// Plugins with no self-contained rules can omit the `rules` block.
     public var rules: Rules { Rules(rules: []) }
+
+    /// Plugins with no timed events can omit the `timers` block.
+    public var timers: [TimedEvent] { [] }
+
+    /// The player character — usable as a bare identifier in a plugin's
+    /// rule and timer bodies, exactly as in a `Game`.
+    public var player: Player { Player() }
+
+    /// The whole world — for plugin rules that apply everywhere.
+    public var world: World { World() }
+
+    /// The command currently being performed — usable as a bare identifier
+    /// in a plugin's rule bodies, exactly as in a `Game`.
+    public var command: Command { Ctx.current.command }
 }

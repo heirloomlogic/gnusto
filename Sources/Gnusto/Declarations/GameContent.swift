@@ -85,6 +85,10 @@ extension GameContent {
     /// The whole world — for bundle rules that apply everywhere.
     public var world: World { World() }
 
+    /// The command currently being performed — usable as a bare identifier
+    /// in a bundle's rule bodies, exactly as in a `Game`.
+    public var command: Command { Ctx.current.command }
+
     /// By default a bundle namespaces its entities under its own type name, so
     /// each distinct bundle type gets a distinct prefix automatically.
     public var namespace: String { String(describing: type(of: self)) }

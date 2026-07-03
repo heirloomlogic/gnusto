@@ -61,6 +61,15 @@ public func die(_ message: String) throws -> Never {
     throw TurnInterrupt.died(message: message)
 }
 
+/// Describes the player's current surroundings, verbose — as if the player
+/// had typed LOOK. For rule and daemon bodies that change where the player
+/// is or what they can see ("The current carries the boat downstream.") and
+/// want the classic follow-up description. Safe in darkness (prints the
+/// pitch-black line); marks the room visited exactly as a real LOOK would.
+public func describeSurroundings() {
+    RoomDescriber.describeCurrentLocation(mode: .look, frame: Ctx.current)
+}
+
 /// Runs the stage-4 default action (a game/plugin override if one is
 /// registered for this intent, else the built-in) immediately, then returns
 /// so the calling rule can embellish the result — print something more, read
