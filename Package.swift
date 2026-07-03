@@ -43,6 +43,7 @@ let package = Package(
         .library(name: "GnustoDangerousDark", targets: ["GnustoDangerousDark"]),
         .library(name: "GnustoScoring", targets: ["GnustoScoring"]),
         .library(name: "GnustoActors", targets: ["GnustoActors"]),
+        .library(name: "GnustoMeleeCombat", targets: ["GnustoMeleeCombat"]),
         .executable(name: "CloakOfDarkness", targets: ["CloakOfDarkness"]),
         .executable(name: "Zork1", targets: ["Zork1"]),
     ],
@@ -64,6 +65,11 @@ let package = Package(
             dependencies: ["Gnusto"],
             plugins: devPlugins
         ),
+        .target(
+            name: "GnustoMeleeCombat",
+            dependencies: ["Gnusto"],
+            plugins: devPlugins
+        ),
         .executableTarget(
             name: "CloakOfDarkness",
             dependencies: ["Gnusto"],
@@ -71,14 +77,17 @@ let package = Package(
         ),
         .executableTarget(
             name: "Zork1",
-            dependencies: ["Gnusto", "GnustoDangerousDark", "GnustoScoring", "GnustoActors"],
+            dependencies: [
+                "Gnusto", "GnustoDangerousDark", "GnustoScoring", "GnustoActors",
+                "GnustoMeleeCombat",
+            ],
             plugins: devPlugins
         ),
         .testTarget(
             name: "GnustoTests",
             dependencies: [
                 "Gnusto", "GnustoDangerousDark", "GnustoScoring", "GnustoActors",
-                "CloakOfDarkness", "Zork1",
+                "GnustoMeleeCombat", "CloakOfDarkness", "Zork1",
             ],
             plugins: devPlugins
         ),

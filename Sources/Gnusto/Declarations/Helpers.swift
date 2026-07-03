@@ -40,6 +40,9 @@ public func require(_ condition: Bool, else message: String) throws {
 /// behavior. Mechanically identical to `refuse(_:)` — two names exist so
 /// game code reads correctly: `refuse` for "no, you can't", `reply` for
 /// "here's what happens instead".
+///
+/// `reply("")` ends the turn without adding a line — for bodies that have
+/// already said everything with `say(_:)`.
 public func reply(_ message: String) throws -> Never {
     throw TurnInterrupt.replied(message: message)
 }
