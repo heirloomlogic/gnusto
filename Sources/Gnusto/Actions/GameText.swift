@@ -138,6 +138,17 @@ public struct GameText: Sendable {
     /// An empty answer to a filename prompt.
     public var cancelled = "Cancelled."
 
+    // MARK: - Death
+
+    /// The banner printed right after a `die(_:)` message.
+    public var deathBanner = "*** You have died ***"
+    /// The interactive prompt offered after death (and re-offered after a
+    /// failed restore or an unrecognized answer).
+    public var deathPrompt =
+        "Would you like to RESTART, RESTORE a saved game, UNDO your last turn, or QUIT?"
+    /// The nudge for any other input at the death prompt.
+    public var deathChoiceUnrecognized = "Please type RESTART, RESTORE, UNDO, or QUIT."
+
     /// The item resolved (it was visible to the parser), but a reachability
     /// guard failed — you can see it, you just can't touch it (e.g. through a
     /// shut glass jar). Distinct from `cantSeeAnySuchThing`, which is for a

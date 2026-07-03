@@ -16,6 +16,16 @@ public enum GameStatus: Hashable, Sendable, Codable {
     case won
     case lost
     case quit
+    /// The player has died. Over, but not final: the world's time has
+    /// stopped, yet the program keeps reading — the death prompt offers
+    /// RESTART / RESTORE / UNDO / QUIT.
+    case dead
+
+    /// Whether the program should stop reading input. `dead` is deliberately
+    /// not final — the death prompt is still a conversation.
+    var isFinal: Bool {
+        self == .won || self == .lost || self == .quit
+    }
 }
 
 /// Everything that changes during play, as a single value.

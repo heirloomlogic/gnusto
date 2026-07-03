@@ -48,6 +48,10 @@ public actor GameWorld {
         /// `returnToDeathPrompt` re-arms the death prompt after a failed or
         /// cancelled restore that was chosen from it.
         case restoreFilename(returnToDeathPrompt: Bool)
+        /// The post-death RESTART / RESTORE / UNDO / QUIT choice. While it
+        /// is armed, every input line is an answer — normal commands are
+        /// unreachable until the player picks an exit.
+        case deathChoice
     }
     private var pendingPrompt: PendingPrompt?
 
@@ -103,7 +107,7 @@ public actor GameWorld {
             let augmented = pending.prefix + tokens + pending.suffix
             switch parser.parse(tokens: augmented, rawInput: input, scope: scope) {
             case .success(let parsed):
-                return run(parsed)
+                return armDeathPromptIfNeeded(run(parsed))
             case .failure(let error):
                 // Still ambiguous ("brass" matched two): ask the narrower
                 // question. Anything else means the line wasn't an answer —
@@ -120,8 +124,17 @@ public actor GameWorld {
             pendingClarification = error.clarification
             return freeReply(error.playerMessage(definition.text))
         case .success(let parsed):
-            return run(parsed)
+            return armDeathPromptIfNeeded(run(parsed))
         }
+    }
+
+    /// After a turn that killed the player, the next input line belongs to
+    /// the death prompt.
+    private func armDeathPromptIfNeeded(_ result: TurnResult) -> TurnResult {
+        if state.status == .dead {
+            pendingPrompt = .deathChoice
+        }
+        return result
     }
 
     /// Runs a successfully parsed command: engine-level meta verbs first,
@@ -332,6 +345,30 @@ public actor GameWorld {
                     return restoreFailed(definition.text.wrongGameSave, returnToDeathPrompt)
                 }
             }
+
+        case .deathChoice:
+            switch line.lowercased() {
+            case "restart":
+                return performRestart()
+            case "restore":
+                pendingPrompt = .restoreFilename(returnToDeathPrompt: true)
+                return freeReply(definition.text.restorePrompt)
+            case "undo":
+                guard undoSnapshot != nil else {
+                    pendingPrompt = .deathChoice
+                    return freeReply(
+                        "\(definition.text.cantUndo)\n\n\(definition.text.deathPrompt)")
+                }
+                // The snapshot predates the fatal turn — this revives.
+                return performUndo()
+            case "quit", "q":
+                // The score already printed at death; just stop reading.
+                state.status = .quit
+                return freeReply("")
+            default:
+                pendingPrompt = .deathChoice
+                return freeReply(definition.text.deathChoiceUnrecognized)
+            }
         }
     }
 
@@ -354,18 +391,20 @@ public actor GameWorld {
     }
 
     /// A failed or cancelled restore — re-arming the death prompt when the
-    /// attempt was made from it.
+    /// attempt was made from it (there is no world to go back to otherwise).
     private func restoreFailed(_ message: String, _ returnToDeathPrompt: Bool) -> TurnResult {
-        // Task 6 (death) re-arms the death prompt here.
-        _ = returnToDeathPrompt
-        return freeReply(message)
+        guard returnToDeathPrompt else {
+            return freeReply(message)
+        }
+        pendingPrompt = .deathChoice
+        return freeReply("\(message)\n\n\(definition.text.deathPrompt)")
     }
 
     /// A parse-error-style response: message only, no rules, no turn.
     private func freeReply(_ message: String) -> TurnResult {
         TurnResult(
             output: message,
-            isFinished: state.status != .playing,
+            isFinished: state.status.isFinal,
             status: statusLine())
     }
 
@@ -467,10 +506,15 @@ public actor GameWorld {
             frame.with { $0.state.moves += 1 }
         }
 
-        // End-of-game epilogue: one place reports the final score,
-        // whether the game was won, lost, or quit.
+        // End-of-game epilogue: one place reports the final score, whether
+        // the game was won, lost, quit — or the player died, in which case
+        // the classic prompt follows and `perform` arms itself to consume
+        // the answer.
         if frame.with({ $0.state.status }) != .playing {
             DefaultActions.score(frame)
+        }
+        if frame.with({ $0.state.status }) == .dead {
+            frame.say(frame.definition.text.deathPrompt)
         }
     }
 
@@ -556,6 +600,10 @@ public actor GameWorld {
             frame.say(message)
         case .gameOver(let won):
             frame.with { $0.state.status = won ? .won : .lost }
+        case .died(let message):
+            frame.say(message)
+            frame.say(frame.definition.text.deathBanner)
+            frame.with { $0.state.status = .dead }
         }
     }
 
@@ -588,7 +636,7 @@ public actor GameWorld {
         state = scratch.state
         return TurnResult(
             output: scratch.output.joined(separator: "\n\n"),
-            isFinished: scratch.state.status != .playing,
+            isFinished: scratch.state.status.isFinal,
             status: statusLine())
     }
 
