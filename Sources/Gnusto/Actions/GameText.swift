@@ -119,6 +119,25 @@ public struct GameText: Sendable {
     /// An `undo` with no snapshot to rewind to.
     public var cantUndo = "There's nothing to undo."
 
+    // MARK: - Save & restore
+
+    /// The filename question after `save`.
+    public var savePrompt = "Save to what file?"
+    /// The filename question after `restore`.
+    public var restorePrompt = "Restore from what file?"
+    /// A successful `save`.
+    public var saved = "Saved."
+    /// A `save` whose file couldn't be written.
+    public var saveFailed = "Save failed."
+    /// A successful `restore`.
+    public var restored = "Restored."
+    /// A `restore` whose file is missing, unreadable, or not a save.
+    public var restoreFailed = "Restore failed."
+    /// A `restore` from a save that belongs to a different game.
+    public var wrongGameSave = "That save file is from a different game."
+    /// An empty answer to a filename prompt.
+    public var cancelled = "Cancelled."
+
     /// The item resolved (it was visible to the parser), but a reachability
     /// guard failed — you can see it, you just can't touch it (e.g. through a
     /// shut glass jar). Distinct from `cantSeeAnySuchThing`, which is for a

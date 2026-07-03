@@ -17,8 +17,9 @@ public struct TurnResult: Sendable {
     public let isFinished: Bool
     /// The status line to display alongside the output.
     public let status: StatusLine
-    // Seam: a `pendingQuery` field will later carry quit-confirmation and
-    // disambiguation round-trips.
+    // Round-trip questions (disambiguation, save/restore filenames) are
+    // pending state on the GameWorld actor: the next input line answers
+    // them, so the driver never needs to know a question is open.
 }
 
 /// The game world: owns all state, serializes all mutation, and runs the
@@ -39,6 +40,16 @@ public actor GameWorld {
     /// turn that actually ran stages. Kept on the actor so history never
     /// leaks into save files.
     private var undoSnapshot: WorldState?
+    /// An open engine prompt. Unlike a clarification, the next input line
+    /// *is* the answer — raw, untokenized (filenames carry dots and slashes
+    /// the tokenizer would mangle) — and normal parsing doesn't happen.
+    private enum PendingPrompt {
+        case saveFilename
+        /// `returnToDeathPrompt` re-arms the death prompt after a failed or
+        /// cancelled restore that was chosen from it.
+        case restoreFilename(returnToDeathPrompt: Bool)
+    }
+    private var pendingPrompt: PendingPrompt?
 
     /// Builds the world from a game definition, validating it up front.
     /// The random stream is seeded fresh each run; use `init(game:seed:)`
@@ -79,6 +90,11 @@ public actor GameWorld {
     /// errors ("Which do you mean…?") stay open: the next line is first
     /// tried as their answer, and falls back to being a fresh command.
     public func perform(_ input: String) -> TurnResult {
+        if let prompt = pendingPrompt {
+            pendingPrompt = nil
+            return answer(prompt, with: input.trimmingCharacters(in: .whitespaces))
+        }
+
         let scope = currentScope()
         let tokens = parser.tokenize(input)
 
@@ -116,6 +132,12 @@ public actor GameWorld {
         switch parsed.intent {
         case .undo: return performUndo()
         case .restart: return performRestart()
+        case .save:
+            pendingPrompt = .saveFilename
+            return freeReply(definition.text.savePrompt)
+        case .restore:
+            pendingPrompt = .restoreFilename(returnToDeathPrompt: false)
+            return freeReply(definition.text.restorePrompt)
         default: break
         }
 
@@ -279,6 +301,64 @@ public actor GameWorld {
         undoSnapshot = nil
         pendingClarification = nil
         return begin()
+    }
+
+    /// Consumes the line that answers an open engine prompt.
+    private func answer(_ prompt: PendingPrompt, with line: String) -> TurnResult {
+        switch prompt {
+        case .saveFilename:
+            guard !line.isEmpty else {
+                return freeReply(definition.text.cancelled)
+            }
+            do {
+                try SaveFile.write(state, title: definition.title, to: line)
+                return freeReply(definition.text.saved)
+            } catch {
+                return freeReply(definition.text.saveFailed)
+            }
+
+        case .restoreFilename(let returnToDeathPrompt):
+            guard !line.isEmpty else {
+                return restoreFailed(definition.text.cancelled, returnToDeathPrompt)
+            }
+            do {
+                let restored = try SaveFile.read(from: line, expecting: definition.title)
+                return performRestore(restored)
+            } catch {
+                switch error {
+                case .unreadable:
+                    return restoreFailed(definition.text.restoreFailed, returnToDeathPrompt)
+                case .wrongGame:
+                    return restoreFailed(definition.text.wrongGameSave, returnToDeathPrompt)
+                }
+            }
+        }
+    }
+
+    /// Swaps a validated save's state in and shows the player where they are.
+    private func performRestore(_ restored: WorldState) -> TurnResult {
+        var next = restored
+        // Re-bind the saved timer schedule to the declared bodies by name;
+        // names this build doesn't declare are dropped (see `SaveFile`).
+        next.activeFuses = next.activeFuses.filter { definition.timers[$0.key] != nil }
+        next.activeDaemons = next.activeDaemons.filter { definition.timers[$0] != nil }
+        state = next
+        undoSnapshot = nil
+        pendingClarification = nil
+        let frame = TurnFrame(definition: definition, state: state)
+        Ctx.$frame.withValue(frame) {
+            frame.say(definition.text.restored)
+            RoomDescriber.describeCurrentLocation(mode: .entry, frame: frame)
+        }
+        return commit(frame)
+    }
+
+    /// A failed or cancelled restore — re-arming the death prompt when the
+    /// attempt was made from it.
+    private func restoreFailed(_ message: String, _ returnToDeathPrompt: Bool) -> TurnResult {
+        // Task 6 (death) re-arms the death prompt here.
+        _ = returnToDeathPrompt
+        return freeReply(message)
     }
 
     /// A parse-error-style response: message only, no rules, no turn.
