@@ -41,6 +41,7 @@ let package = Package(
     products: [
         .library(name: "Gnusto", targets: ["Gnusto"]),
         .library(name: "GnustoDangerousDark", targets: ["GnustoDangerousDark"]),
+        .library(name: "GnustoScoring", targets: ["GnustoScoring"]),
         .executable(name: "CloakOfDarkness", targets: ["CloakOfDarkness"]),
         .executable(name: "Zork1", targets: ["Zork1"]),
     ],
@@ -52,6 +53,11 @@ let package = Package(
             dependencies: ["Gnusto"],
             plugins: devPlugins
         ),
+        .target(
+            name: "GnustoScoring",
+            dependencies: ["Gnusto"],
+            plugins: devPlugins
+        ),
         .executableTarget(
             name: "CloakOfDarkness",
             dependencies: ["Gnusto"],
@@ -59,12 +65,15 @@ let package = Package(
         ),
         .executableTarget(
             name: "Zork1",
-            dependencies: ["Gnusto", "GnustoDangerousDark"],
+            dependencies: ["Gnusto", "GnustoDangerousDark", "GnustoScoring"],
             plugins: devPlugins
         ),
         .testTarget(
             name: "GnustoTests",
-            dependencies: ["Gnusto", "GnustoDangerousDark", "CloakOfDarkness", "Zork1"],
+            dependencies: [
+                "Gnusto", "GnustoDangerousDark", "GnustoScoring",
+                "CloakOfDarkness", "Zork1",
+            ],
             plugins: devPlugins
         ),
     ]
