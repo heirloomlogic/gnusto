@@ -112,6 +112,13 @@ public struct GameText: Sendable {
     /// Extinguishing the only light in a dark place.
     public var nowDark = "It is now pitch black."
 
+    // MARK: - Undo & restart
+
+    /// A successful `undo`.
+    public var undone = "Previous turn undone."
+    /// An `undo` with no snapshot to rewind to.
+    public var cantUndo = "There's nothing to undo."
+
     /// The item resolved (it was visible to the parser), but a reachability
     /// guard failed — you can see it, you just can't touch it (e.g. through a
     /// shut glass jar). Distinct from `cantSeeAnySuchThing`, which is for a

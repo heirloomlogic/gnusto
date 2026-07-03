@@ -32,6 +32,13 @@ public actor GameWorld {
     /// to take?"): the next input line is first tried as its answer,
     /// re-parsed as `prefix + answer + suffix`.
     private var pendingClarification: (prefix: [String], suffix: [String])?
+    /// The pristine post-bootstrap state, seed included — what RESTART
+    /// rewinds to. Actor state, never part of `WorldState` itself.
+    private let initialState: WorldState
+    /// The one-level UNDO snapshot: the state as it stood before the last
+    /// turn that actually ran stages. Kept on the actor so history never
+    /// leaks into save files.
+    private var undoSnapshot: WorldState?
 
     /// Builds the world from a game definition, validating it up front.
     /// The random stream is seeded fresh each run; use `init(game:seed:)`
@@ -48,6 +55,9 @@ public actor GameWorld {
         self.definition = definition
         self.state = state
         self.state.rngState = seed
+        // Captured after seeding, so RESTART replays the identical game,
+        // randomness included.
+        self.initialState = self.state
         self.parser = StandardParser(
             vocabulary: definition.vocabulary,
             syntaxRules: definition.syntaxRules)
@@ -98,22 +108,39 @@ public actor GameWorld {
         }
     }
 
-    /// Runs a successfully parsed command: pronoun bookkeeping, then the
-    /// single- or multi-object turn.
+    /// Runs a successfully parsed command: engine-level meta verbs first,
+    /// then pronoun bookkeeping and the single- or multi-object turn.
     private func run(_ parsed: ParsedCommand) -> TurnResult {
+        // UNDO and RESTART act on the actor's snapshots, not the pipeline —
+        // no rules see them and `actionOverrides` can't reclaim them.
+        switch parsed.intent {
+        case .undo: return performUndo()
+        case .restart: return performRestart()
+        default: break
+        }
+
+        // The would-be UNDO snapshot: the state before *anything* this turn
+        // touches, pronouns included. Stored only when the turn actually
+        // runs stages — a free reply ("There is nothing here to take.")
+        // must not clobber the snapshot of the last real turn.
+        let snapshot = state
+
         // Naming a thing binds "it" — even if the action then refuses.
         if let direct = parsed.directObject {
             state.pronounIt = direct
         }
         if let multiple = parsed.multiple {
-            return runMultiTurn(parsed, multiple)
+            return runMultiTurn(parsed, multiple, snapshot: snapshot)
         }
-        return runTurn(command(from: parsed))
+        return runTurn(command(from: parsed), snapshot: snapshot)
     }
 
     // MARK: - The turn pipeline
 
-    private func runTurn(_ command: Command) -> TurnResult {
+    private func runTurn(_ command: Command, snapshot: WorldState) -> TurnResult {
+        if !command.intent.isMeta {
+            undoSnapshot = snapshot
+        }
         let frame = TurnFrame(definition: definition, state: state, command: command)
         Ctx.$frame.withValue(frame) {
             performStages(command, frame: frame, upkeep: true)
@@ -132,7 +159,8 @@ public actor GameWorld {
     /// stage 6) runs once for the whole command, so a daemon doesn't tick
     /// once per object.
     private func runMultiTurn(
-        _ parsed: ParsedCommand, _ multiple: ParsedCommand.MultiObject
+        _ parsed: ParsedCommand, _ multiple: ParsedCommand.MultiObject,
+        snapshot: WorldState
     ) -> TurnResult {
         let intent = parsed.intent
         guard Self.multiObjectIntents.contains(intent) else {
@@ -167,6 +195,10 @@ public actor GameWorld {
             return freeReply(
                 intent == .take ? definition.text.nothingToTakeHere : definition.text.notCarryingAnything)
         }
+
+        // Every early return above was a free reply; from here the turn
+        // really runs, so it becomes the thing UNDO reverses.
+        undoSnapshot = snapshot
 
         // Stable, player-legible order: by display name, then ID.
         objects.sort { lhs, rhs in
@@ -219,6 +251,34 @@ public actor GameWorld {
                 scratch.output.append("\(name): \(said)")
             }
         }
+    }
+
+    // MARK: - Engine-level meta verbs
+
+    /// Rewinds exactly one turn from the actor's snapshot, then shows the
+    /// player where (and when — the status line's moves) they are. Free.
+    private func performUndo() -> TurnResult {
+        guard let snapshot = undoSnapshot else {
+            return freeReply(definition.text.cantUndo)
+        }
+        state = snapshot
+        undoSnapshot = nil
+        pendingClarification = nil
+        let frame = TurnFrame(definition: definition, state: state)
+        Ctx.$frame.withValue(frame) {
+            frame.say(definition.text.undone)
+            RoomDescriber.describeCurrentLocation(mode: .entry, frame: frame)
+        }
+        return commit(frame)
+    }
+
+    /// Rewinds to the pristine post-bootstrap opening — seed included, so
+    /// the restarted game replays identically — and plays the opening again.
+    private func performRestart() -> TurnResult {
+        state = initialState
+        undoSnapshot = nil
+        pendingClarification = nil
+        return begin()
     }
 
     /// A parse-error-style response: message only, no rules, no turn.

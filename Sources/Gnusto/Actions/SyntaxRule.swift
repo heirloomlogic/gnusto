@@ -231,5 +231,9 @@ extension SyntaxRule {
         .init("quit", intent: .quit),
         .init("q", intent: .quit),
         .init("version", intent: .version),
+        .init("undo", intent: .undo),
+        .init("restart", intent: .restart),
+        .init("save", intent: .save),
+        .init("restore", intent: .restore),
     ]
 }
