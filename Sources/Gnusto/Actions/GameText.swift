@@ -27,6 +27,10 @@ public struct GameText: Sendable {
     public var alreadyHave = "You already have that."
     /// Taking something that isn't takable (scenery).
     public var cantTake = "You can't take that."
+    /// Taking a person.
+    public var cantTakeActor: @Sendable (_ name: String) -> String = {
+        "The \($0) would take exception to that."
+    }
     /// Dropping (or otherwise handling) something not carried.
     public var notCarrying = "You aren't carrying that."
     /// Wearing or placing something not in hand.

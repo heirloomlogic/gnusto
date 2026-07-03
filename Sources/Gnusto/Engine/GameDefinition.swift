@@ -72,9 +72,13 @@ struct ItemDefinition: Sendable {
     var isLightSource = false
     var startsLit = false
     var customTraits: [String: StateValue] = [:]
+    /// True when this entity was declared as an `Actor`. Set by Bootstrap
+    /// after trait evaluation — actors share the item trait vocabulary, so
+    /// there is no trait to switch on.
+    var isActor = false
 
-    /// Items are takable unless they're scenery.
-    var isTakable: Bool { !isScenery }
+    /// Items are takable unless they're scenery — or people.
+    var isTakable: Bool { !isScenery && !isActor }
 
     init(traits: [ItemTrait]) {
         for trait in traits {

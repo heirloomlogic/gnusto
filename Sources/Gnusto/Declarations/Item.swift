@@ -13,6 +13,14 @@ public struct Item: Sendable, Equatable {
         self.traits = traits()
     }
 
+    /// The item-shaped view of an existing declaration — `Actor` uses this
+    /// to share one token (and so one identity) with its item storage. No
+    /// new token is minted.
+    init(token: RefToken, traits: [ItemTrait]) {
+        self.token = token
+        self.traits = traits
+    }
+
     /// Two items are equal when they share the same declaration identity.
     public static func == (lhs: Item, rhs: Item) -> Bool {
         lhs.token === rhs.token

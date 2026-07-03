@@ -51,6 +51,10 @@ enum DefaultActions {
     private static func take(_ command: Command, frame: TurnFrame) throws {
         let item = try requireDirectObject(command)
         let id = item.id
+        // People get the person-specific refusal, not scenery's.
+        if frame.definition.items[id]?.isActor == true {
+            try refuse(frame.definition.text.cantTakeActor(item.name))
+        }
         if item.isHeld {
             try refuse(item.isWorn ? frame.definition.text.alreadyWearing : frame.definition.text.alreadyHave)
         }
