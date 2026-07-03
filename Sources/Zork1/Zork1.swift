@@ -1,34 +1,44 @@
 import Gnusto
 
 /// *Zork I: The Great Underground Empire* — the White House slice. Composes
-/// the above-ground region (``ZorkAboveGround``) and the house interior
-/// (``ZorkHouse``), and wires the one exit that crosses between them: the
-/// kitchen window. Everything else about each region is that region's own
-/// concern; the host only owns what genuinely spans both.
+/// the above-ground region (``ZorkAboveGround``), the house interior
+/// (``ZorkHouse``), and the cellar region (``ZorkCellar``), and wires the
+/// exits that cross between them: the kitchen window, the cellar's south
+/// crawlway, and the studio's chimney. Everything else about each region is
+/// that region's own concern; the host only owns what genuinely spans two.
 @main
 struct Zork1: Game, GameMain {
     let title = "Zork I: The Great Underground Empire"
-    let tagline = "A placeholder slice: the White House and its grounds."
+    let tagline = "A placeholder slice: the White House, its grounds, and the cellar."
     let intro = """
         An adventure awaits amid a ruined empire buried underground. This
-        slice covers only the White House and its immediate surroundings.
+        slice covers only the White House, its immediate surroundings, and
+        the first rooms below.
         """
 
     let aboveGround = ZorkAboveGround()
     let house = ZorkHouse()
+    let cellar = ZorkCellar()
 
     var content: GameContents {
         aboveGround
         house
+        cellar
     }
 
     var map: WorldMap {
-        // The one exit that crosses the bundle boundary: the kitchen window,
-        // between `ZorkAboveGround.behindHouse` and `ZorkHouse.kitchen`.
-        // Starts closed — the brief's "open window, enter west" transcript
-        // exercises exactly this door.
+        // The one exit that crosses the ZorkAboveGround/ZorkHouse boundary:
+        // the kitchen window. Starts closed — the "open window, enter west"
+        // transcript exercises exactly this door.
         aboveGround.behindHouse.west(house.kitchen, via: house.window)
         house.kitchen.east(aboveGround.behindHouse, via: house.window)
+
+        // Where ZorkHouse meets ZorkCellar: the crawlway south of the
+        // cellar, and the chimney — climbable only from below, so no
+        // matching `kitchen.down` (FIDELITY.md).
+        house.cellar.south(cellar.eastOfChasm)
+        cellar.eastOfChasm.north(house.cellar)
+        cellar.studio.up(house.kitchen)
 
         player.starts(in: aboveGround.westOfHouse)
     }

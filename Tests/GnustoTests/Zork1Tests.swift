@@ -39,62 +39,104 @@ struct Zork1Tests {
             ])
     }
 
-    /// Documented Phase 7 seam, not a bug: a solo player who descends the
-    /// trap door without a light source is genuinely stuck in the cellar,
-    /// full stop, until Phase 7 lands light sources (a lit lantern) and the
-    /// grue. See the "Known soft-lock" entry in `FIDELITY.md` for the full
-    /// causal explanation — in short, `cellar.onEnter`
-    /// (`Sources/Zork1/House.swift`) slams the trap door shut on entry, the
-    /// cellar is `dark`, and the single early-return dark guard in
-    /// `Visibility.collect` (`Sources/Gnusto/Engine/Visibility.swift`) skips
-    /// both the room-contents walk and the door-folding loop, so the trap
-    /// door never becomes a resolvable noun from inside. Nothing in this
-    /// slice can reopen it from below.
-    ///
-    /// This test pins that current behavior end to end so a future engine
-    /// change (Phase 7) has to touch this assertion deliberately rather
-    /// than silently regress it: the slam, `up` refusing while the door is
-    /// closed, `open trap door` failing to resolve at all, and a further
-    /// `look` still reporting pitch black rather than a room — i.e. no
-    /// other command escapes either.
-    @Test func darkCellarSoftLockIsThePhase7Seam() async throws {
-        // Reaches the Living Room via the kitchen window, then exercises the
-        // Task 4 push-to-reveal pattern on the rug, opens the newly revealed
-        // trap door, and descends into the (dark, stubbed) cellar — where
-        // the trap door slams shut behind the player, the classic moment.
+    /// The Phase-5 dark-cellar soft-lock is closed: with the brass lantern
+    /// lit, the trap door's slam is an inconvenience, not a prison. The full
+    /// loop — Cellar → East of Chasm → Gallery (painting) → Studio → up the
+    /// chimney into the Kitchen — runs by lantern light, exercising the
+    /// reveal-on-descent, the lit `dark`-trait rooms, and the one-way
+    /// chimney in a single walk.
+    @Test func cellarLoopByLanternLight() async throws {
         let transcript = try await play(
             Zork1(),
             [
                 "south", "east", "open window", "west", "west",
-                "push rug", "open trap door", "down", "up", "open trap door", "look",
+                "take lantern", "turn on lantern",
+                "push rug", "open trap door", "down",
+                "south", "east", "take painting", "north", "up",
             ])
 
         expectInOrder(
             transcript,
             [
                 "Living Room",
+                "Taken.",
+                "The brass lantern is now on.",
                 "Dragging the rug aside reveals a trap door beneath it.",
                 "Opened.",
                 "The trap door swings shut, and you hear a bolt slide home above you.",
-                "It is pitch black. You can't see a thing.",
-                // `up` while the door is still closed: refused.
-                "The trap door is closed.",
+                "Cellar",
+                "East of Chasm",
+                "Gallery",
+                "Taken.",
+                "Studio",
+                "Kitchen",
+            ])
+        // The lit cellar is a described room now, never pitch black.
+        #expect(!transcript.contains("It is pitch black."))
+    }
+
+    /// The other way out of the sealed cellar: a lightless dash to the lit
+    /// Gallery and up the chimney. The dark rooms stay pitch black; the
+    /// exits still work.
+    @Test func chimneyEscapeInTheDark() async throws {
+        let transcript = try await play(
+            Zork1(),
+            [
+                "south", "east", "open window", "west", "west",
+                "push rug", "open trap door", "down",
+                "south", "east", "north", "up",
             ])
 
-        // `open trap door`, attempted from inside the dark cellar: a dark
-        // room's scope collapses entirely (one early-return guard in
-        // `Visibility.collect` skips both the room-contents walk and the
-        // door-folding loop), so the door isn't even resolvable as a noun
-        // from in here — a real engine/content interaction, documented in
-        // FIDELITY.md, not an oversight in this test. The parser reports it
-        // can't see the door at all, rather than a `refuse`-level "it's
-        // locked"/"it's dark" message.
-        expectInOrder(transcript, ["You can't see any such thing."])
+        expectInOrder(
+            transcript,
+            [
+                "The trap door swings shut, and you hear a bolt slide home above you.",
+                "It is pitch black. You can't see a thing.",
+                "Gallery",
+                "Kitchen",
+            ])
+    }
 
-        // No further escape: `look` from inside the sealed, dark cellar
-        // still reports pitch black rather than a room description — the
-        // soft-lock holds under repeated attempts, not just the first one.
-        #expect(transcript.hasSuffix("It is pitch black. You can't see a thing.\n\n"))
+    /// The lantern's fuel is a pair of fuses: a dim warning, then darkness —
+    /// and turning the lantern off pauses the clock (no fuel burns while
+    /// it's off).
+    @Test func lanternBurnsOut() async throws {
+        let fillers = Array(repeating: "look", count: 18)
+        let transcript = try await play(
+            Zork1(),
+            ["south", "east", "open window", "west", "west", "take lantern", "turn on lantern"]
+                + fillers
+                + ["look", "look", "look", "look", "look", "look", "turn on lantern"])
+        // The turn-on turn ticks 20→19; the 19th look reaches zero.
+        let looks = transcript.components(separatedBy: "> look")
+        #expect(!looks[18].contains("flame inside the lantern shrinks"))
+        #expect(looks[19].contains("flame inside the lantern shrinks"))
+        // Five looks later the lantern dies for good.
+        #expect(looks[24].contains("The brass lantern flickers and goes out"))
+        // Spent is spent.
+        let relights = transcript.components(separatedBy: "> turn on lantern")
+        #expect(relights[2].contains("burned out"))
+    }
+
+    @Test func turningTheLanternOffPausesTheFuel() async throws {
+        let burn18 = Array(repeating: "look", count: 18)
+        let transcript = try await play(
+            Zork1(),
+            ["south", "east", "open window", "west", "west", "take lantern", "turn on lantern"]
+                + burn18
+                + ["turn off lantern", "look", "look", "look", "turn on lantern"])
+        // 18 looks burned the dim fuse to 1; three dark-lantern turns cost
+        // nothing; relighting restarts it at 1, so it fires at the end of
+        // the relight turn itself.
+        let off = turnOutput(of: "turn off lantern", in: transcript)
+        #expect(!off.contains("flame inside the lantern shrinks"))
+        let looks = transcript.components(separatedBy: "> look")
+        #expect(!looks[19].contains("flame inside the lantern shrinks"))
+        let lastDarkLook = looks[21].prefix(while: { $0 != ">" })
+        #expect(!lastDarkLook.contains("flame inside the lantern shrinks"))
+        let relight = transcript.components(separatedBy: "> turn on lantern")[2]
+        #expect(relight.contains("The brass lantern is now on."))
+        #expect(relight.contains("flame inside the lantern shrinks"))
     }
 
     @Test func treeEggAndTrophyCase() async throws {

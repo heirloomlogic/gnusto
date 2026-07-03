@@ -55,53 +55,51 @@ entry below is grouped by the task that introduced it.
   Bootstrap (an unplaced item defaults to `.nowhere`), and confirmed by
   running the bootstrap: no stub room was needed. `open grating` therefore
   always refuses with the engine's standard "is locked" message. The maze
-  that actually holds the key is Phase 7 content.
-- **The cellar is a stub**, not the full Zork cellar (no maze, no thief, no
-  troll, no score). It exists only so the trap door leads somewhere real and
-  the dark-room mechanic (`dark` trait, "It is pitch black") is
-  demonstrable now. The full cellar arrives with Phase 7.
-- **The brass lantern is just an item.** It has no light-source behavior;
-  standing in the dark cellar is genuinely pitch black even while carrying
-  it. Phase 7 is expected to make `dark`-location lighting react to a
-  carried lit lantern.
+  that actually holds the key was deferred out of Phase 7 (which took the
+  cellar region instead) and remains future content.
 - **The trap door is mechanically unbarred from the cellar side.** In the
   finished game, the thief eventually bars it from below; that arrives with
   the thief in Phase 8. For now, `livingRoom.down(cellar, via: trapDoor)` /
   `cellar.up(livingRoom, via: trapDoor)` share one door state with no extra
-  restriction — so nothing in the *state model* keeps it shut. In practice,
-  though, the cellar's darkness makes the door unreachable to a lightless
-  player (it never enters scope), so it can't actually be reopened from below
-  today; see the "Known soft-lock" entry immediately after this one for why.
-- **Known soft-lock, not a Task 8 bug — a solo player without a light
-  source who descends the trap door is stuck, full stop, until Phase 7.**
-  `cellar.onEnter` (`Sources/Zork1/House.swift`) slams and closes the trap
-  door behind the player on entry. The cellar is `dark`, and
-  `Visibility.collect` (`Sources/Gnusto/Engine/Visibility.swift`) has a
-  single early-return guard for darkness (`guard !isDark(...) else {
-  return result }`) that sits *before* both the room-contents walk and the
-  door-folding loop later in the same function — so under darkness neither
-  one runs, and a door referenced only by an exit (never placed `in:` a
-  room) never enters scope. Concretely: `open trap door` from inside the
-  cellar fails at the parser with "You can't see any such thing," not a
-  `refuse`-level "it's dark" message, because the trap door was never a
-  candidate noun to begin with. Nothing else in this slice can reopen it
-  from below. This is a genuine, intentional soft-lock in the current
-  build — not a death, and not (yet) recoverable — pending Phase 7's light
-  sources (lantern) and grue, which is when darkness in this cellar
-  becomes survivable (lit) or lethal (grue) rather than merely stuck.
-  Worth noting for calibration: the original Zork 1 doesn't let you reopen
-  the trap door from below either — the thief bars it once he arrives —
-  but the original handles a lightless cellar by killing the player to the
-  grue after a few dark turns, so unlit descent is never a stable state
-  there. Our engine has no grue yet, so the same starting conditions
-  produce a stuck state instead of a game over; that gap is what makes
-  this "soft-lock" rather than "death," and it closes when Phase 7 lands.
-  `Tests/GnustoTests/Zork1Tests.swift`
-  (`darkCellarSoftLockIsThePhase7Seam`) pins this as current intended
-  behavior end to end: the slam, the refusal of `up` while closed, the
-  parser's inability to resolve `open trap door` as a noun, and a further
-  `look` that still reports pitch black rather than a room, confirming no
-  other command reopens a path out.
+  restriction. A *lightless* player still can't reopen it from below (a
+  dark room's scope collapses, so the door isn't a resolvable noun), but
+  since Phase 7 that's no longer a soft-lock — see the next entry.
+- **The Phase-5 "known soft-lock" is closed (Phase 7).** The earlier ledger
+  pinned a genuine stuck state: a lightless player sealed in the dark stub
+  cellar, with no grue to end it and no way out. Phase 7 closed it from
+  both directions promised then — the brass lantern is a real light source
+  (lit, the cellar is a described room and the trap door is back in scope),
+  and the cellar region's Gallery/chimney loop gives even a lightless
+  player a dash to daylight (`chimneyEscapeInTheDark` pins it). The pinning
+  test `darkCellarSoftLockIsThePhase7Seam` was deleted with the seam;
+  `cellarLoopByLanternLight` is its replacement reality. Darkness turning
+  *lethal* (the grue) is the remaining Phase-7 piece, ledgered separately
+  when it lands.
+
+## Phase 7 — cellar region & the lit lantern (`Sources/Zork1/Cellar.swift`)
+
+- **All prose remains original placeholder text**, same policy and same
+  one-constant-per-entity structure as Task 8 above.
+- **The cellar region is the four-room classic loop only**: Cellar (in
+  `ZorkHouse`) → East of Chasm → Gallery (painting) → Studio → chimney up
+  to the Kitchen. The cellar's north passage is a `blocked:` rubble stub
+  where the Troll Room arrives in a later phase; the maze, thief, troll,
+  and everything deeper stay future content.
+- **The chimney is a plain one-way exit** (`studio.up(kitchen)`, no
+  `kitchen.down`). The original's restriction — climbable only while
+  carrying at most one item plus the lamp — is not modeled.
+- **The Gallery is inherently lit** ("daylight from somewhere high above"),
+  matching the original; it doubles as the resting point that makes the
+  lightless chimney dash survivable.
+- **The painting is just a takable item.** Treasure scoring (its trophy-case
+  value) is a later phase.
+- **The lantern's fuel is deliberately tiny**: dim warning after 20 burning
+  turns, dead after 25 — the original burns for hundreds. Chosen so a
+  transcript test (`lanternBurnsOut`) can watch the whole arc. Turning the
+  lantern off banks the remaining turns (the classic economy); the dim
+  warning prints wherever the player is, without the original's
+  can-you-see-the-lamp check. A burned-out lantern refuses `turn on` with
+  `Prose.lanternSpent`, and nothing in the slice replaces it.
 - **The white house exterior is four separate scenery items**
   (`whiteHouseAtWest`/`AtNorth`/`AtSouth`/`AtBehind`), one per house-side
   room, all sharing the same name and `Prose.whiteHouse` text. A single
