@@ -52,6 +52,8 @@ public typealias MapBuilder = GnustoBuilder<MapEntry>
 public typealias VerbBuilder = GnustoBuilder<SyntaxRule>
 /// The result builder for `content` blocks.
 public typealias ContentBuilder = GnustoBuilder<any GameContent>
+/// The result builder for `timers` blocks.
+public typealias TimerBuilder = GnustoBuilder<TimedEvent>
 
 extension GnustoBuilder where Element == Rule {
     /// Lets `rules` blocks compose: `var rules: Rules { cloakRules; barRules }`.
@@ -77,6 +79,14 @@ extension GnustoBuilder where Element == IntentAction {
     /// Lets `actions` blocks splice a whole table at once — e.g. a plugin's
     /// `combat.actions` — alongside individual `IntentAction` rows.
     public static func buildExpression(_ table: [IntentAction]) -> [IntentAction] {
+        table
+    }
+}
+
+extension GnustoBuilder where Element == TimedEvent {
+    /// Lets `timers` blocks splice a whole table at once — e.g. a plugin's
+    /// `combat.timers` — alongside individual `fuse`/`daemon` rows.
+    public static func buildExpression(_ table: [TimedEvent]) -> [TimedEvent] {
         table
     }
 }

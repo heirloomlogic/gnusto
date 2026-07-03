@@ -51,6 +51,12 @@ struct WorldState: Sendable, Codable {
     var visited: Set<EntityID> = []
     var descriptionOverrides: [EntityID: String] = [:]
     var globals: [EntityID: StateValue] = [:]
+    /// Running fuses: name → end-of-turn ticks left before firing. Names
+    /// re-bind to the declared `TimedEvent` bodies; the closures themselves
+    /// are code, not data, and never serialize.
+    var activeFuses: [String: Int] = [:]
+    /// Names of the daemons currently running each turn.
+    var activeDaemons: Set<String> = []
     var status: GameStatus = .playing
     /// The random stream's position. Part of the saved state, so a restored
     /// game replays the exact same randomness it would have had.

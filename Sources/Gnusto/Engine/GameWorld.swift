@@ -318,6 +318,12 @@ public actor GameWorld {
                 runCatching(rules.locationAfterEachTurn[here] ?? [], matching: intent, frame: frame)
                 runCatching(rules.worldAfter, matching: intent, frame: frame)
             }
+            // The world's clock ticks last, after the rules have reacted to
+            // the command — and not once the game has ended (re-checked here
+            // because an each-turn rule above may have ended it).
+            if frame.with({ $0.state.status }) == .playing {
+                tickTimers(frame: frame)
+            }
             frame.with { $0.state.moves += 1 }
         }
 
@@ -357,6 +363,50 @@ public actor GameWorld {
             } catch {
                 frame.say("\(error)")
             }
+        }
+    }
+
+    /// One tick of the world's clock: every running fuse counts down (and
+    /// fires at zero), then every running daemon runs — fuses first, each
+    /// group in name order, so firing order is deterministic. Each name is
+    /// re-checked against the live schedule before it acts, because an
+    /// earlier body may have stopped it this very tick; a fuse is removed
+    /// from the schedule *before* its body runs, so the body can restart it.
+    /// Bodies get the same interrupt handling as each-turn rules, and the
+    /// tick stops as soon as one of them ends the game.
+    private func tickTimers(frame: TurnFrame) {
+        for name in frame.with({ $0.state.activeFuses.keys.sorted() }) {
+            guard frame.with({ $0.state.status }) == .playing else { return }
+            guard let event = definition.timers[name] else { continue }
+            let fires = frame.with { scratch -> Bool in
+                guard let remaining = scratch.state.activeFuses[name] else { return false }
+                if remaining > 1 {
+                    scratch.state.activeFuses[name] = remaining - 1
+                    return false
+                }
+                scratch.state.activeFuses[name] = nil
+                return true
+            }
+            if fires {
+                runCatching(event, frame: frame)
+            }
+        }
+        for name in frame.with({ $0.state.activeDaemons.sorted() }) {
+            guard frame.with({ $0.state.status }) == .playing else { return }
+            guard let event = definition.timers[name],
+                frame.with({ $0.state.activeDaemons.contains(name) })
+            else { continue }
+            runCatching(event, frame: frame)
+        }
+    }
+
+    private func runCatching(_ event: TimedEvent, frame: TurnFrame) {
+        do {
+            try event.body()
+        } catch let interrupt as TurnInterrupt {
+            handle(interrupt, frame: frame)
+        } catch {
+            frame.say("\(error)")
         }
     }
 

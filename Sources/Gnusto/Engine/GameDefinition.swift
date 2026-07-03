@@ -153,6 +153,10 @@ struct GameDefinition: Sendable {
     /// `rules` block inside a registration frame (which needs the rest of the
     /// definition to exist first).
     var rules: RuleTable
+    /// Declared fuses and daemons by name; installed alongside `rules` for
+    /// the same registration-frame reason. Schedule state (what's running,
+    /// counts) lives in `WorldState`.
+    var timers: [String: TimedEvent] = [:]
     let registry: Registry
     let vocabulary: Vocabulary
     let syntaxRules: [SyntaxRule]
