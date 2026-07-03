@@ -1,4 +1,5 @@
 import Gnusto
+import GnustoScoring
 
 /// The cellar region below the house: East of Chasm, the Gallery with its
 /// painting, and the Studio whose chimney climbs back up to the kitchen.
@@ -47,6 +48,9 @@ struct ZorkCellar: GameContent {
         adjectives("beautiful")
         firstSight(Prose.paintingFirstSight)
         description(Prose.painting)
+        // The original's values: 4 for the find, 6 for the case.
+        trait(.takeValue, 4)
+        trait(.depositValue, 6)
     }
 
     let chimney = Item {

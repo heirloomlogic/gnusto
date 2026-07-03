@@ -252,6 +252,51 @@ struct Zork1Tests {
             ])
     }
 
+    @Test func depositPaintingScoresPoints() async throws {
+        // The painting pays 4 on first take and 6 on first deposit; taking
+        // it back out and re-depositing pays nothing more.
+        let transcript = try await play(
+            Zork1(),
+            [
+                "south", "east", "open window", "west", "west",
+                "take lantern", "turn on lantern",
+                "push rug", "open trap door", "down",
+                "south", "east", "take painting", "score",
+                "north", "up", "west",
+                "open trophy case", "put painting in trophy case", "score",
+                "take painting", "put painting in trophy case", "score",
+            ])
+
+        expectInOrder(
+            transcript,
+            [
+                "Your score is 4 of a possible 20",
+                "You put the painting in the trophy case.",
+                "Your score is 10 of a possible 20",
+            ])
+        let scores = transcript.components(separatedBy: "Your score is ")
+        #expect(scores.count == 4)
+        #expect(scores[3].hasPrefix("10 of a possible 20"))
+    }
+
+    @Test func eggScoresOnTheWayIn() async throws {
+        let transcript = try await play(
+            Zork1(),
+            [
+                "north", "north", "up", "take egg", "score", "down",
+                "south", "west", "south", "east", "open window", "west", "west",
+                "open trophy case", "put egg in trophy case", "score",
+            ])
+
+        expectInOrder(
+            transcript,
+            [
+                "Your score is 5 of a possible 20",
+                "You put the jewel-encrusted egg in the trophy case.",
+                "Your score is 10 of a possible 20",
+            ])
+    }
+
     @Test func leavesRevealTheLockedGrating() async throws {
         let transcript = try await play(
             Zork1(),

@@ -1,5 +1,6 @@
 import Gnusto
 import GnustoDangerousDark
+import GnustoScoring
 
 /// *Zork I: The Great Underground Empire* — the White House slice. Composes
 /// the above-ground region (``ZorkAboveGround``), the house interior
@@ -11,6 +12,10 @@ import GnustoDangerousDark
 struct Zork1: Game, GameMain {
     let title = "Zork I: The Great Underground Empire"
     let tagline = "A placeholder slice: the White House, its grounds, and the cellar."
+
+    /// The sum of the slice's declared treasure values (painting 4+6, egg
+    /// 5+5) — a stand-in for the real 350 until more treasures exist.
+    let maxScore = 20
     let intro = """
         An adventure awaits amid a ruined empire buried underground. This
         slice covers only the White House, its immediate surroundings, and
@@ -27,11 +32,20 @@ struct Zork1: Game, GameMain {
         death: Prose.grueDeath
     )
 
+    let scoring = Scoring()
+
     var content: GameContents {
         aboveGround
         house
         cellar
         dangerousDark
+        scoring
+    }
+
+    var rules: Rules {
+        // The two treasures the slice can score, and where they pay out.
+        // Cross-bundle wiring is the host's job, same as the exits below.
+        scoring.treasures([cellar.painting, aboveGround.egg], into: house.trophyCase)
     }
 
     var map: WorldMap {

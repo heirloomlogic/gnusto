@@ -1,4 +1,5 @@
 import Gnusto
+import GnustoScoring
 
 /// The jewel-encrusted egg lives in `ZorkAboveGround` (Up a Tree), but the
 /// living room's trophy case (`ZorkHouse`) needs to describe itself
@@ -16,6 +17,9 @@ let zork1Egg = Item {
     name("jewel-encrusted egg")
     adjectives("jewel-encrusted", "jeweled")
     description(Prose.egg)
+    // The original's values: 5 for the find, 5 for the case.
+    trait(.takeValue, 5)
+    trait(.depositValue, 5)
 }
 
 /// The lantern's description reads its own lit state, which runs into the

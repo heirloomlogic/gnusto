@@ -91,8 +91,15 @@ entry below is grouped by the task that introduced it.
 - **The Gallery is inherently lit** ("daylight from somewhere high above"),
   matching the original; it doubles as the resting point that makes the
   lightless chimney dash survivable.
-- **The painting is just a takable item.** Treasure scoring (its trophy-case
-  value) is a later phase.
+- **Treasure scoring is live for exactly two treasures (Phase 8).** The
+  painting pays the original's 4 on first take and 6 on first trophy-case
+  deposit; the egg pays 5 and 5 (values are data, not prose — used as-is).
+  `maxScore` is 20, the sum of what this slice can score, standing in for
+  the real 350 until more treasures exist. One deliberate divergence:
+  points are award-once and never deducted — the original's in-case
+  accounting subtracts a treasure's case value when you take it back out;
+  `GnustoScoring`'s registers pay once and stay paid. The thief does not
+  rob the trophy case (his reach is held items only — see the thief entry).
 - **The lantern's fuel is deliberately tiny**: dim warning after 20 burning
   turns, dead after 25 — the original burns for hundreds. Chosen so a
   transcript test (`lanternBurnsOut`) can watch the whole arc. Turning the
@@ -139,5 +146,6 @@ entry below is grouped by the task that introduced it.
 
 ### Out of scope for Task 8 (unchanged)
 
-- No thief, no troll, no score/treasure scoring, no maze, no full cellar —
-  all later phases per the Roadmap v2 plan.
+- No maze, no full cellar beyond the loop — later phases per the Roadmap
+  v2 plan. (Treasure scoring arrived in Phase 8; the troll and thief have
+  their own Phase-8 entries below when they land.)
