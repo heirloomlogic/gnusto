@@ -32,7 +32,7 @@ public enum GameStatus: Hashable, Sendable, Codable {
 ///
 /// The immutable side of the world (names, descriptions, exits, rules,
 /// vocabulary) lives in `GameDefinition`. Because `WorldState` is one
-/// `Codable` value, save/restore later is a serialization call away.
+/// `Codable` value, save/restore *is* a serialization call — see `SaveFile`.
 struct WorldState: Sendable, Codable {
     var placements: [EntityID: Placement] = [:]
     var playerLocation: EntityID
