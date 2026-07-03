@@ -35,6 +35,25 @@ struct ZorkCellar: GameContent {
         dark
     }
 
+    /// North of the cellar. The passages beyond (east toward the round
+    /// room, west toward the maze) are honest stubs until their regions
+    /// exist — see `FIDELITY.md`.
+    let trollRoom = Location {
+        name("Troll Room")
+        description(Prose.trollRoom)
+        dark
+    }
+
+    // MARK: - The troll
+
+    let troll = Actor {
+        name("troll")
+        description(Prose.troll)
+        firstSight(Prose.trollPresence)
+    }
+
+    @Global var trollDefeated = false
+
     // MARK: - Items
 
     let chasm = Item {
@@ -71,5 +90,21 @@ struct ZorkCellar: GameContent {
         chasm.starts(in: eastOfChasm)
         painting.starts(in: gallery)
         chimney.starts(in: studio)
+        troll.starts(in: trollRoom)
+    }
+
+    var rules: Rules {
+        // The troll is the gate: east and west stay his until he falls,
+        // and honestly-collapsed stubs after (their regions are later
+        // phases).
+        trollRoom.before(.go) {
+            guard command.direction == .east || command.direction == .west else {
+                return
+            }
+            guard trollDefeated else {
+                try refuse(Prose.trollBlocksTheWay)
+            }
+            try refuse(Prose.trollRoomPassagesCollapsed)
+        }
     }
 }

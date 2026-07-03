@@ -1,5 +1,6 @@
 import Gnusto
 import GnustoDangerousDark
+import GnustoMeleeCombat
 import GnustoScoring
 
 /// *Zork I: The Great Underground Empire* — the White House slice. Composes
@@ -33,6 +34,7 @@ struct Zork1: Game, GameMain {
     )
 
     let scoring = Scoring()
+    let melee = MeleeCombat()
 
     var content: GameContents {
         aboveGround
@@ -40,12 +42,34 @@ struct Zork1: Game, GameMain {
         cellar
         dangerousDark
         scoring
+        melee
     }
 
     var rules: Rules {
         // The two treasures the slice can score, and where they pay out.
         // Cross-bundle wiring is the host's job, same as the exits below.
         scoring.treasures([cellar.painting, aboveGround.egg], into: house.trophyCase)
+
+        // The troll, fought with the house's blades — entities from two
+        // bundles, so the host wires them. Strength 2 is the original's.
+        melee.villain(
+            cellar.troll, key: "troll", strength: 2,
+            weapons: [house.sword, house.knife],
+            prose: MeleeCombat.VillainProse(
+                miss: [Prose.trollMiss1, Prose.trollMiss2],
+                wound: [Prose.trollWound1, Prose.trollWound2],
+                knockout: Prose.trollKnockout,
+                death: Prose.trollDeath),
+            onDefeat: { cellar.trollDefeated = true })
+    }
+
+    var timers: [TimedEvent] {
+        melee.aggression(
+            of: cellar.troll, key: "troll", daemonName: "melee.troll",
+            prose: MeleeCombat.AggressionProse(
+                miss: [Prose.trollSwipeMiss],
+                wound: [Prose.trollSwipeWound],
+                playerDeath: Prose.trollKillsYou))
     }
 
     var map: WorldMap {
@@ -56,10 +80,13 @@ struct Zork1: Game, GameMain {
         house.kitchen.east(aboveGround.behindHouse, via: house.window)
 
         // Where ZorkHouse meets ZorkCellar: the crawlway south of the
-        // cellar, and the chimney — climbable only from below, so no
-        // matching `kitchen.down` (FIDELITY.md).
+        // cellar, the troll's passage north of it, and the chimney —
+        // climbable only from below, so no matching `kitchen.down`
+        // (FIDELITY.md).
         house.cellar.south(cellar.eastOfChasm)
         cellar.eastOfChasm.north(house.cellar)
+        house.cellar.north(cellar.trollRoom)
+        cellar.trollRoom.south(house.cellar)
         cellar.studio.up(house.kitchen)
 
         player.starts(in: aboveGround.westOfHouse)

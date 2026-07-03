@@ -1,4 +1,5 @@
 import Gnusto
+import GnustoMeleeCombat
 import GnustoScoring
 
 /// The jewel-encrusted egg lives in `ZorkAboveGround` (Up a Tree), but the
@@ -150,6 +151,7 @@ struct ZorkHouse: GameContent {
         name("elvish sword")
         adjectives("elvish")
         description(Prose.sword)
+        trait(.weapon, true)
     }
 
     /// Pushing the rug reveals the hidden trap door — the same Task 4
@@ -190,6 +192,7 @@ struct ZorkHouse: GameContent {
         name("nasty knife")
         adjectives("nasty")
         description(Prose.knife)
+        trait(.weapon, true)
     }
 
     // MARK: - Map
@@ -201,8 +204,8 @@ struct ZorkHouse: GameContent {
         attic.down(kitchen)
         livingRoom.down(cellar, via: trapDoor)
         cellar.up(livingRoom, via: trapDoor)
-        // The troll's passage — a later phase; rubble for now (FIDELITY.md).
-        cellar.north(blocked: Prose.cellarNorthBlocked)
+        // The cellar's north passage into the Troll Room crosses into
+        // ZorkCellar's territory, so the host wires it (Zork1.map).
 
         sack.starts(in: kitchen)
         garlic.starts(inside: sack)

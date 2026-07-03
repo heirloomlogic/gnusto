@@ -80,11 +80,10 @@ entry below is grouped by the task that introduced it.
 
 - **All prose remains original placeholder text**, same policy and same
   one-constant-per-entity structure as Task 8 above.
-- **The cellar region is the four-room classic loop only**: Cellar (in
-  `ZorkHouse`) → East of Chasm → Gallery (painting) → Studio → chimney up
-  to the Kitchen. The cellar's north passage is a `blocked:` rubble stub
-  where the Troll Room arrives in a later phase; the maze, thief, troll,
-  and everything deeper stay future content.
+- **The cellar region is the classic loop plus the Troll Room (Phase 8)**:
+  Cellar (in `ZorkHouse`) → East of Chasm → Gallery (painting) → Studio →
+  chimney up to the Kitchen, and now north from the Cellar into the Troll
+  Room. The maze and everything deeper stay future content.
 - **The chimney is a plain one-way exit** (`studio.up(kitchen)`, no
   `kitchen.down`). The original's restriction — climbable only while
   carrying at most one item plus the lamp — is not modeled.
@@ -148,4 +147,26 @@ entry below is grouped by the task that introduced it.
 
 - No maze, no full cellar beyond the loop — later phases per the Roadmap
   v2 plan. (Treasure scoring arrived in Phase 8; the troll and thief have
-  their own Phase-8 entries below when they land.)
+  their own Phase-8 entries below.)
+
+## Phase 8 — the Troll Room (`Sources/Zork1/Cellar.swift`)
+
+- **All prose remains original placeholder text**, same policy as ever;
+  "troll" the name is fair game, Infocom's sentences are not. The troll's
+  strength (2) and the sword/knife as the weapons that can reach him are
+  the original's data.
+- **The passages beyond the troll are honest stubs.** East (toward the
+  round-room side of the dungeon) and west (toward the maze) refuse with
+  the troll's block while he lives, and with a collapsed-passages line
+  after — their regions are later phases. In the original both passages
+  open onto real map.
+- **Combat is `GnustoMeleeCombat`'s simplified table**, not the original's
+  per-weapon melee tables: one roll per swing (miss/wound/knockout/kill at
+  fixed 30/70/85 breaks), villain answers on the end-of-turn clock, player
+  wounds never heal, and a knocked-out troll falls to the next clean blow.
+  Deterministic under a pinned seed; the transcripts record their
+  sequences.
+- **Defeat is permanent and bodiless.** The troll vanishes with his death
+  line ("sinks into the shadows"); there is no bloody axe to loot, and he
+  never recovers to block again — the original's randomized recovery and
+  loot are not modeled.

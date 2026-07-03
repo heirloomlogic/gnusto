@@ -297,6 +297,61 @@ struct Zork1Tests {
             ])
     }
 
+    @Test func trollBlocksThePassagesUntilDefeated() async throws {
+        // Seed 15, recorded: the troll misses every counterswing while the
+        // sword lands wound, miss, then the killing blow (strength 2).
+        let transcript = try await play(
+            Zork1(),
+            [
+                "south", "east", "open window", "west", "west",
+                "take sword", "take lantern", "turn on lantern",
+                "push rug", "open trap door", "down",
+                "north", "west",
+                "attack troll", "attack troll", "attack troll",
+                "west", "south",
+            ],
+            seed: 15)
+        expectInOrder(
+            transcript,
+            [
+                "Troll Room",
+                "A troll stands square in the middle of the room",
+                "The troll plants himself in your path",
+                "Your blade",  // the wound
+                "Your final stroke drops the troll",
+                "both passages have\ncollapsed",
+                "Cellar",
+            ])
+        // Defeat is permanent and the room empties.
+        let afterDeath = transcript.components(
+            separatedBy: "drops the troll")[1]
+        #expect(!afterDeath.contains("A troll stands square"))
+    }
+
+    @Test func theTrollCanKillYou() async throws {
+        // Seed 6, recorded: the troll's first swing is the last word.
+        let transcript = try await play(
+            Zork1(),
+            [
+                "south", "east", "open window", "west", "west",
+                "take sword", "take lantern", "turn on lantern",
+                "push rug", "open trap door", "down",
+                "north",
+                "undo", "south",
+            ],
+            seed: 6)
+        expectInOrder(
+            transcript,
+            [
+                "the argument is settled",
+                "*** You have died ***",
+                "Your score is 0 of a possible 20",
+                "Would you like to RESTART, RESTORE a saved game, UNDO your last turn, or QUIT?",
+                "Previous turn undone.",
+                "East of Chasm",
+            ])
+    }
+
     @Test func leavesRevealTheLockedGrating() async throws {
         let transcript = try await play(
             Zork1(),
