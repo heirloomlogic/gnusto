@@ -57,13 +57,15 @@ entry below is grouped by the task that introduced it.
   always refuses with the engine's standard "is locked" message. The maze
   that actually holds the key was deferred out of Phase 7 (which took the
   cellar region instead) and remains future content.
-- **The trap door is mechanically unbarred from the cellar side.** In the
-  finished game, the thief eventually bars it from below; that arrives with
-  the thief in Phase 8. For now, `livingRoom.down(cellar, via: trapDoor)` /
-  `cellar.up(livingRoom, via: trapDoor)` share one door state with no extra
-  restriction. A *lightless* player still can't reopen it from below (a
-  dark room's scope collapses, so the door isn't a resolvable noun), but
-  since Phase 7 that's no longer a soft-lock — see the next entry.
+- **The trap door is really barred now (Phase 8).** The slam prose's "you
+  hear a bolt slide home above you" told the truth-to-be since Phase 5;
+  with the thief in play it is mechanically true: descending while he
+  lives sets the bar, opening from the cellar side refuses, the living
+  room side is never barred (the bolt is on top), and killing the thief
+  is the only unbarring — the original also relents after other events,
+  which we don't model. A *lightless* player still can't reopen it from
+  below regardless (a dark room's scope collapses), but since Phase 7
+  that's no longer a soft-lock — see the next entry.
 - **The Phase-5 "known soft-lock" is closed (Phase 7).** The earlier ledger
   pinned a genuine stuck state: a lightless player sealed in the dark stub
   cellar, with no grue to end it and no way out. Phase 7 closed it from
@@ -170,3 +172,26 @@ entry below is grouped by the task that introduced it.
   line ("sinks into the shadows"); there is no bloody axe to loot, and he
   never recovers to block again — the original's randomized recovery and
   loot are not modeled.
+
+## Phase 8 — the reduced thief (`Sources/Zork1/Cellar.swift` + host wiring)
+
+- **The thief is deliberately reduced.** He roams exactly four rooms
+  (Cellar, East of Chasm, Gallery, Studio) by teleport-within-set — no
+  exit-graph pathing, no visits to the rest of the map. He steals only
+  the two treasures (painting, egg), only from the player's hands: the
+  trophy case, the floor, and the lantern/sword are all beyond his reach,
+  where the original's thief lifts nearly anything from nearly anywhere.
+  No maze lair, no treasure room, no stiletto, no egg-opening service,
+  no fencing of goods — all deferred with the maze.
+- **He doesn't fight back.** Registered as a `GnustoMeleeCombat` villain
+  (strength 2, killable with sword or knife) but with no aggression
+  daemon — evasive, not aggressive, in this reduced form. The original's
+  thief is one of the game's deadliest fighters.
+- **Movement and theft respect darkness.** His arrivals, departures, and
+  thefts are announced only in lit rooms (`GnustoActors` behavior); in
+  the dark he works in silence, which also keeps the Phase-7 dark-room
+  transcripts stable.
+- **Death scatters the loot at your feet** (rather than the original's
+  recovering-it-from-his-lair), unbars the trap door, and stops his
+  daemons. Treasures recovered this way re-take/re-deposit without
+  double-scoring (award-once registers).

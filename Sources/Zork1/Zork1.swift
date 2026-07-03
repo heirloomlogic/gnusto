@@ -1,4 +1,5 @@
 import Gnusto
+import GnustoActors
 import GnustoDangerousDark
 import GnustoMeleeCombat
 import GnustoScoring
@@ -35,6 +36,7 @@ struct Zork1: Game, GameMain {
 
     let scoring = Scoring()
     let melee = MeleeCombat()
+    let actors = ActorBehaviors()
 
     var content: GameContents {
         aboveGround
@@ -61,6 +63,47 @@ struct Zork1: Game, GameMain {
                 knockout: Prose.trollKnockout,
                 death: Prose.trollDeath),
             onDefeat: { cellar.trollDefeated = true })
+
+        // The bar. Descending while the thief is at large throws the bolt
+        // above — the slam prose's "you hear a bolt slide home" has been
+        // telling the truth-to-be since Phase 5. One-sided: the living
+        // room side is never barred.
+        house.cellar.onEnter {
+            if !cellar.thiefDefeated {
+                house.trapDoorBarred = true
+            }
+        }
+        house.trapDoor.before(.open) {
+            if player.location == house.cellar && house.trapDoorBarred {
+                try refuse(Prose.trapDoorBarred)
+            }
+        }
+
+        // The thief dies like a villain but doesn't fight back — in this
+        // reduced form he is evasive, not aggressive (FIDELITY.md).
+        melee.villain(
+            cellar.thief, key: "thief", strength: 2,
+            weapons: [house.sword, house.knife],
+            prose: MeleeCombat.VillainProse(
+                miss: [Prose.thiefMiss1, Prose.thiefMiss2],
+                wound: [Prose.thiefWound1, Prose.thiefWound2],
+                knockout: Prose.thiefKnockout,
+                death: Prose.thiefDeath),
+            onDefeat: {
+                cellar.thiefDefeated = true
+                house.trapDoorBarred = false
+                stopDaemon("thiefRoams")
+                stopDaemon("thiefSteals")
+                var scattered = false
+                for loot in [cellar.painting, aboveGround.egg]
+                where cellar.thief.holds(loot) {
+                    loot.move(to: player.location)
+                    scattered = true
+                }
+                if scattered {
+                    say(Prose.thiefLootScatters)
+                }
+            })
     }
 
     var timers: [TimedEvent] {
@@ -70,6 +113,21 @@ struct Zork1: Game, GameMain {
                 miss: [Prose.trollSwipeMiss],
                 wound: [Prose.trollSwipeWound],
                 playerDeath: Prose.trollKillsYou))
+
+        // The thief works the cellar region: teleport-roaming its four
+        // rooms, lifting only the two treasures (never the lantern or
+        // sword — FIDELITY.md).
+        actors.roams(
+            cellar.thief, daemonName: "thiefRoams",
+            rooms: [house.cellar, cellar.eastOfChasm, cellar.gallery, cellar.studio],
+            chancePerTurn: 50,
+            arrival: Prose.thiefArrives,
+            departure: Prose.thiefLeaves)
+        actors.steals(
+            cellar.thief, daemonName: "thiefSteals",
+            candidates: [cellar.painting, aboveGround.egg],
+            chancePerTurn: 30,
+            announcement: { Prose.thiefSteals($0) })
     }
 
     var map: WorldMap {

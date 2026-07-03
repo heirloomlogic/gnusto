@@ -351,4 +351,50 @@ enum Prose {
         The axe comes around one last time, and the argument is settled
         the troll's way.
         """
+
+    // MARK: - The thief
+    //
+    // Reduced this phase: he roams the cellar region, bars the trap door
+    // from below, and picks pockets. His maze, treasure room, stiletto,
+    // and egg-opening services are later phases — see `FIDELITY.md`.
+
+    static let thief = """
+        A lean figure in patched leather, hands never quite still. His
+        eyes have already priced everything you carry.
+        """
+
+    static let thiefPresence = """
+        A shadowy figure leans against the wall here, idly rolling
+        something small and probably yours across his knuckles.
+        """
+
+    static let thiefArrives = "A shadowy figure slips into the room."
+    static let thiefLeaves = "The shadowy figure melts away into the dark."
+
+    static func thiefSteals(_ name: String) -> String {
+        "A feather-light touch at your pack — and the \(name) is gone."
+    }
+
+    static let trapDoorBarred = """
+        You push, but the trap door doesn't give. Someone above has
+        made very sure of the bolt.
+        """
+
+    static let thiefMiss1 = "The thief sways aside; your blade finds only air."
+    static let thiefMiss2 = "Your swing tangles in the thief's cloak and comes back empty."
+    static let thiefWound1 = "You nick the thief's arm; his smile thins."
+    static let thiefWound2 = "Your blade draws a red line across the thief's ribs."
+    static let thiefKnockout = """
+        The flat of your blade cracks against the thief's temple, and
+        he folds up with unexpected grace.
+        """
+    static let thiefDeath = """
+        The thief drops without a sound, and the shadows he favored
+        take him for good.
+        """
+
+    static let thiefLootScatters = """
+        His satchel bursts as he falls, scattering his takings at your
+        feet.
+        """
 }

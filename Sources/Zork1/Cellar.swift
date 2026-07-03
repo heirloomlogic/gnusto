@@ -54,6 +54,18 @@ struct ZorkCellar: GameContent {
 
     @Global var trollDefeated = false
 
+    // MARK: - The thief (reduced — see FIDELITY.md)
+
+    let thief = Actor {
+        name("thief")
+        adjectives("shadowy")
+        synonyms("figure")
+        description(Prose.thief)
+        firstSight(Prose.thiefPresence)
+    }
+
+    @Global var thiefDefeated = false
+
     // MARK: - Items
 
     let chasm = Item {
@@ -91,6 +103,7 @@ struct ZorkCellar: GameContent {
         painting.starts(in: gallery)
         chimney.starts(in: studio)
         troll.starts(in: trollRoom)
+        thief.starts(in: gallery)
     }
 
     var rules: Rules {

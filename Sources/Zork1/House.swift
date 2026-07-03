@@ -166,6 +166,9 @@ struct ZorkHouse: GameContent {
     /// Shared between `livingRoom` and the stub `cellar`: opening it from
     /// either side is the same state, so the classic "trap door slams shut
     /// behind you" moment (`cellar.onEnter` below) is felt from both rooms.
+    /// Whether the bolt above is actually thrown is `trapDoorBarred` —
+    /// set and cleared by the host's thief rules (`Zork1.rules`), since
+    /// the bar spans this bundle's door and `ZorkCellar`'s thief.
     let trapDoor = Item {
         name("trap door")
         description(Prose.trapDoor)
@@ -173,6 +176,10 @@ struct ZorkHouse: GameContent {
         scenery
         hidden
     }
+
+    /// True while the thief has the bolt thrown from above. One-sided:
+    /// opening from the living room is never barred (the bolt is on top).
+    @Global var trapDoorBarred = false
 
     /// A closure description, live on every examine: whether the case is
     /// empty or holds the egg is read from `holds(_:)` rather than fixed at
