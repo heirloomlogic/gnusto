@@ -119,6 +119,10 @@ public func synonyms(_ words: String...) -> ItemTrait {
 
 /// The paragraph used to mention the item in a room description until the
 /// player has touched it (ZIL's FDESC).
+///
+/// On an ``Actor`` the same trait is the *standing presence line* (ZIL's
+/// LDESC role): printed on every look, never worn off by handling — people
+/// aren't props.
 public func firstSight(_ text: String) -> ItemTrait {
     ItemTrait(kind: .firstSight(text))
 }

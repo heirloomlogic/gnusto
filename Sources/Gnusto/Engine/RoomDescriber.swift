@@ -51,13 +51,15 @@ enum RoomDescriber {
         }
 
         // Item paragraphs: firstSight text until touched (even for scenery),
-        // then a standard mention for non-scenery items.
-        let roomItems = definition.items.keys
+        // then a standard mention for non-scenery items. Actors are held
+        // back for their own paragraphs below — people close the scene.
+        let present = definition.items.keys
             .filter {
                 placements[$0] == .room(locationID)
                     && Visibility.isPerceivable($0, definition: definition, state: state)
             }
             .sorted()
+        let roomItems = present.filter { definition.items[$0]?.isActor != true }
 
         for itemID in roomItems {
             guard let item = definition.items[itemID] else { continue }
@@ -96,6 +98,19 @@ enum RoomDescriber {
                     let insideName = definition.items[insideID]?.name ?? insideID.raw
                     frame.say(frame.definition.text.itemInContainer(insideName, item.name ?? itemID.raw))
                 }
+            }
+        }
+
+        // Actor paragraphs. An actor's `firstSight` is its standing
+        // presence line — printed every time, not gated on `touched` the
+        // way an item's is (people aren't props; handling them doesn't
+        // wear off their entrance). What an actor carries is not listed.
+        for actorID in present where definition.items[actorID]?.isActor == true {
+            guard let actor = definition.items[actorID] else { continue }
+            if let presence = actor.firstSight {
+                frame.say(presence)
+            } else {
+                frame.say(frame.definition.text.actorHere(actor.name ?? actorID.raw))
             }
         }
     }

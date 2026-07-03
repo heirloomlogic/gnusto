@@ -62,6 +62,41 @@ struct ActorTests {
             ["Gatehouse", "He has watched this gate for longer than anyone knows."])
     }
 
+    @Test func actorsCloseTheSceneAfterItems() async throws {
+        let transcript = try await play(GuardpostGame(), ["north", "quit"])
+        expectInOrder(
+            turnOutput(of: "north", in: transcript),
+            [
+                "Corridor",
+                "A narrow corridor.",
+                "There is a gray rock here.",
+                "There is a short sword here.",
+                "A silent sentry is here.",
+                "A surly troll glowers from beside the east wall.",
+            ])
+    }
+
+    @Test func anActorsFirstSightIsItsStandingPresenceLine() async throws {
+        let transcript = try await play(
+            GuardpostGame(),
+            ["north", "look", "south", "north", "quit"])
+        let sightings = transcript.components(
+            separatedBy: "A surly troll glowers from beside the east wall.")
+        // Arrival, explicit look, and the return trip: three sightings, not
+        // an item's touched-once-then-generic one.
+        #expect(sightings.count == 4)
+    }
+
+    @Test func hiddenActorsStayUnlistedUntilRevealed() async throws {
+        let transcript = try await play(
+            GuardpostGame(),
+            ["north", "sense", "look", "quit"])
+        let arrival = turnOutput(of: "north", in: transcript)
+        let look = turnOutput(of: "look", in: transcript)
+        #expect(!arrival.contains("ghost"))
+        #expect(look.contains("A pale ghost is here."))
+    }
+
     @Test func aNamelessActorIsADiagnostic() {
         #expect {
             try Bootstrap.build(NamelessActorGame())

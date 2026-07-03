@@ -239,6 +239,12 @@ public struct GameText: Sendable {
     public var itemHere: @Sendable (_ name: String) -> String = {
         "There is \(GameText.indefinite($0)) here."
     }
+    /// A room description's line for an actor with no `firstSight` presence
+    /// line of its own.
+    public var actorHere: @Sendable (_ name: String) -> String = {
+        let phrase = GameText.indefinite($0)
+        return phrase.prefix(1).uppercased() + phrase.dropFirst() + " is here."
+    }
 
     /// A room description's line for an item resting on a surface.
     public var itemOnSurface: @Sendable (_ name: String, _ surface: String) -> String = {

@@ -40,6 +40,9 @@ struct GuardpostGame: Game {
         name("surly troll")
         adjectives("surly")
         description("All muscle and grudge.")
+        // For an actor this is a *persistent* presence line, printed on
+        // every look — not first-sight-only like an item's.
+        firstSight("A surly troll glowers from beside the east wall.")
     }
 
     /// No description — examine should fall back to "nothing special".
@@ -53,6 +56,14 @@ struct GuardpostGame: Game {
         name("silent sentry")
         adjectives("silent")
         description("Motionless.")
+    }
+
+    /// Unlisted until revealed.
+    let ghost = Actor {
+        name("pale ghost")
+        adjectives("pale")
+        description("Almost not there.")
+        hidden
     }
 
     let sword = Item {
@@ -81,13 +92,22 @@ struct GuardpostGame: Game {
         mule.starts(in: hall)
         troll.starts(in: corridor)
         sentry.starts(in: corridor)
+        ghost.starts(in: corridor)
         sword.starts(in: corridor)
         rock.starts(in: corridor)
+    }
+
+    var verbs: [SyntaxRule] {
+        SyntaxRule("sense", intent: Intent("sense"))
     }
 
     var rules: Rules {
         sentry.before(.examine) {
             try reply("The sentry ignores you, expertly.")
+        }
+        world.before(Intent("sense")) {
+            ghost.reveal()
+            try reply("The air goes cold.")
         }
     }
 }
