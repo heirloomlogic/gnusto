@@ -74,6 +74,7 @@ struct HarborGame: Game {
     var verbs: [SyntaxRule] {
         SyntaxRule("chain", intent: Intent("chain"))
         SyntaxRule("row", .direction, intent: Intent("row"))
+        SyntaxRule("scuttle", intent: Intent("scuttle"))
     }
 
     var rules: Rules {
@@ -81,6 +82,18 @@ struct HarborGame: Game {
             if chained {
                 try refuse("The boat is chained to the dock.")
             }
+        }
+        // The terrain-gating pattern: some directions just don't take
+        // boats. Gating a direction with no exit also proves the rule
+        // outranks exit resolution.
+        world.before(.go) {
+            if player.vehicle == boat, command.direction == .south {
+                try refuse("The boat refuses to go overland.")
+            }
+        }
+        world.before(Intent("scuttle")) {
+            boat.vanish()
+            try reply("The boat gives up on buoyancy.")
         }
         world.before(Intent("chain")) {
             chained = true

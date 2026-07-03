@@ -181,10 +181,21 @@ public struct Item: Sendable, Equatable {
     }
 
     /// Moves the item directly to a location, bypassing the usual actions.
+    ///
+    /// Moving the vehicle the player has boarded moves its passenger — the
+    /// river-current pattern; call `describeSurroundings()` after if the
+    /// player should see the new banks. (`move(inside:)`, `move(onto:)`,
+    /// and `vanish()` deliberately do NOT carry the player: a vehicle that
+    /// leaves the room any other way strands its passenger on foot.)
     public func move(to location: Location) {
         let (frame, id) = resolved
         let locationID = location.id
-        frame.with { $0.state.placements[id] = .room(locationID) }
+        frame.with { scratch in
+            scratch.state.placements[id] = .room(locationID)
+            if scratch.state.playerVehicle == id {
+                scratch.state.playerLocation = locationID
+            }
+        }
     }
 
     /// Moves the item inside a container, bypassing the usual actions. Traps if

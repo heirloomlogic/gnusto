@@ -12,9 +12,9 @@ enum RoomDescriber {
 
         // One snapshot of everything this function reads; the visited mark
         // (lit visits only) is the one write and happens in the same lock.
-        let (locationID, isDark, wasVisited, placements, touched, state) = frame.with {
+        let (locationID, isDark, wasVisited, vehicle, placements, touched, state) = frame.with {
             scratch -> (
-                EntityID, Bool, Bool, [EntityID: Placement], Set<EntityID>, WorldState
+                EntityID, Bool, Bool, EntityID?, [EntityID: Placement], Set<EntityID>, WorldState
             ) in
             let id = scratch.state.playerLocation
             let dark = Visibility.isDark(at: id, definition: definition, state: scratch.state)
@@ -24,6 +24,7 @@ enum RoomDescriber {
             }
             return (
                 id, dark, visited,
+                Visibility.boardedVehicle(definition: definition, state: scratch.state),
                 scratch.state.placements,
                 scratch.state.touched,
                 scratch.state
@@ -38,7 +39,14 @@ enum RoomDescriber {
         let location = definition.locations[locationID]
         let verbose = mode == .look || !wasVisited
 
-        frame.say(location?.name ?? locationID.raw)
+        let roomName = location?.name ?? locationID.raw
+        if let vehicle {
+            frame.say(
+                frame.definition.text.locationInVehicle(
+                    roomName, definition.items[vehicle]?.name ?? vehicle.raw))
+        } else {
+            frame.say(roomName)
+        }
         if verbose {
             // Reads outside the lock above: `describedText` may call a
             // `description { … }` closure, which typically re-enters the
@@ -52,10 +60,14 @@ enum RoomDescriber {
 
         // Item paragraphs: firstSight text until touched (even for scenery),
         // then a standard mention for non-scenery items. Actors are held
-        // back for their own paragraphs below — people close the scene.
+        // back for their own paragraphs below — people close the scene. The
+        // boarded vehicle is skipped entirely: its presence is the title
+        // suffix, and "There is a red boat here." under "…, in the red
+        // boat" is noise (its cargo answers to `look in`, not the room).
         let present = definition.items.keys
             .filter {
                 placements[$0] == .room(locationID)
+                    && $0 != vehicle
                     && Visibility.isPerceivable($0, definition: definition, state: state)
             }
             .sorted()

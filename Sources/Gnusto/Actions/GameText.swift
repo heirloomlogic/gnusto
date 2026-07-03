@@ -73,6 +73,14 @@ public struct GameText: Sendable {
     public var notInThat: @Sendable (_ name: String) -> String = {
         "You aren't in the \($0)."
     }
+    /// The room title while the player is in a vehicle.
+    public var locationInVehicle: @Sendable (_ room: String, _ vehicle: String) -> String = {
+        "\($0), in the \($1)"
+    }
+    /// Taking (or otherwise relocating) the vehicle the player is inside.
+    public var notWhileInside: @Sendable (_ name: String) -> String = {
+        "Not while you're in the \($0)."
+    }
     /// A bare `go` with no direction.
     public var whichWay = "Which way?"
     /// Looking around a dark room.

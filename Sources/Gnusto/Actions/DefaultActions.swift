@@ -57,6 +57,14 @@ enum DefaultActions {
         if frame.definition.items[id]?.isActor == true {
             try refuse(frame.definition.text.cantTakeActor(item.name))
         }
+        // The one default that could relocate the thing the player is
+        // sitting in.
+        let boarded = frame.with {
+            Visibility.boardedVehicle(definition: frame.definition, state: $0.state)
+        }
+        if id == boarded {
+            try refuse(frame.definition.text.notWhileInside(item.name))
+        }
         if item.isHeld {
             try refuse(item.isWorn ? frame.definition.text.alreadyWearing : frame.definition.text.alreadyHave)
         }
@@ -89,7 +97,16 @@ enum DefaultActions {
             frame.with { _ = $0.state.wornItems.remove(id) }
         }
         frame.with { scratch in
-            scratch.state.placements[id] = .room(scratch.state.playerLocation)
+            // Dropped while boarded in a cargo vehicle, things land in the
+            // hull, not on the ground sliding past below. Capacity is not
+            // enforced on this implicit path — `putIn` remains the gate.
+            let vehicle = Visibility.boardedVehicle(
+                definition: frame.definition, state: scratch.state)
+            if let vehicle, frame.definition.items[vehicle]?.isContainer == true {
+                scratch.state.placements[id] = .inside(vehicle)
+            } else {
+                scratch.state.placements[id] = .room(scratch.state.playerLocation)
+            }
             scratch.state.touched.insert(id)
         }
         frame.say(frame.definition.text.dropped)
@@ -452,9 +469,18 @@ enum DefaultActions {
     }
 
     /// Moves the player into `destination`, running its onEnter rules and then
-    /// describing the room. Shared by every passable exit kind.
+    /// describing the room. Shared by every passable exit kind. A boarded
+    /// vehicle rides along in the same mutation — and its cargo with it,
+    /// since cargo placements (`.inside(vehicle)`) never mention the room.
     private static func enter(_ destination: EntityID, frame: TurnFrame) throws {
-        frame.with { $0.state.playerLocation = destination }
+        frame.with { scratch in
+            let vehicle = Visibility.boardedVehicle(
+                definition: frame.definition, state: scratch.state)
+            scratch.state.playerLocation = destination
+            if let vehicle {
+                scratch.state.placements[vehicle] = .room(destination)
+            }
+        }
         for rule in frame.definition.rules.locationOnEnter[destination] ?? [] {
             try rule.body()
         }
