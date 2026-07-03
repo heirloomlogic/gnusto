@@ -29,6 +29,8 @@ struct Attic: GameContent {
 
 `map`, `rules`, and `verbs` all default to empty, so a bundle declares only what it needs. The bundle stores its declarations exactly as a game does, and the bootstrap discovers them by reflecting over the bundle. Each entity is named after its property, prefixed by the bundle's [namespace](<doc:ContentBundles#EntityIDs-are-namespaced-by-the-bundle>) (`trunk` → ``EntityID`` `"Attic.trunk"`), so a reusable bundle can't collide with the host.
 
+A bundle with **no rooms at all** is how a stateful plugin ships: `GnustoDangerousDark` is just a namespaced `@Global` counter, a daemon, and three init knobs — added to `content` like any region (see <doc:Plugins#The-first-party-plugins>).
+
 ## The game lists its bundles in `content`
 
 ```swift

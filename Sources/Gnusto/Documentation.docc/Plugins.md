@@ -22,7 +22,9 @@ struct CommercePlugin: GamePlugin {
 }
 ```
 
-`verbs` and `rules` both default to empty, so a plugin declares only what it needs. Exposing the intents as `static let` constants lets host rules name the same intents the verbs emit.
+`verbs`, `actions`, `rules`, and `timers` all default to empty, so a plugin declares only what it needs. Exposing the intents as `static let` constants lets host rules name the same intents the verbs emit.
+
+A plugin's `timers` splice the same way (`var timers: [TimedEvent] { actors.timers }`), and parameterized timer *factories* — methods returning a ``TimedEvent`` for the host's own `timers` block — are how a plugin animates the host's actors on the end-of-turn clock. Timer names are global to the game: prefix yours by convention (`"actors.roam"`).
 
 ## The host splices verbs and rules
 
@@ -138,7 +140,29 @@ struct PilgrimGame: Game {
 
 References stay token-based across the boundary, so a host item can sit in a plugin room and a plugin rule can hook a host entity regardless of the namespace.
 
+## The first-party plugins
+
+Four shipped library products exercise both plugin shapes for real — each
+imports only `Gnusto`, and the Zork 1 executable target is the worked
+example that wires all four:
+
+| Product | Shape | Owns | The host passes |
+| --- | --- | --- | --- |
+| `GnustoDangerousDark` | `GameContent` | one dark-turn counter, the grue daemon | prose + grace period at init |
+| `GnustoScoring` | `GameContent` | award-once registers | treasures + the trophy case to `treasures(_:into:)` |
+| `GnustoActors` | `GamePlugin` | nothing — position *is* the actor's placement | actors, room sets, candidates to `roams`/`steals`/`reaction` |
+| `GnustoMeleeCombat` | `GameContent` | the combat ledger (health/stun by key) | villains, weapons, prose to `villain`/`aggression` |
+
+The split follows one rule: a system that needs its own saved state is a
+`GameContent` bundle (its `@Global`s namespace automatically and travel in
+saves); a stateless toolkit is a `GamePlugin`. Plugin prose arrives as
+**init and factory parameters** with sensible defaults — ``GameText`` is a
+fixed struct, so a plugin can't add lines to it retroactively; what it can
+do is take its lines from the host, which also keeps every player-visible
+string in the game's own voice.
+
 ## Worked examples
 
+- `Sources/Zork1/Zork1.swift` — the host that wires all four first-party plugins over entities from three content bundles.
 - `Tests/GnustoTests/Support/CommerceGame.swift` — the logic-only commerce plugin (`buy`/`sell` verbs, `purchase`/`sale` factories, `LampShop` host); `PluginTests` drives a buy/sell turn end to end.
 - `Tests/GnustoTests/Support/ShrineContent.swift` — the content-bearing `ShrineContent` plugin (owns a namespaced shrine region *and* exposes an `offering` factory) with its `PilgrimGame` host; `ContentPluginTests` drives a donate turn across the namespace boundary and checks the namespacing.
