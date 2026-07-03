@@ -291,6 +291,10 @@ enum Bootstrap {
             items.filter { $0.value.isOpenable && $0.value.startsOpen }.keys)
         state.lockedItems = Set(
             items.filter { $0.value.isLockable && !$0.value.startsUnlocked }.keys)
+        // Light sources start lit only with `startsLit`; the flag on a
+        // non-light-source is inert and gets a warning below.
+        state.litItems = Set(
+            items.filter { $0.value.isLightSource && $0.value.startsLit }.keys)
 
         // Phase 3 — assemble the verb table and vocabulary. Built-ins first,
         // then bundle verbs, then the host game's — so precedence runs
@@ -340,6 +344,13 @@ enum Bootstrap {
         }
         vocabulary.finalize()
 
+        var traitWarnings: [String] = []
+        for (id, item) in items where item.startsLit && !item.isLightSource {
+            traitWarnings.append(
+                "item \"\(id)\" declares startsLit but is not a lightSource; "
+                    + "the flag has no effect.")
+        }
+
         // Phase 3b — assemble the stage-4 default-action overrides. Bundle
         // actions are auto-collected like bundle verbs; a plugin's actions
         // reach here only if the host splices them into its own `actions`
@@ -382,11 +393,14 @@ enum Bootstrap {
             vocabulary: vocabulary,
             syntaxRules: syntaxRules,
             actionOverrides: actionOverrides,
-            warnings: verbWarnings + vocabularyWarnings + actionWarnings)
+            warnings: verbWarnings + vocabularyWarnings + traitWarnings + actionWarnings)
 
         let registrationFrame = TurnFrame(definition: definition, state: state)
-        let declaredRules = Ctx.$frame.withValue(registrationFrame) {
-            game.rules.rules + modules.flatMap { $0.rules.rules }
+        let (declaredRules, declaredTimers) = Ctx.$frame.withValue(registrationFrame) {
+            () -> ([Rule], [TimedEvent]) in
+            let rules: [Rule] = game.rules.rules + modules.flatMap { $0.rules.rules }
+            let timers: [TimedEvent] = game.timers + modules.flatMap { $0.timers }
+            return (rules, timers)
         }
         _ = registrationFrame.retire()  // discard any stray writes
 
@@ -433,11 +447,39 @@ enum Bootstrap {
             }
         }
 
+        // Timers: names are global (a bundle's own rules start them by the
+        // literal string it declared, so namespacing would break the author's
+        // own name) — a shared name is the collision to catch. Zero-or-
+        // negative fuse counts can never fire and are wiring errors too.
+        var timers: [String: TimedEvent] = [:]
+        for event in declaredTimers {
+            if timers[event.name] != nil {
+                ruleDiagnostics.append(
+                    "two timers are both named \"\(event.name)\"; timer names must "
+                        + "be unique across the game and its bundles.")
+                continue
+            }
+            if case .fuse(let turns) = event.kind, turns < 1 {
+                ruleDiagnostics.append(
+                    "fuse \"\(event.name)\" declares after: \(turns); a fuse needs "
+                        + "at least one turn.")
+                continue
+            }
+            timers[event.name] = event
+        }
+
         guard ruleDiagnostics.isEmpty else {
             throw BootstrapError(diagnostics: ruleDiagnostics)
         }
 
         definition.rules = table
+        definition.timers = timers
+        for event in timers.values where event.autostart {
+            switch event.kind {
+            case .fuse(let turns): state.activeFuses[event.name] = turns
+            case .daemon: state.activeDaemons.insert(event.name)
+            }
+        }
         return (definition, state)
     }
 

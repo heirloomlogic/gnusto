@@ -54,7 +54,7 @@ The same value is both the *declaration* and the live *reference*: `let cloak = 
 
 ### How a turn runs
 
-Each line the player types is parsed into a ``Command``, then run through a fixed pipeline: world/location/item `before` rules, the built-in default action, then `after` rules, then each-turn rules. Any rule can ``refuse(_:)`` an action, ``reply(_:)`` in its place, or ``end(won:)`` the game. All state changes commit atomically at the end of the turn. See <doc:TheTurnPipeline>.
+Each line the player types is parsed into a ``Command``, then run through a fixed pipeline: world/location/item `before` rules, the built-in default action, then `after` rules, then each-turn rules and the timer tick. Any rule can ``refuse(_:)`` an action, ``reply(_:)`` in its place, ``end(won:)`` the game, or ``die(_:)`` — death offers the classic RESTART / RESTORE / UNDO / QUIT prompt. All state changes commit atomically at the end of the turn, which is also what `save` writes and `undo` rewinds. See <doc:TheTurnPipeline> and <doc:DarknessTimeAndDeath>.
 
 ### Scaling up
 
@@ -87,6 +87,8 @@ A game need not live in one file — or even one package. Compose `map` and `rul
 - ``synonyms(_:)``
 - ``firstSight(_:)``
 - ``dark``
+- ``lightSource``
+- ``startsLit``
 - ``wearable``
 - ``scenery``
 - ``surface``
@@ -102,6 +104,20 @@ A game need not live in one file — or even one package. Compose `map` and `rul
 - ``refuse(_:)``
 - ``reply(_:)``
 - ``end(won:)``
+- ``die(_:)``
+
+### Time, Light, and Death
+
+- <doc:DarknessTimeAndDeath>
+- ``TimedEvent``
+- ``fuse(_:after:autostart:perform:)``
+- ``daemon(_:autostart:perform:)``
+- ``startFuse(_:after:)``
+- ``stopFuse(_:)``
+- ``fuseRemaining(_:)``
+- ``startDaemon(_:)``
+- ``stopDaemon(_:)``
+- ``isDaemonActive(_:)``
 
 ### Custom State and Traits
 
@@ -158,3 +174,4 @@ A game need not live in one file — or even one package. Compose `map` and `rul
 - ``RuleBuilder``
 - ``VerbBuilder``
 - ``ContentBuilder``
+- ``TimerBuilder``

@@ -37,6 +37,10 @@ public struct Intent: Hashable, Sendable {
     public static let lookIn = Intent("lookIn")
     /// Push an item.
     public static let push = Intent("push")
+    /// Light a light source ("turn on", "light").
+    public static let turnOn = Intent("turnOn")
+    /// Extinguish a light source ("turn off", "extinguish", "blow out").
+    public static let turnOff = Intent("turnOff")
     /// Move in a direction.
     public static let go = Intent("go")
     /// Look at the current location.
@@ -49,10 +53,20 @@ public struct Intent: Hashable, Sendable {
     public static let quit = Intent("quit")
     /// Report the engine version.
     public static let version = Intent("version")
+    /// Reverse the last turn (engine-level; not overridable).
+    public static let undo = Intent("undo")
+    /// Rewind to the opening (engine-level; not overridable).
+    public static let restart = Intent("restart")
+    /// Write the world state to a file (engine-level; not overridable).
+    public static let save = Intent("save")
+    /// Read the world state back from a file (engine-level; not overridable).
+    public static let restore = Intent("restore")
 
     /// Meta intents talk to the game program, not the world: they skip all
     /// rules and don't consume a turn.
-    static let metaIntents: Set<Intent> = [.score, .quit, .version]
+    static let metaIntents: Set<Intent> = [
+        .score, .quit, .version, .undo, .restart, .save, .restore,
+    ]
 
     var isMeta: Bool { Intent.metaIntents.contains(self) }
 }

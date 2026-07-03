@@ -1,9 +1,10 @@
-/// Thrown by `refuse`, `reply`, and `end` to redirect the turn; caught by
-/// the engine, never seen by author code.
+/// Thrown by `refuse`, `reply`, `end`, and `die` to redirect the turn;
+/// caught by the engine, never seen by author code.
 enum TurnInterrupt: Error {
     case refused(message: String)
     case replied(message: String)
     case gameOver(won: Bool)
+    case died(message: String)
 }
 
 /// Prints a message as part of the turn's output.
@@ -46,6 +47,18 @@ public func reply(_ message: String) throws -> Never {
 /// Ends the game. The engine prints the final score after the turn's output.
 public func end(won: Bool) throws -> Never {
     throw TurnInterrupt.gameOver(won: won)
+}
+
+/// Kills the player: prints the message and the death banner, and the engine
+/// then reports the score and offers RESTART / RESTORE / UNDO / QUIT — the
+/// program keeps running until the player picks an exit. Distinct from
+/// `end(won:)`, which finishes the game outright.
+///
+/// Seam: a later phase may add a game-supplied `onDeath` handler that can
+/// revive the player (resurrection) before the prompt is offered; only the
+/// prompt path exists today.
+public func die(_ message: String) throws -> Never {
+    throw TurnInterrupt.died(message: message)
 }
 
 /// Runs the stage-4 default action (a game/plugin override if one is

@@ -17,8 +17,9 @@ public struct TurnResult: Sendable {
     public let isFinished: Bool
     /// The status line to display alongside the output.
     public let status: StatusLine
-    // Seam: a `pendingQuery` field will later carry quit-confirmation and
-    // disambiguation round-trips.
+    // Round-trip questions (disambiguation, save/restore filenames) are
+    // pending state on the GameWorld actor: the next input line answers
+    // them, so the driver never needs to know a question is open.
 }
 
 /// The game world: owns all state, serializes all mutation, and runs the
@@ -32,6 +33,27 @@ public actor GameWorld {
     /// to take?"): the next input line is first tried as its answer,
     /// re-parsed as `prefix + answer + suffix`.
     private var pendingClarification: (prefix: [String], suffix: [String])?
+    /// The pristine post-bootstrap state, seed included — what RESTART
+    /// rewinds to. Actor state, never part of `WorldState` itself.
+    private let initialState: WorldState
+    /// The one-level UNDO snapshot: the state as it stood before the last
+    /// turn that actually ran stages. Kept on the actor so history never
+    /// leaks into save files.
+    private var undoSnapshot: WorldState?
+    /// An open engine prompt. Unlike a clarification, the next input line
+    /// *is* the answer — raw, untokenized (filenames carry dots and slashes
+    /// the tokenizer would mangle) — and normal parsing doesn't happen.
+    private enum PendingPrompt {
+        case saveFilename
+        /// `returnToDeathPrompt` re-arms the death prompt after a failed or
+        /// cancelled restore that was chosen from it.
+        case restoreFilename(returnToDeathPrompt: Bool)
+        /// The post-death RESTART / RESTORE / UNDO / QUIT choice. While it
+        /// is armed, every input line is an answer — normal commands are
+        /// unreachable until the player picks an exit.
+        case deathChoice
+    }
+    private var pendingPrompt: PendingPrompt?
 
     /// Builds the world from a game definition, validating it up front.
     /// The random stream is seeded fresh each run; use `init(game:seed:)`
@@ -48,6 +70,9 @@ public actor GameWorld {
         self.definition = definition
         self.state = state
         self.state.rngState = seed
+        // Captured after seeding, so RESTART replays the identical game,
+        // randomness included.
+        self.initialState = self.state
         self.parser = StandardParser(
             vocabulary: definition.vocabulary,
             syntaxRules: definition.syntaxRules)
@@ -69,6 +94,11 @@ public actor GameWorld {
     /// errors ("Which do you mean…?") stay open: the next line is first
     /// tried as their answer, and falls back to being a fresh command.
     public func perform(_ input: String) -> TurnResult {
+        if let prompt = pendingPrompt {
+            pendingPrompt = nil
+            return answer(prompt, with: input.trimmingCharacters(in: .whitespaces))
+        }
+
         let scope = currentScope()
         let tokens = parser.tokenize(input)
 
@@ -77,7 +107,7 @@ public actor GameWorld {
             let augmented = pending.prefix + tokens + pending.suffix
             switch parser.parse(tokens: augmented, rawInput: input, scope: scope) {
             case .success(let parsed):
-                return run(parsed)
+                return armDeathPromptIfNeeded(run(parsed))
             case .failure(let error):
                 // Still ambiguous ("brass" matched two): ask the narrower
                 // question. Anything else means the line wasn't an answer —
@@ -94,26 +124,58 @@ public actor GameWorld {
             pendingClarification = error.clarification
             return freeReply(error.playerMessage(definition.text))
         case .success(let parsed):
-            return run(parsed)
+            return armDeathPromptIfNeeded(run(parsed))
         }
     }
 
-    /// Runs a successfully parsed command: pronoun bookkeeping, then the
-    /// single- or multi-object turn.
+    /// After a turn that killed the player, the next input line belongs to
+    /// the death prompt.
+    private func armDeathPromptIfNeeded(_ result: TurnResult) -> TurnResult {
+        if state.status == .dead {
+            pendingPrompt = .deathChoice
+        }
+        return result
+    }
+
+    /// Runs a successfully parsed command: engine-level meta verbs first,
+    /// then pronoun bookkeeping and the single- or multi-object turn.
     private func run(_ parsed: ParsedCommand) -> TurnResult {
+        // UNDO and RESTART act on the actor's snapshots, not the pipeline —
+        // no rules see them and `actionOverrides` can't reclaim them.
+        switch parsed.intent {
+        case .undo: return performUndo()
+        case .restart: return performRestart()
+        case .save:
+            pendingPrompt = .saveFilename
+            return freeReply(definition.text.savePrompt)
+        case .restore:
+            pendingPrompt = .restoreFilename(returnToDeathPrompt: false)
+            return freeReply(definition.text.restorePrompt)
+        default: break
+        }
+
+        // The would-be UNDO snapshot: the state before *anything* this turn
+        // touches, pronouns included. Stored only when the turn actually
+        // runs stages — a free reply ("There is nothing here to take.")
+        // must not clobber the snapshot of the last real turn.
+        let snapshot = state
+
         // Naming a thing binds "it" — even if the action then refuses.
         if let direct = parsed.directObject {
             state.pronounIt = direct
         }
         if let multiple = parsed.multiple {
-            return runMultiTurn(parsed, multiple)
+            return runMultiTurn(parsed, multiple, snapshot: snapshot)
         }
-        return runTurn(command(from: parsed))
+        return runTurn(command(from: parsed), snapshot: snapshot)
     }
 
     // MARK: - The turn pipeline
 
-    private func runTurn(_ command: Command) -> TurnResult {
+    private func runTurn(_ command: Command, snapshot: WorldState) -> TurnResult {
+        if !command.intent.isMeta {
+            undoSnapshot = snapshot
+        }
         let frame = TurnFrame(definition: definition, state: state, command: command)
         Ctx.$frame.withValue(frame) {
             performStages(command, frame: frame, upkeep: true)
@@ -132,7 +194,8 @@ public actor GameWorld {
     /// stage 6) runs once for the whole command, so a daemon doesn't tick
     /// once per object.
     private func runMultiTurn(
-        _ parsed: ParsedCommand, _ multiple: ParsedCommand.MultiObject
+        _ parsed: ParsedCommand, _ multiple: ParsedCommand.MultiObject,
+        snapshot: WorldState
     ) -> TurnResult {
         let intent = parsed.intent
         guard Self.multiObjectIntents.contains(intent) else {
@@ -167,6 +230,10 @@ public actor GameWorld {
             return freeReply(
                 intent == .take ? definition.text.nothingToTakeHere : definition.text.notCarryingAnything)
         }
+
+        // Every early return above was a free reply; from here the turn
+        // really runs, so it becomes the thing UNDO reverses.
+        undoSnapshot = snapshot
 
         // Stable, player-legible order: by display name, then ID.
         objects.sort { lhs, rhs in
@@ -221,11 +288,123 @@ public actor GameWorld {
         }
     }
 
+    // MARK: - Engine-level meta verbs
+
+    /// Rewinds exactly one turn from the actor's snapshot, then shows the
+    /// player where (and when — the status line's moves) they are. Free.
+    private func performUndo() -> TurnResult {
+        guard let snapshot = undoSnapshot else {
+            return freeReply(definition.text.cantUndo)
+        }
+        state = snapshot
+        undoSnapshot = nil
+        pendingClarification = nil
+        let frame = TurnFrame(definition: definition, state: state)
+        Ctx.$frame.withValue(frame) {
+            frame.say(definition.text.undone)
+            RoomDescriber.describeCurrentLocation(mode: .entry, frame: frame)
+        }
+        return commit(frame)
+    }
+
+    /// Rewinds to the pristine post-bootstrap opening — seed included, so
+    /// the restarted game replays identically — and plays the opening again.
+    private func performRestart() -> TurnResult {
+        state = initialState
+        undoSnapshot = nil
+        pendingClarification = nil
+        return begin()
+    }
+
+    /// Consumes the line that answers an open engine prompt.
+    private func answer(_ prompt: PendingPrompt, with line: String) -> TurnResult {
+        switch prompt {
+        case .saveFilename:
+            guard !line.isEmpty else {
+                return freeReply(definition.text.cancelled)
+            }
+            do {
+                try SaveFile.write(state, title: definition.title, to: line)
+                return freeReply(definition.text.saved)
+            } catch {
+                return freeReply(definition.text.saveFailed)
+            }
+
+        case .restoreFilename(let returnToDeathPrompt):
+            guard !line.isEmpty else {
+                return restoreFailed(definition.text.cancelled, returnToDeathPrompt)
+            }
+            do {
+                let restored = try SaveFile.read(from: line, expecting: definition.title)
+                return performRestore(restored)
+            } catch {
+                switch error {
+                case .unreadable:
+                    return restoreFailed(definition.text.restoreFailed, returnToDeathPrompt)
+                case .wrongGame:
+                    return restoreFailed(definition.text.wrongGameSave, returnToDeathPrompt)
+                }
+            }
+
+        case .deathChoice:
+            switch line.lowercased() {
+            case "restart":
+                return performRestart()
+            case "restore":
+                pendingPrompt = .restoreFilename(returnToDeathPrompt: true)
+                return freeReply(definition.text.restorePrompt)
+            case "undo":
+                guard undoSnapshot != nil else {
+                    pendingPrompt = .deathChoice
+                    return freeReply(
+                        "\(definition.text.cantUndo)\n\n\(definition.text.deathPrompt)")
+                }
+                // The snapshot predates the fatal turn — this revives.
+                return performUndo()
+            case "quit", "q":
+                // The score already printed at death; just stop reading.
+                state.status = .quit
+                return freeReply("")
+            default:
+                pendingPrompt = .deathChoice
+                return freeReply(definition.text.deathChoiceUnrecognized)
+            }
+        }
+    }
+
+    /// Swaps a validated save's state in and shows the player where they are.
+    private func performRestore(_ restored: WorldState) -> TurnResult {
+        var next = restored
+        // Re-bind the saved timer schedule to the declared bodies by name;
+        // names this build doesn't declare are dropped (see `SaveFile`).
+        next.activeFuses = next.activeFuses.filter { definition.timers[$0.key] != nil }
+        next.activeDaemons = next.activeDaemons.filter { definition.timers[$0] != nil }
+        state = next
+        undoSnapshot = nil
+        pendingClarification = nil
+        let frame = TurnFrame(definition: definition, state: state)
+        Ctx.$frame.withValue(frame) {
+            frame.say(definition.text.restored)
+            RoomDescriber.describeCurrentLocation(mode: .entry, frame: frame)
+        }
+        return commit(frame)
+    }
+
+    /// A failed or cancelled restore — re-arming the death prompt when the
+    /// attempt was made from it (there is no world to go back to otherwise).
+    private func restoreFailed(_ message: String, _ returnToDeathPrompt: Bool) -> TurnResult {
+        guard returnToDeathPrompt else {
+            return freeReply(message)
+        }
+        pendingPrompt = .deathChoice
+        return freeReply("\(message)\n\n\(definition.text.deathPrompt)")
+    }
+
     /// A parse-error-style response: message only, no rules, no turn.
     private func freeReply(_ message: String) -> TurnResult {
         TurnResult(
             output: message,
-            isFinished: state.status != .playing,
+            isFinished: state.status.isFinal,
             status: statusLine())
     }
 
@@ -318,13 +497,24 @@ public actor GameWorld {
                 runCatching(rules.locationAfterEachTurn[here] ?? [], matching: intent, frame: frame)
                 runCatching(rules.worldAfter, matching: intent, frame: frame)
             }
+            // The world's clock ticks last, after the rules have reacted to
+            // the command — and not once the game has ended (re-checked here
+            // because an each-turn rule above may have ended it).
+            if frame.with({ $0.state.status }) == .playing {
+                tickTimers(frame: frame)
+            }
             frame.with { $0.state.moves += 1 }
         }
 
-        // End-of-game epilogue: one place reports the final score,
-        // whether the game was won, lost, or quit.
+        // End-of-game epilogue: one place reports the final score, whether
+        // the game was won, lost, quit — or the player died, in which case
+        // the classic prompt follows and `perform` arms itself to consume
+        // the answer.
         if frame.with({ $0.state.status }) != .playing {
             DefaultActions.score(frame)
+        }
+        if frame.with({ $0.state.status }) == .dead {
+            frame.say(frame.definition.text.deathPrompt)
         }
     }
 
@@ -360,12 +550,60 @@ public actor GameWorld {
         }
     }
 
+    /// One tick of the world's clock: every running fuse counts down (and
+    /// fires at zero), then every running daemon runs — fuses first, each
+    /// group in name order, so firing order is deterministic. Each name is
+    /// re-checked against the live schedule before it acts, because an
+    /// earlier body may have stopped it this very tick; a fuse is removed
+    /// from the schedule *before* its body runs, so the body can restart it.
+    /// Bodies get the same interrupt handling as each-turn rules, and the
+    /// tick stops as soon as one of them ends the game.
+    private func tickTimers(frame: TurnFrame) {
+        for name in frame.with({ $0.state.activeFuses.keys.sorted() }) {
+            guard frame.with({ $0.state.status }) == .playing else { return }
+            guard let event = definition.timers[name] else { continue }
+            let fires = frame.with { scratch -> Bool in
+                guard let remaining = scratch.state.activeFuses[name] else { return false }
+                if remaining > 1 {
+                    scratch.state.activeFuses[name] = remaining - 1
+                    return false
+                }
+                scratch.state.activeFuses[name] = nil
+                return true
+            }
+            if fires {
+                runCatching(event, frame: frame)
+            }
+        }
+        for name in frame.with({ $0.state.activeDaemons.sorted() }) {
+            guard frame.with({ $0.state.status }) == .playing else { return }
+            guard let event = definition.timers[name],
+                frame.with({ $0.state.activeDaemons.contains(name) })
+            else { continue }
+            runCatching(event, frame: frame)
+        }
+    }
+
+    private func runCatching(_ event: TimedEvent, frame: TurnFrame) {
+        do {
+            try event.body()
+        } catch let interrupt as TurnInterrupt {
+            handle(interrupt, frame: frame)
+        } catch {
+            frame.say("\(error)")
+        }
+    }
+
     private func handle(_ interrupt: TurnInterrupt, frame: TurnFrame) {
         switch interrupt {
         case .refused(let message), .replied(let message):
             frame.say(message)
         case .gameOver(let won):
             frame.with { $0.state.status = won ? .won : .lost }
+        case .died(let message):
+            frame.say(message)
+            frame.say(frame.definition.text.deathBanner)
+            frame.with { $0.state.status = .dead }
         }
     }
 
@@ -398,7 +636,7 @@ public actor GameWorld {
         state = scratch.state
         return TurnResult(
             output: scratch.output.joined(separator: "\n\n"),
-            isFinished: scratch.state.status != .playing,
+            isFinished: scratch.state.status.isFinal,
             status: statusLine())
     }
 

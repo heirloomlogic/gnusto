@@ -91,6 +91,64 @@ public struct GameText: Sendable {
     /// Pushing something the default action won't move.
     public var cantMoveThat = "You can't move that."
 
+    // MARK: - Light
+
+    /// A successful `turn on` of a light source.
+    public var nowOn: @Sendable (_ name: String) -> String = {
+        "The \($0) is now on."
+    }
+    /// A successful `turn off`.
+    public var nowOff: @Sendable (_ name: String) -> String = {
+        "The \($0) is now off."
+    }
+    /// Turning on something already lit.
+    public var alreadyOn = "It's already on."
+    /// Turning off something already unlit.
+    public var alreadyOff = "It's already off."
+    /// Turning on something without the `lightSource` trait.
+    public var cantTurnOnThat = "You can't turn that on."
+    /// Turning off something without the `lightSource` trait.
+    public var cantTurnOffThat = "You can't turn that off."
+    /// Extinguishing the only light in a dark place.
+    public var nowDark = "It is now pitch black."
+
+    // MARK: - Undo & restart
+
+    /// A successful `undo`.
+    public var undone = "Previous turn undone."
+    /// An `undo` with no snapshot to rewind to.
+    public var cantUndo = "There's nothing to undo."
+
+    // MARK: - Save & restore
+
+    /// The filename question after `save`.
+    public var savePrompt = "Save to what file?"
+    /// The filename question after `restore`.
+    public var restorePrompt = "Restore from what file?"
+    /// A successful `save`.
+    public var saved = "Saved."
+    /// A `save` whose file couldn't be written.
+    public var saveFailed = "Save failed."
+    /// A successful `restore`.
+    public var restored = "Restored."
+    /// A `restore` whose file is missing, unreadable, or not a save.
+    public var restoreFailed = "Restore failed."
+    /// A `restore` from a save that belongs to a different game.
+    public var wrongGameSave = "That save file is from a different game."
+    /// An empty answer to a filename prompt.
+    public var cancelled = "Cancelled."
+
+    // MARK: - Death
+
+    /// The banner printed right after a `die(_:)` message.
+    public var deathBanner = "*** You have died ***"
+    /// The interactive prompt offered after death (and re-offered after a
+    /// failed restore or an unrecognized answer).
+    public var deathPrompt =
+        "Would you like to RESTART, RESTORE a saved game, UNDO your last turn, or QUIT?"
+    /// The nudge for any other input at the death prompt.
+    public var deathChoiceUnrecognized = "Please type RESTART, RESTORE, UNDO, or QUIT."
+
     /// The item resolved (it was visible to the parser), but a reachability
     /// guard failed — you can see it, you just can't touch it (e.g. through a
     /// shut glass jar). Distinct from `cantSeeAnySuchThing`, which is for a

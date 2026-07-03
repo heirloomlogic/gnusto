@@ -18,6 +18,17 @@ let zork1Egg = Item {
     description(Prose.egg)
 }
 
+/// The lantern's description reads its own lit state, which runs into the
+/// same self-reference restriction as the trophy case above — hence the same
+/// file-scope-`let` idiom.
+private let zork1Lantern = Item {
+    name("brass lantern")
+    adjectives("brass")
+    synonyms("lamp")
+    description { zork1Lantern.isLit ? Prose.lanternOn : Prose.lanternOff }
+    lightSource
+}
+
 private let zork1TrophyCase = Item {
     name("trophy case")
     description {
@@ -31,16 +42,18 @@ private let zork1TrophyCase = Item {
     scenery
 }
 
-/// The interior of the White House: kitchen, living room, and attic, plus a
-/// stub cellar so the trap door leads somewhere real. The full cellar (maze,
-/// thief, troll) is Phase 7 content — see `FIDELITY.md`.
+/// The interior of the White House: kitchen, living room, attic, and the
+/// cellar the trap door drops into. The region beyond the cellar (East of
+/// Chasm, Gallery, Studio) is ``ZorkCellar``'s; the troll passage north and
+/// the maze are later phases — see `FIDELITY.md`.
 ///
 /// The trap door joins two rooms this bundle owns outright (`livingRoom`
-/// and the stub `cellar`), so it's wired below in this bundle's own `map`.
-/// The kitchen window is different: it's a door between this bundle's
-/// `kitchen` and `ZorkAboveGround.behindHouse`, a room this bundle doesn't
-/// own, so *that* exit is wired by the host, ``Zork1``, at the top level —
-/// the ordinary way two bundles' geography meets.
+/// and `cellar`), so it's wired below in this bundle's own `map`. The
+/// kitchen window is different: it's a door between this bundle's `kitchen`
+/// and `ZorkAboveGround.behindHouse`, a room this bundle doesn't own, so
+/// *that* exit is wired by the host, ``Zork1``, at the top level — the
+/// ordinary way two bundles' geography meets (as are the cellar's exits
+/// into ``ZorkCellar``).
 struct ZorkHouse: GameContent {
     // MARK: - Rooms
 
@@ -59,9 +72,6 @@ struct ZorkHouse: GameContent {
         description(Prose.attic)
     }
 
-    /// A stub: the full cellar (maze, thief, troll) is Phase 7. This is just
-    /// enough of a room for the trap door to lead somewhere real and for the
-    /// "dark room" mechanic to be demonstrable now.
     let cellar = Location {
         name("Cellar")
         description(Prose.cellar)
@@ -118,13 +128,19 @@ struct ZorkHouse: GameContent {
 
     // MARK: - Living Room
 
-    /// Just an item until Phase 7 makes it a light source — see
-    /// `FIDELITY.md`.
-    let lantern = Item {
-        name("brass lantern")
-        adjectives("brass")
-        description(Prose.lantern)
-    }
+    /// A real light source with finite fuel: two fuses (dim warning, then
+    /// out for good) that run only while it burns — turning it off banks
+    /// the remaining turns. See the file-scope `zork1Lantern` for why the
+    /// declaration lives outside the struct.
+    let lantern = zork1Lantern
+
+    /// Fuel remaining on the dim-warning fuse while the lantern is off.
+    /// Deliberately small numbers (the original burns for hundreds of
+    /// turns) so a transcript test can watch it die — see `FIDELITY.md`.
+    @Global var lanternDimIn = 20
+    /// Fuel remaining on the burn-out fuse while the lantern is off.
+    @Global var lanternDiesIn = 25
+    @Global var lanternBurnedOut = false
 
     let sword = Item {
         name("elvish sword")
@@ -181,6 +197,8 @@ struct ZorkHouse: GameContent {
         attic.down(kitchen)
         livingRoom.down(cellar, via: trapDoor)
         cellar.up(livingRoom, via: trapDoor)
+        // The troll's passage — a later phase; rubble for now (FIDELITY.md).
+        cellar.north(blocked: Prose.cellarNorthBlocked)
 
         sack.starts(in: kitchen)
         garlic.starts(inside: sack)
@@ -219,6 +237,36 @@ struct ZorkHouse: GameContent {
             guard trapDoor.isOpen else { return }
             trapDoor.isOpen = false
             say(Prose.trapDoorSlam)
+        }
+
+        // The lantern's fuel economy: the fuses run only while it burns.
+        lantern.before(.turnOn) {
+            try require(!lanternBurnedOut, else: Prose.lanternSpent)
+        }
+        lantern.after(.turnOn) {
+            if lanternDimIn > 0 {
+                startFuse("lanternDim", after: lanternDimIn)
+            }
+            startFuse("lanternDies", after: lanternDiesIn)
+        }
+        lantern.after(.turnOff) {
+            // Bank what's left, then stop the clock — no fuel burns while
+            // the lantern is off.
+            lanternDimIn = fuseRemaining("lanternDim") ?? 0
+            lanternDiesIn = fuseRemaining("lanternDies") ?? 0
+            stopFuse("lanternDim")
+            stopFuse("lanternDies")
+        }
+    }
+
+    var timers: [TimedEvent] {
+        fuse("lanternDim", after: 20) {
+            say(Prose.lanternDim)
+        }
+        fuse("lanternDies", after: 25) {
+            lanternBurnedOut = true
+            zork1Lantern.isLit = false
+            say(Prose.lanternDies)
         }
     }
 }

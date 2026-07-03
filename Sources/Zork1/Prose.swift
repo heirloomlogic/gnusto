@@ -187,9 +187,25 @@ enum Prose {
         an attic.
         """
 
-    static let lantern = """
-        A sturdy brass lantern, its glass chimney clean and its fuel tank
-        full.
+    static let lanternOff = """
+        A sturdy brass lantern, its glass chimney clean. It is switched
+        off.
+        """
+
+    static let lanternOn = """
+        A sturdy brass lantern, burning with a steady white light.
+        """
+
+    static let lanternDim = """
+        The flame inside the lantern shrinks and takes on an orange cast.
+        It won't burn much longer.
+        """
+
+    static let lanternDies = "The brass lantern flickers and goes out."
+
+    static let lanternSpent = """
+        The lantern is burned out; no amount of switch-flicking will
+        bring it back.
         """
 
     static let sword = """
@@ -223,8 +239,69 @@ enum Prose {
     static let knife = "A nasty-looking knife, its edge notched but still sharp."
 
     static let cellar = """
-        You are in a low, dirt-floored cellar. It is too dark to make out
-        much else. A trap door in the ceiling is the only way you can
-        tell you came in.
+        You are in a low, dirt-floored cellar. A passage leads off to the
+        north, choked with fallen rubble a short way in, and a crawlway
+        opens to the south. The trap door you came through is set into
+        the ceiling above.
+        """
+
+    static let cellarNorthBlocked = """
+        The passage north is blocked by fallen rubble a few steps in.
+        """
+
+    // MARK: - Cellar region
+
+    static let eastOfChasm = """
+        You stand at the east edge of a chasm whose floor, if it has one,
+        is lost in the dark below. A passage climbs back north toward
+        the cellar, and another leads east.
+        """
+
+    static let chasm = """
+        The chasm's far wall is barely visible. Nothing thrown in has
+        ever been heard to land.
+        """
+
+    static let gallery = """
+        This room was once a gallery: picture hooks and pale rectangles
+        mark the walls where art used to hang. Daylight filters in from
+        somewhere high above. Openings lead west and north.
+        """
+
+    static let paintingFirstSight = """
+        One painting still hangs here, overlooked or abandoned — clearly
+        the work of a master.
+        """
+
+    static let painting = """
+        A landscape in oils, luminous even under its coat of dust. It
+        must be worth a fortune.
+        """
+
+    static let studio = """
+        This cramped room was an artist's studio, its floor and walls
+        stained with old paint. A dark, sooty chimney climbs up one
+        wall; the only other way out is a doorway south.
+        """
+
+    static let chimney = """
+        The chimney is narrow, but the soot-blackened brick offers
+        plenty of holds. It looks climbable — upward, at least.
+        """
+
+    // MARK: - The grue
+    //
+    // Original prose only: the famous "likely to be eaten by a grue"
+    // sentence is Infocom's and is deliberately not reproduced. The name
+    // "grue" itself is fair game under the ledger's names-vs-prose line.
+
+    static let grueWarning = """
+        The darkness here is total. Something with slow, wet breathing
+        has noticed you.
+        """
+
+    static let grueDeath = """
+        Claws find you long before your eyes could ever adjust. You are
+        devoured by a grue.
         """
 }

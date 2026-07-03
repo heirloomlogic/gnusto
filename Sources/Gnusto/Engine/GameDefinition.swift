@@ -69,6 +69,8 @@ struct ItemDefinition: Sendable {
     /// non-lockable items).
     var lockKey: EntityID?
     var isHidden = false
+    var isLightSource = false
+    var startsLit = false
     var customTraits: [String: StateValue] = [:]
 
     /// Items are takable unless they're scenery.
@@ -100,6 +102,8 @@ struct ItemDefinition: Sendable {
             case .startsUnlocked: startsUnlocked = true
             case .capacity(let n): capacity = n
             case .hidden: isHidden = true
+            case .lightSource: isLightSource = true
+            case .startsLit: startsLit = true
             case .custom(let key, let value): customTraits[key] = value
             }
         }
@@ -149,6 +153,10 @@ struct GameDefinition: Sendable {
     /// `rules` block inside a registration frame (which needs the rest of the
     /// definition to exist first).
     var rules: RuleTable
+    /// Declared fuses and daemons by name; installed alongside `rules` for
+    /// the same registration-frame reason. Schedule state (what's running,
+    /// counts) lives in `WorldState`.
+    var timers: [String: TimedEvent] = [:]
     let registry: Registry
     let vocabulary: Vocabulary
     let syntaxRules: [SyntaxRule]

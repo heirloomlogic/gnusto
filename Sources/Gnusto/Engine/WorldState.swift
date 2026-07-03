@@ -16,17 +16,31 @@ public enum GameStatus: Hashable, Sendable, Codable {
     case won
     case lost
     case quit
+    /// The player has died. Over, but not final: the world's time has
+    /// stopped, yet the program keeps reading — the death prompt offers
+    /// RESTART / RESTORE / UNDO / QUIT.
+    case dead
+
+    /// Whether the program should stop reading input. `dead` is deliberately
+    /// not final — the death prompt is still a conversation.
+    var isFinal: Bool {
+        self == .won || self == .lost || self == .quit
+    }
 }
 
 /// Everything that changes during play, as a single value.
 ///
 /// The immutable side of the world (names, descriptions, exits, rules,
 /// vocabulary) lives in `GameDefinition`. Because `WorldState` is one
-/// `Codable` value, save/restore later is a serialization call away.
+/// `Codable` value, save/restore *is* a serialization call — see `SaveFile`.
 struct WorldState: Sendable, Codable {
     var placements: [EntityID: Placement] = [:]
     var playerLocation: EntityID
     var litRooms: Set<EntityID> = []
+    /// `lightSource` items that are currently lit. Only light sources ever
+    /// appear here; the `Item.isLit` setter and Bootstrap both guard on the
+    /// trait.
+    var litItems: Set<EntityID> = []
     var wornItems: Set<EntityID> = []
     /// Openable containers that are currently open. A container without the
     /// `openable` trait is always open and never appears here.
@@ -47,6 +61,12 @@ struct WorldState: Sendable, Codable {
     var visited: Set<EntityID> = []
     var descriptionOverrides: [EntityID: String] = [:]
     var globals: [EntityID: StateValue] = [:]
+    /// Running fuses: name → end-of-turn ticks left before firing. Names
+    /// re-bind to the declared `TimedEvent` bodies; the closures themselves
+    /// are code, not data, and never serialize.
+    var activeFuses: [String: Int] = [:]
+    /// Names of the daemons currently running each turn.
+    var activeDaemons: Set<String> = []
     var status: GameStatus = .playing
     /// The random stream's position. Part of the saved state, so a restored
     /// game replays the exact same randomness it would have had.

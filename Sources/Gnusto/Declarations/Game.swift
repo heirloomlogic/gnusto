@@ -68,6 +68,16 @@ public protocol Game: Sendable {
     /// to empty, in which case the game's own declarations are all there is.
     @ContentBuilder var content: GameContents { get }
 
+    /// The game's fuses and daemons: named timed events whose bodies run at
+    /// the end of turns.
+    ///
+    /// A fuse fires once, N turns after a rule starts it (or from turn one
+    /// with `autostart`); a daemon runs every turn while active. Only the
+    /// schedule lives in the world's state — the bodies declared here are
+    /// re-bound by name on restore. Defaults to empty. Timer names must be
+    /// unique across the game and its bundles.
+    @TimerBuilder var timers: [TimedEvent] { get }
+
     /// Stage-4 default actions this game replaces or adds, keyed by intent.
     ///
     /// Each row gives an intent its default behavior — new, for a custom
@@ -95,6 +105,9 @@ extension Game {
 
     /// Games authored as a single struct can omit the `content` block.
     public var content: GameContents { GameContents(modules: []) }
+
+    /// Games with no timed events can omit the `timers` block.
+    public var timers: [TimedEvent] { [] }
 
     /// Games that replace or add no default actions can omit the `actions`
     /// block.

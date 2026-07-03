@@ -193,6 +193,21 @@ extension SyntaxRule {
         .init("lock", .directObject, "with", .indirectObject, intent: .lock),
         .init("unlock", .directObject, "with", .indirectObject, intent: .unlock),
 
+        // turnOn / turnOff
+        .init("turn", "on", .directObject, intent: .turnOn),
+        .init("turn", .directObject, "on", intent: .turnOn),
+        .init("switch", "on", .directObject, intent: .turnOn),
+        .init("switch", .directObject, "on", intent: .turnOn),
+        .init("light", .directObject, intent: .turnOn),
+        .init("turn", "off", .directObject, intent: .turnOff),
+        .init("turn", .directObject, "off", intent: .turnOff),
+        .init("switch", "off", .directObject, intent: .turnOff),
+        .init("switch", .directObject, "off", intent: .turnOff),
+        .init("extinguish", .directObject, intent: .turnOff),
+        .init("douse", .directObject, intent: .turnOff),
+        .init("blow", "out", .directObject, intent: .turnOff),
+        .init("blow", .directObject, "out", intent: .turnOff),
+
         // lookIn / search
         .init("look", "in", .directObject, intent: .lookIn),
         .init("search", .directObject, intent: .lookIn),
@@ -216,5 +231,9 @@ extension SyntaxRule {
         .init("quit", intent: .quit),
         .init("q", intent: .quit),
         .init("version", intent: .version),
+        .init("undo", intent: .undo),
+        .init("restart", intent: .restart),
+        .init("save", intent: .save),
+        .init("restore", intent: .restore),
     ]
 }

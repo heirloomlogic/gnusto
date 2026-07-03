@@ -42,6 +42,12 @@ public protocol GameContent: Sendable {
     /// this one.
     @ActionBuilder var actions: [IntentAction] { get }
 
+    /// The bundle's fuses and daemons, in the same form as a game's `timers`.
+    /// Defaults to empty. Timer names are global — NOT namespaced, since the
+    /// bundle's own rules start them by the literal name — so a name shared
+    /// with the host or another bundle is a fatal bootstrap diagnostic.
+    @TimerBuilder var timers: [TimedEvent] { get }
+
     /// Prefixes this bundle's entity IDs so its rooms/items/`@Global`s can't
     /// collide with the host game's or another bundle's. A bundle entity stored
     /// as `let hall = Location { … }` becomes `EntityID("\(namespace).hall")`,
@@ -68,6 +74,16 @@ extension GameContent {
     /// Bundles that replace or add no default actions can omit the `actions`
     /// block.
     public var actions: [IntentAction] { [] }
+
+    /// Bundles with no timed events can omit the `timers` block.
+    public var timers: [TimedEvent] { [] }
+
+    /// The player character — usable as a bare identifier in a bundle's
+    /// `map`, `rules`, and `timers` blocks, exactly as in a `Game`.
+    public var player: Player { Player() }
+
+    /// The whole world — for bundle rules that apply everywhere.
+    public var world: World { World() }
 
     /// By default a bundle namespaces its entities under its own type name, so
     /// each distinct bundle type gets a distinct prefix automatically.
