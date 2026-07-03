@@ -78,6 +78,13 @@ extension GameContent {
     /// Bundles with no timed events can omit the `timers` block.
     public var timers: [TimedEvent] { [] }
 
+    /// The player character — usable as a bare identifier in a bundle's
+    /// `map`, `rules`, and `timers` blocks, exactly as in a `Game`.
+    public var player: Player { Player() }
+
+    /// The whole world — for bundle rules that apply everywhere.
+    public var world: World { World() }
+
     /// By default a bundle namespaces its entities under its own type name, so
     /// each distinct bundle type gets a distinct prefix automatically.
     public var namespace: String { String(describing: type(of: self)) }

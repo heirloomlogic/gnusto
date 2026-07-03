@@ -100,6 +100,20 @@ entry below is grouped by the task that introduced it.
   warning prints wherever the player is, without the original's
   can-you-see-the-lamp check. A burned-out lantern refuses `turn on` with
   `Prose.lanternSpent`, and nothing in the slice replaces it.
+- **The grue is deterministic and lingering-based**, where the original
+  rolls dice per dark turn: warning on the first consecutive turn *ending*
+  in darkness, one silent grace turn, death on the third, counter reset by
+  any lit turn. Chosen so transcripts reproduce without pinned seeds and
+  the warning is a guaranteed fairness beat; the Phase-8 dangerous-dark
+  plugin is where configurable randomness belongs, and the daemon is
+  written self-contained (`Sources/Zork1/Cellar.swift`, one `@Global`, no
+  cross-references) so that extraction is a file move. The warning and
+  death prose are original — the famous "likely to be eaten by a grue"
+  sentence is Infocom's and is deliberately not reproduced ("grue" the
+  name is fair game under the names-vs-prose line above). One sharp edge,
+  accepted: UNDO from a grue death restores the counter at 2, so the
+  revived player has zero safe dark moves — grues are unforgiving;
+  RESTORE and RESTART are the real outs.
 - **The white house exterior is four separate scenery items**
   (`whiteHouseAtWest`/`AtNorth`/`AtSouth`/`AtBehind`), one per house-side
   room, all sharing the same name and `Prose.whiteHouse` text. A single

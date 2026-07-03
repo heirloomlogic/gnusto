@@ -118,6 +118,92 @@ struct Zork1Tests {
         #expect(relights[2].contains("burned out"))
     }
 
+    /// Darkness is lethal now: a warning on the first dark turn, one silent
+    /// turn of grace, the grue on the third — and UNDO revives on the brink.
+    @Test func lingeringInTheDarkIsFatal() async throws {
+        let transcript = try await play(
+            Zork1(),
+            [
+                "south", "east", "open window", "west", "west",
+                "push rug", "open trap door", "down",
+                "look", "look",
+                "undo", "look", "quit",
+            ])
+        // The descent turn: slam, pitch black, then the warning — in order.
+        let descent = turnOutput(of: "down", in: transcript)
+        expectInOrder(
+            descent,
+            [
+                "The trap door swings shut, and you hear a bolt slide home above you.",
+                "It is pitch black. You can't see a thing.",
+                "The darkness here is total.",
+            ])
+        let looks = transcript.components(separatedBy: "> look")
+        // The grace turn is silent; the third dark turn is the end.
+        #expect(!looks[1].contains("The darkness here is total."))
+        expectInOrder(
+            looks[2],
+            [
+                "devoured by a grue",
+                "*** You have died ***",
+                "Your score is",
+                "Would you like to RESTART",
+            ])
+        // UNDO revives on the brink (the restored count is 2 — grues are
+        // unforgiving); the next dark turn is fatal again, and QUIT ends it.
+        let undo = turnOutput(of: "undo", in: transcript)
+        expectInOrder(undo, ["Previous turn undone.", "It is pitch black."])
+        expectInOrder(looks[3], ["devoured by a grue", "Would you like to RESTART"])
+    }
+
+    /// Carried light holds the grue off completely: the lantern-lit cellar
+    /// loop with extra loitering never draws the warning.
+    @Test func theLanternKeepsTheGrueAway() async throws {
+        let transcript = try await play(
+            Zork1(),
+            [
+                "south", "east", "open window", "west", "west",
+                "take lantern", "turn on lantern",
+                "push rug", "open trap door", "down",
+                "look", "look", "south", "look", "look", "east", "north",
+                "look", "look", "up",
+            ])
+        expectInOrder(transcript, ["Cellar", "East of Chasm", "Studio", "Kitchen"])
+        #expect(!transcript.contains("The darkness here is total."))
+        #expect(!transcript.contains("devoured by a grue"))
+    }
+
+    /// The Phase-7 integration walk: light, timers, death, and a save file
+    /// in one transcript — die to the grue, RESTORE from the death prompt,
+    /// and come back alive at the save point.
+    @Test func restoreFromTheGruesDeathPrompt() async throws {
+        let path = FileManager.default.temporaryDirectory
+            .appendingPathComponent("gnusto-zork-\(UUID().uuidString).sav").path
+        defer { try? FileManager.default.removeItem(atPath: path) }
+        let transcript = try await play(
+            Zork1(),
+            [
+                "south", "east", "open window", "west", "west",
+                "push rug", "open trap door", "save", path,
+                "down", "look", "look",
+                "restore", path, "down",
+            ])
+        expectInOrder(
+            transcript,
+            [
+                "Saved.",
+                "devoured by a grue",
+                "*** You have died ***",
+                "Restore from what file?",
+                "Restored.",
+                "Living Room",
+                // Alive at the save point: the trap door is still open, and
+                // descending starts the whole dance again.
+                "The trap door swings shut, and you hear a bolt slide home above you.",
+                "The darkness here is total.",
+            ])
+    }
+
     @Test func turningTheLanternOffPausesTheFuel() async throws {
         let burn18 = Array(repeating: "look", count: 18)
         let transcript = try await play(

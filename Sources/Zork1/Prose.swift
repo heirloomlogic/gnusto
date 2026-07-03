@@ -288,4 +288,20 @@ enum Prose {
         The chimney is narrow, but the soot-blackened brick offers
         plenty of holds. It looks climbable — upward, at least.
         """
+
+    // MARK: - The grue
+    //
+    // Original prose only: the famous "likely to be eaten by a grue"
+    // sentence is Infocom's and is deliberately not reproduced. The name
+    // "grue" itself is fair game under the ledger's names-vs-prose line.
+
+    static let grueWarning = """
+        The darkness here is total. Something with slow, wet breathing
+        has noticed you.
+        """
+
+    static let grueDeath = """
+        Claws find you long before your eyes could ever adjust. You are
+        devoured by a grue.
+        """
 }
