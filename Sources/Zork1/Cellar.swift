@@ -6,7 +6,9 @@ import Gnusto
 /// soft-lock" — a sealed-in player either carries light or dashes for the
 /// Gallery's daylight and the chimney. The `Cellar` room itself stays in
 /// ``ZorkHouse`` (the trap door joins two rooms one bundle owns); this
-/// bundle meets it through the host-wired exits in ``Zork1``.
+/// bundle meets it through the host-wired exits in ``Zork1``. The grue that
+/// makes the darkness lethal is the `DangerousDark` plugin, wired by the
+/// host with this game's prose.
 ///
 /// The troll passage north of the cellar and the maze beyond are later
 /// phases — see `FIDELITY.md`.
@@ -52,35 +54,6 @@ struct ZorkCellar: GameContent {
         adjectives("dark", "narrow")
         description(Prose.chimney)
         scenery
-    }
-
-    // MARK: - The grue
-
-    /// Consecutive turns the player has ended in darkness.
-    @Global var darkTurns = 0
-
-    /// Darkness is lethal: a warning on the first dark turn, one silent
-    /// turn of grace, death on the third. Lingering-based, not movement-
-    /// based — the daemon counts consecutive turns *ending* in darkness,
-    /// wherever they're spent — so the warning turn is a guarantee (the
-    /// classic fairness contract) and the lightless dash to the Gallery can
-    /// still succeed. Deterministic rather than `chance(…)` so transcripts
-    /// reproduce without pinned seeds. Written self-contained (one
-    /// `@Global`, no house/cellar references) so Phase 8's dangerous-dark
-    /// plugin can lift it out wholesale — see `FIDELITY.md`.
-    var timers: [TimedEvent] {
-        daemon("grue", autostart: true) {
-            guard !player.location.isLit else {
-                darkTurns = 0
-                return
-            }
-            darkTurns += 1
-            if darkTurns == 1 {
-                say(Prose.grueWarning)
-            } else if darkTurns >= 3 {
-                try die(Prose.grueDeath)
-            }
-        }
     }
 
     // MARK: - Map

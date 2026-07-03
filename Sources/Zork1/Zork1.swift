@@ -1,4 +1,5 @@
 import Gnusto
+import GnustoDangerousDark
 
 /// *Zork I: The Great Underground Empire* — the White House slice. Composes
 /// the above-ground region (``ZorkAboveGround``), the house interior
@@ -20,10 +21,17 @@ struct Zork1: Game, GameMain {
     let house = ZorkHouse()
     let cellar = ZorkCellar()
 
+    /// The grue. Zork's prose, the plugin's stock warn-then-kill schedule.
+    let dangerousDark = DangerousDark(
+        warning: Prose.grueWarning,
+        death: Prose.grueDeath
+    )
+
     var content: GameContents {
         aboveGround
         house
         cellar
+        dangerousDark
     }
 
     var map: WorldMap {
