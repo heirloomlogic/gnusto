@@ -42,6 +42,7 @@ public struct Scoring: GameContent {
 
     @Global var claimed = Claimed()
 
+    /// Creates the scoring content.
     public init() {}
 
     /// Awards `points` exactly once per register name; later calls with the

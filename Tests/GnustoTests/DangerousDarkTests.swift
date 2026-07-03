@@ -35,8 +35,10 @@ struct DangerousDarkTests {
             ["north", "south", "north", "look", "look", "quit"])
         // Two separate descents each get their own warning; the reset means
         // death lands on the *second* dark stretch's third turn, not earlier.
-        let warnings = transcript.components(
-            separatedBy: "The darkness is absolute").count - 1
+        let warnings =
+            transcript.components(
+                separatedBy: "The darkness is absolute"
+            ).count - 1
         #expect(warnings == 2)
         let looks = transcript.components(separatedBy: "> look")
         #expect(!looks[1].contains("finds you"))

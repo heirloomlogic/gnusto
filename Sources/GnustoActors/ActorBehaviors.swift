@@ -23,6 +23,7 @@ import Gnusto
 /// randomness, so transcripts that never meet the actor stay stable no
 /// matter what he does elsewhere.
 public struct ActorBehaviors: GamePlugin {
+    /// Creates the plugin.
     public init() {}
 
     /// A daemon that, with `chancePerTurn`, moves `actor` to a random

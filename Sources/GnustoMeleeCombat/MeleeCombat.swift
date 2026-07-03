@@ -55,6 +55,7 @@ public struct MeleeCombat: GameContent {
             "You aren't holding the \($0)."
         }
 
+        /// Creates the default combat text; override any line after construction.
         public init() {}
     }
 
@@ -62,11 +63,16 @@ public struct MeleeCombat: GameContent {
     /// specific, so there are no stock defaults. `miss`/`wound` rotate via
     /// the seeded stream.
     public struct VillainProse: Sendable {
+        /// Lines rotated when the player's blow misses.
         public var miss: [String]
+        /// Lines rotated when the player's blow wounds.
         public var wound: [String]
+        /// Printed when a blow knocks the villain unconscious.
         public var knockout: String
+        /// Printed when the villain is killed.
         public var death: String
 
+        /// Creates a villain's prose. All lines are required — villains carry no stock defaults.
         public init(miss: [String], wound: [String], knockout: String, death: String) {
             self.miss = miss
             self.wound = wound
@@ -77,11 +83,14 @@ public struct MeleeCombat: GameContent {
 
     /// A villain's counter-attack lines.
     public struct AggressionProse: Sendable {
+        /// Lines rotated when the villain's counter-attack misses.
         public var miss: [String]
+        /// Lines rotated when the villain's counter-attack wounds.
         public var wound: [String]
         /// Handed to `die(_:)` when the last hit lands.
         public var playerDeath: String
 
+        /// Creates a villain's counter-attack prose.
         public init(miss: [String], wound: [String], playerDeath: String) {
             self.miss = miss
             self.wound = wound
@@ -102,10 +111,13 @@ public struct MeleeCombat: GameContent {
 
     let text: CombatText
 
+    /// Creates the plugin with the given combat text.
     public init(text: CombatText = CombatText()) {
         self.text = text
     }
 
+    /// The attack syntax: attack/kill/hit/fight bare-handed or `with` a weapon,
+    /// plus stab/strike, which always name a weapon.
     public var verbs: [SyntaxRule] {
         SyntaxRule("attack", .directObject, intent: Self.attack)
         SyntaxRule("attack", .directObject, "with", .indirectObject, intent: Self.attack)
@@ -206,8 +218,8 @@ public struct MeleeCombat: GameContent {
             // Guards before any draw, so quiet turns burn no randomness.
             guard ledger.health[key] ?? 1 > 0 else { return }
             if ledger.stunned[key, default: 0] > 0 {
-                ledger.stunned[key]! -= 1
-                if ledger.stunned[key] == 0 { ledger.stunned[key] = nil }
+                let remaining = ledger.stunned[key, default: 0] - 1
+                ledger.stunned[key] = remaining == 0 ? nil : remaining
                 return
             }
             guard let here = actor.location, player.location == here else { return }

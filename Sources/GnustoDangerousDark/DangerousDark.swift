@@ -48,6 +48,9 @@ public struct DangerousDark: GameContent {
         self.graceTurns = graceTurns
     }
 
+    /// The grue daemon: each dark turn ticks the counter — the warning prints
+    /// on the first dark turn, death lands on turn `graceTurns + 2`. Stepping
+    /// back into the light resets the count.
     public var timers: [TimedEvent] {
         daemon("grue", autostart: true) {
             guard !player.location.isLit else {
