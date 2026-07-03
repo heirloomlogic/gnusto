@@ -137,6 +137,21 @@ enum Visibility {
         return result
     }
 
+    /// The vehicle the player is effectively in: `playerVehicle`, but only
+    /// while that item is still placed in the player's room. A rule that
+    /// teleports the player (or moves the vehicle out from under them)
+    /// silently strands the vehicle — the player is then on foot. A
+    /// self-healing read; nothing ever writes here.
+    static func boardedVehicle(
+        definition: GameDefinition,
+        state: WorldState
+    ) -> EntityID? {
+        guard let vehicle = state.playerVehicle,
+            state.placements[vehicle] == .room(state.playerLocation)
+        else { return nil }
+        return vehicle
+    }
+
     /// Whether an item should be included in any visibility/description walk
     /// at all: it exists and, if `hidden`, has been revealed. Shared by this
     /// module's own walks and `RoomDescriber`'s listings.

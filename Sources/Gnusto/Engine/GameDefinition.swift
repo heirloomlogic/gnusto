@@ -71,6 +71,7 @@ struct ItemDefinition: Sendable {
     var isHidden = false
     var isLightSource = false
     var startsLit = false
+    var isEnterable = false
     var customTraits: [String: StateValue] = [:]
     /// True when this entity was declared as an `Actor`. Set by Bootstrap
     /// after trait evaluation — actors share the item trait vocabulary, so
@@ -108,6 +109,7 @@ struct ItemDefinition: Sendable {
             case .hidden: isHidden = true
             case .lightSource: isLightSource = true
             case .startsLit: startsLit = true
+            case .enterable: isEnterable = true
             case .custom(let key, let value): customTraits[key] = value
             }
         }

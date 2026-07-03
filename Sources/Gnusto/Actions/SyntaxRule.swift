@@ -221,6 +221,18 @@ extension SyntaxRule {
         .init("walk", .direction, intent: .go),
         .init("run", .direction, intent: .go),
 
+        // board / disembark. Bare "in"/"out" stay directions: the parser's
+        // bare-direction check runs before any verb row.
+        .init("enter", .directObject, intent: .board),
+        .init("board", .directObject, intent: .board),
+        .init("get", "in", .directObject, intent: .board),
+        .init("get", "into", .directObject, intent: .board),
+        .init("exit", intent: .disembark),
+        .init("exit", .directObject, intent: .disembark),
+        .init("disembark", intent: .disembark),
+        .init("get", "out", intent: .disembark),
+        .init("get", "out", "of", .directObject, intent: .disembark),
+
         // perception & meta
         .init("look", intent: .look),
         .init("l", intent: .look),

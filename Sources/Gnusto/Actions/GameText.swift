@@ -47,6 +47,32 @@ public struct GameText: Sendable {
     public var cantPutOnItself = "You can't put something on itself."
     /// Moving where no exit leads.
     public var cantGoThatWay = "You can't go that way."
+    /// Entering something without the `enterable` trait.
+    public var cantEnterThat = "You can't get into that."
+    /// Entering an enterable the player is carrying.
+    public var cantEnterCarried = "You can't get into something you're carrying."
+    /// Entering the vehicle the player is already in.
+    public var alreadyInVehicle: @Sendable (_ name: String) -> String = {
+        "You're already in the \($0)."
+    }
+    /// Entering a second enterable without leaving the first.
+    public var mustExitFirst: @Sendable (_ name: String) -> String = {
+        "You'll have to get out of the \($0) first."
+    }
+    /// A successful board.
+    public var boarded: @Sendable (_ name: String) -> String = {
+        "You are now in the \($0)."
+    }
+    /// A successful disembark.
+    public var disembarked: @Sendable (_ name: String) -> String = {
+        "You get out of the \($0)."
+    }
+    /// Disembarking while on foot.
+    public var notInVehicle = "You aren't in anything."
+    /// Disembarking from something other than the boarded vehicle.
+    public var notInThat: @Sendable (_ name: String) -> String = {
+        "You aren't in the \($0)."
+    }
     /// A bare `go` with no direction.
     public var whichWay = "Which way?"
     /// Looking around a dark room.

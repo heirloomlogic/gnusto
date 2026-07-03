@@ -39,6 +39,7 @@ public struct ItemTrait: Sendable {
         case hidden
         case lightSource
         case startsLit
+        case enterable
         case custom(key: String, value: StateValue)
     }
 
@@ -190,6 +191,13 @@ public let lightSource = ItemTrait(kind: .lightSource)
 
 /// A `lightSource` item begins the game lit rather than unlit.
 public let startsLit = ItemTrait(kind: .startsLit)
+
+/// The player can get inside this item (`enter`/`board`) and ride it: while
+/// boarded, `go` moves the item — and everything in it — along with the
+/// player. An enterable that shouldn't travel (a chair, a phone booth)
+/// refuses `.go` in a rule; one that should hold cargo also declares
+/// `container` (an open-topped one — no `openable`).
+public let enterable = ItemTrait(kind: .enterable)
 
 // Custom traits are declared with a typed `TraitKey` (`trait(.price, 5)`,
 // read back with `item[.price]`) — see `TraitKey.swift`. The underlying
