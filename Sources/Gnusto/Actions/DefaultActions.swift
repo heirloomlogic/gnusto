@@ -7,7 +7,8 @@ enum DefaultActions {
     /// default behavior (no warning).
     static let builtInIntents: Set<Intent> = [
         .take, .drop, .wear, .doff, .putOn, .putIn, .open, .close, .lock, .unlock,
-        .lookIn, .push, .go, .look, .examine, .read, .inventory, .score, .version, .quit,
+        .lookIn, .push, .turnOn, .turnOff, .go, .look, .examine, .read, .inventory,
+        .score, .version, .quit,
     ]
 
     /// Runs the default action for a command: a game/bundle/plugin override
@@ -30,6 +31,8 @@ enum DefaultActions {
         case .unlock: try unlock(command, frame: frame)
         case .lookIn: try lookIn(command, frame: frame)
         case .push: try push(command, frame: frame)
+        case .turnOn: try turnOn(command, frame: frame)
+        case .turnOff: try turnOff(command, frame: frame)
         case .go: try go(command, frame: frame)
         case .look: RoomDescriber.describeCurrentLocation(mode: .look, frame: frame)
         case .examine: try examine(command, frame: frame)
@@ -340,6 +343,70 @@ enum DefaultActions {
             try refuse(frame.definition.text.cantReach(item.name))
         }
         frame.say(frame.definition.text.cantMoveThat)
+    }
+
+    // MARK: - Light
+
+    private static func turnOn(_ command: Command, frame: TurnFrame) throws {
+        let item = try requireDirectObject(command)
+        let id = item.id
+        let definition = frame.definition
+        guard definition.items[id]?.isLightSource == true else {
+            try refuse(definition.text.cantTurnOnThat)
+        }
+        guard isReachable(id, frame: frame) else {
+            try refuse(definition.text.cantReach(item.name))
+        }
+        if item.isLit {
+            try refuse(definition.text.alreadyOn)
+        }
+        // Capture darkness before the light changes: lighting up a dark room
+        // is the classic "the room is revealed" moment and earns a full
+        // description in the same turn.
+        let wasDark = frame.with {
+            Visibility.isDark(
+                at: $0.state.playerLocation, definition: definition, state: $0.state)
+        }
+        frame.with { scratch in
+            scratch.state.litItems.insert(id)
+            scratch.state.touched.insert(id)
+        }
+        frame.say(definition.text.nowOn(item.name))
+        let isDarkNow = frame.with {
+            Visibility.isDark(
+                at: $0.state.playerLocation, definition: definition, state: $0.state)
+        }
+        if wasDark && !isDarkNow {
+            RoomDescriber.describeCurrentLocation(mode: .look, frame: frame)
+        }
+    }
+
+    private static func turnOff(_ command: Command, frame: TurnFrame) throws {
+        let item = try requireDirectObject(command)
+        let id = item.id
+        let definition = frame.definition
+        guard definition.items[id]?.isLightSource == true else {
+            try refuse(definition.text.cantTurnOffThat)
+        }
+        guard isReachable(id, frame: frame) else {
+            try refuse(definition.text.cantReach(item.name))
+        }
+        guard item.isLit else {
+            try refuse(definition.text.alreadyOff)
+        }
+        frame.with { scratch in
+            scratch.state.litItems.remove(id)
+            scratch.state.touched.insert(id)
+        }
+        frame.say(definition.text.nowOff(item.name))
+        // Announce sudden darkness — the counterpart of the reveal above.
+        let isDarkNow = frame.with {
+            Visibility.isDark(
+                at: $0.state.playerLocation, definition: definition, state: $0.state)
+        }
+        if isDarkNow {
+            frame.say(definition.text.nowDark)
+        }
     }
 
     // MARK: - Movement & perception

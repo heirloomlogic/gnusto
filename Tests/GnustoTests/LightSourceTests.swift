@@ -102,6 +102,87 @@ struct LightSourceTests {
         #expect(look.contains("It is pitch black."))
     }
 
+    // MARK: - turn on / turn off
+
+    @Test func turningOnALampInTheDarkRevealsTheRoom() async throws {
+        let transcript = try await play(
+            CaveGame(),
+            ["take lamp", "north", "turn on lamp", "turn off lamp"])
+        let on = turnOutput(of: "turn on lamp", in: transcript)
+        #expect(on.contains("The tin lamp is now on."))
+        // The reveal: the room described in the same turn, verbose.
+        #expect(on.contains("Cave"))
+        #expect(on.contains("A low limestone chamber."))
+        let off = turnOutput(of: "turn off lamp", in: transcript)
+        #expect(off.contains("The tin lamp is now off."))
+        #expect(off.contains("It is now pitch black."))
+        #expect(!off.contains("limestone"))
+    }
+
+    @Test func turnOnSynonymsAllWork() async throws {
+        let transcript = try await play(
+            CaveGame(),
+            [
+                "take lamp", "light lamp", "extinguish lamp", "turn lamp on",
+                "switch off lamp", "switch on lamp", "blow out lamp", "turn on lamp",
+                "blow lamp out",
+            ])
+        for command in ["light lamp", "turn lamp on", "switch on lamp", "turn on lamp"] {
+            #expect(
+                turnOutput(of: command, in: transcript).contains("The tin lamp is now on."),
+                "\(command)")
+        }
+        for command in ["extinguish lamp", "switch off lamp", "blow out lamp", "blow lamp out"] {
+            #expect(
+                turnOutput(of: command, in: transcript).contains("The tin lamp is now off."),
+                "\(command)")
+        }
+    }
+
+    @Test func turningOnInALitRoomDoesNotRedescribe() async throws {
+        let transcript = try await play(CaveGame(), ["turn on lamp"])
+        let on = turnOutput(of: "turn on lamp", in: transcript)
+        #expect(on.contains("The tin lamp is now on."))
+        #expect(!on.contains("dead coals"))
+    }
+
+    @Test func turnOnGuards() async throws {
+        let transcript = try await play(
+            CaveGame(),
+            ["turn on rock", "turn on lamp", "turn on lamp", "turn off torch", "turn off torch"])
+        #expect(
+            turnOutput(of: "turn on rock", in: transcript)
+                .contains("You can't turn that on."))
+        let outputs = transcript.components(separatedBy: "> turn on lamp")
+        #expect(outputs[2].contains("It's already on."))
+        let offs = transcript.components(separatedBy: "> turn off torch")
+        #expect(offs[1].contains("The burning torch is now off."))
+        #expect(offs[2].contains("It's already off."))
+    }
+
+    @Test func turnOnRefusesThroughClosedGlass() async throws {
+        // The lamp is visible through the closed glass box but not reachable
+        // (the held torch keeps the cave lit).
+        let transcript = try await play(
+            CaveGame(),
+            [
+                "take torch", "take lamp", "north",
+                "open box", "put lamp in box", "close box", "turn on lamp",
+            ])
+        #expect(
+            turnOutput(of: "turn on lamp", in: transcript)
+                .contains("You can't reach the tin lamp."))
+    }
+
+    @Test func beforeRuleCanRefuseTurnOff() async throws {
+        let transcript = try await play(
+            EternalFlameGame(),
+            ["turn off brazier"])
+        #expect(
+            turnOutput(of: "turn off brazier", in: transcript)
+                .contains("The flame doesn't waver."))
+    }
+
     // MARK: - Bootstrap
 
     @Test func startsLitWithoutLightSourceWarns() throws {

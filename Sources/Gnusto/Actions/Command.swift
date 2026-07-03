@@ -37,6 +37,10 @@ public struct Intent: Hashable, Sendable {
     public static let lookIn = Intent("lookIn")
     /// Push an item.
     public static let push = Intent("push")
+    /// Light a light source ("turn on", "light").
+    public static let turnOn = Intent("turnOn")
+    /// Extinguish a light source ("turn off", "extinguish", "blow out").
+    public static let turnOff = Intent("turnOff")
     /// Move in a direction.
     public static let go = Intent("go")
     /// Look at the current location.

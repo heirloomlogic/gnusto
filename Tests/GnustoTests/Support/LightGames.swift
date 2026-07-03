@@ -97,6 +97,35 @@ struct CaveGame: Game {
     }
 }
 
+/// The always-burning-light pattern: a rule refuses `.turnOff`, so the brazier
+/// can never be extinguished.
+struct EternalFlameGame: Game {
+    let title = "Flame"
+    let intro = "The shrine is never dark."
+
+    let shrine = Location {
+        name("Shrine")
+        description("A niche of soot-black stone.")
+    }
+
+    let brazier = Item {
+        name("iron brazier")
+        lightSource
+        startsLit
+    }
+
+    var map: WorldMap {
+        player.starts(in: shrine)
+        brazier.starts(in: shrine)
+    }
+
+    var rules: Rules {
+        brazier.before(.turnOff) {
+            try refuse("The flame doesn't waver.")
+        }
+    }
+}
+
 /// Declares `startsLit` without `lightSource`: boots with a non-fatal warning
 /// and the flag has no effect.
 struct StartsLitWarningGame: Game {

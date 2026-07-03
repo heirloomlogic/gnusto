@@ -91,6 +91,27 @@ public struct GameText: Sendable {
     /// Pushing something the default action won't move.
     public var cantMoveThat = "You can't move that."
 
+    // MARK: - Light
+
+    /// A successful `turn on` of a light source.
+    public var nowOn: @Sendable (_ name: String) -> String = {
+        "The \($0) is now on."
+    }
+    /// A successful `turn off`.
+    public var nowOff: @Sendable (_ name: String) -> String = {
+        "The \($0) is now off."
+    }
+    /// Turning on something already lit.
+    public var alreadyOn = "It's already on."
+    /// Turning off something already unlit.
+    public var alreadyOff = "It's already off."
+    /// Turning on something without the `lightSource` trait.
+    public var cantTurnOnThat = "You can't turn that on."
+    /// Turning off something without the `lightSource` trait.
+    public var cantTurnOffThat = "You can't turn that off."
+    /// Extinguishing the only light in a dark place.
+    public var nowDark = "It is now pitch black."
+
     /// The item resolved (it was visible to the parser), but a reachability
     /// guard failed — you can see it, you just can't touch it (e.g. through a
     /// shut glass jar). Distinct from `cantSeeAnySuchThing`, which is for a
