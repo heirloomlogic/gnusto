@@ -291,6 +291,10 @@ enum Bootstrap {
             items.filter { $0.value.isOpenable && $0.value.startsOpen }.keys)
         state.lockedItems = Set(
             items.filter { $0.value.isLockable && !$0.value.startsUnlocked }.keys)
+        // Light sources start lit only with `startsLit`; the flag on a
+        // non-light-source is inert and gets a warning below.
+        state.litItems = Set(
+            items.filter { $0.value.isLightSource && $0.value.startsLit }.keys)
 
         // Phase 3 — assemble the verb table and vocabulary. Built-ins first,
         // then bundle verbs, then the host game's — so precedence runs
@@ -340,6 +344,13 @@ enum Bootstrap {
         }
         vocabulary.finalize()
 
+        var traitWarnings: [String] = []
+        for (id, item) in items where item.startsLit && !item.isLightSource {
+            traitWarnings.append(
+                "item \"\(id)\" declares startsLit but is not a lightSource; "
+                    + "the flag has no effect.")
+        }
+
         // Phase 3b — assemble the stage-4 default-action overrides. Bundle
         // actions are auto-collected like bundle verbs; a plugin's actions
         // reach here only if the host splices them into its own `actions`
@@ -382,7 +393,7 @@ enum Bootstrap {
             vocabulary: vocabulary,
             syntaxRules: syntaxRules,
             actionOverrides: actionOverrides,
-            warnings: verbWarnings + vocabularyWarnings + actionWarnings)
+            warnings: verbWarnings + vocabularyWarnings + traitWarnings + actionWarnings)
 
         let registrationFrame = TurnFrame(definition: definition, state: state)
         let declaredRules = Ctx.$frame.withValue(registrationFrame) {

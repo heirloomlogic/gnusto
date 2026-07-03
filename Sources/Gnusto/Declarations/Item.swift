@@ -94,6 +94,29 @@ public struct Item: Sendable, Equatable {
         }
     }
 
+    /// Whether a `lightSource` item is currently lit. Reads false — and
+    /// assigning is a no-op — for anything that isn't a light source. The
+    /// raw setter changes only the light itself; it never describes the room
+    /// or announces the change (the `turn on`/`turn off` default actions do
+    /// that).
+    public var isLit: Bool {
+        get {
+            let (frame, id) = resolved
+            return frame.with { $0.state.litItems.contains(id) }
+        }
+        nonmutating set {
+            let (frame, id) = resolved
+            guard frame.definition.items[id]?.isLightSource == true else { return }
+            frame.with { scratch in
+                if newValue {
+                    scratch.state.litItems.insert(id)
+                } else {
+                    scratch.state.litItems.remove(id)
+                }
+            }
+        }
+    }
+
     /// Whether the item is locked. Assigning to a non-lockable item is a no-op.
     public var isLocked: Bool {
         get {

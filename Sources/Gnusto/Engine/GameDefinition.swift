@@ -69,6 +69,8 @@ struct ItemDefinition: Sendable {
     /// non-lockable items).
     var lockKey: EntityID?
     var isHidden = false
+    var isLightSource = false
+    var startsLit = false
     var customTraits: [String: StateValue] = [:]
 
     /// Items are takable unless they're scenery.
@@ -100,6 +102,8 @@ struct ItemDefinition: Sendable {
             case .startsUnlocked: startsUnlocked = true
             case .capacity(let n): capacity = n
             case .hidden: isHidden = true
+            case .lightSource: isLightSource = true
+            case .startsLit: startsLit = true
             case .custom(let key, let value): customTraits[key] = value
             }
         }

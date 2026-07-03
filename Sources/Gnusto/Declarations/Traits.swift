@@ -37,6 +37,8 @@ public struct ItemTrait: Sendable {
         case startsUnlocked
         case capacity(Int)
         case hidden
+        case lightSource
+        case startsLit
         case custom(key: String, value: StateValue)
     }
 
@@ -172,6 +174,18 @@ public func capacity(_ n: Int) -> ItemTrait {
 /// The item is excluded from visibility and room descriptions until revealed
 /// (`item.reveal()`), even though it exists and is placed like any other item.
 public let hidden = ItemTrait(kind: .hidden)
+
+/// The item can hold light. It **starts unlit** unless it also declares
+/// `startsLit`; the player operates it with `turn on`/`turn off` (and
+/// `light`/`extinguish`), and rules can flip `item.isLit` directly. While lit,
+/// it lights the room it is in — carried by the player, lying in the room, on
+/// a surface, or inside an open or `transparent` container. There is no
+/// separate "always burning" trait: refuse `.turnOff` in a rule to make a
+/// torch inextinguishable.
+public let lightSource = ItemTrait(kind: .lightSource)
+
+/// A `lightSource` item begins the game lit rather than unlit.
+public let startsLit = ItemTrait(kind: .startsLit)
 
 // Custom traits are declared with a typed `TraitKey` (`trait(.price, 5)`,
 // read back with `item[.price]`) — see `TraitKey.swift`. The underlying

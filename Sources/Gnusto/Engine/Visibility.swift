@@ -143,13 +143,59 @@ enum Visibility {
     }
 
     /// The one darkness predicate, shared by the room describer, the parser
-    /// scope, and the perception defaults.
-    /// Seam: when light-providing items exist, check their presence here.
+    /// scope, and the perception defaults. A room has light when it is lit
+    /// itself (`litRooms`: inherent light or author code) or when a lit
+    /// `lightSource` item's light reaches it.
     static func isDark(
         at location: EntityID,
         definition: GameDefinition,
         state: WorldState
     ) -> Bool {
-        !state.litRooms.contains(location)
+        if state.litRooms.contains(location) { return false }
+        return !state.litItems.contains {
+            lightReaches(location, from: $0, definition: definition, state: state)
+        }
+    }
+
+    /// Whether a lit item's light reaches the given room. A pure placement
+    /// walk UP from the item — deliberately independent of the visibility
+    /// sets, which themselves depend on darkness (no circularity). A `hidden`
+    /// lit item still counts: it is the light that matters, not whether the
+    /// player has noticed the item. Light escapes surfaces and open
+    /// containers, passes through closed `transparent` ones (glass works both
+    /// ways, symmetric with the visibility walk), and is swallowed by a
+    /// closed opaque container.
+    private static func lightReaches(
+        _ location: EntityID,
+        from id: EntityID,
+        definition: GameDefinition,
+        state: WorldState
+    ) -> Bool {
+        var current = id
+        // Guards against a runtime-created placement cycle, same rationale
+        // as `collect`'s visited set.
+        var visited: Set<EntityID> = []
+        while visited.insert(current).inserted {
+            switch state.placements[current] {
+            case .room(let room):
+                return room == location
+            case .heldBy(.player):
+                // A carried light lights only the room the player is in.
+                return location == state.playerLocation
+            case .heldBy:
+                return false
+            case .on(let parent):
+                current = parent
+            case .inside(let parent):
+                guard let container = definition.items[parent],
+                    isOpen(parent, definition: definition, state: state)
+                        || container.isTransparent
+                else { return false }
+                current = parent
+            case .nowhere, nil:
+                return false
+            }
+        }
+        return false
     }
 }

@@ -27,6 +27,10 @@ struct WorldState: Sendable, Codable {
     var placements: [EntityID: Placement] = [:]
     var playerLocation: EntityID
     var litRooms: Set<EntityID> = []
+    /// `lightSource` items that are currently lit. Only light sources ever
+    /// appear here; the `Item.isLit` setter and Bootstrap both guard on the
+    /// trait.
+    var litItems: Set<EntityID> = []
     var wornItems: Set<EntityID> = []
     /// Openable containers that are currently open. A container without the
     /// `openable` trait is always open and never appears here.

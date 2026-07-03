@@ -32,12 +32,18 @@ public struct Location: Sendable, Equatable {
 
     // MARK: - Live state
 
-    /// Whether the location currently has light. Locations declared `dark`
-    /// start unlit; all others start lit.
+    /// Whether the location currently has light — its own (locations declared
+    /// `dark` start unlit; all others start lit) or a lit `lightSource` item
+    /// shining here. Read and write are deliberately asymmetric: the getter
+    /// answers "is there light here", the setter gives or removes the room's
+    /// *inherent* light and never touches any item's lit state.
     public var isLit: Bool {
         get {
             let (frame, id) = resolved
-            return frame.with { $0.state.litRooms.contains(id) }
+            let definition = frame.definition
+            return frame.with {
+                !Visibility.isDark(at: id, definition: definition, state: $0.state)
+            }
         }
         nonmutating set {
             let (frame, id) = resolved
