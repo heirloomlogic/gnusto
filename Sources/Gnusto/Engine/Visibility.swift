@@ -101,6 +101,27 @@ enum Visibility {
             if shouldDescend(into: id) { descend(into: id) }
         }
 
+        // What an actor in the room is holding is visible — the player can
+        // see the axe in the troll's hands, name it, examine it — but never
+        // reachable: taking from those hands is a plugin's job (stealing),
+        // and the default refusal is `cantReach`, exactly like the contents
+        // of a shut glass jar.
+        if descendClosedTransparent {
+            for (holderID, placement) in state.placements
+            where placement == .room(location) {
+                guard definition.items[holderID]?.isActor == true,
+                    isPerceivable(holderID, definition: definition, state: state)
+                else { continue }
+                for (id, held) in state.placements where held == .heldBy(holderID) {
+                    guard isPerceivable(id, definition: definition, state: state) else {
+                        continue
+                    }
+                    result.insert(id)
+                    if shouldDescend(into: id) { descend(into: id) }
+                }
+            }
+        }
+
         // Doors are referenced by exits, not placed in the room — but the
         // player can examine/open/close/lock/unlock them from either side, so
         // fold every door on the current room's exits into scope. A `hidden`
@@ -182,8 +203,10 @@ enum Visibility {
             case .heldBy(.player):
                 // A carried light lights only the room the player is in.
                 return location == state.playerLocation
-            case .heldBy:
-                return false
+            case .heldBy(let holder):
+                // An actor's lantern lights the room the actor is in: keep
+                // walking up through the holder.
+                current = holder
             case .on(let parent):
                 current = parent
             case .inside(let parent):

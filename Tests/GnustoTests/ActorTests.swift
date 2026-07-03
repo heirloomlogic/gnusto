@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 
 @testable import Gnusto
@@ -95,6 +96,90 @@ struct ActorTests {
         let look = turnOutput(of: "look", in: transcript)
         #expect(!arrival.contains("ghost"))
         #expect(look.contains("A pale ghost is here."))
+    }
+
+    @Test func npcHeldItemsAreVisibleButNotReachable() async throws {
+        let transcript = try await play(
+            GuardpostGame(),
+            ["north", "examine axe", "take axe", "quit"])
+        expectInOrder(
+            transcript,
+            [
+                "Notched from use.",
+                "You can't reach the battle axe.",
+            ])
+    }
+
+    @Test func npcHeldItemsAreOutOfScopeFromTheNextRoom() async throws {
+        let transcript = try await play(
+            GuardpostGame(),
+            ["examine axe", "quit"])
+        expectInOrder(transcript, ["You can't see any such thing."])
+    }
+
+    @Test func dropAllPutsTheInventoryOnTheFloor() async throws {
+        let transcript = try await play(
+            GuardpostGame(),
+            ["north", "disarm", "look", "take axe", "inventory", "quit"])
+        let look = turnOutput(of: "look", in: transcript)
+        #expect(look.contains("There is a battle axe here."))
+        expectInOrder(transcript, ["The troll's grip fails.", "Taken."])
+        #expect(turnOutput(of: "inventory", in: transcript).contains("battle axe"))
+    }
+
+    @Test func vanishTakesTheInventoryAlong() async throws {
+        let transcript = try await play(
+            GuardpostGame(),
+            ["north", "banish", "look", "examine axe", "quit"])
+        let look = turnOutput(of: "look", in: transcript)
+        #expect(!look.contains("troll"))
+        expectInOrder(
+            turnOutput(of: "examine axe", in: transcript),
+            ["You can't see any such thing."])
+    }
+
+    @Test func inventoryHoldsAndLocationProbes() async throws {
+        let transcript = try await play(
+            GuardpostGame(),
+            ["audit", "quit"])
+        expectInOrder(
+            transcript,
+            ["Troll carries: battle axe. Axe check: true. Located: Corridor."])
+    }
+
+    @Test func aTorchInAnActorsHandLightsTheRoom() async throws {
+        let transcript = try await play(
+            GuardpostGame(),
+            ["north", "east", "march", "look", "quit"])
+        // Lit by the keeper's torch on arrival; dark again once he leaves.
+        expectInOrder(
+            turnOutput(of: "east", in: transcript),
+            ["Cell", "A stone cell.", "A gaunt keeper is here."])
+        expectInOrder(
+            turnOutput(of: "look", in: transcript),
+            ["It is pitch black. You can't see a thing."])
+    }
+
+    @Test func actorPlacementsSurviveSaveAndRestore() async throws {
+        let path = FileManager.default.temporaryDirectory
+            .appendingPathComponent("gnusto-actors-\(UUID().uuidString).sav").path
+        defer { try? FileManager.default.removeItem(atPath: path) }
+        let transcript = try await play(
+            GuardpostGame(),
+            [
+                "north", "save", path,
+                "banish", "restore", path,
+                "examine axe", "audit", "quit",
+            ])
+        expectInOrder(
+            transcript,
+            [
+                "Saved.",
+                "The troll is elsewhere now.",
+                "Restored.",
+                "Notched from use.",
+                "Troll carries: battle axe. Axe check: true. Located: Corridor.",
+            ])
     }
 
     @Test func aNamelessActorIsADiagnostic() {

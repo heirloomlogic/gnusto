@@ -36,6 +36,13 @@ struct GuardpostGame: Game {
         description("A narrow corridor.")
     }
 
+    /// Dark; its only light is whatever the keeper is holding.
+    let cell = Location {
+        name("Cell")
+        description("A stone cell.")
+        dark
+    }
+
     let troll = Actor {
         name("surly troll")
         adjectives("surly")
@@ -66,6 +73,13 @@ struct GuardpostGame: Game {
         hidden
     }
 
+    /// Carries a lit torch into the dark cell.
+    let keeper = Actor {
+        name("gaunt keeper")
+        adjectives("gaunt")
+        description("Gaunt, and getting gaunter.")
+    }
+
     let sword = Item {
         name("short sword")
         adjectives("short")
@@ -74,6 +88,20 @@ struct GuardpostGame: Game {
     let rock = Item {
         name("gray rock")
         adjectives("gray")
+    }
+
+    /// In the troll's hands: visible, not reachable.
+    let axe = Item {
+        name("battle axe")
+        adjectives("battle")
+        description("Notched from use.")
+    }
+
+    let torch = Item {
+        name("burning torch")
+        adjectives("burning")
+        lightSource
+        startsLit
     }
 
     let watch = WatchContent()
@@ -87,6 +115,8 @@ struct GuardpostGame: Game {
         corridor.south(hall)
         corridor.north(watch.gatehouse)
         watch.gatehouse.south(corridor)
+        corridor.east(cell)
+        cell.west(corridor)
 
         player.starts(in: hall)
         mule.starts(in: hall)
@@ -95,10 +125,17 @@ struct GuardpostGame: Game {
         ghost.starts(in: corridor)
         sword.starts(in: corridor)
         rock.starts(in: corridor)
+        keeper.starts(in: cell)
+        axe.starts(heldBy: troll)
+        torch.starts(heldBy: keeper)
     }
 
     var verbs: [SyntaxRule] {
         SyntaxRule("sense", intent: Intent("sense"))
+        SyntaxRule("disarm", intent: Intent("disarm"))
+        SyntaxRule("banish", intent: Intent("banish"))
+        SyntaxRule("march", intent: Intent("march"))
+        SyntaxRule("audit", intent: Intent("audit"))
     }
 
     var rules: Rules {
@@ -108,6 +145,25 @@ struct GuardpostGame: Game {
         world.before(Intent("sense")) {
             ghost.reveal()
             try reply("The air goes cold.")
+        }
+        world.before(Intent("disarm")) {
+            troll.dropAll()
+            try reply("The troll's grip fails.")
+        }
+        world.before(Intent("banish")) {
+            troll.vanish()
+            try reply("The troll is elsewhere now.")
+        }
+        world.before(Intent("march")) {
+            keeper.move(to: corridor)
+            try reply("Footsteps recede.")
+        }
+        world.before(Intent("audit")) {
+            let carried = troll.inventory.map(\.name).joined(separator: ", ")
+            try reply(
+                "Troll carries: \(carried.isEmpty ? "nothing" : carried). "
+                    + "Axe check: \(troll.holds(axe)). "
+                    + "Located: \(troll.location?.name ?? "nowhere").")
         }
     }
 }

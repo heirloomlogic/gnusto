@@ -78,6 +78,63 @@ public struct Actor: Sendable, Equatable {
         asItem.reveal()
     }
 
+    /// The room the actor is in, or nil while offstage.
+    public var location: Location? {
+        let (frame, id) = asItem.resolved
+        guard case .room(let roomID)? = frame.with({ $0.state.placements[id] }) else {
+            return nil
+        }
+        return frame.definition.registry.locations[roomID]
+    }
+
+    /// True if the actor is in the location.
+    public func isIn(_ location: Location) -> Bool {
+        asItem.isIn(location)
+    }
+
+    /// Moves the actor to a location, bypassing the usual actions.
+    public func move(to location: Location) {
+        asItem.move(to: location)
+    }
+
+    /// Removes the actor from play. Its inventory goes with it — still
+    /// `heldBy` the actor, offstage. Call ``dropAll()`` first for the
+    /// classic "the troll's axe clatters to the floor" death.
+    public func vanish() {
+        asItem.vanish()
+    }
+
+    /// True if the actor is carrying the item.
+    public func holds(_ item: Item) -> Bool {
+        let (frame, myID) = asItem.resolved
+        let itemID = item.id
+        return frame.with { $0.state.placements[itemID] == .heldBy(myID) }
+    }
+
+    /// The items the actor is carrying, sorted by ID for stable iteration.
+    public var inventory: [Item] {
+        let (frame, myID) = asItem.resolved
+        let held = frame.with { scratch in
+            scratch.state.placements
+                .filter { $0.value == .heldBy(myID) }
+                .keys.sorted()
+        }
+        return held.compactMap { frame.definition.registry.items[$0] }
+    }
+
+    /// Moves everything the actor carries onto the floor of the actor's
+    /// room. A no-op for an offstage actor.
+    public func dropAll() {
+        let (frame, myID) = asItem.resolved
+        frame.with { scratch in
+            guard case .room(let roomID)? = scratch.state.placements[myID] else { return }
+            for (id, placement) in scratch.state.placements
+            where placement == .heldBy(myID) {
+                scratch.state.placements[id] = .room(roomID)
+            }
+        }
+    }
+
     // MARK: - Map factories
 
     /// The actor starts the game in a location — the only placement an

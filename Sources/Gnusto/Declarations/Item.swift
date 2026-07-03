@@ -218,6 +218,12 @@ public struct Item: Sendable, Equatable {
         frame.with { $0.state.placements[id] = .heldBy(holderID) }
     }
 
+    /// Moves the item into an actor's inventory, bypassing the usual
+    /// actions — how theft happens.
+    public func move(heldBy holder: Actor) {
+        move(heldBy: holder.asItem)
+    }
+
     /// Removes the item from play.
     public func vanish() {
         let (frame, id) = resolved
@@ -252,6 +258,11 @@ public struct Item: Sendable, Equatable {
     /// The item starts the game in the player's hands.
     public var startsHeld: MapEntry {
         MapEntry(kind: .placement(item: token, target: .held))
+    }
+
+    /// The item starts the game in an actor's inventory.
+    public func starts(heldBy actor: Actor) -> MapEntry {
+        MapEntry(kind: .placement(item: token, target: .heldBy(actor.token)))
     }
 
     // MARK: - Rule factories

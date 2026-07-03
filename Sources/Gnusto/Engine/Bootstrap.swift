@@ -262,6 +262,20 @@ enum Bootstrap {
                     wornItems.insert(itemID)
                 case .held:
                     placements[itemID] = .heldBy(.player)
+                case .heldBy(let token):
+                    guard
+                        let holderID = resolveItem(
+                            token, role: "the placement of \"\(itemID)\"")
+                    else { continue }
+                    // `starts(heldBy:)` only accepts an Actor, so this is
+                    // defensive symmetry with the surface/container checks
+                    // above, not a reachable authoring mistake.
+                    if items[holderID]?.isActor != true {
+                        diagnostics.append(
+                            "\"\(itemID)\" starts heldBy \"\(holderID)\", which is "
+                                + "not an Actor.")
+                    }
+                    placements[itemID] = .heldBy(holderID)
                 }
 
             case .playerStart(let token):
