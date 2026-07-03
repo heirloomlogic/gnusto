@@ -252,6 +252,176 @@ struct Zork1Tests {
             ])
     }
 
+    @Test func depositPaintingScoresPoints() async throws {
+        // The painting pays 4 on first take and 6 on first deposit; taking
+        // it back out and re-depositing pays nothing more. Seed 1,
+        // recorded: the thief keeps his fingers to himself on this route.
+        let transcript = try await play(
+            Zork1(),
+            [
+                "south", "east", "open window", "west", "west",
+                "take lantern", "turn on lantern",
+                "push rug", "open trap door", "down",
+                "south", "east", "take painting", "score",
+                "north", "up", "west",
+                "open trophy case", "put painting in trophy case", "score",
+                "take painting", "put painting in trophy case", "score",
+            ],
+            seed: 1)
+
+        expectInOrder(
+            transcript,
+            [
+                "Your score is 4 of a possible 20",
+                "You put the painting in the trophy case.",
+                "Your score is 10 of a possible 20",
+            ])
+        let scores = transcript.components(separatedBy: "Your score is ")
+        #expect(scores.count == 4)
+        #expect(scores[3].hasPrefix("10 of a possible 20"))
+    }
+
+    @Test func eggScoresOnTheWayIn() async throws {
+        let transcript = try await play(
+            Zork1(),
+            [
+                "north", "north", "up", "take egg", "score", "down",
+                "south", "west", "south", "east", "open window", "west", "west",
+                "open trophy case", "put egg in trophy case", "score",
+            ])
+
+        expectInOrder(
+            transcript,
+            [
+                "Your score is 5 of a possible 20",
+                "You put the jewel-encrusted egg in the trophy case.",
+                "Your score is 10 of a possible 20",
+            ])
+    }
+
+    @Test func trollBlocksThePassagesUntilDefeated() async throws {
+        // Seed 39, recorded (thief daemons on the clock): the troll's
+        // swings graze once but never land; the sword goes miss, wound,
+        // then the killing blow on the third attack (strength 2).
+        let transcript = try await play(
+            Zork1(),
+            [
+                "south", "east", "open window", "west", "west",
+                "take sword", "take lantern", "turn on lantern",
+                "push rug", "open trap door", "down",
+                "north", "west",
+                "attack troll", "attack troll", "attack troll",
+                "west", "south",
+            ],
+            seed: 39)
+        expectInOrder(
+            transcript,
+            [
+                "Troll Room",
+                "A troll stands square in the middle of the room",
+                "The troll plants himself in your path",
+                "Your final stroke drops the troll",
+                "both passages have\ncollapsed",
+                "Cellar",
+            ])
+        // Defeat is permanent and the room empties.
+        let afterDeath = transcript.components(
+            separatedBy: "drops the troll")[1]
+        #expect(!afterDeath.contains("A troll stands square"))
+    }
+
+    @Test func theTrollCanKillYou() async throws {
+        // Seed 1, recorded: the troll's first swing is the last word.
+        let transcript = try await play(
+            Zork1(),
+            [
+                "south", "east", "open window", "west", "west",
+                "take sword", "take lantern", "turn on lantern",
+                "push rug", "open trap door", "down",
+                "north",
+                "undo", "south",
+            ],
+            seed: 1)
+        expectInOrder(
+            transcript,
+            [
+                "the argument is settled",
+                "*** You have died ***",
+                "Your score is 0 of a possible 20",
+                "Would you like to RESTART, RESTORE a saved game, UNDO your last turn, or QUIT?",
+                "Previous turn undone.",
+                "East of Chasm",
+            ])
+    }
+
+    @Test func theThiefBarsTheTrapDoorFromBelow() async throws {
+        // While the thief lives, every descent throws the bolt above: the
+        // trap door won't open from the cellar side, but the living-room
+        // side is never barred. No seed pin needed — nothing on this route
+        // depends on a roll (thief movement lines are extra, tolerated).
+        let transcript = try await play(
+            Zork1(),
+            [
+                "south", "east", "open window", "west", "west",
+                "take lantern", "turn on lantern",
+                "push rug", "open trap door", "down",
+                "open trap door",
+                "south", "east", "north", "up", "west",
+                "open trap door", "down",
+                "open trap door",
+            ])
+        expectInOrder(
+            transcript,
+            [
+                "The trap door swings shut, and you hear a bolt slide home above you.",
+                "Someone above has\nmade very sure of the bolt.",
+                "Gallery",
+                "Studio",
+                "Kitchen",
+                "Living Room",
+                "Opened.",
+                "The trap door swings shut, and you hear a bolt slide home above you.",
+                "Someone above has\nmade very sure of the bolt.",
+            ])
+    }
+
+    @Test func theThiefStealsAndTheSwordGetsItBack() async throws {
+        // Seed 23, recorded: the thief lifts the painting during the
+        // loiter, stands his ground for the fight, and dies with the loot
+        // — which unbars the trap door, so the route home closed since
+        // Phase 5 finally works.
+        let transcript = try await play(
+            Zork1(),
+            [
+                "south", "east", "open window", "west", "west",
+                "take sword", "take lantern", "turn on lantern",
+                "push rug", "open trap door", "down",
+                "south", "east", "take painting",
+                "look", "look", "look", "look",
+                "attack thief", "attack thief", "attack thief",
+                "attack thief", "attack thief", "attack thief",
+                "look", "look", "look",
+                "take painting", "west", "north", "open trap door", "up",
+            ],
+            seed: 23)
+        expectInOrder(
+            transcript,
+            [
+                "and the painting is gone.",
+                "The thief drops without a sound",
+                "scattering his takings",
+                "Taken.",
+                "Opened.",
+                "Living Room",
+            ])
+        // His daemons die with him: no prowling or pickpocketing after.
+        let afterDeath = transcript.components(
+            separatedBy: "drops without a sound")[1]
+        #expect(!afterDeath.contains("slips into the room"))
+        #expect(!afterDeath.contains("melts away"))
+        #expect(!afterDeath.contains("is gone."))
+    }
+
     @Test func leavesRevealTheLockedGrating() async throws {
         let transcript = try await play(
             Zork1(),

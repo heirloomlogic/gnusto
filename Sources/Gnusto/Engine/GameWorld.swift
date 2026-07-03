@@ -597,7 +597,11 @@ public actor GameWorld {
     private func handle(_ interrupt: TurnInterrupt, frame: TurnFrame) {
         switch interrupt {
         case .refused(let message), .replied(let message):
-            frame.say(message)
+            // An empty message ends the turn without adding a line — for
+            // rule bodies that have already said everything with `say`.
+            if !message.isEmpty {
+                frame.say(message)
+            }
         case .gameOver(let won):
             frame.with { $0.state.status = won ? .won : .lost }
         case .died(let message):

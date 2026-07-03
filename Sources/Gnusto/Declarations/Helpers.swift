@@ -40,6 +40,9 @@ public func require(_ condition: Bool, else message: String) throws {
 /// behavior. Mechanically identical to `refuse(_:)` — two names exist so
 /// game code reads correctly: `refuse` for "no, you can't", `reply` for
 /// "here's what happens instead".
+///
+/// `reply("")` ends the turn without adding a line — for bodies that have
+/// already said everything with `say(_:)`.
 public func reply(_ message: String) throws -> Never {
     throw TurnInterrupt.replied(message: message)
 }
@@ -59,6 +62,15 @@ public func end(won: Bool) throws -> Never {
 /// prompt path exists today.
 public func die(_ message: String) throws -> Never {
     throw TurnInterrupt.died(message: message)
+}
+
+/// Describes the player's current surroundings, verbose — as if the player
+/// had typed LOOK. For rule and daemon bodies that change where the player
+/// is or what they can see ("The current carries the boat downstream.") and
+/// want the classic follow-up description. Safe in darkness (prints the
+/// pitch-black line); marks the room visited exactly as a real LOOK would.
+public func describeSurroundings() {
+    RoomDescriber.describeCurrentLocation(mode: .look, frame: Ctx.current)
 }
 
 /// Runs the stage-4 default action (a game/plugin override if one is

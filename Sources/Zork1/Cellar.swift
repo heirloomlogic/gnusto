@@ -1,4 +1,5 @@
 import Gnusto
+import GnustoScoring
 
 /// The cellar region below the house: East of Chasm, the Gallery with its
 /// painting, and the Studio whose chimney climbs back up to the kitchen.
@@ -6,7 +7,9 @@ import Gnusto
 /// soft-lock" — a sealed-in player either carries light or dashes for the
 /// Gallery's daylight and the chimney. The `Cellar` room itself stays in
 /// ``ZorkHouse`` (the trap door joins two rooms one bundle owns); this
-/// bundle meets it through the host-wired exits in ``Zork1``.
+/// bundle meets it through the host-wired exits in ``Zork1``. The grue that
+/// makes the darkness lethal is the `DangerousDark` plugin, wired by the
+/// host with this game's prose.
 ///
 /// The troll passage north of the cellar and the maze beyond are later
 /// phases — see `FIDELITY.md`.
@@ -32,6 +35,37 @@ struct ZorkCellar: GameContent {
         dark
     }
 
+    /// North of the cellar. The passages beyond (east toward the round
+    /// room, west toward the maze) are honest stubs until their regions
+    /// exist — see `FIDELITY.md`.
+    let trollRoom = Location {
+        name("Troll Room")
+        description(Prose.trollRoom)
+        dark
+    }
+
+    // MARK: - The troll
+
+    let troll = Actor {
+        name("troll")
+        description(Prose.troll)
+        firstSight(Prose.trollPresence)
+    }
+
+    @Global var trollDefeated = false
+
+    // MARK: - The thief (reduced — see FIDELITY.md)
+
+    let thief = Actor {
+        name("thief")
+        adjectives("shadowy")
+        synonyms("figure")
+        description(Prose.thief)
+        firstSight(Prose.thiefPresence)
+    }
+
+    @Global var thiefDefeated = false
+
     // MARK: - Items
 
     let chasm = Item {
@@ -45,6 +79,9 @@ struct ZorkCellar: GameContent {
         adjectives("beautiful")
         firstSight(Prose.paintingFirstSight)
         description(Prose.painting)
+        // The original's values: 4 for the find, 6 for the case.
+        trait(.takeValue, 4)
+        trait(.depositValue, 6)
     }
 
     let chimney = Item {
@@ -52,35 +89,6 @@ struct ZorkCellar: GameContent {
         adjectives("dark", "narrow")
         description(Prose.chimney)
         scenery
-    }
-
-    // MARK: - The grue
-
-    /// Consecutive turns the player has ended in darkness.
-    @Global var darkTurns = 0
-
-    /// Darkness is lethal: a warning on the first dark turn, one silent
-    /// turn of grace, death on the third. Lingering-based, not movement-
-    /// based — the daemon counts consecutive turns *ending* in darkness,
-    /// wherever they're spent — so the warning turn is a guarantee (the
-    /// classic fairness contract) and the lightless dash to the Gallery can
-    /// still succeed. Deterministic rather than `chance(…)` so transcripts
-    /// reproduce without pinned seeds. Written self-contained (one
-    /// `@Global`, no house/cellar references) so Phase 8's dangerous-dark
-    /// plugin can lift it out wholesale — see `FIDELITY.md`.
-    var timers: [TimedEvent] {
-        daemon("grue", autostart: true) {
-            guard !player.location.isLit else {
-                darkTurns = 0
-                return
-            }
-            darkTurns += 1
-            if darkTurns == 1 {
-                say(Prose.grueWarning)
-            } else if darkTurns >= 3 {
-                try die(Prose.grueDeath)
-            }
-        }
     }
 
     // MARK: - Map
@@ -94,5 +102,22 @@ struct ZorkCellar: GameContent {
         chasm.starts(in: eastOfChasm)
         painting.starts(in: gallery)
         chimney.starts(in: studio)
+        troll.starts(in: trollRoom)
+        thief.starts(in: gallery)
+    }
+
+    var rules: Rules {
+        // The troll is the gate: east and west stay his until he falls,
+        // and honestly-collapsed stubs after (their regions are later
+        // phases).
+        trollRoom.before(.go) {
+            guard command.direction == .east || command.direction == .west else {
+                return
+            }
+            guard trollDefeated else {
+                try refuse(Prose.trollBlocksTheWay)
+            }
+            try refuse(Prose.trollRoomPassagesCollapsed)
+        }
     }
 }

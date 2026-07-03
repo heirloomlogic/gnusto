@@ -43,6 +43,10 @@ public struct Intent: Hashable, Sendable {
     public static let turnOff = Intent("turnOff")
     /// Move in a direction.
     public static let go = Intent("go")
+    /// Get into an `enterable` item ("enter", "board", "get in").
+    public static let board = Intent("board")
+    /// Get out of the boarded item ("exit", "disembark", "get out").
+    public static let disembark = Intent("disembark")
     /// Look at the current location.
     public static let look = Intent("look")
     /// List carried items.

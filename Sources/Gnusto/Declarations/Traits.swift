@@ -39,6 +39,7 @@ public struct ItemTrait: Sendable {
         case hidden
         case lightSource
         case startsLit
+        case enterable
         case custom(key: String, value: StateValue)
     }
 
@@ -119,6 +120,10 @@ public func synonyms(_ words: String...) -> ItemTrait {
 
 /// The paragraph used to mention the item in a room description until the
 /// player has touched it (ZIL's FDESC).
+///
+/// On an ``Actor`` the same trait is the *standing presence line* (ZIL's
+/// LDESC role): printed on every look, never worn off by handling — people
+/// aren't props.
 public func firstSight(_ text: String) -> ItemTrait {
     ItemTrait(kind: .firstSight(text))
 }
@@ -186,6 +191,13 @@ public let lightSource = ItemTrait(kind: .lightSource)
 
 /// A `lightSource` item begins the game lit rather than unlit.
 public let startsLit = ItemTrait(kind: .startsLit)
+
+/// The player can get inside this item (`enter`/`board`) and ride it: while
+/// boarded, `go` moves the item — and everything in it — along with the
+/// player. An enterable that shouldn't travel (a chair, a phone booth)
+/// refuses `.go` in a rule; one that should hold cargo also declares
+/// `container` (an open-topped one — no `openable`).
+public let enterable = ItemTrait(kind: .enterable)
 
 // Custom traits are declared with a typed `TraitKey` (`trait(.price, 5)`,
 // read back with `item[.price]`) — see `TraitKey.swift`. The underlying

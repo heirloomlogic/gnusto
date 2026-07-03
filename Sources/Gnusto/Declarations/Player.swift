@@ -17,6 +17,27 @@ public struct Player: Sendable {
         }
     }
 
+    /// The `enterable` the player is currently in, or nil on foot.
+    /// Read-only: board and disembark are actions, so their refusal logic
+    /// can't be bypassed by assignment. This is the gate terrain rules key
+    /// on:
+    ///
+    /// ```swift
+    /// world.before(.go) {
+    ///     if player.vehicle == boat, command.direction == .up {
+    ///         try refuse("The boat declines the stairs.")
+    ///     }
+    /// }
+    /// ```
+    public var vehicle: Item? {
+        let frame = Ctx.current
+        let id = frame.with {
+            Visibility.boardedVehicle(definition: frame.definition, state: $0.state)
+        }
+        guard let id else { return nil }
+        return frame.definition.registry.items[id]
+    }
+
     /// The player's current score.
     public var score: Int {
         get { Ctx.current.with { $0.state.score } }

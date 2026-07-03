@@ -55,6 +55,13 @@ struct WorldState: Sendable, Codable {
     /// What "them" currently refers to: the group the last multi-object
     /// command expanded to.
     var pronounThem: [EntityID] = []
+    /// The `enterable` the player has boarded, or nil on foot. The player
+    /// still never appears in `placements`; `playerLocation` stays the
+    /// room. Read through `Visibility.boardedVehicle`, which also demands
+    /// the vehicle be placed in the player's room — a rule that teleports
+    /// the player (or moves the vehicle without them) strands it, and the
+    /// player is simply on foot again.
+    var playerVehicle: EntityID?
     var score = 0
     var moves = 0
     var touched: Set<EntityID> = []

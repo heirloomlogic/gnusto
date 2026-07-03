@@ -7,8 +7,8 @@ enum DefaultActions {
     /// default behavior (no warning).
     static let builtInIntents: Set<Intent> = [
         .take, .drop, .wear, .doff, .putOn, .putIn, .open, .close, .lock, .unlock,
-        .lookIn, .push, .turnOn, .turnOff, .go, .look, .examine, .read, .inventory,
-        .score, .version, .quit,
+        .lookIn, .push, .turnOn, .turnOff, .go, .board, .disembark, .look, .examine,
+        .read, .inventory, .score, .version, .quit,
     ]
 
     /// Runs the default action for a command: a game/bundle/plugin override
@@ -34,6 +34,8 @@ enum DefaultActions {
         case .turnOn: try turnOn(command, frame: frame)
         case .turnOff: try turnOff(command, frame: frame)
         case .go: try go(command, frame: frame)
+        case .board: try board(command, frame: frame)
+        case .disembark: try disembark(command, frame: frame)
         case .look: RoomDescriber.describeCurrentLocation(mode: .look, frame: frame)
         case .examine: try examine(command, frame: frame)
         case .read: try read(command, frame: frame)
@@ -51,6 +53,18 @@ enum DefaultActions {
     private static func take(_ command: Command, frame: TurnFrame) throws {
         let item = try requireDirectObject(command)
         let id = item.id
+        // People get the person-specific refusal, not scenery's.
+        if frame.definition.items[id]?.isActor == true {
+            try refuse(frame.definition.text.cantTakeActor(item.name))
+        }
+        // The one default that could relocate the thing the player is
+        // sitting in.
+        let boarded = frame.with {
+            Visibility.boardedVehicle(definition: frame.definition, state: $0.state)
+        }
+        if id == boarded {
+            try refuse(frame.definition.text.notWhileInside(item.name))
+        }
         if item.isHeld {
             try refuse(item.isWorn ? frame.definition.text.alreadyWearing : frame.definition.text.alreadyHave)
         }
@@ -83,7 +97,16 @@ enum DefaultActions {
             frame.with { _ = $0.state.wornItems.remove(id) }
         }
         frame.with { scratch in
-            scratch.state.placements[id] = .room(scratch.state.playerLocation)
+            // Dropped while boarded in a cargo vehicle, things land in the
+            // hull, not on the ground sliding past below. Capacity is not
+            // enforced on this implicit path — `putIn` remains the gate.
+            let vehicle = Visibility.boardedVehicle(
+                definition: frame.definition, state: scratch.state)
+            if let vehicle, frame.definition.items[vehicle]?.isContainer == true {
+                scratch.state.placements[id] = .inside(vehicle)
+            } else {
+                scratch.state.placements[id] = .room(scratch.state.playerLocation)
+            }
             scratch.state.touched.insert(id)
         }
         frame.say(frame.definition.text.dropped)
@@ -446,13 +469,69 @@ enum DefaultActions {
     }
 
     /// Moves the player into `destination`, running its onEnter rules and then
-    /// describing the room. Shared by every passable exit kind.
+    /// describing the room. Shared by every passable exit kind. A boarded
+    /// vehicle rides along in the same mutation — and its cargo with it,
+    /// since cargo placements (`.inside(vehicle)`) never mention the room.
     private static func enter(_ destination: EntityID, frame: TurnFrame) throws {
-        frame.with { $0.state.playerLocation = destination }
+        frame.with { scratch in
+            let vehicle = Visibility.boardedVehicle(
+                definition: frame.definition, state: scratch.state)
+            scratch.state.playerLocation = destination
+            if let vehicle {
+                scratch.state.placements[vehicle] = .room(destination)
+            }
+        }
         for rule in frame.definition.rules.locationOnEnter[destination] ?? [] {
             try rule.body()
         }
         RoomDescriber.describeCurrentLocation(mode: .entry, frame: frame)
+    }
+
+    private static func board(_ command: Command, frame: TurnFrame) throws {
+        let item = try requireDirectObject(command)
+        let id = item.id
+        guard frame.definition.items[id]?.isEnterable == true else {
+            try refuse(frame.definition.text.cantEnterThat)
+        }
+        let (currentVehicle, placement, here) = frame.with {
+            scratch -> (EntityID?, Placement?, EntityID) in
+            (
+                Visibility.boardedVehicle(definition: frame.definition, state: scratch.state),
+                scratch.state.placements[id],
+                scratch.state.playerLocation
+            )
+        }
+        if currentVehicle == id {
+            try refuse(frame.definition.text.alreadyInVehicle(item.name))
+        }
+        if let currentVehicle {
+            try refuse(frame.definition.text.mustExitFirst(frame.displayName(of: currentVehicle)))
+        }
+        if placement == .heldBy(.player) {
+            try refuse(frame.definition.text.cantEnterCarried)
+        }
+        guard placement == .room(here) else {
+            try refuse(frame.definition.text.cantReach(item.name))
+        }
+        frame.with { scratch in
+            scratch.state.playerVehicle = id
+            scratch.state.touched.insert(id)
+        }
+        frame.say(frame.definition.text.boarded(item.name))
+    }
+
+    private static func disembark(_ command: Command, frame: TurnFrame) throws {
+        let vehicle = frame.with {
+            Visibility.boardedVehicle(definition: frame.definition, state: $0.state)
+        }
+        guard let vehicle else {
+            try refuse(frame.definition.text.notInVehicle)
+        }
+        if let named = command.directObject, named.id != vehicle {
+            try refuse(frame.definition.text.notInThat(named.name))
+        }
+        frame.with { $0.state.playerVehicle = nil }
+        frame.say(frame.definition.text.disembarked(frame.displayName(of: vehicle)))
     }
 
     private static func examine(_ command: Command, frame: TurnFrame) throws {

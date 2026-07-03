@@ -240,13 +240,8 @@ enum Prose {
 
     static let cellar = """
         You are in a low, dirt-floored cellar. A passage leads off to the
-        north, choked with fallen rubble a short way in, and a crawlway
-        opens to the south. The trap door you came through is set into
-        the ceiling above.
-        """
-
-    static let cellarNorthBlocked = """
-        The passage north is blocked by fallen rubble a few steps in.
+        north, and a crawlway opens to the south. The trap door you came
+        through is set into the ceiling above.
         """
 
     // MARK: - Cellar region
@@ -303,5 +298,103 @@ enum Prose {
     static let grueDeath = """
         Claws find you long before your eyes could ever adjust. You are
         devoured by a grue.
+        """
+
+    // MARK: - The Troll Room
+    //
+    // Original prose only, as ever: the troll's name and his room's name
+    // are fair game; Infocom's sentences are not.
+
+    static let trollRoom = """
+        A low, foul-smelling chamber of rough stone. Passages lead east
+        and west, and the way south climbs back toward the cellar. Deep
+        gouges in the walls were not made by anything friendly.
+        """
+
+    static let troll = """
+        A mountain of gristle and bad temper, keeping his axe between
+        you and everywhere you might want to go.
+        """
+
+    static let trollPresence = """
+        A troll stands square in the middle of the room, axe up, daring
+        you to try a passage.
+        """
+
+    static let trollBlocksTheWay = """
+        The troll plants himself in your path, axe raised. Nobody is
+        going that way while he stands.
+        """
+
+    static let trollRoomPassagesCollapsed = """
+        With the troll gone you get a clear look: both passages have
+        collapsed into rubble no one is clearing today. Whatever lies
+        beyond waits for another expedition.
+        """
+
+    static let trollMiss1 = "Your blade whistles past the troll's ear; he doesn't blink."
+    static let trollMiss2 = "The troll turns your swing aside with the flat of his axe."
+    static let trollWound1 = "You open a gash along the troll's arm. He notices."
+    static let trollWound2 = "Your blade bites the troll's shoulder; he bellows."
+    static let trollKnockout = """
+        The pommel catches the troll square on the skull, and he sits
+        down hard, eyes crossing.
+        """
+    static let trollDeath = """
+        Your final stroke drops the troll where he stands. The body
+        sinks into the shadows of the floor and is gone.
+        """
+
+    static let trollSwipeMiss = "The troll's axe hisses over your head."
+    static let trollSwipeWound = "The troll's axe grazes you, and it is not a light graze."
+    static let trollKillsYou = """
+        The axe comes around one last time, and the argument is settled
+        the troll's way.
+        """
+
+    // MARK: - The thief
+    //
+    // Reduced this phase: he roams the cellar region, bars the trap door
+    // from below, and picks pockets. His maze, treasure room, stiletto,
+    // and egg-opening services are later phases — see `FIDELITY.md`.
+
+    static let thief = """
+        A lean figure in patched leather, hands never quite still. His
+        eyes have already priced everything you carry.
+        """
+
+    static let thiefPresence = """
+        A shadowy figure leans against the wall here, idly rolling
+        something small and probably yours across his knuckles.
+        """
+
+    static let thiefArrives = "A shadowy figure slips into the room."
+    static let thiefLeaves = "The shadowy figure melts away into the dark."
+
+    static func thiefSteals(_ name: String) -> String {
+        "A feather-light touch at your pack — and the \(name) is gone."
+    }
+
+    static let trapDoorBarred = """
+        You push, but the trap door doesn't give. Someone above has
+        made very sure of the bolt.
+        """
+
+    static let thiefMiss1 = "The thief sways aside; your blade finds only air."
+    static let thiefMiss2 = "Your swing tangles in the thief's cloak and comes back empty."
+    static let thiefWound1 = "You nick the thief's arm; his smile thins."
+    static let thiefWound2 = "Your blade draws a red line across the thief's ribs."
+    static let thiefKnockout = """
+        The flat of your blade cracks against the thief's temple, and
+        he folds up with unexpected grace.
+        """
+    static let thiefDeath = """
+        The thief drops without a sound, and the shadows he favored
+        take him for good.
+        """
+
+    static let thiefLootScatters = """
+        His satchel bursts as he falls, scattering his takings at your
+        feet.
         """
 }

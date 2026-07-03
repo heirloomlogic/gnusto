@@ -33,7 +33,7 @@ Once a command parses, the engine runs these stages in order. Rules are matched 
 7. **Location `after`** — ``Location/after(_:perform:)`` for the current room.
 8. **Location `afterEachTurn`** — ``Location/afterEachTurn(perform:)`` for the room, every turn.
 9. **World `after`** — ``World/after(_:perform:)`` rules.
-10. **The timer tick** — every running fuse counts down (firing at zero) and every running daemon runs, fuses first, each group in name order. Once per typed command, never on parse errors, and not once the game has ended. See <doc:DarknessTimeAndDeath>.
+10. **The timer tick** — every running fuse counts down (firing at zero) and every running daemon runs, fuses first, each group in name order. Once per typed command, never on parse errors, and not once the game has ended. See <doc:DarknessTimeAndDeath>. Characters take their turns here too: there is no separate actor phase — a roaming thief or a counter-attacking troll is a daemon on this same clock (<doc:ActorsAndVehicles>), which is why your swing resolves in stage 5 and the villain's answer lands at the end of the turn.
 
 Then the turn counter advances by one and the turn commits.
 

@@ -85,6 +85,23 @@ enum Bootstrap {
                     registry.items[id] = item
                     items[id] = ItemDefinition(traits: item.traits)
 
+                case let actor as Actor:
+                    guard claim(id) else { continue }
+                    if let existing = registry.id(for: actor.token) {
+                        diagnostics.append(
+                            "\"\(id)\" and \"\(existing)\" are the same Actor value; "
+                                + "each actor must be its own declaration.")
+                        continue
+                    }
+                    // Actors live in the item registry — one storage path
+                    // for placement, visibility, rules, and saves. The
+                    // definition's flag is what makes them people.
+                    registry.ids[ObjectIdentifier(actor.token)] = id
+                    registry.items[id] = actor.asItem
+                    var definition = ItemDefinition(traits: actor.traits)
+                    definition.isActor = true
+                    items[id] = definition
+
                 case let global as AnyGlobal:
                     guard claim(id) else { continue }
                     registry.ids[ObjectIdentifier(global.token)] = id
@@ -113,7 +130,8 @@ enum Bootstrap {
             diagnostics.append("location \"\(id)\" has no name(…) trait.")
         }
         for (id, definition) in items where definition.name == nil {
-            diagnostics.append("item \"\(id)\" has no name(…) trait.")
+            let kind = definition.isActor ? "actor" : "item"
+            diagnostics.append("\(kind) \"\(id)\" has no name(…) trait.")
         }
         for (id, definition) in locations where definition.hasDynamicDescriptionConflict {
             diagnostics.append(
@@ -244,6 +262,20 @@ enum Bootstrap {
                     wornItems.insert(itemID)
                 case .held:
                     placements[itemID] = .heldBy(.player)
+                case .heldBy(let token):
+                    guard
+                        let holderID = resolveItem(
+                            token, role: "the placement of \"\(itemID)\"")
+                    else { continue }
+                    // `starts(heldBy:)` only accepts an Actor, so this is
+                    // defensive symmetry with the surface/container checks
+                    // above, not a reachable authoring mistake.
+                    if items[holderID]?.isActor != true {
+                        diagnostics.append(
+                            "\"\(itemID)\" starts heldBy \"\(holderID)\", which is "
+                                + "not an Actor.")
+                    }
+                    placements[itemID] = .heldBy(holderID)
                 }
 
             case .playerStart(let token):
@@ -349,6 +381,24 @@ enum Bootstrap {
             traitWarnings.append(
                 "item \"\(id)\" declares startsLit but is not a lightSource; "
                     + "the flag has no effect.")
+        }
+        // Mechanical item traits on an actor are legal but almost never
+        // intended — an actor holds things via its inventory, not by being a
+        // container. Warn, don't strip: the trait behaves item-like if left.
+        for (id, item) in items where item.isActor {
+            let mechanical: [(Bool, String)] = [
+                (item.isWearable, "wearable"), (item.isScenery, "scenery"),
+                (item.isSurface, "surface"), (item.isContainer, "container"),
+                (item.isOpenable, "openable"), (item.startsOpen, "startsOpen"),
+                (item.isTransparent, "transparent"), (item.isLockable, "lockable"),
+                (item.startsUnlocked, "startsUnlocked"), (item.capacity != nil, "capacity"),
+            ]
+            for (declared, trait) in mechanical where declared {
+                traitWarnings.append(
+                    "actor \"\(id)\" declares the item trait \"\(trait)\"; actors hold "
+                        + "things via their inventory, and the trait will behave "
+                        + "item-like if left in place.")
+            }
         }
 
         // Phase 3b — assemble the stage-4 default-action overrides. Bundle

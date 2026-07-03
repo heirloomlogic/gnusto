@@ -26,6 +26,9 @@ public struct MapEntry: Sendable {
         case inside(RefToken)
         case worn
         case held
+        /// In an actor's inventory. `.heldBy(.player)` stays spelled
+        /// `startsHeld`.
+        case heldBy(RefToken)
     }
 
     let kind: Kind

@@ -106,6 +106,14 @@ A game need not live in one file — or even one package. Compose `map` and `rul
 - ``end(won:)``
 - ``die(_:)``
 
+### Actors & Vehicles
+
+- <doc:ActorsAndVehicles>
+- ``Actor``
+- ``enterable``
+- ``Player/vehicle``
+- ``describeSurroundings()``
+
 ### Time, Light, and Death
 
 - <doc:DarknessTimeAndDeath>

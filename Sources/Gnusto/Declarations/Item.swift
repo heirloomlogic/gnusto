@@ -13,6 +13,14 @@ public struct Item: Sendable, Equatable {
         self.traits = traits()
     }
 
+    /// The item-shaped view of an existing declaration — `Actor` uses this
+    /// to share one token (and so one identity) with its item storage. No
+    /// new token is minted.
+    init(token: RefToken, traits: [ItemTrait]) {
+        self.token = token
+        self.traits = traits
+    }
+
     /// Two items are equal when they share the same declaration identity.
     public static func == (lhs: Item, rhs: Item) -> Bool {
         lhs.token === rhs.token
@@ -173,10 +181,21 @@ public struct Item: Sendable, Equatable {
     }
 
     /// Moves the item directly to a location, bypassing the usual actions.
+    ///
+    /// Moving the vehicle the player has boarded moves its passenger — the
+    /// river-current pattern; call `describeSurroundings()` after if the
+    /// player should see the new banks. (`move(inside:)`, `move(onto:)`,
+    /// and `vanish()` deliberately do NOT carry the player: a vehicle that
+    /// leaves the room any other way strands its passenger on foot.)
     public func move(to location: Location) {
         let (frame, id) = resolved
         let locationID = location.id
-        frame.with { $0.state.placements[id] = .room(locationID) }
+        frame.with { scratch in
+            scratch.state.placements[id] = .room(locationID)
+            if scratch.state.playerVehicle == id {
+                scratch.state.playerLocation = locationID
+            }
+        }
     }
 
     /// Moves the item inside a container, bypassing the usual actions. Traps if
@@ -208,6 +227,12 @@ public struct Item: Sendable, Equatable {
         let (frame, id) = resolved
         let holderID = holder.id
         frame.with { $0.state.placements[id] = .heldBy(holderID) }
+    }
+
+    /// Moves the item into an actor's inventory, bypassing the usual
+    /// actions — how theft happens.
+    public func move(heldBy holder: Actor) {
+        move(heldBy: holder.asItem)
     }
 
     /// Removes the item from play.
@@ -244,6 +269,11 @@ public struct Item: Sendable, Equatable {
     /// The item starts the game in the player's hands.
     public var startsHeld: MapEntry {
         MapEntry(kind: .placement(item: token, target: .held))
+    }
+
+    /// The item starts the game in an actor's inventory.
+    public func starts(heldBy actor: Actor) -> MapEntry {
+        MapEntry(kind: .placement(item: token, target: .heldBy(actor.token)))
     }
 
     // MARK: - Rule factories

@@ -1,4 +1,6 @@
 import Gnusto
+import GnustoMeleeCombat
+import GnustoScoring
 
 /// The jewel-encrusted egg lives in `ZorkAboveGround` (Up a Tree), but the
 /// living room's trophy case (`ZorkHouse`) needs to describe itself
@@ -16,6 +18,9 @@ let zork1Egg = Item {
     name("jewel-encrusted egg")
     adjectives("jewel-encrusted", "jeweled")
     description(Prose.egg)
+    // The original's values: 5 for the find, 5 for the case.
+    trait(.takeValue, 5)
+    trait(.depositValue, 5)
 }
 
 /// The lantern's description reads its own lit state, which runs into the
@@ -146,6 +151,7 @@ struct ZorkHouse: GameContent {
         name("elvish sword")
         adjectives("elvish")
         description(Prose.sword)
+        trait(.weapon, true)
     }
 
     /// Pushing the rug reveals the hidden trap door — the same Task 4
@@ -160,6 +166,9 @@ struct ZorkHouse: GameContent {
     /// Shared between `livingRoom` and the stub `cellar`: opening it from
     /// either side is the same state, so the classic "trap door slams shut
     /// behind you" moment (`cellar.onEnter` below) is felt from both rooms.
+    /// Whether the bolt above is actually thrown is `trapDoorBarred` —
+    /// set and cleared by the host's thief rules (`Zork1.rules`), since
+    /// the bar spans this bundle's door and `ZorkCellar`'s thief.
     let trapDoor = Item {
         name("trap door")
         description(Prose.trapDoor)
@@ -167,6 +176,10 @@ struct ZorkHouse: GameContent {
         scenery
         hidden
     }
+
+    /// True while the thief has the bolt thrown from above. One-sided:
+    /// opening from the living room is never barred (the bolt is on top).
+    @Global var trapDoorBarred = false
 
     /// A closure description, live on every examine: whether the case is
     /// empty or holds the egg is read from `holds(_:)` rather than fixed at
@@ -186,6 +199,7 @@ struct ZorkHouse: GameContent {
         name("nasty knife")
         adjectives("nasty")
         description(Prose.knife)
+        trait(.weapon, true)
     }
 
     // MARK: - Map
@@ -197,8 +211,8 @@ struct ZorkHouse: GameContent {
         attic.down(kitchen)
         livingRoom.down(cellar, via: trapDoor)
         cellar.up(livingRoom, via: trapDoor)
-        // The troll's passage — a later phase; rubble for now (FIDELITY.md).
-        cellar.north(blocked: Prose.cellarNorthBlocked)
+        // The cellar's north passage into the Troll Room crosses into
+        // ZorkCellar's territory, so the host wires it (Zork1.map).
 
         sack.starts(in: kitchen)
         garlic.starts(inside: sack)
