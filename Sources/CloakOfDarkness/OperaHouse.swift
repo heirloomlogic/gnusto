@@ -1,5 +1,36 @@
 import Gnusto
 
+// The hook's description reads its own state, and a stored property's
+// initializer can't reference `self` or a sibling — so the two entities that
+// name each other live at file scope, and the game aliases them below.
+
+private let velvetCloak = Item {
+    name("velvet cloak")
+    adjectives("handsome", "dark", "black", "velvet", "satin")
+    synonyms("cape")
+    description(
+        """
+        A handsome cloak, of velvet trimmed with satin, and slightly
+        spattered with raindrops. Its blackness is so deep that it
+        almost seems to suck light from the room.
+        """)
+    wearable
+}
+
+private let brassHook = Item {
+    name("small brass hook")
+    adjectives("small", "brass")
+    synonyms("peg")
+    firstSight("A small brass hook is on the wall.")
+    description {
+        brassHook.holds(velvetCloak)
+            ? "It's just a small brass hook, with a cloak hanging on it."
+            : "It's just a small brass hook, screwed to the wall."
+    }
+    scenery
+    surface
+}
+
 /// "Cloak of Darkness" — the classic IF demonstration game by Roger Firth,
 /// ported to Gnusto. This file is the engine's acceptance benchmark: every
 /// API decision serves how this reads.
@@ -50,27 +81,8 @@ struct OperaHouse: Game {
 
     // MARK: - Things
 
-    let cloak = Item {
-        name("velvet cloak")
-        adjectives("handsome", "dark", "black", "velvet", "satin")
-        synonyms("cape")
-        description(
-            """
-            A handsome cloak, of velvet trimmed with satin, and slightly
-            spattered with raindrops. Its blackness is so deep that it
-            almost seems to suck light from the room.
-            """)
-        wearable
-    }
-
-    let hook = Item {
-        name("small brass hook")
-        adjectives("small", "brass")
-        synonyms("peg")
-        firstSight("A small brass hook is on the wall.")
-        scenery
-        surface
-    }
+    let cloak = velvetCloak
+    let hook = brassHook
 
     let message = Item {
         name("scrawled message")
@@ -120,9 +132,9 @@ struct OperaHouse: Game {
     /// All game logic.
     var rules: Rules {
         cloak.before(.drop, .putOn) {
-            guard player.location == cloakroom else {
-                try refuse("This isn't the best place to leave a smart cloak lying around.")
-            }
+            try require(
+                player.location == cloakroom,
+                else: "This isn't the best place to leave a smart cloak lying around.")
         }
 
         cloak.after(.drop, .putOn) {
@@ -135,13 +147,6 @@ struct OperaHouse: Game {
 
         cloak.after(.take, .wear) {
             bar.isLit = false
-        }
-
-        hook.before(.examine) {
-            try reply(
-                hook.holds(cloak)
-                    ? "It's just a small brass hook, with a cloak hanging on it."
-                    : "It's just a small brass hook, screwed to the wall.")
         }
 
         bar.beforeEachTurn {
