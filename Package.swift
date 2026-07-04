@@ -44,6 +44,7 @@ let package = Package(
         .library(name: "GnustoScoring", targets: ["GnustoScoring"]),
         .library(name: "GnustoActors", targets: ["GnustoActors"]),
         .library(name: "GnustoMeleeCombat", targets: ["GnustoMeleeCombat"]),
+        .library(name: "GnustoTestSupport", targets: ["GnustoTestSupport"]),
         .executable(name: "CloakOfDarkness", targets: ["CloakOfDarkness"]),
         .executable(name: "Zork1", targets: ["Zork1"]),
     ],
@@ -83,11 +84,19 @@ let package = Package(
             ],
             plugins: devPlugins
         ),
+        // Transcript-testing helpers for game authors. Link it into TEST
+        // targets only: the Testing library it imports ships in the toolchain,
+        // not the OS, so a plain executable linking it can fail at load time.
+        .target(
+            name: "GnustoTestSupport",
+            dependencies: ["Gnusto"],
+            plugins: devPlugins
+        ),
         .testTarget(
             name: "GnustoTests",
             dependencies: [
                 "Gnusto", "GnustoDangerousDark", "GnustoScoring", "GnustoActors",
-                "GnustoMeleeCombat", "CloakOfDarkness", "Zork1",
+                "GnustoMeleeCombat", "GnustoTestSupport", "CloakOfDarkness", "Zork1",
             ],
             plugins: devPlugins
         ),
