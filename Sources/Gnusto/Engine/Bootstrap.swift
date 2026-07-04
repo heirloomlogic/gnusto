@@ -532,7 +532,8 @@ enum Bootstrap {
             watchedIntents.formUnion(rule.intents)
         }
         watchedIntents.formUnion(customActions.map(\.intent))
-        let deadIntents = watchedIntents
+        let deadIntents =
+            watchedIntents
             .subtracting(producedIntents)
             .filter { !DefaultActions.builtInIntents.contains($0) }
         for intent in deadIntents.sorted(by: { $0.raw < $1.raw }) {

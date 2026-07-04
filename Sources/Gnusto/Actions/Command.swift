@@ -24,10 +24,12 @@ public struct Intent: Hashable, Sendable {
         self.syntax = syntax
     }
 
+    /// Identity is the `raw` name alone — see `syntax`.
     public static func == (lhs: Self, rhs: Self) -> Bool {
         lhs.raw == rhs.raw
     }
 
+    /// Hashes the `raw` name alone, matching `==`.
     public func hash(into hasher: inout Hasher) {
         hasher.combine(raw)
     }

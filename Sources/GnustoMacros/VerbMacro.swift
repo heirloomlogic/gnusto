@@ -6,6 +6,8 @@ import SwiftSyntaxMacros
 /// on `Intent` that carries its `SyntaxRule` rows. See the `verb` macro
 /// declaration in the Gnusto module for the authoring story.
 public struct VerbMacro: DeclarationMacro {
+    /// Parses the invocation, validates the patterns, and emits the
+    /// `static let` declaration.
     public static func expansion(
         of node: some FreestandingMacroExpansionSyntax,
         in context: some MacroExpansionContext
