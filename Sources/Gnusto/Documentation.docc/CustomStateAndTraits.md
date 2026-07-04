@@ -27,7 +27,7 @@ struct MyGame: Game {
 Read and write it in rules exactly like a scalar global — it participates in the turn's commit and in save/restore through the one world-state funnel:
 
 ```swift
-lantern.before(Intent("buy")) {
+lantern.before(.buy) {
     guard purse.coins >= 5 else { try refuse("You can't afford it.") }
     purse.coins -= 5
     try reply("Sold. You have \(purse.coins) coins left.")

@@ -137,6 +137,7 @@ A game need not live in one file — or even one package. Compose `map` and `rul
 ### Adding Vocabulary
 
 - <doc:AddingCustomVerbs>
+- ``verb(_:_:)``
 - ``SyntaxRule``
 - ``SyntaxElement``
 
@@ -157,6 +158,10 @@ A game need not live in one file — or even one package. Compose `map` and `rul
 - ``IOHandler``
 - ``ConsoleIOHandler``
 - ``ScriptedIOHandler``
+
+### Testing Your Game
+
+- <doc:TestingYourGame>
 
 ### Composing Large Games
 

@@ -22,7 +22,7 @@ struct Attic: GameContent {
     }
 
     var verbs: [SyntaxRule] {        // optional — bundles can add verbs too
-        SyntaxRule("rummage", slots: .direct, intent: Intent("rummage"))
+        .rummage                     // a #verb-declared intent; see AddingCustomVerbs
     }
 }
 ```
