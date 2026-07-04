@@ -60,4 +60,35 @@ struct CustomVerbTests {
         let (definition, _) = try Bootstrap.build(CustomVerbGame())
         #expect(definition.warnings.isEmpty)
     }
+
+    // MARK: - #verb
+
+    @Test func verbMacroIntentsMatchTheirStringlyTwins() {
+        // Rules keyed on `Intent("ring")` must keep matching a #verb-minted
+        // `.ring`: the rows an intent carries are not part of its identity.
+        #expect(Intent.ring == Intent("ring"))
+        #expect(Intent.ring.hashValue == Intent("ring").hashValue)
+        #expect(Intent.ring.syntax.count == 1)
+        #expect(Intent("ring").syntax.isEmpty)
+    }
+
+    @Test func listingAnIntentSplicesItsRows() throws {
+        // The `verbs` block above lists `.ring`, `.polish`, and `.sing` by
+        // name only; the resolved table must contain each carried row.
+        let (definition, _) = try Bootstrap.build(CustomVerbGame())
+        let customIntents = definition.syntaxRules.map(\.intent)
+        #expect(customIntents.contains(.ring))
+        #expect(customIntents.contains(.polish))
+        #expect(customIntents.contains(.sing))
+    }
+
+    @Test func aWatchedButUnlistedVerbIntentWarns() throws {
+        // ForgottenVerbGame keys a rule on `.ring` but never lists it, so no
+        // row produces the intent — the bootstrap names the likely fix.
+        let (definition, _) = try Bootstrap.build(ForgottenVerbGame())
+        #expect(
+            definition.warnings.contains { warning in
+                warning.contains("ring") && warning.contains("verbs block")
+            })
+    }
 }

@@ -1,12 +1,35 @@
-/// A canonical action the player can attempt. Games can mint their own
-/// (`Intent("ring")`) and register verbs and default behavior for them.
+/// A canonical action the player can attempt. Games can mint their own —
+/// most readably with `#verb`, or directly (`Intent("ring")`) — and register
+/// verbs and default behavior for them.
 public struct Intent: Hashable, Sendable {
     /// The intent's stable identifier.
     public let raw: String
 
+    /// The verb rows that produce this intent, carried by `#verb`-declared
+    /// intents so a `verbs` block can list the intent itself (`.ring`)
+    /// instead of re-spelling its rows. Not part of the intent's identity:
+    /// `Intent("ring")` in a rule matches a `#verb`-minted `.ring`.
+    public let syntax: [SyntaxRule]
+
     /// Creates an intent with the given identifier.
     public init(_ raw: String) {
         self.raw = raw
+        self.syntax = []
+    }
+
+    /// Creates an intent that carries the verb rows producing it. `#verb`
+    /// expands to this; call it directly only when building rows dynamically.
+    public init(_ raw: String, syntax: [SyntaxRule]) {
+        self.raw = raw
+        self.syntax = syntax
+    }
+
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.raw == rhs.raw
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(raw)
     }
 
     /// Take an item.

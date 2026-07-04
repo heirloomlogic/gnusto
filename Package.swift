@@ -1,5 +1,6 @@
 // swift-tools-version: 6.2
 
+import CompilerPluginSupport
 import Foundation
 import PackageDescription
 
@@ -48,9 +49,22 @@ let package = Package(
         .executable(name: "CloakOfDarkness", targets: ["CloakOfDarkness"]),
         .executable(name: "Zork1", targets: ["Zork1"]),
     ],
-    dependencies: devDependencies,
+    dependencies: devDependencies + [
+        // The #verb macro's expansion machinery. Unlike the dev tooling above,
+        // a macro target cannot hide behind the sentinel: the macro is public
+        // API, so swift-syntax is a real dependency of every consumer.
+        .package(url: "https://github.com/swiftlang/swift-syntax.git", "601.0.0"..<"700.0.0")
+    ],
     targets: [
-        .target(name: "Gnusto", plugins: devPlugins),
+        .macro(
+            name: "GnustoMacros",
+            dependencies: [
+                .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
+                .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
+            ],
+            plugins: devPlugins
+        ),
+        .target(name: "Gnusto", dependencies: ["GnustoMacros"], plugins: devPlugins),
         .target(
             name: "GnustoDangerousDark",
             dependencies: ["Gnusto"],
@@ -91,6 +105,13 @@ let package = Package(
             name: "GnustoTestSupport",
             dependencies: ["Gnusto"],
             plugins: devPlugins
+        ),
+        .testTarget(
+            name: "GnustoMacrosTests",
+            dependencies: [
+                "GnustoMacros",
+                .product(name: "SwiftSyntaxMacrosTestSupport", package: "swift-syntax"),
+            ]
         ),
         .testTarget(
             name: "GnustoTests",

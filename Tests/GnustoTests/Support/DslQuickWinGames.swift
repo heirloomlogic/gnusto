@@ -1,5 +1,13 @@
 import Gnusto
 
+extension Intent {
+    #verb("seal", ["seal", .directObject])
+    // `light`/`douse` deliberately reclaim rows the built-in turnOn/turnOff
+    // also claim, same as the raw SyntaxRule form they replace (last-wins).
+    #verb("light", ["light", .directObject])
+    #verb("douse", ["douse", .directObject])
+}
+
 // MARK: - require
 
 /// Exercises `require(_:else:)`: a rule that refuses via `require` instead of
@@ -150,14 +158,14 @@ struct TrophyCaseGame: Game {
         // Lets the runtime-override-beats-closure precedence test flip the
         // trophy case's description to a fixed string regardless of the
         // egg's location.
-        trophyCase.before(Intent("seal")) {
+        trophyCase.before(.seal) {
             trophyCase.description = "The case has been sealed shut."
             try reply("You seal the case.")
         }
     }
 
     var verbs: [SyntaxRule] {
-        SyntaxRule("seal", .directObject, intent: Intent("seal"))
+        .seal
     }
 }
 
@@ -208,16 +216,15 @@ struct LampGame: Game {
     }
 
     var verbs: [SyntaxRule] {
-        SyntaxRule("light", .directObject, intent: Intent("light"))
-        SyntaxRule("douse", .directObject, intent: Intent("douse"))
+        [.light, .douse]
     }
 
     var rules: Rules {
-        lamp.before(Intent("light")) {
+        lamp.before(.light) {
             lampFlag.lit = true
             try reply("The lamp is now lit.")
         }
-        lamp.before(Intent("douse")) {
+        lamp.before(.douse) {
             lampFlag.lit = false
             try reply("The lamp is now dark.")
         }

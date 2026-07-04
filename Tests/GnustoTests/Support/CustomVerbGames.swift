@@ -1,8 +1,21 @@
 import Gnusto
 
-/// Exercises Phase 1 vocabulary extension: a game that teaches the parser new
-/// player-typeable verbs through its `verbs` block, with the behavior living in
-/// ordinary `before` rules keyed on the custom intents.
+// Custom verbs, declared once. Each #verb yields a typed intent constant
+// (`.ring`) carrying its rows; the games below list the intents they teach in
+// their `verbs` blocks and key rules on the same constants.
+extension Intent {
+    #verb("ring", ["ring", .directObject])
+    #verb("polish", ["polish", .directObject, "with", .indirectObject])
+    #verb("sing")
+    // Same verb token and slot shape as the built-in `take`, so listing this
+    // row reclaims it (last-wins) and emits `.steal` instead.
+    #verb("steal", ["take", .directObject])
+}
+
+/// Exercises vocabulary extension: a game that teaches the parser new
+/// player-typeable verbs by listing `#verb`-declared intents in its `verbs`
+/// block, with the behavior living in ordinary `before` rules keyed on the
+/// same intents.
 struct CustomVerbGame: Game {
     let title = "Custom Verbs"
     let intro = "A small chapel for trying out new words."
@@ -35,16 +48,14 @@ struct CustomVerbGame: Game {
     /// verb with no handling rule (proving the unhandled path falls through to
     /// the default "I didn't understand").
     var verbs: [SyntaxRule] {
-        SyntaxRule("ring", .directObject, intent: Intent("ring"))
-        SyntaxRule("polish", .directObject, "with", .indirectObject, intent: Intent("polish"))
-        SyntaxRule("sing", intent: Intent("sing"))
+        [.ring, .polish, .sing]
     }
 
     var rules: Rules {
-        bell.before(Intent("ring")) {
+        bell.before(.ring) {
             try reply("The bell chimes sweetly.")
         }
-        bell.before(Intent("polish")) {
+        bell.before(.polish) {
             try reply("You polish the bell to a warm shine.")
         }
         // No rule handles `sing`: the parser still emits the intent, and the
@@ -76,14 +87,41 @@ struct VerbOverrideGame: Game {
     }
 
     var verbs: [SyntaxRule] {
-        // Same verb token and slot shape as the built-in `take`, so this row
-        // reclaims it (last-wins) and emits Intent("steal") instead.
-        SyntaxRule("take", .directObject, intent: Intent("steal"))
+        .steal
     }
 
     var rules: Rules {
-        coin.before(Intent("steal")) {
+        coin.before(.steal) {
             try reply("You pocket the coin with a guilty glance.")
+        }
+    }
+}
+
+/// A game that keys a rule on a `#verb` intent but forgets to list it in a
+/// `verbs` block — the mistake the dead-intent bootstrap warning names.
+struct ForgottenVerbGame: Game {
+    let title = "Forgotten"
+    let intro = "A chapel where the bell can't be rung."
+
+    let chapel = Location {
+        name("Chapel")
+        description("A small stone chapel.")
+    }
+
+    let bell = Item {
+        name("bronze bell")
+        adjectives("bronze")
+        description("A heavy bronze bell.")
+    }
+
+    var map: WorldMap {
+        player.starts(in: chapel)
+        bell.starts(in: chapel)
+    }
+
+    var rules: Rules {
+        bell.before(.ring) {
+            try reply("The bell chimes sweetly.")
         }
     }
 }

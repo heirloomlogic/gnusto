@@ -25,11 +25,11 @@ private struct RewindGame: Game {
     }
 
     var verbs: [SyntaxRule] {
-        SyntaxRule("roll", intent: Intent("roll"))
+        .roll
     }
 
     var rules: Rules {
-        world.before(Intent("roll")) {
+        world.before(.roll) {
             try reply("You roll \(random(1...1000)).")
         }
     }

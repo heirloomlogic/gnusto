@@ -1,5 +1,14 @@
 import Gnusto
 
+// Test-only verbs that poke the actor mechanics from the rules below.
+extension Intent {
+    #verb("sense")
+    #verb("disarm")
+    #verb("banish")
+    #verb("march")
+    #verb("audit")
+}
+
 /// A content bundle owning its own room and its own actor, to prove actors
 /// namespace exactly like items (`WatchContent.watchman`).
 struct WatchContent: GameContent {
@@ -131,34 +140,30 @@ struct GuardpostGame: Game {
     }
 
     var verbs: [SyntaxRule] {
-        SyntaxRule("sense", intent: Intent("sense"))
-        SyntaxRule("disarm", intent: Intent("disarm"))
-        SyntaxRule("banish", intent: Intent("banish"))
-        SyntaxRule("march", intent: Intent("march"))
-        SyntaxRule("audit", intent: Intent("audit"))
+        [.sense, .disarm, .banish, .march, .audit]
     }
 
     var rules: Rules {
         sentry.before(.examine) {
             try reply("The sentry ignores you, expertly.")
         }
-        world.before(Intent("sense")) {
+        world.before(.sense) {
             ghost.reveal()
             try reply("The air goes cold.")
         }
-        world.before(Intent("disarm")) {
+        world.before(.disarm) {
             troll.dropAll()
             try reply("The troll's grip fails.")
         }
-        world.before(Intent("banish")) {
+        world.before(.banish) {
             troll.vanish()
             try reply("The troll is elsewhere now.")
         }
-        world.before(Intent("march")) {
+        world.before(.march) {
             keeper.move(to: corridor)
             try reply("Footsteps recede.")
         }
-        world.before(Intent("audit")) {
+        world.before(.audit) {
             let carried = troll.inventory.map(\.name).joined(separator: ", ")
             try reply(
                 "Troll carries: \(carried.isEmpty ? "nothing" : carried). "

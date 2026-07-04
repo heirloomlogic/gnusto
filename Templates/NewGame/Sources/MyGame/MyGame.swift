@@ -1,5 +1,11 @@
 import Gnusto
 
+extension Intent {
+    /// The game's one custom verb; `#verb` declares the intent and the
+    /// pattern the parser accepts. The `verbs` block below teaches it.
+    #verb("ring", ["ring", .directObject])
+}
+
 /// A two-room starter game: fetch the rope, climb the tower, ring the bell.
 /// Every piece here — rooms, items, map, a custom verb, rules — is explained
 /// in Gnusto's "Getting Started" guide.
@@ -55,16 +61,16 @@ struct MyGame: Game {
 
     // MARK: - Vocabulary
 
-    /// Teach the parser a new verb; the rule below gives it behavior.
+    /// Teach the parser the custom verb; the rule below gives it behavior.
     var verbs: [SyntaxRule] {
-        SyntaxRule("ring", .directObject, intent: Intent("ring"))
+        .ring
     }
 
     // MARK: - Rules
 
     /// All game logic.
     var rules: Rules {
-        bell.before(Intent("ring")) {
+        bell.before(.ring) {
             try require(rope.isHeld, else: "You need something to swing the clapper with.")
             player.score += 1
             say("You haul on the rope. The great bronze bell peals out over the village!")

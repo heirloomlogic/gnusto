@@ -73,6 +73,21 @@ extension GnustoBuilder where Element == SyntaxRule {
     public static func buildExpression(_ table: [SyntaxRule]) -> [SyntaxRule] {
         table
     }
+
+    /// Lets a `verbs` block list a `#verb`-declared intent — `.ring` — and
+    /// splice the rows the intent carries.
+    public static func buildExpression(_ intent: Intent) -> [SyntaxRule] {
+        intent.syntax
+    }
+
+    /// Lets a `verbs` block list several `#verb`-declared intents at once —
+    /// `[.ring, .polish, .sing]`. The array form isn't just taste: bare
+    /// leading-dot statements on consecutive lines parse as one chained
+    /// member access (`.ring.polish`), so multiple intents need either this
+    /// or an `Intent.` prefix per line.
+    public static func buildExpression(_ intents: [Intent]) -> [SyntaxRule] {
+        intents.flatMap(\.syntax)
+    }
 }
 
 extension GnustoBuilder where Element == IntentAction {
