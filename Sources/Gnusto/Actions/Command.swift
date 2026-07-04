@@ -11,15 +11,10 @@ public struct Intent: Hashable, Sendable {
     /// `Intent("ring")` in a rule matches a `#verb`-minted `.ring`.
     public let syntax: [SyntaxRule]
 
-    /// Creates an intent with the given identifier.
-    public init(_ raw: String) {
-        self.raw = raw
-        self.syntax = []
-    }
-
-    /// Creates an intent that carries the verb rows producing it. `#verb`
-    /// expands to this; call it directly only when building rows dynamically.
-    public init(_ raw: String, syntax: [SyntaxRule]) {
+    /// Creates an intent with the given identifier. `#verb` expands to the
+    /// form that carries verb rows; pass `syntax` directly only when building
+    /// rows dynamically.
+    public init(_ raw: String, syntax: [SyntaxRule] = []) {
         self.raw = raw
         self.syntax = syntax
     }

@@ -73,6 +73,24 @@ final class VerbMacroTests: XCTestCase {
             macros: macros)
     }
 
+    func testEscapesQuotesAndBackslashesInPatternWords() {
+        // A word with escape sequences decodes to its value ("\hi") and
+        // re-emits as a literal representing exactly that value — never as
+        // broken generated source.
+        assertMacroExpansion(
+            inIntentExtension(#"#verb("say", ["say", "\"\\hi\""])"#),
+            expandedSource: inIntentExtension(
+                ##"""
+                public static let say = Intent(
+                    "say",
+                    syntax: [
+                        SyntaxRule("say", #""\hi""#, intent: Intent("say"))
+                    ]
+                )
+                """##),
+            macros: macros)
+    }
+
     func testReclaimingABuiltInUnderANewName() {
         assertMacroExpansion(
             inIntentExtension(#"#verb("steal", ["take", .directObject])"#),

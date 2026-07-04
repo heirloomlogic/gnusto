@@ -1,4 +1,5 @@
 import SwiftCompilerPlugin
+import SwiftParser
 import SwiftSyntax
 import SwiftSyntaxMacros
 
@@ -58,9 +59,12 @@ public struct VerbMacro: DeclarationMacro {
         case direction
 
         /// The element re-spelled as source for the generated `SyntaxRule`.
+        /// The word round-trips through a `StringLiteralExprSyntax` so quotes
+        /// and backslashes in it re-emit escaped, not as broken source.
         var source: String {
             switch self {
-            case .word(let word): "\"\(word)\""
+            case .word(let word):
+                StringLiteralExprSyntax(content: word).description
             case .directObject: ".directObject"
             case .indirectObject: ".indirectObject"
             case .direction: ".direction"
@@ -96,12 +100,10 @@ public struct VerbMacro: DeclarationMacro {
     private static func intentName(from expression: ExprSyntax) throws -> String {
         guard
             let literal = expression.as(StringLiteralExprSyntax.self),
-            literal.segments.count == 1,
-            let segment = literal.segments.first?.as(StringSegmentSyntax.self)
+            let name = literal.representedLiteralValue
         else {
             throw error("the intent name must be a plain string literal.")
         }
-        let name = segment.content.text
         guard isValidIdentifier(name) else {
             throw error(
                 "the intent name \"\(name)\" must be a valid Swift identifier — "
@@ -121,13 +123,10 @@ public struct VerbMacro: DeclarationMacro {
 
     private static func element(from expression: ExprSyntax) throws -> Element {
         if let literal = expression.as(StringLiteralExprSyntax.self) {
-            guard
-                literal.segments.count == 1,
-                let segment = literal.segments.first?.as(StringSegmentSyntax.self)
-            else {
+            guard let word = literal.representedLiteralValue else {
                 throw error("pattern words must be plain string literals.")
             }
-            return .word(segment.content.text)
+            return .word(word)
         }
         if let member = expression.as(MemberAccessExprSyntax.self), member.base == nil {
             switch member.declName.baseName.text {
@@ -142,27 +141,11 @@ public struct VerbMacro: DeclarationMacro {
                 + ".indirectObject, and .direction.")
     }
 
+    /// The parser's own notion of a usable identifier — rejects keywords
+    /// (`repeat`), spaces, and anything else that couldn't name the constant.
     private static func isValidIdentifier(_ name: String) -> Bool {
-        guard let first = name.unicodeScalars.first else { return false }
-        guard first == "_" || first.properties.isAlphabetic else { return false }
-        guard
-            name.unicodeScalars.dropFirst().allSatisfy({
-                $0 == "_" || $0.properties.isAlphabetic || ("0"..."9").contains($0)
-            })
-        else { return false }
-        return !keywords.contains(name)
+        name.isValidSwiftIdentifier(for: .variableName)
     }
-
-    /// Keywords that read like plausible verb names; a generated
-    /// `static let for` would not compile.
-    private static let keywords: Set<String> = [
-        "as", "break", "case", "catch", "class", "continue", "default", "defer",
-        "do", "else", "enum", "extension", "fallthrough", "false", "for", "func",
-        "guard", "if", "import", "in", "init", "internal", "is", "let", "nil",
-        "operator", "private", "protocol", "public", "repeat", "return", "self",
-        "static", "struct", "subscript", "switch", "throw", "throws", "true",
-        "try", "var", "where", "while",
-    ]
 
     // MARK: - Pattern validation
 

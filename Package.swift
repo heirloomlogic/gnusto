@@ -59,6 +59,7 @@ let package = Package(
         .macro(
             name: "GnustoMacros",
             dependencies: [
+                .product(name: "SwiftParser", package: "swift-syntax"),
                 .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
                 .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
             ],
