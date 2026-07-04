@@ -1,5 +1,12 @@
 import Gnusto
 
+extension Intent {
+    /// `GreetingPlugin`'s verb. (`CustomActionGame` reuses `.ring` from
+    /// `CustomVerbGames.swift` — #verb constants are module-wide statics on
+    /// `Intent`, so a shared verb is declared once and listed everywhere.)
+    #verb("greet", ["greet", .directObject])
+}
+
 /// A game that teaches the parser a custom verb (`ring`) and, unlike
 /// ``CustomVerbGame``, gives it real stage-4 default behavior through the
 /// `actions` block instead of leaving it to fall through to "I didn't
@@ -8,8 +15,6 @@ import Gnusto
 struct CustomActionGame: Game {
     let title = "Custom Action"
     let intro = "A small chapel."
-
-    static let ring = Intent("ring")
 
     let chapel = Location {
         name("Chapel")
@@ -27,11 +32,11 @@ struct CustomActionGame: Game {
     }
 
     var verbs: [SyntaxRule] {
-        SyntaxRule("ring", .directObject, intent: Self.ring)
+        .ring
     }
 
     var actions: [IntentAction] {
-        action(Self.ring) {
+        action(.ring) {
             say("The bell chimes sweetly.")
         }
     }
@@ -71,14 +76,12 @@ struct ThemedTakeGame: Game {
 /// stage-4 default — with no host rules at all, exercising `GamePlugin.actions`
 /// spliced by the host exactly like `verbs`.
 struct GreetingPlugin: GamePlugin {
-    static let greet = Intent("greet")
-
     var verbs: [SyntaxRule] {
-        SyntaxRule("greet", .directObject, intent: Self.greet)
+        .greet
     }
 
     var actions: [IntentAction] {
-        action(Self.greet) {
+        action(.greet) {
             say("You wave and offer a warm greeting.")
         }
     }

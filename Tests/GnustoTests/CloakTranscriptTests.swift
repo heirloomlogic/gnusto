@@ -1,5 +1,6 @@
 import Foundation
 import Gnusto
+import GnustoTestSupport
 import Testing
 
 @testable import CloakOfDarkness

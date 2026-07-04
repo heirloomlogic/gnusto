@@ -5,6 +5,22 @@ extension TraitKey<Bool> {
     public static let weapon = Self("weapon", default: false)
 }
 
+extension Intent {
+    /// The one intent every combat verb emits: attack/kill/hit/fight
+    /// bare-handed or `with` a weapon, plus stab/strike (weapon required).
+    #verb(
+        "attack",
+        ["attack", .directObject],
+        ["attack", .directObject, "with", .indirectObject],
+        ["kill", .directObject],
+        ["kill", .directObject, "with", .indirectObject],
+        ["hit", .directObject],
+        ["hit", .directObject, "with", .indirectObject],
+        ["fight", .directObject],
+        ["stab", .directObject, "with", .indirectObject],
+        ["strike", .directObject, "with", .indirectObject])
+}
+
 /// Zork-style-lite melee: attack verbs, a weapon trait, per-villain health,
 /// a seeded outcome table (miss / wound / knockout / kill), and an
 /// aggression daemon so villains hit back. Deterministic under a pinned
@@ -36,9 +52,6 @@ extension TraitKey<Bool> {
 /// timers. One deliberate simplification, ledgered per game: player wounds
 /// don't heal, and a defeated villain stays defeated.
 public struct MeleeCombat: GameContent {
-    /// The one intent every combat verb emits.
-    public static let attack = Intent("attack")
-
     /// The system's own voice — refusals that belong to the mechanics, not
     /// to any one villain. Override lines at init to re-skin.
     public struct CombatText: Sendable {
@@ -119,20 +132,12 @@ public struct MeleeCombat: GameContent {
     /// The attack syntax: attack/kill/hit/fight bare-handed or `with` a weapon,
     /// plus stab/strike, which always name a weapon.
     public var verbs: [SyntaxRule] {
-        SyntaxRule("attack", .directObject, intent: Self.attack)
-        SyntaxRule("attack", .directObject, "with", .indirectObject, intent: Self.attack)
-        SyntaxRule("kill", .directObject, intent: Self.attack)
-        SyntaxRule("kill", .directObject, "with", .indirectObject, intent: Self.attack)
-        SyntaxRule("hit", .directObject, intent: Self.attack)
-        SyntaxRule("hit", .directObject, "with", .indirectObject, intent: Self.attack)
-        SyntaxRule("fight", .directObject, intent: Self.attack)
-        SyntaxRule("stab", .directObject, "with", .indirectObject, intent: Self.attack)
-        SyntaxRule("strike", .directObject, "with", .indirectObject, intent: Self.attack)
+        .attack
     }
 
     /// The stage-4 default for a target no villain rule claimed.
     public var actions: [IntentAction] {
-        action(Self.attack) {
+        action(.attack) {
             try reply(text.attackFutile)
         }
     }
@@ -155,7 +160,7 @@ public struct MeleeCombat: GameContent {
         prose: VillainProse,
         onDefeat: @escaping @Sendable () -> Void = {}
     ) -> Rules {
-        actor.before(Self.attack) {
+        actor.before(.attack) {
             // Resolve the weapon: the named one must be real and in hand;
             // otherwise any held registered weapon serves.
             if let named = command.indirectObject {

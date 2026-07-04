@@ -8,5 +8,8 @@
 /.build
 /Packages
 DerivedData/
-Package.resolved
+# The root Package.resolved is committed (it pins swift-syntax for CI and
+# macro-expansion test stability); the template resolves its own.
+Templates/NewGame/Package.resolved
 xcuserdata/
+.build

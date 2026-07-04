@@ -4,11 +4,13 @@ Build and run your first text adventure, one piece at a time.
 
 ## Overview
 
-This guide walks you from an empty package to a small, playable game. By the end you will have declared two rooms and an object, wired them together, added a rule, and run the whole thing at a prompt. It assumes you can write basic Swift; it assumes nothing about interactive fiction.
+This guide walks you from an empty package to a small, playable game. By the end you will have declared two rooms and an object, wired them together, added a rule, tested a play session, and run the whole thing at a prompt. It assumes you can write basic Swift; it assumes nothing about interactive fiction.
+
+Prefer to start from something that already runs? The repo ships a complete starter package at `Templates/NewGame` — copy it out, rename it, and skim this guide for the *why* behind each piece.
 
 ## Add Gnusto to your package
 
-Add Gnusto as a dependency and list it in your executable target:
+Add Gnusto as a dependency, list it in your executable target, and give the test target the `GnustoTestSupport` product (it links the toolchain's Testing library, so it belongs in test targets only):
 
 ```swift
 // swift-tools-version: 6.2
@@ -23,8 +25,17 @@ let package = Package(
     targets: [
         .executableTarget(
             name: "MyGame",
-            dependencies: ["Gnusto"]
-        )
+            dependencies: [
+                .product(name: "Gnusto", package: "Gnusto")
+            ]
+        ),
+        .testTarget(
+            name: "MyGameTests",
+            dependencies: [
+                "MyGame",
+                .product(name: "GnustoTestSupport", package: "Gnusto"),
+            ]
+        ),
     ]
 )
 ```
@@ -162,13 +173,36 @@ The first rule runs *after* the player successfully takes the lantern and adds a
 
 To learn what rules can do — the phases, the ordering, and the difference between `refuse`, `reply`, `say`, and `end` — read <doc:WritingRules> and <doc:TheTurnPipeline>.
 
+## Test it
+
+A play session is just typed input and printed output, so the natural test plays a scripted session and asserts on the transcript:
+
+```swift
+import GnustoTestSupport
+import Testing
+
+@testable import MyGame
+
+struct MyGameTests {
+    @Test func theLanternIsWhereTheBreezeSaysItIs() async throws {
+        let transcript = try await play(MyGame(), ["north", "take lantern"])
+        expectInOrder(transcript, ["Dusty Library", "Taken."])
+    }
+}
+```
+
+`play` boots the game and feeds it each command; `expectInOrder` asserts the beats appear in order and shows the full transcript when one doesn't. See <doc:TestingYourGame> for turn slicing and pinning the random stream.
+
 ## A fuller example
 
 Gnusto ships with **Cloak of Darkness**, Roger Firth's classic one-room demonstration game, as its `CloakOfDarkness` target. It exercises nearly every feature in a page of code — dark rooms, a wearable cloak, scored actions, a losing state, and per-turn rules — and is worth reading start to finish once the basics click.
 
 ## Next steps
 
+- `Templates/NewGame` in the repo — the complete starter package this guide builds up to
 - <doc:AnatomyOfAGame> — how declarations, identity, and live references fit together
 - <doc:TheTurnPipeline> — exactly what happens each turn
 - <doc:WritingRules> — the full vocabulary of game logic
+- <doc:AddingCustomVerbs> — teach the parser new words with `#verb`
+- <doc:TestingYourGame> — transcript tests with GnustoTestSupport
 - <doc:CustomStateAndTraits> — carry your own data on entities and in globals

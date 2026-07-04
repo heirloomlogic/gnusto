@@ -172,6 +172,8 @@ struct GameDefinition: Sendable {
     /// built-in behavior (or "I didn't understand" for an unknown intent).
     let actionOverrides: [Intent: IntentAction]
     /// Non-fatal bootstrap notes — e.g. a custom verb shadowing a built-in.
-    /// Surfaced for tooling and tests; play proceeds regardless.
-    let warnings: [String]
+    /// Surfaced for tooling and tests; play proceeds regardless. `var` so the
+    /// bootstrap can add the dead-intent check after evaluating the `rules`
+    /// block (which happens after the definition exists — see `rules`).
+    var warnings: [String]
 }

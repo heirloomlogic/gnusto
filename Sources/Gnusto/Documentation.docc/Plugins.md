@@ -11,18 +11,19 @@ A plugin is **logic only**. It contributes the player-typeable vocabulary a syst
 ## A plugin is a `GamePlugin`
 
 ```swift
-struct CommercePlugin: GamePlugin {
-    static let buy = Intent("buy")
-    static let sell = Intent("sell")
+extension Intent {
+    #verb("buy", ["buy", .directObject])
+    #verb("sell", ["sell", .directObject])
+}
 
+struct CommercePlugin: GamePlugin {
     var verbs: [SyntaxRule] {
-        SyntaxRule("buy",  slots: .direct, intent: Self.buy)
-        SyntaxRule("sell", slots: .direct, intent: Self.sell)
+        [.buy, .sell]
     }
 }
 ```
 
-`verbs`, `actions`, `rules`, and `timers` all default to empty, so a plugin declares only what it needs. Exposing the intents as `static let` constants lets host rules name the same intents the verbs emit.
+`verbs`, `actions`, `rules`, and `timers` all default to empty, so a plugin declares only what it needs. The `#verb` declarations (see <doc:AddingCustomVerbs>) give the plugin *and* its hosts the same typed constants — host rules key on `.buy` exactly as the plugin's verbs emit it.
 
 A plugin's `timers` splice the same way (`var timers: [TimedEvent] { actors.timers }`), and parameterized timer *factories* — methods returning a ``TimedEvent`` for the host's own `timers` block — are how a plugin animates the host's actors on the end-of-turn clock. Timer names are global to the game: prefix yours by convention (`"actors.roam"`).
 
@@ -55,7 +56,7 @@ extension CommercePlugin {
         balance: @escaping @Sendable () -> Int,
         charge:  @escaping @Sendable (Int) -> Void
     ) -> Rules {
-        item.before(Self.buy) {
+        item.before(.buy) {
             let price = item[.price] ?? 0
             guard balance() >= price else {
                 try refuse("You can't afford the \(item.name); it costs \(price) coins.")
@@ -81,15 +82,19 @@ The protocol's own `rules` requirement is for self-contained, world-scoped rules
 The rules are optional. A plugin can teach the parser a word and leave the behavior to the host, which handles the shared intent in its own `rules`:
 
 ```swift
+extension Intent {
+    #verb("appraise", ["appraise", .directObject])
+}
+
 struct Appraiser: GamePlugin {
     var verbs: [SyntaxRule] {
-        SyntaxRule("appraise", slots: .direct, intent: Intent("appraise"))
+        .appraise
     }
 }
 
 // in the host:
 var rules: Rules {
-    gem.before(Intent("appraise")) {
+    gem.before(.appraise) {
         try reply("The \(gem.name) is worth \(gem[.price] ?? 0) coins.")
     }
 }
@@ -102,20 +107,22 @@ A logic-only ``GamePlugin`` declares no world of its own — it operates entirel
 The two roles compose in one type. A single struct can conform to ``GameContent`` (for its auto-namespaced region and self-contained rules) **and** expose host-facing rule factories exactly like a ``GamePlugin`` — factories are just methods returning ``Rules``, so any type can offer them:
 
 ```swift
-struct ShrineContent: GameContent {
-    static let donate = Intent("donate")
+extension Intent {
+    #verb("donate", ["donate", .directObject])
+}
 
+struct ShrineContent: GameContent {
     let shrine = Location { name("Stone Shrine"); description("…") }   // its own room
     @Global var visits = 0                                             // its own state
 
-    var verbs: [SyntaxRule] { SyntaxRule("donate", slots: .direct, intent: Self.donate) }
+    var verbs: [SyntaxRule] { .donate }
     var rules: Rules { shrine.onEnter { visits += 1; try reply("…") } }  // self-contained
 
     // Host-facing factory over a host item + host global — the GamePlugin pattern.
     func offering(of item: Item,
                   merit: @escaping @Sendable () -> Int,
                   credit: @escaping @Sendable (Int) -> Void) -> Rules {
-        item.before(Self.donate) { credit(item[.value] ?? 0)
+        item.before(.donate) { credit(item[.value] ?? 0)
             try reply("Your merit rises to \(merit()).") }
     }
 }

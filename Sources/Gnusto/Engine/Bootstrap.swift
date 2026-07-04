@@ -522,6 +522,27 @@ enum Bootstrap {
             throw BootstrapError(diagnostics: ruleDiagnostics)
         }
 
+        // A #verb-declared intent's rows reach the parser only when a verbs
+        // block lists it, so a rule (or custom action) watching an intent no
+        // row produces is usually that forgotten listing. Non-fatal: nothing
+        // breaks, the rule just never fires from typed input.
+        let producedIntents = Set(syntaxRules.map(\.intent))
+        var watchedIntents: Set<Intent> = []
+        for rule in declaredRules {
+            watchedIntents.formUnion(rule.intents)
+        }
+        watchedIntents.formUnion(customActions.map(\.intent))
+        let deadIntents =
+            watchedIntents
+            .subtracting(producedIntents)
+            .filter { !DefaultActions.builtInIntents.contains($0) }
+        for intent in deadIntents.sorted(by: { $0.raw < $1.raw }) {
+            definition.warnings.append(
+                "a rule watches intent \"\(intent.raw)\", but no verb row produces "
+                    + "it; if it was declared with #verb, list .\(intent.raw) in a "
+                    + "verbs block.")
+        }
+
         definition.rules = table
         definition.timers = timers
         for event in timers.values where event.autostart {

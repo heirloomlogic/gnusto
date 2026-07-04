@@ -9,16 +9,41 @@ on:
       - "**"
 
 jobs:
-  test-macos:
-    runs-on: macos-26
+  test-linux:
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
+
+      # The test target `@testable import`s the CloakOfDarkness and Zork1
+      # executable targets. The legacy `native` build system refuses that
+      # ("main module of an executable, cannot be imported"); the newer Swift
+      # Build system (`--build-system swiftbuild`) supports it. On macOS that
+      # combo fails at link time (Xcode 26.x eagerly links SwiftUICore, fixed
+      # in 6.4); Linux has no SwiftUICore, so a stable toolchain links cleanly.
+      # Ubuntu runners are cheaper too. Install Swift via swiftly.
+      - name: Install Swift toolchain
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y libcurl4-openssl-dev
+          curl -fsSL -O "https://download.swift.org/swiftly/linux/swiftly-$(uname -m).tar.gz"
+          tar zxf "swiftly-$(uname -m).tar.gz"
+          ./swiftly init --quiet-shell-followup --assume-yes --skip-install
+          . "$HOME/.local/share/swiftly/env.sh"
+          swiftly install --assume-yes 6.3.3
+          swiftly use 6.3.3
+          echo "$HOME/.local/share/swiftly/bin" >> "$GITHUB_PATH"
+          swift --version
 
       - name: Test (Debug)
-        run: swift test
+        run: swift test --build-system swiftbuild
 
       # Release run guards against optimization-only regressions (e.g. generic
       # `#Predicate` miscompiles) that the Debug suite passes through silently.
       - name: Test (Release)
-        run: swift test -c release
+        run: swift test -c release --build-system swiftbuild
+
+      # The starter template is a standalone package with a path dependency on
+      # this repo; building it here keeps the template from rotting.
+      - name: Template (Debug)
+        run: swift test --package-path Templates/NewGame --build-system swiftbuild

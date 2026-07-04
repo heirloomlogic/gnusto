@@ -1,6 +1,14 @@
+import GnustoTestSupport
 import Testing
 
 @testable import Gnusto
+
+extension Intent {
+    /// Declared here, reused by `UndoRestartTests` — #verb constants are
+    /// module-wide statics on `Intent`.
+    #verb("roll")
+    #verb("check")
+}
 
 /// A game whose only verbs are chance: `roll` draws from all three
 /// randomness helpers; `check` exercises their certain edges.
@@ -18,18 +26,17 @@ private struct DiceGame: Game {
     }
 
     var verbs: [SyntaxRule] {
-        SyntaxRule("roll", intent: Intent("roll"))
-        SyntaxRule("check", intent: Intent("check"))
+        [.roll, .check]
     }
 
     var rules: Rules {
-        world.before(Intent("roll")) {
+        world.before(.roll) {
             let die = random(1...1000)
             let mood = oneOf("grim", "bright", "odd")
             let luck = chance(50) ? "lucky" : "unlucky"
             try reply("You roll \(die), feeling \(mood) and \(luck).")
         }
-        world.before(Intent("check")) {
+        world.before(.check) {
             try reply("one=\(random(1...1)) yes=\(chance(100)) no=\(chance(0))")
         }
     }

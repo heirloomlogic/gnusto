@@ -1,4 +1,10 @@
+import Foundation
+
+#if canImport(Darwin)
 import Darwin
+#elseif canImport(Glibc)
+import Glibc
+#endif
 
 /// Boots a `Game` type as a runnable program: `@main struct Zork1: Game,
 /// GameMain {}` is a complete executable, no `main.swift` required.
@@ -26,7 +32,9 @@ extension GameMain where Self: Game {
             let world = try GameWorld(game: Self())
             await Self.run(world: world, io: ConsoleIOHandler())
         } catch {
-            fputs("\(error)\n", stderr)
+            // `FileHandle.standardError`, not the libc `stderr` global, which
+            // Swift 6 rejects as concurrency-unsafe on Linux (it's a `var`).
+            FileHandle.standardError.write(Data("\(error)\n".utf8))
             exit(1)
         }
     }

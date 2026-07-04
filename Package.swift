@@ -1,5 +1,6 @@
 // swift-tools-version: 6.2
 
+import CompilerPluginSupport
 import Foundation
 import PackageDescription
 
@@ -44,12 +45,27 @@ let package = Package(
         .library(name: "GnustoScoring", targets: ["GnustoScoring"]),
         .library(name: "GnustoActors", targets: ["GnustoActors"]),
         .library(name: "GnustoMeleeCombat", targets: ["GnustoMeleeCombat"]),
+        .library(name: "GnustoTestSupport", targets: ["GnustoTestSupport"]),
         .executable(name: "CloakOfDarkness", targets: ["CloakOfDarkness"]),
         .executable(name: "Zork1", targets: ["Zork1"]),
     ],
-    dependencies: devDependencies,
+    dependencies: devDependencies + [
+        // The #verb macro's expansion machinery. Unlike the dev tooling above,
+        // a macro target cannot hide behind the sentinel: the macro is public
+        // API, so swift-syntax is a real dependency of every consumer.
+        .package(url: "https://github.com/swiftlang/swift-syntax.git", "601.0.0"..<"700.0.0")
+    ],
     targets: [
-        .target(name: "Gnusto", plugins: devPlugins),
+        .macro(
+            name: "GnustoMacros",
+            dependencies: [
+                .product(name: "SwiftParser", package: "swift-syntax"),
+                .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
+                .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
+            ],
+            plugins: devPlugins
+        ),
+        .target(name: "Gnusto", dependencies: ["GnustoMacros"], plugins: devPlugins),
         .target(
             name: "GnustoDangerousDark",
             dependencies: ["Gnusto"],
@@ -83,11 +99,26 @@ let package = Package(
             ],
             plugins: devPlugins
         ),
+        // Transcript-testing helpers for game authors. Link it into TEST
+        // targets only: the Testing library it imports ships in the toolchain,
+        // not the OS, so a plain executable linking it can fail at load time.
+        .target(
+            name: "GnustoTestSupport",
+            dependencies: ["Gnusto"],
+            plugins: devPlugins
+        ),
+        .testTarget(
+            name: "GnustoMacrosTests",
+            dependencies: [
+                "GnustoMacros",
+                .product(name: "SwiftSyntaxMacrosTestSupport", package: "swift-syntax"),
+            ]
+        ),
         .testTarget(
             name: "GnustoTests",
             dependencies: [
                 "Gnusto", "GnustoDangerousDark", "GnustoScoring", "GnustoActors",
-                "GnustoMeleeCombat", "CloakOfDarkness", "Zork1",
+                "GnustoMeleeCombat", "GnustoTestSupport", "CloakOfDarkness", "Zork1",
             ],
             plugins: devPlugins
         ),
