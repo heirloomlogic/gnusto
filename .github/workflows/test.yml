@@ -22,3 +22,8 @@ jobs:
       # `#Predicate` miscompiles) that the Debug suite passes through silently.
       - name: Test (Release)
         run: swift test -c release
+
+      # The starter template is a standalone package with a path dependency on
+      # this repo; building it here keeps the template from rotting.
+      - name: Template (Debug)
+        run: swift test --package-path Templates/NewGame
