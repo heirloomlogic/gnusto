@@ -67,6 +67,9 @@ public struct Intent: Hashable, Sendable {
     public static let board = Intent("board")
     /// Get out of the boarded item ("exit", "disembark", "get out").
     public static let disembark = Intent("disembark")
+    /// Let a turn pass without acting ("wait", "z"). A normal turn: rules run
+    /// and fuses/daemons tick — that's its whole point.
+    public static let wait = Intent("wait")
     /// Look at the current location.
     public static let look = Intent("look")
     /// List carried items.

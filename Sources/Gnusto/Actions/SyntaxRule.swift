@@ -233,6 +233,10 @@ extension SyntaxRule {
         .init("get", "out", intent: .disembark),
         .init("get", "out", "of", .directObject, intent: .disembark),
 
+        // wait
+        .init("wait", intent: .wait),
+        .init("z", intent: .wait),
+
         // perception & meta
         .init("look", intent: .look),
         .init("l", intent: .look),

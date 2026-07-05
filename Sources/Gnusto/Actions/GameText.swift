@@ -91,6 +91,8 @@ public struct GameText: Sendable {
     public var carrying = "You are carrying:"
     /// Reading something with no description to read.
     public var nothingWritten = "There's nothing written on that."
+    /// A `wait` turn — a beat passes while fuses and daemons tick.
+    public var timePasses = "Time passes."
 
     // MARK: - Containers
 

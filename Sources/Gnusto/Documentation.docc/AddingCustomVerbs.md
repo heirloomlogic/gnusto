@@ -4,7 +4,9 @@ Teach the parser words the built-in table doesn't know.
 
 ## Overview
 
-Gnusto ships with a standard verb table: `take`, `drop`, `examine`, `wear`, `go`, `look`, and their synonyms. When your game needs a verb of its own — `ring`, `buy`, `dig`, `pull` — you declare it once with `#verb` and handle it in a rule.
+Gnusto ships with a standard verb table: `take`, `drop`, `examine`, `wear`, `go`, `look`, `wait` (`z`), and their synonyms. When your game needs a verb of its own — `ring`, `buy`, `dig`, `pull` — you declare it once with `#verb` and handle it in a rule.
+
+`wait` (and its alias `z`) is a normal, time-passing turn: it prints the `timePasses` line ("Time passes.") and lets fuses and daemons tick — the standard way to let a countdown run down or a wandering monster catch up. Re-skin the line by mutating `text.timePasses`.
 
 There are three beats to a custom verb: **declare** it, **list** it in a `verbs` block, and **respond** to it in a rule.
 
