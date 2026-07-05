@@ -49,6 +49,18 @@ public struct Player: Sendable {
         Ctx.current.with { $0.state.moves }
     }
 
+    /// The items the player is carrying (including worn items), sorted by ID
+    /// for stable iteration.
+    public var inventory: [Item] {
+        let frame = Ctx.current
+        let held = frame.with { scratch in
+            scratch.state.placements
+                .filter { $0.value == .heldBy(.player) }
+                .keys.sorted()
+        }
+        return held.compactMap { frame.definition.registry.items[$0] }
+    }
+
     /// True if the player is carrying the item (including worn items).
     public func isCarrying(_ item: Item) -> Bool {
         item.isHeld

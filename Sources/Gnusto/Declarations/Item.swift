@@ -175,6 +175,18 @@ public struct Item: Sendable, Equatable {
         }
     }
 
+    /// The items resting on or inside this item, sorted by ID for stable
+    /// iteration.
+    public var contents: [Item] {
+        let (frame, myID) = resolved
+        let children = frame.with { scratch in
+            scratch.state.placements
+                .filter { $0.value == .on(myID) || $0.value == .inside(myID) }
+                .keys.sorted()
+        }
+        return children.compactMap { frame.definition.registry.items[$0] }
+    }
+
     /// True if the item is directly in the location.
     public func isIn(_ location: Location) -> Bool {
         location.contains(self)
@@ -233,6 +245,17 @@ public struct Item: Sendable, Equatable {
     /// actions — how theft happens.
     public func move(heldBy holder: Actor) {
         move(heldBy: holder.asItem)
+    }
+
+    /// Moves the item into the player's hands, bypassing the usual actions —
+    /// the "you're suddenly holding this" moment (a lit match handed over, a
+    /// summoned object). Clears any worn state, since a held item isn't worn.
+    public func moveToPlayer() {
+        let (frame, id) = resolved
+        frame.with { scratch in
+            scratch.state.placements[id] = .heldBy(.player)
+            scratch.state.wornItems.remove(id)
+        }
     }
 
     /// Removes the item from play.
