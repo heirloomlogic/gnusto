@@ -443,7 +443,8 @@ enum Bootstrap {
             vocabulary: vocabulary,
             syntaxRules: syntaxRules,
             actionOverrides: actionOverrides,
-            warnings: verbWarnings + vocabularyWarnings + traitWarnings + actionWarnings)
+            warnings: verbWarnings + vocabularyWarnings + traitWarnings + actionWarnings,
+            onDeath: { game.onDeath() })
 
         let registrationFrame = TurnFrame(definition: definition, state: state)
         let (declaredRules, declaredTimers) = Ctx.$frame.withValue(registrationFrame) {

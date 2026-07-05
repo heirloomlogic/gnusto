@@ -176,4 +176,9 @@ struct GameDefinition: Sendable {
     /// bootstrap can add the dead-intent check after evaluating the `rules`
     /// block (which happens after the definition exists — see `rules`).
     var warnings: [String]
+    /// The game's death handler, run inside the live turn frame when the
+    /// player dies — before the standard banner and prompt. Defaults to the
+    /// fall-through handler, so games that don't implement `onDeath` behave
+    /// exactly as before.
+    let onDeath: @Sendable () -> DeathOutcome
 }

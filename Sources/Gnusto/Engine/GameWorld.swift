@@ -605,9 +605,20 @@ public actor GameWorld {
         case .gameOver(let won):
             frame.with { $0.state.status = won ? .won : .lost }
         case .died(let message):
+            // The death message always prints; then the game's handler gets
+            // to decide the death's fate (still inside the live frame, so it
+            // can say/mutate/teleport). A consumed death leaves the world
+            // `.playing` — the turn finishes normally, fuses and daemons tick,
+            // and no banner or prompt appears. Fall-through is byte-identical
+            // to the pre-hook path.
             frame.say(message)
-            frame.say(frame.definition.text.deathBanner)
-            frame.with { $0.state.status = .dead }
+            switch frame.definition.onDeath() {
+            case .consumed:
+                break
+            case .fallThrough:
+                frame.say(frame.definition.text.deathBanner)
+                frame.with { $0.state.status = .dead }
+            }
         }
     }
 
