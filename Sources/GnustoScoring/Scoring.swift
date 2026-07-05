@@ -58,6 +58,32 @@ public struct Scoring: GameContent {
         player.score += points
     }
 
+    /// Deducts `points` from the score — the flip side of `awardOnce`, for
+    /// penalties that aren't award-once (a death toll charged every time).
+    /// Unlike an award, this is not registered and can repeat.
+    ///
+    /// The score is a plain `Int` and may go **negative**: there is no floor.
+    /// That matches the original Zork, where an early death drops you below
+    /// zero, and the engine's `scoreLine` prints a negative number without
+    /// complaint. Games that want a floor can clamp `player.score` themselves.
+    public func penalize(_ points: Int) {
+        guard points != 0 else { return }
+        player.score -= points
+    }
+
+    /// An `onEnter` rule that pays `points` the first time the player enters
+    /// `room`, keyed by `register` through `awardOnce` — the event-scoring
+    /// idiom (Zork's "into the cellar, +25"). Splice into the host's rules:
+    ///
+    /// ```swift
+    /// scoring.visit(cellar, register: "cellar", points: 25)
+    /// ```
+    public func visit(_ room: Location, register: String, points: Int) -> Rule {
+        room.onEnter {
+            awardOnce(register, points: points)
+        }
+    }
+
     /// For each treasure: the first `take` pays its `.takeValue`, and the
     /// first arrival inside `trophyCase` pays its `.depositValue`. Register
     /// keys derive from the item's display name ("take.green gem"), so

@@ -82,6 +82,37 @@ struct ScoringTests {
             ])
     }
 
+    @Test func visitPaysOnFirstEntryOnly() async throws {
+        let transcript = try await play(
+            GalleryGame(),
+            ["score", "north", "score", "south", "north", "score", "quit"])
+        expectInOrder(
+            transcript,
+            [
+                "Your score is 0 of a possible 25",
+                "Inner Hall",
+                // First entry paid 25.
+                "Your score is 25 of a possible 25",
+                // Re-entering pays nothing more.
+                "Your score is 25 of a possible 25",
+            ])
+    }
+
+    @Test func penalizeRepeatsAndGoesNegative() async throws {
+        let transcript = try await play(
+            GalleryGame(),
+            ["stumble", "score", "stumble", "score", "quit"])
+        expectInOrder(
+            transcript,
+            [
+                "You stumble and bark your shin.",
+                // First stumble: 0 - 10 = -10 (no floor).
+                "Your score is -10 of a possible 25",
+                // Second stumble: -10 - 10 = -20, proving it repeats.
+                "Your score is -20 of a possible 25",
+            ])
+    }
+
     @Test func claimedRegistersSurviveSaveAndRestore() async throws {
         let path = FileManager.default.temporaryDirectory
             .appendingPathComponent("gnusto-scoring-\(UUID().uuidString).sav").path
