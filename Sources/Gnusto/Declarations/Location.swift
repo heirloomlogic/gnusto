@@ -9,6 +9,8 @@ public struct Location: Sendable, Equatable {
     let traits: [LocationTrait]
 
     /// Declares a location from a block of traits (`Location { name(…) }`).
+    ///
+    /// - Parameter traits: the trait block describing the location.
     public init(@LocationBuilder _ traits: () -> [LocationTrait] = { [] }) {
         self.token = RefToken()
         self.traits = traits()
@@ -83,6 +85,9 @@ public struct Location: Sendable, Equatable {
     }
 
     /// True if the item is directly in this location.
+    ///
+    /// - Parameter item: the item to test.
+    /// - Returns: true if the item is directly here.
     public func contains(_ item: Item) -> Bool {
         let (frame, locationID) = resolved
         let itemID = item.id
@@ -98,17 +103,33 @@ public struct Location: Sendable, Equatable {
 
     /// The general destination exit, for directions chosen dynamically
     /// (e.g. built in a loop).
+    ///
+    /// - Parameters:
+    ///   - direction: the direction the exit lies in.
+    ///   - destination: the room the exit leads to.
+    /// - Returns: the map entry declaring the exit.
     public func exit(_ direction: Direction, to destination: Location) -> MapEntry {
         MapEntry(kind: .exit(from: token, direction: direction, to: destination.token))
     }
 
     /// The general blocked exit.
+    ///
+    /// - Parameters:
+    ///   - direction: the direction the exit lies in.
+    ///   - message: the refusal shown when the player tries it.
+    /// - Returns: the map entry declaring the exit.
     public func exit(_ direction: Direction, blocked message: String) -> MapEntry {
         MapEntry(kind: .blockedExit(from: token, direction: direction, message: message))
     }
 
     /// The general door exit: passable only while `door` (an `openable` item
     /// shared between both rooms) is open.
+    ///
+    /// - Parameters:
+    ///   - direction: the direction the exit lies in.
+    ///   - destination: the room the exit leads to.
+    ///   - door: the openable item that gates the exit.
+    /// - Returns: the map entry declaring the exit.
     public func exit(_ direction: Direction, to destination: Location, via door: Item) -> MapEntry {
         MapEntry(
             kind: .doorExit(
@@ -117,6 +138,13 @@ public struct Location: Sendable, Equatable {
 
     /// The general conditional exit: `condition` is evaluated at `go` time, and
     /// the player is refused with `blocked` while it is false.
+    ///
+    /// - Parameters:
+    ///   - direction: the direction the exit lies in.
+    ///   - destination: the room the exit leads to.
+    ///   - condition: evaluated at `go` time; the exit is open while true.
+    ///   - blocked: the refusal shown while the condition is false.
+    /// - Returns: the map entry declaring the exit.
     public func exit(
         _ direction: Direction,
         to destination: Location,
@@ -133,6 +161,11 @@ public struct Location: Sendable, Equatable {
 
     /// Runs before the default action when the named intents are attempted
     /// in this location.
+    ///
+    /// - Parameters:
+    ///   - intents: the intents this rule reacts to.
+    ///   - body: the rule body.
+    /// - Returns: the assembled rule.
     public func before(
         _ intents: Intent...,
         perform body: @escaping @Sendable () throws -> Void
@@ -142,6 +175,11 @@ public struct Location: Sendable, Equatable {
 
     /// Runs after the default action when the named intents succeed in this
     /// location.
+    ///
+    /// - Parameters:
+    ///   - intents: the intents this rule reacts to.
+    ///   - body: the rule body.
+    /// - Returns: the assembled rule.
     public func after(
         _ intents: Intent...,
         perform body: @escaping @Sendable () throws -> Void
@@ -150,6 +188,9 @@ public struct Location: Sendable, Equatable {
     }
 
     /// Runs at the start of every turn the player spends in this location.
+    ///
+    /// - Parameter body: the rule body.
+    /// - Returns: the assembled rule.
     public func beforeEachTurn(
         perform body: @escaping @Sendable () throws -> Void
     ) -> Rule {
@@ -158,6 +199,9 @@ public struct Location: Sendable, Equatable {
 
     /// Runs at the end of every turn the player spends in this location —
     /// including turns that were refused, because world time still passes.
+    ///
+    /// - Parameter body: the rule body.
+    /// - Returns: the assembled rule.
     public func afterEachTurn(
         perform body: @escaping @Sendable () throws -> Void
     ) -> Rule {
@@ -171,6 +215,9 @@ public struct Location: Sendable, Equatable {
     /// description print. Use `reply(_:)`/`refuse(_:)` only to *replace* the
     /// automatic description entirely (a cutscene, blacking out, a room too dark
     /// to see) — they end the turn before the room is described.
+    ///
+    /// - Parameter body: the rule body.
+    /// - Returns: the assembled rule.
     public func onEnter(
         perform body: @escaping @Sendable () throws -> Void
     ) -> Rule {

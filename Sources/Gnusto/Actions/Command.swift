@@ -14,6 +14,10 @@ public struct Intent: Hashable, Sendable {
     /// Creates an intent with the given identifier. `#verb` expands to the
     /// form that carries verb rows; pass `syntax` directly only when building
     /// rows dynamically.
+    ///
+    /// - Parameters:
+    ///   - raw: the intent's stable identifier.
+    ///   - syntax: the verb rows that produce this intent, if any.
     public init(_ raw: String, syntax: [SyntaxRule] = []) {
         self.raw = raw
         self.syntax = syntax

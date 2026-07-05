@@ -5,36 +5,50 @@
 @resultBuilder
 public enum GnustoBuilder<Element> {
     /// Wraps a single element into a one-element block.
+    /// - Parameter element: the element to wrap.
+    /// - Returns: a one-element block.
     public static func buildExpression(_ element: Element) -> [Element] {
         [element]
     }
 
     /// Concatenates the blocks in a builder body.
+    /// - Parameter parts: the blocks to concatenate.
+    /// - Returns: the concatenated block.
     public static func buildBlock(_ parts: [Element]...) -> [Element] {
         parts.flatMap(\.self)
     }
 
     /// Yields the elements of an `if` without `else`, or an empty block.
+    /// - Parameter parts: the optional block.
+    /// - Returns: the block, or an empty block when `nil`.
     public static func buildOptional(_ parts: [Element]?) -> [Element] {
         parts ?? []
     }
 
     /// Yields the elements from the first branch of an `if`/`else`.
+    /// - Parameter parts: the first branch's block.
+    /// - Returns: the block unchanged.
     public static func buildEither(first parts: [Element]) -> [Element] {
         parts
     }
 
     /// Yields the elements from the second branch of an `if`/`else`.
+    /// - Parameter parts: the second branch's block.
+    /// - Returns: the block unchanged.
     public static func buildEither(second parts: [Element]) -> [Element] {
         parts
     }
 
     /// Flattens the per-iteration blocks of a `for` loop.
+    /// - Parameter parts: the per-iteration blocks.
+    /// - Returns: the flattened block.
     public static func buildArray(_ parts: [[Element]]) -> [Element] {
         parts.flatMap(\.self)
     }
 
     /// Returns the collected elements unchanged.
+    /// - Parameter parts: the collected elements.
+    /// - Returns: the elements unchanged.
     public static func buildFinalResult(_ parts: [Element]) -> [Element] {
         parts
     }
@@ -57,11 +71,15 @@ public typealias TimerBuilder = GnustoBuilder<TimedEvent>
 
 extension GnustoBuilder where Element == Rule {
     /// Lets `rules` blocks compose: `var rules: Rules { cloakRules; barRules }`.
+    /// - Parameter rules: the `Rules` value to splice.
+    /// - Returns: its constituent rules.
     public static func buildExpression(_ rules: Rules) -> [Rule] {
         rules.rules
     }
 
     /// Packages the collected rules into a `Rules` value.
+    /// - Parameter rules: the collected rules.
+    /// - Returns: a `Rules` value wrapping them.
     public static func buildFinalResult(_ rules: [Rule]) -> Rules {
         Rules(rules: rules)
     }
@@ -70,12 +88,16 @@ extension GnustoBuilder where Element == Rule {
 extension GnustoBuilder where Element == SyntaxRule {
     /// Lets `verbs` blocks splice a whole table at once — e.g. a plugin's
     /// `combat.verbs` — alongside individual `SyntaxRule` rows.
+    /// - Parameter table: the syntax-rule table to splice.
+    /// - Returns: the table unchanged.
     public static func buildExpression(_ table: [SyntaxRule]) -> [SyntaxRule] {
         table
     }
 
     /// Lets a `verbs` block list a `#verb`-declared intent — `.ring` — and
     /// splice the rows the intent carries.
+    /// - Parameter intent: the intent whose rows to splice.
+    /// - Returns: the intent's syntax rows.
     public static func buildExpression(_ intent: Intent) -> [SyntaxRule] {
         intent.syntax
     }
@@ -85,6 +107,8 @@ extension GnustoBuilder where Element == SyntaxRule {
     /// leading-dot statements on consecutive lines parse as one chained
     /// member access (`.ring.polish`), so multiple intents need either this
     /// or an `Intent.` prefix per line.
+    /// - Parameter intents: the intents whose rows to splice.
+    /// - Returns: the intents' syntax rows.
     public static func buildExpression(_ intents: [Intent]) -> [SyntaxRule] {
         intents.flatMap(\.syntax)
     }
@@ -93,6 +117,8 @@ extension GnustoBuilder where Element == SyntaxRule {
 extension GnustoBuilder where Element == IntentAction {
     /// Lets `actions` blocks splice a whole table at once — e.g. a plugin's
     /// `combat.actions` — alongside individual `IntentAction` rows.
+    /// - Parameter table: the intent-action table to splice.
+    /// - Returns: the table unchanged.
     public static func buildExpression(_ table: [IntentAction]) -> [IntentAction] {
         table
     }
@@ -101,6 +127,8 @@ extension GnustoBuilder where Element == IntentAction {
 extension GnustoBuilder where Element == TimedEvent {
     /// Lets `timers` blocks splice a whole table at once — e.g. a plugin's
     /// `combat.timers` — alongside individual `fuse`/`daemon` rows.
+    /// - Parameter table: the timed-event table to splice.
+    /// - Returns: the table unchanged.
     public static func buildExpression(_ table: [TimedEvent]) -> [TimedEvent] {
         table
     }
@@ -108,11 +136,15 @@ extension GnustoBuilder where Element == TimedEvent {
 
 extension GnustoBuilder where Element == MapEntry {
     /// Lets `map` blocks compose from sub-maps.
+    /// - Parameter map: the sub-map to splice.
+    /// - Returns: its map entries.
     public static func buildExpression(_ map: WorldMap) -> [MapEntry] {
         map.entries
     }
 
     /// Packages the collected entries into a `WorldMap` value.
+    /// - Parameter entries: the collected entries.
+    /// - Returns: a `WorldMap` value wrapping them.
     public static func buildFinalResult(_ entries: [MapEntry]) -> WorldMap {
         WorldMap(entries: entries)
     }
@@ -120,6 +152,8 @@ extension GnustoBuilder where Element == MapEntry {
 
 extension GnustoBuilder where Element == any GameContent {
     /// Packages the collected bundles into a `GameContents` value.
+    /// - Parameter modules: the collected bundles.
+    /// - Returns: a `GameContents` value wrapping them.
     public static func buildFinalResult(_ modules: [any GameContent]) -> GameContents {
         GameContents(modules: modules)
     }

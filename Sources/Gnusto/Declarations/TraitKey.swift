@@ -21,6 +21,8 @@ public struct TraitKey<Value: GlobalValue>: Sendable {
 
     /// Declares a trait key with no default; reading it back yields `nil`
     /// when the entity has no trait by this name.
+    ///
+    /// - Parameter name: the trait's storage name.
     public init(_ name: String) {
         self.name = name
         self.defaultValue = nil
@@ -28,6 +30,10 @@ public struct TraitKey<Value: GlobalValue>: Sendable {
 
     /// Declares a trait key with a default value, enabling `item[default:
     /// .key]` to read back a non-optional `V`.
+    ///
+    /// - Parameters:
+    ///   - name: the trait's storage name.
+    ///   - default: the value read back when the trait is absent.
     public init(_ name: String, default: Value) {
         self.name = name
         self.defaultValue = `default`
@@ -39,6 +45,11 @@ public struct TraitKey<Value: GlobalValue>: Sendable {
 /// A custom, plugin-defined property of a location, keyed by a typed
 /// `TraitKey` (`trait(.region, "docks")`). Read it back with the location's
 /// typed subscript (`location[.region]`).
+///
+/// - Parameters:
+///   - key: the typed trait key.
+///   - value: the value to store.
+/// - Returns: the location trait.
 public func trait<V>(_ key: TraitKey<V>, _ value: V) -> LocationTrait {
     LocationTrait(kind: .custom(key: key.name, value: value.stateValue))
 }
@@ -46,6 +57,11 @@ public func trait<V>(_ key: TraitKey<V>, _ value: V) -> LocationTrait {
 /// A custom, plugin-defined property of an item, keyed by a typed `TraitKey`
 /// (`trait(.price, 5)`). Read it back with the item's typed subscript
 /// (`item[.price]`).
+///
+/// - Parameters:
+///   - key: the typed trait key.
+///   - value: the value to store.
+/// - Returns: the item trait.
 public func trait<V>(_ key: TraitKey<V>, _ value: V) -> ItemTrait {
     ItemTrait(kind: .custom(key: key.name, value: value.stateValue))
 }
@@ -58,6 +74,9 @@ extension Item {
     /// type — including a key declared with a default, if you want to tell
     /// "absent" apart from "equal to the default" (use `item[default:
     /// .key]` when you don't).
+    ///
+    /// - Parameter key: the typed trait key to read.
+    /// - Returns: the stored value, or `nil` when absent or a type mismatch.
     public subscript<V>(key: TraitKey<V>) -> V? {
         let (frame, id) = resolved
         guard let stored = frame.customTrait(key.name, of: id) else { return nil }
@@ -69,6 +88,9 @@ extension Item {
     /// was stored as a different type. Traps if `key` carries no default —
     /// declare it with `TraitKey(_:default:)`, or read it with the plain
     /// `item[key]` optional subscript instead.
+    ///
+    /// - Parameter key: the defaulted trait key to read.
+    /// - Returns: the stored value, or the key's default when absent.
     public subscript<V>(default key: TraitKey<V>) -> V {
         let (frame, id) = resolved
         guard let stored = frame.customTrait(key.name, of: id), let value = V(stateValue: stored)
@@ -93,6 +115,9 @@ extension Location {
     /// type — including a key declared with a default, if you want to tell
     /// "absent" apart from "equal to the default" (use `location[default:
     /// .key]` when you don't).
+    ///
+    /// - Parameter key: the typed trait key to read.
+    /// - Returns: the stored value, or `nil` when absent or a type mismatch.
     public subscript<V>(key: TraitKey<V>) -> V? {
         let (frame, id) = resolved
         guard let stored = frame.customTrait(key.name, of: id) else { return nil }
@@ -104,6 +129,9 @@ extension Location {
     /// or it was stored as a different type. Traps if `key` carries no
     /// default — declare it with `TraitKey(_:default:)`, or read it with the
     /// plain `location[key]` optional subscript instead.
+    ///
+    /// - Parameter key: the defaulted trait key to read.
+    /// - Returns: the stored value, or the key's default when absent.
     public subscript<V>(default key: TraitKey<V>) -> V {
         let (frame, id) = resolved
         guard let stored = frame.customTrait(key.name, of: id), let value = V(stateValue: stored)

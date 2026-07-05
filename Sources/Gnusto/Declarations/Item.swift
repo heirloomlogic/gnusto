@@ -8,6 +8,8 @@ public struct Item: Sendable, Equatable {
     let traits: [ItemTrait]
 
     /// Declares an item from a block of traits (`Item { name(…) }`).
+    ///
+    /// - Parameter traits: the trait block describing the item.
     public init(@ItemBuilder _ traits: () -> [ItemTrait] = { [] }) {
         self.token = RefToken()
         self.traits = traits()
@@ -166,6 +168,9 @@ public struct Item: Sendable, Equatable {
     }
 
     /// True if the other item is on or inside this one.
+    ///
+    /// - Parameter item: the item to test.
+    /// - Returns: true if it rests on or inside this one.
     public func holds(_ item: Item) -> Bool {
         let (frame, myID) = resolved
         let itemID = item.id
@@ -188,6 +193,9 @@ public struct Item: Sendable, Equatable {
     }
 
     /// True if the item is directly in the location.
+    ///
+    /// - Parameter location: the room to test.
+    /// - Returns: true if the item is directly there.
     public func isIn(_ location: Location) -> Bool {
         location.contains(self)
     }
@@ -199,6 +207,8 @@ public struct Item: Sendable, Equatable {
     /// player should see the new banks. (`move(inside:)`, `move(onto:)`,
     /// and `vanish()` deliberately do NOT carry the player: a vehicle that
     /// leaves the room any other way strands its passenger on foot.)
+    ///
+    /// - Parameter location: the room to move the item into.
     public func move(to location: Location) {
         let (frame, id) = resolved
         let locationID = location.id
@@ -212,6 +222,8 @@ public struct Item: Sendable, Equatable {
 
     /// Moves the item inside a container, bypassing the usual actions. Traps if
     /// the target is not a container.
+    ///
+    /// - Parameter container: the container to move the item into.
     public func move(inside container: Item) {
         let (frame, id) = resolved
         let containerID = container.id
@@ -224,6 +236,8 @@ public struct Item: Sendable, Equatable {
 
     /// Moves the item onto a surface, bypassing the usual actions. Traps if the
     /// target is not a surface.
+    ///
+    /// - Parameter surface: the surface to move the item onto.
     public func move(onto surface: Item) {
         let (frame, id) = resolved
         let surfaceID = surface.id
@@ -235,6 +249,8 @@ public struct Item: Sendable, Equatable {
     }
 
     /// Moves the item into an entity's inventory, bypassing the usual actions.
+    ///
+    /// - Parameter holder: the entity to hold the item.
     public func move(heldBy holder: Item) {
         let (frame, id) = resolved
         let holderID = holder.id
@@ -243,6 +259,8 @@ public struct Item: Sendable, Equatable {
 
     /// Moves the item into an actor's inventory, bypassing the usual
     /// actions — how theft happens.
+    ///
+    /// - Parameter holder: the actor to hold the item.
     public func move(heldBy holder: Actor) {
         move(heldBy: holder.asItem)
     }
@@ -270,16 +288,25 @@ public struct Item: Sendable, Equatable {
     // MARK: - Map factories
 
     /// The item starts the game in a location.
+    ///
+    /// - Parameter location: where the item begins.
+    /// - Returns: the map entry declaring the start.
     public func starts(in location: Location) -> MapEntry {
         MapEntry(kind: .placement(item: token, target: .location(location.token)))
     }
 
     /// The item starts the game on a surface.
+    ///
+    /// - Parameter item: the surface the item begins on.
+    /// - Returns: the map entry declaring the start.
     public func starts(on item: Item) -> MapEntry {
         MapEntry(kind: .placement(item: token, target: .on(item.token)))
     }
 
     /// The item starts the game inside a container.
+    ///
+    /// - Parameter item: the container the item begins in.
+    /// - Returns: the map entry declaring the start.
     public func starts(inside item: Item) -> MapEntry {
         MapEntry(kind: .placement(item: token, target: .inside(item.token)))
     }
@@ -295,6 +322,9 @@ public struct Item: Sendable, Equatable {
     }
 
     /// The item starts the game in an actor's inventory.
+    ///
+    /// - Parameter actor: the actor holding the item at the start.
+    /// - Returns: the map entry declaring the start.
     public func starts(heldBy actor: Actor) -> MapEntry {
         MapEntry(kind: .placement(item: token, target: .heldBy(actor.token)))
     }
@@ -302,6 +332,11 @@ public struct Item: Sendable, Equatable {
     // MARK: - Rule factories
 
     /// Runs before the default action when the named intents target this item.
+    ///
+    /// - Parameters:
+    ///   - intents: the intents this rule reacts to.
+    ///   - body: the rule body.
+    /// - Returns: the assembled rule.
     public func before(
         _ intents: Intent...,
         perform body: @escaping @Sendable () throws -> Void
@@ -311,6 +346,11 @@ public struct Item: Sendable, Equatable {
 
     /// Runs after the default action when the named intents succeeded against
     /// this item.
+    ///
+    /// - Parameters:
+    ///   - intents: the intents this rule reacts to.
+    ///   - body: the rule body.
+    /// - Returns: the assembled rule.
     public func after(
         _ intents: Intent...,
         perform body: @escaping @Sendable () throws -> Void

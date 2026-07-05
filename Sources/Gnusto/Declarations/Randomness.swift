@@ -20,6 +20,9 @@ extension WorldState {
 ///
 /// Reduction is by modulo — its bias is far below anything a game can
 /// notice, and it keeps the stream's arithmetic simple.
+///
+/// - Parameter range: the range to draw from.
+/// - Returns: a uniform value within the range.
 public func random(_ range: ClosedRange<Int>) -> Int {
     let span = UInt64(range.upperBound &- range.lowerBound) &+ 1
     let draw = Ctx.current.with { $0.state.nextRandom() }
@@ -27,11 +30,17 @@ public func random(_ range: ClosedRange<Int>) -> Int {
 }
 
 /// One of the options, uniformly: `say(oneOf("Thud.", "Clang."))`.
+///
+/// - Parameter options: the choices to draw from.
+/// - Returns: one option, chosen uniformly.
 public func oneOf(_ options: String...) -> String {
     oneOf(options)
 }
 
 /// One of the options, uniformly, from an array.
+///
+/// - Parameter options: the choices to draw from.
+/// - Returns: one option, chosen uniformly.
 public func oneOf(_ options: [String]) -> String {
     guard !options.isEmpty else {
         fatalError("Gnusto: oneOf(…) needs at least one option.")
@@ -40,6 +49,9 @@ public func oneOf(_ options: [String]) -> String {
 }
 
 /// True `percent` times out of a hundred: `if chance(30) { … }`.
+///
+/// - Parameter percent: the odds, out of a hundred.
+/// - Returns: `true` with the given probability.
 public func chance(_ percent: Int) -> Bool {
     random(1...100) <= percent
 }

@@ -62,16 +62,25 @@ public struct Player: Sendable {
     }
 
     /// True if the player is carrying the item (including worn items).
+    ///
+    /// - Parameter item: the item to test.
+    /// - Returns: true if the player is carrying it.
     public func isCarrying(_ item: Item) -> Bool {
         item.isHeld
     }
 
     /// True if the player is wearing the item.
+    ///
+    /// - Parameter item: the item to test.
+    /// - Returns: true if the player is wearing it.
     public func isWearing(_ item: Item) -> Bool {
         item.isWorn
     }
 
     /// The player's starting location, declared in the `map` block.
+    ///
+    /// - Parameter location: where the player begins.
+    /// - Returns: the map entry declaring the start.
     public func starts(in location: Location) -> MapEntry {
         MapEntry(kind: .playerStart(location.token))
     }

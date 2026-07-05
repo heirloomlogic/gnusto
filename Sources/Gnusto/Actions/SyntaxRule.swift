@@ -16,6 +16,8 @@ public enum SyntaxElement: Sendable, Hashable, ExpressibleByStringLiteral {
     case direction
 
     /// A string literal in a pattern is a literal word.
+    ///
+    /// - Parameter value: the literal token as typed.
     public init(stringLiteral value: String) {
         self = .word(value)
     }
@@ -31,6 +33,10 @@ public struct SyntaxRule: Sendable {
     /// Builds a verb row from its pattern. The pattern must start with a
     /// literal word; the bootstrap validates custom rows and reports
     /// malformed patterns as fatal diagnostics.
+    ///
+    /// - Parameters:
+    ///   - elements: the pattern of literal words and slots.
+    ///   - intent: the intent a match produces.
     public init(_ elements: SyntaxElement..., intent: Intent) {
         self.elements = elements
         self.intent = intent

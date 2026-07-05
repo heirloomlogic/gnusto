@@ -49,22 +49,34 @@ public struct ItemTrait: Sendable {
 // MARK: - Trait vocabulary
 
 /// The display name of a location. The last word becomes a parser noun.
+///
+/// - Parameter text: the location's display name.
+/// - Returns: the name trait.
 public func name(_ text: String) -> LocationTrait {
     LocationTrait(kind: .name(text))
 }
 
 /// The display name of an item. The last word becomes the item's primary
 /// noun; the leading words double as adjectives.
+///
+/// - Parameter text: the item's display name.
+/// - Returns: the name trait.
 public func name(_ text: String) -> ItemTrait {
     ItemTrait(kind: .name(text))
 }
 
 /// The long description shown when the location is described in full.
+///
+/// - Parameter text: the location's long description.
+/// - Returns: the description trait.
 public func description(_ text: String) -> LocationTrait {
     LocationTrait(kind: .description(text))
 }
 
 /// The text shown when the item is examined (or read).
+///
+/// - Parameter text: the item's examine text.
+/// - Returns: the description trait.
 public func description(_ text: String) -> ItemTrait {
     ItemTrait(kind: .description(text))
 }
@@ -82,6 +94,9 @@ public func description(_ text: String) -> ItemTrait {
 /// Declaring both a static `description("…")` and a closure on the same
 /// location is ambiguous and reported as a bootstrap diagnostic. A runtime
 /// override (`location.description = "…"`) still wins over either.
+///
+/// - Parameter text: the closure recomputing the description on each read.
+/// - Returns: the dynamic description trait.
 public func description(_ text: @escaping @Sendable () -> String) -> LocationTrait {
     LocationTrait(kind: .dynamicDescription(text))
 }
@@ -104,16 +119,25 @@ public func description(_ text: @escaping @Sendable () -> String) -> LocationTra
 /// Declaring both a static `description("…")` and a closure on the same item
 /// is ambiguous and reported as a bootstrap diagnostic. A runtime override
 /// (`item.description = "…"`) still wins over either.
+///
+/// - Parameter text: the closure recomputing the description on each read.
+/// - Returns: the dynamic description trait.
 public func description(_ text: @escaping @Sendable () -> String) -> ItemTrait {
     ItemTrait(kind: .dynamicDescription(text))
 }
 
 /// Additional words the parser accepts before the item's noun.
+///
+/// - Parameter words: the adjectives to accept.
+/// - Returns: the adjectives trait.
 public func adjectives(_ words: String...) -> ItemTrait {
     ItemTrait(kind: .adjectives(words))
 }
 
 /// Alternative nouns the parser accepts for the item.
+///
+/// - Parameter words: the alternative nouns to accept.
+/// - Returns: the synonyms trait.
 public func synonyms(_ words: String...) -> ItemTrait {
     ItemTrait(kind: .synonyms(words))
 }
@@ -124,6 +148,9 @@ public func synonyms(_ words: String...) -> ItemTrait {
 /// On an ``Actor`` the same trait is the *standing presence line* (ZIL's
 /// LDESC role): printed on every look, never worn off by handling — people
 /// aren't props.
+///
+/// - Parameter text: the first-sight paragraph.
+/// - Returns: the first-sight trait.
 public func firstSight(_ text: String) -> ItemTrait {
     ItemTrait(kind: .firstSight(text))
 }
@@ -163,6 +190,9 @@ public let transparent = ItemTrait(kind: .transparent)
 /// item **starts locked** unless it also declares `startsUnlocked`. The key is
 /// captured by reference; Bootstrap resolves it to a concrete item and reports
 /// a fatal diagnostic if the key is not a declared item.
+///
+/// - Parameter key: the item that locks and unlocks this one.
+/// - Returns: the lockable trait.
 public func lockable(with key: Item) -> ItemTrait {
     ItemTrait(kind: .lockable(key: key.token))
 }
@@ -172,6 +202,9 @@ public let startsUnlocked = ItemTrait(kind: .startsUnlocked)
 
 /// The maximum number of items that may be placed directly inside a container
 /// (enforced by the put-in action).
+///
+/// - Parameter n: the maximum number of items.
+/// - Returns: the capacity trait.
 public func capacity(_ n: Int) -> ItemTrait {
     ItemTrait(kind: .capacity(n))
 }

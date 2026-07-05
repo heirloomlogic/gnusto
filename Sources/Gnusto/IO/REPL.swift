@@ -5,6 +5,10 @@ public struct REPL: Sendable {
     private let io: any IOHandler
 
     /// Creates a REPL driving the given world through the given IO handler.
+    ///
+    /// - Parameters:
+    ///   - world: the world to drive.
+    ///   - io: the IO handler for input and output.
     public init(world: GameWorld, io: any IOHandler) {
         self.world = world
         self.io = io

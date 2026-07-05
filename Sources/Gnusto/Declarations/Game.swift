@@ -119,6 +119,8 @@ public protocol Game: Sendable {
     /// fatal turn — the death, the resurrection, and everything the handler
     /// did — back to where the player stood before it, which is the coherent
     /// thing to undo.
+    ///
+    /// - Returns: whether the death is consumed or falls through.
     func onDeath() -> DeathOutcome
 }
 
@@ -149,6 +151,8 @@ extension Game {
     public var actions: [IntentAction] { [] }
 
     /// Games without a resurrection story die the standard way.
+    ///
+    /// - Returns: `.fallThrough`, the standard death path.
     public func onDeath() -> DeathOutcome { .fallThrough }
 
     /// The player character — usable as a bare identifier in `map` and
