@@ -212,14 +212,22 @@ public struct MeleeCombat: GameContent {
     /// ≤ 85, an outright kill above. `playerStrength` hits end the player;
     /// wounds don't heal this phase. A stunned villain spends his turn
     /// coming to instead (no roll).
+    ///
+    /// `while:` is an extra gate evaluated *first*, before the alive/conscious/
+    /// same-room guards and before any draw — so a villain whose combat is
+    /// scoped (the thief only fights in his lair) burns no randomness on the
+    /// turns his gate is closed, keeping every seeded draw sequence intact.
     public func aggression(
         of actor: Actor,
         key: String,
         daemonName: String,
         playerStrength: Int = 2,
+        while gate: @escaping @Sendable () -> Bool = { true },
         prose: AggressionProse
     ) -> TimedEvent {
         daemon(daemonName, autostart: true) {
+            // The host's gate first: a false gate is a quiet turn, no draw.
+            guard gate() else { return }
             // Guards before any draw, so quiet turns burn no randomness.
             guard ledger.health[key] ?? 1 > 0 else { return }
             if ledger.stunned[key, default: 0] > 0 {
