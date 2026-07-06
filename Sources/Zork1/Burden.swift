@@ -37,8 +37,12 @@ struct ZorkBurden: GameContent {
 /// An item's own weight plus the weight of everything it contains, all the
 /// way down — a full sack weighs its own 5 plus the garlic and the lunch.
 ///
+/// Internal rather than `private` so the temple's altar-crack load cap (the
+/// coffin is too heavy to squeeze down toward Hades) can weigh the player's
+/// hands the same way the carry cap does. See `Regions/Temple.swift`.
+///
 /// - Parameter item: the item to weigh.
 /// - Returns: the item's total burden, contents included.
-private func burdenWeight(of item: Item) -> Int {
+func burdenWeight(of item: Item) -> Int {
     item.contents.reduce(item[default: .weight]) { $0 + burdenWeight(of: $1) }
 }
