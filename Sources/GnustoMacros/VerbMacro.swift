@@ -9,6 +9,12 @@ import SwiftSyntaxMacros
 public struct VerbMacro: DeclarationMacro {
     /// Parses the invocation, validates the patterns, and emits the
     /// `static let` declaration.
+    ///
+    /// - Parameters:
+    ///   - node: the `#verb(…)` macro invocation syntax.
+    ///   - context: the macro expansion context.
+    /// - Throws: a `MacroError` when the invocation or a pattern is malformed.
+    /// - Returns: the generated `static let` declaration.
     public static func expansion(
         of node: some FreestandingMacroExpansionSyntax,
         in context: some MacroExpansionContext

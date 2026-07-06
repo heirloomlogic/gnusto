@@ -75,3 +75,51 @@ struct TreasureVaultGame: Game {
         }
     }
 }
+
+/// Fixture for the additive scoring APIs: `Scoring.visit(_:register:points:)`
+/// (an award-once `onEnter` rule) and `Scoring.penalize(_:)` (an unregistered
+/// deduction that can repeat and take the score negative). A gallery, an inner
+/// hall the player earns points for first entering, and a trap verb that docks
+/// points each time.
+struct GalleryGame: Game {
+    let title = "Gallery"
+    let intro = "Marble floors and a doorway inward."
+    let maxScore = 25
+
+    let gallery = Location {
+        name("Gallery")
+        description("Marble, with an archway to the north.")
+    }
+
+    let hall = Location {
+        name("Inner Hall")
+        description("A vaulted hall hung with tapestries.")
+    }
+
+    let scoring = Scoring()
+
+    var content: GameContents {
+        scoring
+    }
+
+    var map: WorldMap {
+        player.starts(in: gallery)
+        gallery.north(hall)
+        hall.south(gallery)
+    }
+
+    var verbs: [SyntaxRule] {
+        SyntaxRule("stumble", intent: Intent("stumble"))
+    }
+
+    var rules: Rules {
+        // Entering the hall pays 25, once.
+        scoring.visit(hall, register: "hall", points: 25)
+        // Each stumble docks 10 — no register, so it repeats and can go below
+        // zero.
+        world.before(Intent("stumble")) {
+            scoring.penalize(10)
+            try reply("You stumble and bark your shin.")
+        }
+    }
+}

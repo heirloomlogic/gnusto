@@ -24,6 +24,8 @@ public struct Global<Value: GlobalValue>: Sendable, AnyGlobal {
     let defaultValue: Value
 
     /// Declares custom game state with the given initial value.
+    ///
+    /// - Parameter wrappedValue: the state's initial value.
     public init(wrappedValue: Value) {
         self.defaultValue = wrappedValue
     }

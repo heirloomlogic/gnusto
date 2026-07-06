@@ -36,6 +36,8 @@ public struct Actor: Sendable, Equatable {
     let traits: [ItemTrait]
 
     /// Declares an actor from a block of traits (`Actor { name(…) }`).
+    ///
+    /// - Parameter traits: the trait block describing the actor.
     public init(@ItemBuilder _ traits: () -> [ItemTrait] = { [] }) {
         self.token = RefToken()
         self.traits = traits()
@@ -88,11 +90,16 @@ public struct Actor: Sendable, Equatable {
     }
 
     /// True if the actor is in the location.
+    ///
+    /// - Parameter location: the room to test.
+    /// - Returns: true if the actor is there.
     public func isIn(_ location: Location) -> Bool {
         asItem.isIn(location)
     }
 
     /// Moves the actor to a location, bypassing the usual actions.
+    ///
+    /// - Parameter location: the room to move the actor into.
     public func move(to location: Location) {
         asItem.move(to: location)
     }
@@ -105,6 +112,9 @@ public struct Actor: Sendable, Equatable {
     }
 
     /// True if the actor is carrying the item.
+    ///
+    /// - Parameter item: the item to test.
+    /// - Returns: true if the actor holds it.
     public func holds(_ item: Item) -> Bool {
         let (frame, myID) = asItem.resolved
         let itemID = item.id
@@ -139,6 +149,9 @@ public struct Actor: Sendable, Equatable {
 
     /// The actor starts the game in a location — the only placement an
     /// actor accepts.
+    ///
+    /// - Parameter location: where the actor begins.
+    /// - Returns: the map entry declaring the start.
     public func starts(in location: Location) -> MapEntry {
         MapEntry(kind: .placement(item: token, target: .location(location.token)))
     }
@@ -147,6 +160,11 @@ public struct Actor: Sendable, Equatable {
 
     /// Runs before the default action when the named intents target this
     /// actor.
+    ///
+    /// - Parameters:
+    ///   - intents: the intents this rule reacts to.
+    ///   - body: the rule body.
+    /// - Returns: the assembled rule.
     public func before(
         _ intents: Intent...,
         perform body: @escaping @Sendable () throws -> Void
@@ -156,6 +174,11 @@ public struct Actor: Sendable, Equatable {
 
     /// Runs after the default action when the named intents succeeded
     /// against this actor.
+    ///
+    /// - Parameters:
+    ///   - intents: the intents this rule reacts to.
+    ///   - body: the rule body.
+    /// - Returns: the assembled rule.
     public func after(
         _ intents: Intent...,
         perform body: @escaping @Sendable () throws -> Void

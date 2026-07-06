@@ -3,12 +3,19 @@
 /// be added later without breaking this protocol's clients.
 public protocol IOHandler: Sendable {
     /// Writes pre-formatted text (no trailing-newline policy is implied).
+    ///
+    /// - Parameter text: the text to write.
     func write(_ text: String)
 
     /// Prompts for and returns one line of input; `nil` means end of input.
+    ///
+    /// - Parameter prompt: the prompt to show before reading.
+    /// - Returns: the line read, or `nil` at end of input.
     func readLine(prompt: String) -> String?
 
     /// Optionally displays a status line (location, score, turns).
+    ///
+    /// - Parameter status: the status line to display.
     func showStatus(_ status: StatusLine)
 }
 

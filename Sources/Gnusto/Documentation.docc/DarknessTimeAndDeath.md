@@ -101,7 +101,26 @@ Would you like to RESTART, RESTORE a saved game, UNDO your last turn, or QUIT?
 
 Every input line goes to that prompt until the player picks an exit — the four answers reuse the meta-verbs above, so `undo` from the prompt revives on the turn before the fatal one, and a failed restore re-offers the prompt rather than stranding a dead world. Death from a timer body follows the same shape as death from a rule.
 
-A dead world's time has stopped: each-turn rules and timers no longer run. Internally that state is ``GameStatus/dead`` — "over, but the conversation continues" — which is why a driver loops on `TurnResult.isFinished` rather than checking the status itself. A game-supplied resurrection hook (revive the player instead of prompting, Zork-style) is a planned seam on `die(_:)`; only the prompt ships today.
+A dead world's time has stopped: each-turn rules and timers no longer run. Internally that state is ``GameStatus/dead`` — "over, but the conversation continues" — which is why a driver loops on `TurnResult.isFinished` rather than checking the status itself.
+
+### The resurrection hook
+
+A game can intercept every death by implementing ``Game/onDeath()``. It runs the instant the player dies — after the `die(_:)` message prints, but *before* the banner and prompt — and inside the live turn, so it can do anything a rule can: print prose, move the player, dock the score, scatter their belongings, bump a death counter. What it returns decides the death's fate:
+
+```swift
+func onDeath() -> DeathOutcome {
+    deaths += 1
+    for item in player.inventory { item.move(to: forest) }
+    player.score -= 10
+    player.location = forest
+    say("A shadowy figure sets you down at the edge of the forest.")
+    return .consumed          // the player lives; play continues
+}
+```
+
+``DeathOutcome/consumed`` revives the player: the world stays ``GameStatus/playing``, the turn finishes normally (its fuses and daemons still tick), and no banner or prompt appears. ``DeathOutcome/fallThrough`` — the default — runs the standard death path unchanged, so a game that doesn't implement `onDeath()` dies exactly as before. This is how Zork models canonical resurrection: a toll and a teleport for the first few deaths, then a fall-through once the player has used up their luck.
+
+`UNDO` after a consumed death rewinds the *whole* fatal turn — the death, the resurrection, and everything the handler did — back to where the player stood before it, which is the coherent thing to undo.
 
 ## The worked example: the lantern and the grue
 

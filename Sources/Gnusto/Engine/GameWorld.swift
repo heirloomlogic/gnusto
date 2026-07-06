@@ -58,6 +58,9 @@ public actor GameWorld {
     /// Builds the world from a game definition, validating it up front.
     /// The random stream is seeded fresh each run; use `init(game:seed:)`
     /// to replay a specific one.
+    ///
+    /// - Parameter game: the game definition to build the world from.
+    /// - Throws: if the game definition is invalid.
     public init(game: some Game) throws {
         try self.init(game: game, seed: UInt64.random(in: .min ... .max))
     }
@@ -65,6 +68,11 @@ public actor GameWorld {
     /// Builds the world with a fixed random seed: the same seed and the same
     /// commands replay the same game, on any platform — for transcripts,
     /// tests, and bug reports.
+    ///
+    /// - Parameters:
+    ///   - game: the game definition to build the world from.
+    ///   - seed: the fixed random seed to replay.
+    /// - Throws: if the game definition is invalid.
     public init(game: some Game, seed: UInt64) throws {
         let (definition, state) = try Bootstrap.build(game)
         self.definition = definition
@@ -79,6 +87,8 @@ public actor GameWorld {
     }
 
     /// The opening of the game: intro, banner, and the first look around.
+    ///
+    /// - Returns: the opening turn's output and status.
     public func begin() -> TurnResult {
         let frame = TurnFrame(definition: definition, state: state)
         Ctx.$frame.withValue(frame) {
@@ -93,6 +103,9 @@ public actor GameWorld {
     /// no rules run and the turn counter doesn't advance. Question-type
     /// errors ("Which do you mean…?") stay open: the next line is first
     /// tried as their answer, and falls back to being a fresh command.
+    ///
+    /// - Parameter input: one line of player input.
+    /// - Returns: the turn's output and status.
     public func perform(_ input: String) -> TurnResult {
         if let prompt = pendingPrompt {
             pendingPrompt = nil
@@ -605,9 +618,20 @@ public actor GameWorld {
         case .gameOver(let won):
             frame.with { $0.state.status = won ? .won : .lost }
         case .died(let message):
+            // The death message always prints; then the game's handler gets
+            // to decide the death's fate (still inside the live frame, so it
+            // can say/mutate/teleport). A consumed death leaves the world
+            // `.playing` — the turn finishes normally, fuses and daemons tick,
+            // and no banner or prompt appears. Fall-through is byte-identical
+            // to the pre-hook path.
             frame.say(message)
-            frame.say(frame.definition.text.deathBanner)
-            frame.with { $0.state.status = .dead }
+            switch frame.definition.onDeath() {
+            case .consumed:
+                break
+            case .fallThrough:
+                frame.say(frame.definition.text.deathBanner)
+                frame.with { $0.state.status = .dead }
+            }
         }
     }
 

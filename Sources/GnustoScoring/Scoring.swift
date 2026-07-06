@@ -52,10 +52,48 @@ public struct Scoring: GameContent {
     /// ```swift
     /// world.before(solveIntent) { scoring.awardOnce("puzzle", points: 5) }
     /// ```
+    ///
+    /// - Parameters:
+    ///   - register: name gating the award — paid out at most once.
+    ///   - points: points added to the score on the first call.
     public func awardOnce(_ register: String, points: Int) {
         guard points != 0, !claimed.names.contains(register) else { return }
         claimed.names.insert(register)
         player.score += points
+    }
+
+    /// Deducts `points` from the score — the flip side of `awardOnce`, for
+    /// penalties that aren't award-once (a death toll charged every time).
+    /// Unlike an award, this is not registered and can repeat.
+    ///
+    /// The score is a plain `Int` and may go **negative**: there is no floor.
+    /// That matches the original Zork, where an early death drops you below
+    /// zero, and the engine's `scoreLine` prints a negative number without
+    /// complaint. Games that want a floor can clamp `player.score` themselves.
+    ///
+    /// - Parameter points: points subtracted from the score; may go negative.
+    public func penalize(_ points: Int) {
+        guard points != 0 else { return }
+        player.score -= points
+    }
+
+    /// An `onEnter` rule that pays `points` the first time the player enters
+    /// `room`, keyed by `register` through `awardOnce` — the event-scoring
+    /// idiom (Zork's "into the cellar, +25"). Splice into the host's rules:
+    ///
+    /// ```swift
+    /// scoring.visit(cellar, register: "cellar", points: 25)
+    /// ```
+    ///
+    /// - Parameters:
+    ///   - room: the location whose first entry pays out.
+    ///   - register: name gating the award through `awardOnce`.
+    ///   - points: points paid on the first entry.
+    /// - Returns: the `onEnter` rule scoring the first visit.
+    public func visit(_ room: Location, register: String, points: Int) -> Rule {
+        room.onEnter {
+            awardOnce(register, points: points)
+        }
     }
 
     /// For each treasure: the first `take` pays its `.takeValue`, and the
@@ -66,6 +104,11 @@ public struct Scoring: GameContent {
     /// ```swift
     /// scoring.treasures([painting, egg], into: trophyCase)
     /// ```
+    ///
+    /// - Parameters:
+    ///   - items: treasures whose take and deposit values are scored.
+    ///   - trophyCase: the container whose contents pay each `.depositValue`.
+    /// - Returns: the take/deposit rules scoring every treasure.
     @RuleBuilder
     public func treasures(_ items: [Item], into trophyCase: Item) -> Rules {
         for item in items {

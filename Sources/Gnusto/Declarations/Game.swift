@@ -1,3 +1,16 @@
+/// What a game's ``Game/onDeath()`` handler decides when the player dies.
+public enum DeathOutcome: Sendable {
+    /// Swallow the death: the world stays `.playing`, the turn ends normally
+    /// (its fuses and daemons still tick), and no death banner or prompt is
+    /// shown. The handler is responsible for making the continuation sensible
+    /// — teleporting the player somewhere alive, scattering their belongings,
+    /// docking the score. Zork's canonical resurrection.
+    case consumed
+    /// Let the standard death path run: the banner prints and the player is
+    /// offered RESTART / RESTORE / UNDO / QUIT. The default.
+    case fallThrough
+}
+
 /// A complete game: declarations, geography, and rules.
 ///
 /// Locations, items, and `@Global` state are declared as stored properties;
@@ -85,6 +98,30 @@ public protocol Game: Sendable {
     /// default. Defaults to empty. A row whose intent matches a built-in
     /// reclaims it (last-wins, with a non-fatal warning).
     @ActionBuilder var actions: [IntentAction] { get }
+
+    /// Called the instant the player dies — after the `die(_:)` message
+    /// prints, but *before* the death banner and the RESTART / RESTORE /
+    /// UNDO / QUIT prompt.
+    ///
+    /// The handler runs inside the live turn, so it can do anything a rule
+    /// can: print prose, move the player (`player.location = forest`), dock
+    /// the score, scatter belongings, bump a death-count `@Global`. What it
+    /// returns decides the death's fate:
+    ///
+    /// - ``DeathOutcome/consumed`` revives the player — the world stays
+    ///   `.playing`, the turn finishes normally (fuses and daemons still
+    ///   tick), no banner or prompt appears.
+    /// - ``DeathOutcome/fallThrough`` (the default) runs the standard death
+    ///   path unchanged.
+    ///
+    /// Defaults to `.fallThrough`, so a game that doesn't implement it dies
+    /// exactly as before. `UNDO` after a consumed death rewinds the whole
+    /// fatal turn — the death, the resurrection, and everything the handler
+    /// did — back to where the player stood before it, which is the coherent
+    /// thing to undo.
+    ///
+    /// - Returns: whether the death is consumed or falls through.
+    func onDeath() -> DeathOutcome
 }
 
 extension Game {
@@ -112,6 +149,11 @@ extension Game {
     /// Games that replace or add no default actions can omit the `actions`
     /// block.
     public var actions: [IntentAction] { [] }
+
+    /// Games without a resurrection story die the standard way.
+    ///
+    /// - Returns: `.fallThrough`, the standard death path.
+    public func onDeath() -> DeathOutcome { .fallThrough }
 
     /// The player character — usable as a bare identifier in `map` and
     /// `rules` blocks.

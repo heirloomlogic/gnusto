@@ -8,7 +8,7 @@ enum DefaultActions {
     static let builtInIntents: Set<Intent> = [
         .take, .drop, .wear, .doff, .putOn, .putIn, .open, .close, .lock, .unlock,
         .lookIn, .push, .turnOn, .turnOff, .go, .board, .disembark, .look, .examine,
-        .read, .inventory, .score, .version, .quit,
+        .read, .inventory, .score, .version, .quit, .wait,
     ]
 
     /// Runs the default action for a command: a game/bundle/plugin override
@@ -36,6 +36,7 @@ enum DefaultActions {
         case .go: try go(command, frame: frame)
         case .board: try board(command, frame: frame)
         case .disembark: try disembark(command, frame: frame)
+        case .wait: frame.say(frame.definition.text.timePasses)
         case .look: RoomDescriber.describeCurrentLocation(mode: .look, frame: frame)
         case .examine: try examine(command, frame: frame)
         case .read: try read(command, frame: frame)

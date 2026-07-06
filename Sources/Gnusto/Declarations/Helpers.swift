@@ -8,6 +8,8 @@ enum TurnInterrupt: Error {
 }
 
 /// Prints a message as part of the turn's output.
+///
+/// - Parameter message: the text to print.
 public func say(_ message: String) {
     Ctx.current.say(message)
 }
@@ -16,6 +18,9 @@ public func say(_ message: String) {
 /// remaining `before`/`after` rules are skipped; world time still passes.
 ///
 /// Returns `Never`, so it satisfies `guard … else { try refuse("…") }`.
+///
+/// - Parameter message: the complaint shown to the player.
+/// - Throws: the turn interrupt the engine catches to redirect the turn.
 public func refuse(_ message: String) throws -> Never {
     throw TurnInterrupt.refused(message: message)
 }
@@ -30,6 +35,11 @@ public func refuse(_ message: String) throws -> Never {
 /// Shares nothing with Swift Testing's `#require` macro (different
 /// namespaces; that one lives in test targets and traps the test on
 /// failure) — this one is ordinary game-rule flow control.
+///
+/// - Parameters:
+///   - condition: the requirement that must hold.
+///   - message: the refusal shown when it doesn't.
+/// - Throws: the turn interrupt the engine catches when the condition fails.
 public func require(_ condition: Bool, else message: String) throws {
     guard condition else {
         try refuse(message)
@@ -43,23 +53,29 @@ public func require(_ condition: Bool, else message: String) throws {
 ///
 /// `reply("")` ends the turn without adding a line — for bodies that have
 /// already said everything with `say(_:)`.
+///
+/// - Parameter message: the response shown to the player.
+/// - Throws: the turn interrupt the engine catches to redirect the turn.
 public func reply(_ message: String) throws -> Never {
     throw TurnInterrupt.replied(message: message)
 }
 
 /// Ends the game. The engine prints the final score after the turn's output.
+///
+/// - Parameter won: whether the player won.
+/// - Throws: the turn interrupt the engine catches to end the game.
 public func end(won: Bool) throws -> Never {
     throw TurnInterrupt.gameOver(won: won)
 }
 
-/// Kills the player: prints the message and the death banner, and the engine
-/// then reports the score and offers RESTART / RESTORE / UNDO / QUIT — the
-/// program keeps running until the player picks an exit. Distinct from
-/// `end(won:)`, which finishes the game outright.
+/// Kills the player: prints the message, then the game's ``Game/onDeath()``
+/// handler runs. Unless that handler consumes the death (resurrection), the
+/// engine prints the death banner, reports the score, and offers RESTART /
+/// RESTORE / UNDO / QUIT — the program keeps running until the player picks
+/// an exit. Distinct from `end(won:)`, which finishes the game outright.
 ///
-/// Seam: a later phase may add a game-supplied `onDeath` handler that can
-/// revive the player (resurrection) before the prompt is offered; only the
-/// prompt path exists today.
+/// - Parameter message: the death message shown to the player.
+/// - Throws: the turn interrupt the engine catches to kill the player.
 public func die(_ message: String) throws -> Never {
     throw TurnInterrupt.died(message: message)
 }

@@ -26,6 +26,13 @@ public struct TimedEvent: Sendable {
 /// Declares a fuse: `body` runs once, `turns` turns after the fuse is
 /// started — by `startFuse(_:after:)` in a rule, or from turn one with
 /// `autostart`. Starting a running fuse resets its count.
+///
+/// - Parameters:
+///   - name: the fuse's name.
+///   - turns: turns until it fires once started.
+///   - autostart: whether it starts from turn one.
+///   - body: what runs when it fires.
+/// - Returns: the declared timed event.
 public func fuse(
     _ name: String,
     after turns: Int,
@@ -38,6 +45,12 @@ public func fuse(
 /// Declares a daemon: `body` runs at the end of every turn while the daemon
 /// is active — from `startDaemon(_:)` in a rule, or from turn one with
 /// `autostart`.
+///
+/// - Parameters:
+///   - name: the daemon's name.
+///   - autostart: whether it runs from turn one.
+///   - body: what runs each active turn.
+/// - Returns: the declared timed event.
 public func daemon(
     _ name: String,
     autostart: Bool = false,
@@ -51,6 +64,10 @@ public func daemon(
 /// Starts (or restarts, resetting the count of) the named fuse. `turns`
 /// overrides the declared count for this run. Naming an undeclared timer, or
 /// a daemon, is a programmer error and traps.
+///
+/// - Parameters:
+///   - name: the fuse to start.
+///   - turns: overrides the declared count for this run.
 public func startFuse(_ name: String, after turns: Int? = nil) {
     let (frame, event) = declaredTimer(name, in: "startFuse")
     guard case .fuse(let declared) = event.kind else {
@@ -62,6 +79,8 @@ public func startFuse(_ name: String, after turns: Int? = nil) {
 }
 
 /// Stops the named fuse; it will not fire. A no-op if it isn't running.
+///
+/// - Parameter name: the fuse to stop.
 public func stopFuse(_ name: String) {
     let (frame, event) = declaredTimer(name, in: "stopFuse")
     guard case .fuse = event.kind else {
@@ -72,6 +91,9 @@ public func stopFuse(_ name: String) {
 
 /// How many end-of-turn ticks remain before the named fuse fires — `nil`
 /// when it isn't running.
+///
+/// - Parameter name: the fuse to query.
+/// - Returns: end-of-turn ticks remaining, or `nil` when not running.
 public func fuseRemaining(_ name: String) -> Int? {
     let (frame, event) = declaredTimer(name, in: "fuseRemaining")
     guard case .fuse = event.kind else {
@@ -81,6 +103,8 @@ public func fuseRemaining(_ name: String) -> Int? {
 }
 
 /// Starts the named daemon; it first runs at the end of the current turn.
+///
+/// - Parameter name: the daemon to start.
 public func startDaemon(_ name: String) {
     let (frame, event) = declaredTimer(name, in: "startDaemon")
     guard case .daemon = event.kind else {
@@ -90,6 +114,8 @@ public func startDaemon(_ name: String) {
 }
 
 /// Stops the named daemon. A no-op if it isn't running.
+///
+/// - Parameter name: the daemon to stop.
 public func stopDaemon(_ name: String) {
     let (frame, event) = declaredTimer(name, in: "stopDaemon")
     guard case .daemon = event.kind else {
@@ -99,6 +125,9 @@ public func stopDaemon(_ name: String) {
 }
 
 /// Whether the named daemon is currently active.
+///
+/// - Parameter name: the daemon to query.
+/// - Returns: `true` while the daemon is active.
 public func isDaemonActive(_ name: String) -> Bool {
     let (frame, event) = declaredTimer(name, in: "isDaemonActive")
     guard case .daemon = event.kind else {

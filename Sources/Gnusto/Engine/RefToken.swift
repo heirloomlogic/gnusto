@@ -87,6 +87,8 @@ extension GlobalValue {
     /// Default unboxing: decode the JSON stored in the type-erased `.data`
     /// case. Returns `nil` if the stored case isn't `.data` or the bytes no
     /// longer decode as this type (e.g. a plugin changed its state struct).
+    ///
+    /// - Parameter stateValue: the boxed value from global storage.
     public init?(stateValue: StateValue) {
         guard case .data(_, let bytes) = stateValue else { return nil }
         guard let value = try? JSONDecoder().decode(Self.self, from: bytes) else {
@@ -100,6 +102,8 @@ extension Bool: GlobalValue {
     /// This value boxed for global storage.
     public var stateValue: StateValue { .bool(self) }
     /// Unboxes a global value, or `nil` if it isn't a `Bool`.
+    ///
+    /// - Parameter stateValue: the boxed value from global storage.
     public init?(stateValue: StateValue) {
         guard case .bool(let value) = stateValue else { return nil }
         self = value
@@ -110,6 +114,8 @@ extension Int: GlobalValue {
     /// This value boxed for global storage.
     public var stateValue: StateValue { .int(self) }
     /// Unboxes a global value, or `nil` if it isn't an `Int`.
+    ///
+    /// - Parameter stateValue: the boxed value from global storage.
     public init?(stateValue: StateValue) {
         guard case .int(let value) = stateValue else { return nil }
         self = value
@@ -120,6 +126,8 @@ extension Double: GlobalValue {
     /// This value boxed for global storage.
     public var stateValue: StateValue { .double(self) }
     /// Unboxes a global value, or `nil` if it isn't a `Double`.
+    ///
+    /// - Parameter stateValue: the boxed value from global storage.
     public init?(stateValue: StateValue) {
         guard case .double(let value) = stateValue else { return nil }
         self = value
@@ -130,6 +138,8 @@ extension String: GlobalValue {
     /// This value boxed for global storage.
     public var stateValue: StateValue { .string(self) }
     /// Unboxes a global value, or `nil` if it isn't a `String`.
+    ///
+    /// - Parameter stateValue: the boxed value from global storage.
     public init?(stateValue: StateValue) {
         guard case .string(let value) = stateValue else { return nil }
         self = value

@@ -34,6 +34,15 @@ public struct ActorBehaviors: GamePlugin {
     /// a room away, movement is silent. The daemon idles (no RNG drawn)
     /// while the actor is outside `rooms` — including after `vanish()` —
     /// but the host should still `stopDaemon(_:)` on the actor's death.
+    ///
+    /// - Parameters:
+    ///   - actor: the NPC to teleport.
+    ///   - daemonName: the daemon's global timer name.
+    ///   - rooms: the set of rooms the actor teleports within.
+    ///   - percent: per-turn chance of a move, while in the set.
+    ///   - arrival: line printed when the player watches the actor arrive.
+    ///   - departure: line printed when the player watches the actor leave.
+    /// - Returns: the roaming daemon, for the host's `timers` block.
     public func roams(
         _ actor: Actor,
         daemonName: String,
@@ -69,6 +78,14 @@ public struct ActorBehaviors: GamePlugin {
     /// holds them — the floor, a trophy case, another actor's hands are
     /// all out of reach. The theft is announced only when the player's
     /// room is lit: in the dark you find out when you check your pockets.
+    ///
+    /// - Parameters:
+    ///   - actor: the thieving NPC.
+    ///   - daemonName: the daemon's global timer name.
+    ///   - candidates: the items eligible to be stolen while held.
+    ///   - percent: per-turn chance of a theft, while sharing the room.
+    ///   - announcement: builds the theft line from the stolen item's name.
+    /// - Returns: the theft daemon, for the host's `timers` block.
     public func steals(
         _ actor: Actor,
         daemonName: String,
@@ -94,6 +111,12 @@ public struct ActorBehaviors: GamePlugin {
     /// A canned reply when any of the named intents target the actor —
     /// "talk to troll", "give sword to troll", whatever the host's verbs
     /// emit. One line, before-phase, ends the turn.
+    ///
+    /// - Parameters:
+    ///   - actor: the actor the intents target.
+    ///   - intents: the intents that trigger the reply.
+    ///   - text: the canned reply.
+    /// - Returns: the before-phase rules, for the host's `rules` block.
     @RuleBuilder
     public func reaction(
         of actor: Actor,

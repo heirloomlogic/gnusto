@@ -86,6 +86,12 @@ public struct MeleeCombat: GameContent {
         public var death: String
 
         /// Creates a villain's prose. All lines are required — villains carry no stock defaults.
+        ///
+        /// - Parameters:
+        ///   - miss: lines rotated when the player's blow misses.
+        ///   - wound: lines rotated when the player's blow wounds.
+        ///   - knockout: printed when a blow knocks the villain unconscious.
+        ///   - death: printed when the villain is killed.
         public init(miss: [String], wound: [String], knockout: String, death: String) {
             self.miss = miss
             self.wound = wound
@@ -104,6 +110,11 @@ public struct MeleeCombat: GameContent {
         public var playerDeath: String
 
         /// Creates a villain's counter-attack prose.
+        ///
+        /// - Parameters:
+        ///   - miss: lines rotated when the villain's counter-attack misses.
+        ///   - wound: lines rotated when the villain's counter-attack wounds.
+        ///   - playerDeath: handed to `die(_:)` when the last hit lands.
         public init(miss: [String], wound: [String], playerDeath: String) {
             self.miss = miss
             self.wound = wound
@@ -125,6 +136,8 @@ public struct MeleeCombat: GameContent {
     let text: CombatText
 
     /// Creates the plugin with the given combat text.
+    ///
+    /// - Parameter text: the system-voice combat lines shared across villains.
     public init(text: CombatText = CombatText()) {
         self.text = text
     }
@@ -151,6 +164,15 @@ public struct MeleeCombat: GameContent {
     /// The fixed table, one roll per swing: miss ≤ 30, wound ≤ 70,
     /// knockout ≤ 85, kill above. A stunned villain doesn't roll — the
     /// next blow lands clean.
+    ///
+    /// - Parameters:
+    ///   - actor: the villain being attacked and tracked.
+    ///   - key: ledger key storing this villain's health and stun.
+    ///   - strength: starting health — clean hits needed to kill.
+    ///   - weapons: items that count as weapons against this villain.
+    ///   - prose: per-outcome combat lines (miss, wound, knockout, death).
+    ///   - onDefeat: host hook run at death, before the actor vanishes.
+    /// - Returns: the `before(.attack)` rules driving the villain's combat.
     @RuleBuilder
     public func villain(
         _ actor: Actor,
@@ -212,14 +234,31 @@ public struct MeleeCombat: GameContent {
     /// ≤ 85, an outright kill above. `playerStrength` hits end the player;
     /// wounds don't heal this phase. A stunned villain spends his turn
     /// coming to instead (no roll).
+    ///
+    /// `while:` is an extra gate evaluated *first*, before the alive/conscious/
+    /// same-room guards and before any draw — so a villain whose combat is
+    /// scoped (the thief only fights in his lair) burns no randomness on the
+    /// turns his gate is closed, keeping every seeded draw sequence intact.
+    ///
+    /// - Parameters:
+    ///   - actor: the villain who fights back each turn.
+    ///   - key: ledger key sharing this villain's health and stun with `villain`.
+    ///   - daemonName: global timer name for the counter-attack daemon.
+    ///   - playerStrength: hits the player survives before a wound turns fatal.
+    ///   - gate: extra gate checked first — a false gate is a quiet, draw-free turn.
+    ///   - prose: per-outcome counter-attack lines (miss, wound, playerDeath).
+    /// - Returns: the daemon rolling the villain's counter-attack each turn.
     public func aggression(
         of actor: Actor,
         key: String,
         daemonName: String,
         playerStrength: Int = 2,
+        while gate: @escaping @Sendable () -> Bool = { true },
         prose: AggressionProse
     ) -> TimedEvent {
         daemon(daemonName, autostart: true) {
+            // The host's gate first: a false gate is a quiet turn, no draw.
+            guard gate() else { return }
             // Guards before any draw, so quiet turns burn no randomness.
             guard ledger.health[key] ?? 1 > 0 else { return }
             if ledger.stunned[key, default: 0] > 0 {

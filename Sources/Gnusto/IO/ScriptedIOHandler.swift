@@ -12,16 +12,23 @@ public final class ScriptedIOHandler: IOHandler {
     private let box: Mutex<Log>
 
     /// Creates a handler that will feed the given lines in order.
+    ///
+    /// - Parameter lines: the lines to feed in order.
     public init(lines: [String]) {
         box = Mutex(Log(pending: lines))
     }
 
     /// Appends text to the transcript.
+    ///
+    /// - Parameter text: the text to append.
     public func write(_ text: String) {
         box.withLock { $0.transcript += text }
     }
 
     /// Returns the next scripted line, or `nil` once they run out.
+    ///
+    /// - Parameter prompt: the prompt recorded before the line.
+    /// - Returns: the next scripted line, or `nil` once they run out.
     public func readLine(prompt: String) -> String? {
         box.withLock { log in
             guard !log.pending.isEmpty else { return nil }

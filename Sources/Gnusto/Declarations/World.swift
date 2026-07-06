@@ -9,6 +9,9 @@
 /// rules run at the very end of the turn, after location each-turn rules.
 public struct World: Sendable {
     /// Runs at the start of every turn, anywhere.
+    ///
+    /// - Parameter body: the rule body.
+    /// - Returns: the assembled rule.
     public func beforeEachTurn(
         perform body: @escaping @Sendable () throws -> Void
     ) -> Rule {
@@ -16,6 +19,9 @@ public struct World: Sendable {
     }
 
     /// Runs at the end of every turn, anywhere — including refused turns.
+    ///
+    /// - Parameter body: the rule body.
+    /// - Returns: the assembled rule.
     public func afterEachTurn(
         perform body: @escaping @Sendable () throws -> Void
     ) -> Rule {
@@ -24,6 +30,11 @@ public struct World: Sendable {
 
     /// Runs before the default action whenever the named intents are
     /// attempted, anywhere.
+    ///
+    /// - Parameters:
+    ///   - intents: the intents this rule reacts to.
+    ///   - body: the rule body.
+    /// - Returns: the assembled rule.
     public func before(
         _ intents: Intent...,
         perform body: @escaping @Sendable () throws -> Void
@@ -33,6 +44,11 @@ public struct World: Sendable {
 
     /// Runs after the default action whenever the named intents succeed,
     /// anywhere.
+    ///
+    /// - Parameters:
+    ///   - intents: the intents this rule reacts to.
+    ///   - body: the rule body.
+    /// - Returns: the assembled rule.
     public func after(
         _ intents: Intent...,
         perform body: @escaping @Sendable () throws -> Void

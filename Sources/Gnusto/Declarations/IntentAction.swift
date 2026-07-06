@@ -24,6 +24,10 @@ public struct IntentAction: Sendable {
     /// matches a built-in reclaims it (last-wins, with a non-fatal warning);
     /// a row whose intent matches no built-in gives that custom intent
     /// default behavior for the first time.
+    ///
+    /// - Parameters:
+    ///   - intent: the intent this action handles.
+    ///   - body: the action's behavior.
     public init(_ intent: Intent, perform body: @escaping @Sendable () throws -> Void) {
         self.intent = intent
         self.body = body
@@ -32,6 +36,11 @@ public struct IntentAction: Sendable {
 
 /// Builds a stage-4 default action for `intent` — shorthand for
 /// `IntentAction(_:perform:)` that reads naturally in an `actions` block.
+///
+/// - Parameters:
+///   - intent: the intent this action handles.
+///   - body: the action's behavior.
+/// - Returns: the intent action.
 public func action(
     _ intent: Intent,
     perform body: @escaping @Sendable () throws -> Void

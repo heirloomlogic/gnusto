@@ -91,6 +91,8 @@ public struct GameText: Sendable {
     public var carrying = "You are carrying:"
     /// Reading something with no description to read.
     public var nothingWritten = "There's nothing written on that."
+    /// A `wait` turn — a beat passes while fuses and daemons tick.
+    public var timePasses = "Time passes."
 
     // MARK: - Containers
 
@@ -357,6 +359,9 @@ public struct GameText: Sendable {
     /// The name with its indefinite article, for listings ("a velvet cloak",
     /// "an apple"). Standard action lines use "the" instead. A formatting
     /// utility, not a skinnable line — custom closures can call it too.
+    ///
+    /// - Parameter name: the bare name to article.
+    /// - Returns: the name prefixed with "a" or "an".
     public static func indefinite(_ name: String) -> String {
         if let first = name.lowercased().first, "aeiou".contains(first) {
             "an \(name)"
@@ -367,6 +372,9 @@ public struct GameText: Sendable {
 
     /// Joins names with their indefinite articles into an English list ("a Y",
     /// "a Y and a Z", "a Y, a Z, and a W") for contents listings.
+    ///
+    /// - Parameter names: the bare names to article and join.
+    /// - Returns: the names articled and joined into an English list.
     public static func indefiniteList(_ names: [String]) -> String {
         let articled = names.map(indefinite)
         guard let last = articled.last else { return "" }

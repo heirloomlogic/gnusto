@@ -49,17 +49,38 @@ public struct Player: Sendable {
         Ctx.current.with { $0.state.moves }
     }
 
+    /// The items the player is carrying (including worn items), sorted by ID
+    /// for stable iteration.
+    public var inventory: [Item] {
+        let frame = Ctx.current
+        let held = frame.with { scratch in
+            scratch.state.placements
+                .filter { $0.value == .heldBy(.player) }
+                .keys.sorted()
+        }
+        return held.compactMap { frame.definition.registry.items[$0] }
+    }
+
     /// True if the player is carrying the item (including worn items).
+    ///
+    /// - Parameter item: the item to test.
+    /// - Returns: true if the player is carrying it.
     public func isCarrying(_ item: Item) -> Bool {
         item.isHeld
     }
 
     /// True if the player is wearing the item.
+    ///
+    /// - Parameter item: the item to test.
+    /// - Returns: true if the player is wearing it.
     public func isWearing(_ item: Item) -> Bool {
         item.isWorn
     }
 
     /// The player's starting location, declared in the `map` block.
+    ///
+    /// - Parameter location: where the player begins.
+    /// - Returns: the map entry declaring the start.
     public func starts(in location: Location) -> MapEntry {
         MapEntry(kind: .playerStart(location.token))
     }
