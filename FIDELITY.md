@@ -255,9 +255,10 @@ score ranks, and a longer lantern burn. No new rooms this task.
 - **`maxScore` is now 350**, the real ceiling, though only a fraction is
   reachable in the current slice.
 - **Visit awards are live for the kitchen (10) and the cellar (25)**, matching
-  the original's event scoring. Deaths in this slice carry no score penalty
-  yet (the death toll is Phase 10's `onDeath` work), so points banked before
-  a death survive to the banner.
+  the original's event scoring.
+- **Death now carries a 10-point toll** (Phase 10.3, below), so a death docks
+  the score before the player is resurrected; only the final death lets the
+  banner show the score untouched by that turn's toll.
 - **Score ranks are shown, but the rank names are original placeholders.**
   The ladder's thresholds are game data used as-is; the titles ("Wanderer",
   "Trespasser", … "Master of the Underground") stand in for Infocom's
@@ -275,3 +276,29 @@ score ranks, and a longer lantern burn. No new rooms this task.
   fraction of the original's hundreds of turns, but long enough that fuel is
   no longer a near-term concern. Turning the lantern off still banks all three
   fuses' remaining turns.
+
+## Phase 10.3 — Death & resurrection (`Sources/Zork1/Zork1.swift`)
+
+Zork's canonical resurrection, implemented on the game's `onDeath()` hook (a
+`.consumed` outcome for the survivable deaths, `.fallThrough` for the last
+one). A `@Global var deaths` counts them.
+
+- **Death is survivable — twice.** The first two deaths cost 10 points, scatter
+  the player's belongings, and set them back on their feet in the forest; the
+  world stays in play (no banner, no prompt). The **third death is final** and
+  falls through to the engine's standard `*** You have died ***` banner and
+  RESTART / RESTORE / UNDO / QUIT prompt. This matches the original's cap of two
+  resurrections. (The number is game data, used as-is.)
+- **The resurrection prose is original placeholder text** (`Prose.resurrection`,
+  in `Prose+Systems.swift`), one constant like everywhere else — Infocom's
+  resurrection narration is not reproduced. The player is resurrected in
+  **Forest West** (`aboveGround.forestWest`); the original's exact resurrection
+  room isn't researched here, only that it's the forest.
+- **The scatter is deterministic, not random.** The original strews your
+  belongings around above-ground rooms unpredictably; this slice fixes the
+  placement instead: the **lamp always returns to the living room** (so light is
+  always recoverable), and every other carried item is dealt out one per room,
+  round-robin, across a fixed list of above-ground rooms (West of House, North
+  of House, South of House, Behind House, Forest Path, Clearing). `player.inventory`
+  is sorted by id, so the placement is stable and no RNG is drawn — a quiet,
+  reproducible turn. Revisit if the canonical randomized scatter is wanted.

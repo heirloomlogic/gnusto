@@ -121,9 +121,12 @@ struct Zork1Tests {
         #expect(relights[2].contains("burned out"))
     }
 
-    /// Darkness is lethal now: a warning on the first dark turn, one silent
-    /// turn of grace, the grue on the third — and UNDO revives on the brink.
-    @Test func lingeringInTheDarkIsFatal() async throws {
+    /// Darkness is lethal, but not final: a warning on the first dark turn,
+    /// one silent turn of grace, the grue on the third — and then Zork's
+    /// canonical resurrection, which sets you back on your feet in the forest
+    /// rather than reaching for the death prompt. UNDO still revives on the
+    /// brink, and the next grue does the same thing all over again.
+    @Test func lingeringInTheDarkResurrectsYou() async throws {
         let transcript = try await play(
             Zork1(),
             [
@@ -142,21 +145,26 @@ struct Zork1Tests {
                 "The darkness here is total.",
             ])
         let looks = transcript.components(separatedBy: "> look")
-        // The grace turn is silent; the third dark turn is the end.
+        // The grace turn is silent; the third dark turn is the end — but the
+        // grue's meal doesn't stick. The death message prints, then you wake
+        // in the forest, unstuck and above ground. No banner, no prompt.
         #expect(!looks[1].contains("The darkness here is total."))
         expectInOrder(
             looks[2],
             [
                 "devoured by a grue",
-                "*** You have died ***",
-                "Your score is",
-                "Would you like to RESTART",
+                "takes pity on you",
+                "Forest",
             ])
+        // Two deaths, both survived: the prompt never appears.
+        #expect(!transcript.contains("*** You have died ***"))
+        #expect(!transcript.contains("Would you like to RESTART"))
         // UNDO revives on the brink (the restored count is 2 — grues are
-        // unforgiving); the next dark turn is fatal again, and QUIT ends it.
+        // unforgiving); the next dark turn is fatal again, and the second
+        // death resurrects just like the first.
         let undo = turnOutput(of: "undo", in: transcript)
         expectInOrder(undo, ["Previous turn undone.", "It is pitch black."])
-        expectInOrder(looks[3], ["devoured by a grue", "Would you like to RESTART"])
+        expectInOrder(looks[3], ["devoured by a grue", "takes pity on you", "Forest"])
     }
 
     /// Carried light holds the grue off completely: the lantern-lit cellar
@@ -177,9 +185,12 @@ struct Zork1Tests {
     }
 
     /// The Phase-7 integration walk: light, timers, death, and a save file
-    /// in one transcript — die to the grue, RESTORE from the death prompt,
-    /// and come back alive at the save point.
-    @Test func restoreFromTheGruesDeathPrompt() async throws {
+    /// in one transcript — save at the trap door, die to the grue (and be
+    /// resurrected in the forest), then RESTORE the save and come back alive
+    /// at the save point to start the descent over. (Restoring *from the
+    /// death prompt* is exercised at the engine level in `DeathTests`; here
+    /// the first death no longer reaches a prompt.)
+    @Test func saveSurvivesAGrueResurrectionAndRestores() async throws {
         let path = FileManager.default.temporaryDirectory
             .appendingPathComponent("gnusto-zork-\(UUID().uuidString).sav").path
         defer { try? FileManager.default.removeItem(atPath: path) }
@@ -196,7 +207,10 @@ struct Zork1Tests {
             [
                 "Saved.",
                 "devoured by a grue",
-                "*** You have died ***",
+                // The grue kills, then the resurrection catches you — no
+                // banner, just the forest.
+                "takes pity on you",
+                "Forest",
                 "Restore from what file?",
                 "Restored.",
                 "Living Room",
@@ -205,6 +219,7 @@ struct Zork1Tests {
                 "The trap door swings shut, and you hear a bolt slide home above you.",
                 "The darkness here is total.",
             ])
+        #expect(!transcript.contains("*** You have died ***"))
     }
 
     @Test func turningTheLanternOffPausesTheFuel() async throws {
@@ -342,7 +357,9 @@ struct Zork1Tests {
     }
 
     @Test func theTrollCanKillYou() async throws {
-        // Seed 1, recorded: the troll's first swing is the last word.
+        // Seed 1, recorded: the troll's first swing is the last word — but not
+        // a final one. The kill resurrects you in the forest at a cost of ten
+        // points, and UNDO still rewinds the whole fatal turn to the brink.
         let transcript = try await play(
             Zork1(),
             [
@@ -350,6 +367,7 @@ struct Zork1Tests {
                 "take sword", "take lantern", "turn on lantern",
                 "push rug", "open trap door", "down",
                 "north",
+                "score",
                 "undo", "south",
             ],
             seed: 1)
@@ -357,13 +375,86 @@ struct Zork1Tests {
             transcript,
             [
                 "the argument is settled",
-                "*** You have died ***",
-                // No treasures taken, but the kitchen (10) and cellar (25)
-                // visit awards banked on the way down survive to the banner.
-                "Your score is 35 of a possible 350",
-                "Would you like to RESTART, RESTORE a saved game, UNDO your last turn, or QUIT?",
+                // The kill lands, then the resurrection: forest, no banner.
+                "takes pity on you",
+                "Forest",
+                // The kitchen (10) and cellar (25) visit awards banked on the
+                // way down leave 35; the death docks 10, so the score reads 25.
+                "Your score is 25 of a possible 350",
                 "Previous turn undone.",
                 "East of Chasm",
+            ])
+        #expect(!transcript.contains("*** You have died ***"))
+        #expect(!transcript.contains("Would you like to RESTART"))
+    }
+
+    /// Death scatters what you were carrying: the lamp always turns up in the
+    /// living room, and everything else lands out among the grounds above.
+    /// Here the troll's victim was holding the sword and the (lit) lantern;
+    /// after the resurrection the sword is waiting at West of House.
+    @Test func deathScattersYourBelongings() async throws {
+        // Seed 1, recorded: the troll kills on the first turn in his room.
+        let transcript = try await play(
+            Zork1(),
+            [
+                "south", "east", "open window", "west", "west",
+                "take sword", "take lantern", "turn on lantern",
+                "push rug", "open trap door", "down",
+                "north",
+                // Resurrected in the forest, empty-handed. The sword scattered
+                // to West of House (the first above-ground room in the ring).
+                "east", "take sword",
+            ],
+            seed: 1)
+        expectInOrder(
+            transcript,
+            [
+                "the argument is settled",
+                "takes pity on you",
+                "Forest",
+                "West of House",
+                "Taken.",
+            ])
+    }
+
+    /// The third death is the last one: after two resurrections the toll comes
+    /// due, and the grue's third meal reaches the engine's banner and prompt.
+    @Test func theThirdDeathIsFinal() async throws {
+        // Seed 1: the player carries nothing (so the grue always finds them in
+        // the dark), and only the needles below are asserted, so the roaming
+        // thief's comings and goings don't matter.
+        let descend = ["open trap door", "down", "wait", "wait"]
+        let returnToTrapDoor = ["east", "south", "east", "west", "west"]
+        let transcript = try await play(
+            Zork1(),
+            // First descent and death …
+            ["south", "east", "open window", "west", "west", "push rug"]
+                + descend
+                // … resurrected in the forest; walk back and die again …
+                + returnToTrapDoor + descend
+                // … and once more, for the final death, then try to UNDO out.
+                + returnToTrapDoor + descend
+                + ["undo"],
+            seed: 1)
+        // The first two grue deaths resurrect; the third is final.
+        let deaths = transcript.components(separatedBy: "devoured by a grue")
+        #expect(deaths.count == 4)  // three deaths split the transcript into four
+        // Deaths one and two are survived — the banner shows up only once, at
+        // the very end.
+        expectInOrder(
+            transcript,
+            [
+                "devoured by a grue",  // death 1
+                "takes pity on you",
+                "devoured by a grue",  // death 2
+                "takes pity on you",
+                "devoured by a grue",  // death 3 — final
+                "*** You have died ***",
+                // 35 banked, then two 10-point tolls: 15 by the final death.
+                "Your score is 15 of a possible 350",
+                "Would you like to RESTART, RESTORE a saved game, UNDO your last turn, or QUIT?",
+                // UNDO from the final prompt still revives on the brink.
+                "Previous turn undone.",
             ])
     }
 
