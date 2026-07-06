@@ -31,6 +31,7 @@ struct Zork1: Game, GameMain {
     let cellar = ZorkCellar()
     let roundRoom = ZorkRoundRoom()
     let dam = ZorkDam()
+    let temple = ZorkTemple()
 
     /// The grue. Zork's prose, the plugin's stock warn-then-kill schedule.
     let dangerousDark = DangerousDark(
@@ -54,12 +55,19 @@ struct Zork1: Game, GameMain {
     /// (see ``onDeath()``); the third is final.
     @Global var deaths = 0
 
+    /// Matches left in the Dam Lobby matchbook. The matchbook is a ``ZorkDam``
+    /// item and the candles it lights are ``ZorkTemple`` items, so the striking
+    /// mechanic — finite matches, a short-lived burning match — is the host's,
+    /// like every other seam that spans two bundles.
+    @Global var matchesLeft = 5
+
     var content: GameContents {
         aboveGround
         house
         cellar
         roundRoom
         dam
+        temple
         dangerousDark
         scoring
         melee
@@ -124,7 +132,10 @@ struct Zork1: Game, GameMain {
         // The treasures the slice can score, and where they pay out.
         // Cross-bundle wiring is the host's job, same as the exits below.
         scoring.treasures(
-            [cellar.painting, aboveGround.egg, roundRoom.platinumBar, dam.trunk],
+            [
+                cellar.painting, aboveGround.egg, roundRoom.platinumBar, dam.trunk,
+                temple.torch, temple.coffin, temple.sceptre, temple.crystalSkull,
+            ],
             into: house.trophyCase)
 
         // Event scoring: the original pays for reaching the kitchen (first
@@ -166,6 +177,58 @@ struct Zork1: Game, GameMain {
                 startFuse("damRefill", after: 8)
                 try reply(Prose.gatesClose)
             }
+        }
+
+        // The attic rope tied to the dome railing — the rope is a ``ZorkHouse``
+        // item and the railing a ``ZorkTemple`` one, so the host owns the knot.
+        // Tying it sets the temple's ``ropeTiedToRailing`` (which gates the drop
+        // to the Torch Room) and leaves the rope hanging in the Dome Room;
+        // untying — or simply taking it back — undoes the descent.
+        house.rope.before(.tie) {
+            guard player.location == temple.domeRoom else {
+                try refuse(Prose.ropeNothingToTie)
+            }
+            try require(command.indirectObject == temple.railing, else: Prose.ropeNeedsRailing)
+            temple.ropeTiedToRailing = true
+            house.rope.move(to: temple.domeRoom)
+            try reply(Prose.ropeTied)
+        }
+        house.rope.before(.untie) {
+            guard temple.ropeTiedToRailing else { return }
+            temple.ropeTiedToRailing = false
+            try reply(Prose.ropeUntied)
+        }
+        house.rope.before(.take) {
+            guard temple.ropeTiedToRailing else { return }
+            temple.ropeTiedToRailing = false
+            say(Prose.ropeTakeUnties)
+            // Falls through to the default take, which picks the rope up.
+        }
+
+        // Praying at the altar. The altar is a ``ZorkTemple`` room but the
+        // prayer lands the player in ``ZorkAboveGround``'s forest, so the host
+        // wires it. This is the only way to carry the gold coffin out of the
+        // temple — it can't be squeezed down the altar crack. Held items ride
+        // along (they stay in hand), the coffin included.
+        temple.altar.before(.pray) {
+            say(Prose.prayerAnswered)
+            player.location = aboveGround.forestWest
+            describeSurroundings()
+            try reply("")
+        }
+
+        // Striking a match. The matchbook is a ``ZorkDam`` item (the Dam Lobby),
+        // but the burning match it produces is a ``ZorkTemple`` item and its
+        // only use is lighting the temple candles, so the host bridges them:
+        // finite matches, and a burning match that lasts two turns (the fuse
+        // below) before it goes out.
+        dam.matchbook.before(.turnOn) {
+            try require(matchesLeft > 0, else: Prose.matchesGone)
+            matchesLeft -= 1
+            temple.burningMatch.moveToPlayer()
+            temple.burningMatch.isLit = true
+            startFuse("matchBurns", after: 2)
+            try reply(Prose.matchStrikes)
         }
 
         // The troll, fought with the house's blades — entities from two
@@ -244,6 +307,15 @@ struct Zork1: Game, GameMain {
             say(Prose.reservoirRefills)
         }
 
+        // The struck match's short life: two turns after it's lit, the burning
+        // match goes out and vanishes. Armed by the striking rule above; here
+        // because the match is a ``ZorkTemple`` item lit from a ``ZorkDam`` one.
+        fuse("matchBurns", after: 2) {
+            temple.burningMatch.isLit = false
+            temple.burningMatch.vanish()
+            say(Prose.matchBurnsOut)
+        }
+
         melee.aggression(
             of: cellar.troll, key: "troll", daemonName: "melee.troll",
             prose: MeleeCombat.AggressionProse(
@@ -304,6 +376,13 @@ struct Zork1: Game, GameMain {
         dam.reservoirSouth.southeast(roundRoom.deepCanyon)
         roundRoom.chasmRoom.northeast(dam.reservoirSouth)
         dam.reservoirSouth.southwest(roundRoom.chasmRoom)
+
+        // Where ZorkRoundRoom meets ZorkTemple: the Round Room's southeast
+        // passage runs to the Engravings Cave, the mouth of the temple region.
+        // (The Round Room left this exit absent "for its region"; the temple
+        // owns the cave, the host owns the crossing.)
+        roundRoom.roundRoom.southeast(temple.engravingsCave)
+        temple.engravingsCave.west(roundRoom.roundRoom)
 
         player.starts(in: aboveGround.westOfHouse)
     }

@@ -463,3 +463,96 @@ has been waiting on since Phase 10.4.
   the `.waterSource` trait (minted dormant in Phase 10.2), so an emptied bottle
   fills there — the "there's no water here" default now has somewhere it doesn't
   apply.
+
+## Phase 10.6 — Temple, Hades & Dome rope (`Sources/Zork1/Regions/Temple.swift`)
+
+The dark religious heart of the underground: the Engravings Cave and the Dome
+Room's rope descent, the Torch Room's ivory torch, the Temple, Altar, and
+Egyptian Room, and the draughty way down to the Entrance to Hades and the Land
+of the Dead. The region's set piece is the exorcism ritual (ring bell → light
+candles → read book) that banishes the spirits guarding the crystal skull.
+
+### Prose
+
+- **All room, item, and message prose is original placeholder text**, same
+  policy and one-constant-per-entity structure as every prior task
+  (`Prose+Temple.swift`). Room and item *names* ("Torch Room", "ivory torch",
+  "gold coffin", "crystal skull") are the iconic ones, used as-is.
+
+### Map topology
+
+- **The exit table is the canonical Zork 1 layout** (verified against the
+  original `1dungeon.zil`): Engravings Cave W→Round Room, E→Dome Room; Dome Room
+  W→Engravings Cave, Down→Torch Room (only with the rope tied); Torch Room Up
+  blocked (the rope hangs out of reach — a one-way drop), S/Down→Temple; Temple
+  N/Up→Torch Room, E/Down→Egyptian Room, S→Altar; Egyptian Room W/Up→Temple;
+  Altar N→Temple, Down→Cave; Cave Down→Entrance to Hades; Entrance to Hades
+  Up→Cave, S→Land of the Dead (only once the spirits are banished); Land of the
+  Dead N→Entrance to Hades.
+- **The Round Room→Engravings Cave crossing is host-wired.** The Round Room's
+  southeast passage (left absent "for its region" in Phase 10.4) crosses the
+  `ZorkRoundRoom`/`ZorkTemple` boundary, so the host owns it — the same seam as
+  the dam's Deep Canyon edges.
+- **The cave→altar climb is a slice-only convenience.** Canonically the Cave
+  (TINY-CAVE) leads *onward* — north and west into the mirror region — with no
+  way back up to the altar; the temple complex reconnects to the rest of the map
+  only through that mirror region. The mirror region is a later phase (T7), so
+  without a temporary `cave.up(altar)` a player who descended the one-way rope
+  and went down past the altar would be stranded. This extra exit stands in until
+  T7 wires the canonical onward path, at which point it is removed/reconciled.
+  The Cave's canonical north/west openings are absent for the same "await their
+  region" reason.
+
+### Mechanics simplified or deferred
+
+- **`.openFlame` is minted here, read by no one yet.** The trait (a
+  `TraitKey<Bool>`, like `.waterSource`) marks the torch, the lit candles, and a
+  struck match as naked flames; the Gas Room (T8) will read it to tell a safe
+  light from one that ignites the air. Nothing in this task depends on it.
+- **The ivory torch is a lit `lightSource` that refuses `.turnOff`** — the
+  documented "no always-burning trait" idiom — rather than a bespoke
+  ever-burning item.
+- **The red-hot bell is a `@Global` flag, not an item swap.** Ringing sets
+  `bellHot` (which the take-refusal reads) and the ring reply narrates the glow;
+  the bell's examine text does not change, and there is no separate red-hot-bell
+  item. The bell cools after a fixed 20 turns — a **deliberate anti-softlock**
+  (the original can leave the bell permanently hot and unusable); the cool is a
+  plain fuse.
+- **The exorcism is a small stage machine with a three-turn window.** Ringing the
+  bell at the gate freezes the spirits (stage 1) and arms a 3-turn `exorcismLapse`
+  fuse; lighting the candles renews the window and reaches stage 2; reading the
+  book at stage 2 banishes the spirits and opens the way south. Letting the
+  window lapse resets the sequence. This reproduces the original's timed ritual
+  without modeling its exact per-object interrupt bookkeeping.
+- **The candles use a two-fuse burn economy** (dim warning, then out for good),
+  banked while unlit, versus the lantern's three fuses — the candles are a
+  shorter-lived light and don't warrant the extra last-gasp stage. The cave's
+  draught snuffs them (banking their fuel), which is why the ritual's candles must
+  be lit at the gate below the draught, not carried down alight.
+- **Matches are finite and the burning match is a real, short-lived item.**
+  Striking a match (host-wired: the matchbook is a `ZorkDam` item, the burning
+  match a `ZorkTemple` one) decrements a count of 5, moves the burning match into
+  the player's hand (E5 `moveToPlayer()`), and arms a 2-turn fuse that vanishes
+  it. The matchbook parses as "matches"/"matchbook"; singular "match" is not a
+  recognized noun (it collides with the burning match), so the strike command is
+  "light matches".
+- **The coffin's load block is a ≤50 weight cap at the altar crack, not a
+  coffin-specific rule.** Canonically the gold coffin (too big to squeeze down to
+  Hades) is stopped at the altar's downward crack by a dedicated `COFFIN-CURE`
+  flag, forcing the player to carry it out by praying. Here the block is a
+  general "carried weight ≤ 50" cap on the altar's `down` (reusing
+  `burdenWeight`); the coffin at weight 55 trips it while ordinary exploring
+  loads do not, so the puzzle — pray to get the coffin out — is unchanged, but a
+  hypothetical 50+ non-coffin load would also be blocked.
+- **Praying at the altar is host-wired** (it teleports the player, and whatever
+  they hold, to `ZorkAboveGround`'s forest — the same room the resurrection
+  uses), because the altar is a temple room but the destination is another
+  bundle's. It is the coffin's only egress from the temple complex.
+
+### Scoring
+
+- **Four new treasures carry the original's numbers and join the host roster**:
+  ivory torch (find 14 / case 6), gold coffin (10 / 15), sceptre (4 / 6), and
+  crystal skull (10 / 10). All are added to `scoring.treasures`, paying out in
+  the living-room trophy case like the rest. The sceptre starts inside the
+  coffin.
