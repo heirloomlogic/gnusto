@@ -752,4 +752,237 @@ struct Zork1Tests {
                 "Round Room",
             ])
     }
+
+    // MARK: - Dam & Reservoir (Phase 10.5)
+
+    /// The route the dam tests share: kill the troll (seed 39, same recorded
+    /// kill as the Round Room tests), press east into the hub, then in the
+    /// Maintenance Room take the wrench and charge the panel with the yellow
+    /// button, and end standing on the Dam with the bolt in reach.
+    private static let approachTheChargedDam: [String] = [
+        "south", "east", "open window", "west", "west",
+        "take sword", "take lantern", "turn on lantern",
+        "push rug", "open trap door", "down",
+        "north", "west",
+        "attack troll", "attack troll", "attack troll",
+        "east", "east",  // → East-West Passage → Round Room
+        "north", "northeast", "east",  // → N-S Passage → Deep Canyon → Dam
+        "north", "north",  // → Dam Lobby → Maintenance Room
+        "take wrench", "push yellow button",
+        "south", "south",  // → Dam Lobby → Dam
+    ]
+
+    /// Turning the bolt with the wrench opens the gates; eight turns later the
+    /// reservoir has drained, the trunk of jewels lies revealed on the bed, and
+    /// taking it scores fifteen.
+    @Test func turningTheBoltDrainsTheReservoirAndRevealsTheTrunk() async throws {
+        let transcript = try await play(
+            Zork1(),
+            Self.approachTheChargedDam + [
+                "turn bolt with wrench",  // gates open, the reservoir starts to fall
+                "west",  // Reservoir South
+                "wait", "wait", "wait", "wait",
+                "wait", "wait", "wait", "wait",  // the eight-turn drain completes
+                "north",  // onto the drained bed
+                "take trunk",  // +15 on the find
+                "score",
+            ],
+            seed: 39)
+        expectInOrder(
+            transcript,
+            [
+                "Maintenance Room",
+                "begins to glow",  // the yellow button charges the panel
+                "Dam",
+                "sluice gates open",
+                "Reservoir South",
+                "a bed of slick",  // the drain fuse fires
+                "Taken.",  // the trunk comes free
+                // 40 banked (kitchen 10, cellar 25, E-W passage 5); the trunk adds 15.
+                "Your score is 55 of a possible 350",
+            ])
+    }
+
+    /// The bolt will not turn until the panel is charged: without the yellow
+    /// button first, the wrench does nothing and the reservoir stays full.
+    @Test func theBoltWillNotTurnUntilThePanelIsCharged() async throws {
+        let transcript = try await play(
+            Zork1(),
+            [
+                "south", "east", "open window", "west", "west",
+                "take sword", "take lantern", "turn on lantern",
+                "push rug", "open trap door", "down",
+                "north", "west",
+                "attack troll", "attack troll", "attack troll",
+                "east", "east",
+                "north", "northeast", "east",  // → Dam
+                "north", "north",  // → Maintenance Room
+                "take wrench",  // but no yellow button this time
+                "south", "south",  // → Dam
+                "turn bolt with wrench",  // refused — nothing is live
+                "west",  // Reservoir South
+                "north",  // still barred — the reservoir is full
+            ],
+            seed: 39)
+        expectInOrder(
+            transcript,
+            [
+                "Dam",
+                "won't budge",  // the bolt refusal
+                "Reservoir South",
+                "would drown",  // the full-reservoir crossing refusal
+            ])
+    }
+
+    /// The blue button springs a leak; standing in the Maintenance Room as the
+    /// water climbs past ankle, waist, and neck ends in drowning — and, this
+    /// being a survivable death, resurrection in the forest.
+    @Test func theBlueButtonFloodsTheRoomAndDrownsYou() async throws {
+        let transcript = try await play(
+            Zork1(),
+            [
+                "south", "east", "open window", "west", "west",
+                "take sword", "take lantern", "turn on lantern",
+                "push rug", "open trap door", "down",
+                "north", "west",
+                "attack troll", "attack troll", "attack troll",
+                "east", "east",
+                "north", "northeast", "east",  // → Dam
+                "north", "north",  // → Maintenance Room
+                "push blue button",  // the leak begins
+                "wait", "wait", "wait", "wait", "wait", "wait",
+                "wait", "wait", "wait", "wait", "wait", "wait",  // the water rises and closes over you
+            ],
+            seed: 39)
+        expectInOrder(
+            transcript,
+            [
+                "risen to your ankles",
+                "at your waist",
+                "at your neck",
+                "drowned in the Maintenance Room",
+                "Forest",  // resurrection sets you down above ground
+            ])
+    }
+
+    /// Draining the reservoir, walking onto the bed, then closing the gates
+    /// again floods it back — and anyone still standing on the bed when it
+    /// fills drowns.
+    @Test func closingTheGatesWhileOnTheBedDrownsYou() async throws {
+        let transcript = try await play(
+            Zork1(),
+            Self.approachTheChargedDam + [
+                "turn bolt with wrench",  // open — drain armed
+                "wait", "wait", "wait", "wait",
+                "wait", "wait", "wait", "wait",  // drain completes
+                "turn bolt with wrench",  // close — refill armed, bed still crossable
+                "west",  // Reservoir South
+                "north",  // onto the bed
+                "wait", "wait", "wait", "wait", "wait", "wait",  // the water climbs back over you
+            ],
+            seed: 39)
+        expectInOrder(
+            transcript,
+            [
+                "sluice gates open",
+                "a bed of slick",
+                "sluice gates grind shut",
+                "closes over the bed of the reservoir",  // the refill drowning
+                "Forest",
+            ])
+    }
+
+    /// While the gates are driving water through the depths, the Loud Room is
+    /// unbearable: entering it throws the player straight back out. (This is the
+    /// first time the Loud Room's water-moving path — dormant since Phase 10.4 —
+    /// is actually exercised.)
+    @Test func movingWaterMakesTheLoudRoomEjectYou() async throws {
+        let transcript = try await play(
+            Zork1(),
+            Self.approachTheChargedDam + [
+                "turn bolt with wrench",  // open the gates: water is now moving
+                "south",  // Deep Canyon
+                "down",  // Loud Room
+                "look",  // the roar is past bearing — it throws you back out
+            ],
+            seed: 39)
+        expectInOrder(
+            transcript,
+            [
+                "sluice gates open",
+                "past bearing",  // the Loud Room ejection
+            ])
+    }
+
+    /// The reservoir shore is a water source: an emptied bottle fills there,
+    /// where before the slice had nowhere to fill it.
+    @Test func theBottleFillsAtTheReservoir() async throws {
+        let transcript = try await play(
+            Zork1(),
+            [
+                "south", "east", "open window", "west",
+                "take bottle",  // carried up from the kitchen
+                "west",
+                "take sword", "take lantern", "turn on lantern",
+                "push rug", "open trap door", "down",
+                "north", "west",
+                "attack troll", "attack troll", "attack troll",
+                "east", "east",
+                "north", "northeast", "east",  // → Dam
+                "west",  // Reservoir South (a water source)
+                "open bottle", "pour water",  // empty it out
+                "fill bottle",  // now it fills from the reservoir
+            ],
+            // Seed 0, re-pin expected in T14: taking the bottle in the kitchen
+            // shifts the RNG stream, so this walkthrough needs its own seed to
+            // still land the three-blow troll kill.
+            seed: 0)
+        expectInOrder(
+            transcript,
+            [
+                "Reservoir South",
+                "spills out",  // the bottle emptied
+                "now full of water",  // filled from the shore
+            ])
+    }
+
+    /// A walk through the dam's dry rooms and, once drained, the reservoir bed,
+    /// its far shore, and the stream — proving every exit in the region agrees
+    /// with its neighbour.
+    @Test func theDamRegionExitsFormOneConnectedGraph() async throws {
+        let transcript = try await play(
+            Zork1(),
+            Self.approachTheChargedDam + [
+                // Dry loop first: Dam → Base → Dam → Lobby → Maintenance → Lobby.
+                "down", "up",  // Dam Base and back
+                "north", "east", "west", "south",  // Lobby ↔ Maintenance ↔ Lobby ↔ Dam
+                // Shore and stream mouth, then back to the Dam.
+                "west", "west", "east",  // Reservoir South ↔ Stream View ↔ Reservoir South
+                "east",  // back to the Dam
+                // Drain, then cross the bed to the north shore and the stream.
+                "turn bolt with wrench",
+                "wait", "wait", "wait", "wait",
+                "wait", "wait", "wait", "wait",  // drain completes
+                "west",  // Reservoir South
+                "north",  // Reservoir (the bed)
+                "north",  // Reservoir North
+                "south",  // Reservoir
+                "up",  // Stream
+                "east",  // Reservoir
+            ],
+            seed: 39)
+        expectInOrder(
+            transcript,
+            [
+                "Dam Base",
+                "Dam Lobby",
+                "Maintenance Room",
+                "Stream View",
+                "Reservoir South",
+                "Reservoir",
+                "Reservoir North",
+                "Stream",
+                "Reservoir",
+            ])
+    }
 }
