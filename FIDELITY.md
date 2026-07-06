@@ -501,7 +501,11 @@ candles → read book) that banishes the spirits guarding the crystal skull.
   and went down past the altar would be stranded. This extra exit stands in until
   T7 wires the canonical onward path, at which point it is removed/reconciled.
   The Cave's canonical north/west openings are absent for the same "await their
-  region" reason.
+  region" reason. **Reconciled in Phase 10.7:** the mirror region has landed, so
+  the temporary `cave.up(altar)` exit is removed — the altar-crack drop is once
+  again strictly one-way, and the Cave's canonical north (Mirror Room 2) and west
+  (Winding Passage) openings are host-wired, reconnecting the temple complex to
+  the rest of the map through the mirror rooms. See the Phase 10.7 entry below.
 
 ### Mechanics simplified or deferred
 
@@ -556,3 +560,63 @@ candles → read book) that banishes the spirits guarding the crystal skull.
   crystal skull (10 / 10). All are added to `scoring.treasures`, paying out in
   the living-room trophy case like the rest. The sceptre starts inside the
   coffin.
+
+## Phase 10.7 — Mirror rooms & the Atlantis chain (`Sources/Zork1/Regions/Mirror.swift`)
+
+The connective tissue of the underground: the two Mirror Rooms and the tangle of
+passages — Narrow, Winding, Cold, Twisting — that thread them to the Round Room
+hub, the drowned Atlantis Room and the reservoir beyond, and a one-way slide down
+to the Cellar. With this region in, the whole underground is a single connected
+graph.
+
+### Prose
+
+- **All room, item, and message prose is original placeholder text**, same policy
+  and one-constant-per-entity structure as every prior task (`Prose+Mirror.swift`).
+  Room and item *names* ("Mirror Room", "Atlantis Room", "Slide Room", "crystal
+  trident") are the iconic ones, used as-is. The two Mirror Rooms share the name
+  "Mirror Room", and the Small Cave shares "Cave" with the temple's Tiny Cave —
+  duplicate room names are fine (the game's own "Forest" and "Cave" rooms do the
+  same).
+
+### Map topology
+
+- **The exit table is the canonical Zork 1 layout** (verified against the original
+  `1dungeon.zil`): Narrow Passage N→Round Room, S↔Mirror Room (north); Mirror Room
+  (north) N↔Narrow Passage, W↔Winding Passage, E↔Tiny Cave; Winding Passage
+  N↔Mirror Room (north), E↔Tiny Cave; Mirror Room (south) N↔Cold Passage,
+  W↔Twisting Passage, E↔Small Cave; Cold Passage S↔Mirror Room (south), W↔Slide
+  Room; Twisting Passage N↔Mirror Room (south), E↔Small Cave; Small Cave
+  N↔Mirror Room (south), W↔Twisting Passage, Down/S→Atlantis (both openings lead
+  there); Atlantis Room Up↔Small Cave, S→Reservoir North; Slide Room E↔Cold
+  Passage, Down→Cellar.
+- **The three cross-region seams are host-wired** in `Zork1.swift`, the same way
+  every prior region's onward edges are: the Round Room hub's south to the Narrow
+  Passage (absent since Phase 10.4), the Atlantis Room's south to Reservoir North
+  (absent since Phase 10.5), and the Tiny Cave's north/west into the mirror rooms
+  (the Phase 10.6 reconciliation — the temporary `cave.up(altar)` is removed and
+  the temple complex now reconnects through here).
+- **The slide is one-way.** The steep metal slide drops from the Slide Room into
+  the Cellar with no way back up it — so there is no matching `cellar.up` to the
+  Slide Room (as with the studio chimney). The Slide Room's canonical north
+  opening onto the coal-mine entrance awaits its region (T8) and is simply absent.
+- **The northern Mirror Room is naturally lit, the southern one is dark.** The
+  original flags `MIRROR-ROOM-2` (the hub side) with `ONBIT` and leaves
+  `MIRROR-ROOM-1` dark; that lighting is game data and is reproduced as-is, so the
+  northern room's mirror can be found and touched without a lamp.
+
+### The mirror teleport
+
+- **Touching a mirror moves the player to the other Mirror Room** — the only
+  passage between the map's two halves. This is a draw-free, deterministic
+  teleport (`before(.touch)` on each mirror: narrate the rumble, set
+  `player.location`, describe). Two simplifications from the original: only the
+  player moves (held items ride along; the original also swaps whatever lies loose
+  on the two rooms' floors), and the mirror **cannot be broken** (the original's
+  smash-for-seven-years'-bad-luck, which disables the passage, is not modeled).
+
+### Scoring
+
+- **The crystal trident carries the original's numbers** (weight/`SIZE` 20, find
+  4, case 11) and joins the host `scoring.treasures` roster, paying out in the
+  living-room trophy case like the rest.
