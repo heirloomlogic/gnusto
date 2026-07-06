@@ -32,6 +32,7 @@ struct Zork1: Game, GameMain {
     let roundRoom = ZorkRoundRoom()
     let dam = ZorkDam()
     let temple = ZorkTemple()
+    let mirror = ZorkMirror()
 
     /// The grue. Zork's prose, the plugin's stock warn-then-kill schedule.
     let dangerousDark = DangerousDark(
@@ -68,6 +69,7 @@ struct Zork1: Game, GameMain {
         roundRoom
         dam
         temple
+        mirror
         dangerousDark
         scoring
         melee
@@ -135,6 +137,7 @@ struct Zork1: Game, GameMain {
             [
                 cellar.painting, aboveGround.egg, roundRoom.platinumBar, dam.trunk,
                 temple.torch, temple.coffin, temple.sceptre, temple.crystalSkull,
+                mirror.crystalTrident,
             ],
             into: house.trophyCase)
 
@@ -383,6 +386,34 @@ struct Zork1: Game, GameMain {
         // owns the cave, the host owns the crossing.)
         roundRoom.roundRoom.southeast(temple.engravingsCave)
         temple.engravingsCave.west(roundRoom.roundRoom)
+
+        // Where the map's halves finally knot together, through ``ZorkMirror``.
+        // Each of these edges the mirror region left absent "for its neighbour",
+        // and each crosses a bundle boundary, so the host owns the crossing.
+        //
+        // The Round Room hub's south passage runs to the Narrow Passage (the
+        // exit ZorkRoundRoom left absent since Phase 10.4).
+        roundRoom.roundRoom.south(mirror.narrowPassage)
+        mirror.narrowPassage.north(roundRoom.roundRoom)
+
+        // The drowned Atlantis Room opens south onto Reservoir North (the exit
+        // ZorkDam left absent since Phase 10.5).
+        mirror.atlantisRoom.south(dam.reservoirNorth)
+        dam.reservoirNorth.north(mirror.atlantisRoom)
+
+        // The Slide Room's steep chute drops one-way into the Cellar — no way
+        // back up it, so there's no matching `cellar.up` (FIDELITY.md).
+        mirror.slideRoom.down(house.cellar)
+
+        // The Tiny Cave (``ZorkTemple``'s ``cave``) opens north to the northern
+        // Mirror Room and west to the Winding Passage — the canonical onward
+        // path that reconnects the temple complex to the rest of the map, and
+        // that Phase 10.6 left absent behind a temporary altar climb (now
+        // removed). See `FIDELITY.md`.
+        temple.cave.north(mirror.mirrorRoomNorth)
+        mirror.mirrorRoomNorth.east(temple.cave)
+        temple.cave.west(mirror.windingPassage)
+        mirror.windingPassage.east(temple.cave)
 
         player.starts(in: aboveGround.westOfHouse)
     }

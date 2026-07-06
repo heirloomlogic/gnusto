@@ -85,11 +85,11 @@ struct Zork1TempleTests {
             ])
     }
 
-    /// The region hangs together as one graph, both ways — including the
-    /// slice-only cave→altar climb that stands in for the mirror region's exit
-    /// until it lands. Down the rope, through temple and altar to the very gate
-    /// of Hades (barred until the exorcism), then all the way back up.
-    @Test func templeGeographyIsOneConnectedGraph() async throws {
+    /// The temple's internal graph, down to the very gate of Hades (barred until
+    /// the exorcism). The drop through the altar crack is one-way — the way back
+    /// out of the complex is onward through the Tiny Cave into the mirror region
+    /// (covered by `Zork1MirrorTests`), so this walk ends at the gate.
+    @Test func templeDescendsToTheGateOfHades() async throws {
         let transcript = try await play(
             Zork1(),
             Self.toDomeRoom + [
@@ -98,13 +98,9 @@ struct Zork1TempleTests {
                 "east",  // Egyptian Room
                 "west",  // Temple
                 "south",  // Altar
-                "down",  // Cave
+                "down",  // Cave (the Tiny Cave)
                 "down",  // Entrance to Hades
                 "south",  // barred — the spirits hold you back
-                "up",  // Cave
-                "up",  // Altar (the slice-only climb)
-                "north",  // Temple
-                "north",  // Torch Room
             ],
             seed: 0)
         expectInOrder(
@@ -118,10 +114,6 @@ struct Zork1TempleTests {
                 "Cave",
                 "Entrance to Hades",
                 "some cold force at the gate",  // hadesGateBlocked
-                "Cave",
-                "Altar",
-                "Temple",
-                "Torch Room",
             ])
     }
 

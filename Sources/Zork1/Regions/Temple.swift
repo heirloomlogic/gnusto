@@ -247,13 +247,12 @@ struct ZorkTemple: GameContent {
         altar.north(temple)
         altar.down(cave)
 
-        // Cave. Down to Hades. The way back up to the altar is a slice-only
-        // convenience: canonically the cave leads onward into the mirror
-        // region (a later phase), which is absent here, so without this exit
-        // the player would strand below the one-way rope. Removed/reconciled
-        // when that region lands. See `FIDELITY.md`.
+        // Cave (canonically the Tiny Cave). Down to Hades; its north and west
+        // openings onto the mirror region are host-wired in ``Zork1`` (they
+        // cross into ``ZorkMirror``). There is deliberately no way back up to
+        // the altar — the drop through the altar crack is one-way, and the way
+        // out of the temple complex is onward through the mirror rooms.
         cave.down(entranceToHades)
-        cave.up(altar)
 
         // Entrance to Hades. South to the Land of the Dead once the spirits
         // are gone.
