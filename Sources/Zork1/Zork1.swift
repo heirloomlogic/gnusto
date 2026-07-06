@@ -15,9 +15,11 @@ struct Zork1: Game, GameMain {
     let title = "Zork I: The Great Underground Empire"
     let tagline = "A placeholder slice: the White House, its grounds, and the cellar."
 
-    /// The sum of the slice's declared treasure values (painting 4+6, egg
-    /// 5+5) — a stand-in for the real 350 until more treasures exist.
-    let maxScore = 20
+    /// The full game's ceiling: 350 points, as in the original. Only a
+    /// fraction is reachable in the current slice (the painting 4+6 and egg
+    /// 5+5 treasures, plus the kitchen/cellar visit awards), but the score
+    /// line and rank ladder read against the real target from here on.
+    let maxScore = 350
     let intro = """
         An adventure awaits amid a ruined empire buried underground. This
         slice covers only the White House, its immediate surroundings, and
@@ -38,6 +40,14 @@ struct Zork1: Game, GameMain {
     let melee = MeleeCombat()
     let actors = ActorBehaviors()
 
+    /// The custom verb vocabulary (dig, wave, ring, xyzzy, drink/fill/pour …)
+    /// and its stage-4 defaults.
+    let systems = ZorkSystems()
+
+    /// The weight/burden system: takeable items have weight and the player
+    /// can only carry so much.
+    let burden = ZorkBurden()
+
     var content: GameContents {
         aboveGround
         house
@@ -45,12 +55,45 @@ struct Zork1: Game, GameMain {
         dangerousDark
         scoring
         melee
+        systems
+        burden
+    }
+
+    /// Replace the engine's plain score line with one that also names the
+    /// rank the score earns. `score` is a meta intent (it skips all rules),
+    /// so this can't be an `after(.score)` rule — the override is the only
+    /// seam. The first line reproduces the engine's `scoreLine` verbatim so
+    /// existing "Your score is N of a possible 350" assertions still hold.
+    var actions: [IntentAction] {
+        let possibleScore = maxScore
+        action(.score) {
+            let moves = player.moves
+            say(
+                "Your score is \(player.score) of a possible \(possibleScore), "
+                    + "in \(moves) \(moves == 1 ? "turn" : "turns").")
+            say(Prose.rankLine(ZorkRank.name(for: player.score)))
+        }
     }
 
     var rules: Rules {
         // The two treasures the slice can score, and where they pay out.
         // Cross-bundle wiring is the host's job, same as the exits below.
         scoring.treasures([cellar.painting, aboveGround.egg], into: house.trophyCase)
+
+        // Event scoring: the original pays for reaching the kitchen (first
+        // way into the house) and, more richly, for descending into the
+        // cellar. Both are cross-bundle rooms the host owns the wiring for.
+        scoring.visit(house.kitchen, register: "kitchen", points: 10)
+        scoring.visit(house.cellar, register: "cellar", points: 25)
+
+        // The chimney is climbable only lightly loaded: the original caps it
+        // at one item plus the lamp, which this slice simplifies to "no more
+        // than two things in hand" (FIDELITY.md). Studio lives in ZorkCellar
+        // and the rule is a burden concern, so the host owns it.
+        cellar.studio.before(.go) {
+            guard command.direction == .up else { return }
+            try require(player.inventory.count <= 2, else: Prose.chimneyTooBurdened)
+        }
 
         // The troll, fought with the house's blades — entities from two
         // bundles, so the host wires them. Strength 2 is the original's.

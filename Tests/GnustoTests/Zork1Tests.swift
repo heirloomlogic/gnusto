@@ -98,23 +98,25 @@ struct Zork1Tests {
             ])
     }
 
-    /// The lantern's fuel is a pair of fuses: a dim warning, then darkness —
-    /// and turning the lantern off pauses the clock (no fuel burns while
-    /// it's off).
+    /// The lantern's fuel is three fuses now: a dim warning at 200 turns, a
+    /// last-gasp warning at 225, and darkness for good at 230. `wait` fillers
+    /// drive the long burn (the numbers are scaled toward the original since
+    /// the game is playable end to end — see `FIDELITY.md`).
     @Test func lanternBurnsOut() async throws {
-        let fillers = Array(repeating: "look", count: 18)
+        let waits = Array(repeating: "wait", count: 230)
         let transcript = try await play(
             Zork1(),
             ["south", "east", "open window", "west", "west", "take lantern", "turn on lantern"]
-                + fillers
-                + ["look", "look", "look", "look", "look", "look", "turn on lantern"])
-        // The turn-on turn ticks 20→19; the 19th look reaches zero.
-        let looks = transcript.components(separatedBy: "> look")
-        #expect(!looks[18].contains("flame inside the lantern shrinks"))
-        #expect(looks[19].contains("flame inside the lantern shrinks"))
-        // Five looks later the lantern dies for good.
-        #expect(looks[24].contains("The brass lantern flickers and goes out"))
-        // Spent is spent.
+                + waits
+                + ["turn on lantern"])
+        // The turn-on turn ticks once, so warning K fires on wait #(K−1):
+        // dim at 200, last-gasp at 225, dark at 230.
+        let turns = transcript.components(separatedBy: "> wait")
+        #expect(!turns[198].contains("flame inside the lantern shrinks"))
+        #expect(turns[199].contains("flame inside the lantern shrinks"))
+        #expect(turns[224].contains("light gutters down to a dull ember"))
+        #expect(turns[229].contains("The brass lantern flickers and goes out"))
+        // Spent is spent: relighting a burned-out lantern refuses.
         let relights = transcript.components(separatedBy: "> turn on lantern")
         #expect(relights[2].contains("burned out"))
     }
@@ -206,21 +208,24 @@ struct Zork1Tests {
     }
 
     @Test func turningTheLanternOffPausesTheFuel() async throws {
-        let burn18 = Array(repeating: "look", count: 18)
+        // 198 lit turns burn the dim fuse down to 1 (not yet fired); turning
+        // the lantern off banks that 1, so three dark idle turns cost nothing;
+        // relighting restarts the fuse at 1, so the dim warning fires at the
+        // end of the relight turn itself.
+        let burn = Array(repeating: "wait", count: 198)
         let transcript = try await play(
             Zork1(),
             ["south", "east", "open window", "west", "west", "take lantern", "turn on lantern"]
-                + burn18
-                + ["turn off lantern", "look", "look", "look", "turn on lantern"])
-        // 18 looks burned the dim fuse to 1; three dark-lantern turns cost
-        // nothing; relighting restarts it at 1, so it fires at the end of
-        // the relight turn itself.
+                + burn
+                + ["turn off lantern", "wait", "wait", "wait", "turn on lantern"])
         let off = turnOutput(of: "turn off lantern", in: transcript)
         #expect(!off.contains("flame inside the lantern shrinks"))
-        let looks = transcript.components(separatedBy: "> look")
-        #expect(!looks[19].contains("flame inside the lantern shrinks"))
-        let lastDarkLook = looks[21].prefix(while: { $0 != ">" })
-        #expect(!lastDarkLook.contains("flame inside the lantern shrinks"))
+        // The dark idle turns never burn the fuse (waits[201], the final
+        // split, bleeds into the relight turn where the banked fuse fires, so
+        // it's the two cleanly-bounded idle turns that must stay silent).
+        let waits = transcript.components(separatedBy: "> wait")
+        #expect(!waits[199].contains("flame inside the lantern shrinks"))
+        #expect(!waits[200].contains("flame inside the lantern shrinks"))
         let relight = transcript.components(separatedBy: "> turn on lantern")[2]
         #expect(relight.contains("The brass lantern is now on."))
         #expect(relight.contains("flame inside the lantern shrinks"))
@@ -255,7 +260,9 @@ struct Zork1Tests {
 
     @Test func depositPaintingScoresPoints() async throws {
         // The painting pays 4 on first take and 6 on first deposit; taking
-        // it back out and re-depositing pays nothing more. Seed 1,
+        // it back out and re-depositing pays nothing more. The route also
+        // banks two visit awards on the way down — the kitchen (10) and the
+        // cellar (25) — so the running totals are 39 then 45. Seed 1,
         // recorded: the thief keeps his fingers to himself on this route.
         let transcript = try await play(
             Zork1(),
@@ -273,13 +280,13 @@ struct Zork1Tests {
         expectInOrder(
             transcript,
             [
-                "Your score is 4 of a possible 20",
+                "Your score is 39 of a possible 350",
                 "You put the painting in the trophy case.",
-                "Your score is 10 of a possible 20",
+                "Your score is 45 of a possible 350",
             ])
         let scores = transcript.components(separatedBy: "Your score is ")
         #expect(scores.count == 4)
-        #expect(scores[3].hasPrefix("10 of a possible 20"))
+        #expect(scores[3].hasPrefix("45 of a possible 350"))
     }
 
     @Test func eggScoresOnTheWayIn() async throws {
@@ -291,12 +298,15 @@ struct Zork1Tests {
                 "open trophy case", "put egg in trophy case", "score",
             ])
 
+        // The egg pays 5 on the way up the tree; crossing into the kitchen
+        // through the window pays another 10 (a visit award), and the deposit
+        // pays a final 5 — 20 by the time it's cased.
         expectInOrder(
             transcript,
             [
-                "Your score is 5 of a possible 20",
+                "Your score is 5 of a possible 350",
                 "You put the jewel-encrusted egg in the trophy case.",
-                "Your score is 10 of a possible 20",
+                "Your score is 20 of a possible 350",
             ])
     }
 
@@ -348,7 +358,9 @@ struct Zork1Tests {
             [
                 "the argument is settled",
                 "*** You have died ***",
-                "Your score is 0 of a possible 20",
+                // No treasures taken, but the kitchen (10) and cellar (25)
+                // visit awards banked on the way down survive to the banner.
+                "Your score is 35 of a possible 350",
                 "Would you like to RESTART, RESTORE a saved game, UNDO your last turn, or QUIT?",
                 "Previous turn undone.",
                 "East of Chasm",
@@ -514,13 +526,13 @@ struct Zork1Tests {
             [
                 "Kitchen",
                 // take all: name-sorted, per-object results; the scenery
-                // window is skipped, and the water — visible through the
-                // shut glass — refuses with "can't reach", not "can't see".
+                // window is skipped, and the water refuses because loose
+                // water can't be carried — it slips through your fingers.
                 "brown sack: Taken.",
                 "clove of garlic: Taken.",
                 "glass bottle: Taken.",
                 "lunch: Taken.",
-                "quantity of water: You can't reach the quantity of water.",
+                "quantity of water: The water slips between your fingers.",
                 // drop all: everything just taken goes back down.
                 "brown sack: Dropped.",
                 "clove of garlic: Dropped.",

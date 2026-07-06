@@ -195,3 +195,83 @@ entry below is grouped by the task that introduced it.
   recovering-it-from-his-lair), unbars the trap door, and stops his
   daemons. Treasures recovered this way re-take/re-deposit without
   double-scoring (award-once registers).
+
+## Phase 10.2 — Zork 1 toolkit (`Sources/Zork1/Systems.swift`, `Burden.swift`, `House.swift`)
+
+The systems layer that flips the slice from a 20-point placeholder toward the
+real 350-point game: a custom verb vocabulary, weight/burden, liquid handling,
+score ranks, and a longer lantern burn. No new rooms this task.
+
+### Prose
+
+- **`Prose.swift` is split by region** into `Prose+AboveGround.swift`,
+  `Prose+House.swift`, `Prose+Cellar.swift`, and `Prose+Systems.swift`
+  (extensions on the same `enum Prose`). Pure relocation — the text is
+  unchanged and the one-constant-per-entity verbatim-swap path is intact.
+- **The custom verbs' responses are original placeholder text**, same as
+  every other line. Infocom's famous joke replies (the hollow voice's
+  "Fool.", the wave-of-nausea, and so on) are deliberately not reproduced;
+  the verb *words* the player types (`xyzzy`, `plugh`, `pray`, …) are the
+  iconic ones and are used as-is.
+
+### Custom verbs (`Systems.swift`)
+
+- **The verbs are declared now but mostly inert.** `dig`, `wave`, `touch`,
+  `wind`, `inflate`/`deflate`, `launch`, `raise`/`lower`, `turn … with …`,
+  `tie`/`untie`, `give`, `ring`, and the magic words (`xyzzy`, `plugh`,
+  `odysseus`/`ulysses`) parse and answer with a polite stage-4 default. Their
+  real mechanics arrive with the regions that need them (the shovel, the
+  clockwork canary, the plastic boat, the dam controls, the Cyclops), which
+  only have to add an item-scoped rule — the parser already knows the word.
+- **`diagnose` and `count` are not implemented.** The original's health-report
+  and inventory-count verbs are out of scope for this slice.
+- **`turn … with …` outspecifies `turn … on`** (specificity 22 vs 21) so a
+  future "turn bolt with wrench" never trips the light switch.
+
+### Burden / weight (`Burden.swift`)
+
+- **Every takeable item weighs a flat 5 by default**, with a carrying cap of
+  100 (the original's cap) — twenty small things. Heavy items (the coffin,
+  the gold) will override `.weight` in later regions; none do yet, so the cap
+  itself is effectively unreachable with current content and is exercised
+  only indirectly through the chimney gate below.
+- **The chimney gate is a count, not the original's rule.** The original lets
+  you climb the Studio chimney carrying at most one item plus the lamp; this
+  slice simplifies that to "no more than two things in hand" (a
+  `player.inventory.count <= 2` check on `studio` climbing up).
+
+### Liquids (`House.swift`)
+
+- **Water can't be carried loose** — taking it always refuses ("slips
+  between your fingers"); it lives in the bottle. `drink` and `pour` empty
+  the bottle; `fill` needs a `.waterSource` room.
+- **The `.waterSource` location trait ships dormant.** No room sets it in this
+  slice (the reservoir and its shores arrive with the dam), so `fill` always
+  reports there's nothing to fill from. The verb and trait exist now so those
+  rooms only have to flip the trait on.
+
+### Scoring
+
+- **`maxScore` is now 350**, the real ceiling, though only a fraction is
+  reachable in the current slice.
+- **Visit awards are live for the kitchen (10) and the cellar (25)**, matching
+  the original's event scoring. Deaths in this slice carry no score penalty
+  yet (the death toll is Phase 10's `onDeath` work), so points banked before
+  a death survive to the banner.
+- **Score ranks are shown, but the rank names are original placeholders.**
+  The ladder's thresholds are game data used as-is; the titles ("Wanderer",
+  "Trespasser", … "Master of the Underground") stand in for Infocom's
+  ("Beginner" … "Master Adventurer") on the same names-vs-prose line as
+  everything else. The `score` verb is a meta intent (it skips all rules), so
+  the rank is appended via an `action(.score)` override whose first line
+  reproduces the engine's score line verbatim.
+
+### Lantern
+
+- **The lantern fuel is scaled up toward the original's long burn**: a dim
+  warning at 200 turns, a last-gasp warning at 225 (a new third fuse), and
+  darkness for good at 230 — replacing the deliberately tiny Phase-7 values
+  (20/25) that only existed so a short transcript could watch it die. Still a
+  fraction of the original's hundreds of turns, but long enough that fuel is
+  no longer a near-term concern. Turning the lantern off still banks all three
+  fuses' remaining turns.
