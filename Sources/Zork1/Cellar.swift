@@ -35,9 +35,9 @@ struct ZorkCellar: GameContent {
         dark
     }
 
-    /// North of the cellar. The passages beyond (east toward the round
-    /// room, west toward the maze) are honest stubs until their regions
-    /// exist — see `FIDELITY.md`.
+    /// North of the cellar. East now opens onto the Round Room hub once the
+    /// troll falls; west toward the maze stays an honest stub until that
+    /// region exists — see `FIDELITY.md`.
     let trollRoom = Location {
         name("Troll Room")
         description(Prose.trollRoom)
@@ -107,13 +107,12 @@ struct ZorkCellar: GameContent {
     }
 
     var rules: Rules {
-        // The troll is the gate: east and west stay his until he falls,
-        // and honestly-collapsed stubs after (their regions are later
-        // phases).
+        // The troll gates the west passage: his while he lives, and a
+        // collapsed stub after (the maze beyond is a later phase). The east
+        // passage is now a real exit to the Round Room hub — the host wires it
+        // (it crosses into ``ZorkRoundRoom``) and gates it on ``trollDefeated``.
         trollRoom.before(.go) {
-            guard command.direction == .east || command.direction == .west else {
-                return
-            }
+            guard command.direction == .west else { return }
             guard trollDefeated else {
                 try refuse(Prose.trollBlocksTheWay)
             }

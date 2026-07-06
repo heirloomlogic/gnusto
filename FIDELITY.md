@@ -161,7 +161,8 @@ entry below is grouped by the task that introduced it.
   round-room side of the dungeon) and west (toward the maze) refuse with
   the troll's block while he lives, and with a collapsed-passages line
   after — their regions are later phases. In the original both passages
-  open onto real map.
+  open onto real map. *(Updated in Phase 10.4: east now opens onto the
+  East-West Passage once the troll falls; only west remains a stub.)*
 - **Combat is `GnustoMeleeCombat`'s simplified table**, not the original's
   per-weapon melee tables: one roll per swing (miss/wound/knockout/kill at
   fixed 30/70/85 breaks), villain answers on the end-of-turn clock, player
@@ -302,3 +303,70 @@ one). A `@Global var deaths` counts them.
   of House, South of House, Behind House, Forest Path, Clearing). `player.inventory`
   is sorted by id, so the placement is stable and no RNG is drawn — a quiet,
   reproducible turn. Revisit if the canonical randomized scatter is wanted.
+
+## Phase 10.4 — Round Room hub (`Sources/Zork1/Regions/RoundRoom.swift`)
+
+The underground crossroads east of the Troll Room: the East-West Passage, the
+Round Room and its passages, the Chasm, Deep Canyon, Damp Cave, and the Loud
+Room with the platinum bar. First region under `Sources/Zork1/Regions/` — the
+three earlier regions stay flat at the target root (SwiftPM is
+directory-agnostic; this only organizes the many regions still to come).
+
+### Prose
+
+- **All room, item, and message prose is original placeholder text**, same
+  policy and one-constant-per-entity structure as every prior task
+  (`Prose+RoundRoom.swift`). Room and treasure *names* ("Round Room", "Loud
+  Room", "platinum bar") are the iconic ones, used as-is.
+
+### Map topology
+
+- **The exit table is the canonical Zork 1 layout** (verified against the
+  original `1dungeon.zil`): East-West Passage E↔Round Room, N/Down→Chasm;
+  Round Room E↔Loud Room, W↔East-West Passage, N↔North-South Passage;
+  North-South Passage N→Chasm, NE↔Deep Canyon, S↔Round Room; Chasm SW/Up→
+  East-West Passage, S→North-South Passage; Deep Canyon SW→North-South Passage,
+  Down→Loud Room; Loud Room E↔Damp Cave, W→Round Room, Up↔Deep Canyon; Damp
+  Cave W↔Loud Room.
+- **Exits onward to unbuilt regions are simply absent, not stubbed.** The Round
+  Room's south (Narrow Passage) and southeast (Engravings Cave), the Chasm's and
+  Deep Canyon's northwest edges toward the reservoir, Deep Canyon's east to the
+  dam, and Damp Cave's east to the White Cliffs all lead into regions that don't
+  exist yet, so they give the engine's plain "you can't go that way" rather than
+  an honest-stub refusal — the hub interior itself is fully connected and
+  stubs-free. The Chasm's downward drop and Damp Cave's southward crack are
+  authored `blocked:` refusals (the original blocks both with a message).
+- **`Winding Passage` is deferred to the Mirror region (T7), not built here.**
+  The roadmap's T4 line lists it, but canonically it connects only to Mirror
+  Room 2 and Tiny Cave — both Mirror/Temple geography with no edge to the Round
+  Room hub. Building it now would strand a room with no reachable exits, so it
+  waits for T7 (which also lists it).
+- **The Troll Room's east passage is now real.** It opens onto the East-West
+  Passage once the troll falls (`when: { trollDefeated }`, host-wired since it
+  crosses bundles), replacing the Phase-8 collapsed-passage stub. The **west**
+  passage (toward the maze) stays an honest stub until T10.
+
+### The Loud Room
+
+- **The acoustics puzzle is modeled with a match-all garble rule.** On still
+  water the room refuses every command but movement and looking until the player
+  says `echo`, which sets `loudRoomAcousticsFixed` and frees the platinum bar.
+  The original instead keeps a `SACREDBIT` on the bar (untakeable) and runs a
+  bespoke read-loop; the garble rule reproduces the player-facing behavior — you
+  cannot take the bar until you echo — without the read-loop.
+- **The water-driven ejection is present but dormant.** While `waterMoving` is
+  true the room scrambles the player out to one random neighbour (Damp Cave,
+  Round Room, or Deep Canyon — the original's `LOUD-RUNS` set) — this region's
+  only RNG draw, guarded so still-water turns never touch the stream.
+  `waterMoving` defaults false and is owned here but driven by the dam region
+  (T5); until then the ejection path is unexercised. Its exact end-of-turn
+  timing (the original ejects at `M-END`, after the command) is modeled as a
+  start-of-turn `beforeEachTurn` bounce and will be revisited when T5 wires and
+  tests the water state.
+- **The platinum bar carries the original's numbers** (weight/`SIZE` 20, find
+  10, case 5) and is in the host `scoring.treasures` roster.
+
+### Scoring
+
+- **The East-West Passage pays 5 on first arrival** (the original's room
+  `VALUE`), host-wired via `scoring.visit` alongside the kitchen and cellar.
