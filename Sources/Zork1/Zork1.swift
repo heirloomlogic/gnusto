@@ -30,6 +30,7 @@ struct Zork1: Game, GameMain {
     let house = ZorkHouse()
     let cellar = ZorkCellar()
     let roundRoom = ZorkRoundRoom()
+    let dam = ZorkDam()
 
     /// The grue. Zork's prose, the plugin's stock warn-then-kill schedule.
     let dangerousDark = DangerousDark(
@@ -58,6 +59,7 @@ struct Zork1: Game, GameMain {
         house
         cellar
         roundRoom
+        dam
         dangerousDark
         scoring
         melee
@@ -122,7 +124,7 @@ struct Zork1: Game, GameMain {
         // The treasures the slice can score, and where they pay out.
         // Cross-bundle wiring is the host's job, same as the exits below.
         scoring.treasures(
-            [cellar.painting, aboveGround.egg, roundRoom.platinumBar],
+            [cellar.painting, aboveGround.egg, roundRoom.platinumBar, dam.trunk],
             into: house.trophyCase)
 
         // Event scoring: the original pays for reaching the kitchen (first
@@ -140,6 +142,30 @@ struct Zork1: Game, GameMain {
         cellar.studio.before(.go) {
             guard command.direction == .up else { return }
             try require(player.inventory.count <= 2, else: Prose.chimneyTooBurdened)
+        }
+
+        // The dam bolt. Turning it works the sluice gates, but only with the
+        // wrench and only while the panel is charged (the yellow button's green
+        // bubble). Opening the gates drains the reservoir; closing them fills it
+        // — an eight-turn passage in either case, during which water is moving
+        // through the depths and the Loud Room becomes unbearable. The bolt is a
+        // dam entity but its effect reaches into ``ZorkRoundRoom``'s
+        // ``waterMoving`` and arms the host fuses below, so it's the host's to
+        // wire — same as the troll's east exit and the chimney gate above.
+        dam.bolt.before(.turnWith) {
+            try require(command.indirectObject == dam.wrench, else: Prose.boltNeedsWrench)
+            try require(dam.bubbleGlowing, else: Prose.boltWontTurn)
+            dam.gatesOpen.toggle()
+            roundRoom.waterMoving = true
+            if dam.gatesOpen {
+                stopFuse("damRefill")
+                startFuse("damDrain", after: 8)
+                try reply(Prose.gatesOpen)
+            } else {
+                stopFuse("damDrain")
+                startFuse("damRefill", after: 8)
+                try reply(Prose.gatesClose)
+            }
         }
 
         // The troll, fought with the house's blades — entities from two
@@ -197,6 +223,27 @@ struct Zork1: Game, GameMain {
     }
 
     var timers: [TimedEvent] {
+        // The gates' eight-turn passage, armed by the bolt rule above. Draining
+        // lays the reservoir bare and reveals the trunk; filling submerges the
+        // bed again and drowns anyone still standing on it. Both settle the
+        // water — the Loud Room falls quiet — when they fire. Declared here
+        // because they touch entities from two bundles (``dam`` and
+        // ``roundRoom``) that neither can reach from its own timers.
+        fuse("damDrain", after: 8) {
+            dam.reservoirDrained = true
+            dam.trunk.reveal()
+            roundRoom.waterMoving = false
+            say(Prose.reservoirEmpties)
+        }
+        fuse("damRefill", after: 8) {
+            dam.reservoirDrained = false
+            roundRoom.waterMoving = false
+            if player.location == dam.reservoir {
+                try die(Prose.reservoirRefillDrowns)
+            }
+            say(Prose.reservoirRefills)
+        }
+
         melee.aggression(
             of: cellar.troll, key: "troll", daemonName: "melee.troll",
             prose: MeleeCombat.AggressionProse(
@@ -245,6 +292,18 @@ struct Zork1: Game, GameMain {
             .east, to: roundRoom.eastWestPassage,
             when: { cellar.trollDefeated }, otherwise: Prose.trollBlocksTheWay)
         roundRoom.eastWestPassage.west(cellar.trollRoom)
+
+        // Where ZorkRoundRoom meets ZorkDam: Deep Canyon opens east onto the
+        // dam and northwest onto the reservoir's south shore, and the Chasm's
+        // northeast edge joins the same shore. These are the exits the Round
+        // Room region left absent for "their region"; the dam owns the shore
+        // side of each, the host owns the crossing.
+        roundRoom.deepCanyon.east(dam.damRoom)
+        dam.damRoom.south(roundRoom.deepCanyon)
+        roundRoom.deepCanyon.northwest(dam.reservoirSouth)
+        dam.reservoirSouth.southeast(roundRoom.deepCanyon)
+        roundRoom.chasmRoom.northeast(dam.reservoirSouth)
+        dam.reservoirSouth.southwest(roundRoom.chasmRoom)
 
         player.starts(in: aboveGround.westOfHouse)
     }

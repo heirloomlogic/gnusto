@@ -370,3 +370,96 @@ directory-agnostic; this only organizes the many regions still to come).
 
 - **The East-West Passage pays 5 on first arrival** (the original's room
   `VALUE`), host-wired via `scoring.visit` alongside the kitchen and cellar.
+
+## Phase 10.5 — Dam & Reservoir (`Sources/Zork1/Regions/Dam.swift`)
+
+Flood Control Dam #3, its lobby and Maintenance Room, the Dam Base, the three
+reservoir rooms, and the stream. The region's machinery — the four buttons, the
+green bubble, and the bolt-worked sluice gates — is the first player-operated
+mechanism in the slice, and the first source of the moving water the Loud Room
+has been waiting on since Phase 10.4.
+
+### Prose
+
+- **All room, item, and message prose is original placeholder text**, same
+  policy and one-constant-per-entity structure as every prior task
+  (`Prose+Dam.swift`). Room and item *names* ("Dam", "Maintenance Room", "trunk
+  of jewels", "hand-held air pump") are the iconic ones, used as-is.
+
+### Map topology
+
+- **The exit table is the canonical Zork 1 layout** (verified against the
+  original `1dungeon.zil`): Dam Down/E→Dam Base, N↔Dam Lobby, W→Reservoir South,
+  S→Deep Canyon; Dam Lobby N/E→Maintenance Room, S↔Dam; Maintenance Room
+  S/W→Dam Lobby; Dam Base N/Up→Dam; Reservoir South E→Dam, W↔Stream View,
+  SE↔Deep Canyon, SW↔Chasm, N→Reservoir (only when drained); Reservoir
+  N↔Reservoir North, S↔Reservoir South, Up/W→Stream, Down blocked; Reservoir
+  North S→Reservoir (only when drained), N→Atlantis (T7); Stream View E→Reservoir
+  South, W blocked; Stream Down/E→Reservoir, Up/W blocked.
+- **The cross-region edges to the Round Room hub are host-wired.** Deep Canyon's
+  east (to the Dam) and northwest (to Reservoir South), and the Chasm's northeast
+  (to Reservoir South), cross the `ZorkRoundRoom`/`ZorkDam` bundle boundary, so
+  the host owns them — the same seam as the troll's east exit. These are the
+  "await their region" edges the Round Room region (10.4) deliberately left
+  absent.
+- **The reservoir bed is crossable only while drained.** Reservoir South↔Reservoir
+  and Reservoir North↔Reservoir are conditional exits gated on `reservoirDrained`
+  (the original's `LOW-TIDE`); a full reservoir refuses with a "you would drown"
+  message (`IF LOW-TIDE ELSE "You would drown."`).
+- **The stream's boat-only `LAND` disembark is deferred to the river region
+  (T9).** The original reaches Stream View from the stream via a `LAND` exit used
+  only when boating; the engine has no `LAND` direction and the boat isn't built
+  yet, so that edge is absent. Both stream rooms stay reachable on foot — Stream
+  View from Reservoir South's west, the Stream from the drained reservoir bed — so
+  nothing is stranded.
+- **Dam Base is a bare room this task.** The pile of plastic (the inflatable
+  boat) that canonically starts here belongs to the river region (T9) and is not
+  placed yet.
+
+### Mechanics simplified or deferred
+
+- **The Maintenance Room flood is a deterministic band model.** The blue button
+  starts a `damFlood` daemon; the water is narrated rising past the ankles
+  (turn 4), the waist (turn 8), and the neck (turn 12), and anyone still in the
+  room when it fills at turn 13 drowns, at which point the room seals (the daemon
+  stops). The original raises a continuous water level and computes drowning from
+  it; the fixed bands and 13-turn seal reproduce the player-facing arc (warned,
+  then drowned if you linger) deterministically, so no seed is needed. **Leaving
+  the room is the only escape** — the tube-of-gunk leak-plugging puzzle is not
+  modeled; the tube is a readable souvenir for now.
+- **`waterMoving` is driven across the bundle boundary by the host.** The Loud
+  Room (in `ZorkRoundRoom`) reads `waterMoving`, but a bundle can't reach another
+  bundle's `@Global` from its own rules, so the `turn bolt with wrench` rule and
+  the eight-turn `damDrain`/`damRefill` fuses — the only writers of `waterMoving`
+  — live in the host (`Zork1.swift`), the same way `cellar.trollDefeated` is
+  written from the host. The original keeps a single global flag both areas share
+  directly.
+- **The gates take a flat eight turns to drain or refill** (the original's
+  `GATE-INT`), driving `waterMoving` for the duration (the Loud Room ejects while
+  it runs) and toggling `reservoirDrained` when they settle. Draining reveals the
+  trunk of jewels (`hidden` until the drain fuse calls `reveal()`); refilling
+  while standing on the reservoir bed drowns you.
+- **The bolt requires the charged panel, not just the wrench.** `turn bolt with
+  wrench` refuses unless the yellow button has set `bubbleGlowing` (the original's
+  green bubble / `GATE-FLAG`); the brown button clears it. The red button toggles
+  the Maintenance Room's own light (tracked with a flag so a carried lantern isn't
+  mistaken for it). Turning the bolt with anything but the wrench is refused.
+- **The matchbook and hand pump are placed now, inert until later.** The
+  matchbook (Dam Lobby) is a readable item here; its finite, lightable matches
+  arrive with the Temple exorcism (T6). The hand pump (Reservoir North) inflates
+  the boat in the river region (T9). Both sit in their canonical rooms so the
+  parser and geography are complete from the start.
+
+### Scoring
+
+- **The trunk of jewels carries the original's numbers** (weight/`SIZE` 35, find
+  15, case 5) and is in the host `scoring.treasures` roster, paying out in the
+  living-room trophy case like the other treasures.
+
+### Water sources
+
+- **The reservoir shores and the stream are the slice's first fillable rooms.**
+  Reservoir South/North, the Reservoir bed, Stream View, and the Stream all carry
+  the `.waterSource` trait (minted dormant in Phase 10.2), so an emptied bottle
+  fills there — the "there's no water here" default now has somewhere it doesn't
+  apply.
