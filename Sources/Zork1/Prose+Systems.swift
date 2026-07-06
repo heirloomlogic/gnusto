@@ -90,6 +90,14 @@ extension Prose {
         to do by its glow, do it now.
         """
 
+    // MARK: - Death & resurrection
+
+    static let resurrection = """
+        As the darkness closes in, an unseen power takes pity on you. The
+        world lurches, the cold recedes, and you find yourself standing once
+        more beneath the open sky, your belongings strewn about the grounds.
+        """
+
     // MARK: - Score ranks
 
     static func rankLine(_ rank: String) -> String {
