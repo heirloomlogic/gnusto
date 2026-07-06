@@ -2,6 +2,14 @@ import Gnusto
 import GnustoMeleeCombat
 import GnustoScoring
 
+extension TraitKey<Bool> {
+    /// A room where a container can be filled with water. None exist in the
+    /// current slice — the reservoir and its shores arrive with the dam — so
+    /// the trait ships dormant, ready for those rooms to set it. The liquid
+    /// verbs (`fill`/`drink`/`pour`) are live now regardless; see `FIDELITY.md`.
+    public static let waterSource = Self("waterSource", default: false)
+}
+
 /// The jewel-encrusted egg lives in `ZorkAboveGround` (Up a Tree), but the
 /// living room's trophy case (`ZorkHouse`) needs to describe itself
 /// differently once the egg is inside it. A file-scope `let` is how this
@@ -140,11 +148,15 @@ struct ZorkHouse: GameContent {
     let lantern = zork1Lantern
 
     /// Fuel remaining on the dim-warning fuse while the lantern is off.
-    /// Deliberately small numbers (the original burns for hundreds of
-    /// turns) so a transcript test can watch it die — see `FIDELITY.md`.
-    @Global var lanternDimIn = 20
+    /// Scaled toward the original's long burn now that the game is playable
+    /// end to end (the earlier tiny values only existed so a Phase-7
+    /// transcript could watch it die) — a first orange warning at 200 turns,
+    /// a last-gasp warning at 225, dark for good at 230. See `FIDELITY.md`.
+    @Global var lanternDimIn = 200
+    /// Fuel remaining on the last-gasp fuse (the final warning before dark).
+    @Global var lanternLastGaspIn = 225
     /// Fuel remaining on the burn-out fuse while the lantern is off.
-    @Global var lanternDiesIn = 25
+    @Global var lanternDiesIn = 230
     @Global var lanternBurnedOut = false
 
     let sword = Item {
@@ -261,23 +273,58 @@ struct ZorkHouse: GameContent {
             if lanternDimIn > 0 {
                 startFuse("lanternDim", after: lanternDimIn)
             }
+            if lanternLastGaspIn > 0 {
+                startFuse("lanternLastGasp", after: lanternLastGaspIn)
+            }
             startFuse("lanternDies", after: lanternDiesIn)
         }
         lantern.after(.turnOff) {
-            // Bank what's left, then stop the clock — no fuel burns while
-            // the lantern is off.
+            // Bank what's left on all three fuses, then stop the clock — no
+            // fuel burns while the lantern is off.
             lanternDimIn = fuseRemaining("lanternDim") ?? 0
+            lanternLastGaspIn = fuseRemaining("lanternLastGasp") ?? 0
             lanternDiesIn = fuseRemaining("lanternDies") ?? 0
             stopFuse("lanternDim")
+            stopFuse("lanternLastGasp")
             stopFuse("lanternDies")
+        }
+
+        // Liquids. Water lives in the bottle and can't be carried loose — it
+        // slips through your fingers. Drinking or pouring empties the bottle;
+        // refilling needs a water source, of which this slice has none yet
+        // (the reservoir arrives with the dam — see `FIDELITY.md`), so `fill`
+        // reports there's nothing to fill from.
+        water.before(.take) {
+            try refuse(Prose.waterSlipsAway)
+        }
+        water.before(.drink) {
+            try require(bottle.holds(water), else: Prose.nothingToDrink)
+            try require(bottle.isOpen, else: Prose.bottleNeedsToBeOpen)
+            water.vanish()
+            try reply(Prose.drinkWater)
+        }
+        water.before(.pour) {
+            try require(bottle.holds(water), else: Prose.nothingToPour)
+            try require(bottle.isOpen, else: Prose.bottleNeedsToBeOpen)
+            water.vanish()
+            try reply(Prose.bottleEmptied)
+        }
+        bottle.before(.fill) {
+            guard !bottle.holds(water) else { try reply(Prose.bottleAlreadyFull) }
+            try require(player.location[default: .waterSource], else: Prose.noWaterSource)
+            water.move(inside: bottle)
+            try reply(Prose.bottleFilled)
         }
     }
 
     var timers: [TimedEvent] {
-        fuse("lanternDim", after: 20) {
+        fuse("lanternDim", after: 200) {
             say(Prose.lanternDim)
         }
-        fuse("lanternDies", after: 25) {
+        fuse("lanternLastGasp", after: 225) {
+            say(Prose.lanternLastGasp)
+        }
+        fuse("lanternDies", after: 230) {
             lanternBurnedOut = true
             zork1Lantern.isLit = false
             say(Prose.lanternDies)
