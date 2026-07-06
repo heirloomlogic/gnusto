@@ -33,6 +33,7 @@ struct Zork1: Game, GameMain {
     let dam = ZorkDam()
     let temple = ZorkTemple()
     let mirror = ZorkMirror()
+    let coalMine = ZorkCoalMine()
 
     /// The grue. Zork's prose, the plugin's stock warn-then-kill schedule.
     let dangerousDark = DangerousDark(
@@ -70,6 +71,7 @@ struct Zork1: Game, GameMain {
         dam
         temple
         mirror
+        coalMine
         dangerousDark
         scoring
         melee
@@ -137,7 +139,8 @@ struct Zork1: Game, GameMain {
             [
                 cellar.painting, aboveGround.egg, roundRoom.platinumBar, dam.trunk,
                 temple.torch, temple.coffin, temple.sceptre, temple.crystalSkull,
-                mirror.crystalTrident,
+                mirror.crystalTrident, coalMine.jade, coalMine.sapphireBracelet,
+                coalMine.diamond,
             ],
             into: house.trophyCase)
 
@@ -148,6 +151,7 @@ struct Zork1: Game, GameMain {
         scoring.visit(house.kitchen, register: "kitchen", points: 10)
         scoring.visit(house.cellar, register: "cellar", points: 25)
         scoring.visit(roundRoom.eastWestPassage, register: "eastWestPassage", points: 5)
+        scoring.visit(coalMine.draftyRoom, register: "draftyRoom", points: 13)
 
         // The chimney is climbable only lightly loaded: the original caps it
         // at one item plus the lamp, which this slice simplifies to "no more
@@ -232,6 +236,41 @@ struct Zork1: Game, GameMain {
             temple.burningMatch.isLit = true
             startFuse("matchBurns", after: 2)
             try reply(Prose.matchStrikes)
+        }
+
+        // The vampire bat in the Coal Mine's Bat Room. Enter without the garlic
+        // in hand and it carries you off to a random room in the mine; hold the
+        // garlic and it keeps its distance. The bat is a ``ZorkCoalMine`` fixture
+        // but the garlic is a ``ZorkHouse`` item, so the host owns the check. The
+        // garlic guard comes before the draw, so an armed entry never touches the
+        // random stream — this is the region's one source of randomness.
+        coalMine.batRoom.onEnter {
+            guard !player.inventory.contains(house.garlic) else { return }
+            let drops = [
+                coalMine.mine1, coalMine.mine2, coalMine.mine3, coalMine.mine4,
+                coalMine.ladderTop, coalMine.ladderBottom, coalMine.squeakyRoom,
+                coalMine.mineEntrance,
+            ]
+            say(Prose.batGrabsYou)
+            player.location = drops[random(0...(drops.count - 1))]
+            describeSurroundings()
+            try reply("")
+        }
+
+        // The machine that makes a diamond. Throw its switch with the screwdriver
+        // (a ``ZorkDam`` tool) while the lid is shut on a load of coal and the
+        // coal is transmuted; any other tool, an open lid, or no coal and nothing
+        // comes of it. The switch and machine are mine fixtures, the screwdriver a
+        // dam item, so the host wires the crossing — like the dam bolt above.
+        coalMine.machineSwitch.before(.turnWith) {
+            try require(command.indirectObject == dam.screwdriver, else: Prose.switchNeedsTool)
+            guard !coalMine.machine.isOpen else { try reply(Prose.machineLidOpen) }
+            guard coalMine.machine.holds(coalMine.coal) else {
+                try reply(Prose.machineWhirsToNoEffect)
+            }
+            coalMine.coal.vanish()
+            coalMine.diamond.move(inside: coalMine.machine)
+            try reply(Prose.machineMakesDiamond)
         }
 
         // The troll, fought with the house's blades — entities from two
@@ -404,6 +443,11 @@ struct Zork1: Game, GameMain {
         // The Slide Room's steep chute drops one-way into the Cellar — no way
         // back up it, so there's no matching `cellar.up` (FIDELITY.md).
         mirror.slideRoom.down(house.cellar)
+
+        // The Slide Room's north opening onto the Mine Entrance — the way into
+        // the Coal Mine (the exit ZorkMirror left absent since Phase 10.7).
+        mirror.slideRoom.north(coalMine.mineEntrance)
+        coalMine.mineEntrance.south(mirror.slideRoom)
 
         // The Tiny Cave (``ZorkTemple``'s ``cave``) opens north to the northern
         // Mirror Room and west to the Winding Passage — the canonical onward

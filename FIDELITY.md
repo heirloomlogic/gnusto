@@ -620,3 +620,79 @@ graph.
 - **The crystal trident carries the original's numbers** (weight/`SIZE` 20, find
   4, case 11) and joins the host `scoring.treasures` roster, paying out in the
   living-room trophy case like the rest.
+
+## Phase 10.8 — Coal mine & diamond (`Sources/Zork1/Regions/CoalMine.swift`)
+
+The dead coal mine reached north from the Slide Room: the Mine Entrance and the
+bat that guards the way in, the Shaft Room with its basket on a chain, the coal
+gas that makes any naked flame fatal, the four-room coal maze, and — through a
+crack too narrow to pass carrying anything — the Drafty Room and the Machine
+Room, where coal fed to the machine and its switch thrown becomes a diamond. Two
+treasures lie in the open (the jade figurine and the sapphire bracelet); the
+third, the huge diamond, has to be made.
+
+### Prose
+
+- **All room, item, and message prose is original placeholder text**, same policy
+  and one-constant-per-entity structure as every prior task (`Prose+CoalMine.swift`).
+  Room and item *names* ("Coal Mine", "Gas Room", "Machine Room", "huge diamond",
+  "jade figurine", "sapphire-encrusted bracelet") are the iconic ones, used as-is.
+  The four maze rooms all share the name "Coal Mine", as the original's do.
+
+### Map topology
+
+- **The exit table is the canonical Zork 1 layout** (verified against the original
+  `1dungeon.zil`): Mine Entrance W→Squeaky Room; Squeaky Room N→Bat Room, E→Mine
+  Entrance; Bat Room S→Squeaky Room, E→Shaft Room; Shaft Room Down→blocked, W→Bat
+  Room, N→Smelly Room; Smelly Room Down→Gas Room, S→Shaft Room; Gas Room Up→Smelly
+  Room, E→Coal Mine 1; the maze — Mine 1 N→Gas Room, E→self, NE→Mine 2; Mine 2
+  N→self, S→Mine 1, SE→Mine 3; Mine 3 S→self, SW→Mine 4, E→Mine 2; Mine 4 N→Mine
+  3, W→self, Down→Ladder Top; Ladder Top Down→Ladder Bottom, Up→Mine 4; Ladder
+  Bottom S→Dead End, W→Timber Room, Up→Ladder Top; Dead End N→Ladder Bottom;
+  Timber Room E→Ladder Bottom, W→Drafty Room (empty-handed only); Drafty Room
+  S→Machine Room, E→Timber Room (empty-handed only); Machine Room N→Drafty Room.
+  The self-loops and the four "wrong" maze exits are the original's and are kept.
+- **The Slide Room's north opening onto the Mine Entrance is host-wired** in
+  `Zork1.swift` (it crosses from `ZorkMirror`), closing the seam Phase 10.7 left
+  absent. This is the only way in — the mine has no other connection to the map.
+- **The canonical IN and OUT aliases fold into WEST and EAST.** The Mine Entrance's
+  `IN` (to the Squeaky Room) and the Drafty Room's `OUT` (to the Timber Room) are
+  duplicate exits to the same rooms its `WEST`/`EAST` already reach, so only the
+  cardinal exits are wired.
+
+### Mechanics simplified or deferred
+
+- **The vampire bat reads *held* garlic, not garlic in the room.** Entering the Bat
+  Room without the garlic clove (a `ZorkHouse` item) in hand gets you seized and
+  carried to a random one of eight mine rooms; hold the garlic and the bat keeps
+  off. The check is host-wired (the bat is a mine fixture, the garlic a house item),
+  and the garlic guard comes *before* the random draw, so an armed descent never
+  touches the random stream — this is the region's one source of randomness. The
+  original also accepts garlic simply dropped in the room; here it must be carried.
+- **The Gas Room reads the `.openFlame` trait** (minted in Phase 10.6, unread until
+  now). At the end of any turn spent there with a lit open flame in hand — the ivory
+  torch, the lit candles, or a struck match, carried in or lit on the spot — the air
+  goes up and the player dies (`afterEachTurn` → `die`). The electric lantern carries
+  no flame and is safe, exactly as in the original.
+- **The basket is modeled as the original's two objects.** The real container (open,
+  transparent, `capacity` 50) and a stand-in trade rooms when the chain is worked, so
+  "raise basket" and "lower basket" always name a basket in the Shaft Room however the
+  chain hangs, and never two at once. It is worked only from the Shaft Room, can't be
+  taken, and a lit torch left in it lights whichever room it hangs in (the engine's
+  `lightReaches` walks through the open container) — which is how the Drafty Room, past
+  the empty-handed crack, is lit for the machine work.
+- **The machine transmutes coal only.** Feeding it coal, shutting the lid, and throwing
+  the switch with the screwdriver (a `ZorkDam` tool — the rule is host-wired, like the
+  dam bolt) makes a huge diamond; the wrong tool, an open lid, or no coal does nothing.
+  The original also grinds any *non*-coal contents into a lump of "gunk"; that
+  destruction is not modeled — a closed machine with no coal simply whirs to no effect.
+
+### Scoring
+
+- **The Drafty Room pays 13 on first arrival** (the original's room `VALUE`),
+  host-wired via `scoring.visit` alongside the kitchen, cellar, and East-West Passage.
+- **Three treasures carry the original's numbers and join the host roster**: the jade
+  figurine (find 5 / case 5), the sapphire-encrusted bracelet (5 / 5), and the huge
+  diamond (10 / 10). All pay out in the living-room trophy case. The coal itself is not
+  a treasure — it carries the original's `SIZE` 20 as its weight and is consumed by the
+  machine.

@@ -154,9 +154,9 @@ struct ZorkMirror: GameContent {
         // so the host wires it.
         atlantisRoom.up(smallCave)
 
-        // Slide Room. Its down chute drops one-way into the Cellar (host-wired,
-        // crossing into ZorkHouse). North (toward the coal mine) awaits its
-        // region and is simply absent.
+        // Slide Room. Its down chute drops one-way into the Cellar and its north
+        // opening onto the Mine Entrance both cross bundle boundaries (into
+        // ZorkHouse and ZorkCoalMine), so the host wires them.
         slideRoom.east(coldPassage)
 
         crystalTrident.starts(in: atlantisRoom)
