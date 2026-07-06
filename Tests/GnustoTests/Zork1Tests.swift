@@ -645,4 +645,111 @@ struct Zork1Tests {
         #expect(!transcript.contains("trap door: "))
         #expect(!transcript.contains("trophy case: Taken."))
     }
+
+    // MARK: - Round Room hub
+
+    /// With the troll down, his east passage opens: the East-West Passage pays
+    /// its five points on first arrival, and the Round Room lies beyond.
+    @Test func theTrollsFallOpensTheRoadEastToTheRoundRoom() async throws {
+        // Seed 39, re-pin expected in T14: the approach and kill match the
+        // `trollBlocksThePassagesUntilDefeated` recording exactly (identical
+        // prefix), so the third attack still lands the killing blow. Only the
+        // steps after the kill are new, and they don't touch combat.
+        let transcript = try await play(
+            Zork1(),
+            [
+                "south", "east", "open window", "west", "west",
+                "take sword", "take lantern", "turn on lantern",
+                "push rug", "open trap door", "down",
+                "north", "west",
+                "attack troll", "attack troll", "attack troll",
+                // The road east is open now: East-West Passage (+5), Round Room.
+                "east", "score", "east",
+            ],
+            seed: 39)
+        expectInOrder(
+            transcript,
+            [
+                "Troll Room",
+                "Your final stroke drops the troll",
+                "East-West Passage",
+                // 35 banked below (kitchen 10, cellar 25); the passage adds 5.
+                "Your score is 40 of a possible 350",
+                "Round Room",
+            ])
+    }
+
+    /// The Loud Room garbles every command until you say `echo`; only then does
+    /// the platinum bar come free, worth ten points on the find.
+    @Test func echoQuietsTheLoudRoomSoTheBarCanBeTaken() async throws {
+        // Seed 39, re-pin expected in T14: same recorded troll kill; the Loud
+        // Room itself draws no randomness on still water, so only the roaming
+        // thief's stray lines depend on the seed, and none are asserted here.
+        let transcript = try await play(
+            Zork1(),
+            [
+                "south", "east", "open window", "west", "west",
+                "take sword", "take lantern", "turn on lantern",
+                "push rug", "open trap door", "down",
+                "north", "west",
+                "attack troll", "attack troll", "attack troll",
+                "east", "east", "east",  // → East-West Passage → Round Room → Loud Room
+                "take platinum bar",  // garbled — the room is too loud
+                "look",  // looking still works
+                "echo",  // the acoustics settle
+                "take platinum bar",  // now it comes free (+10)
+                "score",
+            ],
+            seed: 39)
+        expectInOrder(
+            transcript,
+            [
+                "Your final stroke drops the troll",
+                "Loud Room",
+                "The din swallows your words whole.",  // the garble refusal
+                "fold in on itself",  // acoustics fixed
+                "Taken.",
+                // 40 on arrival at the Loud Room; the bar's find pays 10 more.
+                "Your score is 50 of a possible 350",
+            ])
+    }
+
+    /// The hub's interior forms one connected graph — a light walk out from the
+    /// Round Room and back proves the exits all agree with each other.
+    @Test func theRoundRoomHubIsOneConnectedGraph() async throws {
+        // Seed 39, re-pin expected in T14: reused troll kill; the walk itself
+        // is RNG-free (no ejection on still water), only thief lines vary.
+        let transcript = try await play(
+            Zork1(),
+            [
+                "south", "east", "open window", "west", "west",
+                "take sword", "take lantern", "turn on lantern",
+                "push rug", "open trap door", "down",
+                "north", "west",
+                "attack troll", "attack troll", "attack troll",
+                "east", "east",  // → East-West Passage → Round Room
+                "north",  // North-South Passage
+                "north",  // Chasm
+                "south",  // back to North-South Passage
+                "northeast",  // Deep Canyon
+                "down",  // Loud Room
+                "up",  // back to Deep Canyon
+                "southwest",  // North-South Passage
+                "south",  // Round Room
+            ],
+            seed: 39)
+        expectInOrder(
+            transcript,
+            [
+                "Round Room",
+                "North-South Passage",
+                "Chasm",
+                "North-South Passage",
+                "Deep Canyon",
+                "Loud Room",
+                "Deep Canyon",
+                "North-South Passage",
+                "Round Room",
+            ])
+    }
 }

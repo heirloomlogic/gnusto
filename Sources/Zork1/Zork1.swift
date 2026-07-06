@@ -29,6 +29,7 @@ struct Zork1: Game, GameMain {
     let aboveGround = ZorkAboveGround()
     let house = ZorkHouse()
     let cellar = ZorkCellar()
+    let roundRoom = ZorkRoundRoom()
 
     /// The grue. Zork's prose, the plugin's stock warn-then-kill schedule.
     let dangerousDark = DangerousDark(
@@ -56,6 +57,7 @@ struct Zork1: Game, GameMain {
         aboveGround
         house
         cellar
+        roundRoom
         dangerousDark
         scoring
         melee
@@ -117,15 +119,19 @@ struct Zork1: Game, GameMain {
     }
 
     var rules: Rules {
-        // The two treasures the slice can score, and where they pay out.
+        // The treasures the slice can score, and where they pay out.
         // Cross-bundle wiring is the host's job, same as the exits below.
-        scoring.treasures([cellar.painting, aboveGround.egg], into: house.trophyCase)
+        scoring.treasures(
+            [cellar.painting, aboveGround.egg, roundRoom.platinumBar],
+            into: house.trophyCase)
 
         // Event scoring: the original pays for reaching the kitchen (first
-        // way into the house) and, more richly, for descending into the
-        // cellar. Both are cross-bundle rooms the host owns the wiring for.
+        // way into the house), for descending into the cellar, and for
+        // pressing east past the troll into the East-West Passage. All are
+        // rooms the host owns the wiring for.
         scoring.visit(house.kitchen, register: "kitchen", points: 10)
         scoring.visit(house.cellar, register: "cellar", points: 25)
+        scoring.visit(roundRoom.eastWestPassage, register: "eastWestPassage", points: 5)
 
         // The chimney is climbable only lightly loaded: the original caps it
         // at one item plus the lamp, which this slice simplifies to "no more
@@ -230,6 +236,15 @@ struct Zork1: Game, GameMain {
         house.cellar.north(cellar.trollRoom)
         cellar.trollRoom.south(house.cellar)
         cellar.studio.up(house.kitchen)
+
+        // Where ZorkCellar meets ZorkRoundRoom: the troll's east passage,
+        // sealed while he lives and opening onto the East-West Passage once he
+        // falls. (His west passage, toward the maze, stays a stub — see
+        // ``ZorkCellar``.)
+        cellar.trollRoom.exit(
+            .east, to: roundRoom.eastWestPassage,
+            when: { cellar.trollDefeated }, otherwise: Prose.trollBlocksTheWay)
+        roundRoom.eastWestPassage.west(cellar.trollRoom)
 
         player.starts(in: aboveGround.westOfHouse)
     }
