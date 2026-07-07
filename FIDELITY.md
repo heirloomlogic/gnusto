@@ -32,13 +32,13 @@ entry below is grouped by the task that introduced it.
     connection was moved to **east** to make room for it (a single room
     can't have the same direction point to two different exits).
   - The canyon (Canyon View → Rocky Ledge → Canyon Bottom → End of Rainbow)
-    is modeled as a **two-way** path in this slice. The authentic Zork
-    canyon has no way back up without climbing gear this slice doesn't
-    model (that's a deliberate one-way trap in the original game); making
-    it round-trip here is a simplification so the region is fully explorable
-    and testable without stranding the player or introducing gear the brief
-    didn't ask for. Revisit when/if the canyon's onward geography (and the
-    climbing mechanic that unlocks the return trip) is built.
+    is modeled as a **two-way** path. This entry once claimed the authentic
+    canyon was a one-way trap needing climbing gear — that was **wrong**.
+    The original's canyon rooms are all `CLIMBABLE-CLIFF` with unconditional
+    up/down exits (verified against `1dungeon.zil` in Phase 10.9), so a
+    two-way canyon *is* canonical and nothing here diverges. The rainbow
+    (Phase 10.9) is an additional crossing of the falls, not the canyon's
+    only return.
   - `Forest (northeast)` is a minimal dead-end-ish stub connecting back to
     `Forest (west)` and `Forest (east)`; the real game's forest maze logic
     (movement without a fixed map) is not modeled here.
@@ -696,3 +696,73 @@ third, the huge diamond, has to be made.
   diamond (10 / 10). All pay out in the living-room trophy case. The coal itself is not
   a treasure — it carries the original's `SIZE` 20 as its weight and is consumed by the
   machine.
+
+## Phase 10.9 — Frigid River, rainbow & canyon (`Sources/Zork1/Regions/River.swift`)
+
+The river run below Flood Control Dam #3: the inflatable boat that makes it passable, the
+current that carries it down five stretches, the White Cliffs on the west bank, the sandy
+east bank with its buried scarab, Aragain Falls, and the rainbow the sceptre wakes. Exit
+tables and item data were verified against `1dungeon.zil` / `1actions.zil`
+(`historicalsource/zork1`).
+
+### Prose
+
+- **All room, item, and message prose is original placeholder text.** Iconic *names*
+  (Frigid River, White Cliffs Beach, Sandy Cave, Aragain Falls, On the Rainbow, End of
+  Rainbow, magic boat, red buoy, pile of plastic) are used as-is; the descriptive bodies
+  are placeholders awaiting the verbatim Infocom swap.
+
+### Map topology
+
+- **The canyon is two-way, and that is canonical** — see the corrected note in the Phase 8
+  "Map topology" section above. The rainbow is an *additional* crossing of the falls (End
+  of Rainbow ↔ On the Rainbow ↔ Aragain Falls, walkable only while solid), not a
+  replacement for the canyon climb. This reverses the (mistaken) plan direction to "restore
+  a one-way canyon"; there was never a one-way canyon to restore.
+- **The White Cliffs' foot-paths (N↔S and the west passage into the Damp Cave) are gated
+  on being on foot** — `player.vehicle == nil` — where the original gates on the boat being
+  *deflated*. So a player who lands and merely steps out of the (still-inflated) boat can
+  walk the cliffs here, whereas the original would make them deflate it first. The Damp
+  Cave seam (a `ZorkRoundRoom` room) is host-wired.
+- **The boat launches only from the river proper** — Dam Base, the two White Cliffs
+  beaches, Sandy Beach, and the Shore, each onto its canonical stretch. The original also
+  lets the boat be launched on the drained reservoir and the stream; that reservoir/stream
+  boating is not modeled (the boat is treated as a river-region tool). The stream's
+  boat-only `LAND` disembark, deferred from Phase 10.5, remains unmodeled for the same
+  reason.
+
+### Mechanics simplified or deferred
+
+- **The current is a self-rearming fuse, not a continuous interrupt.** Each stretch arms a
+  one-shot `riverDrift` fuse for that stretch's canonical dwell (River-1/2: 4 turns,
+  River-3: 3, River-4: 2, River-5: 1); when it fires it moves the boat — and its
+  passenger and cargo — one stretch down and re-arms. Because the engine ticks a fuse on
+  the very turn it is armed, the fuse is armed at **dwell + 1** so the player nets exactly
+  the canonical number of turns on each stretch. Drifting off River-5 goes over Aragain
+  Falls (fatal); `up` is always refused ("strong currents"). Draw-free — the schedule is
+  fixed data.
+- **"Sharp" is a six-item trait, not a general edge test.** A new `TraitKey<Bool>.sharp`
+  marks exactly the items the original enumerates as boat-punishers — the sword, the nasty
+  knife, and the sceptre today; the rusty knife, the axe, and the thief's stiletto get the
+  trait when Phase 10.10 / 10.11 add them. Boarding the boat carrying one, or stowing one
+  in it, bursts it (fatal if afloat, a mere wreck ashore). The original's repair with the
+  putty/tube is not modeled — a punctured boat stays punctured (the tube is inert this
+  slice; noted for a later pass).
+- **Digging the Sandy Cave**: three digs with the shovel bare the scarab, a fourth collapses
+  the hole and buries the player — the original's `BEACH-DIG` counter, used as-is. Bare
+  hands do nothing.
+- **The buoy is an openable container**; opening it exposes the large emerald, which scores
+  on the take (the original scores it the moment the buoy is opened — the difference is one
+  `take` command and never observable in the score line).
+- **The rainbow keeps its middle room** (On the Rainbow); waving the sceptre while standing
+  on it drops the player into the falls, exactly as the original. Waving it at either end
+  turns the rainbow solid and reveals the pot of gold at the End of Rainbow; waving again
+  reverts it (the pot, once revealed, stays).
+
+### Scoring
+
+- **Three treasures carry the original's numbers and join the host roster**: the large
+  emerald (find 5 / case 10, inside the buoy), the jewelled scarab (5 / 5, dug from the
+  sand), and the pot of gold (10 / 10, at the rainbow's end). All pay out in the trophy
+  case. The buoy, boat, shovel, and pump are tools, not treasures. T9 adds no new
+  event-visit awards.

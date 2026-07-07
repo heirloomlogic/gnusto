@@ -244,10 +244,12 @@ struct ZorkAboveGround: GameContent {
         forestNortheast.south(forestEast)
         forestNortheast.west(forestWest)
 
-        // Canyon. A faithful map has no way back up the canyon wall without
-        // climbing gear this slice doesn't model yet, but a dead-end branch
-        // makes the slice itself untestable as a loop — so, simplification
-        // noted in FIDELITY.md, every leg here is two-way for now.
+        // Canyon. The wall is `CLIMBABLE-CLIFF` in the original — climbable in
+        // both directions, no gear required — so every leg here is genuinely
+        // two-way, matching canon. (An earlier FIDELITY note that called this a
+        // one-way trap was mistaken; corrected in Phase 10.9.) The rainbow, woken
+        // by the sceptre at the End of Rainbow, is an *additional* way across the
+        // falls, not the canyon's only return.
         forestEast.exit(.southeast, to: canyonView)
         canyonView.exit(.northwest, to: forestEast)
         canyonView.down(rockyLedge)

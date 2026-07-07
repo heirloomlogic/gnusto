@@ -34,6 +34,7 @@ struct Zork1: Game, GameMain {
     let temple = ZorkTemple()
     let mirror = ZorkMirror()
     let coalMine = ZorkCoalMine()
+    let river = ZorkRiver()
 
     /// The grue. Zork's prose, the plugin's stock warn-then-kill schedule.
     let dangerousDark = DangerousDark(
@@ -72,6 +73,7 @@ struct Zork1: Game, GameMain {
         temple
         mirror
         coalMine
+        river
         dangerousDark
         scoring
         melee
@@ -140,7 +142,7 @@ struct Zork1: Game, GameMain {
                 cellar.painting, aboveGround.egg, roundRoom.platinumBar, dam.trunk,
                 temple.torch, temple.coffin, temple.sceptre, temple.crystalSkull,
                 mirror.crystalTrident, coalMine.jade, coalMine.sapphireBracelet,
-                coalMine.diamond,
+                coalMine.diamond, river.emerald, river.scarab, river.potOfGold,
             ],
             into: house.trophyCase)
 
@@ -271,6 +273,72 @@ struct Zork1: Game, GameMain {
             coalMine.coal.vanish()
             coalMine.diamond.move(inside: coalMine.machine)
             try reply(Prose.machineMakesDiamond)
+        }
+
+        // Inflating the boat. The pile of plastic is a ``ZorkRiver`` item, the
+        // hand pump a ``ZorkDam`` one, so the host bridges them — like the match
+        // and the machine. The pile must be laid out on the ground, and only the
+        // pump will do it; inflating trades the pile for the seaworthy boat.
+        river.pileOfPlastic.before(.inflate) {
+            try require(command.indirectObject == dam.handPump, else: Prose.inflateNeedsPump)
+            try require(!player.inventory.contains(river.pileOfPlastic), else: Prose.inflateNotOnGround)
+            river.pileOfPlastic.vanish()
+            river.magicBoat.move(to: player.location)
+            try reply(Prose.boatInflates)
+        }
+
+        // Launching the boat. Its first launch point is the dam's Dam Base, so
+        // the host owns the rule; the White Cliffs, Sandy Beach and Shore
+        // re-launch onto the river too, each onto its canonical stretch. You must
+        // be aboard, and there has to be water under you. Launching arms the
+        // current (the drift fuse ``ZorkRiver`` declares).
+        river.magicBoat.before(.launch) {
+            try require(player.vehicle == river.magicBoat, else: Prose.launchNotAboard)
+            let here = player.location
+            // The delay is the stretch's canonical dwell plus one — the engine
+            // ticks a fuse on the turn it's armed (see ``ZorkRiver.driftDelay``).
+            let target: Location
+            let delay: Int
+            if here == dam.damBase {
+                (target, delay) = (river.river1, 5)
+            } else if here == river.whiteCliffsNorth {
+                (target, delay) = (river.river3, 4)
+            } else if here == river.whiteCliffsSouth || here == river.sandyBeach {
+                (target, delay) = (river.river4, 3)
+            } else if here == river.shore {
+                (target, delay) = (river.river5, 2)
+            } else {
+                try reply(Prose.launchNotHere)
+            }
+            river.magicBoat.move(to: target)
+            say(Prose.boatLaunches)
+            describeSurroundings()
+            startFuse("riverDrift", after: delay)
+            try reply("")  // handled — don't fall through to the stage-4 default
+        }
+
+        // Waving the sceptre wakes the rainbow. The sceptre is a ``ZorkTemple``
+        // treasure, but the rainbow spans a ``ZorkRiver`` room (Aragain Falls) and
+        // a ``ZorkAboveGround`` one (the End of Rainbow), and the pot of gold sits
+        // at the latter — so the host owns the wave. At either end it turns the
+        // rainbow solid (and reveals the pot); on the rainbow itself, it drops you
+        // into the falls.
+        temple.sceptre.before(.wave) {
+            let here = player.location
+            if here == river.onRainbow {
+                try die(Prose.rainbowWaveFatal)
+            }
+            guard here == river.aragainFalls || here == aboveGround.endOfRainbow else {
+                try reply(Prose.sceptreSparkles)
+            }
+            river.rainbowSolid.toggle()
+            guard river.rainbowSolid else { try reply(Prose.rainbowFades) }
+            river.potOfGold.reveal()
+            say(Prose.rainbowSolidifies)
+            if here == aboveGround.endOfRainbow {
+                say(Prose.potAppears)
+            }
+            try reply("")
         }
 
         // The troll, fought with the house's blades — entities from two
@@ -458,6 +526,31 @@ struct Zork1: Game, GameMain {
         mirror.mirrorRoomNorth.east(temple.cave)
         temple.cave.west(mirror.windingPassage)
         mirror.windingPassage.east(temple.cave)
+
+        // Where ``ZorkRiver`` meets the rest of the map. River-1 lands back onto
+        // the dam's Dam Base (the boat launches from there — the launch rule
+        // above owns the outbound leg). The White Cliffs squeeze west into the
+        // Damp Cave (a ``ZorkRoundRoom`` room; on-foot only — ``ZorkRiver`` gates
+        // the boat out). And the rainbow's far end opens onto the End of Rainbow
+        // (a ``ZorkAboveGround`` room) at the foot of the canyon — walkable only
+        // while the sceptre holds it solid.
+        river.river1.west(dam.damBase)
+
+        river.whiteCliffsNorth.west(roundRoom.dampCave)
+        roundRoom.dampCave.east(river.whiteCliffsNorth)
+
+        river.onRainbow.west(aboveGround.endOfRainbow)
+        aboveGround.endOfRainbow.exit(
+            .up, to: river.onRainbow,
+            when: { river.rainbowSolid }, otherwise: Prose.rainbowNotSolid)
+        aboveGround.endOfRainbow.exit(
+            .east, to: river.onRainbow,
+            when: { river.rainbowSolid }, otherwise: Prose.rainbowNotSolid)
+
+        // The boat pile starts at Dam Base and the pot of gold at the End of
+        // Rainbow — both rooms belong to other bundles, so the host places them.
+        river.pileOfPlastic.starts(in: dam.damBase)
+        river.potOfGold.starts(in: aboveGround.endOfRainbow)
 
         player.starts(in: aboveGround.westOfHouse)
     }
