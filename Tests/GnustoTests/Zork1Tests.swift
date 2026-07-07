@@ -337,7 +337,7 @@ struct Zork1Tests {
                 "push rug", "open trap door", "down",
                 "north", "west",
                 "attack troll", "attack troll", "attack troll",
-                "west", "south",
+                "west",
             ],
             seed: 39)
         expectInOrder(
@@ -345,10 +345,9 @@ struct Zork1Tests {
             [
                 "Troll Room",
                 "A troll stands square in the middle of the room",
-                "The troll plants himself in your path",
+                "The troll plants himself in your path",  // west barred while he lives
                 "Your final stroke drops the troll",
-                "both passages have\ncollapsed",
-                "Cellar",
+                "Maze",  // west now drops into the maze
             ])
         // Defeat is permanent and the room empties.
         let afterDeath = transcript.components(

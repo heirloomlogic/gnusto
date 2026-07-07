@@ -35,6 +35,7 @@ struct Zork1: Game, GameMain {
     let mirror = ZorkMirror()
     let coalMine = ZorkCoalMine()
     let river = ZorkRiver()
+    let maze = ZorkMaze()
 
     /// The grue. Zork's prose, the plugin's stock warn-then-kill schedule.
     let dangerousDark = DangerousDark(
@@ -74,6 +75,7 @@ struct Zork1: Game, GameMain {
         mirror
         coalMine
         river
+        maze
         dangerousDark
         scoring
         melee
@@ -143,6 +145,7 @@ struct Zork1: Game, GameMain {
                 temple.torch, temple.coffin, temple.sceptre, temple.crystalSkull,
                 mirror.crystalTrident, coalMine.jade, coalMine.sapphireBracelet,
                 coalMine.diamond, river.emerald, river.scarab, river.potOfGold,
+                maze.bagOfCoins,
             ],
             into: house.trophyCase)
 
@@ -341,6 +344,52 @@ struct Zork1: Game, GameMain {
             try reply("")
         }
 
+        // The grating over the Grating Room. The grating and its skeleton key
+        // are ``ZorkAboveGround`` entities, the room below is a ``ZorkMaze`` one,
+        // so the host owns the crossing. The engine only folds a door into scope
+        // where it's perceivable, and the grating starts hidden (revealed
+        // topside by clearing the leaves) — so from below it must be revealed on
+        // entry, or the player couldn't unlock it. Then the built-in unlock/open
+        // verbs carry the puzzle; opening it from below showers the forest's
+        // leaves down and lets in the light.
+        maze.gratingRoom.onEnter {
+            aboveGround.grating.reveal()
+        }
+        aboveGround.grating.after(.open) {
+            // Only from below, and only the first time — the leaves fall once.
+            // (The room's own daylight is moot: you can't be down here without
+            // the lit lantern, which lights it already.)
+            guard player.location == maze.gratingRoom, !maze.gratingOpenedFromBelow else { return }
+            maze.gratingOpenedFromBelow = true
+            say(Prose.gratingOpensFromBelow)
+        }
+
+        // Feeding the cyclops. The lunch, bottle and water are ``ZorkHouse``
+        // items and the cyclops a ``ZorkMaze`` one, so the host bridges them —
+        // like the match and the machine. Give him the lunch and he turns
+        // thirsty; give him the water (the bottle full) and he drinks himself to
+        // sleep, clearing the stair. (Fed asleep he never smashes the east wall
+        // — only ``odysseus`` does that; see ``ZorkMaze``.)
+        maze.cyclops.before(.give) {
+            guard let offered = command.directObject else { return }
+            guard !maze.cyclopsSubdued else { try reply(Prose.cyclopsAlreadyGone) }
+            if offered == house.lunch {
+                house.lunch.vanish()
+                maze.cyclopsThirsty = true
+                try reply(Prose.cyclopsEatsLunch)
+            }
+            let givingWater =
+                offered == house.water
+                || (offered == house.bottle && house.bottle.isOpen && house.bottle.holds(house.water))
+            if givingWater {
+                guard maze.cyclopsThirsty else { try reply(Prose.cyclopsNotThirsty) }
+                house.water.vanish()
+                maze.cyclopsSubdued = true
+                try reply(Prose.cyclopsDrinksAndSleeps)
+            }
+            try refuse(Prose.cyclopsWontEatThat)
+        }
+
         // The troll, fought with the house's blades — entities from two
         // bundles, so the host wires them. Strength 2 is the original's.
         melee.villain(
@@ -466,14 +515,18 @@ struct Zork1: Game, GameMain {
         cellar.trollRoom.south(house.cellar)
         cellar.studio.up(house.kitchen)
 
-        // Where ZorkCellar meets ZorkRoundRoom: the troll's east passage,
-        // sealed while he lives and opening onto the East-West Passage once he
-        // falls. (His west passage, toward the maze, stays a stub — see
-        // ``ZorkCellar``.)
+        // Where ZorkCellar meets ZorkRoundRoom and ZorkMaze: the troll gates
+        // both his passages, and each opens once he falls. East runs onto the
+        // East-West Passage; west drops into the maze — one-way, canonical
+        // (Maze-1 has no exit back to the Troll Room), so there's no matching
+        // back-edge.
         cellar.trollRoom.exit(
             .east, to: roundRoom.eastWestPassage,
             when: { cellar.trollDefeated }, otherwise: Prose.trollBlocksTheWay)
         roundRoom.eastWestPassage.west(cellar.trollRoom)
+        cellar.trollRoom.exit(
+            .west, to: maze.maze1,
+            when: { cellar.trollDefeated }, otherwise: Prose.trollBlocksTheWay)
 
         // Where ZorkRoundRoom meets ZorkDam: Deep Canyon opens east onto the
         // dam and northwest onto the reservoir's south shore, and the Chasm's
@@ -551,6 +604,23 @@ struct Zork1: Game, GameMain {
         // Rainbow — both rooms belong to other bundles, so the host places them.
         river.pileOfPlastic.starts(in: dam.damBase)
         river.potOfGold.starts(in: aboveGround.endOfRainbow)
+
+        // Where ``ZorkMaze`` meets ``ZorkAboveGround``: the grating is a real
+        // door between the maze's Grating Room and the forest Clearing. The
+        // grating Item and the skeleton key that locks it are above-ground
+        // entities; the key is finally placed here in the maze (Maze-5),
+        // closing the Phase-5 ``.nowhere`` seam.
+        aboveGround.clearingGrating.down(maze.gratingRoom, via: aboveGround.grating)
+        maze.gratingRoom.up(aboveGround.clearingGrating, via: aboveGround.grating)
+        aboveGround.skeletonKey.starts(in: maze.maze5)
+
+        // Where ``ZorkMaze`` meets ``ZorkHouse``: the Strange Passage the fleeing
+        // cyclops smashes open runs east to the Living Room. The Living Room's
+        // west door stays nailed shut until he does (the original's MAGIC-FLAG).
+        maze.strangePassage.east(house.livingRoom)
+        house.livingRoom.exit(
+            .west, to: maze.strangePassage,
+            when: { maze.eastWallOpen }, otherwise: Prose.doorNailedShut)
 
         player.starts(in: aboveGround.westOfHouse)
     }

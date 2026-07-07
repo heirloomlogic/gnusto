@@ -11,8 +11,8 @@ import GnustoScoring
 /// makes the darkness lethal is the `DangerousDark` plugin, wired by the
 /// host with this game's prose.
 ///
-/// The troll passage north of the cellar and the maze beyond are later
-/// phases — see `FIDELITY.md`.
+/// The Troll Room's passages — east to the Round Room hub, west into the maze —
+/// are host-wired conditional exits gated on ``trollDefeated`` (see ``Zork1``).
 struct ZorkCellar: GameContent {
     // MARK: - Rooms
 
@@ -35,9 +35,9 @@ struct ZorkCellar: GameContent {
         dark
     }
 
-    /// North of the cellar. East now opens onto the Round Room hub once the
-    /// troll falls; west toward the maze stays an honest stub until that
-    /// region exists — see `FIDELITY.md`.
+    /// North of the cellar. Both the troll's passages open once he falls: east
+    /// onto the Round Room hub, west down into the maze. Both crossings are
+    /// host-wired (they span other bundles) and gated on ``trollDefeated``.
     let trollRoom = Location {
         name("Troll Room")
         description(Prose.trollRoom)
@@ -104,19 +104,5 @@ struct ZorkCellar: GameContent {
         chimney.starts(in: studio)
         troll.starts(in: trollRoom)
         thief.starts(in: gallery)
-    }
-
-    var rules: Rules {
-        // The troll gates the west passage: his while he lives, and a
-        // collapsed stub after (the maze beyond is a later phase). The east
-        // passage is now a real exit to the Round Room hub — the host wires it
-        // (it crosses into ``ZorkRoundRoom``) and gates it on ``trollDefeated``.
-        trollRoom.before(.go) {
-            guard command.direction == .west else { return }
-            guard trollDefeated else {
-                try refuse(Prose.trollBlocksTheWay)
-            }
-            try refuse(Prose.trollRoomPassagesCollapsed)
-        }
     }
 }
