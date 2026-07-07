@@ -164,6 +164,7 @@ struct ZorkHouse: GameContent {
         adjectives("elvish")
         description(Prose.sword)
         trait(.weapon, true)
+        trait(.sharp, true)  // holes the river boat — see ZorkRiver
     }
 
     /// Pushing the rug reveals the hidden trap door — the same Task 4
@@ -212,6 +213,7 @@ struct ZorkHouse: GameContent {
         adjectives("nasty")
         description(Prose.knife)
         trait(.weapon, true)
+        trait(.sharp, true)  // holes the river boat — see ZorkRiver
     }
 
     // MARK: - Map
