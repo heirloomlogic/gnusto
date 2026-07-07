@@ -69,12 +69,6 @@ extension Prose {
         going that way while he stands.
         """
 
-    static let trollRoomPassagesCollapsed = """
-        With the troll gone you get a clear look: both passages have
-        collapsed into rubble no one is clearing today. Whatever lies
-        beyond waits for another expedition.
-        """
-
     static let trollMiss1 = "Your blade whistles past the troll's ear; he doesn't blink."
     static let trollMiss2 = "The troll turns your swing aside with the flat of his axe."
     static let trollWound1 = "You open a gash along the troll's arm. He notices."

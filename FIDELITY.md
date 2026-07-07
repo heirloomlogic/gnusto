@@ -766,3 +766,60 @@ tables and item data were verified against `1dungeon.zil` / `1actions.zil`
   sand), and the pot of gold (10 / 10, at the rainbow's end). All pay out in the trophy
   case. The buoy, boat, shovel, and pump are tools, not treasures. T9 adds no new
   event-visit awards.
+
+## Phase 10.10 — Maze, Cyclops & grating (`Sources/Zork1/Regions/Maze.swift`)
+
+The great maze west of the Troll Room: fifteen twisting passages and four dead ends, the
+skeleton's cache in Maze-5 (the skeleton key, at last, plus the bag of coins and the rusty
+knife), the grating up into the forest Clearing, and the Cyclops Room with its stair up to
+the Treasure Room and the Strange Passage home. Exit tables and item data were verified
+against `1dungeon.zil` / `1actions.zil` (`historicalsource/zork1`).
+
+### Prose
+
+- **All room, item, and message prose is original placeholder text.** Iconic *names* (Maze,
+  Dead End, Grating Room, Cyclops Room, Treasure Room, Strange Passage, cyclops, skeleton
+  key, bag of coins, rusty knife) are used as-is; the descriptive bodies are placeholders
+  awaiting the verbatim Infocom swap. Every maze passage deliberately shares one name and
+  one description — the sameness is the puzzle.
+
+### Map topology
+
+- **The maze's exit graph is reproduced verbatim from `1dungeon.zil`**, including its
+  one-way `PER MAZE-DIODES` drops (Maze-2→Maze-4, Maze-7→Dead-End-1, Maze-9→Maze-11,
+  Maze-12→Maze-5, all `down`) and its self-loops (Maze-1 `north`, Maze-6 `west`, Maze-8
+  `west`, Maze-9 `northwest`, Maze-14 `northwest`, each returning to itself).
+- **The maze entrance is one-way.** The Troll Room's west passage (host-wired, gated on
+  `trollDefeated`) drops into Maze-1, which — as in the original — has no exit back to the
+  Troll Room. Deleting the old collapsed-rubble stub in `ZorkCellar` was part of this task.
+- **The grating is a real two-way door** between the Grating Room and the above-ground
+  Clearing (host-wired `via:` the grating item, a `ZorkAboveGround` entity). Because the
+  engine only folds a door into scope where it is perceivable and the grating starts hidden
+  (revealed topside by clearing the leaves), entering the Grating Room reveals it from below
+  so it can be unlocked with the skeleton key. Opening it from below showers the forest's
+  leaves down and lights the room — the original's `GRATE-REVEALED` / leaf-drop, folded into
+  one open.
+- **The Strange Passage east to the Living Room is host-wired**, gated on the cyclops having
+  smashed the east wall (the original's `MAGIC-FLAG`); until then the Living Room's west door
+  is "nailed shut."
+
+### Mechanics simplified or deferred
+
+- **The cyclops does not fight.** In the original, attacking him or lingering runs a
+  `CYCLOWRATH` counter that ends with him eating you. Here `attack` is a canned reaction and
+  the counter/eat-you timer is not modeled — the only ways past are feeding him to sleep
+  (give the lunch, then the open water bottle → he sleeps, clearing the stair up) or
+  shouting `odysseus`/`ulysses` (he flees through the east wall, opening both the stair up
+  and the shortcut east). Feeding never opens the east wall; only the rout does.
+- **The skeleton is inert scenery.** The original's disturb-the-remains curse (searching or
+  moving the bones teleports your possessions to the Land of the Living Dead) is skipped;
+  `take` is politely refused. The burned-out lantern is present as takeable junk.
+- **The Treasure Room and Strange Passage geography is built, but the thief, his hoard, the
+  silver chalice, and the Treasure Room's +25 visit award arrive in Phase 10.11.**
+
+### Scoring
+
+- **One treasure carries the original's numbers and joins the host roster**: the leather bag
+  of coins (find 10 / case 5, in Maze-5's cache), paying out in the trophy case. The
+  skeleton key and rusty knife are tools, not treasures. Phase 10.10 adds no new event-visit
+  award (the Treasure Room's +25 is deferred to 10.11).
