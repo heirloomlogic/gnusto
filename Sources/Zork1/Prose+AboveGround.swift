@@ -98,6 +98,23 @@ extension Prose {
         It looks both delicate and valuable.
         """
 
+    static let canary = """
+        A golden clockwork canary, exquisitely made. A tiny key in its side
+        suggests it might be wound.
+        """
+
+    static let brokenCanary = """
+        A clockwork canary, once golden and lovely, now a mangled ruin of
+        bent gears and snapped springs. Whatever it once did, it will never
+        do again.
+        """
+
+    static let eggForcedRuinsCanary = """
+        You force the egg's delicate mechanism, and it springs open with an
+        ugly crunch — the fine clockwork bird inside crushed by your clumsy
+        haste.
+        """
+
     static let clearingGrating = """
         You are in a small clearing in the forest. Half-buried in a pile
         of dead leaves in one corner, something metal glints. The forest

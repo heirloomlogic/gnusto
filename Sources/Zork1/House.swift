@@ -29,6 +29,34 @@ let zork1Egg = Item {
     // The original's values: 5 for the find, 5 for the case.
     trait(.takeValue, 5)
     trait(.depositValue, 5)
+    // A container holding the clockwork canary, but sealed by a mechanism no
+    // brute can work: force it open yourself (the built-in `open`, gated by the
+    // rule below) and you wreck the bird. Starts closed and opaque — the canary
+    // stays hidden until it's opened. Only the thief can open it cleanly (his
+    // egg-service fuse, wired in ``Zork1``).
+    container
+    openable
+}
+
+/// The golden clockwork canary nested inside the egg. Intact only while the egg
+/// is opened by careful hands (the thief's); the player's clumsy attempt swaps
+/// it for the ruined bird below. Its scoring and the `wind canary` → bauble
+/// business arrive in the next phase — see `FIDELITY.md`.
+let zork1Canary = Item {
+    name("golden clockwork canary")
+    adjectives("golden", "clockwork")
+    synonyms("canary", "bird")
+    description(Prose.canary)
+}
+
+/// What's left of the canary after a forced opening: a mangled tangle of gears
+/// worth nothing. Starts offstage and takes the intact bird's place inside the
+/// egg the moment you pry it open yourself.
+let zork1BrokenCanary = Item {
+    name("broken clockwork canary")
+    adjectives("broken", "mangled", "clockwork")
+    synonyms("canary", "bird")
+    description(Prose.brokenCanary)
 }
 
 /// The lantern's description reads its own lit state, which runs into the
@@ -200,6 +228,17 @@ struct ZorkHouse: GameContent {
     /// just above.
     let trophyCase = zork1TrophyCase
 
+    /// The clockwork canary and its ruined twin, aliasing the file-scope `let`s
+    /// so the bootstrap discovers and registers them (file-scope values aren't
+    /// reflected on their own). The intact bird starts sealed inside the egg;
+    /// the broken one waits offstage until a forced opening swaps them.
+    let canary = zork1Canary
+    let brokenCanary = zork1BrokenCanary
+
+    /// Whether the canary has been wrecked by forcing the egg open by hand. Read
+    /// next phase, when the canary's scoring and the `wind canary` trick land.
+    @Global var canaryRuined = false
+
     // MARK: - Attic
 
     let rope = Item {
@@ -242,6 +281,11 @@ struct ZorkHouse: GameContent {
 
         rope.starts(in: attic)
         knife.starts(in: attic)
+
+        // The canary rides sealed inside the egg (itself on the nest up the
+        // tree — placed by ``ZorkAboveGround``). The broken twin stays offstage
+        // until a forced opening trades it in.
+        canary.starts(inside: zork1Egg)
     }
 
     // MARK: - Rules
@@ -265,6 +309,21 @@ struct ZorkHouse: GameContent {
             guard trapDoor.isOpen else { return }
             trapDoor.isOpen = false
             say(Prose.trapDoorSlam)
+        }
+
+        // Forcing the egg open by hand. The mechanism is too fine for brute
+        // fingers: prying it yourself wrecks the canary inside, swapping the
+        // intact bird for the ruined one, before the built-in open completes.
+        // (The thief opens it cleanly through his own service — that path sets
+        // `isOpen` directly and never runs this rule.) Guarded so a second
+        // "open egg" on an already-open or already-ruined egg does nothing.
+        zork1Egg.before(.open) {
+            guard !zork1Egg.isOpen, zork1Egg.holds(canary) else { return }
+            canary.vanish()
+            brokenCanary.move(inside: zork1Egg)
+            canaryRuined = true
+            say(Prose.eggForcedRuinsCanary)
+            // Falls through to the built-in open, which reports the egg opened.
         }
 
         // The lantern's fuel economy: the fuses run only while it burns.

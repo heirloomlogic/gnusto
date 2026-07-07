@@ -489,10 +489,11 @@ struct Zork1Tests {
     }
 
     @Test func theThiefStealsAndTheSwordGetsItBack() async throws {
-        // Seed 23, recorded: the thief lifts the painting during the
-        // loiter, stands his ground for the fight, and dies with the loot
-        // — which unbars the trap door, so the route home closed since
-        // Phase 5 finally works.
+        // Seed 247, re-pin expected in T14: now that the thief roams the whole
+        // underground, a seed where he lingers in the Gallery to pick your
+        // pocket and stand for the fight is rarer — this one has him lift the
+        // painting during the loiter, then fall to the sword, dropping the loot
+        // (and his stiletto) and unbarring the trap door so the route home works.
         let transcript = try await play(
             Zork1(),
             [
@@ -506,7 +507,7 @@ struct Zork1Tests {
                 "look", "look", "look",
                 "take painting", "west", "north", "open trap door", "up",
             ],
-            seed: 23)
+            seed: 247)
         expectInOrder(
             transcript,
             [

@@ -823,3 +823,69 @@ against `1dungeon.zil` / `1actions.zil` (`historicalsource/zork1`).
   of coins (find 10 / case 5, in Maze-5's cache), paying out in the trophy case. The
   skeleton key and rusty knife are tools, not treasures. Phase 10.10 adds no new event-visit
   award (the Treasure Room's +25 is deferred to 10.11).
+
+## Phase 10.11 — Thief endgame (`Sources/Zork1/Thief.swift`)
+
+The reduced Phase-8 cutpurse is promoted to the canonical endgame antagonist. The thief's
+actor, his stiletto, and the `thiefDefeated` flag move out of `ZorkCellar` into a dedicated
+`ZorkThief` bundle; because every one of his behaviours reaches across bundles (the blades
+that fell him, the treasures he covets, his lair in the maze, the trap door he bars), all of
+his roaming, stealing, stashing, lair defence, egg service, and death stay host-wired in
+`Zork1.swift`. Item values and turn counts verified against `1dungeon.zil` / `1actions.zil`.
+
+### Prose
+
+- **All new prose is original placeholder text.** Iconic *names* (thief, stiletto, silver
+  chalice, clockwork canary) are used as-is; descriptions await the verbatim Infocom swap.
+
+### Mechanics — now modeled
+
+- **The thief roams the whole underground.** His roam set is every room below the trap door,
+  excluding only his own lair (the Treasure Room — he is *summoned* there to defend it rather
+  than wandering in) and the Land of the Dead. As in earlier phases the roam is a teleport
+  within the set (no exit-graph awareness), and the daemon guards before it draws, so quiet
+  turns burn no randomness.
+- **He steals any treasure you carry** (the full 17-item host roster), still only while it is
+  held by the player — items on the floor, in the case, or inside a container are safe. This
+  held-only simplification is unchanged from Phase 8.
+- **He ferries his takings to the hoard.** A draw-free `thiefStash` daemon deposits everything
+  he carries (bar the stiletto) onto the Treasure Room floor whenever he is in the lair.
+- **He defends his lair to the death.** Entering the Treasure Room summons him home, and a
+  `melee.aggression(…, while: { thief.isIn(treasureRoom) })` daemon lets him fight back
+  *only there* — evasive everywhere else. He carries the stiletto (the sixth `.sharp`
+  boat-puncturer; the original's SIZE 10) and, killed, drops his whole hoard plus the
+  stiletto and unbars the trap door.
+- **The silver chalice** (find 10 / case 5) sits in the Treasure Room and is **guarded**: the
+  host refuses the take while the thief lives. The original lets you snatch it and has him
+  steal it back; modeling that round-trip faithfully is deferred — a hard refusal until he
+  falls is the stand-in.
+- **Give the egg to the thief and he opens it cleanly.** A four-turn `thiefOpensEgg` fuse sets
+  the egg open with the clockwork canary intact; you recover the opened egg among his effects
+  when he dies. The service is silent (you aren't watching) and is cancelled if he dies first.
+- **The jewel-encrusted egg is now an openable container.** Forcing it open *by hand* (the
+  built-in `open`) wrecks the canary — the intact `golden clockwork canary` is swapped for a
+  worthless `broken clockwork canary` and a `canaryRuined` flag is set. Only the thief's
+  careful hands (above) open it without ruin.
+
+### Mechanics still simplified or deferred
+
+- **No `CYCLOWRATH`-style eat-you timer**, consistent with 10.10; the thief simply fights in
+  his lair and is otherwise evasive.
+- **The canary's own scoring (find 6 / case 4) and the `wind canary` → brass bauble trick are
+  deferred to Phase 10.12.** This phase introduces the canary item and its intact/ruined
+  state only; the canary and bauble are *not* yet in the host `scoring.treasures` roster.
+
+### Scoring
+
+- **The silver chalice joins the host roster** (find 10 / case 5), bringing it to 17 of the
+  eventual 19 treasures (canary and bauble land in 10.12).
+- **The Treasure Room pays 25 on first entry** (`scoring.visit`), the last of the five event
+  awards.
+
+### Tests
+
+- **Expanding the thief's roam set changed his teleport destinations, shifting the seeded RNG
+  stream for every test where he can now wander into the player's room.** All affected
+  seed-pinned Zork 1 transcripts were re-recorded once here (the roadmap's planned, one-time
+  break); the final global seed re-pin still comes in Phase 10.14. New and re-recorded seeds
+  are marked `// re-pin expected in T14`.
