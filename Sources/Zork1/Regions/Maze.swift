@@ -194,6 +194,20 @@ struct ZorkMaze: GameContent {
         trait(.depositValue, 5)  // case
     }
 
+    /// The silver chalice in the thief's hoard — ten on the find, five in the
+    /// case (the original's VALUE 10 / TVALUE 5). Guarded while the thief lives:
+    /// the host refuses the take until he falls (see ``Zork1``).
+    let silverChalice = Item {
+        name("silver chalice")
+        adjectives("silver")
+        synonyms("chalice", "cup", "goblet")
+        firstSight(Prose.silverChaliceFirstSight)
+        description(Prose.silverChalice)
+        trait(.weight, 10)
+        trait(.takeValue, 10)  // find
+        trait(.depositValue, 5)  // case
+    }
+
     /// The rusty knife beside the skeleton — a weapon and a tool, and (like the
     /// sword, nasty knife, and sceptre) sharp enough to hole the inflatable
     /// boat. Not a treasure.
@@ -358,6 +372,7 @@ struct ZorkMaze: GameContent {
         bagOfCoins.starts(in: maze5)
         burnedOutLantern.starts(in: maze5)
         cyclops.starts(in: cyclopsRoom)
+        silverChalice.starts(in: treasureRoom)
     }
 
     // MARK: - Rules

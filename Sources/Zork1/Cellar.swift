@@ -54,17 +54,9 @@ struct ZorkCellar: GameContent {
 
     @Global var trollDefeated = false
 
-    // MARK: - The thief (reduced — see FIDELITY.md)
-
-    let thief = Actor {
-        name("thief")
-        adjectives("shadowy")
-        synonyms("figure")
-        description(Prose.thief)
-        firstSight(Prose.thiefPresence)
-    }
-
-    @Global var thiefDefeated = false
+    // The thief who once haunted this cellar now roams the whole underground:
+    // his actor, weapon, and defeat flag live in ``ZorkThief``, and all his
+    // behaviour is host-wired in ``Zork1``.
 
     // MARK: - Items
 
@@ -103,6 +95,7 @@ struct ZorkCellar: GameContent {
         painting.starts(in: gallery)
         chimney.starts(in: studio)
         troll.starts(in: trollRoom)
-        thief.starts(in: gallery)
+        // The thief's start (Gallery) is host-wired in ``Zork1``: he lives in
+        // ``ZorkThief`` now and can't be placed from this bundle's map.
     }
 }

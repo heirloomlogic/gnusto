@@ -36,6 +36,7 @@ struct Zork1: Game, GameMain {
     let coalMine = ZorkCoalMine()
     let river = ZorkRiver()
     let maze = ZorkMaze()
+    let thief = ZorkThief()
 
     /// The grue. Zork's prose, the plugin's stock warn-then-kill schedule.
     let dangerousDark = DangerousDark(
@@ -76,6 +77,7 @@ struct Zork1: Game, GameMain {
         coalMine
         river
         maze
+        thief
         dangerousDark
         scoring
         melee
@@ -136,18 +138,55 @@ struct Zork1: Game, GameMain {
         return .consumed
     }
 
+    /// The seventeen scored treasures so far: the sixteen from earlier tasks
+    /// plus the silver chalice (the canary and bauble reach the full nineteen
+    /// next phase). Shared by the trophy-case scoring and the thief's steal
+    /// list, so the two never drift apart.
+    private var treasureRoster: [Item] {
+        [
+            cellar.painting, aboveGround.egg, roundRoom.platinumBar, dam.trunk,
+            temple.torch, temple.coffin, temple.sceptre, temple.crystalSkull,
+            mirror.crystalTrident, coalMine.jade, coalMine.sapphireBracelet,
+            coalMine.diamond, river.emerald, river.scarab, river.potOfGold,
+            maze.bagOfCoins, maze.silverChalice,
+        ]
+    }
+
+    /// Every underground room the thief may teleport-roam through — the whole
+    /// dungeon below the trap door, save his own lair (the Treasure Room, which
+    /// he's summoned to defend rather than wanders into) and the Land of the
+    /// Dead. Used only by the roam daemon.
+    private var undergroundRooms: [Location] {
+        [
+            house.cellar,
+            cellar.eastOfChasm, cellar.gallery, cellar.studio, cellar.trollRoom,
+            roundRoom.eastWestPassage, roundRoom.roundRoom, roundRoom.nsPassage,
+            roundRoom.chasmRoom, roundRoom.deepCanyon, roundRoom.dampCave, roundRoom.loudRoom,
+            dam.damRoom, dam.damLobby, dam.maintenanceRoom, dam.damBase, dam.reservoirSouth,
+            dam.reservoir, dam.reservoirNorth, dam.streamView, dam.stream,
+            temple.engravingsCave, temple.domeRoom, temple.torchRoom, temple.temple,
+            temple.egyptRoom, temple.altar, temple.cave, temple.entranceToHades,
+            mirror.narrowPassage, mirror.mirrorRoomNorth, mirror.windingPassage,
+            mirror.mirrorRoomSouth, mirror.coldPassage, mirror.twistingPassage,
+            mirror.smallCave, mirror.atlantisRoom, mirror.slideRoom,
+            coalMine.mineEntrance, coalMine.squeakyRoom, coalMine.batRoom, coalMine.shaftRoom,
+            coalMine.smellyRoom, coalMine.gasRoom, coalMine.mine1, coalMine.mine2,
+            coalMine.mine3, coalMine.mine4, coalMine.ladderTop, coalMine.ladderBottom,
+            coalMine.deadEnd, coalMine.timberRoom, coalMine.draftyRoom, coalMine.machineRoom,
+            river.river1, river.river2, river.river3, river.river4, river.river5,
+            river.whiteCliffsNorth, river.whiteCliffsSouth, river.shore, river.sandyBeach,
+            river.sandyCave, river.aragainFalls, river.onRainbow,
+            maze.maze1, maze.maze2, maze.maze3, maze.maze4, maze.maze5, maze.maze6,
+            maze.maze7, maze.maze8, maze.maze9, maze.maze10, maze.maze11, maze.maze12,
+            maze.maze13, maze.maze14, maze.maze15, maze.deadEnd1, maze.deadEnd2,
+            maze.deadEnd3, maze.deadEnd4, maze.gratingRoom, maze.cyclopsRoom, maze.strangePassage,
+        ]
+    }
+
     var rules: Rules {
         // The treasures the slice can score, and where they pay out.
         // Cross-bundle wiring is the host's job, same as the exits below.
-        scoring.treasures(
-            [
-                cellar.painting, aboveGround.egg, roundRoom.platinumBar, dam.trunk,
-                temple.torch, temple.coffin, temple.sceptre, temple.crystalSkull,
-                mirror.crystalTrident, coalMine.jade, coalMine.sapphireBracelet,
-                coalMine.diamond, river.emerald, river.scarab, river.potOfGold,
-                maze.bagOfCoins,
-            ],
-            into: house.trophyCase)
+        scoring.treasures(treasureRoster, into: house.trophyCase)
 
         // Event scoring: the original pays for reaching the kitchen (first
         // way into the house), for descending into the cellar, and for
@@ -407,7 +446,7 @@ struct Zork1: Game, GameMain {
         // telling the truth-to-be since Phase 5. One-sided: the living
         // room side is never barred.
         house.cellar.onEnter {
-            if !cellar.thiefDefeated {
+            if !thief.thiefDefeated {
                 house.trapDoorBarred = true
             }
         }
@@ -417,10 +456,39 @@ struct Zork1: Game, GameMain {
             }
         }
 
-        // The thief dies like a villain but doesn't fight back — in this
-        // reduced form he is evasive, not aggressive (FIDELITY.md).
+        // The chalice is the thief's, and he guards it: no lifting it from his
+        // hoard while he lives. The chalice is a ``ZorkMaze`` item and the flag
+        // a ``ZorkThief`` one, so the host owns the guard. (The original lets
+        // you snatch it and steals it back; here it's held fast until he falls
+        // — see `FIDELITY.md`.)
+        maze.silverChalice.before(.take) {
+            try require(thief.thiefDefeated, else: Prose.chaliceGuarded)
+        }
+
+        // Hand the thief anything and he pockets it, weighing you the whole
+        // time. Give him the jewel-encrusted egg and — where your own clumsy
+        // fingers would wreck it — he opens it cleanly, a four-turn service (the
+        // `thiefOpensEgg` fuse below). `give X to thief` fires this item-before
+        // for the thief as the *indirect* object; the offered item is the
+        // direct object. Weapons and treasures span other bundles, so the host
+        // wires the thief's every seam.
+        thief.thief.before(.give) {
+            guard let offered = command.directObject else { return }
+            guard !thief.thiefDefeated else { return }
+            offered.move(heldBy: thief.thief)
+            if offered == aboveGround.egg {
+                startFuse("thiefOpensEgg", after: 4)
+                try reply(Prose.thiefTakesEgg)
+            }
+            try reply(Prose.thiefTakesGift)
+        }
+
+        // The thief fights to the death in his lair (the aggression daemon
+        // below is gated to the Treasure Room) and, when he falls, drops
+        // everything he carried — the whole hoard and his own stiletto — and
+        // the trap door he bolted from below swings free.
         melee.villain(
-            cellar.thief, key: "thief", strength: 2,
+            thief.thief, key: "thief", strength: 2,
             weapons: [house.sword, house.knife],
             prose: MeleeCombat.VillainProse(
                 miss: [Prose.thiefMiss1, Prose.thiefMiss2],
@@ -428,20 +496,25 @@ struct Zork1: Game, GameMain {
                 knockout: Prose.thiefKnockout,
                 death: Prose.thiefDeath),
             onDefeat: {
-                cellar.thiefDefeated = true
+                thief.thiefDefeated = true
                 house.trapDoorBarred = false
                 stopDaemon("thiefRoams")
                 stopDaemon("thiefSteals")
-                var scattered = false
-                for loot in [cellar.painting, aboveGround.egg]
-                where cellar.thief.holds(loot) {
-                    loot.move(to: player.location)
-                    scattered = true
-                }
-                if scattered {
-                    say(Prose.thiefLootScatters)
-                }
+                stopDaemon("thiefStash")
+                stopDaemon("thiefFights")
+                // Everything he was carrying — stolen treasures and the
+                // stiletto both — spills into the room where he fell.
+                thief.thief.dropAll()
+                say(Prose.thiefLootScatters)
             })
+
+        // The lair pays 25 on first entry, and entering it summons the thief
+        // (off prowling elsewhere) home to defend his hoard.
+        scoring.visit(maze.treasureRoom, register: "treasureRoom", points: 25)
+        maze.treasureRoom.onEnter {
+            guard !thief.thiefDefeated else { return }
+            thief.thief.move(to: maze.treasureRoom)
+        }
     }
 
     var timers: [TimedEvent] {
@@ -482,20 +555,54 @@ struct Zork1: Game, GameMain {
                 wound: [Prose.trollSwipeWound],
                 playerDeath: Prose.trollKillsYou))
 
-        // The thief works the cellar region: teleport-roaming its four
-        // rooms, lifting only the two treasures (never the lantern or
-        // sword — FIDELITY.md).
+        // The thief now prowls the whole underground, teleport-roaming every
+        // room below (bar his own lair, which he's summoned to defend, and the
+        // Land of the Dead), and will lift any treasure you carry. The roam and
+        // steal daemons guard before they draw, so quiet turns — the actor out
+        // of the set, or your hands empty of treasure — burn no randomness.
         actors.roams(
-            cellar.thief, daemonName: "thiefRoams",
-            rooms: [house.cellar, cellar.eastOfChasm, cellar.gallery, cellar.studio],
+            thief.thief, daemonName: "thiefRoams",
+            rooms: undergroundRooms,
             chancePerTurn: 50,
             arrival: Prose.thiefArrives,
             departure: Prose.thiefLeaves)
         actors.steals(
-            cellar.thief, daemonName: "thiefSteals",
-            candidates: [cellar.painting, aboveGround.egg],
+            thief.thief, daemonName: "thiefSteals",
+            candidates: treasureRoster,
             chancePerTurn: 30,
             announcement: { Prose.thiefSteals($0) })
+
+        // In his lair he ferries his takings into the hoard: a draw-free
+        // deposit of everything he carries (bar the stiletto he keeps to hand)
+        // onto the Treasure Room floor. Guards before touching anything, so
+        // every other turn is silent and RNG-free.
+        daemon("thiefStash", autostart: true) {
+            guard thief.thief.isIn(maze.treasureRoom) else { return }
+            for loot in thief.thief.inventory where loot != thief.stiletto {
+                loot.move(to: maze.treasureRoom)
+            }
+        }
+
+        // He fights back only in his lair — the `while:` gate closes everywhere
+        // else, keeping him evasive on the prowl and burning no randomness on
+        // the turns he isn't defending the hoard.
+        melee.aggression(
+            of: thief.thief, key: "thief", daemonName: "thiefFights",
+            while: { thief.thief.isIn(maze.treasureRoom) },
+            prose: MeleeCombat.AggressionProse(
+                miss: [Prose.thiefSwipeMiss],
+                wound: [Prose.thiefSwipeWound],
+                playerDeath: Prose.thiefKillsYou))
+
+        // The egg-opening service: four turns after you hand him the egg, the
+        // thief works its mechanism open — the canary intact, where your own
+        // hands would have wrecked it. Silent (you're not there to watch); you
+        // find the opened egg among his effects when he falls. Cancelled if he
+        // dies first (you'll have to force it yourself).
+        fuse("thiefOpensEgg", after: 4) {
+            guard !thief.thiefDefeated else { return }
+            aboveGround.egg.isOpen = true
+        }
     }
 
     var map: WorldMap {
@@ -509,6 +616,11 @@ struct Zork1: Game, GameMain {
         // cellar, the troll's passage north of it, and the chimney —
         // climbable only from below, so no matching `kitchen.down`
         // (FIDELITY.md).
+        // The thief lives in ``ZorkThief`` but starts in the Gallery, a
+        // ``ZorkCellar`` room, so the host places him — cross-bundle, like his
+        // every other seam.
+        thief.thief.starts(in: cellar.gallery)
+
         house.cellar.south(cellar.eastOfChasm)
         cellar.eastOfChasm.north(house.cellar)
         house.cellar.north(cellar.trollRoom)

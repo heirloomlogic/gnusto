@@ -89,6 +89,13 @@ extension Prose {
 
     static let bagOfCoinsFirstSight = "An old leather bag, bulging with coins, lies among the bones."
 
+    static let silverChalice = """
+        A silver chalice, chased with a delicate tracery of vines and worth a
+        small fortune — the pride of the thief's hoard.
+        """
+
+    static let silverChaliceFirstSight = "On a shelf above the hoard rests a fabulously valuable silver chalice."
+
     static let rustyKnife = "A wicked-looking knife, its blade eaten through with rust."
 
     static let rustyKnifeFirstSight = "Beside the skeleton lies a rusty knife."

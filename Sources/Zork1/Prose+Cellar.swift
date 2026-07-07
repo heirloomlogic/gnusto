@@ -91,9 +91,10 @@ extension Prose {
 
     // MARK: - The thief
     //
-    // Reduced this phase: he roams the cellar region, bars the trap door
-    // from below, and picks pockets. His maze, treasure room, stiletto,
-    // and egg-opening services are later phases — see `FIDELITY.md`.
+    // Full-strength this phase: he roams the whole underground, lifts any
+    // treasure, ferries it back to the Treasure Room, defends that lair to
+    // the death with his stiletto, opens the egg for you if you give it to
+    // him, and bars the trap door from below. See `FIDELITY.md`.
 
     static let thief = """
         A lean figure in patched leather, hands never quite still. His
@@ -133,5 +134,39 @@ extension Prose {
     static let thiefLootScatters = """
         His satchel bursts as he falls, scattering his takings at your
         feet.
+        """
+
+    // The thief's own weapon and, in his lair, his counter-attacks — he fights
+    // back only there (evasive everywhere else).
+
+    static let stiletto = """
+        A vicious little blade, thin as a whisper and honed to a wicked
+        point — the thief's own, and quick.
+        """
+
+    static let thiefSwipeMiss = "The thief's stiletto flickers past your throat, a hair too wide."
+    static let thiefSwipeWound = "The stiletto darts in and out, and a warm line opens along your arm."
+    static let thiefKillsYou = """
+        The stiletto finds the gap it was looking for, and the shadows close
+        over you for good.
+        """
+
+    // Giving things to the thief.
+
+    static let thiefTakesGift = """
+        The thief takes it with a mocking little bow, appraises it, and makes
+        it vanish somewhere about his person.
+        """
+    static let thiefTakesEgg = """
+        The thief examines the jewel-encrusted egg with a connoisseur's eye,
+        then slips it away with a knowing smile. He seems to think he can do
+        something with it that you couldn't.
+        """
+
+    // Guarding the hoard.
+
+    static let chaliceGuarded = """
+        The thief's eyes never leave the chalice. You'll not get near it while
+        he still draws breath.
         """
 }
