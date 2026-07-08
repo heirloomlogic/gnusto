@@ -13,3 +13,5 @@ DerivedData/
 Templates/NewGame/Package.resolved
 xcuserdata/
 .build
+# Exported game binaries produced by bin/export-game.
+/dist

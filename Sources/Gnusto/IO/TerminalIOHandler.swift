@@ -1,0 +1,488 @@
+import Foundation
+import Synchronization
+
+#if canImport(Darwin)
+import Darwin
+#elseif canImport(Glibc)
+import Glibc
+#endif
+
+// MARK: - Emergency terminal restore (signal / atexit reachable)
+
+// A signal handler and `atexit` callback can't reach instance state, so the
+// bits needed to un-wedge the terminal live at module scope. They're written
+// once, when the handler enters raw mode, and only read on teardown — so
+// they're effectively immutable for the life of a session.
+
+/// The terminal attributes saved before entering raw mode, restored on exit.
+private nonisolated(unsafe) var gnustoSavedTermios = termios()
+
+/// True while the terminal is in raw mode / the alternate screen — guards the
+/// restore so it runs exactly once whether reached by normal teardown, a
+/// fatal signal, or `atexit`.
+private let gnustoTerminalActive = Atomic<Bool>(false)
+
+/// Set by the `SIGWINCH` handler; the input loop drains it and re-renders.
+private let gnustoWindowResized = Atomic<Bool>(false)
+
+/// Restores cooked mode, leaves the alternate screen, and shows the cursor.
+/// Idempotent (the `exchange` gate) and async-signal-safe enough for the fatal
+/// signal path: only `tcsetattr` and a single `write`.
+private func gnustoEmergencyRestore() {
+    guard gnustoTerminalActive.exchange(false, ordering: .relaxed) else { return }
+    tcsetattr(STDIN_FILENO, TCSAFLUSH, &gnustoSavedTermios)
+    let reset = "\u{1B}[?1049l\u{1B}[?25h"
+    _ = reset.withCString { write(STDOUT_FILENO, $0, strlen($0)) }
+}
+
+private func gnustoResizeHandler(_ signal: Int32) {
+    gnustoWindowResized.store(true, ordering: .relaxed)
+}
+
+private func gnustoFatalSignalHandler(_ sig: Int32) {
+    gnustoEmergencyRestore()
+    signal(sig, SIG_DFL)
+    raise(sig)
+}
+
+// MARK: - TerminalIOHandler
+
+/// A full-screen, Infocom-style terminal front end: a fixed status bar (room,
+/// score, turns) above a story window that re-wraps its entire transcript to
+/// the window width — so resizing the terminal reflows the text — with its own
+/// line editor (arrow keys, history) and PageUp/PageDown scrollback.
+///
+/// Chosen automatically by `GameMain` when stdin and stdout are both a TTY;
+/// piped or redirected runs fall back to `ConsoleIOHandler` so transcripts and
+/// tests stay plain. No dependencies: hand-rolled `termios` + ANSI.
+public final class TerminalIOHandler: IOHandler {
+    /// All mutable session state, behind a `Mutex` because `IOHandler` is
+    /// `Sendable`. Mirrors `ScriptedIOHandler`'s boxed-state pattern.
+    private struct State {
+        /// The story so far, one entry per engine `write` plus the echoed
+        /// prompt lines. Stored unwrapped; the wrapped form is cached below.
+        var transcript: [String] = []
+        /// The latest status line, or `nil` before the first turn.
+        var status: StatusLine?
+        /// The prompt the current `readLine` is showing (e.g. `"> "`).
+        var prompt = "> "
+        /// The line currently being edited (without the prompt).
+        var input = ""
+        /// Caret position within `input`, as a character offset.
+        var cursor = 0
+        /// Submitted commands, for Up/Down recall.
+        var history: [String] = []
+        /// Lines scrolled up from the live bottom; 0 pins to the newest text.
+        var scrollOffset = 0
+
+        /// The transcript wrapped to `wrappedCols`, rebuilt only when the
+        /// transcript grows or the width changes — so a keystroke repaints
+        /// without re-flowing the whole game. `transcript` only ever appends,
+        /// so its `count` is a sufficient cache key alongside the width.
+        var wrappedTranscript: [String] = []
+        var wrappedCols = -1
+        var wrappedCount = -1
+    }
+
+    private let box = Mutex(State())
+
+    /// Enters raw mode and the alternate screen, installs the teardown guards,
+    /// and paints the initial (empty) frame.
+    public init() {
+        enableRawModeAndAltScreen()
+        render()
+    }
+
+    deinit {
+        gnustoEmergencyRestore()
+    }
+
+    // MARK: IOHandler
+
+    /// Appends a block of engine output to the transcript and repaints. Blank
+    /// writes (turns that produce no text) are dropped so they don't stack up
+    /// empty paragraphs.
+    public func write(_ text: String) {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        box.withLock {
+            $0.transcript.append(trimmed)
+            $0.scrollOffset = 0  // new output snaps back to live
+        }
+        render()
+    }
+
+    /// Records the new status line and repaints the bar.
+    public func showStatus(_ status: StatusLine) {
+        box.withLock { $0.status = status }
+        render()
+    }
+
+    /// Runs the raw-mode line editor until the player submits a line, presses
+    /// Ctrl-D on an empty line (EOF), or Ctrl-C (quit). Returns the submitted
+    /// line, or `nil` to end the game.
+    public func readLine(prompt: String) -> String? {
+        box.withLock {
+            $0.prompt = prompt
+            $0.input = ""
+            $0.cursor = 0
+        }
+        render()
+
+        // History browsing state, local to this line. `historyCursor` counts
+        // from the end: `history.count` means "the fresh line I'm typing".
+        var historyCursor = box.withLock { $0.history.count }
+        var draft = ""
+
+        while true {
+            if gnustoWindowResized.exchange(false, ordering: .relaxed) {
+                render()
+            }
+            guard let key = readKey() else { continue }  // interrupted; loop
+
+            // The editing cases only mutate state; the single `render()` at the
+            // foot of the loop repaints. The control-flow cases (`enter`,
+            // `eof`, `interrupt`) return, quit, or `continue` before reaching it.
+            switch key {
+            case .enter:
+                let line = box.withLock { st -> String in
+                    let line = st.input
+                    st.transcript.append(st.prompt + line)
+                    if !line.trimmingCharacters(in: .whitespaces).isEmpty {
+                        st.history.append(line)
+                    }
+                    st.input = ""
+                    st.cursor = 0
+                    st.scrollOffset = 0
+                    return line
+                }
+                render()
+                return line
+
+            case .eof:
+                // Ctrl-D on an empty line ends input; ignored mid-line.
+                let empty = box.withLock { $0.input.isEmpty }
+                if empty { return nil }
+                continue  // nothing changed; no repaint
+
+            case .interrupt:
+                // Ctrl-C: leave the terminal clean and quit the process.
+                gnustoEmergencyRestore()
+                exit(0)
+
+            case .character(let ch):
+                box.withLock {
+                    let i = $0.input.index($0.input.startIndex, offsetBy: $0.cursor)
+                    $0.input.insert(contentsOf: ch, at: i)
+                    $0.cursor += ch.count
+                }
+
+            case .backspace:
+                box.withLock {
+                    guard $0.cursor > 0 else { return }
+                    let i = $0.input.index($0.input.startIndex, offsetBy: $0.cursor - 1)
+                    $0.input.remove(at: i)
+                    $0.cursor -= 1
+                }
+
+            case .deleteForward:
+                box.withLock {
+                    guard $0.cursor < $0.input.count else { return }
+                    let i = $0.input.index($0.input.startIndex, offsetBy: $0.cursor)
+                    $0.input.remove(at: i)
+                }
+
+            case .left:
+                box.withLock { $0.cursor = max(0, $0.cursor - 1) }
+
+            case .right:
+                box.withLock { $0.cursor = min($0.input.count, $0.cursor + 1) }
+
+            case .home:
+                box.withLock { $0.cursor = 0 }
+
+            case .end:
+                box.withLock { $0.cursor = $0.input.count }
+
+            case .historyPrev:
+                box.withLock { st in
+                    guard historyCursor > 0 else { return }
+                    if historyCursor == st.history.count { draft = st.input }
+                    historyCursor -= 1
+                    st.input = st.history[historyCursor]
+                    st.cursor = st.input.count
+                }
+
+            case .historyNext:
+                box.withLock { st in
+                    guard historyCursor < st.history.count else { return }
+                    historyCursor += 1
+                    st.input = historyCursor == st.history.count ? draft : st.history[historyCursor]
+                    st.cursor = st.input.count
+                }
+
+            case .pageUp:
+                box.withLock { $0.scrollOffset += self.pageStep() }
+
+            case .pageDown:
+                box.withLock { $0.scrollOffset = max(0, $0.scrollOffset - self.pageStep()) }
+            }
+            render()
+        }
+    }
+
+    // MARK: - Terminal setup
+
+    private func enableRawModeAndAltScreen() {
+        tcgetattr(STDIN_FILENO, &gnustoSavedTermios)
+        var raw = gnustoSavedTermios
+        raw.c_iflag &= ~tcflag_t(BRKINT | ICRNL | INPCK | ISTRIP | IXON)
+        raw.c_oflag &= ~tcflag_t(OPOST)
+        raw.c_lflag &= ~tcflag_t(ECHO | ICANON | IEXTEN | ISIG)
+        // Poll rather than block: a 0.1s read timeout lets the input loop wake
+        // and service a pending SIGWINCH even when no key is pressed. (Relying
+        // on read() returning EINTR doesn't work — signal() installs the
+        // handler with SA_RESTART on BSD/macOS, so the read auto-restarts.)
+        setControlChar(&raw, VMIN, 0)
+        setControlChar(&raw, VTIME, 1)
+        tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw)
+
+        gnustoTerminalActive.store(true, ordering: .relaxed)
+        atexit(gnustoEmergencyRestore)
+        signal(SIGWINCH, gnustoResizeHandler)
+        for sig in [SIGINT, SIGTERM, SIGHUP] {
+            signal(sig, gnustoFatalSignalHandler)
+        }
+
+        emit("\u{1B}[?1049h")  // alternate screen buffer
+    }
+
+    /// Sets one entry of the `c_cc` control-character array. `c_cc` imports as
+    /// a fixed-size tuple, which can't be subscripted with a runtime index, so
+    /// rebind it to a `cc_t` buffer.
+    private func setControlChar(_ term: inout termios, _ index: Int32, _ value: cc_t) {
+        withUnsafeMutablePointer(to: &term.c_cc) {
+            $0.withMemoryRebound(to: cc_t.self, capacity: Int(NCCS)) { $0[Int(index)] = value }
+        }
+    }
+
+    // MARK: - Rendering
+
+    /// The current terminal size in (rows, columns), defaulting to 24×80 if the
+    /// `ioctl` fails (e.g. a terminal that doesn't answer `TIOCGWINSZ`).
+    private func terminalSize() -> (rows: Int, cols: Int) {
+        var ws = winsize()
+        if ioctl(STDOUT_FILENO, UInt(TIOCGWINSZ), &ws) == 0, ws.ws_row > 0, ws.ws_col > 0 {
+            return (Int(ws.ws_row), Int(ws.ws_col))
+        }
+        return (24, 80)
+    }
+
+    /// How many lines a PageUp/PageDown moves: most of a screen, keeping a
+    /// couple of lines of overlap for continuity.
+    private func pageStep() -> Int {
+        max(1, terminalSize().rows - 3)
+    }
+
+    /// Repaints the whole frame: status bar, the wrapped-and-scrolled story
+    /// window, and the live input line, then parks the hardware cursor at the
+    /// caret (or hides it while scrolled up).
+    private func render() {
+        let (rows, cols) = terminalSize()
+        let bodyRows = max(1, rows - 1)
+
+        box.withLock { st in
+            // Re-wrap the transcript only when it grew or the width changed;
+            // otherwise a keystroke reuses the cached lines and re-wraps just
+            // the one input line. Each paragraph is wrapped with a blank line
+            // between paragraphs.
+            if st.wrappedCols != cols || st.wrappedCount != st.transcript.count {
+                var wrapped: [String] = []
+                for (i, paragraph) in st.transcript.enumerated() {
+                    if i > 0 { wrapped.append("") }
+                    wrapped += TextWrap.wrap(paragraph, width: cols)
+                }
+                st.wrappedTranscript = wrapped
+                st.wrappedCols = cols
+                st.wrappedCount = st.transcript.count
+            }
+
+            // The visible lines: the wrapped transcript, a blank line, then the
+            // live input line (which keeps its exact spacing for caret math).
+            var visual = st.wrappedTranscript
+            if !visual.isEmpty { visual.append("") }
+            let inputLineStart = visual.count
+            visual += TextWrap.hardSplit(Substring(st.prompt + st.input), width: cols)
+
+            // Clamp the scroll offset to the available history and write it
+            // back so the editor's page math stays in range.
+            let maxOffset = max(0, visual.count - bodyRows)
+            st.scrollOffset = min(st.scrollOffset, maxOffset)
+            let live = st.scrollOffset == 0
+
+            let windowEnd = visual.count - st.scrollOffset
+            let windowStart = max(0, windowEnd - bodyRows)
+
+            var frame = "\u{1B}[?25l"  // hide cursor while we paint
+            frame += "\u{1B}[1;1H\u{1B}[7m" + Self.statusBar(st.status, cols: cols) + "\u{1B}[0m"
+
+            var row = 2
+            for lineIndex in windowStart..<windowEnd {
+                frame += "\u{1B}[\(row);1H\u{1B}[2K" + visual[lineIndex]
+                row += 1
+            }
+            while row <= rows {
+                frame += "\u{1B}[\(row);1H\u{1B}[2K"
+                row += 1
+            }
+
+            if !live {
+                let marker = " -- more (PgDn) -- "
+                let col = max(1, cols - marker.count + 1)
+                frame += "\u{1B}[\(rows);\(col)H\u{1B}[7m" + marker + "\u{1B}[0m"
+            }
+
+            // Place the caret at the input position when live and on-screen.
+            let caretIndex = st.prompt.count + st.cursor
+            let caretVisualLine = inputLineStart + caretIndex / cols
+            let caretCol = caretIndex % cols + 1
+            let caretScreenRow = 2 + (caretVisualLine - windowStart)
+            if live, caretVisualLine >= windowStart, caretScreenRow <= rows {
+                frame += "\u{1B}[\(caretScreenRow);\(caretCol)H\u{1B}[?25h"
+            }
+
+            emit(frame)
+        }
+    }
+
+    /// The reverse-video status bar: location on the left, `Score`/`Moves` on
+    /// the right, padded to the full width and clipped if it can't fit.
+    private static func statusBar(_ status: StatusLine?, cols: Int) -> String {
+        let left = " " + (status?.locationName ?? "")
+        let right = status.map { "Score: \($0.score)   Moves: \($0.moves) " } ?? ""
+        let gap = cols - left.count - right.count
+        let bar = gap >= 1 ? left + String(repeating: " ", count: gap) + right : left + right
+        return bar.count > cols ? String(bar.prefix(cols)) : bar
+    }
+
+    // MARK: - Input
+
+    /// A decoded keypress: an editing command or one or more printable
+    /// characters.
+    private enum Key {
+        case character(String)
+        case enter, backspace, deleteForward
+        case left, right, home, end
+        case historyPrev, historyNext
+        case pageUp, pageDown
+        case eof, interrupt
+    }
+
+    /// One raw byte, or `interrupted` for a read that timed out (the `VTIME`
+    /// poll) or was broken by a signal — the caller loops to service a resize.
+    /// A genuine terminal close arrives as `SIGHUP`, handled separately, so a
+    /// zero-length read here is treated as a timeout, not EOF.
+    private enum RawByte {
+        case byte(UInt8)
+        case eof
+        case interrupted
+    }
+
+    private func readRawByte() -> RawByte {
+        var byte: UInt8 = 0
+        let n = read(STDIN_FILENO, &byte, 1)
+        if n == 1 { return .byte(byte) }
+        if n == 0 { return .interrupted }  // VTIME timeout; nothing to read yet
+        return errno == EINTR ? .interrupted : .eof
+    }
+
+    /// Reads and decodes the next keypress. Returns `nil` when interrupted, so
+    /// the caller can service a pending resize and try again.
+    private func readKey() -> Key? {
+        switch readRawByte() {
+        case .interrupted:
+            return nil
+        case .eof:
+            return .eof
+        case .byte(let b):
+            switch b {
+            case 0x03: return .interrupt
+            case 0x04: return .eof
+            case 0x0A, 0x0D: return .enter
+            case 0x7F, 0x08: return .backspace
+            case 0x1B: return readEscapeSequence()
+            case 0x00..<0x20: return readKey()  // ignore other control bytes
+            default: return decodeUTF8(leadByte: b)
+            }
+        }
+    }
+
+    /// Parses a CSI escape sequence (arrows, Home/End, Delete, Page keys). A
+    /// bare or unrecognized ESC is swallowed.
+    private func readEscapeSequence() -> Key? {
+        guard case .byte(let b1) = readRawByte(), b1 == 0x5B || b1 == 0x4F else {
+            return readKey()  // lone ESC; move on to the next key
+        }
+        guard case .byte(let b2) = readRawByte() else { return readKey() }
+        switch b2 {
+        case 0x41: return .historyPrev  // Up
+        case 0x42: return .historyNext  // Down
+        case 0x43: return .right
+        case 0x44: return .left
+        case 0x48: return .home  // ESC[H / ESC OH
+        case 0x46: return .end  // ESC[F / ESC OF
+        case 0x30...0x39:  // numeric parameter, terminated by '~'
+            var param = String(UnicodeScalar(b2))
+            while case .byte(let n) = readRawByte() {
+                if n == 0x7E { break }
+                param.append(Character(UnicodeScalar(n)))
+            }
+            switch param {
+            case "1", "7": return .home
+            case "4", "8": return .end
+            case "3": return .deleteForward
+            case "5": return .pageUp
+            case "6": return .pageDown
+            default: return readKey()
+            }
+        default:
+            return readKey()
+        }
+    }
+
+    /// Gathers the continuation bytes of a UTF-8 sequence begun by `leadByte`
+    /// and returns the resulting character(s).
+    private func decodeUTF8(leadByte: UInt8) -> Key? {
+        let extra: Int
+        switch leadByte {
+        case 0xC0...0xDF: extra = 1
+        case 0xE0...0xEF: extra = 2
+        case 0xF0...0xF7: extra = 3
+        default: extra = 0
+        }
+        var bytes = [leadByte]
+        for _ in 0..<extra {
+            guard case .byte(let b) = readRawByte() else { break }
+            bytes.append(b)
+        }
+        guard let string = String(bytes: bytes, encoding: .utf8), !string.isEmpty else {
+            return readKey()  // invalid sequence; skip it
+        }
+        return .character(string)
+    }
+
+    /// Writes a string straight to stdout, bypassing stdio buffering so frames
+    /// land atomically.
+    private func emit(_ string: String) {
+        let bytes = Array(string.utf8)
+        bytes.withUnsafeBytes { buffer in
+            guard let base = buffer.baseAddress else { return }
+            var offset = 0
+            while offset < buffer.count {
+                let written = Foundation.write(STDOUT_FILENO, base + offset, buffer.count - offset)
+                if written <= 0 { break }
+                offset += written
+            }
+        }
+    }
+}

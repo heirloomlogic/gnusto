@@ -3,11 +3,13 @@ public struct ConsoleIOHandler: IOHandler {
     /// Creates a console IO handler.
     public init() {}
 
-    /// Writes text to standard output without a trailing newline.
+    /// Writes text to standard output without a trailing newline. The `<br>`
+    /// hard-break marker is turned into a newline so it never shows literally
+    /// (plain output doesn't reflow, so it carries no other markup).
     ///
     /// - Parameter text: the text to write.
     public func write(_ text: String) {
-        print(text, terminator: "")
+        print(TextWrap.plain(text), terminator: "")
     }
 
     /// Prints the prompt and reads one line from standard input.

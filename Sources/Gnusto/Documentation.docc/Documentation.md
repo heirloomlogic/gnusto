@@ -60,6 +60,10 @@ Each line the player types is parsed into a ``Command``, then run through a fixe
 
 A game need not live in one file — or even one package. Compose `map` and `rules` from per-region helpers (<doc:SplittingAGameAcrossFiles>), promote a region to a self-contained ``GameContent`` bundle (<doc:ContentBundles>), or package a reusable system like commerce or combat as a ``GamePlugin`` (<doc:Plugins>).
 
+### Playing and sharing
+
+A game type that also conforms to ``GameMain`` is a complete `@main` executable — `swift run` it and, in a real terminal, it launches a full-screen Infocom-style interpreter (``TerminalIOHandler``) with a status bar and reflow-on-resize. When you're ready to hand it to someone, `bin/export-game` builds a single binary a friend can run on macOS with no toolchain. See <doc:SharingYourGame>.
+
 ## Topics
 
 ### Essentials
@@ -155,9 +159,15 @@ A game need not live in one file — or even one package. Compose `map` and `rul
 - ``StatusLine``
 - ``GameStatus``
 - ``REPL``
+- ``GameMain``
 - ``IOHandler``
 - ``ConsoleIOHandler``
+- ``TerminalIOHandler``
 - ``ScriptedIOHandler``
+
+### Sharing Your Game
+
+- <doc:SharingYourGame>
 
 ### Testing Your Game
 
