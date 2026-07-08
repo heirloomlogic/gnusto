@@ -297,9 +297,12 @@ public struct GameText: Sendable {
         "  \(GameText.indefinite($0))\($1 ? " (being worn)" : "")"
     }
 
-    /// The title banner shown at startup and by `version`.
+    /// The title banner shown at startup and by `version`. The `<br>` keeps the
+    /// title on its own line above the tagline (a hard break) rather than
+    /// letting the full-screen renderer fold the two together; plain output
+    /// turns it back into a newline.
     public var banner: @Sendable (_ title: String, _ tagline: String) -> String = {
-        $1.isEmpty ? $0 : "\($0)\n\($1)"
+        $1.isEmpty ? $0 : "\($0)\(TextWrap.lineBreak)\($1)"
     }
 
     /// The `score` report, also printed as the end-of-game epilogue.

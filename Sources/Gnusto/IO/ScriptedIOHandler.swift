@@ -18,11 +18,14 @@ public final class ScriptedIOHandler: IOHandler {
         box = Mutex(Log(pending: lines))
     }
 
-    /// Appends text to the transcript.
+    /// Appends text to the transcript, rendering the `<br>` hard-break marker
+    /// as a newline (via ``TextWrap/plain(_:)``) so recorded transcripts read
+    /// the way a player sees them, the same as the plain console — the marker
+    /// convention is honored in one place, not per handler.
     ///
     /// - Parameter text: the text to append.
     public func write(_ text: String) {
-        box.withLock { $0.transcript += text }
+        box.withLock { $0.transcript += TextWrap.plain(text) }
     }
 
     /// Returns the next scripted line, or `nil` once they run out.

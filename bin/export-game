@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+#
+# Build a Gnusto game as a standalone command-line executable you can hand to a
+# friend. Produces a release binary under ./dist.
+#
+# Usage:  bin/export-game <Product>          (e.g. bin/export-game Zork1)
+#         bin/export-game                    (lists the executable products)
+#
+# On macOS 15+ the binary dynamically links the Swift runtime that ships with
+# the OS, so the recipient runs ./dist/<Product> directly — no Xcode, no Swift
+# toolchain. Cross-platform Linux binaries are best produced in CI (see the
+# release workflow noted in the plan); cross-compiling from a Mac is impractical.
+
+set -euo pipefail
+
+# Run from the package root regardless of where the script is invoked.
+cd "$(dirname "$0")/.."
+
+# The executable products declared in Package.swift.
+products=(Zork1 CloakOfDarkness)
+
+if [[ $# -lt 1 ]]; then
+  echo "usage: bin/export-game <Product>"
+  echo "available products: ${products[*]}"
+  exit 2
+fi
+
+product="$1"
+if [[ ! " ${products[*]} " == *" ${product} "* ]]; then
+  echo "error: unknown product '${product}'"
+  echo "available products: ${products[*]}"
+  exit 2
+fi
+
+echo "Building ${product} (release)…"
+swift build -c release --product "${product}"
+
+binpath="$(swift build -c release --product "${product}" --show-bin-path)/${product}"
+mkdir -p dist
+
+# Never overwrite dist/<Product> in place. If a previously exported copy is
+# still running, rewriting its bytes underneath the kernel corrupts the mapped
+# Mach-O; the kernel then flags that file's code signature invalid and SIGKILLs
+# every future launch of it ("zsh: killed") even though the new bytes and the
+# ad-hoc signature verify fine. Copy to a temp file and atomically move it into
+# place so each export lands on a fresh inode, immune to that poisoning.
+tmp="dist/.${product}.$$.tmp"
+trap 'rm -f "${tmp}"' EXIT
+cp "${binpath}" "${tmp}"
+mv -f "${tmp}" "dist/${product}"
+trap - EXIT
+
+echo
+echo "✔ Exported dist/${product}"
+echo
+echo "Play it:      ./dist/${product}"
+echo "Share it:     send the single file dist/${product} to a friend on macOS 15+."
+echo
+echo "Gatekeeper note: a binary a friend *downloads* is quarantined. They clear it with"
+echo "  xattr -dr com.apple.quarantine ./${product}"
+echo "or you can ad-hoc sign before sharing:"
+echo "  codesign -s - dist/${product}"
