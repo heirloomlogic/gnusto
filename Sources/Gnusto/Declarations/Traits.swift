@@ -3,9 +3,6 @@ public struct LocationTrait: Sendable {
     enum Kind: Sendable {
         case name(String)
         case description(String)
-        /// A live description recomputed on every read. See
-        /// `description(_:)` (the closure overload) for the authoring shape.
-        case dynamicDescription(@Sendable () -> String)
         case dark
         case custom(key: String, value: StateValue)
     }
@@ -18,9 +15,6 @@ public struct ItemTrait: Sendable {
     enum Kind: Sendable {
         case name(String)
         case description(String)
-        /// A live description recomputed on every read. See
-        /// `description(_:)` (the closure overload) for the authoring shape.
-        case dynamicDescription(@Sendable () -> String)
         case adjectives([String])
         case synonyms([String])
         case firstSight(String)
@@ -31,9 +25,6 @@ public struct ItemTrait: Sendable {
         case openable
         case startsOpen
         case transparent
-        /// Stores the key's reference token; Bootstrap resolves it to an
-        /// `EntityID` once the registry exists.
-        case lockable(key: RefToken)
         case startsUnlocked
         case capacity(Int)
         case hidden
@@ -79,51 +70,6 @@ public func description(_ text: String) -> LocationTrait {
 /// - Returns: the description trait.
 public func description(_ text: String) -> ItemTrait {
     ItemTrait(kind: .description(text))
-}
-
-/// A long description recomputed every time the location is described, so it
-/// can react to live world state:
-///
-/// ```swift
-/// let vault = Location {
-///     name("Vault")
-///     description { vaultOpen ? "The vault stands open." : "A sealed vault door." }
-/// }
-/// ```
-///
-/// Declaring both a static `description("…")` and a closure on the same
-/// location is ambiguous and reported as a bootstrap diagnostic. A runtime
-/// override (`location.description = "…"`) still wins over either.
-///
-/// - Parameter text: the closure recomputing the description on each read.
-/// - Returns: the dynamic description trait.
-public func description(_ text: @escaping @Sendable () -> String) -> LocationTrait {
-    LocationTrait(kind: .dynamicDescription(text))
-}
-
-/// A description recomputed every time the item is examined, so it can react
-/// to live world state:
-///
-/// ```swift
-/// let trophyCase = Item {
-///     name("trophy case")
-///     description { trophyCase.holds(egg) ? "…gleams…" : "…empty…" }
-/// }
-/// ```
-///
-/// The closure captures other entities or `@Global`s freely; it cannot
-/// capture the item being declared (a stored-property initializer can't
-/// reference `self` or a sibling property) — use the file-scope-`let` idiom
-/// (see `lockable(with:)`) if an item's description must reference itself.
-///
-/// Declaring both a static `description("…")` and a closure on the same item
-/// is ambiguous and reported as a bootstrap diagnostic. A runtime override
-/// (`item.description = "…"`) still wins over either.
-///
-/// - Parameter text: the closure recomputing the description on each read.
-/// - Returns: the dynamic description trait.
-public func description(_ text: @escaping @Sendable () -> String) -> ItemTrait {
-    ItemTrait(kind: .dynamicDescription(text))
 }
 
 /// Additional words the parser accepts before the item's noun.
@@ -186,18 +132,9 @@ public let startsOpen = ItemTrait(kind: .startsOpen)
 /// reachable until it is opened) — a glass jar, a display case.
 public let transparent = ItemTrait(kind: .transparent)
 
-/// The item can be locked and unlocked with the given key item. A `lockable`
-/// item **starts locked** unless it also declares `startsUnlocked`. The key is
-/// captured by reference; Bootstrap resolves it to a concrete item and reports
-/// a fatal diagnostic if the key is not a declared item.
-///
-/// - Parameter key: the item that locks and unlocks this one.
-/// - Returns: the lockable trait.
-public func lockable(with key: Item) -> ItemTrait {
-    ItemTrait(kind: .lockable(key: key.token))
-}
-
-/// A `lockable` item begins the game unlocked rather than locked.
+/// A lockable item begins the game unlocked rather than locked. An item
+/// becomes lockable (and starts locked) via a `lockedBy(_:)` entry in the
+/// `map` block; this flag has no effect on an item with no such entry.
 public let startsUnlocked = ItemTrait(kind: .startsUnlocked)
 
 /// The maximum number of items that may be placed directly inside a container

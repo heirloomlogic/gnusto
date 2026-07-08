@@ -1,21 +1,5 @@
 import Gnusto
 
-/// The grating's key doesn't exist yet in this slice — the maze that hides
-/// it is Phase 7 content, but `lockable(with:)` still needs a real,
-/// bootstrap-registered `Item` to point at (an unresolvable key is a fatal
-/// diagnostic, same as a dangling door). The file-scope `let` is the usual
-/// `lockable(with:)` workaround — a stored-property initializer can't
-/// reference a sibling stored property — and ``ZorkAboveGround`` also holds
-/// it as its own stored property (`skeletonKey`, below) so Bootstrap's
-/// reflection actually discovers and registers it as a declared item. It is
-/// simply never placed in `map`, which resolves to `.nowhere`: a declared
-/// but unplaced item is legal (every item defaults to `.nowhere` unless a
-/// `map` entry says otherwise), so the key exists as a future pickup with no
-/// stub room required.
-private let skeletonKeyItem = Item {
-    name("skeleton key")
-}
-
 /// The forest/house/canyon region of the map: the White House exterior, the
 /// woods around it, and the canyon beyond — everything above ground in this
 /// slice. `ZorkHouse` (the interior) and this bundle meet at the kitchen
@@ -144,10 +128,25 @@ struct ZorkAboveGround: GameContent {
         scenery
     }
 
-    /// Shared with `ZorkHouse.trophyCase`'s closure description — see
-    /// `House.swift`'s file-scope `zork1Egg`, which this aliases, for why
-    /// the shared identity lives at file scope rather than being injected.
-    let egg = zork1Egg
+    /// The jewel-encrusted egg, found up the tree. The living room's trophy
+    /// case (in ``ZorkHouse``) describes itself by whether it holds this egg;
+    /// since the two live in different bundles, the host declares that
+    /// `describe` rule (`Zork1.rules`).
+    let egg = Item {
+        name("jewel-encrusted egg")
+        adjectives("jewel-encrusted", "jeweled")
+        description(Prose.egg)
+        // The original's values: 5 for the find, 5 for the case.
+        trait(.takeValue, 5)
+        trait(.depositValue, 5)
+        // A container holding the clockwork canary, but sealed by a mechanism no
+        // brute can work: force it open yourself (the built-in `open`, gated by a
+        // host rule) and you wreck the bird. Starts closed and opaque — the canary
+        // stays hidden until it's opened. Only the thief can open it cleanly (his
+        // egg-service fuse, wired in ``Zork1``).
+        container
+        openable
+    }
 
     let clearingGrating = Location {
         name("Clearing")
@@ -164,25 +163,26 @@ struct ZorkAboveGround: GameContent {
         scenery
     }
 
-    /// Openable and lockable with `skeletonKey` below, so it starts (and
-    /// stays) locked: `open grating` refuses with the built-in "is locked"
-    /// message with no rule of our own needed.
+    /// Openable, and locked by `skeletonKey` via the `map` block below, so it
+    /// starts (and stays) locked: `open grating` refuses with the built-in
+    /// "is locked" message with no rule of our own needed.
     let grating = Item {
         name("iron grating")
         adjectives("iron", "metal")
         description(Prose.grating)
         container
         openable
-        lockable(with: skeletonKeyItem)
         scenery
         hidden
     }
 
-    /// The grating's key — registered with Bootstrap so `lockable(with:)`
-    /// above resolves, but not placed anywhere in `map`: it's future pickup
-    /// for the maze phase, not a fixture of this slice. See
-    /// `skeletonKeyItem`'s doc comment at the top of the file.
-    let skeletonKey = skeletonKeyItem
+    /// The grating's key. Not placed anywhere in `map`: it's a future pickup
+    /// for the maze phase (the host places it in `Zork1.map`), not a fixture
+    /// of this slice — but a declared, unplaced item is legal (it resolves to
+    /// `.nowhere`).
+    let skeletonKey = Item {
+        name("skeleton key")
+    }
 
     let clearingEast = Location {
         name("Clearing")
@@ -274,6 +274,7 @@ struct ZorkAboveGround: GameContent {
 
         leaves.starts(in: clearingGrating)
         grating.starts(in: clearingGrating)
+        grating.lockedBy(skeletonKey)
     }
 
     // MARK: - Rules

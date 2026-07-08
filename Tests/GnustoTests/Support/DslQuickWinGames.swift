@@ -102,51 +102,31 @@ struct TraitKeyGame: Game {
     }
 }
 
-// MARK: - Closure descriptions
+// MARK: - Describe rules
 
-/// The egg `trophyCaseItem`'s description closure checks for — the exact
-/// authoring shape from the brief (`trophyCase.holds(egg) ? … : …`),
-/// including the self-reference (`trophyCaseItem` naming itself inside its
-/// own closure). This only compiles because both are **file-scope** `let`s:
-/// a *stored-property* initializer can't reference `self` or a sibling
-/// stored property (the restriction `lockable(with:)` works around via the
-/// same idiom — see `ContainerGames.swift`'s `pantryKey`), but a top-level
-/// `let` is lazily initialized, so a closure captured inside it can name the
-/// binding itself — by the time the closure actually runs (mid-turn, well
-/// after module initialization), the global already has a value. So: an
-/// item declared as a *stored property inside a `Game`/`GameContent`*
-/// cannot describe itself this way, but one hoisted to file scope (which is
-/// what a description needing self-reference should do) can.
-private let eggItem = Item {
-    name("jeweled egg")
-}
-
-private let trophyRoom = Location {
-    name("Trophy Room")
-    description("A quiet trophy room.")
-}
-
-private let trophyCaseItem = Item {
-    name("trophy case")
-    surface
-    description {
-        trophyCaseItem.holds(eggItem)
-            ? "The trophy case gleams, holding a jeweled egg."
-            : "The trophy case stands empty."
-    }
-}
-
-/// Exercises live closure descriptions on an item: the trophy case's
-/// description reflects whether it currently holds the egg, re-evaluated on
-/// every examine rather than fixed at declaration time. Taking the egg off
-/// the case (a `surface`) is what flips the closure's result.
+/// Exercises live `describe` rules on an item: the trophy case's description
+/// reflects whether it currently holds the egg, re-evaluated on every examine
+/// rather than fixed at declaration time. Taking the egg off the case (a
+/// `surface`) is what flips the rule's result. Both entities are plain stored
+/// properties; the rule reads its own `trophyCase` freely because a `rules`
+/// block is a computed property.
 struct TrophyCaseGame: Game {
     let title = "TrophyCase"
     let intro = ""
 
-    let room = trophyRoom
-    let trophyCase = trophyCaseItem
-    let egg = eggItem
+    let room = Location {
+        name("Trophy Room")
+        description("A quiet trophy room.")
+    }
+
+    let trophyCase = Item {
+        name("trophy case")
+        surface
+    }
+
+    let egg = Item {
+        name("jeweled egg")
+    }
 
     var map: WorldMap {
         player.starts(in: room)
@@ -155,7 +135,13 @@ struct TrophyCaseGame: Game {
     }
 
     var rules: Rules {
-        // Lets the runtime-override-beats-closure precedence test flip the
+        trophyCase.describe {
+            trophyCase.holds(egg)
+                ? "The trophy case gleams, holding a jeweled egg."
+                : "The trophy case stands empty."
+        }
+
+        // Lets the runtime-override-beats-rule precedence test flip the
         // trophy case's description to a fixed string regardless of the
         // egg's location.
         trophyCase.before(.seal) {
@@ -174,26 +160,15 @@ struct TrophyCaseGame: Game {
 /// bootstrap discovers it by reflecting over that instance; a bare
 /// file-scope `@Global var` isn't legal Swift at all — property wrappers
 /// require a containing declaration). Splitting the flag into its own bundle
-/// lets a file-scope item closure reference it as `lampFlag.lit` — an
-/// *other* declaration's property, not `self`'s — exactly as `eggItem` above
-/// is other to `trophyCaseItem`.
+/// lets `LampGame`'s describe rule read it as `lampFlag.lit`.
 struct LampFlag: GameContent {
     @Global var lit = false
 }
 
-private let lampFlag = LampFlag()
-
-/// A `@Global`-driven variant of the closure-description fixture: the lamp's
+/// A `@Global`-driven variant of the describe-rule fixture: the lamp's
 /// description reflects `lampFlag.lit`, which a `light`/`douse` pair of
 /// custom verbs toggle — the "examine before/after a `@Global` flips"
 /// transcript shape named in the brief.
-private let lampItem = Item {
-    name("brass lamp")
-    description {
-        lampFlag.lit ? "The brass lamp is burning brightly." : "The brass lamp sits unlit."
-    }
-}
-
 struct LampGame: Game {
     let title = "Lamp"
     let intro = ""
@@ -203,7 +178,11 @@ struct LampGame: Game {
         description("A dark cellar.")
     }
 
-    let lamp = lampItem
+    let lamp = Item {
+        name("brass lamp")
+    }
+
+    let lampFlag = LampFlag()
 
     /// Registers `lampFlag`'s namespaced `lit` global with the bootstrap.
     var content: GameContents {
@@ -220,6 +199,9 @@ struct LampGame: Game {
     }
 
     var rules: Rules {
+        lamp.describe {
+            lampFlag.lit ? "The brass lamp is burning brightly." : "The brass lamp sits unlit."
+        }
         lamp.before(.light) {
             lampFlag.lit = true
             try reply("The lamp is now lit.")
@@ -232,7 +214,7 @@ struct LampGame: Game {
 }
 
 /// Exercises the ambiguous-declaration diagnostic: an item with both a
-/// static `description(...)` and a closure `description { ... }`.
+/// static `description(...)` trait and a `describe { ... }` rule.
 struct AmbiguousDescriptionGame: Game {
     let title = "Ambiguous"
     let intro = ""
@@ -245,12 +227,41 @@ struct AmbiguousDescriptionGame: Game {
     let widget = Item {
         name("widget")
         description("A plain widget.")
-        description { "A shifting widget." }
     }
 
     var map: WorldMap {
         player.starts(in: room)
         widget.starts(in: room)
+    }
+
+    var rules: Rules {
+        widget.describe { "A shifting widget." }
+    }
+}
+
+/// Exercises the double-describe diagnostic: one item with two `describe`
+/// rules is ambiguous and rejected by the bootstrap.
+struct DoubleDescribeGame: Game {
+    let title = "DoubleDescribe"
+    let intro = ""
+
+    let room = Location {
+        name("Room")
+        description("A room.")
+    }
+
+    let widget = Item {
+        name("widget")
+    }
+
+    var map: WorldMap {
+        player.starts(in: room)
+        widget.starts(in: room)
+    }
+
+    var rules: Rules {
+        widget.describe { "A shifting widget." }
+        widget.describe { "A different widget." }
     }
 }
 

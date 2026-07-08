@@ -1,11 +1,8 @@
 import Gnusto
 
-// A door item is shared between two rooms' exits via a file-scope value, the
-// same pattern `lockable(with:)` keys use: a stored-property initializer can't
-// reference a sibling stored property, but the `map` block (a computed
-// property) can, so `via:`/`when:` don't strictly need this — a plain openable
-// door referenced only from `map` works too. `TrapDoorGame` below proves the
-// in-body reference; `LockedDoorGame` shows the shared-value form.
+// A door item is shared between two rooms' exits by naming the same stored
+// property from both — the `map` block is a computed property, so `via:`/`when:`
+// and `lockedBy(_:)` can all reference sibling items freely.
 
 /// Two rooms joined by a shared trap door: living room above, cellar below. The
 /// same `trapDoor` item is named by both rooms' vertical exits, so its open
@@ -36,11 +33,6 @@ struct TrapDoorGame: Game {
     }
 }
 
-// Shared so the door key and the two rooms' exits refer to one identity.
-private let ironKey = Item {
-    name("iron key")
-}
-
 /// A locked door between a hall and a vault. The door is openable + lockable;
 /// the player must unlock it with the key before it will open, and only then
 /// can pass.
@@ -61,14 +53,16 @@ struct LockedDoorGame: Game {
     let ironDoor = Item {
         name("iron door")
         openable
-        lockable(with: ironKey)
     }
 
-    let key = ironKey
+    let key = Item {
+        name("iron key")
+    }
 
     var map: WorldMap {
         player.starts(in: hall)
         key.startsHeld
+        ironDoor.lockedBy(key)
         hall.north(vault, via: ironDoor)
         vault.south(hall, via: ironDoor)
     }

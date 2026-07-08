@@ -13,12 +13,6 @@ enum ExitTarget: Sendable {
 struct LocationDefinition: Sendable {
     var name: String?
     var description: String?
-    /// A live description supplied via `description { … }`. Mutually
-    /// exclusive with `description` (a static string); Bootstrap reports a
-    /// diagnostic if both are declared. `hasDynamicDescriptionConflict`
-    /// records that conflict without losing which trait won.
-    var dynamicDescription: (@Sendable () -> String)?
-    var hasDynamicDescriptionConflict = false
     var inherentlyLit = true
     var customTraits: [String: StateValue] = [:]
 
@@ -26,12 +20,7 @@ struct LocationDefinition: Sendable {
         for trait in traits {
             switch trait.kind {
             case .name(let text): name = text
-            case .description(let text):
-                if dynamicDescription != nil { hasDynamicDescriptionConflict = true }
-                description = text
-            case .dynamicDescription(let closure):
-                if description != nil { hasDynamicDescriptionConflict = true }
-                dynamicDescription = closure
+            case .description(let text): description = text
             case .dark: inherentlyLit = false
             case .custom(let key, let value): customTraits[key] = value
             }
@@ -43,12 +32,6 @@ struct LocationDefinition: Sendable {
 struct ItemDefinition: Sendable {
     var name: String?
     var description: String?
-    /// A live description supplied via `description { … }`. Mutually
-    /// exclusive with `description` (a static string); Bootstrap reports a
-    /// diagnostic if both are declared. `hasDynamicDescriptionConflict`
-    /// records that conflict without losing which trait won.
-    var dynamicDescription: (@Sendable () -> String)?
-    var hasDynamicDescriptionConflict = false
     var adjectives: [String] = []
     var synonyms: [String] = []
     var firstSight: String?
@@ -62,11 +45,9 @@ struct ItemDefinition: Sendable {
     var isLockable = false
     var startsUnlocked = false
     var capacity: Int?
-    /// The lock key's reference token, captured at declaration time. Bootstrap
-    /// resolves it into `lockKey` once the registry exists.
-    var lockKeyToken: RefToken?
-    /// The resolved lock key, filled in by Bootstrap. `nil` until then (and for
-    /// non-lockable items).
+    /// The resolved lock key, filled in by Bootstrap from the item's
+    /// `lockedBy(_:)` map entry. `nil` for non-lockable items. That same entry
+    /// also sets `isLockable`.
     var lockKey: EntityID?
     var isHidden = false
     var isLightSource = false
@@ -85,12 +66,7 @@ struct ItemDefinition: Sendable {
         for trait in traits {
             switch trait.kind {
             case .name(let text): name = text
-            case .description(let text):
-                if dynamicDescription != nil { hasDynamicDescriptionConflict = true }
-                description = text
-            case .dynamicDescription(let closure):
-                if description != nil { hasDynamicDescriptionConflict = true }
-                dynamicDescription = closure
+            case .description(let text): description = text
             case .adjectives(let words): adjectives += words
             case .synonyms(let words): synonyms += words
             case .firstSight(let text): firstSight = text
@@ -101,9 +77,6 @@ struct ItemDefinition: Sendable {
             case .openable: isOpenable = true
             case .startsOpen: startsOpen = true
             case .transparent: isTransparent = true
-            case .lockable(let key):
-                isLockable = true
-                lockKeyToken = key
             case .startsUnlocked: startsUnlocked = true
             case .capacity(let n): capacity = n
             case .hidden: isHidden = true
@@ -139,6 +112,11 @@ struct RuleTable: Sendable {
     var locationOnEnter: [EntityID: [Rule]] = [:]
     var worldBefore: [Rule] = []
     var worldAfter: [Rule] = []
+    /// Live description closures declared via `item.describe { … }`. Consulted
+    /// by `TurnFrame.describedText(of:)` after a runtime override and before a
+    /// static `description(…)` trait.
+    var itemDescribe: [EntityID: @Sendable () -> String] = [:]
+    var locationDescribe: [EntityID: @Sendable () -> String] = [:]
 }
 
 /// Everything about a game that never changes during play. Built once at

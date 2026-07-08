@@ -19,6 +19,10 @@ public struct Rule: Sendable {
         case afterEachTurn
         /// Runs when the player enters the location.
         case onEnter
+        /// Supplies a live description via `describe { … }`. Unlike every other
+        /// phase, its work is in `describeBody` (which returns the text), not
+        /// `body`; Bootstrap files it into the rule table's describe slots.
+        case describe
     }
 
     let scope: Scope
@@ -26,6 +30,9 @@ public struct Rule: Sendable {
     /// Empty means "any intent".
     let intents: Set<Intent>
     let body: @Sendable () throws -> Void
+    /// The text-returning body of a `.describe` rule; `nil` for every other
+    /// phase.
+    var describeBody: (@Sendable () -> String)? = nil
 
     func matches(_ intent: Intent) -> Bool {
         intents.isEmpty || intents.contains(intent)

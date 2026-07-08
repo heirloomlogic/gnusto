@@ -157,10 +157,6 @@ struct MailboxGame: Game {
     }
 }
 
-private let lockedMailboxKey = Item {
-    name("brass key")
-}
-
 /// A fixture proving `proceed()` propagates a `TurnInterrupt` thrown by the
 /// default action it invokes — here, the built-in `open` refuses because the
 /// mailbox is locked, and the embellishment line after `proceed()` never runs.
@@ -178,14 +174,16 @@ struct LockedMailboxGame: Game {
         adjectives("small")
         container
         openable
-        lockable(with: lockedMailboxKey)
     }
 
-    let key = lockedMailboxKey
+    let key = Item {
+        name("brass key")
+    }
 
     var map: WorldMap {
         player.starts(in: street)
         mailbox.starts(in: street)
+        mailbox.lockedBy(key)
         key.starts(in: street)
     }
 

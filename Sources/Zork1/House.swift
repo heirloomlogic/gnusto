@@ -10,79 +10,6 @@ extension TraitKey<Bool> {
     public static let waterSource = Self("waterSource", default: false)
 }
 
-/// The jewel-encrusted egg lives in `ZorkAboveGround` (Up a Tree), but the
-/// living room's trophy case (`ZorkHouse`) needs to describe itself
-/// differently once the egg is inside it. A file-scope `let` is how this
-/// codebase always shares one item's identity across sibling declarations
-/// that can't reference each other directly — a *stored property*
-/// initializer can't reference `self` or another stored property, but a
-/// top-level `let` is lazily initialized, so a closure captured inside a
-/// later top-level `let` can freely name an earlier one (see
-/// `DslQuickWinGames.swift`'s `eggItem`/`trophyCaseItem` pair for the
-/// single-file precedent). `ZorkAboveGround.egg` and `ZorkHouse.trophyCase`
-/// both simply *are* this same file-scope value, so the two bundles share
-/// one identity with no explicit injection needed.
-let zork1Egg = Item {
-    name("jewel-encrusted egg")
-    adjectives("jewel-encrusted", "jeweled")
-    description(Prose.egg)
-    // The original's values: 5 for the find, 5 for the case.
-    trait(.takeValue, 5)
-    trait(.depositValue, 5)
-    // A container holding the clockwork canary, but sealed by a mechanism no
-    // brute can work: force it open yourself (the built-in `open`, gated by the
-    // rule below) and you wreck the bird. Starts closed and opaque — the canary
-    // stays hidden until it's opened. Only the thief can open it cleanly (his
-    // egg-service fuse, wired in ``Zork1``).
-    container
-    openable
-}
-
-/// The golden clockwork canary nested inside the egg. Intact only while the egg
-/// is opened by careful hands (the thief's); the player's clumsy attempt swaps
-/// it for the ruined bird below. Its scoring and the `wind canary` → bauble
-/// business arrive in the next phase — see `FIDELITY.md`.
-let zork1Canary = Item {
-    name("golden clockwork canary")
-    adjectives("golden", "clockwork")
-    synonyms("canary", "bird")
-    description(Prose.canary)
-}
-
-/// What's left of the canary after a forced opening: a mangled tangle of gears
-/// worth nothing. Starts offstage and takes the intact bird's place inside the
-/// egg the moment you pry it open yourself.
-let zork1BrokenCanary = Item {
-    name("broken clockwork canary")
-    adjectives("broken", "mangled", "clockwork")
-    synonyms("canary", "bird")
-    description(Prose.brokenCanary)
-}
-
-/// The lantern's description reads its own lit state, which runs into the
-/// same self-reference restriction as the trophy case above — hence the same
-/// file-scope-`let` idiom.
-private let zork1Lantern = Item {
-    name("brass lantern")
-    adjectives("brass")
-    synonyms("lamp")
-    description { zork1Lantern.isLit ? Prose.lanternOn : Prose.lanternOff }
-    lightSource
-}
-
-private let zork1TrophyCase = Item {
-    name("trophy case")
-    description {
-        zork1TrophyCase.holds(zork1Egg)
-            ? Prose.trophyCaseHolding("a \(zork1Egg.name)")
-            : Prose.trophyCaseEmpty
-    }
-    container
-    openable
-    transparent
-    scenery
-}
-
 /// The interior of the White House: kitchen, living room, attic, and the
 /// cellar the trap door drops into. The region beyond the cellar (East of
 /// Chasm, Gallery, Studio) is ``ZorkCellar``'s; the troll passage north and
@@ -171,9 +98,14 @@ struct ZorkHouse: GameContent {
 
     /// A real light source with finite fuel: two fuses (dim warning, then
     /// out for good) that run only while it burns — turning it off banks
-    /// the remaining turns. See the file-scope `zork1Lantern` for why the
-    /// declaration lives outside the struct.
-    let lantern = zork1Lantern
+    /// the remaining turns. Its lit/unlit examine text is a `describe` rule
+    /// in `rules`, below.
+    let lantern = Item {
+        name("brass lantern")
+        adjectives("brass")
+        synonyms("lamp")
+        lightSource
+    }
 
     /// Fuel remaining on the dim-warning fuse while the lantern is off.
     /// Scaled toward the original's long burn now that the game is playable
@@ -222,18 +154,37 @@ struct ZorkHouse: GameContent {
     /// opening from the living room is never barred (the bolt is on top).
     @Global var trapDoorBarred = false
 
-    /// A closure description, live on every examine: whether the case is
-    /// empty or holds the egg is read from `holds(_:)` rather than fixed at
-    /// declaration time — see the file-scope `zork1TrophyCase` this aliases,
-    /// just above.
-    let trophyCase = zork1TrophyCase
+    /// Its examine text — empty vs. holding the egg — is a `describe` rule.
+    /// The egg lives in `ZorkAboveGround`, so that rule is cross-bundle and
+    /// the host declares it (`Zork1.rules`), not this bundle.
+    let trophyCase = Item {
+        name("trophy case")
+        container
+        openable
+        transparent
+        scenery
+    }
 
-    /// The clockwork canary and its ruined twin, aliasing the file-scope `let`s
-    /// so the bootstrap discovers and registers them (file-scope values aren't
-    /// reflected on their own). The intact bird starts sealed inside the egg;
-    /// the broken one waits offstage until a forced opening swaps them.
-    let canary = zork1Canary
-    let brokenCanary = zork1BrokenCanary
+    /// The golden clockwork canary nested inside the egg. Intact only while
+    /// the egg is opened by careful hands (the thief's); the player's clumsy
+    /// attempt swaps it for the ruined bird. The intact bird starts sealed
+    /// inside the egg (placed by the host, since the egg lives in
+    /// ``ZorkAboveGround``); the broken one waits offstage until a forced
+    /// opening swaps them. Their scoring and the `wind canary` → bauble
+    /// business arrive in the next phase — see `FIDELITY.md`.
+    let canary = Item {
+        name("golden clockwork canary")
+        adjectives("golden", "clockwork")
+        synonyms("canary", "bird")
+        description(Prose.canary)
+    }
+
+    let brokenCanary = Item {
+        name("broken clockwork canary")
+        adjectives("broken", "mangled", "clockwork")
+        synonyms("canary", "bird")
+        description(Prose.brokenCanary)
+    }
 
     /// Whether the canary has been wrecked by forcing the egg open by hand. Read
     /// next phase, when the canary's scoring and the `wind canary` trick land.
@@ -282,10 +233,10 @@ struct ZorkHouse: GameContent {
         rope.starts(in: attic)
         knife.starts(in: attic)
 
-        // The canary rides sealed inside the egg (itself on the nest up the
-        // tree — placed by ``ZorkAboveGround``). The broken twin stays offstage
-        // until a forced opening trades it in.
-        canary.starts(inside: zork1Egg)
+        // The canary rides sealed inside the egg, but the egg lives in
+        // ``ZorkAboveGround``, so the host places the canary inside it
+        // (`Zork1.map`). The broken twin stays offstage until a forced opening
+        // trades it in.
     }
 
     // MARK: - Rules
@@ -311,19 +262,13 @@ struct ZorkHouse: GameContent {
             say(Prose.trapDoorSlam)
         }
 
-        // Forcing the egg open by hand. The mechanism is too fine for brute
-        // fingers: prying it yourself wrecks the canary inside, swapping the
-        // intact bird for the ruined one, before the built-in open completes.
-        // (The thief opens it cleanly through his own service — that path sets
-        // `isOpen` directly and never runs this rule.) Guarded so a second
-        // "open egg" on an already-open or already-ruined egg does nothing.
-        zork1Egg.before(.open) {
-            guard !zork1Egg.isOpen, zork1Egg.holds(canary) else { return }
-            canary.vanish()
-            brokenCanary.move(inside: zork1Egg)
-            canaryRuined = true
-            say(Prose.eggForcedRuinsCanary)
-            // Falls through to the built-in open, which reports the egg opened.
+        // Forcing the egg open by hand wrecks the canary inside. Because the
+        // egg lives in ``ZorkAboveGround`` and the canary here, that rule spans
+        // two bundles and the host declares it (`Zork1.rules`).
+
+        // The lantern's lit/unlit examine text, live on every look.
+        lantern.describe {
+            lantern.isLit ? Prose.lanternOn : Prose.lanternOff
         }
 
         // The lantern's fuel economy: the fuses run only while it burns.
@@ -387,7 +332,7 @@ struct ZorkHouse: GameContent {
         }
         fuse("lanternDies", after: 230) {
             lanternBurnedOut = true
-            zork1Lantern.isLit = false
+            lantern.isLit = false
             say(Prose.lanternDies)
         }
     }

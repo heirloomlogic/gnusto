@@ -90,6 +90,20 @@ struct DslQuickWinsTests {
         }
     }
 
+    @Test func twoDescribeRulesForOneEntityIsABootstrapDiagnostic() {
+        do {
+            _ = try Bootstrap.build(DoubleDescribeGame())
+            Issue.record("expected a BootstrapError")
+        } catch let error as BootstrapError {
+            #expect(
+                error.diagnostics.contains {
+                    $0.contains("widget") && $0.contains("describe")
+                })
+        } catch {
+            Issue.record("expected a BootstrapError, got \(error)")
+        }
+    }
+
     // MARK: - GameMain
 
     @Test func gameMainCompilesAndDrivesAScriptedIOHandler() async throws {

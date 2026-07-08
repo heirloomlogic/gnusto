@@ -18,6 +18,10 @@ public struct MapEntry: Sendable {
             condition: @Sendable () -> Bool, blocked: String)
         case placement(item: RefToken, target: PlacementTarget)
         case playerStart(RefToken)
+        /// Wires an item to its lock key. Confers lockability on the item
+        /// (which then starts locked unless `startsUnlocked`) and resolves the
+        /// key by reference — exactly parallel to a door exit's `via:`.
+        case lockKey(item: RefToken, key: RefToken)
     }
 
     enum PlacementTarget: Sendable {

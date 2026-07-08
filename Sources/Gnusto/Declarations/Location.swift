@@ -223,4 +223,22 @@ public struct Location: Sendable, Equatable {
     ) -> Rule {
         Rule(scope: .location(token), phase: .onEnter, intents: [], body: body)
     }
+
+    /// A live description recomputed every time the location is described, so
+    /// it can react to world state:
+    ///
+    /// ```swift
+    /// vault.describe { vaultOpen ? "The vault stands open." : "A sealed door." }
+    /// ```
+    ///
+    /// Declared in a `rules` block. A runtime override
+    /// (`location.description = "…"`) still wins over it; a static
+    /// `description(…)` trait on the same location, or a second `describe`
+    /// rule for it, is a fatal bootstrap diagnostic.
+    ///
+    /// - Parameter body: the closure recomputing the description on each read.
+    /// - Returns: the assembled describe rule.
+    public func describe(_ body: @escaping @Sendable () -> String) -> Rule {
+        Rule(scope: .location(token), phase: .describe, intents: [], body: {}, describeBody: body)
+    }
 }
