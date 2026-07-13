@@ -86,8 +86,8 @@ final class TurnFrame: Sendable {
     }
 
     /// The current description of any entity: the runtime override if one
-    /// has been assigned, else the live `description { … }` closure result
-    /// if one was declared, else the static declared text.
+    /// has been assigned, else the live `describe { … }` rule result if one
+    /// was declared, else the static declared text.
     ///
     /// The closure is called outside `with { … }` — it typically captures
     /// proxies or `@Global`s that resolve via `Ctx.current`, which takes the
@@ -97,8 +97,8 @@ final class TurnFrame: Sendable {
         if let override = with({ $0.state.descriptionOverrides[id] }) {
             return override
         }
-        if let dynamic = definition.items[id]?.dynamicDescription
-            ?? definition.locations[id]?.dynamicDescription
+        if let dynamic = definition.rules.itemDescribe[id]
+            ?? definition.rules.locationDescribe[id]
         {
             return dynamic()
         }

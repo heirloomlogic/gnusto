@@ -49,7 +49,7 @@ enum RoomDescriber {
         }
         if verbose {
             // Reads outside the lock above: `describedText` may call a
-            // `description { … }` closure, which typically re-enters the
+            // `describe { … }` rule closure, which typically re-enters the
             // frame via `Ctx.current` (proxies, `@Global`s) and would
             // deadlock if called while still holding the scratch lock.
             let text = frame.describedText(of: locationID)

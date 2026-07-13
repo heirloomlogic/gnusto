@@ -4,13 +4,6 @@ import Testing
 
 @testable import Gnusto
 
-// File-scope key shared into the proxy probe game below (a stored-property
-// initializer cannot reference a sibling stored property).
-private let probeKey = Item { name("key") }
-
-// File-scope key for the wrong-key lock-refusal fixture, for the same reason.
-private let rightKey = Item { name("brass key") }
-
 /// Trait parsing, initial-state seeding, bootstrap validation, proxy API,
 /// save/restore, and room-description consequences of the container model.
 struct ContainerTests {
@@ -95,6 +88,99 @@ struct ContainerTests {
         }
     }
 
+    @Test func lockedByAnUndeclaredItemIsDiagnosed() {
+        // The *locked* item is an inline Item, never a stored property, so the
+        // lockedBy entry can't resolve it.
+        struct GhostLockGame: Game {
+            let title = "GhostLock"
+            let intro = ""
+            let room = Location {
+                name("Room")
+                description("A room.")
+            }
+            let key = Item { name("brass key") }
+            var map: WorldMap {
+                player.starts(in: room)
+                key.startsHeld
+                Item { name("ghost chest") }.lockedBy(key)
+            }
+        }
+        do {
+            _ = try Bootstrap.build(GhostLockGame())
+            Issue.record("expected BootstrapError")
+        } catch let error as BootstrapError {
+            #expect(error.diagnostics.contains { $0.contains("not a stored property") })
+        } catch {
+            Issue.record("expected a BootstrapError, got \(error)")
+        }
+    }
+
+    @Test func duplicateLockedByForOneItemIsDiagnosed() {
+        struct TwoLocksGame: Game {
+            let title = "TwoLocks"
+            let intro = ""
+            let room = Location {
+                name("Room")
+                description("A room.")
+            }
+            let chest = Item {
+                name("chest")
+                container
+                openable
+            }
+            let brassKey = Item { name("brass key") }
+            let ironKey = Item { name("iron key") }
+            var map: WorldMap {
+                player.starts(in: room)
+                chest.starts(in: room)
+                chest.lockedBy(brassKey)
+                chest.lockedBy(ironKey)
+                brassKey.startsHeld
+                ironKey.startsHeld
+            }
+        }
+        do {
+            _ = try Bootstrap.build(TwoLocksGame())
+            Issue.record("expected BootstrapError")
+        } catch let error as BootstrapError {
+            #expect(
+                error.diagnostics.contains {
+                    $0.contains("chest") && $0.contains("lockedBy")
+                })
+        } catch {
+            Issue.record("expected a BootstrapError, got \(error)")
+        }
+    }
+
+    @Test func startsUnlockedWithoutLockedByWarns() throws {
+        struct LooseFlagGame: Game {
+            let title = "LooseFlag"
+            let intro = ""
+            let room = Location {
+                name("Room")
+                description("A room.")
+            }
+            // startsUnlocked but no lockedBy entry — the flag is inert.
+            let crate = Item {
+                name("crate")
+                container
+                openable
+                startsUnlocked
+            }
+            var map: WorldMap {
+                player.starts(in: room)
+                crate.starts(in: room)
+            }
+        }
+        let (definition, state) = try Bootstrap.build(LooseFlagGame())
+        #expect(
+            definition.warnings.contains {
+                $0.contains("startsUnlocked") && $0.contains("crate")
+            })
+        // Never lockable, so never seeded into the locked set either way.
+        #expect(!state.lockedItems.contains(EntityID("crate")))
+    }
+
     // MARK: - Proxy API
 
     @Test func isOpenIsLockedProxies() async throws {
@@ -114,9 +200,8 @@ struct ContainerTests {
                 name("chest")
                 container
                 openable
-                lockable(with: probeKey)
             }
-            let key = probeKey
+            let key = Item { name("key") }
             let basket = Item {
                 name("basket")
                 container
@@ -125,6 +210,7 @@ struct ContainerTests {
                 player.starts(in: room)
                 crate.starts(in: room)
                 chest.starts(in: room)
+                chest.lockedBy(key)
                 basket.starts(in: room)
                 key.startsHeld
             }
@@ -311,14 +397,14 @@ struct ContainerTests {
                 name("chest")
                 container
                 openable
-                lockable(with: rightKey)
                 startsUnlocked
             }
-            let right = rightKey
+            let right = Item { name("brass key") }
             let wrong = Item { name("copper key") }
             var map: WorldMap {
                 player.starts(in: room)
                 chest.starts(in: room)
+                chest.lockedBy(right)
                 right.starts(in: room)  // not held
                 wrong.startsHeld
             }

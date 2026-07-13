@@ -321,6 +321,21 @@ public struct Item: Sendable, Equatable {
         MapEntry(kind: .placement(item: token, target: .held))
     }
 
+    /// The item is locked and unlocked with the given key.
+    ///
+    /// The entry itself makes the item lockable — there is no separate trait
+    /// to declare — and it starts locked unless it also declares
+    /// `startsUnlocked`. The key is an ordinary property access, so renaming
+    /// the key is compiler-checked; a key that is not a stored property is a
+    /// fatal bootstrap diagnostic, and two `lockedBy` entries for one item
+    /// likewise.
+    ///
+    /// - Parameter key: the item that locks and unlocks this one.
+    /// - Returns: the map entry declaring the lock/key relationship.
+    public func lockedBy(_ key: Item) -> MapEntry {
+        MapEntry(kind: .lockKey(item: token, key: key.token))
+    }
+
     /// The item starts the game in an actor's inventory.
     ///
     /// - Parameter actor: the actor holding the item at the start.
@@ -356,5 +371,23 @@ public struct Item: Sendable, Equatable {
         perform body: @escaping @Sendable () throws -> Void
     ) -> Rule {
         Rule(scope: .item(token), phase: .after, intents: Set(intents), body: body)
+    }
+
+    /// A live description recomputed every time the item is described, so it
+    /// can react to world state — including its own:
+    ///
+    /// ```swift
+    /// lantern.describe { lantern.isLit ? Prose.lanternOn : Prose.lanternOff }
+    /// ```
+    ///
+    /// Declared in a `rules` block. A runtime override
+    /// (`item.description = "…"`) still wins over it; a static
+    /// `description(…)` trait on the same item, or a second `describe` rule
+    /// for it, is a fatal bootstrap diagnostic.
+    ///
+    /// - Parameter body: the closure recomputing the description on each read.
+    /// - Returns: the assembled describe rule.
+    public func describe(_ body: @escaping @Sendable () -> String) -> Rule {
+        Rule(scope: .item(token), phase: .describe, intents: [], body: {}, describeBody: body)
     }
 }

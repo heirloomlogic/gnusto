@@ -1,14 +1,5 @@
 import Gnusto
 
-// Lock keys are shared as file-scope values so a container's `lockable(with:)`
-// trait and the game's own key property refer to the same `Item` identity.
-// Swift forbids a stored-property initializer from referencing a sibling
-// stored property, so item-to-item references in traits go through a shared
-// value like this one.
-private let pantryKey = Item {
-    name("brass key")
-}
-
 /// A fixture exercising the container model: an openable opaque crate (starts
 /// closed), a transparent jar (starts closed), an always-open basket (a
 /// container with no `openable`), and a locked chest with its key. Every
@@ -56,19 +47,21 @@ struct PantryGame: Game {
         name("red apple")
     }
 
-    /// Lockable (starts locked), openable. Holds a gem. Opened with the key.
+    /// Lockable (starts locked), openable. Holds a gem. Opened with the key
+    /// via a `lockedBy` entry in `map`.
     let chest = Item {
         name("iron chest")
         container
         openable
-        lockable(with: pantryKey)
     }
 
     let gem = Item {
         name("shining gem")
     }
 
-    let key = pantryKey
+    let key = Item {
+        name("brass key")
+    }
 
     /// A sack that starts open, holds a bottle — to test deep recursion when
     /// the sack itself is inside the (open) basket.
@@ -96,6 +89,7 @@ struct PantryGame: Game {
         apple.starts(inside: basket)
 
         chest.starts(in: pantry)
+        chest.lockedBy(key)
         gem.starts(inside: chest)
 
         key.startsHeld
@@ -103,10 +97,6 @@ struct PantryGame: Game {
         sack.starts(inside: basket)
         bottle.starts(inside: sack)
     }
-}
-
-private let safeDial = Item {
-    name("combination dial")
 }
 
 /// A container that starts open via `startsOpen`, and a lockable that starts
@@ -131,16 +121,18 @@ struct OpenDefaultsGame: Game {
         name("steel safe")
         container
         openable
-        lockable(with: safeDial)
         startsUnlocked
     }
 
-    let dial = safeDial
+    let dial = Item {
+        name("combination dial")
+    }
 
     var map: WorldMap {
         player.starts(in: room)
         box.starts(in: room)
         safe.starts(in: room)
+        safe.lockedBy(dial)
         dial.startsHeld
     }
 }
@@ -169,7 +161,6 @@ struct BadContainerGame: Game {
         name("stone vault")
         container
         openable
-        lockable(with: Item { name("phantom key") })
     }
 
     var map: WorldMap {
@@ -177,6 +168,9 @@ struct BadContainerGame: Game {
         rock.starts(in: room)
         pebble.starts(inside: rock)  // rock is not a container
         vault.starts(in: room)
+        // The key is an inline Item, never a stored property, so it is not
+        // registered — the bootstrap must report the dangling lock key.
+        vault.lockedBy(Item { name("phantom key") })
     }
 }
 

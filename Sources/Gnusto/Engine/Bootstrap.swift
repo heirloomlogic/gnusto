@@ -133,17 +133,6 @@ enum Bootstrap {
             let kind = definition.isActor ? "actor" : "item"
             diagnostics.append("\(kind) \"\(id)\" has no name(…) trait.")
         }
-        for (id, definition) in locations where definition.hasDynamicDescriptionConflict {
-            diagnostics.append(
-                "location \"\(id)\" declares both a static description(…) and a "
-                    + "closure description { … }; a location may have only one.")
-        }
-        for (id, definition) in items where definition.hasDynamicDescriptionConflict {
-            diagnostics.append(
-                "item \"\(id)\" declares both a static description(…) and a "
-                    + "closure description { … }; an item may have only one.")
-        }
-
         // Phase 2 — evaluate the map block.
         var exits: [EntityID: [Direction: ExitTarget]] = [:]
         var placements: [EntityID: Placement] = [:]
@@ -283,25 +272,25 @@ enum Bootstrap {
                     diagnostics.append("the map block declares player.starts(in:) more than once.")
                 }
                 playerStart = resolveLocation(token, role: "player.starts(in:)")
+
+            case .lockKey(let itemToken, let keyToken):
+                guard let itemID = resolveItem(itemToken, role: "a lockedBy entry"),
+                    let keyID = resolveItem(keyToken, role: "the lock key for an item")
+                else { continue }
+                if items[itemID]?.isLockable == true {
+                    diagnostics.append(
+                        "\"\(itemID)\" declares lockedBy more than once.")
+                }
+                // The entry itself confers lockability — there is no separate
+                // trait. The item starts locked unless `startsUnlocked` (seeded
+                // below alongside the other opening state).
+                items[itemID]?.isLockable = true
+                items[itemID]?.lockKey = keyID
             }
         }
 
         if playerStart == nil {
             diagnostics.append("the map block never declares player.starts(in:).")
-        }
-
-        // Resolve each lockable item's key token → EntityID onto its
-        // definition, mirroring how exit targets resolve their tokens. A key
-        // that is not a declared item is a fatal diagnostic.
-        for (id, definition) in items {
-            guard let keyToken = definition.lockKeyToken else { continue }
-            guard let keyID = registry.id(for: keyToken), registry.items[keyID] != nil else {
-                diagnostics.append(
-                    "\"\(id)\" is lockable with a key that is not a stored property "
-                        + "of the game or any of its content bundles.")
-                continue
-            }
-            items[id]?.lockKey = keyID
         }
 
         guard diagnostics.isEmpty, let playerStart else {
@@ -382,6 +371,11 @@ enum Bootstrap {
                 "item \"\(id)\" declares startsLit but is not a lightSource; "
                     + "the flag has no effect.")
         }
+        for (id, item) in items where item.startsUnlocked && !item.isLockable {
+            traitWarnings.append(
+                "item \"\(id)\" declares startsUnlocked but has no lockedBy entry; "
+                    + "the flag has no effect.")
+        }
         // Mechanical item traits on an actor are legal but almost never
         // intended — an actor holds things via its inventory, not by being a
         // container. Warn, don't strip: the trait behaves item-like if left.
@@ -457,6 +451,27 @@ enum Bootstrap {
 
         var table = RuleTable()
         var ruleDiagnostics: [String] = []
+
+        // Files a `describe { … }` rule into the given slot, reporting the same
+        // conflicts for items and locations alike: a static description(…)
+        // trait already present, or a second describe rule for the entity.
+        func fileDescribe(
+            _ id: EntityID, noun: String, hasStaticDescription: Bool,
+            into slot: WritableKeyPath<RuleTable, [EntityID: @Sendable () -> String]>,
+            _ rule: Rule
+        ) {
+            if hasStaticDescription {
+                ruleDiagnostics.append(
+                    "\(noun) \"\(id)\" declares both a static description(…) and a "
+                        + "describe { … } rule; a \(noun) may have only one.")
+            } else if table[keyPath: slot][id] != nil {
+                ruleDiagnostics.append(
+                    "\(noun) \"\(id)\" declares more than one describe { … } rule.")
+            } else if let describeBody = rule.describeBody {
+                table[keyPath: slot][id] = describeBody
+            }
+        }
+
         for rule in declaredRules {
             switch rule.scope {
             case .item(let token):
@@ -469,7 +484,11 @@ enum Bootstrap {
                 switch rule.phase {
                 case .before: table.itemBefore[id, default: []].append(rule)
                 case .after: table.itemAfter[id, default: []].append(rule)
-                default:
+                case .describe:
+                    fileDescribe(
+                        id, noun: "item", hasStaticDescription: items[id]?.description != nil,
+                        into: \.itemDescribe, rule)
+                case .beforeEachTurn, .afterEachTurn, .onEnter:
                     ruleDiagnostics.append(
                         "item \"\(id)\" has a \(rule.phase) rule, which only "
                             + "locations support.")
@@ -487,6 +506,11 @@ enum Bootstrap {
                 case .beforeEachTurn: table.locationBeforeEachTurn[id, default: []].append(rule)
                 case .afterEachTurn: table.locationAfterEachTurn[id, default: []].append(rule)
                 case .onEnter: table.locationOnEnter[id, default: []].append(rule)
+                case .describe:
+                    fileDescribe(
+                        id, noun: "location",
+                        hasStaticDescription: locations[id]?.description != nil,
+                        into: \.locationDescribe, rule)
                 }
             case .world:
                 switch rule.phase {
@@ -494,6 +518,8 @@ enum Bootstrap {
                 case .after, .afterEachTurn: table.worldAfter.append(rule)
                 case .onEnter:
                     ruleDiagnostics.append("a world-level onEnter rule is not supported.")
+                case .describe:
+                    ruleDiagnostics.append("a world-level describe rule is not supported.")
                 }
             }
         }

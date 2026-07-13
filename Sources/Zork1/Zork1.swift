@@ -465,6 +465,33 @@ struct Zork1: Game, GameMain {
             try require(thief.thiefDefeated, else: Prose.chaliceGuarded)
         }
 
+        // The living-room trophy case describes itself by whether it holds the
+        // egg. The case is a ``ZorkHouse`` entity and the egg a
+        // ``ZorkAboveGround`` one, so this `describe` rule spans two bundles and
+        // the host owns it.
+        house.trophyCase.describe {
+            house.trophyCase.holds(aboveGround.egg)
+                ? Prose.trophyCaseHolding("a \(aboveGround.egg.name)")
+                : Prose.trophyCaseEmpty
+        }
+
+        // Forcing the egg open by hand. The mechanism is too fine for brute
+        // fingers: prying it yourself wrecks the canary inside, swapping the
+        // intact bird for the ruined one, before the built-in open completes.
+        // (The thief opens it cleanly through his own service — that path sets
+        // `isOpen` directly and never runs this rule.) Guarded so a second
+        // "open egg" on an already-open or already-ruined egg does nothing. The
+        // egg lives in ``ZorkAboveGround`` and the canary in ``ZorkHouse``, so
+        // the host owns this cross-bundle rule.
+        aboveGround.egg.before(.open) {
+            guard !aboveGround.egg.isOpen, aboveGround.egg.holds(house.canary) else { return }
+            house.canary.vanish()
+            house.brokenCanary.move(inside: aboveGround.egg)
+            house.canaryRuined = true
+            say(Prose.eggForcedRuinsCanary)
+            // Falls through to the built-in open, which reports the egg opened.
+        }
+
         // Hand the thief anything and he pockets it, weighing you the whole
         // time. Give him the jewel-encrusted egg and — where your own clumsy
         // fingers would wreck it — he opens it cleanly, a four-turn service (the
@@ -733,6 +760,12 @@ struct Zork1: Game, GameMain {
         house.livingRoom.exit(
             .west, to: maze.strangePassage,
             when: { maze.eastWallOpen }, otherwise: Prose.doorNailedShut)
+
+        // The clockwork canary rides sealed inside the egg. The canary is a
+        // ``ZorkHouse`` entity and the egg a ``ZorkAboveGround`` one, so the
+        // host places one inside the other. The broken twin waits offstage
+        // until a forced opening trades it in.
+        house.canary.starts(inside: aboveGround.egg)
 
         player.starts(in: aboveGround.westOfHouse)
     }
