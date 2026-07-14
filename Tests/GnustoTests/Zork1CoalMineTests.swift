@@ -10,7 +10,7 @@ import Testing
 /// maze, the basket on its chain, and the crack that guards the machine which
 /// turns coal to a diamond.
 ///
-/// Seed 2, re-pin expected in T14: the routes kill the troll to reach the hub,
+/// Seed 2: the routes kill the troll to reach the hub,
 /// and — because the thief daemon draws every turn — the exact seed that lands
 /// the recorded three-blow kill depends on the prelude's length, which differs
 /// from the other region suites (this one gathers the garlic and the rope on

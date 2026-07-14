@@ -9,7 +9,7 @@ import Testing
 /// (canary find 6 / case 4, bauble find 1 / case 1). The intact bird is gated
 /// behind the thief's clean-open service, which is impractical to pin against a
 /// roaming thief, so the full intact `wind canary` → bauble → case run is
-/// exercised in the Phase 10.14 walkthrough (see `FIDELITY.md`). What is
+/// exercised by the walkthrough in ``Zork1WalkthroughTests``. What is
 /// deterministic — the ruined bird, and the forest gate — is pinned here.
 struct Zork1BaubleTests {
     /// Force the egg open by hand and you wreck the bird; winding the ruin only

@@ -12,7 +12,7 @@ import Testing
 /// feeding him to sleep or shouting `odysseus` to send him through the east wall
 /// onto the Strange Passage home.
 ///
-/// Seed 39, re-pin expected in T14: the prelude kills the troll to reach the
+/// Seed 39: the prelude kills the troll to reach the
 /// maze, and — because the thief daemon draws every turn — the seed that lands
 /// the recorded three-blow kill depends on the prelude's length. Once past the
 /// troll the thief stays penned in the cellar and the maze itself is draw-free,

@@ -489,7 +489,7 @@ struct Zork1Tests {
     }
 
     @Test func theThiefStealsAndTheSwordGetsItBack() async throws {
-        // Seed 247, re-pin expected in T14: now that the thief roams the whole
+        // Seed 247: now that the thief roams the whole
         // underground, a seed where he lingers in the Gallery to pick your
         // pocket and stand for the fight is rarer — this one has him lift the
         // painting during the loiter, then fall to the sword, dropping the loot
@@ -651,7 +651,7 @@ struct Zork1Tests {
     /// With the troll down, his east passage opens: the East-West Passage pays
     /// its five points on first arrival, and the Round Room lies beyond.
     @Test func theTrollsFallOpensTheRoadEastToTheRoundRoom() async throws {
-        // Seed 39, re-pin expected in T14: the approach and kill match the
+        // Seed 39: the approach and kill match the
         // `trollBlocksThePassagesUntilDefeated` recording exactly (identical
         // prefix), so the third attack still lands the killing blow. Only the
         // steps after the kill are new, and they don't touch combat.
@@ -682,7 +682,7 @@ struct Zork1Tests {
     /// The Loud Room garbles every command until you say `echo`; only then does
     /// the platinum bar come free, worth ten points on the find.
     @Test func echoQuietsTheLoudRoomSoTheBarCanBeTaken() async throws {
-        // Seed 39, re-pin expected in T14: same recorded troll kill; the Loud
+        // Seed 39: same recorded troll kill; the Loud
         // Room itself draws no randomness on still water, so only the roaming
         // thief's stray lines depend on the seed, and none are asserted here.
         let transcript = try await play(
@@ -717,7 +717,7 @@ struct Zork1Tests {
     /// The hub's interior forms one connected graph — a light walk out from the
     /// Round Room and back proves the exits all agree with each other.
     @Test func theRoundRoomHubIsOneConnectedGraph() async throws {
-        // Seed 39, re-pin expected in T14: reused troll kill; the walk itself
+        // Seed 39: reused troll kill; the walk itself
         // is RNG-free (no ejection on still water), only thief lines vary.
         let transcript = try await play(
             Zork1(),
@@ -933,7 +933,7 @@ struct Zork1Tests {
                 "open bottle", "pour water",  // empty it out
                 "fill bottle",  // now it fills from the reservoir
             ],
-            // Seed 0, re-pin expected in T14: taking the bottle in the kitchen
+            // Seed 0: taking the bottle in the kitchen
             // shifts the RNG stream, so this walkthrough needs its own seed to
             // still land the three-blow troll kill.
             seed: 0)

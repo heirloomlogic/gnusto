@@ -9,9 +9,9 @@ import Testing
 /// open (your clumsy hands wreck the canary; the thief's careful hands don't),
 /// the give-to-thief service, and the defended lair (the Treasure Room's +25
 /// award, the guarded silver chalice, and the thief who fights to the death
-/// there). The thief now roams the whole underground, so seeds are pinned and
-/// carry `// re-pin expected in T14` — the roadmap re-pins every Zork transcript
-/// once at the end of Phase 10.
+/// there). The thief roams the whole underground, so every route is seed-pinned;
+/// the seeds are final (the Phase 10.14 walkthrough closed the roadmap's planned
+/// one-time re-pin).
 struct Zork1ThiefTests {
     @Test func forcingTheEggOpenRuinsTheCanary() async throws {
         // Opening the jewel-encrusted egg by hand is fatal to the delicate
@@ -41,9 +41,8 @@ struct Zork1ThiefTests {
         // Hand the thief the egg where you meet him in the Gallery and he
         // pockets it with a knowing smile — the setup for his off-screen
         // egg-opening service (where, unlike your clumsy hands, he keeps the
-        // canary intact). The egg leaves your possession with him. Seed 5,
-        // re-pin expected in T14: this seed keeps the thief loitering in the
-        // Gallery when you arrive with the egg.
+        // canary intact). The egg leaves your possession with him. Seed 5 keeps
+        // the thief loitering in the Gallery when you arrive with the egg.
         let transcript = try await play(
             Zork1(),
             [
@@ -75,10 +74,9 @@ struct Zork1ThiefTests {
         // The Treasure Room is the thief's, and he defends it. Reaching it pays
         // 25; entering summons him home; the silver chalice can't be lifted
         // while he lives; and his stiletto finds you before you can force the
-        // issue — death, then Zork's resurrection to the forest. Seed 39, re-pin
-        // expected in T14 (the prelude's three-blow troll kill lands on this
-        // seed): kitchen 10 + cellar 25 + Treasure Room 25 − the 10-point death
-        // toll = 50.
+        // issue — death, then Zork's resurrection to the forest. Seed 39 (the
+        // prelude's three-blow troll kill lands on this seed): kitchen 10 +
+        // cellar 25 + Treasure Room 25 − the 10-point death toll = 50.
         let transcript = try await play(
             Zork1(),
             [
