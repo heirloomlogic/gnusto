@@ -486,6 +486,28 @@ struct Zork1: Game, GameMain {
                 : Prose.trophyCaseEmpty
         }
 
+        // The endgame trigger. When the last of the nineteen treasures settles
+        // into the case, the ancient map to the Stone Barrow appears among them.
+        // An `after(.putIn)` fires for the container (the indirect object), so
+        // this rule sits on the trophy case; it runs after the deposited
+        // treasure's own scoring rule, so the score already reads 350 here. The
+        // map and case span two bundles, so the host owns the wiring.
+        house.trophyCase.after(.putIn) {
+            guard !aboveGround.ancientMap.isRevealed,
+                treasureRoster.allSatisfy({ house.trophyCase.holds($0) })
+            else { return }
+            aboveGround.ancientMap.reveal()
+            say(Prose.ancientMapAppears)
+        }
+
+        // Entering the Stone Barrow wins the game. `end(won:)` throws before the
+        // room is auto-described, so the epilogue stands in for the room text;
+        // the engine appends the final score line after the turn.
+        aboveGround.stoneBarrow.onEnter {
+            say(Prose.stoneBarrowEpilogue)
+            try end(won: true)
+        }
+
         // Forcing the egg open by hand. The mechanism is too fine for brute
         // fingers: prying it yourself wrecks the canary inside, swapping the
         // intact bird for the ruined one, before the built-in open completes.
@@ -803,6 +825,16 @@ struct Zork1: Game, GameMain {
         // host places one inside the other. The broken twin waits offstage
         // until a forced opening trades it in.
         house.canary.starts(inside: aboveGround.egg)
+
+        // The endgame. The ancient map waits hidden inside the trophy case (a
+        // ``ZorkHouse`` entity) until all nineteen treasures reveal it; once it
+        // has, the way southwest from West of House opens onto the Stone Barrow.
+        // Map, case, and barrow span two bundles, so the host owns the wiring.
+        aboveGround.ancientMap.starts(inside: house.trophyCase)
+        aboveGround.westOfHouse.southwest(
+            aboveGround.stoneBarrow,
+            when: { aboveGround.ancientMap.isRevealed },
+            otherwise: Prose.barrowPathBlocked)
 
         player.starts(in: aboveGround.westOfHouse)
     }

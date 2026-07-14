@@ -211,6 +211,31 @@ struct ZorkAboveGround: GameContent {
         description(Prose.endOfRainbow)
     }
 
+    // MARK: - Endgame
+
+    /// The hand-drawn map to the Stone Barrow. It materialises inside the trophy
+    /// case once all nineteen treasures rest there — the host's trophy-case
+    /// `after(.putIn)` rule reveals it — and it shows the way southwest from West
+    /// of House to the barrow. Starts `hidden` inside the case (host placement in
+    /// ``Zork1``), so it stays out of sight — and out of "take all" — until the
+    /// collection is complete. Not a treasure: no value, and absent from the
+    /// host's `treasureRoster`.
+    let ancientMap = Item {
+        name("ancient map")
+        adjectives("ancient", "hand-drawn")
+        description(Prose.ancientMap)
+        hidden
+    }
+
+    /// The Stone Barrow, southwest of West of House — reachable only once the
+    /// ancient map has appeared. Entering it ends the game in victory (the host's
+    /// `onEnter` epilogue in ``Zork1``), so this description is only ever seen if
+    /// that win hook is removed.
+    let stoneBarrow = Location {
+        name("Stone Barrow")
+        description(Prose.stoneBarrow)
+    }
+
     // MARK: - Map
 
     var map: WorldMap {
