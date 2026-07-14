@@ -942,3 +942,68 @@ rooms verified against `1dungeon.zil` / `1actions.zil` (`CANARY-OBJECT`, `FOREST
   through the four-turn open fuse and the kill is impractical — the same roamer constraint that
   deferred intact-canary recovery in 10.11. The mechanism is simple and host-wired next to the
   reviewed egg rules; T14 exercises it end-to-end with the scripted walkthrough.
+
+## Phase 10.13 — Endgame wiring: the Stone Barrow & the ancient map (`Sources/Zork1/Zork1.swift`, `AboveGround.swift`)
+
+The game becomes winnable. Once all nineteen treasures rest in the trophy case, an ancient
+map to the Stone Barrow appears among them; with the map revealed, the way southwest from
+West of House opens onto the barrow, and stepping inside wins the game at 350. The map, the
+trophy case, and the barrow span the `ZorkAboveGround`/`ZorkHouse` boundary, so the whole
+endgame is host-wired in `Zork1.swift` beside the trophy-case and canary rules. The
+southwest-to-barrow route is verified against `1dungeon.zil` (`WEST-OF-HOUSE` → `STONE-BARROW`)
+and the reveal-on-completion trigger against `1actions.zil` (`SCORE-OBJ`/`WON-FLAG`).
+
+### Prose
+
+- **All new prose is original placeholder text.** Iconic *names* (Stone Barrow, ancient map)
+  are used as-is; the room description, the map, the "map appears" line, and the victory
+  epilogue await the verbatim Infocom swap.
+
+### Mechanics — now modeled
+
+- **All nineteen treasures cased reveals the map.** A trophy-case `after(.putIn)` rule fires
+  when the deposited treasure completes the set (`treasureRoster.allSatisfy { case.holds($0) }`);
+  it reveals the pre-placed `hidden` ancient map and announces its arrival. The map stays
+  hidden inside the (transparent) case until then, so it never shows in the case's contents nor
+  is swept up by "take all from case."
+- **The southwest path opens with the map.** `westOfHouse.southwest(stoneBarrow, when: { map.isRevealed })`
+  — refused with a "no path southwest" message until the map appears.
+- **Entering the barrow wins.** The `stoneBarrow.onEnter` rule says the epilogue, then calls
+  `end(won: true)`; the engine skips the room description (the throw precedes it) and appends
+  the final score line. There is no engine "you have won" banner, so the epilogue carries the
+  flourish.
+
+### Mechanics still simplified or deferred
+
+- **The two-step barrow entry is collapsed to one.** In the original you first reach the Stone
+  Barrow (seeing the entrance), then go *west*/*in* to a second "Inside the Barrow" room that
+  ends the game. Here entering the single Stone Barrow room wins directly — one room, one
+  `onEnter` win.
+- **The ancient map is inert flavor.** It is readable and takeable but has no other use; the
+  southwest exit gates on the map's *revealed* state, not on carrying or reading it.
+
+### Scoring
+
+- **`maxScore` stays 350** (fixed in 10.2). The map and barrow are not treasures — no value, and
+  the map is absent from `treasureRoster`.
+- **Award-once, never revoked — unlike the original's in-case accounting.** Original Zork adds
+  each treasure's case value *while it sits in the case* and subtracts it again on withdrawal,
+  so the displayed score rises and falls as you rearrange the hoard. Gnusto's Scoring plugin
+  awards deposit value **once** (keyed `deposit.<name>`) and never takes it back, so the score
+  only ever climbs. Consequence: a player can reach 350 before the map appears (by depositing a
+  treasure, scoring it, then withdrawing it); the map still requires all nineteen present
+  *simultaneously* at a `putIn`, and re-depositing the missing one reveals it with no double
+  score (award-once). The endgame trigger reads live contents, so it is unaffected by the
+  scoring divergence.
+
+### Tests
+
+- **The southwest gate and the partial-hoard case are pinned deterministically, seedless**
+  (`Zork1EndgameTests`, above ground and clear of the roaming thief): southwest from West of
+  House is refused before the map appears; casing the jeweled egg alone reveals no map and
+  leaves the path shut (proof the gate wants all nineteen, not any one deposit).
+- **The full all-nineteen → map → barrow → 350 win is deferred to the Phase 10.14 walkthrough.**
+  Collecting nineteen treasures is a several-hundred-command run through the whole dungeon
+  (thief- and light-economy sensitive) — exactly the scripted walkthrough T14 exists to provide.
+  Each endgame piece is a proven engine feature (`reveal`/`isRevealed`, `when:`-gated exits,
+  `onEnter` + `end(won:)`); T14 exercises them end-to-end.

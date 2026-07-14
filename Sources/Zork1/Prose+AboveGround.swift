@@ -187,4 +187,39 @@ extension Prose {
         squarely in the canyon floor here. The colors ripple faintly, as
         though the rainbow itself were somehow solid.
         """
+
+    // MARK: - AboveGround: endgame
+
+    static let ancientMap = """
+        The map is old and hand-drawn, its ink faded to a soft brown. It
+        marks a path leading southwest from the white house to a low mound
+        of earth and stone — a barrow, its entrance sketched as a dark
+        doorway in the hillside.
+        """
+
+    static let ancientMapAppears = """
+        As the last treasure settles into place, the air above the trophy
+        case shivers. When it stills, an ancient map lies among the
+        riches, drawn in a hand long turned to dust. It shows the way
+        southwest from the house.
+        """
+
+    static let stoneBarrow = """
+        You stand before a low barrow of turf-covered stone, its dark
+        entrance yawning to the west. This is the resting place you were
+        meant to find.
+        """
+
+    static let stoneBarrowEpilogue = """
+        You step through the entrance of the barrow, and the darkness
+        folds gently around you. Your work is done: every treasure of the
+        Great Underground Empire is gathered and safe, and your name is
+        set among the Master Adventurers who came before. The barrow
+        receives you, and the tale is complete.
+        """
+
+    static let barrowPathBlocked = """
+        There is no path southwest from here — only the forest, and the
+        house at your back.
+        """
 }
