@@ -170,15 +170,22 @@ struct ZorkHouse: GameContent {
     /// attempt swaps it for the ruined bird. The intact bird starts sealed
     /// inside the egg (placed by the host, since the egg lives in
     /// ``ZorkAboveGround``); the broken one waits offstage until a forced
-    /// opening swaps them. Their scoring and the `wind canary` → bauble
-    /// business arrive in the next phase — see `FIDELITY.md`.
+    /// opening swaps them. A treasure in its own right — six for the find, four
+    /// for the case — and, wound out among the trees, it summons the songbird
+    /// that drops the ``bauble`` (the host owns that cross-bundle trick).
     let canary = Item {
         name("golden clockwork canary")
         adjectives("golden", "clockwork")
         synonyms("canary", "bird")
         description(Prose.canary)
+        // The original's values: 6 for the find, 4 for the case.
+        trait(.takeValue, 6)
+        trait(.depositValue, 4)
     }
 
+    /// The ruined bird a forced egg leaves behind. Worthless here — where the
+    /// original grudgingly pays a single point for casing it, wrecking the
+    /// canary simply forfeits its score (see `FIDELITY.md`).
     let brokenCanary = Item {
         name("broken clockwork canary")
         adjectives("broken", "mangled", "clockwork")
@@ -186,9 +193,24 @@ struct ZorkHouse: GameContent {
         description(Prose.brokenCanary)
     }
 
-    /// Whether the canary has been wrecked by forcing the egg open by hand. Read
-    /// next phase, when the canary's scoring and the `wind canary` trick land.
+    /// The beautiful brass bauble the songbird drops when the intact canary is
+    /// wound in the forest — one for the find, one for the case. It starts
+    /// offstage (``.nowhere``) and only reaches the world through that trick.
+    let bauble = Item {
+        name("brass bauble")
+        adjectives("brass", "beautiful")
+        synonyms("bauble")
+        description(Prose.bauble)
+        trait(.takeValue, 1)
+        trait(.depositValue, 1)
+    }
+
+    /// Whether the canary has been wrecked by forcing the egg open by hand.
     @Global var canaryRuined = false
+
+    /// Whether the songbird has already answered the canary. The bauble drops
+    /// exactly once; a second winding only chirps.
+    @Global var baubleDropped = false
 
     // MARK: - Attic
 

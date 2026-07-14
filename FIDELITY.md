@@ -889,3 +889,56 @@ his roaming, stealing, stashing, lair defence, egg service, and death stay host-
   seed-pinned Zork 1 transcripts were re-recorded once here (the roadmap's planned, one-time
   break); the final global seed re-pin still comes in Phase 10.14. New and re-recorded seeds
   are marked `// re-pin expected in T14`.
+
+## Phase 10.12 — Canary, bauble & treasure glue (`Sources/Zork1/Zork1.swift`, `House.swift`)
+
+The clockwork canary becomes a scored treasure, its brass bauble joins the world, and the
+`wind canary` → songbird trick is wired — completing the nineteen-treasure roster. The canary
+lives in `ZorkHouse` and the forest rooms in `ZorkAboveGround`, so the whole trick is
+host-wired in `Zork1.swift` alongside the egg's force-open rule. Values and the qualifying
+rooms verified against `1dungeon.zil` / `1actions.zil` (`CANARY-OBJECT`, `FOREST-ROOM?`).
+
+### Prose
+
+- **All new prose is original placeholder text.** Iconic *names* (clockwork canary, brass
+  bauble, songbird) are used as-is; descriptions await the verbatim Infocom swap.
+
+### Mechanics — now modeled
+
+- **`wind canary` summons the songbird.** Wound out among the trees, the intact canary calls a
+  songbird that drops the brass bauble — exactly once (`baubleDropped`). The qualifying rooms
+  are the canonical `FOREST-ROOM?` set: the three Forest rooms, the Forest Path, and Up a Tree.
+  Wound up in the tree, the bauble falls to the Forest Path below (canonical), so it never
+  lands out of reach.
+- **Anywhere else, or after the bird has come, the intact canary just chirps** a short tinny
+  tune (one line, covering both the wrong-room and already-sung cases, as in the original).
+- **The ruined bird only grinds.** Winding the `broken clockwork canary` produces a grinding of
+  stripped gears — no song, no songbird, no bauble.
+
+### Mechanics still simplified or deferred
+
+- **The songbird is narration only** — there is no `songbird` actor, matching the plan's
+  skipped songbird-ambience daemon. It exists solely as the flavor of the bauble's arrival.
+
+### Scoring
+
+- **The canary joins the host roster** (find 6 / case 4) and **the brass bauble** (find 1 /
+  case 1), bringing it to the full **19 of 19** treasures. `maxScore` stays 350 (fixed in
+  10.2). The roster is shared with the thief's steal list, so he now covets both — canonical.
+- **The ruined canary is worthless here.** The original grudgingly pays a single point
+  (`TVALUE 1`) for casing the `broken clockwork canary`; here it carries no value and is not in
+  the roster, so forcing the egg simply forfeits the canary's score. Keeping the broken bird
+  out of the roster also avoids a twentieth entry that would muddy the "all nineteen cased"
+  endgame check (Phase 10.13).
+
+### Tests
+
+- **The ruined-bird paths are pinned deterministically** (`Zork1BaubleTests`): forcing the egg
+  above ground, then winding the broken canary (only grinds, no bauble), and casing it (scores
+  nothing).
+- **The full intact `wind canary` → bauble → case run is deferred to the Phase 10.14
+  walkthrough.** The intact canary is only recoverable by the thief's clean-open service, and
+  pinning a route that meets the whole-underground roamer in his Gallery *and* holds him there
+  through the four-turn open fuse and the kill is impractical — the same roamer constraint that
+  deferred intact-canary recovery in 10.11. The mechanism is simple and host-wired next to the
+  reviewed egg rules; T14 exercises it end-to-end with the scripted walkthrough.

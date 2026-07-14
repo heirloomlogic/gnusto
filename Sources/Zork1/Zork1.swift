@@ -138,17 +138,28 @@ struct Zork1: Game, GameMain {
         return .consumed
     }
 
-    /// The seventeen scored treasures so far: the sixteen from earlier tasks
-    /// plus the silver chalice (the canary and bauble reach the full nineteen
-    /// next phase). Shared by the trophy-case scoring and the thief's steal
-    /// list, so the two never drift apart.
+    /// The full nineteen scored treasures — the seventeen from earlier tasks
+    /// plus the golden canary and the brass bauble it summons. Shared by the
+    /// trophy-case scoring and the thief's steal list, so the two never drift
+    /// apart (the thief covets everything, canonically).
     private var treasureRoster: [Item] {
         [
             cellar.painting, aboveGround.egg, roundRoom.platinumBar, dam.trunk,
             temple.torch, temple.coffin, temple.sceptre, temple.crystalSkull,
             mirror.crystalTrident, coalMine.jade, coalMine.sapphireBracelet,
             coalMine.diamond, river.emerald, river.scarab, river.potOfGold,
-            maze.bagOfCoins, maze.silverChalice,
+            maze.bagOfCoins, maze.silverChalice, house.canary, house.bauble,
+        ]
+    }
+
+    /// The forest rooms the songbird answers in — the three Forest rooms, the
+    /// Forest Path, and the perch Up a Tree (canonical `FOREST-ROOM?`). Winding
+    /// the canary here summons the bird that drops the ``ZorkHouse/bauble``.
+    private var forestRooms: [Location] {
+        [
+            aboveGround.forestWest, aboveGround.forestEast,
+            aboveGround.forestNortheast, aboveGround.forestPath,
+            aboveGround.upATree,
         ]
     }
 
@@ -490,6 +501,32 @@ struct Zork1: Game, GameMain {
             house.canaryRuined = true
             say(Prose.eggForcedRuinsCanary)
             // Falls through to the built-in open, which reports the egg opened.
+        }
+
+        // Wind the intact canary out among the trees and a songbird answers,
+        // dropping a brass bauble at your feet — once ever. Anywhere else, or
+        // after the bird has already come, it just chirps a tinny tune. Wound
+        // up in the tree, the bauble falls to the path below. The canary is a
+        // ``ZorkHouse`` item and the forest rooms are ``ZorkAboveGround``, so
+        // the host owns this cross-bundle trick.
+        house.canary.before(.wind) {
+            guard !house.baubleDropped,
+                forestRooms.contains(where: { player.location == $0 })
+            else {
+                try reply(Prose.canaryChirps)
+            }
+            if player.location == aboveGround.upATree {
+                house.bauble.move(to: aboveGround.forestPath)
+            } else {
+                house.bauble.move(to: player.location)
+            }
+            house.baubleDropped = true
+            try reply(Prose.songbirdDropsBauble)
+        }
+
+        // The ruined bird only grinds its stripped gears — no song, no bird.
+        house.brokenCanary.before(.wind) {
+            try reply(Prose.brokenCanaryWinds)
         }
 
         // Hand the thief anything and he pockets it, weighing you the whole

@@ -115,6 +115,29 @@ extension Prose {
         haste.
         """
 
+    static let bauble = """
+        A small brass bauble, beautifully worked, that catches the light with
+        a warm glow. It is the sort of trinket a songbird might treasure.
+        """
+
+    static let songbirdDropsBauble = """
+        The canary trills a bright, intricate melody. From the surrounding
+        trees a songbird answers, alighting on a branch just overhead. As its
+        song joins the canary's, a brass bauble tumbles from its beak, glances
+        off your head, and comes to rest glinting in the grass. The tune winds
+        down, and the songbird flits away.
+        """
+
+    static let canaryChirps = """
+        The canary chirps a short, tinny little tune and falls silent. Nothing
+        else stirs.
+        """
+
+    static let brokenCanaryWinds = """
+        The ruined canary manages only an ugly grinding of stripped gears. No
+        song comes out of it.
+        """
+
     static let clearingGrating = """
         You are in a small clearing in the forest. Half-buried in a pile
         of dead leaves in one corner, something metal glints. The forest
