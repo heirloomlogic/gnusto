@@ -139,7 +139,9 @@ extension Prose {
 
     static let boatDeflates = "The air sighs out of the boat, and it folds back into a pile of plastic."
 
-    static let fixNeedsGunk = "It wants sealing, and your bare hands won't do it. You'll need something to plug the rip."
+    static let fixNeedsGunk = """
+        It wants sealing, and your bare hands won't do it. You'll need something to plug the rip.
+        """
 
     static let boatPatched = """
         You smear the tube's viscous gunk thickly over the rip and hold it until
