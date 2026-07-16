@@ -170,4 +170,46 @@ struct Zork1SystemsTests {
             ])
         expectInOrder(transcript, ["There's no water here to fill it from."])
     }
+
+    // MARK: - Climb
+
+    @Test func climbingTheTreeReachesThePerch() async throws {
+        // `climb tree` now reaches Up a Tree — the perch `up` already led to —
+        // where the word used to fall through to "I didn't understand."
+        let transcript = try await play(
+            Zork1(),
+            ["north", "north", "climb tree"])
+        expectInOrder(transcript, ["Forest Path", "Up a Tree"])
+    }
+
+    @Test func climbingNothingClimbableIsPolitelyRefused() async throws {
+        // Away from a climbable, the verb still parses — no parse error — and
+        // answers with its stage-4 default rather than "I didn't understand."
+        let transcript = try await play(Zork1(), ["climb mailbox"])
+        expectInOrder(transcript, ["nothing here worth climbing"])
+    }
+
+    // MARK: - Diagnose
+
+    @Test func diagnoseReportsPerfectHealthWhileUnscathed() async throws {
+        // A fresh adventurer, never yet killed, is in perfect health.
+        let transcript = try await play(Zork1(), ["diagnose"])
+        expectInOrder(transcript, ["perfect health"])
+    }
+
+    @Test func diagnoseCountsYourDeaths() async throws {
+        // Linger in the dark until a grue takes you (a survivable first death),
+        // wake in the forest, and diagnose: the toll now reads one death, with
+        // one resurrection still in hand.
+        let transcript = try await play(
+            Zork1(),
+            [
+                "south", "east", "open window", "west", "west",
+                "push rug", "open trap door", "down",
+                "look", "look",  // the grue's third dark turn is fatal (death #1)
+                "diagnose",
+            ])
+        let report = turnOutput(of: "diagnose", in: transcript)
+        expectInOrder(report, ["killed once", "one more time"])
+    }
 }

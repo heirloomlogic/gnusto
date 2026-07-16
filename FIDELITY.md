@@ -45,10 +45,13 @@ entry below is grouped by the task that introduced it.
 
 ### Mechanics simplified or deferred
 
-- **Tree climbing is just the `up`/`down` exit pair** between Forest Path
-  and Up a Tree — there's no dedicated `climb` verb yet. `climb tree` will
-  currently fall through to "I didn't understand"; only `up` gets you into
-  the tree. A `climb` custom verb mapping onto the same exit is future work.
+- **Tree climbing is a real `climb` verb (closed in the fidelity pass).** For a
+  long while tree climbing was only the `up`/`down` exit pair between Forest Path
+  and Up a Tree, and `climb tree` fell through to "I didn't understand." The
+  `climb` verb now exists (`Systems.swift`); `climb tree` reaches the perch, the
+  same place `up` leads (`AboveGround.swift` rules). Off a climbable it answers
+  with a polite default. The chimney/dome/canyon still use their own `up`/`down`
+  gates rather than `climb` — a minor remaining seam, not a wart.
 - **The grating's key doesn't exist yet.** `ZorkAboveGround.grating` is
   `lockable(with: skeletonKey)`, and `skeletonKey` is declared but never
   placed in any `map` block, so it starts (and stays) `.nowhere` — legal per
@@ -169,10 +172,14 @@ entry below is grouped by the task that introduced it.
   wounds never heal, and a knocked-out troll falls to the next clean blow.
   Deterministic under a pinned seed; the transcripts record their
   sequences.
-- **Defeat is permanent and bodiless.** The troll vanishes with his death
-  line ("sinks into the shadows"); there is no bloody axe to loot, and he
-  never recovers to block again — the original's randomized recovery and
-  loot are not modeled.
+- **Defeat is permanent; his axe is now lootable (closed in the fidelity
+  pass).** The troll still vanishes with his death line ("sinks into the
+  shadows") and never recovers to block again — the original's randomized
+  recovery isn't modeled. But his **bloody axe** (a `ZorkCellar` item, `.nowhere`
+  in his hands while he lives) now clatters to the Troll Room floor on defeat
+  (his `onDefeat`, host-wired in `Zork1`) and can be taken; it is `.weapon` and
+  `.sharp` (holes the river boat, like the other blades). Earlier the body took
+  the axe into the floor with it.
 
 ## Phase 8 — the reduced thief (`Sources/Zork1/Cellar.swift` + host wiring)
 
@@ -224,8 +231,12 @@ score ranks, and a longer lantern burn. No new rooms this task.
   real mechanics arrive with the regions that need them (the shovel, the
   clockwork canary, the plastic boat, the dam controls, the Cyclops), which
   only have to add an item-scoped rule — the parser already knows the word.
-- **`diagnose` and `count` are not implemented.** The original's health-report
-  and inventory-count verbs are out of scope for this slice.
+- **`diagnose` is modeled; `count` is not (closed in the fidelity pass).**
+  `diagnose` now reports the death toll and how many resurrections remain
+  (`action(.diagnose)` in `Zork1`, reading the host's `deaths` counter): perfect
+  health while unscathed, otherwise "killed N times" with the survivals left. The
+  original's per-wound severity is not reported — the slice tracks no numeric
+  player-wound state, only deaths. The original's `count` verb stays out of scope.
 - **`turn … with …` outspecifies `turn … on`** (specificity 22 vs 21) so a
   future "turn bolt with wrench" never trips the light switch.
 
@@ -425,8 +436,10 @@ has been waiting on since Phase 10.4.
   stops). The original raises a continuous water level and computes drowning from
   it; the fixed bands and 13-turn seal reproduce the player-facing arc (warned,
   then drowned if you linger) deterministically, so no seed is needed. **Leaving
-  the room is the only escape** — the tube-of-gunk leak-plugging puzzle is not
-  modeled; the tube is a readable souvenir for now.
+  the room is the only escape** — the flood itself is not tube-pluggable (nor is
+  it in the original). The tube of gunk is no longer inert, though: it now patches
+  the punctured river boat (closed in the fidelity pass — see the Phase 10.9
+  entry below).
 - **`waterMoving` is driven across the bundle boundary by the host.** The Loud
   Room (in `ZorkRoundRoom`) reads `waterMoving`, but a bundle can't reach another
   bundle's `@Global` from its own rules, so the `turn bolt with wrench` rule and
@@ -681,11 +694,14 @@ third, the huge diamond, has to be made.
   taken, and a lit torch left in it lights whichever room it hangs in (the engine's
   `lightReaches` walks through the open container) — which is how the Drafty Room, past
   the empty-handed crack, is lit for the machine work.
-- **The machine transmutes coal only.** Feeding it coal, shutting the lid, and throwing
-  the switch with the screwdriver (a `ZorkDam` tool — the rule is host-wired, like the
-  dam bolt) makes a huge diamond; the wrong tool, an open lid, or no coal does nothing.
-  The original also grinds any *non*-coal contents into a lump of "gunk"; that
-  destruction is not modeled — a closed machine with no coal simply whirs to no effect.
+- **The machine transmutes coal, and destroys everything else (closed in the
+  fidelity pass).** Feeding it coal, shutting the lid, and throwing the switch with
+  the screwdriver (a `ZorkDam` tool — the rule is host-wired, like the dam bolt) makes
+  a huge diamond. Throwing the switch on a closed machine holding **non-coal** contents
+  now grinds them to a worthless slag and loses them (the original's non-coal
+  destruction, earlier a no-op); an empty machine still simply whirs to no effect. One
+  detail unchanged: when coal *and* other things share the machine, the coal path runs
+  and the non-coal contents survive (the diamond forms; the extras are not swept up).
 
 ### Scoring
 
@@ -743,11 +759,13 @@ tables and item data were verified against `1dungeon.zil` / `1actions.zil`
   fixed data.
 - **"Sharp" is a six-item trait, not a general edge test.** A new `TraitKey<Bool>.sharp`
   marks exactly the items the original enumerates as boat-punishers — the sword, the nasty
-  knife, and the sceptre today; the rusty knife, the axe, and the thief's stiletto get the
-  trait when Phase 10.10 / 10.11 add them. Boarding the boat carrying one, or stowing one
-  in it, bursts it (fatal if afloat, a mere wreck ashore). The original's repair with the
-  putty/tube is not modeled — a punctured boat stays punctured (the tube is inert this
-  slice; noted for a later pass).
+  knife, and the sceptre today; the rusty knife, the thief's stiletto (Phase 10.11), and the
+  troll's bloody axe (the fidelity pass) carry it too. Boarding the boat carrying one, or
+  stowing one in it, bursts it (fatal if afloat, a mere wreck ashore). **Repair is now
+  modeled (closed in the fidelity pass):** `fix boat with gunk` seals the wreck with the
+  dam's tube (host-wired, tube↔boat spanning two bundles), spending the tube and trading the
+  punctured boat back for the seaworthy one. Since a puncture afloat is always fatal, the
+  wreck is only ever patched ashore.
 - **Digging the Sandy Cave**: three digs with the shovel bare the scarab, a fourth collapses
   the hole and buries the player — the original's `BEACH-DIG` counter, used as-is. Bare
   hands do nothing.
@@ -1050,3 +1068,25 @@ treasures cased, and the suite's provisional seed markers are cleared. No game c
   placed when the thief's expanded roam set forced a one-time transcript re-recording (Phase
   10.11); Phase 10.14 confirmed those seeds still hold under the now-frozen content, so the markers
   were removed and no seed values changed. The comments explaining *why* each seed is used remain.
+
+## Fidelity pass — low-risk canonical closures (post-Phase 10)
+
+A follow-up audit of this ledger for deferred divergences worth closing. Five low-risk,
+additive mechanics were restored — each canonical behaviour a player would actually hit,
+each touching no seed-pinned RNG stream (the new tests are additive; the whole suite stays
+green, seeds unchanged). Higher-cost items were deliberately left alone: the thief's
+held-only theft and the silver chalice's snatch-and-resteal are implemented through a shared
+`GnustoActors` steal daemon whose draw sequence every seed pin depends on, so restoring them
+would force a full re-pin; the cyclops `CYCLOWRATH` eat-you timer and the skeleton
+disturb-curse remain deferred; and the deliberately-deterministic divergences (grue, scoring
+accounting, melee table, death scatter, flood bands, Loud Room garble, river current) stay
+as documented design choices. The individual entries above are updated in place; the closures:
+
+- **`climb` verb** — `climb tree` reaches Up a Tree (`Systems.swift`, `AboveGround.swift`).
+- **`diagnose` verb** — reports the death toll and resurrections remaining (`Zork1.swift`).
+- **Machine non-coal destruction** — a closed machine with non-coal contents grinds them to
+  a worthless slag (`Zork1.swift` machine rule, `Prose+CoalMine.swift`).
+- **Troll's bloody axe** — drops to the Troll Room floor on defeat, lootable, `.weapon` and
+  `.sharp` (`Cellar.swift` axe item, `Zork1.swift` `onDefeat`, `Prose+Cellar.swift`).
+- **Boat repair** — `fix boat with gunk` patches the punctured boat with the dam's tube
+  (`Zork1.swift` host-wired, `Prose+River.swift`).
