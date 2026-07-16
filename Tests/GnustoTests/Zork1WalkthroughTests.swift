@@ -73,7 +73,8 @@ struct Zork1WalkthroughTests {
                 "the rank of Master of the Underground",
                 "Master Adventurers",  // the Stone Barrow epilogue
                 "the tale is complete",
-            ])
+            ]
+        )
 
         // The run never dies — a death would dock ten points and scatter the
         // hoard, putting 350 out of reach.
@@ -154,12 +155,12 @@ private enum Walkthrough {
     // ── PHASE B (deterministic — the thief is dead, no randomness remains) ──
 
     static let phaseB: [String] =
-        b1_exitLairAndBank + b2_hubBarDam + b3_bankHeavy + b4_temple + b5_coalMine
-        + b6_exitMineBank + b7_coffinPrayAndCanary + b8_pot + b9_river + b10_endgame
+        b1ExitLairAndBank + b2HubBarDam + b3BankHeavy + b4Temple + b5CoalMine
+        + b6ExitMineBank + b7CoffinPrayAndCanary + b8Pot + b9River + b10Endgame
 
     /// Drop the junk, carry the hoard out through the Strange Passage to the
     /// Living Room, and bank the three treasures that need no forest errand.
-    static let b1_exitLairAndBank: [String] = [
+    static let b1ExitLairAndBank: [String] = [
         "drop stiletto", "drop skeleton key",
         "down",  // Cyclops Room
         "east", "east",  // Strange Passage → Living Room
@@ -173,7 +174,7 @@ private enum Walkthrough {
     /// East-West Passage (+5), the Loud Room's platinum bar (+10) — and the Dam:
     /// charge the panel, take the wrench/screwdriver/matchbook, drain the
     /// reservoir for the trunk (+15), and lift the hand pump.
-    static let b2_hubBarDam: [String] = [
+    static let b2HubBarDam: [String] = [
         "east",  // Kitchen
         "take garlic",
         "up", "take rope", "down",  // attic rope
@@ -201,7 +202,7 @@ private enum Walkthrough {
 
     /// Bank the heavy treasures (painting, bar, trunk) via the reopened trap
     /// door, and stash the tools the temple's altar-crack won't admit.
-    static let b3_bankHeavy: [String] = [
+    static let b3BankHeavy: [String] = [
         "south", "south",  // Reservoir North → bed → Reservoir South
         "southeast",  // Deep Canyon
         "southwest",  // N-S Passage
@@ -222,7 +223,7 @@ private enum Walkthrough {
     /// gather the exorcism kit, run the ritual at the gate and lift the crystal
     /// skull (+10). Out through the mirror region for the crystal trident (+4),
     /// down the one-way slide to bank skull and trident.
-    static let b4_temple: [String] = [
+    static let b4Temple: [String] = [
         "open trap door", "down",  // Cellar
         "north",  // Troll Room
         "east", "east",  // East-West Passage → Round Room
@@ -254,7 +255,7 @@ private enum Walkthrough {
     /// for the flameless gas room (bracelet, +5), fetch the coal, lower the
     /// basket, squeeze the empty-handed crack to the Drafty Room (+13), work the
     /// machine to make the diamond (+10), and raise it back up.
-    static let b5_coalMine: [String] = [
+    static let b5CoalMine: [String] = [
         "take garlic", "take screwdriver",  // reclaim from the Living Room floor
         "open trap door", "down",  // Cellar
         "north",  // Troll Room
@@ -298,7 +299,7 @@ private enum Walkthrough {
 
     /// Turn the lantern off (the torch carries the light again) and climb out of
     /// the mine, down the slide to the Cellar, up to bank jade, bracelet, diamond.
-    static let b6_exitMineBank: [String] = [
+    static let b6ExitMineBank: [String] = [
         "turn off lantern",
         "west",  // Bat Room
         "south",  // Squeaky Room
@@ -318,7 +319,7 @@ private enum Walkthrough {
     /// sceptre (+4) and gold coffin (+10), pray to the forest, wind the canary
     /// for the brass bauble (+1), and bank coffin, canary and bauble (the
     /// sceptre stays back for the rainbow).
-    static let b7_coffinPrayAndCanary: [String] = [
+    static let b7CoffinPrayAndCanary: [String] = [
         "take canary",  // reclaim from the Living Room floor
         "open trap door", "down",  // Cellar
         "north",  // Troll Room
@@ -346,7 +347,7 @@ private enum Walkthrough {
     /// End of Rainbow, wave the sceptre to turn the rainbow solid (it stays
     /// solid — the river dive's return route), take the pot (+10), bank pot and
     /// sceptre.
-    static let b8_pot: [String] = [
+    static let b8Pot: [String] = [
         "east", "east",  // Kitchen → Behind House
         "east",  // Forest East
         "southeast", "down", "down", "north",  // canyon → End of Rainbow
@@ -363,7 +364,7 @@ private enum Walkthrough {
     /// the Dam Base, drift to River-4 for the buoy's emerald (+5), land and dig
     /// out the scarab (+5), then cross the now-solid rainbow and canyon home to
     /// bank emerald and scarab.
-    static let b9_river: [String] = [
+    static let b9River: [String] = [
         "take pump",  // reclaim from the Living Room floor
         "open trap door", "down",  // Cellar
         "north",  // Troll Room
@@ -394,7 +395,7 @@ private enum Walkthrough {
     /// The endgame. Banking the ivory torch — the nineteenth treasure — reveals
     /// the ancient map. Walk to West of House and take the path it opens,
     /// southwest to the Stone Barrow, and step inside to win at 350.
-    static let b10_endgame: [String] = [
+    static let b10Endgame: [String] = [
         "turn on lantern",  // a light in hand once the torch is cased
         "put torch in trophy case",  // +6 → nineteenth treasure → the map appears
         "score",  // 350 — the rank of Master of the Underground
