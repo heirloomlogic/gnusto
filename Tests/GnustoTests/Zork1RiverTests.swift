@@ -15,7 +15,7 @@ import Testing
 /// `Zork1Tests` does. Everything past the Round Room is deterministic — the
 /// thief stays penned in the cellar and the river's own machinery is draw-free.
 /// The rainbow and canyon tests never go underground, so they need no particular
-/// seed. All seeds are pinned only until the T14 re-pin.
+/// seed.
 struct Zork1RiverTests {
     /// Kill the troll (seed 39), charge the dam panel, and end standing on the
     /// Dam with the wrench — the Dam suite's proven approach.

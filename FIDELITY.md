@@ -887,8 +887,8 @@ his roaming, stealing, stashing, lair defence, egg service, and death stay host-
 - **Expanding the thief's roam set changed his teleport destinations, shifting the seeded RNG
   stream for every test where he can now wander into the player's room.** All affected
   seed-pinned Zork 1 transcripts were re-recorded once here (the roadmap's planned, one-time
-  break); the final global seed re-pin still comes in Phase 10.14. New and re-recorded seeds
-  are marked `// re-pin expected in T14`.
+  break). Phase 10.14 confirmed these seeds still hold under the frozen content and cleared the
+  provisional `// re-pin expected in T14` markers — no seed values changed.
 
 ## Phase 10.12 — Canary, bauble & treasure glue (`Sources/Zork1/Zork1.swift`, `House.swift`)
 
@@ -936,12 +936,11 @@ rooms verified against `1dungeon.zil` / `1actions.zil` (`CANARY-OBJECT`, `FOREST
 - **The ruined-bird paths are pinned deterministically** (`Zork1BaubleTests`): forcing the egg
   above ground, then winding the broken canary (only grinds, no bauble), and casing it (scores
   nothing).
-- **The full intact `wind canary` → bauble → case run is deferred to the Phase 10.14
-  walkthrough.** The intact canary is only recoverable by the thief's clean-open service, and
-  pinning a route that meets the whole-underground roamer in his Gallery *and* holds him there
-  through the four-turn open fuse and the kill is impractical — the same roamer constraint that
-  deferred intact-canary recovery in 10.11. The mechanism is simple and host-wired next to the
-  reviewed egg rules; T14 exercises it end-to-end with the scripted walkthrough.
+- **The full intact `wind canary` → bauble → case run is exercised by the Phase 10.14
+  walkthrough** (`Zork1WalkthroughTests`). The intact canary is only recoverable by the thief's
+  clean-open service; the walkthrough arms it in the lair (give egg, retreat one room while the
+  four-turn fuse works, return and kill), recovers the opened egg with the canary whole, winds
+  it in the forest for the bauble, and cases both — proving the whole chain end-to-end.
 
 ## Phase 10.13 — Endgame wiring: the Stone Barrow & the ancient map (`Sources/Zork1/Zork1.swift`, `AboveGround.swift`)
 
@@ -1002,8 +1001,52 @@ and the reveal-on-completion trigger against `1actions.zil` (`SCORE-OBJ`/`WON-FL
   (`Zork1EndgameTests`, above ground and clear of the roaming thief): southwest from West of
   House is refused before the map appears; casing the jeweled egg alone reveals no map and
   leaves the path shut (proof the gate wants all nineteen, not any one deposit).
-- **The full all-nineteen → map → barrow → 350 win is deferred to the Phase 10.14 walkthrough.**
-  Collecting nineteen treasures is a several-hundred-command run through the whole dungeon
-  (thief- and light-economy sensitive) — exactly the scripted walkthrough T14 exists to provide.
-  Each endgame piece is a proven engine feature (`reveal`/`isRevealed`, `when:`-gated exits,
-  `onEnter` + `end(won:)`); T14 exercises them end-to-end.
+- **The full all-nineteen → map → barrow → 350 win is exercised by the Phase 10.14 walkthrough**
+  (`Zork1WalkthroughTests`). Collecting nineteen treasures is a several-hundred-command run
+  through the whole dungeon (thief- and light-economy sensitive); the walkthrough drives it to
+  `end(won: true)` at exactly 350, asserting each region's score checkpoint, the light handoff,
+  the map's appearance, the rank name, and the barrow epilogue.
+
+## Phase 10.14 — Full 350 walkthrough, seed re-pin & docs sweep (`Tests/GnustoTests/Zork1WalkthroughTests.swift`)
+
+The phase acceptance: one scripted playthrough wins *Zork I* at the full 350 points, all nineteen
+treasures cased, and the suite's provisional seed markers are cleared. No game content changed.
+
+### The walkthrough
+
+- **The run is a ~340-command playthrough pinned to seed 32**, driven through the `play` harness
+  like every other Zork transcript. It asserts each region's running-score checkpoint (75 → 350),
+  the two in-run combats (troll and thief killed, no player death), the intact-canary recovery,
+  the lantern→torch light handoff (the lantern is switched off for the permanent torch and never
+  burns low), the ancient map's appearance, the rank of Master of the Underground, and the Stone
+  Barrow epilogue. It runs in the default suite (~0.1 s).
+- **The seed is found by brute-force scan, not chosen.** The only randomness is in the run's first
+  ~50 commands (Phase A): the troll's death, the thief's roaming/stealing, and the thief's death in
+  his lair. The thief is lethal on the very turn you enter the Treasure Room, so most seeds lose the
+  run to his stiletto; a scan of seeds 0–599 finds 47 that survive both combats *and* let the egg
+  service finish. Seed 32 is the lowest.
+- **Once the thief falls, the run is fully deterministic** — every RNG source (troll, thief
+  roam/steal/fight, the garlic-guarded coal-mine bat) is dead or guarded — so the entire
+  treasure-collecting back half (Phase B) plays out identically for every winning seed. This is why
+  the scan's Phase-A survivors and the full-win seeds are the same 47.
+
+### Divergences the walkthrough works around (route shape, not fidelity gaps)
+
+- **The egg is handed to the thief in his lair, not caught mid-roam.** A Gallery hand-off (the
+  original's natural spot) is impractical against a whole-underground roamer — he leaves within a
+  turn or two of the game's start. The walkthrough instead gives the egg on a first lair visit,
+  retreats one room while the four-turn open fuse runs (his aggression is gated to the Treasure
+  Room, so the wait is safe), and returns to kill him and recover the opened egg. Same canonical
+  outcome (thief opens the egg, canary intact), reached by a route the roamer allows.
+- **The pot of gold is fetched above ground, not from the boat.** The sceptre carries the `.sharp`
+  trait (its point holes the inflatable boat — see Phase 10.9), so it can't ride the river. The
+  walkthrough waves it at the End of Rainbow via the canyon first, which solidifies the rainbow
+  permanently; the later river dive (emerald, scarab) then returns dry-shod across that same solid
+  rainbow. Both treasures are collected; only the order is dictated by the sharp-sceptre rule.
+
+### Seed re-pin
+
+- **The provisional `// re-pin expected in T14` markers are cleared across the suite.** They were
+  placed when the thief's expanded roam set forced a one-time transcript re-recording (Phase
+  10.11); Phase 10.14 confirmed those seeds still hold under the now-frozen content, so the markers
+  were removed and no seed values changed. The comments explaining *why* each seed is used remain.

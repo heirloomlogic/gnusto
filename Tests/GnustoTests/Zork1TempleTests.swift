@@ -10,9 +10,9 @@ import Testing
 /// the draughty cave, and the full exorcism ritual (ring bell → light candles →
 /// read book) that opens the Land of the Dead.
 ///
-/// Every route kills the troll first (the only way east to the hub). Seed 0,
-/// re-pin expected in T14: grabbing the attic rope shifts the RNG stream, so
-/// this suite needs its own seed to still land the three-blow kill. Past the
+/// Every route kills the troll first (the only way east to the hub). Seed 0:
+/// grabbing the attic rope shifts the RNG stream, so this suite needs its own
+/// seed to still land the three-blow kill. Past the
 /// Round Room the thief stays penned in the cellar, so the temple itself draws
 /// no randomness — the region's mechanics are all deterministic.
 struct Zork1TempleTests {

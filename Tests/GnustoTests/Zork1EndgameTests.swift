@@ -10,10 +10,10 @@ import Testing
 /// Barrow, and entering the barrow wins the game at 350 points.
 ///
 /// The full nineteen-treasure collection is a several-hundred-command run and is
-/// exercised end-to-end by the Phase 10.14 walkthrough (see `FIDELITY.md`). What
-/// is deterministic without it — the southwest gate, and that a partial hoard
-/// does *not* open the barrow — is pinned here. Both tests are seedless: they
-/// stay above ground, clear of the roaming thief's random stream.
+/// exercised end-to-end by the walkthrough in ``Zork1WalkthroughTests``. What is
+/// deterministic without it — the southwest gate, and that a partial hoard does
+/// *not* open the barrow — is pinned here. Both tests are seedless: they stay
+/// above ground, clear of the roaming thief's random stream.
 struct Zork1EndgameTests {
     /// Before the map appears there is no path southwest — the barrow stays
     /// hidden, and the refusal names the only ways out of West of House.

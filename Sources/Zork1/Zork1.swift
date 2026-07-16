@@ -4,26 +4,31 @@ import GnustoDangerousDark
 import GnustoMeleeCombat
 import GnustoScoring
 
-/// *Zork I: The Great Underground Empire* — the White House slice. Composes
-/// the above-ground region (``ZorkAboveGround``), the house interior
-/// (``ZorkHouse``), and the cellar region (``ZorkCellar``), and wires the
-/// exits that cross between them: the kitchen window, the cellar's south
-/// crawlway, and the studio's chimney. Everything else about each region is
-/// that region's own concern; the host only owns what genuinely spans two.
+/// *Zork I: The Great Underground Empire* — the complete game. Composes every
+/// region — the above-ground grounds (``ZorkAboveGround``), the house
+/// (``ZorkHouse``), the cellar (``ZorkCellar``), the Round Room hub
+/// (``ZorkRoundRoom``), the dam (``ZorkDam``), the temple and Hades
+/// (``ZorkTemple``), the mirror rooms (``ZorkMirror``), the coal mine
+/// (``ZorkCoalMine``), the Frigid River (``ZorkRiver``), and the maze
+/// (``ZorkMaze``), with the thief (``ZorkThief``) at large below — and wires the
+/// exits and puzzles that cross between them. Everything else about each region
+/// is that region's own concern; the host only owns what genuinely spans two.
+/// A full 350-point playthrough is exercised end-to-end by `Zork1WalkthroughTests`.
 @main
 struct Zork1: Game, GameMain {
     let title = "Zork I: The Great Underground Empire"
-    let tagline = "A placeholder slice: the White House, its grounds, and the cellar."
+    let tagline = "Nineteen treasures wait in the dark beneath a white house."
 
-    /// The full game's ceiling: 350 points, as in the original. Only a
-    /// fraction is reachable in the current slice (the painting 4+6 and egg
-    /// 5+5 treasures, plus the kitchen/cellar visit awards), but the score
-    /// line and rank ladder read against the real target from here on.
+    /// The game's ceiling: 350 points, as in the original — all of it reachable,
+    /// across the nineteen treasures (found and cased) and the five event awards.
+    /// Depositing the last treasure reveals the map to the Stone Barrow, and
+    /// entering it wins.
     let maxScore = 350
     let intro = """
-        An adventure awaits amid a ruined empire buried underground. This
-        slice covers only the White House, its immediate surroundings, and
-        the first rooms below.
+        An adventure awaits amid a ruined empire buried underground. A white
+        house stands on a forgotten lawn; below it lie caverns, a dam, a
+        temple, a coal mine, a river, and a maze — and treasures enough to
+        fill a barrow, if you can carry them home past the thief.
         """
 
     let aboveGround = ZorkAboveGround()

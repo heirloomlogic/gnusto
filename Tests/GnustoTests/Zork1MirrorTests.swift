@@ -11,7 +11,7 @@ import Testing
 /// finally knot the underground into a single graph — linking the Round Room
 /// hub, the reservoir, and the temple's Tiny Cave.
 ///
-/// Seed 39, re-pin expected in T14: these routes kill the troll to reach the hub
+/// Seed 39: these routes kill the troll to reach the hub
 /// (the same recorded three-blow kill the Round Room and Dam suites use). Past
 /// the Round Room the thief stays penned in the cellar, and the mirror region
 /// itself draws no randomness — its teleport is deterministic.
