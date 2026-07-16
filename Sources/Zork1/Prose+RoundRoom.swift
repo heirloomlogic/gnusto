@@ -1,80 +1,71 @@
-/// Placeholder prose for the Round Room hub (``ZorkRoundRoom``): the East-West
-/// Passage, the Round Room and its radiating passages, the Chasm, Deep Canyon,
-/// Damp Cave, and the Loud Room with its platinum bar. Original text — the
-/// verbatim Infocom descriptions arrive later, one constant at a time. See
-/// `Prose.swift` for the names-vs-prose ledger rule.
+/// Original Zork I prose for the Round Room hub (``ZorkRoundRoom``): the
+/// East-West Passage, the Round Room and its radiating passages, the Chasm,
+/// Deep Canyon, Damp Cave, and the Loud Room with its platinum bar. These are
+/// the verbatim Infocom descriptions (see THIRD_PARTY_NOTICES at the repo
+/// root). See `Prose.swift` for the names-vs-prose ledger rule.
 extension Prose {
     // MARK: - Rooms
 
     static let eastWestPassage = """
-        A cramped passage runs straight east and west, low enough that you
-        stoop as you go. At its north end the floor gives way to a narrow
-        stair dropping into darkness.
+        This is a narrow east-west passageway. There is a narrow stairway
+        leading down at the north end of the room.
         """
 
     static let roundRoom = """
-        You stand at the center of a perfectly circular chamber. Passages open
-        from it in every direction, though rubble and old cave-ins have sealed
-        more than a few of them.
+        This is a circular stone room with passages in all directions. Several
+        of them have unfortunately been blocked by cave-ins.
         """
 
     static let nsPassage = """
-        A tall passage runs north and south here, its ceiling lost overhead. A
-        second way branches off to the northeast.
+        This is a high north-south passage, which forks to the northeast.
         """
 
     static let chasmRoom = """
-        A chasm cuts across the floor from southwest to northeast, and the path
-        clings to its southern lip. A crack in the wall widens into a passage;
-        below, there is only dark and a long, patient silence.
+        A chasm runs southwest to northeast and the path follows it. You are
+        on the south side of the chasm, where a crack opens into a passage.
         """
 
     static let deepCanyon = """
-        You are on the south rim of a canyon that falls away far beneath you.
-        Ledges and passages lead off in several directions, and a stair winds
-        down out of sight.
+        You are on the south edge of a deep canyon. Passages lead off to the
+        east, northwest and southwest. A stairway leads down.
         """
 
     static let dampCave = """
-        The walls of this cave glisten with damp, and the air hangs heavy and
-        wet. Ways lead off east and west, and to the south the cave pinches
-        down to a crack too tight to follow.
+        This cave has exits to the west and east, and narrows to a crack toward
+        the south. The earth is particularly damp here.
         """
 
     static let loudRoom = """
-        This is a wide chamber whose ceiling is lost in the dark above. A
-        passage runs east to west, and a stone stair climbs upward.
+        This is a large room with a ceiling which cannot be detected from
+        the ground. There is a narrow passage from east to west and a stone
+        stairway leading upward.
         """
 
     // MARK: - The platinum bar
 
-    static let platinumBarFirstSight = "A large bar of platinum lies on the ground."
+    static let platinumBarFirstSight = "On the ground is a large platinum bar."
 
-    static let platinumBar = """
-        A single bar of platinum, dense and improbably heavy, its surface
-        catching what little light there is.
-        """
+    static let platinumBar = "On the ground is a large platinum bar."
 
     // MARK: - Loud Room acoustics
 
     static let loudRoomGarble = """
-        The din swallows your words whole. Whatever you meant is lost in the
-        roar before it can amount to anything.
+        The rest of your commands have been lost in the noise.
         """
 
     static let loudRoomAcousticsFixed = """
-        Your voice rings out and comes back to you, and as it does the roar
-        seems to fold in on itself. The room settles into an uneasy quiet.
+        The acoustics of the room change subtly.
         """
 
     static let loudRoomEjects = """
-        The noise here is past bearing — an enormous rushing that pounds behind
-        your eyes until you can do nothing but stumble blindly away from it.
+        It is unbearably loud here, with an ear-splitting roar seeming to
+        come from all around you. There is a pounding in your head which won't
+        stop. With a tremendous effort, you scramble out of the room.
         """
 
     // MARK: - Blocked exits
 
-    static let chasmDownRefusal = "That way lies a very long fall and a very short future."
+    static let chasmDownRefusal = "Are you out of your mind?"
 
-    static let dampCaveTooNarrow = "The crack narrows to nothing a body could hope to pass."
+    static let dampCaveTooNarrow = "It is too narrow for most insects."
 }

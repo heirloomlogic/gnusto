@@ -1,39 +1,35 @@
-/// Placeholder prose for the above-ground region (``ZorkAboveGround``): the
-/// White House exterior, the forest and clearings, and the canyon. See
-/// `Prose.swift` for the names-vs-prose ledger rule these all follow.
+/// Original Zork I prose for the above-ground region (``ZorkAboveGround``):
+/// the White House exterior, the forest and clearings, and the canyon.
+/// Transcribed from the MIT-licensed historical Zork source — see
+/// `THIRD_PARTY_NOTICES` at the repo root.
 extension Prose {
     // MARK: - AboveGround: house exterior
 
     static let westOfHouse = """
-        You stand on the west lawn of a white house, its front door boarded
-        over and unwelcoming. A mailbox stands by the path. The lawn
-        continues north and south, and a forest begins to the west.
+        You are standing in an open field west of a white house, with a
+        boarded front door.
         """
 
     static let northOfHouse = """
-        You are at the north edge of the house's lawn, a bare stretch of
-        wall with no doors or windows on this side. The lawn runs west and
-        east around the house, and a worn path leads off into the trees to
-        the north.
+        You are facing the north side of a white house. There is no door
+        here, and all the windows are boarded up. To the north a narrow
+        path winds through the trees.
         """
 
     static let southOfHouse = """
-        You are at the south edge of the house's lawn. Like the north
-        side, this wall is blank. The lawn continues west and east around
-        the house.
+        You are facing the south side of a white house. There is no door
+        here, and all the windows are boarded.
         """
 
     static let behindHouse = """
-        You are in the small yard behind the house. A narrow window looks
-        into the house here, its lower sash sitting unevenly in the frame.
-        The yard opens north and south along the house, and a forest lies
-        to the east.
+        You are behind the white house. A path leads into the forest to
+        the east. In one corner of the house there is a small window which
+        is slightly ajar.
         """
 
     static let whiteHouse = """
-        The house is a plain two-story clapboard building, its paint
-        peeling and its front door boarded shut. It looks as though nobody
-        has used the front entrance in years.
+        The house is a beautiful colonial house which is painted white. It
+        is clear that the owners must have been extremely wealthy.
         """
 
     static let frontDoor = """
@@ -41,43 +37,39 @@ extension Prose {
         in a long time.
         """
 
-    static let frontDoorRefusal = "The door is boarded shut and won't budge."
+    static let frontDoorRefusal = "The door cannot be opened."
 
     static let mailbox = "A small mailbox, its flag long since rusted in place."
 
     static let mailboxEmbellishment = "A leaflet sits inside, waiting to be read."
 
     static let leaflet = """
-        A single typed page, the ink faded but legible: a welcome to
-        visitors and a warning that treasure and danger both lie
-        underground.
+        "WELCOME TO ZORK!
+
+        ZORK is a game of adventure, danger, and low cunning. In it you
+        will explore some of the most amazing territory ever seen by
+        mortals. No computer should be without one!"
         """
 
     // MARK: - AboveGround: forest & clearings
 
     static let forestWest = """
-        You are among close-set pines west of the house. The trees crowd
-        in on every side; the lawn is visible back to the east, and a
-        path winds north.
+        This is a forest, with trees in all directions. To the east, there
+        appears to be sunlight.
         """
 
     static let forestEast = """
-        You are in a stretch of forest east of the house, the trees here
-        a little sparser. The yard behind the house is west, a clearing
-        opens north, and the ground slopes down toward a canyon to the
-        east.
+        This is a dimly lit forest, with large trees all around.
         """
 
     static let forestNortheast = """
-        The forest continues here, a tangle of low branches and old
-        leaves underfoot. Paths lead back south and west through the
-        trees.
+        This is a dimly lit forest, with large trees all around.
         """
 
     static let forestPath = """
-        A trail winds between the trees here, running south toward the
-        house and continuing north to a clearing. A large tree beside the
-        path looks climbable.
+        This is a path winding through a dimly lit forest. The path heads
+        north-south here. One particularly large tree with some low
+        branches stands at the edge of the path.
         """
 
     static let tree = """
@@ -86,33 +78,39 @@ extension Prose {
         """
 
     static let upATree = """
-        You are perched in the branches of the large tree, well above the
-        forest floor. A nest here holds something. The ground is a climb
-        back down.
+        You are about 10 feet above the ground nestled among some large
+        branches. The nearest branch above you is above your reach.
         """
 
-    static let nest = "A crude nest wedged into the fork of the branches."
+    static let nest = "Beside you on the branch is a small bird's nest."
 
     static let egg = """
-        A jewel-encrusted egg, its enamel shell inlaid with tiny gems.
-        It looks both delicate and valuable.
+        In the bird's nest is a large egg encrusted with precious jewels,
+        apparently scavenged by a childless songbird. The egg is covered
+        with fine gold inlay, and ornamented in lapis lazuli and
+        mother-of-pearl. Unlike most eggs, this one is hinged and closed
+        with a delicate looking clasp. The egg appears extremely fragile.
         """
 
     static let canary = """
-        A golden clockwork canary, exquisitely made. A tiny key in its side
-        suggests it might be wound.
+        There is a golden clockwork canary nestled in the egg. It has ruby
+        eyes and a silver beak. Through a crystal window below its left
+        wing you can see intricate machinery inside. It appears to have
+        wound down.
         """
 
     static let brokenCanary = """
-        A clockwork canary, once golden and lovely, now a mangled ruin of
-        bent gears and snapped springs. Whatever it once did, it will never
-        do again.
+        There is a golden clockwork canary nestled in the egg. It seems to
+        have recently had a bad experience. The mountings for its jewel-like
+        eyes are empty, and its silver beak is crumpled. Through a cracked
+        crystal window below its left wing you can see the remains of
+        intricate machinery. It is not clear what result winding it would
+        have, as the mainspring seems sprung.
         """
 
     static let eggForcedRuinsCanary = """
-        You force the egg's delicate mechanism, and it springs open with an
-        ugly crunch — the fine clockwork bird inside crushed by your clumsy
-        haste.
+        The egg is now open, but the clumsiness of your attempt has
+        seriously compromised its esthetic appeal.
         """
 
     static let bauble = """
@@ -121,34 +119,32 @@ extension Prose {
         """
 
     static let songbirdDropsBauble = """
-        The canary trills a bright, intricate melody. From the surrounding
-        trees a songbird answers, alighting on a branch just overhead. As its
-        song joins the canary's, a brass bauble tumbles from its beak, glances
-        off your head, and comes to rest glinting in the grass. The tune winds
-        down, and the songbird flits away.
+        The canary chirps, slightly off-key, an aria from a forgotten opera.
+        From out of the greenery flies a lovely songbird. It perches on a
+        limb just over your head and opens its beak to sing. As it does so
+        a beautiful brass bauble drops from its mouth, bounces off the top
+        of your head, and lands glimmering in the grass. As the canary winds
+        down, the songbird flies away.
         """
 
     static let canaryChirps = """
-        The canary chirps a short, tinny little tune and falls silent. Nothing
-        else stirs.
+        The canary chirps blithely, if somewhat tinnily, for a short time.
         """
 
     static let brokenCanaryWinds = """
-        The ruined canary manages only an ugly grinding of stripped gears. No
-        song comes out of it.
+        There is an unpleasant grinding noise from inside the canary.
         """
 
     static let clearingGrating = """
-        You are in a small clearing in the forest. Half-buried in a pile
-        of dead leaves in one corner, something metal glints. The forest
-        path leads south, and the clearing continues east.
+        You are in a clearing, with a forest surrounding you on all sides.
+        A path leads south.
         """
 
     static let leaves = """
-        A deep pile of dead leaves, heaped in the corner of the clearing.
+        On the ground is a pile of leaves.
         """
 
-    static let leavesMoveEmbellishment = "Underneath the leaves, a metal grating is revealed."
+    static let leavesMoveEmbellishment = "In disturbing the pile of leaves, a grating is revealed."
 
     static let leavesAlreadyMoved = "The leaves have already been pushed aside."
 
@@ -158,64 +154,74 @@ extension Prose {
         """
 
     static let clearingEast = """
-        This clearing sits east of the grating clearing, ringed by trees.
-        The forest continues west and south, and the trees thin out to
-        the east.
+        You are in a small clearing in a well marked forest path that
+        extends to the east and west.
         """
 
     // MARK: - AboveGround: canyon
 
     static let canyonView = """
-        You stand at the lip of a steep canyon, the forest at your back.
-        A narrow ledge switchbacks down the canyon wall below you.
+        You are at the top of the Great Canyon on its west wall. From here
+        there is a marvelous view of the canyon and parts of the Frigid
+        River upstream. Across the canyon, the walls of the White Cliffs
+        join the mighty ramparts of the Flathead Mountains to the east.
+        Following the Canyon upstream to the north, Aragain Falls may be
+        seen, complete with rainbow. The mighty Frigid River flows out from
+        a great dark cavern. To the west and south can be seen an immense
+        forest, stretching for miles around. A path leads northwest. It is
+        possible to climb down into the canyon from here.
         """
 
     static let rockyLedge = """
-        You are on a rocky ledge partway down the canyon wall, with
-        room enough to stand. The ledge continues down toward the canyon
-        floor.
+        You are on a ledge about halfway up the wall of the river canyon.
+        You can see from here that the main flow from Aragain Falls twists
+        along a passage which it is impossible for you to enter. Below you
+        is the canyon bottom. Above you is more cliff, which appears
+        climbable.
         """
 
     static let canyonBottom = """
-        You stand on the floor of the canyon, steep walls rising on both
-        sides. A brightly colored mist hangs in the air to the north,
-        where a faint rainbow arcs over the ground.
+        You are beneath the walls of the river canyon which may be climbable
+        here. The lesser part of the runoff of Aragain Falls flows by below.
+        To the north is a narrow path.
         """
 
     static let endOfRainbow = """
-        You are at the foot of a shimmering rainbow that seems to end
-        squarely in the canyon floor here. The colors ripple faintly, as
-        though the rainbow itself were somehow solid.
+        You are on a small, rocky beach on the continuation of the Frigid
+        River past the Falls. The beach is narrow due to the presence of
+        the White Cliffs. The river canyon opens here and sunlight shines
+        in from above. A rainbow crosses over the falls to the east and a
+        narrow path continues to the southwest.
         """
 
     // MARK: - AboveGround: endgame
 
     static let ancientMap = """
-        The map is old and hand-drawn, its ink faded to a soft brown. It
-        marks a path leading southwest from the white house to a low mound
-        of earth and stone — a barrow, its entrance sketched as a dark
-        doorway in the hillside.
+        The map shows a forest with three clearings. The largest clearing
+        contains a house. Three paths leave the large clearing. One of
+        these paths, leading southwest, is marked "To Stone Barrow".
         """
 
     static let ancientMapAppears = """
-        As the last treasure settles into place, the air above the trophy
-        case shivers. When it stills, an ancient map lies among the
-        riches, drawn in a hand long turned to dust. It shows the way
-        southwest from the house.
+        An almost inaudible voice whispers in your ear, "Look to your
+        treasures for the final secret."
         """
 
     static let stoneBarrow = """
-        You stand before a low barrow of turf-covered stone, its dark
-        entrance yawning to the west. This is the resting place you were
-        meant to find.
+        You are standing in front of a massive barrow of stone. In the east
+        face is a huge stone door which is open. You cannot see into the
+        dark of the tomb.
         """
 
     static let stoneBarrowEpilogue = """
-        You step through the entrance of the barrow, and the darkness
-        folds gently around you. Your work is done: every treasure of the
-        Great Underground Empire is gathered and safe, and your name is
-        set among the Master Adventurers who came before. The barrow
-        receives you, and the tale is complete.
+        As you enter the barrow, the door closes inexorably behind you.
+        Around you it is dark, but ahead is an enormous cavern, brightly
+        lit. Through its center runs a wide stream. Spanning the stream is a
+        small wooden footbridge, and beyond a path leads into a dark tunnel.
+        Above the bridge, floating in the air, is a large sign. It reads:
+        All ye who stand before this bridge have completed a great and
+        perilous adventure which has tested your wit and courage. You have
+        mastered ZORK: The Great Underground Empire.
         """
 
     static let barrowPathBlocked = """

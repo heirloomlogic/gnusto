@@ -189,22 +189,23 @@ struct ZorkSystems: GameContent {
     }
 }
 
-/// The score-rank ladder shown after the score line. The thresholds are game
-/// data (used as-is), but the rank *names* are original placeholders: Zork's
-/// own titles ("Beginner", "Amateur Adventurer", … "Master Adventurer") are
-/// short proper nouns this slice doesn't reproduce, on the same names-vs-prose
-/// line as everything else — see `FIDELITY.md`.
+/// The score-rank ladder shown after the score line — Zork's own titles and
+/// thresholds, verbatim from the original's `V-SCORE` routine (see
+/// `THIRD_PARTY_NOTICES`). Zork tests each tier with a strict `>`, so the
+/// minimums here are the original's boundary plus one (e.g. "more than 25"
+/// becomes `min: 26`); the top tier is the exact 350-point finish.
 enum ZorkRank {
     /// Ascending `(minimum score, rank name)` tiers. The last tier at or
     /// below the current score wins.
     static let ladder: [(min: Int, name: String)] = [
-        (Int.min, "Wanderer"),
-        (25, "Trespasser"),
-        (50, "Cellar Rat"),
-        (100, "Delver"),
-        (200, "Underground Hand"),
-        (300, "Empire Ranger"),
-        (350, "Master of the Underground"),
+        (Int.min, "Beginner"),
+        (26, "Amateur Adventurer"),
+        (51, "Novice Adventurer"),
+        (101, "Junior Adventurer"),
+        (201, "Adventurer"),
+        (301, "Master"),
+        (331, "Wizard"),
+        (350, "Master Adventurer"),
     ]
 
     /// The rank name for a given score — the highest tier the score reaches.

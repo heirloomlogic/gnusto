@@ -21,13 +21,13 @@ struct Zork1SystemsTests {
             transcript,
             [
                 "Your score is 0 of a possible 350",
-                "This earns you the rank of Wanderer.",
+                "This gives you the rank of Beginner.",
             ])
     }
 
     @Test func rankClimbsWithTheScore() async throws {
         // The kitchen (10) and cellar (25) visit awards total 35 — past the
-        // 25-point threshold, so the rank ticks up from Wanderer.
+        // 25-point threshold, so the rank ticks up from Beginner.
         let transcript = try await play(
             Zork1(),
             [
@@ -40,7 +40,7 @@ struct Zork1SystemsTests {
             transcript,
             [
                 "Your score is 35 of a possible 350",
-                "This earns you the rank of Trespasser.",
+                "This gives you the rank of Amateur Adventurer.",
             ])
     }
 
@@ -56,9 +56,9 @@ struct Zork1SystemsTests {
         expectInOrder(
             transcript,
             [
-                "The word hangs in the air a moment",
-                "The word hangs in the air a moment",
-                "Your prayers echo unanswered",
+                "A hollow voice says",
+                "A hollow voice says",
+                "your prayers may be answered",
                 "You wave it about",
                 "Your voice comes back to you",
                 "You smell nothing you could put a name to",
@@ -114,7 +114,7 @@ struct Zork1SystemsTests {
             [
                 "Studio",
                 // Three in hand: refused, still in the Studio.
-                "The chimney is too tight to climb",
+                "You can't get up there with what you're carrying",
                 "Dropped.",
                 // Two in hand: the climb goes through to the Kitchen.
                 "Kitchen",
@@ -127,7 +127,7 @@ struct Zork1SystemsTests {
         let transcript = try await play(
             Zork1(),
             ["south", "east", "open window", "west", "take all"])
-        #expect(!transcript.contains("as much as you can manage"))
+        #expect(!transcript.contains("holding too many things"))
         expectInOrder(transcript, ["brown sack: Taken.", "glass bottle: Taken."])
     }
 
@@ -137,7 +137,7 @@ struct Zork1SystemsTests {
         let transcript = try await play(
             Zork1(),
             ["south", "east", "open window", "west", "take bottle", "open bottle", "take water"])
-        expectInOrder(transcript, ["The water slips between your fingers."])
+        expectInOrder(transcript, ["The water slips through your fingers."])
     }
 
     @Test func drinkingEmptiesTheBottle() async throws {
@@ -153,7 +153,7 @@ struct Zork1SystemsTests {
         expectInOrder(
             transcript,
             [
-                "You drink the water. The bottle is empty now.",
+                "rather thirsty",
                 "You can't see any such thing.",
             ])
     }

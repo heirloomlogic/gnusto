@@ -46,11 +46,11 @@ struct Zork1MazeTests {
         expectInOrder(
             transcript,
             [
-                "The body\nsinks into the shadows",  // the troll falls, opening the west way
-                "skeleton of a",  // Maze-5's landmark
+                "slumps to the floor dead",  // the troll falls, opening the west way
+                "remains of a luckless adventurer",  // Maze-5's landmark
                 "There is a skeleton key here.",  // the key, placed at last
                 "bulging with coins",
-                "Beside the skeleton lies a rusty knife.",
+                "Beside the skeleton is a rusty knife.",
                 "Taken.",
                 // Kitchen (10) + cellar (25) + the bag of coins (10) = 45.
                 "Your score is 45 of a possible 350",
@@ -74,7 +74,7 @@ struct Zork1MazeTests {
             [
                 "Grating Room",
                 "Unlocked.",
-                "shower of dead leaves",  // opening it from below showers the forest's leaves
+                "pile of leaves falls onto",  // opening it from below showers the forest's leaves
                 "Clearing",  // up into daylight
                 "Grating Room",  // and back down through the open grate
             ])
@@ -96,10 +96,10 @@ struct Zork1MazeTests {
             transcript,
             [
                 "Cyclops Room",
-                "hungry cyclops",
+                "prepared to eat horses",
                 "The cyclops doesn't look like he'll let you past.",  // up barred
                 "The east wall is solid rock.",  // east barred
-                "flees the room",  // odysseus routs him
+                "knocking down the wall",  // odysseus routs him
                 "Strange Passage",
                 "Living Room",
             ])
@@ -119,8 +119,8 @@ struct Zork1MazeTests {
         expectInOrder(
             transcript,
             [
-                "wolfs down the lunch",
-                "drains the bottle dry",
+                "I love hot peppers",
+                "drinks the water",
                 "fast asleep",
                 "Treasure Room",  // the stair is clear
             ])
@@ -144,7 +144,7 @@ struct Zork1MazeTests {
         expectInOrder(
             transcript,
             [
-                "skeleton of a",  // Maze-5
+                "remains of a luckless adventurer",  // Maze-5
                 "Dead End",
                 "dead end in the maze",
                 "Cyclops Room",  // the far landmark

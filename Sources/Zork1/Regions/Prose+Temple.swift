@@ -1,71 +1,74 @@
-/// Placeholder prose for the Temple & Hades region (``ZorkTemple``): the
+/// Original Zork I prose for the Temple & Hades region (``ZorkTemple``): the
 /// Engravings Cave and the Dome Room's rope descent, the Torch Room, the Temple
 /// and its Altar, the Egyptian Room with the coffin, and the dark way down past
-/// a draughty cave to the Entrance to Hades and the Land of the Dead. Original
-/// text — the verbatim Infocom descriptions arrive later, one constant at a
-/// time. See `Prose.swift` for the names-vs-prose ledger rule.
+/// a draughty cave to the Entrance to Hades and the Land of the Dead. These are
+/// the verbatim Infocom descriptions (see THIRD_PARTY_NOTICES at the repo
+/// root). See `Prose.swift` for the names-vs-prose ledger rule.
 extension Prose {
     // MARK: - Rooms
 
     static let engravingsCave = """
-        You are in a low cave whose walls are covered close with engravings —
-        the work of some patient, long-dead hand. The cave narrows to a
-        passage east, and the way you came lies back to the west.
+        You have entered a low cave with passages leading northwest and east.
         """
 
     static let domeRoom = """
-        You stand at the lip of a great domed chamber. A stone railing rings
-        the edge, and below it the floor drops away into darkness — far too
-        far to climb down unaided. The only walking-way out is west.
+        You are at the periphery of a large dome, which forms the ceiling
+        of another room below. Protecting you from a precipitous drop is a
+        wooden railing which circles the dome.
         """
 
     static let torchRoom = """
-        This is a small room, empty but for the pedestal at its center. A dark
-        shaft rises overhead, a rope hanging out of reach at the top of it.
-        Steps lead down, and a passage runs south.
+        This is a large room with a prominent doorway leading to a down
+        staircase. Above you is a large dome. Up around the edge of the
+        dome (20 feet up) is a wooden railing. In the center of the room
+        sits a white marble pedestal.
         """
 
     static let temple = """
-        You are in the nave of an ancient temple, its columns rising into
-        shadow. A dark staircase leads down to the east, a smaller way opens
-        south, and steps climb north toward the room above.
+        This is the north end of a large temple. On the east wall is an
+        ancient inscription, probably a prayer in a long-forgotten language.
+        Below the prayer is a staircase leading down. The west wall is solid
+        granite. The exit to the north end of the room is through huge
+        marble pillars.
         """
 
     static let egyptRoom = """
-        This is a cramped chamber in the old Egyptian style, its walls painted
-        with figures in profile. The only way out is back to the west and up.
+        This is a room which looks like an Egyptian tomb. There is an
+        ascending staircase to the west.
         """
 
     static let altar = """
-        Before you stands a plain stone altar, worn smooth by the hands of
-        worshippers gone to dust. Steps lead north to the temple; a narrow
-        crack in the floor drops away to the south.
+        This is the south end of a large temple. In front of you is what
+        appears to be an altar. In one corner is a small hole in the floor
+        which leads into darkness. You probably could not get back up it.
         """
 
     static let templeCave = """
-        You are in a small cave, little more than a widening of the passage. A
-        cold draught blows up from a staircase spiralling down into the dark,
-        and the way back up leads to the altar. Rough openings lead off north
-        and west, though neither goes anywhere you can reach from here yet.
+        This is a tiny cave with entrances west and north, and a dark,
+        forbidding staircase leading down.
         """
 
     static let entranceToHades = """
-        You have come to the gateway of Hades. A wall of restless spirits bars
-        the way south, jeering and moaning, and their cold hands hold you back
-        from the gate. Steps climb up behind you.
+        You are outside a large gateway, on which is inscribed
+
+          Abandon every hope
+          all ye who enter here!
+
+        The gate is open; through it you can see a desolation, with a pile of
+        mangled bodies in one corner. Thousands of voices, lamenting some
+        hideous fate, can be heard.
         """
 
     static let landOfDead = """
-        You are in the land of the dead, a still and lightless waste where the
-        empire's fallen have been laid. The gate out lies back to the north.
+        You have entered the Land of the Living Dead. Thousands of lost souls
+        can be heard weeping and moaning. In the corner are stacked the remains
+        of dozens of previous adventurers less fortunate than yourself.
+        A passage exits to the north.
         """
 
     // MARK: - Items
 
-    static let ivoryTorch = """
-        An ivory torch, carved and old, burns here with a clean white flame
-        that never seems to gutter.
-        """
+    static let ivoryTorch = "The torch is burning."
 
     static let templeRailing = """
         A stone railing runs around the rim of the dome — the kind of thing a
@@ -76,14 +79,19 @@ extension Prose {
         A small brass hand-bell, of the sort once rung to call the faithful.
         """
 
-    static let redHotBell = """
-        The brass bell glows a dull, angry red, far too hot to lay a hand on.
-        """
+    static let redHotBell = "On the ground is a red hot bell."
 
     static let book = """
-        A slim black book, its pages closely printed with prayers in a script
-        gone brown with age. One passage, marked with a ribbon, seems meant to
-        be read aloud.
+        Commandment #12592
+
+        Oh ye who go about saying unto each:  "Hello sailor":
+        Dost thou know the magnitude of thy sin before the gods?
+        Yea, verily, thou shalt be ground between two stones.
+        Shall the angry gods cast thy body into the whirlpool?
+        Surely, thy eye shall be put out with a sharp stick!
+        Even unto the ends of the earth shalt thou wander and
+        Unto the land of the dead shalt thou be sent at last.
+        Surely thou shalt repent of thy cunning.
         """
 
     static let candles = """
@@ -98,8 +106,7 @@ extension Prose {
         """
 
     static let sceptre = """
-        An ornate sceptre, its haft banded with gold and its head set with a
-        single sharp point, fit for a buried king.
+        An ornamented sceptre, tapering to a sharp point, is here.
         """
 
     static let crystalSkull = """
@@ -107,45 +114,45 @@ extension Prose {
         catching what little light there is.
         """
 
-    static let burningMatch = "A match burns in your fingers, its small flame already eating down the stick."
+    static let burningMatch = "The match is burning."
 
     // MARK: - First sights
 
-    static let coffinFirstSight = "A gold coffin rests upon the floor."
+    static let coffinFirstSight = "The solid-gold coffin used for the burial of Ramses II is here."
 
-    static let crystalSkullFirstSight = "A crystal skull lies among the bones of the dead."
+    static let crystalSkullFirstSight = """
+        Lying in one corner of the room is a beautifully carved crystal skull.
+        It appears to be grinning at you rather nastily.
+        """
 
     // MARK: - Rope & the dome descent
 
     static let domeNoRope = """
-        It is far too great a drop to climb without a rope, and nothing here
-        offers a handhold.
+        You cannot go down without fracturing many bones.
         """
 
-    static let torchNoRope = "The rope hangs high above the shaft, well out of your reach."
+    static let torchNoRope = "You cannot reach the rope."
 
     static let ropeTied = """
-        You make the rope fast to the stone railing, and its free end falls
-        away into the dome below. A climb down is possible now.
+        The rope drops over the side and comes within ten feet of the floor.
         """
 
-    static let ropeUntied = "You loose the rope from the railing and coil it back up."
+    static let ropeUntied = "The rope is now untied."
 
     static let ropeTakeUnties = "You untie the rope from the railing before taking it."
 
     static let ropeNeedsRailing = "You can only tie the rope to the railing here."
 
-    static let ropeNothingToTie = "There is nothing here worth tying the rope to."
+    static let ropeNothingToTie = "You can't tie the rope to that."
 
     // MARK: - Torch
 
-    static let torchWontExtinguish = "The ivory torch burns with a steady flame and will not be put out."
+    static let torchWontExtinguish = "You nearly burn your hand trying to extinguish the flame."
 
     // MARK: - The altar & the coffin
 
     static let coffinTooHeavy = """
-        The crack in the floor is far too narrow to squeeze through with so
-        great a load. You haven't a prayer of getting it down there.
+        You haven't a prayer of getting the coffin down there.
         """
 
     static let prayerAnswered = """
@@ -156,62 +163,67 @@ extension Prose {
 
     // MARK: - The bell
 
-    static let bellRingsHollow = "The bell rings out, a small clear note that fades to nothing."
+    static let bellRingsHollow = "Ding, dong."
 
     static let bellRingRedHot = """
-        The bell tolls once, and the sound hangs in the air like a struck
-        nerve. The spirits at the gate freeze mid-jeer — and the bell, glowing
-        suddenly red hot, drops from your hand to the ground.
+        The bell suddenly becomes red hot and falls to the ground. The
+        wraiths, as if paralyzed, stop their jeering and slowly turn to face
+        you. On their ashen faces, the expression of a long-forgotten terror
+        takes shape.
         """
 
-    static let bellAlreadyRung = "The bell lies red hot upon the ground; there is no ringing it now."
+    static let bellAlreadyRung = "The bell is too hot to reach."
 
-    static let bellCools = "The brass bell has cooled enough to handle again."
+    static let bellCools = "The bell appears to have cooled down."
 
-    static let bellTooHotToTake = "The bell is still glowing red hot — you would burn your hand to the bone."
+    static let bellTooHotToTake = "The bell is very hot and cannot be taken."
 
     // MARK: - The candles
 
-    static let candlesNeedFlame = "You have nothing to light the candles with."
+    static let candlesNeedFlame = "You have to light them with something that's burning, you know."
 
-    static let candlesLit = "The candles catch and burn with a steady yellow light."
+    static let candlesLit = "The candles are lit."
 
     static let candlesLitForRitual = """
-        The candles catch and burn, and their light seems to hold the frozen
-        spirits fast where they stand.
+        The flames flicker wildly and appear to dance. The earth beneath
+        your feet trembles, and your legs nearly buckle beneath you.
+        The spirits cower at your unearthly power.
         """
 
-    static let candlesSpent = "The candles have burned away to stubs; there is nothing left to light."
+    static let candlesSpent = """
+        Alas, there's not much left of the candles. Certainly not enough to
+        burn.
+        """
 
-    static let candlesDim = "The candles have burned low, their flames grown small and blue."
+    static let candlesDim = "The candles won't last long now."
 
-    static let candlesDie = "With a last thread of smoke, the candles gutter out for good."
+    static let candlesDie = "The flame is extinguished."
 
-    static let candlesSnuffedByDraft = "The cold draught in the cave snuffs your candles out."
+    static let candlesSnuffedByDraft = "A gust of wind blows out your candles!"
 
     // MARK: - The exorcism
 
     static let spiritsBanished = """
-        You read the marked prayer aloud. Word by word the spirits thin and
-        fray, and with a final wail the whole host of them is gone. The way
-        south stands open.
+        Each word of the prayer reverberates through the hall in a deafening
+        confusion. As the last word fades, a voice, loud and commanding,
+        speaks: "Begone, fiends!" A heart-stopping scream fills the cavern,
+        and the spirits, sensing a greater power, flee through the walls.
         """
 
     static let exorcismLapses = """
-        The moment slips away. The spirits stir, shake off their stillness,
-        and take up their jeering at the gate once more.
+        The tension of this ceremony is broken, and the wraiths, amused but
+        shaken at your clumsy attempt, resume their hideous jeering.
         """
 
     static let hadesGateBlocked = """
-        The wall of spirits holds you back; some cold force at the gate will
-        not let you pass.
+        Some invisible force prevents you from passing through the gate.
         """
 
     // MARK: - The matches
 
-    static let matchStrikes = "One of the matches flares alight in your hand."
+    static let matchStrikes = "One of the matches starts to burn."
 
-    static let matchesGone = "The matchbook is empty; not a single match is left."
+    static let matchesGone = "I'm afraid that you have run out of matches."
 
-    static let matchBurnsOut = "The match burns down to your fingers and goes out."
+    static let matchBurnsOut = "The match has gone out."
 }

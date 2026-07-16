@@ -29,10 +29,10 @@ struct Zork1ThiefTests {
         expectInOrder(
             transcript,
             [
-                "the fine clockwork bird inside crushed by your clumsy",  // ruined on force
+                "clumsiness of your attempt",  // ruined on force
                 "reveals a broken clockwork canary.",  // the built-in open shows the ruin
                 "In the jewel-encrusted egg is a broken clockwork canary.",
-                "now a mangled ruin of",  // the broken canary's own description
+                "recently had a bad experience",  // the broken canary's own description
                 "Your score is 5 of a possible 350",  // the shell scored 5; the canary, nothing
             ])
     }
@@ -58,8 +58,8 @@ struct Zork1ThiefTests {
         expectInOrder(
             transcript,
             [
-                "The thief examines the jewel-encrusted egg with a connoisseur's eye,",
-                "slips it away with a knowing smile.",  // he takes it (the service is armed)
+                "unexpected generosity",
+                "stops to admire its beauty.",  // he takes it (the service is armed)
                 "You can't see any such thing.",  // examine egg — it's gone with him
                 "You are carrying:",
                 "a brass lantern",  // …and only the lantern; the egg is his now
@@ -99,10 +99,10 @@ struct Zork1ThiefTests {
             transcript,
             [
                 "Treasure Room",
-                "fabulously valuable silver chalice",  // the hoard's prize
-                "shadowy figure",  // the thief, summoned to defend it
-                "The thief's eyes never leave the chalice.",  // the take is refused
-                "an unseen power takes pity on you",  // his stiletto kills you; resurrection
+                "silver chalice, intricately engraved",  // the hoard's prize
+                "suspicious-looking individual",  // the thief, summoned to defend it
+                "stabbed in the back first",  // the take is refused
+                "you probably deserve another",  // his stiletto kills you; resurrection
                 "Forest",  // you wake in the woods
                 "Your score is 50 of a possible 350",  // +25 lair visit, −10 death toll
             ])

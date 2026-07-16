@@ -19,7 +19,7 @@ struct Zork1Tests {
             [
                 "Opening the small mailbox reveals a leaflet.",
                 "A leaflet sits inside, waiting to be read.",
-                "A single typed page",
+                "WELCOME TO ZORK",
                 "Closed.",
             ])
     }
@@ -32,7 +32,7 @@ struct Zork1Tests {
         expectInOrder(
             transcript,
             [
-                "The door is boarded shut and won't budge.",
+                "The door cannot be opened.",
                 "South of House",
                 "Behind House",
                 "Opened.",
@@ -62,9 +62,9 @@ struct Zork1Tests {
                 "Living Room",
                 "Taken.",
                 "The brass lantern is now on.",
-                "Dragging the rug aside reveals a trap door beneath it.",
+                "the rug is moved to one side of the room",
                 "Opened.",
-                "The trap door swings shut, and you hear a bolt slide home above you.",
+                "The trap door crashes shut, and you hear someone barring it.",
                 "Cellar",
                 "East of Chasm",
                 "Gallery",
@@ -91,8 +91,8 @@ struct Zork1Tests {
         expectInOrder(
             transcript,
             [
-                "The trap door swings shut, and you hear a bolt slide home above you.",
-                "It is pitch black. You can't see a thing.",
+                "The trap door crashes shut, and you hear someone barring it.",
+                "It is pitch black. You are likely to be eaten by a grue.",
                 "Gallery",
                 "Kitchen",
             ])
@@ -112,13 +112,13 @@ struct Zork1Tests {
         // The turn-on turn ticks once, so warning K fires on wait #(K−1):
         // dim at 200, last-gasp at 225, dark at 230.
         let turns = transcript.components(separatedBy: "> wait")
-        #expect(!turns[198].contains("flame inside the lantern shrinks"))
-        #expect(turns[199].contains("flame inside the lantern shrinks"))
-        #expect(turns[224].contains("light gutters down to a dull ember"))
-        #expect(turns[229].contains("The brass lantern flickers and goes out"))
+        #expect(!turns[198].contains("a bit dimmer"))
+        #expect(turns[199].contains("a bit dimmer"))
+        #expect(turns[224].contains("nearly out"))
+        #expect(turns[229].contains("more light than from the brass lantern"))
         // Spent is spent: relighting a burned-out lantern refuses.
         let relights = transcript.components(separatedBy: "> turn on lantern")
-        #expect(relights[2].contains("burned out"))
+        #expect(relights[2].contains("burned-out lamp"))
     }
 
     /// Darkness is lethal, but not final: a warning on the first dark turn,
@@ -140,20 +140,22 @@ struct Zork1Tests {
         expectInOrder(
             descent,
             [
-                "The trap door swings shut, and you hear a bolt slide home above you.",
-                "It is pitch black. You can't see a thing.",
-                "The darkness here is total.",
+                "The trap door crashes shut, and you hear someone barring it.",
+                "It is pitch black. You are likely to be eaten by a grue.",
+                "It is pitch black. You are likely to be eaten by a grue.",
             ])
         let looks = transcript.components(separatedBy: "> look")
-        // The grace turn is silent; the third dark turn is the end — but the
-        // grue's meal doesn't stick. The death message prints, then you wake
-        // in the forest, unstuck and above ground. No banner, no prompt.
-        #expect(!looks[1].contains("The darkness here is total."))
+        // The grace turn is a reprieve — no grue yet; the third dark turn is the
+        // end — but the grue's meal doesn't stick. The death message prints, then
+        // you wake in the forest, unstuck and above ground. No banner, no prompt.
+        // (The dark-room line and the grue's warning are the same text in Zork,
+        // so the grace turn is anchored on the absence of the kill, not the warning.)
+        #expect(!looks[1].contains("lurking grue"))
         expectInOrder(
             looks[2],
             [
-                "devoured by a grue",
-                "takes pity on you",
+                "lurking grue",
+                "deserve another",
                 "Forest",
             ])
         // Two deaths, both survived: the prompt never appears.
@@ -164,7 +166,7 @@ struct Zork1Tests {
         // death resurrects just like the first.
         let undo = turnOutput(of: "undo", in: transcript)
         expectInOrder(undo, ["Previous turn undone.", "It is pitch black."])
-        expectInOrder(looks[3], ["devoured by a grue", "takes pity on you", "Forest"])
+        expectInOrder(looks[3], ["lurking grue", "deserve another", "Forest"])
     }
 
     /// Carried light holds the grue off completely: the lantern-lit cellar
@@ -180,8 +182,8 @@ struct Zork1Tests {
                 "look", "look", "up",
             ])
         expectInOrder(transcript, ["Cellar", "East of Chasm", "Studio", "Kitchen"])
-        #expect(!transcript.contains("The darkness here is total."))
-        #expect(!transcript.contains("devoured by a grue"))
+        #expect(!transcript.contains("It is pitch black. You are likely to be eaten by a grue."))
+        #expect(!transcript.contains("lurking grue"))
     }
 
     /// The Phase-7 integration walk: light, timers, death, and a save file
@@ -206,18 +208,18 @@ struct Zork1Tests {
             transcript,
             [
                 "Saved.",
-                "devoured by a grue",
+                "lurking grue",
                 // The grue kills, then the resurrection catches you — no
                 // banner, just the forest.
-                "takes pity on you",
+                "deserve another",
                 "Forest",
                 "Restore from what file?",
                 "Restored.",
                 "Living Room",
                 // Alive at the save point: the trap door is still open, and
                 // descending starts the whole dance again.
-                "The trap door swings shut, and you hear a bolt slide home above you.",
-                "The darkness here is total.",
+                "The trap door crashes shut, and you hear someone barring it.",
+                "It is pitch black. You are likely to be eaten by a grue.",
             ])
         #expect(!transcript.contains("*** You have died ***"))
     }
@@ -234,16 +236,16 @@ struct Zork1Tests {
                 + burn
                 + ["turn off lantern", "wait", "wait", "wait", "turn on lantern"])
         let off = turnOutput(of: "turn off lantern", in: transcript)
-        #expect(!off.contains("flame inside the lantern shrinks"))
+        #expect(!off.contains("a bit dimmer"))
         // The dark idle turns never burn the fuse (waits[201], the final
         // split, bleeds into the relight turn where the banked fuse fires, so
         // it's the two cleanly-bounded idle turns that must stay silent).
         let waits = transcript.components(separatedBy: "> wait")
-        #expect(!waits[199].contains("flame inside the lantern shrinks"))
-        #expect(!waits[200].contains("flame inside the lantern shrinks"))
+        #expect(!waits[199].contains("a bit dimmer"))
+        #expect(!waits[200].contains("a bit dimmer"))
         let relight = transcript.components(separatedBy: "> turn on lantern")[2]
         #expect(relight.contains("The brass lantern is now on."))
-        #expect(relight.contains("flame inside the lantern shrinks"))
+        #expect(relight.contains("a bit dimmer"))
     }
 
     @Test func treeEggAndTrophyCase() async throws {
@@ -345,7 +347,7 @@ struct Zork1Tests {
         expectInOrder(
             transcript,
             [
-                "Your final stroke drops the troll",  // the death, now with the axe
+                "The troll takes a fatal blow",  // the death, now with the axe
                 "Taken.",  // the axe is looted
                 "A heavy war axe",  // and it's the axe in hand
             ])
@@ -370,15 +372,15 @@ struct Zork1Tests {
             transcript,
             [
                 "Troll Room",
-                "A troll stands square in the middle of the room",
-                "The troll plants himself in your path",  // west barred while he lives
-                "Your final stroke drops the troll",
+                "A nasty-looking troll, brandishing a bloody axe",
+                "The troll fends you off",  // west barred while he lives
+                "The troll takes a fatal blow",
                 "Maze",  // west now drops into the maze
             ])
         // Defeat is permanent and the room empties.
         let afterDeath = transcript.components(
-            separatedBy: "drops the troll")[1]
-        #expect(!afterDeath.contains("A troll stands square"))
+            separatedBy: "troll takes a fatal blow")[1]
+        #expect(!afterDeath.contains("A nasty-looking troll"))
     }
 
     @Test func theTrollCanKillYou() async throws {
@@ -399,9 +401,9 @@ struct Zork1Tests {
         expectInOrder(
             transcript,
             [
-                "the argument is settled",
+                "neatly removes your head",
                 // The kill lands, then the resurrection: forest, no banner.
-                "takes pity on you",
+                "deserve another",
                 "Forest",
                 // The kitchen (10) and cellar (25) visit awards banked on the
                 // way down leave 35; the death docks 10, so the score reads 25.
@@ -434,8 +436,8 @@ struct Zork1Tests {
         expectInOrder(
             transcript,
             [
-                "the argument is settled",
-                "takes pity on you",
+                "neatly removes your head",
+                "deserve another",
                 "Forest",
                 "West of House",
                 "Taken.",
@@ -462,18 +464,18 @@ struct Zork1Tests {
                 + ["undo"],
             seed: 1)
         // The first two grue deaths resurrect; the third is final.
-        let deaths = transcript.components(separatedBy: "devoured by a grue")
+        let deaths = transcript.components(separatedBy: "lurking grue")
         #expect(deaths.count == 4)  // three deaths split the transcript into four
         // Deaths one and two are survived — the banner shows up only once, at
         // the very end.
         expectInOrder(
             transcript,
             [
-                "devoured by a grue",  // death 1
-                "takes pity on you",
-                "devoured by a grue",  // death 2
-                "takes pity on you",
-                "devoured by a grue",  // death 3 — final
+                "lurking grue",  // death 1
+                "deserve another",
+                "lurking grue",  // death 2
+                "deserve another",
+                "lurking grue",  // death 3 — final
                 "*** You have died ***",
                 // 35 banked, then two 10-point tolls: 15 by the final death.
                 "Your score is 15 of a possible 350",
@@ -502,15 +504,15 @@ struct Zork1Tests {
         expectInOrder(
             transcript,
             [
-                "The trap door swings shut, and you hear a bolt slide home above you.",
-                "Someone above has\nmade very sure of the bolt.",
+                "The trap door crashes shut, and you hear someone barring it.",
+                "The trap door crashes shut, and you hear someone barring it.",
                 "Gallery",
                 "Studio",
                 "Kitchen",
                 "Living Room",
                 "Opened.",
-                "The trap door swings shut, and you hear a bolt slide home above you.",
-                "Someone above has\nmade very sure of the bolt.",
+                "The trap door crashes shut, and you hear someone barring it.",
+                "The trap door crashes shut, and you hear someone barring it.",
             ])
     }
 
@@ -537,19 +539,19 @@ struct Zork1Tests {
         expectInOrder(
             transcript,
             [
-                "and the painting is gone.",
-                "The thief drops without a sound",
-                "scattering his takings",
+                "the painting vanished",
+                "The thief takes a fatal blow",
+                "treasures reappear",
                 "Taken.",
                 "Opened.",
                 "Living Room",
             ])
         // His daemons die with him: no prowling or pickpocketing after.
         let afterDeath = transcript.components(
-            separatedBy: "drops without a sound")[1]
+            separatedBy: "thief takes a fatal blow")[1]
         #expect(!afterDeath.contains("slips into the room"))
         #expect(!afterDeath.contains("melts away"))
-        #expect(!afterDeath.contains("is gone."))
+        #expect(!afterDeath.contains("vanished."))
     }
 
     @Test func leavesRevealTheLockedGrating() async throws {
@@ -561,7 +563,7 @@ struct Zork1Tests {
             transcript,
             [
                 "Clearing",
-                "Underneath the leaves, a metal grating is revealed.",
+                "In disturbing the pile of leaves, a grating is revealed.",
                 "The iron grating is locked.",
             ])
     }
@@ -616,10 +618,10 @@ struct Zork1Tests {
                 "Attic",
                 "Kitchen",
                 "Living Room",
-                "Dragging the rug aside reveals a trap door beneath it.",
+                "the rug is moved to one side of the room",
                 "Opened.",
-                "The trap door swings shut, and you hear a bolt slide home above you.",
-                "It is pitch black. You can't see a thing.",
+                "The trap door crashes shut, and you hear someone barring it.",
+                "It is pitch black. You are likely to be eaten by a grue.",
             ])
     }
 
@@ -649,7 +651,7 @@ struct Zork1Tests {
                 "clove of garlic: Taken.",
                 "glass bottle: Taken.",
                 "lunch: Taken.",
-                "quantity of water: The water slips between your fingers.",
+                "quantity of water: The water slips through your fingers.",
                 // drop all: everything just taken goes back down.
                 "brown sack: Dropped.",
                 "clove of garlic: Dropped.",
@@ -697,7 +699,7 @@ struct Zork1Tests {
             transcript,
             [
                 "Troll Room",
-                "Your final stroke drops the troll",
+                "The troll takes a fatal blow",
                 "East-West Passage",
                 // 35 banked below (kitchen 10, cellar 25); the passage adds 5.
                 "Your score is 40 of a possible 350",
@@ -730,10 +732,10 @@ struct Zork1Tests {
         expectInOrder(
             transcript,
             [
-                "Your final stroke drops the troll",
+                "The troll takes a fatal blow",
                 "Loud Room",
-                "The din swallows your words whole.",  // the garble refusal
-                "fold in on itself",  // acoustics fixed
+                "lost in the noise",  // the garble refusal
+                "acoustics of the room change",  // acoustics fixed
                 "Taken.",
                 // 40 on arrival at the Loud Room; the bar's find pays 10 more.
                 "Your score is 50 of a possible 350",
@@ -818,7 +820,7 @@ struct Zork1Tests {
             transcript,
             [
                 "Maintenance Room",
-                "begins to glow",  // the yellow button charges the panel
+                "Click.",  // the yellow button charges the panel
                 "Dam",
                 "sluice gates open",
                 "Reservoir South",
@@ -854,7 +856,7 @@ struct Zork1Tests {
             transcript,
             [
                 "Dam",
-                "won't budge",  // the bolt refusal
+                "won't turn",  // the bolt refusal
                 "Reservoir South",
                 "would drown",  // the full-reservoir crossing refusal
             ])
@@ -883,10 +885,10 @@ struct Zork1Tests {
         expectInOrder(
             transcript,
             [
-                "risen to your ankles",
-                "at your waist",
-                "at your neck",
-                "drowned in the Maintenance Room",
+                "up to your ankles",
+                "up to your waist",
+                "up to your neck",
+                "drowned yourself",
                 "Forest",  // resurrection sets you down above ground
             ])
     }
@@ -912,8 +914,8 @@ struct Zork1Tests {
             [
                 "sluice gates open",
                 "a bed of slick",
-                "sluice gates grind shut",
-                "closes over the bed of the reservoir",  // the refill drowning
+                "sluice gates close",
+                "the rising river",  // the refill drowning
                 "Forest",
             ])
     }
@@ -936,7 +938,7 @@ struct Zork1Tests {
             transcript,
             [
                 "sluice gates open",
-                "past bearing",  // the Loud Room ejection
+                "scramble out of the room",  // the Loud Room ejection
             ])
     }
 

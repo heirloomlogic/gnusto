@@ -53,9 +53,9 @@ struct Zork1MirrorTests {
             [
                 "Narrow Passage",
                 "Mirror Room",
-                "rumble sounds from deep",  // the first touch
+                "rumble from deep within the earth",  // the first touch
                 "Atlantis Room",  // proves it landed on the south side
-                "rumble sounds from deep",  // the second touch
+                "rumble from deep within the earth",  // the second touch
                 "Narrow Passage",  // proves it returned to the north side
             ])
     }

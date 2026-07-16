@@ -72,3 +72,7 @@ swift package --allow-writing-to-directory ./docs \
 
 - macOS 15 or newer (the engine uses `Synchronization.Mutex`)
 - Swift 6.2 toolchain, Swift 6 language mode
+
+## Attribution
+
+The bundled **Zork1** demo is an original Swift re-implementation of *Zork I: The Great Underground Empire* (Marc Blank, Dave Lebling, Bruce Daniels, and Tim Anderson; Infocom, 1980). Its room descriptions, object descriptions, and messages reproduce text from the original Zork I source, drawn from the publicly available [historicalsource/zork1](https://github.com/historicalsource/zork1) collection. Included for education, discussion, and historical work — see [`THIRD_PARTY_NOTICES`](THIRD_PARTY_NOTICES) for full credits and license.

@@ -1,10 +1,8 @@
-/// Placeholder prose for the systems layer (``ZorkSystems``, ``ZorkBurden``,
-/// the liquid rules, and the score ranks). Same ledger rule as everywhere
-/// else: the verb *words* the player types are the iconic ones, but every
-/// response line below is original text — Infocom's joke responses ("A hollow
-/// voice says 'Fool.'", "You feel a wave of nausea") are deliberately not
-/// reproduced. Region tasks replace these generic defaults with item-scoped
-/// rules where a verb actually does something.
+/// Original Zork I prose for the systems layer (``ZorkSystems``, ``ZorkBurden``,
+/// the liquid rules, and the score ranks). These are the authentic Zork I
+/// texts, reused under license; see THIRD_PARTY_NOTICES at the repo root.
+/// Region tasks replace these generic defaults with item-scoped rules where a
+/// verb actually does something.
 extension Prose {
     // MARK: - Verb pack: stage-4 defaults
     //
@@ -17,7 +15,7 @@ extension Prose {
 
     static let verbTieNothing = "There's nothing here worth tying it to."
 
-    static let verbUntieNothing = "It isn't tied to anything."
+    static let verbUntieNothing = "This cannot be tied, so it cannot be untied!"
 
     static let verbDigFutile = "You scrabble at the ground and turn up nothing but dirt."
 
@@ -27,11 +25,11 @@ extension Prose {
 
     static let verbWindNothing = "That isn't something you can wind."
 
-    static let verbInflateNothing = "There's nothing here to inflate — and nothing to inflate it with."
+    static let verbInflateNothing = "How can you inflate that?"
 
-    static let verbDeflateNothing = "Nothing here is inflated."
+    static let verbDeflateNothing = "Come on, now!"
 
-    static let verbLaunchNothing = "You can't launch that."
+    static let verbLaunchNothing = "That's pretty weird."
 
     static let verbRaiseNothing = "Nothing here rises to the occasion."
 
@@ -39,13 +37,13 @@ extension Prose {
 
     static let verbTurnWithNothing = "Nothing here turns with that."
 
-    static let verbPray = "Your prayers echo unanswered off the cold stone."
+    static let verbPray = "If you pray enough, your prayers may be answered."
 
-    static let verbRingNothing = "There's nothing here to ring."
+    static let verbRingNothing = "How, exactly, can you ring that?"
 
     static let verbEcho = "Your voice comes back to you, thinner each time, and fades."
 
-    static let verbMagicWordInert = "The word hangs in the air a moment, then means nothing at all."
+    static let verbMagicWordInert = "A hollow voice says \"Fool.\""
 
     static let verbHello = "Nobody here returns your greeting."
 
@@ -57,7 +55,7 @@ extension Prose {
 
     // MARK: - Liquids
 
-    static let waterSlipsAway = "The water slips between your fingers. You'll need something to hold it."
+    static let waterSlipsAway = "The water slips through your fingers."
 
     static let bottleNeedsToBeOpen = "The bottle is closed."
 
@@ -71,41 +69,38 @@ extension Prose {
 
     static let nothingToPour = "There's nothing in it to pour."
 
-    static let drinkWater = "You drink the water. The bottle is empty now."
+    static let drinkWater = "Thank you very much. I was rather thirsty (from all this talking, probably)."
 
-    static let nothingToDrink = "There's nothing here to drink."
+    static let nothingToDrink = "There isn't any water here."
 
     // MARK: - Burden
 
     static let handsFull = """
-        Your load is already as much as you can manage; you'll have to drop
-        something first.
+        You're holding too many things already!
         """
 
     static let chimneyTooBurdened = """
-        The chimney is too tight to climb with your hands this full. You can
-        take no more than a couple of things up it.
+        You can't get up there with what you're carrying.
         """
 
     // MARK: - Lantern (third fuse)
 
     static let lanternLastGasp = """
-        The lantern's light gutters down to a dull ember. Whatever you mean
-        to do by its glow, do it now.
+        The lamp is nearly out.
         """
 
     // MARK: - Death & resurrection
 
     static let resurrection = """
-        As the darkness closes in, an unseen power takes pity on you. The
-        world lurches, the cold recedes, and you find yourself standing once
-        more beneath the open sky, your belongings strewn about the grounds.
+        Now, let's take a look here... Well, you probably deserve another
+        chance. I can't quite fix you up completely, but you can't have
+        everything.
         """
 
     // MARK: - Diagnose
 
     static let diagnoseUnscathed = """
-        You are in perfect health, and — so far — entirely alive.
+        You are in perfect health.
         """
 
     /// A report on how many times the adventurer has been killed and how many
@@ -124,6 +119,6 @@ extension Prose {
     // MARK: - Score ranks
 
     static func rankLine(_ rank: String) -> String {
-        "This earns you the rank of \(rank)."
+        "This gives you the rank of \(rank)."
     }
 }

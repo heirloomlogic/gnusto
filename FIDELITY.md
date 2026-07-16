@@ -9,15 +9,14 @@ entry below is grouped by the task that introduced it.
 
 ### Prose
 
-- **Every room and item description is original placeholder text**, written
-  to convey the same facts a finished description would (what's here, which
-  exits lead where, what's worth touching) without reproducing or lightly
-  rewording Infocom's copyrighted text. Every description is a named
-  constant in `Sources/Zork1/Prose.swift`, so a later verbatim-text pass is
-  a mechanical one-constant-at-a-time edit. Room and item *names* ("West of
-  House", "brass lantern", "jewel-encrusted egg") are the iconic proper
-  nouns and are used as-is — only the descriptive prose around them is
-  original.
+- **Every room and item description is now the original Zork I text**,
+  reproduced from the `historicalsource/zork1` archive under the MIT license
+  (see `THIRD_PARTY_NOTICES` at the repo root for provenance). Every
+  description is a named constant in `Sources/Zork1/Prose.swift`, and the
+  verbatim-text swap was applied one constant at a time. Room and item
+  *names* ("West of House", "brass lantern", "jewel-encrusted egg") are the
+  iconic proper nouns and were always used as-is; the descriptive prose
+  around them now carries the original Zork I text too.
 
 ### Map topology
 
@@ -83,7 +82,7 @@ entry below is grouped by the task that introduced it.
 
 ## Phase 7 — cellar region & the lit lantern (`Sources/Zork1/Cellar.swift`)
 
-- **All prose remains original placeholder text**, same policy and same
+- **All prose is now the original Zork I text**, same policy and same
   one-constant-per-entity structure as Task 8 above.
 - **The cellar region is the classic loop plus the Troll Room (Phase 8)**:
   Cellar (in `ZorkHouse`) → East of Chasm → Gallery (painting) → Studio →
@@ -156,10 +155,10 @@ entry below is grouped by the task that introduced it.
 
 ## Phase 8 — the Troll Room (`Sources/Zork1/Cellar.swift`)
 
-- **All prose remains original placeholder text**, same policy as ever;
-  "troll" the name is fair game, Infocom's sentences are not. The troll's
-  strength (2) and the sword/knife as the weapons that can reach him are
-  the original's data.
+- **All prose is now the original Zork I text**, same policy as ever;
+  "troll" the name was always used as-is, and Infocom's sentences now carry
+  through too. The troll's strength (2) and the sword/knife as the weapons
+  that can reach him are the original's data.
 - **The passages beyond the troll are honest stubs.** East (toward the
   round-room side of the dungeon) and west (toward the maze) refuse with
   the troll's block while he lives, and with a collapsed-passages line
@@ -214,13 +213,14 @@ score ranks, and a longer lantern burn. No new rooms this task.
 
 - **`Prose.swift` is split by region** into `Prose+AboveGround.swift`,
   `Prose+House.swift`, `Prose+Cellar.swift`, and `Prose+Systems.swift`
-  (extensions on the same `enum Prose`). Pure relocation — the text is
-  unchanged and the one-constant-per-entity verbatim-swap path is intact.
-- **The custom verbs' responses are original placeholder text**, same as
+  (extensions on the same `enum Prose`). Pure relocation — the text was
+  unchanged, and the one-constant-per-entity structure is the path the
+  verbatim swap later flowed through cleanly.
+- **The custom verbs' responses are now the original Zork I text**, same as
   every other line. Infocom's famous joke replies (the hollow voice's
-  "Fool.", the wave-of-nausea, and so on) are deliberately not reproduced;
-  the verb *words* the player types (`xyzzy`, `plugh`, `pray`, …) are the
-  iconic ones and are used as-is.
+  "Fool.", the wave-of-nausea, and so on) now carry through; the verb
+  *words* the player types (`xyzzy`, `plugh`, `pray`, …) are the iconic ones
+  and were always used as-is.
 
 ### Custom verbs (`Systems.swift`)
 
@@ -271,11 +271,13 @@ score ranks, and a longer lantern burn. No new rooms this task.
 - **Death now carries a 10-point toll** (Phase 10.3, below), so a death docks
   the score before the player is resurrected; only the final death lets the
   banner show the score untouched by that turn's toll.
-- **Score ranks are shown, but the rank names are original placeholders.**
-  The ladder's thresholds are game data used as-is; the titles ("Wanderer",
-  "Trespasser", … "Master of the Underground") stand in for Infocom's
-  ("Beginner" … "Master Adventurer") on the same names-vs-prose line as
-  everything else. The `score` verb is a meta intent (it skips all rules), so
+- **Score ranks are shown, and the rank names are now Zork's own titles.**
+  The ladder's thresholds are game data used as-is; the titles ("Beginner",
+  "Amateur Adventurer", "Novice Adventurer", "Junior Adventurer",
+  "Adventurer", "Master", "Wizard", "Master Adventurer") are the original
+  Zork I ranks, reproduced from the `historicalsource/zork1` archive under
+  the MIT license (see `THIRD_PARTY_NOTICES`) on the same names-vs-prose line
+  as everything else. The `score` verb is a meta intent (it skips all rules), so
   the rank is appended via an `action(.score)` override whose first line
   reproduces the engine's score line verbatim.
 
@@ -301,9 +303,9 @@ one). A `@Global var deaths` counts them.
   falls through to the engine's standard `*** You have died ***` banner and
   RESTART / RESTORE / UNDO / QUIT prompt. This matches the original's cap of two
   resurrections. (The number is game data, used as-is.)
-- **The resurrection prose is original placeholder text** (`Prose.resurrection`,
+- **The resurrection prose is now the original Zork I text** (`Prose.resurrection`,
   in `Prose+Systems.swift`), one constant like everywhere else — Infocom's
-  resurrection narration is not reproduced. The player is resurrected in
+  resurrection narration now carries through. The player is resurrected in
   **Forest West** (`aboveGround.forestWest`); the original's exact resurrection
   room isn't researched here, only that it's the forest.
 - **The scatter is deterministic, not random.** The original strews your
@@ -325,7 +327,7 @@ directory-agnostic; this only organizes the many regions still to come).
 
 ### Prose
 
-- **All room, item, and message prose is original placeholder text**, same
+- **All room, item, and message prose is now the original Zork I text**, same
   policy and one-constant-per-entity structure as every prior task
   (`Prose+RoundRoom.swift`). Room and treasure *names* ("Round Room", "Loud
   Room", "platinum bar") are the iconic ones, used as-is.
@@ -392,7 +394,7 @@ has been waiting on since Phase 10.4.
 
 ### Prose
 
-- **All room, item, and message prose is original placeholder text**, same
+- **All room, item, and message prose is now the original Zork I text**, same
   policy and one-constant-per-entity structure as every prior task
   (`Prose+Dam.swift`). Room and item *names* ("Dam", "Maintenance Room", "trunk
   of jewels", "hand-held air pump") are the iconic ones, used as-is.
@@ -487,7 +489,7 @@ candles → read book) that banishes the spirits guarding the crystal skull.
 
 ### Prose
 
-- **All room, item, and message prose is original placeholder text**, same
+- **All room, item, and message prose is now the original Zork I text**, same
   policy and one-constant-per-entity structure as every prior task
   (`Prose+Temple.swift`). Room and item *names* ("Torch Room", "ivory torch",
   "gold coffin", "crystal skull") are the iconic ones, used as-is.
@@ -584,7 +586,7 @@ graph.
 
 ### Prose
 
-- **All room, item, and message prose is original placeholder text**, same policy
+- **All room, item, and message prose is now the original Zork I text**, same policy
   and one-constant-per-entity structure as every prior task (`Prose+Mirror.swift`).
   Room and item *names* ("Mirror Room", "Atlantis Room", "Slide Room", "crystal
   trident") are the iconic ones, used as-is. The two Mirror Rooms share the name
@@ -646,7 +648,7 @@ third, the huge diamond, has to be made.
 
 ### Prose
 
-- **All room, item, and message prose is original placeholder text**, same policy
+- **All room, item, and message prose is now the original Zork I text**, same policy
   and one-constant-per-entity structure as every prior task (`Prose+CoalMine.swift`).
   Room and item *names* ("Coal Mine", "Gas Room", "Machine Room", "huge diamond",
   "jade figurine", "sapphire-encrusted bracelet") are the iconic ones, used as-is.
@@ -723,10 +725,10 @@ tables and item data were verified against `1dungeon.zil` / `1actions.zil`
 
 ### Prose
 
-- **All room, item, and message prose is original placeholder text.** Iconic *names*
+- **All room, item, and message prose is now the original Zork I text.** Iconic *names*
   (Frigid River, White Cliffs Beach, Sandy Cave, Aragain Falls, On the Rainbow, End of
-  Rainbow, magic boat, red buoy, pile of plastic) are used as-is; the descriptive bodies
-  are placeholders awaiting the verbatim Infocom swap.
+  Rainbow, magic boat, red buoy, pile of plastic) were always used as-is; the descriptive
+  bodies now carry the original Zork I text too.
 
 ### Map topology
 
@@ -795,10 +797,10 @@ against `1dungeon.zil` / `1actions.zil` (`historicalsource/zork1`).
 
 ### Prose
 
-- **All room, item, and message prose is original placeholder text.** Iconic *names* (Maze,
+- **All room, item, and message prose is now the original Zork I text.** Iconic *names* (Maze,
   Dead End, Grating Room, Cyclops Room, Treasure Room, Strange Passage, cyclops, skeleton
-  key, bag of coins, rusty knife) are used as-is; the descriptive bodies are placeholders
-  awaiting the verbatim Infocom swap. Every maze passage deliberately shares one name and
+  key, bag of coins, rusty knife) were always used as-is; the descriptive bodies now carry
+  the original Zork I text too. Every maze passage deliberately shares one name and
   one description — the sameness is the puzzle.
 
 ### Map topology
@@ -853,8 +855,9 @@ his roaming, stealing, stashing, lair defence, egg service, and death stay host-
 
 ### Prose
 
-- **All new prose is original placeholder text.** Iconic *names* (thief, stiletto, silver
-  chalice, clockwork canary) are used as-is; descriptions await the verbatim Infocom swap.
+- **All new prose is now the original Zork I text.** Iconic *names* (thief, stiletto, silver
+  chalice, clockwork canary) were always used as-is; descriptions now carry the original
+  Zork I text too.
 
 ### Mechanics — now modeled
 
@@ -918,8 +921,8 @@ rooms verified against `1dungeon.zil` / `1actions.zil` (`CANARY-OBJECT`, `FOREST
 
 ### Prose
 
-- **All new prose is original placeholder text.** Iconic *names* (clockwork canary, brass
-  bauble, songbird) are used as-is; descriptions await the verbatim Infocom swap.
+- **All new prose is now the original Zork I text.** Iconic *names* (clockwork canary, brass
+  bauble, songbird) were always used as-is; descriptions now carry the original Zork I text too.
 
 ### Mechanics — now modeled
 
@@ -972,9 +975,9 @@ and the reveal-on-completion trigger against `1actions.zil` (`SCORE-OBJ`/`WON-FL
 
 ### Prose
 
-- **All new prose is original placeholder text.** Iconic *names* (Stone Barrow, ancient map)
-  are used as-is; the room description, the map, the "map appears" line, and the victory
-  epilogue await the verbatim Infocom swap.
+- **All new prose is now the original Zork I text.** Iconic *names* (Stone Barrow, ancient map)
+  were always used as-is; the room description, the map, the "map appears" line, and the victory
+  epilogue now carry the original Zork I text too.
 
 ### Mechanics — now modeled
 
@@ -1036,7 +1039,7 @@ treasures cased, and the suite's provisional seed markers are cleared. No game c
   like every other Zork transcript. It asserts each region's running-score checkpoint (75 → 350),
   the two in-run combats (troll and thief killed, no player death), the intact-canary recovery,
   the lantern→torch light handoff (the lantern is switched off for the permanent torch and never
-  burns low), the ancient map's appearance, the rank of Master of the Underground, and the Stone
+  burns low), the ancient map's appearance, the rank of Master Adventurer, and the Stone
   Barrow epilogue. It runs in the default suite (~0.1 s).
 - **The seed is found by brute-force scan, not chosen.** The only randomness is in the run's first
   ~50 commands (Phase A): the troll's death, the thief's roaming/stealing, and the thief's death in

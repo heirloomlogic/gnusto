@@ -1,79 +1,74 @@
-/// Placeholder prose for the maze region (``ZorkMaze``): the twisting passages
+/// Original Zork I prose for the maze region (``ZorkMaze``): the twisting passages
 /// and dead ends, the dead adventurer's remains in Maze-5, the Grating Room, and
 /// the Cyclops Room with its stair up to the Treasure Room and the Strange
 /// Passage home. Also the host-wired seams' lines (the grating opening from
-/// below, the nailed door, and the cyclops's feeding). Original text; the
-/// verbatim Infocom descriptions arrive later, one constant at a time. See
-/// `Prose.swift` for the names-vs-prose ledger rule.
+/// below, the nailed door, and the cyclops's feeding). Text transcribed verbatim
+/// from the MIT-licensed Zork I source (see THIRD_PARTY_NOTICES at the repo
+/// root). See `Prose.swift` for the names-vs-prose ledger rule.
 extension Prose {
     // MARK: - Rooms
 
     /// The shared description every maze passage shows — the sameness is the
     /// whole point.
     static let maze = """
-        This is part of a maze of twisting passages, all alike. Openings lead off
-        in several directions, and you have already lost track of which way you
-        came in.
+        This is part of a maze of twisty little passages, all alike.
         """
 
     /// Maze-5 adds the dead adventurer to the same description.
     static let maze5 = """
-        This is part of a maze of twisting passages, all alike. The skeleton of a
-        luckless adventurer who came this way before you lies sprawled against one
-        wall, picked clean and long past helping.
+        This is part of a maze of twisty little passages, all alike. A skeleton,
+        probably the remains of a luckless adventurer, lies here.
         """
 
     static let deadEnd = """
-        You have come to a dead end in the maze. The only way on is the way you
-        came.
+        You have come to a dead end in the maze.
         """
 
     static let gratingRoom = """
-        This is a small room near the maze's edge. A grating is set into the
-        ceiling overhead, and a passage leads off to the southwest.
+        You are in a small room near the maze. There are twisty passages in the
+        immediate vicinity.
         """
 
     static let cyclopsRoom = """
-        This room has a forbidding air about it. An opening leads off to the
-        northwest, and a broad staircase climbs into the dark above.
+        This room has an exit on the northwest, and a staircase leading up.
         """
 
     static let treasureRoom = """
-        This is a large chamber whose east wall is solid granite. Discarded bags,
-        crumbling at a touch, are strewn across the floor, and a staircase leads
-        back down.
+        This is a large room, whose east wall is solid granite. A number of
+        discarded bags, which crumble at your touch, are scattered about on the
+        floor. There is an exit down a staircase.
         """
 
     static let strangePassage = """
-        This is a long passage. One entrance stands at the west end; at the east
-        is a heavy wooden door with an opening in it about the size of a cyclops.
+        This is a long passage. To the west is one entrance. On the east there is
+        an old wooden door, with a large opening in it (about cyclops sized).
         """
 
     // MARK: - The cyclops
 
     static let cyclops = """
-        The cyclops is a mountain of muscle and appetite, with a single
-        bloodshot eye and a jaw built for grinding bones. He is eyeing you the
-        way a starving man eyes a roast.
+        A hungry cyclops is standing at the foot of the stairs.
         """
 
-    static let cyclopsPresence = "A hungry cyclops blocks the foot of the staircase."
+    static let cyclopsPresence = """
+        A cyclops, who looks prepared to eat horses (much less mere adventurers),
+        blocks the staircase. From his state of health, and the bloodstains on the
+        walls, you gather that he is not very friendly, though he likes people.
+        """
 
     static let cyclopsBlocksStairs = "The cyclops doesn't look like he'll let you past."
 
     static let eastWallSolid = "The east wall is solid rock."
 
     static let cyclopsFlees = """
-        The cyclops, hearing the name of his father's deadly nemesis, bellows in
-        terror and flees the room — straight through the east wall, which gives
-        way before him in a shower of rock and dust.
+        The cyclops, hearing the name of his father's deadly nemesis, flees the
+        room by knocking down the wall on the east of the room.
         """
 
-    static let cyclopsAlreadyGone = "The cyclops is beyond reach now — you've already dealt with him."
+    static let cyclopsAlreadyGone = "Wasn't he a sailor?"
 
     static let cyclopsShrugsOffAttack = """
-        The cyclops shrugs off your pitiful attack and goes on watching you,
-        licking his lips.
+        The cyclops shrugs but otherwise ignores your pitiful attempt.
         """
 
     // MARK: - The maze's finds
@@ -83,34 +78,35 @@ extension Prose {
         here for you but a lesson.
         """
 
-    static let skeletonLeaveItBe = "Grave-robbing the dead is beneath even you. Leave the bones be."
-
-    static let bagOfCoins = "An old leather bag, cracked with age and bulging with coins."
-
-    static let bagOfCoinsFirstSight = "An old leather bag, bulging with coins, lies among the bones."
-
-    static let silverChalice = """
-        A silver chalice, chased with a delicate tracery of vines and worth a
-        small fortune — the pride of the thief's hoard.
+    static let skeletonLeaveItBe = """
+        A ghost appears in the room and is appalled at your desecration of the
+        remains of a fellow adventurer. He casts a curse on your valuables and
+        banishes them to the Land of the Living Dead. The ghost leaves, muttering
+        obscenities.
         """
 
-    static let silverChaliceFirstSight = "On a shelf above the hoard rests a fabulously valuable silver chalice."
+    static let bagOfCoins = "There are lots of coins in there."
 
-    static let rustyKnife = "A wicked-looking knife, its blade eaten through with rust."
+    static let bagOfCoinsFirstSight = "An old leather bag, bulging with coins, is here."
 
-    static let rustyKnifeFirstSight = "Beside the skeleton lies a rusty knife."
+    static let silverChalice = "It looks pretty much like a chalice."
 
-    static let burnedOutLantern = "The dead adventurer's lantern, burned out and useless."
+    static let silverChaliceFirstSight = "There is a silver chalice, intricately engraved, here."
 
-    static let burnedOutLanternFirstSight = "The deceased adventurer's useless lantern lies nearby."
+    static let rustyKnife = "Beside the skeleton is a rusty knife."
+
+    static let rustyKnifeFirstSight = "Beside the skeleton is a rusty knife."
+
+    static let burnedOutLantern = "The deceased adventurer's useless lantern is here."
+
+    static let burnedOutLanternFirstSight = "The deceased adventurer's useless lantern is here."
 
     // MARK: - Host-wired seams
 
     /// Opening the grating from below (see ``Zork1``'s grating rule).
     static let gratingOpensFromBelow = """
-        The grating swings open, and a shower of dead leaves rains down onto your
-        head from the forest above. Daylight — and a way out — pours in through
-        the opening.
+        The grating opens to reveal trees above you. A pile of leaves falls onto
+        your head and to the ground.
         """
 
     /// The Living Room's west door before the cyclops smashes it open.
@@ -119,16 +115,18 @@ extension Prose {
     // MARK: - Feeding the cyclops (host-wired — the food is a ``ZorkHouse`` item)
 
     static let cyclopsEatsLunch = """
-        The cyclops wolfs down the lunch in a single gulp, smacks his lips, and
-        rumbles: "Tasty — but now I could murder a drink."
+        The cyclops says "Mmm Mmm. I love hot peppers! But oh, could I use a drink.
+        Perhaps I could drink the blood of that thing."  From the gleam in his eye,
+        it could be surmised that you are "that thing".
         """
 
     static let cyclopsDrinksAndSleeps = """
-        The cyclops drains the bottle dry, lets out a yawn that nearly knocks you
-        flat, and slumps to the floor, fast asleep. The staircase is clear.
+        The cyclops takes the bottle, checks that it's open, and drinks the water.
+        A moment later, he lets out a yawn that nearly blows you over, and then
+        falls fast asleep (what did you put in that drink, anyway?).
         """
 
-    static let cyclopsNotThirsty = "The cyclops isn't thirsty yet — he'd sooner eat than drink."
+    static let cyclopsNotThirsty = "The cyclops apparently is not thirsty and refuses your generous offer."
 
-    static let cyclopsWontEatThat = "The cyclops sniffs at your offering and turns up his nose. That's not food."
+    static let cyclopsWontEatThat = "The cyclops is not so stupid as to eat THAT!"
 }
