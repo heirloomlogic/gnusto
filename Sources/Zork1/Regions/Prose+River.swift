@@ -139,6 +139,16 @@ extension Prose {
 
     static let boatDeflates = "The air sighs out of the boat, and it folds back into a pile of plastic."
 
+    static let fixNeedsGunk = """
+        It wants sealing, and your bare hands won't do it. You'll need something to plug the rip.
+        """
+
+    static let boatPatched = """
+        You smear the tube's viscous gunk thickly over the rip and hold it until
+        it sets. The seal holds — the boat is whole and seaworthy again, and the
+        tube is squeezed empty.
+        """
+
     static let deflateWhileAboard = "You can hardly deflate the boat while you are sitting in it."
 
     static let deflateNotOnGround = "The boat must be on the ground to be deflated."

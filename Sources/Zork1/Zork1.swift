@@ -104,6 +104,14 @@ struct Zork1: Game, GameMain {
                     + "in \(moves) \(moves == 1 ? "turn" : "turns").")
             say(Prose.rankLine(ZorkRank.name(for: player.score)))
         }
+        // `diagnose` reports the death toll and how many resurrections remain
+        // (the first two deaths are survivable — see ``onDeath()``). The verb is
+        // taught by ``ZorkSystems``; the report lives here because it reads the
+        // host's ``deaths`` counter.
+        action(.diagnose) {
+            guard deaths > 0 else { try reply(Prose.diagnoseUnscathed) }
+            try reply(Prose.diagnoseDeaths(deaths, resurrectionsLeft: max(0, 2 - deaths)))
+        }
     }
 
     /// Zork's canonical resurrection. The first two deaths are survivable: the
@@ -326,6 +334,14 @@ struct Zork1: Game, GameMain {
             try require(command.indirectObject == dam.screwdriver, else: Prose.switchNeedsTool)
             guard !coalMine.machine.isOpen else { try reply(Prose.machineLidOpen) }
             guard coalMine.machine.holds(coalMine.coal) else {
+                // No coal to transmute. Anything else inside is ground to a
+                // worthless slag and lost (the original's non-coal grind); an
+                // empty machine simply whirs (FIDELITY.md).
+                let contents = coalMine.machine.contents
+                guard contents.isEmpty else {
+                    for junk in contents { junk.vanish() }
+                    try reply(Prose.machineGrindsToGunk)
+                }
                 try reply(Prose.machineWhirsToNoEffect)
             }
             coalMine.coal.vanish()
@@ -343,6 +359,20 @@ struct Zork1: Game, GameMain {
             river.pileOfPlastic.vanish()
             river.magicBoat.move(to: player.location)
             try reply(Prose.boatInflates)
+        }
+
+        // Patching the punctured boat. The tube of Frobozz Magic Gunk (a
+        // ``ZorkDam`` item) seals the ruined hull; the boat is a ``ZorkRiver``
+        // one, so the host bridges them — like inflating with the dam's pump.
+        // A puncture afloat is always fatal, so the wreck is only ever ashore;
+        // sealing it trades the ruin back for the seaworthy boat and spends the
+        // gunk (FIDELITY.md: the boat repair the earlier slice left unmodeled).
+        river.puncturedBoat.before(.fix) {
+            try require(command.indirectObject == dam.tube, else: Prose.fixNeedsGunk)
+            dam.tube.vanish()
+            river.puncturedBoat.vanish()
+            river.magicBoat.move(to: player.location)
+            try reply(Prose.boatPatched)
         }
 
         // Launching the boat. Its first launch point is the dam's Dam Base, so
@@ -455,7 +485,12 @@ struct Zork1: Game, GameMain {
                 wound: [Prose.trollWound1, Prose.trollWound2],
                 knockout: Prose.trollKnockout,
                 death: Prose.trollDeath),
-            onDefeat: { cellar.trollDefeated = true })
+            onDefeat: {
+                cellar.trollDefeated = true
+                // His bloody axe was `.nowhere` in his hands; now it drops to
+                // the Troll Room floor, there to be looted (FIDELITY.md).
+                cellar.axe.move(to: cellar.trollRoom)
+            })
 
         // The bar. Descending while the thief is at large throws the bolt
         // above — the slam prose's "you hear a bolt slide home" has been

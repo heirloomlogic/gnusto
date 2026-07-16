@@ -52,6 +52,20 @@ struct ZorkCellar: GameContent {
         firstSight(Prose.trollPresence)
     }
 
+    /// The troll's bloody axe. It begins ``.nowhere`` — in his hands, out of
+    /// reach while he lives — and clatters to the Troll Room floor when he falls
+    /// (his `onDefeat`, host-wired in ``Zork1``). Sharp enough to hole the river
+    /// boat, like the other blades.
+    let axe = Item {
+        name("bloody axe")
+        adjectives("bloody")
+        synonyms("axe", "ax")
+        description(Prose.axe)
+        trait(.weight, 20)
+        trait(.weapon, true)
+        trait(.sharp, true)
+    }
+
     @Global var trollDefeated = false
 
     // The thief who once haunted this cellar now roams the whole underground:

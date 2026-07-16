@@ -111,9 +111,8 @@ struct ZorkAboveGround: GameContent {
         description(Prose.upATree)
     }
 
-    /// Scenery in `forestPath`; climbing it is just the `up` exit to
-    /// `upATree` for now (see `FIDELITY.md` — a dedicated `climb` verb is
-    /// future work).
+    /// Scenery in `forestPath`. `climb tree` reaches the perch above (the
+    /// `climb` rule in this bundle's `rules`), the same place `up` leads.
     let tree = Item {
         name("large tree")
         adjectives("large", "gnarled")
@@ -325,6 +324,15 @@ struct ZorkAboveGround: GameContent {
             guard !grating.isRevealed else { try reply(Prose.leavesAlreadyMoved) }
             grating.reveal()
             try reply(Prose.leavesMoveEmbellishment)
+        }
+
+        // Climbing the tree is the `up` exit under another name — `climb tree`
+        // now reaches the perch, where before only `up` did (FIDELITY.md). The
+        // tree is scenery in `forestPath` only, so this fires just from below.
+        tree.before(.climb) {
+            player.location = upATree
+            describeSurroundings()
+            try reply("")
         }
     }
 }

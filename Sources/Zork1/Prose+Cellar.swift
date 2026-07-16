@@ -79,7 +79,13 @@ extension Prose {
         """
     static let trollDeath = """
         Your final stroke drops the troll where he stands. The body
-        sinks into the shadows of the floor and is gone.
+        sinks into the shadows of the floor, and his bloody axe
+        clatters to the stone at your feet.
+        """
+
+    static let axe = """
+        A heavy war axe, its edge notched from long use and its head
+        still dark with the troll's last argument.
         """
 
     static let trollSwipeMiss = "The troll's axe hisses over your head."

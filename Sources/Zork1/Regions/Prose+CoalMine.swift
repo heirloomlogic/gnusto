@@ -177,6 +177,13 @@ extension Prose {
         grinding and hissing. When it falls quiet, nothing whatever has changed.
         """
 
+    static let machineGrindsToGunk = """
+        The machine comes to life with a dazzle of coloured light and a racket of
+        grinding and hissing. When it falls quiet and the lid clicks, whatever you
+        put inside is gone — ground to a worthless grey slag and not worth scraping
+        out.
+        """
+
     static let gasExplosion = """
         The flame meets the coal gas, and the whole chamber goes up in a single
         white roar. There is, at least, no time to regret it.

@@ -243,6 +243,50 @@ struct Zork1CoalMineTests {
             ])
     }
 
+    /// The machine grinds anything that isn't coal to a worthless slag and loses
+    /// it (FIDELITY.md — the original's non-coal destruction, earlier left as a
+    /// no-op). Same seed-2 route to the diamond, then the diamond itself is fed
+    /// back into the machine to prove a non-coal load is destroyed. The held torch
+    /// keeps the room lit throughout.
+    @Test func theMachineGrindsNonCoalToWorthlessSlag() async throws {
+        let transcript = try await play(
+            Zork1(),
+            Self.toMineWithTorchAndScrewdriver + [
+                "west", "north", "east",  // Squeaky → Bat (garlic) → Shaft
+                "put torch in basket", "put screwdriver in basket",
+                "north", "down",  // Smelly → Gas
+                "east", "northeast", "southeast", "southwest", "down", "down",  // maze → Ladder Bottom
+                "south", "take coal", "north",  // Dead End and back
+                "up", "up", "north", "east", "south",  // Ladder Top → maze → Coal Mine 1
+                "north", "up", "south",  // Gas → Smelly → Shaft Room
+                "put coal in basket",
+                "lower basket",
+                "north", "down",  // Smelly → Gas
+                "east", "northeast", "southeast", "southwest", "down", "down",  // maze → Ladder Bottom
+                "west",  // Timber Room
+                "drop all",
+                "west",  // Drafty Room, lit by the torch in the basket
+                "take torch", "take coal", "take screwdriver",
+                "south",  // Machine Room
+                "open machine", "put coal in machine", "close machine",
+                "turn switch with screwdriver",  // the diamond is made
+                "open machine", "take diamond",
+                // Feed the diamond — a non-coal load — back in and throw the switch:
+                // the machine grinds it to nothing.
+                "put diamond in machine", "close machine",
+                "turn switch with screwdriver",
+                "open machine", "take diamond",  // gone
+            ],
+            seed: 2)
+        expectInOrder(
+            transcript,
+            [
+                "reveals a huge diamond",  // first, the coal becomes a diamond
+                "ground to a worthless grey slag",  // then the diamond is destroyed
+                "can't see any such thing",  // nothing left to take
+            ])
+    }
+
     /// A naked flame in the coal gas is fatal: carrying the lit ivory torch down
     /// into the Gas Room sets the air alight. It is the player's first death, so
     /// it is survivable — Zork's mercy sets them back in the forest.

@@ -115,6 +115,52 @@ struct Zork1RiverTests {
             ])
     }
 
+    /// A blade holes the boat on boarding; the tube of Frobozz Magic Gunk —
+    /// carried up from the Maintenance Room — seals the wreck good as new, and a
+    /// second, blade-free boarding holds (FIDELITY.md — the repair the earlier
+    /// slice left unmodeled). The route mirrors ``toInflatedBoat``, grabbing the
+    /// tube on the way past the Maintenance Room; seed 39, the recorded troll kill.
+    @Test func theTubesGunkPatchesThePuncturedBoat() async throws {
+        let transcript = try await play(
+            Zork1(),
+            [
+                "south", "east", "open window", "west", "west",
+                "take sword", "take lantern", "turn on lantern",
+                "push rug", "open trap door", "down",
+                "north", "west",
+                "attack troll", "attack troll", "attack troll",
+                "east", "east",  // → East-West Passage → Round Room
+                "north", "northeast", "east",  // → N-S Passage → Deep Canyon → Dam
+                "north", "north",  // → Dam Lobby → Maintenance Room
+                "take wrench", "take tube", "push yellow button",
+                "south", "south",  // → Dam Lobby → Dam
+                "turn bolt with wrench",  // gates open, the drain begins
+                "west",  // Reservoir South
+                "wait", "wait", "wait", "wait",
+                "wait", "wait", "wait", "wait",  // the eight-turn drain completes
+                "north", "north",  // Reservoir bed → Reservoir North
+                "take pump",
+                "south", "south",  // back across the bed → Reservoir South
+                "southeast", "east", "down",  // Deep Canyon → Dam → Dam Base
+                "inflate plastic with pump",
+                "enter boat",  // the sword is still in hand — the hull tears
+                "look",
+                "fix boat with gunk",  // the tube's gunk seals it
+                "drop sword",  // set the blade down this time
+                "enter boat",  // now the boarding holds
+                "look",
+            ],
+            seed: 39)
+        expectInOrder(
+            transcript,
+            [
+                "deflates around you",  // the puncture
+                "punctured boat",  // the wreck
+                "whole and seaworthy again",  // the patch
+                "magic boat",  // repaired; the blade-free boarding holds
+            ])
+    }
+
     /// Sit still on the river and the current does the steering — right over
     /// Aragain Falls. Drifting off the last stretch is fatal, though as a first
     /// death it is survivable: Zork sets the drowned adventurer back in the forest.

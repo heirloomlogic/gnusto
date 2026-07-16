@@ -117,6 +117,29 @@ extension Intent {
         ["pour", .directObject],
         ["pour", .directObject, "in", .indirectObject],
         ["pour", .directObject, "on", .indirectObject])
+
+    /// Climb a thing (the tree). `climb X` and `climb up/on X` all reach here;
+    /// a climbable object's own rule takes over, anything else gets the default.
+    #verb(
+        "climb",
+        ["climb", .directObject],
+        ["climb", "up", .directObject],
+        ["climb", "on", .directObject])
+
+    /// Repair something (the punctured boat, sealed with the tube's gunk).
+    #verb(
+        "fix",
+        ["fix", .directObject],
+        ["fix", .directObject, "with", .indirectObject],
+        ["repair", .directObject],
+        ["repair", .directObject, "with", .indirectObject],
+        ["patch", .directObject],
+        ["patch", .directObject, "with", .indirectObject])
+
+    /// Ask for a report on your condition — how many times you've died, and how
+    /// many times you may yet be brought back. Handled in ``Zork1`` (it reads the
+    /// host's death counter).
+    #verb("diagnose", ["diagnose"])
 }
 
 /// The game-wide verb layer: it teaches the parser every custom verb above
@@ -129,7 +152,8 @@ struct ZorkSystems: GameContent {
         [
             .give, .tie, .untie, .dig, .wave, .touch, .wind, .inflate, .deflate,
             .launch, .raise, .lower, .turnWith, .pray, .ring, .echo, .odysseus,
-            .xyzzy, .plugh, .hello, .smell, .drink, .fill, .pour,
+            .xyzzy, .plugh, .hello, .smell, .drink, .fill, .pour, .climb, .fix,
+            .diagnose,
         ]
     }
 
@@ -158,6 +182,10 @@ struct ZorkSystems: GameContent {
         action(.drink) { try reply(Prose.nothingToDrink) }
         action(.fill) { try reply(Prose.noWaterSource) }
         action(.pour) { try reply(Prose.nothingToPour) }
+        action(.climb) { try reply(Prose.verbClimbNothing) }
+        action(.fix) { try reply(Prose.verbFixNothing) }
+        // `.diagnose` has no stage-4 default here — the host answers it, since
+        // the report reads the host's death counter (see ``Zork1.actions``).
     }
 }
 

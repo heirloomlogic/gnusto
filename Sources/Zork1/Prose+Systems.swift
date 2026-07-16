@@ -51,6 +51,10 @@ extension Prose {
 
     static let verbSmell = "You smell nothing you could put a name to."
 
+    static let verbClimbNothing = "There's nothing here worth climbing. Try up or down."
+
+    static let verbFixNothing = "That doesn't need fixing, or can't be."
+
     // MARK: - Liquids
 
     static let waterSlipsAway = "The water slips between your fingers. You'll need something to hold it."
@@ -97,6 +101,25 @@ extension Prose {
         world lurches, the cold recedes, and you find yourself standing once
         more beneath the open sky, your belongings strewn about the grounds.
         """
+
+    // MARK: - Diagnose
+
+    static let diagnoseUnscathed = """
+        You are in perfect health, and — so far — entirely alive.
+        """
+
+    /// A report on how many times the adventurer has been killed and how many
+    /// resurrections the unseen power will still grant. `deaths` is at least 1.
+    static func diagnoseDeaths(_ deaths: Int, resurrectionsLeft: Int) -> String {
+        let times = deaths == 1 ? "once" : "\(deaths) times"
+        let left =
+            resurrectionsLeft == 0
+            ? "You sense you will not be spared a next time."
+            : resurrectionsLeft == 1
+                ? "You feel you could survive being killed one more time."
+                : "You feel you could survive being killed \(resurrectionsLeft) more times."
+        return "You have been killed \(times). \(left)"
+    }
 
     // MARK: - Score ranks
 

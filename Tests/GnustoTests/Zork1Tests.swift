@@ -325,6 +325,32 @@ struct Zork1Tests {
             ])
     }
 
+    @Test func theTrollDropsHisBloodyAxeToLoot() async throws {
+        // The troll kept his axe between you and every exit; felled, he drops
+        // it to the Troll Room floor, there for the taking (FIDELITY.md — the
+        // bodiless-vanish earlier left nothing to loot). Same recorded seed-39
+        // kill as the block test below.
+        let transcript = try await play(
+            Zork1(),
+            [
+                "south", "east", "open window", "west", "west",
+                "take sword", "take lantern", "turn on lantern",
+                "push rug", "open trap door", "down",
+                "north", "west",
+                "attack troll", "attack troll", "attack troll",
+                "take axe",
+                "examine axe",
+            ],
+            seed: 39)
+        expectInOrder(
+            transcript,
+            [
+                "Your final stroke drops the troll",  // the death, now with the axe
+                "Taken.",  // the axe is looted
+                "A heavy war axe",  // and it's the axe in hand
+            ])
+    }
+
     @Test func trollBlocksThePassagesUntilDefeated() async throws {
         // Seed 39, recorded (thief daemons on the clock): the troll's
         // swings graze once but never land; the sword goes miss, wound,
