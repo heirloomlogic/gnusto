@@ -94,7 +94,9 @@ struct Zork1SystemsTests {
         // items is one too many; dropping back to two lets the climb through.
         // The load is lantern + sword + knife — all non-treasures, so the
         // roaming thief has nothing to lift and the item count stays fixed
-        // without pinning a seed.
+        // without pinning a seed. The drop names the "nasty knife" in full so
+        // it stays unambiguous even when the thief wanders in with his own
+        // blade — otherwise "knife" would raise a disambiguation prompt.
         let transcript = try await play(
             Zork1(),
             [
@@ -104,7 +106,7 @@ struct Zork1SystemsTests {
                 "push rug", "open trap door", "down",
                 "south", "east", "north",
                 "up",
-                "drop knife",
+                "drop nasty knife",
                 "up",
             ])
         expectInOrder(
