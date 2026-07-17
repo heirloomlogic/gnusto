@@ -71,6 +71,26 @@ extension Prose {
         The cyclops shrugs but otherwise ignores your pitiful attempt.
         """
 
+    /// The escalating menace shown once his hunger is roused — the original's
+    /// `CYCLOMAD` table, one line per rising turn of `CYCLOWRATH`.
+    static let cyclomad = [
+        "The cyclops seems somewhat agitated.",
+        "The cyclops appears to be getting more agitated.",
+        "The cyclops is moving about the room, looking for something.",
+        """
+        The cyclops was looking for salt and pepper. No doubt they are
+        condiments for his upcoming snack.
+        """,
+        "The cyclops is moving toward you in an unfriendly manner.",
+        "You have two choices: 1. Leave  2. Become dinner.",
+    ]
+
+    static let cyclopsEatsYou = """
+        The cyclops, tired of all of your games and trickery, grabs you firmly.
+        As he licks his chops, he says "Mmm. Just like Mom used to make 'em."
+        It's nice to be appreciated.
+        """
+
     // MARK: - The maze's finds
 
     static let skeleton = """

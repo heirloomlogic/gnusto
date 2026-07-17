@@ -150,4 +150,72 @@ struct Zork1MazeTests {
                 "Cyclops Room",  // the far landmark
             ])
     }
+
+    @Test func attackingTheCyclopsWakesHisHungerAndGetsYouEaten() async throws {
+        // Steel can't beat him, but attacking rouses his hunger: from there the
+        // wrath ladder climbs one rung a turn until, on the seventh, he eats you
+        // (the original's `CYCLOWRATH` / `I-CYCLOPS`). Death is survivable, so
+        // the run resurrects rather than ending.
+        let transcript = try await play(
+            Zork1(),
+            Self.toMaze5 + [
+                "southwest", "east", "south", "southeast",  // → Cyclops Room
+                "attack cyclops", "attack cyclops", "attack cyclops",
+                "attack cyclops", "attack cyclops", "attack cyclops",
+                "attack cyclops",  // the seventh — he's had enough of you
+            ],
+            seed: 39)
+        expectInOrder(
+            transcript,
+            [
+                "Cyclops Room",
+                "shrugs but otherwise ignores your pitiful attempt",  // steel is futile
+                "The cyclops seems somewhat agitated.",  // cyclomad[0], the first rung
+                "You have two choices: 1. Leave  2. Become dinner.",  // cyclomad[5], the last
+                "Just like Mom used to make",  // he eats you
+                "you probably deserve another",  // …and you're resurrected
+            ])
+    }
+
+    @Test func disturbingTheSkeletonBanishesYourLoot() async throws {
+        // Taking the bones wakes the ghost, who curses your valuables to the
+        // Land of the Dead — all but the lamp, which is spared so light is never
+        // lost (as the death scatter spares it).
+        let transcript = try await play(
+            Zork1(),
+            Self.toMaze5 + [
+                "take bag of coins",  // something worth cursing
+                "take bones",  // desecration — the ghost appears
+                "inventory",
+            ],
+            seed: 39)
+        expectInOrder(
+            transcript,
+            [
+                "bulging with coins",  // the bag is in hand…
+                "banishes them to the Land of the Living Dead",  // …then the curse takes it
+            ])
+        let carried = turnOutput(of: "inventory", in: transcript)
+        #expect(carried.contains("lantern"))  // the lamp is spared
+        #expect(!carried.contains("coins"))  // the bag was banished
+    }
+
+    @Test func searchingOrMovingTheBonesAlsoCursesYou() async throws {
+        // The curse fires on `search` (`.lookIn`) and `move` (`.push`) too, not
+        // just `take` — so the ghost appears twice here.
+        let transcript = try await play(
+            Zork1(),
+            Self.toMaze5 + [
+                "take bag of coins",
+                "search bones",  // .lookIn — banishes the bag
+                "move bones",  // .push — nothing left to take, but he's still appalled
+            ],
+            seed: 39)
+        expectInOrder(
+            transcript,
+            [
+                "casts a curse on your valuables",  // search bones
+                "casts a curse on your valuables",  // move bones
+            ])
+    }
 }

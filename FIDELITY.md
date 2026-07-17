@@ -825,15 +825,29 @@ against `1dungeon.zil` / `1actions.zil` (`historicalsource/zork1`).
 
 ### Mechanics simplified or deferred
 
-- **The cyclops does not fight.** In the original, attacking him or lingering runs a
-  `CYCLOWRATH` counter that ends with him eating you. Here `attack` is a canned reaction and
-  the counter/eat-you timer is not modeled — the only ways past are feeding him to sleep
-  (give the lunch, then the open water bottle → he sleeps, clearing the stair up) or
-  shouting `odysseus`/`ulysses` (he flees through the east wall, opening both the stair up
-  and the shortcut east). Feeding never opens the east wall; only the rout does.
-- **The skeleton is inert scenery.** The original's disturb-the-remains curse (searching or
-  moving the bones teleports your possessions to the Land of the Living Dead) is skipped;
-  `take` is politely refused. The burned-out lantern is present as takeable junk.
+- **The cyclops's wrath is modeled (closed in the fidelity pass).** Steel still can't beat
+  him — `attack` is a canned shrug — but the attempt, like giving him the lunch that leaves
+  him desperate for a drink, now *rouses* his hunger, and from there the original's
+  `CYCLOWRATH` / `I-CYCLOPS` timer climbs one rung of the verbatim `cyclomad` ladder each turn
+  you stay, eating you on the seventh (`cyclopsRoom.afterEachTurn`, a deterministic `@Global`
+  counter — the escalation and eat-you lines are Infocom's). Both original outs still call him
+  off (each sets `cyclopsSubdued`): feed him to sleep (give the lunch, then the open water
+  bottle) or shout `odysseus`/`ulysses` (he flees through the east wall). One faithful nuance
+  restored: the timer arms **only when provoked** (attacked, or fed the lunch) — mere loitering
+  never wakes it, exactly as the original enables `I-CYCLOPS`. Feeding never opens the east
+  wall; only the rout does. Two accepted divergences remain: the original's separate
+  eyeing/gasping room-look variants aren't reproduced, and attacking a *sleeping* (fed) cyclops
+  shrugs rather than waking him (the wake-on-attack is still unmodeled).
+- **The skeleton's disturb-curse is modeled (closed in the fidelity pass).** Disturbing the
+  bones — `take`, `search` (`.lookIn`), or `move` (`.push`) — now wakes the ghost, who banishes
+  your carried valuables to the Land of the Dead and mutters off, exactly as the curse prose
+  (`Prose.skeletonLeaveItBe`, unchanged) has always described. Host-wired, since the
+  destination is a `ZorkTemple` room (`temple.landOfDead`); the scatter mirrors `onDeath()`.
+  Two divergences: **the lamp is spared** (a deliberate anti-softlock, exactly as the death
+  scatter spares it, so light is never lost to the curse — the original banishes everything),
+  and the slice's single `landOfDead` room (whose description is already the canonical Land of
+  the Living Dead text) stands in for the original's separate LAND-OF-LIVING-DEAD. The
+  burned-out lantern is present as takeable junk.
 - **The Treasure Room and Strange Passage geography is built, but the thief, his hoard, the
   silver chalice, and the Treasure Room's +25 visit award arrive in Phase 10.11.**
 
@@ -890,8 +904,9 @@ his roaming, stealing, stashing, lair defence, egg service, and death stay host-
 
 ### Mechanics still simplified or deferred
 
-- **No `CYCLOWRATH`-style eat-you timer**, consistent with 10.10; the thief simply fights in
-  his lair and is otherwise evasive.
+- **The thief has no `CYCLOWRATH`-style eat-you timer of his own**; he simply fights in his
+  lair and is otherwise evasive. (The cyclops *does* now have his wrath timer — see the
+  Phase-10.10 cyclops entry, closed in the fidelity pass.)
 - **The canary's own scoring (find 6 / case 4) and the `wind canary` → brass bauble trick are
   deferred to Phase 10.12.** This phase introduces the canary item and its intact/ruined
   state only; the canary and bauble are *not* yet in the host `scoring.treasures` roster.
@@ -1077,13 +1092,15 @@ treasures cased, and the suite's provisional seed markers are cleared. No game c
 A follow-up audit of this ledger for deferred divergences worth closing. Five low-risk,
 additive mechanics were restored — each canonical behaviour a player would actually hit,
 each touching no seed-pinned RNG stream (the new tests are additive; the whole suite stays
-green, seeds unchanged). Higher-cost items were deliberately left alone: the thief's
-held-only theft and the silver chalice's snatch-and-resteal are implemented through a shared
-`GnustoActors` steal daemon whose draw sequence every seed pin depends on, so restoring them
-would force a full re-pin; the cyclops `CYCLOWRATH` eat-you timer and the skeleton
-disturb-curse remain deferred; and the deliberately-deterministic divergences (grue, scoring
-accounting, melee table, death scatter, flood bands, Loud Room garble, river current) stay
-as documented design choices. The individual entries above are updated in place; the closures:
+green, seeds unchanged). The costlier items were left for later passes, not written off: the
+cyclops `CYCLOWRATH` timer and the skeleton disturb-curse landed in the next pass (below);
+the thief's held-only theft and the silver chalice's snatch-and-resteal run through the shared
+`GnustoActors` steal daemon that every seed pin depends on, so closing them is a larger task
+carrying a deliberate one-time re-pin (the same operation Phase 10.11 already performed on
+purpose); and the currently-deterministic divergences (grue, scoring accounting, melee table,
+death scatter, flood bands, Loud Room garble, river current) trade canonical randomness for
+seed-free transcripts and remain revisitable if that trade is later reversed. The individual
+entries above are updated in place; the closures:
 
 - **`climb` verb** — `climb tree` reaches Up a Tree (`Systems.swift`, `AboveGround.swift`).
 - **`diagnose` verb** — reports the death toll and resurrections remaining (`Zork1.swift`).
@@ -1093,3 +1110,21 @@ as documented design choices. The individual entries above are updated in place;
   `.sharp` (`Cellar.swift` axe item, `Zork1.swift` `onDefeat`, `Prose+Cellar.swift`).
 - **Boat repair** — `fix boat with gunk` patches the punctured boat with the dam's tube
   (`Zork1.swift` host-wired, `Prose+River.swift`).
+
+## Fidelity pass — the underground's teeth (post-Phase 10)
+
+A second closure pass restoring the two lethal mechanics the audit had shelved as Tier 2. Both
+bind to paths no pinned transcript takes (no test attacks the cyclops or disturbs the
+skeleton; the seed-32 walkthrough only *routs* the cyclops and never touches the bones), so
+both are additive — the full suite stays green with no seed change. The exact `CYCLOPS-FCN` /
+`CYCLOMAD` prose was transcribed from the MIT-licensed Zork I source (`1actions.zil`). The
+individual Phase-10.10 entries above are updated in place; the closures:
+
+- **Cyclops `CYCLOWRATH` wrath timer** — once provoked (attacked, or fed the lunch), his hunger
+  climbs the verbatim `cyclomad` ladder one rung a turn and eats you on the seventh; feeding him
+  the water or shouting `odysseus` calls him off. Fully `ZorkMaze`-local, deterministic, no RNG
+  (`Maze.swift` `cyclopsRoom.afterEachTurn` + `cyclopsProvoked`/`cyclopsWrath`, `Prose+Maze.swift`,
+  and the lunch arming in `Zork1.swift`'s host give-rule).
+- **Skeleton disturb-curse** — taking, searching, or moving the bones banishes your carried
+  valuables (lamp spared) to the Land of the Dead. Host-wired (`Zork1.swift` `maze.skeleton`
+  rules → `temple.landOfDead`), reusing the existing curse prose.
