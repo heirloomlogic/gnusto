@@ -170,7 +170,8 @@ struct ZorkRoundRoom: GameContent {
                 command.intent != .echo,
                 command.intent != .take
             else { return }
-            let echoed = command.rawInput.split(separator: " ").last.map(String.init)
+            let echoed =
+                command.rawInput.split(separator: " ").last.map(String.init)
                 ?? command.verbPhrase
             try refuse(Prose.loudRoomEcho(echoed))
         }
