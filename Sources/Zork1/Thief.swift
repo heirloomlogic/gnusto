@@ -46,6 +46,7 @@ struct ZorkThief: GameContent {
         description(Prose.stiletto)
         trait(.weight, 10)
         trait(.weapon, true)
+        trait(.weaponStrength, 1)  // a clumsy blade in the player's hand
         trait(.sharp, true)  // holes the river boat — see ZorkRiver
     }
 

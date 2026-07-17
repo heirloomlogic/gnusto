@@ -70,14 +70,15 @@ struct Zork1ThiefTests {
         #expect(!carried.contains("egg"))
     }
 
-    @Test func theThiefDefendsHisLair() async throws {
-        // The Treasure Room is the thief's, and he defends it. Reaching it pays
-        // 25; entering summons him home. The silver chalice can now be snatched
-        // straight from the hoard (the original's grab — no guard), but his
-        // stiletto finds you the same turn: death, then Zork's resurrection to
-        // the forest. Seed 39 (the prelude's three-blow troll kill lands on this
-        // seed): kitchen 10 + cellar 25 + Treasure Room 25 + chalice take 10 −
-        // the 10-point death toll = 60.
+    @Test func theThiefSnatchesTheChaliceBack() async throws {
+        // The Treasure Room is the thief's, and he guards the silver chalice.
+        // Reaching it pays 25; entering summons him home. The chalice can now be
+        // snatched straight from the hoard (the original's grab — no guard, +10
+        // on the find), but the thief lifts treasures back from your very hands:
+        // a turn later the chalice vanishes into his bag again, the original's
+        // snatch-and-resteal. Seed 39 (the prelude's three-blow troll kill lands
+        // on this seed): kitchen 10 + cellar 25 + Treasure Room 25 + chalice
+        // take 10 = 70; the take award stays even after he steals it back.
         let transcript = try await play(
             Zork1(),
             [
@@ -92,7 +93,7 @@ struct Zork1ThiefTests {
                 "southwest", "east", "south", "southeast",  // → Cyclops Room
                 "odysseus",  // rout the cyclops, opening the stair up
                 "up",  // Treasure Room
-                "take chalice",  // snatched — but his killing blow lands this turn
+                "take chalice",  // snatched (+10); the thief lifts it right back
                 "score",
             ],
             seed: 39)
@@ -103,9 +104,8 @@ struct Zork1ThiefTests {
                 "silver chalice, intricately engraved",  // the hoard's prize
                 "suspicious-looking individual",  // the thief, summoned to defend it
                 "Taken.",  // the chalice is snatchable now
-                "you probably deserve another",  // his stiletto kills you; resurrection
-                "Forest",  // you wake in the woods
-                "Your score is 60 of a possible 350",  // +25 lair, +10 chalice, −10 death
+                "silver chalice vanished",  // the resteal — back into his bag
+                "Your score is 70 of a possible 350",  // +25 lair, +10 chalice (kept)
             ])
     }
 }

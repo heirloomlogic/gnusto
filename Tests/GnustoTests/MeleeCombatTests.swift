@@ -3,11 +3,29 @@ import GnustoTestSupport
 import Testing
 
 @testable import Gnusto
+@testable import GnustoMeleeCombat
 
 /// `GnustoMeleeCombat`: weapon resolution, the seeded outcome table,
 /// stunning, counter-attacks, and the ledger's save round-trip. Seeds were
 /// discovered by scanning and are pinned with their recorded sequences.
 struct MeleeCombatTests {
+    /// The per-weapon table: a keener weapon whiffs less and kills more, and
+    /// the baseline (strength 2) reproduces the historic 30/70/85 table so an
+    /// undeclared weapon fights exactly as before.
+    @Test func keenerWeaponsMissLessAndKillMore() {
+        let clumsy = MeleeCombat.outcomeCutpoints(weaponStrength: 1)
+        let baseline = MeleeCombat.outcomeCutpoints(weaponStrength: 2)
+        let keen = MeleeCombat.outcomeCutpoints(weaponStrength: 3)
+        // The miss cutpoint shrinks as the blade sharpens...
+        #expect(clumsy.0 > baseline.0)
+        #expect(baseline.0 > keen.0)
+        // ...and the kill window (everything above the knockout cut) widens.
+        #expect(keen.2 < baseline.2)
+        #expect(baseline.2 < clumsy.2)
+        // The baseline is the old fixed table, unchanged.
+        #expect(baseline == (30, 70, 85))
+    }
+
     @Test func weaponGuardsRefuseBeforeAnyRoll() async throws {
         // Seed 9's dummy misses/wounds without killing for many turns, so
         // the guard refusals stay in front. The refusal lines themselves

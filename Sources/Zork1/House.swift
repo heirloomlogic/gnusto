@@ -124,6 +124,7 @@ struct ZorkHouse: GameContent {
         adjectives("elvish")
         description(Prose.sword)
         trait(.weapon, true)
+        trait(.weaponStrength, 3)  // a keen elvish blade — best of the hero's arms
         trait(.sharp, true)  // holes the river boat — see ZorkRiver
     }
 

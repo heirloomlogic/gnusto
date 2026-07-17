@@ -165,12 +165,14 @@ entry below is grouped by the task that introduced it.
   after — their regions are later phases. In the original both passages
   open onto real map. *(Updated in Phase 10.4: east now opens onto the
   East-West Passage once the troll falls; only west remains a stub.)*
-- **Combat is `GnustoMeleeCombat`'s simplified table**, not the original's
-  per-weapon melee tables: one roll per swing (miss/wound/knockout/kill at
-  fixed 30/70/85 breaks), villain answers on the end-of-turn clock, player
-  wounds never heal, and a knocked-out troll falls to the next clean blow.
-  Deterministic under a pinned seed; the transcripts record their
-  sequences.
+- **Combat reads a per-weapon table** *(closed in the fidelity pass — was a single
+  fixed table)*. One roll per swing (miss/wound/knockout/kill), but the cutpoints now
+  slide with the weapon's `.weaponStrength`: the elvish sword (keen, 3) whiffs less and
+  kills more than the nasty knife (2) or the thief's stiletto (clumsy, 1), the original's
+  per-weapon distinction. Strength 2 is the historic 30/70/85 table, so an ordinary weapon
+  fights exactly as before. The villain answers on the end-of-turn clock, player wounds
+  never heal, and a knocked-out troll falls to the next clean blow. Deterministic under a
+  pinned seed; the transcripts record their sequences.
 - **Defeat is permanent; his axe is now lootable (closed in the fidelity
   pass).** The troll still vanishes with his death line ("sinks into the
   shadows") and never recovers to block again — the original's randomized
