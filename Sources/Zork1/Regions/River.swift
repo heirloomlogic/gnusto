@@ -215,6 +215,16 @@ struct ZorkRiver: GameContent {
     /// bares the scarab; a fourth collapses the hole.
     @Global var digCount = 0
 
+    /// Turns left before the current carries the boat to the next stretch — the
+    /// continuous interrupt's countdown, reloaded on entering each stretch (and
+    /// by the host's launch rule). See the `riverCurrent` daemon and
+    /// ``driftDelay()``.
+    @Global var riverDwell = 0
+
+    /// Sets the current's countdown — used by the host's cross-bundle launch
+    /// rule, which arms the boat as it slips onto its first stretch.
+    func armCurrent(_ turns: Int) { riverDwell = turns }
+
     // MARK: - Map
 
     var map: WorldMap {
@@ -274,15 +284,15 @@ struct ZorkRiver: GameContent {
     // MARK: - Rules
 
     var rules: Rules {
-        // The current. Each river stretch, on entry, arms the drift for that
-        // stretch's dwell (see ``driftDelay()``). Paddling downstream re-enters
-        // the next room and resets the count; sitting still lets the fuse carry
-        // you on.
-        river1.onEnter { startFuse("riverDrift", after: driftDelay()) }
-        river2.onEnter { startFuse("riverDrift", after: driftDelay()) }
-        river3.onEnter { startFuse("riverDrift", after: driftDelay()) }
-        river4.onEnter { startFuse("riverDrift", after: driftDelay()) }
-        river5.onEnter { startFuse("riverDrift", after: driftDelay()) }
+        // The current. Each river stretch, on entry, reloads the drift countdown
+        // for that stretch's dwell (see ``driftDelay()``). Paddling downstream
+        // re-enters the next room and resets the count; sitting still lets the
+        // `riverCurrent` daemon carry you on.
+        river1.onEnter { riverDwell = driftDelay() }
+        river2.onEnter { riverDwell = driftDelay() }
+        river3.onEnter { riverDwell = driftDelay() }
+        river4.onEnter { riverDwell = driftDelay() }
+        river5.onEnter { riverDwell = driftDelay() }
 
         // Paddling off the end of River-5 goes over the falls, the same as
         // drifting there would.
@@ -360,12 +370,25 @@ struct ZorkRiver: GameContent {
     // MARK: - Timers
 
     var timers: [TimedEvent] {
-        // The river current. Armed on entering each stretch (and by the host's
-        // launch rule); when it fires it carries the boat — and you — one stretch
-        // downstream, then re-arms for the next. Off the last stretch there is no
-        // downstream but the falls. Draw-free: the schedule is fixed data, no RNG.
-        fuse("riverDrift", after: 4) {
+        // The river current — a continuous per-turn interrupt (the original's
+        // river clock), not a one-shot fuse. Every turn the player is afloat it
+        // counts the stretch's dwell down; at zero it carries the boat — and you
+        // — one stretch downstream and reloads the next dwell. Off the last
+        // stretch there is no downstream but the falls. Draw-free: the dwell
+        // schedule is fixed data, no RNG. The daemon sorts before the thief's,
+        // so its lines and the RNG stream are unchanged from the old fuse.
+        //
+        // Two reload sites, one turn apart in when the daemon next ticks them:
+        // a stretch entered by paddling (`onEnter`) or launch is reloaded during
+        // the command, so this same turn's tick decrements it once; a stretch
+        // reached by drifting is reloaded here, *after* this turn's tick, so it
+        // gets its first decrement next turn. Reloading to `driftDelay() - 1` on
+        // the drift path keeps the two consistent — `driftDelay() - 1` waits on
+        // every stretch either way.
+        daemon("riverCurrent", autostart: true) {
             guard player.vehicle == magicBoat, isOnRiver() else { return }
+            riverDwell -= 1
+            guard riverDwell <= 0 else { return }
             guard let next = nextRiverRoom() else {
                 // On River-5 with nowhere left downstream: over the falls.
                 try die(Prose.overTheFalls)
@@ -373,7 +396,7 @@ struct ZorkRiver: GameContent {
             magicBoat.move(to: next)
             say(Prose.currentCarriesYou)
             describeSurroundings()
-            startFuse("riverDrift", after: driftDelay())
+            riverDwell = driftDelay() - 1
         }
     }
 
@@ -397,11 +420,12 @@ struct ZorkRiver: GameContent {
         return nil
     }
 
-    /// How long to arm the drift fuse for on the stretch the player is now on.
-    /// The canonical dwell is River-1/2: 4 turns, River-3: 3, River-4: 2,
-    /// River-5: 1 — but the engine ticks a fuse on the very turn it is armed, so
-    /// arming at dwell + 1 nets the player exactly that many turns on each
-    /// stretch before the current takes them on. See `FIDELITY.md`.
+    /// How long to reload the current's countdown for on the stretch the player
+    /// is now on. The canonical dwell is River-1/2: 4 turns, River-3: 3,
+    /// River-4: 2, River-5: 1 — but a stretch entered by paddling is reloaded
+    /// during the command and so takes its first `riverCurrent` decrement that
+    /// same turn, so reloading at dwell + 1 nets the player exactly that many
+    /// turns on each stretch before the current takes them on. See `FIDELITY.md`.
     private func driftDelay() -> Int {
         let here = player.location
         if here == river1 || here == river2 { return 5 }

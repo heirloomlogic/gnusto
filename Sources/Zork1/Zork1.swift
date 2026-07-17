@@ -400,12 +400,12 @@ struct Zork1: Game, GameMain {
         // the host owns the rule; the White Cliffs, Sandy Beach and Shore
         // re-launch onto the river too, each onto its canonical stretch. You must
         // be aboard, and there has to be water under you. Launching arms the
-        // current (the drift fuse ``ZorkRiver`` declares).
+        // current (the `riverCurrent` daemon ``ZorkRiver`` declares).
         river.magicBoat.before(.launch) {
             try require(player.vehicle == river.magicBoat, else: Prose.launchNotAboard)
             let here = player.location
-            // The delay is the stretch's canonical dwell plus one — the engine
-            // ticks a fuse on the turn it's armed (see ``ZorkRiver.driftDelay``).
+            // The delay is the stretch's canonical dwell plus one — the daemon
+            // decrements it this same turn (see ``ZorkRiver.driftDelay``).
             let target: Location
             let delay: Int
             if here == dam.damBase {
@@ -422,7 +422,7 @@ struct Zork1: Game, GameMain {
             river.magicBoat.move(to: target)
             say(Prose.boatLaunches)
             describeSurroundings()
-            startFuse("riverDrift", after: delay)
+            river.armCurrent(delay)
             try reply("")  // handled — don't fall through to the stage-4 default
         }
 

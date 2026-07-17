@@ -754,14 +754,18 @@ tables and item data were verified against `1dungeon.zil` / `1actions.zil`
 
 ### Mechanics simplified or deferred
 
-- **The current is a self-rearming fuse, not a continuous interrupt.** Each stretch arms a
-  one-shot `riverDrift` fuse for that stretch's canonical dwell (River-1/2: 4 turns,
-  River-3: 3, River-4: 2, River-5: 1); when it fires it moves the boat — and its
-  passenger and cargo — one stretch down and re-arms. Because the engine ticks a fuse on
-  the very turn it is armed, the fuse is armed at **dwell + 1** so the player nets exactly
-  the canonical number of turns on each stretch. Drifting off River-5 goes over Aragain
-  Falls (fatal); `up` is always refused ("strong currents"). Draw-free — the schedule is
-  fixed data.
+- **The current is a continuous per-turn interrupt** *(closed in the fidelity pass — was a
+  self-rearming fuse)*. A `riverCurrent` daemon runs every turn the player is afloat,
+  counting the stretch's canonical dwell down (River-1/2: 4 turns, River-3: 3, River-4: 2,
+  River-5: 1) in the `riverDwell` global; at zero it moves the boat — and its passenger and
+  cargo — one stretch down and reloads the next dwell. A stretch entered by paddling is
+  reloaded during the command, so the daemon decrements it that same turn (reload at
+  **dwell + 1**); a stretch reached by drifting reloads at **dwell** on the drift path, so
+  the player nets exactly the canonical number of turns on each stretch either way. The
+  daemon sorts before the thief's, draws no RNG, and moves the boat on the same turns the
+  old fuse did, so every pinned river transcript is byte-identical. Drifting off River-5
+  goes over Aragain Falls (fatal); `up` is always refused ("strong currents"). Draw-free —
+  the schedule is fixed data.
 - **"Sharp" is a six-item trait, not a general edge test.** A new `TraitKey<Bool>.sharp`
   marks exactly the items the original enumerates as boat-punishers — the sword, the nasty
   knife, and the sceptre today; the rusty knife, the thief's stiletto (Phase 10.11), and the
