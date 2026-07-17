@@ -887,9 +887,11 @@ his roaming, stealing, stashing, lair defence, egg service, and death stay host-
   than wandering in) and the Land of the Dead. As in earlier phases the roam is a teleport
   within the set (no exit-graph awareness), and the daemon guards before it draws, so quiet
   turns burn no randomness.
-- **He steals any treasure you carry** (the full 17-item host roster), still only while it is
-  held by the player — items on the floor, in the case, or inside a container are safe. This
-  held-only simplification is unchanged from Phase 8.
+- **He lifts any treasure within reach** *(closed in the fidelity pass — was held-only)*. From
+  the full host roster, the thief's steal daemon takes a treasure from wherever it lies in the
+  room he shares with you: held in your hands, on the floor, or inside an open container he can
+  rifle (the trophy case is wired in as one). Only a shut container or another room keeps a
+  treasure safe — the original's thief, who lifts nearly anything from nearly anywhere.
 - **He ferries his takings to the hoard.** A draw-free `thiefStash` daemon deposits everything
   he carries (bar the stiletto) onto the Treasure Room floor whenever he is in the lair.
 - **He defends his lair to the death.** Entering the Treasure Room summons him home, and a
@@ -897,10 +899,12 @@ his roaming, stealing, stashing, lair defence, egg service, and death stay host-
   *only there* — evasive everywhere else. He carries the stiletto (the sixth `.sharp`
   boat-puncturer; the original's SIZE 10) and, killed, drops his whole hoard plus the
   stiletto and unbars the trap door.
-- **The silver chalice** (find 10 / case 5) sits in the Treasure Room and is **guarded**: the
-  host refuses the take while the thief lives. The original lets you snatch it and has him
-  steal it back; modeling that round-trip faithfully is deferred — a hard refusal until he
-  falls is the stand-in.
+- **The silver chalice** (find 10 / case 5) sits in the Treasure Room and is **snatchable**
+  *(closed in the fidelity pass — was hard-refused while the thief lived)*. There is no take
+  guard: you can grab it straight from the hoard (the original's snatch), but because the
+  thief now lifts treasures back from your hands and off the floor, holding it while he lives
+  is only a loan — his steal daemon takes it back on a later turn, the original's
+  snatch-and-resteal.
 - **Give the egg to the thief and he opens it cleanly.** A four-turn `thiefOpensEgg` fuse sets
   the egg open with the clockwork canary intact; you recover the opened egg among his effects
   when he dies. The service is silent (you aren't watching) and is cancelled if he dies first.

@@ -72,17 +72,22 @@ public struct ActorBehaviors: GamePlugin {
     }
 
     /// A daemon that, when `actor` shares the player's room, rolls
-    /// `chancePerTurn` and moves one random *held* item from `candidates`
-    /// into the actor's inventory, announcing it with the stolen item's
-    /// name. Candidates are host-chosen and only count while the player
-    /// holds them — the floor, a trophy case, another actor's hands are
-    /// all out of reach. The theft is announced only when the player's
-    /// room is lit: in the dark you find out when you check your pockets.
+    /// `chancePerTurn` and moves one random *reachable* item from `candidates`
+    /// into the actor's inventory, announcing it with the stolen item's name.
+    /// Like the original's thief, the actor lifts a candidate from wherever it
+    /// lies in the shared room: held by the player, on the floor, or inside an
+    /// open container listed in `containers` that is itself here (or held) —
+    /// the trophy case among them. Only another actor's hands are beyond reach.
+    /// The theft is announced only when the player's room is lit: in the dark
+    /// you find out when you check your pockets.
     ///
     /// - Parameters:
     ///   - actor: the thieving NPC.
     ///   - daemonName: the daemon's global timer name.
-    ///   - candidates: the items eligible to be stolen while held.
+    ///   - candidates: the items eligible to be stolen.
+    ///   - containers: open, co-located containers the actor may rifle (e.g.
+    ///     the trophy case). A candidate inside one is fair game when the
+    ///     container is open and shares the room (or is held).
     ///   - percent: per-turn chance of a theft, while sharing the room.
     ///   - announcement: builds the theft line from the stolen item's name.
     /// - Returns: the theft daemon, for the host's `timers` block.
@@ -90,16 +95,24 @@ public struct ActorBehaviors: GamePlugin {
         _ actor: Actor,
         daemonName: String,
         candidates: [Item],
+        containers: [Item] = [],
         chancePerTurn percent: Int = 30,
         announcement: @escaping @Sendable (String) -> String
     ) -> TimedEvent {
         daemon(daemonName, autostart: true) {
-            // Guards before any draw.
+            // Guards before any draw, so absent actors burn no randomness.
             guard let here = actor.location, player.location == here else { return }
-            let held = candidates.filter(\.isHeld)
-            guard !held.isEmpty else { return }
+            // Open containers the actor can reach into: co-located (or held)
+            // and not shut.
+            let openHere = containers.filter { ($0.isIn(here) || $0.isHeld) && $0.isOpen }
+            // Reachable candidates: held, on the floor here, or inside one of
+            // those open containers.
+            let reachable = candidates.filter { loot in
+                loot.isHeld || loot.isIn(here) || openHere.contains { $0.holds(loot) }
+            }
+            guard !reachable.isEmpty else { return }
             guard chance(percent) else { return }
-            let loot = held[random(0...held.count - 1)]
+            let loot = reachable[random(0...reachable.count - 1)]
             let name = loot.name
             loot.move(heldBy: actor)
             if player.location.isLit {

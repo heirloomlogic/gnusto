@@ -555,14 +555,11 @@ struct Zork1: Game, GameMain {
             }
         }
 
-        // The chalice is the thief's, and he guards it: no lifting it from his
-        // hoard while he lives. The chalice is a ``ZorkMaze`` item and the flag
-        // a ``ZorkThief`` one, so the host owns the guard. (The original lets
-        // you snatch it and steals it back; here it's held fast until he falls
-        // — see `FIDELITY.md`.)
-        maze.silverChalice.before(.take) {
-            try require(thief.thiefDefeated, else: Prose.chaliceGuarded)
-        }
+        // The silver chalice is snatchable straight from the thief's hoard —
+        // but he steals treasures back from your hands (and off the floor),
+        // so lifting it while he lives is only a loan: his steal daemon takes
+        // it back on a later turn, the original's snatch-and-resteal. No guard
+        // rule; the chalice is an ordinary treasure the thief happens to covet.
 
         // The living-room trophy case describes itself by whether it holds the
         // egg. The case is a ``ZorkHouse`` entity and the egg a
@@ -745,6 +742,7 @@ struct Zork1: Game, GameMain {
         actors.steals(
             thief.thief, daemonName: "thiefSteals",
             candidates: treasureRoster,
+            containers: [house.trophyCase],
             chancePerTurn: 30,
             announcement: { Prose.thiefSteals($0) })
 

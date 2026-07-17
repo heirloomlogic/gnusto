@@ -162,10 +162,4 @@ extension Prose {
         The thief is taken aback by your unexpected generosity, but accepts the
         jewel-encrusted egg and stops to admire its beauty.
         """
-
-    // Guarding the hoard.
-
-    static let chaliceGuarded = """
-        You'd be stabbed in the back first.
-        """
 }

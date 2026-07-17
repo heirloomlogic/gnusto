@@ -523,11 +523,12 @@ struct Zork1Tests {
     }
 
     @Test func theThiefStealsAndTheSwordGetsItBack() async throws {
-        // Seed 247: now that the thief roams the whole
-        // underground, a seed where he lingers in the Gallery to pick your
-        // pocket and stand for the fight is rarer — this one has him lift the
-        // painting during the loiter, then fall to the sword, dropping the loot
-        // (and his stiletto) and unbarring the trap door so the route home works.
+        // Seed 474: now that the thief roams the whole underground and lifts
+        // treasures from the floor as well as your hands, a seed where he
+        // lingers in the Gallery to pick your pocket and stand for the fight is
+        // rarer — this one has him lift the painting during the loiter, then
+        // fall to the sword, dropping the loot (and his stiletto) and unbarring
+        // the trap door so the route home works.
         let transcript = try await play(
             Zork1(),
             [
@@ -541,7 +542,7 @@ struct Zork1Tests {
                 "look", "look", "look",
                 "take painting", "west", "north", "open trap door", "up",
             ],
-            seed: 247)
+            seed: 474)
         expectInOrder(
             transcript,
             [
