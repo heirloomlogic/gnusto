@@ -431,13 +431,12 @@ has been waiting on since Phase 10.4.
 
 ### Mechanics simplified or deferred
 
-- **The Maintenance Room flood is a deterministic band model.** The blue button
-  starts a `damFlood` daemon; the water is narrated rising past the ankles
-  (turn 4), the waist (turn 8), and the neck (turn 12), and anyone still in the
-  room when it fills at turn 13 drowns, at which point the room seals (the daemon
-  stops). The original raises a continuous water level and computes drowning from
-  it; the fixed bands and 13-turn seal reproduce the player-facing arc (warned,
-  then drowned if you linger) deterministically, so no seed is needed. **Leaving
+- **The Maintenance Room flood is a continuous rising level** *(closed in the fidelity
+  pass — was a three-band model)*. The blue button starts a `damFlood` daemon; the water
+  climbs one body-part step every turn along the original's ladder — ankles, shins, knees,
+  hips, waist, chest, neck — narrated each turn, and once it tops the neck the room is full,
+  anyone still here drowns, and the room seals (the daemon stops). The level is a plain
+  deterministic counter (`floodLevel`), not a dice roll, so no seed is needed. **Leaving
   the room is the only escape** — the flood itself is not tube-pluggable (nor is
   it in the original). The tube of gunk is no longer inert, though: it now patches
   the punctured river boat (closed in the fidelity pass — see the Phase 10.9

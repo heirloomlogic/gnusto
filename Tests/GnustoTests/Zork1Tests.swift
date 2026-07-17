@@ -868,9 +868,10 @@ struct Zork1Tests {
             ])
     }
 
-    /// The blue button springs a leak; standing in the Maintenance Room as the
-    /// water climbs past ankle, waist, and neck ends in drowning — and, this
-    /// being a survivable death, resurrection in the forest.
+    /// The blue button springs a leak; standing in the Maintenance Room, the
+    /// water climbs one body-part step every turn — ankles, shins, knees, hips,
+    /// waist, chest, neck — and once it tops the neck the room is full and you
+    /// drown. This being a survivable death, you resurrect in the forest.
     @Test func theBlueButtonFloodsTheRoomAndDrownsYou() async throws {
         let transcript = try await play(
             Zork1(),
@@ -883,16 +884,21 @@ struct Zork1Tests {
                 "east", "east",
                 "north", "northeast", "east",  // → Dam
                 "north", "north",  // → Maintenance Room
-                "push blue button",  // the leak begins
-                "wait", "wait", "wait", "wait", "wait", "wait",
-                "wait", "wait", "wait", "wait", "wait", "wait",  // the water rises and closes over you
+                "push blue button",  // the leak begins (ankles this turn)
+                "wait", "wait", "wait", "wait",
+                "wait", "wait", "wait",  // shins → neck, then the water closes over you
             ],
             seed: 39)
         expectInOrder(
             transcript,
             [
+                // The level rises continuously, one step a turn.
                 "up to your ankles",
+                "up to your shins",
+                "up to your knees",
+                "up to your hips",
                 "up to your waist",
+                "up to your chest",
                 "up to your neck",
                 "drowned yourself",
                 "Forest",  // resurrection sets you down above ground

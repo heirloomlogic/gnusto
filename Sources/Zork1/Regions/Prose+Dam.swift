@@ -215,11 +215,14 @@ extension Prose {
 
     // MARK: - Flood (Maintenance Room)
 
-    static let floodAnkle = "The water level here is now up to your ankles."
-
-    static let floodWaist = "The water level here is now up to your waist."
-
-    static let floodNeck = "The water level here is now up to your neck."
+    /// The water climbs one body-part step each turn — the original's
+    /// continuously rising level, narrated every turn rather than in a few
+    /// fixed bands. `part` walks the ladder ankles → shins → knees → hips →
+    /// waist → chest → neck; once it tops the neck the room is full and you
+    /// drown.
+    static func floodRises(_ part: String) -> String {
+        "The water level here is now up to your \(part)."
+    }
 
     static let floodDrowns = """
         I'm afraid you have done drowned yourself.
