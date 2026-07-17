@@ -26,12 +26,14 @@ struct ScoringTests {
             ])
     }
 
-    @Test func reTakingAndReDepositingAreWorthless() async throws {
+    @Test func takeValueIsForKeepsButDepositValueTogglesWithTheCase() async throws {
         let transcript = try await play(
             TreasureVaultGame(),
             [
-                "take gem", "drop gem", "take gem", "score",
-                "put gem in case", "take gem", "put gem in case", "score",
+                "take gem", "drop gem", "take gem", "score",  // take pays once → 4
+                "put gem in case", "score",  // deposit credited → 10
+                "take gem", "score",  // withdrawn → deposit revoked → 4
+                "put gem in case", "score",  // re-deposited → restored → 10
                 "quit",
             ])
         expectInOrder(
@@ -39,9 +41,12 @@ struct ScoringTests {
             [
                 "Your score is 4 of a possible 10",
                 "Your score is 10 of a possible 10",
+                "Your score is 4 of a possible 10",
+                "Your score is 10 of a possible 10",
             ])
+        // Take value never doubles (re-taking a dropped gem adds nothing)...
         #expect(!transcript.contains("score is 8"))
-        #expect(!transcript.contains("score is 14"))
+        // ...and deposit value never stacks past its single 6.
         #expect(!transcript.contains("score is 16"))
     }
 

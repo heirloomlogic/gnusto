@@ -98,11 +98,11 @@ entry below is grouped by the task that introduced it.
   painting pays the original's 4 on first take and 6 on first trophy-case
   deposit; the egg pays 5 and 5 (values are data, not prose — used as-is).
   `maxScore` is 20, the sum of what this slice can score, standing in for
-  the real 350 until more treasures exist. One deliberate divergence:
-  points are award-once and never deducted — the original's in-case
-  accounting subtracts a treasure's case value when you take it back out;
-  `GnustoScoring`'s registers pay once and stay paid. The thief does not
-  rob the trophy case (his reach is held items only — see the thief entry).
+  the real 350 until more treasures exist. Scoring now models the original's
+  in-case accounting: **take** value is paid once for good, but **deposit**
+  value is credited when a treasure lands in the trophy case and debited
+  again when it is taken back out, so the score rises and falls as the hoard
+  is rearranged (`GnustoScoring`'s reversible deposit register).
 - **The lantern's fuel is deliberately tiny**: dim warning after 20 burning
   turns, dead after 25 — the original burns for hundreds. Chosen so a
   transcript test (`lanternBurnsOut`) can watch the whole arc. Turning the
@@ -1021,15 +1021,14 @@ and the reveal-on-completion trigger against `1actions.zil` (`SCORE-OBJ`/`WON-FL
 
 - **`maxScore` stays 350** (fixed in 10.2). The map and barrow are not treasures — no value, and
   the map is absent from `treasureRoster`.
-- **Award-once, never revoked — unlike the original's in-case accounting.** Original Zork adds
-  each treasure's case value *while it sits in the case* and subtracts it again on withdrawal,
-  so the displayed score rises and falls as you rearrange the hoard. Gnusto's Scoring plugin
-  awards deposit value **once** (keyed `deposit.<name>`) and never takes it back, so the score
-  only ever climbs. Consequence: a player can reach 350 before the map appears (by depositing a
-  treasure, scoring it, then withdrawing it); the map still requires all nineteen present
-  *simultaneously* at a `putIn`, and re-depositing the missing one reveals it with no double
-  score (award-once). The endgame trigger reads live contents, so it is unaffected by the
-  scoring divergence.
+- **In-case accounting modeled** *(closed in the fidelity pass — was "award-once, never
+  revoked")*. Like the original, Gnusto's Scoring plugin adds each treasure's case value while it
+  sits in the case (keyed `deposit.<name>`) and subtracts it again on withdrawal, so the
+  displayed score rises and falls as you rearrange the hoard. Take value is still paid once for
+  good. Consequence: depositing a treasure, scoring it, then withdrawing it nets zero — you can
+  no longer bank 350 by shuffling a single treasure in and out. The map requires all nineteen
+  present *simultaneously* at a `putIn`; the endgame trigger reads live case contents, so it is
+  unaffected by the deposit accounting.
 
 ### Tests
 

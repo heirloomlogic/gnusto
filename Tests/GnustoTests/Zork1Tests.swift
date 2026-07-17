@@ -276,11 +276,14 @@ struct Zork1Tests {
     }
 
     @Test func depositPaintingScoresPoints() async throws {
-        // The painting pays 4 on first take and 6 on first deposit; taking
-        // it back out and re-depositing pays nothing more. The route also
-        // banks two visit awards on the way down — the kitchen (10) and the
-        // cellar (25) — so the running totals are 39 then 45. Seed 1,
-        // recorded: the thief keeps his fingers to himself on this route.
+        // The painting pays 4 on first take and 6 on first deposit; taking it
+        // back out of the case revokes the 6 (the original's in-case
+        // accounting) and re-depositing restores it. The route also banks two
+        // visit awards on the way down — the kitchen (10) and the cellar (25)
+        // — so the totals run 39, 45, back to 39, then 45. The interleaved
+        // `score`s are meta (no turn passes), so the thief's stream is
+        // unchanged from the recorded seed-1 route, on which he keeps his
+        // fingers to himself.
         let transcript = try await play(
             Zork1(),
             [
@@ -290,7 +293,8 @@ struct Zork1Tests {
                 "south", "east", "take painting", "score",
                 "north", "up", "west",
                 "open trophy case", "put painting in trophy case", "score",
-                "take painting", "put painting in trophy case", "score",
+                "take painting", "score",
+                "put painting in trophy case", "score",
             ],
             seed: 1)
 
@@ -300,10 +304,12 @@ struct Zork1Tests {
                 "Your score is 39 of a possible 350",
                 "You put the painting in the trophy case.",
                 "Your score is 45 of a possible 350",
+                "Your score is 39 of a possible 350",  // withdrawn → deposit revoked
+                "Your score is 45 of a possible 350",  // re-deposited → restored
             ])
         let scores = transcript.components(separatedBy: "Your score is ")
-        #expect(scores.count == 4)
-        #expect(scores[3].hasPrefix("45 of a possible 350"))
+        #expect(scores.count == 5)
+        #expect(scores[4].hasPrefix("45 of a possible 350"))
     }
 
     @Test func eggScoresOnTheWayIn() async throws {
