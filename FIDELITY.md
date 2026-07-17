@@ -307,14 +307,14 @@ one). A `@Global var deaths` counts them.
   resurrection narration now carries through. The player is resurrected in
   **Forest West** (`aboveGround.forestWest`); the original's exact resurrection
   room isn't researched here, only that it's the forest.
-- **The scatter is deterministic, not random.** The original strews your
-  belongings around above-ground rooms unpredictably; this slice fixes the
-  placement instead: the **lamp always returns to the living room** (so light is
-  always recoverable), and every other carried item is dealt out one per room,
-  round-robin, across a fixed list of above-ground rooms (West of House, North
-  of House, South of House, Behind House, Forest Path, Clearing). `player.inventory`
-  is sorted by id, so the placement is stable and no RNG is drawn — a quiet,
-  reproducible turn. Revisit if the canonical randomized scatter is wanted.
+- **The scatter is random** *(closed in the fidelity pass — was a deterministic
+  round-robin)*, like the original: every carried item is flung to a random one of the
+  six above-ground rooms (West of House, North of House, South of House, Behind House,
+  Forest Path, Clearing), one `random(…)` draw apiece. The **lamp is the one exception —
+  it always returns to the living room** (so light is always recoverable), a deliberate
+  anti-softlock kept on purpose. `player.inventory` is iterated id-sorted, so only the
+  destinations vary, not the order they are drawn in; the draws mean a death carrying kit
+  is now seed-pinned in tests (the cost of the randomness).
 
 ## Phase 10.4 — Round Room hub (`Sources/Zork1/Regions/RoundRoom.swift`)
 

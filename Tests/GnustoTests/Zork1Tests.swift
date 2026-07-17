@@ -127,6 +127,10 @@ struct Zork1Tests {
     /// rather than reaching for the death prompt. UNDO still revives on the
     /// brink, and the next grue does the same thing all over again.
     @Test func lingeringInTheDarkResurrectsYou() async throws {
+        // Seed 0: the grue now rolls the dice each dark turn, so the death turn
+        // is seed-dependent — here the first dice turn (the second look) lands
+        // it. UNDO restores the RNG state along with everything else, so the
+        // re-rolled dark turn is fatal again, deterministically.
         let transcript = try await play(
             Zork1(),
             [
@@ -134,7 +138,8 @@ struct Zork1Tests {
                 "push rug", "open trap door", "down",
                 "look", "look",
                 "undo", "look", "quit",
-            ])
+            ],
+            seed: 0)
         // The descent turn: slam, pitch black, then the warning — in order.
         let descent = turnOutput(of: "down", in: transcript)
         expectInOrder(
@@ -427,7 +432,11 @@ struct Zork1Tests {
     /// Here the troll's victim was holding the sword and the (lit) lantern;
     /// after the resurrection the sword is waiting at West of House.
     @Test func deathScattersYourBelongings() async throws {
-        // Seed 1, recorded: the troll kills on the first turn in his room.
+        // Seed 1, recorded: the troll kills on the first turn in his room. The
+        // belongings now strew at random across the grounds; on this seed the
+        // sword lands on the Forest Path. The lamp is the exception — it always
+        // returns to the Living Room so light survives a death — asserted in
+        // theLampAlwaysComesHomeAfterDeath below.
         let transcript = try await play(
             Zork1(),
             [
@@ -435,9 +444,9 @@ struct Zork1Tests {
                 "take sword", "take lantern", "turn on lantern",
                 "push rug", "open trap door", "down",
                 "north",
-                // Resurrected in the forest, empty-handed. The sword scattered
-                // to West of House (the first above-ground room in the ring).
-                "east", "take sword",
+                // Resurrected in the forest, empty-handed. Fetch the sword from
+                // where the death flung it.
+                "north", "take sword",  // → Forest Path
             ],
             seed: 1)
         expectInOrder(
@@ -446,7 +455,35 @@ struct Zork1Tests {
                 "neatly removes your head",
                 "deserve another",
                 "Forest",
-                "West of House",
+                "Forest Path",
+                "Taken.",
+            ])
+    }
+
+    @Test func theLampAlwaysComesHomeAfterDeath() async throws {
+        // The one exception to the random strew: however the rest of your kit
+        // scatters, the lamp always turns up back in the Living Room, so a death
+        // in the dark can never strand you without a light (the kept
+        // anti-softlock). Seed 1, the same one-blow troll kill; walk back in
+        // through the window and the lit lamp is waiting on the floor.
+        let transcript = try await play(
+            Zork1(),
+            [
+                "south", "east", "open window", "west", "west",
+                "take sword", "take lantern", "turn on lantern",
+                "push rug", "open trap door", "down",
+                "north",
+                // Resurrected in the forest; return to the Living Room for the lamp.
+                "east", "south", "east", "west", "west",  // → Kitchen → Living Room
+                "take lantern",
+            ],
+            seed: 1)
+        expectInOrder(
+            transcript,
+            [
+                "deserve another",  // the resurrection
+                "Living Room",
+                "brass lantern",  // waiting on the floor, right where a death always leaves it
                 "Taken.",
             ])
     }

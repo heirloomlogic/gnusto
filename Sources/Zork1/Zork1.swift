@@ -137,32 +137,30 @@ struct Zork1: Game, GameMain {
 
     /// Zork's canonical resurrection. The first two deaths are survivable: the
     /// player loses ten points, their belongings scatter across the grounds
-    /// above (the lamp always turns up in the living room), and they wake in
-    /// the forest. The third death is final — it falls through to the engine's
-    /// banner and RESTART / RESTORE / UNDO / QUIT prompt. Runs inside the live
-    /// turn, after the death message has printed, so it can teleport, dock the
-    /// score, and move items just as a rule would (FIDELITY.md: the original's
-    /// randomized scatter is modeled as a deterministic round-robin here).
+    /// above, and they wake in the forest. The third death is final — it falls
+    /// through to the engine's banner and RESTART / RESTORE / UNDO / QUIT
+    /// prompt. Runs inside the live turn, after the death message has printed,
+    /// so it can teleport, dock the score, and move items just as a rule would.
     func onDeath() -> DeathOutcome {
         deaths += 1
         guard deaths < 3 else { return .fallThrough }
         scoring.penalize(10)
 
-        // The lamp finds its way back to the living room; everything else
-        // scatters, one item per above-ground room, cycling if you were
-        // carrying more than the grounds have rooms.
+        // Belongings strew unpredictably across the grounds — the original's
+        // random scatter, one draw per item. The lamp is the kept exception: it
+        // always turns up in the living room, so light is never lost to a death
+        // (a deliberate anti-softlock). Iterate a stable id-sorted snapshot so
+        // only the destination draws vary, not the order they are drawn in.
         let scatter = [
             aboveGround.westOfHouse, aboveGround.northOfHouse,
             aboveGround.southOfHouse, aboveGround.behindHouse,
             aboveGround.forestPath, aboveGround.clearingEast,
         ]
-        var next = 0
         for item in player.inventory {
             if item == house.lantern {
                 item.move(to: house.livingRoom)
             } else {
-                item.move(to: scatter[next % scatter.count])
-                next += 1
+                item.move(to: scatter[random(0...(scatter.count - 1))])
             }
         }
 
