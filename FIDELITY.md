@@ -1101,15 +1101,10 @@ treasures cased, and the suite's provisional seed markers are cleared. No game c
 A follow-up audit of this ledger for deferred divergences worth closing. Five low-risk,
 additive mechanics were restored — each canonical behaviour a player would actually hit,
 each touching no seed-pinned RNG stream (the new tests are additive; the whole suite stays
-green, seeds unchanged). The costlier items were left for later passes, not written off: the
-cyclops `CYCLOWRATH` timer and the skeleton disturb-curse landed in the next pass (below);
-the thief's held-only theft and the silver chalice's snatch-and-resteal run through the shared
-`GnustoActors` steal daemon that every seed pin depends on, so closing them is a larger task
-carrying a deliberate one-time re-pin (the same operation Phase 10.11 already performed on
-purpose); and the currently-deterministic divergences (grue, scoring accounting, melee table,
-death scatter, flood bands, Loud Room garble, river current) trade canonical randomness for
-seed-free transcripts and remain revisitable if that trade is later reversed. The individual
-entries above are updated in place; the closures:
+green, seeds unchanged). The costlier items landed in the two passes below: the cyclops
+`CYCLOWRATH` timer and the skeleton disturb-curse (Tier 2), then the theft, determinism, and
+structural divergences (Tier 3). The individual entries above are updated in place; the
+closures:
 
 - **`climb` verb** — `climb tree` reaches Up a Tree (`Systems.swift`, `AboveGround.swift`).
 - **`diagnose` verb** — reports the death toll and resurrections remaining (`Zork1.swift`).
@@ -1137,3 +1132,46 @@ individual Phase-10.10 entries above are updated in place; the closures:
 - **Skeleton disturb-curse** — taking, searching, or moving the bones banishes your carried
   valuables (lamp spared) to the Land of the Dead. Host-wired (`Zork1.swift` `maze.skeleton`
   rules → `temple.landOfDead`), reusing the existing curse prose.
+
+## Fidelity pass — the deferred divergences reversed (Tier 3, post-Phase 10)
+
+The final closure pass, reversing the divergences the earlier audit had ruled "won't fix."
+Every remaining deferred item was restored to canon. Ten mechanics, in two groups.
+
+The **RNG-free** group touches no seeded stream, so the suite stayed green with no re-pin:
+
+- **Two-step Stone Barrow** — you reach the barrow, then step *west*/*in* to a second Inside
+  the Barrow room that wins (`AboveGround.swift` `insideBarrow`, `Zork1.swift` `onEnter`).
+- **In-case scoring** — deposit value is credited into the case and debited on withdrawal, so
+  the score rises and falls (`GnustoScoring`'s reversible `cased` register).
+- **Red-hot bell** — the bell's examine text glows red while `bellHot` (`Temple.swift`
+  `bell.describe`); the 20-turn auto-cool anti-softlock is kept on purpose.
+- **Continuous flood** — the Maintenance Room water climbs a body-part ladder one step a turn
+  (ankles → neck → drown) instead of three fixed bands (`Dam.swift` `damFlood`).
+- **Loud Room SACREDBIT + read-loop** — the platinum bar carries its own take-lock and every
+  other command echoes the last word (`RoundRoom.swift`).
+- **River current** — a continuous per-turn `riverCurrent` daemon carries the boat, not a
+  self-rearming fuse; byte-identical to the old timing (`River.swift`).
+
+The **RNG-touching** group deliberately re-accepts randomness — the reverse of the
+determinism-for-seed-freedom trade — so each carried a scoped, one-time re-pin (the Phase
+10.11 operation), done incrementally as each landed:
+
+- **Full theft fidelity** — the thief lifts treasures from your hands, the floor, or an open
+  container (the trophy case); the silver chalice is snatchable and he steals it back
+  (`GnustoActors` `steals` widened, `Zork1.swift` chalice guard dropped). Re-pinned the two
+  thief-route tests and rebuilt the `GnustoActors` theft unit test.
+- **Per-weapon melee** — `.weaponStrength` slides the outcome cutpoints so the elvish sword
+  outclasses the knife and stiletto; strength 2 is the old 30/70/85 table
+  (`GnustoMeleeCombat`). Only the chalice-lair test re-pinned.
+- **Dice grue** — after the guaranteed warning and a grace turn, each dark turn rolls
+  `chance(lethality)` (`GnustoDangerousDark`, 50% in Zork 1). The first-turn warning is the
+  kept anti-softlock. Re-pinned the dark-lingering tests.
+- **Random death scatter** — belongings strew to random above-ground rooms; the lamp still
+  returns to the Living Room (`Zork1.swift` `onDeath`, kept anti-softlock). Re-pinned the two
+  scatter tests.
+
+The 350-point seed-32 walkthrough is unaffected throughout: it never dies, never lingers in
+the dark, and its troll/thief kills survive the new tables. Anti-softlock guards kept by
+explicit decision: the grue's first-turn warning, the lamp sparing (scatter), and the bell's
+auto-cool.
