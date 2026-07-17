@@ -1,73 +1,78 @@
-/// Placeholder prose for the house interior (``ZorkHouse``): kitchen, living
-/// room, attic, and the cellar the trap door drops into, plus the lantern's
-/// fuel-state lines. See `Prose.swift` for the names-vs-prose ledger rule.
+/// Original Zork I prose for the house interior (``ZorkHouse``): kitchen,
+/// living room, attic, and the cellar the trap door drops into, plus the
+/// lantern's fuel-state lines. Transcribed from the MIT-licensed historical
+/// Zork source — see `THIRD_PARTY_NOTICES` at the repo root.
 extension Prose {
     // MARK: - House: interior
 
     static let kitchen = """
-        You are in the house's kitchen, plain cabinets lining one wall. A
-        window looks out to the east, and a dark stairway leads up. A
-        doorway to the west opens into another room.
+        You are in the kitchen of the white house. A table seems to have
+        been used recently for the preparation of food. A passage leads to
+        the west and a dark staircase can be seen leading upward. A dark
+        chimney leads down and to the east is a small window which is
+        slightly ajar.
         """
 
     static let kitchenWindow = """
-        A window, its lower sash sitting unevenly and slightly ajar in the
-        frame — enough of a gap to squeeze through.
+        The window is slightly ajar, but not enough to allow entry.
         """
 
-    static let sack = "A brown paper sack, rolled shut at the top."
+    static let sack = "On the table is an elongated brown sack, smelling of hot peppers."
 
     static let garlic = "A single clove of garlic, papery and pungent."
 
-    static let lunch = "A hot meal, wrapped and still faintly warm."
+    static let lunch = "A hot pepper sandwich is here."
 
     static let bottle = """
-        A clear glass bottle, corked, with something sloshing inside it.
+        A bottle is sitting on the table.
         """
 
     static let water = "A quantity of ordinary water."
 
     static let livingRoom = """
-        You are in the living room. A thick oriental rug covers much of
-        the floor, and a heavy trophy case stands against one wall. A
-        doorway leads east back to the kitchen, and a stairway climbs to
-        an attic.
+        You are in the living room. There is a doorway to the east, a
+        wooden door with strange gothic lettering to the west, which
+        appears to be nailed shut, a trophy case, and a large oriental rug
+        in the center of the room.
         """
 
     static let lanternOff = """
-        A sturdy brass lantern, its glass chimney clean. It is switched
-        off.
+        The lamp is turned off.
         """
 
     static let lanternOn = """
-        A sturdy brass lantern, burning with a steady white light.
+        The lamp is on.
         """
 
     static let lanternDim = """
-        The flame inside the lantern shrinks and takes on an orange cast.
-        It won't burn much longer.
+        The lamp appears a bit dimmer.
         """
 
-    static let lanternDies = "The brass lantern flickers and goes out."
+    static let lanternDies = "You'd better have more light than from the brass lantern."
 
     static let lanternSpent = """
-        The lantern is burned out; no amount of switch-flicking will
-        bring it back.
+        A burned-out lamp won't light.
         """
 
     static let sword = """
-        An elvish sword, its blade etched with fine, faded runes.
+        Above the trophy case hangs an elvish sword of great antiquity.
         """
 
     static let rug = "A thick, dusty oriental rug, heavy enough to take some effort to move."
 
-    static let rugMoveEmbellishment = "Dragging the rug aside reveals a trap door beneath it."
+    static let rugMoveEmbellishment = """
+        With a great effort, the rug is moved to one side of the room, \
+        revealing the dusty cover of a closed trap door.
+        """
 
-    static let rugAlreadyMoved = "The rug has already been dragged aside."
+    static let rugAlreadyMoved = """
+        Having moved the carpet previously, you find it impossible to move \
+        it again.
+        """
 
     static let trapDoor = "A stout wooden trap door, set into the floorboards."
 
-    static let trapDoorSlam = "The trap door swings shut, and you hear a bolt slide home above you."
+    static let trapDoorSlam = "The trap door crashes shut, and you hear someone barring it."
 
     static let trophyCaseEmpty = "A glass-fronted trophy case, empty for now."
 
@@ -76,18 +81,16 @@ extension Prose {
     }
 
     static let attic = """
-        You are in a cramped attic under the sloped roof. A coil of rope
-        lies in one corner, and a nasty-looking knife rests nearby. A
-        stairway leads back down.
+        This is the attic. The only exit is a stairway leading down.
         """
 
-    static let rope = "A long coil of sturdy rope."
+    static let rope = "A large coil of rope is lying in the corner."
 
-    static let knife = "A nasty-looking knife, its edge notched but still sharp."
+    static let knife = "On a table is a nasty-looking knife."
 
     static let cellar = """
-        You are in a low, dirt-floored cellar. A passage leads off to the
-        north, and a crawlway opens to the south. The trap door you came
-        through is set into the ceiling above.
+        You are in a dark and damp cellar with a narrow passageway leading
+        north, and a crawlway to the south. On the west is the bottom of a
+        steep metal ramp which is unclimbable.
         """
 }

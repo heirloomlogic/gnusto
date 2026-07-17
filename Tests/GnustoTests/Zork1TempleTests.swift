@@ -73,13 +73,13 @@ struct Zork1TempleTests {
             transcript,
             [
                 "Dome Room",
-                "climb without a rope",  // domeNoRope
-                "fast to the stone railing",  // ropeTied
+                "fracturing many bones",  // domeNoRope
+                "comes within ten feet of the floor",  // ropeTied
                 "Torch Room",
                 "Egyptian Room",
                 "Opening the gold coffin reveals a sceptre.",
                 "Altar",
-                "haven't a prayer of getting it down there",  // coffinTooHeavy
+                "haven't a prayer of getting the coffin down there",  // coffinTooHeavy
                 "the temple dissolves around you",  // prayerAnswered
                 "Forest",
             ])
@@ -113,7 +113,7 @@ struct Zork1TempleTests {
                 "Altar",
                 "Cave",
                 "Entrance to Hades",
-                "some cold force at the gate",  // hadesGateBlocked
+                "invisible force prevents you from passing",  // hadesGateBlocked
             ])
     }
 
@@ -136,10 +136,10 @@ struct Zork1TempleTests {
             transcript,
             [
                 "Entrance to Hades",
-                "drops from your hand",  // bellRingRedHot
-                "flares alight in your hand",  // matchStrikes
-                "hold the frozen",  // candlesLitForRitual
-                "whole host of them is gone",  // spiritsBanished
+                "becomes red hot and falls to the ground",  // bellRingRedHot
+                "matches starts to burn",  // matchStrikes
+                "flames flicker wildly and appear to dance",  // candlesLitForRitual
+                "flee through the walls",  // spiritsBanished
                 "Land of the Dead",
                 "Taken.",  // the crystal skull
             ])
@@ -158,8 +158,8 @@ struct Zork1TempleTests {
         expectInOrder(
             transcript,
             [
-                "drops from your hand",  // the bell rung
-                "take up their jeering at the gate once more",  // exorcismLapses
+                "becomes red hot and falls to the ground",  // the bell rung
+                "resume their hideous jeering",  // exorcismLapses
             ])
     }
 
@@ -174,9 +174,9 @@ struct Zork1TempleTests {
         expectInOrder(
             transcript,
             [
-                "drops from your hand",  // rung
-                "burn your hand to the bone",  // bellTooHotToTake
-                "cooled enough to handle again",  // bellCools
+                "becomes red hot and falls to the ground",  // rung
+                "very hot and cannot be taken",  // bellTooHotToTake
+                "appears to have cooled down",  // bellCools
                 "Taken.",  // now it can be picked up
             ])
     }
@@ -200,8 +200,8 @@ struct Zork1TempleTests {
         expectInOrder(
             transcript,
             [
-                "candles catch and burn",  // candlesLit
-                "draught in the cave snuffs your candles out",  // candlesSnuffedByDraft
+                "The candles are lit",  // candlesLit
+                "gust of wind blows out your candles",  // candlesSnuffedByDraft
                 "Cave",
             ])
     }
@@ -219,8 +219,8 @@ struct Zork1TempleTests {
             ],
             seed: 0)
         // Five matches flare; the sixth strike finds the book empty.
-        let strikes = transcript.components(separatedBy: "flares alight")
+        let strikes = transcript.components(separatedBy: "matches starts to burn")
         #expect(strikes.count == 6)
-        #expect(transcript.contains("not a single match is left"))
+        #expect(transcript.contains("run out of matches"))
     }
 }

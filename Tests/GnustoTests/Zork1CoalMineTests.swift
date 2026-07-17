@@ -107,7 +107,7 @@ struct Zork1CoalMineTests {
     }
 
     /// The vampire bat holds its nose while the garlic is in hand: the Bat Room
-    /// is passed through to the Shaft Room without a Fweep. The basket there is
+    /// is passed through to the Shaft Room ungrabbed. The basket there is
     /// fastened to its chain and can't be taken.
     @Test func garlicWardsOffTheBat() async throws {
         let transcript = try await play(
@@ -119,7 +119,7 @@ struct Zork1CoalMineTests {
                 "take basket",
             ],
             seed: 2)
-        expectInOrder(transcript, ["Bat Room", "Shaft Room", "fastened securely"])
+        expectInOrder(transcript, ["Bat Room", "Shaft Room", "securely fastened"])
         #expect(!transcript.contains("Fweep"))
     }
 
@@ -144,14 +144,14 @@ struct Zork1CoalMineTests {
             ],
             seed: 2)
         // The bat seizes you on entry, so the Bat Room never gets to describe
-        // itself — the Fweep replaces the room, and seed 2 drops you at the
-        // Mine Entrance.
+        // itself — the grab-and-lift replaces the room, and seed 2 drops you at
+        // the Mine Entrance.
         expectInOrder(
             transcript,
             [
                 "Squeaky Room",
-                "Fweep",
-                "carries you off",
+                "grabs you by the scruff",
+                "lifts you away",
                 "Mine Entrance",
             ])
     }
@@ -176,7 +176,7 @@ struct Zork1CoalMineTests {
             transcript,
             [
                 "Timber Room",
-                "too narrow to squeeze through",  // the refusal
+                "cannot fit through this passage",  // the refusal
                 "Dropped",  // the load goes down
                 "It is pitch black",  // and the crack opens — into the dark Drafty Room
             ])
@@ -230,15 +230,15 @@ struct Zork1CoalMineTests {
         expectInOrder(
             transcript,
             [
-                "The basket drops away down the shaft",
+                "lowered to the bottom of the shaft",
                 "Drafty Room",  // lit past the crack — the torch in the basket
                 "In the basket is a small pile of coal",  // visible, so the room is lit
                 "Machine Room",
                 "far too large",  // the machine can't be carried
-                "wants some slender tool",  // the torch won't throw the switch
-                "something hard and bright rattles inside",  // the transmutation
+                "turn it on with your bare hands",  // the torch won't throw the switch
+                "colored lights and bizarre noises",  // the transmutation
                 "reveals a huge diamond",
-                "draws the basket back up",
+                "raised to the top of the shaft",
                 "Your score is 77 of a possible 350",
             ])
     }
@@ -282,8 +282,8 @@ struct Zork1CoalMineTests {
             transcript,
             [
                 "reveals a huge diamond",  // first, the coal becomes a diamond
-                "ground to a worthless grey slag",  // then the diamond is destroyed
-                "can't see any such thing",  // nothing left to take
+                "put the huge diamond in the machine",  // the non-coal load, fed back in
+                "can't see any such thing",  // then it is destroyed — nothing left to take
             ])
     }
 
@@ -303,8 +303,8 @@ struct Zork1CoalMineTests {
             transcript,
             [
                 "Gas Room",
-                "white roar",  // the explosion
-                "takes pity on you",  // the resurrection
+                "carrying flaming objects",  // the explosion
+                "deserve another",  // the resurrection
                 "Forest",
             ])
         #expect(!transcript.contains("Would you like to RESTART"))

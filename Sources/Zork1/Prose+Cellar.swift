@@ -1,14 +1,15 @@
-/// Placeholder prose for the cellar region (``ZorkCellar``): East of Chasm,
+/// Original Zork I prose for the cellar region (``ZorkCellar``): East of Chasm,
 /// the Gallery and its painting, the Studio and its chimney, the Troll Room,
-/// and the two villains who work the region — the troll and the reduced
-/// thief. See `Prose.swift` for the names-vs-prose ledger rule.
+/// and the two villains who work the region — the troll and the thief. These
+/// are the authentic Zork I texts, reused under license; see THIRD_PARTY_NOTICES
+/// at the repo root.
 extension Prose {
     // MARK: - Cellar region
 
     static let eastOfChasm = """
-        You stand at the east edge of a chasm whose floor, if it has one,
-        is lost in the dark below. A passage climbs back north toward
-        the cellar, and another leads east.
+        You are on the east edge of a chasm, the bottom of which cannot be
+        seen. A narrow passage goes north, and the path you are on continues
+        to the east.
         """
 
     static let chasm = """
@@ -17,30 +18,31 @@ extension Prose {
         """
 
     static let gallery = """
-        This room was once a gallery: picture hooks and pale rectangles
-        mark the walls where art used to hang. Daylight filters in from
-        somewhere high above. Openings lead west and north.
+        This is an art gallery. Most of the paintings have been stolen by
+        vandals with exceptional taste. The vandals left through either the
+        north or west exits.
         """
 
     static let paintingFirstSight = """
-        One painting still hangs here, overlooked or abandoned — clearly
-        the work of a master.
+        Fortunately, there is still one chance for you to be a vandal, for on
+        the far wall is a painting of unparalleled beauty.
         """
 
     static let painting = """
-        A landscape in oils, luminous even under its coat of dust. It
-        must be worth a fortune.
+        A painting by a neglected genius is here.
         """
 
     static let studio = """
-        This cramped room was an artist's studio, its floor and walls
-        stained with old paint. A dark, sooty chimney climbs up one
-        wall; the only other way out is a doorway south.
+        This appears to have been an artist's studio. The walls and floors are
+        splattered with paints of 69 different colors. Strangely enough, nothing
+        of value is hanging here. At the south end of the room is an open door
+        (also covered with paint). A dark and narrow chimney leads up from a
+        fireplace; although you might be able to get up it, it seems unlikely
+        you could get back down.
         """
 
     static let chimney = """
-        The chimney is narrow, but the soot-blackened brick offers
-        plenty of holds. It looks climbable — upward, at least.
+        The chimney leads upward, and looks climbable.
         """
 
     // MARK: - The Troll Room
@@ -49,38 +51,34 @@ extension Prose {
     // are fair game; Infocom's sentences are not.
 
     static let trollRoom = """
-        A low, foul-smelling chamber of rough stone. Passages lead east
-        and west, and the way south climbs back toward the cellar. Deep
-        gouges in the walls were not made by anything friendly.
+        This is a small room with passages to the east and south and a
+        forbidding hole leading west. Bloodstains and deep scratches
+        (perhaps made by an axe) mar the walls.
         """
 
     static let troll = """
-        A mountain of gristle and bad temper, keeping his axe between
-        you and everywhere you might want to go.
+        A nasty-looking troll, brandishing a bloody axe, blocks all passages
+        out of the room.
         """
 
     static let trollPresence = """
-        A troll stands square in the middle of the room, axe up, daring
-        you to try a passage.
+        A nasty-looking troll, brandishing a bloody axe, blocks all passages
+        out of the room.
         """
 
     static let trollBlocksTheWay = """
-        The troll plants himself in your path, axe raised. Nobody is
-        going that way while he stands.
+        The troll fends you off with a menacing gesture.
         """
 
-    static let trollMiss1 = "Your blade whistles past the troll's ear; he doesn't blink."
-    static let trollMiss2 = "The troll turns your swing aside with the flat of his axe."
-    static let trollWound1 = "You open a gash along the troll's arm. He notices."
-    static let trollWound2 = "Your blade bites the troll's shoulder; he bellows."
+    static let trollMiss1 = "Your sword misses the troll by an inch."
+    static let trollMiss2 = "A good slash, but it misses the troll by a mile."
+    static let trollWound1 = "The troll is struck on the arm; blood begins to trickle down."
+    static let trollWound2 = "The troll receives a deep gash in his side."
     static let trollKnockout = """
-        The pommel catches the troll square on the skull, and he sits
-        down hard, eyes crossing.
+        The troll is battered into unconsciousness.
         """
     static let trollDeath = """
-        Your final stroke drops the troll where he stands. The body
-        sinks into the shadows of the floor, and his bloody axe
-        clatters to the stone at your feet.
+        The troll takes a fatal blow and slumps to the floor dead.
         """
 
     static let axe = """
@@ -88,11 +86,10 @@ extension Prose {
         still dark with the troll's last argument.
         """
 
-    static let trollSwipeMiss = "The troll's axe hisses over your head."
-    static let trollSwipeWound = "The troll's axe grazes you, and it is not a light graze."
+    static let trollSwipeMiss = "The troll swings his axe, but it misses."
+    static let trollSwipeWound = "The axe gets you right in the side. Ouch!"
     static let trollKillsYou = """
-        The axe comes around one last time, and the argument is settled
-        the troll's way.
+        The troll neatly removes your head.
         """
 
     // MARK: - The thief
@@ -103,43 +100,42 @@ extension Prose {
     // him, and bars the trap door from below. See `FIDELITY.md`.
 
     static let thief = """
-        A lean figure in patched leather, hands never quite still. His
-        eyes have already priced everything you carry.
+        The thief is a slippery character with beady eyes that flit back
+        and forth. He carries, along with an unmistakable arrogance, a large bag
+        over his shoulder and a vicious stiletto, whose blade is aimed
+        menacingly in your direction. I'd watch out if I were you.
         """
 
     static let thiefPresence = """
-        A shadowy figure leans against the wall here, idly rolling
-        something small and probably yours across his knuckles.
+        There is a suspicious-looking individual, holding a large bag, leaning
+        against one wall. He is armed with a deadly stiletto.
         """
 
     static let thiefArrives = "A shadowy figure slips into the room."
     static let thiefLeaves = "The shadowy figure melts away into the dark."
 
     static func thiefSteals(_ name: String) -> String {
-        "A feather-light touch at your pack — and the \(name) is gone."
+        "You suddenly notice that the \(name) vanished."
     }
 
     static let trapDoorBarred = """
-        You push, but the trap door doesn't give. Someone above has
-        made very sure of the bolt.
+        The trap door crashes shut, and you hear someone barring it.
         """
 
-    static let thiefMiss1 = "The thief sways aside; your blade finds only air."
-    static let thiefMiss2 = "Your swing tangles in the thief's cloak and comes back empty."
-    static let thiefWound1 = "You nick the thief's arm; his smile thins."
-    static let thiefWound2 = "Your blade draws a red line across the thief's ribs."
+    static let thiefMiss1 = "Your sword misses the thief by an inch."
+    static let thiefMiss2 = "A good slash, but it misses the thief by a mile."
+    static let thiefWound1 = "The thief is struck on the arm; blood begins to trickle down."
+    static let thiefWound2 = "The thief receives a deep gash in his side."
     static let thiefKnockout = """
-        The flat of your blade cracks against the thief's temple, and
-        he folds up with unexpected grace.
+        The thief is battered into unconsciousness.
         """
     static let thiefDeath = """
-        The thief drops without a sound, and the shadows he favored
-        take him for good.
+        The thief takes a fatal blow and slumps to the floor dead.
         """
 
     static let thiefLootScatters = """
-        His satchel bursts as he falls, scattering his takings at your
-        feet.
+        As the thief dies, the power of his magic decreases, and his
+        treasures reappear:
         """
 
     // The thief's own weapon and, in his lair, his counter-attacks — he fights
@@ -150,11 +146,10 @@ extension Prose {
         point — the thief's own, and quick.
         """
 
-    static let thiefSwipeMiss = "The thief's stiletto flickers past your throat, a hair too wide."
-    static let thiefSwipeWound = "The stiletto darts in and out, and a warm line opens along your arm."
+    static let thiefSwipeMiss = "The thief stabs nonchalantly with his stiletto and misses."
+    static let thiefSwipeWound = "A quick thrust pinks your left arm, and blood starts to trickle down."
     static let thiefKillsYou = """
-        The stiletto finds the gap it was looking for, and the shadows close
-        over you for good.
+        Finishing you off, the thief inserts his blade into your heart.
         """
 
     // Giving things to the thief.
@@ -164,15 +159,13 @@ extension Prose {
         it vanish somewhere about his person.
         """
     static let thiefTakesEgg = """
-        The thief examines the jewel-encrusted egg with a connoisseur's eye,
-        then slips it away with a knowing smile. He seems to think he can do
-        something with it that you couldn't.
+        The thief is taken aback by your unexpected generosity, but accepts the
+        jewel-encrusted egg and stops to admire its beauty.
         """
 
     // Guarding the hoard.
 
     static let chaliceGuarded = """
-        The thief's eyes never leave the chalice. You'll not get near it while
-        he still draws breath.
+        You'd be stabbed in the back first.
         """
 }

@@ -88,7 +88,7 @@ struct Zork1RiverTests {
                 "Frigid River",
                 "Sandy Beach",
                 "Sandy Cave",
-                "jewelled scarab",  // the third dig reveals it
+                "scarab here in the sand",  // the third dig reveals it
                 "Your score is 50 of a possible 350",
             ])
         // A successful launch must not fall through to the stage-4 default.
@@ -109,7 +109,7 @@ struct Zork1RiverTests {
         expectInOrder(
             transcript,
             [
-                "deflates around you",  // the puncture
+                "punctured the boat",  // the puncture
                 "Dam Base",  // still ashore, not adrift
                 "punctured boat",  // the wreck is what's left
             ])
@@ -154,9 +154,9 @@ struct Zork1RiverTests {
         expectInOrder(
             transcript,
             [
-                "deflates around you",  // the puncture
+                "punctured the boat",  // the puncture
                 "punctured boat",  // the wreck
-                "whole and seaworthy again",  // the patch
+                "boat is repaired",  // the patch
                 "magic boat",  // repaired; the blade-free boarding holds
             ])
     }
@@ -176,7 +176,7 @@ struct Zork1RiverTests {
             transcript,
             [
                 "Frigid River",
-                "sweeps over the lip",  // the drowning (text wraps after "lip of")
+                "bottom of waterfalls",  // the drowning — over Aragain Falls
                 "Forest",  // the resurrection
             ])
         #expect(!transcript.contains("Would you like to RESTART"))
@@ -232,9 +232,9 @@ struct Zork1RiverTests {
             transcript,
             [
                 "End of Rainbow",
-                "walk on light",  // the crossing refused while the rainbow is ordinary
-                "turns solid",  // the sceptre wakes it
-                "winks into being",  // the pot of gold
+                "walk on water vapor",  // the crossing refused while the rainbow is ordinary
+                "become solid",  // the sceptre wakes it
+                "shimmering pot of gold",  // the pot of gold
                 "On the Rainbow",
                 "Aragain Falls",
                 "Your score is 54 of a possible 350",
@@ -262,7 +262,7 @@ struct Zork1RiverTests {
                 "Rocky Ledge",
                 "Canyon Bottom",
                 "End of Rainbow",
-                "walk on light",  // the un-woken rainbow
+                "walk on water vapor",  // the un-woken rainbow
                 "Canyon Bottom",  // and the climb back up
                 "Rocky Ledge",
                 "Canyon View",

@@ -30,9 +30,9 @@ import Testing
 /// **light handoff** to the permanent ivory torch keeps it from ever burning
 /// out. The final treasure cased, the map appears and the barrow opens.
 ///
-/// Assertions anchor only on room names, event lines and score checkpoints —
-/// never on placeholder prose bodies — so the later verbatim-Infocom text swap
-/// stays a mechanical edit that won't break this test.
+/// Assertions anchor on room names, score checkpoints, and a handful of key
+/// event lines (the two deaths, the map whisper, the barrow epilogue) — now
+/// carrying the original Zork I text; see `THIRD_PARTY_NOTICES`.
 struct Zork1WalkthroughTests {
     /// The pinned seed (see the type doc): the lowest that wins this route.
     static let seed: UInt64 = 32
@@ -48,9 +48,9 @@ struct Zork1WalkthroughTests {
                 // Phase A — into the underground, and the two deaths in-run.
                 "Kitchen",
                 "Cellar",
-                "Your final stroke drops the troll",  // the troll falls
+                "The troll takes a fatal blow",  // the troll falls
                 "Treasure Room",
-                "scattering his takings",  // the thief falls; his hoard spills
+                "treasures reappear",  // the thief falls; his hoard spills
                 "In the jewel-encrusted egg is a golden clockwork canary.",  // intact
                 "Your score is 91 of a possible 350",  // Phase A complete
                 // Phase B — the region checkpoints.
@@ -68,22 +68,22 @@ struct Zork1WalkthroughTests {
                 "Your score is 319 of a possible 350",  // the pot of gold
                 "Your score is 344 of a possible 350",  // river: emerald, scarab
                 // Endgame — the nineteenth treasure reveals the map; the barrow wins.
-                "an ancient map lies among the",
+                "treasures for the final secret",
                 "Your score is 350 of a possible 350",
-                "the rank of Master of the Underground",
-                "Master Adventurers",  // the Stone Barrow epilogue
-                "the tale is complete",
+                "rank of Master Adventurer",
+                "perilous adventure",  // the Stone Barrow epilogue
+                "mastered ZORK: The Great Underground Empire",
             ]
         )
 
         // The run never dies — a death would dock ten points and scatter the
         // hoard, putting 350 out of reach.
-        #expect(!transcript.contains("takes pity on you"))
+        #expect(!transcript.contains("deserve another chance"))
         // The light handoff proves the fuel economy end-to-end: the lantern is
         // switched off for the torch and never once burns low or dies.
-        #expect(!transcript.contains("It won't burn much longer"))
-        #expect(!transcript.contains("The brass lantern flickers and goes out."))
-        #expect(!transcript.contains("The lantern is burned out"))
+        #expect(!transcript.contains("The lamp appears a bit dimmer"))
+        #expect(!transcript.contains("better have more light than from the brass lantern"))
+        #expect(!transcript.contains("burned-out lamp won't light"))
         // And the underground was never dark underfoot.
         #expect(!transcript.contains("pitch black"))
     }

@@ -31,6 +31,27 @@ struct Zork1: Game, GameMain {
         fill a barrow, if you can carry them home past the thief.
         """
 
+    /// The stock engine lines re-skinned to Zork's own originals, for the
+    /// handful that differ from Gnusto's classic voice. Each is the verbatim
+    /// text from the original Zork I source (see `THIRD_PARTY_NOTICES`); every
+    /// line not set here keeps the engine default, which already matches Zork.
+    var text: GameText {
+        var text = GameText()
+        // The famous dark-room line (gverbs.zil V-LOOK / the grue clause).
+        text.pitchBlack = "It is pitch black. You are likely to be eaten by a grue."
+        // Examining an ordinary thing (gverbs.zil V-EXAMINE).
+        text.nothingSpecial = { "There's nothing special about the \($0)." }
+        // Open/close and possession refusals (gverbs.zil).
+        text.alreadyOpen = "It is already open."
+        text.alreadyClosed = "It is already closed."
+        text.alreadyHave = "You already have that!"
+        // Parser: an unrecognized sentence (gparser.zil).
+        text.didntUnderstand = "That sentence isn't one I recognize."
+        // "take all" with nothing to take (gmain.zil).
+        text.nothingToTakeHere = "There's nothing here you can take."
+        return text
+    }
+
     let aboveGround = ZorkAboveGround()
     let house = ZorkHouse()
     let cellar = ZorkCellar()
