@@ -361,12 +361,14 @@ directory-agnostic; this only organizes the many regions still to come).
 
 ### The Loud Room
 
-- **The acoustics puzzle is modeled with a match-all garble rule.** On still
-  water the room refuses every command but movement and looking until the player
-  says `echo`, which sets `loudRoomAcousticsFixed` and frees the platinum bar.
-  The original instead keeps a `SACREDBIT` on the bar (untakeable) and runs a
-  bespoke read-loop; the garble rule reproduces the player-facing behavior — you
-  cannot take the bar until you echo — without the read-loop.
+- **The acoustics puzzle is the original's SACREDBIT + read-loop** *(closed in the
+  fidelity pass — was a match-all garble rule)*. On still water the room runs the
+  original's read-loop: every command but movement, looking, `echo`, and taking the
+  bar echoes the last word of your input back (`loudRoomEcho`). The platinum bar
+  carries its own take-lock — the `SACREDBIT`, modeled as `platinumBar.before(.take)`
+  — so it is untakeable until `echo` sets `loudRoomAcousticsFixed` and lifts the lock.
+  One small liberty: taking the bar while loud answers with the roar (the take-lock's
+  message) rather than an echo, so the SACREDBIT is the live, observable mechanism.
 - **The water-driven ejection is present but dormant.** While `waterMoving` is
   true the room scrambles the player out to one random neighbour (Damp Cave,
   Round Room, or Deep Canyon — the original's `LOUD-RUNS` set) — this region's

@@ -713,8 +713,9 @@ struct Zork1Tests {
             ])
     }
 
-    /// The Loud Room garbles every command until you say `echo`; only then does
-    /// the platinum bar come free, worth ten points on the find.
+    /// The Loud Room echoes your words and holds the sacred platinum bar fast
+    /// until you say `echo`; only then does the bar come free, worth ten points
+    /// on the find.
     @Test func echoQuietsTheLoudRoomSoTheBarCanBeTaken() async throws {
         // Seed 39: same recorded troll kill; the Loud
         // Room itself draws no randomness on still water, so only the roaming
@@ -728,7 +729,8 @@ struct Zork1Tests {
                 "north", "west",
                 "attack troll", "attack troll", "attack troll",
                 "east", "east", "east",  // → East-West Passage → Round Room → Loud Room
-                "take platinum bar",  // garbled — the room is too loud
+                "take platinum bar",  // the bar is sacred while the room roars
+                "smell",  // any other command just echoes back
                 "look",  // looking still works
                 "echo",  // the acoustics settle
                 "take platinum bar",  // now it comes free (+10)
@@ -740,7 +742,8 @@ struct Zork1Tests {
             [
                 "The troll takes a fatal blow",
                 "Loud Room",
-                "lost in the noise",  // the garble refusal
+                "cannot get hold of it",  // the bar's SACREDBIT take-lock
+                "echo: \u{201C}smell... smell... smell...\u{201D}",  // the read-loop
                 "acoustics of the room change",  // acoustics fixed
                 "Taken.",
                 // 40 on arrival at the Loud Room; the bar's find pays 10 more.
