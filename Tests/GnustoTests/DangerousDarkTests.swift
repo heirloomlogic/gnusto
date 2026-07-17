@@ -54,6 +54,25 @@ struct DangerousDarkTests {
         #expect(!transcript.contains("*** You have died ***"))
     }
 
+    @Test func theGrueRollsTheDice() async throws {
+        // Lethality 40, no grace: after the warning the grue rolls every dark
+        // turn. Under this pinned seed the player survives at least one roll
+        // before it lands — proof the schedule is a dice roll, not a clock.
+        let transcript = try await play(
+            FickleDarkGame(),
+            ["north", "look", "look", "look", "look", "look", "look", "quit"],
+            seed: 7)
+        // The warning still fires on the first dark turn (the kept guard).
+        #expect(transcript.contains("something in it is breathing"))
+        // At least one dice turn is survived before death: the first `look`
+        // (dark turn 2, the first roll) does not kill.
+        let looks = transcript.components(separatedBy: "> look")
+        #expect(!looks[1].contains("finds you"))
+        // But the grue does get you in the end.
+        #expect(transcript.contains("Something in the dark finds you"))
+        #expect(transcript.contains("*** You have died ***"))
+    }
+
     @Test func graceTurnsIsAKnob() async throws {
         let transcript = try await play(
             PatientDarkGame(),

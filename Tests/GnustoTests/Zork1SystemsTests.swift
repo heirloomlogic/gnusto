@@ -198,17 +198,19 @@ struct Zork1SystemsTests {
     }
 
     @Test func diagnoseCountsYourDeaths() async throws {
-        // Linger in the dark until a grue takes you (a survivable first death),
-        // wake in the forest, and diagnose: the toll now reads one death, with
-        // one resurrection still in hand.
+        // Linger in the dark and the grue rolls each turn until it takes you (a
+        // survivable first death); wake in the lit forest — where the dice can't
+        // reach you — and diagnose: the toll now reads one death, with one
+        // resurrection still in hand. Seed 0: the grue lands within these looks.
         let transcript = try await play(
             Zork1(),
             [
                 "south", "east", "open window", "west", "west",
                 "push rug", "open trap door", "down",
-                "look", "look",  // the grue's third dark turn is fatal (death #1)
+                "look", "look", "look", "look", "look",  // the grue's dice land (death #1)
                 "diagnose",
-            ])
+            ],
+            seed: 0)
         let report = turnOutput(of: "diagnose", in: transcript)
         expectInOrder(report, ["killed once", "one more time"])
     }

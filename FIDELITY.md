@@ -110,21 +110,18 @@ entry below is grouped by the task that introduced it.
   warning prints wherever the player is, without the original's
   can-you-see-the-lamp check. A burned-out lantern refuses `turn on` with
   `Prose.lanternSpent`, and nothing in the slice replaces it.
-- **The grue is deterministic and lingering-based**, where the original
-  rolls dice per dark turn: warning on the first consecutive turn *ending*
-  in darkness, one silent grace turn, death on the third, counter reset by
-  any lit turn. Chosen so transcripts reproduce without pinned seeds and
-  the warning is a guaranteed fairness beat. As of Phase 8 the daemon
-  lives in the `GnustoDangerousDark` plugin (the promised extraction was
-  the file move it was engineered to be); Zork 1 passes its own prose in
-  and takes the stock warn-at-1/die-at-3 schedule, so behavior and
-  transcripts are unchanged. The warning and death prose are original —
-  the famous "likely to be eaten by a grue" sentence is Infocom's and is
-  deliberately not reproduced ("grue" the name is fair game under the
-  names-vs-prose line above). One sharp edge, accepted: UNDO from a grue
-  death restores the counter at 2, so the revived player has zero safe
-  dark moves — grues are unforgiving; RESTORE and RESTART are the real
-  outs.
+- **The grue rolls the dice** *(closed in the fidelity pass — was a deterministic
+  linger clock)*, like the original: a warning on the first consecutive turn *ending*
+  in darkness (the kept fairness beat — the grue never eats you on the turn the dark
+  begins), one silent grace turn, then from the third dark turn on it rolls
+  `chance(lethality)` (Zork 1 uses 50%) to be eaten each turn; any lit turn resets the
+  count. The daemon lives in the `GnustoDangerousDark` plugin (`graceTurns` and
+  `lethality` are knobs); Zork 1 passes its own prose in. The warning and death prose are
+  original — the famous "likely to be eaten by a grue" sentence is Infocom's and is
+  deliberately not reproduced ("grue" the name is fair game under the names-vs-prose line
+  above). Because death is now a roll, the dark-lingering transcripts are seed-pinned (the
+  cost of the dice); the warning still guarantees a safe first dark turn even after an UNDO
+  revive.
 - **The white house exterior is four separate scenery items**
   (`whiteHouseAtWest`/`AtNorth`/`AtSouth`/`AtBehind`), one per house-side
   room, all sharing the same name and `Prose.whiteHouse` text. A single

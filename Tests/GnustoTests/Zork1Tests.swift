@@ -201,9 +201,10 @@ struct Zork1Tests {
             [
                 "south", "east", "open window", "west", "west",
                 "push rug", "open trap door", "save", path,
-                "down", "look", "look",
+                "down", "look", "look", "look", "look", "look",
                 "restore", path, "down",
-            ])
+            ],
+            seed: 0)
         expectInOrder(
             transcript,
             [
@@ -453,10 +454,12 @@ struct Zork1Tests {
     /// The third death is the last one: after two resurrections the toll comes
     /// due, and the grue's third meal reaches the engine's banner and prompt.
     @Test func theThirdDeathIsFinal() async throws {
-        // Seed 1: the player carries nothing (so the grue always finds them in
-        // the dark), and only the needles below are asserted, so the roaming
-        // thief's comings and goings don't matter.
-        let descend = ["open trap door", "down", "wait", "wait"]
+        // Seed 1: the player carries nothing (so nothing but the grue is in
+        // play), and only the needles below are asserted, so the roaming
+        // thief's comings and goings don't matter. The grue now rolls the dice
+        // each dark turn, so we linger long enough for it to land every descent;
+        // once dead you wake in the lit forest, where the extra waits are idle.
+        let descend = ["open trap door", "down"] + Array(repeating: "wait", count: 6)
         let returnToTrapDoor = ["east", "south", "east", "west", "west"]
         let transcript = try await play(
             Zork1(),
