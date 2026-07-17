@@ -1003,17 +1003,17 @@ and the reveal-on-completion trigger against `1actions.zil` (`SCORE-OBJ`/`WON-FL
   is swept up by "take all from case."
 - **The southwest path opens with the map.** `westOfHouse.southwest(stoneBarrow, when: { map.isRevealed })`
   — refused with a "no path southwest" message until the map appears.
-- **Entering the barrow wins.** The `stoneBarrow.onEnter` rule says the epilogue, then calls
-  `end(won: true)`; the engine skips the room description (the throw precedes it) and appends
+- **The two-step barrow entry is modeled** *(closed in the fidelity pass — was "collapsed to
+  one")*. Faithful to the original: you first reach the **Stone Barrow** and see its description
+  (the open stone door in the east face), then go *west* or *in* to a second **Inside the
+  Barrow** room that ends the game. The `insideBarrow.onEnter` rule says the epilogue, then calls
+  `end(won: true)`; the engine skips that room's description (the throw precedes it) and appends
   the final score line. There is no engine "you have won" banner, so the epilogue carries the
-  flourish.
+  flourish. The `stoneBarrow → insideBarrow` legs (`west` and `in`) live in `ZorkAboveGround`'s
+  map; the gated way *to* the barrow (southwest from West of House) stays host-wired.
 
 ### Mechanics still simplified or deferred
 
-- **The two-step barrow entry is collapsed to one.** In the original you first reach the Stone
-  Barrow (seeing the entrance), then go *west*/*in* to a second "Inside the Barrow" room that
-  ends the game. Here entering the single Stone Barrow room wins directly — one room, one
-  `onEnter` win.
 - **The ancient map is inert flavor.** It is readable and takeable but has no other use; the
   southwest exit gates on the map's *revealed* state, not on carrying or reading it.
 

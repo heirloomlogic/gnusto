@@ -588,10 +588,12 @@ struct Zork1: Game, GameMain {
             say(Prose.ancientMapAppears)
         }
 
-        // Entering the Stone Barrow wins the game. `end(won:)` throws before the
-        // room is auto-described, so the epilogue stands in for the room text;
-        // the engine appends the final score line after the turn.
-        aboveGround.stoneBarrow.onEnter {
+        // Crossing into the barrow wins the game. You first arrive at the Stone
+        // Barrow (seeing the open door in its east face), then step west/`in` to
+        // this final room — the original's two-step entry. `end(won:)` throws
+        // before the room is auto-described, so the epilogue stands in for the
+        // room text; the engine appends the final score line after the turn.
+        aboveGround.insideBarrow.onEnter {
             say(Prose.stoneBarrowEpilogue)
             try end(won: true)
         }
