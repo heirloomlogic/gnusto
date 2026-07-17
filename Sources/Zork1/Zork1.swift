@@ -482,6 +482,10 @@ struct Zork1: Game, GameMain {
             if offered == house.lunch {
                 house.lunch.vanish()
                 maze.cyclopsThirsty = true
+                // The peppers leave him desperate for a drink: his hunger is
+                // roused now, so the wrath timer starts counting. Give him the
+                // water soon or become the drink yourself (see ``ZorkMaze``).
+                maze.cyclopsProvoked = true
                 try reply(Prose.cyclopsEatsLunch)
             }
             let givingWater =
@@ -494,6 +498,29 @@ struct Zork1: Game, GameMain {
                 try reply(Prose.cyclopsDrinksAndSleeps)
             }
             try refuse(Prose.cyclopsWontEatThat)
+        }
+
+        // Disturbing the dead adventurer's bones — taking, searching, or moving
+        // them — wakes a ghost who banishes your valuables to the Land of the
+        // Dead (a ``ZorkTemple`` room, so the host owns the crossing). The lamp
+        // is spared, exactly as the death scatter spares it, so light is never
+        // lost to the curse. Mirrors `onDeath()`'s scatter loop.
+        let banishForDisturbingTheBones: @Sendable () -> Void = {
+            for item in player.inventory where item != house.lantern {
+                item.move(to: temple.landOfDead)
+            }
+        }
+        maze.skeleton.before(.take) {
+            banishForDisturbingTheBones()
+            try refuse(Prose.skeletonLeaveItBe)
+        }
+        maze.skeleton.before(.lookIn) {
+            banishForDisturbingTheBones()
+            try refuse(Prose.skeletonLeaveItBe)
+        }
+        maze.skeleton.before(.push) {
+            banishForDisturbingTheBones()
+            try refuse(Prose.skeletonLeaveItBe)
         }
 
         // The troll, fought with the house's blades — entities from two

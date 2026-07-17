@@ -222,7 +222,9 @@ struct ZorkMaze: GameContent {
     }
 
     /// The bones of a luckless adventurer — scenery, and best left undisturbed.
-    /// (The original's disturb-the-remains curse is skipped — see `FIDELITY.md`.)
+    /// Disturbing them (take/search/move) wakes the ghost, who banishes your
+    /// valuables to the Land of the Dead — host-wired, since the destination is
+    /// a ``ZorkTemple`` room (see `FIDELITY.md`).
     let skeleton = Item {
         name("skeleton")
         adjectives("bones")
@@ -256,6 +258,16 @@ struct ZorkMaze: GameContent {
     /// Whether the cyclops has eaten the lunch and now wants a drink. The water
     /// only puts him to sleep while this is true.
     @Global var cyclopsThirsty = false
+
+    /// Whether the cyclops's hunger has been roused — by an attack, or by the
+    /// lunch that leaves him desperate for a drink. Once set, the wrath timer
+    /// below mounts each turn you linger (the original's `I-CYCLOPS` daemon,
+    /// enabled only when provoked — mere loitering never wakes it).
+    @Global var cyclopsProvoked = false
+
+    /// How far his hunger has climbed while you stay (the original's
+    /// `CYCLOWRATH`). Six escalating turns of menace, then he eats you.
+    @Global var cyclopsWrath = 0
 
     /// Whether the grating has been opened from below — the one-time leaf-shower
     /// latch (the original's `GRATE-REVEALED`). Set by the host's grating rule.
@@ -390,16 +402,26 @@ struct ZorkMaze: GameContent {
             try reply(Prose.cyclopsFlees)
         }
 
-        // He shrugs off any attack — he doesn't fight, and there's no beating
-        // him with steel (see `FIDELITY.md`). A canned reply, so combat never
-        // starts.
+        // Steel doesn't faze him and combat never starts — but the attempt
+        // rouses his hunger, and from here the wrath timer below counts down to
+        // lunch (yours). Feeding him asleep first makes an attack a mere shrug.
         cyclops.before(.attack) {
+            if !cyclopsSubdued { cyclopsProvoked = true }
             try reply(Prose.cyclopsShrugsOffAttack)
         }
 
-        // The bones stay put.
-        skeleton.before(.take) {
-            try refuse(Prose.skeletonLeaveItBe)
+        // The mounting hunger (`CYCLOWRATH` / `I-CYCLOPS`): once provoked, each
+        // turn you stay ratchets his menace one notch up the `cyclomad` ladder,
+        // and on the seventh he eats you. Giving him the water or shouting
+        // `odysseus` — either sets `cyclopsSubdued` — calls him off. Leaving
+        // pauses the count without resetting it; the wrath persists.
+        cyclopsRoom.afterEachTurn {
+            guard !cyclopsSubdued, cyclopsProvoked else { return }
+            if cyclopsWrath >= 6 {
+                try die(Prose.cyclopsEatsYou)
+            }
+            cyclopsWrath += 1
+            say(Prose.cyclomad[cyclopsWrath - 1])
         }
     }
 }
