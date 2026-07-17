@@ -31,4 +31,17 @@ struct MyGameTests {
 
         expectInOrder(transcript, ["your business is the bell"])
     }
+
+    @Test func theBellDescriptionReactsToHoldingTheRope() async throws {
+        let transcript = try await play(
+            MyGame(),
+            ["north", "examine bell", "south", "take rope", "north", "examine bell"])
+
+        expectInOrder(
+            transcript,
+            [
+                "its rope well out of reach",       // before the rope is in hand
+                "With the rope in hand, you could ring it",  // after
+            ])
+    }
 }

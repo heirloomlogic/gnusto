@@ -35,6 +35,7 @@ swallows stdin during the build):
 
 - A `Game` struct with rooms, items, a blocked exit, and scored victory
 - A custom player-typeable verb (`ring`) and the rule that answers it
+- A live `describe` description that reacts to game state
 - The `@main` entry point via `GameMain`
 - Transcript tests with `GnustoTestSupport` (`play` + `expectInOrder`)
 
