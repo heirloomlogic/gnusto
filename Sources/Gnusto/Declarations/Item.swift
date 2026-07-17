@@ -78,6 +78,14 @@ public struct Item: Sendable, Equatable {
         return frame.definition.items[id]?.isContainer == true
     }
 
+    /// True if the item can be picked up — anything that isn't scenery or an
+    /// actor. The inverse of "a fixture," useful for telling loose floor items
+    /// from the furniture.
+    public var isTakable: Bool {
+        let (frame, id) = resolved
+        return frame.definition.items[id]?.isTakable == true
+    }
+
     /// Whether the item is open. A container without the `openable` trait is
     /// always open; assigning to it is a no-op. An openable item reflects and
     /// updates the current open state.

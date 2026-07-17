@@ -246,10 +246,14 @@ score ranks, and a longer lantern burn. No new rooms this task.
   the gold) will override `.weight` in later regions; none do yet, so the cap
   itself is effectively unreachable with current content and is exercised
   only indirectly through the chimney gate below.
-- **The chimney gate is a count, not the original's rule.** The original lets
-  you climb the Studio chimney carrying at most one item plus the lamp; this
-  slice simplifies that to "no more than two things in hand" (a
-  `player.inventory.count <= 2` check on `studio` climbing up).
+- **The chimney gate is the original's "one item plus the lamp" rule (closed in
+  the fidelity pass).** Climbing the Studio chimney is refused with more than one
+  thing in hand *besides* the lamp — the lamp rides free (`studio.before(.go)`
+  filters `house.lantern` out of the count). While the lamp is carried for light
+  (every playable descent), this is observationally identical to the earlier
+  `inventory.count <= 2` simplification; the difference — carrying two non-lamp
+  things up a lightless chimney — only arises in the dark, where you couldn't see
+  to climb anyway.
 
 ### Liquids (`House.swift`)
 
@@ -557,14 +561,15 @@ candles → read book) that banishes the spirits guarding the crystal skull.
   it. The matchbook parses as "matches"/"matchbook"; singular "match" is not a
   recognized noun (it collides with the burning match), so the strike command is
   "light matches".
-- **The coffin's load block is a ≤50 weight cap at the altar crack, not a
-  coffin-specific rule.** Canonically the gold coffin (too big to squeeze down to
-  Hades) is stopped at the altar's downward crack by a dedicated `COFFIN-CURE`
-  flag, forcing the player to carry it out by praying. Here the block is a
-  general "carried weight ≤ 50" cap on the altar's `down` (reusing
-  `burdenWeight`); the coffin at weight 55 trips it while ordinary exploring
-  loads do not, so the puzzle — pray to get the coffin out — is unchanged, but a
-  hypothetical 50+ non-coffin load would also be blocked.
+- **The coffin's load block is coffin-specific (closed in the fidelity pass).**
+  The gold coffin (too big to squeeze down to Hades) is stopped at the altar's
+  downward crack — the original's `COFFIN-CURE` — forcing the player to carry it
+  out by praying. The altar's `before(.go)` now refuses the descent only while
+  the coffin is in hand (`!coffin.isHeld`); any other load, however heavy,
+  squeezes through, where the earlier `carried weight ≤ 50` cap would also have
+  blocked a hypothetical 50+ non-coffin load. On realistic loads the two are
+  identical (nothing else near the altar approaches 50), so no pinned transcript
+  moved.
 - **Praying at the altar is host-wired** (it teleports the player, and whatever
   they hold, to `ZorkAboveGround`'s forest — the same room the resurrection
   uses), because the altar is a temple room but the destination is another
@@ -627,10 +632,16 @@ graph.
 - **Touching a mirror moves the player to the other Mirror Room** — the only
   passage between the map's two halves. This is a draw-free, deterministic
   teleport (`before(.touch)` on each mirror: narrate the rumble, set
-  `player.location`, describe). Two simplifications from the original: only the
-  player moves (held items ride along; the original also swaps whatever lies loose
-  on the two rooms' floors), and the mirror **cannot be broken** (the original's
-  smash-for-seven-years'-bad-luck, which disables the passage, is not modeled).
+  `player.location`, describe). **The floor swap and the breakable mirror are now
+  modeled (closed in the fidelity pass):** passing through swaps whatever *loose*
+  (takeable) items lie on the two rooms' floors — the fixtures, including the
+  mirrors, stay put — via the new engine accessors `Location.contents` and
+  `Item.isTakable`; and attacking either mirror smashes both (they are two faces
+  of one passage), setting a `mirrorBroken` `@Global` (the original's
+  `MIRROR-MUNG`) that kills the teleport for good — a touch on the shards falls
+  through to the plain reply. One nuance left as-is: held items still ride along
+  with the player (as the original), and the "seven years' bad luck" is narrated,
+  not mechanized.
 
 ### Scoring
 
@@ -841,9 +852,14 @@ against `1dungeon.zil` / `1actions.zil` (`historicalsource/zork1`).
   bottle) or shout `odysseus`/`ulysses` (he flees through the east wall). One faithful nuance
   restored: the timer arms **only when provoked** (attacked, or fed the lunch) — mere loitering
   never wakes it, exactly as the original enables `I-CYCLOPS`. Feeding never opens the east
-  wall; only the rout does. Two accepted divergences remain: the original's separate
-  eyeing/gasping room-look variants aren't reproduced, and attacking a *sleeping* (fed) cyclops
-  shrugs rather than waking him (the wake-on-attack is still unmodeled).
+  wall; only the rout does. **Wake-on-attack is now modeled (closed in the fidelity pass):**
+  striking the fed, sleeping cyclops rouses him — his `cyclopsSubdued` calm breaks, the stair
+  he guards closes again, and the wrath he'd banked resumes climbing (a cyclops routed by
+  `odysseus` has vanished, so this only ever fires on the sleeper). Examining him now reads his
+  state too — fast asleep once drugged, an ordinary hungry giant otherwise. One accepted
+  divergence remains: the original's separate eyeing/gasping *room-look* variants (the
+  cyclops's state folded into the room description) aren't reproduced — the slice shows his
+  presence through the actor's own line, and the mood paragraphs would double with it.
 - **The skeleton's disturb-curse is modeled (closed in the fidelity pass).** Disturbing the
   bones — `take`, `search` (`.lookIn`), or `move` (`.push`) — now wakes the ghost, who banishes
   your carried valuables to the Land of the Dead and mutters off, exactly as the curse prose
@@ -1175,3 +1191,33 @@ The 350-point seed-32 walkthrough is unaffected throughout: it never dies, never
 the dark, and its troll/thief kills survive the new tables. Anti-softlock guards kept by
 explicit decision: the grue's first-turn warning, the lamp sparing (scatter), and the bell's
 auto-cool.
+
+## Fidelity pass — the long tail (post-Phase 10)
+
+A follow-up pass closing the last small divergences a player would actually hit. Each is
+additive and touches no seeded stream — the full suite stays green with no re-pin (the
+seed-32 walkthrough routs the cyclops rather than fighting him, never smashes a mirror, and
+never carries the coffin down or climbs the chimney with an overload). The individual entries
+above are updated in place; the closures, and two small reusable engine accessors that
+unlocked them:
+
+- **Two engine accessors** — `Location.contents` (the loose items on a room's floor, mirroring
+  `Item.contents`) and `Item.isTakable` (a public read of "not scenery, not an actor"). Both
+  are draw-free reads used by the mirror floor-swap.
+- **Cyclops wake-on-attack** — striking the fed, sleeping cyclops rouses him: the stair recloses
+  and his banked wrath resumes; examining him now reads asleep-vs-awake (`Maze.swift`
+  `cyclops.before(.attack)`/`.before(.examine)`, `Prose+Maze.swift`). The room-look mood
+  paragraphs stay deferred (they'd double with the actor's own presence line).
+- **Breakable mirror + floor swap** — attacking either mirror smashes both and kills the
+  teleport for good (`mirrorBroken`, the original's `MIRROR-MUNG`); passing through swaps the two
+  rooms' loose floor items, fixtures left in place (`Mirror.swift`, `Prose+Mirror.swift`).
+- **Coffin-specific altar block** — the crack refuses the descent only while the gold coffin is
+  in hand, not by a generic weight cap (`Temple.swift` `altar.before(.go)`, the original's
+  `COFFIN-CURE`).
+- **Chimney "one item plus the lamp"** — the lamp rides free up the Studio chimney; more than one
+  other thing is refused (`Zork1.swift` `cellar.studio.before(.go)`). Observationally identical
+  to the old count while the lamp is carried for light.
+
+Deliberately still deferred (documented, low value): the cyclops's eyeing/gasping room-look
+variants; the mirror's "seven years' bad luck" as narration rather than a mechanic; held items
+riding along through the mirror (as the original).

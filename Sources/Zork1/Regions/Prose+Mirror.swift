@@ -66,6 +66,9 @@ extension Prose {
 
     static let mirror = "There is an ugly person staring back at you."
 
+    /// Examining a mirror after it has been smashed.
+    static let mirrorShattered = "The mirror is broken into many pieces."
+
     // MARK: - First sights
 
     static let crystalTridentFirstSight = "On the shore lies Poseidon's own crystal trident."
@@ -75,4 +78,14 @@ extension Prose {
     static let mirrorRumble = """
         There is a rumble from deep within the earth and the room shakes.
         """
+
+    /// Smashing a mirror — and disabling the passage between the two halves of
+    /// the map for good.
+    static let mirrorBreaks = """
+        You have broken the mirror. I hope you have a seven years' supply of
+        good luck handy.
+        """
+
+    /// Attacking a mirror that is already shattered.
+    static let mirrorAlreadyBroken = "Haven't you done enough damage already?"
 }

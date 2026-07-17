@@ -134,4 +134,52 @@ struct Zork1MirrorTests {
                 "Reservoir North",  // and on into the dam region
             ])
     }
+
+    /// Smashing a mirror kills the only passage between the map's two halves.
+    /// Proof the teleport is dead: after breaking it, "north" still reaches the
+    /// Narrow Passage off the *northern* room, where a working teleport would
+    /// have dropped you south (onto the Cold Passage).
+    @Test func smashingTheMirrorKillsTheTeleport() async throws {
+        let transcript = try await play(
+            Zork1(),
+            Self.toMirrorRoom + [
+                "attack mirror",  // seven years' bad luck
+                "examine mirror",  // broken into many pieces
+                "touch mirror",  // dead glass — no rumble, no teleport
+                "north",  // still the northern room → Narrow Passage
+            ],
+            seed: 39)
+        expectInOrder(
+            transcript,
+            [
+                "Mirror Room",
+                "seven years",  // the smash
+                "broken into many pieces",  // the shards
+                "Narrow Passage",  // never left the northern room
+            ])
+        // A shattered mirror does not rumble the earth.
+        #expect(!transcript.contains("rumble from deep within the earth"))
+    }
+
+    /// Passing through the mirror swaps whatever lies loose on the two rooms'
+    /// floors, as the original does. Drop the sword in the northern room, touch
+    /// the mirror, and it has crossed to the southern room with you.
+    @Test func touchingTheMirrorSwapsTheFloorItems() async throws {
+        let transcript = try await play(
+            Zork1(),
+            Self.toMirrorRoom + [
+                "drop sword",  // onto the northern floor
+                "touch mirror",  // → southern Mirror Room; the floor swap carries it across
+                "take sword",  // it made the crossing
+            ],
+            seed: 39)
+        expectInOrder(
+            transcript,
+            [
+                "Mirror Room",
+                "Dropped.",
+                "rumble from deep within the earth",
+                "Taken.",  // the sword came across in the swap
+            ])
+    }
 }

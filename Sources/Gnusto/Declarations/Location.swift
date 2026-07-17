@@ -94,6 +94,19 @@ public struct Location: Sendable, Equatable {
         return frame.with { $0.state.placements[itemID] == .room(locationID) }
     }
 
+    /// The items resting directly on this location's floor, sorted by ID for
+    /// stable iteration. Nested items (inside containers, held by the player)
+    /// are not included — only what lies directly here.
+    public var contents: [Item] {
+        let (frame, locationID) = resolved
+        let here = frame.with { scratch in
+            scratch.state.placements
+                .filter { $0.value == .room(locationID) }
+                .keys.sorted()
+        }
+        return here.compactMap { frame.definition.registry.items[$0] }
+    }
+
     // MARK: - Map factories
 
     // Per-direction sugar (`north`, `down`, `west`, …) lives in
