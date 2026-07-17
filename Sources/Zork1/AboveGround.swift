@@ -227,12 +227,21 @@ struct ZorkAboveGround: GameContent {
     }
 
     /// The Stone Barrow, southwest of West of House — reachable only once the
-    /// ancient map has appeared. Entering it ends the game in victory (the host's
-    /// `onEnter` epilogue in ``Zork1``), so this description is only ever seen if
-    /// that win hook is removed.
+    /// ancient map has appeared. You stand before the open door in its east face;
+    /// stepping west (or `in`) through it reaches ``insideBarrow`` and wins the
+    /// game. Faithful to the original's two-step entry: the barrow is a real room
+    /// you arrive in and look at before you cross the threshold.
     let stoneBarrow = Location {
         name("Stone Barrow")
         description(Prose.stoneBarrow)
+    }
+
+    /// Inside the Barrow — the final room. Crossing the threshold ends the game in
+    /// victory (the host's `onEnter` epilogue in ``Zork1``), so this description is
+    /// only ever seen if that win hook is removed.
+    let insideBarrow = Location {
+        name("Inside the Barrow")
+        description(Prose.insideBarrow)
     }
 
     // MARK: - Map
@@ -282,6 +291,14 @@ struct ZorkAboveGround: GameContent {
         canyonBottom.up(rockyLedge)
         canyonBottom.north(endOfRainbow)
         endOfRainbow.south(canyonBottom)
+
+        // The barrow's threshold. Standing before the Stone Barrow, the open door
+        // is in its east face, so you cross west (or `in`) into the tomb. The way
+        // *to* the barrow — southwest from West of House, gated on the ancient map
+        // — is host-wired in ``Zork1`` because it spans bundles; this leg is
+        // wholly within ``ZorkAboveGround``.
+        stoneBarrow.west(insideBarrow)
+        stoneBarrow.in(insideBarrow)
 
         // Entities.
         whiteHouseAtWest.starts(in: westOfHouse)

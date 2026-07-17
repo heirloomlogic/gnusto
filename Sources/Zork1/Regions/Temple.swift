@@ -119,7 +119,9 @@ struct ZorkTemple: GameContent {
         name("brass bell")
         adjectives("brass")
         synonyms("bell", "handbell")
-        description(Prose.bell)
+        // Examine text is dynamic — see `bell.describe` in the rules — because
+        // a freshly rung bell reads as red hot, the original's distinct
+        // red-hot bell.
     }
 
     let book = Item {
@@ -290,6 +292,15 @@ struct ZorkTemple: GameContent {
             guard command.direction == .down else { return }
             let carried = player.inventory.reduce(0) { $0 + burdenWeight(of: $1) }
             try require(carried <= 50, else: Prose.coffinTooHeavy)
+        }
+
+        // The bell's examine text tracks its heat: freshly rung it reads as
+        // red hot (the original's distinct red-hot bell), and once the
+        // `bellCools` fuse fires it is an ordinary hand-bell again. The heat is
+        // still a `@Global` flag, and the twenty-turn cool stays as a
+        // deliberate anti-softlock (FIDELITY.md).
+        bell.describe {
+            bellHot ? Prose.redHotBell : Prose.bell
         }
 
         // The bell, red hot after ringing, can't be picked up until it cools.

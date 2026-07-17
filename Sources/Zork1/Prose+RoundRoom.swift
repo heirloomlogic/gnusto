@@ -47,11 +47,20 @@ extension Prose {
 
     static let platinumBar = "On the ground is a large platinum bar."
 
+    /// The bar is sacred while the room roars — the original's SACREDBIT.
+    /// Reaching for it in the din, the acoustics beat it out of your hands.
+    static let platinumBarTooLoud = """
+        The room's ear-splitting roar shakes the bar from your grip; you
+        cannot get hold of it while the acoustics rage.
+        """
+
     // MARK: - Loud Room acoustics
 
-    static let loudRoomGarble = """
-        The rest of your commands have been lost in the noise.
-        """
+    /// The room's read-loop: your voice booms and the walls fling the last
+    /// word of your command back at you (the original's echo garble).
+    static func loudRoomEcho(_ word: String) -> String {
+        "The acoustics of the room cause your words to echo: \u{201C}\(word)... \(word)... \(word)...\u{201D}"
+    }
 
     static let loudRoomAcousticsFixed = """
         The acoustics of the room change subtly.

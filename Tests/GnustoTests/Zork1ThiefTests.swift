@@ -8,8 +8,8 @@ import Testing
 /// End-to-end playthroughs of the Phase 10.11 thief endgame: the egg's two ways
 /// open (your clumsy hands wreck the canary; the thief's careful hands don't),
 /// the give-to-thief service, and the defended lair (the Treasure Room's +25
-/// award, the guarded silver chalice, and the thief who fights to the death
-/// there). The thief roams the whole underground, so every route is seed-pinned;
+/// award, the now-snatchable silver chalice, and the thief who fights to the
+/// death there). The thief roams the whole underground, so every route is seed-pinned;
 /// the seeds are final (the Phase 10.14 walkthrough closed the roadmap's planned
 /// one-time re-pin).
 struct Zork1ThiefTests {
@@ -70,13 +70,15 @@ struct Zork1ThiefTests {
         #expect(!carried.contains("egg"))
     }
 
-    @Test func theThiefDefendsHisLair() async throws {
-        // The Treasure Room is the thief's, and he defends it. Reaching it pays
-        // 25; entering summons him home; the silver chalice can't be lifted
-        // while he lives; and his stiletto finds you before you can force the
-        // issue — death, then Zork's resurrection to the forest. Seed 39 (the
-        // prelude's three-blow troll kill lands on this seed): kitchen 10 +
-        // cellar 25 + Treasure Room 25 − the 10-point death toll = 50.
+    @Test func theThiefSnatchesTheChaliceBack() async throws {
+        // The Treasure Room is the thief's, and he guards the silver chalice.
+        // Reaching it pays 25; entering summons him home. The chalice can now be
+        // snatched straight from the hoard (the original's grab — no guard, +10
+        // on the find), but the thief lifts treasures back from your very hands:
+        // a turn later the chalice vanishes into his bag again, the original's
+        // snatch-and-resteal. Seed 39 (the prelude's three-blow troll kill lands
+        // on this seed): kitchen 10 + cellar 25 + Treasure Room 25 + chalice
+        // take 10 = 70; the take award stays even after he steals it back.
         let transcript = try await play(
             Zork1(),
             [
@@ -91,7 +93,7 @@ struct Zork1ThiefTests {
                 "southwest", "east", "south", "southeast",  // → Cyclops Room
                 "odysseus",  // rout the cyclops, opening the stair up
                 "up",  // Treasure Room
-                "take chalice",  // guarded — and his killing blow lands this turn
+                "take chalice",  // snatched (+10); the thief lifts it right back
                 "score",
             ],
             seed: 39)
@@ -101,10 +103,9 @@ struct Zork1ThiefTests {
                 "Treasure Room",
                 "silver chalice, intricately engraved",  // the hoard's prize
                 "suspicious-looking individual",  // the thief, summoned to defend it
-                "stabbed in the back first",  // the take is refused
-                "you probably deserve another",  // his stiletto kills you; resurrection
-                "Forest",  // you wake in the woods
-                "Your score is 50 of a possible 350",  // +25 lair visit, −10 death toll
+                "Taken.",  // the chalice is snatchable now
+                "silver chalice vanished",  // the resteal — back into his bag
+                "Your score is 70 of a possible 350",  // +25 lair, +10 chalice (kept)
             ])
     }
 }

@@ -25,10 +25,12 @@ extension TraitKey<Int> {
 /// ```
 ///
 /// The engine's own `score` verb, status line, and end-of-game epilogue do
-/// the reporting; this plugin only moves the number. Points are paid **once
-/// per register** and never taken back — re-taking a dropped treasure or
-/// re-depositing a re-stolen one is a silent no-op, unlike the original
-/// Zork's in-case accounting, which deducted on removal.
+/// the reporting; this plugin only moves the number. **Take** value is paid
+/// once per register and never taken back (re-taking a dropped treasure is a
+/// no-op). **Deposit** value follows the original Zork's in-case accounting:
+/// it is credited each time a treasure lands in the trophy case and debited
+/// again when the treasure leaves, so the displayed score rises and falls as
+/// the hoard is rearranged.
 ///
 /// `maxScore` stays the host's responsibility (the engine reads it at
 /// bootstrap, before any rule can run): sum your declared values.
@@ -40,7 +42,17 @@ public struct Scoring: GameContent {
         var names: Set<String> = []
     }
 
+    /// Deposit registers currently credited — a treasure's key is present
+    /// exactly while its deposit value is counted in the score. Withdrawing
+    /// the treasure removes the key and debits the value; re-depositing adds
+    /// it back. Separate from `Claimed` because deposit credit toggles,
+    /// whereas take value is paid once for good.
+    struct Cased: Codable, Sendable, GlobalValue {
+        var names: Set<String> = []
+    }
+
     @Global var claimed = Claimed()
+    @Global var cased = Cased()
 
     /// Creates the scoring content.
     public init() {}
@@ -96,10 +108,12 @@ public struct Scoring: GameContent {
         }
     }
 
-    /// For each treasure: the first `take` pays its `.takeValue`, and the
-    /// first arrival inside `trophyCase` pays its `.depositValue`. Register
-    /// keys derive from the item's display name ("take.green gem"), so
-    /// treasures wired here need unique names. Splice into the host's rules:
+    /// For each treasure: the first `take` pays its `.takeValue` (once, for
+    /// good), and its `.depositValue` follows the trophy case — credited when
+    /// the treasure lands inside, debited when it is taken back out, the
+    /// original's in-case accounting. Register keys derive from the item's
+    /// display name ("take.green gem"), so treasures wired here need unique
+    /// names. Splice into the host's rules:
     ///
     /// ```swift
     /// scoring.treasures([painting, egg], into: trophyCase)
@@ -114,12 +128,24 @@ public struct Scoring: GameContent {
         for item in items {
             item.after(.take) {
                 awardOnce("take.\(item.name)", points: item[.takeValue] ?? 0)
+                // In-case accounting: taking a treasure out of the case
+                // revokes its deposit value. The `take` has already moved it
+                // into the player's hands, so a treasure no longer in the case
+                // whose deposit is still credited is one being withdrawn.
+                let key = "deposit.\(item.name)"
+                if cased.names.contains(key), !trophyCase.holds(item) {
+                    cased.names.remove(key)
+                    player.score -= item[.depositValue] ?? 0
+                }
             }
             item.after(.putIn) {
                 // The after-rule fires for *any* container; only the trophy
-                // case pays.
-                guard trophyCase.holds(item) else { return }
-                awardOnce("deposit.\(item.name)", points: item[.depositValue] ?? 0)
+                // case pays. Credit once per stay — a treasure already counted
+                // is not double-scored — and it is debited again on withdrawal.
+                let key = "deposit.\(item.name)"
+                guard trophyCase.holds(item), !cased.names.contains(key) else { return }
+                cased.names.insert(key)
+                player.score += item[.depositValue] ?? 0
             }
         }
     }

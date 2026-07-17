@@ -182,6 +182,29 @@ struct Zork1RiverTests {
         #expect(!transcript.contains("Would you like to RESTART"))
     }
 
+    /// The current is a continuous interrupt: never touching a paddle, just
+    /// waiting, the river carries the boat one stretch at a time — River-1 → 2 →
+    /// 3 → 4 → 5 — and finally over the falls. Fourteen idle turns from the
+    /// launch does the whole run (dwell 4+4+3+2, then one more off River-5),
+    /// proving the drift re-arms itself down the length of the river.
+    @Test func theCurrentDriftsYouStretchByStretchToTheFalls() async throws {
+        let waits = Array(repeating: "wait", count: 14)
+        let transcript = try await play(
+            Zork1(),
+            Self.toLaunched + waits,
+            seed: 39)
+        // Four hand-off lines (River-1→2→3→4→5), then the plunge.
+        let carries = transcript.components(separatedBy: "carries you downstream").count - 1
+        #expect(carries == 4)
+        expectInOrder(
+            transcript,
+            [
+                "bottom of waterfalls",  // drifted off River-5, over the falls
+                "Forest",  // the resurrection
+            ])
+        #expect(!transcript.contains("Would you like to RESTART"))
+    }
+
     /// You cannot launch a boat you are not sitting in — waving it at the water
     /// from the bank gets you nowhere.
     @Test func launchingWithoutBoardingIsRefused() async throws {

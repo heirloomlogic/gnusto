@@ -71,7 +71,8 @@ struct Zork1WalkthroughTests {
                 "treasures for the final secret",
                 "Your score is 350 of a possible 350",
                 "rank of Master Adventurer",
-                "perilous adventure",  // the Stone Barrow epilogue
+                "huge stone door",  // arrive before the Stone Barrow — not yet won
+                "perilous adventure",  // step inside: the barrow epilogue
                 "mastered ZORK: The Great Underground Empire",
             ]
         )
@@ -401,6 +402,7 @@ private enum Walkthrough {
         "score",  // 350 — the rank of Master of the Underground
         "east", "east",  // Kitchen → Behind House
         "south", "west",  // South of House → West of House
-        "southwest",  // the map's path → Stone Barrow → the game is won
+        "southwest",  // the map's path → Stone Barrow
+        "west",  // step inside the barrow → the game is won
     ]
 }

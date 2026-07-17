@@ -85,7 +85,8 @@ struct ZorkRoundRoom: GameContent {
 
     /// The platinum bar: a treasure worth ten on the find and five in the case.
     /// It can't be taken until the Loud Room's acoustics are fixed with `echo`
-    /// (modeled by the garble rule below, in place of the original's take-lock).
+    /// — the original's SACREDBIT, modeled as the bar's own take-lock (the
+    /// `before(.take)` rule below).
     let platinumBar = Item {
         name("platinum bar")
         adjectives("platinum", "large")
@@ -156,16 +157,30 @@ struct ZorkRoundRoom: GameContent {
             try reply("")
         }
 
-        // On still water the acoustics garble everything until `echo` fixes
-        // them. Movement and looking pass through untouched; `echo` is handled
-        // by the rule below.
+        // On still water the acoustics are the original's read-loop: your
+        // voice booms and the walls fling the last word of your command back
+        // at you. Movement, looking, and `echo` pass through untouched; taking
+        // the platinum bar is refused by the bar's own take-lock (the
+        // SACREDBIT rule below), so it answers with the roar rather than a bare
+        // echo. Every other command echoes.
         loudRoom.before {
             guard !loudRoomAcousticsFixed, !waterMoving else { return }
             guard command.intent != .go,
                 command.intent != .look,
-                command.intent != .echo
+                command.intent != .echo,
+                command.intent != .take
             else { return }
-            try refuse(Prose.loudRoomGarble)
+            let echoed =
+                command.rawInput.split(separator: " ").last.map(String.init)
+                ?? command.verbPhrase
+            try refuse(Prose.loudRoomEcho(echoed))
+        }
+
+        // The platinum bar is sacred while the room roars — untakeable until
+        // the acoustics are fixed (the original's SACREDBIT). Saying `echo`
+        // lifts the lock.
+        platinumBar.before(.take) {
+            try require(loudRoomAcousticsFixed, else: Prose.platinumBarTooLoud)
         }
 
         // Saying `echo` on still water settles the acoustics for good, so the

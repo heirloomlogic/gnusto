@@ -137,32 +137,30 @@ struct Zork1: Game, GameMain {
 
     /// Zork's canonical resurrection. The first two deaths are survivable: the
     /// player loses ten points, their belongings scatter across the grounds
-    /// above (the lamp always turns up in the living room), and they wake in
-    /// the forest. The third death is final — it falls through to the engine's
-    /// banner and RESTART / RESTORE / UNDO / QUIT prompt. Runs inside the live
-    /// turn, after the death message has printed, so it can teleport, dock the
-    /// score, and move items just as a rule would (FIDELITY.md: the original's
-    /// randomized scatter is modeled as a deterministic round-robin here).
+    /// above, and they wake in the forest. The third death is final — it falls
+    /// through to the engine's banner and RESTART / RESTORE / UNDO / QUIT
+    /// prompt. Runs inside the live turn, after the death message has printed,
+    /// so it can teleport, dock the score, and move items just as a rule would.
     func onDeath() -> DeathOutcome {
         deaths += 1
         guard deaths < 3 else { return .fallThrough }
         scoring.penalize(10)
 
-        // The lamp finds its way back to the living room; everything else
-        // scatters, one item per above-ground room, cycling if you were
-        // carrying more than the grounds have rooms.
+        // Belongings strew unpredictably across the grounds — the original's
+        // random scatter, one draw per item. The lamp is the kept exception: it
+        // always turns up in the living room, so light is never lost to a death
+        // (a deliberate anti-softlock). Iterate a stable id-sorted snapshot so
+        // only the destination draws vary, not the order they are drawn in.
         let scatter = [
             aboveGround.westOfHouse, aboveGround.northOfHouse,
             aboveGround.southOfHouse, aboveGround.behindHouse,
             aboveGround.forestPath, aboveGround.clearingEast,
         ]
-        var next = 0
         for item in player.inventory {
             if item == house.lantern {
                 item.move(to: house.livingRoom)
             } else {
-                item.move(to: scatter[next % scatter.count])
-                next += 1
+                item.move(to: scatter[random(0...(scatter.count - 1))])
             }
         }
 
@@ -400,12 +398,12 @@ struct Zork1: Game, GameMain {
         // the host owns the rule; the White Cliffs, Sandy Beach and Shore
         // re-launch onto the river too, each onto its canonical stretch. You must
         // be aboard, and there has to be water under you. Launching arms the
-        // current (the drift fuse ``ZorkRiver`` declares).
+        // current (the `riverCurrent` daemon ``ZorkRiver`` declares).
         river.magicBoat.before(.launch) {
             try require(player.vehicle == river.magicBoat, else: Prose.launchNotAboard)
             let here = player.location
-            // The delay is the stretch's canonical dwell plus one — the engine
-            // ticks a fuse on the turn it's armed (see ``ZorkRiver.driftDelay``).
+            // The delay is the stretch's canonical dwell plus one — the daemon
+            // decrements it this same turn (see ``ZorkRiver.driftDelay``).
             let target: Location
             let delay: Int
             if here == dam.damBase {
@@ -422,7 +420,7 @@ struct Zork1: Game, GameMain {
             river.magicBoat.move(to: target)
             say(Prose.boatLaunches)
             describeSurroundings()
-            startFuse("riverDrift", after: delay)
+            river.armCurrent(delay)
             try reply("")  // handled — don't fall through to the stage-4 default
         }
 
@@ -555,14 +553,11 @@ struct Zork1: Game, GameMain {
             }
         }
 
-        // The chalice is the thief's, and he guards it: no lifting it from his
-        // hoard while he lives. The chalice is a ``ZorkMaze`` item and the flag
-        // a ``ZorkThief`` one, so the host owns the guard. (The original lets
-        // you snatch it and steals it back; here it's held fast until he falls
-        // — see `FIDELITY.md`.)
-        maze.silverChalice.before(.take) {
-            try require(thief.thiefDefeated, else: Prose.chaliceGuarded)
-        }
+        // The silver chalice is snatchable straight from the thief's hoard —
+        // but he steals treasures back from your hands (and off the floor),
+        // so lifting it while he lives is only a loan: his steal daemon takes
+        // it back on a later turn, the original's snatch-and-resteal. No guard
+        // rule; the chalice is an ordinary treasure the thief happens to covet.
 
         // The living-room trophy case describes itself by whether it holds the
         // egg. The case is a ``ZorkHouse`` entity and the egg a
@@ -588,10 +583,12 @@ struct Zork1: Game, GameMain {
             say(Prose.ancientMapAppears)
         }
 
-        // Entering the Stone Barrow wins the game. `end(won:)` throws before the
-        // room is auto-described, so the epilogue stands in for the room text;
-        // the engine appends the final score line after the turn.
-        aboveGround.stoneBarrow.onEnter {
+        // Crossing into the barrow wins the game. You first arrive at the Stone
+        // Barrow (seeing the open door in its east face), then step west/`in` to
+        // this final room — the original's two-step entry. `end(won:)` throws
+        // before the room is auto-described, so the epilogue stands in for the
+        // room text; the engine appends the final score line after the turn.
+        aboveGround.insideBarrow.onEnter {
             say(Prose.stoneBarrowEpilogue)
             try end(won: true)
         }
@@ -743,6 +740,7 @@ struct Zork1: Game, GameMain {
         actors.steals(
             thief.thief, daemonName: "thiefSteals",
             candidates: treasureRoster,
+            containers: [house.trophyCase],
             chancePerTurn: 30,
             announcement: { Prose.thiefSteals($0) })
 

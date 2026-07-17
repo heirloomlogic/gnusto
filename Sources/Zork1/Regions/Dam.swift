@@ -331,24 +331,20 @@ struct ZorkDam: GameContent {
     // MARK: - Timers
 
     var timers: [TimedEvent] {
-        // The Maintenance Room flood. Deterministic bands (ankle → waist →
-        // neck) mark the rise; whoever is still in the room when it fills at
-        // turn 13 drowns, and the room then seals (the daemon stops). Leaving
-        // is the only escape — the leak isn't plugged in this slice. The bands
-        // and the fixed 13-turn seal replace the original's continuous rise;
-        // see `FIDELITY.md`.
+        // The Maintenance Room flood. The water rises one step each turn along
+        // the original's body-part ladder (ankles → shins → knees → hips →
+        // waist → chest → neck), narrated continuously every turn rather than
+        // in a few fixed bands; once it tops the neck the room is full, whoever
+        // is still here drowns, and the room seals (the daemon stops). Leaving
+        // is the only escape — the leak isn't plugged in this slice.
         daemon("damFlood") {
+            let ladder = ["ankles", "shins", "knees", "hips", "waist", "chest", "neck"]
             floodLevel += 1
             let here = player.location == maintenanceRoom
-            if here {
-                switch floodLevel {
-                case 4: say(Prose.floodAnkle)
-                case 8: say(Prose.floodWaist)
-                case 12: say(Prose.floodNeck)
-                default: break
-                }
-            }
-            if floodLevel >= 13 {
+            if floodLevel <= ladder.count {
+                if here { say(Prose.floodRises(ladder[floodLevel - 1])) }
+            } else {
+                // Past the neck: the room is full.
                 stopDaemon("damFlood")
                 if here { try die(Prose.floodDrowns) }
             }

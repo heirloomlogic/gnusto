@@ -85,10 +85,26 @@ struct PickpocketGame: Game {
         adjectives("bent")
     }
 
-    /// A steal candidate that is never held — immune by construction.
+    /// A steal candidate lying on the floor of the thief's room — reachable
+    /// now that theft is no longer held-only.
     let pebble = Item {
         name("dull pebble")
         adjectives("dull")
+    }
+
+    /// A closed strongbox on the floor, and the gem locked inside it. The gem
+    /// is a steal candidate but stays immune by construction: the thief cannot
+    /// rifle a shut container.
+    let strongbox = Item {
+        name("iron strongbox")
+        adjectives("iron")
+        container
+        openable
+    }
+
+    let gem = Item {
+        name("green gem")
+        adjectives("green")
     }
 
     let behaviors = ActorBehaviors()
@@ -99,6 +115,8 @@ struct PickpocketGame: Game {
         locket.startsHeld
         coin.startsHeld
         pebble.starts(in: plaza)
+        strongbox.starts(in: plaza)
+        gem.starts(inside: strongbox)
     }
 
     var verbs: [SyntaxRule] {
@@ -111,7 +129,8 @@ struct PickpocketGame: Game {
         behaviors.steals(
             thief,
             daemonName: "pick",
-            candidates: [locket, coin, pebble],
+            candidates: [locket, coin, pebble, gem],
+            containers: [strongbox],
             chancePerTurn: 100,
             announcement: { "Featherlight fingers make off with the \($0)." })
     }

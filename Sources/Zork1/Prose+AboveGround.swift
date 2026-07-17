@@ -213,6 +213,16 @@ extension Prose {
         dark of the tomb.
         """
 
+    /// The final room's own description. In normal play it is never rendered —
+    /// the host's `onEnter` win throws before the room is auto-described, and
+    /// ``stoneBarrowEpilogue`` stands in — but a room needs a description, and
+    /// this is what the tomb interior looks like the instant before the door
+    /// seals behind you.
+    static let insideBarrow = """
+        This is the inside of the great barrow. It is dark, but ahead lies an
+        enormous cavern, brightly lit, into which the way leads on.
+        """
+
     static let stoneBarrowEpilogue = """
         As you enter the barrow, the door closes inexorably behind you.
         Around you it is dark, but ahead is an enormous cavern, brightly

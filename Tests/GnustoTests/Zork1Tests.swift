@@ -127,6 +127,10 @@ struct Zork1Tests {
     /// rather than reaching for the death prompt. UNDO still revives on the
     /// brink, and the next grue does the same thing all over again.
     @Test func lingeringInTheDarkResurrectsYou() async throws {
+        // Seed 0: the grue now rolls the dice each dark turn, so the death turn
+        // is seed-dependent — here the first dice turn (the second look) lands
+        // it. UNDO restores the RNG state along with everything else, so the
+        // re-rolled dark turn is fatal again, deterministically.
         let transcript = try await play(
             Zork1(),
             [
@@ -134,7 +138,8 @@ struct Zork1Tests {
                 "push rug", "open trap door", "down",
                 "look", "look",
                 "undo", "look", "quit",
-            ])
+            ],
+            seed: 0)
         // The descent turn: slam, pitch black, then the warning — in order.
         let descent = turnOutput(of: "down", in: transcript)
         expectInOrder(
@@ -201,9 +206,10 @@ struct Zork1Tests {
             [
                 "south", "east", "open window", "west", "west",
                 "push rug", "open trap door", "save", path,
-                "down", "look", "look",
+                "down", "look", "look", "look", "look", "look",
                 "restore", path, "down",
-            ])
+            ],
+            seed: 0)
         expectInOrder(
             transcript,
             [
@@ -276,11 +282,14 @@ struct Zork1Tests {
     }
 
     @Test func depositPaintingScoresPoints() async throws {
-        // The painting pays 4 on first take and 6 on first deposit; taking
-        // it back out and re-depositing pays nothing more. The route also
-        // banks two visit awards on the way down — the kitchen (10) and the
-        // cellar (25) — so the running totals are 39 then 45. Seed 1,
-        // recorded: the thief keeps his fingers to himself on this route.
+        // The painting pays 4 on first take and 6 on first deposit; taking it
+        // back out of the case revokes the 6 (the original's in-case
+        // accounting) and re-depositing restores it. The route also banks two
+        // visit awards on the way down — the kitchen (10) and the cellar (25)
+        // — so the totals run 39, 45, back to 39, then 45. The interleaved
+        // `score`s are meta (no turn passes), so the thief's stream is
+        // unchanged from the recorded seed-1 route, on which he keeps his
+        // fingers to himself.
         let transcript = try await play(
             Zork1(),
             [
@@ -290,7 +299,8 @@ struct Zork1Tests {
                 "south", "east", "take painting", "score",
                 "north", "up", "west",
                 "open trophy case", "put painting in trophy case", "score",
-                "take painting", "put painting in trophy case", "score",
+                "take painting", "score",
+                "put painting in trophy case", "score",
             ],
             seed: 1)
 
@@ -300,10 +310,12 @@ struct Zork1Tests {
                 "Your score is 39 of a possible 350",
                 "You put the painting in the trophy case.",
                 "Your score is 45 of a possible 350",
+                "Your score is 39 of a possible 350",  // withdrawn → deposit revoked
+                "Your score is 45 of a possible 350",  // re-deposited → restored
             ])
         let scores = transcript.components(separatedBy: "Your score is ")
-        #expect(scores.count == 4)
-        #expect(scores[3].hasPrefix("45 of a possible 350"))
+        #expect(scores.count == 5)
+        #expect(scores[4].hasPrefix("45 of a possible 350"))
     }
 
     @Test func eggScoresOnTheWayIn() async throws {
@@ -420,7 +432,11 @@ struct Zork1Tests {
     /// Here the troll's victim was holding the sword and the (lit) lantern;
     /// after the resurrection the sword is waiting at West of House.
     @Test func deathScattersYourBelongings() async throws {
-        // Seed 1, recorded: the troll kills on the first turn in his room.
+        // Seed 1, recorded: the troll kills on the first turn in his room. The
+        // belongings now strew at random across the grounds; on this seed the
+        // sword lands on the Forest Path. The lamp is the exception — it always
+        // returns to the Living Room so light survives a death — asserted in
+        // theLampAlwaysComesHomeAfterDeath below.
         let transcript = try await play(
             Zork1(),
             [
@@ -428,9 +444,9 @@ struct Zork1Tests {
                 "take sword", "take lantern", "turn on lantern",
                 "push rug", "open trap door", "down",
                 "north",
-                // Resurrected in the forest, empty-handed. The sword scattered
-                // to West of House (the first above-ground room in the ring).
-                "east", "take sword",
+                // Resurrected in the forest, empty-handed. Fetch the sword from
+                // where the death flung it.
+                "north", "take sword",  // → Forest Path
             ],
             seed: 1)
         expectInOrder(
@@ -439,7 +455,35 @@ struct Zork1Tests {
                 "neatly removes your head",
                 "deserve another",
                 "Forest",
-                "West of House",
+                "Forest Path",
+                "Taken.",
+            ])
+    }
+
+    @Test func theLampAlwaysComesHomeAfterDeath() async throws {
+        // The one exception to the random strew: however the rest of your kit
+        // scatters, the lamp always turns up back in the Living Room, so a death
+        // in the dark can never strand you without a light (the kept
+        // anti-softlock). Seed 1, the same one-blow troll kill; walk back in
+        // through the window and the lit lamp is waiting on the floor.
+        let transcript = try await play(
+            Zork1(),
+            [
+                "south", "east", "open window", "west", "west",
+                "take sword", "take lantern", "turn on lantern",
+                "push rug", "open trap door", "down",
+                "north",
+                // Resurrected in the forest; return to the Living Room for the lamp.
+                "east", "south", "east", "west", "west",  // → Kitchen → Living Room
+                "take lantern",
+            ],
+            seed: 1)
+        expectInOrder(
+            transcript,
+            [
+                "deserve another",  // the resurrection
+                "Living Room",
+                "brass lantern",  // waiting on the floor, right where a death always leaves it
                 "Taken.",
             ])
     }
@@ -447,10 +491,12 @@ struct Zork1Tests {
     /// The third death is the last one: after two resurrections the toll comes
     /// due, and the grue's third meal reaches the engine's banner and prompt.
     @Test func theThirdDeathIsFinal() async throws {
-        // Seed 1: the player carries nothing (so the grue always finds them in
-        // the dark), and only the needles below are asserted, so the roaming
-        // thief's comings and goings don't matter.
-        let descend = ["open trap door", "down", "wait", "wait"]
+        // Seed 1: the player carries nothing (so nothing but the grue is in
+        // play), and only the needles below are asserted, so the roaming
+        // thief's comings and goings don't matter. The grue now rolls the dice
+        // each dark turn, so we linger long enough for it to land every descent;
+        // once dead you wake in the lit forest, where the extra waits are idle.
+        let descend = ["open trap door", "down"] + Array(repeating: "wait", count: 6)
         let returnToTrapDoor = ["east", "south", "east", "west", "west"]
         let transcript = try await play(
             Zork1(),
@@ -517,11 +563,12 @@ struct Zork1Tests {
     }
 
     @Test func theThiefStealsAndTheSwordGetsItBack() async throws {
-        // Seed 247: now that the thief roams the whole
-        // underground, a seed where he lingers in the Gallery to pick your
-        // pocket and stand for the fight is rarer — this one has him lift the
-        // painting during the loiter, then fall to the sword, dropping the loot
-        // (and his stiletto) and unbarring the trap door so the route home works.
+        // Seed 474: now that the thief roams the whole underground and lifts
+        // treasures from the floor as well as your hands, a seed where he
+        // lingers in the Gallery to pick your pocket and stand for the fight is
+        // rarer — this one has him lift the painting during the loiter, then
+        // fall to the sword, dropping the loot (and his stiletto) and unbarring
+        // the trap door so the route home works.
         let transcript = try await play(
             Zork1(),
             [
@@ -535,7 +582,7 @@ struct Zork1Tests {
                 "look", "look", "look",
                 "take painting", "west", "north", "open trap door", "up",
             ],
-            seed: 247)
+            seed: 474)
         expectInOrder(
             transcript,
             [
@@ -707,8 +754,9 @@ struct Zork1Tests {
             ])
     }
 
-    /// The Loud Room garbles every command until you say `echo`; only then does
-    /// the platinum bar come free, worth ten points on the find.
+    /// The Loud Room echoes your words and holds the sacred platinum bar fast
+    /// until you say `echo`; only then does the bar come free, worth ten points
+    /// on the find.
     @Test func echoQuietsTheLoudRoomSoTheBarCanBeTaken() async throws {
         // Seed 39: same recorded troll kill; the Loud
         // Room itself draws no randomness on still water, so only the roaming
@@ -722,7 +770,8 @@ struct Zork1Tests {
                 "north", "west",
                 "attack troll", "attack troll", "attack troll",
                 "east", "east", "east",  // → East-West Passage → Round Room → Loud Room
-                "take platinum bar",  // garbled — the room is too loud
+                "take platinum bar",  // the bar is sacred while the room roars
+                "smell",  // any other command just echoes back
                 "look",  // looking still works
                 "echo",  // the acoustics settle
                 "take platinum bar",  // now it comes free (+10)
@@ -734,7 +783,8 @@ struct Zork1Tests {
             [
                 "The troll takes a fatal blow",
                 "Loud Room",
-                "lost in the noise",  // the garble refusal
+                "cannot get hold of it",  // the bar's SACREDBIT take-lock
+                "echo: \u{201C}smell... smell... smell...\u{201D}",  // the read-loop
                 "acoustics of the room change",  // acoustics fixed
                 "Taken.",
                 // 40 on arrival at the Loud Room; the bar's find pays 10 more.
@@ -862,9 +912,10 @@ struct Zork1Tests {
             ])
     }
 
-    /// The blue button springs a leak; standing in the Maintenance Room as the
-    /// water climbs past ankle, waist, and neck ends in drowning — and, this
-    /// being a survivable death, resurrection in the forest.
+    /// The blue button springs a leak; standing in the Maintenance Room, the
+    /// water climbs one body-part step every turn — ankles, shins, knees, hips,
+    /// waist, chest, neck — and once it tops the neck the room is full and you
+    /// drown. This being a survivable death, you resurrect in the forest.
     @Test func theBlueButtonFloodsTheRoomAndDrownsYou() async throws {
         let transcript = try await play(
             Zork1(),
@@ -877,16 +928,21 @@ struct Zork1Tests {
                 "east", "east",
                 "north", "northeast", "east",  // → Dam
                 "north", "north",  // → Maintenance Room
-                "push blue button",  // the leak begins
-                "wait", "wait", "wait", "wait", "wait", "wait",
-                "wait", "wait", "wait", "wait", "wait", "wait",  // the water rises and closes over you
+                "push blue button",  // the leak begins (ankles this turn)
+                "wait", "wait", "wait", "wait",
+                "wait", "wait", "wait",  // shins → neck, then the water closes over you
             ],
             seed: 39)
         expectInOrder(
             transcript,
             [
+                // The level rises continuously, one step a turn.
                 "up to your ankles",
+                "up to your shins",
+                "up to your knees",
+                "up to your hips",
                 "up to your waist",
+                "up to your chest",
                 "up to your neck",
                 "drowned yourself",
                 "Forest",  // resurrection sets you down above ground

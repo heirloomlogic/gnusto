@@ -5,6 +5,14 @@ extension TraitKey<Bool> {
     public static let weapon = Self("weapon", default: false)
 }
 
+extension TraitKey<Int> {
+    /// How keen a weapon is in melee — the original's per-weapon distinction.
+    /// A higher value misses less and kills more; the outcome table reads it
+    /// to slide the cutpoints. Defaults to `2`, the baseline table, so a plain
+    /// `.weapon` with no keenness declared fights exactly as before.
+    public static let weaponStrength = Self("weaponStrength", default: 2)
+}
+
 extension Intent {
     /// The one intent every combat verb emits: attack/kill/hit/fight
     /// bare-handed or `with` a weapon, plus stab/strike (weapon required).
@@ -155,15 +163,28 @@ public struct MeleeCombat: GameContent {
         }
     }
 
+    /// The per-weapon outcome cutpoints out of 100 for one swing: miss ≤ first,
+    /// wound ≤ second, knockout ≤ third, kill above. A keener weapon (higher
+    /// `.weaponStrength`) misses less and kills more — the original's per-weapon
+    /// tables in miniature. Strength 2 is the baseline 30/70/85 table, so an
+    /// ordinary weapon fights exactly as the old fixed table did.
+    static func outcomeCutpoints(weaponStrength: Int) -> (Int, Int, Int) {
+        switch weaponStrength {
+        case ...1: return (40, 76, 90)  // a clumsy blade — the thief's stiletto
+        case 2: return (30, 70, 85)  // the baseline — the nasty knife, the troll's axe
+        default: return (22, 64, 82)  // a keen blade — the elvish sword
+        }
+    }
+
     /// Registers a villain: attacks against `actor` resolve a weapon, roll
     /// the outcome table, and track his health under `key`. At zero health
     /// the death line prints, `onDefeat` runs (unbar the door, drop the
     /// loot — this is the host's composition point, before the body
     /// vanishes), and the actor is removed from play.
     ///
-    /// The fixed table, one roll per swing: miss ≤ 30, wound ≤ 70,
-    /// knockout ≤ 85, kill above. A stunned villain doesn't roll — the
-    /// next blow lands clean.
+    /// One roll per swing against a per-weapon table (see
+    /// `outcomeCutpoints(weaponStrength:)`). A stunned villain doesn't roll —
+    /// the next blow lands clean.
     ///
     /// - Parameters:
     ///   - actor: the villain being attacked and tracked.
@@ -184,7 +205,8 @@ public struct MeleeCombat: GameContent {
     ) -> Rules {
         actor.before(.attack) {
             // Resolve the weapon: the named one must be real and in hand;
-            // otherwise any held registered weapon serves.
+            // otherwise the player's keenest held weapon serves.
+            let weaponUsed: Item
             if let named = command.indirectObject {
                 guard weapons.contains(named) else {
                     try refuse(text.notAWeapon(named.name))
@@ -192,7 +214,12 @@ public struct MeleeCombat: GameContent {
                 guard named.isHeld else {
                     try refuse(text.weaponNotHeld(named.name))
                 }
-            } else if !weapons.contains(where: \.isHeld) {
+                weaponUsed = named
+            } else if let best = weapons.filter(\.isHeld)
+                .max(by: { $0[default: .weaponStrength] < $1[default: .weaponStrength] })
+            {
+                weaponUsed = best
+            } else {
                 try refuse(text.noWeapon)
             }
 
@@ -202,17 +229,23 @@ public struct MeleeCombat: GameContent {
                 ledger.stunned[key] = nil
                 health = 0
             } else {
+                // The original's per-weapon table: a keener weapon slides the
+                // cutpoints toward the killing end (less miss, more kill). The
+                // baseline (strength 2) is the historic 30/70/85 table, so an
+                // ordinary weapon fights exactly as before.
+                let (missMax, woundMax, knockoutMax) = Self.outcomeCutpoints(
+                    weaponStrength: weaponUsed[default: .weaponStrength])
                 let roll = random(1...100)
                 switch roll {
-                case ...30:
+                case ...missMax:
                     try reply(oneOf(prose.miss))
-                case ...70:
+                case ...woundMax:
                     health -= 1
                     if health > 0 {
                         ledger.health[key] = health
                         try reply(oneOf(prose.wound))
                     }
-                case ...85:
+                case ...knockoutMax:
                     ledger.health[key] = health
                     ledger.stunned[key] = 2
                     try reply(prose.knockout)

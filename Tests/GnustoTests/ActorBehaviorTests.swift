@@ -37,22 +37,27 @@ struct ActorBehaviorTests {
         #expect(first == second)
     }
 
-    @Test func theftTakesOneHeldCandidateAndAnnounces() async throws {
+    @Test func theftTakesEveryReachableCandidateAndAnnounces() async throws {
         let transcript = try await play(
             PickpocketGame(),
             ["look", "look", "look", "accuse", "inventory", "quit"],
             seed: 3)
-        // 100% chance, two held candidates: both gone within three turns;
-        // the floor-bound pebble is immune by construction.
-        expectInOrder(
-            turnOutput(of: "accuse", in: transcript),
-            ["Haul: bent coin, silver locket."])
+        // 100% chance, three reachable candidates: the two held (locket, coin)
+        // and the floor-bound pebble all gone within three turns. The green gem
+        // stays put — a shut strongbox is beyond the thief's reach.
+        let haul = turnOutput(of: "accuse", in: transcript)
+        #expect(haul.contains("bent coin"))
+        #expect(haul.contains("silver locket"))
+        #expect(haul.contains("dull pebble"))
+        #expect(!haul.contains("green gem"))
         let inventory = turnOutput(of: "inventory", in: transcript)
         #expect(!inventory.contains("locket"))
         #expect(!inventory.contains("coin"))
+        #expect(!inventory.contains("pebble"))
+        // Three thefts, three announcements; the gem is never among them.
         #expect(
-            transcript.components(separatedBy: "Featherlight fingers").count == 3)
-        #expect(!transcript.contains("dull pebble."))
+            transcript.components(separatedBy: "Featherlight fingers").count == 4)
+        #expect(!transcript.contains("make off with the green gem"))
     }
 
     @Test func stopDaemonEndsTheStealing() async throws {

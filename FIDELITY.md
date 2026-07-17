@@ -98,11 +98,11 @@ entry below is grouped by the task that introduced it.
   painting pays the original's 4 on first take and 6 on first trophy-case
   deposit; the egg pays 5 and 5 (values are data, not prose — used as-is).
   `maxScore` is 20, the sum of what this slice can score, standing in for
-  the real 350 until more treasures exist. One deliberate divergence:
-  points are award-once and never deducted — the original's in-case
-  accounting subtracts a treasure's case value when you take it back out;
-  `GnustoScoring`'s registers pay once and stay paid. The thief does not
-  rob the trophy case (his reach is held items only — see the thief entry).
+  the real 350 until more treasures exist. Scoring now models the original's
+  in-case accounting: **take** value is paid once for good, but **deposit**
+  value is credited when a treasure lands in the trophy case and debited
+  again when it is taken back out, so the score rises and falls as the hoard
+  is rearranged (`GnustoScoring`'s reversible deposit register).
 - **The lantern's fuel is deliberately tiny**: dim warning after 20 burning
   turns, dead after 25 — the original burns for hundreds. Chosen so a
   transcript test (`lanternBurnsOut`) can watch the whole arc. Turning the
@@ -110,21 +110,18 @@ entry below is grouped by the task that introduced it.
   warning prints wherever the player is, without the original's
   can-you-see-the-lamp check. A burned-out lantern refuses `turn on` with
   `Prose.lanternSpent`, and nothing in the slice replaces it.
-- **The grue is deterministic and lingering-based**, where the original
-  rolls dice per dark turn: warning on the first consecutive turn *ending*
-  in darkness, one silent grace turn, death on the third, counter reset by
-  any lit turn. Chosen so transcripts reproduce without pinned seeds and
-  the warning is a guaranteed fairness beat. As of Phase 8 the daemon
-  lives in the `GnustoDangerousDark` plugin (the promised extraction was
-  the file move it was engineered to be); Zork 1 passes its own prose in
-  and takes the stock warn-at-1/die-at-3 schedule, so behavior and
-  transcripts are unchanged. The warning and death prose are original —
-  the famous "likely to be eaten by a grue" sentence is Infocom's and is
-  deliberately not reproduced ("grue" the name is fair game under the
-  names-vs-prose line above). One sharp edge, accepted: UNDO from a grue
-  death restores the counter at 2, so the revived player has zero safe
-  dark moves — grues are unforgiving; RESTORE and RESTART are the real
-  outs.
+- **The grue rolls the dice** *(closed in the fidelity pass — was a deterministic
+  linger clock)*, like the original: a warning on the first consecutive turn *ending*
+  in darkness (the kept fairness beat — the grue never eats you on the turn the dark
+  begins), one silent grace turn, then from the third dark turn on it rolls
+  `chance(lethality)` (Zork 1 uses 50%) to be eaten each turn; any lit turn resets the
+  count. The daemon lives in the `GnustoDangerousDark` plugin (`graceTurns` and
+  `lethality` are knobs); Zork 1 passes its own prose in. The warning and death prose are
+  original — the famous "likely to be eaten by a grue" sentence is Infocom's and is
+  deliberately not reproduced ("grue" the name is fair game under the names-vs-prose line
+  above). Because death is now a roll, the dark-lingering transcripts are seed-pinned (the
+  cost of the dice); the warning still guarantees a safe first dark turn even after an UNDO
+  revive.
 - **The white house exterior is four separate scenery items**
   (`whiteHouseAtWest`/`AtNorth`/`AtSouth`/`AtBehind`), one per house-side
   room, all sharing the same name and `Prose.whiteHouse` text. A single
@@ -165,12 +162,14 @@ entry below is grouped by the task that introduced it.
   after — their regions are later phases. In the original both passages
   open onto real map. *(Updated in Phase 10.4: east now opens onto the
   East-West Passage once the troll falls; only west remains a stub.)*
-- **Combat is `GnustoMeleeCombat`'s simplified table**, not the original's
-  per-weapon melee tables: one roll per swing (miss/wound/knockout/kill at
-  fixed 30/70/85 breaks), villain answers on the end-of-turn clock, player
-  wounds never heal, and a knocked-out troll falls to the next clean blow.
-  Deterministic under a pinned seed; the transcripts record their
-  sequences.
+- **Combat reads a per-weapon table** *(closed in the fidelity pass — was a single
+  fixed table)*. One roll per swing (miss/wound/knockout/kill), but the cutpoints now
+  slide with the weapon's `.weaponStrength`: the elvish sword (keen, 3) whiffs less and
+  kills more than the nasty knife (2) or the thief's stiletto (clumsy, 1), the original's
+  per-weapon distinction. Strength 2 is the historic 30/70/85 table, so an ordinary weapon
+  fights exactly as before. The villain answers on the end-of-turn clock, player wounds
+  never heal, and a knocked-out troll falls to the next clean blow. Deterministic under a
+  pinned seed; the transcripts record their sequences.
 - **Defeat is permanent; his axe is now lootable (closed in the fidelity
   pass).** The troll still vanishes with his death line ("sinks into the
   shadows") and never recovers to block again — the original's randomized
@@ -308,14 +307,14 @@ one). A `@Global var deaths` counts them.
   resurrection narration now carries through. The player is resurrected in
   **Forest West** (`aboveGround.forestWest`); the original's exact resurrection
   room isn't researched here, only that it's the forest.
-- **The scatter is deterministic, not random.** The original strews your
-  belongings around above-ground rooms unpredictably; this slice fixes the
-  placement instead: the **lamp always returns to the living room** (so light is
-  always recoverable), and every other carried item is dealt out one per room,
-  round-robin, across a fixed list of above-ground rooms (West of House, North
-  of House, South of House, Behind House, Forest Path, Clearing). `player.inventory`
-  is sorted by id, so the placement is stable and no RNG is drawn — a quiet,
-  reproducible turn. Revisit if the canonical randomized scatter is wanted.
+- **The scatter is random** *(closed in the fidelity pass — was a deterministic
+  round-robin)*, like the original: every carried item is flung to a random one of the
+  six above-ground rooms (West of House, North of House, South of House, Behind House,
+  Forest Path, Clearing), one `random(…)` draw apiece. The **lamp is the one exception —
+  it always returns to the living room** (so light is always recoverable), a deliberate
+  anti-softlock kept on purpose. `player.inventory` is iterated id-sorted, so only the
+  destinations vary, not the order they are drawn in; the draws mean a death carrying kit
+  is now seed-pinned in tests (the cost of the randomness).
 
 ## Phase 10.4 — Round Room hub (`Sources/Zork1/Regions/RoundRoom.swift`)
 
@@ -361,12 +360,14 @@ directory-agnostic; this only organizes the many regions still to come).
 
 ### The Loud Room
 
-- **The acoustics puzzle is modeled with a match-all garble rule.** On still
-  water the room refuses every command but movement and looking until the player
-  says `echo`, which sets `loudRoomAcousticsFixed` and frees the platinum bar.
-  The original instead keeps a `SACREDBIT` on the bar (untakeable) and runs a
-  bespoke read-loop; the garble rule reproduces the player-facing behavior — you
-  cannot take the bar until you echo — without the read-loop.
+- **The acoustics puzzle is the original's SACREDBIT + read-loop** *(closed in the
+  fidelity pass — was a match-all garble rule)*. On still water the room runs the
+  original's read-loop: every command but movement, looking, `echo`, and taking the
+  bar echoes the last word of your input back (`loudRoomEcho`). The platinum bar
+  carries its own take-lock — the `SACREDBIT`, modeled as `platinumBar.before(.take)`
+  — so it is untakeable until `echo` sets `loudRoomAcousticsFixed` and lifts the lock.
+  One small liberty: taking the bar while loud answers with the roar (the take-lock's
+  message) rather than an echo, so the SACREDBIT is the live, observable mechanism.
 - **The water-driven ejection is present but dormant.** While `waterMoving` is
   true the room scrambles the player out to one random neighbour (Damp Cave,
   Round Room, or Deep Canyon — the original's `LOUD-RUNS` set) — this region's
@@ -431,13 +432,12 @@ has been waiting on since Phase 10.4.
 
 ### Mechanics simplified or deferred
 
-- **The Maintenance Room flood is a deterministic band model.** The blue button
-  starts a `damFlood` daemon; the water is narrated rising past the ankles
-  (turn 4), the waist (turn 8), and the neck (turn 12), and anyone still in the
-  room when it fills at turn 13 drowns, at which point the room seals (the daemon
-  stops). The original raises a continuous water level and computes drowning from
-  it; the fixed bands and 13-turn seal reproduce the player-facing arc (warned,
-  then drowned if you linger) deterministically, so no seed is needed. **Leaving
+- **The Maintenance Room flood is a continuous rising level** *(closed in the fidelity
+  pass — was a three-band model)*. The blue button starts a `damFlood` daemon; the water
+  climbs one body-part step every turn along the original's ladder — ankles, shins, knees,
+  hips, waist, chest, neck — narrated each turn, and once it tops the neck the room is full,
+  anyone still here drowns, and the room seals (the daemon stops). The level is a plain
+  deterministic counter (`floodLevel`), not a dice roll, so no seed is needed. **Leaving
   the room is the only escape** — the flood itself is not tube-pluggable (nor is
   it in the original). The tube of gunk is no longer inert, though: it now patches
   the punctured river boat (closed in the fidelity pass — see the Phase 10.9
@@ -531,12 +531,14 @@ candles → read book) that banishes the spirits guarding the crystal skull.
 - **The ivory torch is a lit `lightSource` that refuses `.turnOff`** — the
   documented "no always-burning trait" idiom — rather than a bespoke
   ever-burning item.
-- **The red-hot bell is a `@Global` flag, not an item swap.** Ringing sets
-  `bellHot` (which the take-refusal reads) and the ring reply narrates the glow;
-  the bell's examine text does not change, and there is no separate red-hot-bell
-  item. The bell cools after a fixed 20 turns — a **deliberate anti-softlock**
-  (the original can leave the bell permanently hot and unusable); the cool is a
-  plain fuse.
+- **The red-hot bell reads as red hot** *(closed in the fidelity pass — the examine
+  text was previously static)*. Ringing sets the `bellHot` `@Global` flag; while it
+  is set the bell's examine text glows red (`bell.describe` → `redHotBell`, the
+  original's distinct red-hot bell), and the take-refusal reads the same flag. The
+  heat is still modeled as a flag rather than a separate red-hot-bell entity — the
+  swap adds no behavior the flag doesn't already carry. The bell cools after a fixed
+  20 turns — a **deliberate anti-softlock kept on purpose** (the original can leave
+  the bell permanently hot and unusable); the cool is a plain fuse.
 - **The exorcism is a small stage machine with a three-turn window.** Ringing the
   bell at the gate freezes the spirits (stage 1) and arms a 3-turn `exorcismLapse`
   fuse; lighting the candles renews the window and reaches stage 2; reading the
@@ -751,14 +753,18 @@ tables and item data were verified against `1dungeon.zil` / `1actions.zil`
 
 ### Mechanics simplified or deferred
 
-- **The current is a self-rearming fuse, not a continuous interrupt.** Each stretch arms a
-  one-shot `riverDrift` fuse for that stretch's canonical dwell (River-1/2: 4 turns,
-  River-3: 3, River-4: 2, River-5: 1); when it fires it moves the boat — and its
-  passenger and cargo — one stretch down and re-arms. Because the engine ticks a fuse on
-  the very turn it is armed, the fuse is armed at **dwell + 1** so the player nets exactly
-  the canonical number of turns on each stretch. Drifting off River-5 goes over Aragain
-  Falls (fatal); `up` is always refused ("strong currents"). Draw-free — the schedule is
-  fixed data.
+- **The current is a continuous per-turn interrupt** *(closed in the fidelity pass — was a
+  self-rearming fuse)*. A `riverCurrent` daemon runs every turn the player is afloat,
+  counting the stretch's canonical dwell down (River-1/2: 4 turns, River-3: 3, River-4: 2,
+  River-5: 1) in the `riverDwell` global; at zero it moves the boat — and its passenger and
+  cargo — one stretch down and reloads the next dwell. A stretch entered by paddling is
+  reloaded during the command, so the daemon decrements it that same turn (reload at
+  **dwell + 1**); a stretch reached by drifting reloads at **dwell** on the drift path, so
+  the player nets exactly the canonical number of turns on each stretch either way. The
+  daemon sorts before the thief's, draws no RNG, and moves the boat on the same turns the
+  old fuse did, so every pinned river transcript is byte-identical. Drifting off River-5
+  goes over Aragain Falls (fatal); `up` is always refused ("strong currents"). Draw-free —
+  the schedule is fixed data.
 - **"Sharp" is a six-item trait, not a general edge test.** A new `TraitKey<Bool>.sharp`
   marks exactly the items the original enumerates as boat-punishers — the sword, the nasty
   knife, and the sceptre today; the rusty knife, the thief's stiletto (Phase 10.11), and the
@@ -880,9 +886,11 @@ his roaming, stealing, stashing, lair defence, egg service, and death stay host-
   than wandering in) and the Land of the Dead. As in earlier phases the roam is a teleport
   within the set (no exit-graph awareness), and the daemon guards before it draws, so quiet
   turns burn no randomness.
-- **He steals any treasure you carry** (the full 17-item host roster), still only while it is
-  held by the player — items on the floor, in the case, or inside a container are safe. This
-  held-only simplification is unchanged from Phase 8.
+- **He lifts any treasure within reach** *(closed in the fidelity pass — was held-only)*. From
+  the full host roster, the thief's steal daemon takes a treasure from wherever it lies in the
+  room he shares with you: held in your hands, on the floor, or inside an open container he can
+  rifle (the trophy case is wired in as one). Only a shut container or another room keeps a
+  treasure safe — the original's thief, who lifts nearly anything from nearly anywhere.
 - **He ferries his takings to the hoard.** A draw-free `thiefStash` daemon deposits everything
   he carries (bar the stiletto) onto the Treasure Room floor whenever he is in the lair.
 - **He defends his lair to the death.** Entering the Treasure Room summons him home, and a
@@ -890,10 +898,12 @@ his roaming, stealing, stashing, lair defence, egg service, and death stay host-
   *only there* — evasive everywhere else. He carries the stiletto (the sixth `.sharp`
   boat-puncturer; the original's SIZE 10) and, killed, drops his whole hoard plus the
   stiletto and unbars the trap door.
-- **The silver chalice** (find 10 / case 5) sits in the Treasure Room and is **guarded**: the
-  host refuses the take while the thief lives. The original lets you snatch it and has him
-  steal it back; modeling that round-trip faithfully is deferred — a hard refusal until he
-  falls is the stand-in.
+- **The silver chalice** (find 10 / case 5) sits in the Treasure Room and is **snatchable**
+  *(closed in the fidelity pass — was hard-refused while the thief lived)*. There is no take
+  guard: you can grab it straight from the hoard (the original's snatch), but because the
+  thief now lifts treasures back from your hands and off the floor, holding it while he lives
+  is only a loan — his steal daemon takes it back on a later turn, the original's
+  snatch-and-resteal.
 - **Give the egg to the thief and he opens it cleanly.** A four-turn `thiefOpensEgg` fuse sets
   the egg open with the clockwork canary intact; you recover the opened egg among his effects
   when he dies. The service is silent (you aren't watching) and is cancelled if he dies first.
@@ -1003,17 +1013,17 @@ and the reveal-on-completion trigger against `1actions.zil` (`SCORE-OBJ`/`WON-FL
   is swept up by "take all from case."
 - **The southwest path opens with the map.** `westOfHouse.southwest(stoneBarrow, when: { map.isRevealed })`
   — refused with a "no path southwest" message until the map appears.
-- **Entering the barrow wins.** The `stoneBarrow.onEnter` rule says the epilogue, then calls
-  `end(won: true)`; the engine skips the room description (the throw precedes it) and appends
+- **The two-step barrow entry is modeled** *(closed in the fidelity pass — was "collapsed to
+  one")*. Faithful to the original: you first reach the **Stone Barrow** and see its description
+  (the open stone door in the east face), then go *west* or *in* to a second **Inside the
+  Barrow** room that ends the game. The `insideBarrow.onEnter` rule says the epilogue, then calls
+  `end(won: true)`; the engine skips that room's description (the throw precedes it) and appends
   the final score line. There is no engine "you have won" banner, so the epilogue carries the
-  flourish.
+  flourish. The `stoneBarrow → insideBarrow` legs (`west` and `in`) live in `ZorkAboveGround`'s
+  map; the gated way *to* the barrow (southwest from West of House) stays host-wired.
 
 ### Mechanics still simplified or deferred
 
-- **The two-step barrow entry is collapsed to one.** In the original you first reach the Stone
-  Barrow (seeing the entrance), then go *west*/*in* to a second "Inside the Barrow" room that
-  ends the game. Here entering the single Stone Barrow room wins directly — one room, one
-  `onEnter` win.
 - **The ancient map is inert flavor.** It is readable and takeable but has no other use; the
   southwest exit gates on the map's *revealed* state, not on carrying or reading it.
 
@@ -1021,15 +1031,14 @@ and the reveal-on-completion trigger against `1actions.zil` (`SCORE-OBJ`/`WON-FL
 
 - **`maxScore` stays 350** (fixed in 10.2). The map and barrow are not treasures — no value, and
   the map is absent from `treasureRoster`.
-- **Award-once, never revoked — unlike the original's in-case accounting.** Original Zork adds
-  each treasure's case value *while it sits in the case* and subtracts it again on withdrawal,
-  so the displayed score rises and falls as you rearrange the hoard. Gnusto's Scoring plugin
-  awards deposit value **once** (keyed `deposit.<name>`) and never takes it back, so the score
-  only ever climbs. Consequence: a player can reach 350 before the map appears (by depositing a
-  treasure, scoring it, then withdrawing it); the map still requires all nineteen present
-  *simultaneously* at a `putIn`, and re-depositing the missing one reveals it with no double
-  score (award-once). The endgame trigger reads live contents, so it is unaffected by the
-  scoring divergence.
+- **In-case accounting modeled** *(closed in the fidelity pass — was "award-once, never
+  revoked")*. Like the original, Gnusto's Scoring plugin adds each treasure's case value while it
+  sits in the case (keyed `deposit.<name>`) and subtracts it again on withdrawal, so the
+  displayed score rises and falls as you rearrange the hoard. Take value is still paid once for
+  good. Consequence: depositing a treasure, scoring it, then withdrawing it nets zero — you can
+  no longer bank 350 by shuffling a single treasure in and out. The map requires all nineteen
+  present *simultaneously* at a `putIn`; the endgame trigger reads live case contents, so it is
+  unaffected by the deposit accounting.
 
 ### Tests
 
@@ -1092,15 +1101,10 @@ treasures cased, and the suite's provisional seed markers are cleared. No game c
 A follow-up audit of this ledger for deferred divergences worth closing. Five low-risk,
 additive mechanics were restored — each canonical behaviour a player would actually hit,
 each touching no seed-pinned RNG stream (the new tests are additive; the whole suite stays
-green, seeds unchanged). The costlier items were left for later passes, not written off: the
-cyclops `CYCLOWRATH` timer and the skeleton disturb-curse landed in the next pass (below);
-the thief's held-only theft and the silver chalice's snatch-and-resteal run through the shared
-`GnustoActors` steal daemon that every seed pin depends on, so closing them is a larger task
-carrying a deliberate one-time re-pin (the same operation Phase 10.11 already performed on
-purpose); and the currently-deterministic divergences (grue, scoring accounting, melee table,
-death scatter, flood bands, Loud Room garble, river current) trade canonical randomness for
-seed-free transcripts and remain revisitable if that trade is later reversed. The individual
-entries above are updated in place; the closures:
+green, seeds unchanged). The costlier items landed in the two passes below: the cyclops
+`CYCLOWRATH` timer and the skeleton disturb-curse (Tier 2), then the theft, determinism, and
+structural divergences (Tier 3). The individual entries above are updated in place; the
+closures:
 
 - **`climb` verb** — `climb tree` reaches Up a Tree (`Systems.swift`, `AboveGround.swift`).
 - **`diagnose` verb** — reports the death toll and resurrections remaining (`Zork1.swift`).
@@ -1128,3 +1132,46 @@ individual Phase-10.10 entries above are updated in place; the closures:
 - **Skeleton disturb-curse** — taking, searching, or moving the bones banishes your carried
   valuables (lamp spared) to the Land of the Dead. Host-wired (`Zork1.swift` `maze.skeleton`
   rules → `temple.landOfDead`), reusing the existing curse prose.
+
+## Fidelity pass — the deferred divergences reversed (Tier 3, post-Phase 10)
+
+The final closure pass, reversing the divergences the earlier audit had ruled "won't fix."
+Every remaining deferred item was restored to canon. Ten mechanics, in two groups.
+
+The **RNG-free** group touches no seeded stream, so the suite stayed green with no re-pin:
+
+- **Two-step Stone Barrow** — you reach the barrow, then step *west*/*in* to a second Inside
+  the Barrow room that wins (`AboveGround.swift` `insideBarrow`, `Zork1.swift` `onEnter`).
+- **In-case scoring** — deposit value is credited into the case and debited on withdrawal, so
+  the score rises and falls (`GnustoScoring`'s reversible `cased` register).
+- **Red-hot bell** — the bell's examine text glows red while `bellHot` (`Temple.swift`
+  `bell.describe`); the 20-turn auto-cool anti-softlock is kept on purpose.
+- **Continuous flood** — the Maintenance Room water climbs a body-part ladder one step a turn
+  (ankles → neck → drown) instead of three fixed bands (`Dam.swift` `damFlood`).
+- **Loud Room SACREDBIT + read-loop** — the platinum bar carries its own take-lock and every
+  other command echoes the last word (`RoundRoom.swift`).
+- **River current** — a continuous per-turn `riverCurrent` daemon carries the boat, not a
+  self-rearming fuse; byte-identical to the old timing (`River.swift`).
+
+The **RNG-touching** group deliberately re-accepts randomness — the reverse of the
+determinism-for-seed-freedom trade — so each carried a scoped, one-time re-pin (the Phase
+10.11 operation), done incrementally as each landed:
+
+- **Full theft fidelity** — the thief lifts treasures from your hands, the floor, or an open
+  container (the trophy case); the silver chalice is snatchable and he steals it back
+  (`GnustoActors` `steals` widened, `Zork1.swift` chalice guard dropped). Re-pinned the two
+  thief-route tests and rebuilt the `GnustoActors` theft unit test.
+- **Per-weapon melee** — `.weaponStrength` slides the outcome cutpoints so the elvish sword
+  outclasses the knife and stiletto; strength 2 is the old 30/70/85 table
+  (`GnustoMeleeCombat`). Only the chalice-lair test re-pinned.
+- **Dice grue** — after the guaranteed warning and a grace turn, each dark turn rolls
+  `chance(lethality)` (`GnustoDangerousDark`, 50% in Zork 1). The first-turn warning is the
+  kept anti-softlock. Re-pinned the dark-lingering tests.
+- **Random death scatter** — belongings strew to random above-ground rooms; the lamp still
+  returns to the Living Room (`Zork1.swift` `onDeath`, kept anti-softlock). Re-pinned the two
+  scatter tests.
+
+The 350-point seed-32 walkthrough is unaffected throughout: it never dies, never lingers in
+the dark, and its troll/thief kills survive the new tables. Anti-softlock guards kept by
+explicit decision: the grue's first-turn warning, the lamp sparing (scatter), and the bell's
+auto-cool.

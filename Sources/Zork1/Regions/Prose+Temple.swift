@@ -79,7 +79,10 @@ extension Prose {
         A small brass hand-bell, of the sort once rung to call the faithful.
         """
 
-    static let redHotBell = "On the ground is a red hot bell."
+    static let redHotBell = """
+        The bell glows a dull, angry red — freshly rung at the gate of Hades,
+        it is still far too hot to touch.
+        """
 
     static let book = """
         Commandment #12592
