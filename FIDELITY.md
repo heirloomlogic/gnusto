@@ -531,12 +531,14 @@ candles → read book) that banishes the spirits guarding the crystal skull.
 - **The ivory torch is a lit `lightSource` that refuses `.turnOff`** — the
   documented "no always-burning trait" idiom — rather than a bespoke
   ever-burning item.
-- **The red-hot bell is a `@Global` flag, not an item swap.** Ringing sets
-  `bellHot` (which the take-refusal reads) and the ring reply narrates the glow;
-  the bell's examine text does not change, and there is no separate red-hot-bell
-  item. The bell cools after a fixed 20 turns — a **deliberate anti-softlock**
-  (the original can leave the bell permanently hot and unusable); the cool is a
-  plain fuse.
+- **The red-hot bell reads as red hot** *(closed in the fidelity pass — the examine
+  text was previously static)*. Ringing sets the `bellHot` `@Global` flag; while it
+  is set the bell's examine text glows red (`bell.describe` → `redHotBell`, the
+  original's distinct red-hot bell), and the take-refusal reads the same flag. The
+  heat is still modeled as a flag rather than a separate red-hot-bell entity — the
+  swap adds no behavior the flag doesn't already carry. The bell cools after a fixed
+  20 turns — a **deliberate anti-softlock kept on purpose** (the original can leave
+  the bell permanently hot and unusable); the cool is a plain fuse.
 - **The exorcism is a small stage machine with a three-turn window.** Ringing the
   bell at the gate freezes the spirits (stage 1) and arms a 3-turn `exorcismLapse`
   fuse; lighting the candles renews the window and reaches stage 2; reading the

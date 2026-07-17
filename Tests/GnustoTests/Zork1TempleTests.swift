@@ -165,18 +165,24 @@ struct Zork1TempleTests {
 
     /// The rung bell is left red hot: too hot to pick up until it cools, twenty
     /// turns on — a deliberate anti-softlock so a fumbled ritual never traps it.
+    /// Its examine text tracks the heat — glowing red while hot, an ordinary
+    /// hand-bell once cooled (the original's distinct red-hot bell).
     @Test func theRungBellIsTooHotUntilItCools() async throws {
         let waits = Array(repeating: "wait", count: 20)
         let transcript = try await play(
             Zork1(),
-            Self.toHadesWithKit + ["ring bell", "take bell"] + waits + ["take bell"],
+            Self.toHadesWithKit
+                + ["ring bell", "examine bell", "take bell"] + waits
+                + ["examine bell", "take bell"],
             seed: 0)
         expectInOrder(
             transcript,
             [
                 "becomes red hot and falls to the ground",  // rung
+                "glows a dull, angry red",  // examine while hot → redHotBell
                 "very hot and cannot be taken",  // bellTooHotToTake
                 "appears to have cooled down",  // bellCools
+                "once rung to call the faithful",  // examine once cooled → bell
                 "Taken.",  // now it can be picked up
             ])
     }
