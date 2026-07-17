@@ -1,3 +1,5 @@
+import Foundation
+
 /// The status line a handler can display: location, score, and turn count.
 public struct StatusLine: Sendable {
     /// The current location's name.
@@ -36,6 +38,10 @@ public actor GameWorld {
     /// The pristine post-bootstrap state, seed included — what RESTART
     /// rewinds to. Actor state, never part of `WorldState` itself.
     private let initialState: WorldState
+    /// Where bare save names (`save autumn`) resolve to, and the directory the
+    /// restore prompt lists. Explicit paths the player types bypass it. See
+    /// `SaveStore`.
+    private let saveDirectory: URL
     /// The one-level UNDO snapshot: the state as it stood before the last
     /// turn that actually ran stages. Kept on the actor so history never
     /// leaks into save files.
@@ -59,10 +65,16 @@ public actor GameWorld {
     /// The random stream is seeded fresh each run; use `init(game:seed:)`
     /// to replay a specific one.
     ///
-    /// - Parameter game: the game definition to build the world from.
+    /// - Parameters:
+    ///   - game: the game definition to build the world from.
+    ///   - saveDirectory: where bare save names resolve; defaults to the
+    ///     per-user saves directory for the game's title.
     /// - Throws: if the game definition is invalid.
-    public init(game: some Game) throws {
-        try self.init(game: game, seed: UInt64.random(in: .min ... .max))
+    public init(game: some Game, saveDirectory: URL? = nil) throws {
+        try self.init(
+            game: game,
+            seed: UInt64.random(in: .min ... .max),
+            saveDirectory: saveDirectory)
     }
 
     /// Builds the world with a fixed random seed: the same seed and the same
@@ -72,8 +84,10 @@ public actor GameWorld {
     /// - Parameters:
     ///   - game: the game definition to build the world from.
     ///   - seed: the fixed random seed to replay.
+    ///   - saveDirectory: where bare save names resolve; defaults to the
+    ///     per-user saves directory for the game's title.
     /// - Throws: if the game definition is invalid.
-    public init(game: some Game, seed: UInt64) throws {
+    public init(game: some Game, seed: UInt64, saveDirectory: URL? = nil) throws {
         let (definition, state) = try Bootstrap.build(game)
         self.definition = definition
         self.state = state
@@ -84,6 +98,8 @@ public actor GameWorld {
         self.parser = StandardParser(
             vocabulary: definition.vocabulary,
             syntaxRules: definition.syntaxRules)
+        self.saveDirectory = saveDirectory
+            ?? SaveStore.defaultDirectory(forGameTitled: definition.title)
     }
 
     /// The opening of the game: intro, banner, and the first look around.
@@ -163,7 +179,7 @@ public actor GameWorld {
             return freeReply(definition.text.savePrompt)
         case .restore:
             pendingPrompt = .restoreFilename(returnToDeathPrompt: false)
-            return freeReply(definition.text.restorePrompt)
+            return freeReply(restorePromptText())
         default: break
         }
 
@@ -329,6 +345,16 @@ public actor GameWorld {
         return begin()
     }
 
+    /// The restore prompt, with the names of the saves already on disk appended
+    /// when there are any — so a player doesn't have to remember what they
+    /// called them. Explicit-path saves elsewhere aren't listed, only the
+    /// slots in the saves directory.
+    private func restorePromptText() -> String {
+        let names = SaveStore.existingSaveNames(in: saveDirectory)
+        guard !names.isEmpty else { return definition.text.restorePrompt }
+        return "\(definition.text.restorePrompt) (saved: \(names.joined(separator: ", ")))"
+    }
+
     /// Consumes the line that answers an open engine prompt.
     private func answer(_ prompt: PendingPrompt, with line: String) -> TurnResult {
         switch prompt {
@@ -337,7 +363,8 @@ public actor GameWorld {
                 return freeReply(definition.text.cancelled)
             }
             do {
-                try SaveFile.write(state, title: definition.title, to: line)
+                let url = try SaveStore.resolveForWrite(line, in: saveDirectory)
+                try SaveFile.write(state, title: definition.title, to: url)
                 return freeReply(definition.text.saved)
             } catch {
                 return freeReply(definition.text.saveFailed)
@@ -348,7 +375,8 @@ public actor GameWorld {
                 return restoreFailed(definition.text.cancelled, returnToDeathPrompt)
             }
             do {
-                let restored = try SaveFile.read(from: line, expecting: definition.title)
+                let url = SaveStore.resolve(line, in: saveDirectory)
+                let restored = try SaveFile.read(from: url, expecting: definition.title)
                 return performRestore(restored)
             } catch {
                 switch error {
@@ -365,7 +393,7 @@ public actor GameWorld {
                 return performRestart()
             case "restore":
                 pendingPrompt = .restoreFilename(returnToDeathPrompt: true)
-                return freeReply(definition.text.restorePrompt)
+                return freeReply(restorePromptText())
             case "undo":
                 guard undoSnapshot != nil else {
                     pendingPrompt = .deathChoice
