@@ -128,6 +128,32 @@ struct Zork1MazeTests {
         #expect(!transcript.contains("Strange Passage"))
     }
 
+    @Test func attackingTheSleepingCyclopsWakesHim() async throws {
+        // Fed to sleep, the cyclops is harmless — examine him and he's out cold.
+        // But a blow wakes him (the original's yawn-and-stare): his calm breaks,
+        // and examining him again shows the hungry giant back on his feet.
+        let transcript = try await play(
+            Zork1(),
+            Self.toMaze5 + [
+                "southwest", "east", "south", "southeast",  // → Cyclops Room
+                "give lunch to cyclops",
+                "open bottle",
+                "give bottle to cyclops",  // he drinks himself to sleep
+                "examine cyclops",  // sleeping like a baby
+                "attack cyclops",  // the blow wakes him
+                "examine cyclops",  // the hungry giant, awake again
+            ],
+            seed: 39)
+        expectInOrder(
+            transcript,
+            [
+                "fast asleep",
+                "sleeping like a baby",  // examine while subdued
+                "the thing that woke him up",  // wake-on-attack
+                "hungry cyclops is standing",  // examine, awake again
+            ])
+    }
+
     @Test func theMazeThreadsPastItsDeadEnds() async throws {
         // A short draw-free walk from Maze-5: east into a dead end, back, and
         // southwest onward — proving the tangle's landmarks by name (every maze

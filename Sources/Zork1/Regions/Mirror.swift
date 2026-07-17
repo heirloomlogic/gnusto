@@ -1,4 +1,5 @@
 import Gnusto
+import GnustoMeleeCombat
 import GnustoScoring
 
 /// The Mirror Rooms and their vicinity — the connective tissue of the
@@ -101,7 +102,6 @@ struct ZorkMirror: GameContent {
         name("mirror")
         adjectives("enormous")
         synonyms("mirror", "reflection")
-        description(Prose.mirror)
         scenery
     }
 
@@ -111,9 +111,14 @@ struct ZorkMirror: GameContent {
         name("mirror")
         adjectives("enormous")
         synonyms("mirror", "reflection")
-        description(Prose.mirror)
         scenery
     }
+
+    // MARK: - State
+
+    /// Whether a mirror has been smashed (the original's `MIRROR-MUNG`). Once
+    /// broken, the teleport between the two halves of the map is dead for good.
+    @Global var mirrorBroken = false
 
     // MARK: - Map
 
@@ -168,21 +173,54 @@ struct ZorkMirror: GameContent {
 
     var rules: Rules {
         // Touching a mirror whisks the player to the other Mirror Room, the only
-        // passage between the map's two halves. Deterministic — no draw. The
-        // original swaps the two rooms' floor contents too and can be broken for
-        // seven years' bad luck; here it moves the player (held items ride along)
-        // and can't be broken (FIDELITY.md).
+        // passage between the map's two halves — and swaps whatever loose items
+        // lie on the two rooms' floors, as the original does (fixtures, the
+        // mirrors themselves, stay put). Deterministic, no draw. A shattered
+        // mirror is dead glass: the touch falls through to the plain reply.
         mirrorNorth.before(.touch) {
+            guard !mirrorBroken else { return }
+            swapMirrorFloors()
             say(Prose.mirrorRumble)
             player.location = mirrorRoomSouth
             describeSurroundings()
             try reply("")
         }
         mirrorSouth.before(.touch) {
+            guard !mirrorBroken else { return }
+            swapMirrorFloors()
             say(Prose.mirrorRumble)
             player.location = mirrorRoomNorth
             describeSurroundings()
             try reply("")
         }
+
+        // Smashing either mirror breaks both (they are two faces of one
+        // passage) and kills the teleport for good — the original's
+        // seven-years'-bad-luck `MIRROR-MUNG`.
+        mirrorNorth.before(.attack) { try breakMirror() }
+        mirrorSouth.before(.attack) { try breakMirror() }
+
+        // A broken mirror reads as shattered glass; whole, it shows the usual
+        // ugly reflection.
+        mirrorNorth.describe { mirrorBroken ? Prose.mirrorShattered : Prose.mirror }
+        mirrorSouth.describe { mirrorBroken ? Prose.mirrorShattered : Prose.mirror }
+    }
+
+    /// Swap the loose (takeable) floor items of the two Mirror Rooms, leaving
+    /// the fixtures — including the mirrors — where they stand. Both floors are
+    /// read before either is moved, so the swap is order-independent.
+    private func swapMirrorFloors() {
+        let northLoose = mirrorRoomNorth.contents.filter { $0.isTakable }
+        let southLoose = mirrorRoomSouth.contents.filter { $0.isTakable }
+        for item in northLoose { item.move(to: mirrorRoomSouth) }
+        for item in southLoose { item.move(to: mirrorRoomNorth) }
+    }
+
+    /// Break the mirror if it is whole (disabling the teleport), or shrug off a
+    /// blow against glass already shattered.
+    private func breakMirror() throws {
+        guard !mirrorBroken else { try reply(Prose.mirrorAlreadyBroken) }
+        mirrorBroken = true
+        try reply(Prose.mirrorBreaks)
     }
 }

@@ -71,6 +71,16 @@ extension Prose {
         The cyclops shrugs but otherwise ignores your pitiful attempt.
         """
 
+    /// Attacking the fed, sleeping cyclops rouses him again.
+    static let cyclopsWakesFromAttack = """
+        The cyclops yawns and stares at the thing that woke him up.
+        """
+
+    /// Examining the cyclops while he sleeps off the drugged water.
+    static let cyclopsSleepingExamine = """
+        The cyclops is sleeping like a baby, albeit a very ugly one.
+        """
+
     /// The escalating menace shown once his hunger is roused — the original's
     /// `CYCLOMAD` table, one line per rising turn of `CYCLOWRATH`.
     static let cyclomad = [

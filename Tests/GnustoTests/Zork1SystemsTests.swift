@@ -90,11 +90,13 @@ struct Zork1SystemsTests {
     // MARK: - Burden & the chimney gate
 
     @Test func chimneyRefusesTooFullHands() async throws {
-        // The chimney climbs only with a couple of things in hand. Three
-        // items is one too many; dropping back to two lets the climb through.
-        // The load is lantern + sword + knife — all non-treasures, so the
-        // roaming thief has nothing to lift and the item count stays fixed
-        // without pinning a seed. The drop names the "nasty knife" in full so
+        // The chimney climbs with the lamp plus at most one other thing in hand:
+        // the lamp rides free, but a second non-lamp item is one too many. The
+        // load is lantern + sword + knife — the lantern free, so sword + knife
+        // is the two-item overload; dropping the knife lets the climb through.
+        // All non-treasures, so the roaming thief has nothing to lift and the
+        // item count stays fixed without pinning a seed. The drop names the
+        // "nasty knife" in full so
         // it stays unambiguous even when the thief wanders in with his own
         // blade — otherwise "knife" would raise a disambiguation prompt.
         let transcript = try await play(

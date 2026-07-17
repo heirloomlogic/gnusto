@@ -404,10 +404,26 @@ struct ZorkMaze: GameContent {
 
         // Steel doesn't faze him and combat never starts — but the attempt
         // rouses his hunger, and from here the wrath timer below counts down to
-        // lunch (yours). Feeding him asleep first makes an attack a mere shrug.
+        // lunch (yours). Striking the fed, sleeping cyclops wakes him instead:
+        // his subdued calm breaks, the stair he guards closes again, and the
+        // wrath he'd banked resumes climbing. (A cyclops routed by `odysseus`
+        // has vanished, so this only ever fires on the sleeper.)
         cyclops.before(.attack) {
-            if !cyclopsSubdued { cyclopsProvoked = true }
+            if cyclopsSubdued {
+                cyclopsSubdued = false
+                cyclopsProvoked = true
+                try reply(Prose.cyclopsWakesFromAttack)
+            }
+            cyclopsProvoked = true
             try reply(Prose.cyclopsShrugsOffAttack)
+        }
+
+        // Examining the cyclops reads his mood: fast asleep once fed the
+        // drugged water, an ordinary hungry giant otherwise. (Unsubdued, the
+        // default examine shows the actor's own description.)
+        cyclops.before(.examine) {
+            guard cyclopsSubdued else { return }
+            try reply(Prose.cyclopsSleepingExamine)
         }
 
         // The mounting hunger (`CYCLOWRATH` / `I-CYCLOPS`): once provoked, each

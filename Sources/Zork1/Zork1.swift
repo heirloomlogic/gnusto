@@ -240,13 +240,15 @@ struct Zork1: Game, GameMain {
         scoring.visit(roundRoom.eastWestPassage, register: "eastWestPassage", points: 5)
         scoring.visit(coalMine.draftyRoom, register: "draftyRoom", points: 13)
 
-        // The chimney is climbable only lightly loaded: the original caps it
-        // at one item plus the lamp, which this slice simplifies to "no more
-        // than two things in hand" (FIDELITY.md). Studio lives in ZorkCellar
-        // and the rule is a burden concern, so the host owns it.
+        // The chimney is climbable only lightly loaded: the original lets you
+        // carry at most one item plus the lamp up it. The lamp rides free; any
+        // more than one other thing in hand and the climb is refused. Studio
+        // lives in ZorkCellar and the rule is a burden concern, so the host
+        // owns it.
         cellar.studio.before(.go) {
             guard command.direction == .up else { return }
-            try require(player.inventory.count <= 2, else: Prose.chimneyTooBurdened)
+            let besidesLamp = player.inventory.filter { $0 != house.lantern }.count
+            try require(besidesLamp <= 1, else: Prose.chimneyTooBurdened)
         }
 
         // The dam bolt. Turning it works the sluice gates, but only with the

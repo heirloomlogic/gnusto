@@ -141,9 +141,9 @@ struct ZorkTemple: GameContent {
     }
 
     /// The gold coffin: a treasure (ten on the find, fifteen in the case) and a
-    /// container holding the sceptre. It weighs 55 — heavier than the altar
-    /// crack's load cap of 50, so it can never be carried down toward Hades and
-    /// must leave by the altar's PRAY egress instead (host-wired).
+    /// container holding the sceptre. Too big to squeeze down the altar crack
+    /// toward Hades (the altar's `before(.go)` refuses it specifically), so it
+    /// can only leave the temple by the altar's PRAY egress (host-wired).
     let coffin = Item {
         name("gold coffin")
         adjectives("gold", "golden")
@@ -284,14 +284,13 @@ struct ZorkTemple: GameContent {
             try refuse(Prose.torchWontExtinguish)
         }
 
-        // The altar crack is too narrow for a heavy load. The coffin (55)
-        // trips the cap; ordinary exploring loads (torch, bell, book, candles)
-        // do not. Canonically the block is coffin-specific; here it's a ≤50
-        // load cap, reusing the burden weight (FIDELITY.md).
+        // The altar crack is too narrow for the gold coffin — the original's
+        // coffin-specific `COFFIN-CURE`. Carrying the coffin down is refused;
+        // any other load, however heavy, squeezes through. This forces the
+        // coffin out by the altar's PRAY egress, exactly as canonical.
         altar.before(.go) {
             guard command.direction == .down else { return }
-            let carried = player.inventory.reduce(0) { $0 + burdenWeight(of: $1) }
-            try require(carried <= 50, else: Prose.coffinTooHeavy)
+            try require(!coffin.isHeld, else: Prose.coffinTooHeavy)
         }
 
         // The bell's examine text tracks its heat: freshly rung it reads as
