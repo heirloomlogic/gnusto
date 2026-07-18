@@ -8,8 +8,10 @@
 /.build
 /Packages
 DerivedData/
-# The root Package.resolved is committed (it pins swift-syntax for CI and
-# macro-expansion test stability); the template resolves its own.
+# Package.resolved is not tracked for this package — dependencies resolve from
+# the version ranges in Package.swift, and the dev-only tooling (docc, Persnicket)
+# would otherwise churn it. The template resolves its own too.
+/Package.resolved
 Templates/NewGame/Package.resolved
 xcuserdata/
 .build
