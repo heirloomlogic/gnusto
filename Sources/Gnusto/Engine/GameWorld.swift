@@ -688,6 +688,44 @@ public actor GameWorld {
         return Scope(visibleItems: visible, pronounIt: state.pronounIt)
     }
 
+    /// Where this game's persistent command history lives — the history
+    /// sidecar in the saves directory. `SaveStore` owns the path convention.
+    var historyFileURL: URL {
+        SaveStore.historyURL(in: saveDirectory)
+    }
+
+    /// The words Tab-completion can offer for the next input line: every verb,
+    /// the nouns and adjectives of the items currently in scope, the movement
+    /// directions, and the save slots on disk. Recomputed each turn because
+    /// scope changes as the player moves — and because, when the engine is
+    /// waiting for a save/restore filename, the whole line completes against
+    /// save names instead of the command grammar.
+    ///
+    /// - Returns: the completion candidates for the current state.
+    func completionCandidates() -> CompletionCandidates {
+        let context: CompletionCandidates.Context
+        switch pendingPrompt {
+        case .saveFilename, .restoreFilename:
+            context = .filename  // the next line names a save, not a command
+        default:
+            context = .command
+        }
+
+        let scope = currentScope()
+        var nouns: Set<String> = []
+        for id in scope.visibleItems {
+            guard let lexicon = definition.vocabulary.itemLexicons[id] else { continue }
+            nouns.formUnion(lexicon.nouns)
+            nouns.formUnion(lexicon.adjectives)
+        }
+        return CompletionCandidates(
+            context: context,
+            verbs: definition.vocabulary.verbWords.sorted(),
+            nouns: nouns.sorted(),
+            directions: definition.vocabulary.directions.keys.sorted(),
+            saveNames: SaveStore.existingSaveNames(in: saveDirectory))
+    }
+
     private func commit(_ frame: TurnFrame) -> TurnResult {
         let scratch = frame.retire()
         state = scratch.state

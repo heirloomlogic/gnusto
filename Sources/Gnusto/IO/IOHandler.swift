@@ -17,9 +17,68 @@ public protocol IOHandler: Sendable {
     ///
     /// - Parameter status: the status line to display.
     func showStatus(_ status: StatusLine)
+
+    /// Receives the words Tab-completion may offer for the next input line.
+    /// A handler with a line editor uses them; the plain console ignores them.
+    ///
+    /// - Parameter candidates: verbs, in-scope nouns, directions, and save names.
+    func updateCompletions(_ candidates: CompletionCandidates)
 }
 
 extension IOHandler {
     /// Defaults to showing no status line.
     public func showStatus(_ status: StatusLine) {}
+
+    /// Defaults to ignoring completion candidates.
+    public func updateCompletions(_ candidates: CompletionCandidates) {}
+}
+
+/// A snapshot of what Tab-completion can offer for the upcoming input line: the
+/// game's verbs, the nouns and adjectives currently in scope, the movement
+/// directions, and the save slot names on disk. The engine assembles it after
+/// each turn and pushes it to the IO handler, because the synchronous line
+/// editor can't reach back into the `GameWorld` actor mid-read.
+public struct CompletionCandidates: Sendable, Equatable {
+    /// What the next input line will be read as, which decides the pool: a
+    /// normal command, or a save/restore filename.
+    public enum Context: Sendable, Equatable {
+        /// A normal command line — completes against verbs, nouns, directions.
+        case command
+        /// A save/restore filename prompt — the whole line completes against
+        /// existing save names.
+        case filename
+    }
+
+    /// How the next input line will be interpreted.
+    public var context: Context
+    /// Verb words that can lead a command (`take`, `open`, `look`).
+    public var verbs: [String]
+    /// Noun and adjective words for the items the player can currently see.
+    public var nouns: [String]
+    /// Movement words (`north`, `n`, `up`).
+    public var directions: [String]
+    /// Save slot names already on disk, for completing a save/restore filename.
+    public var saveNames: [String]
+
+    /// Creates a set of completion candidates.
+    ///
+    /// - Parameters:
+    ///   - context: how the next input line will be interpreted.
+    ///   - verbs: verb words that can lead a command.
+    ///   - nouns: noun and adjective words for in-scope items.
+    ///   - directions: movement words.
+    ///   - saveNames: save slot names on disk.
+    public init(
+        context: Context = .command,
+        verbs: [String] = [],
+        nouns: [String] = [],
+        directions: [String] = [],
+        saveNames: [String] = []
+    ) {
+        self.context = context
+        self.verbs = verbs
+        self.nouns = nouns
+        self.directions = directions
+        self.saveNames = saveNames
+    }
 }

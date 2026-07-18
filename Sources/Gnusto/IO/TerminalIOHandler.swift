@@ -70,8 +70,11 @@ public final class TerminalIOHandler: IOHandler {
         var input = ""
         /// Caret position within `input`, as a character offset.
         var cursor = 0
-        /// Submitted commands, for Up/Down recall.
+        /// Submitted commands, for Up/Down recall. Seeded from the persistent
+        /// history file at launch, appended to on each submit.
         var history: [String] = []
+        /// The words Tab-completion offers, refreshed by the engine each turn.
+        var completions = CompletionCandidates()
         /// Lines scrolled up from the live bottom; 0 pins to the newest text.
         var scrollOffset = 0
 
@@ -86,10 +89,23 @@ public final class TerminalIOHandler: IOHandler {
 
     private let box = Mutex(State())
 
+    /// Where command history is persisted, or `nil` to keep it in memory only
+    /// (as in tests). Loaded into `State.history` at launch, appended on submit.
+    private let historyURL: URL?
+
     /// Enters raw mode and the alternate screen, installs the teardown guards,
-    /// and paints the initial (empty) frame.
-    public init() {
+    /// seeds command history from `historyURL`, and paints the initial (empty)
+    /// frame.
+    ///
+    /// - Parameter historyURL: the file to persist and reload command history
+    ///   from; `nil` keeps history in memory for the session only.
+    public init(historyURL: URL? = nil) {
+        self.historyURL = historyURL
         enableRawModeAndAltScreen()
+        if let historyURL {
+            let loaded = Self.loadHistory(from: historyURL)
+            box.withLock { $0.history = loaded }
+        }
         render()
     }
 
@@ -118,6 +134,12 @@ public final class TerminalIOHandler: IOHandler {
         render()
     }
 
+    /// Stores the completion candidates the engine computed for the next input
+    /// line. Tab uses them; no repaint is needed.
+    public func updateCompletions(_ candidates: CompletionCandidates) {
+        box.withLock { $0.completions = candidates }
+    }
+
     /// Runs the raw-mode line editor until the player submits a line, presses
     /// Ctrl-D on an empty line (EOF), or Ctrl-C (quit). Returns the submitted
     /// line, or `nil` to end the game.
@@ -135,10 +157,7 @@ public final class TerminalIOHandler: IOHandler {
         var draft = ""
 
         while true {
-            if gnustoWindowResized.exchange(false, ordering: .relaxed) {
-                render()
-            }
-            guard let key = readKey() else { continue }  // interrupted; loop
+            guard let key = nextKey() else { continue }  // resize or timeout; loop
 
             // The editing cases only mutate state; the single `render()` at the
             // foot of the loop repaints. The control-flow cases (`enter`,
@@ -156,6 +175,9 @@ public final class TerminalIOHandler: IOHandler {
                     st.scrollOffset = 0
                     return line
                 }
+                if let historyURL {
+                    Self.appendHistory(line, to: historyURL)
+                }
                 render()
                 return line
 
@@ -166,9 +188,25 @@ public final class TerminalIOHandler: IOHandler {
                 continue  // nothing changed; no repaint
 
             case .interrupt:
-                // Ctrl-C: leave the terminal clean and quit the process.
-                gnustoEmergencyRestore()
-                exit(0)
+                // Ctrl-C: confirm, then route through the game's normal quit
+                // path by returning "quit", rather than killing the process —
+                // so the engine prints its epilogue and the terminal restores
+                // cleanly on the way out.
+                if confirmQuit() { return "quit" }
+                render()
+                continue
+
+            case .tab:
+                box.withLock { st in
+                    let outcome = Self.complete(
+                        input: st.input, cursor: st.cursor, candidates: st.completions)
+                    st.input = outcome.newInput
+                    st.cursor = outcome.newCursor
+                    if !outcome.listing.isEmpty {
+                        st.transcript.append(Self.formatCandidateListing(outcome.listing))
+                        st.scrollOffset = 0
+                    }
+                }
 
             case .character(let ch):
                 box.withLock {
@@ -371,7 +409,7 @@ public final class TerminalIOHandler: IOHandler {
     /// characters.
     private enum Key {
         case character(String)
-        case enter, backspace, deleteForward
+        case enter, backspace, deleteForward, tab
         case left, right, home, end
         case historyPrev, historyNext
         case pageUp, pageDown
@@ -396,6 +434,17 @@ public final class TerminalIOHandler: IOHandler {
         return errno == EINTR ? .interrupted : .eof
     }
 
+    /// Services a pending window resize (re-rendering) and returns the next
+    /// decoded key, or `nil` when the read timed out — so callers loop. Shared
+    /// by the line editor and the Ctrl-C confirm so the resize/poll contract
+    /// lives in one place.
+    private func nextKey() -> Key? {
+        if gnustoWindowResized.exchange(false, ordering: .relaxed) {
+            render()
+        }
+        return readKey()
+    }
+
     /// Reads and decodes the next keypress. Returns `nil` when interrupted, so
     /// the caller can service a pending resize and try again.
     private func readKey() -> Key? {
@@ -408,6 +457,7 @@ public final class TerminalIOHandler: IOHandler {
             switch b {
             case 0x03: return .interrupt
             case 0x04: return .eof
+            case 0x09: return .tab
             case 0x0A, 0x0D: return .enter
             case 0x7F, 0x08: return .backspace
             case 0x1B: return readEscapeSequence()
@@ -483,6 +533,188 @@ public final class TerminalIOHandler: IOHandler {
                 if written <= 0 { break }
                 offset += written
             }
+        }
+    }
+
+    // MARK: - Ctrl-C confirm
+
+    /// Asks the player to confirm a Ctrl-C quit, reading keys until they answer.
+    /// `y` confirms; `n`, Enter, or any unrecognized key cancels; a second
+    /// Ctrl-C or Ctrl-D confirms outright. Front-end only — the actual quit
+    /// happens when `readLine` returns `"quit"` and the engine runs it.
+    ///
+    /// - Returns: `true` to quit, `false` to keep editing the current line.
+    func confirmQuit() -> Bool {
+        box.withLock {
+            $0.transcript.append("Do you really want to quit? (y/n)")
+            $0.scrollOffset = 0
+        }
+        render()
+        while true {
+            guard let key = nextKey() else { continue }  // resize or timeout; loop
+            switch key {
+            case .interrupt, .eof:
+                return true  // a second Ctrl-C / Ctrl-D means business
+            case .enter:
+                return false  // bare Enter defaults to "no"
+            case .character(let ch):
+                switch ch.lowercased() {
+                case "y": return true
+                case "n": return false
+                default: break  // ignore; keep waiting
+                }
+            default:
+                break  // ignore other keys; keep waiting
+            }
+        }
+    }
+
+    // MARK: - Tab-completion
+
+    /// The result of a Tab-completion attempt: the new input line and caret, and
+    /// any candidate words to display when the prefix stays ambiguous.
+    struct CompletionOutcome: Equatable {
+        var newInput: String
+        var newCursor: Int
+        var listing: [String]
+    }
+
+    /// Completes the word ending at `cursor` against the pool its position and
+    /// context imply: at a save/restore filename prompt the word completes
+    /// against save names; otherwise the first word completes against verbs and
+    /// directions, and anything later against in-scope nouns and directions. A
+    /// unique match is inserted with a trailing space; several matches extend to
+    /// their longest common prefix, and are listed when they can't be extended
+    /// further. Text to the right of the caret is preserved. Pure — unit-tested
+    /// directly.
+    ///
+    /// - Parameters:
+    ///   - input: the current line being edited.
+    ///   - cursor: the caret's character offset into `input`.
+    ///   - candidates: the words available to complete against.
+    /// - Returns: the resulting line, caret, and any candidates to list.
+    static func complete(
+        input: String, cursor: Int, candidates: CompletionCandidates
+    ) -> CompletionOutcome {
+        let chars = Array(input)
+        let caret = max(0, min(cursor, chars.count))
+        let unchanged = CompletionOutcome(newInput: input, newCursor: cursor, listing: [])
+
+        // The partial word: the run of non-spaces ending at the caret.
+        var wordStart = caret
+        while wordStart > 0, !chars[wordStart - 1].isWhitespace {
+            wordStart -= 1
+        }
+        let partial = String(chars[wordStart..<caret])
+        guard !partial.isEmpty else { return unchanged }
+
+        // Words before the partial pick the pool.
+        let prefix = String(chars[0..<wordStart])
+        let preceding =
+            prefix
+            .split(whereSeparator: { $0.isWhitespace })
+            .map { $0.lowercased() }
+        let pool = candidatePool(preceding: preceding, candidates: candidates)
+
+        let lowered = partial.lowercased()
+        let matches = Set(pool.filter { $0.hasPrefix(lowered) }).sorted()
+        guard !matches.isEmpty else { return unchanged }
+
+        let replacement: String
+        var listing: [String] = []
+        if matches.count == 1 {
+            replacement = matches[0] + " "
+        } else {
+            let lcp = longestCommonPrefix(matches)
+            if lcp.count > lowered.count {
+                replacement = lcp  // extend as far as they agree
+            } else {
+                replacement = partial  // no progress; leave as typed and list
+                listing = matches
+            }
+        }
+
+        let suffix = String(chars[caret...])
+        return CompletionOutcome(
+            newInput: prefix + replacement + suffix,
+            newCursor: wordStart + replacement.count,
+            listing: listing)
+    }
+
+    /// Picks the completion pool: save names when the engine is awaiting a
+    /// filename, else verbs and directions to lead a command and in-scope nouns
+    /// and directions for later words.
+    private static func candidatePool(
+        preceding: [String], candidates: CompletionCandidates
+    ) -> [String] {
+        switch candidates.context {
+        case .filename:
+            return candidates.saveNames
+        case .command:
+            return preceding.isEmpty
+                ? candidates.verbs + candidates.directions
+                : candidates.nouns + candidates.directions
+        }
+    }
+
+    /// The longest common prefix shared by every word in `words`.
+    private static func longestCommonPrefix(_ words: [String]) -> String {
+        guard var prefix = words.first else { return "" }
+        for word in words.dropFirst() {
+            while !word.hasPrefix(prefix) {
+                prefix.removeLast()
+                if prefix.isEmpty { return "" }
+            }
+        }
+        return prefix
+    }
+
+    /// Formats ambiguous candidate words into one transcript line.
+    private static func formatCandidateListing(_ candidates: [String]) -> String {
+        candidates.joined(separator: "   ")
+    }
+
+    // MARK: - Persistent history
+
+    /// The most recent commands kept in the persistent history file.
+    static let historyLimit = 1000
+
+    /// The commands persisted at `url`, oldest first, capped to the most recent
+    /// `limit` and with blank lines dropped. A missing or unreadable file yields
+    /// an empty history.
+    ///
+    /// - Parameters:
+    ///   - url: the history file to read.
+    ///   - limit: the maximum number of commands to keep.
+    /// - Returns: the loaded commands, oldest first.
+    static func loadHistory(from url: URL, limit: Int = historyLimit) -> [String] {
+        guard let text = try? String(contentsOf: url, encoding: .utf8) else { return [] }
+        let lines =
+            text
+            .split(separator: "\n", omittingEmptySubsequences: false)
+            .map(String.init)
+            .filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+        return Array(lines.suffix(limit))
+    }
+
+    /// Appends one submitted command to the history file, creating the parent
+    /// directory if needed. Blank lines are skipped. Best-effort: a write
+    /// failure never interrupts play.
+    ///
+    /// - Parameters:
+    ///   - line: the command to record.
+    ///   - url: the history file to append to.
+    static func appendHistory(_ line: String, to url: URL) {
+        guard !line.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+        try? FileManager.default.createDirectory(
+            at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        let data = Data((line + "\n").utf8)
+        if let handle = try? FileHandle(forWritingTo: url) {
+            defer { try? handle.close() }
+            _ = try? handle.seekToEnd()
+            try? handle.write(contentsOf: data)
+        } else {
+            try? data.write(to: url)
         }
     }
 }

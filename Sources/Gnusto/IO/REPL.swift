@@ -19,11 +19,13 @@ public struct REPL: Sendable {
         var result = await world.begin()
         io.write("\(result.output)\n\n")
         io.showStatus(result.status)
+        io.updateCompletions(await world.completionCandidates())
 
         while !result.isFinished, let line = io.readLine(prompt: "> ") {
             result = await world.perform(line)
             io.write("\(result.output)\n\n")
             io.showStatus(result.status)
+            io.updateCompletions(await world.completionCandidates())
         }
     }
 }

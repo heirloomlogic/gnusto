@@ -38,7 +38,7 @@ extension GameMain where Self: Game {
             if let report = world.definition.warningReport {
                 FileHandle.standardError.write(Data("\(report)\n".utf8))
             }
-            await Self.run(world: world, io: defaultIOHandler())
+            await Self.run(world: world, io: await defaultIOHandler(world: world))
         } catch {
             // `FileHandle.standardError`, not the libc `stderr` global, which
             // Swift 6 rejects as concurrency-unsafe on Linux (it's a `var`).
@@ -57,10 +57,13 @@ extension GameMain where Self: Game {
     /// The full-screen `TerminalIOHandler` when stdin and stdout are both an
     /// interactive terminal, else the plain `ConsoleIOHandler`. The TTY check
     /// keeps piped input, redirected output, CI, and transcript tests on the
-    /// plain path; `GNUSTO_PLAIN=1` forces it for anyone who wants it.
-    private static func defaultIOHandler() -> any IOHandler {
+    /// plain path; `GNUSTO_PLAIN=1` forces it for anyone who wants it. The
+    /// terminal handler gets the world's history file so it can persist and
+    /// reload commands across sessions.
+    private static func defaultIOHandler(world: GameWorld) async -> any IOHandler {
         let forcedPlain = ProcessInfo.processInfo.environment["GNUSTO_PLAIN"] != nil
         let interactive = isatty(STDIN_FILENO) == 1 && isatty(STDOUT_FILENO) == 1
-        return interactive && !forcedPlain ? TerminalIOHandler() : ConsoleIOHandler()
+        guard interactive && !forcedPlain else { return ConsoleIOHandler() }
+        return TerminalIOHandler(historyURL: await world.historyFileURL)
     }
 }
