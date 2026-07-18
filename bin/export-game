@@ -16,8 +16,23 @@ set -euo pipefail
 # Run from the package root regardless of where the script is invoked.
 cd "$(dirname "$0")/.."
 
-# The executable products declared in Package.swift.
-products=(Zork1 CloakOfDarkness)
+# Discover this package's executable products from the live manifest, so an
+# author who copied Templates/NewGame can export their own game with no edits to
+# this script. `swift package describe` prints each product's Name followed by a
+# Type block; an executable product carries an "Executable:" type line, so the
+# awk filter emits exactly the executable product names. (Read into the array the
+# bash-3.2 way — macOS ships /bin/bash 3.2, which has no `mapfile`.)
+products=()
+while IFS= read -r line; do products+=("$line"); done < <(
+  swift package describe 2>/dev/null \
+    | awk '$1=="Name:"{name=$2} $1=="Executable:"{print name}'
+)
+
+if [[ ${#products[@]} -eq 0 ]]; then
+  echo "error: no executable products found in this package."
+  echo "Add an .executable(...) product to Package.swift, then re-run."
+  exit 2
+fi
 
 if [[ $# -lt 1 ]]; then
   echo "usage: bin/export-game <Product>"
