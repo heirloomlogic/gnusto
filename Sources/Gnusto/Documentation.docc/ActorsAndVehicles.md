@@ -100,6 +100,10 @@ var timers: [TimedEvent] {
 Rules and daemons that change what the player sees can call
 ``describeSurroundings()`` for the classic follow-up LOOK.
 
+The **Lighthouse** example (`Sources/Lighthouse/`) wires exactly this: a
+keeper declared as an ``Actor`` and set roaming two rooms by `GnustoActors`,
+with a custom `talk` verb she answers. `LighthouseTranscriptTests` drives it.
+
 ## Vehicles
 
 One trait makes something boardable:

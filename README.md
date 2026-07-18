@@ -35,12 +35,15 @@ That is a complete game. The player can `look`, `examine coin`, `take coin`, che
 
 ## Run and play
 
-The package ships two demo games as executables. Run either with SwiftPM:
+The package ships three demo games as executables. Run any of them with SwiftPM:
 
 ```sh
-swift run Zork1
-swift run CloakOfDarkness
+swift run CloakOfDarkness   # the minimal benchmark — three rooms
+swift run Lighthouse        # the feature tour — see below
+swift run Zork1             # the full 350-point reconstruction
 ```
+
+They form a ladder. **Cloak of Darkness** is the smallest complete game. **The Lighthouse** is the feature tour: one small, winnable game whose every piece demonstrates an idiom you reach for early — containers and surfaces, a locked door, a fuse and a daemon, a roaming character, `@Global` state, a content bundle, and the scoring and actor plugins. **Zork1** is the whole thing. The Lighthouse is the one to read after [Getting Started](Sources/Gnusto/Documentation.docc/GettingStarted.md) — the guides it maps to link back to it.
 
 In a real terminal this launches a full-screen, Infocom-style interpreter — a status bar (room, score, moves) above a story window that re-wraps as you resize, with arrow-key line editing, input history, and scrollback. Piped or redirected runs (and CI) fall back to plain text automatically; `GNUSTO_PLAIN=1` forces plain output in a terminal too.
 

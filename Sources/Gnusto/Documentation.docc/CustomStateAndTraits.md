@@ -73,6 +73,8 @@ The engine never switches on a custom trait or a `.data` global — it only bran
 
 ## Worked example
 
+The **Lighthouse** example (`Sources/Lighthouse/`) keeps two `@Global`s — `tideStage`, bumped by a daemon and read by a room's live description, and `keeperGreeted`, flipped by a dialogue rule — a compact look at custom state driving prose and branching.
+
 `Tests/GnustoTests/Support/CustomStateGames.swift` builds `ShopGame`: a `Purse` struct held in a `@Global`, a lantern with a `trait(.price, 5)`, and a game-defined `buy` verb whose rule reads the price and debits the purse — the commerce plugin in miniature. `CustomStateTests` boots it and confirms the struct global round-trips through save/restore, the custom trait reads back through the typed subscript, and absent/wrong-type reads return `nil`.
 
 ## See also

@@ -180,6 +180,10 @@ var rules: Rules {
 }
 ```
 
+## Worked example
+
+The **Lighthouse** example (`Sources/Lighthouse/`) puts all of this in one small game: a `shelf` you take a key off, a `chest` you open for the lamp and oil, and a `storeroomDoor` locked by that key. `LighthouseTranscriptTests` drives each one.
+
 ## See also
 
 - <doc:WritingRules>

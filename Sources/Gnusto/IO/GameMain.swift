@@ -30,6 +30,14 @@ extension GameMain where Self: Game {
     public static func main() async {
         do {
             let world = try GameWorld(game: Self())
+            // Surface non-fatal bootstrap warnings before the IO handler is
+            // built: the full-screen `TerminalIOHandler` enters the alternate
+            // screen buffer in its `init`, so a stderr write after that would be
+            // painted over. Printing here keeps it on the primary screen, and
+            // out of the play transcript (stderr, like the fatal path below).
+            if let report = world.definition.warningReport {
+                FileHandle.standardError.write(Data("\(report)\n".utf8))
+            }
             await Self.run(world: world, io: await defaultIOHandler(world: world))
         } catch {
             // `FileHandle.standardError`, not the libc `stderr` global, which

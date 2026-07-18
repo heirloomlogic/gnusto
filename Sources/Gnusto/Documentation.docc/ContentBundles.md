@@ -85,6 +85,8 @@ Because a bundle is a self-contained `Sendable` value type, it can live in its o
 
 ## Worked example
 
+The **Lighthouse** example (`Sources/Lighthouse/`) splits its tower into a `Tower` bundle that owns the Lamp Room and the beacon, while the host wires the stairs up to it and the cross-bundle rule that relighting the beacon depends on oil found below — the ordinary division of labor between a bundle and its host.
+
 `Tests/GnustoTests/Support/BundleGame/` is a minimal game built this way: `AtticContent` and `CellarContent` each own a room, an item, and rules (the attic also adds a `rummage` verb), and `BundleGame` composes them with a cross-bundle exit. `BundleCompositionTests` boots it and confirms every bundle's rules and verbs fire, the cross-bundle exit traverses both ways, each bundle's IDs are namespaced by its type, and two instances sharing a namespace are rejected.
 
 For a bundle that also carries logic over the *host's* world — a content-bearing plugin — see <doc:Plugins>.

@@ -63,7 +63,7 @@ bin/export-game Zork1        # → dist/Zork1
 bin/export-game              # lists the available products
 ```
 
-It knows the two demo products the package ships, `Zork1` and `CloakOfDarkness`. Under the hood it's just `swift build -c release --product <Product>` followed by a copy of the built binary to `dist/<Product>` — no bundle, no installer, one file.
+It discovers the current package's executable products from its manifest, so it lists whatever your package ships — the demo `Zork1` and `CloakOfDarkness` here, or the `MyGame` in a fresh `Templates/NewGame` copy, with no edits to the script. Under the hood it's just `swift build -c release --product <Product>` followed by a copy of the built binary to `dist/<Product>` — no bundle, no installer, one file.
 
 ## Share it on macOS 15+
 
@@ -90,5 +90,5 @@ codesign -s - dist/Zork1
 This is a deliberately small first pass:
 
 - **macOS only.** The export script produces a macOS binary. Cross-compiling a portable Linux binary from a Mac is impractical; producing Linux (and tagged macOS) release binaries belongs in a CI release workflow, which is planned but not yet built.
-- **The two demo products.** `bin/export-game` targets `Zork1` and `CloakOfDarkness`; point it at your own executable product by adding it to the script's product list.
+- **One product at a time.** `bin/export-game` exports a single executable product per run. It discovers your package's executables automatically, so run it with no arguments to see the list, then name the one you want.
 - **No notarization.** Real Apple notarization is out of scope — the Gatekeeper steps above are the supported way to share for now.
