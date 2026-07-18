@@ -1,0 +1,151 @@
+name: Release
+
+# Build the package's executable products for macOS and Linux and attach them to
+# the GitHub release for a version tag. This is the CI counterpart to the local
+# `bin/export-game`: it discovers products the same way (`swift package describe`),
+# so it needs no edits when products come and go.
+#
+# Downstream authors: a ready-to-copy version of this lives at
+# `Templates/NewGame/.github/workflows/release.yml` — drop the NewGame folder at
+# your repo root and tagging a version publishes your game with no changes.
+
+on:
+  push:
+    tags:
+      - "[0-9]+.[0-9]+.[0-9]+*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# Products to build but never publish. "Zork" is Activision's; the Zork1 target
+# exists here only as an internal demo, so it is excluded from public release
+# artifacts. Downstream copies leave this empty.
+env:
+  EXCLUDE_PRODUCTS: "Zork1"
+
+jobs:
+  build-macos:
+    runs-on: macos-26
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      # `swift build -c release --product <P>` is the same recipe bin/export-game
+      # uses locally; on macOS 15+ the binary links the OS Swift runtime, so the
+      # single file is the game. Ad-hoc sign it (matching the share step in the
+      # docs) and tar it so the exec bit survives the download.
+      - name: Build and package release binaries
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          arch="$(uname -m)"
+          bindir="$(swift build -c release --show-bin-path)"
+          for product in $(swift package describe | awk '$1=="Name:"{n=$2} $1=="Executable:"{print n}'); do
+            case " $EXCLUDE_PRODUCTS " in *" $product "*) echo "Skipping $product (excluded)"; continue ;; esac
+            echo "Building $product (release)…"
+            swift build -c release --product "$product"
+            codesign -s - "$bindir/$product"
+            tar czf "dist/${product}-macos-${arch}.tar.gz" -C "$bindir" "$product"
+          done
+          ls -la dist
+
+      - name: Upload macOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-macos
+          path: dist/*.tar.gz
+          if-no-files-found: error
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      # Same toolchain install as the test workflow: Ubuntu runners ship no Swift,
+      # so bring it in via swiftly and put it on PATH for later steps.
+      - name: Install Swift toolchain
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y libcurl4-openssl-dev
+          curl -fsSL -O "https://download.swift.org/swiftly/linux/swiftly-$(uname -m).tar.gz"
+          tar zxf "swiftly-$(uname -m).tar.gz"
+          ./swiftly init --quiet-shell-followup --assume-yes --skip-install
+          . "$HOME/.local/share/swiftly/env.sh"
+          swiftly install --assume-yes 6.3.3
+          swiftly use 6.3.3
+          echo "$HOME/.local/share/swiftly/bin" >> "$GITHUB_PATH"
+          swift --version
+
+      - name: Build and package release binaries
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          arch="$(uname -m)"
+          bindir="$(swift build -c release --show-bin-path)"
+          for product in $(swift package describe | awk '$1=="Name:"{n=$2} $1=="Executable:"{print n}'); do
+            case " $EXCLUDE_PRODUCTS " in *" $product "*) echo "Skipping $product (excluded)"; continue ;; esac
+            echo "Building $product (release)…"
+            swift build -c release --product "$product"
+            tar czf "dist/${product}-linux-${arch}.tar.gz" -C "$bindir" "$product"
+          done
+          ls -la dist
+
+      - name: Upload Linux artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-linux
+          path: dist/*.tar.gz
+          if-no-files-found: error
+
+  release:
+    needs: [build-macos, build-linux]
+    # workflow_dispatch runs still build both platforms as a smoke test; only a
+    # real tag push publishes a release.
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          shopt -s globstar nullglob
+          assets=(artifacts/**/*.tar.gz)
+          if [[ ${#assets[@]} -eq 0 ]]; then
+            echo "error: no release assets were produced" >&2
+            exit 1
+          fi
+          echo "Assets: ${assets[*]}"
+
+          cat > release-notes.md <<'EOF'
+          These binaries exist to exercise Gnusto's release workflow. They are
+          example games from the package's demo products, not featured products.
+
+          Each asset is a `.tar.gz` holding a single executable for the named
+          platform. On macOS 15+ the binary links the Swift runtime that ships
+          with the OS, so it runs directly — no Xcode, no toolchain.
+
+          macOS binaries are ad-hoc signed; a downloaded copy is quarantined by
+          Gatekeeper until you clear it:
+
+              xattr -dr com.apple.quarantine ./<Game>
+
+          Notarization is not performed.
+          EOF
+
+          # A version suffix (e.g. 1.2.0-beta) marks a pre-release.
+          prerelease=()
+          case "$TAG" in *-*) prerelease=(--prerelease) ;; esac
+
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" --title "$TAG" --notes-file release-notes.md "${prerelease[@]}"
+          fi
+          gh release upload "$TAG" "${assets[@]}" --clobber

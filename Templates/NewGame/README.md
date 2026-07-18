@@ -39,5 +39,18 @@ swallows stdin during the build):
 - The `@main` entry point via `GameMain`
 - Transcript tests with `GnustoTestSupport` (`play` + `expectInOrder`)
 
+## Publish binaries on a tag
+
+`.github/workflows/release.yml` ships with this template. Once your copy is at a
+repo root on GitHub, pushing a version tag builds your game for macOS and Linux
+and attaches the binaries to the release:
+
+```sh
+git tag 1.0.0
+git push origin 1.0.0
+```
+
+It discovers your executable products automatically, so it needs no edits.
+
 The full authoring guides live in Gnusto's DocC catalog — start with
 "Getting Started with Gnusto".

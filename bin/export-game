@@ -8,8 +8,8 @@
 #
 # On macOS 15+ the binary dynamically links the Swift runtime that ships with
 # the OS, so the recipient runs ./dist/<Product> directly — no Xcode, no Swift
-# toolchain. Cross-platform Linux binaries are best produced in CI (see the
-# release workflow noted in the plan); cross-compiling from a Mac is impractical.
+# toolchain. Cross-platform Linux binaries are best produced in CI (see
+# .github/workflows/release.yml); cross-compiling from a Mac is impractical.
 
 set -euo pipefail
 
