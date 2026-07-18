@@ -91,4 +91,76 @@ struct TextWrapTests {
     func widthFloor() {
         #expect(TextWrap.wrap("ab", width: 0) == ["a", "b"])
     }
+
+    // MARK: - Wide characters (CJK / emoji)
+
+    @Test("Wide glyphs pack by column, never overflowing the width")
+    func wideGlyphsNeverExceedWidthInColumns() {
+        // Each ideograph is two columns; at width 6 exactly three fit per line.
+        let text = "世界世界世界世界"
+        for line in TextWrap.wrap(text, width: 6) {
+            #expect(DisplayWidth.columns(of: line) <= 6)
+        }
+    }
+
+    @Test("A run of wide glyphs hard-splits at the column boundary")
+    func hardSplitWideGlyphs() {
+        // Three 2-column glyphs fill width 6; the fourth starts a new line.
+        #expect(TextWrap.hardSplit("世界世界世界", width: 6) == ["世界世", "界世界"])
+    }
+
+    @Test("A wide glyph that can't finish the line slides whole to the next")
+    func wideGlyphDoesNotStraddleBoundary() {
+        // At width 3, one glyph fills two columns; the second can't fit the
+        // remaining column, so it moves down, leaving a blank trailing cell.
+        #expect(TextWrap.hardSplit("世界", width: 3) == ["世", "界"])
+    }
+
+    @Test("Emoji words wrap by display column")
+    func emojiWordsWrap() {
+        // "😀" is two columns; at width 5 two emoji plus a space fit (5), the
+        // third can't (would be 8).
+        #expect(TextWrap.wrap("😀 😀 😀", width: 5) == ["😀 😀", "😀"])
+    }
+
+    // MARK: - Caret placement
+
+    @Test("Caret column counts display columns, not characters")
+    func caretColumnUsesDisplayWidth() {
+        // After two ideographs (4 columns) the caret sits at column 4, line 0.
+        #expect(TextWrap.caretPosition(in: "世界", charOffset: 2, width: 40).line == 0)
+        #expect(TextWrap.caretPosition(in: "世界", charOffset: 2, width: 40).column == 4)
+    }
+
+    @Test("Caret lands on the wrapped line the layout drew")
+    func caretFollowsWrap() {
+        // "世界世界世界" wraps to ["世界世", "界世界"] at width 6. Character
+        // offset 3 is the first glyph of the second line: line 1, column 0.
+        let pos = TextWrap.caretPosition(in: "世界世界世界", charOffset: 3, width: 6)
+        #expect(pos.line == 1)
+        #expect(pos.column == 0)
+    }
+
+    @Test("A caret that exactly fills a line wraps to the next line's start")
+    func caretExactFillWraps() {
+        // "abcd" at width 4 fills the line exactly; the caret at the end moves
+        // to the start of the next line, where the next keystroke would land.
+        let pos = TextWrap.caretPosition(in: "abcd", charOffset: 4, width: 4)
+        #expect(pos.line == 1)
+        #expect(pos.column == 0)
+    }
+
+    @Test("Caret at the start of each hard-split line reports that line, column 0")
+    func caretAgreesWithHardSplit() {
+        // The caret math and the layout share `lineStarts`, so a caret at a
+        // line boundary must report exactly that line at column 0.
+        let text: Substring = "one two three four five"
+        let width = 9
+        let starts = TextWrap.lineStarts(of: text, width: width)
+        for (line, start) in starts.enumerated() {
+            let pos = TextWrap.caretPosition(in: text, charOffset: start, width: width)
+            #expect(pos.line == line)
+            #expect(pos.column == 0)
+        }
+    }
 }
