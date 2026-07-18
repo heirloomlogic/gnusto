@@ -49,6 +49,45 @@ struct BootstrapTests {
         }
     }
 
+    @Test func warningReportSummarizesPendingWarnings() throws {
+        // ForgottenVerbGame keys a rule on an unlisted `#verb` intent, so the
+        // bootstrap records a dead-intent warning; the report renders it.
+        let (definition, _) = try Bootstrap.build(ForgottenVerbGame())
+        let report = try #require(definition.warningReport)
+        #expect(report.contains("warning(s) (play continues)"))
+        #expect(report.contains("•"))
+        #expect(report.contains("ring"))  // the offending intent
+        #expect(report.contains("verbs block"))  // the suggested fix
+    }
+
+    @Test func warningReportIsNilForACleanGame() throws {
+        let (definition, _) = try Bootstrap.build(MiniGame())
+        #expect(definition.warnings.isEmpty)
+        #expect(definition.warningReport == nil)
+    }
+
+    @Test func danglingExitSourceNamesItsDirection() {
+        #expect {
+            try Bootstrap.build(DanglingExitSourceGame())
+        } throws: { error in
+            guard let bootstrapError = error as? BootstrapError else { return false }
+            let text = bootstrapError.description
+            return text.contains("the source of a north exit")  // the direction anchor
+                && text.contains("not a stored property")
+        }
+    }
+
+    @Test func danglingRuleAttachmentNamesItsPhase() {
+        #expect {
+            try Bootstrap.build(DanglingRuleGame())
+        } throws: { error in
+            guard let bootstrapError = error as? BootstrapError else { return false }
+            let text = bootstrapError.description
+            return text.contains("before rule")  // the phase anchor
+                && text.contains("is attached to an item that is not a stored property")
+        }
+    }
+
     @Test func storedPropertyNamedPlayerIsRejected() {
         #expect {
             try Bootstrap.build(PlayerIDCollisionGame())

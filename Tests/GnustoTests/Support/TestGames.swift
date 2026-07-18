@@ -105,6 +105,44 @@ struct PlayerIDCollisionGame: Game {
     }
 }
 
+/// An exit whose *source* is an inline (undiscoverable) location: the source
+/// token resolves to no stored property, so the bootstrap can't name it and
+/// must fall back to the exit's direction as the author's anchor.
+struct DanglingExitSourceGame: Game {
+    let title = "DanglingExitSource"
+    let intro = ""
+
+    let hall = Location {
+        name("Hall")
+        description("A hall.")
+    }
+
+    var map: WorldMap {
+        Location { name("Orphan") }.north(hall)  // inline source, not a stored property
+        player.starts(in: hall)
+    }
+}
+
+/// A rule attached to an inline (undiscoverable) item. The bootstrap can't name
+/// the dangling item, so it names the rule's phase and watched intent instead.
+struct DanglingRuleGame: Game {
+    let title = "DanglingRule"
+    let intro = ""
+
+    let hall = Location {
+        name("Hall")
+        description("A hall.")
+    }
+
+    var map: WorldMap {
+        player.starts(in: hall)
+    }
+
+    var rules: Rules {
+        Item { name("ghost") }.before(.examine) {}
+    }
+}
+
 /// Rules that emit stage markers so tests can assert pipeline ordering and
 /// refusal semantics from the transcript alone.
 struct OrderProbeGame: Game {

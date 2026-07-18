@@ -163,7 +163,7 @@ enum Bootstrap {
         for entry in mapEntries {
             switch entry.kind {
             case .exit(let from, let direction, let to):
-                guard let fromID = resolveLocation(from, role: "an exit"),
+                guard let fromID = resolveLocation(from, role: "the source of a \(direction) exit"),
                     let toID = resolveLocation(to, role: "the \(direction) exit")
                 else { continue }
                 if exits[fromID]?[direction] != nil {
@@ -173,7 +173,10 @@ enum Bootstrap {
                 exits[fromID, default: [:]][direction] = .to(toID)
 
             case .blockedExit(let from, let direction, let message):
-                guard let fromID = resolveLocation(from, role: "a blocked exit") else {
+                guard
+                    let fromID = resolveLocation(
+                        from, role: "the source of a blocked \(direction) exit")
+                else {
                     continue
                 }
                 if exits[fromID]?[direction] != nil {
@@ -183,7 +186,9 @@ enum Bootstrap {
                 exits[fromID, default: [:]][direction] = .blocked(message)
 
             case .doorExit(let from, let direction, let to, let doorToken):
-                guard let fromID = resolveLocation(from, role: "a door exit"),
+                guard
+                    let fromID = resolveLocation(
+                        from, role: "the source of a \(direction) door exit"),
                     let toID = resolveLocation(to, role: "the \(direction) exit")
                 else { continue }
                 guard let doorID = resolveItem(doorToken, role: "the \(direction) door") else {
@@ -203,7 +208,9 @@ enum Bootstrap {
                 exits[fromID, default: [:]][direction] = .door(to: toID, door: doorID)
 
             case .conditionalExit(let from, let direction, let to, let condition, let blocked):
-                guard let fromID = resolveLocation(from, role: "a conditional exit"),
+                guard
+                    let fromID = resolveLocation(
+                        from, role: "the source of a conditional \(direction) exit"),
                     let toID = resolveLocation(to, role: "the \(direction) exit")
                 else { continue }
                 if exits[fromID]?[direction] != nil {
@@ -473,12 +480,21 @@ enum Bootstrap {
         }
 
         for rule in declaredRules {
+            // A rule's scope token is opaque, so an unresolved attachment can't
+            // be named — but the phase and the intents it watches identify which
+            // rule it is, giving the author an anchor to find in their source.
+            let watched = rule.intents.map(\.raw).sorted()
+            let ruleDescriptor =
+                watched.isEmpty
+                ? "a \(rule.phase) rule"
+                : "a \(rule.phase) rule (watching \(watched.joined(separator: ", ")))"
+
             switch rule.scope {
             case .item(let token):
                 guard let id = registry.id(for: token), registry.items[id] != nil else {
                     ruleDiagnostics.append(
-                        "a rule is attached to an item that is not a stored property "
-                            + "of the game or any of its content bundles.")
+                        "\(ruleDescriptor) is attached to an item that is not a stored "
+                            + "property of the game or any of its content bundles.")
                     continue
                 }
                 switch rule.phase {
@@ -496,7 +512,7 @@ enum Bootstrap {
             case .location(let token):
                 guard let id = registry.id(for: token), registry.locations[id] != nil else {
                     ruleDiagnostics.append(
-                        "a rule is attached to a location that is not a stored "
+                        "\(ruleDescriptor) is attached to a location that is not a stored "
                             + "property of the game or any of its content bundles.")
                     continue
                 }

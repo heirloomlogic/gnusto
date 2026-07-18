@@ -160,3 +160,18 @@ struct GameDefinition: Sendable {
     /// exactly as before.
     let onDeath: @Sendable () -> DeathOutcome
 }
+
+extension GameDefinition {
+    /// A human-readable summary of every non-fatal ``warnings`` note, or `nil`
+    /// when there are none. Mirrors `BootstrapError.description` so a warning
+    /// and a fatal error read the same; surfaced on the runtime `@main` path
+    /// (see `GameMain.main()`) so an author actually sees these instead of the
+    /// bootstrap silently dropping them.
+    var warningReport: String? {
+        guard !warnings.isEmpty else { return nil }
+        return """
+            Gnusto: the game definition has \(warnings.count) warning(s) (play continues):
+            \(warnings.map { "  • \($0)" }.joined(separator: "\n"))
+            """
+    }
+}
