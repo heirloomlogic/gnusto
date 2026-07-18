@@ -47,6 +47,7 @@ let package = Package(
         .library(name: "GnustoMeleeCombat", targets: ["GnustoMeleeCombat"]),
         .library(name: "GnustoTestSupport", targets: ["GnustoTestSupport"]),
         .executable(name: "CloakOfDarkness", targets: ["CloakOfDarkness"]),
+        .executable(name: "Lighthouse", targets: ["Lighthouse"]),
         .executable(name: "Zork1", targets: ["Zork1"]),
     ],
     dependencies: devDependencies + [
@@ -91,6 +92,16 @@ let package = Package(
             dependencies: ["Gnusto"],
             plugins: devPlugins
         ),
+        // The feature-tour example: a mid-size game that demonstrates the
+        // idioms an author reaches for early — containers/surfaces, locked
+        // doors, fuses and daemons, a roaming actor, `@Global` state, a
+        // content bundle, and the scoring/actor plugins — in one buildable,
+        // transcript-tested place. Sits between CloakOfDarkness and Zork1.
+        .executableTarget(
+            name: "Lighthouse",
+            dependencies: ["Gnusto", "GnustoActors", "GnustoScoring"],
+            plugins: devPlugins
+        ),
         .executableTarget(
             name: "Zork1",
             dependencies: [
@@ -118,7 +129,8 @@ let package = Package(
             name: "GnustoTests",
             dependencies: [
                 "Gnusto", "GnustoDangerousDark", "GnustoScoring", "GnustoActors",
-                "GnustoMeleeCombat", "GnustoTestSupport", "CloakOfDarkness", "Zork1",
+                "GnustoMeleeCombat", "GnustoTestSupport", "CloakOfDarkness",
+                "Lighthouse", "Zork1",
             ],
             plugins: devPlugins
         ),

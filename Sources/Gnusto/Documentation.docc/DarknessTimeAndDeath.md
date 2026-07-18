@@ -122,7 +122,11 @@ func onDeath() -> DeathOutcome {
 
 `UNDO` after a consumed death rewinds the *whole* fatal turn — the death, the resurrection, and everything the handler did — back to where the player stood before it, which is the coherent thing to undo.
 
-## The worked example: the lantern and the grue
+## The worked examples
+
+For a small, readable pass at these mechanics on their own, the **Lighthouse** example (`Sources/Lighthouse/`) has an oil lamp that burns down on two fuses (relighting restarts them) and a tide that rises on a daemon and drowns a player who lingers on the jetty — with `LighthouseTranscriptTests` driving both.
+
+### The lantern and the grue
 
 `Sources/Zork1/` ties it together. The brass lantern is a `lightSource` whose fuel is two fuses — a dim warning at 20 burning turns, dead at 25 — started by an `after(.turnOn)` rule and *paused* by `after(.turnOff)` (bank `fuseRemaining`, stop the fuses; relighting restarts them at the banked counts). The grue is an autostarted daemon that counts consecutive turns ending in darkness: a warning, a silent turn of grace, then `die(…)` — and any lit turn resets it. Both survive save/restore because their state is a `@Global` and the timer schedule.
 
