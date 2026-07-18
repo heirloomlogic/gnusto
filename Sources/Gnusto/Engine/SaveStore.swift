@@ -65,8 +65,11 @@ enum SaveStore {
     /// - Returns: the file URL to write.
     static func resolveForWrite(_ answer: String, in directory: URL) throws -> URL {
         if !isExplicitPath(answer.trimmingCharacters(in: .whitespaces)) {
+            // Owner-only (0700): a saves directory holds a player's whole
+            // progress and has no reason to be group- or world-readable.
             try FileManager.default.createDirectory(
-                at: directory, withIntermediateDirectories: true)
+                at: directory, withIntermediateDirectories: true,
+                attributes: [.posixPermissions: 0o700])
         }
         return resolve(answer, in: directory)
     }

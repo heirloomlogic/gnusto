@@ -91,4 +91,28 @@ struct SaveStoreTests {
         #expect(url.path.contains("Gnusto/Saves"))
         #expect(url.lastPathComponent == "Zork-I-The-Great-Underground-Empire")
     }
+
+    // MARK: file permissions
+
+    @Test func resolveForWriteCreatesTheSavesDirectoryOwnerOnly() throws {
+        // A not-yet-existing saves directory: resolving a bare name for write
+        // provisions it 0700.
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("gnusto-perms-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        _ = try SaveStore.resolveForWrite("autumn", in: dir)
+        let perms =
+            try FileManager.default.attributesOfItem(atPath: dir.path)[.posixPermissions] as? Int
+        #expect(perms == 0o700)
+    }
+
+    @Test func writtenSaveFileIsOwnerOnly() throws {
+        let dir = tempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let url = dir.appendingPathComponent("game.gnusto")
+        try SaveFile.write(WorldState(playerLocation: EntityID("room")), title: "T", to: url)
+        let perms =
+            try FileManager.default.attributesOfItem(atPath: url.path)[.posixPermissions] as? Int
+        #expect(perms == 0o600)
+    }
 }

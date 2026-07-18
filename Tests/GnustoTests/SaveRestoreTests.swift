@@ -25,9 +25,18 @@ private struct StrongboxGame: Game {
         name("gold coin")
     }
 
+    let box = Item {
+        name("strongbox")
+        container
+        openable
+    }
+
+    @Global var disturbances = 0
+
     var map: WorldMap {
         player.starts(in: anteroom)
         coin.starts(in: anteroom)
+        box.starts(in: vault)
         anteroom.north(vault)
         vault.south(anteroom)
     }
@@ -199,5 +208,110 @@ struct SaveRestoreTests {
         #expect(undo.contains("Previous turn undone."))
         let takes = transcript.components(separatedBy: "> take coin")
         #expect(takes[2].contains("Taken."))
+    }
+
+    // MARK: - Referential-integrity validation
+
+    /// Reads the save at `path`, applies `mutate` to its `WorldState`, and
+    /// writes the re-encoded file back — the crafted-file forge every tampering
+    /// test shares. Uses the same encoder settings as `SaveFile.write`, so only
+    /// the mutation distinguishes it from a genuine save.
+    private func tamperWithSave(
+        at path: String, _ mutate: (inout WorldState) -> Void
+    ) throws {
+        let url = URL(fileURLWithPath: path)
+        let decoded = try JSONDecoder().decode(SaveFile.self, from: Data(contentsOf: url))
+        var state = decoded.state
+        mutate(&state)
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
+        let file = SaveFile(format: decoded.format, title: decoded.title, state: state)
+        try encoder.encode(file).write(to: url, options: .atomic)
+    }
+
+    /// Saves a real game, tampers with the file, then restores it — asserting
+    /// the restore is refused ("Restore failed.") and the game keeps running.
+    private func expectTamperedSaveRejected(
+        _ label: String,
+        _ mutate: @escaping (inout WorldState) -> Void
+    ) async throws {
+        let path = temporarySavePath(label)
+        defer { try? FileManager.default.removeItem(atPath: path) }
+        _ = try await play(StrongboxGame(), ["save", path])
+        try tamperWithSave(at: path, mutate)
+        let transcript = try await play(StrongboxGame(), ["restore", path, "look"])
+        #expect(transcript.contains("Restore failed."))
+        // Rejected whole: the world is untouched and the next turn still works.
+        #expect(turnOutput(of: "look", in: transcript).contains("Anteroom"))
+    }
+
+    @Test func tamperedUnknownPlayerLocationIsRejected() async throws {
+        try await expectTamperedSaveRejected("bad-loc") {
+            $0.playerLocation = EntityID("phantom-room")
+        }
+    }
+
+    @Test func tamperedUnknownPlacementKeyIsRejected() async throws {
+        try await expectTamperedSaveRejected("bad-key") {
+            $0.placements[EntityID("phantom-item")] = .nowhere
+        }
+    }
+
+    @Test func tamperedUnknownPlacementTargetIsRejected() async throws {
+        try await expectTamperedSaveRejected("bad-target") {
+            $0.placements[EntityID("coin")] = .room(EntityID("phantom-room"))
+        }
+    }
+
+    @Test func tamperedPlacementCycleIsRejected() async throws {
+        // The strongbox placed inside itself: resolution passes (it's a
+        // container), so only the acyclicity walk can catch it.
+        try await expectTamperedSaveRejected("cycle") {
+            $0.placements[EntityID("box")] = .inside(EntityID("box"))
+        }
+    }
+
+    @Test func tamperedMistypedGlobalIsRejected() async throws {
+        // `disturbances` is declared `Int`; a string in its slot would trap when
+        // a rule reads it back through `@Global`.
+        try await expectTamperedSaveRejected("bad-global") {
+            $0.globals[EntityID("disturbances")] = .string("not an int")
+        }
+    }
+
+    @Test func tamperedNonPlayingStatusIsRejected() async throws {
+        try await expectTamperedSaveRejected("bad-status") {
+            $0.status = .won
+        }
+    }
+
+    @Test func tamperedNegativeMovesIsRejected() async throws {
+        try await expectTamperedSaveRejected("bad-moves") {
+            $0.moves = -1
+        }
+    }
+
+    @Test func tamperedTraitViolationIsRejected() async throws {
+        // The coin is not a light source, so it can't legitimately be lit.
+        try await expectTamperedSaveRejected("bad-trait") {
+            $0.litItems = [EntityID("coin")]
+        }
+    }
+
+    @Test func anUntamperedSaveWithAContainerAndGlobalStillRestores() async throws {
+        // Guards against over-strictness: a genuine save that exercises a
+        // container placement and an open openable must pass validation.
+        let path = temporarySavePath("clean")
+        defer { try? FileManager.default.removeItem(atPath: path) }
+        let transcript = try await play(
+            StrongboxGame(),
+            [
+                "take coin", "north", "open strongbox", "put coin in strongbox",
+                "save", path, "south", "restore", path, "look",
+            ])
+        #expect(transcript.contains("Saved."))
+        #expect(transcript.contains("Restored."))
+        // Restored into the vault (where the save was taken), not the anteroom.
+        #expect(turnOutput(of: "look", in: transcript).contains("Vault"))
     }
 }

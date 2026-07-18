@@ -188,6 +188,59 @@ struct TerminalUXTests {
         #expect(TerminalIOHandler.loadHistory(from: url).isEmpty)
     }
 
+    @Test func historyFileAndDirectoryAreOwnerOnly() throws {
+        let dir = tempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        // A not-yet-created saves subdirectory, so appendHistory provisions it.
+        let subdir = dir.appendingPathComponent("Saves/Mini", isDirectory: true)
+        let url = subdir.appendingPathComponent(".history")
+        TerminalIOHandler.appendHistory("look", to: url)
+        let dirPerms =
+            try FileManager.default.attributesOfItem(atPath: subdir.path)[.posixPermissions]
+            as? Int
+        let filePerms =
+            try FileManager.default.attributesOfItem(atPath: url.path)[.posixPermissions] as? Int
+        #expect(dirPerms == 0o700)
+        #expect(filePerms == 0o600)
+    }
+
+    @Test func trimRewritesAnOvergrownFileToTheLimit() {
+        let dir = tempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let url = dir.appendingPathComponent(".history")
+        for i in 1...50 {
+            TerminalIOHandler.appendHistory("cmd\(i)", to: url)
+        }
+        TerminalIOHandler.trimHistory(at: url, limit: 10)
+        // The file itself now holds only the most recent 10, in order.
+        let loaded = TerminalIOHandler.loadHistory(from: url, limit: 1000)
+        #expect(loaded == (41...50).map { "cmd\($0)" })
+    }
+
+    @Test func loadReadsOnlyTheTailOfAHugeFileWithNoPartialFirstLine() throws {
+        let dir = tempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let url = dir.appendingPathComponent(".history")
+        // Build a file well past the 256 KiB byte cap (~400 KB), then a few
+        // recognizable most-recent lines.
+        let filler = String(repeating: "x", count: 200)
+        var big = ""
+        for i in 0..<2000 {
+            big += "\(filler)-\(i)\n"
+        }
+        big += "recent-a\nrecent-b\nrecent-c\n"
+        try big.write(to: url, atomically: true, encoding: .utf8)
+
+        let loaded = TerminalIOHandler.loadHistory(from: url, limit: 1000)
+        // The newest lines survive intact...
+        #expect(Array(loaded.suffix(3)) == ["recent-a", "recent-b", "recent-c"])
+        // ...only the tail loaded (not all 2003 lines)...
+        #expect(loaded.count < 2000)
+        // ...and the seek's partial first line was dropped: the first kept line
+        // is a *complete* filler line (all 200 leading x's present).
+        #expect(loaded.first?.hasPrefix(filler) == true)
+    }
+
     // MARK: - GameWorld.completionCandidates()
 
     @Test func candidatesIncludeStandardVerbsAndDirections() async throws {
