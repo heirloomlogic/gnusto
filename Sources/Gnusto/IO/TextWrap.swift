@@ -87,56 +87,111 @@ enum TextWrap {
     }
 
     /// Greedily packs `words` into lines of at most `width` columns, hard-
-    /// splitting any single word that is itself wider than the column.
+    /// splitting any single word that is itself wider than the column. All
+    /// width comparisons are in terminal columns (``DisplayWidth``), not Swift
+    /// `Character` counts, so CJK and emoji pack correctly.
     private static func wrapWords(_ words: [Substring], width: Int) -> [String] {
         var lines: [String] = []
         var current = ""
+        var currentWidth = 0
         for word in words {
-            if word.count > width {
+            let wordWidth = DisplayWidth.columns(of: word)
+            if wordWidth > width {
                 if !current.isEmpty {
                     lines.append(current)
                     current = ""
+                    currentWidth = 0
                 }
                 // Emit the full-width chunks and carry the remainder, so the
                 // next word can still pack onto that trailing partial line.
                 let chunks = hardSplit(word, width: width)
                 lines += chunks.dropLast()
                 current = chunks.last ?? ""
+                currentWidth = DisplayWidth.columns(of: current)
                 continue
             }
 
             if current.isEmpty {
                 current = String(word)
-            } else if current.count + 1 + word.count <= width {
+                currentWidth = wordWidth
+            } else if currentWidth + 1 + wordWidth <= width {
                 current += " " + word
+                currentWidth += 1 + wordWidth
             } else {
                 lines.append(current)
                 current = String(word)
+                currentWidth = wordWidth
             }
         }
         if !current.isEmpty { lines.append(current) }
         return lines
     }
 
-    /// Splits `text` into consecutive chunks of at most `width` characters,
-    /// preserving every character (no space collapsing) — the primitive behind
-    /// both the prose long-word split above and the terminal's input line,
-    /// where exact character positions must survive for the caret to land right.
+    /// The character offsets at which each visual line begins when `text` is
+    /// hard-wrapped to `width` columns — always `[0]` for the first line, plus
+    /// one entry per subsequent line. A glyph never straddles the boundary: a
+    /// wide glyph that cannot finish on the current line slides whole to the
+    /// next, leaving a blank trailing cell, exactly as a terminal renders it.
+    ///
+    /// This is the single source of truth shared by ``hardSplit(_:width:)`` and
+    /// ``caretPosition(in:charOffset:width:)`` so the input line's layout and
+    /// its caret can never disagree.
+    static func lineStarts(of text: Substring, width: Int) -> [Int] {
+        let width = max(1, width)
+        var starts = [0]
+        var column = 0
+        for (offset, character) in text.enumerated() {
+            let glyphWidth = DisplayWidth.columns(of: character)
+            if column != 0, column + glyphWidth > width {
+                starts.append(offset)
+                column = 0
+            }
+            column += glyphWidth
+        }
+        return starts
+    }
+
+    /// Splits `text` into consecutive chunks that each fit within `width`
+    /// columns, preserving every character (no space collapsing) — the
+    /// primitive behind both the prose long-word split above and the terminal's
+    /// input line, where exact caret positions must survive.
     ///
     /// - Parameters:
     ///   - text: the text to chunk.
-    ///   - width: the chunk width; values below 1 are treated as 1.
+    ///   - width: the chunk width in columns; values below 1 are treated as 1.
     /// - Returns: the chunks in order; a single element when `text` fits.
     static func hardSplit(_ text: Substring, width: Int) -> [String] {
-        let width = max(1, width)
+        let starts = lineStarts(of: text, width: width)
+        let characters = Array(text)
         var chunks: [String] = []
-        var rest = text
-        while rest.count > width {
-            let split = rest.index(rest.startIndex, offsetBy: width)
-            chunks.append(String(rest[..<split]))
-            rest = rest[split...]
+        for (line, start) in starts.enumerated() {
+            let end = line + 1 < starts.count ? starts[line + 1] : characters.count
+            chunks.append(String(characters[start..<end]))
         }
-        chunks.append(String(rest))
         return chunks
+    }
+
+    /// Where the caret sits when `text` is hard-wrapped to `width` columns and
+    /// the logical cursor is before character `charOffset` — the visual line
+    /// index (0-based from the first line) and the column within it (0-based).
+    ///
+    /// Uses the same ``lineStarts(of:width:)`` breaks as ``hardSplit(_:width:)``
+    /// so the caret always lands on the glyph the layout drew. A caret that
+    /// exactly fills a line wraps to the start of the next line, matching a
+    /// terminal's behavior when the next keystroke would overflow.
+    static func caretPosition(
+        in text: Substring, charOffset: Int, width: Int
+    ) -> (line: Int, column: Int) {
+        let width = max(1, width)
+        let characters = Array(text)
+        let offset = min(max(0, charOffset), characters.count)
+        let starts = lineStarts(of: text, width: width)
+
+        // The caret's line is the last one that begins at or before the offset.
+        let line = starts.lastIndex(where: { $0 <= offset }) ?? 0
+
+        let column = DisplayWidth.columns(of: characters[starts[line]..<offset])
+        if column == width { return (line + 1, 0) }  // exact fill wraps to next line
+        return (line, column)
     }
 }

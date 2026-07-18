@@ -350,7 +350,8 @@ public final class TerminalIOHandler: IOHandler {
             var visual = st.wrappedTranscript
             if !visual.isEmpty { visual.append("") }
             let inputLineStart = visual.count
-            visual += TextWrap.hardSplit(Substring(st.prompt + st.input), width: cols)
+            let inputLine = Substring(st.prompt + st.input)
+            visual += TextWrap.hardSplit(inputLine, width: cols)
 
             // Clamp the scroll offset to the available history and write it
             // back so the editor's page math stays in range.
@@ -376,14 +377,20 @@ public final class TerminalIOHandler: IOHandler {
 
             if !live {
                 let marker = " -- more (PgDn) -- "
-                let col = max(1, cols - marker.count + 1)
+                let col = max(1, cols - DisplayWidth.columns(of: marker) + 1)
                 frame += "\u{1B}[\(rows);\(col)H\u{1B}[7m" + marker + "\u{1B}[0m"
             }
 
             // Place the caret at the input position when live and on-screen.
-            let caretIndex = st.prompt.count + st.cursor
-            let caretVisualLine = inputLineStart + caretIndex / cols
-            let caretCol = caretIndex % cols + 1
+            // Column math is in terminal cells (via TextWrap/DisplayWidth), not
+            // Character counts, so it stays aligned through CJK and emoji.
+            let (caretLine, caretColumn) = TextWrap.caretPosition(
+                in: inputLine,
+                charOffset: st.prompt.count + st.cursor,
+                width: cols
+            )
+            let caretVisualLine = inputLineStart + caretLine
+            let caretCol = caretColumn + 1
             let caretScreenRow = 2 + (caretVisualLine - windowStart)
             if live, caretVisualLine >= windowStart, caretScreenRow <= rows {
                 frame += "\u{1B}[\(caretScreenRow);\(caretCol)H\u{1B}[?25h"
@@ -394,13 +401,20 @@ public final class TerminalIOHandler: IOHandler {
     }
 
     /// The reverse-video status bar: location on the left, `Score`/`Moves` on
-    /// the right, padded to the full width and clipped if it can't fit.
-    private static func statusBar(_ status: StatusLine?, cols: Int) -> String {
+    /// the right, padded to the full width and clipped if it can't fit. Padding
+    /// and clipping measure terminal columns (``DisplayWidth``), so a wide
+    /// `locationName` still aligns the right-hand score. Internal, not private,
+    /// so it can be unit-tested without a live terminal.
+    static func statusBar(_ status: StatusLine?, cols: Int) -> String {
         let left = " " + (status?.locationName ?? "")
         let right = status.map { "Score: \($0.score)   Moves: \($0.moves) " } ?? ""
-        let gap = cols - left.count - right.count
+        let leftColumns = DisplayWidth.columns(of: left)
+        let rightColumns = DisplayWidth.columns(of: right)
+        let gap = cols - leftColumns - rightColumns
         let bar = gap >= 1 ? left + String(repeating: " ", count: gap) + right : left + right
-        return bar.count > cols ? String(bar.prefix(cols)) : bar
+        // Padded, the bar is exactly `cols` wide; only the unpadded branch can
+        // overflow, and its width is just the two sides' columns.
+        return leftColumns + rightColumns > cols ? DisplayWidth.truncated(bar, toColumns: cols) : bar
     }
 
     // MARK: - Input
