@@ -33,7 +33,7 @@ jobs:
             generate-documentation --target Gnusto \
             --disable-indexing \
             --transform-for-static-hosting \
-            --hosting-base-path /Gnusto \
+            --hosting-base-path /gnusto \
             --output-path ./docs
 
       - name: Create .nojekyll file
