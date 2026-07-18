@@ -170,6 +170,7 @@ string in the game's own voice.
 
 ## Worked examples
 
+- `Sources/Lighthouse/` — a small host that splices just two: `GnustoScoring` (a `visit` award and a one-off `awardOnce`) and `GnustoActors` (a roaming keeper). The smallest of these examples.
 - `Sources/Zork1/Zork1.swift` — the host that wires all four first-party plugins over entities from three content bundles.
 - `Tests/GnustoTests/Support/CommerceGame.swift` — the logic-only commerce plugin (`buy`/`sell` verbs, `purchase`/`sale` factories, `LampShop` host); `PluginTests` drives a buy/sell turn end to end.
 - `Tests/GnustoTests/Support/ShrineContent.swift` — the content-bearing `ShrineContent` plugin (owns a namespaced shrine region *and* exposes an `offering` factory) with its `PilgrimGame` host; `ContentPluginTests` drives a donate turn across the namespace boundary and checks the namespacing.
