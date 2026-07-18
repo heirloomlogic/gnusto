@@ -85,10 +85,20 @@ or you can ad-hoc sign the binary before sending it:
 codesign -s - dist/Zork1
 ```
 
+## Publish binaries for a tag
+
+`bin/export-game` only builds for the Mac you run it on. To publish binaries for both macOS and Linux, push a version tag. The release workflow (`.github/workflows/release.yml`) builds every executable product for macOS (arm64) and Linux (x86_64) and attaches them to the GitHub release for that tag:
+
+```sh
+git tag 1.0.0
+git push origin 1.0.0        # → a release with runnable macOS + Linux binaries
+```
+
+The workflow reads your products from the manifest the same way `bin/export-game` does, so it needs no edits as products change. A copy ships with the starter template at `Templates/NewGame/.github/workflows/release.yml`: drop the NewGame folder at your repo root and tagging publishes your game unchanged.
+
+In this repo the workflow excludes the `Zork1` demo, and the binaries it publishes exist to exercise the workflow, not to feature a game.
+
 ### Current limits
 
-This is a deliberately small first pass:
-
-- **macOS only.** The export script produces a macOS binary. Cross-compiling a portable Linux binary from a Mac is impractical; producing Linux (and tagged macOS) release binaries belongs in a CI release workflow, which is planned but not yet built.
-- **One product at a time.** `bin/export-game` exports a single executable product per run. It discovers your package's executables automatically, so run it with no arguments to see the list, then name the one you want.
-- **No notarization.** Real Apple notarization is out of scope — the Gatekeeper steps above are the supported way to share for now.
+- **`bin/export-game` builds one product for one platform.** It exports a single executable product per run, for the Mac you run it on. Run it with no arguments to list your products, then name the one you want. For every product across both platforms, tag a release instead.
+- **No notarization.** Real Apple notarization is out of scope; the Gatekeeper steps above are the supported way to share. The release binaries are ad-hoc signed, so a downloaded copy stays quarantined until the recipient clears it.
