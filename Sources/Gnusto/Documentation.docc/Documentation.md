@@ -96,6 +96,24 @@ A game type that also conforms to ``GameMain`` is a complete `@main` executable 
 - ``wearable``
 - ``scenery``
 - ``surface``
+- ``container``
+- ``openable``
+- ``startsOpen``
+- ``transparent``
+- ``capacity(_:)``
+- ``hidden``
+
+### Containers, Doors, and Locks
+
+- <doc:ContainersDoorsAndLocks>
+- ``Item/lockedBy(_:)``
+- ``startsUnlocked``
+- ``Item/isOpen``
+- ``Item/isLocked``
+- ``Item/reveal()``
+- ``Item/isRevealed``
+- ``Location/exit(_:to:via:)``
+- ``Location/exit(_:to:when:otherwise:)``
 
 ### Writing Rules
 
@@ -109,6 +127,8 @@ A game type that also conforms to ``GameMain`` is a complete `@main` executable 
 - ``reply(_:)``
 - ``end(won:)``
 - ``die(_:)``
+- ``Item/describe(_:)``
+- ``Location/describe(_:)``
 
 ### Actors & Vehicles
 

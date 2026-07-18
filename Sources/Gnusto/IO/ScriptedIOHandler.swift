@@ -19,7 +19,7 @@ public final class ScriptedIOHandler: IOHandler {
     }
 
     /// Appends text to the transcript, rendering the `<br>` hard-break marker
-    /// as a newline (via ``TextWrap/plain(_:)``) so recorded transcripts read
+    /// as a newline (via `TextWrap.plain(_:)`) so recorded transcripts read
     /// the way a player sees them, the same as the plain console — the marker
     /// convention is honored in one place, not per handler.
     ///

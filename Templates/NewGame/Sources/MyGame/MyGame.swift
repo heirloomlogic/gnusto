@@ -42,8 +42,9 @@ struct MyGame: Game {
     let bell = Item {
         name("bronze bell")
         adjectives("great", "bronze")
-        description("It hasn't rung in years.")
         scenery
+        // Look-text comes from the live `describe` rule below, not a static
+        // `description(…)` trait.
     }
 
     // MARK: - Map
@@ -70,6 +71,16 @@ struct MyGame: Game {
 
     /// All game logic.
     var rules: Rules {
+        // A live description: recomputed each time the bell is examined, so its
+        // look-text reflects whether the player is holding the rope. Use
+        // `describe` (not a static `description`) whenever the text depends on
+        // world state.
+        bell.describe {
+            rope.isHeld
+                ? "The great bronze bell hangs overhead. With the rope in hand, you could ring it."
+                : "The great bronze bell hangs overhead, its rope well out of reach."
+        }
+
         bell.before(.ring) {
             try require(rope.isHeld, else: "You need something to swing the clapper with.")
             player.score += 1

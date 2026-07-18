@@ -24,14 +24,15 @@ A rule is created by a factory method on the thing it watches. Three owners are 
 
 | Owner | Factories |
 |---|---|
-| An ``Item`` | `before`, `after` |
-| A ``Location`` | `before`, `after`, `beforeEachTurn`, `afterEachTurn`, `onEnter` |
+| An ``Item`` | `before`, `after`, `describe` |
+| A ``Location`` | `before`, `after`, `beforeEachTurn`, `afterEachTurn`, `onEnter`, `describe` |
 | The ``World`` | `before`, `after`, `beforeEachTurn`, `afterEachTurn` |
 
 - `before(_:perform:)` runs before the default action, for the listed intents. Veto the action with ``refuse(_:)``, or handle it yourself with ``reply(_:)``.
 - `after(_:perform:)` runs after the default action succeeded, for the listed intents. React to what happened.
 - `beforeEachTurn` / `afterEachTurn` run on *every* turn spent in the location (or, on `world`, everywhere) regardless of intent — the home for daemons and timers. `afterEachTurn` runs even on refused turns, because world time still passes.
 - `onEnter` (locations only) runs the moment the player arrives, just before the room is auto-described.
+- `describe` supplies a *live description* that is recomputed each time the item or location is described — see **Live descriptions with `describe`** below.
 
 ## Match specific intents
 
@@ -88,6 +89,28 @@ bar.beforeEachTurn {
 
 For state the engine doesn't already track — a wallet, an item's price, a creature's HP — reach for a ``Global`` or a custom trait. See <doc:CustomStateAndTraits>.
 
+## Live descriptions with `describe`
+
+A `description(…)` trait is fixed text. When what the player should read depends on the world — a lantern that reads differently lit or dark, a trapdoor open or shut — attach a ``Item/describe(_:)`` (or ``Location/describe(_:)``) rule instead. It takes a closure that the engine calls *every time the entity is described*, so it always reflects the current state:
+
+```swift
+var rules: Rules {
+    lantern.describe {
+        lantern.isLit
+            ? "The lantern is on, casting a warm circle of light."
+            : "A battered brass lantern, presently dark."
+    }
+}
+```
+
+Like any rule, `describe` is declared in the `rules` block, and the closure reads live state through your declarations — including the entity's own (here, `lantern.isLit`).
+
+Three things are worth knowing:
+
+- **`describe` and a static `description(…)` are mutually exclusive.** Declaring both on the same entity — or two `describe` rules for it — is a fatal ``BootstrapError`` caught at startup, not a silent last-writer-wins. Pick one per entity.
+- **A runtime assignment still wins.** Setting ``Item/description`` (or ``Location/description``) directly in a rule overrides the `describe` closure from then on — useful for a one-way change like a lever that reveals a passage.
+- **Keep the closure pure.** It runs on every look and examine; read state, return a string, and don't mutate the world from inside it.
+
 ## Produce output and control the turn
 
 Four free functions are available in any rule body:
@@ -118,3 +141,4 @@ This is the same composition that lets a big game span multiple files — see <d
 - <doc:TheTurnPipeline>
 - <doc:AddingCustomVerbs>
 - <doc:CustomStateAndTraits>
+- <doc:ContainersDoorsAndLocks>
