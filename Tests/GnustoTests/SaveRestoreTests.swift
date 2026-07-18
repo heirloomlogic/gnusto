@@ -159,6 +159,36 @@ struct SaveRestoreTests {
         #expect(score.contains("in 0 turns"))
     }
 
+    @Test func aBareNameSavesUnderTheSaveDirectoryAndRestores() async throws {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("gnusto-slots-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let transcript = try await play(
+            StrongboxGame(),
+            ["take coin", "save", "autumn", "drop coin", "restore", "autumn", "inventory"],
+            saveDirectory: dir)
+        expectInOrder(transcript, ["Save to what file?", "Saved.", "Restored."])
+        // The name became a `.gnusto` file in the saves directory — no path typed.
+        #expect(
+            FileManager.default.fileExists(
+                atPath: dir.appendingPathComponent("autumn.gnusto").path))
+        // The post-save drop was rewound: the coin is back in hand.
+        #expect(turnOutput(of: "inventory", in: transcript).contains("gold coin"))
+    }
+
+    @Test func theRestorePromptListsExistingSaves() async throws {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("gnusto-list-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        // Make two saves, then open the restore prompt (empty answer cancels).
+        let transcript = try await play(
+            StrongboxGame(),
+            ["save", "spring", "save", "autumn", "restore", ""],
+            saveDirectory: dir)
+        // Sorted, so "autumn" precedes "spring".
+        #expect(transcript.contains("Restore from what file? (saved: autumn, spring)"))
+    }
+
     @Test func savingLeavesTheUndoSnapshotAlone() async throws {
         let path = temporarySavePath("undo")
         defer { try? FileManager.default.removeItem(atPath: path) }

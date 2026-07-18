@@ -1,3 +1,4 @@
+import Foundation
 import Gnusto
 
 /// Boots a game, feeds it a list of commands, and returns the full
@@ -11,14 +12,22 @@ import Gnusto
 ///   - game: the game to boot.
 ///   - commands: the commands to feed it, in order.
 ///   - seed: pins the random stream when set; a fresh stream when nil.
+///   - saveDirectory: where bare `save`/`restore` names resolve; pass an
+///     isolated temp directory when a test exercises named saves, so it
+///     never touches the real per-user saves directory. Nil uses the engine
+///     default.
 /// - Throws: rethrows any error from booting or running the game.
 /// - Returns: the full transcript, with input interleaved as `> command`.
 public func play(
     _ game: some Game,
     _ commands: [String],
-    seed: UInt64? = nil
+    seed: UInt64? = nil,
+    saveDirectory: URL? = nil
 ) async throws -> String {
-    let world = try seed.map { try GameWorld(game: game, seed: $0) } ?? GameWorld(game: game)
+    let world =
+        try seed.map {
+            try GameWorld(game: game, seed: $0, saveDirectory: saveDirectory)
+        } ?? GameWorld(game: game, saveDirectory: saveDirectory)
     let io = ScriptedIOHandler(lines: commands)
     await REPL(world: world, io: io).run()
     return io.transcript

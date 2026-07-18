@@ -21,19 +21,19 @@ struct SaveFile: Codable {
         case wrongGame
     }
 
-    /// Writes the state to `path` — relative paths resolve against the
-    /// current directory (classic behavior), and an existing file is
-    /// silently overwritten.
-    static func write(_ state: WorldState, title: String, to path: String) throws {
+    /// Writes the state to `url`, silently overwriting any existing file. A
+    /// pure serializer: it assumes the containing directory exists (the caller
+    /// provisions the saves directory — see `SaveStore`).
+    static func write(_ state: WorldState, title: String, to url: URL) throws {
         let file = SaveFile(format: currentFormat, title: title, state: state)
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys]
-        try encoder.encode(file).write(to: URL(fileURLWithPath: path), options: .atomic)
+        try encoder.encode(file).write(to: url, options: .atomic)
     }
 
-    /// Reads and validates a save from `path`, returning the state it holds.
-    static func read(from path: String, expecting title: String) throws(ReadError) -> WorldState {
-        guard let data = FileManager.default.contents(atPath: path),
+    /// Reads and validates a save from `url`, returning the state it holds.
+    static func read(from url: URL, expecting title: String) throws(ReadError) -> WorldState {
+        guard let data = try? Data(contentsOf: url),
             let file = try? JSONDecoder().decode(SaveFile.self, from: data),
             file.format == currentFormat
         else { throw .unreadable }
