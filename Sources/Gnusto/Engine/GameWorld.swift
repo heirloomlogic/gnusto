@@ -158,6 +158,23 @@ public actor GameWorld {
         }
     }
 
+    /// Quits at the front end's request — a Ctrl-C, not a typed command.
+    /// Abandons any open engine prompt or clarification and ends the game
+    /// through the same path the `quit` verb takes, so the score epilogue still
+    /// prints. Keyed to `Intent.quit`, so it's immune to a game redefining the
+    /// `quit` verb word and quits even while a save/restore filename prompt is
+    /// pending — which `perform` would otherwise consume the line as the
+    /// filename answer.
+    ///
+    /// - Returns: the final turn's output and status (`isFinished == true`).
+    public func requestQuit() -> TurnResult {
+        pendingPrompt = nil
+        pendingClarification = nil
+        return runTurn(
+            Command(intent: .quit, verbPhrase: "quit", rawInput: "quit"),
+            snapshot: state)
+    }
+
     /// After a turn that killed the player, the next input line belongs to
     /// the death prompt.
     private func armDeathPromptIfNeeded(_ result: TurnResult) -> TurnResult {

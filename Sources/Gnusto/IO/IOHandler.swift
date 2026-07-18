@@ -7,11 +7,11 @@ public protocol IOHandler: Sendable {
     /// - Parameter text: the text to write.
     func write(_ text: String)
 
-    /// Prompts for and returns one line of input; `nil` means end of input.
+    /// Prompts for and returns one unit of input; `nil` means end of input.
     ///
     /// - Parameter prompt: the prompt to show before reading.
-    /// - Returns: the line read, or `nil` at end of input.
-    func readLine(prompt: String) -> String?
+    /// - Returns: the input read, or `nil` at end of input.
+    func readLine(prompt: String) -> Input?
 
     /// Optionally displays a status line (location, score, turns).
     ///
@@ -23,6 +23,19 @@ public protocol IOHandler: Sendable {
     ///
     /// - Parameter candidates: verbs, in-scope nouns, directions, and save names.
     func updateCompletions(_ candidates: CompletionCandidates)
+}
+
+/// One unit of player input from an ``IOHandler``: a line for the engine to
+/// run, or a front-end quit request (e.g. Ctrl-C) that ends the game *without*
+/// being parsed as a command — so it can't be swallowed by an open save/restore
+/// prompt or clash with a game that has redefined the `quit` verb. The REPL
+/// maps `.quit` to `GameWorld.requestQuit()`, which is keyed to `Intent.quit`
+/// rather than the editable verb word.
+public enum Input: Sendable, Equatable {
+    /// A line of text to parse and perform as a command.
+    case line(String)
+    /// A quit requested by the front end itself, bypassing the parser.
+    case quit
 }
 
 extension IOHandler {

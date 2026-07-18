@@ -21,8 +21,11 @@ public struct REPL: Sendable {
         io.showStatus(result.status)
         io.updateCompletions(await world.completionCandidates())
 
-        while !result.isFinished, let line = io.readLine(prompt: "> ") {
-            result = await world.perform(line)
+        while !result.isFinished, let input = io.readLine(prompt: "> ") {
+            switch input {
+            case .line(let line): result = await world.perform(line)
+            case .quit: result = await world.requestQuit()
+            }
             io.write("\(result.output)\n\n")
             io.showStatus(result.status)
             io.updateCompletions(await world.completionCandidates())
