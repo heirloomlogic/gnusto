@@ -30,7 +30,8 @@ enum SaveStore {
         if isExplicitPath(trimmed) {
             return URL(fileURLWithPath: (trimmed as NSString).expandingTildeInPath)
         }
-        return directory
+        return
+            directory
             .appendingPathComponent(sanitize(trimmed))
             .appendingPathExtension(fileExtension)
     }
@@ -67,9 +68,11 @@ enum SaveStore {
     /// - Parameter directory: the saves directory to scan.
     /// - Returns: the sorted slot names.
     static func existingSaveNames(in directory: URL) -> [String] {
-        let contents = (try? FileManager.default.contentsOfDirectory(
-            at: directory, includingPropertiesForKeys: nil)) ?? []
-        return contents
+        let contents =
+            (try? FileManager.default.contentsOfDirectory(
+                at: directory, includingPropertiesForKeys: nil)) ?? []
+        return
+            contents
             .filter { $0.pathExtension == fileExtension }
             .map { $0.deletingPathExtension().lastPathComponent }
             .sorted()
@@ -93,11 +96,13 @@ enum SaveStore {
                 fileURLWithPath: (override as NSString).expandingTildeInPath,
                 isDirectory: true)
         }
-        let base = (try? FileManager.default.url(
-            for: .applicationSupportDirectory, in: .userDomainMask,
-            appropriateFor: nil, create: false))
+        let base =
+            (try? FileManager.default.url(
+                for: .applicationSupportDirectory, in: .userDomainMask,
+                appropriateFor: nil, create: false))
             ?? URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
-        return base
+        return
+            base
             .appendingPathComponent("Gnusto", isDirectory: true)
             .appendingPathComponent("Saves", isDirectory: true)
             .appendingPathComponent(sanitize(title), isDirectory: true)

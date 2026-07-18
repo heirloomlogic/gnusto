@@ -98,7 +98,8 @@ public actor GameWorld {
         self.parser = StandardParser(
             vocabulary: definition.vocabulary,
             syntaxRules: definition.syntaxRules)
-        self.saveDirectory = saveDirectory
+        self.saveDirectory =
+            saveDirectory
             ?? SaveStore.defaultDirectory(forGameTitled: definition.title)
     }
 
