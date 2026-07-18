@@ -105,6 +105,9 @@ public final class TerminalIOHandler: IOHandler {
         if let historyURL {
             let loaded = Self.loadHistory(from: historyURL)
             box.withLock { $0.history = loaded }
+            // Trim on load so an overgrown or hand-bloated file is rewritten
+            // back down to the cap; the append-per-command path stays untouched.
+            Self.trimHistory(at: historyURL)
         }
         render()
     }
@@ -303,6 +306,9 @@ public final class TerminalIOHandler: IOHandler {
     /// a fixed-size tuple, which can't be subscripted with a runtime index, so
     /// rebind it to a `cc_t` buffer.
     private func setControlChar(_ term: inout termios, _ index: Int32, _ value: cc_t) {
+        precondition(
+            index >= 0 && index < Int32(NCCS),
+            "control-char index \(index) out of bounds (NCCS = \(NCCS))")
         withUnsafeMutablePointer(to: &term.c_cc) {
             $0.withMemoryRebound(to: cc_t.self, capacity: Int(NCCS)) { $0[Int(index)] = value }
         }
@@ -503,6 +509,11 @@ public final class TerminalIOHandler: IOHandler {
             var param = String(UnicodeScalar(b2))
             while case .byte(let n) = readRawByte() {
                 if n == 0x7E { break }
+                // Cap the accumulator: a real parameter is a digit or two, so a
+                // stream that never sends the terminator can't grow it without
+                // bound. An overlong sequence falls through to the unknown-
+                // sequence discard path below.
+                guard param.count < 8 else { return readKey() }
                 param.append(Character(UnicodeScalar(n)))
             }
             switch param {
@@ -698,16 +709,45 @@ public final class TerminalIOHandler: IOHandler {
     /// The most recent commands kept in the persistent history file.
     static let historyLimit = 1000
 
+    /// The most bytes of history ever read from disk. The file grows one line
+    /// per command and is only ever trimmed on load, so a long-running session
+    /// (or a hand-edited file) could leave it large; the loader reads only this
+    /// much of the tail, and `trimHistory` rewrites anything bigger back down.
+    /// 256 KiB comfortably holds far more than `historyLimit` typical commands.
+    static let historyByteCap = 256 * 1024
+
     /// The commands persisted at `url`, oldest first, capped to the most recent
     /// `limit` and with blank lines dropped. A missing or unreadable file yields
-    /// an empty history.
+    /// an empty history. Only the last `historyByteCap` bytes are read: a file
+    /// larger than that is seeked to its tail and the first (partial) line is
+    /// dropped, so an overgrown or hand-bloated file never loads whole into
+    /// memory.
     ///
     /// - Parameters:
     ///   - url: the history file to read.
     ///   - limit: the maximum number of commands to keep.
     /// - Returns: the loaded commands, oldest first.
     static func loadHistory(from url: URL, limit: Int = historyLimit) -> [String] {
-        guard let text = try? String(contentsOf: url, encoding: .utf8) else { return [] }
+        let attributes = try? FileManager.default.attributesOfItem(atPath: url.path)
+        let size = (attributes?[.size] as? Int) ?? 0
+
+        let text: String
+        if size > historyByteCap, let handle = try? FileHandle(forReadingFrom: url) {
+            defer { try? handle.close() }
+            try? handle.seek(toOffset: UInt64(size - historyByteCap))
+            let tail = (try? handle.readToEnd()) ?? Data()
+            // The seek lands mid-line; drop everything up to (and including) the
+            // first newline so no partial command survives.
+            guard var decoded = String(data: tail, encoding: .utf8) else { return [] }
+            if let newline = decoded.firstIndex(of: "\n") {
+                decoded = String(decoded[decoded.index(after: newline)...])
+            }
+            text = decoded
+        } else {
+            guard let whole = try? String(contentsOf: url, encoding: .utf8) else { return [] }
+            text = whole
+        }
+
         let lines =
             text
             .split(separator: "\n", omittingEmptySubsequences: false)
@@ -716,9 +756,37 @@ public final class TerminalIOHandler: IOHandler {
         return Array(lines.suffix(limit))
     }
 
+    /// Trims an overgrown history file in place, rewriting it to its most recent
+    /// `limit` entries when it exceeds either that many lines or `historyByteCap`
+    /// bytes. Called once at launch, right after `loadHistory`, so the on-disk
+    /// file can't grow without bound across sessions while the crash-safe
+    /// append-per-command path stays untouched. Best-effort: a failure leaves
+    /// the file as-is and never interrupts play.
+    ///
+    /// - Parameters:
+    ///   - url: the history file to trim.
+    ///   - limit: the maximum number of commands to keep.
+    static func trimHistory(at url: URL, limit: Int = historyLimit) {
+        let attributes = try? FileManager.default.attributesOfItem(atPath: url.path)
+        let size = (attributes?[.size] as? Int) ?? 0
+        guard size > 0 else { return }
+
+        let recent = loadHistory(from: url, limit: limit)
+        // Only rewrite when we'd actually shrink the file: too many bytes, or a
+        // full line count (a proxy for "at or over the entry cap").
+        guard size > historyByteCap || recent.count >= limit else { return }
+
+        let rewritten = Data((recent.joined(separator: "\n") + "\n").utf8)
+        guard (try? rewritten.write(to: url, options: .atomic)) != nil else { return }
+        try? FileManager.default.setAttributes(
+            [.posixPermissions: 0o600], ofItemAtPath: url.path)
+    }
+
     /// Appends one submitted command to the history file, creating the parent
     /// directory if needed. Blank lines are skipped. Best-effort: a write
-    /// failure never interrupts play.
+    /// failure never interrupts play. The directory is created owner-only (0700)
+    /// and the file tightened to 0600, since command history can reveal a
+    /// player's activity and has no reason to be group- or world-readable.
     ///
     /// - Parameters:
     ///   - line: the command to record.
@@ -726,7 +794,8 @@ public final class TerminalIOHandler: IOHandler {
     static func appendHistory(_ line: String, to url: URL) {
         guard !line.trimmingCharacters(in: .whitespaces).isEmpty else { return }
         try? FileManager.default.createDirectory(
-            at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            at: url.deletingLastPathComponent(), withIntermediateDirectories: true,
+            attributes: [.posixPermissions: 0o700])
         let data = Data((line + "\n").utf8)
         if let handle = try? FileHandle(forWritingTo: url) {
             defer { try? handle.close() }
@@ -735,5 +804,7 @@ public final class TerminalIOHandler: IOHandler {
         } else {
             try? data.write(to: url)
         }
+        try? FileManager.default.setAttributes(
+            [.posixPermissions: 0o600], ofItemAtPath: url.path)
     }
 }

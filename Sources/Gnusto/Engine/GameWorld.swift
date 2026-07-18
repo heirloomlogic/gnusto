@@ -394,11 +394,15 @@ public actor GameWorld {
             }
             do {
                 let url = SaveStore.resolve(line, in: saveDirectory)
-                let restored = try SaveFile.read(from: url, expecting: definition.title)
+                let restored = try SaveFile.read(from: url, matching: definition)
                 return performRestore(restored)
             } catch {
                 switch error {
-                case .unreadable:
+                case .unreadable, .inconsistent:
+                    // An inconsistent save is deliberately indistinguishable
+                    // from an unreadable one: the player just sees "Restore
+                    // failed." A crafted file learns nothing about which check
+                    // caught it.
                     return restoreFailed(definition.text.restoreFailed, returnToDeathPrompt)
                 case .wrongGame:
                     return restoreFailed(definition.text.wrongGameSave, returnToDeathPrompt)
