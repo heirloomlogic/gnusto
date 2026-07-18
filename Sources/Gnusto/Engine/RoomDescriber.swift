@@ -12,9 +12,9 @@ enum RoomDescriber {
 
         // One snapshot of everything this function reads; the visited mark
         // (lit visits only) is the one write and happens in the same lock.
-        let (locationID, isDark, wasVisited, vehicle, placements, touched, state) = frame.with {
+        let (locationID, isDark, wasVisited, vehicle, index, touched, state) = frame.with {
             scratch -> (
-                EntityID, Bool, Bool, EntityID?, [EntityID: Placement], Set<EntityID>, WorldState
+                EntityID, Bool, Bool, EntityID?, ContainmentIndex, Set<EntityID>, WorldState
             ) in
             let id = scratch.state.playerLocation
             let dark = Visibility.isDark(at: id, definition: definition, state: scratch.state)
@@ -25,7 +25,7 @@ enum RoomDescriber {
             return (
                 id, dark, visited,
                 Visibility.boardedVehicle(definition: definition, state: scratch.state),
-                scratch.state.placements,
+                scratch.state.containment(),
                 scratch.state.touched,
                 scratch.state
             )
@@ -64,13 +64,11 @@ enum RoomDescriber {
         // boarded vehicle is skipped entirely: its presence is the title
         // suffix, and "There is a red boat here." under "…, in the red
         // boat" is noise (its cargo answers to `look in`, not the room).
-        let present = definition.items.keys
+        let present = (index.inRoom[locationID] ?? [])
             .filter {
-                placements[$0] == .room(locationID)
-                    && $0 != vehicle
+                $0 != vehicle
                     && Visibility.isPerceivable($0, definition: definition, state: state)
             }
-            .sorted()
         let roomItems = present.filter { definition.items[$0]?.isActor != true }
 
         for itemID in roomItems {
@@ -83,12 +81,8 @@ enum RoomDescriber {
 
             // One level of "On the X is a Y." for surfaces in the room.
             if item.isSurface {
-                let onTop = definition.items.keys
-                    .filter {
-                        placements[$0] == .on(itemID)
-                            && Visibility.isPerceivable($0, definition: definition, state: state)
-                    }
-                    .sorted()
+                let onTop = (index.onSurface[itemID] ?? [])
+                    .filter { Visibility.isPerceivable($0, definition: definition, state: state) }
                 for topID in onTop {
                     let topName = definition.items[topID]?.name ?? topID.raw
                     frame.say(frame.definition.text.itemOnSurface(topName, item.name ?? itemID.raw))
@@ -100,12 +94,8 @@ enum RoomDescriber {
             // containers stay silent, so their contents never leak into the
             // room description.
             if item.isContainer, contentsVisible(itemID, definition: definition, state: state) {
-                let inside = definition.items.keys
-                    .filter {
-                        placements[$0] == .inside(itemID)
-                            && Visibility.isPerceivable($0, definition: definition, state: state)
-                    }
-                    .sorted()
+                let inside = (index.inContainer[itemID] ?? [])
+                    .filter { Visibility.isPerceivable($0, definition: definition, state: state) }
                 for insideID in inside {
                     let insideName = definition.items[insideID]?.name ?? insideID.raw
                     frame.say(frame.definition.text.itemInContainer(insideName, item.name ?? itemID.raw))

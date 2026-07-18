@@ -253,13 +253,13 @@ struct SaveRestoreTests {
 
     @Test func tamperedUnknownPlacementKeyIsRejected() async throws {
         try await expectTamperedSaveRejected("bad-key") {
-            $0.placements[EntityID("phantom-item")] = .nowhere
+            $0.place(EntityID("phantom-item"), .nowhere)
         }
     }
 
     @Test func tamperedUnknownPlacementTargetIsRejected() async throws {
         try await expectTamperedSaveRejected("bad-target") {
-            $0.placements[EntityID("coin")] = .room(EntityID("phantom-room"))
+            $0.place(EntityID("coin"), .room(EntityID("phantom-room")))
         }
     }
 
@@ -267,7 +267,7 @@ struct SaveRestoreTests {
         // The strongbox placed inside itself: resolution passes (it's a
         // container), so only the acyclicity walk can catch it.
         try await expectTamperedSaveRejected("cycle") {
-            $0.placements[EntityID("box")] = .inside(EntityID("box"))
+            $0.place(EntityID("box"), .inside(EntityID("box")))
         }
     }
 

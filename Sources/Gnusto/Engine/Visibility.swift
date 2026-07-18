@@ -12,10 +12,11 @@ enum Visibility {
     static func visibleItems(
         at location: EntityID,
         definition: GameDefinition,
-        state: WorldState
+        state: WorldState,
+        index: ContainmentIndex
     ) -> Set<EntityID> {
         collect(
-            at: location, definition: definition, state: state,
+            at: location, definition: definition, state: state, index: index,
             descendClosedTransparent: true)
     }
 
@@ -25,10 +26,11 @@ enum Visibility {
     static func reachableItems(
         at location: EntityID,
         definition: GameDefinition,
-        state: WorldState
+        state: WorldState,
+        index: ContainmentIndex
     ) -> Set<EntityID> {
         collect(
-            at: location, definition: definition, state: state,
+            at: location, definition: definition, state: state, index: index,
             descendClosedTransparent: false)
     }
 
@@ -41,19 +43,9 @@ enum Visibility {
         at location: EntityID,
         definition: GameDefinition,
         state: WorldState,
+        index: ContainmentIndex,
         descendClosedTransparent: Bool
     ) -> Set<EntityID> {
-        // Group placements by their container/surface parent for O(1) descent.
-        var childrenOf: [EntityID: [EntityID]] = [:]
-        for (id, placement) in state.placements {
-            switch placement {
-            case .on(let parent), .inside(let parent):
-                childrenOf[parent, default: []].append(id)
-            default:
-                break
-            }
-        }
-
         var result: Set<EntityID> = []
         // Guards against a runtime-created placement cycle (e.g. a container
         // moved inside its own contents) sending this walk into an infinite
@@ -65,7 +57,7 @@ enum Visibility {
         /// its qualifying descendants.
         func descend(into id: EntityID) {
             guard visited.insert(id).inserted else { return }
-            for child in childrenOf[id] ?? [] where isPerceivable(child, definition: definition, state: state) {
+            for child in index.children(of: id) where isPerceivable(child, definition: definition, state: state) {
                 result.insert(child)
                 if shouldDescend(into: child) {
                     descend(into: child)
@@ -85,8 +77,7 @@ enum Visibility {
         }
 
         // Held items are always perceivable, and we descend into what they hold.
-        for (id, placement) in state.placements where placement == .heldBy(.player) {
-            guard isPerceivable(id, definition: definition, state: state) else { continue }
+        for id in index.held[.player] ?? [] where isPerceivable(id, definition: definition, state: state) {
             result.insert(id)
             if shouldDescend(into: id) { descend(into: id) }
         }
@@ -95,8 +86,7 @@ enum Visibility {
             return result
         }
 
-        for (id, placement) in state.placements where placement == .room(location) {
-            guard isPerceivable(id, definition: definition, state: state) else { continue }
+        for id in index.inRoom[location] ?? [] where isPerceivable(id, definition: definition, state: state) {
             result.insert(id)
             if shouldDescend(into: id) { descend(into: id) }
         }
@@ -107,15 +97,12 @@ enum Visibility {
         // and the default refusal is `cantReach`, exactly like the contents
         // of a shut glass jar.
         if descendClosedTransparent {
-            for (holderID, placement) in state.placements
-            where placement == .room(location) {
+            for holderID in index.inRoom[location] ?? [] {
                 guard definition.items[holderID]?.isActor == true,
                     isPerceivable(holderID, definition: definition, state: state)
                 else { continue }
-                for (id, held) in state.placements where held == .heldBy(holderID) {
-                    guard isPerceivable(id, definition: definition, state: state) else {
-                        continue
-                    }
+                for id in index.held[holderID] ?? []
+                where isPerceivable(id, definition: definition, state: state) {
                     result.insert(id)
                     if shouldDescend(into: id) { descend(into: id) }
                 }

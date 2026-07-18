@@ -54,9 +54,7 @@ public struct Player: Sendable {
     public var inventory: [Item] {
         let frame = Ctx.current
         let held = frame.with { scratch in
-            scratch.state.placements
-                .filter { $0.value == .heldBy(.player) }
-                .keys.sorted()
+            scratch.state.containment().held[.player] ?? []
         }
         return held.compactMap { frame.definition.registry.items[$0] }
     }

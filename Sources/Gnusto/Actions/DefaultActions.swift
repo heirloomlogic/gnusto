@@ -81,7 +81,7 @@ enum DefaultActions {
             try refuse(frame.definition.text.cantReach(item.name))
         }
         frame.with { scratch in
-            scratch.state.placements[id] = .heldBy(.player)
+            scratch.state.place(id, .heldBy(.player))
             scratch.state.touched.insert(id)
         }
         frame.say(frame.definition.text.taken)
@@ -104,9 +104,9 @@ enum DefaultActions {
             let vehicle = Visibility.boardedVehicle(
                 definition: frame.definition, state: scratch.state)
             if let vehicle, frame.definition.items[vehicle]?.isContainer == true {
-                scratch.state.placements[id] = .inside(vehicle)
+                scratch.state.place(id, .inside(vehicle))
             } else {
-                scratch.state.placements[id] = .room(scratch.state.playerLocation)
+                scratch.state.place(id, .room(scratch.state.playerLocation))
             }
             scratch.state.touched.insert(id)
         }
@@ -158,7 +158,7 @@ enum DefaultActions {
         }
         let id = item.id
         let surfaceID = surface.id
-        if frame.with({ isOrContains($0.state, surfaceID, id) }) {
+        if frame.with({ isOrContains($0.state.containment(), surfaceID, id) }) {
             try refuse(frame.definition.text.cantPutOntoOwnContents(item.name))
         }
         if item.isWorn {
@@ -166,7 +166,7 @@ enum DefaultActions {
             frame.with { _ = $0.state.wornItems.remove(id) }
         }
         frame.with { scratch in
-            scratch.state.placements[id] = .on(surfaceID)
+            scratch.state.place(id, .on(surfaceID))
             scratch.state.touched.insert(id)
         }
         frame.say(frame.definition.text.putItemOn(item.name, surface.name))
@@ -194,12 +194,12 @@ enum DefaultActions {
         }
         let id = item.id
         let containerID = container.id
-        if frame.with({ isOrContains($0.state, containerID, id) }) {
+        if frame.with({ isOrContains($0.state.containment(), containerID, id) }) {
             try refuse(frame.definition.text.cantPutInsideOwnContents(item.name))
         }
         if let capacity = frame.definition.items[containerID]?.capacity {
             let occupants = frame.with { scratch in
-                scratch.state.placements.values.filter { $0 == .inside(containerID) }.count
+                scratch.state.containment().inContainer[containerID]?.count ?? 0
             }
             guard occupants < capacity else {
                 try refuse(frame.definition.text.noRoom)
@@ -210,7 +210,7 @@ enum DefaultActions {
             frame.with { _ = $0.state.wornItems.remove(id) }
         }
         frame.with { scratch in
-            scratch.state.placements[id] = .inside(containerID)
+            scratch.state.place(id, .inside(containerID))
             scratch.state.touched.insert(id)
         }
         frame.say(frame.definition.text.putItemIn(item.name, container.name))
@@ -220,22 +220,15 @@ enum DefaultActions {
     /// `target`'s containment subtree (on a surface or inside a container,
     /// to any depth) — the shape a `putIn` cycle would take. Guards against
     /// putting a container into itself or into one of its own contents.
-    private static func isOrContains(_ state: WorldState, _ candidate: EntityID, _ target: EntityID) -> Bool {
+    private static func isOrContains(
+        _ index: ContainmentIndex, _ candidate: EntityID, _ target: EntityID
+    ) -> Bool {
         if candidate == target { return true }
-        var childrenOf: [EntityID: [EntityID]] = [:]
-        for (childID, placement) in state.placements {
-            switch placement {
-            case .on(let parent), .inside(let parent):
-                childrenOf[parent, default: []].append(childID)
-            default:
-                break
-            }
-        }
         var frontier = [target]
         var seen: Set<EntityID> = []
         while let id = frontier.popLast() {
             guard seen.insert(id).inserted else { continue }
-            for childID in childrenOf[id] ?? [] {
+            for childID in index.children(of: id) {
                 if childID == candidate { return true }
                 frontier.append(childID)
             }
@@ -247,12 +240,10 @@ enum DefaultActions {
     /// stable listings — the one query behind both `open`'s reveal line and
     /// `lookIn`'s contents report.
     private static func perceivableContents(
-        of container: EntityID, in scratch: Scratch, frame: TurnFrame
+        of container: EntityID, in scratch: inout Scratch, frame: TurnFrame
     ) -> [String] {
-        scratch.state.placements.keys
-            .filter { scratch.state.placements[$0] == .inside(container) }
+        (scratch.state.containment().inContainer[container] ?? [])
             .filter { Visibility.isPerceivable($0, definition: frame.definition, state: scratch.state) }
-            .sorted()
             .map { frame.definition.items[$0]?.name ?? $0.raw }
     }
 
@@ -273,7 +264,7 @@ enum DefaultActions {
         }
         let contents = frame.with { scratch -> [String] in
             scratch.state.openItems.insert(id)
-            return perceivableContents(of: id, in: scratch, frame: frame)
+            return perceivableContents(of: id, in: &scratch, frame: frame)
         }
         if contents.isEmpty {
             frame.say(frame.definition.text.opened)
@@ -353,7 +344,7 @@ enum DefaultActions {
         {
             try refuse(frame.definition.text.closedContainer(item.name))
         }
-        let contents = frame.with { perceivableContents(of: id, in: $0, frame: frame) }
+        let contents = frame.with { perceivableContents(of: id, in: &$0, frame: frame) }
         if contents.isEmpty {
             frame.say(frame.definition.text.emptyContainer(item.name))
         } else {
@@ -479,7 +470,7 @@ enum DefaultActions {
                 definition: frame.definition, state: scratch.state)
             scratch.state.playerLocation = destination
             if let vehicle {
-                scratch.state.placements[vehicle] = .room(destination)
+                scratch.state.place(vehicle, .room(destination))
             }
         }
         for rule in frame.definition.rules.locationOnEnter[destination] ?? [] {
@@ -555,9 +546,7 @@ enum DefaultActions {
 
     private static func inventory(_ frame: TurnFrame) {
         let held = frame.with { scratch in
-            frame.definition.items.keys
-                .filter { scratch.state.placements[$0] == .heldBy(.player) }
-                .sorted()
+            (scratch.state.containment().held[.player] ?? [])
                 .map { id in
                     frame.definition.text.inventoryLine(
                         frame.definition.items[id]?.name ?? id.raw,
@@ -608,8 +597,12 @@ enum DefaultActions {
     /// than parser scope (which is *visible* items, and so also admits a
     /// closed transparent container's contents).
     private static func isReachable(_ id: EntityID, frame: TurnFrame) -> Bool {
-        let (here, state) = frame.with { ($0.state.playerLocation, $0.state) }
-        return Visibility.reachableItems(at: here, definition: frame.definition, state: state)
-            .contains(id)
+        let (here, index, state) = frame.with {
+            ($0.state.playerLocation, $0.state.containment(), $0.state)
+        }
+        return Visibility.reachableItems(
+            at: here, definition: frame.definition, state: state, index: index
+        )
+        .contains(id)
     }
 }
