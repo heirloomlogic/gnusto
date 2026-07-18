@@ -12,6 +12,22 @@ enum SaveStore {
     /// The extension given to named saves.
     static let fileExtension = "gnusto"
 
+    /// The command-history sidecar's filename. A dotfile *without* the
+    /// `.gnusto` extension, so it lives in the saves directory yet is never
+    /// mistaken for a save slot by `existingSaveNames` (which filters on the
+    /// extension). Keeping the name here, next to `fileExtension`, keeps that
+    /// no-collision invariant in one file.
+    static let historyFileName = ".history"
+
+    /// The per-game command-history file: the history sidecar inside the given
+    /// saves directory.
+    ///
+    /// - Parameter directory: the game's saves directory.
+    /// - Returns: the history file URL.
+    static func historyURL(in directory: URL) -> URL {
+        directory.appendingPathComponent(historyFileName)
+    }
+
     /// Resolves a player's answer to the save/restore prompt into a file URL.
     /// Pure — it never touches the filesystem, so it is safe on the read path.
     ///
