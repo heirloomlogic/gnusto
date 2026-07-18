@@ -5,17 +5,26 @@ import Synchronization
 /// authors want transcript tests too.
 public final class ScriptedIOHandler: IOHandler {
     private struct Log: Sendable {
-        var pending: [String]
+        var pending: [Input]
         var transcript = ""
     }
 
     private let box: Mutex<Log>
 
-    /// Creates a handler that will feed the given lines in order.
+    /// Creates a handler that will feed the given lines in order — each as a
+    /// `.line`, the way a player types commands.
     ///
     /// - Parameter lines: the lines to feed in order.
     public init(lines: [String]) {
-        box = Mutex(Log(pending: lines))
+        box = Mutex(Log(pending: lines.map(Input.line)))
+    }
+
+    /// Creates a handler that will feed the given input units in order — use
+    /// this to script a front-end `.quit` (Ctrl-C) alongside typed lines.
+    ///
+    /// - Parameter inputs: the input units to feed in order.
+    public init(inputs: [Input]) {
+        box = Mutex(Log(pending: inputs))
     }
 
     /// Appends text to the transcript, rendering the `<br>` hard-break marker
@@ -28,16 +37,21 @@ public final class ScriptedIOHandler: IOHandler {
         box.withLock { $0.transcript += TextWrap.plain(text) }
     }
 
-    /// Returns the next scripted line, or `nil` once they run out.
+    /// Returns the next scripted input, or `nil` once it runs out. A `.line`
+    /// is echoed into the transcript as `prompt + line`; a `.quit` records the
+    /// prompt with no text, the way a Ctrl-C leaves the input line empty.
     ///
-    /// - Parameter prompt: the prompt recorded before the line.
-    /// - Returns: the next scripted line, or `nil` once they run out.
-    public func readLine(prompt: String) -> String? {
+    /// - Parameter prompt: the prompt recorded before the input.
+    /// - Returns: the next scripted input, or `nil` once it runs out.
+    public func readLine(prompt: String) -> Input? {
         box.withLock { log in
             guard !log.pending.isEmpty else { return nil }
-            let line = log.pending.removeFirst()
-            log.transcript += "\(prompt)\(line)\n"
-            return line
+            let input = log.pending.removeFirst()
+            switch input {
+            case .line(let line): log.transcript += "\(prompt)\(line)\n"
+            case .quit: log.transcript += "\(prompt)\n"
+            }
+            return input
         }
     }
 

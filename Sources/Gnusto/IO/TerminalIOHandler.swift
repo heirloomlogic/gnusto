@@ -142,8 +142,9 @@ public final class TerminalIOHandler: IOHandler {
 
     /// Runs the raw-mode line editor until the player submits a line, presses
     /// Ctrl-D on an empty line (EOF), or Ctrl-C (quit). Returns the submitted
-    /// line, or `nil` to end the game.
-    public func readLine(prompt: String) -> String? {
+    /// line as `.line`, `.quit` on a confirmed Ctrl-C, or `nil` (EOF) to end
+    /// the game.
+    public func readLine(prompt: String) -> Input? {
         box.withLock {
             $0.prompt = prompt
             $0.input = ""
@@ -179,7 +180,7 @@ public final class TerminalIOHandler: IOHandler {
                     Self.appendHistory(line, to: historyURL)
                 }
                 render()
-                return line
+                return .line(line)
 
             case .eof:
                 // Ctrl-D on an empty line ends input; ignored mid-line.
@@ -188,11 +189,14 @@ public final class TerminalIOHandler: IOHandler {
                 continue  // nothing changed; no repaint
 
             case .interrupt:
-                // Ctrl-C: confirm, then route through the game's normal quit
-                // path by returning "quit", rather than killing the process —
-                // so the engine prints its epilogue and the terminal restores
-                // cleanly on the way out.
-                if confirmQuit() { return "quit" }
+                // Ctrl-C: confirm, then signal a quit *intent* rather than
+                // killing the process — the REPL routes `.quit` through
+                // `GameWorld.requestQuit()`, so the engine prints its epilogue
+                // and the terminal restores cleanly on the way out. Signaling
+                // the intent (not the editable "quit" verb word) means the quit
+                // lands even while a save/restore prompt is pending, and can't
+                // drift if a game redefines the verb.
+                if confirmQuit() { return .quit }
                 render()
                 continue
 
@@ -555,7 +559,8 @@ public final class TerminalIOHandler: IOHandler {
     /// Asks the player to confirm a Ctrl-C quit, reading keys until they answer.
     /// `y` confirms; `n`, Enter, or any unrecognized key cancels; a second
     /// Ctrl-C or Ctrl-D confirms outright. Front-end only — the actual quit
-    /// happens when `readLine` returns `"quit"` and the engine runs it.
+    /// happens when `readLine` returns `.quit` and the REPL calls
+    /// `GameWorld.requestQuit()`.
     ///
     /// - Returns: `true` to quit, `false` to keep editing the current line.
     func confirmQuit() -> Bool {

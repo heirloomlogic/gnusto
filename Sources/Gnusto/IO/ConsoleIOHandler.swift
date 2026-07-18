@@ -12,12 +12,14 @@ public struct ConsoleIOHandler: IOHandler {
         print(TextWrap.plain(text), terminator: "")
     }
 
-    /// Prints the prompt and reads one line from standard input.
+    /// Prints the prompt and reads one line from standard input. A plain
+    /// console (piped or redirected input) never originates a quit signal, so
+    /// every read is a `.line`; end of input is `nil`.
     ///
     /// - Parameter prompt: the prompt to print before reading.
-    /// - Returns: the line read, or `nil` at end of input.
-    public func readLine(prompt: String) -> String? {
+    /// - Returns: the line read as `.line`, or `nil` at end of input.
+    public func readLine(prompt: String) -> Input? {
         print(prompt, terminator: "")
-        return Swift.readLine()
+        return Swift.readLine().map(Input.line)
     }
 }
