@@ -610,7 +610,8 @@ public final class TerminalIOHandler: IOHandler {
 
         // Words before the partial pick the pool.
         let prefix = String(chars[0..<wordStart])
-        let preceding = prefix
+        let preceding =
+            prefix
             .split(whereSeparator: { $0.isWhitespace })
             .map { $0.lowercased() }
         let pool = candidatePool(preceding: preceding, candidates: candidates)
@@ -688,7 +689,8 @@ public final class TerminalIOHandler: IOHandler {
     /// - Returns: the loaded commands, oldest first.
     static func loadHistory(from url: URL, limit: Int = historyLimit) -> [String] {
         guard let text = try? String(contentsOf: url, encoding: .utf8) else { return [] }
-        let lines = text
+        let lines =
+            text
             .split(separator: "\n", omittingEmptySubsequences: false)
             .map(String.init)
             .filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }

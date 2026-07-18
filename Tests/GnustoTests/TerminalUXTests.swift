@@ -8,7 +8,6 @@ import Testing
 /// handling and the Ctrl-C confirm are verified by running the app, not here;
 /// this covers the pure logic and the engine seam.
 struct TerminalUXTests {
-
     // MARK: - complete(): the pure completion engine
 
     /// A candidate set roughly like MiniGame's opening: a handful of verbs, the
