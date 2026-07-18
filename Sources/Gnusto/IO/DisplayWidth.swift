@@ -67,19 +67,19 @@ enum DisplayWidth {
     /// CJK extensions, and the emoji pictograph blocks.
     private static func isWide(_ scalar: Unicode.Scalar) -> Bool {
         switch scalar.value {
-        case 0x1100...0x115F,    // Hangul Jamo
-             0x2E80...0x303E,    // CJK radicals, Kangxi radicals, CJK symbols
-             0x3041...0x33FF,    // Hiragana, Katakana, CJK symbols & compatibility
-             0x3400...0x4DBF,    // CJK Unified Ideographs Extension A
-             0x4E00...0x9FFF,    // CJK Unified Ideographs
-             0xA000...0xA4CF,    // Yi syllables
-             0xAC00...0xD7A3,    // Hangul syllables
-             0xF900...0xFAFF,    // CJK Compatibility Ideographs
-             0xFE30...0xFE4F,    // CJK Compatibility Forms
-             0xFF00...0xFF60,    // Fullwidth forms
-             0xFFE0...0xFFE6,    // Fullwidth signs
-             0x1F300...0x1FAFF,  // Symbols & Pictographs (emoji)
-             0x20000...0x3FFFD:  // CJK Unified Ideographs Extension B and beyond
+        case 0x1100...0x115F,  // Hangul Jamo
+            0x2E80...0x303E,  // CJK radicals, Kangxi radicals, CJK symbols
+            0x3041...0x33FF,  // Hiragana, Katakana, CJK symbols & compatibility
+            0x3400...0x4DBF,  // CJK Unified Ideographs Extension A
+            0x4E00...0x9FFF,  // CJK Unified Ideographs
+            0xA000...0xA4CF,  // Yi syllables
+            0xAC00...0xD7A3,  // Hangul syllables
+            0xF900...0xFAFF,  // CJK Compatibility Ideographs
+            0xFE30...0xFE4F,  // CJK Compatibility Forms
+            0xFF00...0xFF60,  // Fullwidth forms
+            0xFFE0...0xFFE6,  // Fullwidth signs
+            0x1F300...0x1FAFF,  // Symbols & Pictographs (emoji)
+            0x20000...0x3FFFD:  // CJK Unified Ideographs Extension B and beyond
             return true
         default:
             return false
