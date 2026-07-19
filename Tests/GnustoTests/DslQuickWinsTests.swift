@@ -111,7 +111,7 @@ struct DslQuickWinsTests {
         // is the real assertion. Here, exercise the factored `run` function
         // (what `main()` calls after bootstrap) with a ScriptedIOHandler,
         // since invoking `main()` itself needs a live console.
-        let world = try GameWorld(game: MainableGame())
+        let world = try cachedWorld(MainableGame())
         let io = ScriptedIOHandler(lines: ["look", "quit"])
         await MainableGame.run(world: world, io: io)
         #expect(io.transcript.contains("Welcome."))

@@ -88,16 +88,28 @@ public actor GameWorld {
     ///     per-user saves directory for the game's title.
     /// - Throws: if the game definition is invalid.
     public init(game: some Game, seed: UInt64, saveDirectory: URL? = nil) throws {
-        let (definition, state) = try Bootstrap.build(game)
-        self.definition = definition
-        self.state = state
+        self.init(prepared: try PreparedGame(game), seed: seed, saveDirectory: saveDirectory)
+    }
+
+    /// Builds the world from a game booted once via `PreparedGame`, skipping the
+    /// bootstrap the prepared game already ran. The definition and pristine state
+    /// are shared (value types, copied in); only the seed, parser, and save
+    /// directory are per-world — so many worlds can spin up from one prepared
+    /// game without re-paying `Bootstrap.build`. See `PreparedGame`.
+    ///
+    /// - Parameters:
+    ///   - prepared: a game already booted through `Bootstrap.build`.
+    ///   - seed: the fixed random seed to replay.
+    ///   - saveDirectory: where bare save names resolve; defaults to the
+    ///     per-user saves directory for the game's title.
+    public init(prepared: PreparedGame, seed: UInt64, saveDirectory: URL? = nil) {
+        self.definition = prepared.definition
+        self.state = prepared.state
         self.state.rngState = seed
         // Captured after seeding, so RESTART replays the identical game,
         // randomness included.
         self.initialState = self.state
-        self.parser = StandardParser(
-            vocabulary: definition.vocabulary,
-            syntaxRules: definition.syntaxRules)
+        self.parser = prepared.parser
         self.saveDirectory =
             saveDirectory
             ?? SaveStore.defaultDirectory(forGameTitled: definition.title)

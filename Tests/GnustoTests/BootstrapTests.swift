@@ -5,6 +5,8 @@ import Testing
 
 struct BootstrapTests {
     @Test func operaHouseBoots() throws {
+        // Constructs directly, not via the shared-definition cache: the point
+        // of this test is that bootstrap itself runs and validates cleanly.
         _ = try GameWorld(game: OperaHouse())
     }
 
