@@ -45,10 +45,12 @@ let package = Package(
         .library(name: "GnustoScoring", targets: ["GnustoScoring"]),
         .library(name: "GnustoActors", targets: ["GnustoActors"]),
         .library(name: "GnustoMeleeCombat", targets: ["GnustoMeleeCombat"]),
+        .library(name: "GnustoSpellcasting", targets: ["GnustoSpellcasting"]),
         .library(name: "GnustoTestSupport", targets: ["GnustoTestSupport"]),
         .executable(name: "CloakOfDarkness", targets: ["CloakOfDarkness"]),
         .executable(name: "Lighthouse", targets: ["Lighthouse"]),
         .executable(name: "Zork1", targets: ["Zork1"]),
+        .executable(name: "Gramarye", targets: ["Gramarye"]),
     ],
     dependencies: devDependencies + [
         // The #verb macro's expansion machinery. Unlike the dev tooling above,
@@ -87,6 +89,13 @@ let package = Package(
             dependencies: ["Gnusto"],
             plugins: devPlugins
         ),
+        // A reusable spellcasting layer: at-will cantrips, memorized spells, an
+        // energy pool, and one-shot scrolls, over one uniform notion of a spell.
+        .target(
+            name: "GnustoSpellcasting",
+            dependencies: ["Gnusto"],
+            plugins: devPlugins
+        ),
         .executableTarget(
             name: "CloakOfDarkness",
             dependencies: ["Gnusto"],
@@ -110,6 +119,14 @@ let package = Package(
             ],
             plugins: devPlugins
         ),
+        // The spellcasting demo: a small original game that exercises all four
+        // magic paradigms (cantrip, memorized, energy, scroll) via
+        // GnustoSpellcasting — the "prove the engine hosts a spell system" game.
+        .executableTarget(
+            name: "Gramarye",
+            dependencies: ["Gnusto", "GnustoSpellcasting"],
+            plugins: devPlugins
+        ),
         // Transcript-testing helpers for game authors. Link it into TEST
         // targets only: the Testing library it imports ships in the toolchain,
         // not the OS, so a plain executable linking it can fail at load time.
@@ -129,8 +146,8 @@ let package = Package(
             name: "GnustoTests",
             dependencies: [
                 "Gnusto", "GnustoDangerousDark", "GnustoScoring", "GnustoActors",
-                "GnustoMeleeCombat", "GnustoTestSupport", "CloakOfDarkness",
-                "Lighthouse", "Zork1",
+                "GnustoMeleeCombat", "GnustoSpellcasting", "GnustoTestSupport",
+                "CloakOfDarkness", "Lighthouse", "Zork1", "Gramarye",
             ],
             plugins: devPlugins
         ),
