@@ -31,6 +31,15 @@ struct Vocabulary: Sendable {
     /// single set lookup (it runs per token on parse-failure paths).
     var allKnownWords: Set<String> = []
 
+    /// The verb words, sorted once at bootstrap — Tab-completion offers them
+    /// every turn and the order never changes, so the sort is cached here
+    /// rather than repeated per turn.
+    var sortedVerbWords: [String] = []
+
+    /// The direction words, sorted once at bootstrap — same rationale as
+    /// `sortedVerbWords`.
+    var sortedDirectionWords: [String] = []
+
     /// True if the word appears anywhere in the game's vocabulary.
     func knows(_ word: String) -> Bool {
         allKnownWords.contains(word)
@@ -48,6 +57,8 @@ struct Vocabulary: Sendable {
             allKnownWords.formUnion(lexicon.nouns)
             allKnownWords.formUnion(lexicon.adjectives)
         }
+        sortedVerbWords = verbWords.sorted()
+        sortedDirectionWords = directions.keys.sorted()
     }
 
     static let standardDirections: [String: Direction] = [

@@ -34,7 +34,10 @@ public enum GameStatus: Hashable, Sendable, Codable {
 /// vocabulary) lives in `GameDefinition`. Because `WorldState` is one
 /// `Codable` value, save/restore *is* a serialization call — see `SaveFile`.
 struct WorldState: Sendable, Codable {
-    var placements: [EntityID: Placement] = [:]
+    /// Where every item is. Written only through `place(_:_:)`, the one funnel
+    /// that also invalidates `containmentCache`; the `private(set)` makes the
+    /// compiler reject any write that would skip that funnel.
+    private(set) var placements: [EntityID: Placement] = [:]
     var playerLocation: EntityID
     var litRooms: Set<EntityID> = []
     /// `lightSource` items that are currently lit. Only light sources ever
@@ -78,6 +81,76 @@ struct WorldState: Sendable, Codable {
     /// The random stream's position. Part of the saved state, so a restored
     /// game replays the exact same randomness it would have had.
     var rngState: UInt64 = 0
+
+    /// The lazily built containment index for the current `placements`, or nil
+    /// when it must be rebuilt. Pure derived data — never serialized (see
+    /// `CodingKeys`) — and dropped by every `place(_:_:)`.
+    private var containmentCache: ContainmentIndex?
+
+    /// Every stored property except `containmentCache`, which is derived and
+    /// must stay out of the save format. Listing the cases by their exact
+    /// property names keeps the encoded JSON byte-identical to the pre-index
+    /// format; the sole omission is the cache.
+    private enum CodingKeys: String, CodingKey {
+        case placements
+        case playerLocation
+        case litRooms
+        case litItems
+        case wornItems
+        case openItems
+        case lockedItems
+        case revealedItems
+        case pronounIt
+        case pronounThem
+        case playerVehicle
+        case score
+        case moves
+        case touched
+        case visited
+        case descriptionOverrides
+        case globals
+        case activeFuses
+        case activeDaemons
+        case status
+        case rngState
+    }
+}
+
+extension WorldState {
+    /// A fresh state placing the player and every item. The one entry point
+    /// that seeds `placements`, since the property is otherwise `private(set)`;
+    /// Bootstrap uses it after assembling the starting map.
+    ///
+    /// - Parameters:
+    ///   - playerLocation: the room the player starts in.
+    ///   - placements: the starting item-to-placement map.
+    init(playerLocation: EntityID, placements: [EntityID: Placement] = [:]) {
+        self.playerLocation = playerLocation
+        self.placements = placements
+    }
+
+    /// Sets an item's placement — the one write funnel for `placements`.
+    /// Invalidating the cache here, and nowhere else, is what lets every reader
+    /// trust `containment()`.
+    ///
+    /// - Parameters:
+    ///   - id: the item to move.
+    ///   - placement: where it now is.
+    mutating func place(_ id: EntityID, _ placement: Placement) {
+        placements[id] = placement
+        containmentCache = nil
+    }
+
+    /// The containment index for the current `placements`, built on first use
+    /// this turn and reused until the next `place(_:_:)`.
+    ///
+    /// - Returns: the cached (or freshly built) index.
+    mutating func containment() -> ContainmentIndex {
+        if let containmentCache { return containmentCache }
+        let index = ContainmentIndex(placements: placements)
+        containmentCache = index
+        return index
+    }
 }
 
 extension WorldState {

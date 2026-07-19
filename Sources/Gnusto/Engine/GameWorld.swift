@@ -249,10 +249,10 @@ public actor GameWorld {
             return freeReply(definition.text.multipleNotAllowedWith(parsed.verbPhrase))
         }
 
+        let index = state.containment()
         let visible = Visibility.visibleItems(
-            at: state.playerLocation, definition: definition, state: state)
-        let held = Set(
-            state.placements.filter { $0.value == .heldBy(.player) }.keys)
+            at: state.playerLocation, definition: definition, state: state, index: index)
+        let held = Set(index.held[.player] ?? [])
 
         var objects: [EntityID]
         switch multiple {
@@ -705,7 +705,8 @@ public actor GameWorld {
     /// reachability.
     private func currentScope() -> Scope {
         let here = state.playerLocation
-        let visible = Visibility.visibleItems(at: here, definition: definition, state: state)
+        let visible = Visibility.visibleItems(
+            at: here, definition: definition, state: state, index: state.containment())
         return Scope(visibleItems: visible, pronounIt: state.pronounIt)
     }
 
@@ -741,9 +742,9 @@ public actor GameWorld {
         }
         return CompletionCandidates(
             context: context,
-            verbs: definition.vocabulary.verbWords.sorted(),
+            verbs: definition.vocabulary.sortedVerbWords,
             nouns: nouns.sorted(),
-            directions: definition.vocabulary.directions.keys.sorted(),
+            directions: definition.vocabulary.sortedDirectionWords,
             saveNames: SaveStore.existingSaveNames(in: saveDirectory))
     }
 

@@ -308,8 +308,7 @@ enum Bootstrap {
             placements[id] = .nowhere
         }
 
-        var state = WorldState(playerLocation: playerStart)
-        state.placements = placements
+        var state = WorldState(playerLocation: playerStart, placements: placements)
         state.wornItems = wornItems
         state.litRooms = Set(locations.filter(\.value.inherentlyLit).keys)
         // Openable containers start open only with `startsOpen`; lockable items

@@ -125,9 +125,7 @@ public struct Actor: Sendable, Equatable {
     public var inventory: [Item] {
         let (frame, myID) = asItem.resolved
         let held = frame.with { scratch in
-            scratch.state.placements
-                .filter { $0.value == .heldBy(myID) }
-                .keys.sorted()
+            scratch.state.containment().held[myID] ?? []
         }
         return held.compactMap { frame.definition.registry.items[$0] }
     }
@@ -138,9 +136,11 @@ public struct Actor: Sendable, Equatable {
         let (frame, myID) = asItem.resolved
         frame.with { scratch in
             guard case .room(let roomID)? = scratch.state.placements[myID] else { return }
-            for (id, placement) in scratch.state.placements
-            where placement == .heldBy(myID) {
-                scratch.state.placements[id] = .room(roomID)
+            // Capture the bucket before the loop: the first `place` invalidates
+            // the cache, so re-reading it mid-loop would rebuild it each time.
+            let carried = scratch.state.containment().held[myID] ?? []
+            for id in carried {
+                scratch.state.place(id, .room(roomID))
             }
         }
     }

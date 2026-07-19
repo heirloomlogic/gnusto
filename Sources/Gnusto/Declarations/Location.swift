@@ -100,9 +100,7 @@ public struct Location: Sendable, Equatable {
     public var contents: [Item] {
         let (frame, locationID) = resolved
         let here = frame.with { scratch in
-            scratch.state.placements
-                .filter { $0.value == .room(locationID) }
-                .keys.sorted()
+            scratch.state.containment().inRoom[locationID] ?? []
         }
         return here.compactMap { frame.definition.registry.items[$0] }
     }

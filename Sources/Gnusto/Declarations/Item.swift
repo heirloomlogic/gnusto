@@ -193,9 +193,7 @@ public struct Item: Sendable, Equatable {
     public var contents: [Item] {
         let (frame, myID) = resolved
         let children = frame.with { scratch in
-            scratch.state.placements
-                .filter { $0.value == .on(myID) || $0.value == .inside(myID) }
-                .keys.sorted()
+            scratch.state.containment().children(of: myID).sorted()
         }
         return children.compactMap { frame.definition.registry.items[$0] }
     }
@@ -221,7 +219,7 @@ public struct Item: Sendable, Equatable {
         let (frame, id) = resolved
         let locationID = location.id
         frame.with { scratch in
-            scratch.state.placements[id] = .room(locationID)
+            scratch.state.place(id, .room(locationID))
             if scratch.state.playerVehicle == id {
                 scratch.state.playerLocation = locationID
             }
@@ -239,7 +237,7 @@ public struct Item: Sendable, Equatable {
             fatalError(
                 "Gnusto: move(inside:) target \"\(containerID)\" is not a container.")
         }
-        frame.with { $0.state.placements[id] = .inside(containerID) }
+        frame.with { $0.state.place(id, .inside(containerID)) }
     }
 
     /// Moves the item onto a surface, bypassing the usual actions. Traps if the
@@ -253,7 +251,7 @@ public struct Item: Sendable, Equatable {
             fatalError(
                 "Gnusto: move(onto:) target \"\(surfaceID)\" is not a surface.")
         }
-        frame.with { $0.state.placements[id] = .on(surfaceID) }
+        frame.with { $0.state.place(id, .on(surfaceID)) }
     }
 
     /// Moves the item into an entity's inventory, bypassing the usual actions.
@@ -262,7 +260,7 @@ public struct Item: Sendable, Equatable {
     public func move(heldBy holder: Item) {
         let (frame, id) = resolved
         let holderID = holder.id
-        frame.with { $0.state.placements[id] = .heldBy(holderID) }
+        frame.with { $0.state.place(id, .heldBy(holderID)) }
     }
 
     /// Moves the item into an actor's inventory, bypassing the usual
@@ -279,7 +277,7 @@ public struct Item: Sendable, Equatable {
     public func moveToPlayer() {
         let (frame, id) = resolved
         frame.with { scratch in
-            scratch.state.placements[id] = .heldBy(.player)
+            scratch.state.place(id, .heldBy(.player))
             scratch.state.wornItems.remove(id)
         }
     }
@@ -288,7 +286,7 @@ public struct Item: Sendable, Equatable {
     public func vanish() {
         let (frame, id) = resolved
         frame.with { scratch in
-            scratch.state.placements[id] = .nowhere
+            scratch.state.place(id, .nowhere)
             scratch.state.wornItems.remove(id)
         }
     }
