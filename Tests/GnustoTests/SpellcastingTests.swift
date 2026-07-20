@@ -27,7 +27,7 @@ struct SpellcastingTests {
             [
                 "You don't have the mend spell prepared.",
                 "You fix the mend spell in your memory.",
-                "The mend takes hold.",           // first cast succeeds
+                "The mend takes hold.",  // first cast succeeds
                 "You don't have the mend spell prepared.",  // consumed — refused again
             ])
     }
@@ -62,7 +62,7 @@ struct SpellcastingTests {
             [
                 "You fix the mend spell in your memory.",
                 "Your mind can hold no more spells; cast one before learning another.",
-                "The mend takes hold.",              // frees the slot
+                "The mend takes hold.",  // frees the slot
                 "You fix the ward spell in your memory.",
             ])
     }
@@ -104,7 +104,7 @@ struct SpellcastingTests {
             transcript,
             [
                 "You have no scroll of blink to read from.",
-                "The world blinks.",                          // cast with scroll in hand
+                "The world blinks.",  // cast with scroll in hand
                 "You have no scroll of blink to read from.",  // scroll consumed
             ])
     }
@@ -120,11 +120,11 @@ struct SpellcastingTests {
             SpellLab(),
             [
                 "take tome", "memorize mend",  // memory: [mend]
-                "cast bolt",                   // mana 6 -> 2
+                "cast bolt",  // mana 6 -> 2
                 "save", "slot",
                 "restore", "slot",
-                "cast bolt",                   // mana still 2 -> refused (pool survived)
-                "cast mend",                   // still prepared (memory survived)
+                "cast bolt",  // mana still 2 -> refused (pool survived)
+                "cast mend",  // still prepared (memory survived)
             ],
             saveDirectory: dir)
         expectInOrder(
@@ -132,7 +132,7 @@ struct SpellcastingTests {
             [
                 "Restored.",
                 "You lack the magical energy to cast bolt.",  // mana round-tripped
-                "The mend takes hold.",                       // prepared round-tripped
+                "The mend takes hold.",  // prepared round-tripped
             ])
     }
 }

@@ -48,7 +48,8 @@ struct Gramarye: Game, GameMain {
 
     let study = Location {
         name("The Study")
-        description("""
+        description(
+            """
             A close, candle-warm room walled in books. A heavy door, its frame \
             cut with old warding-marks, stands in the west wall; a shadowed \
             niche gapes beside it.
@@ -57,7 +58,8 @@ struct Gramarye: Game, GameMain {
 
     let gallery = Location {
         name("The Long Gallery")
-        description("""
+        description(
+            """
             A cold stone gallery. The way west runs back to the study; to the \
             north the passage is stopped by a blank wall of dressed granite, \
             fitted so close a knife could not find the seams.
@@ -163,7 +165,9 @@ struct Gramarye: Game, GameMain {
                 else: "The firebolt washes over the \(target.name) and leaves it untouched.")
             target.vanish()
             amulet.reveal()
-            say("Fire leaps from your hand and bursts against the golem; it slumps to rubble, and behind it the amulet gleams on its hook.")
+            say(
+                "Fire leaps from your hand and bursts against the golem; it slumps to rubble, and behind it the amulet gleams on its hook."
+            )
         }
 
         // Scroll — one reading, then the parchment is spent.
@@ -172,7 +176,9 @@ struct Gramarye: Game, GameMain {
                 !graniteWall.isOpen,
                 else: "The granite has already been opened.")
             graniteWall.isOpen = true
-            say("You read the scroll and it crumbles to ash — but the granite before you turns to a soft grey mist you can step through.")
+            say(
+                "You read the scroll and it crumbles to ash — but the granite before you turns to a soft grey mist you can step through."
+            )
         }
     }
 

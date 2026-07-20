@@ -15,12 +15,12 @@ struct GramaryeTests {
             Gramarye(),
             [
                 "take spellbook",
-                "cast glow",             // cantrip reveals the hidden scroll
+                "cast glow",  // cantrip reveals the hidden scroll
                 "take passwall scroll",
-                "memorize unbar",        // prepared, needs the spellbook in hand
-                "cast unbar",            // opens the warded door
+                "memorize unbar",  // prepared, needs the spellbook in hand
+                "cast unbar",  // opens the warded door
                 "west",
-                "cast passwall",         // scroll opens the granite wall
+                "cast passwall",  // scroll opens the granite wall
                 "north",
                 "cast firebolt at golem",  // energy destroys the guardian
                 "take amulet",

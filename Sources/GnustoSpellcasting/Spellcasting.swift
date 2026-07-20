@@ -68,8 +68,12 @@ public struct Spellcasting: GameContent {
         self._mana = Global(wrappedValue: maxMana)
     }
 
+    /// The verbs the spellcasting layer contributes: `rest`/`meditate`, which
+    /// refills the magical-energy pool.
     public var verbs: [SyntaxRule] { [.rest] }
 
+    /// The default actions the spellcasting layer contributes: the `rest`
+    /// handler that restores the energy pool to full.
     public var actions: [IntentAction] {
         action(.rest) {
             try require(
