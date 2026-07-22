@@ -24,10 +24,7 @@ public func play(
     seed: UInt64? = nil,
     saveDirectory: URL? = nil
 ) async throws -> String {
-    let world =
-        try seed.map {
-            try GameWorld(game: game, seed: $0, saveDirectory: saveDirectory)
-        } ?? GameWorld(game: game, saveDirectory: saveDirectory)
+    let world = try cachedWorld(game, seed: seed, saveDirectory: saveDirectory)
     let io = ScriptedIOHandler(lines: commands)
     await REPL(world: world, io: io).run()
     return io.transcript

@@ -1,4 +1,5 @@
 import Foundation
+import GnustoTestSupport
 import Testing
 
 @testable import Gnusto
@@ -244,7 +245,7 @@ struct TerminalUXTests {
     // MARK: - GameWorld.completionCandidates()
 
     @Test func candidatesIncludeStandardVerbsAndDirections() async throws {
-        let world = try GameWorld(game: MiniGame(), saveDirectory: tempDir())
+        let world = try cachedWorld(MiniGame(), saveDirectory: tempDir())
         _ = await world.begin()
         let c = await world.completionCandidates()
         #expect(c.verbs.contains("take"))
@@ -254,7 +255,7 @@ struct TerminalUXTests {
     }
 
     @Test func candidateNounsReflectInScopeItems() async throws {
-        let world = try GameWorld(game: MiniGame(), saveDirectory: tempDir())
+        let world = try cachedWorld(MiniGame(), saveDirectory: tempDir())
         _ = await world.begin()
         let c = await world.completionCandidates()
         // The den shows the book (and its synonym/adjectives), the held hat,
@@ -268,7 +269,7 @@ struct TerminalUXTests {
     }
 
     @Test func candidateNounsFollowThePlayersScope() async throws {
-        let world = try GameWorld(game: MiniGame(), saveDirectory: tempDir())
+        let world = try cachedWorld(MiniGame(), saveDirectory: tempDir())
         _ = await world.begin()
         _ = await world.perform("east")  // den → study, leaving the den's items
         let c = await world.completionCandidates()
@@ -281,7 +282,7 @@ struct TerminalUXTests {
         defer { try? FileManager.default.removeItem(at: dir) }
         // Seed a save slot on disk in the game's directory.
         try Data("x".utf8).write(to: dir.appendingPathComponent("spring.gnusto"))
-        let world = try GameWorld(game: MiniGame(), saveDirectory: dir)
+        let world = try cachedWorld(MiniGame(), saveDirectory: dir)
         _ = await world.begin()
         let c = await world.completionCandidates()
         #expect(c.saveNames == ["spring"])
@@ -289,7 +290,7 @@ struct TerminalUXTests {
     }
 
     @Test func contextBecomesFilenameWhileAwaitingASaveName() async throws {
-        let world = try GameWorld(game: MiniGame(), saveDirectory: tempDir())
+        let world = try cachedWorld(MiniGame(), saveDirectory: tempDir())
         _ = await world.begin()
         _ = await world.perform("save")  // arms the save-filename prompt
         let c = await world.completionCandidates()
@@ -297,7 +298,7 @@ struct TerminalUXTests {
     }
 
     @Test func contextBecomesFilenameWhileAwaitingARestoreName() async throws {
-        let world = try GameWorld(game: MiniGame(), saveDirectory: tempDir())
+        let world = try cachedWorld(MiniGame(), saveDirectory: tempDir())
         _ = await world.begin()
         _ = await world.perform("restore")  // arms the restore-filename prompt
         let c = await world.completionCandidates()

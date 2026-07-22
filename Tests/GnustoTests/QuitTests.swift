@@ -18,7 +18,7 @@ struct QuitTests {
     // MARK: - GameWorld.requestQuit()
 
     @Test func requestQuitFromANormalLineEndsTheGameWithTheScoreEpilogue() async throws {
-        let world = try GameWorld(game: MorgueGame(), seed: 1)
+        let world = try cachedWorld(MorgueGame(), seed: 1)
         _ = await world.begin()
 
         let result = await world.requestQuit()
@@ -33,7 +33,7 @@ struct QuitTests {
             .appendingPathComponent("gnusto-quit-\(UUID().uuidString)", isDirectory: true)
         defer { try? FileManager.default.removeItem(at: dir) }
 
-        let world = try GameWorld(game: MorgueGame(), seed: 1, saveDirectory: dir)
+        let world = try cachedWorld(MorgueGame(), seed: 1, saveDirectory: dir)
         _ = await world.begin()
 
         // Arm the save prompt: the next line would be read as the filename.
@@ -49,7 +49,7 @@ struct QuitTests {
     }
 
     @Test func requestQuitWhileARestoreFilenamePromptIsPendingStillQuits() async throws {
-        let world = try GameWorld(game: MorgueGame(), seed: 1)
+        let world = try cachedWorld(MorgueGame(), seed: 1)
         _ = await world.begin()
 
         let prompt = await world.perform("restore")
@@ -60,7 +60,7 @@ struct QuitTests {
     }
 
     @Test func requestQuitFromTheDeathPromptEndsTheGame() async throws {
-        let world = try GameWorld(game: MorgueGame(), seed: 1)
+        let world = try cachedWorld(MorgueGame(), seed: 1)
         _ = await world.begin()
 
         // Dying arms the death prompt; the game isn't finished yet.
@@ -78,7 +78,7 @@ struct QuitTests {
             .appendingPathComponent("gnusto-quit-repl-\(UUID().uuidString)", isDirectory: true)
         defer { try? FileManager.default.removeItem(at: dir) }
 
-        let world = try GameWorld(game: MorgueGame(), seed: 1, saveDirectory: dir)
+        let world = try cachedWorld(MorgueGame(), seed: 1, saveDirectory: dir)
         // `save` arms the filename prompt; the front-end quit (`.quit`) must end
         // the game there — so the trailing `look` never runs.
         let io = ScriptedIOHandler(inputs: [.line("save"), .quit, .line("look")])
