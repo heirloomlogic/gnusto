@@ -16,6 +16,13 @@ struct SpellcastingTests {
         #expect(transcript.components(separatedBy: "A spark leaps.").count == 4)
     }
 
+    @Test func spellIsANoiseWordTheLayerContributes() async throws {
+        // "the" is a built-in article and "spell" comes from the layer, so
+        // `cast the spark spell` parses as `cast spark`.
+        let transcript = try await play(SpellLab(), ["cast the spark spell"])
+        #expect(transcript.contains("A spark leaps."))
+    }
+
     // MARK: - Prepared / memorized
 
     @Test func aPreparedSpellIsRefusedUntilMemorizedAndSpentOnCast() async throws {
@@ -92,6 +99,22 @@ struct SpellcastingTests {
     @Test func restIsRefusedWhenEnergyIsAlreadyFull() async throws {
         let transcript = try await play(SpellLab(), ["rest"])
         #expect(transcript.contains("Your magical energy is already at its peak."))
+    }
+
+    // MARK: - Status
+
+    @Test func spellsReportsMemorizedSpellsAndRemainingEnergy() async throws {
+        let transcript = try await play(
+            SpellLab(),
+            ["spells", "take tome", "memorize mend", "cast bolt", "spells"])
+        expectInOrder(
+            transcript,
+            [
+                "You hold no spells in mind.",
+                "Your magical energy stands at 6 of 6.",
+                "You hold in mind: mend.",
+                "Your magical energy stands at 2 of 6.",
+            ])
     }
 
     // MARK: - Scroll

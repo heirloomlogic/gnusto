@@ -5,6 +5,9 @@ extension Intent {
     /// to full. Owned by the spellcasting system so any game that adds it gets
     /// the verb for free.
     #verb("rest", ["rest"], ["meditate"])
+    /// Report the caster's state: `spells` (or `magic`) lists what is held in
+    /// memory and how much magical energy remains.
+    #verb("spells", ["spells"], ["magic"])
 }
 
 /// A reusable spellcasting layer covering the common RPG magic paradigms —
@@ -69,11 +72,17 @@ public struct Spellcasting: GameContent {
     }
 
     /// The verbs the spellcasting layer contributes: `rest`/`meditate`, which
-    /// refills the magical-energy pool.
-    public var verbs: [SyntaxRule] { [.rest] }
+    /// refills the magical-energy pool, and `spells`/`magic`, which reports the
+    /// caster's state.
+    public var verbs: [SyntaxRule] { [.rest, .spells] }
+
+    /// "spell" is filler in a casting game — `cast the glow spell` should
+    /// parse as `cast glow` — so the layer adds it to the parser's noise set.
+    public var noiseWords: [String] { ["spell"] }
 
     /// The default actions the spellcasting layer contributes: the `rest`
-    /// handler that restores the energy pool to full.
+    /// handler that restores the energy pool to full, and the `spells` status
+    /// report of memorized spells and remaining energy.
     public var actions: [IntentAction] {
         action(.rest) {
             try require(
@@ -81,6 +90,15 @@ public struct Spellcasting: GameContent {
                 else: "Your magical energy is already at its peak.")
             mana = maxMana
             say("You still your thoughts, and your magical energy wells back up to full.")
+        }
+
+        action(.spells) {
+            let held = prepared.names.sorted().joined(separator: ", ")
+            say(
+                held.isEmpty
+                    ? "You hold no spells in mind."
+                    : "You hold in mind: \(held).")
+            say("Your magical energy stands at \(mana) of \(maxMana).")
         }
     }
 

@@ -143,6 +143,32 @@ struct DanglingRuleGame: Game {
     }
 }
 
+/// Declares a noise word that is also an item's noun. Stripping it at
+/// tokenize time would make the item untypeable, so the bootstrap must
+/// report a fatal diagnostic.
+struct NoiseWordCollisionGame: Game {
+    let title = "NoiseCollision"
+    let intro = ""
+
+    let hall = Location {
+        name("Hall")
+        description("A hall.")
+    }
+
+    let charm = Item {
+        name("lucky charm")
+        synonyms("spell")
+        description("A little spell on a string.")
+    }
+
+    var noiseWords: [String] { ["spell"] }
+
+    var map: WorldMap {
+        player.starts(in: hall)
+        charm.starts(in: hall)
+    }
+}
+
 /// Rules that emit stage markers so tests can assert pipeline ordering and
 /// refusal semantics from the transcript alone.
 struct OrderProbeGame: Game {

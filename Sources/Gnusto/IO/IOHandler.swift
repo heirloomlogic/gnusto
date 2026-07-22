@@ -23,6 +23,14 @@ public protocol IOHandler: Sendable {
     ///
     /// - Parameter candidates: verbs, in-scope nouns, directions, and save names.
     func updateCompletions(_ candidates: CompletionCandidates)
+
+    /// Called once when the game reaches an ending (won, lost, or quit),
+    /// after the final output has been written. A full-screen handler holds
+    /// its last frame for the player and leaves the ending visible on the
+    /// primary screen; the default does nothing.
+    ///
+    /// - Parameter finalText: the last turn's output — the game's ending text.
+    func finish(_ finalText: String)
 }
 
 /// One unit of player input from an ``IOHandler``: a line for the engine to
@@ -44,6 +52,10 @@ extension IOHandler {
 
     /// Defaults to ignoring completion candidates.
     public func updateCompletions(_ candidates: CompletionCandidates) {}
+
+    /// Defaults to no end-of-session behavior — right for handlers whose
+    /// output already persists (console, scripted).
+    public func finish(_ finalText: String) {}
 }
 
 /// A snapshot of what Tab-completion can offer for the upcoming input line: the

@@ -42,6 +42,10 @@ public protocol GameContent: Sendable {
     /// this one.
     @ActionBuilder var actions: [IntentAction] { get }
 
+    /// Filler words the bundle adds to the parser's noise set, in the same
+    /// form as a game's `noiseWords`. Defaults to empty.
+    var noiseWords: [String] { get }
+
     /// The bundle's fuses and daemons, in the same form as a game's `timers`.
     /// Defaults to empty. Timer names are global — NOT namespaced, since the
     /// bundle's own rules start them by the literal name — so a name shared
@@ -74,6 +78,9 @@ extension GameContent {
     /// Bundles that replace or add no default actions can omit the `actions`
     /// block.
     public var actions: [IntentAction] { [] }
+
+    /// Bundles with no filler words of their own can omit `noiseWords`.
+    public var noiseWords: [String] { [] }
 
     /// Bundles with no timed events can omit the `timers` block.
     public var timers: [TimedEvent] { [] }

@@ -73,6 +73,14 @@ public protocol Game: Sendable {
     /// match a built-in reclaims it (last-wins, with a non-fatal warning).
     @VerbBuilder var verbs: [SyntaxRule] { get }
 
+    /// Filler words this game adds to the parser's noise set — words dropped
+    /// from input before any matching, alongside the built-in articles ("the",
+    /// "a", …). A spell game might add "spell" so `cast the glow spell` parses
+    /// as `cast glow`. Defaults to empty. A noise word that is also a verb,
+    /// preposition, or item word is a fatal bootstrap diagnostic, since
+    /// stripping it would make that word untypeable.
+    var noiseWords: [String] { get }
+
     /// Content bundles this game composes itself from: each carries its own
     /// rooms, items, `@Global` state, rules, and verbs.
     ///
@@ -139,6 +147,9 @@ extension Game {
 
     /// Games that add no verbs of their own can omit the `verbs` block.
     public var verbs: [SyntaxRule] { [] }
+
+    /// Games with no filler words of their own can omit `noiseWords`.
+    public var noiseWords: [String] { [] }
 
     /// Games authored as a single struct can omit the `content` block.
     public var content: GameContents { GameContents(modules: []) }

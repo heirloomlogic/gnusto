@@ -30,5 +30,12 @@ public struct REPL: Sendable {
             io.showStatus(result.status)
             io.updateCompletions(await world.completionCandidates())
         }
+
+        // A reached ending (won/lost/quit) gets a final hand-off so a
+        // full-screen front end can keep its last words visible; a bare
+        // end-of-input (EOF) just stops.
+        if result.isFinished {
+            io.finish(result.output)
+        }
     }
 }
