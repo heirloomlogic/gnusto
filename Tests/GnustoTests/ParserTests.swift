@@ -132,21 +132,22 @@ struct ParserTests {
     /// runs of separators, and drop noise words. A plain `Vocabulary` fixes the
     /// noise set to the default (`the a an my that this some`) so the cases are
     /// deterministic.
-    @Test(arguments: [
-        ("take lamp", ["take", "lamp"]),
-        ("TAKE Lamp", ["take", "lamp"]),  // case-folded
-        ("put the lamp on the table", ["put", "lamp", "on", "table"]),  // noise dropped
-        ("don't panic", ["don", "t", "panic"]),  // apostrophe splits
-        ("north-west", ["north", "west"]),  // hyphen splits
-        ("take 3 coins", ["take", "3", "coins"]),  // digits kept
-        ("3.5", ["3", "5"]),  // period splits digits
-        ("go   west", ["go", "west"]),  // whitespace runs collapse
-        ("foo...bar", ["foo", "bar"]),  // punctuation runs collapse
-        (".hello.", ["hello"]),  // leading/trailing punctuation
-        ("the a an my that this some", []),  // all noise
-        ("!!!", []),  // no alphanumerics
-        ("", []),  // empty line
-    ] as [(String, [String])])
+    @Test(
+        arguments: [
+            ("take lamp", ["take", "lamp"]),
+            ("TAKE Lamp", ["take", "lamp"]),  // case-folded
+            ("put the lamp on the table", ["put", "lamp", "on", "table"]),  // noise dropped
+            ("don't panic", ["don", "t", "panic"]),  // apostrophe splits
+            ("north-west", ["north", "west"]),  // hyphen splits
+            ("take 3 coins", ["take", "3", "coins"]),  // digits kept
+            ("3.5", ["3", "5"]),  // period splits digits
+            ("go   west", ["go", "west"]),  // whitespace runs collapse
+            ("foo...bar", ["foo", "bar"]),  // punctuation runs collapse
+            (".hello.", ["hello"]),  // leading/trailing punctuation
+            ("the a an my that this some", []),  // all noise
+            ("!!!", []),  // no alphanumerics
+            ("", []),  // empty line
+        ] as [(String, [String])])
     func tokenizePinsItsContract(input: String, expected: [String]) {
         let parser = StandardParser(vocabulary: Vocabulary(), syntaxRules: [])
         #expect(parser.tokenize(input) == expected)
