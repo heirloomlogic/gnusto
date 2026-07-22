@@ -309,14 +309,16 @@ struct StandardParser {
 
     // MARK: - Pieces
 
+    /// Splits an input line into lowercased, alphanumeric-only tokens, dropping
+    /// noise words. Any run of letters or digits is a token; every other
+    /// character — whitespace, punctuation, symbols — is a separator, so
+    /// `"don't"` yields `["don", "t"]` and `"north-west"` yields
+    /// `["north", "west"]`. Splitting straight on the alphanumeric predicate
+    /// skips the intermediate cleaned `String` and `[Character]` array a
+    /// map-to-spaces pass would allocate per line.
     func tokenize(_ input: String) -> [String] {
-        let cleaned = String(
-            input.lowercased().map { character in
-                character.isLetter || character.isNumber ? character : " "
-            })
-        return
-            cleaned
-            .split(separator: " ")
+        input.lowercased()
+            .split(whereSeparator: { !($0.isLetter || $0.isNumber) })
             .map(String.init)
             .filter { !vocabulary.noiseWords.contains($0) }
     }
