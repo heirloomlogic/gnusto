@@ -143,6 +143,26 @@ public final class TerminalIOHandler: IOHandler {
         box.withLock { $0.completions = candidates }
     }
 
+    /// Holds the final frame until the player presses a key, then restores the
+    /// primary screen and reprints the ending there — so the game's last words
+    /// survive the alternate screen's teardown and land in the shell's
+    /// scrollback. The restore is the same idempotent emergency path, so the
+    /// later `atexit`/`deinit` calls become no-ops.
+    public func finish(_ finalText: String) {
+        box.withLock {
+            $0.transcript.append("[Press any key to exit.]")
+            $0.scrollOffset = 0
+        }
+        render()
+        while nextKey() == nil {}  // any key (or EOF) dismisses; timeouts loop
+
+        gnustoEmergencyRestore()
+        let trimmed = finalText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmed.isEmpty {
+            emit(trimmed + "\n")
+        }
+    }
+
     /// Runs the raw-mode line editor until the player submits a line, presses
     /// Ctrl-D on an empty line (EOF), or Ctrl-C (quit). Returns the submitted
     /// line as `.line`, `.quit` on a confirmed Ctrl-C, or `nil` (EOF) to end

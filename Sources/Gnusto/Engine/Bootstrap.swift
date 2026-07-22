@@ -369,6 +369,39 @@ enum Bootstrap {
             vocabulary.itemLexicons[id] = lexicon
             vocabulary.displayNames[id] = item.name ?? id.raw
         }
+
+        // Game- and bundle-declared filler words join the built-in articles.
+        // Noise words are stripped at tokenize time, before any matching, so
+        // one that doubles as a verb, preposition, direction, or item word
+        // would make that word untypeable — a fatal authoring error.
+        let customNoise = (modules.flatMap(\.noiseWords) + game.noiseWords)
+            .map { $0.lowercased() }
+        var noiseDiagnostics: [String] = []
+        for word in customNoise {
+            let clash: String? =
+                if vocabulary.verbWords.contains(word) {
+                    "a verb word"
+                } else if vocabulary.prepositions.contains(word) {
+                    "a structural word in a verb pattern"
+                } else if vocabulary.directions.keys.contains(word) {
+                    "a direction"
+                } else if vocabulary.itemLexicons.values.contains(where: {
+                    $0.nouns.contains(word) || $0.adjectives.contains(word)
+                }) {
+                    "an item word"
+                } else {
+                    nil
+                }
+            if let clash {
+                noiseDiagnostics.append(
+                    "noise word \"\(word)\" is also \(clash); stripping it "
+                        + "would make that word untypeable.")
+            }
+        }
+        guard noiseDiagnostics.isEmpty else {
+            throw BootstrapError(diagnostics: noiseDiagnostics)
+        }
+        vocabulary.noiseWords.formUnion(customNoise)
         vocabulary.finalize()
 
         var traitWarnings: [String] = []

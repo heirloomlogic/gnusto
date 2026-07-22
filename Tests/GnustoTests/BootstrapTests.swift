@@ -99,6 +99,16 @@ struct BootstrapTests {
         }
     }
 
+    @Test func noiseWordCollidingWithAnItemWordIsRejected() {
+        #expect {
+            try Bootstrap.build(NoiseWordCollisionGame())
+        } throws: { error in
+            guard let bootstrapError = error as? BootstrapError else { return false }
+            return bootstrapError.description.contains("noise word \"spell\"")
+                && bootstrapError.description.contains("untypeable")
+        }
+    }
+
     @Test func vocabularyIsAssembledFromDeclarations() throws {
         let (definition, _) = try Bootstrap.build(OperaHouse())
         let cloak = definition.vocabulary.itemLexicons[EntityID("cloak")]
