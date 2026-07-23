@@ -38,7 +38,11 @@ extension GameMain where Self: Game {
             if let report = world.definition.warningReport {
                 FileHandle.standardError.write(Data("\(report)\n".utf8))
             }
-            await Self.run(world: world, io: await defaultIOHandler(world: world))
+            await Self.run(
+                world: world,
+                io: await defaultIOHandler(world: world),
+                transcriptURL: transcriptURL(
+                    world: world, environment: ProcessInfo.processInfo.environment))
         } catch {
             // `FileHandle.standardError`, not the libc `stderr` global, which
             // Swift 6 rejects as concurrency-unsafe on Linux (it's a `var`).
@@ -50,8 +54,32 @@ extension GameMain where Self: Game {
     /// The boot logic factored out of `main()` so it can run against any
     /// `IOHandler` — a `ScriptedIOHandler` in tests, `ConsoleIOHandler` at
     /// runtime — without a live console or stdin.
-    static func run(world: GameWorld, io: some IOHandler) async {
-        await REPL(world: world, io: io).run()
+    ///
+    /// - Parameters:
+    ///   - world: the world to drive.
+    ///   - io: the IO handler for input and output.
+    ///   - transcriptURL: a file to record the whole session to, or `nil`.
+    static func run(world: GameWorld, io: some IOHandler, transcriptURL: URL? = nil) async {
+        await REPL(world: world, io: io, transcriptURL: transcriptURL).run()
+    }
+
+    /// The transcript file to record from launch, from `GNUSTO_TRANSCRIPT`: a
+    /// path-like value records there; a bare flag (`1`, `on`, `true`, `yes`)
+    /// records to a timestamped default in the game's transcripts directory;
+    /// unset records nothing (the tester can still start with `script`).
+    ///
+    /// - Parameters:
+    ///   - world: the world whose title names the default file.
+    ///   - environment: the environment to read `GNUSTO_TRANSCRIPT` from.
+    /// - Returns: the transcript file URL, or `nil` when unset.
+    private static func transcriptURL(
+        world: GameWorld, environment: [String: String]
+    ) -> URL? {
+        guard let value = environment["GNUSTO_TRANSCRIPT"], !value.isEmpty else { return nil }
+        let flags: Set<String> = ["1", "on", "true", "yes"]
+        let name = flags.contains(value.lowercased()) ? nil : value
+        return TranscriptStore.url(
+            forName: name, gameTitled: world.definition.title, environment: environment)
     }
 
     /// The full-screen `TerminalIOHandler` when stdin and stdout are both an
