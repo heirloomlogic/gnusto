@@ -62,6 +62,11 @@ public final class TerminalIOHandler: IOHandler {
         /// The story so far, one entry per engine `write` plus the echoed
         /// prompt lines. Stored unwrapped; the wrapped form is cached below.
         var transcript: [String] = []
+        /// Which `transcript` entries are tester comments, to paint dim + italic
+        /// so they read as notes, not game content. A `Set` of indices works
+        /// because `transcript` only ever appends — an index, once assigned,
+        /// stays valid — so no other append site has to be kept in lockstep.
+        var commentIndices: Set<Int> = []
         /// The latest status line, or `nil` before the first turn.
         var status: StatusLine?
         /// The prompt the current `readLine` is showing (e.g. `"> "`).
@@ -83,6 +88,11 @@ public final class TerminalIOHandler: IOHandler {
         /// without re-flowing the whole game. `transcript` only ever appends,
         /// so its `count` is a sufficient cache key alongside the width.
         var wrappedTranscript: [String] = []
+        /// Parallel to `wrappedTranscript`: whether each wrapped line belongs to
+        /// a comment entry, so `render` can style it after wrapping (never
+        /// before — ANSI codes would corrupt the width math). Rebuilt with the
+        /// wrap cache below.
+        var wrappedIsComment: [Bool] = []
         var wrappedCols = -1
         var wrappedCount = -1
     }
@@ -190,8 +200,14 @@ public final class TerminalIOHandler: IOHandler {
             case .enter:
                 let line = box.withLock { st -> String in
                     let line = st.input
+                    let isComment = TesterInput.isComment(line)
+                    if isComment {
+                        st.commentIndices.insert(st.transcript.count)
+                    }
                     st.transcript.append(st.prompt + line)
-                    if !line.trimmingCharacters(in: .whitespaces).isEmpty {
+                    // Comments are notes, not commands: keep them out of Up/Down
+                    // recall so history stays a list of things the game ran.
+                    if !isComment, !line.trimmingCharacters(in: .whitespaces).isEmpty {
                         st.history.append(line)
                     }
                     st.input = ""
@@ -199,7 +215,7 @@ public final class TerminalIOHandler: IOHandler {
                     st.scrollOffset = 0
                     return line
                 }
-                if let historyURL {
+                if let historyURL, !TesterInput.isComment(line) {
                     Self.appendHistory(line, to: historyURL)
                 }
                 render()
@@ -366,17 +382,27 @@ public final class TerminalIOHandler: IOHandler {
             // between paragraphs.
             if st.wrappedCols != cols || st.wrappedCount != st.transcript.count {
                 var wrapped: [String] = []
+                var isComment: [Bool] = []
                 for (i, paragraph) in st.transcript.enumerated() {
-                    if i > 0 { wrapped.append("") }
-                    wrapped += TextWrap.wrap(paragraph, width: cols)
+                    if i > 0 {
+                        wrapped.append("")  // one blank line between paragraphs
+                        isComment.append(false)
+                    }
+                    let lines = TextWrap.wrap(paragraph, width: cols)
+                    wrapped += lines
+                    isComment += Array(repeating: st.commentIndices.contains(i), count: lines.count)
                 }
                 st.wrappedTranscript = wrapped
+                st.wrappedIsComment = isComment
                 st.wrappedCols = cols
                 st.wrappedCount = st.transcript.count
             }
 
             // The visible lines: the wrapped transcript, a blank line, then the
-            // live input line (which keeps its exact spacing for caret math).
+            // live input line (which keeps its exact spacing for caret math). The
+            // leading region mirrors `wrappedIsComment` one-for-one, so the paint
+            // loop reads that cached flag directly — the separator and input
+            // lines sit past its end and are never comments.
             var visual = st.wrappedTranscript
             if !visual.isEmpty { visual.append("") }
             let inputLineStart = visual.count
@@ -397,7 +423,15 @@ public final class TerminalIOHandler: IOHandler {
 
             var row = 2
             for lineIndex in windowStart..<windowEnd {
-                frame += "\u{1B}[\(row);1H\u{1B}[2K" + visual[lineIndex]
+                frame += "\u{1B}[\(row);1H\u{1B}[2K"
+                // Comment lines paint dim + italic so a tester's note reads as an
+                // aside, not game text. The style wraps the already-wrapped line,
+                // so column math (done before, in cells) is untouched.
+                if lineIndex < st.wrappedIsComment.count, st.wrappedIsComment[lineIndex] {
+                    frame += "\u{1B}[2;3m" + visual[lineIndex] + "\u{1B}[0m"
+                } else {
+                    frame += visual[lineIndex]
+                }
                 row += 1
             }
             while row <= rows {
