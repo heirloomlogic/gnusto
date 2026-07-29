@@ -169,7 +169,51 @@ final class VerbMacroTests: XCTestCase {
         expectDiagnostic(
             source: inIntentExtension(#"#verb("ring", ["ring", .bellObject])"#),
             message: "pattern elements must be literal words or the slots .directObject, "
-                + ".indirectObject, and .direction.")
+                + ".indirectObject, .direction, and .topic.")
+    }
+
+    // MARK: - Topic slots
+
+    func testTopicSlotExpands() {
+        assertMacroExpansion(
+            inIntentExtension(#"#verb("ask", ["ask", .directObject, "about", .topic])"#),
+            expandedSource: inIntentExtension(
+                #"""
+                public static let ask = Intent(
+                    "ask",
+                    syntax: [
+                        SyntaxRule("ask", .directObject, "about", .topic, intent: Intent("ask"))
+                    ]
+                )
+                """#),
+            macros: macros)
+    }
+
+    func testRejectsATopicSlotThatDoesNotEndThePattern() {
+        expectDiagnostic(
+            source: inIntentExtension(#"#verb("ask", ["ask", .topic, "about"])"#),
+            message: "verb pattern \"ask <topic> about\" must end with its topic slot.")
+    }
+
+    func testRejectsTwoTopicSlots() {
+        expectDiagnostic(
+            source: inIntentExtension(#"#verb("say", ["say", .topic, .topic])"#),
+            message: "verb pattern \"say <topic> <topic>\" has more than one topic slot.")
+    }
+
+    func testRejectsATopicSlotBesideASecondObject() {
+        expectDiagnostic(
+            source: inIntentExtension(
+                #"#verb("tell", ["tell", .directObject, "to", .indirectObject, "about", .topic])"#),
+            message: "verb pattern \"tell <object> to <second object> about <topic>\" "
+                + "combines a topic slot with a <second object> slot.")
+    }
+
+    func testRejectsATopicSlotBesideADirection() {
+        expectDiagnostic(
+            source: inIntentExtension(#"#verb("dig", ["dig", .direction, "about", .topic])"#),
+            message: "verb pattern \"dig <direction> about <topic>\" "
+                + "must end with its direction slot.")
     }
 
     func testRejectsAPatternStartingWithASlot() {

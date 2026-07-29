@@ -14,6 +14,12 @@ public enum SyntaxElement: Sendable, Hashable, ExpressibleByStringLiteral {
     case indirectObject
     /// A compass direction.
     case direction
+    /// An abstract subject of conversation — "ask the butler about **the
+    /// murder**". Unlike the object slots, a topic is never resolved against
+    /// the world: it takes the rest of the line as typed, so a subject the
+    /// game has never heard of still reaches the rules instead of dying as
+    /// "You can't see any such thing."
+    case topic
 
     /// A string literal in a pattern is a literal word.
     ///
@@ -85,6 +91,7 @@ public struct SyntaxRule: Sendable {
             case .directObject: "<object>"
             case .indirectObject: "<second object>"
             case .direction: "<direction>"
+            case .topic: "<topic>"
             }
         }.joined(separator: " ")
     }
@@ -124,6 +131,23 @@ public struct SyntaxRule: Sendable {
             }
             if count(of: .direction) > 1 {
                 problems.append("\(pattern) has more than one direction slot.")
+            }
+        }
+        // A topic swallows the rest of the line without a scope check to fall
+        // back on, so it may only end a pattern: a mid-pattern topic would
+        // mis-split on the first occurrence of whatever closed it, silently.
+        if elements.contains(.topic) {
+            if elements.last != .topic {
+                problems.append("\(pattern) must end with its topic slot.")
+            }
+            if count(of: .topic) > 1 {
+                problems.append("\(pattern) has more than one topic slot.")
+            }
+            if elements.contains(.indirectObject) {
+                problems.append("\(pattern) combines a topic slot with a <second object> slot.")
+            }
+            if elements.contains(.direction) {
+                problems.append("\(pattern) combines a topic slot with a direction slot.")
             }
         }
         for (index, element) in elements.enumerated()

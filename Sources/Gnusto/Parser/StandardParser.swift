@@ -23,6 +23,9 @@ struct ParsedCommand: Equatable {
     var multiple: MultiObject?
     var preposition: String?
     var direction: Direction?
+    /// The raw words of a topic slot, kept at the same level as the object
+    /// phrases; `GameWorld` mints the author-facing `Topic` from them.
+    var topic: [String]?
     var verbPhrase: String
     var rawInput: String
 }
@@ -138,6 +141,12 @@ struct StandardParser {
         var indirectStart = 0
         var direction: Direction?
         var preposition: String?
+        var topicWords: [String]?
+        /// The literal word most recently matched — "about" in `ask <object>
+        /// about <topic>`. Used only to word the question an empty topic slot
+        /// asks; deliberately not promoted to `preposition`, which would
+        /// change what existing games see for `turn lamp on` and its like.
+        var lastLiteral: String?
         /// An object slot waiting for the next literal word to close it.
         var openSlot: SyntaxElement?
 
@@ -182,11 +191,13 @@ struct StandardParser {
                     }
                     cursor = split + 1
                     openSlot = nil
+                    lastLiteral = word
                 } else {
                     guard cursor < tokens.count, tokens[cursor] == word else {
                         return .mismatch
                     }
                     cursor += 1
+                    lastLiteral = word
                 }
 
             case .directObject, .indirectObject:
@@ -196,7 +207,7 @@ struct StandardParser {
                         return missingSlotOutcome(
                             element, verbPhrase: verbPhrase, tokens: tokens,
                             directPhrase: directPhrase, preposition: preposition,
-                            scope: scope)
+                            lastLiteral: lastLiteral, scope: scope)
                     }
                     let phrase = Array(tokens[cursor...])
                     if element == .directObject {
@@ -226,6 +237,21 @@ struct StandardParser {
                 }
                 direction = matched
                 cursor += 1
+
+            case .topic:
+                // Validation guarantees a topic slot ends its pattern, so it
+                // takes every remaining token — and, unlike an object slot,
+                // never looks them up. An abstract subject is not a thing in
+                // the room, and refusing one the game hasn't heard of would
+                // make every conversation a guessing game about vocabulary.
+                guard cursor < tokens.count else {
+                    return missingSlotOutcome(
+                        element, verbPhrase: verbPhrase, tokens: tokens,
+                        directPhrase: directPhrase, preposition: preposition,
+                        lastLiteral: lastLiteral, scope: scope)
+                }
+                topicWords = Array(tokens[cursor...])
+                cursor = tokens.count
             }
         }
 
@@ -268,6 +294,7 @@ struct StandardParser {
                 multiple: multiple,
                 preposition: preposition,
                 direction: direction,
+                topic: topicWords,
                 verbPhrase: verbPhrase,
                 rawInput: rawInput))
     }
@@ -277,10 +304,29 @@ struct StandardParser {
     /// Either way the answer belongs after everything already typed.
     private func missingSlotOutcome(
         _ slot: SyntaxElement, verbPhrase: String, tokens: [String],
-        directPhrase: [String]?, preposition: String?, scope: Scope
+        directPhrase: [String]?, preposition: String?, lastLiteral: String?,
+        scope: Scope
     ) -> FitOutcome {
         if slot == .directObject {
             return .nearMiss(.missingObject(verb: verbPhrase, prefix: tokens))
+        }
+        if slot == .topic {
+            // A topic row need not have an object at all ("think about"). One
+            // that has an object it can't resolve stays quiet and lets the
+            // next rule — or the scope error — do the talking.
+            var objectName: String?
+            if let directPhrase {
+                guard case .success(let id) = resolve(directPhrase, in: scope) else {
+                    return .mismatch
+                }
+                objectName = displayName(of: id)
+            }
+            return .nearMiss(
+                .missingTopic(
+                    verb: verbPhrase,
+                    objectName: objectName,
+                    preposition: lastLiteral ?? "",
+                    prefix: tokens))
         }
         if let directPhrase,
             case .success(let id) = resolve(directPhrase, in: scope)

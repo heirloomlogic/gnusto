@@ -17,7 +17,7 @@
 /// ```
 ///
 /// Each pattern is a complete row: literal words the player types plus
-/// `.directObject` / `.indirectObject` / `.direction` slots. Patterns are
+/// `.directObject` / `.indirectObject` / `.direction` / `.topic` slots. Patterns are
 /// validated at compile time with the same rules the bootstrap applies to
 /// hand-built rows.
 ///

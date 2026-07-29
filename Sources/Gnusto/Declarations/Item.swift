@@ -86,6 +86,15 @@ public struct Item: Sendable, Equatable {
         return frame.definition.items[id]?.isTakable == true
     }
 
+    /// True if this is a person — declared as an ``Actor`` rather than an
+    /// ``Item``. Actors are stored in the item registry and reach rules
+    /// through the same object slots, so this is what tells "ask the butler"
+    /// from "ask the lamp."
+    public var isActor: Bool {
+        let (frame, id) = resolved
+        return frame.definition.items[id]?.isActor == true
+    }
+
     /// Whether the item is open. A container without the `openable` trait is
     /// always open; assigning to it is a no-op. An openable item reflects and
     /// updates the current open state.

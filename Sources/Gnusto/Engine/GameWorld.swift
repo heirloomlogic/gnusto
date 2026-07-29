@@ -305,6 +305,7 @@ public actor GameWorld {
                         directObject: item,
                         indirectObject: indirectItem,
                         preposition: parsed.preposition,
+                        topic: parsed.topic.map(Topic.init),
                         verbPhrase: parsed.verbPhrase,
                         rawInput: parsed.rawInput)
                     frame.with { scratch in
@@ -597,6 +598,7 @@ public actor GameWorld {
             indirectObject: parsed.indirectObject.flatMap { definition.registry.items[$0] },
             preposition: parsed.preposition,
             direction: parsed.direction,
+            topic: parsed.topic.map(Topic.init),
             verbPhrase: parsed.verbPhrase,
             rawInput: parsed.rawInput)
     }

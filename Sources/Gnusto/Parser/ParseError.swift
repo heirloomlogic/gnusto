@@ -13,6 +13,10 @@ enum ParseError: Error, Equatable {
     /// input line can complete the command as `prefix + answer + suffix`.
     case missingObject(verb: String, prefix: [String])
     case missingIndirect(verb: String, objectName: String, preposition: String, prefix: [String])
+    /// A conversation verb whose topic slot got nothing: "ask butler about".
+    /// Carries the object when the row had one, so the question can read
+    /// "What do you want to ask the butler about?"
+    case missingTopic(verb: String, objectName: String?, preposition: String, prefix: [String])
     case ambiguous(names: [String], prefix: [String], suffix: [String])
     /// "all"/"them" in the indirect slot — only the direct slot is multiple.
     case multipleNotAllowed
@@ -33,6 +37,8 @@ enum ParseError: Error, Equatable {
             text.missingObject(verb)
         case .missingIndirect(let verb, let objectName, let preposition, _):
             text.missingIndirect(verb, objectName, preposition)
+        case .missingTopic(let verb, let objectName, let preposition, _):
+            text.missingTopic(verb, objectName, preposition)
         case .ambiguous(let names, _, _):
             text.ambiguous(names)
         case .multipleNotAllowed:
@@ -48,6 +54,8 @@ enum ParseError: Error, Equatable {
         case .missingObject(_, let prefix):
             (prefix, [])
         case .missingIndirect(_, _, _, let prefix):
+            (prefix, [])
+        case .missingTopic(_, _, _, let prefix):
             (prefix, [])
         case .ambiguous(_, let prefix, let suffix):
             (prefix, suffix)

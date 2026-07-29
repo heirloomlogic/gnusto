@@ -19,7 +19,13 @@ struct Vocabulary: Sendable {
     var verbWords: Set<String> = []
     var directions: [String: Direction] = [:]
     var prepositions: Set<String> = []
-    var noiseWords: Set<String> = ["the", "a", "an", "my", "that", "this", "some"]
+    var noiseWords: Set<String> = Vocabulary.defaultNoiseWords
+
+    /// Filler the parser drops from every input line. Hoisted to a static so
+    /// that anything normalizing author-written text the same way the parser
+    /// normalizes player input — ``Topic/normalize(_:)`` — reads the one list
+    /// rather than keeping a copy of it that can drift.
+    static let defaultNoiseWords: Set<String> = ["the", "a", "an", "my", "that", "this", "some"]
 
     /// Words the parser claims for itself — pronouns and the multi-object
     /// keywords. They resolve before any item lexicon is consulted, so an

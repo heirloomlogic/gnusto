@@ -338,6 +338,15 @@ public struct GameText: Sendable {
         "What do you want to \($0) the \($1) \($2)?"
     }
 
+    /// A verb missing its topic — answerable on the next line. The object and
+    /// the word introducing the subject are both optional, so one line covers
+    /// "ask the butler about", "think about", and a bare "mutter".
+    public var missingTopic: @Sendable (_ verb: String, _ objectName: String?, _ preposition: String) -> String = {
+        let object = $1.map { " the \($0)" } ?? ""
+        let about = $2.isEmpty ? "" : " \($2)"
+        return "What do you want to \($0)\(object)\(about)?"
+    }
+
     /// A noun phrase matching several things — answerable on the next line.
     public var ambiguous: @Sendable (_ names: [String]) -> String = {
         "Which do you mean: \($0.map { "the \($0)" }.joined(separator: " or "))?"

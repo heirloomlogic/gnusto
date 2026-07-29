@@ -114,6 +114,8 @@ public struct Command: Sendable {
     public let preposition: String?
     /// The direction the player named, if any.
     public let direction: Direction?
+    /// What the player wants to talk about, for verbs with a topic slot.
+    public let topic: Topic?
     /// The verb word as typed ("hang"), for use in messages.
     public let verbPhrase: String
     /// The full line the player typed.
@@ -125,6 +127,7 @@ public struct Command: Sendable {
         indirectObject: Item? = nil,
         preposition: String? = nil,
         direction: Direction? = nil,
+        topic: Topic? = nil,
         verbPhrase: String,
         rawInput: String
     ) {
@@ -133,6 +136,7 @@ public struct Command: Sendable {
         self.indirectObject = indirectObject
         self.preposition = preposition
         self.direction = direction
+        self.topic = topic
         self.verbPhrase = verbPhrase
         self.rawInput = rawInput
     }
