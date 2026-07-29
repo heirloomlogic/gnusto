@@ -118,6 +118,18 @@ enum Bootstrap {
             register(module, namespace: module.namespace)
         }
 
+        // The player is a thing in the world too, so `X ME` has something to
+        // answer with. Synthesized rather than declared — every game has
+        // exactly one player and no game should have to write it down — but
+        // stored exactly like any other item, so vocabulary, scope, rules and
+        // saves need no second code path. It bypasses `claim`, which exists to
+        // stop an *author* taking this ID.
+        registry.ids[ObjectIdentifier(Player.itemToken)] = .player
+        registry.items[.player] = Player().item
+        var playerItem = ItemDefinition(traits: Player.itemTraits)
+        playerItem.isActor = true
+        items[.player] = playerItem
+
         // Custom verb rows are validated up front: a malformed pattern is a
         // wiring error, reported alongside every other fatal diagnostic. The
         // rows themselves are merged into the table in phase 3 below.
@@ -468,7 +480,7 @@ enum Bootstrap {
             text: game.text,
             locations: locations,
             items: items,
-            actorIDs: Set(items.filter { $0.value.isActor }.keys),
+            castIDs: Set(items.filter { $0.key != .player && $0.value.isActor }.keys),
             exits: exits,
             reachableRooms: Set(
                 exits.values.flatMap(\.values).compactMap { target in

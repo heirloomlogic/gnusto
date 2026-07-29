@@ -352,6 +352,24 @@ struct FulminateTests {
         #expect(!transcript.contains("space provided"))
     }
 
+    /// The accusation is spent once. Naming yourself is refused rather than
+    /// written down, since the ending it would buy is a joke the deadline
+    /// can't afford.
+    @Test func accusingYourselfIsRefusedRatherThanTakenDown() async throws {
+        let transcript = try await play(
+            Fulminate(), Array(repeating: "z", count: 12) + ["accuse me"])
+        #expect(transcript.contains("The coroner would take the name down. Give him a better one."))
+        #expect(!transcript.contains("writes *accidental* in the box marked cause"))
+    }
+
+    /// The player has a history, and `X ME` is where a player asks for it.
+    @Test func examiningYourselfGivesThisGamesOwnLine() async throws {
+        let transcript = try await play(Fulminate(), ["x me"])
+        #expect(
+            turnOutput(of: "x me", in: transcript)
+                .contains("The same man who took statements in this hall in 1948, four years older."))
+    }
+
     // MARK: - The house
 
     @Test func theCellarIsDarkUntilYouFetchTheFlashlight() async throws {
