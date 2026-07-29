@@ -227,3 +227,128 @@ struct ProbeLab: Game {
         player.starts(in: lab)
     }
 }
+
+// Verbs for poking at a scheduled actor from inside a turn.
+extension Intent {
+    /// Take the butler off the map entirely.
+    #verb("abduct", ["abduct"])
+    /// Put him back in the hall.
+    #verb("recall", ["recall"])
+    /// Move him somewhere his day doesn't call for.
+    #verb("fetch", ["fetch"])
+    /// Take him off his rounds for good.
+    #verb("dismiss", ["dismiss"])
+    /// Ask the timetable where he was at a quarter past eight.
+    #verb("alibi", ["alibi"])
+}
+
+/// A butler on a fixed evening, in a house with one unlit room. A minute to
+/// the turn from eight o'clock, so turn *n* reads `20:00 + (n-1)` and each
+/// stop below falls on a turn you can count to.
+///
+/// The last two stops share a room on purpose: that is the case where the
+/// actor never visibly moves and the stop's action must still fire exactly
+/// once.
+struct ManorLab: Game {
+    let title = "Manor Lab"
+    let intro = "A house with a butler in it."
+
+    let clock = Clock(startingAt: TimeOfDay(20, 0), minutesPerTurn: 1)
+
+    let hall = Location {
+        name("Hall")
+        description("A hall.")
+    }
+
+    let dining = Location {
+        name("Dining Room")
+        description("A dining room.")
+    }
+
+    let study = Location {
+        name("Study")
+        description("A study.")
+    }
+
+    let cellar = Location {
+        name("Cellar")
+        description("A cellar.")
+        dark
+    }
+
+    let butler = Actor {
+        name("butler")
+        description("The butler.")
+        firstSight("The butler is here.")
+    }
+
+    /// Computed, not stored: a stored property initializer cannot see `self`,
+    /// so it could not name the rooms above.
+    var butlerDay: Timetable {
+        Timetable(stops: [
+            Stop(at: TimeOfDay(20, 0), in: hall),
+            Stop(
+                at: TimeOfDay(20, 3), in: dining,
+                departure: "The butler leaves for the dining room.",
+                arrival: "The butler comes in with a tray."),
+            Stop(
+                at: TimeOfDay(20, 6), in: study,
+                departure: "The butler goes up.",
+                arrival: "The butler lets himself into the study."),
+            Stop(
+                at: TimeOfDay(20, 9), in: cellar,
+                departure: "The butler goes down to the cellar.",
+                arrival: "The butler comes down the cellar steps."),
+            Stop(
+                at: TimeOfDay(20, 12), in: study,
+                arrival: "The butler returns to the study."),
+            Stop(at: TimeOfDay(20, 15), in: study) {
+                say("The butler winds the clock.")
+            },
+        ])
+    }
+
+    var content: GameContents { clock }
+
+    var verbs: [SyntaxRule] { [.abduct, .recall, .fetch, .dismiss, .alibi] }
+
+    var actions: [IntentAction] {
+        action(.abduct) {
+            butler.vanish()
+            say("Gone.")
+        }
+        action(.recall) {
+            butler.move(to: hall)
+            say("Back.")
+        }
+        action(.fetch) {
+            butler.move(to: cellar)
+            say("Sent down.")
+        }
+        action(.dismiss) {
+            stopDaemon("butler.day")
+            say("Dismissed.")
+        }
+        action(.alibi) {
+            say("At 8:04 he was in the \(clock.location(of: butlerDay, at: TimeOfDay(20, 4)).name).")
+        }
+    }
+
+    var timers: [TimedEvent] {
+        clock.schedule(butler, daemonName: "butler.day", butlerDay)
+    }
+
+    var map: WorldMap {
+        hall.north(dining)
+        dining.south(hall)
+        hall.up(study)
+        study.down(hall)
+        hall.down(cellar)
+        cellar.up(hall)
+
+        player.starts(in: hall)
+        // Where the timetable says he is when the game opens — read from the
+        // timetable rather than repeated, so the two can't disagree.
+        butler.starts(in: butlerDay.location(at: TimeOfDay(20, 0)))
+    }
+}

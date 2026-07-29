@@ -49,6 +49,18 @@ public struct Clock: GameContent {
     /// The `moves` reading the clock is frozen at, or `-1` while running.
     @Global var pausedSinceMoves = -1
 
+    /// Which stop each scheduled actor was last seen keeping, by daemon name.
+    /// It belongs here rather than on ``Timetable`` so a timetable can stay
+    /// stateless plain data — see that type for why that matters.
+    @Global var stopIndices = StopIndices()
+
+    /// The scheduled actors' places in their days. A wrapper struct so the
+    /// `GlobalValue` conformance is owned here rather than declared on a
+    /// standard-library type.
+    struct StopIndices: Codable, Sendable, GlobalValue {
+        var byDaemon: [String: Int] = [:]
+    }
+
     /// The time the game opens at.
     public let start: TimeOfDay
 
