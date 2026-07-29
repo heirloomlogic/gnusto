@@ -1,5 +1,36 @@
 import Gnusto
 import GnustoClock
+import GnustoConversation
+
+extension Intent {
+    /// Put a name in the record: `accuse mrs. vane`. There is no taking it
+    /// back — an accusation you can take back costs nothing, and a clock you
+    /// can outlast is scenery.
+    #verb("accuse", ["accuse", .directObject])
+}
+
+/// What the player has worked out, in the order the case wants it worked out:
+/// the cook's testimony kills the alibi, the receipt breaks the boarder, the
+/// boarder gives up the lie he told the mother, and the glove breaks her.
+/// The ledger and the letters retire the two lurid explanations on the way.
+extension Fact {
+    /// Mrs. Kettle saw Teague come through her kitchen — the drugstore alibi
+    /// is dead.
+    static let kettleSawTeague = Fact("kettleSawTeague")
+    /// The receipt is stamped 6:05: he went to the drugstore *after*, to buy
+    /// the alibi, and he has admitted it.
+    static let teagueRecanted = Fact("teagueRecanted")
+    /// The keystone: Teague told Constance her son had gone out. Knowing this
+    /// is what separates the full ending from the partial one.
+    static let teagueLied = Fact("teagueLied")
+    /// The ledger's last four pages: notebooks were going up the arroyo a few
+    /// pages at a time.
+    static let notebooksSold = Fact("notebooksSold")
+    /// The glove has been shown to Constance, and she has stopped trying.
+    static let constanceBroke = Fact("constanceBroke")
+    /// The letters have been read in front of Delphine; the red herring dies.
+    static let delphineCleared = Fact("delphineCleared")
+}
 
 /// A one-evening mystery on a wall clock: a rocketry man dies in his own
 /// carriage house at 5:46, the county coroner is due at 6:50, and what he
@@ -13,14 +44,14 @@ import GnustoClock
 /// before rewriting any of the prose here, since several beats are carrying a
 /// tested engine behavior.
 ///
-/// This first slice is the house, the clock, and the three alarms that bracket
-/// the evening. The suspects and their rounds arrive with the timetable work,
-/// and the interrogation with the conversation work; until then the case can
-/// be walked but not solved.
+/// The evening is complete: the house, the clock, five suspects on their
+/// rounds, the interrogation, the evidence chain, and an accusation that ends
+/// the game one of three ways.
 ///
 /// Original: Julian Vane is fictional. The setting borrows the shape of a real
 /// 1952 Pasadena explosion; the crime, the household, and every person in it
-/// are invented, and no accusation here is made of anyone who lived.
+/// are invented, and no accusation here is made of anyone who lived. Every
+/// character is a type of the period, never a portrait of a person.
 @main
 struct Fulminate: Game, GameMain {
     let title = "Fulminate"
@@ -43,6 +74,13 @@ struct Fulminate: Game, GameMain {
         startingAt: TimeOfDay(17, 30),
         minutesPerTurn: 2,
         timeIs: { "Your watch says \($0)." }
+    )
+
+    /// The interrogation layer. Its defaults prefix names with "The", which
+    /// suits a butler and not a household of proper names.
+    let talk = Conversation(
+        nothingToSay: { "\($0) has nothing to say about that." },
+        noInterest: { "\($0) looks at it and looks away." }
     )
 
     /// Whether the carriage house has gone up. Rooms and props read this to
@@ -263,6 +301,22 @@ struct Fulminate: Game, GameMain {
             """)
     }
 
+    /// What the carriage house becomes. Hidden until the blast puts it there,
+    /// and off limits once the patrolman is standing over it — the case will
+    /// not be solved by sifting.
+    let debris = Item {
+        name("wreckage")
+        adjectives("burned", "burnt", "charred")
+        synonyms("wreckage", "debris", "rubble", "ruins")
+        description(
+            """
+            Roof slates, black timber, and a smell with chemistry in it. If the evening has an answer, some of it is \
+            in there, and none of it is coming out tonight.
+            """)
+        scenery
+        hidden
+    }
+
     let julian = Actor {
         name("Julian Vane")
         adjectives("julian", "mr", "mister")
@@ -307,8 +361,9 @@ struct Fulminate: Game, GameMain {
         synonyms("teague", "howard", "boarder", "man")
         description(
             """
-            Forty-ish, in a jacket that was pressed this morning by somebody. He is the most helpful person in this \
-            house, which is a thing worth noticing about a house where a man has just died.
+            Fifty-six, Navy the first time around, in a jacket that was pressed this morning by somebody. He is the \
+            most helpful person in this house, which is a thing worth noticing about a house where a man has just \
+            died.
             """)
         firstSight("Howard Teague is here, being helpful.")
     }
@@ -335,6 +390,21 @@ struct Fulminate: Game, GameMain {
             doing. She misses nothing and says most of it.
             """)
         firstSight("Mrs. Kettle is here, keeping busy.")
+    }
+
+    /// Unscheduled, and stays that way — scenery with a topic table rather
+    /// than a sixth timetable. He is why the player cannot dig the answer out
+    /// of the debris, and he knows exactly one useful thing.
+    let patrolman = Actor {
+        name("patrolman")
+        adjectives("young", "police")
+        synonyms("patrolman", "officer", "policeman", "police", "cop")
+        description(
+            """
+            Young enough to stand at attention beside a burned-down building. He has the wreckage, his orders, and a \
+            notebook with everyone's name in it, and he is keeping all three.
+            """)
+        firstSight("A patrolman is posted at the wreckage, keeping everybody out of it.")
     }
 
     // MARK: - Upstairs
@@ -504,6 +574,32 @@ struct Fulminate: Game, GameMain {
 
     var content: GameContents {
         clock
+        talk
+    }
+
+    var verbs: [SyntaxRule] {
+        [.accuse]
+    }
+
+    /// The accusation is the deadline's teeth: a wrong name ends the run. The
+    /// deputy coroner does not argue — you spent your credibility, and the
+    /// stamp comes down anyway. This is the default: the right name is a
+    /// `before` rule on Constance, in the rules block.
+    var actions: [IntentAction] {
+        action(.accuse) {
+            guard let accused = command.directObject else { return }
+            try require(accused.isActor, else: "The record wants a name, and that is not one.")
+            if !blastHappened {
+                try reply("There is nothing to accuse anybody of. Not yet.")
+            }
+            say(
+                """
+
+                He hears you out. Then he writes *accidental* in the box marked cause, and the case is a page in a \
+                drawer in a building in Los Angeles.
+                """)
+            try end(won: false)
+        }
     }
 
     /// The five rounds, and the evening's three fixed points. Everything in
@@ -521,6 +617,14 @@ struct Fulminate: Game, GameMain {
             blastHappened = true
             can.vanish()
             julian.vanish()
+            debris.reveal()
+
+            // Shock, from here to the end, and her shock looks like nothing
+            // at all. She is not grieving like a woman surprised by a death.
+            constance.description = """
+                Seventy-one, upright, flat, terribly still. She is holding still the way a woman holds still when \
+                she is doing arithmetic.
+                """
 
             // Standing in the carriage house when it goes up is a way to end
             // the evening, though not the intended one.
@@ -543,6 +647,30 @@ struct Fulminate: Game, GameMain {
 
                     Somewhere out behind the house something goes off with a flat, unimpressive thump, and every \
                     window and pane and loose sash in the place shivers at once, and then is still.
+                    """)
+        }
+
+        // 5:52. The radio car. Not one of the evening's three fixed points —
+        // an errand between them — but it is the turn the deadline lands on
+        // the page. Nobody standing in the hall at half past five knows the
+        // county's schedule, so it is learned here, not stated in the opening.
+        clock.at(TimeOfDay(17, 52), named: "clock.radioCar") {
+            patrolman.move(to: carriageHouse)
+            say(
+                player.location == backYard || player.location == carriageHouse
+                    ? """
+
+                    A radio car pulls up out front, and a patrolman comes through the house and out to the wreckage. \
+                    He takes names, all of them, yours included, and posts himself where the door used to be. \
+                    Downtown told him the deputy coroner is on his way out — due by ten of seven, and what the county \
+                    man writes down is what happened.
+                    """
+                    : """
+
+                    A car door goes out front. A patrolman works through the house taking names, yours included, and \
+                    goes out back to stand at the wreckage. What downtown told him gets passed along with the pencil \
+                    still moving: the deputy coroner is on his way out, due by ten of seven. What the county man \
+                    writes down is what happened.
                     """)
         }
 
@@ -641,6 +769,335 @@ struct Fulminate: Game, GameMain {
                 than tonight.
                 """
         }
+
+        // The patrolman's one job. Some of the answer is literally in the
+        // debris, which is why nobody gets to sift it.
+        debris.before(.lookIn) {
+            if patrolman.location == carriageHouse {
+                try reply(
+                    "\"Best keep back from there,\" the patrolman says, and puts a shoulder where you were going.")
+            }
+            try reply(
+                """
+                You turn over what the heat will let you touch and get soot to the elbow for it. Whatever the answer \
+                is, it is not the kind you sift out.
+                """)
+        }
+
+        // MARK: The interrogation
+
+        // Julian is askable for the first eight turns, and only there — the
+        // blast takes him out of scope, so the table needs no gate. A player
+        // who spends the opening with the victim learns things a player who
+        // wanders the garden does not.
+        talk.topics(
+            of: julian, fallback: "\"Later,\" he says, without turning round. \"You'll have all of it after six.\""
+        ) {
+            topic(
+                "letter", "lab", "break in", "intruder", "somebody",
+                reply: """
+                    "Nothing taken." He lets that sit. "A thief takes. A man who takes nothing is coming back."
+                    """)
+            topic(
+                "six", "appointment", "show", "tonight",
+                reply: """
+                    "At six." He nods at the bench. "You'll want to be sitting down for it, and I want better light \
+                    than this."
+                    """)
+            topic(
+                "delphine", "marsh",
+                reply: """
+                    "Delphine keeps her own counsel." He tightens a clamp. "It was the counsel I liked first."
+                    """)
+            topic(
+                "teague", "boarder", "howard",
+                reply: """
+                    "Howard borrows things. They come back a little different." He almost smiles. "Most things don't \
+                    come back at all."
+                    """)
+            topic(
+                "pike", "arroyo", "notebooks", "fired", "associations",
+                reply: """
+                    "They let me go over the company I keep, and now they send a man out about the company I kept." \
+                    He files at something small. "The notebooks are mine. Tell Pike I said so."
+                    """)
+            topic(
+                "mother", "constance",
+                reply: """
+                    "My mother thinks this place took something from her." He sets the file down. "She's not wrong. \
+                    We disagree about what."
+                    """)
+        }
+
+        // Constance's table is nearly all refusals until the glove — every
+        // investigative habit the player owns slides off a seventy-one-year-old
+        // woman in an unlit parlour, which is why she is the answer.
+        talk.topics(of: constance, fallback: "Mrs. Vane looks past you at the wallpaper.") {
+            // The lie. Note it matches her timetable exactly: the timetable is
+            // where she was seen, and the can was placed before half past five.
+            topic(
+                "evening", "parlour", "alibi", "where",
+                unless: .constanceBroke,
+                reply: """
+                    "I have been in the parlour all evening." She says it to the cold grate, in the voice of a woman \
+                    reading a timetable.
+                    """)
+            topic(
+                "evening", "parlour", "alibi", "where",
+                knowing: .constanceBroke,
+                reply: """
+                    "I went out before you came. He was in the house at his supper." Her hands are still. "I put it \
+                    where the heat would find it and I came back to my chair, and I have been in this chair since."
+                    """)
+            topic(
+                "julian", "son",
+                unless: .constanceBroke,
+                reply: "\"My son is dead in the garden.\" That is all she has on the subject.")
+            topic(
+                "julian", "son",
+                knowing: .constanceBroke,
+                reply: """
+                    "That shed had him twenty years before it killed him." She looks at the lamp she has not lit. "I \
+                    meant to take it back. I believed he had gone out."
+                    """)
+            topic(
+                "lab", "carriage house", "workshop", "shed",
+                unless: .constanceBroke,
+                reply: "\"I never went into it.\" It has the finish of a sentence said many times.")
+            topic(
+                "glove", "cellar",
+                knowing: .constanceBroke,
+                reply: "\"It is my glove,\" she says. \"You knew that when you carried it up the stairs.\"")
+            topic(
+                "teague", "boarder",
+                knowing: .teagueLied,
+                reply: """
+                    "Mr. Teague told me Julian had gone out." She folds her hands. "So you see it mattered, what he \
+                    said. It mattered more than he will ever let himself work out."
+                    """)
+        }
+
+        // Everything about Delphine invites the wrong conclusion, and the
+        // table lets the player reach it before the letters retire it.
+        talk.topics(of: delphine, fallback: "She goes on looking at whatever she was looking at.") {
+            // Her lie — that she doesn't know what's in the letters.
+            topic(
+                "letters", "lodge", "correspondence", "bundle",
+                unless: .delphineCleared,
+                reply: "\"Julian kept letters. Men keep letters.\" She shrugs. \"I wouldn't know what's in them.\"")
+            topic(
+                "letters", "lodge", "correspondence", "bundle",
+                knowing: .delphineCleared,
+                reply: """
+                    "They argue about money and dress it in robes." She almost laughs, and doesn't. "The neighbors \
+                    would be so disappointed."
+                    """)
+            topic(
+                "desert", "rites", "sunday",
+                reply: """
+                    "We went out for the air," she says, and gives you the first half of a phrase, and waits. You \
+                    know the second half. You keep it.
+                    """)
+            topic(
+                "julian", "vane",
+                reply: """
+                    "He wrote to somebody last week and slept better after." A beat. "That was you, I take it."
+                    """)
+        }
+
+        // Teague's alibi dies in three stages: the cook's testimony kills it,
+        // the receipt breaks him, and what he told Constance is the keystone
+        // the full ending turns on.
+        talk.topics(of: teague, fallback: "\"Couldn't tell you, friend.\"") {
+            topic(
+                "drugstore", "alibi", "evening", "colorado", "where",
+                unless: .kettleSawTeague,
+                reply: """
+                    "Drugstore on Colorado. Left here about half past, walked down, had a Coca-Cola, walked back. \
+                    Ask them, they know me."
+                    """)
+            topic(
+                "drugstore", "alibi", "evening", "colorado", "where", "kitchen",
+                knowing: .kettleSawTeague, unless: .teagueRecanted,
+                reply: """
+                    "Mrs. Kettle keeps a good kitchen and a better clock." He recrosses his legs. "A man can pass \
+                    through a kitchen on his way to the drugstore. I'd check her arithmetic."
+                    """)
+            topic(
+                "drugstore", "alibi", "evening", "colorado", "where", "kitchen",
+                knowing: .teagueRecanted,
+                reply: "\"You've got the slip,\" he says. \"I'm done selling you the drugstore.\"")
+            topic(
+                "constance", "vane", "old lady", "mother", "told",
+                knowing: .teagueRecanted, learning: .teagueLied,
+                reply: """
+                    "I told the old lady he'd gone out. That's all I told her. I wanted half an hour in that lab and \
+                    I didn't want her watching the yard while I had it." He looks at the window. "It wasn't a lie \
+                    that was supposed to do anything."
+                    """)
+            topic(
+                "constance", "vane", "old lady", "mother",
+                unless: .teagueRecanted,
+                reply: "\"The old lady? Keeps to her parlour.\" He finds something on his sleeve to straighten.")
+            topic(
+                "notebooks", "pages", "ledger",
+                knowing: .notebooksSold,
+                reply: """
+                    "Call it salvage," he says, before you have put a name to it. "The lab wanted those pages once \
+                    and wants them now, and the mails in between were me."
+                    """)
+            topic(
+                "notebooks", "pages",
+                reply: "\"Vane's notebooks? Wouldn't know. I write my own pages.\"")
+            topic(
+                "julian", "vane",
+                knowing: .teagueRecanted,
+                reply:
+                    "\"He was all right. Let me alone, let the rent ride.\" He looks at his hands. \"He was all right.\""
+            )
+        }
+
+        // Pike's lie has a second floor — the earlier visit was not about
+        // notebooks — and the ledger only opens the first one.
+        talk.topics(of: pike, fallback: "\"I don't see how that concerns me.\"") {
+            topic(
+                "visit", "house", "before", "first",
+                unless: .notebooksSold,
+                reply:
+                    "\"My first time at the house. I had the address only this week.\" He adjusts the hat he has not taken off."
+            )
+            topic(
+                "visit", "house", "before", "first",
+                knowing: .notebooksSold,
+                reply: """
+                    "I have been here before." He says it like a man initialling a correction. "Not for notebooks. \
+                    You were in that trade once. You can imagine the shape of the report I filed."
+                    """)
+            topic(
+                "notebooks", "pages", "papers", "lab",
+                reply: """
+                    "The men we have now prefer the notebooks in order. I was sent to put them in order." He starts \
+                    a surname, gets as far as the first vowel, and files it back where he keeps it.
+                    """)
+            topic(
+                "julian", "vane",
+                reply: """
+                    "A capable man. Indiscreet." The hat brim comes down a degree. "Capable stopped being a defence \
+                    some years ago."
+                    """)
+        }
+
+        // Mrs. Kettle is the mechanism by which the schedule becomes
+        // testimony. Her answers are not authored prose: each one reads the
+        // person's timetable, so a schedule edit changes what she says with
+        // it. This is the demonstration the whole game exists to make — see
+        // the mechanics contract in `docs/games/fulminate.md`.
+        talk.topics(of: kettle, fallback: "\"That I couldn't say.\"") {
+            topic("teague", "boarder", "howard", learning: .kettleSawTeague) {
+                let room = clock.location(of: teagueDay, at: TimeOfDay(17, 42))
+                try reply(
+                    """
+                    "Mr. Teague come down my back stairs into the \(room.name.lowercased()) at eighteen minutes to \
+                    six with his hat already on. I know because the pot goes on at a quarter to, and I was standing \
+                    right there getting it ready."
+                    """)
+            }
+            topic("constance", "mrs vane", "mother", "old lady") {
+                let then = clock.location(of: constanceDay, at: TimeOfDay(17, 46))
+                let after = clock.location(of: constanceDay, at: TimeOfDay(17, 50))
+                try reply(
+                    """
+                    "Mrs. Vane was in the \(then.name.lowercased()) when it went, and stood out in the \
+                    \(after.name.lowercased()) after with the rest of us. Then back in, without a word said."
+                    """)
+            }
+            topic("delphine", "marsh", "miss") {
+                let room = clock.location(of: delphineDay, at: TimeOfDay(17, 46))
+                try reply(
+                    """
+                    "Miss Marsh was in the \(room.name.lowercased()) when it went. I'll say that for her, and she \
+                    can do with it what she likes."
+                    """)
+            }
+            topic("pike", "doctor", "visitor") {
+                let then = clock.location(of: pikeDay, at: TimeOfDay(17, 46))
+                let after = clock.location(of: pikeDay, at: TimeOfDay(17, 50))
+                try reply(
+                    """
+                    "The doctor sat in the \(then.name.lowercased()) with his hat on from the minute he come. He was \
+                    out in the \(after.name.lowercased()) after, holding it."
+                    """)
+            }
+            // Julian keeps no timetable, so this one is hers alone.
+            topic(
+                "julian", "vane", "son",
+                reply: """
+                    "Mr. Julian had his supper at five and carried a plate of it out to the shed." The pot gets a \
+                    stir it does not need. "I have fed that boy since he was eleven."
+                    """)
+        }
+
+        // He stands at the wreckage from 5:52 on and knows exactly one useful
+        // thing.
+        talk.topics(of: patrolman, fallback: "\"Best keep back from there.\"") {
+            topic(
+                "coroner", "county", "deputy", "downtown", "deadline",
+                reply: """
+                    "County man's on his way out from downtown. Due by ten of seven, they said." He looks at the \
+                    wreckage rather than at you. "He writes it up and that's what it is. If you've got something for \
+                    him, have it ready."
+                    """)
+        }
+
+        // The four pieces of physical evidence, each of which flips a story.
+        talk.shows(
+            receipt, to: teague, learning: .teagueRecanted,
+            reply: """
+                He looks at it for a while. "Six-oh-five," he says. "Yeah." He sits down on the arm of the chair, \
+                which is not his chair. "I went after. I needed to have been somewhere."
+                """)
+        talk.shows(
+            glove, to: constance, learning: .constanceBroke,
+            reply: """
+                She takes it out of your hand, which you were not expecting, and turns it over once. "I have been \
+                sitting here," she says, "trying to remember whether I put it back."
+                """)
+        talk.shows(
+            ledger, to: pike, learning: .notebooksSold,
+            reply: """
+                He reads the last four pages without touching the book. "Dates and page numbers," he says, and sits \
+                down, and takes his hat off at last. "I paid for those. I never asked whose hand did the copying."
+                """)
+        talk.shows(
+            letters, to: delphine, learning: .delphineCleared,
+            reply: """
+                She unties the string and reads the top one through, all the way, before she hands it back. "Now \
+                you've read them," she says. "So you know what they are not."
+                """)
+
+        // `ACCUSE CONSTANCE` wins the game. The two endings differ by one
+        // learned fact — the keystone — because a player who never finds out
+        // why she believed the lab was empty has solved the case without
+        // understanding it. Every other name falls through to the default
+        // action, which is the losing one.
+        constance.before(.accuse) {
+            if !blastHappened {
+                try reply("There is nothing to accuse anybody of. Not yet.")
+            }
+            say(
+                talk.knows(.teagueLied)
+                    ? """
+
+                    The county man writes for a long time. When he is finished he reads it back, and there are two \
+                    names in it, and only one of them meant anything by it.
+                    """
+                    : """
+
+                    The county man writes down her name and closes the book. He does not ask why, and you do not \
+                    have an answer that would fit in the space provided.
+                    """)
+            try end(won: true)
+        }
     }
 
     var map: WorldMap {
@@ -690,7 +1147,11 @@ struct Fulminate: Game, GameMain {
 
         workbench.starts(in: carriageHouse)
         can.starts(in: carriageHouse)
+        debris.starts(in: carriageHouse)
         julian.starts(in: carriageHouse)
+
+        // Off the map until the radio car brings him at 5:52.
+        patrolman.starts(in: street)
 
         // Everyone starts where their own timetable says they are at 5:30, so
         // the opening tableau and the schedule can't disagree.

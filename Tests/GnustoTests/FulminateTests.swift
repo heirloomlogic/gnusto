@@ -6,16 +6,16 @@ import Testing
 
 @testable import Fulminate
 
-/// End-to-end play of the mystery demo. This slice of the game is the house,
-/// the clock, and the three fixed points of the evening — the case can be
-/// walked but not yet solved, so these pin the *schedule* rather than a
-/// solution: that the blast lands at 5:46 whatever the player is doing, that
-/// the house reads differently on either side of it, and that the coroner
-/// closes the file at ten to seven.
+/// End-to-end play of the mystery demo: the schedule — the blast lands at
+/// 5:46 whatever the player is doing, the house reads differently on either
+/// side of it, the coroner closes the file at ten to seven — and the case,
+/// from the first lie through the evidence chain to the accusation that ends
+/// the game one of three ways.
 ///
 /// Two minutes to the turn from 5:30 pm, so turn *n* reads `17:30 + 2(n-1)`
 /// and an alarm fires at the end of the first turn on or after its time: the
-/// blast ends turn 9, the telephone turn 26, the coroner turn 41.
+/// blast ends turn 9, the radio car turn 12, the telephone turn 26, the
+/// coroner turn 41.
 struct FulminateTests {
     // MARK: - The clock
 
@@ -102,6 +102,236 @@ struct FulminateTests {
         let transcript = try await play(Fulminate(), Array(repeating: "z", count: 41))
         #expect(transcript.contains("The county man comes up the path at ten to seven"))
         #expect(transcript.contains("writes *accidental* in the box marked cause"))
+    }
+
+    // MARK: - The radio car
+
+    /// 5:52, the end of turn 12: the radio car, and — for the first time
+    /// anywhere in the game — the deadline. Nobody standing in the hall at
+    /// half past five knows the county's schedule; it is learned in play.
+    @Test func theDeadlineIsLearnedWhenTheRadioCarComes() async throws {
+        let before = try await play(Fulminate(), Array(repeating: "z", count: 11))
+        #expect(!before.contains("ten of seven"))
+
+        let transcript = try await play(
+            Fulminate(), Array(repeating: "z", count: 11) + ["time"])
+        let twelfth = turnOutput(of: "time", in: transcript)
+        #expect(twelfth.contains("Your watch says 5:52 pm."))
+        #expect(twelfth.contains("due by ten of seven"))
+    }
+
+    /// He is posted at the wreckage from 5:52 on, answers exactly one useful
+    /// subject, and the debris stays off limits — the case will not be
+    /// solved by sifting.
+    @Test func thePatrolmanKnowsExactlyOneUsefulThing() async throws {
+        let commands =
+            Array(repeating: "z", count: 12)
+            + [
+                "south", "west", "north",
+                "ask patrolman about the coroner",
+                "ask patrolman about the lodge",
+                "search wreckage",
+            ]
+        let transcript = try await play(Fulminate(), commands)
+        #expect(transcript.contains("A patrolman is posted at the wreckage"))
+        #expect(
+            turnOutput(of: "ask patrolman about the coroner", in: transcript)
+                .contains("ten of seven"))
+        #expect(
+            turnOutput(of: "ask patrolman about the lodge", in: transcript)
+                .contains("Best keep back from there."))
+        #expect(
+            turnOutput(of: "search wreckage", in: transcript)
+                .contains("puts a shoulder where you were going"))
+    }
+
+    // MARK: - The victim
+
+    /// Julian is alive and askable for the first eight turns. A player who
+    /// spends them talking to the victim learns things a player who wanders
+    /// the garden does not — and the blast, not a gate, is what closes the
+    /// window: conversation and the alarm know nothing about each other.
+    @Test func julianIsAskableUntilTheBlastTakesHim() async throws {
+        let transcript = try await play(
+            Fulminate(),
+            [
+                "south", "west", "north",
+                "ask julian about the letter",
+                "ask julian about pike",
+            ])
+        #expect(transcript.contains("A man who takes nothing is coming back."))
+        #expect(transcript.contains("Tell Pike I said so."))
+    }
+
+    // MARK: - The interrogation
+
+    /// Teague's alibi dies in the right order: the drugstore speech, the
+    /// cook's testimony, and the speech gone — retired, not repeated.
+    @Test func teaguesAlibiDiesWhenKettleContradictsIt() async throws {
+        let commands =
+            Array(repeating: "z", count: 21)  // Teague is home at the end of turn 21
+            + [
+                "ask teague about the drugstore",
+                "south",
+                "ask kettle about teague",
+                "north",
+                "ask teague about his alibi",
+            ]
+        let transcript = try await play(Fulminate(), commands)
+        expectInOrder(
+            transcript,
+            [
+                "Ask them, they know me.",
+                "hat already on",
+                "check her arithmetic",
+            ])
+        #expect(!turnOutput(of: "ask teague about his alibi", in: transcript).contains("Coca-Cola"))
+    }
+
+    /// Mrs. Kettle's testimony is not a written line: the room she names is
+    /// read out of Teague's timetable, so a schedule edit changes what she
+    /// says with it. This is the demonstration the whole game exists to make.
+    @Test func kettlesTestimonyIsReadFromTheTimetable() async throws {
+        let game = Fulminate()
+        #expect(game.teagueDay.location(at: TimeOfDay(17, 42)) == game.kitchen)
+
+        // "kitchen" below is the name of the room the lookup returns,
+        // interpolated into her line — not a word anybody typed into it.
+        let transcript = try await play(Fulminate(), ["south", "ask kettle about teague"])
+        #expect(
+            turnOutput(of: "ask kettle about teague", in: transcript)
+                .contains("into the kitchen at eighteen minutes to six"))
+    }
+
+    /// The receipt breaks Teague, and what he told Constance — the keystone
+    /// the full ending turns on — only comes out after it.
+    @Test func theReceiptBreaksTeagueAndTheKeystoneFollows() async throws {
+        let commands =
+            Array(repeating: "z", count: 21)
+            + [
+                "ask teague about mrs vane",  // stonewalled: he hasn't broken
+                "search coat",
+                "take receipt",
+                "show receipt to teague",
+                "ask teague about mrs vane",
+            ]
+        let transcript = try await play(Fulminate(), commands)
+        expectInOrder(
+            transcript,
+            [
+                "Keeps to her parlour.",
+                "\"Six-oh-five,\" he says.",
+                "I told the old lady he'd gone out.",
+            ])
+    }
+
+    /// Constance's table is nearly all refusals until the glove, and the
+    /// glove is the one thing that breaks her.
+    @Test func constanceBreaksOnlyOnceYouHaveTheGlove() async throws {
+        let commands =
+            ["south", "open drawer", "take flashlight", "turn on flashlight", "down", "take glove", "up", "north"]
+            + Array(repeating: "z", count: 4)  // the blast ends turn 9, the radio car turn 12
+            + [
+                "west",
+                "ask mrs. vane about the evening",
+                "show glove to mrs. vane",
+                "ask mrs. vane about the evening",
+            ]
+        let transcript = try await play(Fulminate(), commands)
+        expectInOrder(
+            transcript,
+            [
+                "I have been in the parlour all evening.",
+                "trying to remember whether I put it back",
+                "I put it where the heat would find it",
+            ])
+    }
+
+    /// The two lurid explanations die in the study: the letters clear
+    /// Delphine, and the ledger gets Pike to give up the earlier visit.
+    @Test func theLettersAndTheLedgerRetireTheRedHerrings() async throws {
+        let commands =
+            Array(repeating: "z", count: 16)
+            + [
+                "up", "west",  // Delphine reaches the study at the end of turn 17
+                "take letters",
+                "show letters to delphine",
+                "ask delphine about the letters",
+                "take ledger",
+                "z",  // Pike reaches the study at the end of turn 23
+                "show ledger to pike",
+                "ask pike about his visit",
+            ]
+        let transcript = try await play(Fulminate(), commands)
+        expectInOrder(
+            transcript,
+            [
+                "you know what they are not",
+                "dress it in robes",
+                "I paid for those.",
+                "I have been here before.",
+            ])
+    }
+
+    // MARK: - The accusation
+
+    /// The winning walkthrough, whole: testimony, receipt, keystone, glove,
+    /// accusation — and the fuller ending, in which the county man writes
+    /// down two names instead of one.
+    @Test func accusingConstanceKnowingTheKeystoneIsTheFullWin() async throws {
+        let commands =
+            [
+                "south",  // the kitchen
+                "ask kettle about teague",  // the alibi dies
+                "open drawer", "take flashlight", "turn on flashlight",
+                "down", "take glove", "up",  // the cellar gives up the glove
+                "north",  // back to the hall; the blast ends this turn
+            ]
+            + Array(repeating: "z", count: 12)  // the radio car; Teague home at the end of turn 21
+            + [
+                "search coat", "take receipt",
+                "show receipt to teague",  // he recants
+                "ask teague about mrs vane",  // the keystone
+                "west",
+                "show glove to mrs. vane",  // the confession
+                "accuse mrs. vane",
+            ]
+        let transcript = try await play(Fulminate(), commands)
+        expectInOrder(
+            transcript,
+            [
+                "hat already on",
+                "\"Six-oh-five,\" he says.",
+                "I told the old lady he'd gone out.",
+                "trying to remember whether I put it back",
+                "two names in it",
+            ])
+    }
+
+    /// Accuse her without the keystone and you still win, but the county man
+    /// does not ask why — the case is solved without being understood.
+    @Test func accusingConstanceWithoutTheKeystoneIsThePartialWin() async throws {
+        let transcript = try await play(
+            Fulminate(),
+            Array(repeating: "z", count: 12) + ["west", "accuse mrs. vane"])
+        #expect(transcript.contains("an answer that would fit in the space provided"))
+        #expect(!transcript.contains("two names in it"))
+    }
+
+    /// A wrong name ends the run — the deadline's teeth. The deputy coroner
+    /// does not argue with you; the stamp comes down anyway.
+    @Test func accusingTheWrongPersonEndsTheGame() async throws {
+        let transcript = try await play(
+            Fulminate(),
+            Array(repeating: "z", count: 12) + ["south", "west", "accuse pike"])
+        #expect(transcript.contains("writes *accidental* in the box marked cause"))
+    }
+
+    /// And there is nothing to accuse anybody of before the blast.
+    @Test func accusationsBeforeTheBlastAreRefused() async throws {
+        let transcript = try await play(Fulminate(), ["west", "accuse mrs. vane"])
+        #expect(transcript.contains("There is nothing to accuse anybody of."))
+        #expect(!transcript.contains("space provided"))
     }
 
     // MARK: - The house

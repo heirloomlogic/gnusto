@@ -150,7 +150,7 @@ let package = Package(
         // and the story's mechanics contract live in `docs/games/fulminate.md`.
         .executableTarget(
             name: "Fulminate",
-            dependencies: ["Gnusto", "GnustoClock"],
+            dependencies: ["Gnusto", "GnustoClock", "GnustoConversation"],
             plugins: devPlugins
         ),
         // Transcript-testing helpers for game authors. Link it into TEST

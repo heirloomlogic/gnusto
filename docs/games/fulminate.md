@@ -17,6 +17,7 @@ Tracking issue: [#40](https://github.com/heirloomlogic/gnusto/issues/40).
 - [What this game is for](#what-this-game-is-for)
 - [Mechanics contract](#mechanics-contract)
 - [Premise](#premise)
+- [The player](#the-player)
 - [Cast](#cast)
 - [Map](#map)
 - [Timeline](#timeline)
@@ -56,7 +57,7 @@ what has to remain true no matter how the story is rewritten.
 |---|---|---|
 | Time-of-day, `minutesPerTurn` | The hall clock. Every alibi is stated as a time. | Times stay minute-precise and stated on the page. |
 | `TIME` verb | Checking your watch. | Reachable from every room. |
-| Alarms fire exactly once | The blast, the telephone, the coroner. | **Three** alarms, one of them a hard deadline that ends the game. |
+| Alarms fire exactly once | The blast, the telephone, the coroner — plus an incidental radio car at 5:52. | **Three** load-bearing alarms, one of them a hard deadline that ends the game. |
 | Deterministic timetables | Five people on their evening rounds. | **Five** scheduled actors, with stops on *both sides* of the blast. |
 | Arrival / departure prose | Footsteps on the back stairs. A door in the yard. | At least one crossing the player can witness, and one they can miss. |
 | Movement is silent in the dark | Delphine goes down to the cellar at 6:26. | The cellar stays dark and stays on somebody's route. |
@@ -90,25 +91,71 @@ rented rooms, the lawns going brown, the money moved to San Marino two decades a
 over what the letter called *associations*. He kept working anyway, in the carriage house
 behind his mother's place, and he kept company that gave the neighbors something to do.
 
-A week ago he wrote to you. Somebody has been in his lab. Nothing taken, he said, which
-was the part that bothered him.
+A week ago he wrote to you — wrote, because Julian assumes his telephone is tapped, and
+you of all people know he is right to. Somebody has been in his lab. Nothing taken, he
+said, which was the part that bothered him. To most readers that sentence is a shrug. To
+you it means somebody was copying, and copying means it is not over. *Come Tuesday. Six
+o'clock.*
 
-You take the streetcar out on a Tuesday evening to hear the rest of it. You are still in
-the front hall at 5:46 when the carriage house goes up and takes most of the garden wall
-with it.
+The streetcar puts you on Orange Grove at half past five — early. Julian is in the
+carriage house getting together the thing he means to show you, which is why the stove is
+lit on a June evening. You are still in the front hall at 5:46 when the lab goes up and
+takes most of the garden wall with it. He died keeping your appointment. You have the
+rest of the evening to think about that.
 
-The county man is due at 6:50. What he writes down is what happened.
+A radio car comes at 5:52. The patrolman takes names, posts himself at the wreckage, and
+passes along what downtown told him: the deputy coroner — the county man, in the
+household's word — is on his way out, due by ten of seven. The deadline is learned, not
+given; nobody standing in that hall at half past five knows the county's schedule.
+
+The deputy coroner is not a judge. He is a man who closes files. A dead rocketry man, a
+shed full of chemicals, a reputation the neighbors have been enjoying for years —
+*accidental* is already written in the box, and everyone in this house can live with it.
+Once it is filed, nobody ever looks again. You are not here to win a conviction by ten of
+seven. You are here to put one paragraph in the record before the stamp comes down.
 
 > **Author's note** — this note goes in the game type's doc comment, per the Gramarye
 > precedent. Julian Vane is fictional. The setting borrows the shape of a real 1952
 > Pasadena explosion; the crime, the household, and every person in it are invented, and
-> no accusation here is made of anyone who lived.
+> no accusation here is made of anyone who lived. Every character is a type of the
+> period, never a portrait of a person; the working rule is in
+> [Content scope](#content-scope).
+
+---
+
+## The player
+
+A private investigator, but a particular one. During the war you did counterintelligence
+work — vetting the arroyo circle when the rockets suddenly mattered — and in 1948, when
+the letters about *associations* started, Julian's file crossed your desk a second time.
+You read all of it: the desert business, the Sunday-night people, the foreign postmarks.
+You wrote the minority opinion — that Julian Vane was reckless, indiscreet, and no kind
+of spy — and you were overruled, and the clearance died anyway. When the loyalty
+machinery started eating men you knew were clean, you resigned before it could eat you.
+Now you do insurance work out of an office on Spring Street, and you hate it.
+
+Julian remembers you as the only man in the whole apparatus who was fair. That is why the
+letter came to you, and why it came as a letter.
+
+What the history buys, structurally:
+
+- **Standing.** You can interrogate a household because interrogation was your trade, and
+  the deputy coroner takes your statement because your old service card still opens that
+  much.
+- **The house knows you.** You took statements in this front hall in 1948. Constance
+  remembers. The longcase clock kept time through both visits.
+- **A debt.** Your fair report saved nothing. The firing happened anyway, and the firing
+  put Julian in the carriage house. You ride the streetcar out carrying that.
+- **The trap.** You were built to see spies. Every apparatus in this house is real — and
+  none of it is the answer. Your expertise opens every door and points at the wrong ones.
+  The player's arc is learning to stop reading the file and look at the household.
 
 ---
 
 ## Cast
 
-Five scheduled actors. Four suspects and one honest witness.
+Five scheduled actors — four suspects and one honest witness — plus one unscheduled
+patrolman. Each suspect carries at most one apparatus; innuendo dies when it is a pile.
 
 ### Constance Vane — the mother
 
@@ -116,6 +163,14 @@ Seventy-one. Owns the house and rents out the rooms because the money ran out in
 never came back. Ran out of patience with her son somewhat later. She sits in the parlour
 with the lamp off because the lamp costs money.
 
+Since a quarter to six she has been in shock, and her shock looks like nothing at all:
+flat, procedural, terribly still. She is not grieving like a woman surprised by a death;
+she is holding still like a woman doing arithmetic. Her topic table is nearly all
+refusals until the glove.
+
+**Her apparatus:** none — and that is the point of her. Every investigative habit the
+player owns slides off a seventy-one-year-old woman in an unlit parlour, which is why she
+is the answer.
 **Her lie:** that she was in the parlour all evening.
 **Her fallback:** *Mrs. Vane looks past you at the wallpaper.*
 
@@ -126,15 +181,23 @@ bundle of the lodge's correspondence in Julian's desk, which is not where she le
 Everything about her invites the wrong conclusion, and the game should let the player
 reach it.
 
+**Her apparatus:** the lodge. The letters imply she arrived in Julian's life arranged —
+called, not met. She may test you with half a phrase to see whether you know the other
+half; you do, from the file, and the game can let you choose whether to give it. What
+they went out to the desert to do stays offstage entirely.
 **Her lie:** that she doesn't know what's in the letters.
 **Her fallback:** *She goes on looking at whatever she was looking at.*
 
 ### Howard Teague — the boarder
 
-Forty-ish. Ex-Navy, writes for the pulps, three months behind on the room. Borrows things
-and returns them a little different. He is the most helpful person in the house, which is
-its own kind of tell.
+Fifty-six. Navy in the first war — the wrong war, which stings him — and writes sea
+stories for the pulps about the one he missed. Three months behind on the room. Borrows
+things and returns them a little different. He is the most helpful person in the house,
+which is its own kind of tell.
 
+**His apparatus:** the pulps and the past. He tells himself that selling pages back to
+the lab that used to want them is closer to salvage than theft, and he has a writer's
+gift for believing his own copy.
 **His lie:** that he was at the drugstore on Colorado from half past five.
 **His fallback:** *"Couldn't tell you, friend."*
 
@@ -143,6 +206,12 @@ its own kind of tell.
 Fifty. From the lab that fired Julian, here to collect notebooks that the lab's counsel
 believes are the lab's. Wears his hat indoors. Wants very badly to be somewhere else.
 
+**His apparatus:** the new regime. Behind the counsel stand the men who arrived after the
+war and took the program out from under its founders. Pike never names them; he says
+things like *"the men we have now prefer the notebooks in order,"* and once, carefully,
+does not pronounce a name that would want an umlaut. His lie has a second floor: the
+earlier visit was not about notebooks, and you may recognize the visit report, because
+you filed one shaped like it once.
 **His lie:** that this is his first visit to the house.
 **His fallback:** *"I don't see how that concerns me."*
 
@@ -152,7 +221,19 @@ Sixty-two. Cooks, cleans, and misses nothing. She is not a suspect and never lie
 she is the mechanism by which the schedule becomes testimony: `ASK KETTLE ABOUT <person>`
 returns where that person actually was, read out of the timetable.
 
+**Her apparatus:** none, and keep it that way — no file anywhere, no affiliation, no
+angle. The moment she has an affiliation she has an angle, and her testimony is the one
+thing the game cannot let the player doubt.
 **Her fallback:** *"That I couldn't say."*
+
+### The patrolman
+
+Unscheduled, and stays that way — scenery with a topic table, not a sixth timetable. He
+stands at the wreckage from 5:52 on, keeps everybody out of it (which is why the player
+cannot dig the answer out of the debris), and knows exactly one useful thing: when the
+deputy coroner is due.
+
+**His fallback:** *"Best keep back from there."*
 
 ---
 
@@ -181,7 +262,7 @@ Nine the player can reach, plus one they can't.
 | **Kitchen** | Mrs. Kettle's ground. The back stairs pass through — this is how she sees things. |
 | **Cellar** | **Dark.** Needs the flashlight from the kitchen drawer. The scorched glove is here. |
 | **Back Yard** | Between the house and the carriage house. The garden wall. |
-| **Carriage House** | Julian's lab. Julian is alive in it until 5:46. Becomes **Wreckage**. |
+| **Carriage House** | Julian's lab. Julian is alive in it until 5:46. Becomes **Wreckage**, with the patrolman posted at it from 5:52. |
 | **Landing** | Upstairs hall. |
 | **Vane's Study** | The desk. The ledger. The lodge letters. |
 | **Boarder's Room** | Teague's. A typewriter and a suitcase that is packed too early. |
@@ -211,6 +292,7 @@ the source of truth; if they and this disagree, they win.
 | **5:46** | — | **The blast.** First alarm. Julian is gone. |
 | 5:46 | Teague | Off the map, on Orange Grove Avenue, where the player can't follow. |
 | 5:48 | Constance, Kettle, Pike | Out to the yard. Delphine is already standing in it. |
+| 5:52 | — | The radio car. The patrolman posts at the wreckage and says the deputy coroner is due at ten of seven. **The deadline is now on the page.** |
 | 5:54 | Constance | Back to the parlour, and stays there. |
 | 6:00 | Kettle | Back to her kitchen, on the grounds that somebody has to. |
 | 6:02 | Delphine | Up to the study, straight to the desk drawers. |
@@ -360,8 +442,12 @@ The full topic tables go in the implementation. These are the beats that must su
 > walked back. Ask them, they know me."
 
 **Mrs. Kettle, on Teague:**
-> "Mr. Teague come down my back stairs at a quarter to six with his hat already on. I
-> know because I had the pot on and the pot goes on at a quarter to."
+> "Mr. Teague come down my back stairs into the kitchen at eighteen minutes to six with
+> his hat already on. I know because the pot goes on at a quarter to, and I was standing
+> right there getting it ready."
+
+("The kitchen" is not written in that line — it is read out of Teague's timetable at
+5:42, per the mechanics contract.)
 
 **Teague, shown the receipt:**
 > He looks at it for a while. "Six-oh-five," he says. "Yeah." He sits down on the arm of
@@ -391,7 +477,9 @@ The full topic tables go in the implementation. These are the beats that must su
 > a page in a drawer in a building in Los Angeles.
 
 A wrong name ends the run. It is the deadline's teeth: an accusation you can take back
-costs nothing, and a clock you can outlast is scenery.
+costs nothing, and a clock you can outlast is scenery. Under the file-closing frame it
+needs no further explanation — the deputy coroner does not argue with you; you spent your
+credibility on the wrong name, and the stamp comes down anyway.
 
 **Out of time:**
 > The county man comes up the path at ten to seven and you have nothing to give him.
@@ -408,6 +496,23 @@ Keeping it a red herring is what keeps it in the background structurally rather 
 polite omission — the game repeatedly offers the lurid explanation and it is repeatedly
 wrong. The solution is domestic and venal, which is both the better mystery and the only
 version of this material worth writing.
+
+The Cold War is the second register of the same trick. The espionage furniture is all
+real inside the fiction — Pike really is collecting for the institution, Teague really is
+selling pages, the letters really are what they are, and the player's own history primes
+them to read the house as a nest of it. None of it killed anybody. The game offers the
+lurid explanation twice, in two flavors, and it is wrong both times.
+
+**Period texture.** The copy may take furniture and idiom from the public history of
+postwar Pasadena — rocketry, security hearings, boarding houses, lodges — and quiet
+allusions for readers who know that history are welcome. Three rules keep this honest.
+Every character is a type of the period, never a portrait of a person: if a draft drifts
+close enough to any identifiable person, living or dead, that a reader could mistake the
+character for them, change details until it reads as the type again. Nothing the game
+invents — above all the crime and the lies that cause it — may be attributable, even by
+implication, to anyone who lived. And no allusion may ever be load-bearing: the story
+must work completely for a reader who recognizes none of it, so neither this document nor
+anything else in the repository keeps an annotated key.
 
 The real man this setting borrows from led a life that included a great deal this game has
 no interest in. The game's position is that the interesting question about him was never
@@ -429,17 +534,20 @@ Fulminate grows across the three pull requests that build the engine work.
 
 ## Open questions
 
-1. **Who did it — still open.** The draft above has Constance as the hand and Teague's
-   throwaway lie as the cause. The alternatives on the table are Teague doing it
-   deliberately (harder, more conventionally noir) or Pike doing it on the institution's
-   behalf. **Nothing in PR1 encodes the answer** — the rooms, the clock and the blast are
-   the same whoever is guilty — so this can stay open while the engine work starts, and
-   wants settling before the timetables land in PR2.
-2. **Is eight turns enough with the living victim?** Sixteen minutes of game time. Long
+1. **Is eight turns enough with the living victim?** Sixteen minutes of game time. Long
    enough to feel like an opportunity, short enough to feel like a loss. Worth testing at
    the keyboard rather than deciding on paper.
 
 ### Settled
 
+- **Who did it:** Constance as the hand, Teague's throwaway lie as the cause, per
+  [The solution](#the-solution). The alternatives (Teague deliberate, Pike on the
+  institution's behalf) were considered and dropped — the as-built timetables would make
+  Teague's guilt a spoiler rather than a puzzle, and Pike's version is a colder, more
+  expected story.
+- **The player character:** the investigator who handled Julian's file and wrote the
+  minority opinion. See [The player](#the-player).
+- **The deadline is a file-closing, not a verdict,** and it is learned in play at 5:52
+  rather than stated in the opening.
 - **Title:** *Fulminate*. Becomes the SPM target name.
 - **Wrong accusation ends the game.** See [Endings](#endings).
