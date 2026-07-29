@@ -25,6 +25,17 @@ struct ActorTests {
             ])
     }
 
+    /// Searching a person gets its own refusal. The non-container line — "you
+    /// find nothing of interest in the surly troll" — would claim you frisked
+    /// him and came up empty, which is a good deal more than happened.
+    @Test func searchingAPersonIsRefusedInItsOwnWords() async throws {
+        let transcript = try await play(GuardpostGame(), ["north", "search troll", "quit"])
+        let searched = turnOutput(of: "search troll", in: transcript)
+        #expect(searched.contains("The surly troll would have something to say about that."))
+        #expect(!searched.contains("nothing of interest"))
+        #expect(!searched.contains("can't see any such thing"))
+    }
+
     @Test func anUndescribedActorIsNothingSpecial() async throws {
         let transcript = try await play(
             GuardpostGame(),

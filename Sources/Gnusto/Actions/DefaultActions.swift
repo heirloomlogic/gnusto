@@ -335,11 +335,16 @@ enum DefaultActions {
     private static func lookIn(_ command: Command, frame: TurnFrame) throws {
         let item = try requireDirectObject(command)
         let id = item.id
-        guard frame.definition.items[id]?.isContainer == true else {
-            try refuse(frame.definition.text.cantSeeAnySuchThing)
-        }
+        // Reachability first: you cannot report on the inside of something you
+        // can't put a hand into, whether or not it has one.
         guard isReachable(id, frame: frame) else {
             try refuse(frame.definition.text.cantReach(item.name))
+        }
+        if frame.definition.items[id]?.isActor == true {
+            try refuse(frame.definition.text.cantSearchActor(item.name))
+        }
+        guard frame.definition.items[id]?.isContainer == true else {
+            try refuse(frame.definition.text.nothingToSearch(item.name))
         }
         if frame.definition.items[id]?.isOpenable == true, !item.isOpen,
             frame.definition.items[id]?.isTransparent != true

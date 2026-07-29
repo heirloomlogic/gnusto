@@ -798,6 +798,26 @@ struct FulminateTests {
                 .contains("a slip of register paper, folded once"))
     }
 
+    /// Adding FIND put a new way to reach an old wrong answer: searching
+    /// something with no inside used to deny the thing existed. In a house
+    /// where the whole game is whether the narration tells the truth, FIND
+    /// GRASS must not say the grass isn't there — and the suspects get a
+    /// refusal that doesn't imply you frisked them.
+    @Test func searchingTheSceneryAndTheSuspectsAnswersHonestly() async throws {
+        let transcript = try await play(
+            Fulminate(),
+            ["south", "west", "find grass", "search wall", "search delphine", "find zeppelins"])
+        #expect(
+            turnOutput(of: "find grass", in: transcript)
+                .contains("You find nothing of interest in the dry grass."))
+        #expect(!turnOutput(of: "search wall", in: transcript).contains("can't see any such thing"))
+        #expect(
+            turnOutput(of: "search delphine", in: transcript)
+                .contains("You are not putting a hand on Delphine Marsh tonight."))
+        // And a word the game has never heard is still met with the truth.
+        #expect(turnOutput(of: "find zeppelins", in: transcript).contains("I don't know the word"))
+    }
+
     /// He keeps everybody out of it, which has to mean something. The lab is
     /// open for the three turns between the blast and the radio car, and the
     /// police own it after that — including a player who was standing in it.

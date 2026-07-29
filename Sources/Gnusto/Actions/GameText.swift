@@ -260,6 +260,23 @@ public struct GameText: Sendable {
         "The \($0) is empty."
     }
 
+    /// Searching something that has no inside to search: the noun resolved and
+    /// the player can reach it, it simply isn't a `container`. Deliberately not
+    /// ``cantSeeAnySuchThing``, which is only ever for a noun that isn't in
+    /// scope — the player can see this perfectly well, and SEARCH GRASS
+    /// answering "You can't see any such thing" about grass the game will
+    /// happily describe is the defect this line exists to retire.
+    public var nothingToSearch: @Sendable (_ name: String) -> String = {
+        "You find nothing of interest in the \($0)."
+    }
+
+    /// Searching a person. Distinct from ``nothingToSearch`` because "you find
+    /// nothing of interest in the cook" claims you frisked her and came up
+    /// empty, which is a good deal more than happened.
+    public var cantSearchActor: @Sendable (_ name: String) -> String = {
+        "The \($0) would have something to say about that."
+    }
+
     /// Locking or unlocking with a key that isn't in hand.
     public var keyNotHeld: @Sendable (_ name: String) -> String = {
         "You aren't holding the \($0)."

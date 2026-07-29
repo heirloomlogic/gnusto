@@ -130,6 +130,8 @@ struct Fulminate: Game, GameMain {
         text.greets = { "\($0) looks at you and does not answer." }
         text.cantGreetThat = { "The \($0) is unlikely to answer." }
         text.notTakingOrders = { "\($0) hears you out and goes on doing exactly what \($0) was doing." }
+        // A house of suspects is a house somebody will try to search.
+        text.cantSearchActor = { "You are not putting a hand on \($0) tonight." }
         // Three of them answer to "man" and three to "woman", so this line
         // gets read more often than you would think.
         text.ambiguous = { "Which do you mean: \($0.joined(separator: ", or "))?" }
