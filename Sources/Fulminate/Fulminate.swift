@@ -130,8 +130,9 @@ struct Fulminate: Game, GameMain {
         text.greets = { "\($0) looks at you and does not answer." }
         text.cantGreetThat = { "The \($0) is unlikely to answer." }
         text.notTakingOrders = { "\($0) hears you out and goes on doing exactly what \($0) was doing." }
-        // A house of suspects is a house somebody will try to search.
+        // A house of suspects is a house somebody will try to search, or grab.
         text.cantSearchActor = { "You are not putting a hand on \($0) tonight." }
+        text.cantTakeActor = { "\($0) would take exception to that." }
         // Three of them answer to "man" and three to "woman", so this line
         // gets read more often than you would think.
         text.ambiguous = { "Which do you mean: \($0.joined(separator: ", or "))?" }
@@ -842,6 +843,8 @@ struct Fulminate: Game, GameMain {
             Stop(at: TimeOfDay(17, 30), in: parlour),
             Stop(
                 at: TimeOfDay(17, 48), in: backYard,
+                departure:
+                    "Mrs. Vane puts both hands on the arms of her chair and gets up, and takes her time doing it.",
                 arrival: """
                     Mrs. Vane comes out as far as the step and stops there. She does not call his name. She looks at \
                     the fire the way you would look at a bill you had been expecting for years.
@@ -859,6 +862,7 @@ struct Fulminate: Game, GameMain {
             Stop(at: TimeOfDay(17, 30), in: kitchen),
             Stop(
                 at: TimeOfDay(17, 48), in: backYard,
+                departure: "Mrs. Kettle goes out the yard door, and the pot goes on being stirred by nobody.",
                 arrival: """
                     Mrs. Kettle comes out drying her hands and does not stop drying them. "Oh, the boy," she says, \
                     once, and then does not say it again.
@@ -898,6 +902,7 @@ struct Fulminate: Game, GameMain {
             Stop(at: TimeOfDay(17, 30), in: parlour),
             Stop(
                 at: TimeOfDay(17, 48), in: backYard,
+                departure: "Dr. Pike is out of the room and into the passage before you have decided to move.",
                 arrival: """
                     Dr. Pike arrives in the yard holding his hat against his chest. He gets within thirty feet of the \
                     heat and no further, and his lips move on a word he does not let out.
@@ -981,11 +986,11 @@ struct Fulminate: Game, GameMain {
                     """
                     : """
 
-                    Nothing leads up to it. Somewhere out behind the house something goes off with a flat, \
-                    unimpressive thump, and every window and pane and loose sash in the place shivers at once, and \
-                    then is still. The floor comes up an inch and puts itself back. Plaster lets go of the ceiling \
-                    somewhere over your head. In the kitchen a shelf of crockery goes over, all of it, one long run \
-                    of breakage, and after that the house is quieter than a house ought to be.
+                    Somewhere out behind the house something goes off with a flat, unimpressive thump, and every \
+                    window and pane and loose sash in the place shivers at once, and then is still. The floor comes \
+                    up an inch and puts itself back. Plaster lets go of the ceiling somewhere over your head. In the \
+                    kitchen a shelf of crockery goes over, all of it, one long run of breakage, and after that the \
+                    house is quieter than a house ought to be.
                     """)
 
             // Placed after the death check above, so a player who was standing
@@ -1015,9 +1020,10 @@ struct Fulminate: Game, GameMain {
                     """
                     : """
 
-                    The house holds still for a count of three. Then a door goes somewhere above you, and another one \
-                    below, and everybody in it is moving at once. The dust comes down the passage from the direction \
-                    of the kitchen and settles on the hall table.
+                    The house holds still for a count of three. Then a door goes above you, and another one below, and \
+                    the stairs take somebody at a run, and the yard door bangs and does not come back — and by the \
+                    end of it the rooms you can hear are empty and everybody who was in them is out on the grass. \
+                    Dust comes along the passage behind all of it and settles on everything with a flat top.
                     """)
             // The one thing only this turn can say about her: she did not go
             // down when it went. Her presence line carries the rest of the
@@ -1033,20 +1039,25 @@ struct Fulminate: Game, GameMain {
         }
 
         // And the second, which is the sound a building makes while it stops
-        // being one. Out at the back it is a thing you watch happen; from
-        // inside the house it is a noise from the wrong direction.
+        // being one. Two independent things decide how it reads: where the
+        // player is standing decides where the noise comes from, and whether
+        // they were knocked flat decides whether they have a ringing ear for it
+        // to step down. Indoors at sixty feet through two walls, nobody's ears
+        // are singing, so the note has no business in that sentence.
         fuse("blast.settling", after: 1) {
+            let outBack = player.location == backYard || player.location == carriageHouse
+            let source = outBack ? "Something in the wreckage" : "Something out at the back"
             say(
-                player.location == backYard || player.location == carriageHouse
+                wasInTheYardForTheBlast
                     ? """
 
-                    Something in the wreckage lets go and settles, and the note in your ears steps down one. It will \
-                    be there tomorrow.
+                    \(source) lets go and settles, and the note in your ears steps down one. It will be there \
+                    tomorrow.
                     """
                     : """
 
-                    Something out at the back lets go and settles, and the note in your ears steps down one. It will \
-                    be there tomorrow.
+                    \(source) lets go and settles, and the house hears it and holds still for it, and then goes back \
+                    to whatever a house does on a night like this.
                     """)
         }
 
@@ -1357,10 +1368,16 @@ struct Fulminate: Game, GameMain {
                 : "Mrs. Vane is on the step and no further, watching it burn."
         }
 
+        // She can only be looking at the fire while she is out where it is. At
+        // 6:02 she is at the study drawers and at 6:26 she is down the cellar
+        // in the dark, and a woman described as watching a fire from the coal
+        // cellar is the same defect as a woman in her chair in the garden.
         delphine.presence {
-            blastHappened
-                ? "Delphine Marsh is on her feet with her arms at her sides, looking at the fire."
-                : "Delphine Marsh is here, not doing much."
+            switch (blastHappened, delphine.isIn(backYard)) {
+            case (false, _): "Delphine Marsh is here, not doing much."
+            case (true, true): "Delphine Marsh is on her feet with her arms at her sides, looking at the fire."
+            case (true, false): "Delphine Marsh is here, not looking at you."
+            }
         }
 
         kettle.describe {
@@ -1762,8 +1779,8 @@ struct Fulminate: Game, GameMain {
             topic(
                 "wreckage", "fire", "debris", "body", "vane", "julian",
                 reply: """
-                    "Not till the county man's been." He shifts his feet. "There's a man in there. I've seen where he \
-                    is. That's the last I'll say about it."
+                    "Not till the county man's been." He shifts his feet. "There's a body in there. I've seen where \
+                    it is. That's the last I'll say about it."
                     """)
             topic(
                 "names", "notebook", "statement", "report",

@@ -627,9 +627,14 @@ struct FulminateTests {
             [
                 "one long run of breakage",
                 "The house holds still for a count of three.",
-                "the note in your ears steps down one",
+                "everybody who was in them is out on the grass",
+                "the house hears it and holds still for it",
             ])
         #expect(!fromHall.contains("There is grass in your cuff"))
+        // The ringing ear belongs to whoever was knocked flat, not to whoever
+        // happens to be standing outside two turns later. Indoors at sixty feet
+        // through two walls, nobody's ears are singing.
+        #expect(!fromHall.contains("the note in your ears"))
     }
 
     /// The aftermath lands a turn after the blast, by which time the player
@@ -782,6 +787,20 @@ struct FulminateTests {
                 "Delphine Marsh did not go down when it went.",
                 "Delphine Marsh is on her feet with her arms at her sides, looking at the fire.",
             ])
+    }
+
+    /// The same defect as Mrs. Vane's chair, caught a second time: keying her
+    /// line on the blast alone had her watching the fire from the bottom of the
+    /// coal cellar at 6:26. A presence line has to know the room as well as the
+    /// hour.
+    @Test func delphineStopsWatchingTheFireWhenSheLeavesIt() async throws {
+        let transcript = try await play(
+            Fulminate(),
+            ["south", "open drawer", "take flashlight", "turn on flashlight"]
+                + Array(repeating: "z", count: 26) + ["down", "look"])
+        let cellar = turnOutput(of: "look", in: transcript)
+        #expect(cellar.contains("Delphine Marsh"))
+        #expect(!cellar.contains("looking at the fire"))
     }
 
     /// Both of the coat's refusals point the player at the pockets, so the
