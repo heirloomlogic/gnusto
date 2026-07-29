@@ -5,9 +5,10 @@ import Testing
 @testable import Gnusto
 
 /// Tab-completion, persistent command history, and the completion candidates
-/// the engine hands the terminal front end (issue #47). The raw-mode key
-/// handling and the Ctrl-C confirm are verified by running the app, not here;
-/// this covers the pure logic and the engine seam.
+/// the engine hands the terminal front end (issue #47). Byte decoding lives in
+/// `TerminalKeyDecoderTests` and paste folding in `TerminalPasteTests`; what's
+/// left unverified here is the editing loop that wires them together and the
+/// Ctrl-C confirm, both of which need a running terminal.
 struct TerminalUXTests {
     // MARK: - complete(): the pure completion engine
 
