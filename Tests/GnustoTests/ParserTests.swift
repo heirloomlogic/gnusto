@@ -47,6 +47,13 @@ struct ParserTests {
             "put the velvet cloak onto the small brass hook",
             Expected(intent: .putOn, direct: "cloak", indirect: "hook")
         ),
+        // A player who asks the game to find something is asking it to look,
+        // so all four spellings land on the one intent.
+        ("search cloak", Expected(intent: .lookIn, direct: "cloak")),
+        ("look in cloak", Expected(intent: .lookIn, direct: "cloak")),
+        ("find cloak", Expected(intent: .lookIn, direct: "cloak")),
+        ("look for the velvet cloak", Expected(intent: .lookIn, direct: "cloak")),
+        ("search for cloak", Expected(intent: .lookIn, direct: "cloak")),
         ("n", Expected(intent: .go, direction: .north)),
         ("south", Expected(intent: .go, direction: .south)),
         ("go north", Expected(intent: .go, direction: .north)),
@@ -132,6 +139,10 @@ struct ParserTests {
     /// runs of separators, and drop noise words. A plain `Vocabulary` fixes the
     /// noise set to the default (`the a an my that this some`) so the cases are
     /// deterministic.
+    ///
+    /// The one exception is the comma, which survives as a token of its own so
+    /// `parse` can read `butler, hello` as addressed at somebody. It is
+    /// stripped there; nothing downstream ever sees one.
     @Test(
         arguments: [
             ("take lamp", ["take", "lamp"]),
@@ -147,6 +158,10 @@ struct ParserTests {
             ("the a an my that this some", []),  // all noise
             ("!!!", []),  // no alphanumerics
             ("", []),  // empty line
+            ("delphine, hello", ["delphine", ",", "hello"]),  // the comma survives
+            ("hello,there", ["hello", ",", "there"]),  // no space needed
+            ("take lamp, rope", ["take", "lamp", ",", "rope"]),
+            (",", [","]),  // a bare comma is still a token
         ] as [(String, [String])])
     func tokenizePinsItsContract(input: String, expected: [String]) {
         let parser = StandardParser(vocabulary: Vocabulary(), syntaxRules: [])

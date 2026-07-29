@@ -23,6 +23,11 @@ public struct Rule: Sendable {
         /// phase, its work is in `describeBody` (which returns the text), not
         /// `body`; Bootstrap files it into the rule table's describe slots.
         case describe
+        /// Supplies a live room-listing paragraph via `presence { … }`. Same
+        /// shape as `.describe` — the work is in `describeBody` — but it feeds
+        /// the room description's mention of the entity rather than its
+        /// examine text.
+        case presence
     }
 
     let scope: Scope
@@ -30,8 +35,8 @@ public struct Rule: Sendable {
     /// Empty means "any intent".
     let intents: Set<Intent>
     let body: @Sendable () throws -> Void
-    /// The text-returning body of a `.describe` rule; `nil` for every other
-    /// phase.
+    /// The text-returning body of a `.describe` or `.presence` rule; `nil` for
+    /// every other phase.
     var describeBody: (@Sendable () -> String)? = nil
 
     func matches(_ intent: Intent) -> Bool {

@@ -204,6 +204,18 @@ public actor GameWorld {
         default: break
         }
 
+        // A bare HELLO in a room with exactly one person in it is addressed to
+        // them, filled in here rather than in the parser — which has no world
+        // to consult — so that it reaches that actor's rules exactly as
+        // "hello, keeper" would. With nobody, or with a crowd, it stays
+        // unaddressed and the default action says so.
+        var parsed = parsed
+        if parsed.intent == .greet, parsed.directObject == nil,
+            let only = soleVisibleActor()
+        {
+            parsed.directObject = only
+        }
+
         // The would-be UNDO snapshot: the state before *anything* this turn
         // touches, pronouns included. Stored only when the turn actually
         // runs stages — a free reply ("There is nothing here to take.")
@@ -305,6 +317,7 @@ public actor GameWorld {
                         directObject: item,
                         indirectObject: indirectItem,
                         preposition: parsed.preposition,
+                        topic: parsed.topic.map(Topic.init),
                         verbPhrase: parsed.verbPhrase,
                         rawInput: parsed.rawInput)
                     frame.with { scratch in
@@ -597,6 +610,7 @@ public actor GameWorld {
             indirectObject: parsed.indirectObject.flatMap { definition.registry.items[$0] },
             preposition: parsed.preposition,
             direction: parsed.direction,
+            topic: parsed.topic.map(Topic.init),
             verbPhrase: parsed.verbPhrase,
             rawInput: parsed.rawInput)
     }
@@ -610,7 +624,29 @@ public actor GameWorld {
         let here = state.playerLocation
         let visible = Visibility.visibleItems(
             at: here, definition: definition, state: state, index: state.containment())
-        return Scope(visibleItems: visible, pronounIt: state.pronounIt)
+        return Scope(
+            visibleItems: visible,
+            visibleActors: visible.intersection(definition.actorIDs),
+            // Not visibility: the naming reach of FOLLOW alone. Note
+            // `completionCandidates()` below deliberately stays on
+            // `visibleItems`, since offering an offstage actor's nouns to Tab
+            // completion would be a spoiler leak.
+            distantActors: Visibility.actorsElsewhere(
+                excluding: here, definition: definition, state: state),
+            pronounIt: state.pronounIt)
+    }
+
+    /// The one person in the room, or nil for nobody and nil for a crowd.
+    /// Only a bare greeting uses this: "hello" in a room with one other
+    /// person in it can only have meant them.
+    ///
+    /// - Returns: the sole visible actor, if there is exactly one.
+    private func soleVisibleActor() -> EntityID? {
+        let actors = Visibility.visibleItems(
+            at: state.playerLocation, definition: definition, state: state,
+            index: state.containment()
+        ).intersection(definition.actorIDs)
+        return actors.count == 1 ? actors.first : nil
     }
 
     /// Where this game's persistent command history lives — the history

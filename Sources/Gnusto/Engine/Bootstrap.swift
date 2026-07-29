@@ -468,7 +468,18 @@ enum Bootstrap {
             text: game.text,
             locations: locations,
             items: items,
+            actorIDs: Set(items.filter { $0.value.isActor }.keys),
             exits: exits,
+            reachableRooms: Set(
+                exits.values.flatMap(\.values).compactMap { target in
+                    switch target {
+                    case .to(let destination), .door(let destination, _),
+                        .conditional(let destination, _, _):
+                        destination
+                    case .blocked:
+                        nil
+                    }
+                }),
             globalDefaults: globalDefaults,
             playerStart: playerStart,
             rules: RuleTable(),
@@ -491,21 +502,23 @@ enum Bootstrap {
         var table = RuleTable()
         var ruleDiagnostics: [String] = []
 
-        // Files a `describe { … }` rule into the given slot, reporting the same
-        // conflicts for items and locations alike: a static description(…)
-        // trait already present, or a second describe rule for the entity.
-        func fileDescribe(
-            _ id: EntityID, noun: String, hasStaticDescription: Bool,
+        // Files a text-returning rule — `describe { … }` or `presence { … }` —
+        // into the given slot, reporting the same two conflicts wherever it is
+        // used: the static trait it competes with is already present, or the
+        // entity declares the rule twice.
+        func fileText(
+            _ id: EntityID, noun: String, rule kind: String, trait: String,
+            hasStaticText: Bool,
             into slot: WritableKeyPath<RuleTable, [EntityID: @Sendable () -> String]>,
             _ rule: Rule
         ) {
-            if hasStaticDescription {
+            if hasStaticText {
                 ruleDiagnostics.append(
-                    "\(noun) \"\(id)\" declares both a static description(…) and a "
-                        + "describe { … } rule; a \(noun) may have only one.")
+                    "\(noun) \"\(id)\" declares both a static \(trait) and a "
+                        + "\(kind) { … } rule; a \(noun) may have only one.")
             } else if table[keyPath: slot][id] != nil {
                 ruleDiagnostics.append(
-                    "\(noun) \"\(id)\" declares more than one describe { … } rule.")
+                    "\(noun) \"\(id)\" declares more than one \(kind) { … } rule.")
             } else if let describeBody = rule.describeBody {
                 table[keyPath: slot][id] = describeBody
             }
@@ -533,9 +546,15 @@ enum Bootstrap {
                 case .before: table.itemBefore[id, default: []].append(rule)
                 case .after: table.itemAfter[id, default: []].append(rule)
                 case .describe:
-                    fileDescribe(
-                        id, noun: "item", hasStaticDescription: items[id]?.description != nil,
+                    fileText(
+                        id, noun: "item", rule: "describe", trait: "description(…)",
+                        hasStaticText: items[id]?.description != nil,
                         into: \.itemDescribe, rule)
+                case .presence:
+                    fileText(
+                        id, noun: "item", rule: "presence", trait: "firstSight(…)",
+                        hasStaticText: items[id]?.firstSight != nil,
+                        into: \.itemPresence, rule)
                 case .beforeEachTurn, .afterEachTurn, .onEnter:
                     ruleDiagnostics.append(
                         "item \"\(id)\" has a \(rule.phase) rule, which only "
@@ -555,10 +574,14 @@ enum Bootstrap {
                 case .afterEachTurn: table.locationAfterEachTurn[id, default: []].append(rule)
                 case .onEnter: table.locationOnEnter[id, default: []].append(rule)
                 case .describe:
-                    fileDescribe(
-                        id, noun: "location",
-                        hasStaticDescription: locations[id]?.description != nil,
+                    fileText(
+                        id, noun: "location", rule: "describe", trait: "description(…)",
+                        hasStaticText: locations[id]?.description != nil,
                         into: \.locationDescribe, rule)
+                case .presence:
+                    ruleDiagnostics.append(
+                        "location \"\(id)\" has a \(rule.phase) rule, which only items "
+                            + "and actors support.")
                 }
             case .world:
                 switch rule.phase {
@@ -568,6 +591,8 @@ enum Bootstrap {
                     ruleDiagnostics.append("a world-level onEnter rule is not supported.")
                 case .describe:
                     ruleDiagnostics.append("a world-level describe rule is not supported.")
+                case .presence:
+                    ruleDiagnostics.append("a world-level presence rule is not supported.")
                 }
             }
         }

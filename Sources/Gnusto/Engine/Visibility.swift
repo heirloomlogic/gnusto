@@ -139,6 +139,42 @@ enum Visibility {
         return vehicle
     }
 
+    /// Every actor currently standing in a room other than `location`.
+    ///
+    /// **This is not a visibility set.** Nobody can see these people. It is
+    /// the naming reach of FOLLOW and nothing else: the verb has to be able to
+    /// hear the name of somebody who walked out one turn ago, which is exactly
+    /// when `visibleItems` no longer contains them. The parser consults it
+    /// only for a far-sighted intent, and only after the visible set has
+    /// failed — see `Intent.farSightedIntents`.
+    ///
+    /// Actors held or contained by something (a familiar in a pocket, a body
+    /// in a crate) are deliberately excluded: you cannot walk to a placement
+    /// that isn't a room. So are actors standing in a room no exit leads to —
+    /// a game's off-map holding pen. Naming those would be a spoiler: an
+    /// unmet character's own name coming back in a refusal is how a player
+    /// learns there is a policeman in this story before one arrives.
+    ///
+    /// - Parameters:
+    ///   - location: the room to exclude — where the player is standing.
+    ///   - definition: the static game definition.
+    ///   - state: the current world state.
+    /// - Returns: the perceivable actors standing elsewhere.
+    static func actorsElsewhere(
+        excluding location: EntityID,
+        definition: GameDefinition,
+        state: WorldState
+    ) -> Set<EntityID> {
+        definition.actorIDs.filter { id in
+            guard case .room(let room)? = state.placements[id], room != location,
+                definition.reachableRooms.contains(room)
+            else {
+                return false
+            }
+            return isPerceivable(id, definition: definition, state: state)
+        }
+    }
+
     /// Whether an item should be included in any visibility/description walk
     /// at all: it exists and, if `hidden`, has been revealed. Shared by this
     /// module's own walks and `RoomDescriber`'s listings.

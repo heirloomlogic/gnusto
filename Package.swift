@@ -47,6 +47,7 @@ let package = Package(
         .library(name: "GnustoMeleeCombat", targets: ["GnustoMeleeCombat"]),
         .library(name: "GnustoSpellcasting", targets: ["GnustoSpellcasting"]),
         .library(name: "GnustoClock", targets: ["GnustoClock"]),
+        .library(name: "GnustoConversation", targets: ["GnustoConversation"]),
         .library(name: "GnustoTestSupport", targets: ["GnustoTestSupport"]),
         .executable(name: "CloakOfDarkness", targets: ["CloakOfDarkness"]),
         .executable(name: "Lighthouse", targets: ["Lighthouse"]),
@@ -105,6 +106,13 @@ let package = Package(
             dependencies: ["Gnusto"],
             plugins: devPlugins
         ),
+        // ASK/TELL/SHOW over per-actor topic tables, gated on and feeding a
+        // saved set of facts the player has worked out.
+        .target(
+            name: "GnustoConversation",
+            dependencies: ["Gnusto"],
+            plugins: devPlugins
+        ),
         .executableTarget(
             name: "CloakOfDarkness",
             dependencies: ["Gnusto"],
@@ -142,7 +150,7 @@ let package = Package(
         // and the story's mechanics contract live in `docs/games/fulminate.md`.
         .executableTarget(
             name: "Fulminate",
-            dependencies: ["Gnusto", "GnustoClock"],
+            dependencies: ["Gnusto", "GnustoClock", "GnustoConversation"],
             plugins: devPlugins
         ),
         // Transcript-testing helpers for game authors. Link it into TEST
@@ -164,7 +172,7 @@ let package = Package(
             name: "GnustoTests",
             dependencies: [
                 "Gnusto", "GnustoDangerousDark", "GnustoScoring", "GnustoActors",
-                "GnustoMeleeCombat", "GnustoSpellcasting", "GnustoClock",
+                "GnustoMeleeCombat", "GnustoSpellcasting", "GnustoClock", "GnustoConversation",
                 "GnustoTestSupport",
                 "CloakOfDarkness", "Lighthouse", "Zork1", "Gramarye", "Fulminate",
             ],

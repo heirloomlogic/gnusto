@@ -1,5 +1,36 @@
 import Gnusto
 import GnustoClock
+import GnustoConversation
+
+extension Intent {
+    /// Put a name in the record: `accuse mrs. vane`. There is no taking it
+    /// back — an accusation you can take back costs nothing, and a clock you
+    /// can outlast is scenery.
+    #verb("accuse", ["accuse", .directObject])
+}
+
+/// What the player has worked out, in the order the case wants it worked out:
+/// the cook's testimony kills the alibi, the receipt breaks the boarder, the
+/// boarder gives up the lie he told the mother, and the glove breaks her.
+/// The ledger and the letters retire the two lurid explanations on the way.
+extension Fact {
+    /// Mrs. Kettle saw Teague come through her kitchen — the drugstore alibi
+    /// is dead.
+    static let kettleSawTeague = Fact("kettleSawTeague")
+    /// The receipt is stamped 6:05: he went to the drugstore *after*, to buy
+    /// the alibi, and he has admitted it.
+    static let teagueRecanted = Fact("teagueRecanted")
+    /// The keystone: Teague told Constance her son had gone out. Knowing this
+    /// is what separates the full ending from the partial one.
+    static let teagueLied = Fact("teagueLied")
+    /// The ledger's last four pages: notebooks were going up the arroyo a few
+    /// pages at a time.
+    static let notebooksSold = Fact("notebooksSold")
+    /// The glove has been shown to Constance, and she has stopped trying.
+    static let constanceBroke = Fact("constanceBroke")
+    /// The letters have been read in front of Delphine; the red herring dies.
+    static let delphineCleared = Fact("delphineCleared")
+}
 
 /// A one-evening mystery on a wall clock: a rocketry man dies in his own
 /// carriage house at 5:46, the county coroner is due at 6:50, and what he
@@ -13,14 +44,14 @@ import GnustoClock
 /// before rewriting any of the prose here, since several beats are carrying a
 /// tested engine behavior.
 ///
-/// This first slice is the house, the clock, and the three alarms that bracket
-/// the evening. The suspects and their rounds arrive with the timetable work,
-/// and the interrogation with the conversation work; until then the case can
-/// be walked but not solved.
+/// The evening is complete: the house, the clock, five suspects on their
+/// rounds, the interrogation, the evidence chain, and an accusation that ends
+/// the game one of three ways.
 ///
 /// Original: Julian Vane is fictional. The setting borrows the shape of a real
 /// 1952 Pasadena explosion; the crime, the household, and every person in it
-/// are invented, and no accusation here is made of anyone who lived.
+/// are invented, and no accusation here is made of anyone who lived. Every
+/// character is a type of the period, never a portrait of a person.
 @main
 struct Fulminate: Game, GameMain {
     let title = "Fulminate"
@@ -45,6 +76,13 @@ struct Fulminate: Game, GameMain {
         timeIs: { "Your watch says \($0)." }
     )
 
+    /// The interrogation layer. Its defaults prefix names with "The", which
+    /// suits a butler and not a household of proper names.
+    let talk = Conversation(
+        nothingToSay: { "\($0) has nothing to say about that." },
+        noInterest: { "\($0) looks at it and looks away." }
+    )
+
     /// Whether the carriage house has gone up. Rooms and props read this to
     /// describe themselves on the right side of the evening.
     @Global var blastHappened = false
@@ -54,6 +92,52 @@ struct Fulminate: Game, GameMain {
     /// coat before ten past six turns up an empty pocket, which is the honest
     /// answer and also the more interesting one.
     @Global var teagueIsBack = false
+
+    /// Whether the cellar has told the player once where the light lives.
+    @Global var cellarHintGiven = false
+
+    /// Whether the patrolman has the wreckage. Both gates that enforce it — the
+    /// way in from the yard, and turning the debris over — read this rather than
+    /// asking where he is standing, which is how the rest of the engine's demo
+    /// games write a creature blocking a way (Zork's troll and cyclops gate on
+    /// `trollDefeated` and `cyclopsSubdued`, not on their own placement).
+    @Global var wreckageSealed = false
+
+    /// Whether the player was standing in the yard when it went up. The
+    /// aftermath lands a turn later, by which time they may have walked
+    /// somewhere else — and "there is grass in your cuff" has to be about
+    /// where they were knocked down, not where they are now.
+    @Global var wasInTheYardForTheBlast = false
+
+    /// Whether Delphine has declined a question in front of you yet.
+    ///
+    /// Deliberately not a `Fact`. Facts are what the player has worked out, and
+    /// the six of them are the case; this only records that a line has been said
+    /// out loud. Its two siblings — which tracked whether Constance and Delphine
+    /// had had their one moment about Julian — retired when topic rows gained
+    /// `again:`, which does the same job in the table.
+    @Global var delphineHasDeflected = false
+
+    /// The stock lines assume common nouns — "the Mrs. Vane is right here" —
+    /// which suits a lantern and not a household of proper names. Same reason
+    /// the `Conversation` above is re-skinned.
+    var text: GameText {
+        var text = GameText()
+        text.following = { "(after \($0))" }
+        text.alreadyFollowing = { "\($0) is right here." }
+        text.cantFollowThat = { "The \($0) isn't going anywhere." }
+        text.lostThem = { "You have no idea which way \($0) went." }
+        text.greets = { "\($0) looks at you and does not answer." }
+        text.cantGreetThat = { "The \($0) is unlikely to answer." }
+        text.notTakingOrders = { "\($0) hears you out and goes on doing exactly what \($0) was doing." }
+        // A house of suspects is a house somebody will try to search, or grab.
+        text.cantSearchActor = { "You are not putting a hand on \($0) tonight." }
+        text.cantTakeActor = { "\($0) would take exception to that." }
+        // Three of them answer to "man" and three to "woman", so this line
+        // gets read more often than you would think.
+        text.ambiguous = { "Which do you mean: \($0.joined(separator: ", or "))?" }
+        return text
+    }
 
     /// Both ways out of the front hall refuse in the same words. A `static`
     /// rather than a stored property so the bootstrap's reflection walk, which
@@ -90,9 +174,9 @@ struct Fulminate: Game, GameMain {
         name("Kitchen")
         description(
             """
-            Scrubbed pine and a stove that has been going since before you got here. The back stairs come down along \
-            the far wall, which means anyone who uses them comes through here, whether they meant to or not. The yard \
-            door is west and the cellar steps go down.
+            Scrubbed pine and a stove that has been going since before you got here. The back stairs come down at \
+            the far end, which means anyone who uses them comes through here whether they meant to or not. There is a \
+            drawer under the counter. The hall is north, the yard door west, and the cellar steps go down.
             """)
     }
 
@@ -144,6 +228,22 @@ struct Fulminate: Game, GameMain {
         description("Not a place you get to tonight.")
     }
 
+    // MARK: - What you brought
+
+    /// The `TIME` verb has been reading this since the first turn; it was
+    /// simply not in the world. Worn rather than carried, and it stays worn —
+    /// the clock is the instrument this case is measured with, and the player
+    /// should not be able to put it down.
+    ///
+    /// Deliberately no `clock` synonym: `examine clock` in the hall has to go
+    /// on meaning the longcase clock.
+    let watch = Item {
+        name("wristwatch")
+        adjectives("wrist", "steel", "own")
+        synonyms("watch", "wristwatch", "timepiece")
+        wearable
+    }
+
     // MARK: - The hall
 
     /// The house's timepiece. The player has a watch, but the clock is what
@@ -167,7 +267,10 @@ struct Fulminate: Game, GameMain {
     let coat = Item {
         name("overcoat")
         adjectives("grey", "gray")
-        synonyms("coat", "overcoat")
+        // "pockets" because both refusals below point the player at them, and
+        // a game that names a thing twice and then doesn't know the word for
+        // it reads like a bug.
+        synonyms("coat", "overcoat", "pocket", "pockets")
         description(
             """
             A grey overcoat on the hat stand, good once and not lately. It is nobody's idea of June wear, which is \
@@ -190,6 +293,120 @@ struct Fulminate: Game, GameMain {
             the bottom in that smeared purple ink they all use: 6:05.
             """)
         hidden
+    }
+
+    /// The nouns the hall's description puts on the page. A room that names a
+    /// thing and then doesn't know the word for it reads like a bug, and the
+    /// first thing a play-tester typed in this house was `X TILE`.
+    let hallFloor = Item {
+        name("tiled floor")
+        adjectives("black", "white", "tiled", "checked", "hall")
+        synonyms("tile", "tiles", "tiling", "floor", "grout")
+        description(
+            """
+            Black and white, laid in a diamond, and worn through to the grout along the exact line between the front \
+            door and the stairs. Nobody in this house has gone left or right in years.
+            """)
+        scenery
+    }
+
+    let hatStand = Item {
+        name("hat stand")
+        adjectives("hat", "oak", "bentwood")
+        synonyms("stand", "hatstand", "rack", "hooks")
+        description(
+            """
+            Oak, with six hooks and one coat on it. A house that rents its rooms puts up a stand this size and then \
+            uses one hook of it.
+            """)
+        scenery
+    }
+
+    let hallTable = Item {
+        name("half-moon table")
+        adjectives("half", "moon", "marble", "telephone", "hall")
+        synonyms("table")
+        description(
+            """
+            Three legs and a marble top, and a ring in the marble where something round used to stand and doesn't now.
+            """)
+        scenery
+    }
+
+    let frontDoor = Item {
+        name("front door")
+        adjectives("front", "heavy", "panelled")
+        synonyms("door", "doorway")
+        description(
+            """
+            Heavy, panelled, with a fanlight over it that somebody painted shut a long while ago. It is the way you \
+            came in.
+            """)
+        scenery
+    }
+
+    let frontStairs = Item {
+        name("staircase")
+        adjectives("front", "main", "bare")
+        synonyms("stairs", "staircase", "stair", "banister")
+        description(
+            """
+            Bare treads with the carpet rods still in them and no carpet in the rods. These are the ones a visitor \
+            uses.
+            """)
+        scenery
+    }
+
+    // MARK: - The parlour
+
+    let parlourFurniture = Item {
+        name("furniture")
+        adjectives("heavy", "good", "victorian")
+        synonyms("furniture", "chair", "chairs", "armchair", "sofa", "settee", "suite")
+        description(
+            """
+            Heavy pieces that came out of a bigger house than this one, too good to sell in 1931 and too good to sell \
+            now. Mrs. Vane's chair is the only one that has taken the shape of a person.
+            """)
+        scenery
+    }
+
+    let grate = Item {
+        name("grate")
+        adjectives("cold", "iron", "empty")
+        synonyms("grate", "fireplace", "hearth", "fender", "fire")
+        description(
+            """
+            Swept, laid, and cold. Nothing has been burned in this room in months, in a house where the kitchen stove \
+            has been going since before you got here.
+            """)
+        scenery
+    }
+
+    let parlourLamp = Item {
+        name("standard lamp")
+        adjectives("standard", "unlit", "fringed", "tall")
+        synonyms("lamp", "shade")
+        description(
+            """
+            A standard lamp with a fringed shade and a bulb that has been in it a while. Mrs. Vane does not light it \
+            until it is properly dark. It is not properly dark.
+            """)
+        scenery
+    }
+
+    /// Constance's fallback line looks at this. A fallback that names a thing
+    /// the game can't show you is the same defect as an unknown word.
+    let wallpaper = Item {
+        name("wallpaper")
+        adjectives("faded", "papered")
+        synonyms("wallpaper", "roses")
+        description(
+            """
+            Cabbage roses gone the colour of tea, and one rectangle of them a shade lighter than the rest, where \
+            something used to hang.
+            """)
+        scenery
     }
 
     // MARK: - The kitchen and the cellar
@@ -215,7 +432,10 @@ struct Fulminate: Game, GameMain {
     let flashlight = Item {
         name("flashlight")
         adjectives("dented", "tin")
-        synonyms("flashlight", "torch", "lamp", "light")
+        // Not "lamp": the parlour, the study and the carriage house each name
+        // one, and the flashlight is in the player's hand for most of the
+        // evening. A dented tin torch has the weaker claim on the word.
+        synonyms("flashlight", "torch", "light")
         description("A dented tin flashlight. Shake it and it rattles, but it lights.")
         lightSource
     }
@@ -234,7 +454,111 @@ struct Fulminate: Game, GameMain {
             """)
     }
 
+    let pineTable = Item {
+        name("pine table")
+        adjectives("scrubbed", "deal", "pine", "kitchen")
+        synonyms("table", "board", "counter")
+        description(
+            """
+            Deal, scrubbed pale over so many years that the grain stands up out of it. Mrs. Kettle's evening is laid \
+            out along it in the order she means to use it.
+            """)
+        scenery
+    }
+
+    /// The reason anybody in this house can be placed anywhere: they come down
+    /// these and land in front of the one person who never stops looking.
+    let backStairs = Item {
+        name("back stairs")
+        adjectives("back", "narrow", "servants", "boxed")
+        synonyms("stairs", "staircase", "stair")
+        description(
+            """
+            Narrow, boxed in, and they turn twice on the way down. You would hear somebody on them from anywhere in \
+            this room, and so would she.
+            """)
+        scenery
+    }
+
+    /// Shares the word "stairs" with the back stairs on purpose. A room with
+    /// two flights in it should ask which one you meant.
+    let cellarSteps = Item {
+        name("cellar steps")
+        adjectives("cellar", "stone", "worn")
+        synonyms("steps", "stairs", "stair")
+        description(
+            """
+            Stone, dished in the middle from use, going down into the dark. There is no switch at the top of them.
+            """)
+        scenery
+    }
+
+    let yardDoor = Item {
+        name("yard door")
+        adjectives("yard", "back", "glazed", "kitchen")
+        synonyms("door")
+        description(
+            """
+            Half-glazed, with a worn place at knee height where it has been pushed open by people carrying things.
+            """)
+        scenery
+    }
+
+    /// Named in the glove's own description, which made it the most
+    /// conspicuous missing noun in the house.
+    let coalBin = Item {
+        name("coal bin")
+        adjectives("coal", "plank", "wooden")
+        synonyms("bin", "coalbin", "coal")
+        description(
+            """
+            A plank bin with three winters of coal dust in it and no coal. The dust on the floor behind it has been \
+            disturbed and then smoothed over, which takes longer than not doing it.
+            """)
+        scenery
+    }
+
     // MARK: - The yard and the lab
+
+    let dryGrass = Item {
+        name("dry grass")
+        adjectives("dry", "brown", "long")
+        synonyms("grass", "lawn", "yard", "ground")
+        scenery
+    }
+
+    /// The building from outside it. The room is `carriageHouse`; this is what
+    /// the player is looking at from the yard, facing north.
+    let carriageHouseOutside = Item {
+        name("carriage house")
+        adjectives("carriage", "brick", "old")
+        synonyms("house", "shed", "lab", "laboratory", "workshop", "building")
+        scenery
+    }
+
+    let toolRack = Item {
+        name("tool rack")
+        adjectives("tool", "iron", "wall")
+        synonyms("rack", "tools", "tool")
+        scenery
+    }
+
+    let cot = Item {
+        name("cot")
+        adjectives("army", "canvas", "folding")
+        synonyms("cot", "bunk", "bed")
+        scenery
+    }
+
+    /// The kitchen stove's flue, running up through the corner past the end of
+    /// the bench where the can is sitting. The mechanism, in plain sight, from
+    /// the first turn.
+    let stovePipe = Item {
+        name("stove pipe")
+        adjectives("stove", "tin", "hot")
+        synonyms("pipe", "stovepipe", "flue", "chimney")
+        scenery
+    }
 
     let gardenWall = Item {
         name("garden wall")
@@ -263,6 +587,22 @@ struct Fulminate: Game, GameMain {
             """)
     }
 
+    /// What the carriage house becomes. Hidden until the blast puts it there,
+    /// and off limits once the patrolman is standing over it — the case will
+    /// not be solved by sifting.
+    let debris = Item {
+        name("wreckage")
+        adjectives("burned", "burnt", "charred")
+        synonyms("wreckage", "debris", "rubble", "ruins")
+        description(
+            """
+            Roof slates, black timber, and a smell with chemistry in it. If the evening has an answer, some of it is \
+            in there, and none of it is coming out tonight.
+            """)
+        scenery
+        hidden
+    }
+
     let julian = Actor {
         name("Julian Vane")
         adjectives("julian", "mr", "mister")
@@ -277,16 +617,14 @@ struct Fulminate: Game, GameMain {
 
     // MARK: - The household
 
+    /// Her description and her presence line are both rules rather than
+    /// traits: the first because the blast changes her, the second because she
+    /// spends six minutes of the evening out of her chair and a woman in the
+    /// back garden is not in her chair with the lamp unlit.
     let constance = Actor {
         name("Mrs. Vane")
         adjectives("mrs", "missus", "old", "constance")
         synonyms("vane", "constance", "mother", "woman")
-        description(
-            """
-            Seventy-one, upright in a chair that has taken the shape of her. She has the stillness of someone who \
-            stopped expecting anything some years ago and has been managing on the arrangement since.
-            """)
-        firstSight("Mrs. Vane is in her chair with the lamp unlit.")
     }
 
     let delphine = Actor {
@@ -296,9 +634,8 @@ struct Fulminate: Game, GameMain {
         description(
             """
             Thirty-four, in a man's shirt with paint on the cuff. She looks back at you a beat longer than most \
-            people do, and it is not a challenge, it is arithmetic.
+            people do, and it is not a challenge. She is taking a reading.
             """)
-        firstSight("Delphine Marsh is here, not doing much.")
     }
 
     let teague = Actor {
@@ -307,8 +644,9 @@ struct Fulminate: Game, GameMain {
         synonyms("teague", "howard", "boarder", "man")
         description(
             """
-            Forty-ish, in a jacket that was pressed this morning by somebody. He is the most helpful person in this \
-            house, which is a thing worth noticing about a house where a man has just died.
+            Fifty-six, Navy the first time around, in a jacket that was pressed this morning by somebody. He is the \
+            most helpful person in this house, which is a thing worth noticing about a house where a man has just \
+            died.
             """)
         firstSight("Howard Teague is here, being helpful.")
     }
@@ -317,32 +655,95 @@ struct Fulminate: Game, GameMain {
         name("Dr. Pike")
         adjectives("dr", "doctor", "aldous")
         synonyms("pike", "aldous", "man")
+        // He is in the parlour, the yard and the study across the evening, so
+        // the hat is described by how long it has been on rather than by which
+        // side of a door he is standing on.
         description(
             """
-            Fifty, and wearing his hat indoors because taking it off would mean he had arrived somewhere. He would \
-            like very much to be back up the arroyo.
+            Fifty, and he has not had the hat off since he came, because taking it off would mean he had arrived \
+            somewhere. He would like very much to be back up the arroyo.
             """)
         firstSight("Dr. Pike is standing about with his hat on.")
     }
 
+    /// Described by a rule: the line that makes her — she looked at it and went
+    /// back to work — is a thing you can only say about a woman who has had a
+    /// wreckage to look at.
     let kettle = Actor {
         name("Mrs. Kettle")
         adjectives("mrs", "missus", "iris", "cook")
         synonyms("kettle", "iris", "cook", "housekeeper", "woman")
+        firstSight("Mrs. Kettle is here, keeping busy.")
+    }
+
+    /// Unscheduled, and stays that way — scenery with a topic table rather
+    /// than a sixth timetable. He is why the player cannot dig the answer out
+    /// of the debris, and he knows exactly one useful thing.
+    let patrolman = Actor {
+        name("patrolman")
+        adjectives("young", "police")
+        synonyms("patrolman", "officer", "policeman", "police", "cop")
         description(
             """
-            Sixty-two, and the only person here who has looked at the wreckage and then gone back to what she was \
-            doing. She misses nothing and says most of it.
+            Young enough to stand at attention beside a burned-down building. He has the wreckage, his orders, and a \
+            notebook with everyone's name in it, and he is keeping all three.
             """)
-        firstSight("Mrs. Kettle is here, keeping busy.")
+        firstSight("A patrolman is posted at the wreckage, keeping everybody out of it.")
     }
 
     // MARK: - Upstairs
 
+    let runner = Item {
+        name("runner")
+        adjectives("worn", "threadbare", "turkey")
+        synonyms("runner", "carpet", "rug")
+        description(
+            """
+            Turkey pattern, gone to string down the middle where everybody walks and perfectly good along both edges.
+            """)
+        scenery
+    }
+
+    let studyLamp = Item {
+        name("desk lamp")
+        adjectives("green", "shaded", "brass", "reading")
+        synonyms("lamp", "shade")
+        description(
+            """
+            Brass, with a green glass shade of the kind meant to keep the light off everything but the page. It is \
+            switched off. Whoever went through these drawers did it without turning it on.
+            """)
+        scenery
+    }
+
+    let sheet = Item {
+        name("sheet")
+        adjectives("typed", "half", "foolscap")
+        synonyms("sheet", "page", "story")
+        description(
+            """
+            Half a page of a sea story: a destroyer, weather, and a man on a bridge who has just noticed something. \
+            It stops in the middle of the word *torpe*.
+            """)
+        scenery
+    }
+
+    let bed = Item {
+        name("bed")
+        adjectives("iron", "made", "single")
+        synonyms("bed", "bedstead", "mattress")
+        description(
+            """
+            Made, and made properly, with the corners squared. Navy the first time around and it never comes off.
+            """)
+        scenery
+        surface
+    }
+
     let desk = Item {
         name("desk")
         adjectives("writing", "oak")
-        synonyms("desk", "drawers")
+        synonyms("desk", "drawer", "drawers")
         scenery
         surface
     }
@@ -442,7 +843,12 @@ struct Fulminate: Game, GameMain {
             Stop(at: TimeOfDay(17, 30), in: parlour),
             Stop(
                 at: TimeOfDay(17, 48), in: backYard,
-                arrival: "Mrs. Vane comes out as far as the step and stops there."),
+                departure:
+                    "Mrs. Vane puts both hands on the arms of her chair and gets up, and takes her time doing it.",
+                arrival: """
+                    Mrs. Vane comes out as far as the step and stops there. She does not call his name. She looks at \
+                    the fire the way you would look at a bill you had been expecting for years.
+                    """),
             Stop(
                 at: TimeOfDay(17, 54), in: parlour,
                 departure: "Mrs. Vane goes back inside without having said anything at all."),
@@ -456,7 +862,11 @@ struct Fulminate: Game, GameMain {
             Stop(at: TimeOfDay(17, 30), in: kitchen),
             Stop(
                 at: TimeOfDay(17, 48), in: backYard,
-                arrival: "Mrs. Kettle comes out drying her hands and does not stop drying them."),
+                departure: "Mrs. Kettle goes out the yard door, and the pot goes on being stirred by nobody.",
+                arrival: """
+                    Mrs. Kettle comes out drying her hands and does not stop drying them. "Oh, the boy," she says, \
+                    once, and then does not say it again.
+                    """),
             Stop(
                 at: TimeOfDay(18, 0), in: kitchen,
                 departure: "Mrs. Kettle goes back to her kitchen, on the grounds that somebody has to."
@@ -492,7 +902,11 @@ struct Fulminate: Game, GameMain {
             Stop(at: TimeOfDay(17, 30), in: parlour),
             Stop(
                 at: TimeOfDay(17, 48), in: backYard,
-                arrival: "Dr. Pike arrives in the yard holding his hat against his chest."),
+                departure: "Dr. Pike is out of the room and into the passage before you have decided to move.",
+                arrival: """
+                    Dr. Pike arrives in the yard holding his hat against his chest. He gets within thirty feet of the \
+                    heat and no further, and his lips move on a word he does not let out.
+                    """),
             Stop(
                 at: TimeOfDay(18, 14), in: study,
                 departure: "Dr. Pike goes back into the house.",
@@ -504,6 +918,32 @@ struct Fulminate: Game, GameMain {
 
     var content: GameContents {
         clock
+        talk
+    }
+
+    var verbs: [SyntaxRule] {
+        [.accuse]
+    }
+
+    /// The accusation is the deadline's teeth: a wrong name ends the run. The
+    /// deputy coroner does not argue — you spent your credibility, and the
+    /// stamp comes down anyway. This is the default: the right name is a
+    /// `before` rule on Constance, in the rules block.
+    var actions: [IntentAction] {
+        action(.accuse) {
+            guard let accused = command.directObject else { return }
+            try require(accused.isActor, else: "The record wants a name, and that is not one.")
+            if !blastHappened {
+                try reply("There is nothing to accuse anybody of. Not yet.")
+            }
+            say(
+                """
+
+                He hears you out. Then he writes *accidental* in the box marked cause, and the case is a page in a \
+                drawer in a building in Los Angeles.
+                """)
+            try end(won: false)
+        }
     }
 
     /// The five rounds, and the evening's three fixed points. Everything in
@@ -521,6 +961,7 @@ struct Fulminate: Game, GameMain {
             blastHappened = true
             can.vanish()
             julian.vanish()
+            debris.reveal()
 
             // Standing in the carriage house when it goes up is a way to end
             // the evening, though not the intended one.
@@ -532,17 +973,138 @@ struct Fulminate: Game, GameMain {
                     """)
             }
 
+            wasInTheYardForTheBlast = player.location == backYard
             say(
-                player.location == backYard
+                wasInTheYardForTheBlast
                     ? """
 
-                    The carriage house comes apart. There is no bang, particularly — more the sound of a door \
-                    slamming in a cave — and then the roof is in the yard with you and the heat arrives all at once.
+                    There is no moment in which it is about to happen. The carriage house comes apart. There is no \
+                    bang, particularly — more the sound of a door slamming in a cave — and then the ground hits you \
+                    in the back and you work out, after a moment, that you are lying down. Slates come out of the sky \
+                    and go into the grass edge-first. Twenty feet of the garden wall lies down with you. The heat \
+                    arrives last and all at once and takes the hair off the back of your hand.
                     """
                     : """
 
                     Somewhere out behind the house something goes off with a flat, unimpressive thump, and every \
-                    window and pane and loose sash in the place shivers at once, and then is still.
+                    window and pane and loose sash in the place shivers at once, and then is still. The floor comes \
+                    up an inch and puts itself back. Plaster lets go of the ceiling somewhere over your head. In the \
+                    kitchen a shelf of crockery goes over, all of it, one long run of breakage, and after that the \
+                    house is quieter than a house ought to be.
+                    """)
+
+            // Placed after the death check above, so a player who was standing
+            // in the lab never schedules an aftermath they aren't alive for.
+            startFuse("blast.after")
+        }
+
+        // The turn after. From the yard you are getting up off the grass; from
+        // indoors you are finding out what a house sounds like when everybody
+        // in it stops talking at the same moment.
+        //
+        // Fuses rather than alarms on purpose: the beat is relative to the
+        // blast, not to a wall-clock time, and the mechanics contract pins the
+        // count of load-bearing alarms at three. A fuse is decorative by
+        // construction and doesn't touch that count.
+        fuse("blast.after", after: 1) {
+            // What happened to the player follows the player: a man who was
+            // knocked flat in the yard and then walked into the kitchen still
+            // has grass in his cuff. What is happening in a room stays in it.
+            say(
+                wasInTheYardForTheBlast
+                    ? """
+
+                    You get up. Your ears are holding one high thin note that has nothing to do with the evening. \
+                    There is grass in your cuff and grit on your teeth, and the dust is coming down out of the air \
+                    slowly, the way it does indoors.
+                    """
+                    : """
+
+                    The house holds still for a count of three. Then a door goes above you, and another one below, and \
+                    the stairs take somebody at a run, and the yard door bangs and does not come back — and by the \
+                    end of it the rooms you can hear are empty and everybody who was in them is out on the grass. \
+                    Dust comes along the passage behind all of it and settles on everything with a flat top.
+                    """)
+            // The one thing only this turn can say about her: she did not go
+            // down when it went. Her presence line carries the rest of the
+            // evening, so this beat has to be about the moment, not the pose.
+            if player.location == backYard, delphine.isIn(backYard) {
+                say(
+                    """
+
+                    Delphine Marsh did not go down when it went. She did not even put a hand out.
+                    """)
+            }
+            startFuse("blast.settling")
+        }
+
+        // And the second, which is the sound a building makes while it stops
+        // being one. Two independent things decide how it reads: where the
+        // player is standing decides where the noise comes from, and whether
+        // they were knocked flat decides whether they have a ringing ear for it
+        // to step down. Indoors at sixty feet through two walls, nobody's ears
+        // are singing, so the note has no business in that sentence.
+        fuse("blast.settling", after: 1) {
+            let outBack = player.location == backYard || player.location == carriageHouse
+            let source = outBack ? "Something in the wreckage" : "Something out at the back"
+            say(
+                wasInTheYardForTheBlast
+                    ? """
+
+                    \(source) lets go and settles, and the note in your ears steps down one. It will be there \
+                    tomorrow.
+                    """
+                    : """
+
+                    \(source) lets go and settles, and the house hears it and holds still for it, and then goes back \
+                    to whatever a house does on a night like this.
+                    """)
+        }
+
+        // 5:52. The radio car. Not one of the evening's three fixed points —
+        // an errand between them — and deliberately not the turn the deadline
+        // lands on the page either. He takes names and volunteers nothing;
+        // what downtown told him is his to give and the player's to ask for.
+        // The exposition lives in his topic table, which is what "learned, not
+        // given" has to mean if it is going to mean anything.
+        clock.at(TimeOfDay(17, 52), named: "clock.radioCar") {
+            // He stands on the yard side of the gap, which is where a man
+            // keeping people out of a building stands. The wreckage comes with
+            // him: the player cannot be on both sides of that line across this
+            // turn, so the move is unobservable, and it keeps the debris
+            // answerable to somebody who is now barred from walking up to it.
+            patrolman.move(to: backYard)
+            debris.move(to: backYard)
+            wreckageSealed = true
+
+            // A player standing in it when he arrives is the first person he
+            // puts out of it. Anything else would have him post himself at a
+            // door with somebody already inside, which is not what posting is.
+            if player.location == carriageHouse {
+                say(
+                    """
+
+                    A radio car pulls up out front. A patrolman comes through the house, takes your name and writes \
+                    it down, and walks you out of the wreckage with two fingers and no argument. Then he posts \
+                    himself where the door used to be, with you on the other side of him.
+                    """)
+                player.location = backYard
+                describeSurroundings()
+                return
+            }
+            say(
+                player.location == backYard
+                    ? """
+
+                    A radio car pulls up out front, and a patrolman comes through the house and out to the wreckage. \
+                    He takes names, all of them, yours included, writes each one down, and posts himself where the \
+                    door used to be. After that he has nothing to say, and looks at the fire instead.
+                    """
+                    : """
+
+                    A car door goes out front. A patrolman works through the house taking names, yours included, and \
+                    goes out back to stand at the wreckage. He does not say what happens next, and nobody in this \
+                    house asks him.
                     """)
         }
 
@@ -581,6 +1143,19 @@ struct Fulminate: Game, GameMain {
     }
 
     var rules: Rules {
+        // The coat is a container with the case's hinge in it, not luggage.
+        // Both refusals point at the pocket, because the pocket is the puzzle.
+        coat.before(.take) {
+            try refuse(
+                """
+                It isn't yours and the hall isn't private. Leave it on the stand. The pockets are another question.
+                """)
+        }
+
+        coat.before(.wear) {
+            try refuse("It is June, and it is not your coat.")
+        }
+
         // Going through the pockets is what turns the receipt up. Searching a
         // coat in somebody else's hall is the sort of thing the player should
         // have to decide to do.
@@ -627,6 +1202,116 @@ struct Fulminate: Game, GameMain {
             "The clock says \(clock.now.formatted(clock.format)). It has the confident tick of a clock that is right."
         }
 
+        watch.describe {
+            // Same source as the longcase clock, and the sentence about
+            // setting it says in fiction why the two can never disagree. They
+            // must not: every alibi in this house is a time, and a watch that
+            // ran fast would make the case unmeasurable by the one instrument
+            // the player owns.
+            """
+            Steel, on a strap you have replaced twice. You set it by the longcase clock on your way through the hall, \
+            out of a habit from a job you don't have any more, and it says \(clock.now.formatted(clock.format)).
+            """
+        }
+
+        // DROP, PUT ON and PUT IN each take a worn thing off first, so
+        // refusing DOFF alone would leave three ways round it.
+        watch.before(.doff) {
+            try refuse("You would put it straight back on. Tonight is a night for knowing the time.")
+        }
+
+        watch.before(.drop, .putIn, .putOn) {
+            try refuse("It has been on that wrist since 1943 and it is staying there.")
+        }
+
+        // The hall's front door is not latched, and "You can't open that" is
+        // the wrong answer for a door that isn't.
+        frontDoor.before(.open) {
+            try reply(
+                """
+                It isn't latched. Mrs. Vane does not lock her front door in the afternoon, which is a thing you would \
+                have told her about if tonight were an ordinary night.
+                """)
+        }
+
+        // Not a container — the glove stays loose on the cellar floor — but
+        // looking behind it is the obvious move and deserves an answer.
+        coalBin.before(.lookIn) {
+            try reply("Nothing in it but the dust, and the dust is the interesting part.")
+        }
+
+        // The play-tester went down in the dark, got the pitch-black line, and
+        // never found the flashlight. Said once: a player who ignores it is
+        // making a choice, and a player who reads it twice is being nagged.
+        //
+        // `afterEachTurn` rather than `onEnter`, which runs *before* the room
+        // is described and would put the hint above "It is pitch black."
+        cellar.afterEachTurn {
+            guard !flashlight.isLit, !cellarHintGiven else { return }
+            cellarHintGiven = true
+            say(
+                flashlight.isHeld
+                    ? "There is a flashlight in your hand and it is switched off."
+                    : """
+                    You could stand here all evening and it would be exactly this useful. There is a drawer under the \
+                    counter in the kitchen, and houses like this keep a light in it.
+                    """)
+        }
+
+        dryGrass.describe {
+            blastHappened
+                ? """
+                Brown grass with roof slates standing up out of it edge-first, and a scorched half-circle running out \
+                from where the carriage house door used to be.
+                """
+                : """
+                Brown by the middle of June and not cut since. There is one path worn through it, from the kitchen \
+                door to the carriage house, and only that one.
+                """
+        }
+
+        carriageHouseOutside.describe {
+            blastHappened
+                ? """
+                Three walls, and the third one is being generous about it. The roof is in the grass between you and \
+                what is left.
+                """
+                : """
+                Brick below, board above, and a set of double doors somebody stopped using twenty years ago in favour \
+                of the small one at the side. There is light in it and a smell of the stove.
+                """
+        }
+
+        toolRack.describe {
+            blastHappened
+                ? "The rack is on the ground and most of the tools are not on the rack."
+                : """
+                Every tool on its own nail, with a pencil outline on the board behind it so a man can see at a glance \
+                what is missing. Nothing is missing.
+                """
+        }
+
+        cot.describe {
+            blastHappened
+                ? "The frame, and a smell of burnt ticking."
+                : """
+                An army cot with a blanket folded square on the end of it. Somebody sleeps out here often enough to \
+                keep it made.
+                """
+        }
+
+        stovePipe.describe {
+            blastHappened
+                ? """
+                Three lengths of it in the grass. At the end that used to run past the bench, the tin is scorched \
+                bright down one side.
+                """
+                : """
+                Tin, coming up out of the corner and out through the roof, carrying the kitchen stove's heat past this \
+                end of the bench. You would not keep a hand on it.
+                """
+        }
+
         gardenWall.describe {
             blastHappened
                 ? "Four courses of brick where there were nine, and the missing five are distributed across the grass."
@@ -640,6 +1325,519 @@ struct Fulminate: Game, GameMain {
                 Tools laid out in the order a careful man uses them, and a scorch mark near the vice that is older \
                 than tonight.
                 """
+        }
+
+        // The patrolman's one job. Some of the answer is literally in the
+        // debris, which is why nobody gets to sift it. Before he arrives you
+        // get six minutes with it and it gives you nothing, which is the more
+        // useful lesson.
+        debris.before(.lookIn) {
+            if wreckageSealed {
+                try reply(
+                    "\"Best keep back from there,\" the patrolman says, and puts a shoulder where you were going.")
+            }
+            try reply(
+                """
+                You turn over what the heat will let you touch and get soot to the elbow for it. Whatever the answer \
+                is, it is not the kind you sift out.
+                """)
+        }
+
+        // MARK: The household, described
+
+        // Shock, from a quarter to six to the end, and her shock looks like
+        // nothing at all. She is not grieving like a woman surprised by a
+        // death.
+        constance.describe {
+            blastHappened
+                ? """
+                Seventy-one, upright, flat, terribly still. She is holding still the way a woman holds still when she \
+                is doing arithmetic.
+                """
+                : """
+                Seventy-one, upright in a chair that has taken the shape of her. She has the stillness of someone who \
+                stopped expecting anything some years ago and has been managing on the arrangement since.
+                """
+        }
+
+        // Six minutes of her evening are spent out of that chair, and the
+        // presence line has to know it.
+        constance.presence {
+            constance.isIn(parlour)
+                ? "Mrs. Vane is in her chair with the lamp unlit."
+                : "Mrs. Vane is on the step and no further, watching it burn."
+        }
+
+        // She can only be looking at the fire while she is out where it is. At
+        // 6:02 she is at the study drawers and at 6:26 she is down the cellar
+        // in the dark, and a woman described as watching a fire from the coal
+        // cellar is the same defect as a woman in her chair in the garden.
+        delphine.presence {
+            switch (blastHappened, delphine.isIn(backYard)) {
+            case (false, _): "Delphine Marsh is here, not doing much."
+            case (true, true): "Delphine Marsh is on her feet with her arms at her sides, looking at the fire."
+            case (true, false): "Delphine Marsh is here, not looking at you."
+            }
+        }
+
+        kettle.describe {
+            blastHappened
+                ? """
+                Sixty-two, and the only person here who has looked at the wreckage and then gone back to what she was \
+                doing. She misses nothing and says most of it.
+                """
+                : """
+                Sixty-two, and she has stood in this kitchen longer than the boarder has had his room and longer than \
+                the son has had his shed. She misses nothing and says most of it.
+                """
+        }
+
+        // MARK: The interrogation
+
+        // Opening lines. Every way of saying hello — GREET, HELLO, TALK TO,
+        // `delphine, hello` — arrives here, so the player never has to guess
+        // which word this game wanted.
+        talk.greeting(
+            of: julian,
+            again: "\"Mm,\" he says, to the clamp.",
+            reply: "\"You're early,\" he says to the bench. \"That's all right. Nothing's early enough.\"")
+        talk.greeting(
+            of: constance,
+            again: "Mrs. Vane has already said the one word she means to say to you.",
+            reply: "\"Yes,\" says Mrs. Vane, to no question, and goes on looking at the grate.")
+        talk.greeting(
+            of: delphine,
+            again: "\"We've met,\" she says, without unfolding her arms.",
+            reply: "She looks at you a beat longer than she needs to. \"You'd be the letter,\" she says.")
+        talk.greeting(
+            of: teague,
+            again: "\"Still here,\" he says, pleased about it.",
+            reply: """
+                "Teague," he says, and has your hand before you have offered it. "Anything you need in this house, \
+                you come to me."
+                """)
+        talk.greeting(
+            of: pike,
+            again: "The hat comes down a degree, which is the whole of it.",
+            reply: "\"Pike.\" He does not give you the hat, the hand, or the rest of the name.")
+        talk.greeting(
+            of: kettle,
+            again: "\"You'll want something to do,\" she says. \"I haven't got it.\"",
+            reply: "\"You'll be the one he wrote to.\" She does not stop what she is doing. \"He said.\"")
+        talk.greeting(
+            of: patrolman,
+            again: "\"Sir.\" Exactly as before, and no more of it.",
+            reply: "\"Sir.\" He has your name in the notebook already and no further use for you.")
+
+        // The one place following somebody is worth more than the engine's
+        // honest refusal. The core verb searches a single exit deep, and
+        // Teague's 5:38 crossing goes kitchen → carriage house, which is two:
+        // so the game buys the pursuit itself, and only as far as the yard,
+        // because that is genuinely as far as you can see him go.
+        teague.before(.follow) {
+            guard player.location == kitchen, teague.isIn(carriageHouse) else { return }
+            say("(after Teague, out through the yard door)")
+            player.location = backYard
+            describeSurroundings()
+            try reply("Teague is across the grass and into the carriage house before you are off the step.")
+        }
+
+        // Julian is askable for the first eight turns, and only there — the
+        // blast takes him out of scope, so the table needs no gate. A player
+        // who spends the opening with the victim learns things a player who
+        // wanders the garden does not.
+        talk.topics(
+            of: julian,
+            fallback: "\"Later,\" he says, without turning round. \"You'll have all of it after six.\"",
+            again: "\"You had that off me.\" He does not turn round. \"Six o'clock.\""
+        ) {
+            topic(
+                "letter", "lab", "break in", "intruder", "somebody",
+                reply: """
+                    "Nothing taken." He lets that sit. "A thief takes. A man who takes nothing is coming back."
+                    """)
+            topic(
+                "six", "appointment", "show", "tonight",
+                reply: """
+                    "At six." He nods at the bench. "You'll want to be sitting down for it, and I want better light \
+                    than this."
+                    """)
+            topic(
+                "delphine", "marsh",
+                reply: """
+                    "Delphine keeps her own counsel." He tightens a clamp. "It was the counsel I liked first."
+                    """)
+            topic(
+                "teague", "boarder", "howard",
+                reply: """
+                    "Howard borrows things. They come back a little different." He almost smiles. "Most things don't \
+                    come back at all."
+                    """)
+            topic(
+                "pike", "arroyo", "notebooks", "fired", "associations",
+                reply: """
+                    "They let me go over the company I keep, and now they send a man out about the company I kept." \
+                    He files at something small. "The notebooks are mine. Tell Pike I said so."
+                    """)
+            topic(
+                "mother", "constance",
+                reply: """
+                    "My mother thinks this place took something from her." He sets the file down. "She's not wrong. \
+                    We disagree about what."
+                    """)
+        }
+
+        // Constance's table is nearly all refusals until the glove — every
+        // investigative habit the player owns slides off a seventy-one-year-old
+        // woman in an unlit parlour, which is why she is the answer.
+        talk.topics(
+            of: constance, fallback: "Mrs. Vane looks past you at the wallpaper.",
+            again: "\"I have answered that.\" She has not moved at all."
+        ) {
+            // The lie. Note it matches her timetable exactly: the timetable is
+            // where she was seen, and the can was placed before half past five.
+            topic(
+                "evening", "parlour", "alibi", "where",
+                unless: .constanceBroke,
+                reply: """
+                    "I have been in the parlour all evening." She says it to the cold grate, in the voice of a woman \
+                    reading a timetable.
+                    """)
+            topic(
+                "evening", "parlour", "alibi", "where",
+                knowing: .constanceBroke,
+                reply: """
+                    "I went out before you came. He was in the house at his supper." Her hands are still. "I put it \
+                    where the heat would find it and I came back to my chair, and I have been in this chair since."
+                    """)
+            // Before 5:46 the question means something else entirely, and the
+            // row used to answer "My son is dead in the garden" from turn one.
+            topic(
+                "julian", "son",
+                unless: .constanceBroke,
+                when: { !blastHappened },
+                reply: "\"Julian is in the shed.\" She says it the way you would say the weather.")
+            // And afterwards she is allowed one moment before she settles into
+            // the sentence she will use for the rest of the evening.
+            topic(
+                "julian", "son",
+                unless: .constanceBroke,
+                again: "\"My son is dead in the garden.\" That is all she has on the subject.",
+                reply: """
+                    She takes a moment to find you, as though the question had come from another room. "My son," she \
+                    says. Then nothing, for long enough that you consider asking it again. "He is dead in the \
+                    garden." Her hands go back to the arms of the chair and stay there.
+                    """)
+            topic(
+                "julian", "son",
+                knowing: .constanceBroke,
+                reply: """
+                    "That shed had him twenty years before it killed him." She looks at the lamp she has not lit. "I \
+                    meant to take it back. I believed he had gone out."
+                    """)
+            topic(
+                "lab", "carriage house", "workshop", "shed",
+                unless: .constanceBroke,
+                reply: "\"I never went into it.\" It has the finish of a sentence said many times.")
+            topic(
+                "glove", "cellar",
+                knowing: .constanceBroke,
+                reply: "\"It is my glove,\" she says. \"You knew that when you carried it up the stairs.\"")
+            topic(
+                "teague", "boarder",
+                knowing: .teagueLied,
+                reply: """
+                    "Mr. Teague told me Julian had gone out." She folds her hands. "So you see it mattered, what he \
+                    said. It mattered more than he will ever let himself work out."
+                    """)
+        }
+
+        // Everything about Delphine invites the wrong conclusion, and the
+        // table lets the player reach it before the letters retire it.
+        talk.topics(
+            of: delphine,
+            again: "\"You've had that from me.\" She doesn't look round."
+        ) {
+            // Her lie — that she doesn't know what's in the letters.
+            topic(
+                "letters", "lodge", "correspondence", "bundle",
+                unless: .delphineCleared,
+                reply: "\"Julian kept letters. Men keep letters.\" She shrugs. \"I wouldn't know what's in them.\"")
+            topic(
+                "letters", "lodge", "correspondence", "bundle",
+                knowing: .delphineCleared,
+                reply: """
+                    "They argue about money and dress it in robes." She almost laughs, and doesn't. "The neighbors \
+                    would be so disappointed."
+                    """)
+            topic(
+                "desert", "rites", "sunday",
+                reply: """
+                    "We went out for the air," she says, and gives you the first half of a phrase, and waits. You \
+                    know the second half. You keep it.
+                    """)
+            // She was standing in the yard when it happened and had nothing to
+            // say about it, so the question fell to her fallback and read like
+            // the parser had failed.
+            topic(
+                "yard", "garden", "outside", "evening", "where", "standing",
+                reply: """
+                    "I was out here." She lets that be the whole answer for a moment. "Looking at the light on the \
+                    wall, if you want it written down somewhere."
+                    """)
+            topic(
+                "julian", "vane",
+                when: { blastHappened },
+                again: """
+                    "He wrote to somebody last week and slept better after." A beat. "That was you, I take it."
+                    """,
+                reply: """
+                    "Don't." She says it quietly and without any heat in it. Then, after a while, in a voice she has \
+                    had to go and find: "He wrote to somebody last week and slept better after. That was you." She \
+                    looks at the wreckage. "You came out on the wrong Tuesday."
+                    """)
+            topic(
+                "julian", "vane",
+                reply: """
+                    "He wrote to somebody last week and slept better after." A beat. "That was you, I take it."
+                    """)
+        }
+
+        // Her fallback, with one turn of state on it. The bare version reads
+        // like a parse error the first time you get it; the point is that she
+        // heard the question and decided against it. `topics` stays quiet when
+        // nothing matches and it has no `fallback:`, so this rule — declared
+        // after the table — is what answers.
+        delphine.before(.ask, .tell) {
+            guard command.topic != nil else { return }
+            if !delphineHasDeflected {
+                delphineHasDeflected = true
+                try reply(
+                    """
+                    She hears the question. She lets you watch her decide not to answer it, which is an answer of a \
+                    kind. Then she goes back to looking at whatever she was looking at.
+                    """)
+            }
+            try reply("She goes on looking at whatever she was looking at.")
+        }
+
+        // Teague's alibi dies in three stages: the cook's testimony kills it,
+        // the receipt breaks him, and what he told Constance is the keystone
+        // the full ending turns on.
+        talk.topics(
+            of: teague, fallback: "\"Couldn't tell you, friend.\"",
+            again: "\"We've been over that, friend.\" He finds something else on his sleeve."
+        ) {
+            topic(
+                "drugstore", "alibi", "evening", "colorado", "where",
+                unless: .kettleSawTeague,
+                reply: """
+                    "Drugstore on Colorado. Left here about half past, walked down, had a Coca-Cola, walked back. \
+                    Ask them, they know me."
+                    """)
+            topic(
+                "drugstore", "alibi", "evening", "colorado", "where", "kitchen",
+                knowing: .kettleSawTeague, unless: .teagueRecanted,
+                reply: """
+                    "Mrs. Kettle keeps a good kitchen and a better clock." He recrosses his legs. "A man can pass \
+                    through a kitchen on his way to the drugstore. I'd check her arithmetic."
+                    """)
+            topic(
+                "drugstore", "alibi", "evening", "colorado", "where", "kitchen",
+                knowing: .teagueRecanted,
+                reply: "\"You've got the slip,\" he says. \"I'm done selling you the drugstore.\"")
+            topic(
+                "constance", "vane", "old lady", "mother", "told",
+                knowing: .teagueRecanted, learning: .teagueLied,
+                reply: """
+                    "I told the old lady he'd gone out. That's all I told her. I wanted half an hour in that lab and \
+                    I didn't want her watching the yard while I had it." He looks at the window. "It wasn't a lie \
+                    that was supposed to do anything."
+                    """)
+            topic(
+                "constance", "vane", "old lady", "mother",
+                unless: .teagueRecanted,
+                reply: "\"The old lady? Keeps to her parlour.\" He finds something on his sleeve to straighten.")
+            topic(
+                "notebooks", "pages", "ledger",
+                knowing: .notebooksSold,
+                reply: """
+                    "Call it salvage," he says, before you have put a name to it. "The lab wanted those pages once \
+                    and wants them now, and the mails in between were me."
+                    """)
+            topic(
+                "notebooks", "pages",
+                reply: "\"Vane's notebooks? Wouldn't know. I write my own pages.\"")
+            topic(
+                "julian", "vane",
+                knowing: .teagueRecanted,
+                reply:
+                    "\"He was all right. Let me alone, let the rent ride.\" He looks at his hands. \"He was all right.\""
+            )
+        }
+
+        // Pike's lie has a second floor — the earlier visit was not about
+        // notebooks — and the ledger only opens the first one.
+        talk.topics(
+            of: pike, fallback: "\"I don't see how that concerns me.\"",
+            again: "\"I've given you that.\" The hat brim does not move."
+        ) {
+            topic(
+                "visit", "house", "before", "first",
+                unless: .notebooksSold,
+                reply:
+                    "\"My first time at the house. I had the address only this week.\" He adjusts the hat he has not taken off."
+            )
+            topic(
+                "visit", "house", "before", "first",
+                knowing: .notebooksSold,
+                reply: """
+                    "I have been here before." He says it like a man initialling a correction. "Not for notebooks. \
+                    You were in that trade once. You can imagine the shape of the report I filed."
+                    """)
+            topic(
+                "notebooks", "pages", "papers", "lab",
+                reply: """
+                    "The men we have now prefer the notebooks in order. I was sent to put them in order." He starts \
+                    a surname, gets as far as the first vowel, and files it back where he keeps it.
+                    """)
+            topic(
+                "julian", "vane",
+                reply: """
+                    "A capable man. Indiscreet." The hat brim comes down a degree. "Capable stopped being a defence \
+                    some years ago."
+                    """)
+        }
+
+        // Mrs. Kettle is the mechanism by which the schedule becomes
+        // testimony. Her answers are not authored prose: each one reads the
+        // person's timetable, so a schedule edit changes what she says with
+        // it. This is the demonstration the whole game exists to make — see
+        // the mechanics contract in `docs/games/fulminate.md`.
+        talk.topics(
+            of: kettle, fallback: "\"That I couldn't say.\"",
+            again: "\"I've said my piece on that one.\" The pot gets another stir."
+        ) {
+            topic("teague", "boarder", "howard", learning: .kettleSawTeague) {
+                let room = clock.location(of: teagueDay, at: TimeOfDay(17, 42))
+                try reply(
+                    """
+                    "Mr. Teague come down my back stairs into the \(room.name.lowercased()) at eighteen minutes to \
+                    six with his hat already on. I know because the pot goes on at a quarter to, and I was standing \
+                    right there getting it ready."
+                    """)
+            }
+            topic("constance", "mrs vane", "mother", "old lady") {
+                let then = clock.location(of: constanceDay, at: TimeOfDay(17, 46))
+                let after = clock.location(of: constanceDay, at: TimeOfDay(17, 50))
+                try reply(
+                    """
+                    "Mrs. Vane was in the \(then.name.lowercased()) when it went, and stood out in the \
+                    \(after.name.lowercased()) after with the rest of us. Then back in, without a word said."
+                    """)
+            }
+            topic("delphine", "marsh", "miss") {
+                let room = clock.location(of: delphineDay, at: TimeOfDay(17, 46))
+                try reply(
+                    """
+                    "Miss Marsh was in the \(room.name.lowercased()) when it went. I'll say that for her, and she \
+                    can do with it what she likes."
+                    """)
+            }
+            topic("pike", "doctor", "visitor") {
+                let then = clock.location(of: pikeDay, at: TimeOfDay(17, 46))
+                let after = clock.location(of: pikeDay, at: TimeOfDay(17, 50))
+                try reply(
+                    """
+                    "The doctor sat in the \(then.name.lowercased()) with his hat on from the minute he come. He was \
+                    out in the \(after.name.lowercased()) after, holding it."
+                    """)
+            }
+            // Julian keeps no timetable, so this one is hers alone.
+            topic(
+                "julian", "vane", "son",
+                reply: """
+                    "Mr. Julian had his supper at five and carried a plate of it out to the shed." The pot gets a \
+                    stir it does not need. "I have fed that boy since he was eleven."
+                    """)
+        }
+
+        // He stands at the wreckage from 5:52 on. He knows exactly one useful
+        // thing and will not say it unless somebody asks him for it — the
+        // deadline reaches the page here or not at all.
+        talk.topics(
+            of: patrolman, fallback: "\"Best keep back from there.\"",
+            again: "\"Told you what I know about that.\""
+        ) {
+            topic(
+                "coroner", "county", "deputy", "downtown", "deadline", "happens", "next", "now",
+                reply: """
+                    "County man's coming out from downtown. Deputy coroner." He looks at the wreckage rather than at \
+                    you. "Due by ten of seven, they said. He writes it up and that's what it is. If you've got \
+                    something for him, have it ready."
+                    """)
+            topic(
+                "wreckage", "fire", "debris", "body", "vane", "julian",
+                reply: """
+                    "Not till the county man's been." He shifts his feet. "There's a body in there. I've seen where \
+                    it is. That's the last I'll say about it."
+                    """)
+            topic(
+                "names", "notebook", "statement", "report",
+                reply: """
+                    "I take names. I don't take statements." He taps the notebook without opening it. "You want to \
+                    give something, give it to the county man, and don't be slow about it."
+                    """)
+        }
+
+        // The four pieces of physical evidence, each of which flips a story.
+        talk.shows(
+            receipt, to: teague, learning: .teagueRecanted,
+            reply: """
+                He looks at it for a while. "Six-oh-five," he says. "Yeah." He sits down on the arm of the chair, \
+                which is not his chair. "I went after. I needed to have been somewhere."
+                """)
+        talk.shows(
+            glove, to: constance, learning: .constanceBroke,
+            reply: """
+                She takes it out of your hand, which you were not expecting, and turns it over once. "I have been \
+                sitting here," she says, "trying to remember whether I put it back."
+                """)
+        talk.shows(
+            ledger, to: pike, learning: .notebooksSold,
+            reply: """
+                He reads the last four pages without touching the book. "Dates and page numbers," he says, and sits \
+                down, and takes his hat off at last. "I paid for those. I never asked whose hand did the copying."
+                """)
+        talk.shows(
+            letters, to: delphine, learning: .delphineCleared,
+            reply: """
+                She unties the string and reads the top one through, all the way, before she hands it back. "Now \
+                you've read them," she says. "So you know what they are not."
+                """)
+
+        // `ACCUSE CONSTANCE` wins the game. The two endings differ by one
+        // learned fact — the keystone — because a player who never finds out
+        // why she believed the lab was empty has solved the case without
+        // understanding it. Every other name falls through to the default
+        // action, which is the losing one.
+        constance.before(.accuse) {
+            if !blastHappened {
+                try reply("There is nothing to accuse anybody of. Not yet.")
+            }
+            say(
+                talk.knows(.teagueLied)
+                    ? """
+
+                    The county man writes for a long time. When he is finished he reads it back, and there are two \
+                    names in it, and only one of them meant anything by it.
+                    """
+                    : """
+
+                    The county man writes down her name and closes the book. He does not ask why, and you do not \
+                    have an answer that would fit in the space provided.
+                    """)
+            try end(won: true)
         }
     }
 
@@ -656,7 +1854,16 @@ struct Fulminate: Game, GameMain {
         kitchen.down(cellar)
         cellar.up(kitchen)
 
-        backYard.north(carriageHouse)
+        // The lab is open for the three turns between the blast and the radio
+        // car, and the police own it after that. Only the way in closes; the
+        // way out never does.
+        backYard.north(
+            carriageHouse,
+            when: { !wreckageSealed },
+            otherwise: """
+                The patrolman puts an arm across the gap without any particular force in it. "Nobody past me till the \
+                county man's been."
+                """)
         carriageHouse.south(backYard)
 
         frontHall.up(landing)
@@ -673,24 +1880,59 @@ struct Fulminate: Game, GameMain {
         frontHall.east(blocked: Fulminate.streetRefusal)
         frontHall.out(blocked: Fulminate.streetRefusal)
 
+        // The back stairs are the household's, not yours. Blocked rather than
+        // absent, because the kitchen's description names them and the stock
+        // "You can't go that way" reads like the game forgot.
+        kitchen.up(
+            blocked: """
+                The back stairs are the household's. A man who came here on a letter goes up the front way, where \
+                everybody can see him do it.
+                """)
+
         player.starts(in: frontHall)
+        watch.startsWorn
 
         hallClock.starts(in: frontHall)
         telephone.starts(in: frontHall)
         coat.starts(in: frontHall)
         receipt.starts(inside: coat)
+        hallFloor.starts(in: frontHall)
+        hatStand.starts(in: frontHall)
+        hallTable.starts(in: frontHall)
+        frontDoor.starts(in: frontHall)
+        frontStairs.starts(in: frontHall)
+
+        parlourFurniture.starts(in: parlour)
+        grate.starts(in: parlour)
+        parlourLamp.starts(in: parlour)
+        wallpaper.starts(in: parlour)
 
         stove.starts(in: kitchen)
         drawer.starts(in: kitchen)
         flashlight.starts(inside: drawer)
+        pineTable.starts(in: kitchen)
+        backStairs.starts(in: kitchen)
+        cellarSteps.starts(in: kitchen)
+        yardDoor.starts(in: kitchen)
 
         glove.starts(in: cellar)
+        coalBin.starts(in: cellar)
 
         gardenWall.starts(in: backYard)
+        dryGrass.starts(in: backYard)
+        carriageHouseOutside.starts(in: backYard)
+
+        toolRack.starts(in: carriageHouse)
+        cot.starts(in: carriageHouse)
+        stovePipe.starts(in: carriageHouse)
 
         workbench.starts(in: carriageHouse)
         can.starts(in: carriageHouse)
+        debris.starts(in: carriageHouse)
         julian.starts(in: carriageHouse)
+
+        // Off the map until the radio car brings him at 5:52.
+        patrolman.starts(in: street)
 
         // Everyone starts where their own timetable says they are at 5:30, so
         // the opening tableau and the schedule can't disagree.
@@ -700,11 +1942,16 @@ struct Fulminate: Game, GameMain {
         delphine.starts(in: delphineDay.location(at: clock.start))
         pike.starts(in: pikeDay.location(at: clock.start))
 
+        runner.starts(in: landing)
+
         desk.starts(in: study)
         ledger.starts(in: study)
         letters.starts(in: study)
+        studyLamp.starts(in: study)
 
         typewriter.starts(in: boardersRoom)
         suitcase.starts(in: boardersRoom)
+        sheet.starts(in: boardersRoom)
+        bed.starts(in: boardersRoom)
     }
 }

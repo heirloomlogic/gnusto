@@ -1,0 +1,128 @@
+# Gnusto — orientation for agents
+
+Gnusto is a Swift engine for parser IF (Zork-style text adventures). A game is one
+Swift type: you declare rooms, things and rules; the engine parses input, runs the
+turn, prints the result.
+
+This file is a map, not a manual. The DocC articles in
+`Sources/Gnusto/Documentation.docc/` are the manual and are accurate — read the one
+that covers your task before writing code.
+
+## Layout
+
+| Path | What |
+|---|---|
+| `Sources/Gnusto/` | the engine. `Declarations/` is the author-facing DSL; `Engine/` is the runtime; `Actions/` is verbs, default actions and player-facing text; `Parser/` is the parser and vocabulary |
+| `Sources/Gnusto*/` | optional libraries spliced in as `GameContent`/`GamePlugin`: `GnustoClock`, `GnustoConversation`, `GnustoScoring`, `GnustoSpellcasting`, `GnustoMeleeCombat`, `GnustoDangerousDark`, `GnustoActors`. Plus `GnustoMacros` (the `#verb` macro) and `GnustoTestSupport` (the `play` harness) |
+| `Sources/CloakOfDarkness`, `Lighthouse`, `Zork1`, `Gramarye`, `Fulminate` | demo games, also the engine's real test corpus |
+| `Tests/GnustoTests/` | one suite per subject; `Support/` holds the fixture games |
+| `docs/games/*.md` | per-game design docs — **story-and-copy source of truth**, iterated separately from code |
+| `FIDELITY.md` | Zork 1 only: where its content departs from the original. Nothing else uses it |
+
+## Commands
+
+```sh
+swift build
+swift test                                    # ~760 tests, sub-second
+swift test --filter FulminateTests
+swift run Fulminate                            # pipe stdin to play scripted; GNUSTO_PLAIN=1 forces plain output
+swift package --allow-writing-to-package-directory format-source-code
+xcrun swift-format lint --strict --parallel --recursive --configuration .swift-format Sources Tests
+```
+
+CI runs the strict lint. Run it before you claim done.
+
+## Reading order for a new task
+
+- **Any game work** — `Sources/Lighthouse/` is the feature tour and the shortest complete read.
+- New verb → `AddingCustomVerbs.md`. Rules → `WritingRules.md`. Turn order → `TheTurnPipeline.md`.
+- Actors → `ActorsAndVehicles.md`. Plugins/bundles → `Plugins.md`, `ContentBundles.md`.
+- Tests → `TestingYourGame.md`.
+- The built-in verb table is one array: `Sources/Gnusto/Actions/SyntaxRule.swift` (`standardTable`).
+  The intent list is `Actions/Command.swift`. Player-facing stock lines are `Actions/GameText.swift`.
+
+## The shape of a game
+
+```swift
+struct MyGame: Game {
+    let title = "…"; let intro = "…"
+    let hall = Location { name("Hall"); description("…") }
+    let coin = Item { name("gold coin") }
+    var content: GameContents { clock; talk }        // optional libraries
+    var verbs: [SyntaxRule] { [.accuse] }            // custom verbs
+    var actions: [IntentAction] { … }                // verb-wide default behavior
+    var timers: [TimedEvent] { … }                   // fuses, daemons, clock alarms
+    var rules: Rules { … }                           // per-entity behavior
+    var map: WorldMap { hall.north(other); player.starts(in: hall) }
+}
+```
+
+**Entities must be stored properties of the `Game` (or a `GameContent`) type's main
+body.** The bootstrap finds them by reflection and names each `EntityID` after its
+property. Not extensions — Swift won't allow stored properties there, and `Mirror`
+won't see them. Same for `@Global`. This is why big games use `GameContent` bundles
+rather than extensions.
+
+Rule phases by scope, all filed in `Engine/Bootstrap.swift`:
+
+| Scope | Phases |
+|---|---|
+| item / actor | `before`, `after`, `describe`, `presence` |
+| location | `before`, `after`, `beforeEachTurn`, `afterEachTurn`, `onEnter`, `describe` |
+| world | `before`, `after` |
+
+In any rule body: `say`, `refuse`, `reply`, `require(_:else:)`, `end(won:)`, `die`,
+`describeSurroundings`, `proceed`. `refuse`/`reply`/`end`/`die` are `throws -> Never`.
+
+## Gotchas that cost real time
+
+- **Two description channels, not one.** `description(…)` / `describe { }` is the
+  *examine* text. `firstSight(…)` / `presence { }` is the *room-listing* paragraph.
+  On an item the listing line prints until the player touches it; on an actor it
+  prints on every look, forever.
+- **A static trait and its rule are mutually exclusive** — `description(…)` plus
+  `describe { }`, or `firstSight(…)` plus `presence { }`, on one entity is a fatal
+  `BootstrapError`. So is declaring the rule twice. Precedence for descriptions:
+  runtime assignment > rule > static trait. Presence has no runtime setter.
+- **`onEnter` runs *after* the player has moved.** It cannot block entry. To block a
+  move, use `sourceRoom.before(.go)` + `guard command.direction` + `refuse`, or a
+  conditional exit `exit(_:to:when:otherwise:)` whose `when:` closure is evaluated in
+  the live turn frame.
+- **Actors are always listed** if perceivable. `scenery` has no effect on them; only
+  `hidden`-and-unrevealed or offstage suppresses one.
+- **`reveal()` is one-way** and `isTouched` is read-only — neither is a toggle.
+- **Meta intents and parse failures cost no turn** (`Command.metaIntents`,
+  `freeReply`). A test that counts turns by counting commands will be wrong the
+  moment one of them fails to parse. This is the single most common test-timing bug.
+- **`search X` / `find X` / `look for X` all mean `.lookIn`**, which *refuses
+  non-containers* with `cantSeeAnySuchThing`. An item you want searchable must be
+  declared `container`.
+- **Every noun a room description prints must be answerable.** A named thing the
+  parser doesn't know reads as a bug; add the scenery item with the noun. Item
+  vocabulary comes from `name` (last word = noun, earlier words = adjectives) plus
+  `synonyms` (nouns) and `adjectives`. The final token of a phrase must be a noun.
+- **`clock.now` needs a live turn** — legal in rules, `describe` blocks and actions;
+  not in a `map` block, which runs at bootstrap.
+- Bootstrap diagnostics are thorough and fatal. If a game fails to start, read the
+  diagnostic list — it names the entity and the conflict.
+
+## Testing conventions
+
+Transcript tests, almost exclusively: `play(Game(), ["cmd", …], seed:)` returns the
+whole transcript as a string, then `#expect(...contains(...))`. Helpers in
+`GnustoTestSupport`: `play`, `turnOutput(of:in:)` (one turn's output — matches the
+*first* occurrence, so vary commands rather than repeating them), `expectInOrder`,
+`cachedWorld`. For bootstrap diagnostics, call `Bootstrap.build(BadGame())` directly
+and inspect `BootstrapError.diagnostics`.
+
+Assertions are dense substring checks lifted from the prose, so **the game suites are
+heavily prose-coupled**: changing a line usually means updating a test. Before
+rewriting copy, grep the fragment. Fixture games live in `Tests/GnustoTests/Support/`.
+
+## Working on a demo game
+
+Read `docs/games/<game>.md` first. It owns the story, the copy, and — for Fulminate —
+a **mechanics contract** stating which counts and structures may not change even
+though all prose may. Commit doc changes with the code. Then actually play the game
+(`swift run <Game>` with piped stdin) and read the transcript as prose: passing tests
+do not tell you whether a line is true of where the player is standing.

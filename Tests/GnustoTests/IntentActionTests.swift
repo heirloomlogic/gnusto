@@ -43,7 +43,7 @@ struct IntentActionTests {
     // MARK: - Plugin-provided action, spliced by the host
 
     @Test func pluginProvidedActionSplicedByHostWorks() async throws {
-        let transcript = try await play(GreeterGame(), ["greet statue"])
+        let transcript = try await play(GreeterGame(), ["hail statue"])
         expectInOrder(transcript, ["You wave and offer a warm greeting."])
     }
 

@@ -94,6 +94,42 @@ public struct GameText: Sendable {
     /// A `wait` turn — a beat passes while fuses and daemons tick.
     public var timePasses = "Time passes."
 
+    // MARK: - Following
+
+    /// The aside printed as the player sets off after somebody.
+    public var following: @Sendable (_ name: String) -> String = {
+        "(after the \($0))"
+    }
+    /// Following somebody who is standing right here.
+    public var alreadyFollowing: @Sendable (_ name: String) -> String = {
+        "The \($0) is right here."
+    }
+    /// Following something that isn't a person.
+    public var cantFollowThat: @Sendable (_ name: String) -> String = {
+        "The \($0) isn't going anywhere."
+    }
+    /// Following somebody who has gone somewhere no exit from here leads. The
+    /// search is one exit deep, so this is also the answer for a quarry who is
+    /// two rooms away — see `DefaultActions.follow`.
+    public var lostThem: @Sendable (_ name: String) -> String = {
+        "You have no idea which way the \($0) went."
+    }
+
+    // MARK: - Greeting
+
+    /// Saying hello to somebody who has nothing of their own to say.
+    public var greets: @Sendable (_ name: String) -> String = {
+        "The \($0) nods, and says nothing."
+    }
+    /// Greeting something that isn't a person.
+    public var cantGreetThat: @Sendable (_ name: String) -> String = {
+        "The \($0) is unlikely to answer."
+    }
+    /// A bare hello with nobody about.
+    public var nobodyToGreet = "There's nobody here to greet."
+    /// A bare hello where several people could have been meant.
+    public var greetsTheRoom = "You say hello to the room in general."
+
     // MARK: - Containers
 
     /// A successful `open` of an empty container.
@@ -224,6 +260,23 @@ public struct GameText: Sendable {
         "The \($0) is empty."
     }
 
+    /// Searching something that has no inside to search: the noun resolved and
+    /// the player can reach it, it simply isn't a `container`. Deliberately not
+    /// ``cantSeeAnySuchThing``, which is only ever for a noun that isn't in
+    /// scope — the player can see this perfectly well, and SEARCH GRASS
+    /// answering "You can't see any such thing" about grass the game will
+    /// happily describe is the defect this line exists to retire.
+    public var nothingToSearch: @Sendable (_ name: String) -> String = {
+        "You find nothing of interest in the \($0)."
+    }
+
+    /// Searching a person. Distinct from ``nothingToSearch`` because "you find
+    /// nothing of interest in the cook" claims you frisked her and came up
+    /// empty, which is a good deal more than happened.
+    public var cantSearchActor: @Sendable (_ name: String) -> String = {
+        "The \($0) would have something to say about that."
+    }
+
     /// Locking or unlocking with a key that isn't in hand.
     public var keyNotHeld: @Sendable (_ name: String) -> String = {
         "You aren't holding the \($0)."
@@ -328,6 +381,14 @@ public struct GameText: Sendable {
     /// A line no verb pattern fits.
     public var didntUnderstand = "I didn't understand that sentence."
 
+    /// Giving somebody an order — `butler, open the door`. The engine has no
+    /// system for one character to act on another's word, so a character hears
+    /// you out and declines. `butler, hello` is the one addressed form that
+    /// does something, and it becomes a GREET.
+    public var notTakingOrders: @Sendable (_ name: String) -> String = {
+        "The \($0) has no intention of taking orders from you."
+    }
+
     /// A verb missing its object — answerable on the next line.
     public var missingObject: @Sendable (_ verb: String) -> String = {
         "What do you want to \($0)?"
@@ -336,6 +397,15 @@ public struct GameText: Sendable {
     /// A verb missing its second object — answerable on the next line.
     public var missingIndirect: @Sendable (_ verb: String, _ objectName: String, _ preposition: String) -> String = {
         "What do you want to \($0) the \($1) \($2)?"
+    }
+
+    /// A verb missing its topic — answerable on the next line. The object and
+    /// the word introducing the subject are both optional, so one line covers
+    /// "ask the butler about", "think about", and a bare "mutter".
+    public var missingTopic: @Sendable (_ verb: String, _ objectName: String?, _ preposition: String) -> String = {
+        let object = $1.map { " the \($0)" } ?? ""
+        let about = $2.isEmpty ? "" : " \($2)"
+        return "What do you want to \($0)\(object)\(about)?"
     }
 
     /// A noun phrase matching several things — answerable on the next line.

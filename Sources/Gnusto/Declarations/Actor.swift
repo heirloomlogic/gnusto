@@ -185,4 +185,29 @@ public struct Actor: Sendable, Equatable {
     ) -> Rule {
         Rule(scope: .item(token), phase: .after, intents: Set(intents), body: body)
     }
+
+    /// A live examine text, recomputed every time the actor is described.
+    ///
+    /// - Parameter body: the closure recomputing the description on each read.
+    /// - Returns: the assembled describe rule.
+    public func describe(_ body: @escaping @Sendable () -> String) -> Rule {
+        asItem.describe(body)
+    }
+
+    /// A live standing-presence line, recomputed every time the actor's room is
+    /// described — the dynamic form of the ``firstSight(_:)`` trait, and the way
+    /// a person on a schedule says something different in each room they stand
+    /// in:
+    ///
+    /// ```swift
+    /// constance.presence {
+    ///     constance.isIn(parlour) ? Prose.inHerChair : Prose.onTheStep
+    /// }
+    /// ```
+    ///
+    /// - Parameter body: the closure recomputing the line on each read.
+    /// - Returns: the assembled presence rule.
+    public func presence(_ body: @escaping @Sendable () -> String) -> Rule {
+        asItem.presence(body)
+    }
 }

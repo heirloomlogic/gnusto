@@ -72,7 +72,7 @@ struct ActorBehaviorTests {
     @Test func reactionsAnswerForTheActor() async throws {
         let transcript = try await play(
             PickpocketGame(),
-            ["whistle", "greet thief", "quit"],
+            ["whistle", "hail thief", "quit"],
             seed: 3)
         expectInOrder(transcript, ["He nods, warily."])
     }

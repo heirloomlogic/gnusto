@@ -548,6 +548,27 @@ struct ContainerTests {
 
     // MARK: - lookIn / search
 
+    /// The reported defect: SEARCH on something with no inside answered "You
+    /// can't see any such thing" about an object the player was holding.
+    /// `GameText.cantReach`'s own documentation reserves that line for a noun
+    /// out of scope, and `lookIn` was the one place in the engine that broke
+    /// the rule. A player who types SEARCH GRASS at grass the game will
+    /// happily describe should not be told it isn't there.
+    @Test func searchingSomethingWithNoInsideDoesNotDenyItExists() async throws {
+        let transcript = try await play(PantryGame(), ["search key"])
+        let searched = turnOutput(of: "search key", in: transcript)
+        #expect(searched.contains("You find nothing of interest in the brass key."))
+        #expect(!searched.contains("can't see any such thing"))
+    }
+
+    /// And the honest denial survives for a noun that really is out of view —
+    /// "gem" is a word this game knows, but the gem is shut in a locked opaque
+    /// chest.
+    @Test func searchingSomethingOutOfViewStillDeniesItExists() async throws {
+        let transcript = try await play(PantryGame(), ["search gem"])
+        #expect(turnOutput(of: "search gem", in: transcript).contains("can't see any such thing"))
+    }
+
     @Test func lookInReportsClosedEmptyAndFullStates() async throws {
         let transcript = try await play(
             PantryGame(),

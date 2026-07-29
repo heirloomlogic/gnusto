@@ -4,7 +4,7 @@ Teach the parser words the built-in table doesn't know.
 
 ## Overview
 
-Gnusto ships with a standard verb table: `take`, `drop`, `examine`, `wear`, `go`, `look`, `wait` (`z`), and their synonyms. When your game needs a verb of its own — `ring`, `buy`, `dig`, `pull` — you declare it once with `#verb` and handle it in a rule.
+Gnusto ships with a standard verb table: `take`, `drop`, `examine`, `wear`, `go`, `follow`, `greet`, `look`, `wait` (`z`), and their synonyms. When your game needs a verb of its own — `ring`, `buy`, `dig`, `pull` — you declare it once with `#verb` and handle it in a rule.
 
 `wait` (and its alias `z`) is a normal, time-passing turn: it prints the `timePasses` line ("Time passes.") and lets fuses and daemons tick — the standard way to let a countdown run down or a wandering monster catch up. Re-skin the line by mutating `text.timePasses`.
 
@@ -20,7 +20,7 @@ extension Intent {
 }
 ```
 
-This generates a typed constant, `Intent.ring`, that carries its verb row. String literals in a pattern are literal words; the slots are ``SyntaxElement/directObject``, ``SyntaxElement/indirectObject``, and ``SyntaxElement/direction``. With no pattern at all, the verb is the name: `#verb("sing")` accepts a bare `sing`.
+This generates a typed constant, `Intent.ring`, that carries its verb row. String literals in a pattern are literal words; the slots are ``SyntaxElement/directObject``, ``SyntaxElement/indirectObject``, ``SyntaxElement/direction``, and ``SyntaxElement/topic``. With no pattern at all, the verb is the name: `#verb("sing")` accepts a bare `sing`.
 
 Patterns are validated as you type — a malformed shape is a compile-time error, with the same wording the bootstrap uses for hand-built rows.
 
@@ -77,8 +77,11 @@ A pattern reads the way it's typed. Some shapes, from the standard table and bey
 | `#verb("pick", ["pick", .directObject, "up"])` | `pick bell up` | a direct object |
 | `#verb("give", ["give", .directObject, "to", .indirectObject])` | `give bell to monk` | direct + indirect objects |
 | `#verb("peek", ["look", "under", .directObject])` | `look under rug` | a direct object |
+| `#verb("ask", ["ask", .directObject, "about", .topic])` | `ask monk about the bell` | a direct object + a ``Command/topic`` |
 
-The rules: a pattern starts with at least one literal word (the verb); it can hold at most one direct-object and one indirect-object slot, direct first, with a literal word between them; a direction slot ends its pattern and never mixes with object slots.
+The rules: a pattern starts with at least one literal word (the verb); it can hold at most one direct-object and one indirect-object slot, direct first, with a literal word between them; a direction slot ends its pattern and never mixes with object slots; a topic slot also ends its pattern, and never mixes with a second object or a direction.
+
+A **topic** is the odd one out, and deliberately so. The object slots resolve against what the player can see, and refuse anything else — which is right for things and wrong for subjects. A topic instead takes the rest of the line as typed, normalized but never looked up, so `ask the monk about zeppelins` reaches the monk's rules and lets him shrug rather than dying in the parser as "You can't see any such thing." It arrives as a ``Topic`` on ``Command/topic``, with the words already lowercased, stripped of punctuation and filler; ``Topic/normalize(_:)`` puts an author's own keyword through the same mill so the two can be compared. The line exactly as typed is still on ``Command/rawInput``.
 
 Several patterns on one `#verb` share the intent — that is how synonyms and alternate word orders work:
 
@@ -104,6 +107,13 @@ extension Intent {
     #verb("steal", ["take", .directObject])   // `take coin` now means stealing
 }
 ```
+
+Some words a game is *likely* to want are therefore deliberately absent from
+the built-in table. Bare `hello` and bare `hi` are the clearest case: they are
+the kind of one-word verb a game likes to own outright — Zork 1 does — and
+claiming them as built-ins would make every such game print an override warning
+at launch. The engine ships `greet <object>`, `hello <object>` and
+`hi <object>`, and leaves the bare forms to `GnustoConversation` or to you.
 
 ## The substrate: raw `SyntaxRule`
 

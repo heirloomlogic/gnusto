@@ -111,6 +111,24 @@ Three things are worth knowing:
 - **A runtime assignment still wins.** Setting ``Item/description`` (or ``Location/description``) directly in a rule overrides the `describe` closure from then on — useful for a one-way change like a lever that reveals a passage.
 - **Keep the closure pure.** It runs on every look and examine; read state, return a string, and don't mutate the world from inside it.
 
+## Live room-listing lines with `presence`
+
+`describe` supplies the *examine* text. The other line the engine prints about an entity is its paragraph in the room description — the ``firstSight(_:)`` trait, shown until the player touches an item and shown on every look for an actor. ``Item/presence(_:)`` (or ``Actor/presence(_:)``) is its live form, and it follows exactly the same rules as `describe`:
+
+```swift
+var rules: Rules {
+    constance.presence {
+        constance.isIn(parlour)
+            ? "Mrs. Vane is in her chair with the lamp unlit."
+            : "Mrs. Vane is on the step and no further."
+    }
+}
+```
+
+`presence` and a static `firstSight(…)` on the same entity — or two `presence` rules for it — is the same fatal ``BootstrapError``. A `presence` rule on a location is a diagnostic too: rooms have descriptions, not presence lines.
+
+This is the rule to reach for when somebody moves. A person on a schedule ends up described in terms of the room they left, and no amount of careful static wording fixes that.
+
 ## Produce output and control the turn
 
 Four free functions are available in any rule body:
