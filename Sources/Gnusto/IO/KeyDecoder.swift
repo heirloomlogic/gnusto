@@ -43,15 +43,6 @@ struct KeyDecoder {
     /// needs another one.
     let nextByte: () -> RawByte
 
-    /// The most digits a CSI numeric parameter may carry. A real parameter is a
-    /// digit or two, so a stream that never sends the `~` terminator can't grow
-    /// the accumulator without bound.
-    static let parameterDigitCap = 8
-
-    /// The most bytes swallowed while resynchronizing after an over-long CSI
-    /// parameter. Bounded, so a stream that never sends the `~` can't spin here.
-    static let parameterDrainCap = 64
-
     /// The most bytes of a single paste kept. Past it the body stops growing but
     /// scanning continues, so the terminator is still found and the byte stream
     /// never desyncs — 64 KiB is far more than any play-test note.
@@ -112,7 +103,9 @@ struct KeyDecoder {
             var param = String(UnicodeScalar(b2))
             while case .byte(let n) = nextByte() {
                 if n == 0x7E { break }
-                guard param.count < Self.parameterDigitCap else {
+                // A real parameter is a digit or two, so a stream that never sends
+                // the terminator can't grow the accumulator without bound.
+                guard param.count < 8 else {
                     discardToParameterTerminator()
                     return nil
                 }
@@ -144,8 +137,9 @@ struct KeyDecoder {
     private func pasteBody() -> String {
         let terminator: [UInt8] = [0x1B, 0x5B, 0x32, 0x30, 0x31, 0x7E]  // ESC [ 2 0 1 ~
         var body: [UInt8] = []
-        var window: [UInt8] = []
-        var dropped = 0
+        /// Bytes withheld because they so far spell a prefix of the terminator, so
+        /// the marker never lands in the body and nothing has to be trimmed off.
+        var pending: [UInt8] = []
         var idlePolls = 0
 
         while true {
@@ -153,21 +147,22 @@ struct KeyDecoder {
             case .interrupted:
                 idlePolls += 1
                 if idlePolls >= pasteIdlePollLimit {
-                    return String(decoding: body, as: UTF8.self)
+                    return String(decoding: body + pending, as: UTF8.self)
                 }
             case .eof:
-                return String(decoding: body, as: UTF8.self)
+                return String(decoding: body + pending, as: UTF8.self)
             case .byte(let byte):
                 idlePolls = 0
-                if body.count < pasteByteCap { body.append(byte) } else { dropped += 1 }
-                // The terminator is only recognizable once seen, so it lands in
-                // the body and is trimmed back off — but only the part of it that
-                // got in, since the cap may have fallen partway through.
-                window.append(byte)
-                if window.count > terminator.count { window.removeFirst() }
-                if window == terminator {
-                    body.removeLast(terminator.count - min(terminator.count, dropped))
-                    return String(decoding: body, as: UTF8.self)
+                pending.append(byte)
+                if pending == terminator { return String(decoding: body, as: UTF8.self) }
+                // No longer a prefix, so it wasn't the marker: release bytes from
+                // the front until what's left could still begin one. Always
+                // terminates — every array starts with the empty array. The cap
+                // gates only what's kept, never the scan, so the byte stream
+                // stays in sync however big the paste is.
+                while !terminator.starts(with: pending) {
+                    let released = pending.removeFirst()
+                    if body.count < pasteByteCap { body.append(released) }
                 }
             }
         }
@@ -177,7 +172,7 @@ struct KeyDecoder {
     /// `~`. Without this the leftover digits and the terminator fall through to
     /// the printable path and get typed into the player's input line.
     private func discardToParameterTerminator() {
-        for _ in 0..<Self.parameterDrainCap {
+        for _ in 0..<64 {  // bounded, so a stream that never sends `~` can't spin
             guard case .byte(let n) = nextByte() else { return }
             if n == 0x7E { return }
         }

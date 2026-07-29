@@ -190,11 +190,11 @@ public final class TerminalIOHandler: IOHandler {
     /// line as `.line`, `.quit` on a confirmed Ctrl-C, or `nil` (EOF) to end
     /// the game.
     public func readLine(prompt: String) -> Input? {
-        // The buffer is deliberately *not* cleared here. It holds the line being
-        // edited, and a multi-line paste leaves its unterminated last line
-        // mid-edit while the lines before it are submitted one `readLine` at a
-        // time. Enter is what clears it; the only other ways out of this method —
-        // `.quit` and EOF — end the game, so nothing stale survives into a turn.
+        // The buffer is deliberately *not* cleared here: it holds the line being
+        // edited, and a multi-line paste leaves its unterminated last line mid-edit
+        // while the lines before it are submitted one `readLine` at a time. Every
+        // way out of this method either submits the buffer or clears it, so the
+        // only thing that can survive into the next call is a paste still draining.
         box.withLock { $0.prompt = prompt }
         render()
 
@@ -248,7 +248,16 @@ public final class TerminalIOHandler: IOHandler {
                 // the intent (not the editable "quit" verb word) means the quit
                 // lands even while a save/restore prompt is pending, and can't
                 // drift if a game redefines the verb.
-                if confirmQuit() { return .quit }
+                if confirmQuit() {
+                    // Abandoning the line, so drop it — the buffer now persists
+                    // across calls, and only a draining paste should outlive one.
+                    box.withLock {
+                        $0.input = ""
+                        $0.cursor = 0
+                        $0.pendingLines.removeAll()
+                    }
+                    return .quit
+                }
                 render()
                 continue
 
@@ -535,10 +544,6 @@ public final class TerminalIOHandler: IOHandler {
 
     // MARK: - Input
 
-    /// The keys the editor switches on. ``KeyDecoder`` owns the decoding; this
-    /// alias keeps the editor's `case .enter`-style patterns unqualified.
-    private typealias Key = KeyDecoder.Key
-
     /// Reads one byte from stdin for ``KeyDecoder``. Touches no instance state,
     /// so it can be handed over as a plain function value.
     private static func readStandardInputByte() -> KeyDecoder.RawByte {
@@ -553,7 +558,7 @@ public final class TerminalIOHandler: IOHandler {
     /// decoded key, or `nil` when the read timed out — so callers loop. Shared
     /// by the line editor and the Ctrl-C confirm so the resize/poll contract
     /// lives in one place.
-    private func nextKey() -> Key? {
+    private func nextKey() -> KeyDecoder.Key? {
         if gnustoWindowResized.exchange(false, ordering: .relaxed) {
             render()
         }
@@ -759,27 +764,19 @@ public final class TerminalIOHandler: IOHandler {
         let caret = max(0, min(cursor, chars.count))
         let head = String(chars[0..<caret])
         let tail = String(chars[caret...])
+
+        // Folding a comment is just pasting a single line: one piece, so there are
+        // no breaks left to submit on. Otherwise each break between pieces is a
+        // submit. Either way the buffer's two halves belong to the outer pieces,
+        // and the last piece is what stays in the editor.
         let segments = pastedSegments(pasted)
-
-        if TesterInput.isComment(input) {
-            let joined = joinedWithSpaces(segments)
-            return PasteOutcome(
-                submitted: [],
-                newInput: head + joined + tail,
-                newCursor: caret + joined.count)
-        }
-
-        // The paste is spliced into the line, so the buffer's two halves belong to
-        // the outer segments; every break between them is a submit, and the last
-        // segment is left in the editor.
-        var pieces = segments
+        var pieces = TesterInput.isComment(input) ? [joinedWithSpaces(segments)] : segments
         pieces[0] = head + pieces[0]
-        pieces[pieces.count - 1] += tail
-        let buffer = pieces.removeLast()
+        let last = pieces.removeLast()
         return PasteOutcome(
             submitted: pieces.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty },
-            newInput: buffer,
-            newCursor: buffer.count - tail.count)
+            newInput: last + tail,
+            newCursor: last.count)
     }
 
     /// Splits pasted text into the lines it spells, sanitizing as it goes: a tab
@@ -788,19 +785,17 @@ public final class TerminalIOHandler: IOHandler {
     /// Windows-ended paste yields one break rather than two. Always returns at
     /// least one segment.
     private static func pastedSegments(_ pasted: String) -> [String] {
-        var segments = [""]
-        for character in pasted {
-            if character.isNewline {
-                segments.append("")
-            } else if character == "\t" {
-                segments[segments.count - 1].append(" ")
-            } else if let ascii = character.asciiValue, ascii < 0x20 || ascii == 0x7F {
-                continue
-            } else {
-                segments[segments.count - 1].append(character)
-            }
-        }
-        return segments
+        let sanitized = String(
+            pasted.compactMap { character -> Character? in
+                if character.isNewline { return "\n" }
+                if character == "\t" { return " " }
+                if let ascii = character.asciiValue, ascii < 0x20 || ascii == 0x7F { return nil }
+                return character
+            })
+        return
+            sanitized
+            .split(separator: "\n", omittingEmptySubsequences: false)
+            .map(String.init)
     }
 
     /// Joins pasted segments into one line, each break becoming a single space.

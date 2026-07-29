@@ -152,10 +152,22 @@ struct TerminalKeyDecoderTests {
         #expect(decode("\u{1B}[200~abcdefghij\u{1B}[201~\n", byteCap: 4) == [.paste("abcd"), .enter])
     }
 
-    /// The cap can fall partway through the terminator, so only the marker bytes
-    /// that actually landed in the body get trimmed back off.
-    @Test func capReachedPartwayThroughTheTerminatorStillTrimsTheMarker() {
-        #expect(decode("\u{1B}[200~abcdefghij\u{1B}[201~", byteCap: 12) == [.paste("abcdefghij")])
+    /// The cap counts the body only — the terminator is withheld rather than
+    /// stored — so a paste exactly at the cap keeps all of it.
+    @Test func pasteExactlyAtTheCapKeepsAllOfIt() {
+        #expect(decode("\u{1B}[200~abcdefghij\u{1B}[201~", byteCap: 10) == [.paste("abcdefghij")])
+    }
+
+    /// Bytes withheld as a possible terminator are released into the body once
+    /// they turn out not to be one.
+    @Test func bytesThatOnlyLookLikeTheTerminatorSurviveInTheBody() {
+        #expect(decode("\u{1B}[200~a\u{1B}[200b\u{1B}[201~") == [.paste("a\u{1B}[200b")])
+    }
+
+    /// ...including when the stream ends while they're still withheld.
+    @Test func unterminatedPasteEndingMidMarkerKeepsThoseBytes() {
+        #expect(
+            decode("\u{1B}[200~abc\u{1B}[", endsWithEOF: true) == [.paste("abc\u{1B}["), .eof])
     }
 
     // MARK: - Stream end
