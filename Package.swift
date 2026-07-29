@@ -47,6 +47,7 @@ let package = Package(
         .library(name: "GnustoMeleeCombat", targets: ["GnustoMeleeCombat"]),
         .library(name: "GnustoSpellcasting", targets: ["GnustoSpellcasting"]),
         .library(name: "GnustoClock", targets: ["GnustoClock"]),
+        .library(name: "GnustoConversation", targets: ["GnustoConversation"]),
         .library(name: "GnustoTestSupport", targets: ["GnustoTestSupport"]),
         .executable(name: "CloakOfDarkness", targets: ["CloakOfDarkness"]),
         .executable(name: "Lighthouse", targets: ["Lighthouse"]),
@@ -102,6 +103,13 @@ let package = Package(
         // layer a mystery needs, where `roams` gives a stochastic wanderer.
         .target(
             name: "GnustoClock",
+            dependencies: ["Gnusto"],
+            plugins: devPlugins
+        ),
+        // ASK/TELL/SHOW over per-actor topic tables, gated on and feeding a
+        // saved set of facts the player has worked out.
+        .target(
+            name: "GnustoConversation",
             dependencies: ["Gnusto"],
             plugins: devPlugins
         ),
@@ -164,7 +172,7 @@ let package = Package(
             name: "GnustoTests",
             dependencies: [
                 "Gnusto", "GnustoDangerousDark", "GnustoScoring", "GnustoActors",
-                "GnustoMeleeCombat", "GnustoSpellcasting", "GnustoClock",
+                "GnustoMeleeCombat", "GnustoSpellcasting", "GnustoClock", "GnustoConversation",
                 "GnustoTestSupport",
                 "CloakOfDarkness", "Lighthouse", "Zork1", "Gramarye", "Fulminate",
             ],
