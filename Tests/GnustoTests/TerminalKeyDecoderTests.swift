@@ -90,12 +90,72 @@ struct TerminalKeyDecoderTests {
         #expect(decode("\u{1B}[") == [])
     }
 
+    /// An over-long numeric parameter is abandoned, and so is the rest of its
+    /// sequence — otherwise the leftover digits and the `~` fall through to the
+    /// printable path and get typed into the player's input line.
+    @Test func overlongNumericParameterIsDiscardedWithoutLeakingItsTail() {
+        #expect(decode("\u{1B}[1234567890~a") == [.character("a")])
+    }
+
     /// A numeric parameter that runs out of bytes resolves on what it has, rather
     /// than waiting for the `~`. Pinned rather than fixed: a real terminal sends a
     /// sequence as one burst, so this only bites if one is split across the 0.1s
     /// `VTIME` poll boundary, and the parameter is unambiguous by then anyway.
     @Test func unterminatedNumericParameterResolvesOnWhatItHas() {
         #expect(decode("\u{1B}[3") == [.deleteForward])
+    }
+
+    // MARK: - Bracketed paste
+
+    @Test func bracketedPasteBecomesOneKey() {
+        #expect(decode("\u{1B}[200~hello world\u{1B}[201~") == [.paste("hello world")])
+    }
+
+    @Test func pasteKeepsEmbeddedNewlinesForTheFoldToNormalize() {
+        #expect(
+            decode("\u{1B}[200~one\ntwo\r\nthree\u{1B}[201~") == [.paste("one\ntwo\r\nthree")])
+    }
+
+    /// The whole point of bracketed paste: a stray Ctrl-C in the payload can't
+    /// reach the quit-confirm, and pasted arrow keys can't move the caret. They
+    /// arrive as text and are sanitized by the fold, not decoded as keys.
+    @Test func controlAndEscapeBytesRideInsideThePasteInsteadOfDecoding() {
+        #expect(
+            decode("\u{1B}[200~a\u{03}b\u{1B}[Ac\u{1B}[201~") == [.paste("a\u{03}b\u{1B}[Ac")])
+    }
+
+    @Test func emptyPasteDecodesAsAnEmptyPaste() {
+        #expect(decode("\u{1B}[200~\u{1B}[201~") == [.paste("")])
+    }
+
+    @Test func theKeyAfterAPasteDecodesNormally() {
+        #expect(decode("\u{1B}[200~x\u{1B}[201~\n") == [.paste("x"), .enter])
+    }
+
+    @Test func strayPasteEndWithNoPasteOpenIsIgnored() {
+        #expect(decode("\u{1B}[201~a") == [.character("a")])
+    }
+
+    @Test func unterminatedPasteEndsAtEOF() {
+        #expect(decode("\u{1B}[200~abc", endsWithEOF: true) == [.paste("abc"), .eof])
+    }
+
+    /// Otherwise a terminal that opens a paste and never closes it wedges the
+    /// editor: no keys, no repaints, no resize servicing.
+    @Test func unterminatedPasteGivesUpAfterTooManyIdlePolls() {
+        #expect(decode("\u{1B}[200~abc", idlePollLimit: 3) == [.paste("abc")])
+    }
+
+    /// Past the cap the body stops growing but scanning continues, so the
+    /// terminator is still found and the next key decodes normally.
+    @Test func overlongPasteIsCappedAndTheStreamStaysInSync() {
+        #expect(decode("\u{1B}[200~abcdefghij\u{1B}[201~\n", byteCap: 4) == [.paste("abcd"), .enter])
+    }
+
+    /// The cap can fall partway through the terminator, so only the marker bytes
+    /// that actually landed in the body get trimmed back off.
+    @Test func capReachedPartwayThroughTheTerminatorStillTrimsTheMarker() {
+        #expect(decode("\u{1B}[200~abcdefghij\u{1B}[201~", byteCap: 12) == [.paste("abcdefghij")])
     }
 
     // MARK: - Stream end
@@ -118,16 +178,22 @@ struct TerminalKeyDecoderTests {
     ///     timeout.
     ///   - limit: a backstop on the number of keys collected, so a decoding bug
     ///     fails the test instead of hanging it.
+    ///   - byteCap: overrides the paste body cap.
+    ///   - idlePollLimit: overrides how many poll timeouts end an unterminated
+    ///     paste.
     /// - Returns: the decoded keys, in order.
     private func decode(
-        _ bytes: [UInt8], endsWithEOF: Bool = false, limit: Int = 256
+        _ bytes: [UInt8], endsWithEOF: Bool = false, limit: Int = 256,
+        byteCap: Int? = nil, idlePollLimit: Int? = nil
     ) -> [KeyDecoder.Key] {
         var index = 0
-        let decoder = KeyDecoder {
+        var decoder = KeyDecoder {
             guard index < bytes.count else { return endsWithEOF ? .eof : .interrupted }
             defer { index += 1 }
             return .byte(bytes[index])
         }
+        if let byteCap { decoder.pasteByteCap = byteCap }
+        if let idlePollLimit { decoder.pasteIdlePollLimit = idlePollLimit }
         var keys: [KeyDecoder.Key] = []
         while keys.count < limit, let key = decoder.next() {
             keys.append(key)
@@ -139,8 +205,11 @@ struct TerminalKeyDecoderTests {
     /// ``decode(_:endsWithEOF:limit:)`` over the UTF-8 of `text`, so a test can
     /// spell an escape sequence as a string.
     private func decode(
-        _ text: String, endsWithEOF: Bool = false, limit: Int = 256
+        _ text: String, endsWithEOF: Bool = false, limit: Int = 256,
+        byteCap: Int? = nil, idlePollLimit: Int? = nil
     ) -> [KeyDecoder.Key] {
-        decode(Array(text.utf8), endsWithEOF: endsWithEOF, limit: limit)
+        decode(
+            Array(text.utf8), endsWithEOF: endsWithEOF, limit: limit,
+            byteCap: byteCap, idlePollLimit: idlePollLimit)
     }
 }

@@ -22,6 +22,11 @@ struct KeyDecoder {
         case historyPrev, historyNext
         case pageUp, pageDown
         case eof, interrupt
+        /// A bracketed paste, delivered whole and verbatim. Arriving as one key is
+        /// what keeps its newlines, tabs and control bytes from being decoded as
+        /// keypresses; ``TerminalIOHandler/applyPaste(_:input:cursor:)`` decides
+        /// what they mean.
+        case paste(String)
     }
 
     /// One raw byte, or `interrupted` for a read that timed out (the `VTIME`
@@ -42,6 +47,20 @@ struct KeyDecoder {
     /// digit or two, so a stream that never sends the `~` terminator can't grow
     /// the accumulator without bound.
     static let parameterDigitCap = 8
+
+    /// The most bytes swallowed while resynchronizing after an over-long CSI
+    /// parameter. Bounded, so a stream that never sends the `~` can't spin here.
+    static let parameterDrainCap = 64
+
+    /// The most bytes of a single paste kept. Past it the body stops growing but
+    /// scanning continues, so the terminator is still found and the byte stream
+    /// never desyncs — 64 KiB is far more than any play-test note.
+    var pasteByteCap = 64 * 1024
+
+    /// How many consecutive poll timeouts end an unterminated paste — at the
+    /// `VTIME` tick of 0.1s, about five seconds of silence. Without it a terminal
+    /// that opens a paste and never closes it wedges the editor.
+    var pasteIdlePollLimit = 50
 
     /// Reads and decodes the next keypress. Returns `nil` when the read was
     /// interrupted, so the caller can service a pending resize and try again.
@@ -93,7 +112,10 @@ struct KeyDecoder {
             var param = String(UnicodeScalar(b2))
             while case .byte(let n) = nextByte() {
                 if n == 0x7E { break }
-                guard param.count < Self.parameterDigitCap else { return nil }
+                guard param.count < Self.parameterDigitCap else {
+                    discardToParameterTerminator()
+                    return nil
+                }
                 param.append(Character(UnicodeScalar(n)))
             }
             switch param {
@@ -102,10 +124,62 @@ struct KeyDecoder {
             case "3": return .deleteForward
             case "5": return .pageUp
             case "6": return .pageDown
+            case "200": return .paste(pasteBody())
+            case "201": return nil  // a paste end with no paste open; discard it
             default: return nil
             }
         default:
             return nil
+        }
+    }
+
+    /// The body of a bracketed paste, read up to its `ESC[201~` terminator. Taken
+    /// verbatim: control and escape bytes inside a paste are text, not keypresses,
+    /// which is the whole point of the mode.
+    ///
+    /// Gives up on a closed stream or a long silence, returning what it has, so a
+    /// terminal that never sends the terminator can't wedge the editor. Resizes
+    /// aren't serviced while collecting — a paste arrives as one burst, so the
+    /// wait is bounded and short.
+    private func pasteBody() -> String {
+        let terminator: [UInt8] = [0x1B, 0x5B, 0x32, 0x30, 0x31, 0x7E]  // ESC [ 2 0 1 ~
+        var body: [UInt8] = []
+        var window: [UInt8] = []
+        var dropped = 0
+        var idlePolls = 0
+
+        while true {
+            switch nextByte() {
+            case .interrupted:
+                idlePolls += 1
+                if idlePolls >= pasteIdlePollLimit {
+                    return String(decoding: body, as: UTF8.self)
+                }
+            case .eof:
+                return String(decoding: body, as: UTF8.self)
+            case .byte(let byte):
+                idlePolls = 0
+                if body.count < pasteByteCap { body.append(byte) } else { dropped += 1 }
+                // The terminator is only recognizable once seen, so it lands in
+                // the body and is trimmed back off — but only the part of it that
+                // got in, since the cap may have fallen partway through.
+                window.append(byte)
+                if window.count > terminator.count { window.removeFirst() }
+                if window == terminator {
+                    body.removeLast(terminator.count - min(terminator.count, dropped))
+                    return String(decoding: body, as: UTF8.self)
+                }
+            }
+        }
+    }
+
+    /// Swallows the rest of an over-long CSI sequence, up to and including its
+    /// `~`. Without this the leftover digits and the terminator fall through to
+    /// the printable path and get typed into the player's input line.
+    private func discardToParameterTerminator() {
+        for _ in 0..<Self.parameterDrainCap {
+            guard case .byte(let n) = nextByte() else { return }
+            if n == 0x7E { return }
         }
     }
 

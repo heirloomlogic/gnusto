@@ -25,14 +25,20 @@ private let gnustoTerminalActive = Atomic<Bool>(false)
 /// Set by the `SIGWINCH` handler; the input loop drains it and re-renders.
 private let gnustoWindowResized = Atomic<Bool>(false)
 
-/// Restores cooked mode, leaves the alternate screen, and shows the cursor.
-/// Idempotent (the `exchange` gate) and async-signal-safe enough for the fatal
-/// signal path: only `tcsetattr` and a single `write`.
+/// Restores cooked mode, leaves bracketed-paste mode and the alternate screen,
+/// and shows the cursor. Idempotent (the `exchange` gate) and async-signal-safe
+/// enough for the fatal signal path: only `tcsetattr` and a single `write`.
 private func gnustoEmergencyRestore() {
     guard gnustoTerminalActive.exchange(false, ordering: .relaxed) else { return }
     tcsetattr(STDIN_FILENO, TCSAFLUSH, &gnustoSavedTermios)
-    let reset = "\u{1B}[?1049l\u{1B}[?25h"
-    _ = reset.withCString { write(STDOUT_FILENO, $0, strlen($0)) }
+    // A `StaticString` literal is a pointer into the binary's constant data: no
+    // allocation, no `swift_once`, nothing here that isn't async-signal-safe. (A
+    // `String` this long has left the small-string form, so whether `withCString`
+    // allocates becomes a stdlib implementation detail — not a bet worth making
+    // inside a signal handler. Keep it a local, too: a file-scope `let` would
+    // reintroduce `swift_once`.) Modes are dropped in the order they were set.
+    let reset: StaticString = "\u{1B}[?2004l\u{1B}[?1049l\u{1B}[?25h"
+    reset.withUTF8Buffer { _ = write(STDOUT_FILENO, $0.baseAddress, $0.count) }
 }
 
 private func gnustoResizeHandler(_ signal: Int32) {
@@ -82,6 +88,12 @@ public final class TerminalIOHandler: IOHandler {
         var completions = CompletionCandidates()
         /// Lines scrolled up from the live bottom; 0 pins to the newest text.
         var scrollOffset = 0
+        /// Lines a bracketed paste submitted that `readLine` hasn't returned yet.
+        /// The REPL runs one command per call, so a pasted walkthrough is folded
+        /// once and handed over a line at a time. The tty input buffer used to do
+        /// this implicitly, one `\n` at a time; consuming a paste whole makes it
+        /// explicit.
+        var pendingLines: [String] = []
 
         /// The transcript wrapped to `wrappedCols`, rebuilt only when the
         /// transcript grows or the width changes — so a keystroke repaints
@@ -178,11 +190,12 @@ public final class TerminalIOHandler: IOHandler {
     /// line as `.line`, `.quit` on a confirmed Ctrl-C, or `nil` (EOF) to end
     /// the game.
     public func readLine(prompt: String) -> Input? {
-        box.withLock {
-            $0.prompt = prompt
-            $0.input = ""
-            $0.cursor = 0
-        }
+        // The buffer is deliberately *not* cleared here. It holds the line being
+        // edited, and a multi-line paste leaves its unterminated last line
+        // mid-edit while the lines before it are submitted one `readLine` at a
+        // time. Enter is what clears it; the only other ways out of this method —
+        // `.quit` and EOF — end the game, so nothing stale survives into a turn.
+        box.withLock { $0.prompt = prompt }
         render()
 
         // History browsing state, local to this line. `historyCursor` counts
@@ -191,6 +204,18 @@ public final class TerminalIOHandler: IOHandler {
         var draft = ""
 
         while true {
+            // Hand over anything a paste already submitted before reading a key.
+            if let queued = box.withLock({ st -> String? in
+                guard !st.pendingLines.isEmpty else { return nil }
+                let line = st.pendingLines.removeFirst()
+                Self.record(line, in: &st)
+                return line
+            }) {
+                persistHistory(queued)
+                render()
+                return .line(queued)
+            }
+
             guard let key = nextKey() else { continue }  // resize or timeout; loop
 
             // The editing cases only mutate state; the single `render()` at the
@@ -200,24 +225,12 @@ public final class TerminalIOHandler: IOHandler {
             case .enter:
                 let line = box.withLock { st -> String in
                     let line = st.input
-                    let isComment = TesterInput.isComment(line)
-                    if isComment {
-                        st.commentIndices.insert(st.transcript.count)
-                    }
-                    st.transcript.append(st.prompt + line)
-                    // Comments are notes, not commands: keep them out of Up/Down
-                    // recall so history stays a list of things the game ran.
-                    if !isComment, !line.trimmingCharacters(in: .whitespaces).isEmpty {
-                        st.history.append(line)
-                    }
                     st.input = ""
                     st.cursor = 0
-                    st.scrollOffset = 0
+                    Self.record(line, in: &st)
                     return line
                 }
-                if let historyURL, !TesterInput.isComment(line) {
-                    Self.appendHistory(line, to: historyURL)
-                }
+                persistHistory(line)
                 render()
                 return .line(line)
 
@@ -249,6 +262,14 @@ public final class TerminalIOHandler: IOHandler {
                         st.transcript.append(Self.formatCandidateListing(outcome.listing))
                         st.scrollOffset = 0
                     }
+                }
+
+            case .paste(let text):
+                box.withLock { st in
+                    let outcome = Self.applyPaste(text, input: st.input, cursor: st.cursor)
+                    st.input = outcome.newInput
+                    st.cursor = outcome.newCursor
+                    st.pendingLines.append(contentsOf: outcome.submitted)
                 }
 
             case .character(let ch):
@@ -312,6 +333,34 @@ public final class TerminalIOHandler: IOHandler {
         }
     }
 
+    /// Books a submitted line into the session: the echoed prompt line joins the
+    /// transcript, marked as a comment when it is one so it paints as an aside,
+    /// and a real command joins Up/Down history. Comments are notes, not commands,
+    /// so history stays a list of things the game actually ran.
+    ///
+    /// Deliberately does *not* clear the editor buffer — a line handed over from
+    /// the paste queue leaves the paste's unterminated tail mid-edit — so
+    /// clearing belongs to the Enter key that meant it.
+    private static func record(_ line: String, in st: inout State) {
+        let isComment = TesterInput.isComment(line)
+        if isComment {
+            st.commentIndices.insert(st.transcript.count)
+        }
+        st.transcript.append(st.prompt + line)
+        if !isComment, !line.trimmingCharacters(in: .whitespaces).isEmpty {
+            st.history.append(line)
+        }
+        st.scrollOffset = 0
+    }
+
+    /// Appends a submitted command to the persistent history file, when there is
+    /// one. Comments are never persisted, for the same reason they're kept out of
+    /// Up/Down recall.
+    private func persistHistory(_ line: String) {
+        guard let historyURL, !TesterInput.isComment(line) else { return }
+        Self.appendHistory(line, to: historyURL)
+    }
+
     // MARK: - Terminal setup
 
     private func enableRawModeAndAltScreen() {
@@ -335,7 +384,10 @@ public final class TerminalIOHandler: IOHandler {
             signal(sig, gnustoFatalSignalHandler)
         }
 
-        emit("\u{1B}[?1049h")  // alternate screen buffer
+        // Alternate screen buffer, then bracketed paste — which wraps pasted text
+        // in `ESC[200~`/`ESC[201~` so the editor can tell it from typing. Both are
+        // dropped again by `gnustoEmergencyRestore`, on every exit path.
+        emit("\u{1B}[?1049h\u{1B}[?2004h")
     }
 
     /// Sets one entry of the `c_cc` control-character array. `c_cc` imports as
@@ -660,6 +712,112 @@ public final class TerminalIOHandler: IOHandler {
     /// Formats ambiguous candidate words into one transcript line.
     private static func formatCandidateListing(_ candidates: [String]) -> String {
         candidates.joined(separator: "   ")
+    }
+
+    // MARK: - Bracketed paste
+
+    /// The result of folding a bracketed paste into the line being edited: the
+    /// lines it submitted, and the buffer and caret it left behind.
+    struct PasteOutcome: Equatable {
+        var submitted: [String]
+        var newInput: String
+        var newCursor: Int
+    }
+
+    /// Folds a pasted block into the line being edited.
+    ///
+    /// The text is sanitized first: a tab becomes a space (a literal tab measures
+    /// zero columns in ``DisplayWidth`` but advances the real terminal, so one in
+    /// the buffer would desync the caret math for the rest of the line), and other
+    /// control characters are dropped — bracketed paste doesn't escape them, so
+    /// otherwise a stray `0x03` in the payload would open the quit-confirm and the
+    /// text after it would answer.
+    ///
+    /// What the newlines mean depends on the buffer as it stands, decided once,
+    /// before the paste:
+    ///
+    /// - **Already a comment** (``TesterInput/isComment(_:)``): the block folds
+    ///   into one line, each break becoming a single space, with whitespace around
+    ///   the break and any blank lines absorbed into it. Nothing is submitted —
+    ///   the tester presses Return when the note reads right. This is the point of
+    ///   the exercise: a pasted multiline note is one note, costing one transcript
+    ///   entry and no turns.
+    /// - **Anything else**: a break is a submit, so pasting a walkthrough still
+    ///   runs one command per line. Whitespace-only lines submit nothing, and a
+    ///   block without a trailing newline leaves its last line mid-edit.
+    ///
+    /// Either way the text lands at the caret with the old remainder after it, so
+    /// a paste containing no line break is indistinguishable from typing.
+    ///
+    /// - Parameters:
+    ///   - pasted: the text between the bracketed-paste markers.
+    ///   - input: the line currently being edited.
+    ///   - cursor: the caret's character offset into `input`.
+    /// - Returns: the lines to submit, and the resulting line and caret.
+    static func applyPaste(_ pasted: String, input: String, cursor: Int) -> PasteOutcome {
+        let chars = Array(input)
+        let caret = max(0, min(cursor, chars.count))
+        let head = String(chars[0..<caret])
+        let tail = String(chars[caret...])
+        let segments = pastedSegments(pasted)
+
+        if TesterInput.isComment(input) {
+            let joined = joinedWithSpaces(segments)
+            return PasteOutcome(
+                submitted: [],
+                newInput: head + joined + tail,
+                newCursor: caret + joined.count)
+        }
+
+        // The paste is spliced into the line, so the buffer's two halves belong to
+        // the outer segments; every break between them is a submit, and the last
+        // segment is left in the editor.
+        var pieces = segments
+        pieces[0] = head + pieces[0]
+        pieces[pieces.count - 1] += tail
+        let buffer = pieces.removeLast()
+        return PasteOutcome(
+            submitted: pieces.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty },
+            newInput: buffer,
+            newCursor: buffer.count - tail.count)
+    }
+
+    /// Splits pasted text into the lines it spells, sanitizing as it goes: a tab
+    /// becomes a space, other control characters are dropped, and any newline ends
+    /// a segment — including a `\r\n` pair, which is a single `Character`, so a
+    /// Windows-ended paste yields one break rather than two. Always returns at
+    /// least one segment.
+    private static func pastedSegments(_ pasted: String) -> [String] {
+        var segments = [""]
+        for character in pasted {
+            if character.isNewline {
+                segments.append("")
+            } else if character == "\t" {
+                segments[segments.count - 1].append(" ")
+            } else if let ascii = character.asciiValue, ascii < 0x20 || ascii == 0x7F {
+                continue
+            } else {
+                segments[segments.count - 1].append(character)
+            }
+        }
+        return segments
+    }
+
+    /// Joins pasted segments into one line, each break becoming a single space.
+    /// Whitespace on either side of a break is absorbed into that space and blank
+    /// lines contribute nothing, so wrapped or double-spaced prose folds to clean
+    /// single spacing. The first segment keeps its leading whitespace, so a paste
+    /// with no break stays indistinguishable from typing.
+    private static func joinedWithSpaces(_ segments: [String]) -> String {
+        var joined = segments[0]
+        for segment in segments.dropFirst() {
+            let trimmed = segment.drop(while: \.isWhitespace)
+            guard !trimmed.isEmpty else { continue }
+            while let last = joined.last, last.isWhitespace { joined.removeLast() }
+            if !joined.isEmpty { joined.append(" ") }
+            joined.append(contentsOf: trimmed)
+        }
+        return joined
     }
 
     // MARK: - Persistent history
