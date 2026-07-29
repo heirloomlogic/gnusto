@@ -149,9 +149,9 @@ References stay token-based across the boundary, so a host item can sit in a plu
 
 ## The first-party plugins
 
-Four shipped library products exercise both plugin shapes for real — each
+Six shipped library products exercise both plugin shapes for real — each
 imports only `Gnusto`, and the Zork 1 executable target is the worked
-example that wires all four:
+example that wires the first four:
 
 | Product | Shape | Owns | The host passes |
 | --- | --- | --- | --- |
@@ -159,6 +159,8 @@ example that wires all four:
 | `GnustoScoring` | `GameContent` | award-once registers | treasures + the trophy case to `treasures(_:into:)` |
 | `GnustoActors` | `GamePlugin` | nothing — position *is* the actor's placement | actors, room sets, candidates to `roams`/`steals`/`reaction` |
 | `GnustoMeleeCombat` | `GameContent` | the combat ledger (health/stun by key) | villains, weapons, prose to `villain`/`aggression` |
+| `GnustoSpellcasting` | `GameContent` | the spell memory and the energy pool | spells + their ``SpellCost`` to `spell(_:cost:effect:)` |
+| `GnustoClock` | `GameContent` | the clock's offset and pause state | start time, minutes per turn, alarms to `at(_:named:perform:)` |
 
 The split follows one rule: a system that needs its own saved state is a
 `GameContent` bundle (its `@Global`s namespace automatically and travel in
@@ -171,6 +173,8 @@ string in the game's own voice.
 ## Worked examples
 
 - `Sources/Lighthouse/` — a small host that splices just two: `GnustoScoring` (a `visit` award and a one-off `awardOnce`) and `GnustoActors` (a roaming keeper). The smallest of these examples.
-- `Sources/Zork1/Zork1.swift` — the host that wires all four first-party plugins over entities from three content bundles.
+- `Sources/Zork1/Zork1.swift` — the host that wires four first-party plugins over entities from three content bundles.
+- `Sources/Gramarye/Gramarye.swift` — a small original game built entirely around `GnustoSpellcasting`, with one puzzle per casting paradigm.
+- `Sources/Fulminate/Fulminate.swift` — the mystery demo, built around `GnustoClock`: an evening on a wall clock with three alarms bracketing it. Its story and mechanics contract live in `docs/games/fulminate.md`.
 - `Tests/GnustoTests/Support/CommerceGame.swift` — the logic-only commerce plugin (`buy`/`sell` verbs, `purchase`/`sale` factories, `LampShop` host); `PluginTests` drives a buy/sell turn end to end.
 - `Tests/GnustoTests/Support/ShrineContent.swift` — the content-bearing `ShrineContent` plugin (owns a namespaced shrine region *and* exposes an `offering` factory) with its `PilgrimGame` host; `ContentPluginTests` drives a donate turn across the namespace boundary and checks the namespacing.
