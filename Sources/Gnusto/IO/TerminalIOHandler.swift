@@ -483,28 +483,13 @@ public final class TerminalIOHandler: IOHandler {
 
     // MARK: - Input
 
-    /// A decoded keypress: an editing command or one or more printable
-    /// characters.
-    private enum Key {
-        case character(String)
-        case enter, backspace, deleteForward, tab
-        case left, right, home, end
-        case historyPrev, historyNext
-        case pageUp, pageDown
-        case eof, interrupt
-    }
+    /// The keys the editor switches on. ``KeyDecoder`` owns the decoding; this
+    /// alias keeps the editor's `case .enter`-style patterns unqualified.
+    private typealias Key = KeyDecoder.Key
 
-    /// One raw byte, or `interrupted` for a read that timed out (the `VTIME`
-    /// poll) or was broken by a signal — the caller loops to service a resize.
-    /// A genuine terminal close arrives as `SIGHUP`, handled separately, so a
-    /// zero-length read here is treated as a timeout, not EOF.
-    private enum RawByte {
-        case byte(UInt8)
-        case eof
-        case interrupted
-    }
-
-    private func readRawByte() -> RawByte {
+    /// Reads one byte from stdin for ``KeyDecoder``. Touches no instance state,
+    /// so it can be handed over as a plain function value.
+    private static func readStandardInputByte() -> KeyDecoder.RawByte {
         var byte: UInt8 = 0
         let n = read(STDIN_FILENO, &byte, 1)
         if n == 1 { return .byte(byte) }
@@ -520,88 +505,7 @@ public final class TerminalIOHandler: IOHandler {
         if gnustoWindowResized.exchange(false, ordering: .relaxed) {
             render()
         }
-        return readKey()
-    }
-
-    /// Reads and decodes the next keypress. Returns `nil` when interrupted, so
-    /// the caller can service a pending resize and try again.
-    private func readKey() -> Key? {
-        switch readRawByte() {
-        case .interrupted:
-            return nil
-        case .eof:
-            return .eof
-        case .byte(let b):
-            switch b {
-            case 0x03: return .interrupt
-            case 0x04: return .eof
-            case 0x09: return .tab
-            case 0x0A, 0x0D: return .enter
-            case 0x7F, 0x08: return .backspace
-            case 0x1B: return readEscapeSequence()
-            case 0x00..<0x20: return readKey()  // ignore other control bytes
-            default: return decodeUTF8(leadByte: b)
-            }
-        }
-    }
-
-    /// Parses a CSI escape sequence (arrows, Home/End, Delete, Page keys). A
-    /// bare or unrecognized ESC is swallowed.
-    private func readEscapeSequence() -> Key? {
-        guard case .byte(let b1) = readRawByte(), b1 == 0x5B || b1 == 0x4F else {
-            return readKey()  // lone ESC; move on to the next key
-        }
-        guard case .byte(let b2) = readRawByte() else { return readKey() }
-        switch b2 {
-        case 0x41: return .historyPrev  // Up
-        case 0x42: return .historyNext  // Down
-        case 0x43: return .right
-        case 0x44: return .left
-        case 0x48: return .home  // ESC[H / ESC OH
-        case 0x46: return .end  // ESC[F / ESC OF
-        case 0x30...0x39:  // numeric parameter, terminated by '~'
-            var param = String(UnicodeScalar(b2))
-            while case .byte(let n) = readRawByte() {
-                if n == 0x7E { break }
-                // Cap the accumulator: a real parameter is a digit or two, so a
-                // stream that never sends the terminator can't grow it without
-                // bound. An overlong sequence falls through to the unknown-
-                // sequence discard path below.
-                guard param.count < 8 else { return readKey() }
-                param.append(Character(UnicodeScalar(n)))
-            }
-            switch param {
-            case "1", "7": return .home
-            case "4", "8": return .end
-            case "3": return .deleteForward
-            case "5": return .pageUp
-            case "6": return .pageDown
-            default: return readKey()
-            }
-        default:
-            return readKey()
-        }
-    }
-
-    /// Gathers the continuation bytes of a UTF-8 sequence begun by `leadByte`
-    /// and returns the resulting character(s).
-    private func decodeUTF8(leadByte: UInt8) -> Key? {
-        let extra: Int
-        switch leadByte {
-        case 0xC0...0xDF: extra = 1
-        case 0xE0...0xEF: extra = 2
-        case 0xF0...0xF7: extra = 3
-        default: extra = 0
-        }
-        var bytes = [leadByte]
-        for _ in 0..<extra {
-            guard case .byte(let b) = readRawByte() else { break }
-            bytes.append(b)
-        }
-        guard let string = String(bytes: bytes, encoding: .utf8), !string.isEmpty else {
-            return readKey()  // invalid sequence; skip it
-        }
-        return .character(string)
+        return KeyDecoder(nextByte: Self.readStandardInputByte).next()
     }
 
     /// Writes a string straight to stdout, bypassing stdio buffering so frames
