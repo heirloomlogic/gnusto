@@ -118,20 +118,133 @@ struct FulminateTests {
     }
 
     /// The receipt turns up only when the player decides to go through
-    /// somebody else's pockets — and the search doesn't first report the coat
-    /// empty and then contradict itself.
-    @Test func theReceiptTurnsUpOnlyWhenTheCoatIsSearched() async throws {
-        let transcript = try await play(
-            Fulminate(), ["look", "search coat", "take receipt", "read receipt"])
+    /// somebody else's pockets — and only once there is a receipt to find. A
+    /// slip stamped 6:05 cannot be in that coat at half past five, so the
+    /// search comes back empty until Teague is home from the drugstore.
+    @Test func theReceiptIsNotInTheCoatUntilTeagueIsBackFromTheDrugstore() async throws {
+        let early = try await play(Fulminate(), ["look", "search coat"])
+        #expect(!turnOutput(of: "look", in: early).contains("receipt"))
+        #expect(!turnOutput(of: "search coat", in: early).contains("register paper"))
 
-        let arrival = turnOutput(of: "look", in: transcript)
-        #expect(!arrival.contains("receipt"))
-
-        let search = turnOutput(of: "search coat", in: transcript)
+        // Teague is back at 6:10, which is the end of turn 21.
+        let late = try await play(
+            Fulminate(),
+            Array(repeating: "z", count: 21) + ["search coat", "take receipt", "read receipt"])
+        let search = turnOutput(of: "search coat", in: late)
         #expect(search.contains("a slip of register paper, folded once"))
         #expect(!search.contains("is empty"))
+        #expect(late.contains("6:05"))
+    }
 
-        #expect(transcript.contains("6:05"))
+    // MARK: - The household's rounds
+
+    /// The opening tableau is read out of the five timetables rather than
+    /// written down twice, so where everyone starts and where the schedule
+    /// says they start cannot disagree.
+    @Test func everyoneStartsWhereTheirTimetableSaysAtHalfPastFive() async throws {
+        let game = Fulminate()
+        let start = game.clock.start
+        #expect(game.teagueDay.location(at: start) == game.boardersRoom)
+        #expect(game.constanceDay.location(at: start) == game.parlour)
+        #expect(game.kettleDay.location(at: start) == game.kitchen)
+        #expect(game.delphineDay.location(at: start) == game.backYard)
+        #expect(game.pikeDay.location(at: start) == game.parlour)
+
+        let transcript = try await play(Fulminate(), ["west", "east", "south"])
+        expectInOrder(
+            transcript,
+            [
+                "Mrs. Vane is in her chair with the lamp unlit.",  // parlour
+                "Mrs. Kettle is here, keeping busy.",  // kitchen
+            ])
+    }
+
+    /// The whole of Teague's trip to the lab happens in front of the cook.
+    /// This is the crossing the player can witness.
+    @Test func teaguesCrossingToTheLabIsVisibleFromTheKitchen() async throws {
+        let transcript = try await play(Fulminate(), ["south"] + Array(repeating: "z", count: 7))
+        expectInOrder(
+            transcript,
+            [
+                "Mrs. Kettle is here, keeping busy.",
+                "Teague comes down the back stairs with his hat already on.",  // 5:36
+                "Teague lets himself out the yard door.",  // 5:38
+                "Teague comes back through the kitchen",  // 5:42
+            ])
+    }
+
+    /// And this is the crossing the player can miss. Spend the same eight
+    /// turns upstairs and the evening's most useful fact goes past unseen.
+    @Test func theSameCrossingIsMissedEntirelyFromUpstairs() async throws {
+        let transcript = try await play(Fulminate(), ["up", "west"] + Array(repeating: "z", count: 6))
+        #expect(!transcript.contains("Teague lets himself out the yard door."))
+        #expect(!transcript.contains("Teague comes back through the kitchen"))
+    }
+
+    /// The mystery's payoff: where he was is a lookup, not a line of prose
+    /// somebody has to keep in step with the schedule. Both minutes below
+    /// fall inside the half hour he will later place himself at a drugstore
+    /// on Colorado.
+    @Test func theTimetableAnswersWhereTeagueWasMinuteByMinute() {
+        let game = Fulminate()
+        #expect(game.teagueDay.location(at: TimeOfDay(17, 36)) == game.kitchen)
+        #expect(game.teagueDay.location(at: TimeOfDay(17, 40)) == game.carriageHouse)
+    }
+
+    /// Off the map from 5:44 to 6:10 — there are questions that can only be
+    /// put to him inside a window.
+    @Test func teagueIsOffTheMapBetweenAQuarterToSixAndTenPast() async throws {
+        let game = Fulminate()
+        #expect(game.teagueDay.location(at: TimeOfDay(18, 0)) == game.street)
+
+        // Fifteen turns in, at six o'clock, he is not anywhere the player can
+        // reach — including the hall he walked out of.
+        let transcript = try await play(
+            Fulminate(), Array(repeating: "z", count: 15) + ["examine teague"])
+        #expect(turnOutput(of: "examine teague", in: transcript).contains("can't see any such thing"))
+    }
+
+    /// Four of the five come out to the yard two minutes after it happens,
+    /// which is both the natural thing and the first chance the player gets
+    /// to see the whole household in one place. The fifth is on Colorado.
+    @Test func theHouseholdConvergesOnTheYardAfterTheBlast() async throws {
+        let transcript = try await play(
+            Fulminate(), ["south", "west"] + Array(repeating: "z", count: 8))
+        expectInOrder(
+            transcript,
+            [
+                "The carriage house comes apart.",
+                "Mrs. Vane comes out as far as the step",
+            ])
+        #expect(transcript.contains("Mrs. Kettle comes out drying her hands"))
+        #expect(transcript.contains("Dr. Pike arrives in the yard"))
+    }
+
+    /// She goes down without a light at 6:26, and the dark is what hides her:
+    /// the arrival line exists, so the same wait with the flashlight burning
+    /// catches her and without it does not. Testing only the dark half would
+    /// pass just as well against a stop that had nothing to say.
+    @Test func theDarkIsWhatHidesDelphineInTheCellar() async throws {
+        // 6:26 is the end of turn 29. Two turns are spent getting down there.
+        let inTheDark = try await play(
+            Fulminate(), ["south", "down"] + Array(repeating: "z", count: 27))
+        #expect(inTheDark.contains("pitch black"))
+        #expect(!inTheDark.contains("Delphine comes down the cellar steps"))
+
+        let withALight = try await play(
+            Fulminate(),
+            ["south", "open drawer", "take flashlight", "turn on flashlight", "down"]
+                + Array(repeating: "z", count: 24))
+        #expect(withALight.contains("Delphine comes down the cellar steps"))
+    }
+
+    /// Nothing in the evening draws from the seeded stream. Five suspects on
+    /// timetables is five suspects whose alibis mean something.
+    @Test func theEveningIsIdenticalUnderAnySeed() async throws {
+        let commands = Array(repeating: "z", count: 35)
+        let one = try await play(Fulminate(), commands, seed: 1)
+        let other = try await play(Fulminate(), commands, seed: 999)
+        #expect(one == other)
     }
 
     /// You came out here because a man wrote you a letter. Leaving is the one
