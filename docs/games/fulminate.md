@@ -158,7 +158,7 @@ returns where that person actually was, read out of the timetable.
 
 ## Map
 
-Nine rooms.
+Nine the player can reach, plus one they can't.
 
 ```
                     Carriage House  ──  (Wreckage after 5:46)
@@ -185,6 +185,7 @@ Nine rooms.
 | **Landing** | Upstairs hall. |
 | **Vane's Study** | The desk. The ledger. The lodge letters. |
 | **Boarder's Room** | Teague's. A typewriter and a suitcase that is packed too early. |
+| **Orange Grove Avenue** | Off the map — no exit leads here. Where Teague is from 5:44 to 6:10. |
 
 The dark cellar is not decoration. It is where the engine's "NPC movement is silent in an
 unlit room" behavior gets demonstrated, and it is why the flashlight exists.
@@ -194,25 +195,35 @@ unlit room" behavior gets demonstrated, and it is why the flashlight exists.
 ## Timeline
 
 Two minutes per turn. The game opens at **5:30 pm** and ends no later than **6:50 pm** —
-forty turns of investigation after the blast.
+forty turns of investigation after the blast. Turn *n* reads `17:30 + 2(n-1)`, so the blast
+ends turn 9, the telephone turn 26, and the coroner turn 41.
 
-| Time | Beat |
-|---|---|
-| **5:30** | You arrive. Julian is alive in the carriage house, and **askable for eight turns.** |
-| 5:36 | Teague leaves his room and takes the back stairs down. |
-| 5:38 | Teague reaches the carriage house. If you are in the yard you see him go in. |
-| 5:42 | Teague comes back through the kitchen. **Mrs. Kettle sees him.** |
-| 5:44 | Teague crosses the front hall and goes out to the street. |
-| **5:46** | **The blast.** First alarm. Every timetable converges on the back yard. |
-| 5:54 | Constance withdraws to the parlour and stays there. |
-| 6:00 | Mrs. Kettle goes back to her kitchen. |
-| 6:02 | Delphine goes up to the study. |
-| 6:10 | Teague comes back from the street. |
-| 6:14 | Pike goes up to the study. |
-| **6:20** | **The telephone rings.** Second alarm. A tip from the lab's night man. |
-| 6:26 | Delphine goes down to the cellar. **Silent — the cellar is dark.** |
-| 6:30 | Teague goes up to his room and starts packing. |
-| **6:50** | **The coroner.** Third alarm. Accident ruling. Game over. |
+**This table is as-built.** The five timetables in `Sources/Fulminate/Fulminate.swift` are
+the source of truth; if they and this disagree, they win.
+
+| Time | Who | Beat |
+|---|---|---|
+| **5:30** | — | You arrive. Julian is alive in the carriage house, and **askable for eight turns.** |
+| 5:36 | Teague | Down the back stairs into the kitchen — *through the room Mrs. Kettle is standing in.* |
+| 5:38 | Teague | Out the yard door and into the carriage house. |
+| 5:42 | Teague | Back through the kitchen, saying nothing to anybody. |
+| 5:44 | Teague | Across the front hall and out the front door, "for cigarettes". |
+| **5:46** | — | **The blast.** First alarm. Julian is gone. |
+| 5:46 | Teague | Off the map, on Orange Grove Avenue, where the player can't follow. |
+| 5:48 | Constance, Kettle, Pike | Out to the yard. Delphine is already standing in it. |
+| 5:54 | Constance | Back to the parlour, and stays there. |
+| 6:00 | Kettle | Back to her kitchen, on the grounds that somebody has to. |
+| 6:02 | Delphine | Up to the study, straight to the desk drawers. |
+| **6:10** | Teague | Home, with a paper bag. **The receipt exists from here on.** |
+| 6:14 | Pike | Into the study, and not pleased to find company. |
+| **6:20** | — | **The telephone rings.** Second alarm — the lab's night man, about Pike. |
+| 6:26 | Delphine | Down to the cellar, without a light. **Silent — the cellar is dark.** |
+| 6:30 | Teague | Up to his room. |
+| **6:50** | — | **The coroner.** Third alarm. Accident ruling. Game over. |
+
+**The receipt is not in the coat until 6:10.** A slip stamped 6:05 cannot be in a pocket at
+half past five. Searching the coat early turns up an empty pocket — the honest answer, and
+the better one, because it gives the evidence a time as well as a place.
 
 Two structural notes for whoever rewrites this:
 

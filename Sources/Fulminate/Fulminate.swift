@@ -49,6 +49,12 @@ struct Fulminate: Game, GameMain {
     /// describe themselves on the right side of the evening.
     @Global var blastHappened = false
 
+    /// Whether Teague is back from the drugstore. The receipt is in his coat
+    /// pocket only after he has been out and bought the thing — searching the
+    /// coat before ten past six turns up an empty pocket, which is the honest
+    /// answer and also the more interesting one.
+    @Global var teagueIsBack = false
+
     /// Both ways out of the front hall refuse in the same words. A `static`
     /// rather than a stored property so the bootstrap's reflection walk, which
     /// looks for entities, doesn't have to step over it.
@@ -128,6 +134,14 @@ struct Fulminate: Game, GameMain {
             A typewriter with a sheet still in it, and a suitcase on the bed packed for a longer trip than anybody \
             has mentioned.
             """)
+    }
+
+    /// Off the map: no exit leads here and the player never sees it. It is
+    /// where Teague is between a quarter to six and ten past, which is the
+    /// point — there are questions you can only put to him inside a window.
+    let street = Location {
+        name("Orange Grove Avenue")
+        description("Not a place you get to tonight.")
     }
 
     // MARK: - The hall
@@ -261,6 +275,68 @@ struct Fulminate: Game, GameMain {
         firstSight("Julian Vane is at the bench with his back to the door.")
     }
 
+    // MARK: - The household
+
+    let constance = Actor {
+        name("Mrs. Vane")
+        adjectives("mrs", "missus", "old", "constance")
+        synonyms("vane", "constance", "mother", "woman")
+        description(
+            """
+            Seventy-one, upright in a chair that has taken the shape of her. She has the stillness of someone who \
+            stopped expecting anything some years ago and has been managing on the arrangement since.
+            """)
+        firstSight("Mrs. Vane is in her chair with the lamp unlit.")
+    }
+
+    let delphine = Actor {
+        name("Delphine Marsh")
+        adjectives("delphine", "miss", "young")
+        synonyms("marsh", "delphine", "woman", "painter")
+        description(
+            """
+            Thirty-four, in a man's shirt with paint on the cuff. She looks back at you a beat longer than most \
+            people do, and it is not a challenge, it is arithmetic.
+            """)
+        firstSight("Delphine Marsh is here, not doing much.")
+    }
+
+    let teague = Actor {
+        name("Howard Teague")
+        adjectives("howard", "mr", "mister")
+        synonyms("teague", "howard", "boarder", "man")
+        description(
+            """
+            Forty-ish, in a jacket that was pressed this morning by somebody. He is the most helpful person in this \
+            house, which is a thing worth noticing about a house where a man has just died.
+            """)
+        firstSight("Howard Teague is here, being helpful.")
+    }
+
+    let pike = Actor {
+        name("Dr. Pike")
+        adjectives("dr", "doctor", "aldous")
+        synonyms("pike", "aldous", "man")
+        description(
+            """
+            Fifty, and wearing his hat indoors because taking it off would mean he had arrived somewhere. He would \
+            like very much to be back up the arroyo.
+            """)
+        firstSight("Dr. Pike is standing about with his hat on.")
+    }
+
+    let kettle = Actor {
+        name("Mrs. Kettle")
+        adjectives("mrs", "missus", "iris", "cook")
+        synonyms("kettle", "iris", "cook", "housekeeper", "woman")
+        description(
+            """
+            Sixty-two, and the only person here who has looked at the wreckage and then gone back to what she was \
+            doing. She misses nothing and says most of it.
+            """)
+        firstSight("Mrs. Kettle is here, keeping busy.")
+    }
+
     // MARK: - Upstairs
 
     let desk = Item {
@@ -314,15 +390,132 @@ struct Fulminate: Game, GameMain {
         container
     }
 
+    // MARK: - The evening, written down
+
+    // These five timetables are the case. Everything the household later says
+    // about where it was is checked against them rather than against prose —
+    // `clock.location(of:at:)` reads the same data that drove the movement, so
+    // a schedule edit cannot leave a lie standing by accident.
+    //
+    // Computed rather than stored because a stored property initializer cannot
+    // see `self`, and these have to name the rooms above.
+
+    /// The boarder's evening, and the only one that goes near the lab. Down
+    /// the back stairs at 5:36, into the carriage house at 5:38, back through
+    /// the kitchen at 5:42 where Mrs. Kettle is standing over her pot, out the
+    /// front door at 5:44 — and off the map until ten past six.
+    var teagueDay: Timetable {
+        Timetable(stops: [
+            Stop(at: TimeOfDay(17, 30), in: boardersRoom),
+            Stop(
+                at: TimeOfDay(17, 36), in: kitchen,
+                departure: "Teague's door goes, and there are feet on the back stairs.",
+                arrival: "Teague comes down the back stairs with his hat already on."),
+            Stop(
+                at: TimeOfDay(17, 38), in: carriageHouse,
+                departure: "Teague lets himself out the yard door.",
+                arrival: "Teague puts his head round the carriage house door and says something short."),
+            Stop(
+                at: TimeOfDay(17, 42), in: kitchen,
+                departure: "Teague comes back out of the carriage house, not hurrying.",
+                arrival: "Teague comes back through the kitchen and says nothing to anybody."),
+            Stop(
+                at: TimeOfDay(17, 44), in: frontHall,
+                arrival: "Teague crosses the hall, says he is going for cigarettes, and goes."),
+            Stop(at: TimeOfDay(17, 46), in: street),
+            Stop(
+                at: TimeOfDay(18, 10), in: frontHall,
+                arrival: "The front door goes. Teague is back, with a paper bag and a great deal to say."
+            ) {
+                teagueIsBack = true
+            },
+            Stop(
+                at: TimeOfDay(18, 30), in: boardersRoom,
+                departure: "Teague goes up, saying he needs to sit down."),
+        ])
+    }
+
+    /// The mother's evening: the parlour, six minutes in the yard after the
+    /// blast, and the parlour again.
+    var constanceDay: Timetable {
+        Timetable(stops: [
+            Stop(at: TimeOfDay(17, 30), in: parlour),
+            Stop(
+                at: TimeOfDay(17, 48), in: backYard,
+                arrival: "Mrs. Vane comes out as far as the step and stops there."),
+            Stop(
+                at: TimeOfDay(17, 54), in: parlour,
+                departure: "Mrs. Vane goes back inside without having said anything at all."),
+        ])
+    }
+
+    /// The cook's evening: her kitchen, the yard, her kitchen. She is the one
+    /// person here whose account will match the schedule.
+    var kettleDay: Timetable {
+        Timetable(stops: [
+            Stop(at: TimeOfDay(17, 30), in: kitchen),
+            Stop(
+                at: TimeOfDay(17, 48), in: backYard,
+                arrival: "Mrs. Kettle comes out drying her hands and does not stop drying them."),
+            Stop(
+                at: TimeOfDay(18, 0), in: kitchen,
+                departure: "Mrs. Kettle goes back to her kitchen, on the grounds that somebody has to."
+            ),
+        ])
+    }
+
+    /// The partner's evening: the yard when it happens, then the study, then
+    /// the cellar — where the dark makes her the one person whose movements
+    /// the player can genuinely lose.
+    var delphineDay: Timetable {
+        Timetable(stops: [
+            Stop(at: TimeOfDay(17, 30), in: backYard),
+            Stop(
+                at: TimeOfDay(18, 2), in: study,
+                departure: "Delphine goes inside.",
+                arrival: "Delphine comes into the study and starts on the desk drawers."),
+            // The arrival line is written even though the cellar is unlit, so
+            // that the dark is doing the hiding rather than the prose being
+            // absent. A player standing down there with the flashlight on
+            // sees her; a player standing down there without it does not.
+            Stop(
+                at: TimeOfDay(18, 26), in: cellar,
+                departure: "Delphine takes the cellar stairs down, and does not take a light.",
+                arrival: "Delphine comes down the cellar steps and stops when she sees you."),
+        ])
+    }
+
+    /// The visitor's evening: the parlour, the yard, and then the study, where
+    /// what he wants is.
+    var pikeDay: Timetable {
+        Timetable(stops: [
+            Stop(at: TimeOfDay(17, 30), in: parlour),
+            Stop(
+                at: TimeOfDay(17, 48), in: backYard,
+                arrival: "Dr. Pike arrives in the yard holding his hat against his chest."),
+            Stop(
+                at: TimeOfDay(18, 14), in: study,
+                departure: "Dr. Pike goes back into the house.",
+                arrival: "Dr. Pike lets himself into the study and is not pleased to find company."),
+        ])
+    }
+
     // MARK: - Composition
 
     var content: GameContents {
         clock
     }
 
-    /// The evening's three fixed points. Everything else in the house moves;
-    /// these do not, and they are what the player is racing.
+    /// The five rounds, and the evening's three fixed points. Everything in
+    /// the house moves except the three alarms, and those are what the player
+    /// is racing.
     var timers: [TimedEvent] {
+        clock.schedule(teague, daemonName: "teague.day", teagueDay)
+        clock.schedule(constance, daemonName: "constance.day", constanceDay)
+        clock.schedule(kettle, daemonName: "kettle.day", kettleDay)
+        clock.schedule(delphine, daemonName: "delphine.day", delphineDay)
+        clock.schedule(pike, daemonName: "pike.day", pikeDay)
+
         // 5:46. The inciting event, and the reason there is a case at all.
         clock.at(TimeOfDay(17, 46), named: "clock.blast") {
             blastHappened = true
@@ -392,9 +585,11 @@ struct Fulminate: Game, GameMain {
         // coat in somebody else's hall is the sort of thing the player should
         // have to decide to do.
         // Before, not after: the default action would otherwise report the
-        // pockets empty and then the rule would contradict it.
+        // pockets empty and then the rule would contradict it. And nothing is
+        // there to find until Teague has been out and come back — a receipt
+        // stamped 6:05 cannot be in a pocket at half past five.
         coat.before(.lookIn) {
-            guard !receipt.isRevealed else { return }
+            guard teagueIsBack, !receipt.isRevealed else { return }
             receipt.reveal()
             try reply("In the inside pocket there is a slip of register paper, folded once.")
         }
@@ -496,6 +691,14 @@ struct Fulminate: Game, GameMain {
         workbench.starts(in: carriageHouse)
         can.starts(in: carriageHouse)
         julian.starts(in: carriageHouse)
+
+        // Everyone starts where their own timetable says they are at 5:30, so
+        // the opening tableau and the schedule can't disagree.
+        teague.starts(in: teagueDay.location(at: clock.start))
+        constance.starts(in: constanceDay.location(at: clock.start))
+        kettle.starts(in: kettleDay.location(at: clock.start))
+        delphine.starts(in: delphineDay.location(at: clock.start))
+        pike.starts(in: pikeDay.location(at: clock.start))
 
         desk.starts(in: study)
         ledger.starts(in: study)
