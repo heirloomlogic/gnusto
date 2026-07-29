@@ -161,7 +161,7 @@ example that wires the first four:
 | `GnustoMeleeCombat` | `GameContent` | the combat ledger (health/stun by key) | villains, weapons, prose to `villain`/`aggression` |
 | `GnustoSpellcasting` | `GameContent` | the spell memory and the energy pool | spells + their ``SpellCost`` to `spell(_:cost:effect:)` |
 | `GnustoClock` | `GameContent` | the clock's offset and pause state | start time, minutes per turn, alarms to `at(_:named:perform:)`, timetables to `schedule(_:daemonName:_:)` |
-| `GnustoConversation` | `GameContent` | the facts the player has worked out | actors + topic rows to `topics(of:)`, evidence to `shows(_:to:)` |
+| `GnustoConversation` | `GameContent` | the facts the player has worked out, and which answers each actor has already given | actors + topic rows to `topics(of:)` (with `again:` lines for the answers that should land once), opening lines to `greeting(of:)`, evidence to `shows(_:to:)` |
 
 The split follows one rule: a system that needs its own saved state is a
 `GameContent` bundle (its `@Global`s namespace automatically and travel in

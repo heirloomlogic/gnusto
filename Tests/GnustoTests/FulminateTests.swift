@@ -106,23 +106,38 @@ struct FulminateTests {
 
     // MARK: - The radio car
 
-    /// 5:52, the end of turn 12: the radio car, and — for the first time
-    /// anywhere in the game — the deadline. Nobody standing in the hall at
-    /// half past five knows the county's schedule; it is learned in play.
-    @Test func theDeadlineIsLearnedWhenTheRadioCarComes() async throws {
-        let before = try await play(Fulminate(), Array(repeating: "z", count: 11))
-        #expect(!before.contains("ten of seven"))
-
-        let transcript = try await play(
+    /// 5:52, the end of turn 12: the radio car. He arrives with a notebook and
+    /// nothing to volunteer. The deadline reaches the page only when somebody
+    /// puts the question to him — learned in play, not stated in the opening,
+    /// and not dumped on arrival either.
+    @Test func theDeadlineIsAskedForRatherThanAnnounced() async throws {
+        // Turn 12 brings the car, heard from indoors, and no deadline with it.
+        let indoors = try await play(
             Fulminate(), Array(repeating: "z", count: 11) + ["time"])
-        let twelfth = turnOutput(of: "time", in: transcript)
+        let twelfth = turnOutput(of: "time", in: indoors)
         #expect(twelfth.contains("Your watch says 5:52 pm."))
-        #expect(twelfth.contains("due by ten of seven"))
+        #expect(twelfth.contains("A patrolman works through the house taking names"))
+        #expect(!indoors.contains("ten of seven"))
+
+        // Nor does standing in the yard and watching him post himself at it.
+        let inTheYard = try await play(
+            Fulminate(), ["south", "west"] + Array(repeating: "z", count: 12))
+        #expect(inTheYard.contains("posts himself where the door used to be"))
+        #expect(!inTheYard.contains("ten of seven"))
+
+        // It costs a question.
+        let asked = try await play(
+            Fulminate(),
+            Array(repeating: "z", count: 12)
+                + ["south", "west", "north", "ask patrolman about the coroner"])
+        #expect(
+            turnOutput(of: "ask patrolman about the coroner", in: asked)
+                .contains("Due by ten of seven"))
     }
 
-    /// He is posted at the wreckage from 5:52 on, answers exactly one useful
-    /// subject, and the debris stays off limits — the case will not be
-    /// solved by sifting.
+    /// He is posted at the wreckage from 5:52 on, has three answers and only
+    /// one that matters, and the debris stays off limits — the case will not
+    /// be solved by sifting.
     @Test func thePatrolmanKnowsExactlyOneUsefulThing() async throws {
         let commands =
             Array(repeating: "z", count: 12)
@@ -483,4 +498,297 @@ struct FulminateTests {
         let transcript = try await play(Fulminate(), ["east"])
         #expect(transcript.contains("Walking back down the path now"))
     }
+
+    // MARK: - The house answers to its own descriptions
+
+    /// The first thing a play-tester typed in this house was `X TILE`, and the
+    /// house did not know the word — for a noun its own opening paragraph puts
+    /// on the page. This walks the ground floor asking for each of them.
+    @Test func theGroundFloorAnswersToItsOwnDescriptions() async throws {
+        let transcript = try await play(
+            Fulminate(),
+            [
+                "x tile", "x grout", "x hat stand", "x half moon table",
+                "x front door", "x staircase",
+                "west", "x furniture", "x grate", "x lamp", "x wallpaper",
+                "east", "south", "x pine table", "x back stairs", "x cellar steps",
+                "x yard door", "x drawer", "x stove",
+            ])
+        #expect(!transcript.contains("I don't know the word"))
+        #expect(!transcript.contains("can't see any such thing"))
+    }
+
+    /// And upstairs, and the lab. Separately, because the walk is long enough
+    /// that the blast would land in the middle of one trip.
+    @Test func theUpstairsAndTheLabAnswerToo() async throws {
+        let upstairs = try await play(
+            Fulminate(),
+            [
+                "up", "x runner", "west", "x desk", "x drawer", "x lamp",
+                "east", "east", "x typewriter", "x sheet", "x bed", "x suitcase",
+            ])
+        #expect(!upstairs.contains("I don't know the word"))
+        #expect(!upstairs.contains("can't see any such thing"))
+
+        let lab = try await play(
+            Fulminate(),
+            ["south", "west", "north", "x bench", "x tool rack", "x cot", "x stove pipe"])
+        #expect(!lab.contains("I don't know the word"))
+        #expect(!lab.contains("can't see any such thing"))
+
+        // And the cellar's coal bin, which the glove's own description names.
+        let cellar = try await play(
+            Fulminate(),
+            ["south", "open drawer", "take flashlight", "turn on flashlight", "down", "x coal bin"])
+        #expect(turnOutput(of: "x coal bin", in: cellar).contains("three winters of coal dust"))
+    }
+
+    /// The coat is a container with the case's hinge in it, not luggage. You
+    /// cannot take it and you cannot wear it, and going through the pockets
+    /// goes on working, which is the only thing it was ever for.
+    @Test func theOvercoatStaysOnTheStand() async throws {
+        let transcript = try await play(
+            Fulminate(),
+            Array(repeating: "z", count: 21)
+                + ["take coat", "wear coat", "search coat", "take receipt", "inventory"])
+        #expect(turnOutput(of: "take coat", in: transcript).contains("Leave it on the stand."))
+        #expect(turnOutput(of: "wear coat", in: transcript).contains("It is June"))
+        #expect(
+            turnOutput(of: "search coat", in: transcript)
+                .contains("a slip of register paper, folded once"))
+        let inventory = turnOutput(of: "inventory", in: transcript)
+        #expect(inventory.contains("drugstore receipt"))
+        #expect(!inventory.contains("overcoat"))
+    }
+
+    /// The TIME verb has been reading a watch since turn one. It is on the
+    /// player's wrist now, it agrees with the hall clock because he set it by
+    /// the hall clock, and there is no way to put it down.
+    @Test func theWatchIsOnYourWristAndStaysThere() async throws {
+        let transcript = try await play(
+            Fulminate(), ["inventory", "x watch", "remove watch", "drop watch", "time"])
+        #expect(turnOutput(of: "inventory", in: transcript).contains("wristwatch (being worn)"))
+        #expect(turnOutput(of: "x watch", in: transcript).contains("it says 5:32 pm"))
+        #expect(turnOutput(of: "remove watch", in: transcript).contains("straight back on"))
+        #expect(turnOutput(of: "drop watch", in: transcript).contains("since 1943"))
+        #expect(turnOutput(of: "time", in: transcript).contains("Your watch says 5:38 pm."))
+    }
+
+    /// The kitchen names all three of its exits, names the drawer the dark
+    /// cellar needs, and refuses the back stairs in its own words rather than
+    /// the engine's.
+    @Test func theKitchenNamesItsExitsAndRefusesTheBackStairs() async throws {
+        let transcript = try await play(Fulminate(), ["south", "up"])
+        let arrival = turnOutput(of: "south", in: transcript)
+        #expect(arrival.contains("There is a drawer under the counter."))
+        #expect(arrival.contains("The hall is north"))
+        let refused = turnOutput(of: "up", in: transcript)
+        #expect(refused.contains("The back stairs are the household's."))
+        #expect(!refused.contains("can't go that way"))
+    }
+
+    /// The play-tester went down in the dark, got the pitch-black line, and
+    /// never found the light. The cellar says where it is — once, because a
+    /// player who ignores it is making a choice.
+    @Test func theCellarSaysWhereTheLightIs() async throws {
+        let dark = try await play(Fulminate(), ["south", "down", "z"])
+        #expect(dark.contains("pitch black"))
+        #expect(dark.contains("houses like this keep a light in it"))
+        #expect(!turnOutput(of: "z", in: dark).contains("houses like this keep a light in it"))
+
+        let lit = try await play(
+            Fulminate(),
+            ["south", "open drawer", "take flashlight", "turn on flashlight", "down"])
+        #expect(!lit.contains("houses like this keep a light in it"))
+    }
+
+    // MARK: - Shock
+
+    /// A building came down on the player, and the two turns after it should
+    /// know that. The understatement is the voice; the force is the event.
+    @Test func theBlastLeavesYouOnTheGrassForATurn() async throws {
+        let fromYard = try await play(
+            Fulminate(), ["south", "west"] + Array(repeating: "z", count: 9))
+        expectInOrder(
+            fromYard,
+            [
+                "The carriage house comes apart.",
+                "the ground hits you in the back",
+                "There is grass in your cuff",
+                "the note in your ears steps down one",
+            ])
+
+        let fromHall = try await play(Fulminate(), Array(repeating: "z", count: 11))
+        expectInOrder(
+            fromHall,
+            [
+                "one long run of breakage",
+                "The house holds still for a count of three.",
+                "the note in your ears steps down one",
+            ])
+        #expect(!fromHall.contains("There is grass in your cuff"))
+    }
+
+    /// The aftermath lands a turn after the blast, by which time the player
+    /// may have walked somewhere else. What happened to *them* follows them —
+    /// a man knocked flat in the yard still has grass in his cuff in the
+    /// kitchen — but what is happening in the yard stays in the yard.
+    @Test func theAftermathFollowsThePlayerRatherThanTheRoom() async throws {
+        // Knocked down in the yard, then indoors before the beat lands.
+        let outThenIn = try await play(
+            Fulminate(), ["south", "west"] + Array(repeating: "z", count: 7) + ["east"])
+        let indoorTurn = turnOutput(of: "east", in: outThenIn)
+        #expect(indoorTurn.contains("There is grass in your cuff"))
+        #expect(!indoorTurn.contains("Delphine Marsh is standing where she was standing"))
+
+        // And a player who was indoors gets the indoor beat wherever in the
+        // house they have got to by then.
+        let indoors = try await play(
+            Fulminate(), Array(repeating: "z", count: 9) + ["south"])
+        let kitchenTurn = turnOutput(of: "south", in: indoors)
+        #expect(kitchenTurn.contains("The house holds still for a count of three."))
+        #expect(!kitchenTurn.contains("There is grass in your cuff"))
+    }
+
+    /// She is not a woman with nothing to say about her son being dead; she is
+    /// a woman who has said it once already. And before 5:46 the question
+    /// means something else entirely — the row used to answer "My son is dead
+    /// in the garden" from turn one, with Julian alive at his bench.
+    @Test func constanceAndDelphineReactBeforeTheySettle() async throws {
+        let early = try await play(Fulminate(), ["west", "ask mrs. vane about julian"])
+        #expect(
+            turnOutput(of: "ask mrs. vane about julian", in: early)
+                .contains("Julian is in the shed."))
+
+        // She reaches the yard step at the end of turn 10 and goes back in at
+        // the end of turn 13.
+        let after = try await play(
+            Fulminate(),
+            ["south", "west"] + Array(repeating: "z", count: 8)
+                + ["ask mrs. vane about julian", "ask mrs. vane about her son"])
+        expectInOrder(
+            after,
+            [
+                "long enough that you consider asking it again",
+                "That is all she has on the subject.",
+            ])
+
+        let delphine = try await play(
+            Fulminate(),
+            ["south", "west"] + Array(repeating: "z", count: 8)
+                + ["ask delphine about julian", "ask delphine about julian"])
+        expectInOrder(
+            delphine,
+            [
+                "You came out on the wrong Tuesday.",
+                "That was you, I take it.",
+            ])
+    }
+
+    /// Her fallback used to read like the parser had failed. It is a decision
+    /// now, and the player is shown her making it — and she has an answer to
+    /// the obvious question about where she was standing.
+    @Test func delphineDeclinesRatherThanFailing() async throws {
+        let transcript = try await play(
+            Fulminate(),
+            [
+                "south", "west",
+                "ask delphine about the yard",
+                "ask delphine about zeppelins",
+                "ask delphine about the weather",
+            ])
+        #expect(
+            turnOutput(of: "ask delphine about the yard", in: transcript)
+                .contains("if you want it written down somewhere"))
+        #expect(
+            turnOutput(of: "ask delphine about zeppelins", in: transcript)
+                .contains("lets you watch her decide not to answer it"))
+        #expect(
+            turnOutput(of: "ask delphine about the weather", in: transcript)
+                .contains("She goes on looking at whatever she was looking at."))
+    }
+
+    /// The reported defect, in one transcript: the same question twice used to
+    /// return the identical paragraph.
+    @Test func nobodyGivesTheSameAnswerTwice() async throws {
+        let transcript = try await play(
+            Fulminate(),
+            ["west", "ask pike about julian", "ask pike about julian", "hello pike", "hello pike"])
+        expectInOrder(
+            transcript,
+            [
+                "Capable stopped being a defence some years ago.",
+                "\"I've given you that.\" The hat brim does not move.",
+                "He does not give you the hat, the hand, or the rest of the name.",
+                "The hat comes down a degree, which is the whole of it.",
+            ])
+    }
+
+    /// Mrs. Kettle is the exception, and deliberately: her answers are read
+    /// out of the timetables rather than authored, so they go on answering
+    /// however often they are asked. A table's repeat line retires prose, not
+    /// behavior.
+    @Test func mrsKettlesTestimonyIsAlwaysAvailable() async throws {
+        let transcript = try await play(
+            Fulminate(),
+            ["south", "ask kettle about pike", "ask kettle about pike"])
+        #expect(
+            occurrencesInFulminate(of: "The doctor sat in the parlour", in: transcript) == 2)
+    }
+
+    // MARK: - Following, and saying hello
+
+    /// The engine's FOLLOW searches one exit deep, which is honest and safe;
+    /// Teague's crossing is two, so the game buys that one pursuit itself.
+    @Test func followingTeagueOutOfTheKitchen() async throws {
+        // He lets himself out the yard door at the end of turn 5 and is in the
+        // carriage house until 5:42.
+        let transcript = try await play(
+            Fulminate(), ["south", "z", "z", "z", "z", "follow teague"])
+        let followed = turnOutput(of: "follow teague", in: transcript)
+        #expect(followed.contains("(after Teague, out through the yard door)"))
+        #expect(followed.contains("Back Yard"))
+
+        // And the stock refusals wear proper names rather than "the".
+        let refused = try await play(Fulminate(), ["follow clock", "follow kettle"])
+        #expect(turnOutput(of: "follow clock", in: refused).contains("isn't going anywhere"))
+        #expect(
+            turnOutput(of: "follow kettle", in: refused).contains("(after Mrs. Kettle)"))
+    }
+
+    /// Three of this cast answer to "man" and three to "woman". FOLLOW can
+    /// name somebody who has left the room, so the danger is that `follow man`
+    /// on turn one reads the whole cast list out of an empty hall.
+    @Test func followingAnAmbiguousNameNeverReadsOutTheCast() async throws {
+        let transcript = try await play(Fulminate(), ["follow man", "follow woman"])
+        #expect(!transcript.contains("Which do you mean"))
+        #expect(!transcript.contains("Dr. Pike"))
+        #expect(!transcript.contains("Delphine Marsh"))
+        #expect(turnOutput(of: "follow man", in: transcript).contains("can't see any such thing"))
+    }
+
+    /// Four ways of opening with somebody, all reaching the one line she has.
+    @Test(arguments: [
+        "talk to delphine", "greet delphine", "hello delphine", "delphine, hello",
+    ])
+    func everyWayOfSayingHelloReachesHer(_ command: String) async throws {
+        let transcript = try await play(Fulminate(), ["south", "west", command])
+        #expect(turnOutput(of: command, in: transcript).contains("You'd be the letter"))
+    }
+
+    /// And an order is heard and declined, rather than carried out by the
+    /// player under somebody else's name.
+    @Test func nobodyInThisHouseTakesOrders() async throws {
+        let transcript = try await play(
+            Fulminate(), ["south", "west", "delphine, take the glove"])
+        #expect(
+            turnOutput(of: "delphine, take the glove", in: transcript)
+                .contains("hears you out and goes on doing exactly what"))
+    }
+}
+
+/// How many times `needle` appears in `haystack` — the suite has
+/// `expectInOrder` for sequence, but "exactly twice" needs a count.
+private func occurrencesInFulminate(of needle: String, in haystack: String) -> Int {
+    haystack.components(separatedBy: needle).count - 1
 }

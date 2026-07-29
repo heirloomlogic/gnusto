@@ -4,7 +4,7 @@ Teach the parser words the built-in table doesn't know.
 
 ## Overview
 
-Gnusto ships with a standard verb table: `take`, `drop`, `examine`, `wear`, `go`, `look`, `wait` (`z`), and their synonyms. When your game needs a verb of its own — `ring`, `buy`, `dig`, `pull` — you declare it once with `#verb` and handle it in a rule.
+Gnusto ships with a standard verb table: `take`, `drop`, `examine`, `wear`, `go`, `follow`, `greet`, `look`, `wait` (`z`), and their synonyms. When your game needs a verb of its own — `ring`, `buy`, `dig`, `pull` — you declare it once with `#verb` and handle it in a rule.
 
 `wait` (and its alias `z`) is a normal, time-passing turn: it prints the `timePasses` line ("Time passes.") and lets fuses and daemons tick — the standard way to let a countdown run down or a wandering monster catch up. Re-skin the line by mutating `text.timePasses`.
 
@@ -107,6 +107,13 @@ extension Intent {
     #verb("steal", ["take", .directObject])   // `take coin` now means stealing
 }
 ```
+
+Some words a game is *likely* to want are therefore deliberately absent from
+the built-in table. Bare `hello` and bare `hi` are the clearest case: they are
+the kind of one-word verb a game likes to own outright — Zork 1 does — and
+claiming them as built-ins would make every such game print an override warning
+at launch. The engine ships `greet <object>`, `hello <object>` and
+`hi <object>`, and leaves the bare forms to `GnustoConversation` or to you.
 
 ## The substrate: raw `SyntaxRule`
 

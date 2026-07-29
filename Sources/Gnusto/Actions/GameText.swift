@@ -94,6 +94,42 @@ public struct GameText: Sendable {
     /// A `wait` turn — a beat passes while fuses and daemons tick.
     public var timePasses = "Time passes."
 
+    // MARK: - Following
+
+    /// The aside printed as the player sets off after somebody.
+    public var following: @Sendable (_ name: String) -> String = {
+        "(after the \($0))"
+    }
+    /// Following somebody who is standing right here.
+    public var alreadyFollowing: @Sendable (_ name: String) -> String = {
+        "The \($0) is right here."
+    }
+    /// Following something that isn't a person.
+    public var cantFollowThat: @Sendable (_ name: String) -> String = {
+        "The \($0) isn't going anywhere."
+    }
+    /// Following somebody who has gone somewhere no exit from here leads. The
+    /// search is one exit deep, so this is also the answer for a quarry who is
+    /// two rooms away — see `DefaultActions.follow`.
+    public var lostThem: @Sendable (_ name: String) -> String = {
+        "You have no idea which way the \($0) went."
+    }
+
+    // MARK: - Greeting
+
+    /// Saying hello to somebody who has nothing of their own to say.
+    public var greets: @Sendable (_ name: String) -> String = {
+        "The \($0) nods, and says nothing."
+    }
+    /// Greeting something that isn't a person.
+    public var cantGreetThat: @Sendable (_ name: String) -> String = {
+        "The \($0) is unlikely to answer."
+    }
+    /// A bare hello with nobody about.
+    public var nobodyToGreet = "There's nobody here to greet."
+    /// A bare hello where several people could have been meant.
+    public var greetsTheRoom = "You say hello to the room in general."
+
     // MARK: - Containers
 
     /// A successful `open` of an empty container.
@@ -327,6 +363,14 @@ public struct GameText: Sendable {
     public var cantSeeAnySuchThing = "You can't see any such thing."
     /// A line no verb pattern fits.
     public var didntUnderstand = "I didn't understand that sentence."
+
+    /// Giving somebody an order — `butler, open the door`. The engine has no
+    /// system for one character to act on another's word, so a character hears
+    /// you out and declines. `butler, hello` is the one addressed form that
+    /// does something, and it becomes a GREET.
+    public var notTakingOrders: @Sendable (_ name: String) -> String = {
+        "The \($0) has no intention of taking orders from you."
+    }
 
     /// A verb missing its object — answerable on the next line.
     public var missingObject: @Sendable (_ verb: String) -> String = {

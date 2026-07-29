@@ -175,7 +175,218 @@ struct ConversationTests {
         #expect(!transcript.contains("The porter knows about the murder."))
     }
 
+    // MARK: - Opening a conversation
+
+    @Test(arguments: [
+        "talk to sergeant", "talk with sergeant", "talk sergeant",
+        "speak to sergeant", "greet sergeant", "hello sergeant", "hi sergeant",
+        "say hello to sergeant", "sergeant, hello",
+    ])
+    func everyWayOfOpeningReachesTheSameGreeting(_ command: String) async throws {
+        let transcript = try await play(Guardroom(), [command])
+        #expect(transcript.contains("He does not stand up."))
+    }
+
+    @Test func anActorWithNoGreetingWaitsForThePoint() async throws {
+        let transcript = try await play(Guardroom(), ["talk to the corporal"])
+        #expect(transcript.contains("The corporal waits for you to come to the point."))
+    }
+
+    @Test func talkingToAThingIsRefused() async throws {
+        let transcript = try await play(Guardroom(), ["talk to the drum"])
+        #expect(transcript.contains("You can only talk to something animate."))
+    }
+
+    /// An order is heard and declined — and, importantly, not carried out by
+    /// the *player*, which is what a naive addressee field would have done.
+    @Test func anOrderIsDeclinedRatherThanObeyed() async throws {
+        let transcript = try await play(
+            Guardroom(), ["sergeant, take the drum", "inventory"])
+        #expect(transcript.contains("has no intention of taking orders"))
+        #expect(!transcript.contains("Taken."))
+        #expect(transcript.contains("You are empty-handed."))
+    }
+
+    // MARK: - Saying it once
+
+    @Test func anAnswerWithARepeatLineIsGivenInFullOnlyOnce() async throws {
+        let transcript = try await play(
+            Guardroom(), ["ask sergeant about the raid", "ask sergeant about the raid"])
+        expectInOrder(
+            transcript,
+            [
+                "We went in at four and came out at six.",
+                "You've had that from me once.",
+            ])
+        #expect(occurrences(of: "We went in at four", in: transcript) == 1)
+    }
+
+    @Test func aRowsOwnAgainLineBeatsTheTables() async throws {
+        let transcript = try await play(
+            Guardroom(), ["ask sergeant about the captain", "ask sergeant about the captain"])
+        #expect(transcript.contains("I said what I'm saying about the captain."))
+        #expect(!transcript.contains("You've had that from me once."))
+    }
+
+    /// The backwards-compatibility guarantee: a table with no `again:` repeats
+    /// forever, exactly as it did before the parameter existed.
+    @Test func aTableWithNoAgainLineRepeatsForever() async throws {
+        let transcript = try await play(
+            Manor(),
+            ["ask maid about the study", "ask maid about the study", "ask maid about the study"])
+        #expect(occurrences(of: "She says the first thing.", in: transcript) == 3)
+    }
+
+    /// A heard row still owns its keyword. An actor who demonstrably has an
+    /// answer must not sound blank about the subject.
+    @Test func aRepeatedRowNeverReachesTheFallback() async throws {
+        let transcript = try await play(
+            Guardroom(), ["ask sergeant about the raid", "ask sergeant about the raid"])
+        #expect(!transcript.contains("Not my department."))
+    }
+
+    /// A lie and the confession that replaces it are separate rows with
+    /// separate keys, so retiring one says nothing about the other.
+    @Test func aRetiredRowAndItsReplacementAreTrackedApart() async throws {
+        let transcript = try await play(
+            Guardroom(),
+            [
+                "ask sergeant about orders", "ask sergeant about orders",
+                "take order", "show order to sergeant",
+                "ask sergeant about orders", "ask sergeant about orders",
+            ])
+        expectInOrder(
+            transcript,
+            [
+                "There were no orders.",
+                "You've had that from me once.",
+                "He reads it.",
+                "There were orders, and I burned them.",
+                "You've had that from me once.",
+            ])
+    }
+
+    /// The table's line retires prose, never behavior: a `perform:` row keeps
+    /// running under a table default it did not ask for.
+    @Test func aPerformRowKeepsRunningUnderATableDefault() async throws {
+        let transcript = try await play(
+            Guardroom(), ["ask sergeant about boots", "ask sergeant about boots"])
+        expectInOrder(transcript, ["He counts 1 pair.", "He counts 2 pair."])
+    }
+
+    /// And a `perform:` row that names its own line runs its body exactly
+    /// once, which is how an author says "don't double-fire this".
+    @Test func aPerformRowWithItsOwnAgainLineRunsOnce() async throws {
+        let transcript = try await play(
+            Guardroom(), ["ask sergeant about the bell", "ask sergeant about the bell"])
+        #expect(occurrences(of: "He rings the bell.", in: transcript) == 1)
+        #expect(transcript.contains("The bell's been rung."))
+    }
+
+    /// Teaching runs ahead of the repeat check, so a fact taken back with
+    /// `forget` is re-asserted by asking again — not merely by luck of
+    /// idempotence.
+    @Test func aRepeatStillTeachesTheRowsFact() async throws {
+        let transcript = try await play(
+            Guardroom(),
+            [
+                "ask sergeant about the rumour",
+                "take whistle",  // forgets the fact
+                "ask sergeant about the rumour",  // the repeat line — and re-teaches
+                "ask sergeant about the truth",
+            ])
+        expectInOrder(
+            transcript, ["There's a rumour.", "You've had that from me once.", "Then you know."])
+    }
+
+    /// A multi-word keyword and the same words spelled as separate keywords
+    /// are different rows. The derived key has to say so — joining the keyword
+    /// list on a space would make them identical, and hearing one would retire
+    /// the other's answer before it was ever spoken.
+    @Test func keywordStructureIsPartOfARowsIdentity() async throws {
+        // "locker" alone can only reach the second row; "arms locker" reaches
+        // the first. Neither has been heard before, so both answer in full.
+        let transcript = try await play(
+            Guardroom(), ["ask sergeant about the locker", "ask sergeant about the arms locker"])
+        expectInOrder(
+            transcript,
+            ["Two rifles short, and I've said so.", "The arms locker is my responsibility."])
+        #expect(!transcript.contains("You've had that from me once."))
+    }
+
+    /// The greeting reserves a heard key of its own. An author who declares a
+    /// row `id: "greeting"` must not retire the hello, or be retired by it.
+    @Test func theGreetingAndARowNamedGreetingAreTrackedApart() async throws {
+        let transcript = try await play(
+            Guardroom(), ["greet sergeant", "ask sergeant about the introduction"])
+        expectInOrder(transcript, ["He does not stand up.", "I introduce nobody."])
+        #expect(!transcript.contains("You've had that from me once."))
+    }
+
+    @Test func twoRowsSharingAnIdRetireTogether() async throws {
+        let transcript = try await play(
+            Guardroom(), ["ask sergeant about the north gate", "ask sergeant about the south gate"])
+        expectInOrder(transcript, ["North gate is shut.", "You've had that from me once."])
+        #expect(!transcript.contains("South gate is shut."))
+    }
+
+    @Test func unhearingLetsTheActorGiveTheAnswerAgain() async throws {
+        let transcript = try await play(
+            Guardroom(),
+            [
+                "ask sergeant about the watch", "ask sergeant about the watch",
+                "take drum",  // unhears everything
+                "ask sergeant about the watch",
+            ])
+        #expect(occurrences(of: "Two on, four off.", in: transcript) == 2)
+    }
+
+    @Test func hasHeardReportsWhatTheActorHasGiven() async throws {
+        let transcript = try await play(
+            Guardroom(), ["x ledger", "ask sergeant about the watch", "x ledger"])
+        expectInOrder(transcript, ["Nothing said yet.", "Two on, four off.", "The watch is spoken for."])
+    }
+
+    // MARK: - A live condition on the world
+
+    /// `when:` is for what is currently true, where `knowing:` is for what the
+    /// player has worked out.
+    @Test func aWhenRowOnlyAnswersWhileItsConditionHolds() async throws {
+        let transcript = try await play(
+            Guardroom(), ["ask sergeant about the gate guard", "ring bell", "ask sergeant about the gate guard"])
+        expectInOrder(
+            transcript, ["Nobody's on it yet.", "Corporal Vane has it now."])
+    }
+
     // MARK: - Persistence
+
+    /// What an actor has already said travels in the save, like what the
+    /// player has learned — it is another `@Global` on the same layer.
+    @Test func whatAnActorHasAlreadySaidSurvivesSaveAndRestore() async throws {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("gnusto-heard-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let transcript = try await play(
+            Guardroom(),
+            [
+                "ask sergeant about the raid",
+                "save", "slot",
+                "restore", "slot",
+                "ask sergeant about the raid",
+            ],
+            saveDirectory: dir)
+        expectInOrder(
+            transcript,
+            ["We went in at four and came out at six.", "Restored.", "You've had that from me once."])
+    }
+
+    @Test func undoTakesBackWhatTheActorSaid() async throws {
+        let transcript = try await play(
+            Guardroom(), ["ask sergeant about the raid", "undo", "ask sergeant about the raid"])
+        #expect(occurrences(of: "We went in at four", in: transcript) == 2)
+        #expect(!transcript.contains("You've had that from me once."))
+    }
 
     @Test func learnedFactsSurviveSaveAndRestore() async throws {
         let dir = FileManager.default.temporaryDirectory
@@ -206,10 +417,173 @@ struct ConversationTests {
     }
 }
 
+/// How many times `needle` appears in `haystack`. The suite has
+/// `expectInOrder` for sequence, but "exactly once" needs a count.
+private func occurrences(of needle: String, in haystack: String) -> Int {
+    haystack.components(separatedBy: needle).count - 1
+}
+
 // MARK: - Synthetic fixtures
 
 extension Fact {
     fileprivate static let sawTheLetter = Fact("sawTheLetter")
+    fileprivate static let sawTheOrder = Fact("sawTheOrder")
+    fileprivate static let heardTheRumour = Fact("heardTheRumour")
+}
+
+/// A sergeant with an answer for everything and the patience for none of it:
+/// the fixture for repeat-aware answers, `when:` conditions, and every way of
+/// opening a conversation.
+///
+/// Deliberately separate from ``Manor``, which stays untouched as the proof
+/// that a table with no `again:` behaves exactly as it always did.
+struct Guardroom: Game {
+    let title = "Guardroom"
+    let intro = "A guardroom."
+
+    let talk = Conversation()
+
+    /// Counts how many times the `perform:` boots row has actually run, so a
+    /// test can tell "the body ran again" from "the line was repeated".
+    @Global var polishings = 0
+    /// A live world condition for `when:` — not a deduction, so not a `Fact`.
+    @Global var gateManned = false
+
+    let post = Location {
+        name("Post")
+        description("A guardroom.")
+    }
+
+    let sergeant = Actor {
+        name("sergeant")
+        description("The sergeant.")
+    }
+
+    let corporal = Actor {
+        name("corporal")
+        description("The corporal.")
+    }
+
+    let order = Item {
+        name("order")
+        description("A written order.")
+    }
+
+    /// Taking it makes him forget the rumour, so a repeat can be shown to
+    /// re-teach.
+    let whistle = Item {
+        name("whistle")
+        description("A whistle.")
+    }
+
+    /// Taking it clears everything the sergeant has said.
+    let drum = Item {
+        name("drum")
+        description("A drum.")
+    }
+
+    let ledger = Item {
+        name("ledger")
+        description("A ledger.")
+        scenery
+    }
+
+    let bell = Item {
+        name("bell")
+        description("A bell.")
+        scenery
+    }
+
+    var content: GameContents { talk }
+
+    var verbs: [SyntaxRule] {
+        SyntaxRule("ring", .directObject, intent: Intent("ring"))
+    }
+
+    var rules: Rules {
+        talk.greeting(
+            of: sergeant,
+            again: "\"We've done that,\" he says.",
+            reply: "\"Sergeant Muir,\" he says. He does not stand up.")
+
+        talk.topics(
+            of: sergeant,
+            fallback: "\"Not my department.\"",
+            again: "\"You've had that from me once.\""
+        ) {
+            topic("raid", reply: "\"We went in at four and came out at six.\"")
+            topic(
+                "captain", again: "\"I said what I'm saying about the captain.\"",
+                reply: "\"The captain was where he said he was.\"")
+
+            // A lie and its replacement, on the same keyword.
+            topic("orders", unless: .sawTheOrder, reply: "\"There were no orders.\"")
+            topic(
+                "orders", knowing: .sawTheOrder,
+                reply: "\"There were orders, and I burned them.\"")
+
+            topic("rumour", learning: .heardTheRumour, reply: "\"There's a rumour.\"")
+            topic("truth", knowing: .heardTheRumour, reply: "\"Then you know.\"")
+
+            // A live condition rather than a fact: nothing has been deduced,
+            // the world has simply changed.
+            topic(
+                "gate guard", when: { !gateManned },
+                reply: "\"Nobody's on it yet.\"")
+            topic("gate guard", reply: "\"Corporal Vane has it now.\"")
+
+            // A `perform:` row under a table default: it must keep running.
+            topic("boots") {
+                polishings += 1
+                try reply("He counts \(polishings) pair.")
+            }
+            // And one that opts in, so its body runs exactly once.
+            topic("bell", again: "\"The bell's been rung.\"") {
+                try reply("He rings the bell.")
+            }
+
+            topic("watch", id: "watch", reply: "\"Two on, four off.\"")
+            // A multi-word keyword and the same two words as separate
+            // keywords, in a pair where the words are *already* in sorted
+            // order — which is what makes the derived keys collide if the
+            // keyword list is joined on a space. Both rows are reachable:
+            // "arms locker" takes the first, "locker" alone can only take the
+            // second, so they must not share a heard-set flag.
+            topic("arms locker", reply: "\"The arms locker is my responsibility.\"")
+            topic("arms", "locker", reply: "\"Two rifles short, and I've said so.\"")
+            // An `id:` that collides with the greeting's own reserved key if
+            // the two are not namespaced apart.
+            topic("introduction", id: "greeting", reply: "\"I introduce nobody.\"")
+            // Two rows deliberately sharing one flag.
+            topic("north gate", id: "gate", reply: "\"North gate is shut.\"")
+            topic("south gate", id: "gate", reply: "\"South gate is shut.\"")
+        }
+
+        talk.shows(order, to: sergeant, learning: .sawTheOrder, reply: "He reads it.")
+
+        whistle.before(.take) { talk.forget(.heardTheRumour) }
+        drum.before(.take) { talk.unhearEverything(from: sergeant) }
+        ledger.before(.examine) {
+            try reply(
+                talk.hasHeard("watch", from: sergeant)
+                    ? "The watch is spoken for." : "Nothing said yet.")
+        }
+        bell.before(Intent("ring")) {
+            gateManned = true
+            try reply("The bell goes, and somebody is sent to the gate.")
+        }
+    }
+
+    var map: WorldMap {
+        player.starts(in: post)
+        sergeant.starts(in: post)
+        corporal.starts(in: post)
+        order.starts(in: post)
+        whistle.starts(in: post)
+        drum.starts(in: post)
+        ledger.starts(in: post)
+        bell.starts(in: post)
+    }
 }
 
 /// One room, two people, one lamp, one letter, and a table with a row for

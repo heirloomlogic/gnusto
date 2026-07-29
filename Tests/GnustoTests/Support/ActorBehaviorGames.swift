@@ -120,7 +120,7 @@ struct PickpocketGame: Game {
     }
 
     var verbs: [SyntaxRule] {
-        SyntaxRule("greet", .directObject, intent: Intent("greet"))
+        SyntaxRule("hail", .directObject, intent: Intent("hail"))
         SyntaxRule("accuse", intent: Intent("accuse"))
         SyntaxRule("whistle", intent: Intent("whistle"))
     }
@@ -137,7 +137,7 @@ struct PickpocketGame: Game {
 
     var rules: Rules {
         behaviors.reaction(
-            of: thief, to: [Intent("greet")],
+            of: thief, to: [Intent("hail")],
             reply: "He nods, warily.")
         world.before(Intent("accuse")) {
             let haul = thief.inventory.map(\.name).joined(separator: ", ")

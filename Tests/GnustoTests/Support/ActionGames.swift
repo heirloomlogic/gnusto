@@ -1,10 +1,13 @@
 import Gnusto
 
 extension Intent {
-    /// `GreetingPlugin`'s verb. (`CustomActionGame` reuses `.ring` from
+    /// `HailingPlugin`'s verb. Deliberately *not* named `greet`: the engine
+    /// ships an `Intent.greet` of its own, and this fixture exists to prove a
+    /// plugin can splice a **custom** intent's default action. (`CustomActionGame`
+    /// reuses `.ring` from
     /// `CustomVerbGames.swift` — #verb constants are module-wide statics on
     /// `Intent`, so a shared verb is declared once and listed everywhere.)
-    #verb("greet", ["greet", .directObject])
+    #verb("hail", ["hail", .directObject])
 }
 
 /// A game that teaches the parser a custom verb (`ring`) and, unlike
@@ -72,29 +75,29 @@ struct ThemedTakeGame: Game {
     }
 }
 
-/// A plugin that ships a whole verb behavior — vocabulary (`greet`) and a
+/// A plugin that ships a whole verb behavior — vocabulary (`hail`) and a
 /// stage-4 default — with no host rules at all, exercising `GamePlugin.actions`
 /// spliced by the host exactly like `verbs`.
-struct GreetingPlugin: GamePlugin {
+struct HailingPlugin: GamePlugin {
     var verbs: [SyntaxRule] {
-        .greet
+        .hail
     }
 
     var actions: [IntentAction] {
-        action(.greet) {
+        action(.hail) {
             say("You wave and offer a warm greeting.")
         }
     }
 }
 
-/// A host that splices only `verbs` + `actions` from ``GreetingPlugin`` — no
-/// rules of its own handle `greet` — proving the plugin-provided default runs
+/// A host that splices only `verbs` + `actions` from ``HailingPlugin`` — no
+/// rules of its own handle `hail` — proving the plugin-provided default runs
 /// end to end.
 struct GreeterGame: Game {
     let title = "Greeter"
     let intro = "A sunny courtyard."
 
-    let plugin = GreetingPlugin()
+    let plugin = HailingPlugin()
 
     let courtyard = Location {
         name("Courtyard")

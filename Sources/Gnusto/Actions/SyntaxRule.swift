@@ -251,6 +251,23 @@ extension SyntaxRule {
         .init("walk", .direction, intent: .go),
         .init("run", .direction, intent: .go),
 
+        // follow. `go after <object>` outscores `go <direction>`, so the
+        // follow row is tried first and `go north` still falls through to it.
+        .init("follow", .directObject, intent: .follow),
+        .init("chase", .directObject, intent: .follow),
+        .init("go", "after", .directObject, intent: .follow),
+        .init("run", "after", .directObject, intent: .follow),
+        .init("walk", "after", .directObject, intent: .follow),
+
+        // greet. Bare "hello"/"hi" are deliberately *not* here: they are the
+        // kind of one-word verb a game likes to own outright (Zork 1 does),
+        // and claiming them as built-ins would make every such game warn at
+        // launch. `GnustoConversation` adds them.
+        .init("greet", .directObject, intent: .greet),
+        .init("hello", .directObject, intent: .greet),
+        .init("hi", .directObject, intent: .greet),
+        .init("greet", intent: .greet),
+
         // board / disembark. Bare "in"/"out" stay directions: the parser's
         // bare-direction check runs before any verb row.
         .init("enter", .directObject, intent: .board),

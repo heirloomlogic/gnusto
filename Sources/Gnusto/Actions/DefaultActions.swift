@@ -7,8 +7,8 @@ enum DefaultActions {
     /// default behavior (no warning).
     static let builtInIntents: Set<Intent> = [
         .take, .drop, .wear, .doff, .putOn, .putIn, .open, .close, .lock, .unlock,
-        .lookIn, .push, .turnOn, .turnOff, .go, .board, .disembark, .look, .examine,
-        .read, .inventory, .score, .version, .quit, .wait,
+        .lookIn, .push, .turnOn, .turnOff, .go, .follow, .greet, .board, .disembark,
+        .look, .examine, .read, .inventory, .score, .version, .quit, .wait,
     ]
 
     /// Runs the default action for a command: a game/bundle/plugin override
@@ -34,6 +34,8 @@ enum DefaultActions {
         case .turnOn: try turnOn(command, frame: frame)
         case .turnOff: try turnOff(command, frame: frame)
         case .go: try go(command, frame: frame)
+        case .follow: try follow(command, frame: frame)
+        case .greet: try greet(command, frame: frame)
         case .board: try board(command, frame: frame)
         case .disembark: try disembark(command, frame: frame)
         case .wait: frame.say(frame.definition.text.timePasses)
@@ -431,13 +433,25 @@ enum DefaultActions {
             try refuse(frame.definition.text.whichWay)
         }
         let here = frame.with { $0.state.playerLocation }
+        try travel(direction, from: here, frame: frame)
+    }
+
+    /// The one place an exit is tested and taken, shared by GO and FOLLOW so a
+    /// blocked, door or conditional exit can only ever behave one way.
+    ///
+    /// `aside` is printed by `enter` only once the exit has actually passed,
+    /// so a refused FOLLOW never announces a pursuit it didn't make.
+    private static func travel(
+        _ direction: Direction, from here: EntityID, frame: TurnFrame,
+        announcing aside: String? = nil
+    ) throws {
         switch frame.definition.exits[here]?[direction] {
         case nil:
             try refuse(frame.definition.text.cantGoThatWay)
         case .blocked(let message):
             try refuse(message)
         case .to(let destination):
-            try enter(destination, frame: frame)
+            try enter(destination, frame: frame, announcing: aside)
         case .door(let destination, let doorID):
             // A hidden door isn't there yet: behave as if the exit doesn't
             // exist until it's revealed. Once revealed, a closed door blocks
@@ -451,12 +465,12 @@ enum DefaultActions {
             }
             guard revealed else { try refuse(frame.definition.text.cantGoThatWay) }
             guard isOpen else { try refuse(frame.definition.text.closedContainer(name)) }
-            try enter(destination, frame: frame)
+            try enter(destination, frame: frame, announcing: aside)
         case .conditional(let destination, let condition, let blocked):
             // Evaluate the gate inside the live frame so its closure sees the
             // current turn's state (globals, proxies) via `Ctx.current`.
             guard condition() else { try refuse(blocked) }
-            try enter(destination, frame: frame)
+            try enter(destination, frame: frame, announcing: aside)
         }
     }
 
@@ -464,7 +478,13 @@ enum DefaultActions {
     /// describing the room. Shared by every passable exit kind. A boarded
     /// vehicle rides along in the same mutation — and its cargo with it,
     /// since cargo placements (`.inside(vehicle)`) never mention the room.
-    private static func enter(_ destination: EntityID, frame: TurnFrame) throws {
+    ///
+    /// `aside` lands ahead of the onEnter rules and the room description,
+    /// which is where a "(after the …)" note belongs.
+    private static func enter(
+        _ destination: EntityID, frame: TurnFrame, announcing aside: String? = nil
+    ) throws {
+        if let aside { frame.say(aside) }
         frame.with { scratch in
             let vehicle = Visibility.boardedVehicle(
                 definition: frame.definition, state: scratch.state)
@@ -477,6 +497,92 @@ enum DefaultActions {
             try rule.body()
         }
         RoomDescriber.describeCurrentLocation(mode: .entry, frame: frame)
+    }
+
+    /// Goes after somebody who has left the room.
+    ///
+    /// The search is **one exit deep** — the first exit of *this* room whose
+    /// destination is the room they are actually standing in. That is a fact
+    /// about the world rather than a guess: a wider search would walk the
+    /// player into rooms the quarry isn't in, chosen by a heuristic the author
+    /// never wrote. A game that wants a longer pursuit buys it explicitly with
+    /// `actor.before(.follow)`, which runs ahead of this.
+    private static func follow(_ command: Command, frame: TurnFrame) throws {
+        let target = try requireDirectObject(command)
+        let id = target.id
+        let name = target.name
+        let definition = frame.definition
+        guard definition.items[id]?.isActor == true else {
+            try refuse(definition.text.cantFollowThat(name))
+        }
+        let (here, there) = frame.with { scratch -> (EntityID, EntityID?) in
+            guard case .room(let room)? = scratch.state.placements[id] else {
+                return (scratch.state.playerLocation, nil)
+            }
+            return (scratch.state.playerLocation, room)
+        }
+        // Offstage is not somewhere you can walk to, and neither is here.
+        guard let there, there != here else {
+            try refuse(definition.text.alreadyFollowing(name))
+        }
+        // Fixed compass order, so two exits onto one room never make the
+        // answer depend on dictionary iteration. A `.blocked` exit carries no
+        // destination and so can never match: the player is told they don't
+        // know which way, which is the honest answer for a route the game has
+        // declared isn't one.
+        let exits = definition.exits[here] ?? [:]
+        func match(_ direction: Direction, gatedOnly: Bool) -> Bool {
+            switch exits[direction] {
+            case .to(let destination):
+                return !gatedOnly && destination == there
+            case .door(let destination, let doorID):
+                // A hidden door is not an exit yet, exactly as `go` sees it,
+                // so a second real exit onto the same room can still win.
+                return !gatedOnly && destination == there
+                    && frame.with {
+                        Visibility.isPerceivable(
+                            doorID, definition: definition, state: $0.state)
+                    }
+            case .conditional(let destination, _, _):
+                return gatedOnly && destination == there
+            case .blocked, nil:
+                return false
+            }
+        }
+        // Ungated exits first. A conditional whose gate happens to be shut
+        // must not shadow an open way to the same room — GO south would work,
+        // so FOLLOW must not refuse in the north exit's words.
+        let direction =
+            Direction.allCases.first { match($0, gatedOnly: false) }
+            ?? Direction.allCases.first { match($0, gatedOnly: true) }
+        guard let direction else {
+            try refuse(definition.text.lostThem(name))
+        }
+        // No pre-check that the chosen exit passes: a shut door answers FOLLOW
+        // with "The yard door is closed." and a false conditional with its own
+        // blocked message, which is exactly right, and free.
+        try travel(
+            direction, from: here, frame: frame,
+            announcing: definition.text.following(name))
+    }
+
+    /// Says hello. The stock line is a placeholder an actor's own rules — or a
+    /// conversation plugin — are expected to answer over.
+    private static func greet(_ command: Command, frame: TurnFrame) throws {
+        let definition = frame.definition
+        guard let target = command.directObject else {
+            let anybodyHere = frame.with { scratch in
+                Visibility.visibleItems(
+                    at: scratch.state.playerLocation, definition: definition,
+                    state: scratch.state, index: scratch.state.containment()
+                ).contains { definition.items[$0]?.isActor == true }
+            }
+            try refuse(anybodyHere ? definition.text.greetsTheRoom : definition.text.nobodyToGreet)
+        }
+        guard definition.items[target.id]?.isActor == true else {
+            try refuse(definition.text.cantGreetThat(target.name))
+        }
+        frame.say(definition.text.greets(target.name))
     }
 
     private static func board(_ command: Command, frame: TurnFrame) throws {

@@ -56,8 +56,8 @@ what has to remain true no matter how the story is rewritten.
 | Mechanic | How the story carries it | Must survive rewriting |
 |---|---|---|
 | Time-of-day, `minutesPerTurn` | The hall clock. Every alibi is stated as a time. | Times stay minute-precise and stated on the page. |
-| `TIME` verb | Checking your watch. | Reachable from every room. |
-| Alarms fire exactly once | The blast, the telephone, the coroner — plus an incidental radio car at 5:52. | **Three** load-bearing alarms, one of them a hard deadline that ends the game. |
+| `TIME` verb | Checking your watch — which is on the player's wrist, worn from turn one, and cannot be taken off. | Reachable from every room. The watch and the hall clock read from the same source and must never disagree. |
+| Alarms fire exactly once | The blast, the telephone, the coroner — plus an incidental radio car at 5:52. | **Three** load-bearing alarms, one of them a hard deadline that ends the game. (The two beats after the blast are *fuses*, relative to the event rather than to the clock. They are decorative by construction and are not part of this count.) |
 | Deterministic timetables | Five people on their evening rounds. | **Five** scheduled actors, with stops on *both sides* of the blast. |
 | Arrival / departure prose | Footsteps on the back stairs. A door in the yard. | At least one crossing the player can witness, and one they can miss. |
 | Movement is silent in the dark | Delphine goes down to the cellar at 6:26. | The cellar stays dark and stays on somebody's route. |
@@ -68,6 +68,7 @@ what has to remain true no matter how the story is rewritten.
 | Content gated on knowledge (`knowing:`) | Constance breaks only once you have the glove. | The confession stays gated on physical evidence. |
 | A fact taught by evidence (`learning:`) | The receipt teaches that Teague lied to Constance. | The keystone fact is *learned*, never assumed. |
 | Per-actor fallback replies | "Mrs. Vane looks past you." | Everyone has a fallback. No dead air. |
+| Answers that land once | Every table carries an `again:` line in its own voice. | Nobody recites an important paragraph twice. Mrs. Kettle is the deliberate exception: her rows read the timetable live, so they go on answering. |
 
 **Free to change:** every name, all prose, room descriptions, topic keywords, the tone, the
 title, and which suspect is guilty.
@@ -104,9 +105,11 @@ takes most of the garden wall with it. He died keeping your appointment. You hav
 rest of the evening to think about that.
 
 A radio car comes at 5:52. The patrolman takes names, posts himself at the wreckage, and
-passes along what downtown told him: the deputy coroner — the county man, in the
-household's word — is on his way out, due by ten of seven. The deadline is learned, not
-given; nobody standing in that hall at half past five knows the county's schedule.
+says nothing further. What downtown told him — that the deputy coroner, the county man in
+the household's word, is due by ten of seven — is his to give and the player's to ask for.
+The deadline is *learned*, not given; nobody standing in that hall at half past five knows
+the county's schedule, and an arrival that announces it has handed the player the clock
+rather than made them find it.
 
 The deputy coroner is not a judge. He is a man who closes files. A dead rocketry man, a
 shed full of chemicals, a reputation the neighbors have been enjoying for years —
@@ -143,7 +146,9 @@ What the history buys, structurally:
   the deputy coroner takes your statement because your old service card still opens that
   much.
 - **The house knows you.** You took statements in this front hall in 1948. Constance
-  remembers. The longcase clock kept time through both visits.
+  remembers. The longcase clock kept time through both visits, and the watch on your
+  wrist — the one object in this game that is yours — you set by that clock on the way in,
+  out of a habit from the job you don't have any more.
 - **A debt.** Your fair report saved nothing. The firing happened anyway, and the firing
   put Julian in the carriage house. You ride the streetcar out carrying that.
 - **The trap.** You were built to see spies. Every apparatus in this house is real — and
@@ -186,7 +191,9 @@ called, not met. She may test you with half a phrase to see whether you know the
 half; you do, from the file, and the game can let you choose whether to give it. What
 they went out to the desert to do stays offstage entirely.
 **Her lie:** that she doesn't know what's in the letters.
-**Her fallback:** *She goes on looking at whatever she was looking at.*
+**Her fallback:** *She goes on looking at whatever she was looking at.* — but the first
+time, at length: she hears the question and lets you watch her decide against it. The bare
+line on its own reads like the parser failed, which is the opposite of the point.
 
 ### Howard Teague — the boarder
 
@@ -231,7 +238,8 @@ thing the game cannot let the player doubt.
 Unscheduled, and stays that way — scenery with a topic table, not a sixth timetable. He
 stands at the wreckage from 5:52 on, keeps everybody out of it (which is why the player
 cannot dig the answer out of the debris), and knows exactly one useful thing: when the
-deputy coroner is due.
+deputy coroner is due. He has three answers and volunteers none of them; the deadline
+reaches the page only because somebody asked him for it.
 
 **His fallback:** *"Best keep back from there."*
 
@@ -259,8 +267,8 @@ Nine the player can reach, plus one they can't.
 |---|---|
 | **Front Hall** | Start. The longcase clock. The telephone. Teague's coat on the hat stand. |
 | **Parlour** | Constance's chair. Heavy furniture, no lamp lit. |
-| **Kitchen** | Mrs. Kettle's ground. The back stairs pass through — this is how she sees things. |
-| **Cellar** | **Dark.** Needs the flashlight from the kitchen drawer. The scorched glove is here. |
+| **Kitchen** | Mrs. Kettle's ground. The back stairs pass through — this is how she sees things. The room names all three of its exits, and the drawer. Going **up** the back stairs is refused in the game's own words: they are the household's, not yours. |
+| **Cellar** | **Dark.** Needs the flashlight from the kitchen drawer; standing down there in the dark says where it lives, once. The scorched glove is here, behind the coal bin. |
 | **Back Yard** | Between the house and the carriage house. The garden wall. |
 | **Carriage House** | Julian's lab. Julian is alive in it until 5:46. Becomes **Wreckage**, with the patrolman posted at it from 5:52. |
 | **Landing** | Upstairs hall. |
@@ -292,7 +300,7 @@ the source of truth; if they and this disagree, they win.
 | **5:46** | — | **The blast.** First alarm. Julian is gone. |
 | 5:46 | Teague | Off the map, on Orange Grove Avenue, where the player can't follow. |
 | 5:48 | Constance, Kettle, Pike | Out to the yard. Delphine is already standing in it. |
-| 5:52 | — | The radio car. The patrolman posts at the wreckage and says the deputy coroner is due at ten of seven. **The deadline is now on the page.** |
+| 5:52 | — | The radio car. The patrolman takes names, posts at the wreckage, and stops talking. **The deadline reaches the page when somebody asks him for it** — and not before. |
 | 5:54 | Constance | Back to the parlour, and stays there. |
 | 6:00 | Kettle | Back to her kitchen, on the grounds that somebody has to. |
 | 6:02 | Delphine | Up to the study, straight to the desk drawers. |
@@ -400,6 +408,12 @@ tells you how to feel.
 
 ### Rooms
 
+Every noun a room description puts on the page is answerable — `X TILE`, `X GROUT`,
+`X HAT STAND`, `X BACK STAIRS`, `X COAL BIN`, `X STOVE PIPE`. A room that names a thing
+the game doesn't know the word for reads like a bug, so a rewrite that introduces a new
+noun should introduce the scenery item with it. `FulminateTests` walks the house asking
+for each of them.
+
 **Front Hall** — *Black and white tile, worn through to the grout along the line people
 walk. A hat stand with one coat on it. A longcase clock in the corner keeps better time
 than the household does. The front door is east, the parlour west, the kitchen passage
@@ -409,8 +423,9 @@ south, and the stairs go up.*
 grate. The lamp is not lit. Mrs. Vane does not light it until it is properly dark.*
 
 **Kitchen** — *Scrubbed pine and a stove that has been going since before you got here.
-The back stairs come down along the far wall, which means anyone using them comes through
-here. A drawer under the counter. The yard door is west, the cellar steps go down.*
+The back stairs come down at the far end, which means anyone who uses them comes through
+here whether they meant to or not. There is a drawer under the counter. The hall is north,
+the yard door west, and the cellar steps go down.*
 
 **Cellar** — *Cold, and it smells like a cellar.* (Unlit: *It is pitch black.*)
 

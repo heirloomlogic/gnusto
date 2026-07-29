@@ -130,7 +130,18 @@ struct GameDefinition: Sendable {
     let text: GameText
     let locations: [EntityID: LocationDefinition]
     let items: [EntityID: ItemDefinition]
+    /// Just the `actor` entries of ``items``, precomputed. `currentScope()`
+    /// runs every turn *and* again for Tab completion, and FOLLOW's naming
+    /// reach needs the whole cast — rescanning the item table twice a turn to
+    /// rediscover a set that never changes is work for nothing.
+    let actorIDs: Set<EntityID>
     let exits: [EntityID: [Direction: ExitTarget]]
+    /// Every room some exit leads to. A game's off-map holding pens — the
+    /// street a character is "out on", the limbo an actor waits in before their
+    /// entrance — are exactly the rooms missing from this set, and FOLLOW uses
+    /// it to keep from naming somebody the player has no business knowing
+    /// about yet.
+    let reachableRooms: Set<EntityID>
     let globalDefaults: [EntityID: StateValue]
     let playerStart: EntityID
     /// `var` so the bootstrap can install the rule table after evaluating the

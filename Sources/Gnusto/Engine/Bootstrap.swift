@@ -468,7 +468,18 @@ enum Bootstrap {
             text: game.text,
             locations: locations,
             items: items,
+            actorIDs: Set(items.filter { $0.value.isActor }.keys),
             exits: exits,
+            reachableRooms: Set(
+                exits.values.flatMap(\.values).compactMap { target in
+                    switch target {
+                    case .to(let destination), .door(let destination, _),
+                        .conditional(let destination, _, _):
+                        destination
+                    case .blocked:
+                        nil
+                    }
+                }),
             globalDefaults: globalDefaults,
             playerStart: playerStart,
             rules: RuleTable(),

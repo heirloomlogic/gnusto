@@ -31,6 +31,8 @@ text.cantReach = { "The \($0) is right there, and yet." }
 
 The article helpers the defaults use — ``GameText/indefinite(_:)`` and ``GameText/indefiniteList(_:)`` — are public statics, so custom lines can format listings the same way the engine does.
 
+Every stock line that takes a name assumes a common noun: `The lantern is right here.` A game whose cast has proper names gets `The Mrs. Vane is right here.` unless it says otherwise, so a cast of people is a reason to override a handful of lines even if the voice suits you. `Sources/Fulminate/` does exactly that for the greeting and following lines, and re-skins `GnustoConversation`'s defaults the same way.
+
 Text a game declares itself (descriptions, rule replies) never goes through `GameText`; it's already in your voice.
 
 ## Randomness that replays
