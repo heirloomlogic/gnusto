@@ -96,20 +96,26 @@ struct Fulminate: Game, GameMain {
     /// Whether the cellar has told the player once where the light lives.
     @Global var cellarHintGiven = false
 
+    /// Whether the patrolman has the wreckage. Both gates that enforce it — the
+    /// way in from the yard, and turning the debris over — read this rather than
+    /// asking where he is standing, which is how the rest of the engine's demo
+    /// games write a creature blocking a way (Zork's troll and cyclops gate on
+    /// `trollDefeated` and `cyclopsSubdued`, not on their own placement).
+    @Global var wreckageSealed = false
+
     /// Whether the player was standing in the yard when it went up. The
     /// aftermath lands a turn later, by which time they may have walked
     /// somewhere else — and "there is grass in your cuff" has to be about
     /// where they were knocked down, not where they are now.
     @Global var wasInTheYardForTheBlast = false
 
-    /// Whether each of them has had their one moment about Julian, and whether
-    /// Delphine has declined a question in front of you yet.
+    /// Whether Delphine has declined a question in front of you yet.
     ///
-    /// Deliberately not `Fact`s. Facts are what the player has worked out, and
-    /// the six of them are the case; these three only record that a line has
-    /// been said out loud.
-    @Global var constanceHasSpokenOfJulian = false
-    @Global var delphineHasSpokenOfJulian = false
+    /// Deliberately not a `Fact`. Facts are what the player has worked out, and
+    /// the six of them are the case; this only records that a line has been said
+    /// out loud. Its two siblings — which tracked whether Constance and Delphine
+    /// had had their one moment about Julian — retired when topic rows gained
+    /// `again:`, which does the same job in the table.
     @Global var delphineHasDeflected = false
 
     /// The stock lines assume common nouns — "the Mrs. Vane is right here" —
@@ -258,7 +264,10 @@ struct Fulminate: Game, GameMain {
     let coat = Item {
         name("overcoat")
         adjectives("grey", "gray")
-        synonyms("coat", "overcoat")
+        // "pockets" because both refusals below point the player at them, and
+        // a game that names a thing twice and then doesn't know the word for
+        // it reads like a bug.
+        synonyms("coat", "overcoat", "pocket", "pockets")
         description(
             """
             A grey overcoat on the hat stand, good once and not lately. It is nobody's idea of June wear, which is \
@@ -605,16 +614,14 @@ struct Fulminate: Game, GameMain {
 
     // MARK: - The household
 
+    /// Her description and her presence line are both rules rather than
+    /// traits: the first because the blast changes her, the second because she
+    /// spends six minutes of the evening out of her chair and a woman in the
+    /// back garden is not in her chair with the lamp unlit.
     let constance = Actor {
         name("Mrs. Vane")
         adjectives("mrs", "missus", "old", "constance")
         synonyms("vane", "constance", "mother", "woman")
-        description(
-            """
-            Seventy-one, upright in a chair that has taken the shape of her. She has the stillness of someone who \
-            stopped expecting anything some years ago and has been managing on the arrangement since.
-            """)
-        firstSight("Mrs. Vane is in her chair with the lamp unlit.")
     }
 
     let delphine = Actor {
@@ -624,9 +631,8 @@ struct Fulminate: Game, GameMain {
         description(
             """
             Thirty-four, in a man's shirt with paint on the cuff. She looks back at you a beat longer than most \
-            people do, and it is not a challenge, it is arithmetic.
+            people do, and it is not a challenge. She is taking a reading.
             """)
-        firstSight("Delphine Marsh is here, not doing much.")
     }
 
     let teague = Actor {
@@ -646,23 +652,24 @@ struct Fulminate: Game, GameMain {
         name("Dr. Pike")
         adjectives("dr", "doctor", "aldous")
         synonyms("pike", "aldous", "man")
+        // He is in the parlour, the yard and the study across the evening, so
+        // the hat is described by how long it has been on rather than by which
+        // side of a door he is standing on.
         description(
             """
-            Fifty, and wearing his hat indoors because taking it off would mean he had arrived somewhere. He would \
-            like very much to be back up the arroyo.
+            Fifty, and he has not had the hat off since he came, because taking it off would mean he had arrived \
+            somewhere. He would like very much to be back up the arroyo.
             """)
         firstSight("Dr. Pike is standing about with his hat on.")
     }
 
+    /// Described by a rule: the line that makes her — she looked at it and went
+    /// back to work — is a thing you can only say about a woman who has had a
+    /// wreckage to look at.
     let kettle = Actor {
         name("Mrs. Kettle")
         adjectives("mrs", "missus", "iris", "cook")
         synonyms("kettle", "iris", "cook", "housekeeper", "woman")
-        description(
-            """
-            Sixty-two, and the only person here who has looked at the wreckage and then gone back to what she was \
-            doing. She misses nothing and says most of it.
-            """)
         firstSight("Mrs. Kettle is here, keeping busy.")
     }
 
@@ -949,13 +956,6 @@ struct Fulminate: Game, GameMain {
             julian.vanish()
             debris.reveal()
 
-            // Shock, from here to the end, and her shock looks like nothing
-            // at all. She is not grieving like a woman surprised by a death.
-            constance.description = """
-                Seventy-one, upright, flat, terribly still. She is holding still the way a woman holds still when \
-                she is doing arithmetic.
-                """
-
             // Standing in the carriage house when it goes up is a way to end
             // the evening, though not the intended one.
             if player.location == carriageHouse {
@@ -971,19 +971,19 @@ struct Fulminate: Game, GameMain {
                 wasInTheYardForTheBlast
                     ? """
 
-                    The carriage house comes apart. There is no bang, particularly — more the sound of a door \
-                    slamming in a cave — and then the ground hits you in the back and you work out, after a moment, \
-                    that you are lying down. Slates come out of the sky and go into the grass edge-first. Twenty feet \
-                    of the garden wall lies down with you. The heat arrives last and all at once and takes the hair \
-                    off the back of your hand.
+                    There is no moment in which it is about to happen. The carriage house comes apart. There is no \
+                    bang, particularly — more the sound of a door slamming in a cave — and then the ground hits you \
+                    in the back and you work out, after a moment, that you are lying down. Slates come out of the sky \
+                    and go into the grass edge-first. Twenty feet of the garden wall lies down with you. The heat \
+                    arrives last and all at once and takes the hair off the back of your hand.
                     """
                     : """
 
-                    Somewhere out behind the house something goes off with a flat, unimpressive thump, and every \
-                    window and pane and loose sash in the place shivers at once, and then is still. The floor comes \
-                    up an inch and puts itself back. Plaster lets go of the ceiling somewhere over your head. In the \
-                    kitchen a shelf of crockery goes over, all of it, one long run of breakage, and after that the \
-                    house is quieter than a house ought to be.
+                    Nothing leads up to it. Somewhere out behind the house something goes off with a flat, \
+                    unimpressive thump, and every window and pane and loose sash in the place shivers at once, and \
+                    then is still. The floor comes up an inch and puts itself back. Plaster lets go of the ceiling \
+                    somewhere over your head. In the kitchen a shelf of crockery goes over, all of it, one long run \
+                    of breakage, and after that the house is quieter than a house ought to be.
                     """)
 
             // Placed after the death check above, so a player who was standing
@@ -1017,26 +1017,35 @@ struct Fulminate: Game, GameMain {
                     below, and everybody in it is moving at once. The dust comes down the passage from the direction \
                     of the kitchen and settles on the hall table.
                     """)
-            if player.location == backYard {
+            // The one thing only this turn can say about her: she did not go
+            // down when it went. Her presence line carries the rest of the
+            // evening, so this beat has to be about the moment, not the pose.
+            if player.location == backYard, delphine.isIn(backYard) {
                 say(
                     """
 
-                    Delphine Marsh is standing where she was standing, arms at her sides, looking at it. She has not \
-                    moved and she is not going to.
+                    Delphine Marsh did not go down when it went. She did not even put a hand out.
                     """)
             }
             startFuse("blast.settling")
         }
 
         // And the second, which is the sound a building makes while it stops
-        // being one.
+        // being one. Out at the back it is a thing you watch happen; from
+        // inside the house it is a noise from the wrong direction.
         fuse("blast.settling", after: 1) {
             say(
-                """
+                player.location == backYard || player.location == carriageHouse
+                    ? """
 
-                Something out at the back lets go and settles, and the note in your ears steps down one. It will be \
-                there tomorrow.
-                """)
+                    Something in the wreckage lets go and settles, and the note in your ears steps down one. It will \
+                    be there tomorrow.
+                    """
+                    : """
+
+                    Something out at the back lets go and settles, and the note in your ears steps down one. It will \
+                    be there tomorrow.
+                    """)
         }
 
         // 5:52. The radio car. Not one of the evening's three fixed points —
@@ -1046,14 +1055,37 @@ struct Fulminate: Game, GameMain {
         // The exposition lives in his topic table, which is what "learned, not
         // given" has to mean if it is going to mean anything.
         clock.at(TimeOfDay(17, 52), named: "clock.radioCar") {
-            patrolman.move(to: carriageHouse)
+            // He stands on the yard side of the gap, which is where a man
+            // keeping people out of a building stands. The wreckage comes with
+            // him: the player cannot be on both sides of that line across this
+            // turn, so the move is unobservable, and it keeps the debris
+            // answerable to somebody who is now barred from walking up to it.
+            patrolman.move(to: backYard)
+            debris.move(to: backYard)
+            wreckageSealed = true
+
+            // A player standing in it when he arrives is the first person he
+            // puts out of it. Anything else would have him post himself at a
+            // door with somebody already inside, which is not what posting is.
+            if player.location == carriageHouse {
+                say(
+                    """
+
+                    A radio car pulls up out front. A patrolman comes through the house, takes your name and writes \
+                    it down, and walks you out of the wreckage with two fingers and no argument. Then he posts \
+                    himself where the door used to be, with you on the other side of him.
+                    """)
+                player.location = backYard
+                describeSurroundings()
+                return
+            }
             say(
-                player.location == backYard || player.location == carriageHouse
+                player.location == backYard
                     ? """
 
                     A radio car pulls up out front, and a patrolman comes through the house and out to the wreckage. \
                     He takes names, all of them, yours included, writes each one down, and posts himself where the \
-                    door used to be. Then he stops talking and looks at the fire.
+                    door used to be. After that he has nothing to say, and looks at the fire instead.
                     """
                     : """
 
@@ -1283,9 +1315,11 @@ struct Fulminate: Game, GameMain {
         }
 
         // The patrolman's one job. Some of the answer is literally in the
-        // debris, which is why nobody gets to sift it.
+        // debris, which is why nobody gets to sift it. Before he arrives you
+        // get six minutes with it and it gives you nothing, which is the more
+        // useful lesson.
         debris.before(.lookIn) {
-            if patrolman.location == carriageHouse {
+            if wreckageSealed {
                 try reply(
                     "\"Best keep back from there,\" the patrolman says, and puts a shoulder where you were going.")
             }
@@ -1294,6 +1328,49 @@ struct Fulminate: Game, GameMain {
                 You turn over what the heat will let you touch and get soot to the elbow for it. Whatever the answer \
                 is, it is not the kind you sift out.
                 """)
+        }
+
+        // MARK: The household, described
+
+        // Shock, from a quarter to six to the end, and her shock looks like
+        // nothing at all. She is not grieving like a woman surprised by a
+        // death.
+        constance.describe {
+            blastHappened
+                ? """
+                Seventy-one, upright, flat, terribly still. She is holding still the way a woman holds still when she \
+                is doing arithmetic.
+                """
+                : """
+                Seventy-one, upright in a chair that has taken the shape of her. She has the stillness of someone who \
+                stopped expecting anything some years ago and has been managing on the arrangement since.
+                """
+        }
+
+        // Six minutes of her evening are spent out of that chair, and the
+        // presence line has to know it.
+        constance.presence {
+            constance.isIn(parlour)
+                ? "Mrs. Vane is in her chair with the lamp unlit."
+                : "Mrs. Vane is on the step and no further, watching it burn."
+        }
+
+        delphine.presence {
+            blastHappened
+                ? "Delphine Marsh is on her feet with her arms at her sides, looking at the fire."
+                : "Delphine Marsh is here, not doing much."
+        }
+
+        kettle.describe {
+            blastHappened
+                ? """
+                Sixty-two, and the only person here who has looked at the wreckage and then gone back to what she was \
+                doing. She misses nothing and says most of it.
+                """
+                : """
+                Sixty-two, and she has stood in this kitchen longer than the boarder has had his room and longer than \
+                the son has had his shed. She misses nothing and says most of it.
+                """
         }
 
         // MARK: The interrogation
@@ -1343,7 +1420,7 @@ struct Fulminate: Game, GameMain {
             say("(after Teague, out through the yard door)")
             player.location = backYard
             describeSurroundings()
-            try reply("He is across the grass and inside before you are through the door.")
+            try reply("Teague is across the grass and into the carriage house before you are off the step.")
         }
 
         // Julian is askable for the first eight turns, and only there — the
@@ -1683,8 +1760,8 @@ struct Fulminate: Game, GameMain {
             topic(
                 "wreckage", "fire", "debris", "body", "vane", "julian",
                 reply: """
-                    "Nobody goes in there till the county man's been." He shifts his feet. "There's a man in there. \
-                    I've seen where he is. That's the last I'll say about it."
+                    "Not till the county man's been." He shifts his feet. "There's a man in there. I've seen where he \
+                    is. That's the last I'll say about it."
                     """)
             topic(
                 "names", "notebook", "statement", "report",
@@ -1758,7 +1835,16 @@ struct Fulminate: Game, GameMain {
         kitchen.down(cellar)
         cellar.up(kitchen)
 
-        backYard.north(carriageHouse)
+        // The lab is open for the three turns between the blast and the radio
+        // car, and the police own it after that. Only the way in closes; the
+        // way out never does.
+        backYard.north(
+            carriageHouse,
+            when: { !wreckageSealed },
+            otherwise: """
+                The patrolman puts an arm across the gap without any particular force in it. "Nobody past me till the \
+                county man's been."
+                """)
         carriageHouse.south(backYard)
 
         frontHall.up(landing)
@@ -1780,8 +1866,8 @@ struct Fulminate: Game, GameMain {
         // "You can't go that way" reads like the game forgot.
         kitchen.up(
             blocked: """
-                The back stairs are the household's. You would meet somebody coming down them in the dark, and you \
-                would rather go up the front way and be seen doing it.
+                The back stairs are the household's. A man who came here on a letter goes up the front way, where \
+                everybody can see him do it.
                 """)
 
         player.starts(in: frontHall)

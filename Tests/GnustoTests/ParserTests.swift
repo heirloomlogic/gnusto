@@ -47,6 +47,13 @@ struct ParserTests {
             "put the velvet cloak onto the small brass hook",
             Expected(intent: .putOn, direct: "cloak", indirect: "hook")
         ),
+        // A player who asks the game to find something is asking it to look,
+        // so all four spellings land on the one intent.
+        ("search cloak", Expected(intent: .lookIn, direct: "cloak")),
+        ("look in cloak", Expected(intent: .lookIn, direct: "cloak")),
+        ("find cloak", Expected(intent: .lookIn, direct: "cloak")),
+        ("look for the velvet cloak", Expected(intent: .lookIn, direct: "cloak")),
+        ("search for cloak", Expected(intent: .lookIn, direct: "cloak")),
         ("n", Expected(intent: .go, direction: .north)),
         ("south", Expected(intent: .go, direction: .south)),
         ("go north", Expected(intent: .go, direction: .north)),

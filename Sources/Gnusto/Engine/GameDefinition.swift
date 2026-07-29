@@ -117,6 +117,10 @@ struct RuleTable: Sendable {
     /// static `description(…)` trait.
     var itemDescribe: [EntityID: @Sendable () -> String] = [:]
     var locationDescribe: [EntityID: @Sendable () -> String] = [:]
+    /// Live room-listing paragraphs declared via `item.presence { … }` or
+    /// `actor.presence { … }`. Consulted by `TurnFrame.presenceText(of:)`
+    /// before a static `firstSight(…)` trait.
+    var itemPresence: [EntityID: @Sendable () -> String] = [:]
 }
 
 /// Everything about a game that never changes during play. Built once at

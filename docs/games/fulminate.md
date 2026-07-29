@@ -162,6 +162,18 @@ What the history buys, structurally:
 Five scheduled actors — four suspects and one honest witness — plus one unscheduled
 patrolman. Each suspect carries at most one apparatus; innuendo dies when it is a pile.
 
+**These people move, and their prose has to know it.** A line that describes somebody by a
+room they have left, or by a wreckage that has not happened yet, reads as a bug — and a
+play-tester caught three of them. So: nothing in a description or a presence line may assume
+a place the person is not currently standing in, or a time the game has not reached. Where
+that needs to vary, it varies — `describe { }` for the examine text, `presence { }` for the
+room-listing line. Constance's presence line is keyed on which room she is in; Constance's
+and Mrs. Kettle's descriptions are keyed on whether the blast has happened. Dr. Pike's is
+written to be true in the parlour, the yard and the study alike, which is the cheaper fix
+where it works.
+
+One word is reserved: **arithmetic** belongs to Constance's shock and appears nowhere else.
+
 ### Constance Vane — the mother
 
 Seventy-one. Owns the house and rents out the rooms because the money ran out in 1931 and
@@ -235,11 +247,17 @@ thing the game cannot let the player doubt.
 
 ### The patrolman
 
-Unscheduled, and stays that way — scenery with a topic table, not a sixth timetable. He
-stands at the wreckage from 5:52 on, keeps everybody out of it (which is why the player
-cannot dig the answer out of the debris), and knows exactly one useful thing: when the
-deputy coroner is due. He has three answers and volunteers none of them; the deadline
-reaches the page only because somebody asked him for it.
+Unscheduled, and stays that way — scenery with a topic table, not a sixth timetable. From
+5:52 he stands in the back yard, at the gap where the carriage house door used to be, and
+the wreckage is shut from that moment: the way in is refused in his words, and a player who
+was standing in it when he arrived is walked out of it. That is why the player cannot dig
+the answer out of the debris. He knows exactly one useful thing — when the deputy coroner is
+due — and he has three answers and volunteers none of them; the deadline reaches the page
+only because somebody asked him for it.
+
+The lab is therefore open for the three turns between the blast and the radio car, and
+owned by the police after that. Six minutes with the wreckage, which gives you nothing, is
+the more useful lesson than an evening of sifting it.
 
 **His fallback:** *"Best keep back from there."*
 
@@ -270,7 +288,7 @@ Nine the player can reach, plus one they can't.
 | **Kitchen** | Mrs. Kettle's ground. The back stairs pass through — this is how she sees things. The room names all three of its exits, and the drawer. Going **up** the back stairs is refused in the game's own words: they are the household's, not yours. |
 | **Cellar** | **Dark.** Needs the flashlight from the kitchen drawer; standing down there in the dark says where it lives, once. The scorched glove is here, behind the coal bin. |
 | **Back Yard** | Between the house and the carriage house. The garden wall. |
-| **Carriage House** | Julian's lab. Julian is alive in it until 5:46. Becomes **Wreckage**, with the patrolman posted at it from 5:52. |
+| **Carriage House** | Julian's lab. Julian is alive in it until 5:46. Becomes **Wreckage**, and is sealed from 5:52 by the patrolman posted at the gap on the yard side. Reachable for three turns in between. |
 | **Landing** | Upstairs hall. |
 | **Vane's Study** | The desk. The ledger. The lodge letters. |
 | **Boarder's Room** | Teague's. A typewriter and a suitcase that is packed too early. |
@@ -300,7 +318,7 @@ the source of truth; if they and this disagree, they win.
 | **5:46** | — | **The blast.** First alarm. Julian is gone. |
 | 5:46 | Teague | Off the map, on Orange Grove Avenue, where the player can't follow. |
 | 5:48 | Constance, Kettle, Pike | Out to the yard. Delphine is already standing in it. |
-| 5:52 | — | The radio car. The patrolman takes names, posts at the wreckage, and stops talking. **The deadline reaches the page when somebody asks him for it** — and not before. |
+| 5:52 | — | The radio car. The patrolman takes names, posts at the gap where the door was, and stops talking. **The wreckage is shut from here on.** **The deadline reaches the page when somebody asks him for it** — and not before. |
 | 5:54 | Constance | Back to the parlour, and stays there. |
 | 6:00 | Kettle | Back to her kitchen, on the grounds that somebody has to. |
 | 6:02 | Delphine | Up to the study, straight to the desk drawers. |

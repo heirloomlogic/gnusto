@@ -65,10 +65,12 @@ struct FulminateTests {
             ])
     }
 
+    /// The walk has to reach the lab before 5:52, because after that the
+    /// patrolman is standing in the way of it.
     @Test func theYardAndTheLabReadDifferentlyAfterTheBlast() async throws {
         let commands =
             Array(repeating: "z", count: 9)  // the blast, from the front hall
-            + ["south", "west", "look", "north", "look"]
+            + ["south", "west", "north", "look"]
         let transcript = try await play(Fulminate(), commands)
         expectInOrder(
             transcript,
@@ -129,7 +131,7 @@ struct FulminateTests {
         let asked = try await play(
             Fulminate(),
             Array(repeating: "z", count: 12)
-                + ["south", "west", "north", "ask patrolman about the coroner"])
+                + ["south", "west", "ask patrolman about the coroner"])
         #expect(
             turnOutput(of: "ask patrolman about the coroner", in: asked)
                 .contains("Due by ten of seven"))
@@ -137,12 +139,13 @@ struct FulminateTests {
 
     /// He is posted at the wreckage from 5:52 on, has three answers and only
     /// one that matters, and the debris stays off limits — the case will not
-    /// be solved by sifting.
+    /// be solved by sifting. He stands in the yard, at the gap where the door
+    /// was, which is where a man keeping people out of a building stands.
     @Test func thePatrolmanKnowsExactlyOneUsefulThing() async throws {
         let commands =
             Array(repeating: "z", count: 12)
             + [
-                "south", "west", "north",
+                "south", "west",
                 "ask patrolman about the coroner",
                 "ask patrolman about the lodge",
                 "search wreckage",
@@ -734,6 +737,87 @@ struct FulminateTests {
             ["south", "ask kettle about pike", "ask kettle about pike"])
         #expect(
             occurrencesInFulminate(of: "The doctor sat in the parlour", in: transcript) == 2)
+    }
+
+    // MARK: - Being described in the right place at the right time
+
+    /// The reported defect, and the class the whole pass was about: she was
+    /// described as the one person who had looked at the wreckage and gone back
+    /// to work, nine turns before there was any wreckage to look at.
+    @Test func nobodyIsDescribedByAnEveningTheyHaveNotHadYet() async throws {
+        let early = try await play(Fulminate(), ["south", "x kettle"])
+        let before = turnOutput(of: "x kettle", in: early)
+        #expect(before.contains("longer than the son has had his shed"))
+        #expect(!before.contains("wreckage"))
+
+        // She is out in the yard with the rest of them from 5:48 to six.
+        let late = try await play(
+            Fulminate(), ["south", "west"] + Array(repeating: "z", count: 10) + ["x kettle"])
+        #expect(turnOutput(of: "x kettle", in: late).contains("looked at the wreckage"))
+    }
+
+    /// She spends six minutes of the evening out of her chair, and a woman
+    /// standing in the back garden is not in her chair with the lamp unlit.
+    @Test func mrsVaneIsDescribedByTheRoomSheIsStandingIn() async throws {
+        // She reaches the step at the end of turn 10 and is back in the chair
+        // at the end of turn 13, so the yard look is turn 11 and the parlour
+        // look is turn 15.
+        let transcript = try await play(
+            Fulminate(),
+            ["south", "west"] + Array(repeating: "z", count: 8)
+                + ["l", "east", "north", "west", "look"])
+        #expect(turnOutput(of: "l", in: transcript).contains("Mrs. Vane is on the step and no further"))
+        #expect(turnOutput(of: "look", in: transcript).contains("in her chair with the lamp unlit"))
+    }
+
+    /// Hers said "not doing much" beside a burning building, and then the
+    /// aftermath beat contradicted it in the same breath.
+    @Test func delphinesPresenceLineKnowsAboutTheFire() async throws {
+        let transcript = try await play(
+            Fulminate(), ["south", "west", "look"] + Array(repeating: "z", count: 8) + ["look"])
+        expectInOrder(
+            transcript,
+            [
+                "Delphine Marsh is here, not doing much.",
+                "Delphine Marsh did not go down when it went.",
+                "Delphine Marsh is on her feet with her arms at her sides, looking at the fire.",
+            ])
+    }
+
+    /// Both of the coat's refusals point the player at the pockets, so the
+    /// pockets have to be a word — and FIND has to be a verb, because a player
+    /// standing in a burned-out lab types it.
+    @Test func thePocketsAndFindAreWordsTheGameKnows() async throws {
+        let transcript = try await play(
+            Fulminate(),
+            Array(repeating: "z", count: 21) + ["x pockets", "search pockets", "find receipt"])
+        #expect(!transcript.contains("I don't know the word"))
+        #expect(turnOutput(of: "x pockets", in: transcript).contains("A grey overcoat"))
+        #expect(
+            turnOutput(of: "search pockets", in: transcript)
+                .contains("a slip of register paper, folded once"))
+    }
+
+    /// He keeps everybody out of it, which has to mean something. The lab is
+    /// open for the three turns between the blast and the radio car, and the
+    /// police own it after that — including a player who was standing in it.
+    @Test func theWreckageIsSealedOnceThePatrolmanIsPosted() async throws {
+        // In it at 5:52: he takes the name and walks you out.
+        let cleared = try await play(
+            Fulminate(), Array(repeating: "z", count: 9) + ["south", "west", "north", "look"])
+        let arrival = turnOutput(of: "north", in: cleared)
+        #expect(arrival.contains("walks you out of the wreckage"))
+        #expect(arrival.contains("Back Yard"))
+        #expect(turnOutput(of: "look", in: cleared).contains("A patrolman is posted at the wreckage"))
+
+        // And afterwards the way in is shut, in his words rather than the
+        // engine's.
+        let refused = try await play(
+            Fulminate(), Array(repeating: "z", count: 12) + ["south", "west", "north"])
+        let blocked = turnOutput(of: "north", in: refused)
+        #expect(blocked.contains("Nobody past me till the county man's been."))
+        #expect(!blocked.contains("can't go that way"))
+        #expect(!blocked.contains("The roof is in the yard."))
     }
 
     // MARK: - Following, and saying hello

@@ -107,6 +107,18 @@ final class TurnFrame: Sendable {
             ?? ""
     }
 
+    /// The current standing-presence line of an entity: the live
+    /// `presence { … }` rule result if one was declared, else the static
+    /// `firstSight(…)` trait, else nil.
+    ///
+    /// Called outside `with { … }` for the same reason as `describedText`.
+    func presenceText(of id: EntityID) -> String? {
+        if let dynamic = definition.rules.itemPresence[id] {
+            return dynamic()
+        }
+        return definition.items[id]?.firstSight
+    }
+
     var command: Command {
         guard let command = with({ $0.command }) else {
             fatalError(

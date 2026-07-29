@@ -104,6 +104,73 @@ struct DslQuickWinsTests {
         }
     }
 
+    // MARK: - Closure presence lines
+
+    /// An actor's presence line is printed on every look, so a `presence` rule
+    /// on one has to be re-evaluated every time — that is the whole reason it
+    /// exists, and the reason a person who moves through a house can stop being
+    /// described in terms of the room they left.
+    @Test func closurePresenceLineOnAnActorIsLiveEveryLook() async throws {
+        let transcript = try await play(
+            PresenceGame(), ["look", "light crate", "look", "douse crate", "look"])
+        expectInOrder(
+            transcript,
+            [
+                "dozing against the wall",
+                "The bell rings.",
+                "on his feet and looking at the gate",
+                "The bell stops.",
+                "dozing against the wall",
+            ])
+    }
+
+    /// On an item the rule replaces `firstSight`, which means it keeps
+    /// `firstSight`'s manners: it prints until the player handles the thing and
+    /// then gives way to the standard mention.
+    @Test func closurePresenceLineOnAnItemStillWearsOffOnTouch() async throws {
+        let transcript = try await play(
+            PresenceGame(), ["look", "take crate", "look"])
+        #expect(turnOutput(of: "look", in: transcript).contains("sits in the middle of the yard"))
+        let afterwards = transcript.components(separatedBy: "> take crate")[1]
+        #expect(!afterwards.contains("sits in the middle of the yard"))
+    }
+
+    /// `Actor` gained `describe` alongside `presence`; it had neither, and
+    /// `asItem` is internal, so a game had no way to reach the one on `Item`.
+    @Test func closureDescriptionWorksOnAnActor() async throws {
+        let transcript = try await play(
+            PresenceGame(), ["x porter", "light crate", "x porter"])
+        expectInOrder(transcript, ["Asleep on his feet.", "The bell rings.", "Awake, and not pleased"])
+    }
+
+    @Test func staticFirstSightAndPresenceRuleOnTheSameEntityIsADiagnostic() {
+        do {
+            _ = try Bootstrap.build(AmbiguousPresenceGame())
+            Issue.record("expected a BootstrapError")
+        } catch let error as BootstrapError {
+            #expect(
+                error.diagnostics.contains {
+                    $0.contains("widget") && $0.contains("firstSight")
+                })
+        } catch {
+            Issue.record("expected a BootstrapError, got \(error)")
+        }
+    }
+
+    @Test func twoPresenceRulesForOneEntityIsABootstrapDiagnostic() {
+        do {
+            _ = try Bootstrap.build(DoublePresenceGame())
+            Issue.record("expected a BootstrapError")
+        } catch let error as BootstrapError {
+            #expect(
+                error.diagnostics.contains {
+                    $0.contains("widget") && $0.contains("presence")
+                })
+        } catch {
+            Issue.record("expected a BootstrapError, got \(error)")
+        }
+    }
+
     // MARK: - GameMain
 
     @Test func gameMainCompilesAndDrivesAScriptedIOHandler() async throws {

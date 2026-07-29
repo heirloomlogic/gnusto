@@ -73,7 +73,7 @@ enum RoomDescriber {
 
         for itemID in roomItems {
             guard let item = definition.items[itemID] else { continue }
-            if !touched.contains(itemID), let firstSight = item.firstSight {
+            if !touched.contains(itemID), let firstSight = frame.presenceText(of: itemID) {
                 frame.say(firstSight)
             } else if !item.isScenery {
                 frame.say(frame.definition.text.itemHere(item.name ?? itemID.raw))
@@ -103,13 +103,14 @@ enum RoomDescriber {
             }
         }
 
-        // Actor paragraphs. An actor's `firstSight` is its standing
-        // presence line — printed every time, not gated on `touched` the
-        // way an item's is (people aren't props; handling them doesn't
-        // wear off their entrance). What an actor carries is not listed.
+        // Actor paragraphs. An actor's presence line — `firstSight`, or the
+        // live `presence { … }` rule that supersedes it — is printed every
+        // time, not gated on `touched` the way an item's is (people aren't
+        // props; handling them doesn't wear off their entrance). What an
+        // actor carries is not listed.
         for actorID in present where definition.items[actorID]?.isActor == true {
             guard let actor = definition.items[actorID] else { continue }
-            if let presence = actor.firstSight {
+            if let presence = frame.presenceText(of: actorID) {
                 frame.say(presence)
             } else {
                 frame.say(frame.definition.text.actorHere(actor.name ?? actorID.raw))

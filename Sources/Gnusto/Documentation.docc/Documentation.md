@@ -131,11 +131,14 @@ A game type that also conforms to ``GameMain`` is a complete `@main` executable 
 - ``die(_:)``
 - ``Item/describe(_:)``
 - ``Location/describe(_:)``
+- ``Item/presence(_:)``
 
 ### Actors & Vehicles
 
 - <doc:ActorsAndVehicles>
 - ``Actor``
+- ``Actor/describe(_:)``
+- ``Actor/presence(_:)``
 - ``enterable``
 - ``Player/vehicle``
 - ``describeSurroundings()``

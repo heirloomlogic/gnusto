@@ -238,9 +238,14 @@ extension SyntaxRule {
         .init("blow", "out", .directObject, intent: .turnOff),
         .init("blow", .directObject, "out", intent: .turnOff),
 
-        // lookIn / search
+        // lookIn / search. FIND and LOOK FOR land here too: a player who asks
+        // the game to find something is asking it to look, and "you can't see
+        // any such thing" is a better answer than "I don't know the word".
         .init("look", "in", .directObject, intent: .lookIn),
         .init("search", .directObject, intent: .lookIn),
+        .init("find", .directObject, intent: .lookIn),
+        .init("look", "for", .directObject, intent: .lookIn),
+        .init("search", "for", .directObject, intent: .lookIn),
 
         // push
         .init("push", .directObject, intent: .push),

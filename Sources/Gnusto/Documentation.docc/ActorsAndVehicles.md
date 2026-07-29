@@ -34,6 +34,21 @@ engine adds is perception and manners:
   (ZIL's LDESC role) — handling a person doesn't wear off their entrance
   the way touching a prop does. Without one, the stock line is
   ``GameText/actorHere`` ("A troll is here.").
+- Both descriptive channels have a live form, declared in a `rules` block:
+  ``Actor/describe(_:)`` for the examine text and ``Actor/presence(_:)`` for
+  the standing line. `presence` is what a person on a schedule needs — a
+  woman described as sitting in her chair should not go on being described
+  that way once she is standing in the garden:
+
+  ```swift
+  constance.presence {
+      constance.isIn(parlour) ? Prose.inHerChair : Prose.onTheStep
+  }
+  ```
+
+  A rule and its static counterpart are mutually exclusive: `description(…)`
+  plus `describe { … }`, or `firstSight(…)` plus `presence { … }`, on the
+  same entity is a fatal bootstrap diagnostic.
 - `take troll` refuses with ``GameText/cantTakeActor``, and `take all`
   skips people structurally.
 - The builder takes the item trait vocabulary. The descriptive traits all
