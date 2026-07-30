@@ -276,16 +276,17 @@ Nine the player can reach, plus one they can't.
 ```
                     Carriage House  ──  (Wreckage after 5:46)
                           │ south
-    Cellar ── up ──  Back Yard
-      │                   │ east
-     up                   │
-      │                   │
-    Kitchen ──── north ── Front Hall ──── west ──── Parlour
-                              │
-                             up
-                              │
-    Boarder's Room ── west ── Landing ── west ── Vane's Study
+                     Back Yard
+                          │ east
+    Cellar ── up ──── Kitchen ──── north ── Front Hall ──── west ──── Parlour
+                                                │
+                                               up
+                                                │
+                   Boarder's Room ── west ── Landing ── west ── Vane's Study
 ```
+
+The kitchen is the hub, not the front hall: the back yard and the cellar both open
+off it, which is why Mrs. Kettle sees everyone who crosses the house.
 
 | Room | Notes |
 |---|---|

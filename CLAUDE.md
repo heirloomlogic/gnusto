@@ -16,21 +16,32 @@ that covers your task before writing code.
 | `Sources/Gnusto*/` | optional libraries spliced in as `GameContent`/`GamePlugin`: `GnustoClock`, `GnustoConversation`, `GnustoScoring`, `GnustoSpellcasting`, `GnustoMeleeCombat`, `GnustoDangerousDark`, `GnustoActors`. Plus `GnustoMacros` (the `#verb` macro) and `GnustoTestSupport` (the `play` harness) |
 | `Sources/CloakOfDarkness`, `Lighthouse`, `Zork1`, `Gramarye`, `Fulminate` | demo games, also the engine's real test corpus |
 | `Tests/GnustoTests/` | one suite per subject; `Support/` holds the fixture games |
-| `docs/games/*.md` | per-game design docs — **story-and-copy source of truth**, iterated separately from code |
+| `docs/games/*.md` | per-game design docs — **story-and-copy source of truth**, iterated separately from code. Only Fulminate has one so far |
+| `docs/playtesting.md` | how to play a game by hand and read the transcript as prose, plus the calibration answer key |
+| `.claude/skills/playtest/`, `.claude/workflows/playtest.js` | the automated play-test harness: subagents play, read prose, and report lines untrue of their frame |
+| `bin/playtest-replay` | one-line non-interactive replay of any game, seed pinned |
 | `FIDELITY.md` | Zork 1 only: where its content departs from the original. Nothing else uses it |
 
 ## Commands
 
 ```sh
 swift build
-swift test                                    # ~760 tests, sub-second
+swift test                                    # ~780 tests, sub-second
 swift test --filter FulminateTests
 swift run Fulminate                            # pipe stdin to play scripted; GNUSTO_PLAIN=1 forces plain output
 swift package --allow-writing-to-package-directory format-source-code
 xcrun swift-format lint --strict --parallel --recursive --configuration .swift-format Sources Tests
+
+bin/playtest-replay --build Fulminate                              # once
+bin/playtest-replay Fulminate --commands probe.txt --seed 0 --tail 60
 ```
 
 CI runs the strict lint. Run it before you claim done.
+
+`GNUSTO_SEED` pins a binary's random stream the way `play(_:_:seed:)` pins a test's, so
+a hand-played session replays as a test. `GNUSTO_TRANSCRIPT` records it,
+`GNUSTO_SAVE_DIR` keeps scripted saves out of your real slots, and a line starting `//`
+or `#` is a tester comment that never reaches the parser. See `docs/playtesting.md`.
 
 ## Reading order for a new task
 
@@ -104,9 +115,13 @@ In any rule body: `say`, `refuse`, `reply`, `require(_:else:)`, `end(won:)`, `di
   the warning off `coreTable`, so `action(.dig)` or a rule on `.attack` costs you
   nothing. Promote a stub with `reply`/`refuse` — stage 4 uses `say`, so a rule that
   only `say`s prints *both* lines.
-- **`search X` / `find X` / `look for X` all mean `.lookIn`**, which *refuses
-  non-containers* with `nothingToSearch` ("You find nothing of interest in the X").
-  An item you want searchable must be declared `container`.
+- **`search X` / `find X` / `look for X` all mean `.lookIn`**, which refuses in a
+  fixed order: `cantReach` for something out of reach, `cantSearchActor` for a
+  person, then `nothingToSearch` ("You find nothing of interest in the X") for
+  anything that isn't a `container`. An item you want searchable must be declared
+  `container`. `cantSeeAnySuchThing` is reserved for a noun that isn't in scope at
+  all, so "You can't see any such thing" in answer to `search <a thing the room just
+  described>` is a **bug**, not stock behavior.
 - **The player is an entity**, synthesized by the bootstrap as `EntityID.player` and
   reachable as `player.item`. It answers to `me`/`myself`/`self`, is always in scope,
   and is placed nowhere — so it never appears in a room listing, an inventory, or

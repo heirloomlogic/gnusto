@@ -66,6 +66,8 @@ let transcript = try await play(MyGame(), ["attack troll with sword"], seed: 7)
 
 With a pinned seed the whole session replays identically everywhere, so the transcript is safe to assert byte by byte. Two habits from Gnusto's own suite: discover a seed that produces the sequence you want with a throwaway scratch test, then record the expected outcomes in a comment beside the pinned assertions; and expect to re-pin when the game gains a new daemon or actor, because every extra consumer shifts the draw sequence.
 
+The same seed is available to the built binary as `GNUSTO_SEED`, so a session someone played by hand becomes a test: pin the seed, record the transcript with `GNUSTO_TRANSCRIPT`, and the command list replays under `play(_:_:seed:)` to the same prose. See <doc:SharingYourGame> for the full set of environment variables.
+
 ## What the helpers are made of
 
 `play` is three lines over public API — ``GameWorld/init(game:seed:)``, ``ScriptedIOHandler``, and ``REPL`` — so when a test needs something the helpers don't cover (inspecting ``GameWorld`` state mid-session, a custom ``IOHandler``), drop down and compose the pieces directly.

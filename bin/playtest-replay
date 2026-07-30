@@ -1,0 +1,199 @@
+#!/usr/bin/env bash
+#
+# Replay a Gnusto game non-interactively and print the transcript. This is the
+# one command a play-tester needs: write a command list, run it, read the prose.
+#
+# Usage:
+#   bin/playtest-replay --build <Game>
+#   bin/playtest-replay <Game> --commands FILE [options]
+#
+# Options:
+#   --commands FILE     One command per line. A blank line, or a line whose
+#                       first non-space characters are // or #, is a tester
+#                       comment: it is recorded in the transcript and never
+#                       reaches the engine, so it costs no turn and no clock
+#                       tick. Annotate freely.
+#   --seed N            GNUSTO_SEED (default 0). Pins the one random stream, so
+#                       the transcript you read is the transcript that
+#                       play(Game(), commands, seed: N) produces in the suite.
+#   --tail N            Print only the last N lines. Use it. Iterative replay is
+#                       O(n^2) in engine turns, which is free — a 120-turn
+#                       replay is milliseconds — and O(n^2) in tokens if you
+#                       re-read the whole transcript every turn, which is not.
+#   --label NAME        Names the scratch directory. One label per tester, so
+#                       parallel testers cannot read each other's saves.
+#   --restore SLOT      Prologue: restore SLOT before the command list, to reach
+#                       a deep state without replaying its prologue.
+#   --save SLOT         Epilogue: save to SLOT before quitting, so a later probe
+#                       can --restore it.
+#   --max-turns N       Refuse a command list longer than N engine commands
+#                       (default 250). A runaway probe is a token fire.
+#   --timeout SECS      Wall-clock kill (default 60).
+#   --package-path DIR  Drive a different checkout — used to replay against an
+#                       older commit in a git worktree, which has no bin/ of
+#                       its own.
+#
+# Why the built binary and not `swift run`: SharingYourGame.md warns that
+# `swift run` interferes with stdin for this project, it prints build chatter
+# into the output, and under a dozen concurrent testers it would trigger a dozen
+# builds. Build once with --build; replaying never builds.
+#
+# Why it prints the transcript FILE and not stdout: the plain ConsoleIOHandler
+# writes the "> " prompt but not the piped command, so stdout is answers with
+# the questions missing. GNUSTO_TRANSCRIPT records "> command" interleaved with
+# the output, byte-for-byte what ScriptedIOHandler produces in the test suite —
+# so the file printed here IS the string a transcript test asserts on.
+
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+
+die() { echo "playtest-replay: $*" >&2; exit 2; }
+
+# Prints the comment block at the top of this file as the usage text, stopping
+# at the first non-comment line, so adding a flag above documents it here too.
+usage() { sed -n '2,${/^#/!q; s/^# \{0,1\}//; p;}' "$0"; }
+
+need_number() { [[ "$2" =~ ^[0-9]+$ ]] || die "$1 must be a whole number, got '$2'"; }
+
+game=""; commands=""; seed=0; tail_lines=0; restore_slot=""; save_slot=""
+max_turns=250; timeout_secs=60; label=""; pkg="$PWD"; build_only=0
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --build)        build_only=1; shift ;;
+    --commands)     commands="${2:-}"; shift 2 ;;
+    --seed)         seed="${2:-}"; shift 2 ;;
+    --tail)         tail_lines="${2:-}"; shift 2 ;;
+    --label)        label="${2:-}"; shift 2 ;;
+    --restore)      restore_slot="${2:-}"; shift 2 ;;
+    --save)         save_slot="${2:-}"; shift 2 ;;
+    --max-turns)    max_turns="${2:-}"; shift 2 ;;
+    --timeout)      timeout_secs="${2:-}"; shift 2 ;;
+    --package-path) pkg="${2:-}"; shift 2 ;;
+    -h|--help)      usage; exit 0 ;;
+    -*)             die "unknown option $1" ;;
+    *)              [[ -z "$game" ]] || die "unexpected argument '$1'"; game="$1"; shift ;;
+  esac
+done
+
+[[ -n "$game" ]] || die "usage: bin/playtest-replay <Game> --commands FILE"
+# The game name reaches a shell command and a file path, so keep it to the
+# shape a Swift product name actually has.
+[[ "$game" =~ ^[A-Za-z][A-Za-z0-9]*$ ]] || die "bad game name '$game'"
+need_number --seed "$seed"
+need_number --tail "$tail_lines"
+need_number --max-turns "$max_turns"
+need_number --timeout "$timeout_secs"
+[[ -d "$pkg" ]] || die "--package-path '$pkg' is not a directory"
+pkg="$(cd "$pkg" && pwd)"
+
+# Where --build records the binary it resolved. Keyed by game, kept inside the
+# checkout it belongs to, so a worktree at an old commit gets its own.
+binpath_cache="$pkg/.context/playtest/.bin/$game.path"
+
+# --- build mode ---------------------------------------------------------------
+# A one-shot, not a lazy build. A dozen concurrent `swift build` calls serialize
+# on SwiftPM's package lock, so each tester would block on a build it cannot
+# see; and macOS ships bash 3.2, which has no flock to coordinate better.
+# Making the build explicit removes the race, and turns a stale binary into a
+# legible error instead of a mystery.
+if [[ $build_only -eq 1 ]]; then
+  echo "Building $game (debug) in $pkg …" >&2
+  ( cd "$pkg" && swift build --product "$game" ) >&2
+  # Ask for the bin path, never guess it. Under the swiftbuild build system it
+  # is .build/out/Products/Debug, not .build/debug — and a stale .build/debug
+  # copy from an earlier `swift run` may also exist, so guessing is a coin flip
+  # between the binary you just built and one from last week.
+  bindir="$( cd "$pkg" && swift build --product "$game" --show-bin-path )"
+  [[ -x "$bindir/$game" ]] || die "built $game but found no executable at $bindir/$game"
+  mkdir -p "$(dirname "$binpath_cache")"
+  printf '%s\n' "$bindir/$game" > "$binpath_cache"
+  echo "$bindir/$game"
+  exit 0
+fi
+
+[[ -n "$commands" ]] || die "--commands FILE is required"
+[[ -f "$commands" ]] || die "no such command file: $commands"
+[[ -f "$binpath_cache" ]] \
+  || die "no build recorded for $game — run: bin/playtest-replay --build $game"
+read -r binary < "$binpath_cache"
+[[ -x "$binary" ]] \
+  || die "recorded binary '$binary' is gone — re-run: bin/playtest-replay --build $game"
+
+[[ -n "$label" ]] || label="$game-adhoc"
+[[ "$label" =~ ^[A-Za-z0-9._-]+$ ]] || die "bad --label '$label'"
+scratch="$pkg/.context/playtest/$label"
+mkdir -p "$scratch/saves"
+
+# The cap counts engine commands only. Comments and blank lines never reach
+# perform(), so they are free and must not count against the budget.
+engine_lines="$(grep -cvE '^[[:space:]]*(//|#|$)' "$commands" || true)"
+[[ "$engine_lines" -le "$max_turns" ]] \
+  || die "$engine_lines commands exceeds --max-turns $max_turns"
+
+effective="$scratch/commands.effective.txt"
+{
+  # save and restore are two-turn interactions: the parser knows only the bare
+  # verbs, and the engine then asks for a filename on the *next* input line.
+  [[ -n "$restore_slot" ]] && printf 'restore\n%s\n' "$restore_slot"
+  cat "$commands"
+  [[ -n "$save_slot" ]] && printf 'save\n%s\n' "$save_slot"
+  # Twice. `quit` needs no confirmation on this path — the confirm prompt lives
+  # only in TerminalIOHandler, which piped input never builds — but a pending
+  # save/restore filename prompt or a death prompt is answered before any verb
+  # is parsed, so the first `quit` can be eaten as an answer. The second is
+  # simply unread in the ordinary case. The epilogue it produces —
+  # "Your score is N, in M turns." — is the proof the session ran to the end
+  # rather than wedging partway.
+  printf 'quit\nquit\n'
+} > "$effective"
+
+transcript="$scratch/transcript.txt"
+errlog="$scratch/stderr.txt"
+rm -f "$transcript" "$errlog"
+
+status=0
+# GNUSTO_TRANSCRIPT with a slash in it is honored verbatim and its parent
+# directories are created, so one variable is enough. GNUSTO_SAVE_DIR keeps
+# saves inside this tester's scratch. perl's alarm stands in for timeout(1),
+# which macOS does not ship.
+GNUSTO_PLAIN=1 \
+GNUSTO_SEED="$seed" \
+GNUSTO_TRANSCRIPT="$transcript" \
+GNUSTO_SAVE_DIR="$scratch/saves" \
+  perl -e 'alarm shift; exec @ARGV or die "exec failed: $!\n"' \
+       "$timeout_secs" "$binary" \
+  < "$effective" > /dev/null 2> "$errlog" || status=$?
+
+if [[ ! -f "$transcript" ]]; then
+  detail=""
+  [[ -s "$errlog" ]] && detail=" — stderr: $(head -c 400 "$errlog")"
+  die "no transcript written; engine exited $status$detail"
+fi
+
+if [[ "$tail_lines" -gt 0 ]]; then
+  total="$(grep -c '' "$transcript" || true)"
+  if [[ "$total" -gt "$tail_lines" ]]; then
+    echo "[playtest] showing the last $tail_lines of $total lines; full file at the path below"
+  fi
+  tail -n "$tail_lines" "$transcript"
+else
+  cat "$transcript"
+fi
+
+# The trailer is the machine-readable part: what ran, and whether it finished.
+echo
+echo "[playtest] game=$game seed=$seed commands=$engine_lines exit=$status"
+echo "[playtest] transcript=$transcript"
+echo "[playtest] commands=$effective"
+# perl's alarm kills with SIGALRM (14); the shell reports 128+14.
+if [[ "$status" -eq 142 || "$status" -eq 14 ]]; then
+  echo "[playtest] TIMEOUT after ${timeout_secs}s — the game never reached quit. Report this."
+elif [[ "$status" -ne 0 ]]; then
+  echo "[playtest] NONZERO EXIT — engine crash or bootstrap failure. Report this."
+fi
+if [[ -s "$errlog" ]]; then
+  echo "[playtest] stderr (bootstrap warnings and GNUSTO_SEED complaints land here):"
+  sed -n '1,40p' "$errlog"
+fi
