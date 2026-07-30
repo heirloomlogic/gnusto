@@ -80,6 +80,11 @@ no turn at all. This is the most common timing mistake in this repo, and it is e
 to make: four commands where one was a typo is three turns, and if you assumed four
 you are now reasoning about the wrong minute.
 
+The trap runs the other way too. A **stub verb parses and costs a turn** even though
+it does nothing — `sing`, `dig`, `xyzzy` all move the clock. So a probe padded with
+"harmless" verbs drifts forward, not back. `frotz` is the engine's reserved non-word
+and is the only reliably free thing you can type.
+
 So: compute the hour if you like — turn *n* reads `start + minutesPerTurn·(n−1)` —
 but **anchor every hour you claim with a real reading inside the transcript**, from
 `time` or from a room listing you can place. A probe whose anchor disagrees with
@@ -134,11 +139,12 @@ examine texts, refusals, blocked-exit prose, topic answers. If the game's prose 
 a word on the page, the parser must know it. Vocabulary comes from `name` (last word
 is the noun, earlier words are adjectives) plus `synonyms` and `adjectives`.
 
-**The tie-break that matters:** `I don't know the word "X"` is issue #76 — *unless
-the game's own prose printed X*, in which case it is K8 and it is yours. A room that
-describes "black and white tile, worn through to the grout" and then cannot answer
-`x tile` is a K8 finding, even though the reply is an unknown-word reply. Ask: did
-the game invite this word? If yes, report it. If you invented the word, bucket it.
+**The tie-break that matters:** if an open issue owns unknown words this round, your
+prompt says so — but that never covers a word the game's own prose printed, which is
+K8 and yours regardless. A room that describes "black and white tile, worn through to
+the grout" and then cannot answer `x tile` is a K8 finding, even though the reply is
+an unknown-word reply. Ask: did the game invite this word? If yes, report it. If you
+invented it, note it in your list and move on.
 
 **K9 — Stock lines interpolate a definite article into a name.** Twenty-seven of
 them do. A game whose actors have proper names or honorifics must re-skin every
@@ -161,44 +167,54 @@ fuse and daemon in one turn reads the same time.
 **K12 — Bootstrap warnings are surfaced at runtime.** Warning text in the transcript
 preamble, or on standard error, is a finding in its own right.
 
-**K13 — The known words are the standard verb table plus the game's own verbs.**
-Anything else answers `I don't know the word "…"`. See K8 for the tie-break.
+**K13 — The verb table has two halves.** `coreTable` is verbs the engine backs with
+behaviour; `stubTable` is roughly forty-eight the parser *knows as words* and answers
+with one line of stock prose and no mechanic — `sing`, `smell`, `dig`, `climb`,
+`pray`, `xyzzy`. A stub **parses and costs a turn**, so it is not a free line. Only a
+word in neither half answers `I don't know the word "…"`, and `frotz` is the engine's
+reserved non-word for when a test needs a guaranteed parse error.
+
+Two consequences. An unknown-word reply is now unusual enough to be worth looking at
+(see K8 for the tie-break). And a stub the game has not re-skinned answers **in the
+engine's voice rather than the game's** — `text.stubs.<verb>` is the override, and a
+game that sets none of them has forty-eight lines that were written for no game in
+particular. That is a `register-mismatch`, and it is the single largest new surface in
+the harness.
 
 ## What is never a finding, from anyone
 
-1. **`I don't know the word "X"` for a word you invented.** That is issue **#76**
-   (stub verbs), already owned. Collect them in one deduplicated list with counts
-   and hand it over as a routed bucket, never as findings. `attack`, `break`,
-   `burn`, `climb`, `dig`, `eat`, `jump`, `kiss`, `listen`, `pray`, `sing`, `smell`,
-   `throw`, `touch` are all #76's. **Exception:** promote out of #76 if the word is
-   a synonym for an intent the engine already has, or if the game's prose invited it
-   (K8).
-2. **A character declining to do something is characterization, not a defect.**
+1. **A character declining to do something is characterization, not a defect.**
    "The game said no" is never by itself a finding. Mrs. Vane refusing to light the
    lamp is who she is.
-3. **A refusal that is correct and merely terse.**
-4. **Prose you would have written differently.** Taste findings are admissible at
+2. **A refusal that is correct and merely terse.**
+3. **Prose you would have written differently.** Taste findings are admissible at
    the lowest severity, must be labelled as taste, and must never crowd out a truth
    finding.
 
-**Two things that used to belong on that list and no longer do.** Both were fixed,
-so the old behaviour is now a **regression**, and reporting it at raised severity is
-exactly right:
+Notice what is *not* on that list: anything owned by another issue. **Which defect
+classes are owned elsewhere is supplied to you per round**, in your prompt, from the
+issues that are open at the time the round runs. If your prompt names none, then
+nothing is owned elsewhere and every symptom you find is yours to judge.
+
+That indirection exists because this list got it wrong three times running. It used
+to say that unknown words belonged to #76, `x me` to #77, and paste behaviour to #78.
+All three were fixed, and for a while afterwards the brief was still telling testers
+to forward the exact symptoms that had become regressions. **A stale "already owned"
+rule is worse than a wrong rule**, because a wrong rule produces a bad finding that
+the verifier can refute, while a stale one produces silence.
+
+What those three became, since they are the likeliest things to still look wrong:
 
 - **`x me` / `x myself` / `x self` answer.** The player is a real entity, always in
   scope, placed nowhere — so it never shows up in a room listing, an inventory or
   `take all`, but examining it works. `I don't know the word "me"` is a defect now.
-  A game that gives the player no description of their own is worth a `note`; the
-  engine supplies a stock one.
 - **Pasting a multi-line block into a line that already begins `//` or `#` folds it
-  into one comment.** Every line break becomes a single space and nothing submits
-  until Return. Pasting into any *other* line still submits one command per line, on
-  purpose, so a walkthrough can be replayed by pasting it — that is not a defect.
-  Terminals without bracketed paste submit line-at-a-time as before.
+  into one comment.** Pasting into any *other* line still submits one command per
+  line, on purpose, so a walkthrough can be replayed by pasting it.
+- **~48 verbs are stubs rather than unknown words** (K13). They parse and cost a
+  turn, and any the game hasn't re-skinned speak in the engine's voice.
 
-This is the ordinary fate of a "never a finding" list: it is a snapshot of which
-defects are owned elsewhere, and it goes stale the moment one of them is fixed. If a
-rule here contradicts what the code does, the code wins and the contradiction is
+If a rule here contradicts what the code does, the code wins and the contradiction is
 itself a `doc-drift` finding against this file.
 
 ## What a good finding looks like

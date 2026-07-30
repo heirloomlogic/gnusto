@@ -36,6 +36,22 @@ public struct SyntaxRule: Sendable {
     let elements: [SyntaxElement]
     let intent: Intent
 
+    /// The row's leading run of literal words: what identifies the verb when
+    /// filtering candidates, and the `verbPhrase` shown in messages.
+    ///
+    /// Stored rather than computed: the parser filters the whole table by
+    /// `leadingWords` on every command, and the bootstrap reads it once per row
+    /// per game. Both were allocating a fresh array per access.
+    let leadingWords: [String]
+
+    /// Every literal word in the pattern, in order.
+    let literalWords: [String]
+
+    /// Specificity for rule-selection order: rows with more literal structure
+    /// are tried first, and among those, rows that consume more slots. Ties
+    /// keep their table order (the parser's sort is stable by construction).
+    let specificity: Int
+
     /// Builds a verb row from its pattern. The pattern must start with a
     /// literal word; the bootstrap validates custom rows and reports
     /// malformed patterns as fatal diagnostics.
@@ -44,8 +60,33 @@ public struct SyntaxRule: Sendable {
     ///   - elements: the pattern of literal words and slots.
     ///   - intent: the intent a match produces.
     public init(_ elements: SyntaxElement..., intent: Intent) {
+        self.init(elements, intent: intent)
+    }
+
+    /// The array-taking form, for callers that already hold a pattern — the
+    /// stub table builds its rows this way.
+    ///
+    /// - Parameters:
+    ///   - elements: the pattern of literal words and slots.
+    ///   - intent: the intent a match produces.
+    init(_ elements: [SyntaxElement], intent: Intent) {
         self.elements = elements
         self.intent = intent
+
+        var leading: [String] = []
+        var literals: [String] = []
+        var stillLeading = true
+        for element in elements {
+            guard case .word(let word) = element else {
+                stillLeading = false
+                continue
+            }
+            literals.append(word)
+            if stillLeading { leading.append(word) }
+        }
+        self.leadingWords = leading
+        self.literalWords = literals
+        self.specificity = literals.count * 10 + (elements.count - literals.count)
     }
 
     /// Identifies a row by what the player types — the full pattern — so the
@@ -56,32 +97,6 @@ public struct SyntaxRule: Sendable {
     }
 
     var key: Key { Key(elements: elements) }
-
-    /// The row's leading run of literal words: what identifies the verb when
-    /// filtering candidates, and the `verbPhrase` shown in messages.
-    var leadingWords: [String] {
-        var words: [String] = []
-        for element in elements {
-            guard case .word(let word) = element else { break }
-            words.append(word)
-        }
-        return words
-    }
-
-    /// Every literal word in the pattern, in order.
-    var literalWords: [String] {
-        elements.compactMap { element in
-            if case .word(let word) = element { word } else { nil }
-        }
-    }
-
-    /// Specificity for rule-selection order: rows with more literal structure
-    /// are tried first, and among those, rows that consume more slots. Ties
-    /// keep their table order (the parser's sort is stable by construction).
-    var specificity: Int {
-        let literals = literalWords.count
-        return literals * 10 + (elements.count - literals)
-    }
 
     /// The pattern rendered for diagnostics: `give <object> to <second object>`.
     var patternDescription: String {
@@ -165,9 +180,16 @@ public struct SyntaxRule: Sendable {
 }
 
 extension SyntaxRule {
-    /// The default verb table. Ordering within the table doesn't matter;
-    /// the parser sorts candidate rules by specificity.
-    static let standardTable: [SyntaxRule] = [
+    /// Every verb the engine ships: the mechanically load-bearing rows, then
+    /// the stub rows that are words without mechanics. Ordering within the
+    /// table doesn't matter; the parser sorts candidate rules by specificity.
+    static let standardTable: [SyntaxRule] = coreTable + stubTable
+
+    /// The rows the engine backs with real behavior. Bootstrap keys its
+    /// "you're overriding a built-in" warning off *this* table rather than
+    /// ``standardTable``, which is what makes reclaiming a stub row silent:
+    /// a stub has no behavior to shadow, so the warning would be noise.
+    static let coreTable: [SyntaxRule] = [
         // take
         .init("take", .directObject, intent: .take),
         .init("get", .directObject, intent: .take),
@@ -250,6 +272,7 @@ extension SyntaxRule {
         // push
         .init("push", .directObject, intent: .push),
         .init("move", .directObject, intent: .push),
+        .init("press", .directObject, intent: .push),
 
         // movement
         .init("go", .direction, intent: .go),

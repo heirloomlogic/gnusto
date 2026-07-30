@@ -12,18 +12,19 @@ A plugin is **logic only**. It contributes the player-typeable vocabulary a syst
 
 ```swift
 extension Intent {
-    #verb("buy", ["buy", .directObject])
-    #verb("sell", ["sell", .directObject])
+    #verb("haggle", ["haggle", "over", .directObject])
 }
 
 struct CommercePlugin: GamePlugin {
     var verbs: [SyntaxRule] {
-        [.buy, .sell]
+        .haggle
     }
 }
 ```
 
-`verbs`, `actions`, `rules`, and `timers` all default to empty, so a plugin declares only what it needs. The `#verb` declarations (see <doc:AddingCustomVerbs>) give the plugin *and* its hosts the same typed constants — host rules key on `.buy` exactly as the plugin's verbs emit it.
+`verbs`, `actions`, `rules`, and `timers` all default to empty, so a plugin declares only what it needs. The `#verb` declarations (see <doc:AddingCustomVerbs>) give the plugin *and* its hosts the same typed constants — host rules key on `.haggle` exactly as the plugin's verbs emit it.
+
+Note what *isn't* declared here. `buy` and `sell` are engine stub verbs (see <doc:StubVerbs>), so the words are already in every game's vocabulary; a commerce plugin only has to supply the behavior, which it does with the rules below. `haggle` is genuinely the plugin's own, so it needs the `#verb`. `GnustoMeleeCombat` splits the same way: the `attack` family is promoted, `stab` and `strike` are added.
 
 A plugin's `timers` splice the same way (`var timers: [TimedEvent] { actors.timers }`), and parameterized timer *factories* — methods returning a ``TimedEvent`` for the host's own `timers` block — are how a plugin animates the host's actors on the end-of-turn clock. Timer names are global to the game: prefix yours by convention (`"actors.roam"`).
 

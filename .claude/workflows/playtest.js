@@ -46,6 +46,10 @@ if (/(^|\/)\.\.(\/|$)/.test(pkg) || pkg.startsWith('-')) {
 const docPath = ARGS.docPath || null
 const capabilities = new Set(ARGS.capabilities || [])
 const ledger = new Set(ARGS.ledgerKeys || [])
+// [{number, owns}] — issues that are OPEN right now and own a defect class the
+// round should forward rather than fix. Empty means every symptom is this round's
+// to judge, which is the safe default.
+const routedIssues = (ARGS.routedIssues || []).filter((i) => i && i.number)
 const turnBudget = clamp(ARGS.turns, 20, 250, 60)
 const maxRounds = clamp(ARGS.rounds, 1, 6, 1)
 const dryTarget = clamp(ARGS.dryRounds, 1, 3, 2)
@@ -109,6 +113,16 @@ Replay a probe with a single command:
 Read the transcript FILE it points at, never stdout — the plain IO handler prints
 the "> " prompt but not the piped command, so stdout is answers with the questions
 missing. Comments (\`//\` or \`#\`) are recorded and never reach the parser.
+
+${routedIssues.length ? `**Owned elsewhere this round.** These issues are open and own a defect class. A
+symptom that belongs to one of them is routed, not reported:
+
+${routedIssues.map((i) => `- **#${i.number}** — ${i.owns}`).join('\n')}
+
+Anything not on that list is yours to judge, however much it looks like an engine
+concern.` : `**Nothing is owned elsewhere this round.** No open issue claims a defect class, so
+every symptom you find is yours to judge. In particular, do not assume an unknown
+word, an odd stock line or a rough edge is "already tracked" — check, or report it.`}
 ${pkg === '.' ? '' : `
 **You are playing an OLDER TREE than the one the briefs describe.** The binary is built
 from \`${pkg}\`; the judgement kernel, the checklists and \`CLAUDE.md\` all come from the
@@ -146,11 +160,14 @@ const CATEGORIES = [
   'prose-taste',
 ]
 
-// Issues that own a defect class this harness should route away rather than fix.
-// Keep this list honest: #77 (the player had no entity) and #78 (multiline paste)
-// were both fixed, so those replies are regressions now, not somebody else's
-// problem. A closed issue left here suppresses the very finding it used to excuse.
-const ROUTED_ISSUES = { type: 'string', enum: ['', '76'] }
+// An issue number a finding was routed to, or empty. Deliberately NOT an enum of
+// hardcoded numbers: this list went stale three merges running — #76, #77 and #78
+// were each fixed while the harness still told testers to forward their symptoms
+// elsewhere, which is worse than a wrong rule, because the failure mode is a
+// regression getting discarded as somebody else's problem. The caller supplies the
+// currently-open set per round (see `routedIssues` in the args), so an issue that
+// closes stops suppressing findings the moment the next round runs.
+const ROUTED_ISSUES = { type: 'string' }
 
 const SURVEY_SCHEMA = {
   type: 'object',
@@ -199,7 +216,13 @@ const SURVEY_SCHEMA = {
     },
     reskinnedTextKeys: {
       type: 'array',
-      description: 'Stock text keys the game overrides. The complement is the vandal target list.',
+      description: 'Stock text keys the game overrides in its `text` block. The complement is the vandal target list.',
+      items: { type: 'string' },
+    },
+    reskinnedStubs: {
+      type: 'array',
+      description:
+        'Stub-verb replies the game overrides via `text.stubs.<verb>`. The engine ships ~48; anything absent here still answers in the engine voice rather than the game\'s.',
       items: { type: 'string' },
     },
     properNamedActors: { type: 'array', items: { type: 'string' } },
@@ -261,7 +284,7 @@ const FINDINGS_SCHEMA = {
     },
     unknownWords: {
       type: 'array',
-      description: 'Words the parser did not know. Bucketed for #76, never reported as findings — unless the game printed the word first, which makes it a K8 unanswerable-noun finding instead.',
+      description: 'Words the parser did not know. Collected as one list rather than filed one-by-one — but note that ~48 verbs are now stubs, so an unknown word is unusual: if the game printed the word it is a K8 unanswerable-noun finding, and otherwise it is a verb with no stub yet.',
       items: {
         type: 'object',
         additionalProperties: false,
@@ -465,7 +488,8 @@ gave X a distinguishing detail that the examine text then withholds.
 
 You use only look / x / read / search / open and directions, so you should never see
 an unknown-word reply. If you do, the game printed a noun it cannot answer: that is
-K8 and it is yours, not #76.`,
+K8 and it is yours — a noun the game printed and cannot answer, whoever else may own
+unknown words this round.`,
   },
   {
     key: 'clock-watcher',
@@ -537,9 +561,25 @@ Judge four things:
 (d) Prose claiming a mechanic the game does not enforce — a patrolman "keeping
     everybody out of it" while the player is standing in it.
 
-Do not report any word outside the known-verb list; bucket it for #76 with a count.
-attack, break, eat, kiss, sing, smell, climb, jump and dig are all #76's. The productive
-move here is \`get <actor>\`, which IS in the standard table.`,
+STEP 3, the stub verbs, and this is new ground. The engine now answers ~48 verbs it has
+no mechanic for — \`sing\`, \`smell\`, \`dig\`, \`climb\`, \`jump\`, \`pray\`, \`listen\`,
+\`xyzzy\` — with one line of stock prose each, from \`GameText.stubs\`. They parse, they
+cost a turn, and **the ones the game has not re-skinned are in the engine's voice, not
+the game's.** The survey reports which stubs the game overrides; the complement is your
+list. Run each one and judge the register exactly as in (b) above: "Your singing is
+better kept to yourself." is fine in a generic engine and wrong in the mouth of a 1952
+murder investigation.
+
+Report a stub in the wrong register as \`register-mismatch\` at severity \`minor\` —
+these are cheap to fix and there may be dozens, so file them as ONE finding per game
+listing the offenders, not forty findings. A stub whose prose is actively *false* of the
+game (it names a thing the game has no concept of) is a \`prose-untrue-of-frame\` finding
+in its own right.
+
+\`frotz\` is the engine's reserved non-word: it is guaranteed to fail to parse, so use it
+when you need a known parse error. Any *other* \`I don't know the word\` is now worth
+looking at — it means either a noun the game printed and cannot answer (K8, yours) or a
+verb a player would reasonably reach for that has no stub yet.`,
   },
   {
     key: 'interrogator',
@@ -603,7 +643,7 @@ Then the player themselves, which is newly answerable and therefore newly breaka
 \`look\` in a room you are alone in. The player is always in scope but placed nowhere,
 so it must answer to all three words and must NOT appear in a room listing, in the
 inventory, or in what \`take all\` picks up. An unknown-word reply to \`x me\` is a
-regression, not #76.
+regression: the player is answerable now.
 
 You own: a refusal that names something the player cannot know yet, or leaks an entity
 from another room; a disambiguation prompt listing things the player cannot see; "You
@@ -611,8 +651,11 @@ can't see any such thing" for a thing that is right there (per K7 that is now a 
 defect, not stock behaviour); a refusal in the stock voice where its neighbours were
 re-skinned; \`take all\` picking up what it should not.
 
-You will generate more unknown-word replies than anyone. Bucket them, count them, hand
-over one list, and report nothing else about them.`,
+Unknown-word replies used to be somebody else's problem and are not any more: the engine
+now stubs ~48 verbs, so \`I don't know the word "X"\` means either a noun the game
+printed and cannot answer (K8 — yours) or a verb with no stub yet (worth one line in your
+coverage note). \`frotz\` is the reserved non-word and is the only guaranteed parse
+error. Still collect them in one list with counts rather than filing one finding each.`,
   },
   {
     key: 're-reader',
@@ -658,7 +701,11 @@ Report:
 4. Every noun the prose prints, crossed against the vocabulary (name, synonyms,
    adjectives), with whether it is answerable. Cross these two in code, not by playing:
    K8 is checkable before a single turn.
-5. Which stock text keys the game overrides. The COMPLEMENT is the vandal's target list.
+5. Which stock text keys the game overrides in its \`text\` block, AND which stub-verb
+   replies it overrides via \`text.stubs.<verb>\`. The COMPLEMENT of each is a vandal
+   target list. Read \`Sources/Gnusto/Actions/GameText.swift\` for the full stub roster
+   (the \`StubReplies\` struct) — a game that overrides none of them answers ~48 verbs in
+   the engine's voice.
 6. Which actors have proper names or honorifics.
 7. Which oracle tiers were actually available to you.
 
@@ -721,6 +768,7 @@ The survey found:
 - State axes: ${(survey.stateAxes || []).join(', ') || 'none'}
 - Timers: ${(survey.timers || []).map((t) => `${t.label} (${t.kind}${t.at ? ' @ ' + t.at : ''}${t.readsPlayerLocation ? ', reads player location' : ''})`).join('; ') || 'none'}
 - Stock keys the game re-skinned: ${(survey.reskinnedTextKeys || []).join(', ') || 'none'}
+- Stub-verb replies the game re-skinned: ${(survey.reskinnedStubs || []).join(', ') || 'NONE — every stub answers in the engine voice'}
 - Proper-named actors: ${(survey.properNamedActors || []).join(', ') || 'none'}
 ${charter.checklist ? `\nYOUR GENERATED CHECKLIST:\n${charter.checklist(survey)}\n` : ''}
 ${seen.size ? `\nAlready seen in earlier rounds or the ledger — do NOT report these again:\n${[...seen].slice(0, 60).join('\n')}` : ''}
@@ -741,7 +789,7 @@ reports findings and hides its gaps makes the round look thorough when it was no
     coverage.push({ round, charter: r.charter, ...r.coverage })
     for (const w of r.unknownWords || []) {
       // A word the game itself printed is not a missing verb; it is an
-      // unanswerable noun, and it belongs to this round rather than to #76.
+      // unanswerable noun (K8), and it belongs to this round rather than to a bucket.
       if (w.gamePrintedIt) continue
       unknownWords.set(w.word, (unknownWords.get(w.word) || 0) + (w.count || 1))
     }
@@ -817,10 +865,11 @@ actually been wrong, most frequent first.
 
 1. **Is it intentional design?** A character declining to act is characterization, not
    a defect. ${docPath ? `Check the design doc's "free to change" list — a finding objecting to a name, a line of prose, the tone, or a plot choice is objecting to something the doc explicitly licenses, and is refuted on sight unless it ALSO shows the line is untrue of its frame. Check the mechanics contract too: a behaviour the contract REQUIRES is not a defect.` : `With no design doc, lean harder on this: you cannot tell authorial intent from the outside, so a finding that amounts to a preference is refuted.`}
-2. **Is it owned by another issue?** An unknown *verb* the game never printed is #76
-   (stub verbs) — answer route-elsewhere with the number rather than confirming. That
-   is the only open bucket: \`x me\` and multiline paste were fixed, so those are
-   regressions to confirm, not tickets to forward.
+2. **Is it owned by another issue?** Only if your prompt named one above — the open
+   set is supplied per round, and it is often empty. If it is empty, nothing is owned
+   elsewhere and this check cannot save the finding. Do not reach for an issue number
+   from memory: #76, #77 and #78 all closed, and forwarding a symptom to a fixed issue
+   silently discards a regression.
 3. **Did the tester misread?** Replay the reproducer YOURSELF:
    \`bin/playtest-replay ${game} --commands <file> --seed ${seed} --label verify-${round}\`.
    Confirm the excerpt appears verbatim, in the frame claimed, with the hour anchored by
@@ -1034,7 +1083,7 @@ truth and they win over anything below.
 - There is deliberately no "cells probed" count: free-text cell labels are not comparable between charters, so any total would be a number that means nothing. Build the real cross-product yourself from the transcripts, against the ${survey.rooms.length}-room roster and the timers above.
 - Charters run: ${playRoster.map((c) => c.key).join(', ')}. NOT run: ${skipped.map((c) => c.key).join(', ') || 'none'}.
 - Confirmed ${confirmed.length}, refuted ${refuted.length}, findings routed to another issue ${routed.length}, fixed ${fixes.filter((f) => f.result && f.result.fixed).length}.
-- Unknown-word replies bucketed for #76: ${unknownWordTotal} occurrences over ${unknownWords.size} distinct words. These are NOT findings and are NOT counted as coverage; if that bucket is empty but the transcripts are full of unknown-word replies, say so.
+- Unknown-word replies collected: ${unknownWordTotal} occurrences over ${unknownWords.size} distinct words. Not findings in themselves and not coverage — but ~48 verbs are stubs now, so a large number here is itself worth a sentence. If this is empty while the transcripts are full of unknown-word replies, say so.
 - Timers, and whether any was left unexercised: ${(survey.timers || []).map((t) => t.label).join(', ') || 'none'}.
 
 Each charter's own coverage note:

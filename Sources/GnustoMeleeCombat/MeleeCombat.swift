@@ -13,26 +13,11 @@ extension TraitKey<Int> {
     public static let weaponStrength = Self("weaponStrength", default: 2)
 }
 
-extension Intent {
-    /// The one intent every combat verb emits: attack/kill/hit/fight
-    /// bare-handed or `with` a weapon, plus stab/strike (weapon required).
-    #verb(
-        "attack",
-        ["attack", .directObject],
-        ["attack", .directObject, "with", .indirectObject],
-        ["kill", .directObject],
-        ["kill", .directObject, "with", .indirectObject],
-        ["hit", .directObject],
-        ["hit", .directObject, "with", .indirectObject],
-        ["fight", .directObject],
-        ["stab", .directObject, "with", .indirectObject],
-        ["strike", .directObject, "with", .indirectObject])
-}
-
-/// Zork-style-lite melee: attack verbs, a weapon trait, per-villain health,
-/// a seeded outcome table (miss / wound / knockout / kill), and an
-/// aggression daemon so villains hit back. Deterministic under a pinned
-/// seed — every roll draws from the game's saved random stream.
+/// Zork-style-lite melee: the engine's attack verbs promoted to real behavior,
+/// a weapon trait, per-villain health, a seeded outcome table (miss / wound /
+/// knockout / kill), and an aggression daemon so villains hit back.
+/// Deterministic under a pinned seed — every roll draws from the game's saved
+/// random stream.
 ///
 /// Add it to the game's `content` block (the verbs and the futile stage-4
 /// default come along automatically), mark the weapons, then register each
@@ -150,10 +135,16 @@ public struct MeleeCombat: GameContent {
         self.text = text
     }
 
-    /// The attack syntax: attack/kill/hit/fight bare-handed or `with` a weapon,
-    /// plus stab/strike, which always name a weapon.
+    /// The two combat verbs the engine's stub table doesn't already ship.
+    /// attack/kill/hit/fight are core vocabulary, bare-handed or `with` a
+    /// weapon; stab and strike are melee's own, and always name the weapon.
+    ///
+    /// Spelled as rows rather than `.attack`, because an intent contributes its
+    /// `syntax` to a `verbs` block and an engine intent carries none — listing
+    /// `.attack` here would splice zero rows and lose stab/strike silently.
     public var verbs: [SyntaxRule] {
-        .attack
+        SyntaxRule("stab", .directObject, "with", .indirectObject, intent: .attack)
+        SyntaxRule("strike", .directObject, "with", .indirectObject, intent: .attack)
     }
 
     /// The stage-4 default for a target no villain rule claimed.

@@ -30,10 +30,11 @@ is not a new finding — it is a **regression**, and it goes back at raised seve
 3. **Fixed** — each with the test that fails without it.
 4. **Filed, not fixed** — with the reason. "Needs a human to pick a design" is a
    good reason; "ran out of budget" is also a good reason, and must be said.
-5. **Routed elsewhere** — the open buckets with counts (today that is #76, stub
-   verbs), and anything promoted *out* of a bucket with the argument for promoting it.
-   When a bucket's issue has been closed, its replies are regressions and belong under
-   *Fixed* or *Filed*, not here.
+5. **Routed elsewhere** — one entry per open issue the round forwarded symptoms to,
+   with counts, plus anything promoted *out* of a bucket and the argument for it. Omit
+   the section when the round routed nothing, which is the common case. An issue that
+   has since closed does not belong here at all: its symptoms are regressions, and
+   they go under *Fixed* or *Filed*.
 6. **Refuted** — the claim *and* the refutation. This section is how the verifier
    gets audited. A round with an empty refuted list either got lucky or isn't
    really refuting.
@@ -103,11 +104,13 @@ Doc changes in this commit: `docs/games/fulminate.md` — Cast copy for Mrs. Ket
 
 ## Routed elsewhere
 
-- **#76** — 24 distinct unknown words, 61 occurrences: `attack break burn climb dig
+- **#nnn** — 24 distinct unknown words, 61 occurrences: `attack break burn climb dig
   eat hit jump kick kiss knock listen pray pull ring shout sing sleep smell swim
   taste throw touch yell`. One aggregated comment; dropped from the fix stage.
-  Promoted **out** of #76: `tile` — the Front Hall's own description prints "black
-  and white tile, worn through to the grout", so the game invited the word (K8).
+  Promoted **out** of the bucket: `tile` — the Front Hall's own description prints
+  "black and white tile, worn through to the grout", so the game invited the word (K8).
+
+  (Illustrative. This round routed nothing, because no open issue owned a class.)
 
 ## Refuted
 

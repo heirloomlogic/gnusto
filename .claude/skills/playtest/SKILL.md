@@ -49,6 +49,22 @@ on that, so a game with no clock gets no clock-watcher.
 only Fulminate has one. A missing doc doesn't stop the round finding defects; it stops
 it *fixing* prose, because the repo makes the design doc the copy source of truth.
 
+**Derive `routedIssues` fresh, every round, from the issues that are open right now:**
+
+```sh
+gh issue list --state open --label enhancement --json number,title
+```
+
+Pass `[{number, owns}]` for any that own a defect class the round should forward
+rather than judge — an engine gap with a ticket already on it. Pass nothing when none
+do, which is the current state and the safe default.
+
+Do not hardcode this. The harness shipped with #76, #77 and #78 baked in; all three
+were fixed within days, and until the list was corrected the briefs were telling
+testers to forward the exact symptoms that had just become regressions. A stale
+"already owned" rule doesn't produce a bad finding a verifier can catch — it produces
+silence.
+
 Afterwards, write the returned report to
 `docs/games/<game>-playtest-<YYYY-MM-DD>.md` and append every dedupe key to
 `docs/games/<game>-playtest-ledger.md`. See `references/report-shape.md`. Commit the
@@ -65,6 +81,7 @@ report even when the round found nothing — a provable empty round is the point
 | `rounds` / `dryRounds` | `1` / `2` | Loop until N consecutive rounds surface nothing new. |
 | `packagePath` | `"."` | Drive another checkout — a worktree at an older commit, for calibration. |
 | `ledgerKeys` | `[]` | Keys from previous reports, so the loop doesn't re-find its own rejections. |
+| `routedIssues` | `[]` | `[{number, owns}]` for open issues that own a defect class. Derive it fresh — see above. |
 
 **`fix` defaults to `none`, and the fix phase is experimental.** Fixing is where the
 harness stops being safe: the failure mode isn't a crash, it's a *plausible* wrong fix

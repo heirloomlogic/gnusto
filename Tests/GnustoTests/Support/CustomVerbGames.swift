@@ -6,7 +6,10 @@ import Gnusto
 extension Intent {
     #verb("ring", ["ring", .directObject])
     #verb("polish", ["polish", .directObject, "with", .indirectObject])
-    #verb("sing")
+    // Deliberately a word the engine's stub table doesn't own: this verb's job
+    // is to prove the *unhandled* path still answers "I didn't understand", and
+    // a stub verb would answer its own line instead.
+    #verb("hum")
     // Same verb token and slot shape as the built-in `take`, so listing this
     // row reclaims it (last-wins) and emits `.steal` instead.
     #verb("steal", ["take", .directObject])
@@ -48,7 +51,7 @@ struct CustomVerbGame: Game {
     /// verb with no handling rule (proving the unhandled path falls through to
     /// the default "I didn't understand").
     var verbs: [SyntaxRule] {
-        [.ring, .polish, .sing]
+        [.ring, .polish, .hum]
     }
 
     var rules: Rules {
