@@ -66,10 +66,11 @@ struct UndoRestartTests {
     @Test func freeTurnsDoNotDisturbTheSnapshot() async throws {
         // A parse error, a meta command, and an empty `take all` (a free
         // reply) all sit between the mistake and its undo — none of them
-        // clobbers the snapshot.
+        // clobbers the snapshot. The parse error is nonsense rather than a
+        // stub verb, which would be a real turn and *would* clobber it.
         let transcript = try await play(
             RewindGame(),
-            ["take lamp", "xyzzy", "score", "take all", "undo", "take lamp"])
+            ["take lamp", "frotz", "score", "take all", "undo", "take lamp"])
         let takeAll = turnOutput(of: "take all", in: transcript)
         #expect(takeAll.contains("There is nothing here to take."))
         let undo = turnOutput(of: "undo", in: transcript)

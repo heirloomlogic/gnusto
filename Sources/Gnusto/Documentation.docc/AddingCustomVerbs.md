@@ -4,7 +4,9 @@ Teach the parser words the built-in table doesn't know.
 
 ## Overview
 
-Gnusto ships with a standard verb table: `take`, `drop`, `examine`, `wear`, `go`, `follow`, `greet`, `look`, `wait` (`z`), and their synonyms. When your game needs a verb of its own — `ring`, `buy`, `dig`, `pull` — you declare it once with `#verb` and handle it in a rule.
+Gnusto ships with a standard verb table in two tiers. The **core** tier is verbs the engine backs with real behavior: `take`, `drop`, `examine`, `wear`, `go`, `follow`, `greet`, `look`, `wait` (`z`), and their synonyms. The **stub** tier is verbs the parser knows as *words* with no mechanic behind them — `attack`, `dig`, `smell`, `climb`, `jump`, `buy`, `pray`, `xyzzy` and some forty more — each answering with one line of stock prose. See <doc:StubVerbs> for what they are and how to give one real behavior.
+
+When your game needs a verb neither tier covers — `ring`, `wind`, `chime`, `barter` — you declare it once with `#verb` and handle it in a rule.
 
 `wait` (and its alias `z`) is a normal, time-passing turn: it prints the `timePasses` line ("Time passes.") and lets fuses and daemons tick — the standard way to let a countdown run down or a wandering monster catch up. Re-skin the line by mutating `text.timePasses`.
 
@@ -20,7 +22,9 @@ extension Intent {
 }
 ```
 
-This generates a typed constant, `Intent.ring`, that carries its verb row. String literals in a pattern are literal words; the slots are ``SyntaxElement/directObject``, ``SyntaxElement/indirectObject``, ``SyntaxElement/direction``, and ``SyntaxElement/topic``. With no pattern at all, the verb is the name: `#verb("sing")` accepts a bare `sing`.
+This generates a typed constant, `Intent.ring`, that carries its verb row. String literals in a pattern are literal words; the slots are ``SyntaxElement/directObject``, ``SyntaxElement/indirectObject``, ``SyntaxElement/direction``, and ``SyntaxElement/topic``. With no pattern at all, the verb is the name: `#verb("chime")` accepts a bare `chime`.
+
+Pick a name the engine doesn't already own. `#verb` mints `Intent.<name>`, and a second declaration of a name the engine ships makes `.<name>` ambiguous in any file that imports both modules — so `#verb("dig")` in a library is a trap, while `#verb("excavate", ["dig", .directObject])` is fine.
 
 Patterns are validated as you type — a malformed shape is a compile-time error, with the same wording the bootstrap uses for hand-built rows.
 
@@ -48,7 +52,7 @@ List several intents as one array — bare `.ring` statements on consecutive lin
 
 ```swift
 var verbs: [SyntaxRule] {
-    [.ring, .polish, .sing]
+    [.ring, .polish, .chime]
 }
 ```
 
@@ -71,11 +75,11 @@ A pattern reads the way it's typed. Some shapes, from the standard table and bey
 
 | Pattern | Player types | Command gets |
 |---|---|---|
-| `#verb("pray")` | `pray` | just the intent |
-| `#verb("dig", ["dig", .direction])` | `dig down` | a ``Command/direction`` |
+| `#verb("chime")` | `chime` | just the intent |
+| `#verb("tunnel", ["tunnel", .direction])` | `tunnel down` | a ``Command/direction`` |
 | `#verb("ring", ["ring", .directObject])` | `ring bell` | a ``Command/directObject`` |
-| `#verb("pick", ["pick", .directObject, "up"])` | `pick bell up` | a direct object |
-| `#verb("give", ["give", .directObject, "to", .indirectObject])` | `give bell to monk` | direct + indirect objects |
+| `#verb("wind", ["wind", .directObject, "up"])` | `wind canary up` | a direct object |
+| `#verb("barter", ["barter", .directObject, "for", .indirectObject])` | `barter coin for rope` | direct + indirect objects |
 | `#verb("peek", ["look", "under", .directObject])` | `look under rug` | a direct object |
 | `#verb("ask", ["ask", .directObject, "about", .topic])` | `ask monk about the bell` | a direct object + a ``Command/topic`` |
 
@@ -100,7 +104,7 @@ Among rows sharing a verb word, the parser tries the most specific pattern first
 
 ## Reclaiming a built-in verb
 
-A verb table merges the built-in rows, each content bundle's, each plugin's, and the game's own, under a **last-wins** policy keyed on what the player types (the full pattern). If your pattern exactly matches a built-in, yours reclaims it — the parser emits *your* intent instead — and the engine logs a non-fatal warning so the override is never silent. The intent name doesn't have to match the typed word, which is what makes a reclaim readable:
+A verb table merges the built-in rows, each content bundle's, each plugin's, and the game's own, under a **last-wins** policy keyed on what the player types (the full pattern). If your pattern exactly matches a **core** row, yours reclaims it — the parser emits *your* intent instead — and the engine logs a non-fatal warning so the override is never silent. The intent name doesn't have to match the typed word, which is what makes a reclaim readable:
 
 ```swift
 extension Intent {
@@ -108,12 +112,9 @@ extension Intent {
 }
 ```
 
-Some words a game is *likely* to want are therefore deliberately absent from
-the built-in table. Bare `hello` and bare `hi` are the clearest case: they are
-the kind of one-word verb a game likes to own outright — Zork 1 does — and
-claiming them as built-ins would make every such game print an override warning
-at launch. The engine ships `greet <object>`, `hello <object>` and
-`hi <object>`, and leaves the bare forms to `GnustoConversation` or to you.
+Reclaiming a **stub** row is silent, because a stub has no behavior to shadow and overriding it is the expected end state. That is the whole point of the two tiers: the warning catches you accidentally hiding something real, and stays quiet when you're filling in a blank. See <doc:StubVerbs>.
+
+A few words a game is *likely* to want are deliberately absent from both tiers. Bare `hello` and bare `hi` are the clearest case: they are the kind of one-word verb a game likes to own outright — Zork 1 does — and even a silent reclaim is worse than leaving them free, because the engine would have to pick a greeting line for everybody. The engine ships `greet <object>`, `hello <object>` and `hi <object>`, and leaves the bare forms to `GnustoConversation` or to you. `ring` and `wind` are out for the same reason: a game that has a bell wants to say what ringing it does.
 
 ## The substrate: raw `SyntaxRule`
 
@@ -129,10 +130,19 @@ The two forms interoperate: an `Intent("ring")` built from a string matches a `#
 
 ## Where verbs can come from
 
-The `verbs` block exists on more than the game type. A ``GameContent`` bundle and a ``GamePlugin`` each carry their own `verbs`, all merged into one table at startup. That is exactly how a reusable plugin ships a whole verb — `GnustoMeleeCombat` declares `#verb("attack", …)` once and lists `.attack` in its `verbs`, and any host that splices the plugin gets the entire combat vocabulary. See <doc:Plugins>.
+The `verbs` block exists on more than the game type. A ``GameContent`` bundle and a ``GamePlugin`` each carry their own `verbs`, all merged into one table at startup. That is how a reusable plugin ships a whole verb — `GnustoMeleeCombat` promotes the engine's `attack`/`kill`/`hit`/`fight` stubs to real combat with an `actions` row, and adds the two rows the engine doesn't ship (`stab … with …`, `strike … with …`) to the same intent. See <doc:Plugins>.
+
+One trap worth naming, because it fails silently. Listing an *intent* in a `verbs` block splices the rows that intent carries — and an engine intent carries none, because its rows live in the standard table. So `verbs { .attack }` compiles, contributes nothing, and produces no diagnostic. When you're adding rows to an engine intent, spell them as ``SyntaxRule`` values:
+
+```swift
+public var verbs: [SyntaxRule] {
+    SyntaxRule("stab", .directObject, "with", .indirectObject, intent: .attack)
+}
+```
 
 ## See also
 
+- <doc:StubVerbs>
 - <doc:WritingRules>
 - <doc:TheTurnPipeline>
 - <doc:Plugins>

@@ -166,6 +166,7 @@ A game type that also conforms to ``GameMain`` is a complete `@main` executable 
 ### Adding Vocabulary
 
 - <doc:AddingCustomVerbs>
+- <doc:StubVerbs>
 - ``verb(_:_:)``
 - ``SyntaxRule``
 - ``SyntaxElement``
@@ -174,6 +175,7 @@ A game type that also conforms to ``GameMain`` is a complete `@main` executable 
 
 - <doc:TextAndRandomness>
 - ``GameText``
+- ``GameText/StubReplies``
 - ``random(_:)``
 - ``chance(_:)``
 

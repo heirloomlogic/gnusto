@@ -47,7 +47,15 @@ enum DefaultActions {
         case .version: version(frame)
         case .quit: quit(frame)
         default:
-            frame.say(frame.definition.text.didntUnderstand)
+            // A stub verb: a word the parser knows with no mechanic behind it.
+            // `say`, not `reply`, so `after` rules still get their turn and the
+            // world clock advances — flailing at the chair takes time.
+            let text = frame.definition.text
+            if let stub = stubsByIntent[command.intent] {
+                frame.say(stub.line(text, command))
+            } else {
+                frame.say(text.didntUnderstand)
+            }
         }
     }
 

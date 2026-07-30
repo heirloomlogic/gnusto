@@ -35,11 +35,15 @@ CI runs the strict lint. Run it before you claim done.
 ## Reading order for a new task
 
 - **Any game work** — `Sources/Lighthouse/` is the feature tour and the shortest complete read.
-- New verb → `AddingCustomVerbs.md`. Rules → `WritingRules.md`. Turn order → `TheTurnPipeline.md`.
+- New verb → `AddingCustomVerbs.md`, then `StubVerbs.md`. Rules → `WritingRules.md`.
+  Turn order → `TheTurnPipeline.md`.
 - Actors → `ActorsAndVehicles.md`. Plugins/bundles → `Plugins.md`, `ContentBundles.md`.
 - Tests → `TestingYourGame.md`.
-- The built-in verb table is one array: `Sources/Gnusto/Actions/SyntaxRule.swift` (`standardTable`).
-  The intent list is `Actions/Command.swift`. Player-facing stock lines are `Actions/GameText.swift`.
+- The built-in verb table is two arrays in `Sources/Gnusto/Actions/SyntaxRule.swift`:
+  `coreTable` (verbs the engine backs with behavior) plus `stubTable`, together
+  `standardTable`. Stub verbs — ~47 intents that are words with one line of prose and
+  no mechanic — live in `Actions/StubVerbs.swift`; their copy is `GameText.stubs`.
+  The core intent list is `Actions/Command.swift`. Stock lines are `Actions/GameText.swift`.
 
 ## The shape of a game
 
@@ -94,6 +98,12 @@ In any rule body: `say`, `refuse`, `reply`, `require(_:else:)`, `end(won:)`, `di
 - **Meta intents and parse failures cost no turn** (`Command.metaIntents`,
   `freeReply`). A test that counts turns by counting commands will be wrong the
   moment one of them fails to parse. This is the single most common test-timing bug.
+  A **stub verb does** cost a turn, so `sing` or `xyzzy` is not a free line — use
+  `frotz` when a test needs a guaranteed parse error.
+- **Overriding a stub verb is silent; overriding a core verb warns.** Bootstrap keys
+  the warning off `coreTable`, so `action(.dig)` or a rule on `.attack` costs you
+  nothing. Promote a stub with `reply`/`refuse` — stage 4 uses `say`, so a rule that
+  only `say`s prints *both* lines.
 - **`search X` / `find X` / `look for X` all mean `.lookIn`**, which *refuses
   non-containers* with `nothingToSearch` ("You find nothing of interest in the X").
   An item you want searchable must be declared `container`.

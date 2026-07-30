@@ -12,7 +12,9 @@ struct PluginSeamTests {
             BrawlGame(),
             ["look", "xyzzy nonsense", "quit"])
         // Autostart: the pulse beats on the look turn. A parse error is not
-        // a turn: no extra pulse on the nonsense line.
+        // a turn: no extra pulse on the nonsense line. Bare `xyzzy` is a stub
+        // verb and would cost a turn, but `xyzzy nonsense` fits no pattern, so
+        // the line stays a free parse error — worth keeping for exactly that.
         #expect(turnOutput(of: "look", in: transcript).contains("[pulse]"))
         #expect(!turnOutput(of: "xyzzy nonsense", in: transcript).contains("[pulse]"))
     }

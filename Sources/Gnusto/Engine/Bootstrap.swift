@@ -341,8 +341,11 @@ enum Bootstrap {
         // beats a bundle that claims the same shape. A custom row whose verb
         // and shape match a built-in reclaims it (last-wins) with a non-fatal
         // warning, so an author can override a verb while keeping it visible.
+        // Keyed off `coreTable`, not `standardTable`: reclaiming a *stub* row
+        // shadows no behavior, and overriding one is the expected end state, so
+        // that case is silent.
         var verbWarnings: [String] = []
-        let builtInKeys = Set(SyntaxRule.standardTable.map(\.key))
+        let builtInKeys = Set(SyntaxRule.coreTable.map(\.key))
         for verb in customVerbs where builtInKeys.contains(verb.key) {
             verbWarnings.append(
                 "custom verb \"\(verb.patternDescription)\" overrides a "
@@ -647,7 +650,7 @@ enum Bootstrap {
         let deadIntents =
             watchedIntents
             .subtracting(producedIntents)
-            .filter { !DefaultActions.builtInIntents.contains($0) }
+            .filter { !DefaultActions.handledIntents.contains($0) }
         for intent in deadIntents.sorted(by: { $0.raw < $1.raw }) {
             definition.warnings.append(
                 "a rule watches intent \"\(intent.raw)\", but no verb row produces "

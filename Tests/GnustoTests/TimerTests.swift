@@ -82,13 +82,16 @@ struct TimerTests {
     @Test func daemonTicksOnRefusedTurnsButNotParseErrors() async throws {
         let transcript = try await play(
             ClockGame(),
-            ["summon", "take boulder", "xyzzy"])
+            ["summon", "take boulder", "sing", "frotz"])
         // Refused turn (scenery take): world time passes, the drip arrives.
         let refused = turnOutput(of: "take boulder", in: transcript)
         #expect(refused.contains("You can't take that."))
         #expect(refused.contains("Drip."))
-        // Parse error: free, no tick.
-        let error = turnOutput(of: "xyzzy", in: transcript)
+        // Stub verb: an ordinary turn, so the drip arrives here too.
+        #expect(turnOutput(of: "sing", in: transcript).contains("Drip."))
+        // Parse error: free, no tick. `frotz` is nonsense rather than a stub
+        // verb, which would tick — that contrast is the point.
+        let error = turnOutput(of: "frotz", in: transcript)
         #expect(!error.contains("Drip."))
     }
 

@@ -35,6 +35,15 @@ Every stock line that takes a name assumes a common noun: `The lantern is right 
 
 Text a game declares itself (descriptions, rule replies) never goes through `GameText`; it's already in your voice.
 
+The stub verbs' stock replies are grouped on ``GameText/stubs`` rather than sitting flat alongside the rest, since there are about fifty of them:
+
+```swift
+text.stubs.attack = "The Institute frowns on that sort of thing."
+text.stubs.smash = { "The \($0) is stouter than your temper." }
+```
+
+Overriding one re-skins the line; replacing the *behavior* is a rule or an `actions` row. See <doc:StubVerbs>.
+
 ## Randomness that replays
 
 Rule bodies can vary their behavior with three helpers:
