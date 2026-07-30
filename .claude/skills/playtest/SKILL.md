@@ -1,0 +1,114 @@
+---
+name: playtest
+description: Run an automated play-test round against a Gnusto demo game — Claude subagents play it, read the transcripts as prose, and report lines that are not true of the frame they printed in. Use when asked to playtest, play-test, or find prose defects in a game (Fulminate, Lighthouse, Gramarye, Zork1, CloakOfDarkness); when asked to check whether a game's writing is true of where the player is standing; or after changing a game's copy, timers, or actor scheduling. Also use to reproduce a reported transcript defect, or to calibrate the harness against a historical commit.
+---
+
+# Play-testing a Gnusto game
+
+Several Claude subagents play a demo game, read the transcripts as prose, and report
+sentences that are not true of the frame they printed in — the defect class a
+transcript test structurally cannot catch, because it asserts a line *appears* and
+never asks whether it is *true*.
+
+`references/playtester-brief.md` is the doctrine and the judgement kernel; every
+tester reads it. This file is the operator's recipe for starting a round.
+
+## Run a round
+
+```sh
+bin/playtest-replay --build <Game>        # once, before dispatch
+```
+
+Then work out the arguments and invoke the workflow **by path**:
+
+```
+Workflow({ scriptPath: ".claude/workflows/playtest.js", args: {
+  game: "Fulminate",
+  packagePath: ".",
+  docPath: "docs/games/fulminate.md",   // null when the game has no design doc
+  capabilities: ["clock", "talk"],
+  seed: 0,
+  turns: 60,
+  fix: "none"
+}})
+```
+
+`scriptPath` rather than `{name: "playtest"}` because the workflow registry is read
+when the session starts: a checkout that gained `.claude/workflows/` after the session
+began won't resolve the name, and the failure mode is a confusing "not found" rather
+than anything informative. The path always works. `{name: "playtest"}` is equivalent
+once a session has picked the file up.
+
+**Work out `capabilities` from the manifest, not from a list in this file** — there is
+deliberately no per-game config. `swift package describe` or `Package.swift` shows
+what a game depends on: `GnustoClock` → `clock`, `GnustoConversation` → `talk`,
+`GnustoScoring` → `score`, `GnustoSpellcasting` → `magic`. Charters filter themselves
+on that, so a game with no clock gets no clock-watcher.
+
+**`docPath` is `docs/games/<game>.md` if it exists and `null` if it doesn't.** Today
+only Fulminate has one. A missing doc doesn't stop the round finding defects; it stops
+it *fixing* prose, because the repo makes the design doc the copy source of truth.
+
+Afterwards, write the returned report to
+`docs/games/<game>-playtest-<YYYY-MM-DD>.md` and append every dedupe key to
+`docs/games/<game>-playtest-ledger.md`. See `references/report-shape.md`. Commit the
+report even when the round found nothing — a provable empty round is the point.
+
+## Options
+
+| Argument | Default | Notes |
+|---|---|---|
+| `seed` | `0` | Pins the stream via `GNUSTO_SEED`. Record it; a finding without a seed isn't reproducible. |
+| `turns` | `60` | Engine turns per charter. Token cost, not CPU cost, is the real budget. |
+| `charters` | all applicable | Comma-separated subset, e.g. `"tourist,clock-watcher"`. |
+| `fix` | `"none"` | `none` files everything. `game` also fixes findings owned by the game's own files. `all` fixes engine findings too. |
+| `rounds` / `dryRounds` | `1` / `2` | Loop until N consecutive rounds surface nothing new. |
+| `packagePath` | `"."` | Drive another checkout — a worktree at an older commit, for calibration. |
+| `ledgerKeys` | `[]` | Keys from previous reports, so the loop doesn't re-find its own rejections. |
+
+**`fix` defaults to `none`, and the fix phase is experimental.** Fixing is where the
+harness stops being safe: the failure mode isn't a crash, it's a *plausible* wrong fix
+in a densely prose-coupled suite. Run a round with `fix: "none"`, read the findings
+yourself, then decide.
+
+Two overrides ignore the flag entirely. No design doc means no prose fixing. And a fix
+that would change a count or structure pinned by a mechanics contract is escalated to
+a human, never applied — the gate checks that independently, because a prohibition only
+the offender checks is not a prohibition.
+
+## What lives where
+
+```
+.claude/workflows/playtest.js          the orchestration
+.claude/skills/playtest/
+  SKILL.md                             this file
+  references/
+    playtester-brief.md                the doctrine + judgement kernel K1..K13
+    finding-contract.md                what a finding must carry
+    fixer-brief.md                     the rules a fixer is bound by
+    report-shape.md                    the round report and the ledger
+bin/playtest-replay                    the replay helper
+docs/playtesting.md                    driving it by hand, without any of this
+```
+
+The split rule: **if changing it changes the shape of the run, it goes in the JS; if
+changing it changes what an agent believes, it goes in `references/`.** So charters and
+schemas sit inline next to the fan-out that consumes them, and the doctrine repeated
+across every prompt lives in markdown a writer can edit without touching code.
+
+## Calibrating
+
+A harness that can't re-find what a human already found isn't worth running. To check
+it, point it at a tree whose defects are known:
+
+```sh
+git worktree add /tmp/gnusto-cal 3fab729
+bin/playtest-replay --build Fulminate --package-path /tmp/gnusto-cal
+# then dispatch with packagePath: "/tmp/gnusto-cal"
+```
+
+The briefs are read from the *current* checkout while the binary comes from the old
+one, so the harness warns testers that engine facts may be anachronistic. Calibration
+is a **multi-tree** exercise — the three defects usually cited don't co-exist in any
+single commit. `docs/playtesting.md` has the per-tree answer key and the reasoning;
+`docs/games/fulminate-playtest-2026-07-29.md` has the last run's scores.
