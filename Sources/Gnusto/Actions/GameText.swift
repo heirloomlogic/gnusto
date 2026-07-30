@@ -364,6 +364,26 @@ public struct GameText: Sendable {
         return "Your score is \($0)\(possible), in \($2) \($2 == 1 ? "turn" : "turns")."
     }
 
+    // MARK: - Yourself
+
+    /// Examining yourself, when the game has neither set a description on
+    /// `player.item` nor given it a `describe { }` rule.
+    public var selfDescription = "You look much as you always do."
+
+    /// Taking yourself. The stock person's refusal reads as though somebody
+    /// else were involved, so the player gets their own line.
+    public var cantTakeSelf = "You have yourself well in hand already."
+
+    /// Searching yourself. Nothing is turned out, because the player's
+    /// pockets are the inventory and `i` already reports them.
+    public var cantSearchSelf = "You pat yourself down and find only what you're carrying."
+
+    /// Greeting yourself.
+    public var cantGreetSelf = "You and yourself have already met."
+
+    /// Following yourself.
+    public var cantFollowSelf = "You are already right here."
+
     // MARK: - Parser replies
 
     /// A word outside the game's whole vocabulary.

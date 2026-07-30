@@ -626,7 +626,7 @@ public actor GameWorld {
             at: here, definition: definition, state: state, index: state.containment())
         return Scope(
             visibleItems: visible,
-            visibleActors: visible.intersection(definition.actorIDs),
+            visibleActors: visible.intersection(definition.castIDs),
             // Not visibility: the naming reach of FOLLOW alone. Note
             // `completionCandidates()` below deliberately stays on
             // `visibleItems`, since offering an offstage actor's nouns to Tab
@@ -645,7 +645,7 @@ public actor GameWorld {
         let actors = Visibility.visibleItems(
             at: state.playerLocation, definition: definition, state: state,
             index: state.containment()
-        ).intersection(definition.actorIDs)
+        ).intersection(definition.castIDs)
         return actors.count == 1 ? actors.first : nil
     }
 

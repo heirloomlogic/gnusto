@@ -130,6 +130,9 @@ struct Fulminate: Game, GameMain {
         text.greets = { "\($0) looks at you and does not answer." }
         text.cantGreetThat = { "The \($0) is unlikely to answer." }
         text.notTakingOrders = { "\($0) hears you out and goes on doing exactly what \($0) was doing." }
+        // X ME is the first thing a player types, and this player has a past.
+        text.selfDescription =
+            "The same man who took statements in this hall in 1948, four years older."
         // A house of suspects is a house somebody will try to search, or grab.
         text.cantSearchActor = { "You are not putting a hand on \($0) tonight." }
         text.cantTakeActor = { "\($0) would take exception to that." }
@@ -932,6 +935,9 @@ struct Fulminate: Game, GameMain {
     var actions: [IntentAction] {
         action(.accuse) {
             guard let accused = command.directObject else { return }
+            try require(
+                !accused.isPlayer,
+                else: "The coroner would take the name down. Give him a better one.")
             try require(accused.isActor, else: "The record wants a name, and that is not one.")
             if !blastHappened {
                 try reply("There is nothing to accuse anybody of. Not yet.")

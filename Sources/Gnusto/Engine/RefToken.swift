@@ -34,10 +34,12 @@ public struct EntityID: Hashable, Comparable, Sendable, Codable, CustomStringCon
 }
 
 extension EntityID {
-    /// The player's reserved entity ID — the `Placement.heldBy` target for
-    /// carried items today, and an NPC's own ID once characters gain
-    /// inventories of their own. No declared entity may claim this bare ID;
-    /// the bootstrap reports it as a fatal collision.
+    /// The player's reserved entity ID. It names the item the bootstrap
+    /// synthesizes for the player — the thing `X ME` examines — and is the
+    /// `Placement.heldBy` target for everything the player carries, so
+    /// "held by the player" and "held by that person" are one idea. No
+    /// declared entity may claim this bare ID; the bootstrap reports it as a
+    /// fatal collision.
     public static let player = EntityID("player")
 }
 

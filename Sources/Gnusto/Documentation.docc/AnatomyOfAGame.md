@@ -56,7 +56,7 @@ References are always compile-checked. `cloak.after(.take)`, `hook.holds(cloak)`
 
 The protocol extension also hands every game three ambient references usable as bare identifiers inside `map` and `rules` blocks:
 
-- `player` — the ``Player``, for its location, score, and inventory.
+- `player` — the ``Player``, for its location, score, and inventory, and ``Player/item`` for the player as a thing in the world (what `X ME` examines).
 - `world` — the ``World``, for rules that apply everywhere (like daemons).
 - `command` — the ``Command`` currently being performed, inside a rule body.
 

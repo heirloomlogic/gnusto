@@ -94,6 +94,8 @@ public struct Conversation: GameContent {
     private let nothingToSayLine: @Sendable (String) -> String
     /// The refusal for trying to talk to something inanimate.
     private let cantTalkToLine: String
+    /// The refusal for addressing yourself.
+    private let cantTalkToSelfLine: String
     /// What an actor says about a thing shown to them that no row covers.
     private let noInterestLine: @Sendable (String) -> String
     /// What an actor with no authored greeting does when a conversation opens.
@@ -105,6 +107,7 @@ public struct Conversation: GameContent {
     ///   - nothingToSay: what an actor with no matching row and no fallback
     ///     says, given their name.
     ///   - cantTalkTo: the refusal for addressing something inanimate.
+    ///   - cantTalkToSelf: the refusal for addressing yourself.
     ///   - noInterest: what an actor says about a thing shown to them that no
     ///     `shows(_:to:)` row covers, given their name.
     ///   - nothingToTalkAbout: what an actor with no `greeting(of:)` row does
@@ -114,6 +117,7 @@ public struct Conversation: GameContent {
             "The \($0) has nothing to say about that."
         },
         cantTalkTo: String = "You can only talk to something animate.",
+        cantTalkToSelf: String = "You keep your own counsel.",
         noInterest: @escaping @Sendable (_ name: String) -> String = {
             "The \($0) shows no interest."
         },
@@ -123,6 +127,7 @@ public struct Conversation: GameContent {
     ) {
         self.nothingToSayLine = nothingToSay
         self.cantTalkToLine = cantTalkTo
+        self.cantTalkToSelfLine = cantTalkToSelf
         self.noInterestLine = noInterest
         self.nothingToTalkAboutLine = nothingToTalkAbout
     }
@@ -368,12 +373,12 @@ public struct Conversation: GameContent {
         action(.tell) { try shrug() }
         action(.talk) {
             guard let addressee = command.directObject else { return }
-            try require(addressee.isActor, else: cantTalkToLine)
+            try requireSomebodyElse(addressee)
             try reply(nothingToTalkAboutLine(addressee.name))
         }
         action(.show) {
             guard let addressee = command.indirectObject else { return }
-            try require(addressee.isActor, else: cantTalkToLine)
+            try requireSomebodyElse(addressee)
             try reply(noInterestLine(addressee.name))
         }
     }
@@ -382,7 +387,18 @@ public struct Conversation: GameContent {
     /// had anything, and nobody had a fallback.
     private func shrug() throws {
         guard let addressee = command.directObject else { return }
-        try require(addressee.isActor, else: cantTalkToLine)
+        try requireSomebodyElse(addressee)
         try reply(nothingToSayLine(addressee.name))
+    }
+
+    /// Refuses anything that can't hold up its end of a conversation. The
+    /// player is animate, so they pass the `isActor` test — and are still the
+    /// one person here there's no point addressing.
+    ///
+    /// - Parameter addressee: the entity the command named.
+    /// - Throws: the refusal, when the addressee is the player or inanimate.
+    private func requireSomebodyElse(_ addressee: Item) throws {
+        try require(!addressee.isPlayer, else: cantTalkToSelfLine)
+        try require(addressee.isActor, else: cantTalkToLine)
     }
 }
