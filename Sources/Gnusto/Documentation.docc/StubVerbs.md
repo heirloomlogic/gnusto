@@ -65,6 +65,14 @@ error. `ask`/`tell`/`show` belong to `GnustoConversation`, which has a topic slo
 and somebody to ask. Bare `hello`/`hi`, `ring` and `wind` are left free for games
 that want to own them outright.
 
+## Aimed at yourself
+
+The player is an entity, and it is called "yourself" — so a stub line that names
+its object would read *"The yourself is not food."* Every name-carrying stub
+checks for the player and answers ``GameText/StubReplies/yourself`` instead.
+Stubs whose lines name nothing keep their own answer, because it already reads
+correctly: `smell me` still says *"You smell nothing out of the ordinary."*
+
 ## Re-skinning a line
 
 Every stub line lives on ``GameText/stubs``, one property per intent. Override

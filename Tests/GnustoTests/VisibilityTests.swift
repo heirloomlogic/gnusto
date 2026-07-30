@@ -48,11 +48,12 @@ struct VisibilityTests {
         #expect(visible.contains(EntityID("hat")))
     }
 
-    @Test func darkRoomHidesEverythingButHeldItems() throws {
+    @Test func darkRoomHidesEverythingButHeldItemsAndThePlayer() throws {
         let (definition, state) = try Bootstrap.build(MiniGame())
         let visible = visibleItems(
             at: EntityID("cellar"), definition: definition, state: state)
-        #expect(visible == [EntityID("hat")])
+        // The player goes everywhere the player goes, light or no light.
+        #expect(visible == [EntityID("hat"), .player])
     }
 
     @Test func reachableItemsMatchesVisibleItemsToday() throws {

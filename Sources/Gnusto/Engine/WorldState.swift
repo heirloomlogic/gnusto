@@ -184,7 +184,7 @@ extension WorldState {
             case .room(let id):
                 guard isLocation(id) else { return false }
             case .heldBy(let id):
-                guard id == .player || isItem(id) else { return false }
+                guard isItem(id) else { return false }
             case .on(let id):
                 guard let def = items[id], def.isSurface else { return false }
             case .inside(let id):
@@ -199,7 +199,7 @@ extension WorldState {
         func parentItem(of placement: Placement) -> EntityID? {
             switch placement {
             case .on(let id), .inside(let id): return id
-            case .heldBy(let id): return id == .player ? nil : id
+            case .heldBy(let id): return id
             case .room, .nowhere: return nil
             }
         }

@@ -219,4 +219,29 @@ struct StubVerbTests {
         let bare = try await play(StubLab(), ["attack rat"])
         #expect(bare.contains("Attacking things rarely improves them."))
     }
+
+    // MARK: - Aimed at yourself
+
+    /// The player is an entity, and it is called "yourself" — so a stub line
+    /// that names its object would read "The yourself is not food." Every
+    /// name-carrying stub defers instead.
+    @Test(arguments: [
+        "attack me", "break me", "burn me", "cut me", "pull me", "turn me",
+        "squeeze me", "shake me", "eat me", "fill me", "tie me", "untie me",
+        "pour me", "empty me", "blow me", "give rod to me", "give me to rat",
+    ])
+    func stubVerbsAimedAtYourselfNeverSayTheYourself(_ command: String) async throws {
+        let turn = turnOutput(of: command, in: try await play(StubLab(), [command]))
+        #expect(!turn.lowercased().contains("the yourself"), "\(command): \(turn)")
+        #expect(!turn.contains("I didn't understand"), "\(command): \(turn)")
+    }
+
+    /// But a stub whose line names nothing already reads fine about the player,
+    /// and keeps its own answer rather than the generic deferral.
+    @Test func namelessStubsKeepTheirOwnLineAboutYourself() async throws {
+        let transcript = try await play(StubLab(), ["smell me", "listen to me", "taste me"])
+        #expect(turnOutput(of: "smell me", in: transcript).contains("nothing out of the ordinary"))
+        #expect(turnOutput(of: "listen to me", in: transcript).contains("You hear nothing"))
+        #expect(turnOutput(of: "taste me", in: transcript).contains("You'd rather not."))
+    }
 }

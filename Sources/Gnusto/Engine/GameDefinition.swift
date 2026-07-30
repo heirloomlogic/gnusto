@@ -134,11 +134,16 @@ struct GameDefinition: Sendable {
     let text: GameText
     let locations: [EntityID: LocationDefinition]
     let items: [EntityID: ItemDefinition]
-    /// Just the `actor` entries of ``items``, precomputed. `currentScope()`
-    /// runs every turn *and* again for Tab completion, and FOLLOW's naming
-    /// reach needs the whole cast — rescanning the item table twice a turn to
-    /// rediscover a set that never changes is work for nothing.
-    let actorIDs: Set<EntityID>
+    /// The cast: the `actor` entries of ``items``, minus the player's own item.
+    /// Every consumer of this set means *somebody else* — who a command can be
+    /// addressed to, who a bare HELLO must have meant, who FOLLOW may name — so
+    /// the player is excluded even though `items[.player].isActor` is true and
+    /// the person-shaped refusals depend on it.
+    ///
+    /// Precomputed because `currentScope()` runs every turn *and* again for Tab
+    /// completion: rescanning the item table twice a turn to rediscover a set
+    /// that never changes is work for nothing.
+    let castIDs: Set<EntityID>
     let exits: [EntityID: [Direction: ExitTarget]]
     /// Every room some exit leads to. A game's off-map holding pens — the
     /// street a character is "out on", the limbo an actor waits in before their

@@ -364,6 +364,26 @@ public struct GameText: Sendable {
         return "Your score is \($0)\(possible), in \($2) \($2 == 1 ? "turn" : "turns")."
     }
 
+    // MARK: - Yourself
+
+    /// Examining yourself, when the game has neither set a description on
+    /// `player.item` nor given it a `describe { }` rule.
+    public var selfDescription = "You look much as you always do."
+
+    /// Taking yourself. The stock person's refusal reads as though somebody
+    /// else were involved, so the player gets their own line.
+    public var cantTakeSelf = "You have yourself well in hand already."
+
+    /// Searching yourself. Nothing is turned out, because the player's
+    /// pockets are the inventory and `i` already reports them.
+    public var cantSearchSelf = "You pat yourself down and find only what you're carrying."
+
+    /// Greeting yourself.
+    public var cantGreetSelf = "You and yourself have already met."
+
+    /// Following yourself.
+    public var cantFollowSelf = "You are already right here."
+
     // MARK: - Stub verbs
 
     /// The stock replies for the verbs the parser knows as words but the engine
@@ -483,6 +503,12 @@ extension GameText {
         /// The classic replies. Build one and mutate the lines you want to
         /// change; ``GameText`` already holds a default instance.
         public init() {}
+
+        /// A stub verb aimed at yourself, where the verb's own line would have
+        /// named its object. The player item is called "yourself", so those
+        /// lines would read "The yourself is not food." — one line covers all of
+        /// them rather than fifteen self-specific variants.
+        public var yourself = "Best leave yourself out of it."
 
         // MARK: Violence and force
 

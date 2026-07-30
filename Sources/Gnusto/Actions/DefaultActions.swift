@@ -64,7 +64,11 @@ enum DefaultActions {
     private static func take(_ command: Command, frame: TurnFrame) throws {
         let item = try requireDirectObject(command)
         let id = item.id
-        // People get the person-specific refusal, not scenery's.
+        // People get the person-specific refusal, not scenery's — and the
+        // player gets their own, since the stock line is about somebody else.
+        if id == .player {
+            try refuse(frame.definition.text.cantTakeSelf)
+        }
         if frame.definition.items[id]?.isActor == true {
             try refuse(frame.definition.text.cantTakeActor(item.name))
         }
@@ -343,6 +347,9 @@ enum DefaultActions {
     private static func lookIn(_ command: Command, frame: TurnFrame) throws {
         let item = try requireDirectObject(command)
         let id = item.id
+        if id == .player {
+            try refuse(frame.definition.text.cantSearchSelf)
+        }
         // Reachability first: you cannot report on the inside of something you
         // can't put a hand into, whether or not it has one.
         guard isReachable(id, frame: frame) else {
@@ -525,6 +532,9 @@ enum DefaultActions {
         let id = target.id
         let name = target.name
         let definition = frame.definition
+        if id == .player {
+            try refuse(definition.text.cantFollowSelf)
+        }
         guard definition.items[id]?.isActor == true else {
             try refuse(definition.text.cantFollowThat(name))
         }
@@ -584,13 +594,19 @@ enum DefaultActions {
     private static func greet(_ command: Command, frame: TurnFrame) throws {
         let definition = frame.definition
         guard let target = command.directObject else {
+            // The cast, not `isActor`: the player is a person, but "hello" in
+            // an empty room is addressed to nobody, and they don't count as
+            // company for themselves.
             let anybodyHere = frame.with { scratch in
-                Visibility.visibleItems(
+                !Visibility.visibleItems(
                     at: scratch.state.playerLocation, definition: definition,
                     state: scratch.state, index: scratch.state.containment()
-                ).contains { definition.items[$0]?.isActor == true }
+                ).isDisjoint(with: definition.castIDs)
             }
             try refuse(anybodyHere ? definition.text.greetsTheRoom : definition.text.nobodyToGreet)
+        }
+        if target.id == .player {
+            try refuse(definition.text.cantGreetSelf)
         }
         guard definition.items[target.id]?.isActor == true else {
             try refuse(definition.text.cantGreetThat(target.name))
@@ -646,7 +662,14 @@ enum DefaultActions {
     }
 
     private static func examine(_ command: Command, frame: TurnFrame) throws {
-        try describeItem(command, frame: frame) { frame.definition.text.nothingSpecial($0.name) }
+        // The player's own item carries no `description(…)` trait, so that a
+        // game is free to give it a `describe { }` rule; its stock text is a
+        // `GameText` line instead of the generic "nothing special" shrug.
+        try describeItem(command, frame: frame) { item in
+            item.id == .player
+                ? frame.definition.text.selfDescription
+                : frame.definition.text.nothingSpecial(item.name)
+        }
     }
 
     private static func read(_ command: Command, frame: TurnFrame) throws {

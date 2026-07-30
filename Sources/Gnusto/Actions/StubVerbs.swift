@@ -54,14 +54,20 @@ extension StubVerb {
     /// a row with a `.directObject` slot can't match without filling it — and
     /// exists so the promise "every row has an object" fails loudly in review
     /// rather than crashing a player's game.
+    ///
+    /// The player is the one object these lines can't name: it is called
+    /// "yourself", so "The yourself is not food." That is why `named` checks for
+    /// it and `plain` doesn't — a nameless line like "You smell nothing out of
+    /// the ordinary." answers `smell me` perfectly well.
     static func named(
         _ intent: Intent,
         _ patterns: [[SyntaxElement]],
         _ line: @escaping @Sendable (GameText, String) -> String
     ) -> StubVerb {
         .init(intent, patterns) { text, command in
-            guard let name = command.directObject?.name else { return text.didntUnderstand }
-            return line(text, name)
+            guard let object = command.directObject else { return text.didntUnderstand }
+            guard !object.isPlayer else { return text.stubs.yourself }
+            return line(text, object.name)
         }
     }
 
@@ -383,10 +389,11 @@ extension DefaultActions {
                 ["hand", .directObject, "to", .indirectObject],
             ]
         ) { text, command in
-            guard let item = command.directObject?.name,
-                let recipient = command.indirectObject?.name
+            guard let item = command.directObject, let recipient = command.indirectObject
             else { return text.didntUnderstand }
-            return text.stubs.give(item, recipient)
+            // Either slot can be the player, and neither reads with its name.
+            guard !item.isPlayer, !recipient.isPlayer else { return text.stubs.yourself }
+            return text.stubs.give(item.name, recipient.name)
         },
 
         .plain(
