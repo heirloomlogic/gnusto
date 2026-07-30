@@ -364,6 +364,13 @@ public struct GameText: Sendable {
         return "Your score is \($0)\(possible), in \($2) \($2 == 1 ? "turn" : "turns")."
     }
 
+    // MARK: - Stub verbs
+
+    /// The stock replies for the verbs the parser knows as words but the engine
+    /// gives no mechanic. Re-skin one with `text.stubs.dig = "…"`; give one real
+    /// behavior with a rule or an `actions` row.
+    public var stubs = StubReplies()
+
     // MARK: - Parser replies
 
     /// A word outside the game's whole vocabulary.
@@ -457,6 +464,177 @@ public struct GameText: Sendable {
         default:
             let allButLast = articled.dropLast().joined(separator: ", ")
             return "\(allButLast), and \(last)"
+        }
+    }
+}
+
+extension GameText {
+    /// The stock replies for stub verbs — the words the parser knows even where
+    /// the game has no mechanic behind them. Reached as `text.stubs.dig`.
+    ///
+    /// These are the engine's floor, not its ceiling. Overriding a line re-skins
+    /// it; a rule or an `actions` row replaces it with behavior. Both are
+    /// expected, and neither warns.
+    ///
+    /// Lines that name the object are closures, as elsewhere in ``GameText``,
+    /// and only where the name earns its keep: "The chair is sturdier than
+    /// that." says something "That's sturdier than that." can't.
+    public struct StubReplies: Sendable {
+        /// The classic replies. Build one and mutate the lines you want to
+        /// change; ``GameText`` already holds a default instance.
+        public init() {}
+
+        // MARK: Violence and force
+
+        /// Attacking something with no combat behind it.
+        public var attack = "Attacking things rarely improves them."
+        /// Breaking, smashing or destroying something.
+        public var smash: @Sendable (_ name: String) -> String = {
+            "The \($0) is sturdier than that."
+        }
+        /// Setting fire to something.
+        public var burn: @Sendable (_ name: String) -> String = {
+            "You have no way to set fire to the \($0)."
+        }
+        /// Cutting or slicing something.
+        public var cut: @Sendable (_ name: String) -> String = {
+            "You have nothing to cut the \($0) with."
+        }
+        /// Digging, with or without a tool.
+        public var dig = "You have nothing to dig with."
+        /// Pulling or dragging something.
+        public var pull: @Sendable (_ name: String) -> String = {
+            "The \($0) doesn't budge."
+        }
+        /// Turning something that doesn't turn. Names the object so the reply
+        /// doesn't read as a failed `turn on`.
+        public var turn: @Sendable (_ name: String) -> String = {
+            "The \($0) doesn't turn."
+        }
+        /// Squeezing something.
+        public var squeeze: @Sendable (_ name: String) -> String = {
+            "Squeezing the \($0) changes nothing."
+        }
+        /// Shaking something.
+        public var shake: @Sendable (_ name: String) -> String = {
+            "You shake the \($0). Nothing rattles loose."
+        }
+        /// Knocking on something.
+        public var knock = "Nobody answers."
+        /// Throwing something at something else.
+        public var throwAt = "Throwing things about achieves nothing."
+
+        // MARK: Senses
+
+        /// Touching, feeling or rubbing something.
+        public var touch = "You feel nothing out of the ordinary."
+        /// Smelling the room or something in it.
+        public var smell = "You smell nothing out of the ordinary."
+        /// Listening to the room or something in it.
+        public var listen = "You hear nothing out of the ordinary."
+        /// Tasting or licking something.
+        public var taste = "You'd rather not."
+
+        // MARK: Body
+
+        /// Eating something inedible.
+        public var eat: @Sendable (_ name: String) -> String = {
+            "The \($0) is not food."
+        }
+        /// Drinking something undrinkable.
+        public var drink = "There's nothing here worth drinking."
+        /// Going to sleep.
+        public var sleep = "You're not sleepy."
+        /// Waking, or waking somebody who isn't asleep.
+        public var wake = "There's no sleeping to be interrupted."
+
+        // MARK: Social
+
+        /// Kissing or hugging somebody.
+        public var kiss = "That would be presumptuous."
+        /// Handing something to somebody who doesn't want it. Names both, since
+        /// every row carries both slots.
+        public var give: @Sendable (_ name: String, _ recipient: String) -> String = {
+            "The \($1) doesn't want the \($0)."
+        }
+        /// Yelling, shouting or screaming.
+        public var yell = "You shout. Nothing shouts back."
+        /// Waving, with or without something in hand.
+        public var wave = "You wave. Nothing comes of it."
+        /// Pointing at something.
+        public var point = "Pointing at things accomplishes little."
+
+        // MARK: Motion
+
+        /// Climbing something unclimbable.
+        public var climb = "You can't climb that."
+        /// Jumping, on the spot or over something.
+        public var jump = "You jump on the spot. Nothing is achieved."
+        /// Swimming with no water to swim in.
+        public var swim = "There's nothing here to swim in."
+        /// Diving with nothing to dive into.
+        public var dive = "There's nothing here to dive into."
+        /// Standing when already upright.
+        public var stand = "You're already standing."
+        /// Sitting with nowhere to sit.
+        public var sit = "There's nothing comfortable to sit on."
+        /// Lying down.
+        public var lie = "The floor doesn't look inviting."
+        /// Kneeling.
+        public var kneel = "You kneel. Nothing takes notice."
+
+        // MARK: Liquids and containers
+
+        /// Filling something with nothing to fill it from.
+        public var fill: @Sendable (_ name: String) -> String = {
+            "There's nothing here to fill the \($0) from."
+        }
+        /// Pouring something that holds nothing.
+        public var pour: @Sendable (_ name: String) -> String = {
+            "There's nothing in the \($0) to pour."
+        }
+        /// Emptying something that holds nothing.
+        public var empty: @Sendable (_ name: String) -> String = {
+            "There's nothing in the \($0) to empty out."
+        }
+        /// Tying something with nothing to tie it to.
+        public var tie: @Sendable (_ name: String) -> String = {
+            "There's nothing here to tie the \($0) to."
+        }
+        /// Untying something that isn't tied.
+        public var untie: @Sendable (_ name: String) -> String = {
+            "The \($0) isn't tied to anything."
+        }
+
+        // MARK: Ritual and flavor
+
+        /// Praying.
+        public var pray = "Your prayers go unanswered."
+        /// Singing.
+        public var sing = "Your singing is better kept to yourself."
+        /// Cursing or swearing.
+        public var curse = "Nobody here is offended."
+        /// The magic words, `xyzzy` and `plugh`, where they mean nothing.
+        public var xyzzy = "Nothing happens."
+        /// Counting something.
+        public var count = "You lose count."
+        /// Thinking.
+        public var think = "You think. Nothing occurs to you."
+        /// Wishing.
+        public var wish = "Wishing doesn't make it so."
+
+        // MARK: Commerce
+
+        /// Buying where nothing is sold.
+        public var buy = "Nothing here is for sale."
+        /// Selling where nobody buys.
+        public var sell = "Nobody here is buying."
+
+        // MARK: Fixtures
+
+        /// Blowing on something. Distinct from `blow out`, which is `turnOff`.
+        public var blow: @Sendable (_ name: String) -> String = {
+            "Blowing on the \($0) has no effect."
         }
     }
 }

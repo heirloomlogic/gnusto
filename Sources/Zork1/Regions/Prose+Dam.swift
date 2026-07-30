@@ -184,6 +184,10 @@ extension Prose {
 
     static let boltNeedsWrench = "You can't turn the bolt with that."
 
+    /// Turning the bolt with nothing in hand. The original had no bare `turn`
+    /// verb, so this line is ours rather than Infocom's — see `FIDELITY.md`.
+    static let boltBareHanded = "Your bare hands aren't enough. The bolt needs a tool."
+
     static let boltWontTurn = "The bolt won't turn with your best effort."
 
     static let gatesOpen = """

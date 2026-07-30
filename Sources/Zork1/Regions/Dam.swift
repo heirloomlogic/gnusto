@@ -298,6 +298,14 @@ struct ZorkDam: GameContent {
     // MARK: - Rules
 
     var rules: Rules {
+        // Bare `turn bolt` — the engine's stub verb, promoted to a line that
+        // actually helps. The bolt is the one fixture in the game that needs a
+        // tool named, so "The bolt doesn't turn." would be a dead end where
+        // pointing at the wrench is a nudge.
+        bolt.before(.turn) {
+            try reply(Prose.boltBareHanded)
+        }
+
         // The yellow button charges the panel so the bolt will turn; the brown
         // button clears it again.
         yellowButton.before(.push) {

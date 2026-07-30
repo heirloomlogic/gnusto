@@ -22,9 +22,9 @@ struct CustomVerbTests {
     }
 
     @Test func parsedButUnhandledCustomVerbFallsThrough() async throws {
-        // `sing` parses to a custom intent, but no rule handles it, so the
-        // default action reports that it didn't understand.
-        let transcript = try await play(CustomVerbGame(), ["sing"])
+        // `hum` parses to a custom intent, but no rule handles it and it is not
+        // a stub verb, so the default action reports that it didn't understand.
+        let transcript = try await play(CustomVerbGame(), ["hum"])
         #expect(transcript.contains("I didn't understand that sentence."))
     }
 
@@ -73,13 +73,13 @@ struct CustomVerbTests {
     }
 
     @Test func listingAnIntentSplicesItsRows() throws {
-        // The `verbs` block above lists `.ring`, `.polish`, and `.sing` by
+        // The `verbs` block above lists `.ring`, `.polish`, and `.hum` by
         // name only; the resolved table must contain each carried row.
         let (definition, _) = try Bootstrap.build(CustomVerbGame())
         let customIntents = definition.syntaxRules.map(\.intent)
         #expect(customIntents.contains(.ring))
         #expect(customIntents.contains(.polish))
-        #expect(customIntents.contains(.sing))
+        #expect(customIntents.contains(.hum))
     }
 
     @Test func aWatchedButUnlistedVerbIntentWarns() throws {

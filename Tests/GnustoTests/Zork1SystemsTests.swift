@@ -216,4 +216,17 @@ struct Zork1SystemsTests {
         let report = turnOutput(of: "diagnose", in: transcript)
         expectInOrder(report, ["killed once", "one more time"])
     }
+
+    /// Bare `turn bolt` is the engine's stub verb, promoted so the bolt points
+    /// at the tool it needs instead of answering the generic "doesn't turn".
+    /// The original had no bare `turn`, so this line is ours — see `FIDELITY.md`.
+    @Test func turningTheBoltBareHandedPointsAtTheTool() async throws {
+        let transcript = try await play(
+            Zork1(),
+            Zork1Tests.approachTheChargedDam + ["turn bolt"],
+            seed: 39)
+        let turn = turnOutput(of: "turn bolt", in: transcript)
+        #expect(turn.contains("Your bare hands aren't enough."))
+        #expect(!turn.contains("doesn't turn"))
+    }
 }

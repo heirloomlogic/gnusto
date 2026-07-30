@@ -36,8 +36,15 @@ struct ClockTests {
     // MARK: - Which turns cost time
 
     @Test func theClockDoesNotAdvanceOnAParseError() async throws {
-        let transcript = try await play(ClockLab(), ["xyzzy", "time"])
+        // `frotz` is nonsense, not a stub verb — a stub costs a turn and moves
+        // the clock, which is the very line this test draws.
+        let transcript = try await play(ClockLab(), ["frotz", "time"])
         #expect(transcript.contains("It is 8:00 pm."))
+    }
+
+    @Test func theClockAdvancesOnAStubVerb() async throws {
+        let transcript = try await play(ClockLab(), ["sing", "time"])
+        #expect(transcript.contains("It is 8:01 pm."))
     }
 
     @Test func theClockDoesNotAdvanceOnMetaCommands() async throws {
