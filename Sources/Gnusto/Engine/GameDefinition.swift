@@ -34,6 +34,9 @@ struct ItemDefinition: Sendable {
     var description: String?
     var adjectives: [String] = []
     var synonyms: [String] = []
+    /// The name is a proper name: the stock lines render it bare rather than
+    /// behind "the" or "a". See `GameText.definite(_:proper:)`.
+    var isProperName = false
     var firstSight: String?
     var isWearable = false
     var isScenery = false
@@ -69,6 +72,7 @@ struct ItemDefinition: Sendable {
             case .description(let text): description = text
             case .adjectives(let words): adjectives += words
             case .synonyms(let words): synonyms += words
+            case .properName: isProperName = true
             case .firstSight(let text): firstSight = text
             case .wearable: isWearable = true
             case .scenery: isScenery = true

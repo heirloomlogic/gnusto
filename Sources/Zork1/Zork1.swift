@@ -40,7 +40,7 @@ struct Zork1: Game, GameMain {
         // The famous dark-room line (gverbs.zil V-LOOK / the grue clause).
         text.pitchBlack = "It is pitch black. You are likely to be eaten by a grue."
         // Examining an ordinary thing (gverbs.zil V-EXAMINE).
-        text.nothingSpecial = { "There's nothing special about the \($0)." }
+        text.nothingSpecial = { "There's nothing special about \($0)." }
         // Open/close and possession refusals (gverbs.zil).
         text.alreadyOpen = "It is already open."
         text.alreadyClosed = "It is already closed."

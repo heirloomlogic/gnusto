@@ -105,24 +105,24 @@ public struct Conversation: GameContent {
     ///
     /// - Parameters:
     ///   - nothingToSay: what an actor with no matching row and no fallback
-    ///     says, given their name.
+    ///     says, given their rendered name ("the butler", "Mrs. Vane").
     ///   - cantTalkTo: the refusal for addressing something inanimate.
     ///   - cantTalkToSelf: the refusal for addressing yourself.
     ///   - noInterest: what an actor says about a thing shown to them that no
-    ///     `shows(_:to:)` row covers, given their name.
+    ///     `shows(_:to:)` row covers, given their rendered name.
     ///   - nothingToTalkAbout: what an actor with no `greeting(of:)` row does
-    ///     when the player opens a conversation, given their name.
+    ///     when the player opens a conversation, given their rendered name.
     public init(
         nothingToSay: @escaping @Sendable (_ name: String) -> String = {
-            "The \($0) has nothing to say about that."
+            "\(GameText.sentenceCase($0)) has nothing to say about that."
         },
         cantTalkTo: String = "You can only talk to something animate.",
         cantTalkToSelf: String = "You keep your own counsel.",
         noInterest: @escaping @Sendable (_ name: String) -> String = {
-            "The \($0) shows no interest."
+            "\(GameText.sentenceCase($0)) shows no interest."
         },
         nothingToTalkAbout: @escaping @Sendable (_ name: String) -> String = {
-            "The \($0) waits for you to come to the point."
+            "\(GameText.sentenceCase($0)) waits for you to come to the point."
         }
     ) {
         self.nothingToSayLine = nothingToSay
@@ -374,12 +374,12 @@ public struct Conversation: GameContent {
         action(.talk) {
             guard let addressee = command.directObject else { return }
             try requireSomebodyElse(addressee)
-            try reply(nothingToTalkAboutLine(addressee.name))
+            try reply(nothingToTalkAboutLine(addressee.definiteName))
         }
         action(.show) {
             guard let addressee = command.indirectObject else { return }
             try requireSomebodyElse(addressee)
-            try reply(noInterestLine(addressee.name))
+            try reply(noInterestLine(addressee.definiteName))
         }
     }
 
@@ -388,7 +388,7 @@ public struct Conversation: GameContent {
     private func shrug() throws {
         guard let addressee = command.directObject else { return }
         try requireSomebodyElse(addressee)
-        try reply(nothingToSayLine(addressee.name))
+        try reply(nothingToSayLine(addressee.definiteName))
     }
 
     /// Refuses anything that can't hold up its end of a conversation. The

@@ -70,7 +70,7 @@ enum DefaultActions {
             try refuse(frame.definition.text.cantTakeSelf)
         }
         if frame.definition.items[id]?.isActor == true {
-            try refuse(frame.definition.text.cantTakeActor(item.name))
+            try refuse(frame.definition.text.cantTakeActor(item.definiteName))
         }
         // The one default that could relocate the thing the player is
         // sitting in.
@@ -78,7 +78,7 @@ enum DefaultActions {
             Visibility.boardedVehicle(definition: frame.definition, state: $0.state)
         }
         if id == boarded {
-            try refuse(frame.definition.text.notWhileInside(item.name))
+            try refuse(frame.definition.text.notWhileInside(item.definiteName))
         }
         if item.isHeld {
             try refuse(item.isWorn ? frame.definition.text.alreadyWearing : frame.definition.text.alreadyHave)
@@ -92,7 +92,7 @@ enum DefaultActions {
         // The item resolved, so it's visible: refuse with "can't reach", not
         // "can't see".
         guard isReachable(id, frame: frame) else {
-            try refuse(frame.definition.text.cantReach(item.name))
+            try refuse(frame.definition.text.cantReach(item.definiteName))
         }
         frame.with { scratch in
             scratch.state.place(id, .heldBy(.player))
@@ -108,7 +108,7 @@ enum DefaultActions {
             try refuse(frame.definition.text.notCarrying)
         }
         if item.isWorn {
-            frame.say(frame.definition.text.firstTakingOff(item.name))
+            frame.say(frame.definition.text.firstTakingOff(item.definiteName))
             frame.with { _ = $0.state.wornItems.remove(id) }
         }
         frame.with { scratch in
@@ -140,7 +140,7 @@ enum DefaultActions {
         }
         let id = item.id
         frame.with { _ = $0.state.wornItems.insert(id) }
-        frame.say(frame.definition.text.putOn(item.name))
+        frame.say(frame.definition.text.putOn(item.definiteName))
     }
 
     private static func doff(_ command: Command, frame: TurnFrame) throws {
@@ -150,7 +150,7 @@ enum DefaultActions {
         }
         let id = item.id
         frame.with { _ = $0.state.wornItems.remove(id) }
-        frame.say(frame.definition.text.takeOff(item.name))
+        frame.say(frame.definition.text.takeOff(item.definiteName))
     }
 
     private static func putOn(_ command: Command, frame: TurnFrame) throws {
@@ -168,22 +168,22 @@ enum DefaultActions {
             try refuse(frame.definition.text.cantPutOnThat)
         }
         guard isReachable(surface.id, frame: frame) else {
-            try refuse(frame.definition.text.cantReach(surface.name))
+            try refuse(frame.definition.text.cantReach(surface.definiteName))
         }
         let id = item.id
         let surfaceID = surface.id
         if frame.with({ isOrContains($0.state.containment(), surfaceID, id) }) {
-            try refuse(frame.definition.text.cantPutOntoOwnContents(item.name))
+            try refuse(frame.definition.text.cantPutOntoOwnContents(item.definiteName))
         }
         if item.isWorn {
-            frame.say(frame.definition.text.firstTakingOff(item.name))
+            frame.say(frame.definition.text.firstTakingOff(item.definiteName))
             frame.with { _ = $0.state.wornItems.remove(id) }
         }
         frame.with { scratch in
             scratch.state.place(id, .on(surfaceID))
             scratch.state.touched.insert(id)
         }
-        frame.say(frame.definition.text.putItemOn(item.name, surface.name))
+        frame.say(frame.definition.text.putItemOn(item.definiteName, surface.definiteName))
     }
 
     private static func putIn(_ command: Command, frame: TurnFrame) throws {
@@ -201,15 +201,15 @@ enum DefaultActions {
             try refuse(frame.definition.text.cantPutInThat)
         }
         guard isReachable(container.id, frame: frame) else {
-            try refuse(frame.definition.text.cantReach(container.name))
+            try refuse(frame.definition.text.cantReach(container.definiteName))
         }
         guard container.isOpen else {
-            try refuse(frame.definition.text.closedContainer(container.name))
+            try refuse(frame.definition.text.closedContainer(container.definiteName))
         }
         let id = item.id
         let containerID = container.id
         if frame.with({ isOrContains($0.state.containment(), containerID, id) }) {
-            try refuse(frame.definition.text.cantPutInsideOwnContents(item.name))
+            try refuse(frame.definition.text.cantPutInsideOwnContents(item.definiteName))
         }
         if let capacity = frame.definition.items[containerID]?.capacity {
             let occupants = frame.with { scratch in
@@ -220,14 +220,14 @@ enum DefaultActions {
             }
         }
         if item.isWorn {
-            frame.say(frame.definition.text.firstTakingOff(item.name))
+            frame.say(frame.definition.text.firstTakingOff(item.definiteName))
             frame.with { _ = $0.state.wornItems.remove(id) }
         }
         frame.with { scratch in
             scratch.state.place(id, .inside(containerID))
             scratch.state.touched.insert(id)
         }
-        frame.say(frame.definition.text.putItemIn(item.name, container.name))
+        frame.say(frame.definition.text.putItemIn(item.definiteName, container.definiteName))
     }
 
     /// True if `candidate` is `target` itself, or sits somewhere inside
@@ -258,7 +258,7 @@ enum DefaultActions {
     ) -> [String] {
         (scratch.state.containment().inContainer[container] ?? [])
             .filter { Visibility.isPerceivable($0, definition: frame.definition, state: scratch.state) }
-            .map { frame.definition.items[$0]?.name ?? $0.raw }
+            .map { frame.indefiniteName(of: $0) }
     }
 
     private static func open(_ command: Command, frame: TurnFrame) throws {
@@ -268,10 +268,10 @@ enum DefaultActions {
             try refuse(frame.definition.text.cantOpenThat)
         }
         guard isReachable(id, frame: frame) else {
-            try refuse(frame.definition.text.cantReach(item.name))
+            try refuse(frame.definition.text.cantReach(item.definiteName))
         }
         if item.isLocked {
-            try refuse(frame.definition.text.locked(item.name))
+            try refuse(frame.definition.text.locked(item.definiteName))
         }
         if item.isOpen {
             try refuse(frame.definition.text.alreadyOpen)
@@ -283,7 +283,7 @@ enum DefaultActions {
         if contents.isEmpty {
             frame.say(frame.definition.text.opened)
         } else {
-            frame.say(frame.definition.text.openingReveals(item.name, contents))
+            frame.say(frame.definition.text.openingReveals(item.definiteName, contents))
         }
     }
 
@@ -294,7 +294,7 @@ enum DefaultActions {
             try refuse(frame.definition.text.cantCloseThat)
         }
         guard isReachable(id, frame: frame) else {
-            try refuse(frame.definition.text.cantReach(item.name))
+            try refuse(frame.definition.text.cantReach(item.definiteName))
         }
         guard item.isOpen else {
             try refuse(frame.definition.text.alreadyClosed)
@@ -323,13 +323,13 @@ enum DefaultActions {
             try refuse(locked ? frame.definition.text.cantLockThat : frame.definition.text.cantUnlockThat)
         }
         guard isReachable(id, frame: frame) else {
-            try refuse(frame.definition.text.cantReach(item.name))
+            try refuse(frame.definition.text.cantReach(item.definiteName))
         }
         guard item.isLocked != locked else {
             try refuse(locked ? frame.definition.text.alreadyLocked : frame.definition.text.alreadyUnlocked)
         }
         guard key.isHeld else {
-            try refuse(frame.definition.text.keyNotHeld(key.name))
+            try refuse(frame.definition.text.keyNotHeld(key.definiteName))
         }
         guard frame.definition.items[id]?.lockKey == key.id else {
             try refuse(frame.definition.text.wrongKey)
@@ -353,31 +353,31 @@ enum DefaultActions {
         // Reachability first: you cannot report on the inside of something you
         // can't put a hand into, whether or not it has one.
         guard isReachable(id, frame: frame) else {
-            try refuse(frame.definition.text.cantReach(item.name))
+            try refuse(frame.definition.text.cantReach(item.definiteName))
         }
         if frame.definition.items[id]?.isActor == true {
-            try refuse(frame.definition.text.cantSearchActor(item.name))
+            try refuse(frame.definition.text.cantSearchActor(item.definiteName))
         }
         guard frame.definition.items[id]?.isContainer == true else {
-            try refuse(frame.definition.text.nothingToSearch(item.name))
+            try refuse(frame.definition.text.nothingToSearch(item.definiteName))
         }
         if frame.definition.items[id]?.isOpenable == true, !item.isOpen,
             frame.definition.items[id]?.isTransparent != true
         {
-            try refuse(frame.definition.text.closedContainer(item.name))
+            try refuse(frame.definition.text.closedContainer(item.definiteName))
         }
         let contents = frame.with { perceivableContents(of: id, in: &$0, frame: frame) }
         if contents.isEmpty {
-            frame.say(frame.definition.text.emptyContainer(item.name))
+            frame.say(frame.definition.text.emptyContainer(item.definiteName))
         } else {
-            frame.say(frame.definition.text.inTheContainer(item.name, contents))
+            frame.say(frame.definition.text.inTheContainer(item.definiteName, contents))
         }
     }
 
     private static func push(_ command: Command, frame: TurnFrame) throws {
         let item = try requireDirectObject(command)
         guard isReachable(item.id, frame: frame) else {
-            try refuse(frame.definition.text.cantReach(item.name))
+            try refuse(frame.definition.text.cantReach(item.definiteName))
         }
         frame.say(frame.definition.text.cantMoveThat)
     }
@@ -392,7 +392,7 @@ enum DefaultActions {
             try refuse(definition.text.cantTurnOnThat)
         }
         guard isReachable(id, frame: frame) else {
-            try refuse(definition.text.cantReach(item.name))
+            try refuse(definition.text.cantReach(item.definiteName))
         }
         if item.isLit {
             try refuse(definition.text.alreadyOn)
@@ -408,7 +408,7 @@ enum DefaultActions {
             scratch.state.litItems.insert(id)
             scratch.state.touched.insert(id)
         }
-        frame.say(definition.text.nowOn(item.name))
+        frame.say(definition.text.nowOn(item.definiteName))
         let isDarkNow = frame.with {
             Visibility.isDark(
                 at: $0.state.playerLocation, definition: definition, state: $0.state)
@@ -426,7 +426,7 @@ enum DefaultActions {
             try refuse(definition.text.cantTurnOffThat)
         }
         guard isReachable(id, frame: frame) else {
-            try refuse(definition.text.cantReach(item.name))
+            try refuse(definition.text.cantReach(item.definiteName))
         }
         guard item.isLit else {
             try refuse(definition.text.alreadyOff)
@@ -435,7 +435,7 @@ enum DefaultActions {
             scratch.state.litItems.remove(id)
             scratch.state.touched.insert(id)
         }
-        frame.say(definition.text.nowOff(item.name))
+        frame.say(definition.text.nowOff(item.definiteName))
         // Announce sudden darkness — the counterpart of the reveal above.
         let isDarkNow = frame.with {
             Visibility.isDark(
@@ -480,7 +480,7 @@ enum DefaultActions {
                 (
                     Visibility.isPerceivable(doorID, definition: frame.definition, state: scratch.state),
                     Visibility.isOpen(doorID, definition: frame.definition, state: scratch.state),
-                    frame.definition.items[doorID]?.name ?? doorID.raw
+                    frame.definiteName(of: doorID)
                 )
             }
             guard revealed else { try refuse(frame.definition.text.cantGoThatWay) }
@@ -530,7 +530,7 @@ enum DefaultActions {
     private static func follow(_ command: Command, frame: TurnFrame) throws {
         let target = try requireDirectObject(command)
         let id = target.id
-        let name = target.name
+        let name = target.definiteName
         let definition = frame.definition
         if id == .player {
             try refuse(definition.text.cantFollowSelf)
@@ -609,9 +609,9 @@ enum DefaultActions {
             try refuse(definition.text.cantGreetSelf)
         }
         guard definition.items[target.id]?.isActor == true else {
-            try refuse(definition.text.cantGreetThat(target.name))
+            try refuse(definition.text.cantGreetThat(target.definiteName))
         }
-        frame.say(definition.text.greets(target.name))
+        frame.say(definition.text.greets(target.definiteName))
     }
 
     private static func board(_ command: Command, frame: TurnFrame) throws {
@@ -629,22 +629,22 @@ enum DefaultActions {
             )
         }
         if currentVehicle == id {
-            try refuse(frame.definition.text.alreadyInVehicle(item.name))
+            try refuse(frame.definition.text.alreadyInVehicle(item.definiteName))
         }
         if let currentVehicle {
-            try refuse(frame.definition.text.mustExitFirst(frame.displayName(of: currentVehicle)))
+            try refuse(frame.definition.text.mustExitFirst(frame.definiteName(of: currentVehicle)))
         }
         if placement == .heldBy(.player) {
             try refuse(frame.definition.text.cantEnterCarried)
         }
         guard placement == .room(here) else {
-            try refuse(frame.definition.text.cantReach(item.name))
+            try refuse(frame.definition.text.cantReach(item.definiteName))
         }
         frame.with { scratch in
             scratch.state.playerVehicle = id
             scratch.state.touched.insert(id)
         }
-        frame.say(frame.definition.text.boarded(item.name))
+        frame.say(frame.definition.text.boarded(item.definiteName))
     }
 
     private static func disembark(_ command: Command, frame: TurnFrame) throws {
@@ -655,10 +655,10 @@ enum DefaultActions {
             try refuse(frame.definition.text.notInVehicle)
         }
         if let named = command.directObject, named.id != vehicle {
-            try refuse(frame.definition.text.notInThat(named.name))
+            try refuse(frame.definition.text.notInThat(named.definiteName))
         }
         frame.with { $0.state.playerVehicle = nil }
-        frame.say(frame.definition.text.disembarked(frame.displayName(of: vehicle)))
+        frame.say(frame.definition.text.disembarked(frame.definiteName(of: vehicle)))
     }
 
     private static func examine(_ command: Command, frame: TurnFrame) throws {
@@ -668,7 +668,7 @@ enum DefaultActions {
         try describeItem(command, frame: frame) { item in
             item.id == .player
                 ? frame.definition.text.selfDescription
-                : frame.definition.text.nothingSpecial(item.name)
+                : frame.definition.text.nothingSpecial(item.definiteName)
         }
     }
 
@@ -691,7 +691,7 @@ enum DefaultActions {
             (scratch.state.containment().held[.player] ?? [])
                 .map { id in
                     frame.definition.text.inventoryLine(
-                        frame.definition.items[id]?.name ?? id.raw,
+                        frame.indefiniteName(of: id),
                         scratch.state.wornItems.contains(id))
                 }
         }

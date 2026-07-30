@@ -62,6 +62,23 @@ public struct Actor: Sendable, Equatable {
         asItem.name
     }
 
+    /// The name behind its definite article — "the surly troll", or
+    /// "Mrs. Vane" for an actor declared `properName`.
+    public var definiteName: String {
+        asItem.definiteName
+    }
+
+    /// The name behind its indefinite article — "a surly troll", or
+    /// "Mrs. Vane" for an actor declared `properName`.
+    public var indefiniteName: String {
+        asItem.indefiniteName
+    }
+
+    /// True if the actor's name is a proper name, so no article precedes it.
+    public var isProperName: Bool {
+        asItem.isProperName
+    }
+
     /// The actor's examine text. Assigning replaces it for the rest of the
     /// game.
     public var description: String {

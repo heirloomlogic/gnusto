@@ -33,7 +33,8 @@ engine adds is perception and manners:
   `firstSight(_:)` is its *standing presence line*, printed on every look
   (ZIL's LDESC role) — handling a person doesn't wear off their entrance
   the way touching a prop does. Without one, the stock line is
-  ``GameText/actorHere`` ("A troll is here.").
+  ``GameText/actorHere`` ("A troll is here." — or "Arthur is here." for an
+  actor declared `properName`; see <doc:TextAndRandomness>).
 - Both descriptive channels have a live form, declared in a `rules` block:
   ``Actor/describe(_:)`` for the examine text and ``Actor/presence(_:)`` for
   the standing line. `presence` is what a person on a schedule needs — a
@@ -56,6 +57,9 @@ engine adds is perception and manners:
   a `lightSource` actor glows). Mechanical traits (`container`,
   `surface`, `wearable`…) are legal but warned about at bootstrap: actors
   hold things via their inventory, not by being furniture.
+- A named character wants `properName`, or every stock line that names
+  them says "the Mrs. Vane". One word, and the whole table reads right —
+  see <doc:TextAndRandomness>.
 
 `starts(in:)` is the only placement an actor accepts.
 

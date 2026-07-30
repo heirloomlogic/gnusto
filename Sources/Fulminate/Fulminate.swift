@@ -76,10 +76,10 @@ struct Fulminate: Game, GameMain {
         timeIs: { "Your watch says \($0)." }
     )
 
-    /// The interrogation layer. Its defaults prefix names with "The", which
-    /// suits a butler and not a household of proper names.
+    /// The interrogation layer. `properName` handles the articles; this one
+    /// line is here because a woman who looks at a thing and looks away says
+    /// more about the house than "shows no interest" does.
     let talk = Conversation(
-        nothingToSay: { "\($0) has nothing to say about that." },
         noInterest: { "\($0) looks at it and looks away." }
     )
 
@@ -118,26 +118,21 @@ struct Fulminate: Game, GameMain {
     /// `again:`, which does the same job in the table.
     @Global var delphineHasDeflected = false
 
-    /// The stock lines assume common nouns — "the Mrs. Vane is right here" —
-    /// which suits a lantern and not a household of proper names. Same reason
-    /// the `Conversation` above is re-skinned.
+    /// What is left after `properName` does the articles. The six lines that
+    /// used to be here only deleted a "the"; these five say something the stock
+    /// line doesn't, and the cast happens to be the reason for four of them.
     var text: GameText {
         var text = GameText()
-        text.following = { "(after \($0))" }
-        text.alreadyFollowing = { "\($0) is right here." }
-        text.cantFollowThat = { "The \($0) isn't going anywhere." }
-        text.lostThem = { "You have no idea which way \($0) went." }
         text.greets = { "\($0) looks at you and does not answer." }
-        text.cantGreetThat = { "The \($0) is unlikely to answer." }
         text.notTakingOrders = { "\($0) hears you out and goes on doing exactly what \($0) was doing." }
         // X ME is the first thing a player types, and this player has a past.
         text.selfDescription =
             "The same man who took statements in this hall in 1948, four years older."
         // A house of suspects is a house somebody will try to search, or grab.
         text.cantSearchActor = { "You are not putting a hand on \($0) tonight." }
-        text.cantTakeActor = { "\($0) would take exception to that." }
         // Three of them answer to "man" and three to "woman", so this line
-        // gets read more often than you would think.
+        // gets read more often than you would think. The Oxford comma is the
+        // house style, not an article workaround.
         text.ambiguous = { "Which do you mean: \($0.joined(separator: ", or "))?" }
         return text
     }
@@ -608,6 +603,7 @@ struct Fulminate: Game, GameMain {
 
     let julian = Actor {
         name("Julian Vane")
+        properName
         adjectives("julian", "mr", "mister")
         synonyms("vane", "julian", "man")
         description(
@@ -626,12 +622,14 @@ struct Fulminate: Game, GameMain {
     /// back garden is not in her chair with the lamp unlit.
     let constance = Actor {
         name("Mrs. Vane")
+        properName
         adjectives("mrs", "missus", "old", "constance")
         synonyms("vane", "constance", "mother", "woman")
     }
 
     let delphine = Actor {
         name("Delphine Marsh")
+        properName
         adjectives("delphine", "miss", "young")
         synonyms("marsh", "delphine", "woman", "painter")
         description(
@@ -643,6 +641,7 @@ struct Fulminate: Game, GameMain {
 
     let teague = Actor {
         name("Howard Teague")
+        properName
         adjectives("howard", "mr", "mister")
         synonyms("teague", "howard", "boarder", "man")
         description(
@@ -656,6 +655,7 @@ struct Fulminate: Game, GameMain {
 
     let pike = Actor {
         name("Dr. Pike")
+        properName
         adjectives("dr", "doctor", "aldous")
         synonyms("pike", "aldous", "man")
         // He is in the parlour, the yard and the study across the evening, so
@@ -674,6 +674,7 @@ struct Fulminate: Game, GameMain {
     /// wreckage to look at.
     let kettle = Actor {
         name("Mrs. Kettle")
+        properName
         adjectives("mrs", "missus", "iris", "cook")
         synonyms("kettle", "iris", "cook", "housekeeper", "woman")
         firstSight("Mrs. Kettle is here, keeping busy.")

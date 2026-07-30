@@ -78,6 +78,26 @@ final class TurnFrame: Sendable {
             ?? id.raw
     }
 
+    /// The entity's name behind its definite article — "the troll", or
+    /// "Mrs. Vane" for a `properName`. What every stock line that names one
+    /// thing is handed.
+    func definiteName(of id: EntityID) -> String {
+        GameText.definite(displayName(of: id), proper: isProperName(id))
+    }
+
+    /// The entity's name behind its indefinite article — "a troll", or
+    /// "Mrs. Vane" for a `properName`. What the room and inventory listings
+    /// are handed.
+    func indefiniteName(of id: EntityID) -> String {
+        GameText.indefinite(displayName(of: id), proper: isProperName(id))
+    }
+
+    /// Whether the entity's name is a proper name. Locations are never
+    /// articled by the engine, so only items carry the trait.
+    func isProperName(_ id: EntityID) -> Bool {
+        definition.items[id]?.isProperName == true
+    }
+
     /// A declared custom trait of any entity, or `nil` if it has none by that
     /// key. Custom traits are immutable definition data, so no lock is taken.
     func customTrait(_ key: String, of id: EntityID) -> StateValue? {
