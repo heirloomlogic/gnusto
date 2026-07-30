@@ -49,7 +49,7 @@ The first three form a ladder. **Cloak of Darkness** is the smallest complete ga
 
 The other two show the engine reaching past the exploration adventure it grew up on. **Gramarye** is built around `GnustoSpellcasting`, with a puzzle for each of the four casting paradigms. **Fulminate** is a one-evening whodunit built around `GnustoClock`, where the time of day is the instrument the case is measured with.
 
-In a real terminal this launches a full-screen, Infocom-style interpreter — a status bar (room, score, moves) above a story window that re-wraps as you resize, with arrow-key line editing, input history, and scrollback. Piped or redirected runs (and CI) fall back to plain text automatically; `GNUSTO_PLAIN=1` forces plain output in a terminal too.
+In a real terminal this launches a full-screen, Infocom-style interpreter — a status bar (room, score, moves) above a story window that re-wraps as you resize, with arrow-key line editing, input history, paste handling, and scrollback. Piped or redirected runs (and CI) fall back to plain text automatically; `GNUSTO_PLAIN=1` forces plain output in a terminal too.
 
 ## Share your game
 

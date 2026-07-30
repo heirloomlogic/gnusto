@@ -32,7 +32,7 @@ Either way, the executable target in your `Package.swift` produces a binary you 
 
 ## What running gives the player
 
-Run the game in a real terminal and ``GameMain`` reaches for the full-screen ``TerminalIOHandler``: a fixed status bar (room name, score, moves) above a story window that re-wraps the whole transcript to the window width — so **resizing the window reflows the text** — with its own line editor (arrow keys, input history, Home/End), and PageUp/PageDown scrollback. It's the classic Infocom interpreter feel, hand-rolled from `termios` and ANSI with no added dependencies.
+Run the game in a real terminal and ``GameMain`` reaches for the full-screen ``TerminalIOHandler``: a fixed status bar (room name, score, moves) above a story window that re-wraps the whole transcript to the window width — so **resizing the window reflows the text** — with its own line editor (arrow keys, input history, Home/End, bracketed paste), and PageUp/PageDown scrollback. It's the classic Infocom interpreter feel, hand-rolled from `termios` and ANSI with no added dependencies.
 
 That front end is chosen automatically, and only when it's safe:
 
@@ -47,6 +47,22 @@ GNUSTO_PLAIN=1 swift run Zork1      # plain, even in a terminal
 ```
 
 One caveat: `swift run` has been observed to interfere with stdin for this project, which the raw-mode interpreter is sensitive to. If interactive input misbehaves under `swift run`, run the built binary directly — `swift build && .build/debug/Zork1`, or the exported binary from the next section.
+
+## Play-testing conveniences
+
+Comments, paste-folding, and transcript recording are all front-end concerns: those lines never reach ``GameWorld``, so none of them costs a turn or moves the clock.
+
+### Comments
+
+A line whose first non-blank characters are `//` or `#` is a note, not a command. The story window shows it in dim italics and a running transcript records it, but the engine never sees it — no parse, no rules, no fuse or daemon. Comments also stay out of Up/Down recall, so the history stays a list of things the game actually ran.
+
+### Pasting a note
+
+In a terminal that supports bracketed paste, pasting a multi-line block into a line that already begins `//` or `#` folds it into one comment: every line break becomes a single space, and nothing is submitted until you press Return. Pasting into any other line still submits one command per line, so a walkthrough can be replayed by pasting it. Terminals without bracketed paste — the Linux console, or tmux without pass-through — behave as before, submitting one line at a time.
+
+### Recording a transcript
+
+`script` starts writing the session to a file and `unscript` stops; `script <name>` names it, and a name containing `/` or starting with `~` is treated as a path. To record from the opening text instead, set `GNUSTO_TRANSCRIPT` to a path, or to `1` for a timestamped file in the game's transcripts directory (`<app-support>/Gnusto/Transcripts/<title>/`, which `GNUSTO_TRANSCRIPT_DIR` overrides). A transcript is plain text — `> command` lines interleaved with the game's output, comments included — so a tester can attach one to a bug report.
 
 ## The `<br>` hard-break marker
 
