@@ -38,7 +38,7 @@ That front end is chosen automatically, and only when it's safe:
 
 - **Interactive terminal** (stdin *and* stdout are both a TTY) → ``TerminalIOHandler``.
 - **Piped, redirected, or CI** → the plain ``ConsoleIOHandler``, so transcripts and scripted runs stay clean, escape-code-free text.
-- **`GNUSTO_PLAIN=1`** in the environment forces the plain handler even in a terminal, for anyone who wants it.
+- **`GNUSTO_PLAIN`** in the environment forces the plain handler even in a terminal, for anyone who wants it. See <doc:SharingYourGame#Environment-variables> for the full set.
 
 ```sh
 swift run Zork1                     # full-screen interpreter
@@ -46,7 +46,34 @@ printf 'look\nquit\n' | swift run Zork1   # plain text, no escape codes
 GNUSTO_PLAIN=1 swift run Zork1      # plain, even in a terminal
 ```
 
-One caveat: `swift run` has been observed to interfere with stdin for this project, which the raw-mode interpreter is sensitive to. If interactive input misbehaves under `swift run`, run the built binary directly — `swift build && .build/debug/Zork1`, or the exported binary from the next section.
+One caveat: `swift run` has been observed to interfere with stdin for this project, which the raw-mode interpreter is sensitive to. If interactive input misbehaves under `swift run`, run the built binary directly, or use the exported binary from the next section. Ask for the binary's location rather than assuming it — the directory differs between build systems, and a stale copy from an earlier run may be sitting in the other one:
+
+```sh
+swift build --product Zork1
+"$(swift build --product Zork1 --show-bin-path)/Zork1"
+```
+
+## Environment variables
+
+Five variables configure a running game. All are optional — a game with none of them set behaves exactly as it always has.
+
+| Variable | Effect |
+|---|---|
+| `GNUSTO_PLAIN` | Forces the plain ``ConsoleIOHandler`` even in a terminal. A flag, not a setting: *any* value counts, including an empty one. |
+| `GNUSTO_SEED` | Pins the random stream to a whole number, so the whole session replays identically. |
+| `GNUSTO_TRANSCRIPT` | Records the session from launch. `1`, `on`, `true` or `yes` writes a timestamped file; anything else is a slot name, or a path if it contains a `/`. |
+| `GNUSTO_TRANSCRIPT_DIR` | Where slot-named transcripts go. Defaults to `<app support>/Gnusto/Transcripts/<game>`. Read whenever a transcript file is resolved, so it also applies to a `script` typed mid-session — not only at launch. |
+| `GNUSTO_SAVE_DIR` | Where saves go. Defaults to `<app support>/Gnusto/Saves/<game>`. Point it somewhere disposable to keep a scripted run out of your real save slots. |
+
+`GNUSTO_SEED` is what makes a bug report reproducible. Everything random in a game — combat rolls, roaming actors, ``oneOf(_:)`` prose — draws from one seeded stream, so a transcript recorded under a pinned seed replays turn for turn on any machine, and the command list drops straight into a `play(_:_:seed:)` test. See <doc:TestingYourGame> for the in-suite side of the same knob.
+
+```sh
+GNUSTO_SEED=0 GNUSTO_TRANSCRIPT=1 swift run Lighthouse
+```
+
+A value that isn't a whole number from 0 to 18446744073709551615 is reported on standard error and ignored, and the game seeds at random as usual. Silence would be worse than a complaint: the one thing the variable is for is reproducibility, so a typo that quietly handed back a random stream would defeat it.
+
+Comments and `script`/`unscript` are the tester's other two knobs, and they belong to the front end rather than the environment — see the next section.
 
 ## Play-testing conveniences
 

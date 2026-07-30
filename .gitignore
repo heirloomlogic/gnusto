@@ -1,4 +1,8 @@
 .context/
+# .claude/settings.json is tracked — it allowlists the play-test harness's own
+# commands so a round doesn't stall on twenty permission prompts. Personal
+# overrides belong in the local file, which is not.
+.claude/settings.local.json
 .dev-tooling
 .DS_Store
 .github/swift-format-matcher.json
