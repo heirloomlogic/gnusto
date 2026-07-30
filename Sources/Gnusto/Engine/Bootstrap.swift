@@ -128,6 +128,10 @@ enum Bootstrap {
         registry.items[.player] = Player().item
         var playerItem = ItemDefinition(traits: Player.itemTraits)
         playerItem.isActor = true
+        // "yourself" takes no article. The self lines cover the sites that
+        // matter, but a line reached with the player in the object slot should
+        // say "You can't reach yourself.", never "the yourself".
+        playerItem.isProperName = true
         items[.player] = playerItem
 
         // Custom verb rows are validated up front: a malformed pattern is a
@@ -383,6 +387,7 @@ enum Bootstrap {
             }
             vocabulary.itemLexicons[id] = lexicon
             vocabulary.displayNames[id] = item.name ?? id.raw
+            if item.isProperName { vocabulary.properNames.insert(id) }
         }
 
         // Game- and bundle-declared filler words join the built-in articles.
@@ -429,6 +434,20 @@ enum Bootstrap {
             traitWarnings.append(
                 "item \"\(id)\" declares startsUnlocked but has no lockedBy entry; "
                     + "the flag has no effect.")
+        }
+        // A capitalized name is very nearly a proper name, and the stock lines
+        // put an article in front of anything that isn't one — "the Mrs. Vane".
+        // Not inferred, because "Elvish sword" is a common noun and so is
+        // "Orange Grove Avenue"; warned about, because the author who meant a
+        // proper name will otherwise find out from a transcript. Locations are
+        // exempt: the engine never articles a room name.
+        for (id, item) in items
+        where !item.isProperName && item.name?.first?.isUppercase == true {
+            traitWarnings.append(
+                "\(item.isActor ? "actor" : "item") \"\(id)\" is named "
+                    + "\"\(item.name ?? id.raw)\", which reads as a proper name but is "
+                    + "not declared properName; stock lines will say "
+                    + "\"the \(item.name ?? id.raw)\".")
         }
         // Mechanical item traits on an actor are legal but almost never
         // intended — an actor holds things via its inventory, not by being a

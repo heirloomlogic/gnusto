@@ -54,11 +54,11 @@ public struct MeleeCombat: GameContent {
         public var noWeapon = "Bare hands won't do it. You need a weapon."
         /// Naming a weapon that isn't one ("attack troll with feather").
         public var notAWeapon: @Sendable (_ name: String) -> String = {
-            "The \($0) is no weapon."
+            "\(GameText.sentenceCase($0)) is no weapon."
         }
         /// Naming a real weapon the player isn't holding.
         public var weaponNotHeld: @Sendable (_ name: String) -> String = {
-            "You aren't holding the \($0)."
+            "You aren't holding \($0)."
         }
 
         /// Creates the default combat text; override any line after construction.
@@ -200,10 +200,10 @@ public struct MeleeCombat: GameContent {
             let weaponUsed: Item
             if let named = command.indirectObject {
                 guard weapons.contains(named) else {
-                    try refuse(text.notAWeapon(named.name))
+                    try refuse(text.notAWeapon(named.definiteName))
                 }
                 guard named.isHeld else {
-                    try refuse(text.weaponNotHeld(named.name))
+                    try refuse(text.weaponNotHeld(named.definiteName))
                 }
                 weaponUsed = named
             } else if let best = weapons.filter(\.isHeld)

@@ -47,6 +47,28 @@ public struct Item: Sendable, Equatable {
         return frame.displayName(of: id)
     }
 
+    /// The name behind its definite article — "the brass lantern", or
+    /// "Mrs. Vane" for an item declared `properName`. The form the engine's
+    /// stock lines are given, and the one a rule's own prose usually wants.
+    public var definiteName: String {
+        let (frame, id) = resolved
+        return frame.definiteName(of: id)
+    }
+
+    /// The name behind its indefinite article — "a brass lantern", or
+    /// "Mrs. Vane" for an item declared `properName`. The form the room and
+    /// inventory listings use.
+    public var indefiniteName: String {
+        let (frame, id) = resolved
+        return frame.indefiniteName(of: id)
+    }
+
+    /// True if the item's name is a proper name, so no article precedes it.
+    public var isProperName: Bool {
+        let (frame, id) = resolved
+        return frame.isProperName(id)
+    }
+
     /// The item's examine/read text. Assigning replaces it for the rest of
     /// the game.
     public var description: String {

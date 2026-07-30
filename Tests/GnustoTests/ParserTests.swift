@@ -110,7 +110,7 @@ struct ParserTests {
             parser.parse("hang cloak", scope: Self.fullScope)
                 == .failure(
                     .missingIndirect(
-                        verb: "hang", objectName: "velvet cloak", preposition: "on",
+                        verb: "hang", objectName: "the velvet cloak", preposition: "on",
                         prefix: ["hang", "cloak", "on"])))
     }
 

@@ -91,7 +91,7 @@ struct TopicSlotTests {
             result
                 == .failure(
                     .missingTopic(
-                        verb: "ask", objectName: "butler", preposition: "about",
+                        verb: "ask", objectName: "the butler", preposition: "about",
                         prefix: ["ask", "butler", "about"])))
     }
 

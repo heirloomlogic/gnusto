@@ -16,6 +16,10 @@ struct ItemLexicon: Sendable {
 struct Vocabulary: Sendable {
     var itemLexicons: [EntityID: ItemLexicon] = [:]
     var displayNames: [EntityID: String] = [:]
+    /// The items whose display name is a proper name. The parser's own lines
+    /// name entities too — "Which do you mean: Mrs. Vane or Dr. Pike?" — and
+    /// it has no frame to ask, so the article rule travels with the lexicon.
+    var properNames: Set<EntityID> = []
     var verbWords: Set<String> = []
     var directions: [String: Direction] = [:]
     var prepositions: Set<String> = []

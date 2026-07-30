@@ -17,6 +17,7 @@ public struct ItemTrait: Sendable {
         case description(String)
         case adjectives([String])
         case synonyms([String])
+        case properName
         case firstSight(String)
         case wearable
         case scenery
@@ -87,6 +88,16 @@ public func adjectives(_ words: String...) -> ItemTrait {
 public func synonyms(_ words: String...) -> ItemTrait {
     ItemTrait(kind: .synonyms(words))
 }
+
+/// The name is a proper name, so the engine's stock lines never put an article
+/// in front of it: "Mrs. Vane is right here." rather than "The Mrs. Vane is
+/// right here.", and "Mrs. Vane is here." rather than "A Mrs. Vane is here."
+///
+/// Declared rather than inferred, as in ZIL and Inform. A capital letter is
+/// close to a reliable signal and not quite one — "Elvish sword" is a common
+/// noun — so the bootstrap warns about a capitalized name without this trait
+/// instead of guessing.
+public let properName = ItemTrait(kind: .properName)
 
 /// The paragraph used to mention the item in a room description until the
 /// player has touched it (ZIL's FDESC).

@@ -67,7 +67,7 @@ extension StubVerb {
         .init(intent, patterns) { text, command in
             guard let object = command.directObject else { return text.didntUnderstand }
             guard !object.isPlayer else { return text.stubs.yourself }
-            return line(text, object.name)
+            return line(text, object.definiteName)
         }
     }
 
@@ -393,7 +393,7 @@ extension DefaultActions {
             else { return text.didntUnderstand }
             // Either slot can be the player, and neither reads with its name.
             guard !item.isPlayer, !recipient.isPlayer else { return text.stubs.yourself }
-            return text.stubs.give(item.name, recipient.name)
+            return text.stubs.give(item.definiteName, recipient.definiteName)
         },
 
         .plain(

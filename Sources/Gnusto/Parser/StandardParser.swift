@@ -109,7 +109,7 @@ struct StandardParser {
                             intent: .greet, directObject: addressee,
                             verbPhrase: "greet", rawInput: rawInput))
                 }
-                return .failure(.notTakingOrders(displayName(of: addressee)))
+                return .failure(.notTakingOrders(definiteName(of: addressee)))
             }
         }
         // Not an address, or not to a person: the comma goes back to being
@@ -247,7 +247,7 @@ struct StandardParser {
                             return .nearMiss(
                                 .missingIndirect(
                                     verb: verbPhrase,
-                                    objectName: displayName(of: id),
+                                    objectName: definiteName(of: id),
                                     preposition: word,
                                     prefix: tokens + [word]))
                         }
@@ -399,7 +399,7 @@ struct StandardParser {
                 else {
                     return .mismatch
                 }
-                objectName = displayName(of: id)
+                objectName = definiteName(of: id)
             }
             return .nearMiss(
                 .missingTopic(
@@ -414,7 +414,7 @@ struct StandardParser {
             return .nearMiss(
                 .missingIndirect(
                     verb: verbPhrase,
-                    objectName: displayName(of: id),
+                    objectName: definiteName(of: id),
                     preposition: preposition ?? "",
                     prefix: tokens))
         }
@@ -510,7 +510,13 @@ struct StandardParser {
         }
 
         if matches.count > 1 {
-            let names = matches.map { displayName(of: $0) }.sorted()
+            // Sorted by the bare name and articled after: an order the player
+            // reads as alphabetical shouldn't file every common noun under
+            // "the" and leave the people on their own.
+            let names =
+                matches
+                .sorted { displayName(of: $0) < displayName(of: $1) }
+                .map { definiteName(of: $0) }
             // The caller (`fit`) fills the answer-insertion context via
             // `positioned` — only it knows the phrase's place in the line.
             return .failure(.ambiguous(names: names, prefix: [], suffix: []))
@@ -526,5 +532,11 @@ struct StandardParser {
 
     private func displayName(of id: EntityID) -> String {
         vocabulary.displayNames[id] ?? id.raw
+    }
+
+    /// The entity's name behind its definite article, or bare if it is a
+    /// proper name. The parser's counterpart to `TurnFrame.definiteName(of:)`.
+    private func definiteName(of id: EntityID) -> String {
+        GameText.definite(displayName(of: id), proper: vocabulary.properNames.contains(id))
     }
 }

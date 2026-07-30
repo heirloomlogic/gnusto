@@ -112,6 +112,11 @@ In any rule body: `say`, `refuse`, `reply`, `require(_:else:)`, `end(won:)`, `di
   and is placed nowhere — so it never appears in a room listing, an inventory, or
   `take all`. Its `isActor` is true, but `definition.actorIDs` (the *cast*) excludes
   it, because every consumer of that set means somebody else.
+- **A `GameText` closure gets a rendered phrase, not a bare name** — `"the troll"`,
+  `"a troll"`, `"Mrs. Vane"`. The article is the engine's, chosen from the
+  `properName` trait; a template that writes its own says "the Mrs. Vane". Open a
+  line with `GameText.sentenceCase($0)`, never `"The \($0)"`. A capitalized
+  item/actor name without `properName` warns at bootstrap (locations are exempt).
 - **Every noun a room description prints must be answerable.** A named thing the
   parser doesn't know reads as a bug; add the scenery item with the noun. Item
   vocabulary comes from `name` (last word = noun, earlier words = adjectives) plus

@@ -60,7 +60,7 @@ struct PatternGrammarTests {
             result
                 == .failure(
                     .missingIndirect(
-                        verb: "give", objectName: "brass lamp", preposition: "to",
+                        verb: "give", objectName: "the brass lamp", preposition: "to",
                         prefix: ["give", "lamp", "to"])))
     }
 
