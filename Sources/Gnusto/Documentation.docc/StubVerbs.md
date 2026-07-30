@@ -147,10 +147,14 @@ var verbs: [SyntaxRule] {
   its override warning off `coreTable`, and that split *is* the stub flag.
 - A stub's intent, rows and line are one `StubVerb` value, so a stub can't be
   half-declared — rows with no line would answer `didntUnderstand` and read as a
-  parser bug.
+  parser bug. Core verbs have the same shape for the same reason: a `CoreVerb`
+  is an intent, its rows and its handler, and both tables and both intent sets
+  are derived from those two arrays rather than restated.
 - Stub intents are deliberately **not** in `DefaultActions.builtInIntents`, which
   is what keeps `action(.dig)` from warning. `handledIntents` is the union, used
-  for the dead-intent check.
+  for the dead-intent check. `engineIntents` is the third set — UNDO, RESTART,
+  SAVE and RESTORE, which `GameWorld.run` answers before the pipeline — and an
+  `actions` row for one of those warns that it can never run.
 - No stub row uses a `.topic` slot, and none should. A topic never fails to
   match, so a low-specificity topic row silently absorbs the scope failures of
   every more specific row sharing its verb word — `say hello to butler` with no

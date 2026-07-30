@@ -461,7 +461,16 @@ enum Bootstrap {
         var actionWarnings: [String] = []
         var actionOverrides: [Intent: IntentAction] = [:]
         for action in customActions {
-            if DefaultActions.builtInIntents.contains(action.intent) {
+            if DefaultActions.engineIntents.contains(action.intent) {
+                // UNDO and its neighbours are answered in `GameWorld.run`,
+                // before any stage runs, so this row is dead on arrival. Silence
+                // here would read as "registered" and cost somebody an
+                // afternoon.
+                actionWarnings.append(
+                    "custom action for intent \"\(action.intent.raw)\" will never run; "
+                        + "the engine answers \(action.intent.raw) before the turn "
+                        + "pipeline.")
+            } else if DefaultActions.builtInIntents.contains(action.intent) {
                 actionWarnings.append(
                     "custom action for intent \"\(action.intent.raw)\" overrides the "
                         + "built-in default of the same intent.")
