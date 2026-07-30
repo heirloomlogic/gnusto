@@ -59,6 +59,13 @@ engine adds is perception and manners:
 
 `starts(in:)` is the only placement an actor accepts.
 
+The player is an actor too — the engine synthesizes ``Player/item`` for
+them, so `X ME` has something to answer with and a game has somewhere to
+hang the answer. It differs from the cast in two ways: it is in no room
+(and so is never listed, never taken, never followed), and it is not
+counted as company — a bare `hello` in a room with one other person still
+means that person.
+
 ## Inventories
 
 An actor holds items exactly the way the player does — placements:

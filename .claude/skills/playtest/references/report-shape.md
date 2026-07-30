@@ -30,8 +30,10 @@ is not a new finding — it is a **regression**, and it goes back at raised seve
 3. **Fixed** — each with the test that fails without it.
 4. **Filed, not fixed** — with the reason. "Needs a human to pick a design" is a
    good reason; "ran out of budget" is also a good reason, and must be said.
-5. **Routed elsewhere** — #76 / #77 / #78 with counts, and anything promoted *out*
-   of a bucket with the argument for promoting it.
+5. **Routed elsewhere** — the open buckets with counts (today that is #76, stub
+   verbs), and anything promoted *out* of a bucket with the argument for promoting it.
+   When a bucket's issue has been closed, its replies are regressions and belong under
+   *Fixed* or *Filed*, not here.
 6. **Refuted** — the claim *and* the refutation. This section is how the verifier
    gets audited. A round with an empty refuted list either got lucky or isn't
    really refuting.
@@ -106,7 +108,6 @@ Doc changes in this commit: `docs/games/fulminate.md` — Cast copy for Mrs. Ket
   taste throw touch yell`. One aggregated comment; dropped from the fix stage.
   Promoted **out** of #76: `tile` — the Front Hall's own description prints "black
   and white tile, worn through to the grout", so the game invited the word (K8).
-- **#77** — `x me`, 3 occurrences.
 
 ## Refuted
 

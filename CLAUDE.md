@@ -107,10 +107,16 @@ In any rule body: `say`, `refuse`, `reply`, `require(_:else:)`, `end(won:)`, `di
   moment one of them fails to parse. This is the single most common test-timing bug.
 - **`search X` / `find X` / `look for X` all mean `.lookIn`**, which refuses in a
   fixed order: `cantReach` for something out of reach, `cantSearchActor` for a
-  person, then `nothingToSearch` for anything that isn't a `container`. An item you
-  want searchable must be declared `container`. `cantSeeAnySuchThing` is reserved
-  for a noun that isn't in scope at all, so "You can't see any such thing" in answer
-  to `search <a thing the room just described>` is a **bug**, not stock behavior.
+  person, then `nothingToSearch` ("You find nothing of interest in the X") for
+  anything that isn't a `container`. An item you want searchable must be declared
+  `container`. `cantSeeAnySuchThing` is reserved for a noun that isn't in scope at
+  all, so "You can't see any such thing" in answer to `search <a thing the room just
+  described>` is a **bug**, not stock behavior.
+- **The player is an entity**, synthesized by the bootstrap as `EntityID.player` and
+  reachable as `player.item`. It answers to `me`/`myself`/`self`, is always in scope,
+  and is placed nowhere — so it never appears in a room listing, an inventory, or
+  `take all`. Its `isActor` is true, but `definition.actorIDs` (the *cast*) excludes
+  it, because every consumer of that set means somebody else.
 - **Every noun a room description prints must be answerable.** A named thing the
   parser doesn't know reads as a bug; add the scenery item with the noun. Item
   vocabulary comes from `name` (last word = noun, earlier words = adjectives) plus

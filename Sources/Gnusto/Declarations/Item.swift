@@ -95,6 +95,17 @@ public struct Item: Sendable, Equatable {
         return frame.definition.items[id]?.isActor == true
     }
 
+    /// True if this is the player themselves. ``isActor`` is true for them
+    /// too — they are a person — so any rule or plugin that means *somebody
+    /// else* has to say so:
+    ///
+    /// ```swift
+    /// try require(addressee.isActor && !addressee.isPlayer, else: "Nobody to tell.")
+    /// ```
+    public var isPlayer: Bool {
+        self == Player().item
+    }
+
     /// Whether the item is open. A container without the `openable` trait is
     /// always open; assigning to it is a no-op. An openable item reflects and
     /// updates the current open state.

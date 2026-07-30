@@ -173,15 +173,33 @@ Anything else answers `I don't know the word "…"`. See K8 for the tie-break.
    `throw`, `touch` are all #76's. **Exception:** promote out of #76 if the word is
    a synonym for an intent the engine already has, or if the game's prose invited it
    (K8).
-2. **`me` / `myself` / `self`** → issue **#77**.
-3. **Terminal paste behaviour** → issue **#78**.
-4. **A character declining to do something is characterization, not a defect.**
+2. **A character declining to do something is characterization, not a defect.**
    "The game said no" is never by itself a finding. Mrs. Vane refusing to light the
    lamp is who she is.
-5. **A refusal that is correct and merely terse.**
-6. **Prose you would have written differently.** Taste findings are admissible at
+3. **A refusal that is correct and merely terse.**
+4. **Prose you would have written differently.** Taste findings are admissible at
    the lowest severity, must be labelled as taste, and must never crowd out a truth
    finding.
+
+**Two things that used to belong on that list and no longer do.** Both were fixed,
+so the old behaviour is now a **regression**, and reporting it at raised severity is
+exactly right:
+
+- **`x me` / `x myself` / `x self` answer.** The player is a real entity, always in
+  scope, placed nowhere — so it never shows up in a room listing, an inventory or
+  `take all`, but examining it works. `I don't know the word "me"` is a defect now.
+  A game that gives the player no description of their own is worth a `note`; the
+  engine supplies a stock one.
+- **Pasting a multi-line block into a line that already begins `//` or `#` folds it
+  into one comment.** Every line break becomes a single space and nothing submits
+  until Return. Pasting into any *other* line still submits one command per line, on
+  purpose, so a walkthrough can be replayed by pasting it — that is not a defect.
+  Terminals without bracketed paste submit line-at-a-time as before.
+
+This is the ordinary fate of a "never a finding" list: it is a snapshot of which
+defects are owned elsewhere, and it goes stale the moment one of them is fixed. If a
+rule here contradicts what the code does, the code wins and the contradiction is
+itself a `doc-drift` finding against this file.
 
 ## What a good finding looks like
 

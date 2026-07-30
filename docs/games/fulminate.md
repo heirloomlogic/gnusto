@@ -155,6 +155,12 @@ What the history buys, structurally:
   none of it is the answer. Your expertise opens every door and points at the wrong ones.
   The player's arc is learning to stop reading the file and look at the household.
 
+`X ME` answers *The same man who took statements in this hall in 1948, four years older.* —
+the history, in one line, on the turn a player is most likely to ask for it. Accusing
+yourself is refused rather than taken down: *The coroner would take the name down. Give
+him a better one.* The accusation is the deadline's teeth, and it will not be spent on a
+joke.
+
 ---
 
 ## Cast

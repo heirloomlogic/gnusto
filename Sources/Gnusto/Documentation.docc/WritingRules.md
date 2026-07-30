@@ -77,6 +77,16 @@ message.before(.read) {
 }
 ```
 
+``Player/item`` is the player themselves as a thing in the world — what `X ME` examines. The engine synthesizes it, so no game declares it, but it is an ordinary ``Item``: give it a `describe { }` rule, set its ``Item/description`` at runtime, hang `before`/`after` rules on it. It is always in scope and never in a room, so it appears in no room description, no inventory, and no `TAKE ALL`.
+
+```swift
+player.item.describe {
+    player.isCarrying(lantern) ? "Lit from below, and grubby." : "Grubby."
+}
+```
+
+Without a rule, examining yourself prints ``GameText/selfDescription``, alongside the other stock lines a game can re-skin — ``GameText/cantTakeSelf``, ``GameText/cantSearchSelf``, ``GameText/cantGreetSelf``, ``GameText/cantFollowSelf``.
+
 The command being performed is available as `command` (``Command``): its ``Command/intent``, ``Command/directObject``, ``Command/indirectObject``, ``Command/direction``, ``Command/preposition``, and the raw ``Command/verbPhrase`` the player typed.
 
 ```swift

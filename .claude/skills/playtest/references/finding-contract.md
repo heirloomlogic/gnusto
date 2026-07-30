@@ -19,7 +19,7 @@ Plus, for routing:
 | `category` | `presence-line-location-blind`, `prose-untrue-of-frame`, `prose-untrue-of-state`, `unanswerable-noun`, `stock-line-not-reskinned`, `register-mismatch`, `exit-prose-mismatch`, `mechanic-contradicts-prose`, `repeat-behavior`, `unwinnable`, `gate-not-gating`, `doc-drift`, `contract-violation`, `crash-or-hang`, `prose-taste` |
 | `severity` | `blocking` (the game cannot be finished), `major` (a line is false), `minor` (true but misleading), `note` (taste) |
 | `ownerFile` | The file that would change. This is what decides prose-vs-engine, so guess it honestly rather than conveniently. |
-| `routedTo` | `76`, `77`, `78`, or empty. Set it and the finding leaves the pipeline. |
+| `routedTo` | `76`, or empty. Set it and the finding leaves the pipeline. Only issues that are still **open** belong here — a closed one turns its replies back into regressions. |
 | `alsoSeenIn` | Other frames where the same sentence was also false. One sentence wrong at two hours is **one** defect with two frames, not two defects. |
 
 ## The two rules that keep the loop honest

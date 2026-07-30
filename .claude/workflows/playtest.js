@@ -146,9 +146,11 @@ const CATEGORIES = [
   'prose-taste',
 ]
 
-// Issues that own defect classes this harness must route away rather than fix:
-// stub verbs, the player having no entity, and terminal paste.
-const ROUTED_ISSUES = { type: 'string', enum: ['', '76', '77', '78'] }
+// Issues that own a defect class this harness should route away rather than fix.
+// Keep this list honest: #77 (the player had no entity) and #78 (multiline paste)
+// were both fixed, so those replies are regressions now, not somebody else's
+// problem. A closed issue left here suppresses the very finding it used to excuse.
+const ROUTED_ISSUES = { type: 'string', enum: ['', '76'] }
 
 const SURVEY_SCHEMA = {
   type: 'object',
@@ -591,10 +593,17 @@ typo — replay it first; it is deterministic and cheap.`,
 says back.
 
 Right verb, wrong noun. Right noun, wrong room. Verbs out of order — unlock before
-taking the key, cast before memorizing, accuse on turn one. \`x me\`. Ambiguous nouns:
-where several characters answer to "man" or "woman", \`x man\` must disambiguate in the
+taking the key, cast before memorizing, accuse on turn one. Ambiguous nouns: where
+several characters answer to "man" or "woman", \`x man\` must disambiguate in the
 game's own voice. Plurals. Empty input. A bare noun. A bare direction into a wall.
 \`open\` something that does not open. \`take all\`.
+
+Then the player themselves, which is newly answerable and therefore newly breakable:
+\`x me\`, \`x myself\`, \`x self\`, \`take me\`, \`search me\`, \`i\`, \`take all\`, and
+\`look\` in a room you are alone in. The player is always in scope but placed nowhere,
+so it must answer to all three words and must NOT appear in a room listing, in the
+inventory, or in what \`take all\` picks up. An unknown-word reply to \`x me\` is a
+regression, not #76.
 
 You own: a refusal that names something the player cannot know yet, or leaks an entity
 from another room; a disambiguation prompt listing things the player cannot see; "You
@@ -808,9 +817,10 @@ actually been wrong, most frequent first.
 
 1. **Is it intentional design?** A character declining to act is characterization, not
    a defect. ${docPath ? `Check the design doc's "free to change" list — a finding objecting to a name, a line of prose, the tone, or a plot choice is objecting to something the doc explicitly licenses, and is refuted on sight unless it ALSO shows the line is untrue of its frame. Check the mechanics contract too: a behaviour the contract REQUIRES is not a defect.` : `With no design doc, lean harder on this: you cannot tell authorial intent from the outside, so a finding that amounts to a preference is refuted.`}
-2. **Is it owned by another issue?** Unknown verbs are #76. \`me\`/\`myself\` is #77.
-   Terminal paste is #78. If so, answer route-elsewhere with the number rather than
-   confirming.
+2. **Is it owned by another issue?** An unknown *verb* the game never printed is #76
+   (stub verbs) — answer route-elsewhere with the number rather than confirming. That
+   is the only open bucket: \`x me\` and multiline paste were fixed, so those are
+   regressions to confirm, not tickets to forward.
 3. **Did the tester misread?** Replay the reproducer YOURSELF:
    \`bin/playtest-replay ${game} --commands <file> --seed ${seed} --label verify-${round}\`.
    Confirm the excerpt appears verbatim, in the frame claimed, with the hour anchored by

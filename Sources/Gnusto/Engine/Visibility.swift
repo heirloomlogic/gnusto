@@ -46,7 +46,13 @@ enum Visibility {
         index: ContainmentIndex,
         descendClosedTransparent: Bool
     ) -> Set<EntityID> {
-        var result: Set<EntityID> = []
+        // The player is always to hand — in the dark too, exactly like the
+        // things they are carrying. Their item is placed `.nowhere`, so this
+        // is the only way it enters scope, and being in no room is what keeps
+        // it out of room listings and a location's contents. `TAKE ALL` reads
+        // this set, and is kept off the player by `isTakable`, which is false
+        // for people.
+        var result: Set<EntityID> = [.player]
         // Guards against a runtime-created placement cycle (e.g. a container
         // moved inside its own contents) sending this walk into an infinite
         // recursion — the containment graph should never have cycles, but the
@@ -165,7 +171,7 @@ enum Visibility {
         definition: GameDefinition,
         state: WorldState
     ) -> Set<EntityID> {
-        definition.actorIDs.filter { id in
+        definition.castIDs.filter { id in
             guard case .room(let room)? = state.placements[id], room != location,
                 definition.reachableRooms.contains(room)
             else {
