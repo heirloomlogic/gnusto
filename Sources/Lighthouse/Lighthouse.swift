@@ -133,7 +133,7 @@ struct Lighthouse: Game {
     /// game's voice rather than the engine's.
     let chest = Item {
         name("heavy chest")
-        adjectives("wooden", "sea", "brine")
+        adjectives("sea")
         synonyms("clasp", "wire", "trunk")
         description(
             """
@@ -318,9 +318,8 @@ struct Lighthouse: Game {
             }
         }
         fuse("lampDies", after: 9) {
-            let seen = lampIsInSight
             oilLamp.isLit = false
-            if seen {
+            if lampIsInSight {
                 say("The oil lamp gutters, and goes out.")
             }
         }
@@ -342,10 +341,20 @@ struct Lighthouse: Game {
             departure: "The keeper takes to the stairs, both hands to the rail, a step at a time.")
     }
 
-    /// True when the lamp is somewhere the player could watch it burn — in hand,
-    /// or on the floor of the room they are standing in.
+    /// True when the lamp is somewhere the player could watch it burn: in hand,
+    /// on the floor here, or resting in something open here — `turn on` needs
+    /// reach and not possession, so `open chest` / `light lamp` leaves it lit
+    /// inside the chest with the player standing over it.
+    ///
+    /// A container that isn't `openable` is always open, so the one test covers
+    /// the shelf as well as the chest. The engine computes exactly this in
+    /// `Visibility`, but nothing public exposes it — `GnustoActors` hand-rolls
+    /// its own answer too, which is the argument for an `Item.isVisible` the
+    /// engine owns.
     private var lampIsInSight: Bool {
-        oilLamp.isHeld || player.location.contains(oilLamp)
+        guard !oilLamp.isHeld else { return true }
+        let here = player.location
+        return oilLamp.isIn(here) || here.contents.contains { $0.isOpen && $0.holds(oilLamp) }
     }
 
     // MARK: - Rules

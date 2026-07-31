@@ -10,20 +10,26 @@ import Gnusto
 /// They live in a ``GameContent`` bundle for a reason worth naming, because it
 /// is a second use of the same idiom the ``Tower`` demonstrates: the Tower is a
 /// bundle because a *region* wants to own its declarations, and this is a bundle
-/// because a dozen scenery items would otherwise be two thirds of the host file.
-/// A bundle is a place to put declarations, and "a region" is only the most
+/// because eight scenery items would otherwise be a third of the host file. A
+/// bundle is a place to put declarations, and "a region" is only the most
 /// obvious reason to want one.
 ///
-/// The host places these, since a bundle's `map` can only reach rooms the bundle
-/// itself declares and all three of these rooms belong to ``Lighthouse``. That is
-/// the same cross-bundle seam that wires the stairs up into the Tower.
+/// The host places these. A bundle can only place into rooms it can *name*, and
+/// the only rooms it can store are its own — so these belong to ``Lighthouse``'s
+/// `map`, on the same cross-bundle seam that wires the stairs up into the Tower.
+///
+/// A note on what is declared and what is derived, since these blocks are short
+/// enough to read as a list: a `name` already contributes its last word as a
+/// noun and every earlier word as an adjective, so `name("coiled rope")` needs
+/// neither `adjectives("coiled")` nor `synonyms("rope")`. What the extra lines
+/// are for is the words the prose prints that the name doesn't reach.
 struct Fixtures: GameContent {
     // MARK: - The jetty
 
     let sea = Item {
         name("sea")
-        adjectives("cold", "grey", "open")
-        synonyms("water", "tide", "waves", "wave", "swell", "ebb", "surf")
+        adjectives("cold")
+        synonyms("water", "tide", "waves", "wave", "ebb")
         description(
             """
             Coming in, the way it comes in twice a day whether or not anybody is
@@ -35,8 +41,7 @@ struct Fixtures: GameContent {
 
     let planks = Item {
         name("timber jetty")
-        adjectives("timber", "short", "wooden")
-        synonyms("jetty", "planks", "plank", "boards", "board", "footings", "footing", "decking")
+        synonyms("planks", "plank", "boards", "board", "footings", "footing")
         description(
             """
             Timber on stone footings, and the timber is the part that gets
@@ -48,8 +53,7 @@ struct Fixtures: GameContent {
 
     let boat = Item {
         name("keeper's boat")
-        adjectives("small", "open", "clinker")
-        synonyms("boat", "dinghy", "mooring", "painter")
+        synonyms("mooring", "dinghy")
         description(
             """
             An open boat, rowed out and rowed back for forty years, with the
@@ -61,7 +65,7 @@ struct Fixtures: GameContent {
 
     let lighthouse = Item {
         name("lighthouse")
-        adjectives("tall", "white", "stone")
+        adjectives("dark", "white")
         synonyms("tower")
         description(
             """
@@ -74,11 +78,17 @@ struct Fixtures: GameContent {
 
     // MARK: - The base
 
+    /// The tower seen from inside it, which is why this and not the jetty's
+    /// `lighthouse` answers those words down here — a single item occupies one
+    /// room, and the view from within a lighthouse is its wall.
+    ///
+    /// `stone` is a synonym rather than an adjective on purpose: the name makes
+    /// it an adjective already, and the last word of a typed phrase has to be a
+    /// noun, so `x stone` needs it declared on this side.
     let wall = Item {
         name("stone wall")
-        adjectives("stone", "round", "thick")
-        // "lighthouse" as well as "tower", because the room's own name prints it.
-        synonyms("wall", "walls", "stone", "stonework", "masonry", "tower", "lighthouse")
+        adjectives("round")
+        synonyms("stone", "walls", "tower", "lighthouse")
         description(
             """
             Blocks the length of your forearm, laid in a circle thick enough that
@@ -89,10 +99,7 @@ struct Fixtures: GameContent {
 
     let stairs = Item {
         name("stone stairs")
-        adjectives("stone", "worn")
-        synonyms(
-            "stairs", "stair", "staircase", "steps", "step", "treads", "tread",
-            "rail", "handrail", "banister")
+        synonyms("stair", "staircase", "steps", "step", "treads", "tread", "rail")
         description(
             """
             They climb into the dark and go on climbing. Every tread is hollowed
@@ -106,8 +113,7 @@ struct Fixtures: GameContent {
 
     let rope = Item {
         name("coiled rope")
-        adjectives("coiled", "tarred", "hemp")
-        synonyms("rope", "ropes", "coil", "coils", "pegs", "peg")
+        synonyms("ropes", "coil", "coils", "pegs", "peg")
         description(
             """
             Hung on pegs by size, largest to the left. Somebody put them in that
@@ -118,7 +124,6 @@ struct Fixtures: GameContent {
 
     let stores = Item {
         name("stores")
-        adjectives("kept")
         synonyms("store", "things", "gear", "supplies", "tar", "brine")
         description(
             """

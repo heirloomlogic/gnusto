@@ -33,7 +33,7 @@ struct Tower: GameContent {
     let beacon = Item {
         name("beacon")
         adjectives("great", "brass")
-        synonyms("beam", "light", "reservoir", "carriage", "ring", "lens")
+        synonyms("beam", "light", "reservoir", "carriage", "ring")
         scenery
         lightSource
     }
@@ -42,8 +42,8 @@ struct Tower: GameContent {
 
     let glass = Item {
         name("glass")
-        adjectives("curved", "salt", "great")
-        synonyms("panes", "pane", "window", "windows", "glazing")
+        adjectives("curved", "salt")
+        synonyms("panes", "pane", "window", "windows")
         description(
             """
             Curved panes in a brass frame, every one of them clean on the inside.
@@ -65,10 +65,13 @@ struct Tower: GameContent {
         scenery
     }
 
+    /// The same synonym list as the base's stone flight, deliberately: two
+    /// staircases in one game should answer to the same words and let the room
+    /// decide which one the player means.
     let stairs = Item {
         name("spiral stairs")
-        adjectives("spiral", "iron", "narrow")
-        synonyms("stairs", "stair", "staircase", "steps", "step", "treads", "tread", "rail")
+        adjectives("iron")
+        synonyms("stair", "staircase", "steps", "step", "treads", "tread", "rail")
         description(
             """
             Iron, and narrow enough that two people meeting on them would have to

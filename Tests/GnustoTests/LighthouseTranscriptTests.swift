@@ -1,5 +1,4 @@
 import Foundation
-import Gnusto
 import GnustoTestSupport
 import Testing
 
@@ -15,17 +14,27 @@ import Testing
 /// The second half of the suite is the play-test round of 2026-07-30, pinned:
 /// one test per line that used to print in a frame it wasn't true of.
 struct LighthouseTranscriptTests {
+    /// Off the jetty, through the locked door, and standing over an open chest.
+    /// Every test past the first three gates starts here, so the route is
+    /// written once — a game whose copy is under active revision should not
+    /// need a fourteen-site edit to change one command.
+    static let toTheOpenChest = [
+        "north", "take key", "unlock door with key", "open door", "east", "open chest",
+    ]
+
+    /// And on up to the beacon, carrying a lit lamp. The `take can` is
+    /// deliberately not here: half the tests that climb want the can and half
+    /// are checking what happens without it.
+    static let toTheLampRoomWithLamp =
+        toTheOpenChest + ["take lamp", "light lamp", "west", "up"]
+
     /// The whole game, start to scored win: key off the shelf, through the
     /// locked door, oil and lamp from the chest, up the dark stairs, beacon
     /// relit. Seeded so the keeper's roaming is reproducible.
     @Test func winningPath() async throws {
         let transcript = try await play(
             Lighthouse(),
-            [
-                "north", "take key", "unlock door with key", "open door", "east",
-                "open chest", "take lamp", "take can", "light lamp", "west", "up",
-                "light beacon",
-            ],
+            Self.toTheOpenChest + ["take lamp", "take can", "light lamp", "west", "up", "light beacon"],
             seed: 0)
 
         expectInOrder(
@@ -73,10 +82,8 @@ struct LighthouseTranscriptTests {
     @Test func chestStartsClosedThenYieldsContents() async throws {
         let transcript = try await play(
             Lighthouse(),
-            [
-                "north", "take key", "unlock door with key", "open door", "east",
-                "look in chest", "open chest", "take lamp", "take can",
-            ])
+            ["north", "take key", "unlock door with key", "open door", "east"]
+                + ["look in chest", "open chest", "take lamp", "take can"])
 
         expectInOrder(
             transcript,
@@ -105,11 +112,7 @@ struct LighthouseTranscriptTests {
     @Test func theBeaconRefusesToLightWithoutTheOil() async throws {
         let transcript = try await play(
             Lighthouse(),
-            [
-                "north", "take key", "unlock door with key", "open door", "east",
-                "open chest", "take lamp", "light lamp", "west", "up",
-                "light beacon",
-            ])
+            Self.toTheLampRoomWithLamp + ["light beacon"])
 
         expectInOrder(
             transcript,
@@ -125,16 +128,11 @@ struct LighthouseTranscriptTests {
     @Test func lampBurnsDownAndRelights() async throws {
         let transcript = try await play(
             Lighthouse(),
-            [
-                "north", "take key", "unlock door with key", "open door", "east",
-                "open chest", "take lamp", "light lamp",
+            Self.toTheOpenChest + ["take lamp", "light lamp"]
                 // Burn down: flicker at 6 turns, out at 9.
-                "wait", "wait", "wait", "wait", "wait", "wait",
-                "wait", "wait", "wait",
+                + Array(repeating: "wait", count: 9)
                 // Relight, and burn again to the flicker.
-                "light lamp",
-                "wait", "wait", "wait", "wait", "wait", "wait",
-            ])
+                + ["light lamp"] + Array(repeating: "wait", count: 6))
 
         expectInOrder(
             transcript,
@@ -252,11 +250,7 @@ struct LighthouseTranscriptTests {
     @Test func theKeepersStairLinesNameNoDirection() async throws {
         let transcript = try await play(
             Lighthouse(),
-            [
-                "north", "take key", "unlock door with key", "open door", "east",
-                "open chest", "take lamp", "light lamp", "west", "up",
-                "wait", "wait", "wait",
-            ],
+            Self.toTheLampRoomWithLamp + ["wait", "wait", "wait"],
             seed: 0)
 
         // She is watched leaving the top of the tower, where "up the stairs"
@@ -265,6 +259,8 @@ struct LighthouseTranscriptTests {
             transcript,
             ["Lamp Room", "The keeper takes to the stairs, both hands to the rail"])
         #expect(!transcript.contains("up the stairs"))
+        // Not a direction, but the other half of the old pair — pinned so a
+        // revert of either string fails here rather than in a play-test round.
         #expect(!transcript.contains("climbs stiffly"))
     }
 
@@ -274,19 +270,34 @@ struct LighthouseTranscriptTests {
     @Test func theLampBurnsDownQuietlyWhenYouCannotSeeIt() async throws {
         let transcript = try await play(
             Lighthouse(),
-            [
-                "north", "take key", "unlock door with key", "open door", "east",
-                "open chest", "take lamp", "light lamp", "drop lamp", "west",
-                "close door",
+            Self.toTheOpenChest
+                + ["take lamp", "light lamp", "drop lamp", "west", "close door"]
                 // Both fuses fire while the lamp is behind a shut door.
-                "wait", "wait", "wait", "wait", "wait", "wait", "wait", "wait", "wait",
+                + Array(repeating: "wait", count: 9)
                 // And it really did go out: it takes a light to say so.
-                "open door", "east", "take lamp", "light lamp",
-            ])
+                + ["open door", "east", "take lamp", "light lamp"])
 
         #expect(!transcript.contains("sinks to a sullen flicker"))
         #expect(!transcript.contains("gutters, and goes out"))
         #expect(turnOutput(of: "light lamp", in: transcript).contains("The oil lamp is now on."))
+    }
+
+    /// The other half of the same guard, and the half that is easy to get wrong:
+    /// `turn on` needs reach and not possession, so `open chest` / `light lamp`
+    /// leaves the lamp burning in the chest with the player standing over it.
+    /// Both lines are true of that frame and both have to print.
+    @Test func theLampBurnsDownAloudWhenItIsLitWhereItLies() async throws {
+        let transcript = try await play(
+            Lighthouse(),
+            Self.toTheOpenChest + ["light lamp"] + Array(repeating: "wait", count: 9))
+
+        expectInOrder(
+            transcript,
+            [
+                "The oil lamp is now on.",
+                "The oil lamp's flame sinks to a sullen flicker.",
+                "The oil lamp gutters, and goes out.",
+            ])
     }
 
     /// The storeroom's description says the sea chest sits against the far wall.
@@ -296,10 +307,8 @@ struct LighthouseTranscriptTests {
     @Test func theChestWillNotBeCarriedOut() async throws {
         let transcript = try await play(
             Lighthouse(),
-            [
-                "north", "take key", "unlock door with key", "open door", "east",
-                "take chest", "open chest",
-            ])
+            ["north", "take key", "unlock door with key", "open door", "east"]
+                + ["take chest", "open chest"])
 
         #expect(turnOutput(of: "take chest", in: transcript).contains("going nowhere"))
         #expect(!transcript.contains("> take chest\nTaken."))
@@ -320,11 +329,9 @@ struct LighthouseTranscriptTests {
     @Test func theFuelGateNamesYourHandsNotTheStoreroom() async throws {
         let transcript = try await play(
             Lighthouse(),
-            [
-                "north", "take key", "unlock door with key", "open door", "east",
-                "open chest", "take lamp", "take can", "light lamp", "west", "up",
-                "drop can", "light beacon",
-            ],
+            Self.toTheOpenChest
+                + ["take lamp", "take can", "light lamp", "west", "up"]
+                + ["drop can", "light beacon"],
             seed: 0)
 
         let refusal = turnOutput(of: "light beacon", in: transcript)
@@ -340,11 +347,9 @@ struct LighthouseTranscriptTests {
     /// world directly, the way `TestingYourGame.md` says to.
     @Test func theBeaconIsLitWhenTheGameEnds() async throws {
         let world = try cachedWorld(Lighthouse(), seed: 0)
-        let io = ScriptedIOHandler(lines: [
-            "north", "take key", "unlock door with key", "open door", "east",
-            "open chest", "take lamp", "take can", "light lamp", "west", "up",
-            "light beacon",
-        ])
+        let io = ScriptedIOHandler(
+            lines: Self.toTheOpenChest
+                + ["take lamp", "take can", "light lamp", "west", "up", "light beacon"])
         await REPL(world: world, io: io).run()
 
         #expect(io.transcript.contains("comes up roaring"))
@@ -364,8 +369,7 @@ struct LighthouseTranscriptTests {
             ["x lighthouse", "x tower", "x ebb"],
         ] {
             let transcript = try await play(Lighthouse(), probe, seed: 0)
-            #expect(!transcript.contains("I don't know the word"), "\(probe)")
-            #expect(!transcript.contains("can't see any such thing"), "\(probe)")
+            expectEveryNounAnswered(transcript, "\(probe)")
         }
     }
 
@@ -386,33 +390,34 @@ struct LighthouseTranscriptTests {
             ],
             seed: 0)
 
-        #expect(!transcript.contains("I don't know the word"))
-        #expect(!transcript.contains("can't see any such thing"))
+        expectEveryNounAnswered(transcript)
     }
 
     /// And the Lamp Room, which needs a light before it can be asked anything.
     /// Two visits, because the lamp holds nine turns at a time.
     @Test func theLampRoomAnswersToItsOwnDescription() async throws {
-        let route = [
-            "north", "take key", "unlock door with key", "open door", "east",
-            "open chest", "take lamp", "west", "up", "light lamp",
-        ]
+        let route = Self.toTheOpenChest + ["take lamp", "west", "up", "light lamp"]
         for probe in [
             ["x glass", "x panes", "x window", "x night", "x sky"],
             ["x stairs", "x beacon", "x carriage", "x reservoir", "x ring", "x beam"],
         ] {
             let transcript = try await play(Lighthouse(), route + probe, seed: 0)
-            #expect(!transcript.contains("I don't know the word"), "\(probe)")
-            #expect(!transcript.contains("can't see any such thing"), "\(probe)")
+            expectEveryNounAnswered(transcript, "\(probe)")
         }
     }
 
     /// The keeper's own lines name her leg, and she is the only person here.
+    ///
+    /// Seeded, and this is the one noun walk that has to be: she is a roaming
+    /// actor, so three questions in a row need three turns of her staying put.
+    /// At seed 3 — the seed the briefing test uses — she takes the stairs before
+    /// the last one, and the answer is a truthful *You can't see any such thing*
+    /// rather than a vocabulary gap.
     @Test func theKeeperAnswersToHerselfAndHerLeg() async throws {
         let transcript = try await play(
-            Lighthouse(), ["north", "x keeper", "x leg", "x woman"], seed: 3)
+            Lighthouse(), ["north", "x keeper", "x leg", "x woman"], seed: 22)
 
-        #expect(!transcript.contains("I don't know the word"))
+        expectEveryNounAnswered(transcript)
         #expect(turnOutput(of: "x keeper", in: transcript).contains("Small, weathered"))
         #expect(turnOutput(of: "x leg", in: transcript).contains("Small, weathered"))
     }
@@ -424,10 +429,7 @@ struct LighthouseTranscriptTests {
     @Test func pouringTheCanTheGameCallsFull() async throws {
         let transcript = try await play(
             Lighthouse(),
-            [
-                "north", "take key", "unlock door with key", "open door", "east",
-                "open chest", "x can", "pour can", "empty can",
-            ])
+            Self.toTheOpenChest + ["x can", "pour can", "empty can"])
 
         #expect(turnOutput(of: "x can", in: transcript).contains("heavy with lamp oil"))
         #expect(!transcript.contains("There's nothing in the oil can to pour."))
@@ -440,11 +442,8 @@ struct LighthouseTranscriptTests {
     @Test func burnAndLightAgreeAboutTheLampAndTheBeacon() async throws {
         let transcript = try await play(
             Lighthouse(),
-            [
-                "north", "take key", "unlock door with key", "open door", "east",
-                "open chest", "take lamp", "burn lamp", "light lamp", "west", "up",
-                "burn beacon",
-            ],
+            Self.toTheOpenChest
+                + ["take lamp", "burn lamp", "light lamp", "west", "up", "burn beacon"],
             seed: 0)
 
         #expect(!transcript.contains("You have no way to set fire to"))
