@@ -91,6 +91,27 @@ plugin's job (stealing), not a default's. A rule asks the same question
 with ``Item/isVisible`` and ``Item/isReachable``; on the axe they answer
 true and false.
 
+The question runs the other way too. ``Item/isReachable(from:)`` is the
+same walk anchored on somebody else — their room, their hands, every
+open container and surface there, to any depth — and it is symmetric
+about the hands: what the *player* is carrying is not in it either.
+Darkness is the one place the two anchors part company, because darkness
+models the player's perception and an NPC has none to model: an unlit
+room narrows the player's reach to their pockets and leaves the troll's
+arm exactly where it was. So a thief unions the pair, one set for the
+room and one for the pockets:
+
+```swift
+let loot = treasures.filter { $0.isReachable || $0.isReachable(from: thief) }
+```
+
+``Actor/possesses(_:)`` is the ownership question rather than the scope
+one — is this anywhere under him, hands or bag, to any depth — and stays
+true in the dark, a room away, and offstage. ``Actor/holds(_:)`` is its
+one-level form. `GnustoActors`' theft daemon needs both: the union above
+says what he can get at, and `possesses` is what stops him lifting the
+coin out of the purse he stole a turn ago.
+
 Light follows the same honesty: a lit lantern in an actor's hand lights
 the room the actor is in, and leaves with him.
 

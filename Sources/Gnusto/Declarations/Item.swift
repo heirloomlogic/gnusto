@@ -101,6 +101,27 @@ public struct Item: Sendable, Equatable {
         return Visibility.isReachable(id, frame: frame)
     }
 
+    /// True if `actor` could put a hand on the item from the room they are
+    /// standing in: in their own hands, lying in that room, or on or inside
+    /// something open there — **to any depth**, as ``isReachable``.
+    ///
+    /// Two things differ from the player's own reach. Darkness does not gate
+    /// it: an unlit room stops the player's eyes, not somebody else's arm. And
+    /// what the *player* is holding is not in it — lifting from those hands is
+    /// stealing, which is a plugin's job, the same rule that keeps another
+    /// actor's hands out of ``isReachable``. A thief wants both sets:
+    ///
+    /// ```swift
+    /// let loot = treasures.filter { $0.isReachable || $0.isReachable(from: thief) }
+    /// ```
+    ///
+    /// An actor who is in no room at all — held, contained, or ``Actor/vanish()``ed
+    /// — reaches only what they are carrying.
+    public func isReachable(from actor: Actor) -> Bool {
+        let (frame, id) = resolved
+        return Visibility.isReachable(id, from: actor.asItem.id, frame: frame)
+    }
+
     /// True if the player could see the item from where they are standing:
     /// everything ``isReachable``, plus what's behind the glass of a closed
     /// `transparent` container, plus whatever an actor in the room is holding.

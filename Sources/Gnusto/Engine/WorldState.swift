@@ -151,6 +151,37 @@ extension WorldState {
         containmentCache = index
         return index
     }
+
+    /// Whether `id` is somewhere in `holder`'s possession — in their hands, or
+    /// on or inside something they are carrying, to any depth. A placement walk
+    /// UP from the item, so it costs the depth of the nesting and not the size
+    /// of the world; cycle-guarded on the same grounds as `isConsistent`'s
+    /// acyclicity check, since a corrupt save can present a cycle this walk
+    /// must survive rather than trust.
+    ///
+    /// Not a scope question: an actor's possessions are his in the dark, in
+    /// another room, and offstage. Backs ``Actor/possesses(_:)``.
+    ///
+    /// - Parameters:
+    ///   - id: the item to trace upward.
+    ///   - holder: the entity to look for on the way up.
+    /// - Returns: true when `holder` carries `id`, however deeply.
+    func isPossession(_ id: EntityID, of holder: EntityID) -> Bool {
+        var current = id
+        var visited: Set<EntityID> = []
+        while visited.insert(current).inserted {
+            switch placements[current] {
+            case .heldBy(let carrier):
+                if carrier == holder { return true }
+                current = carrier
+            case .on(let parent), .inside(let parent):
+                current = parent
+            case .room, .nowhere, nil:
+                return false
+            }
+        }
+        return false
+    }
 }
 
 extension WorldState {

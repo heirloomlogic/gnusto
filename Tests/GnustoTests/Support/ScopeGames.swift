@@ -7,6 +7,12 @@ import Gnusto
 /// in one turn. It has to: parser scope *is* the visible set, so `examine
 /// clinker` in another room answers "You can't see any such thing" and a test
 /// of "not visible" would never get as far as asking the proxy.
+///
+/// `reach` asks the same question from somebody else's position —
+/// ``Item/isReachable(from:)`` — for the warden standing in the lit workshop
+/// and the sentry standing in the pitch-dark cellar. `owns` asks the question
+/// that is not about scope at all: ``Actor/possesses(_:)`` beside its
+/// one-level form, ``Actor/holds(_:)``.
 struct ScopeLab: Game {
     let title = "Scope Lab"
     let intro = "A workshop, a cellar below, a yard beyond."
@@ -98,7 +104,29 @@ struct ScopeLab: Game {
         name("baton")
     }
 
+    /// A bag on the warden's belt, and the flask in it. `holds(_:)` stops at
+    /// the bag; possession does not.
+    let holster = Item {
+        name("holster")
+        container
+    }
+
+    let flask = Item {
+        name("flask")
+    }
+
     // MARK: - Elsewhere
+
+    /// Standing in the dark, where the player's own reach set stops at their
+    /// hands — and his does not.
+    let sentry = Actor {
+        name("sentry")
+    }
+
+    /// In the sentry's hands, so it survives his being sent nowhere at all.
+    let truncheon = Item {
+        name("truncheon")
+    }
 
     let clinker = Item {
         name("clinker")
@@ -115,6 +143,9 @@ struct ScopeLab: Game {
 
     var verbs: [SyntaxRule] {
         SyntaxRule("probe", intent: Intent("probe"))
+        SyntaxRule("reach", intent: Intent("reach"))
+        SyntaxRule("owns", intent: Intent("owns"))
+        SyntaxRule("banish", intent: Intent("banish"))
     }
 
     var rules: Rules {
@@ -130,6 +161,45 @@ struct ScopeLab: Game {
                         "\(name): \(reach ? "reachable" : "out of reach"), \(sight ? "visible" : "unseen")"
                     }
                     .joined(separator: "\n"))
+        }
+
+        world.before(Intent("reach")) {
+            func row(_ who: String, _ named: String, _ reaches: Bool) -> String {
+                "\(who) reaches \(named): \(reaches ? "yes" : "no")"
+            }
+            // The player and the sentry go through the player-proxy and
+            // `Actor` forms, so those spellings are covered alongside `Item`'s.
+            try reply(
+                ((probes + [truncheon]).map { row("warden", $0.name, $0.isReachable(from: warden)) }
+                    + [
+                        row("warden", "the player", player.item.isReachable(from: warden)),
+                        row("warden", sentry.name, sentry.isReachable(from: warden)),
+                    ]
+                    + [spanner, clinker, barrow, truncheon].map {
+                        row("sentry", $0.name, $0.isReachable(from: sentry))
+                    })
+                    .joined(separator: "\n"))
+        }
+
+        // Possession is not reach: it walks up rather than down, and it does not
+        // care what room anybody is standing in. Reported beside `holds`, which
+        // is its one-level form.
+        world.before(Intent("owns")) {
+            func row(_ who: Actor, _ item: Item) -> String {
+                """
+                \(who.name) owns \(item.name): \(who.possesses(item) ? "yes" : "no"), \
+                holds: \(who.holds(item) ? "yes" : "no")
+                """
+            }
+            try reply(
+                ([baton, flask, holster, spanner, mug].map { row(warden, $0) }
+                    + [row(sentry, truncheon)])
+                    .joined(separator: "\n"))
+        }
+
+        world.before(Intent("banish")) {
+            sentry.vanish()
+            try reply("The sentry is nowhere at all now.")
         }
     }
 
@@ -157,6 +227,11 @@ struct ScopeLab: Game {
 
         warden.starts(in: workshop)
         baton.starts(heldBy: warden)
+        holster.starts(heldBy: warden)
+        flask.starts(inside: holster)
+
+        sentry.starts(in: cellar)
+        truncheon.starts(heldBy: sentry)
 
         clinker.starts(in: cellar)
         barrow.starts(in: yard)
