@@ -58,7 +58,7 @@ audited.
 | `Gramarye.swift::x masters spellbook i dont know the word master x desk i dont know the word…` | confirmed (needs-human) | unanswerable-noun |
 | `Gramarye.swift::x desk i dont know the word desk` | confirmed | unanswerable-noun |
 | `Gramarye.swift::firebolt me the firebolt washes over the yourself and leaves it untouched` | confirmed | stock-line-not-reskinned |
-| `playtest-replay::tool doc a blank line or a line whose first nonspace characters are or is a…` | confirmed | doc-drift |
+| `playtest-replay::tool doc a blank line or a line whose first nonspace characters are or is a…` | fixed | doc-drift |
 | `Gramarye.swift::close door closed look the long gallery a cold stone gallery the way east…` | refuted | exit-prose-mismatch |
 | `Gramarye.swift::north the undercroft a low vaulted cellar the air chalky with old magic a…` | refuted | exit-prose-mismatch |
 | `Gramarye.swift::close door closed open door the wardingmarks hold the door fast no amount…` | refuted | mechanic-contradicts-prose |
@@ -73,6 +73,22 @@ audited.
 defect quoted with a different surrounding line survives as a separate key — the
 `close door` softlock was filed three times and the `doorSeals` "You touched nothing"
 line three times more. Worth tightening before a round runs with `fix: "game"`.
+
+## Amendments
+
+**2026-07-31 — the blank-line row marked `fixed`.** Fixed in the harness, not in
+Gramarye: no `Sources/Gramarye/` file is touched. `bin/playtest-replay` built its
+effective command file with a plain `cat`, so a blank line reached `perform()` and
+drew "I beg your pardon?" while the tool's own `--commands` doc claimed it never
+reached the engine. It now filters blank lines where it assembles the file, and the
+doc says which layer drops which line kind — the engine records and skips `//` and
+`#`, the tool strips blanks. The same change closed a second defect the round did
+not see: `cat` passed an unterminated last line through unterminated, so a command
+file saved without a trailing newline fused its last command onto the `--save`
+epilogue (`z` + `save` → `zsave`), losing the command and the save both. No
+regression test — the change is in a bash script, and the suite has no shell
+harness; the reproducer is in the issue. See
+[#103](https://github.com/heirloomlogic/gnusto/issues/103).
 
 ## Provenance
 
