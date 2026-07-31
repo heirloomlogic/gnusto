@@ -107,6 +107,13 @@ public struct ActorBehaviors: GamePlugin {
             let openHere = containers.filter { ($0.isIn(here) || $0.isHeld) && $0.isOpen }
             // Reachable candidates: held, on the floor here, or inside one of
             // those open containers.
+            //
+            // Hand-rolled on purpose, and not `Item.isReachable`. That property
+            // is anchored on the player and by design excludes what any other
+            // actor is holding — while a thief's defining move is lifting from
+            // the player's hands, from the *actor's* position, in the dark.
+            // Swapping it in would also retire `containers` in favour of every
+            // open container and surface in the room. A decision with teeth: #119.
             let reachable = candidates.filter { loot in
                 loot.isHeld || loot.isIn(here) || openHere.contains { $0.holds(loot) }
             }

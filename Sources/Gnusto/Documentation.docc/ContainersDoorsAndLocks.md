@@ -92,6 +92,27 @@ lid.after(.push) {
 }
 ```
 
+## Asking whether the player can get at it
+
+*Visible* and *reachable* are the two sets the engine sorts everything into, and each has a property that answers for one item, from wherever the player is standing right now:
+
+- ``Item/isReachable`` — could they put a hand on it? Carried, lying in the room, or on or inside something open here — **to any depth**, so a bead in a pouch in a basket counts. This is the set the default actions gate on, so a rule that guards with it refuses exactly where `take` would. In the dark it is only what the player is carrying.
+- ``Item/isVisible`` — could they see it? Everything reachable, plus what's behind the glass of a closed ``transparent`` container, plus whatever an actor in the room is holding.
+
+```swift
+wardedDoor.before(.close) {
+    try require(spellbook.isReachable, else: "Not with the book on the far side.")
+}
+
+fuse("lampDies", after: 9) {
+    let watched = lamp.isVisible      // asked before it goes out
+    lamp.isLit = false
+    if watched { say("The lamp gutters, and goes out.") }
+}
+```
+
+Reach for these rather than rebuilding the answer from ``Item/isHeld``, ``Item/isIn(_:)`` and ``Item/holds(_:)``: `holds(_:)` tests one level only, and a ``surface`` is not a ``container`` and so is never ``Item/isOpen`` — which is how a hand-rolled version ends up refusing over a book sitting on a table in the same room.
+
 ## Locks and keys
 
 A lock is declared not as a trait but as a relationship in the `map` block: ``Item/lockedBy(_:)`` names the key that locks and unlocks an item. The entry alone makes the item lockable — there's no separate `lockable` trait — and it **starts locked** unless the item also declares ``startsUnlocked``.

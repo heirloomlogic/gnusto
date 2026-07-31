@@ -88,6 +88,30 @@ public struct Item: Sendable, Equatable {
         return frame.with { $0.state.placements[id] == .heldBy(.player) }
     }
 
+    /// True if the player could put a hand on the item from where they are
+    /// standing: carried, lying in the room, or on or inside something open
+    /// here — **to any depth**. This is the set the default actions gate on, so
+    /// a rule that guards with it refuses exactly where `take` would. In the
+    /// dark it is only what the player is carrying.
+    ///
+    /// Ask this rather than rebuilding it from ``isHeld``, ``isIn(_:)`` and
+    /// ``holds(_:)``; <doc:ContainersDoorsAndLocks> says why.
+    public var isReachable: Bool {
+        let (frame, id) = resolved
+        return Visibility.isReachable(id, frame: frame)
+    }
+
+    /// True if the player could see the item from where they are standing:
+    /// everything ``isReachable``, plus what's behind the glass of a closed
+    /// `transparent` container, plus whatever an actor in the room is holding.
+    ///
+    /// This one is about what the player can *watch*; ``isReachable`` is about
+    /// what they can *touch*.
+    public var isVisible: Bool {
+        let (frame, id) = resolved
+        return Visibility.isVisible(id, frame: frame)
+    }
+
     /// True if the player is wearing the item.
     public var isWorn: Bool {
         let (frame, id) = resolved

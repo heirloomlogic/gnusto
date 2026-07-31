@@ -311,15 +311,23 @@ struct Lighthouse: Game {
         // The state change is unconditional and the prose is not. A fuse fires
         // wherever the lamp is, and the lamp can be lit and left in a room the
         // player is not standing in — so both lines check that the flame is
-        // somewhere the player could actually see it go.
+        // somewhere the player could actually watch it go. `isVisible` and not
+        // `isReachable`: watching is not touching, and `turn on` needed reach,
+        // not possession, so the lamp can be burning in the open chest with the
+        // player standing over it.
         fuse("lampDims", after: 6) {
-            if oilLamp.isLit, lampIsInSight {
+            if oilLamp.isLit, oilLamp.isVisible {
                 say("The oil lamp's flame sinks to a sullen flicker.")
             }
         }
         fuse("lampDies", after: 9) {
+            // Asked before it goes out, because in the lamp room the lamp is the
+            // only thing lighting it: extinguish first and the player is in the
+            // dark, the lamp is out of sight, and the one line that explains the
+            // blackout is the line that gets swallowed.
+            let watched = oilLamp.isVisible
             oilLamp.isLit = false
-            if lampIsInSight {
+            if watched {
                 say("The oil lamp gutters, and goes out.")
             }
         }
@@ -339,22 +347,6 @@ struct Lighthouse: Game {
             chancePerTurn: 40,
             arrival: "A slow tread on the stairs, and the keeper arrives at her own pace, the bad leg last.",
             departure: "The keeper takes to the stairs, both hands to the rail, a step at a time.")
-    }
-
-    /// True when the lamp is somewhere the player could watch it burn: in hand,
-    /// on the floor here, or resting in something open here — `turn on` needs
-    /// reach and not possession, so `open chest` / `light lamp` leaves it lit
-    /// inside the chest with the player standing over it.
-    ///
-    /// A container that isn't `openable` is always open, so the one test covers
-    /// the shelf as well as the chest. The engine computes exactly this in
-    /// `Visibility`, but nothing public exposes it — `GnustoActors` hand-rolls
-    /// its own answer too, which is the argument for an `Item.isVisible` the
-    /// engine owns.
-    private var lampIsInSight: Bool {
-        guard !oilLamp.isHeld else { return true }
-        let here = player.location
-        return oilLamp.isIn(here) || here.contents.contains { $0.isOpen && $0.holds(oilLamp) }
     }
 
     // MARK: - Rules

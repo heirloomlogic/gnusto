@@ -65,7 +65,7 @@ enum DefaultActions {
         // touchable) — take needs the stricter reachable set to refuse those.
         // The item resolved, so it's visible: refuse with "can't reach", not
         // "can't see".
-        guard isReachable(id, frame: frame) else {
+        guard Visibility.isReachable(id, frame: frame) else {
             try refuse(frame.definition.text.cantReach(item.definiteName))
         }
         frame.with { scratch in
@@ -141,7 +141,7 @@ enum DefaultActions {
         guard frame.definition.items[surface.id]?.isSurface == true else {
             try refuse(frame.definition.text.cantPutOnThat)
         }
-        guard isReachable(surface.id, frame: frame) else {
+        guard Visibility.isReachable(surface.id, frame: frame) else {
             try refuse(frame.definition.text.cantReach(surface.definiteName))
         }
         let id = item.id
@@ -174,7 +174,7 @@ enum DefaultActions {
         guard frame.definition.items[container.id]?.isContainer == true else {
             try refuse(frame.definition.text.cantPutInThat)
         }
-        guard isReachable(container.id, frame: frame) else {
+        guard Visibility.isReachable(container.id, frame: frame) else {
             try refuse(frame.definition.text.cantReach(container.definiteName))
         }
         guard container.isOpen else {
@@ -241,7 +241,7 @@ enum DefaultActions {
         guard frame.definition.items[id]?.isOpenable == true else {
             try refuse(frame.definition.text.cantOpenThat)
         }
-        guard isReachable(id, frame: frame) else {
+        guard Visibility.isReachable(id, frame: frame) else {
             try refuse(frame.definition.text.cantReach(item.definiteName))
         }
         if item.isLocked {
@@ -267,7 +267,7 @@ enum DefaultActions {
         guard frame.definition.items[id]?.isOpenable == true else {
             try refuse(frame.definition.text.cantCloseThat)
         }
-        guard isReachable(id, frame: frame) else {
+        guard Visibility.isReachable(id, frame: frame) else {
             try refuse(frame.definition.text.cantReach(item.definiteName))
         }
         guard item.isOpen else {
@@ -296,7 +296,7 @@ enum DefaultActions {
         guard frame.definition.items[id]?.isLockable == true else {
             try refuse(locked ? frame.definition.text.cantLockThat : frame.definition.text.cantUnlockThat)
         }
-        guard isReachable(id, frame: frame) else {
+        guard Visibility.isReachable(id, frame: frame) else {
             try refuse(frame.definition.text.cantReach(item.definiteName))
         }
         guard item.isLocked != locked else {
@@ -326,7 +326,7 @@ enum DefaultActions {
         }
         // Reachability first: you cannot report on the inside of something you
         // can't put a hand into, whether or not it has one.
-        guard isReachable(id, frame: frame) else {
+        guard Visibility.isReachable(id, frame: frame) else {
             try refuse(frame.definition.text.cantReach(item.definiteName))
         }
         if frame.definition.items[id]?.isActor == true {
@@ -350,7 +350,7 @@ enum DefaultActions {
 
     static func push(_ command: Command, frame: TurnFrame) throws {
         let item = try requireDirectObject(command)
-        guard isReachable(item.id, frame: frame) else {
+        guard Visibility.isReachable(item.id, frame: frame) else {
             try refuse(frame.definition.text.cantReach(item.definiteName))
         }
         frame.say(frame.definition.text.cantMoveThat)
@@ -365,7 +365,7 @@ enum DefaultActions {
         guard definition.items[id]?.isLightSource == true else {
             try refuse(definition.text.cantTurnOnThat)
         }
-        guard isReachable(id, frame: frame) else {
+        guard Visibility.isReachable(id, frame: frame) else {
             try refuse(definition.text.cantReach(item.definiteName))
         }
         if item.isLit {
@@ -399,7 +399,7 @@ enum DefaultActions {
         guard definition.items[id]?.isLightSource == true else {
             try refuse(definition.text.cantTurnOffThat)
         }
-        guard isReachable(id, frame: frame) else {
+        guard Visibility.isReachable(id, frame: frame) else {
             try refuse(definition.text.cantReach(item.definiteName))
         }
         guard item.isLit else {
@@ -737,21 +737,8 @@ enum DefaultActions {
             case .directObject: [command.directObject]
             case .bothObjects: [command.directObject, command.indirectObject]
             }
-        for case let item? in slots where !isReachable(item.id, frame: frame) {
+        for case let item? in slots where !Visibility.isReachable(item.id, frame: frame) {
             try refuse(frame.definition.text.cantReach(item.definiteName))
         }
-    }
-
-    /// Whether `id` is currently reachable by the player — the stricter set
-    /// than parser scope (which is *visible* items, and so also admits a
-    /// closed transparent container's contents).
-    private static func isReachable(_ id: EntityID, frame: TurnFrame) -> Bool {
-        let (here, index, state) = frame.with {
-            ($0.state.playerLocation, $0.state.containment(), $0.state)
-        }
-        return Visibility.reachableItems(
-            at: here, definition: frame.definition, state: state, index: index
-        )
-        .contains(id)
     }
 }

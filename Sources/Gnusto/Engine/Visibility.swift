@@ -2,6 +2,11 @@
 /// here" — used by the parser's scope, the room describer, and any default
 /// action that needs to walk placements. Pure functions over a definition and
 /// a state snapshot; callers hold whatever lock they need before calling in.
+///
+/// The two `…(_:frame:)` helpers are the one exception: they ask the same
+/// question of a live turn and take the frame lock themselves. They back both
+/// the default actions' reach gate and the public ``Item/isReachable`` /
+/// ``Item/isVisible``, so there is one walk and not four.
 enum Visibility {
     /// Items the player can currently perceive: carried items always, plus —
     /// with light — the room's direct contents and everything reachable by
@@ -32,6 +37,38 @@ enum Visibility {
         collect(
             at: location, definition: definition, state: state, index: index,
             descendClosedTransparent: false)
+    }
+
+    /// Whether the player can reach `id` from where they are standing right
+    /// now — `reachableItems` asked about one item, against the live turn.
+    static func isReachable(_ id: EntityID, frame: TurnFrame) -> Bool {
+        inScope(id, frame: frame, descendClosedTransparent: false)
+    }
+
+    /// Whether the player can see `id` from where they are standing right now —
+    /// `visibleItems` asked about one item, against the live turn.
+    static func isVisible(_ id: EntityID, frame: TurnFrame) -> Bool {
+        inScope(id, frame: frame, descendClosedTransparent: true)
+    }
+
+    /// Takes the frame lock, so it must never be called from inside a
+    /// `frame.with { … }` closure — the `Mutex` is not reentrant.
+    private static func inScope(
+        _ id: EntityID,
+        frame: TurnFrame,
+        descendClosedTransparent: Bool
+    ) -> Bool {
+        let definition = frame.definition
+        return frame.with { scratch in
+            collect(
+                at: scratch.state.playerLocation,
+                definition: definition,
+                state: scratch.state,
+                index: scratch.state.containment(),
+                descendClosedTransparent: descendClosedTransparent
+            )
+            .contains(id)
+        }
     }
 
     /// Shared walk for both sets. Held items are always included. With light,
