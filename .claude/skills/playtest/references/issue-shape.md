@@ -70,10 +70,9 @@ lead sentence already is this sentence; reuse it rather than writing a second on
 
 Severity, then owner, then the claim. Owner is the finding's `ownerClass` — the
 workflow computes it from `ownerFile` in `.claude/workflows/playtest.js`, deliberately
-in code rather than by asking an agent. It answers `engine`, `game` or `unknown`; label
-the third `Harness`, which is what it means in practice, and note that `unknown` is
-never auto-fixable at any `fix` setting, so a `Harness` box is always filed and never
-fixed by the round. Mark `needs-human` where the verifier did.
+in code rather than by asking an agent, and hands it back on the finding. Capitalize
+whatever it answers. A `Harness` box is always filed and never fixed: no `fix` mode
+edits the harness's own files, by rule. Mark `needs-human` where the verifier did.
 
 Checkboxes, not bullets. They are how a round with six classes and three fixed ones
 reads as half done instead of open.

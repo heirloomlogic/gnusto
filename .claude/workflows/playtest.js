@@ -943,23 +943,88 @@ function normalize(text) {
 // Classification is mechanical, from the owning file, computed here rather than
 // asked of an agent — "is this an engine bug?" is exactly the question a
 // motivated agent answers whichever way lets it start editing.
+//
+// `unknown` is the residual and means one thing: no rule below recognised the
+// path. The harness's own files used to land there too, which made a real owner
+// indistinguishable from a tester who invented or misspelled an `ownerFile`.
 function ownerClass(file) {
   const f = String(file || '')
-  if (/^Sources\/Gnusto/.test(f)) return 'engine'
-  if (/^Tests\//.test(f)) return 'engine'
-  if (new RegExp(`^Sources/${game}/`).test(f)) return 'game'
-  if (/^docs\/games\//.test(f)) return 'game'
+  // The harness itself: the workflow being executed, the briefs that define the
+  // round's doctrine, the replay tool, and the hand-driven counterpart the same
+  // skill documents itself in.
+  if (f.startsWith('.claude/') || f.startsWith('bin/') || f === 'docs/playtesting.md') return 'harness'
+  if (f.startsWith('Sources/Gnusto')) return 'engine'
+  // Repo conventions, and the one genuinely arguable row. GROUND tells every
+  // tester that a CLAUDE.md line the code contradicts is a doc-drift finding, so
+  // the harness solicits these; filing them forever at every setting is the
+  // complaint this classifier exists to answer. `engine` reaches them under
+  // `fix: "all"` and nowhere narrower.
+  if (f === 'CLAUDE.md') return 'engine'
+  // The game suites share a tree with the engine's, so split them by name. A
+  // suite not named for its game (CloakTranscriptTests.swift) reads as engine,
+  // which is the safe direction: filed rather than fixed under `fix: "game"`.
+  if (f.startsWith('Tests/')) return f.includes(game) ? 'game' : 'engine'
+  if (f.startsWith(`Sources/${game}/`)) return 'game'
+  if (f.startsWith('docs/games/')) return 'game'
   return 'unknown'
 }
 
-const fixable = confirmed.filter((f) => {
-  if (f.verdict === 'needs-human') return false
+// Why a confirmed finding was NOT fixed, or null if it is fixable. Named rather
+// than inferred, so `report-shape.md`'s "Why not fixed here" column is read off
+// the return value instead of reconstructed by hand every round.
+//
+// `harness` is excluded by this rule and not by falling through to `unknown`: a
+// fixer editing the workflow that is currently running it, or the briefs its
+// sibling agents are still reading, changes the run underneath itself. The
+// harness does not repair itself mid-round.
+//
+// `unclassified` is what a leftover `unknown` becomes here. The classifier's word
+// is the state of the path; this one is the state of the finding, and the whole
+// point of splitting `harness` out is that reaching it now means a path nothing
+// recognises — usually a tester inventing or misspelling an `ownerFile`.
+function notFixedReason(cls, verdict) {
+  if (verdict === 'needs-human') return 'needs-human'
+  if (cls === 'harness') return 'harness'
+  if (cls === 'unknown') return 'unclassified'
+  if (fixMode === 'all') return null
+  if (fixMode === 'game' && cls === 'game') return null
+  return 'out-of-mode'
+}
+
+// Fixed order and zero entries, so a round that fixed nothing still prints all four.
+const FILED_REASONS = ['needs-human', 'harness', 'out-of-mode', 'unclassified']
+
+const fixable = []
+const filed = []
+const filedByReason = Object.fromEntries(FILED_REASONS.map((r) => [r, 0]))
+const unrecognizedOwners = new Set()
+for (const f of confirmed) {
+  // Carried on the finding rather than left to be recomputed: `issue-shape.md`
+  // asks the operator to label each checklist row with the owner, and re-running
+  // the ladder by hand is how the two drifted apart in the first place.
   const cls = ownerClass(f.ownerFile)
-  if (fixMode === 'all') return cls !== 'unknown'
-  if (fixMode === 'game') return cls === 'game'
-  return false
-})
-const filed = confirmed.filter((f) => !fixable.includes(f))
+  const reason = notFixedReason(cls, f.verdict)
+  if (!reason) {
+    fixable.push({ ...f, ownerClass: cls })
+    continue
+  }
+  filed.push({ ...f, ownerClass: cls, notFixedReason: reason })
+  filedByReason[reason] += 1
+  if (reason === 'unclassified') unrecognizedOwners.add(f.ownerFile)
+}
+const filedBreakdown = FILED_REASONS.map((r) => `${r} ${filedByReason[r]}`).join(', ')
+
+// Unconditional: a round that fixed nothing has to say why, and that is exactly
+// the round whose Fix phase never runs.
+log(
+  `Fix mode "${fixMode}": fixing ${fixable.length} of ${confirmed.length} confirmed findings; filing ${filed.length} (${filedBreakdown}).`
+)
+
+if (unrecognizedOwners.size) {
+  log(
+    `Unrecognised ownerFile paths, which no fix mode can reach — most often a tester inventing or misspelling one: ${[...unrecognizedOwners].join(', ')}`
+  )
+}
 
 const fixes = []
 if (fixable.length) {
@@ -975,7 +1040,7 @@ if (fixable.length) {
     if (!clusters.has(k)) clusters.set(k, [])
     clusters.get(k).push(f)
   }
-  log(`Fixing ${fixable.length} findings across ${clusters.size} disjoint file clusters; filing ${filed.length}.`)
+  log(`Fixing ${fixable.length} findings across ${clusters.size} disjoint file clusters.`)
 
   const results = await parallel(
     [...clusters.entries()].map(([file, group]) => () =>
@@ -1083,6 +1148,7 @@ truth and they win over anything below.
 - There is deliberately no "cells probed" count: free-text cell labels are not comparable between charters, so any total would be a number that means nothing. Build the real cross-product yourself from the transcripts, against the ${survey.rooms.length}-room roster and the timers above.
 - Charters run: ${playRoster.map((c) => c.key).join(', ')}. NOT run: ${skipped.map((c) => c.key).join(', ') || 'none'}.
 - Confirmed ${confirmed.length}, refuted ${refuted.length}, findings routed to another issue ${routed.length}, fixed ${fixes.filter((f) => f.result && f.result.fixed).length}.
+- Filed rather than fixed: ${filed.length} (${filedBreakdown}). \`${REF}/report-shape.md\` defines the four reasons.
 - Unknown-word replies collected: ${unknownWordTotal} occurrences over ${unknownWords.size} distinct words. Not findings in themselves and not coverage — but ~48 verbs are stubs now, so a large number here is itself worth a sentence. If this is empty while the transcripts are full of unknown-word replies, say so.
 - Timers, and whether any was left unexercised: ${(survey.timers || []).map((t) => t.label).join(', ') || 'none'}.
 
@@ -1123,6 +1189,7 @@ return {
   charters: { run: playRoster.map((c) => c.key), skipped: skipped.map((c) => c.key) },
   confirmed,
   filed,
+  filedByReason,
   refuted,
   routed,
   unknownWords: [...unknownWords.entries()].map(([word, count]) => ({ word, count })).sort((a, b) => b.count - a.count),

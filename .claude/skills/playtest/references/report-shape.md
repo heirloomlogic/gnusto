@@ -39,8 +39,9 @@ after the issue is filed, not before.
    so.
 3. **Fixed** — each with the test that fails without it.
 4. **Filed, not fixed** — the round's one issue, named once, then the classes inside
-   it and the reason each wasn't fixed. "Needs a human to pick a design" is a good
-   reason; "ran out of budget" is also a good reason, and must be said.
+   it and the reason each wasn't fixed. The workflow hands you the reason: every
+   entry in the returned `filed` carries a `notFixedReason`, and `filedByReason`
+   totals them. Elaborate on it in the operator's words; don't reconstruct it.
 5. **Routed elsewhere** — one entry per open issue the round forwarded symptoms to,
    with counts, plus anything promoted *out* of a bucket and the argument for it. Omit
    the section when the round routed nothing, which is the common case. An issue that
@@ -113,7 +114,16 @@ Two findings, deduplicating to one class. Filed as #80.
 
 | Class | Severity | Why not fixed here |
 |---|---|---|
-| Mrs. Vane's location-blind listing line | major | More than one reasonable design; `needs-human`. |
+| Mrs. Vane's location-blind listing line | major | `needs-human` — more than one reasonable design. |
+
+The right-hand column starts from the finding's `notFixedReason`:
+
+| Reason | Means |
+|---|---|
+| `needs-human` | The verifier confirmed it and declined to let a fixer near the design. |
+| `harness` | Owned by the harness, which does not repair itself mid-round. |
+| `out-of-mode` | The `fix` setting this round didn't reach its owner class. |
+| `unclassified` | Nothing recognised the `ownerFile` — usually the tester invented or misspelled it, and worth correcting in the finding rather than explaining away here. |
 
 ## Routed elsewhere
 

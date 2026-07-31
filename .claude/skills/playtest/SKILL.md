@@ -106,7 +106,7 @@ whoever remembered the rule.
 | `seed` | `0` | Pins the stream via `GNUSTO_SEED`. Record it; a finding without a seed isn't reproducible. |
 | `turns` | `60` | Engine turns per charter. Token cost, not CPU cost, is the real budget. |
 | `charters` | all applicable | Comma-separated subset, e.g. `"tourist,clock-watcher"`. |
-| `fix` | `"none"` | `none` files everything, in the round's one issue. `game` also fixes findings owned by the game's own files. `all` fixes engine findings too. |
+| `fix` | `"none"` | `none` files everything, in the round's one issue. `game` also fixes findings owned by the game's own files. `all` fixes engine findings too. No setting touches the harness's own files. |
 | `rounds` / `dryRounds` | `1` / `2` | Loop until N consecutive rounds surface nothing new. |
 | `packagePath` | `"."` | Drive another checkout — a worktree at an older commit, for calibration. |
 | `ledgerKeys` | `[]` | Keys from previous reports, so the loop doesn't re-find its own rejections. |
@@ -117,10 +117,17 @@ harness stops being safe: the failure mode isn't a crash, it's a *plausible* wro
 in a densely prose-coupled suite. Run a round with `fix: "none"`, read the findings
 yourself, then decide.
 
-Two overrides ignore the flag entirely. No design doc means no prose fixing. And a fix
+Three overrides ignore the flag entirely. No design doc means no prose fixing. A fix
 that would change a count or structure pinned by a mechanics contract is escalated to
 a human, never applied — the gate checks that independently, because a prohibition only
-the offender checks is not a prohibition.
+the offender checks is not a prohibition. And **the harness does not repair itself
+mid-round**: a finding whose `ownerClass` is `harness` is filed at every setting,
+because a fixer editing the workflow that is currently running it, or the briefs its
+sibling agents are still reading, changes the run underneath itself.
+
+Every finding the round files carries a `notFixedReason`, and the workflow logs the
+breakdown whether or not anything was fixable — including the round where nothing was.
+`references/report-shape.md` defines the reasons.
 
 ## What lives where
 
