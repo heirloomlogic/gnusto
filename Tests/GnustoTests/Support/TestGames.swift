@@ -169,6 +169,79 @@ struct NoiseWordCollisionGame: Game {
     }
 }
 
+/// A synonym written as a phrase rather than a bare noun. It is split the way a
+/// name is — last word the noun, the rest adjectives — so `carriage torch`,
+/// `torch` and `carriage lantern` all reach the item.
+struct PhraseSynonymGame: Game {
+    let title = "PhraseSynonym"
+    let intro = ""
+
+    let hall = Location {
+        name("Hall")
+        description("A hall.")
+    }
+
+    let lantern = Item {
+        name("brass lantern")
+        synonyms("carriage torch")
+        description("A brass lantern.")
+    }
+
+    var map: WorldMap {
+        player.starts(in: hall)
+        lantern.starts(in: hall)
+    }
+}
+
+/// An adjective with no letters or digits in it. Normalizing cannot rescue it —
+/// there is no word there — so the bootstrap must reject it rather than let it
+/// sit in the vocabulary unmatchable.
+struct PunctuationAdjectiveGame: Game {
+    let title = "PunctuationAdjective"
+    let intro = ""
+
+    let hall = Location {
+        name("Hall")
+        description("A hall.")
+    }
+
+    let lantern = Item {
+        name("brass lantern")
+        adjectives("---")
+        description("A brass lantern.")
+    }
+
+    var map: WorldMap {
+        player.starts(in: hall)
+        lantern.starts(in: hall)
+    }
+}
+
+/// A synonym made of nothing but filler. `tokenize` strips "that" before any
+/// matching runs, so the word is untypeable — the same fatal condition
+/// ``NoiseWordCollisionGame`` reaches from the other side, for the built-in
+/// filler list rather than a game's own.
+struct FillerSynonymGame: Game {
+    let title = "FillerSynonym"
+    let intro = ""
+
+    let hall = Location {
+        name("Hall")
+        description("A hall.")
+    }
+
+    let lantern = Item {
+        name("brass lantern")
+        synonyms("that")
+        description("A brass lantern.")
+    }
+
+    var map: WorldMap {
+        player.starts(in: hall)
+        lantern.starts(in: hall)
+    }
+}
+
 /// Rules that emit stage markers so tests can assert pipeline ordering and
 /// refusal semantics from the transcript alone.
 struct OrderProbeGame: Game {

@@ -133,7 +133,7 @@ struct ZorkAboveGround: GameContent {
     /// `describe` rule (`Zork1.rules`).
     let egg = Item {
         name("jewel-encrusted egg")
-        adjectives("jewel-encrusted", "jeweled")
+        adjectives("jewel", "encrusted", "jeweled")
         description(Prose.egg)
         // The original's values: 5 for the find, 5 for the case.
         trait(.takeValue, 5)
@@ -221,7 +221,7 @@ struct ZorkAboveGround: GameContent {
     /// host's `treasureRoster`.
     let ancientMap = Item {
         name("ancient map")
-        adjectives("ancient", "hand-drawn")
+        adjectives("ancient", "hand", "drawn")
         description(Prose.ancientMap)
         hidden
     }

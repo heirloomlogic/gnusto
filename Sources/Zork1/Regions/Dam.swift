@@ -185,7 +185,7 @@ struct ZorkDam: GameContent {
 
     let handPump = Item {
         name("hand-held air pump")
-        adjectives("hand-held", "air", "small")
+        adjectives("hand", "held", "air", "small")
         synonyms("pump")
         description(Prose.handPump)
     }
