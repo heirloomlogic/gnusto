@@ -4,6 +4,11 @@ You are fixing one confirmed defect in a demo game. The finding has already been
 reproduced and then adversarially verified by an agent trying to refute it, so treat
 it as real — but read the reproducer yourself before you change anything.
 
+Read the transcript at the finding's `transcriptPath`, and replay under the label you
+were given rather than one you invent. That path is a probe directory, written once
+and never rewritten; a label on its own holds every probe a tester ran and tells you
+nothing about which one the finding is about.
+
 ## Test first, always
 
 Write the failing transcript test **before** the fix. The reproducer is already the

@@ -78,22 +78,52 @@ function clamp(value, lo, hi, fallback) {
 // oracles produce findings that cannot be deduplicated or cross-verified.
 const REF = '.claude/skills/playtest/references'
 
-// Where and what, with no doctrine. Every agent gets this much; only the ones
-// that actually judge prose pay for the briefs (GROUND, below).
-const GROUND_MIN = `
-You are working on the Gnusto engine repo. The package under test is at \`${pkg}\`
-and the game is \`${game}\`. The pinned seed for this round is \`${seed}\`.
+// Every agent is HANDED its replay label rather than asked to invent one. Asking
+// produced `verify-1` from three verifiers at once, and before probe directories
+// existed that meant three sessions written to one path — so a refutation cited a
+// transcript that was by then somebody else's. Probe directories make the loss
+// impossible; a label per agent is what keeps the *saves* separate, which is the
+// other thing a label is for. Game and round are in the name so two rounds of the
+// same game do not interleave either.
+//
+// `:` is not in the label alphabet the tool accepts, which is why an agent given a
+// display label like `verify:frame` had to make one up. Sanitize instead.
+const labelFor = (...parts) =>
+  [game, ...parts].join('-').replace(/[^A-Za-z0-9._-]+/g, '-').replace(/^[.-]+/, '')
 
+// How to replay, said once for both ground blocks. It differs between them only in
+// where it sits — after the briefs for an agent that judges prose, straight after the
+// header for one that doesn't — so the drift between two copies would be invisible
+// and the copy an agent read would be a coin flip.
+const replayHowTo = (label) => `
 Replay a probe with a single command:
 
-    bin/playtest-replay ${game} --commands FILE --seed ${seed} --label <yours> --tail 60${pkg === '.' ? '' : ` --package-path ${pkg}`}
+    bin/playtest-replay ${game} --commands FILE --seed ${seed} --label ${label} --tail 60${pkg === '.' ? '' : ` --package-path ${pkg}`}
+
+\`${label}\` is YOUR label for this round. Use it on every replay and do not invent
+another: each run gets its own \`probe-NNN/\` directory beneath it, so replaying costs
+you nothing and overwrites nothing. Cite the \`[playtest] transcript=…\` path the tool
+prints — that path holds that run's transcript permanently, which is what makes a
+finding auditable by somebody who was not here.
 
 Read the transcript FILE it points at, never stdout — the plain IO handler prints
 the "> " prompt but not the piped command, so stdout is answers with the questions
 missing. Comments (\`//\` or \`#\`) are recorded and never reach the parser.
+
+Write nothing outside \`.context/playtest/\`. It is the sanctioned scratch and the
+only part of the tree that is gitignored for this purpose.
 `.trim()
 
-const GROUND = `
+// Where and what, with no doctrine. Every agent gets this much; only the ones
+// that actually judge prose pay for the briefs (`ground`, below).
+const groundMin = (label) => `
+You are working on the Gnusto engine repo. The package under test is at \`${pkg}\`
+and the game is \`${game}\`. The pinned seed for this round is \`${seed}\`.
+
+${replayHowTo(label)}
+`.trim()
+
+const ground = (label) => `
 You are working on the Gnusto engine repo. The package under test is at \`${pkg}\`
 and the game is \`${game}\`. The pinned seed for this round is \`${seed}\`.
 
@@ -106,13 +136,7 @@ ${docPath ? `- \`${docPath}\` — the design doc: the mechanics contract, the ma
   where it disagrees with the code, the code wins and that disagreement is itself a
   \`doc-drift\` finding.
 
-Replay a probe with a single command:
-
-    bin/playtest-replay ${game} --commands FILE --seed ${seed} --label <yours> --tail 60${pkg === '.' ? '' : ` --package-path ${pkg}`}
-
-Read the transcript FILE it points at, never stdout — the plain IO handler prints
-the "> " prompt but not the piped command, so stdout is answers with the questions
-missing. Comments (\`//\` or \`#\`) are recorded and never reach the parser.
+${replayHowTo(label)}
 
 ${routedIssues.length ? `**Owned elsewhere this round.** These issues are open and own a defect class. A
 symptom that belongs to one of them is routed, not reported:
@@ -275,6 +299,11 @@ const FINDINGS_SCHEMA = {
             type: 'boolean',
             description: 'True only if the trimmed reproducer was re-run from clean and produced the excerpt.',
           },
+          transcriptPath: {
+            type: 'string',
+            description:
+              'The `[playtest] transcript=…` path of the clean replay, verbatim. That directory is written once and never rewritten, so this is the evidence a reader follows a year from now.',
+          },
           fault: { type: 'string', description: 'Which prose or rule is at fault, naming the mechanism.' },
           ownerFile: { type: 'string' },
           alsoSeenIn: { type: 'array', items: { type: 'string' } },
@@ -339,6 +368,11 @@ const VERDICT_SCHEMA = {
     },
     reason: { type: 'string' },
     correctedFrame: { type: 'string' },
+    evidencePath: {
+      type: 'string',
+      description:
+        'The `[playtest] transcript=…` path of the replay this verdict rests on, verbatim. A refutation is only auditable if its transcript is still the one it judged.',
+    },
     routedTo: ROUTED_ISSUES,
     provenance: {
       type: 'object',
@@ -687,7 +721,7 @@ positive on this charter and it is the exact opposite of a bug (K1).`,
 phase('Survey')
 
 const survey = await agent(
-  `${GROUND_MIN}
+  `${groundMin(labelFor('survey'))}
 
 You are the cartographer for this play-test round. You do not play; you read the code
 and the docs and produce the denominator every later phase measures itself against.
@@ -754,7 +788,7 @@ for (let round = 1; round <= maxRounds && dryRounds < dryTarget; round++) {
     await parallel(
       playRoster.map((charter) => () =>
         agent(
-          `${GROUND}
+          `${ground(labelFor(`r${round}`, 'play', charter.key))}
 
 Your charter is **${charter.key}**. Round ${round} of at most ${maxRounds}.
 
@@ -776,6 +810,8 @@ ${seen.size ? `\nAlready seen in earlier rounds or the ledger — do NOT report 
 Annotate your command files with \`//\` as you go, and REPLAY EACH REPRODUCER FROM A
 CLEAN START before you report it. Set replayedCleanly honestly; a finding whose
 reproducer you did not re-verify is dropped at triage, so guessing gains you nothing.
+Carry that clean replay's \`[playtest] transcript=…\` path into \`transcriptPath\`, so the
+finding arrives with the evidence attached rather than with a description of it.
 
 Your coverage note is not a formality. Name the cells you did not reach. A charter that
 reports findings and hides its gaps makes the round look thorough when it was not.`,
@@ -839,8 +875,11 @@ reports findings and hides its gaps makes the round look thorough when it was no
       // than N copies of the same skepticism.
       const others = playRoster.filter((c) => c.key !== f.charter)
       const lens = others.length ? others[index % others.length].key : 'skeptic'
+      // Indexed, not categorized: two findings can share a category, and this is
+      // the label whose collisions cost the round its evidence.
+      const verifyLabel = labelFor(`r${round}`, 'verify', String(index + 1).padStart(2, '0'))
       return agent(
-        `${GROUND}
+        `${ground(verifyLabel)}
 
 You are verifying someone else's play-test finding, and your job is to REFUTE it. You
 did not find this; the ${f.charter} charter did. You are reading it through the
@@ -871,11 +910,16 @@ actually been wrong, most frequent first.
    from memory: #76, #77 and #78 all closed, and forwarding a symptom to a fixed issue
    silently discards a regression.
 3. **Did the tester misread?** Replay the reproducer YOURSELF:
-   \`bin/playtest-replay ${game} --commands <file> --seed ${seed} --label verify-${round}\`.
+   \`bin/playtest-replay ${game} --commands <file> --seed ${seed} --label ${verifyLabel}\`.
    Confirm the excerpt appears verbatim, in the frame claimed, with the hour anchored by
    a real reading and not by counting commands — remember meta commands and parse
    failures cost no turn. If the quoted text is not in the tree, or the frame is wrong,
    refute and say which.
+
+   Put the \`[playtest] transcript=…\` path of the replay you judged on into
+   \`evidencePath\`, verbatim. Your verdict is the thing a reader audits first, and a
+   verdict citing a path nobody can resolve is indistinguishable from one nobody
+   checked.
 
 4. **Then date it.** A defect that arrived with a recent fix is the most valuable kind
    to catch and the easiest to lose, because the fix looks like progress. Blame the
@@ -954,7 +998,7 @@ function ownerClass(file) {
   // skill documents itself in.
   if (f.startsWith('.claude/') || f.startsWith('bin/') || f === 'docs/playtesting.md') return 'harness'
   if (f.startsWith('Sources/Gnusto')) return 'engine'
-  // Repo conventions, and the one genuinely arguable row. GROUND tells every
+  // Repo conventions, and the one genuinely arguable row. `ground` tells every
   // tester that a CLAUDE.md line the code contradicts is a doc-drift finding, so
   // the harness solicits these; filing them forever at every setting is the
   // complaint this classifier exists to answer. `engine` reaches them under
@@ -1045,7 +1089,7 @@ if (fixable.length) {
   const results = await parallel(
     [...clusters.entries()].map(([file, group]) => () =>
       agent(
-        `${GROUND_MIN}
+        `${groundMin(labelFor('fix', file.split('/').pop()))}
 
 Read \`${REF}/fixer-brief.md\` first and follow it exactly.
 
@@ -1085,7 +1129,7 @@ const touched = fixes.flatMap((f) => (f.result && f.result.filesTouched) || [])
 
 const gateThunk = () =>
   agent(
-      `${GROUND_MIN}
+      `${groundMin(labelFor('gate'))}
 
 You are the gate. Nothing you are told about the fixes is to be trusted; check it.
 
@@ -1133,7 +1177,7 @@ const unknownWordTotal = [...unknownWords.values()].reduce((a, b) => a + b, 0)
 
 const criticThunk = () =>
   agent(
-  `${GROUND_MIN}
+  `${groundMin(labelFor('critic'))}
 
 You are the completeness critic. You do not look for defects; you look for what this
 round MISSED. Silent truncation reads as "covered everything" when it wasn't, and your

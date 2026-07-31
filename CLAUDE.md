@@ -33,7 +33,7 @@ swift package --allow-writing-to-package-directory format-source-code
 xcrun swift-format lint --strict --parallel --recursive --configuration .swift-format Sources Tests
 
 bin/playtest-replay --build Fulminate                              # once
-bin/playtest-replay Fulminate --commands probe.txt --seed 0 --tail 60
+bin/playtest-replay Fulminate --commands probe.txt --seed 0 --label mine --tail 60
 ```
 
 CI runs the strict lint. Run it before you claim done.

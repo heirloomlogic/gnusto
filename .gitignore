@@ -1,4 +1,8 @@
 .context/
+# A backstop, not a sanctioned path. Play-test scratch belongs under
+# .context/playtest/; a round in July 2026 left a stray .playtest/ at the root, and
+# an untracked directory nobody notices is how somebody's evidence gets committed.
+/.playtest/
 # .claude/settings.json is tracked — it allowlists the play-test harness's own
 # commands so a round doesn't stall on twenty permission prompts. Personal
 # overrides belong in the local file, which is not.

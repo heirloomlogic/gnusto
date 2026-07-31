@@ -22,8 +22,14 @@
 #                       O(n^2) in engine turns, which is free — a 120-turn
 #                       replay is milliseconds — and O(n^2) in tokens if you
 #                       re-read the whole transcript every turn, which is not.
-#   --label NAME        Names the scratch directory. One label per tester, so
-#                       parallel testers cannot read each other's saves.
+#   --label NAME        Names the tester's scratch directory. One label per tester,
+#                       so parallel testers cannot read each other's saves. A label
+#                       is a namespace, not a file: every run allocates a fresh
+#                       probe directory beneath it, so re-using a label — or two
+#                       testers colliding on one — never overwrites a transcript.
+#   --probe NAME        Names this run's probe directory instead of taking the next
+#                       probe-NNN. Refuses a name that already holds anything, so a
+#                       transcript somebody cited cannot be replaced by another run.
 #   --restore SLOT      Prologue: restore SLOT before the command list, to reach
 #                       a deep state without replaying its prologue.
 #   --save SLOT         Epilogue: save to SLOT before quitting, so a later probe
@@ -39,6 +45,19 @@
 # `swift run` interferes with stdin for this project, it prints build chatter
 # into the output, and under a dozen concurrent testers it would trigger a dozen
 # builds. Build once with --build; replaying never builds.
+#
+# Where the output lands:
+#
+#   .context/playtest/<label>/saves/          shared by every probe under the label
+#   .context/playtest/<label>/<probe>/transcript.txt
+#                                    /commands.effective.txt
+#                                    /stderr.txt
+#                                    /summary.txt
+#
+# Saves belong to the label because that is what makes --save/--restore work across
+# two runs. Transcripts belong to the probe because they are evidence: a finding
+# cites the path this run printed, and that path has to still hold this run's
+# transcript when somebody follows it a year later.
 #
 # Why it prints the transcript FILE and not stdout: the plain ConsoleIOHandler
 # writes the "> " prompt but not the piped command, so stdout is answers with
@@ -58,8 +77,13 @@ usage() { sed -n '2,${/^#/!q; s/^# \{0,1\}//; p;}' "$0"; }
 
 need_number() { [[ "$2" =~ ^[0-9]+$ ]] || die "$1 must be a whole number, got '$2'"; }
 
+# A label and a probe both become a directory name under .context/playtest, so both
+# keep to one alphabet. The first character may not be a dot: that is what stops a
+# name reaching `.bin`, the build-path cache this script keeps beside the labels.
+plain_name() { [[ "$1" =~ ^[A-Za-z0-9_-][A-Za-z0-9._-]*$ ]]; }
+
 game=""; commands=""; seed=0; tail_lines=0; restore_slot=""; save_slot=""
-max_turns=250; timeout_secs=60; label=""; pkg="$PWD"; build_only=0
+max_turns=250; timeout_secs=60; label=""; probe=""; pkg="$PWD"; build_only=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -68,6 +92,7 @@ while [[ $# -gt 0 ]]; do
     --seed)         seed="${2:-}"; shift 2 ;;
     --tail)         tail_lines="${2:-}"; shift 2 ;;
     --label)        label="${2:-}"; shift 2 ;;
+    --probe)        probe="${2:-}"; shift 2 ;;
     --restore)      restore_slot="${2:-}"; shift 2 ;;
     --save)         save_slot="${2:-}"; shift 2 ;;
     --max-turns)    max_turns="${2:-}"; shift 2 ;;
@@ -124,9 +149,37 @@ read -r binary < "$binpath_cache"
   || die "recorded binary '$binary' is gone — re-run: bin/playtest-replay --build $game"
 
 [[ -n "$label" ]] || label="$game-adhoc"
-[[ "$label" =~ ^[A-Za-z0-9._-]+$ ]] || die "bad --label '$label'"
+plain_name "$label" || die "bad --label '$label'"
 scratch="$pkg/.context/playtest/$label"
 mkdir -p "$scratch/saves"
+
+# One directory per run. A label is a tester's namespace, and re-using one — either
+# on purpose, replaying an appended command list, or by two testers picking the same
+# short name — used to overwrite the previous transcript in place. That silently
+# destroyed the evidence a finding cites, which is worse than losing it noisily,
+# because the path still resolves and now holds somebody else's session.
+if [[ -n "$probe" ]]; then
+  plain_name "$probe" || die "bad --probe '$probe'"
+  [[ "$probe" != "saves" ]] || die "--probe 'saves' collides with the label's save directory"
+  probe_dir="$scratch/$probe"
+  # A name a tester chose is a name they mean to cite, so refuse rather than clobber.
+  [[ -z "$(ls -A "$probe_dir" 2>/dev/null)" ]] \
+    || die "--probe '$probe' already holds output at $probe_dir — pick another name"
+  mkdir -p "$probe_dir"
+else
+  # mkdir IS the lock: it fails when the directory exists, and it fails atomically.
+  # macOS ships bash 3.2, which has no flock, so this is the coordination a dozen
+  # concurrent testers get.
+  probe_dir=""
+  n=1
+  while [[ "$n" -le 999 ]]; do
+    candidate="$(printf '%s/probe-%03d' "$scratch" "$n")"
+    if mkdir "$candidate" 2>/dev/null; then probe_dir="$candidate"; break; fi
+    n=$((n + 1))
+  done
+  [[ -n "$probe_dir" ]] || die "999 probes under $scratch already — start a fresh --label"
+  probe="${probe_dir##*/}"
+fi
 
 # The cap counts engine commands only. Neither a comment (the REPL skips it) nor
 # a blank line (stripped below, when the effective file is built) reaches
@@ -135,7 +188,7 @@ engine_lines="$(grep -cvE '^[[:space:]]*(//|#|$)' "$commands" || true)"
 [[ "$engine_lines" -le "$max_turns" ]] \
   || die "$engine_lines commands exceeds --max-turns $max_turns"
 
-effective="$scratch/commands.effective.txt"
+effective="$probe_dir/commands.effective.txt"
 {
   # save and restore are two-turn interactions: the parser knows only the bare
   # verbs, and the engine then asks for a filename on the *next* input line.
@@ -161,9 +214,8 @@ effective="$scratch/commands.effective.txt"
   printf 'quit\nquit\n'
 } > "$effective"
 
-transcript="$scratch/transcript.txt"
-errlog="$scratch/stderr.txt"
-rm -f "$transcript" "$errlog"
+transcript="$probe_dir/transcript.txt"
+errlog="$probe_dir/stderr.txt"
 
 status=0
 # GNUSTO_TRANSCRIPT with a slash in it is honored verbatim and its parent
@@ -181,7 +233,7 @@ GNUSTO_SAVE_DIR="$scratch/saves" \
 if [[ ! -f "$transcript" ]]; then
   detail=""
   [[ -s "$errlog" ]] && detail=" — stderr: $(head -c 400 "$errlog")"
-  die "no transcript written; engine exited $status$detail"
+  die "no transcript written at $transcript; engine exited $status$detail"
 fi
 
 if [[ "$tail_lines" -gt 0 ]]; then
@@ -194,17 +246,25 @@ else
   cat "$transcript"
 fi
 
-# The trailer is the machine-readable part: what ran, and whether it finished.
+# The trailer is the machine-readable part: what ran, and whether it finished. It is
+# written into the probe directory as well as printed, so the directory a finding
+# cites says which game, seed and label produced it without a reader reconstructing
+# that from the surrounding round report.
+summary="$probe_dir/summary.txt"
+{
+  echo "[playtest] game=$game seed=$seed label=$label probe=$probe commands=$engine_lines exit=$status"
+  echo "[playtest] transcript=$transcript"
+  echo "[playtest] commands=$effective"
+  # perl's alarm kills with SIGALRM (14); the shell reports 128+14.
+  if [[ "$status" -eq 142 || "$status" -eq 14 ]]; then
+    echo "[playtest] TIMEOUT after ${timeout_secs}s — the game never reached quit. Report this."
+  elif [[ "$status" -ne 0 ]]; then
+    echo "[playtest] NONZERO EXIT — engine crash or bootstrap failure. Report this."
+  fi
+} > "$summary"
+
 echo
-echo "[playtest] game=$game seed=$seed commands=$engine_lines exit=$status"
-echo "[playtest] transcript=$transcript"
-echo "[playtest] commands=$effective"
-# perl's alarm kills with SIGALRM (14); the shell reports 128+14.
-if [[ "$status" -eq 142 || "$status" -eq 14 ]]; then
-  echo "[playtest] TIMEOUT after ${timeout_secs}s — the game never reached quit. Report this."
-elif [[ "$status" -ne 0 ]]; then
-  echo "[playtest] NONZERO EXIT — engine crash or bootstrap failure. Report this."
-fi
+cat "$summary"
 if [[ -s "$errlog" ]]; then
   echo "[playtest] stderr (bootstrap warnings and GNUSTO_SEED complaints land here):"
   sed -n '1,40p' "$errlog"
