@@ -135,14 +135,17 @@ public struct MeleeCombat: GameContent {
         self.text = text
     }
 
-    /// The two combat verbs the engine's stub table doesn't already ship.
-    /// attack/kill/hit/fight are core vocabulary, bare-handed or `with` a
-    /// weapon; stab and strike are melee's own, and always name the weapon.
+    /// Everything that reaches `.attack`, claimed as melee's: the engine's rows,
+    /// spliced by listing the intent, and the two it adds. attack/kill/hit/fight
+    /// are core vocabulary, bare-handed or `with` a weapon; stab and strike are
+    /// melee's own, and always name the weapon.
     ///
-    /// Spelled as rows rather than `.attack`, because an intent contributes its
-    /// `syntax` to a `verbs` block and an engine intent carries none — listing
-    /// `.attack` here would splice zero rows and lose stab/strike silently.
+    /// The spliced rows are the standard table's, so the merged table is the
+    /// same either way — what listing `.attack` changes is arbitration: melee
+    /// re-asserts those shapes, last-wins, over an earlier bundle that reclaimed
+    /// one of them for something else.
     public var verbs: [SyntaxRule] {
+        .attack
         SyntaxRule("stab", .directObject, "with", .indirectObject, intent: .attack)
         SyntaxRule("strike", .directObject, "with", .indirectObject, intent: .attack)
     }

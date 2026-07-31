@@ -347,10 +347,15 @@ enum Bootstrap {
         // warning, so an author can override a verb while keeping it visible.
         // Keyed off `coreTable`, not `standardTable`: reclaiming a *stub* row
         // shadows no behavior, and overriding one is the expected end state, so
-        // that case is silent.
+        // that case is silent. The intent has to match too, not just the shape:
+        // a `verbs` block that lists an engine intent splices rows identical to
+        // the built-in ones, and a row that reclaims a shape for the intent
+        // that already held it overrides nothing.
         var verbWarnings: [String] = []
-        let builtInKeys = Set(SyntaxRule.coreTable.map(\.key))
-        for verb in customVerbs where builtInKeys.contains(verb.key) {
+        let coreIntentsByShape = Dictionary(
+            uniqueKeysWithValues: SyntaxRule.coreTable.map { ($0.key, $0.intent) })
+        for verb in customVerbs {
+            guard let claimed = coreIntentsByShape[verb.key], claimed != verb.intent else { continue }
             verbWarnings.append(
                 "custom verb \"\(verb.patternDescription)\" overrides a "
                     + "built-in verb of the same shape.")

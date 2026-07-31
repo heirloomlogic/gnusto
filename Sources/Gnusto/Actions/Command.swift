@@ -5,10 +5,12 @@ public struct Intent: Hashable, Sendable {
     /// The intent's stable identifier.
     public let raw: String
 
-    /// The verb rows that produce this intent, carried by `#verb`-declared
-    /// intents so a `verbs` block can list the intent itself (`.ring`)
-    /// instead of re-spelling its rows. Not part of the intent's identity:
-    /// `Intent("ring")` in a rule matches a `#verb`-minted `.ring`.
+    /// The verb rows this intent carries. `#verb` puts them here, which is what
+    /// lets a `verbs` block list the intent itself (`.ring`) instead of
+    /// re-spelling its rows; an engine intent carries none and is resolved
+    /// against the standard table instead — see `verbRows`. Not part of the
+    /// intent's identity: `Intent("ring")` in a rule matches a `#verb`-minted
+    /// `.ring`.
     public let syntax: [SyntaxRule]
 
     /// Creates an intent with the given identifier. `#verb` expands to the
@@ -21,6 +23,17 @@ public struct Intent: Hashable, Sendable {
     public init(_ raw: String, syntax: [SyntaxRule] = []) {
         self.raw = raw
         self.syntax = syntax
+    }
+
+    /// The rows a `verbs` block splices when it lists this intent: the ones it
+    /// carries, or the standard table's for an engine intent, which keeps its
+    /// rows there instead of on the constant.
+    ///
+    /// The fallback is what lets both kinds of intent spell the same way at a
+    /// `verbs` block. Without it `verbs { .attack }` compiled, contributed
+    /// nothing, and said nothing about it.
+    var verbRows: [SyntaxRule] {
+        syntax.isEmpty ? SyntaxRule.standardRows(producing: self) : syntax
     }
 
     /// Identity is the `raw` name alone — see `syntax`.
