@@ -184,4 +184,18 @@ extension SyntaxRule {
     /// the stub rows that are words without mechanics. Ordering within the
     /// table doesn't matter; the parser sorts candidate rules by specificity.
     static let standardTable: [SyntaxRule] = coreTable + stubTable
+
+    /// The standard rows that reach one intent, for a `verbs` block that lists
+    /// an engine intent rather than re-spelling its rows — see
+    /// ``Intent/verbRows``. Reads the two stage-4 lookups instead of grouping
+    /// the table again: `cores` and `stubs` already hold their rows per intent.
+    ///
+    /// - Parameter intent: the intent whose standard rows to fetch.
+    /// - Returns: the rows that produce it, or none if the engine ships no verb
+    ///   for it.
+    static func standardRows(producing intent: Intent) -> [SyntaxRule] {
+        DefaultActions.coresByIntent[intent]?.rows
+            ?? DefaultActions.stubsByIntent[intent]?.rows
+            ?? []
+    }
 }

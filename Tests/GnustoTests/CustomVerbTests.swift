@@ -82,6 +82,51 @@ struct CustomVerbTests {
         #expect(customIntents.contains(.hum))
     }
 
+    // MARK: - Engine intents in a verbs block
+
+    @Test func anEngineIntentCarriesTheStandardRowsThatProduceIt() {
+        // A `#verb` intent carries its rows; an engine intent's live in the
+        // standard table instead. `verbRows` is what makes both spell the same
+        // way at a `verbs` block — without it, `.attack` spliced nothing.
+        #expect(Intent.ring.verbRows.count == Intent.ring.syntax.count)
+        #expect(Intent.attack.syntax.isEmpty)
+        let attackWords = Set(Intent.attack.verbRows.flatMap(\.leadingWords))
+        #expect(attackWords == ["attack", "kill", "hit", "fight"])
+        #expect(Intent.take.verbRows.allSatisfy { $0.intent == .take })
+        #expect(Intent("nonesuch").verbRows.isEmpty)
+    }
+
+    @Test func listingAnEngineIntentSplicesItsRowsAlongsideNewOnes() {
+        // The MeleeCombat case, checked where it's visible: at the block, not
+        // in the merged table, which supplies the engine's rows either way.
+        // That is why `.attack` splicing zero went unnoticed for so long.
+        let verbs = EngineIntentVerbGame().verbs
+        let words = Set(verbs.flatMap(\.leadingWords))
+        #expect(words == ["attack", "kill", "hit", "fight", "stab", "strike"])
+        #expect(verbs.allSatisfy { $0.intent == .attack })
+    }
+
+    @Test func reclaimingACoreRowForItsOwnIntentRestoresIt() async throws {
+        // The splice reaching the parser, in a transcript. `.steal` takes
+        // `take <thing>`, then `.take` takes it back — last-wins, so the
+        // built-in answers. If listing `.take` spliced nothing, the `.steal`
+        // row would stand and the unhandled intent would report that it didn't
+        // understand.
+        let transcript = try await play(RestoredCoreVerbGame(), ["take penny"])
+        #expect(transcript.contains("Taken."))
+        #expect(!transcript.contains("I didn't understand that sentence."))
+    }
+
+    @Test func reclaimingACoreRowForItsOwnIntentDoesNotWarn() throws {
+        // One warning, for the `.steal` row that genuinely changes what
+        // `take <thing>` means. The seven rows `.take` splices match built-in
+        // keys too, but they reclaim each shape for the intent that already
+        // held it, which is no override at all.
+        let (definition, _) = try Bootstrap.build(RestoredCoreVerbGame())
+        #expect(definition.warnings.count == 1)
+        #expect(definition.warnings.first?.contains("take <object>") == true)
+    }
+
     @Test func aWatchedButUnlistedVerbIntentWarns() throws {
         // ForgottenVerbGame keys a rule on `.ring` but never lists it, so no
         // row produces the intent — the bootstrap names the likely fix.

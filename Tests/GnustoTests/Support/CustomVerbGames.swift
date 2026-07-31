@@ -100,6 +100,60 @@ struct VerbOverrideGame: Game {
     }
 }
 
+/// The `GnustoMeleeCombat` verbs block in miniature: an engine intent listed by
+/// name for the rows the engine already ships, with the plugin's own rows spelled
+/// beside it. Only its `verbs` block is under test — nothing here is played, and
+/// the merged table would supply those rows either way.
+struct EngineIntentVerbGame: Game {
+    let title = "Practice Yard"
+    let intro = "A yard for weapons drill."
+
+    let yard = Location {
+        name("Practice Yard")
+        description("A packed-dirt yard for weapons drill.")
+    }
+
+    var map: WorldMap {
+        player.starts(in: yard)
+    }
+
+    var verbs: [SyntaxRule] {
+        .attack
+        SyntaxRule("stab", .directObject, "with", .indirectObject, intent: .attack)
+        SyntaxRule("strike", .directObject, "with", .indirectObject, intent: .attack)
+    }
+}
+
+/// A game that reclaims the built-in `take <thing>` row for `.steal`, then puts
+/// it back by listing `.take`. Last-wins means the restoration only lands if
+/// listing an engine intent actually splices its rows — so this is where the
+/// fallback is visible in a transcript rather than in a table.
+struct RestoredCoreVerbGame: Game {
+    let title = "Restored"
+    let intro = "A counting house, and one penny left in it."
+
+    let countingHouse = Location {
+        name("Counting House")
+        description("A narrow room of empty ledgers.")
+    }
+
+    let penny = Item {
+        name("silver penny")
+    }
+
+    var map: WorldMap {
+        player.starts(in: countingHouse)
+        penny.starts(in: countingHouse)
+    }
+
+    /// Spelled `Intent.take` rather than `.take`: a bare leading dot on the line
+    /// after another statement would parse as a member access on it.
+    var verbs: [SyntaxRule] {
+        .steal
+        Intent.take
+    }
+}
+
 /// A game that keys a rule on a `#verb` intent but forgets to list it in a
 /// `verbs` block — the mistake the dead-intent bootstrap warning names.
 struct ForgottenVerbGame: Game {
