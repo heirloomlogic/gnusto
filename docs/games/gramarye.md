@@ -67,11 +67,12 @@ column is what has to remain true no matter how the story is rewritten.
 | Scroll — `.scroll(_:)` | **passwall**, inked on brittle parchment, good for one reading. | The scroll is consumed **on success only**. A refused cast leaves the parchment intact, and the game says so on the page. |
 | Four paradigms, one chain | Each spell opens exactly one obstacle, in order: niche, door, wall, golem. | **Four** distinct paradigms, **one** obstacle each, in chain order. Fewer paradigms, or two spells on one obstacle, and the game stops being the proof it exists to be. |
 | Custom trait | `TraitKey<Bool>.combustible` on the golem. | Targeted spells check an author-declared trait, so casting at the wrong thing is a wasted turn rather than a win. |
-| Fuse that re-arms | `doorSeals`, two turns in, but only while the apprentice is in the study — otherwise it waits. | The inciting event cannot fire the player into an unwinnable state. Whatever seals the door must wait for them to be on the right side of it, with the book. |
-| No unwinnable state, by any route | Nothing carries this yet; see [Known defects](#known-defects). | **The game cannot be made unwinnable, by the fuse or by the player.** Whatever closes a barrier, whether a rule, a timer or a `close` command, has to leave a way back or refuse. |
+| Fuse that re-arms | `doorSeals`, two turns in, but only while the apprentice is in the study — otherwise it waits. It also stands down if the door is already shut. | The inciting event cannot fire the player into an unwinnable state. Whatever seals the door must wait for them to be on the right side of it, with the book — and must not narrate a slam the player performed himself. |
+| No unwinnable state, by any route | `wardedDoor.before(.close)` refuses while the book is out of reach and otherwise closes and says the wards caught; `graniteWall.before(.close)` refuses outright. | **The game cannot be made unwinnable, by the fuse or by the player.** Whatever closes a barrier, whether a rule, a timer or a `close` command, has to leave a way back or refuse. |
 | `@Global` state | `doorSealed`, distinguishing "nothing is wrong yet" from "open again because you unbarred it". | The book's first read is gated on the *event*, not on the door's position — a boolean the door itself cannot supply. |
 | `hidden` / `reveal()` | The scroll in the niche; the amulet behind the golem. | **Two** hidden things, each revealed by a different spell, so reveal is shown twice by two routes. |
-| State-keyed `describe` | Study, gallery, warded door, granite wall, niche — five rules, each reading its own state. | Every solved gate is visible the next time the player looks. No room describes a barrier that is no longer there. |
+| State-keyed `describe` | Study, gallery, undercroft, warded door, granite wall, warding marks, niche — seven rules, each reading its own state. | Every solved gate is visible the next time the player looks. No room describes a barrier that is no longer there, and no barrier's description outlives it. |
+| Every printed noun answerable | ~30 nouns across the intro and three rooms, carried by the scenery items in `Fixtures.swift` and by synonyms on the things whose own descriptions name their parts. | A named thing the parser doesn't know reads as a bug. `warding-marks`, `desk` and `hook` are load-bearing: the first is what the opening puzzle is about, the second is where the game's one instruction points, the third is where the amulet hangs. |
 | Clue ladder | Six spellbook reads, one per obstacle, never reading ahead. | The book answers the *current* obstacle and no later one. A read that hands out two spells at once collapses the game. |
 | Blocked exits | `out` and `down` from the study, refused in the game's own words. | The tower cannot be left. The refusal is authored, never the stock line. |
 | Scoring | Ten points on taking the amulet, and that ends the game. | `maxScore == 10`, paid by **one** award, at the win, declared in the `Scoring` award table so the bootstrap checks the total. This game is not a scoring demo and should not grow into one. |
@@ -151,9 +152,14 @@ Three rooms in a line, with a magical gate between each pair.
 
 | Room | Notes |
 |---|---|
-| **Study** | Start. The spellbook, the shadowed niche, the warded door, and the window. Two states — door open, door shut. Everything the player needs to begin is in this room, which is why the fuse waits for them to be in it. |
+| **Study** | Start. The desk with the spellbook on it, the shadowed niche with the scroll in it, the warded door, the warding marks, and the window. Two states — door open, door shut. Everything the player needs to begin is in this room, which is why the fuse waits for them to be in it. |
 | **The Long Gallery** | Between the two gates. Two states — granite wall, or the mist archway that replaced it. Nothing to pick up; the room *is* the obstacle. |
-| **The Undercroft** | The amulet on its hook, and the golem standing in front of it. One state, and see [Open questions](#open-questions) about that. |
+| **The Undercroft** | The amulet on its hook, and the golem standing in front of it. Two states — golem, or the layer of fired clay the ending inventories. |
+
+The prose is careful about where things are and the placements agree with it: the book
+is *on* the desk, the scroll is *inside* the niche, the amulet hangs *on* the hook. Each
+of those is a listing line the engine prints and a `search`/`take X from Y` the parser
+accepts, and each of them was a floor item saying otherwise until #99 and #100.
 
 Both gates are shared items on the exit in both directions, so the map has two
 doors and four exits. Neither yields to an ordinary hand: `OPEN DOOR` and `OPEN
@@ -173,6 +179,15 @@ That guard is load-bearing, not politeness: the book is on the study desk and th
 niche is beside the study door, so an apprentice sealed into the gallery has no book,
 no cantrip, no scroll and no way back. The door waits until he is on the right side
 of it, however long that takes.
+
+It also checks the door, and **stands down entirely if the door is already shut**. The
+only way that happens is that the apprentice shut it himself, and the slam's copy — *You
+touched nothing* — is the one thing the game cannot say over his own hand on the door.
+He loses the beat, which is the right price for having pre-empted it.
+
+His own `CLOSE DOOR` is guarded on the same question the fuse asks, from the other end:
+he declines while the book is on the far side, and shuts it when it is not. See the
+contract row *no unwinnable state, by any route*.
 
 Everything before the slam is a prologue with nothing wrong in it, and the book
 agrees: read it in those two turns and it offers a treatise on the correct storage of
@@ -231,7 +246,7 @@ needs.**
 |---|---|---|
 | Before the slam | nothing; duty reading | the correct storage of newts |
 | Door sealed, scroll hidden | warded doors | **glow**, "a small finding-light" |
-| Scroll found, door shut | warded doors, again | **unbar**, with the small print |
+| Scroll found, door shut | warded doors | **unbar**, with the small print |
 | Door open, wall standing | walls of dressed granite | a stationer's receipt for one parchment |
 | Wall open, golem standing | golems | **firebolt**, filed under the firing of kilns |
 | Golem gone | nothing in particular | nothing. He enjoys it. |
@@ -241,6 +256,11 @@ obstacle the player has not reached — `theSpellbookNeverReadsAhead` asserts th
 the first useful read mentions `glow` and does *not* contain the words `unbar`,
 `firebolt` or `pottery`. And the first state must exist: a book that starts
 helping before anything is wrong tells the player the door is going to close.
+
+A third, learned the hard way. **No rung may back-reference another rung.** The ladder
+is keyed strictly on world state, and `glow` can be cast without ever opening the book,
+so a rung that opened "a second time" narrated a refusal the player may never have seen.
+The rungs are true of the world; they are not a conversation with a memory.
 
 ---
 
@@ -256,7 +276,7 @@ the narrator is amused by the apprentice without being cruel to him.
 > cannot find because he is wearing it. The Circle has summoned your master, and
 > the Circle does not care to wait.
 >
-> At the threshold he stops, turns back, and takes you by the shoulder, fixing you
+> At the threshold he stops, turns back, and takes hold of you, fixing you
 > with the look he otherwise reserves for cracked cauldrons. "The amulet," he
 > says. "Is it secret? Is it safe?" He then reminds you, at some volume, that it
 > hangs on its hook in the undercroft, behind the warded door — which rather
@@ -281,14 +301,23 @@ it, a shadowed niche.*
 
 **The Long Gallery**, wall standing — *A cold stone gallery. The way east runs
 back to the study; to the north the passage is stopped by a blank wall of dressed
-granite, fitted so close a knife could not find the seams. You are, for reference,
-larger than a knife.*
+granite, fitted so close the seams are a matter of faith. You are, for reference,
+not a matter of faith.*
 
 **The Long Gallery**, wall dispersed — *A cold stone gallery. The way east runs
 back to the study. To the north, where the granite wall stood, an archway of grey
 mist breathes cellar-cold air.*
 
-**The Undercroft** — *A low vaulted cellar, the air chalky with old magic.*
+**The Undercroft**, golem standing — *A low vaulted cellar, the air chalky with old
+magic. The gallery is back the way you came, to the south; at the far end, an iron hook
+is driven into the stone at head height.*
+
+**The Undercroft**, golem fired — the same, and then *Between here and there, the floor
+wears an even layer of what used to be a golem.*
+
+The gallery's simile used to be a knife, which read well and was the one noun in the
+room the player could not look at. Nothing in the tower is a knife, so the comparison
+went rather than an absurd knife arriving to answer for it.
 
 ### Barriers and the niche
 
@@ -307,8 +336,22 @@ mist breathes cellar-cold air.*
   secret: a rolled parchment rests in the niche.*
 - **niche**, scroll taken — *An empty niche cut shoulder-high into the stone. What
   it kept, you carry now. Do try not to lose it.*
+- **niche**, scroll spent — *An empty niche cut shoulder-high into the stone. What it
+  kept is out of it, and out of your hands too, and the shadow has gone back to keeping
+  nothing.*
+- **warding marks**, burning — *Cut deep into the door's frame and burning steadily
+  along every stroke, without smoke and without heat. They are not doing anything, in
+  the sense that a locked door is not doing anything.*
+- **warding marks**, dark — *Cut deep into the door's frame and dark all the way along,
+  the way a thing is dark when it has finished. Whatever they are made of, it is not
+  ink.*
 - **study window** — *The study window stands open to the morning. A pleasant
   draught comes and goes. It is the least suspicious thing in the tower.*
+
+Four niche states and not three. The scroll is `vanish()`ed by the reading, so "revealed
+and not in your hands" is two different worlds — one where it is still in the niche and
+one where it is ash — and the ladder has to tell them apart or it advertises a parchment
+that no longer exists anywhere.
 
 ### The slam
 
@@ -351,6 +394,35 @@ mist breathes cellar-cold air.*
 > You were left to mind the tower. A tower cannot be minded from the road, however
 > much you might prefer to try.
 
+Two of those refusals have a sibling for the state after the spell, because a hint that
+outlives the puzzle it points at is a hint that lies:
+
+> The mist parts around your hand and closes behind it. There is nothing left here to
+> open.
+
+And two more that nothing said at all, because nothing answered `CLOSE`:
+
+> You put a hand to the door and think better of it. These wards catch of their own
+> accord whenever it shuts, and the master's book is on the wrong side of it. There is a
+> version of this morning where you do that anyway, and you would rather not live in it.
+>
+> You reach for the mist and your hand goes through it. Whatever the working did to the
+> granite, it did not leave you anything to take hold of.
+
+The door does close when the book is in reach, and says what the wards did:
+
+> You push the door to. The warding-marks take light and settle into a steady burn — the
+> wards lock of their own accord, a feature the master has always been rather proud of.
+> The book, at least, is on this side.
+
+Two lines the stub layer would otherwise have got wrong, both about fire:
+
+> You have nothing to set it alight with, and nothing in the undercroft does either.
+> Fire, if it is coming, will have to come out of you.
+>
+> You consider it, briefly, and then don't. The book is silent on apprentices who set
+> fire to themselves, which is itself a kind of advice.
+
 ### The ending
 
 > You lift the master's amulet from its hook. Secure at last — held personally by
@@ -365,6 +437,27 @@ mist breathes cellar-cold air.*
 > draught takes that door, and the wards see to the rest." He regards the rubble
 > that was, as of this morning, the finest guardian clay can make. And then, to
 > your lasting relief, he begins — quite helplessly — to laugh.
+
+The inventory is of the world he is standing in, so it reads that world. The door is the
+one item of it the player can still change — he can shut it behind him and win anyway —
+and the clause becomes *the warded door shut again and burning quietly to itself*. The
+wall needs no branch: nothing can close it, and the master is standing in the hole.
+
+### The nouns the tower prints
+
+`Sources/Gramarye/Fixtures.swift` holds the scenery items whose only job is to have
+an answer. Their prose is as replaceable as the rest, and the constraint on it is only
+that it stay true of a thing the player cannot pick up:
+
+| Room | Items |
+|---|---|
+| Study | desk (holds the book, and its inkwells are the ones the slam rattles), books, study wall, candle, cauldrons, the master (and everything he left with — cloak, staff, hat, robes, letters, the Circle), the hill (and the road the blocked exits refuse) |
+| Long Gallery | the gallery's own cold stonework — not the granite, which owns `wall` and `granite` so that `OPEN WALL` never becomes a disambiguation question |
+| Undercroft | the vaulting (and the cellar's chalky air and old magic), the iron hook |
+
+Two more live with the game because their text reads the world: the **warding marks**,
+whose two states follow the door, and the **rubble**, revealed by the firebolt so the
+ending has something to inventory.
 
 ---
 
@@ -401,12 +494,13 @@ neither can rot.
 For what is open right now, ask the tracker: `gh issue list --state open --search
 Gramarye`.
 
-One of them isn't a prose problem, and a writer should know about it anyway. **The
-game can be made permanently unwinnable in two commands** — `west`, `close door` —
-because the barriers are gated on `.open` and not on `.close`. Repairing it is a
-design call with three incompatible reasonable answers, and the round's verifier
-declined to pick between them. The contract row above, *no unwinnable state by any
-route*, is what any answer has to satisfy.
+The 2026-07-30 round's four findings — #98 through #101 — are closed. What they cost, in
+case a rewrite is tempted to undo any of it: the game could be made permanently
+unwinnable in two commands (`west`, `close door`), around forty nouns the prose printed
+went unanswered, the niche advertised a scroll it had never held and went on advertising
+it after the scroll was ash, and four lines described a frame that had moved. The
+contract rows above are where each of those repairs is now written down; the ledger
+records what became of every row.
 
 ---
 
@@ -424,10 +518,9 @@ route*, is what any answer has to satisfy.
 2. **Three memory slots for one memorized spell.** `memorySlots: 3` is the default
    and nothing in the game can fill it. Either a second memorized spell earns the
    slots or the number should come down to what the game uses.
-3. **The Undercroft has one state and needs two.** It never mentions the way back
-   south, and it reads the same before and after the golem is destroyed — the rubble
-   the ending inventories ("redistributed evenly across the floor") is not on the page
-   anywhere, and the amulet's hook, which the master names in the opening, is only
-   ever mentioned in firebolt's own success line. The other two rooms have state-keyed
-   descriptions and this one should too. Confirmed by the round; the vocabulary half
-   is #99 and the missing second state is still a design question.
+
+*Resolved.* The Undercroft used to have one state where the other two rooms had two: it
+never mentioned the way back south, the rubble the ending inventories was on no page
+anywhere, and the hook the master shouts about from the threshold appeared only inside
+firebolt's success line. It now has both states, the hook is an item with the amulet
+hanging on it, and the rubble is an item the firebolt reveals.

@@ -76,6 +76,38 @@ line three times more. Worth tightening before a round runs with `fix: "game"`.
 
 ## Amendments
 
+**2026-07-31 — every `confirmed` row on the game itself marked `fixed`.** #98–#101
+closed in one change. Pass all of these keys as `ledgerKeys` on the next round: a `fixed`
+key that comes back is a regression, not a finding.
+
+What the rows became, by class:
+
+| Class | What was done | Cover |
+|---|---|---|
+| `unwinnable` — `close door`, `close wall` (3 keys, all `needs-human`) | The door refuses while the master's book is out of reach and otherwise closes and says the wards caught; `unbar` is repeatable, so a close with the book to hand is survivable. The granite refuses outright, because `passwall` is its only opener and the scroll is ash. The design call the verifier declined to make was made with the owner: refuse-when-it-would-strand for the door, refuse-always for the wall. | `theWardedDoorRefusesToShutOnTheBook`, `theDoorWillNotBeShutOnABookLeftInTheGallery`, `shuttingTheDoorWithTheBookInHandIsSurvivable`, `theMistCannotBeClosedBehindYou` |
+| `prose-untrue-of-state` — the fuse's "You touched nothing" over a hand-closed door (3 keys) | The fuse stands down if the door is already shut. The only way that happens is the apprentice's own hand, and the slam cannot narrate over it. | `theFuseStandsDownIfTheApprenticeShutsTheDoorHimself` |
+| `prose-untrue-of-state` — "Nothing is currently wrong" with the amulet sealed away | `doorSealed` is now written by both closers, the fuse and the rule, so the book's ladder is keyed on the event however the event happened. | `theFuseStandsDownIfTheApprenticeShutsTheDoorHimself` |
+| `prose-untrue-of-state` — `open wall` after `passwall` | The `isOpen` guard the warded door always had, given to the granite. | `theOpenedGraniteStopsOfferingTheHint` |
+| `prose-untrue-of-state` — `x niche` after the scroll is spent | Four states, not three. The ladder asks `niche.holds(scroll)` rather than `isHeld`, so a `vanish()`ed scroll no longer falls into the branch written for "revealed and not yet picked up". | `theNicheKeepsItsSecretUntilGlow` |
+| `prose-untrue-of-state` — the ending's "the warded door unbound" | The inventory reads the door. The wall needs no branch: nothing can close it and the master is standing in the hole. | `theEndingNamesTheDoorItFinds`, `theMasterReturnsAndLaughsWhenTheAmuletIsTaken` |
+| `prose-untrue-of-state` — the book's "a second time … this time it relents" | The back-reference is gone. The ladder is keyed on world state and `glow` can be cast without ever opening the book, so no rung may claim a history it cannot check. Written into the design doc as a third constraint on the ladder. | `theBookNeverClaimsAReadThatDidNotHappen` |
+| `mechanic-contradicts-prose` — `glow` finds a parchment "in the niche" that is on the floor | The niche is a `container` and the scroll starts inside it, so the listing, `x niche` and `search niche` all agree. | `theNicheHoldsTheScrollAndSaysSo` |
+| `mechanic-contradicts-prose` — the golem "slumps to rubble" and vanishes outright | The firebolt reveals a rubble item and the Undercroft grew the second state the other two rooms had, so the ending's "redistributed evenly across the floor" is on the page. That also closes the design doc's open question 3. | `theUndercroftShowsTheRubbleOnceTheGolemIsGone` |
+| `mechanic-contradicts-prose` — `burn golem` on a `.combustible` target | `golem.before(.burn)` replies, pointing at the apprentice's own reserves without claiming he has read the book. | `burningTheGolemPointsAtTheFirebolt` |
+| `stock-line-not-reskinned` — "the yourself" | The game's own string, not the engine's. `definiteName` respects `properName`; a self-cast gets its own line. | `fireboltAtYourselfDoesNotSayTheYourself` |
+| `unanswerable-noun` (9 keys, ~40 nouns) | A new `Fixtures` bundle of scenery items, the warding marks and the rubble in the game itself, and synonyms on the things whose own descriptions name their parts. Two nouns were reworded out instead: the intro's `shoulder`, which is the player's and whose vocabulary is fixed, and the gallery's simile knife, which nothing in the tower is. | `theIntroAnswersToEveryNounItPrints`, `theStudyAnswersToItsOwnDescription`, `theSpellbookAnswersToItsOwnPages`, `theGalleryAnswersToItsOwnDescription`, `theUndercroftAnswersToItsOwnDescription` |
+
+Two `refuted` rows changed anyway, and neither is a reversal. `x window` was refuted as
+`mechanic-contradicts-prose`; the window is unchanged, but it now answers to `draught`,
+`draft`, `breeze` and `air` as well, because those are words its own description prints.
+And the Undercroft names its way back south, which it never did — that came out of the
+missing second state, not out of the refutation, and the five `exit-prose-mismatch` rows
+stand refuted.
+
+So do the register rows (`xyzzy`, `sing`, `pray`). One more will simply not reproduce:
+`close door` / *Closed.* was the opening of two refuted keys, and there is no stock
+`Closed.` on either barrier any more.
+
 **2026-07-31 — the blank-line row marked `fixed`.** Fixed in the harness, not in
 Gramarye: no `Sources/Gramarye/` file is touched. `bin/playtest-replay` built its
 effective command file with a plain `cat`, so a blank line reached `perform()` and
