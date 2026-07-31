@@ -29,3 +29,36 @@ public func expectInOrder(
         cursor = range.upperBound
     }
 }
+
+/// Records a Swift Testing issue if the transcript contains either answer a
+/// game gives to a noun it doesn't know: `I don't know the word "x"` for a word
+/// outside the vocabulary, and `You can't see any such thing` for a word the
+/// parser knows only as an adjective, or for a thing that isn't in scope.
+///
+/// The pair is what a walk of `x <noun>` over a room's own description is
+/// checking — that every noun the prose prints is a noun the player can type —
+/// and it has to be both, because the two failures read very differently to a
+/// player and only one of them looks like a missing word. On failure the whole
+/// transcript is included, which a bare `#expect(!contains)` cannot do.
+///
+/// - Parameters:
+///   - transcript: the transcript to search.
+///   - note: optional context for the failure message, e.g. the probe that ran.
+///   - sourceLocation: the caller's source location, for issue reporting.
+public func expectEveryNounAnswered(
+    _ transcript: String,
+    _ note: String = "",
+    sourceLocation: SourceLocation = #_sourceLocation
+) {
+    for failure in ["I don't know the word", "can't see any such thing"]
+    where transcript.contains(failure) {
+        Issue.record(
+            """
+            A noun went unanswered: "\(failure)".\(note.isEmpty ? "" : " \(note)")
+            Transcript:
+            \(transcript)
+            """,
+            sourceLocation: sourceLocation)
+        return
+    }
+}

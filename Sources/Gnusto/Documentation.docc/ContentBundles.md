@@ -87,6 +87,8 @@ Because a bundle is a self-contained `Sendable` value type, it can live in its o
 
 The **Lighthouse** example (`Sources/Lighthouse/`) splits its tower into a `Tower` bundle that owns the Lamp Room and the beacon, while the host wires the stairs up to it and the cross-bundle rule that relighting the beacon depends on oil found below — the ordinary division of labor between a bundle and its host.
 
+It also has a second bundle for the other reason to want one. `Fixtures` owns no geography at all: it is eight scenery items that exist so every noun the rooms print is a noun the parser knows, kept out of the host so the host stays short. Its items are placed by the *host's* `map` (`fixtures.sea.starts(in: jetty)`) — placements resolve against one pooled registry, so a host placing a bundle's item is ordinary; what a bundle cannot do is *name* a room it doesn't declare, since the only rooms it can store are its own. A bundle is somewhere to put declarations, and "a region" is only the most obvious reason to need one.
+
 `Tests/GnustoTests/Support/BundleGame/` is a minimal game built this way: `AtticContent` and `CellarContent` each own a room, an item, and rules (the attic also adds a `rummage` verb), and `BundleGame` composes them with a cross-bundle exit. `BundleCompositionTests` boots it and confirms every bundle's rules and verbs fire, the cross-bundle exit traverses both ways, each bundle's IDs are namespaced by its type, and two instances sharing a namespace are rejected.
 
 For a bundle that also carries logic over the *host's* world — a content-bearing plugin — see <doc:Plugins>.

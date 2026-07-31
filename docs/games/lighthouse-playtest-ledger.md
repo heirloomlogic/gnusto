@@ -104,3 +104,33 @@ no longer move the tide. Lighthouse's own source is unchanged — answering `.ta
 a rule on the keeper and leaving every other noun to the fall-back was never the defect.
 Regression cover: `LighthouseTranscriptTests.talkingToNobodyOnTheJettyCostsNoTurn`. See
 [#96](https://github.com/heirloomlogic/gnusto/issues/96).
+
+**2026-07-31 — every `confirmed` row above marked `fixed`.** The game was reconciled
+with the rewritten `docs/games/lighthouse.md` and #91–#95 closed in one change. Pass
+all of these keys as `ledgerKeys` on the next round: a `fixed` key that comes back is a
+regression, not a finding.
+
+What the rows became, by class:
+
+| Class | What was done | Cover |
+|---|---|---|
+| `exit-prose-mismatch`, `presence-line-location-blind` — the keeper's stair lines | Both rewritten direction-neutral. `ActorBehaviors.roams` has one arrival and one departure line for the whole room set, so there was no per-room seam to use. | `theKeepersStairLinesNameNoDirection` |
+| `prose-untrue-of-frame` — the briefing | Rewritten to name where the key and the oil *are* and never where she is standing or what the player already holds, so it needs no branch. | `keeperBriefsOnceThenReminds` |
+| `prose-untrue-of-state` — the shelf | `firstSight` deleted. The engine's own surface listing is the announcement and it stops with the key. | `theShelfStopsAnnouncingTheKeyOnceItIsTaken` |
+| `prose-untrue-of-frame` — both lamp fuses | Each `say` guarded on the lamp being held or in the player's room. The state change stays unconditional. | `theLampBurnsDownQuietlyWhenYouCannotSeeIt` |
+| `prose-untrue-of-state` — the takeable chest | `chest.before(.take)` refuses. | `theChestWillNotBeCarriedOut` |
+| `unanswerable-noun` (11 rows) | Eight scenery items in a new `Fixtures` bundle plus three in `Tower`, and synonyms on the existing items for the parts their own descriptions name. | `theJettyAnswersToItsOwnDescription`, `theBaseAndStoreroomAnswerToTheirOwnDescriptions`, `theLampRoomAnswersToItsOwnDescription`, `theKeeperAnswersToHerselfAndHerLeg` |
+| `mechanic-contradicts-prose` — `pour`/`empty`, `burn` | Promoted per entity with `refuse`/`reply`. The other ~47 stubs still answer in the engine's voice; that is register, and it is carried as an open question in the design doc rather than fixed. | `pouringTheCanTheGameCallsFull`, `burnAndLightAgreeAboutTheLampAndTheBeacon` |
+| `prose-untrue-of-frame` — `swim` on the jetty | `jetty.before(.swim, .dive)` refuses. | `theSeaIsThereWhenYouTryToSwimInIt` |
+| `mechanic-contradicts-prose` — `drop can` then `turn on beacon` | The predicate stays `isHeld`; the refusal now names your hands rather than the storeroom. | `theFuelGateNamesYourHandsNotTheStoreroom` |
+| `doc-drift` — the beacon's lit `describe` branch | `isLit` set before `end(won:)`. Not reachable by an examine — the game is over — but the branch and the doc comment are honest, and the save state is. | `theBeaconIsLitWhenTheGameEnds` |
+
+Two of the round's `refuted` rows changed anyway, and neither is a reversal. `x keeper`
+answered the engine's stock "nothing special" line, correctly and by design; the keeper
+now has a description because #92 needed `leg` to answer and a stock line was a poor
+place to send it. The tagline row was refuted as licensed-by-doc; the rewritten design
+doc retired the tagline on its own terms.
+
+The `refuted` rows on register (`sing`, `jump`, `attack keeper`) stand refuted, and the
+design doc now says so in writing, so the next round can cite it rather than re-argue
+it.
