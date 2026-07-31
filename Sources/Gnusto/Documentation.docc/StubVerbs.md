@@ -23,13 +23,20 @@ which means it:
    is no grue still answers *"You can't see any such thing."* A stub doesn't buy
    politeness by weakening scope honesty.
 
-   Scope, not *reachability*. The core physical verbs re-check reach and refuse
-   with `cantReach` — `push` does, so `push water` through a shut glass bottle
-   says so. Stubs don't, so `squeeze water` in that same state answers its stock
-   line. That's deliberate for now: half the set (`smell`, `listen`, `point at`,
-   `count`) is fine at a distance, so a blanket guard would be wrong and a
-   per-verb one is a judgement call per verb. A game that cares adds the guard
-   in its own rule.
+   Scope is the *visible* set, which admits what can be seen through the glass
+   of a shut jar or in somebody else's hands — so the physical stubs re-check
+   **reach** and refuse with ``GameText/cantReach``, exactly as `push` does.
+   Through the shut bottle in Zork's kitchen, `push water`, `squeeze water` and
+   `burn water` now all answer *"You can't reach the quantity of water."*, and
+   opening the bottle lets all three through.
+
+   Which verbs check is a call made per verb, because a blanket guard would be
+   wrong: `smell`, `listen to`, `point at`, `count`, `buy`, `sell` and `wake`
+   are fine at a distance — you can smell a fire across a room, count coins
+   behind glass, and shout somebody awake. `throw … at …` checks the projectile
+   and deliberately not the target, and `give … to …` is the one stub that
+   checks both slots, since handing something over is contact with the gift and
+   with whoever takes it.
 3. **Costs a turn.** Flailing at the chair takes time; fuses and daemons tick.
    This is the substantive difference from the parse error it replaces, which was
    free.

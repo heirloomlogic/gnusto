@@ -144,6 +144,157 @@ struct StubVerbTests {
         #expect(!turn.contains(#""attack""#))
     }
 
+    // MARK: - Reach stays honest too
+
+    /// Scope is *visible* items, so the coin in the shut glass case can be
+    /// named; touching it is another matter. Every stub that acts on its object
+    /// with a hand refuses the same way `push` does — the complaint that opened
+    /// the issue was that `push water` and `squeeze water` disagreed through the
+    /// same glass.
+    ///
+    /// One command per `.directObject` stub, so the day a verb's reach is
+    /// downgraded by accident this list is what fails.
+    static let everyReachingStubCommand = [
+        "attack coin", "smash coin", "burn coin", "cut coin", "dig coin",
+        "pull coin", "turn coin", "squeeze coin", "shake coin", "knock on coin",
+        "throw coin at rod", "touch coin", "taste coin", "eat coin", "drink coin",
+        "kiss coin", "give coin to rod", "wave coin", "climb coin",
+        "jump over coin", "sit on coin",
+        "fill coin", "pour coin", "empty coin", "tie coin", "untie coin",
+        "blow coin",
+    ]
+
+    @Test(arguments: StubVerbTests.everyReachingStubCommand)
+    func aStubThatNeedsReachRefusesThroughTheGlass(_ command: String) async throws {
+        let turn = turnOutput(of: command, in: try await play(ReachLab(), [command]))
+        #expect(turn.contains("You can't reach the gold coin."), "\(command): \(turn)")
+    }
+
+    /// And the other half of the set, which a blanket guard would have broken:
+    /// you can smell a fire across a room and count coins behind glass. One
+    /// command per stub that takes an object and doesn't need to touch it.
+    static let everyDistantStubCommand = [
+        "smell coin", "listen to coin", "point at coin", "count coin",
+        "buy coin", "sell coin", "wake coin",
+    ]
+
+    @Test(arguments: StubVerbTests.everyDistantStubCommand)
+    func aStubThatWorksAtADistanceStillAnswersThroughTheGlass(
+        _ command: String
+    ) async throws {
+        let turn = turnOutput(of: command, in: try await play(ReachLab(), [command]))
+        #expect(!turn.contains("can't reach"), "\(command): \(turn)")
+        #expect(!turn.contains("can't see any such thing"), "\(command): \(turn)")
+    }
+
+    /// The issue's exact complaint, in one transcript: the core verb and the
+    /// stub now answer the same question the same way.
+    @Test func aStubRefusesReachInTheSameWordsAsACoreVerb() async throws {
+        let transcript = try await play(ReachLab(), ["push coin", "squeeze coin"])
+        let refusal = "You can't reach the gold coin."
+        #expect(turnOutput(of: "push coin", in: transcript).contains(refusal))
+        #expect(turnOutput(of: "squeeze coin", in: transcript).contains(refusal))
+    }
+
+    /// The guard is reach and nothing else: open the case and the same command
+    /// gets its stock line.
+    @Test func openingTheCaseLetsTheReachingStubsThrough() async throws {
+        let transcript = try await play(ReachLab(), ["squeeze coin", "open case", "shake coin"])
+        #expect(turnOutput(of: "squeeze coin", in: transcript).contains("You can't reach"))
+        #expect(
+            turnOutput(of: "shake coin", in: transcript)
+                .contains("You shake the gold coin. Nothing rattles loose."))
+    }
+
+    /// The two-slot shapes, which is why the flag isn't a `Bool`. `give` needs
+    /// the recipient in reach — handing something over is contact.
+    @Test func givingNeedsToReachTheRecipientAndNotJustTheGift() async throws {
+        let turn = turnOutput(
+            of: "give rod to doll", in: try await play(ReachLab(), ["give rod to doll"]))
+        #expect(turn.contains("You can't reach the porcelain doll."))
+    }
+
+    /// And `throw … at …` needs the opposite: reaching the target is the one
+    /// thing throwing exists to avoid. Only the projectile is checked.
+    @Test func throwingNeedsToReachTheProjectileAndNotTheTarget() async throws {
+        let transcript = try await play(ReachLab(), ["throw rod at doll", "throw doll at rod"])
+        #expect(
+            turnOutput(of: "throw rod at doll", in: transcript)
+                .contains("Throwing things about achieves nothing."))
+        #expect(
+            turnOutput(of: "throw doll at rod", in: transcript)
+                .contains("You can't reach the porcelain doll."))
+    }
+
+    /// The engine's other visible-but-not-reachable case: what somebody else is
+    /// holding. A stub must answer it the way `take` already does.
+    @Test func aStubCantReachIntoAnActorsHandsEither() async throws {
+        let transcript = try await play(ReachLab(), ["take crust", "squeeze crust"])
+        let refusal = "You can't reach the bread crust."
+        #expect(turnOutput(of: "take crust", in: transcript).contains(refusal))
+        #expect(turnOutput(of: "squeeze crust", in: transcript).contains(refusal))
+    }
+
+    /// The player is always to hand, in the dark and everywhere else, so the
+    /// reach guard never comes between them and their own "yourself" line.
+    @Test func youAreAlwaysWithinReachOfYourself() async throws {
+        let turn = turnOutput(of: "squeeze me", in: try await play(ReachLab(), ["squeeze me"]))
+        #expect(turn.contains("Best leave yourself out of it."))
+    }
+
+    /// A stub that refuses for reach is still a stub: `refuse` passes world
+    /// time, so the turn costs one exactly like the stock line does.
+    @Test func refusingForReachStillCostsATurn() async throws {
+        let transcript = try await play(ReachLab(), ["score", "squeeze coin", "score"])
+        let scores = transcript.components(separatedBy: "> score")
+        #expect(scores[1].contains("in 0 turns"))
+        #expect(scores[2].contains("in 1 turn"))
+    }
+
+    /// A door is never placed in a room — it hangs off the exits — so it enters
+    /// scope by its own route. It is reachable from either side, and the verb a
+    /// player tries on a shut door must not start refusing.
+    @Test func aDoorIsWithinReachFromEitherSideOfIt() async throws {
+        let turn = turnOutput(
+            of: "knock on door", in: try await play(LockedDoorGame(), ["knock on door"]))
+        #expect(turn.contains("Nobody answers."))
+    }
+
+    /// Ties both hand-written lists above to the table, the way
+    /// ``everyStubRowHasACommandInTheList`` ties the big one: a stub added
+    /// later — or a reach quietly downgraded later — must not slip past a file
+    /// that still reads as exhaustive.
+    @Test func theTwoReachListsCoverEveryStubTheyClaimTo() {
+        let takesAnObject = { (stub: StubVerb) in
+            stub.rows.contains { $0.elements.contains(.directObject) }
+        }
+        let reaching = DefaultActions.stubs.filter { $0.reach != .notNeeded }
+        #expect(reaching.count == Self.everyReachingStubCommand.count)
+
+        let distant = DefaultActions.stubs.filter { $0.reach == .notNeeded && takesAnObject($0) }
+        #expect(distant.count == Self.everyDistantStubCommand.count)
+    }
+
+    /// A reach value that guards a slot the verb's rows don't have would be a
+    /// check that never runs — the same class of silent drift the core/stub
+    /// tables are shaped to make unrepresentable.
+    @Test func everyStubGuardsOnlySlotsItsRowsActuallyHave() {
+        for stub in DefaultActions.stubs {
+            switch stub.reach {
+            case .notNeeded:
+                continue
+            case .directObject:
+                #expect(
+                    stub.rows.contains { $0.elements.contains(.directObject) },
+                    "\(stub.intent) guards a direct object it never takes")
+            case .bothObjects:
+                #expect(
+                    stub.rows.allSatisfy { $0.elements.contains(.indirectObject) },
+                    "\(stub.intent) guards an indirect object one of its rows never takes")
+            }
+        }
+    }
+
     // MARK: - A stub costs a turn
 
     /// The substantive difference from the parse error a stub replaces: flailing
