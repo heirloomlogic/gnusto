@@ -300,6 +300,47 @@ struct LighthouseTranscriptTests {
             ])
     }
 
+    /// A lamp put down on the shelf is as watchable as a lamp in the chest. The
+    /// guard used to be hand-rolled as `isOpen && holds(_:)` over the room's
+    /// contents, and a `surface` is not a `container` and so is never open — so
+    /// the lamp on the shelf burned down in silence (#118).
+    @Test func theLampBurnsDownAloudWhereItRestsOnTheShelf() async throws {
+        let transcript = try await play(
+            Lighthouse(),
+            Self.toTheOpenChest
+                + ["take lamp", "light lamp", "west", "put lamp on shelf"]
+                + Array(repeating: "wait", count: 9),
+            seed: 0)
+
+        expectInOrder(
+            transcript,
+            [
+                "The oil lamp's flame sinks to a sullen flicker.",
+                "The oil lamp gutters, and goes out.",
+            ])
+    }
+
+    /// The one line the player most needs is the one that puts out the light
+    /// that would let them read it. `lampDies` asks whether the lamp is in sight
+    /// *before* it extinguishes it, so going out in the dark lamp room still
+    /// says so instead of dropping the player into an unexplained blackout.
+    @Test func theLampSaysItWentOutEvenAsThatLeavesYouInTheDark() async throws {
+        let transcript = try await play(
+            Lighthouse(),
+            Self.toTheLampRoomWithLamp + ["drop lamp"]
+                + Array(repeating: "wait", count: 9) + ["look"],
+            seed: 0)
+
+        expectInOrder(
+            transcript,
+            [
+                "The oil lamp gutters, and goes out.",
+                // And it really was the only light in the room, so asking after
+                // the fact is the only way the player would ever have found out.
+                "It is pitch black. You can't see a thing.",
+            ])
+    }
+
     /// The storeroom's description says the sea chest sits against the far wall.
     /// A takeable chest let the player carry that sentence out of the room — and
     /// a chest with a floor listing on top of the description announced itself

@@ -97,6 +97,20 @@ public struct Actor: Sendable, Equatable {
         asItem.reveal()
     }
 
+    /// True if the player could see the actor from where they are standing —
+    /// ``Item/isVisible``, and the one a rule about a person usually wants:
+    /// "does he watch you do it" is a question about being seen, not touched.
+    public var isVisible: Bool {
+        asItem.isVisible
+    }
+
+    /// True if the player could put a hand on the actor — ``Item/isReachable``.
+    /// Reaching a person is what `give`, `attack` and `show` need; seeing one
+    /// is ``isVisible``.
+    public var isReachable: Bool {
+        asItem.isReachable
+    }
+
     /// The room the actor is in, or nil while offstage.
     public var location: Location? {
         let (frame, id) = asItem.resolved

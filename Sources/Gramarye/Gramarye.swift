@@ -554,7 +554,7 @@ struct Gramarye: Game, GameMain {
             // whenever this door shuts, and everything that could unmake them is
             // in the book.
             try require(
-                bookIsToHand,
+                spellbook.isReachable,
                 else: """
                     You put a hand to the door and think better of it. These wards catch of their own accord whenever \
                     it shuts, and the master's book is on the wrong side of it. There is a version of this morning \
@@ -624,26 +624,6 @@ struct Gramarye: Game, GameMain {
                 """)
             try end(won: true)
         }
-    }
-
-    /// True when the apprentice could still get his hands on the book from
-    /// where he is standing: holding it, on the floor here, or resting in or on
-    /// something open here — the book starts on the desk, and `isIn` is direct
-    /// containment, so the desk needs its own clause.
-    ///
-    /// This is what `close door` asks before it agrees to shut the wards on a
-    /// room. `unbar` is repeatable and the book is the only way to it, so a
-    /// door shut with the book to hand is a door that opens again.
-    ///
-    /// The third hand-rolled copy of this predicate in the repo — Lighthouse's
-    /// `lampIsInSight` is the second and `GnustoActors` has its own — and they
-    /// have already drifted from each other. `Visibility` computes exactly this
-    /// and nothing public exposes it; an engine-level `Item.isReachable` would
-    /// retire all three.
-    private var bookIsToHand: Bool {
-        guard !spellbook.isHeld else { return true }
-        let here = player.location
-        return spellbook.isIn(here) || here.contents.contains { $0.isOpen && $0.holds(spellbook) }
     }
 
     var map: WorldMap {

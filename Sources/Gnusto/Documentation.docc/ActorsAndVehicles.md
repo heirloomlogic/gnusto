@@ -87,7 +87,9 @@ What an actor in the room is holding is **visible but not reachable**:
 the player can see, name, and examine the axe in the troll's hands, but
 `take axe` refuses with ``GameText/cantReach`` — the same split as the
 contents of a shut glass jar. Taking things *out* of those hands is a
-plugin's job (stealing), not a default's.
+plugin's job (stealing), not a default's. A rule asks the same question
+with ``Item/isVisible`` and ``Item/isReachable``; on the axe they answer
+true and false.
 
 Light follows the same honesty: a lit lantern in an actor's hand lights
 the room the actor is in, and leaves with him.

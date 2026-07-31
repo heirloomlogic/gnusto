@@ -112,6 +112,8 @@ A game type that also conforms to ``GameMain`` is a complete `@main` executable 
 - ``startsUnlocked``
 - ``Item/isOpen``
 - ``Item/isLocked``
+- ``Item/isReachable``
+- ``Item/isVisible``
 - ``Item/reveal()``
 - ``Item/isRevealed``
 - ``Location/exit(_:to:via:)``

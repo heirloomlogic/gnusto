@@ -52,7 +52,7 @@ The built-in intents are constants on ``Intent`` (``Intent/take``, ``Intent/drop
 
 Inside a rule body, your declarations *are* the live entities. The bare identifiers `player`, `command`, `world`, and every room and item you declared resolve to the current turn's state.
 
-Items expose ``Item/isHeld``, ``Item/isWorn``, ``Item/isTouched``, ``Item/name``, a settable ``Item/description``, ``Item/holds(_:)``, and the movers ``Item/move(to:)`` and ``Item/vanish()``:
+Items expose ``Item/isHeld``, ``Item/isWorn``, ``Item/isTouched``, ``Item/name``, a settable ``Item/description``, ``Item/holds(_:)``, the scope questions ``Item/isReachable`` and ``Item/isVisible``, and the movers ``Item/move(to:)`` and ``Item/vanish()``:
 
 ```swift
 lever.after(.take) {

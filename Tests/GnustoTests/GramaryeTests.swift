@@ -386,6 +386,20 @@ struct GramaryeTests {
             ])
     }
 
+    /// The book on the desk is *not* on the wrong side of anything — but the
+    /// hand-rolled predicate this guard used to run on tested `isOpen &&
+    /// holds(_:)` against the room's contents, and the desk is a `surface`, not
+    /// a `container`, so it is never open. The book *starts* on the desk, so
+    /// shutting the door on turn one — before the `doorSeals` fuse does it for
+    /// him — used to refuse over a book two feet away (#118).
+    @Test func theDoorShutsOverABookLeftOnTheDesk() async throws {
+        let transcript = try await play(Gramarye(), ["close door"], seed: 0)
+
+        let closing = turnOutput(of: "close door", in: transcript)
+        #expect(!closing.contains("on the wrong side of it"))
+        #expect(closing.contains("The warding-marks take light"))
+    }
+
     /// The granite refuses outright, because `passwall` is the only thing that
     /// can reopen it and the scroll is ash by the time anybody could try.
     @Test func theMistCannotBeClosedBehindYou() async throws {
