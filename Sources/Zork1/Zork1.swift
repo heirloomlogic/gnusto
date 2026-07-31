@@ -753,7 +753,6 @@ struct Zork1: Game, GameMain {
         actors.steals(
             thief.thief, daemonName: "thiefSteals",
             candidates: treasureRoster,
-            containers: [house.trophyCase],
             chancePerTurn: 30,
             announcement: { Prose.thiefSteals($0) })
 

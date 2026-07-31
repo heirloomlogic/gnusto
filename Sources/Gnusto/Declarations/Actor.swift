@@ -111,6 +111,12 @@ public struct Actor: Sendable, Equatable {
         asItem.isReachable
     }
 
+    /// True if `other` could put a hand on this actor — ``Item/isReachable(from:)``,
+    /// which is to say they are standing in the same room.
+    public func isReachable(from other: Actor) -> Bool {
+        asItem.isReachable(from: other)
+    }
+
     /// The room the actor is in, or nil while offstage.
     public var location: Location? {
         let (frame, id) = asItem.resolved
@@ -150,6 +156,21 @@ public struct Actor: Sendable, Equatable {
         let (frame, myID) = asItem.resolved
         let itemID = item.id
         return frame.with { $0.state.placements[itemID] == .heldBy(myID) }
+    }
+
+    /// True if the item is anywhere in the actor's possession: in their hands,
+    /// or on or inside something they are carrying — **to any depth**.
+    ///
+    /// ``holds(_:)`` tests one level, which is the wrong question the moment
+    /// somebody carries a bag: a coin in a purse in a satchel over his shoulder
+    /// is his, and `holds(coin)` says no.
+    ///
+    /// - Parameter item: the item to test.
+    /// - Returns: true if the item is somewhere under the actor.
+    public func possesses(_ item: Item) -> Bool {
+        let (frame, myID) = asItem.resolved
+        let itemID = item.id
+        return frame.with { $0.state.isPossession(itemID, of: myID) }
     }
 
     /// The items the actor is carrying, sorted by ID for stable iteration.
