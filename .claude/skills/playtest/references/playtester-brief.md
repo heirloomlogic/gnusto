@@ -56,7 +56,8 @@ Four things to know:
 - **Annotate as you go.** A line starting `//` or `#` is recorded in the transcript
   and never reaches the parser — no turn, no clock tick, no rule. Write down what
   you are probing and why. The annotated transcript is an artifact someone else
-  will read.
+  will read. Blank lines are free too — the tool strips them out of the command
+  file — so group your probes with them.
 - **For a deep state, save once and restore.** `--save <slot>` at the end of a
   prologue, then `--restore <slot>` in each probe, instead of replaying forty
   `z`s. Restoring costs no turn, so it does not move the clock.

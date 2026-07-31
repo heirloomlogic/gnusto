@@ -95,6 +95,12 @@ look
 The annotated transcript is the artifact you attach to a bug report. `script` and
 `unscript` do the same thing mid-session in an interactive game.
 
+Blank lines cost nothing either, but by a different route: `bin/playtest-replay`
+strips them when it builds the effective command file, so the engine never sees one.
+Use them to group probes. (In an interactive session there is no file to strip, and
+a bare Enter still draws "I beg your pardon?" — the stock answer to an empty
+command, not a defect.)
+
 ## Never count commands as turns
 
 Meta commands (`score`, `quit`, `version`, `undo`, `restart`, `save`, `restore`) and
