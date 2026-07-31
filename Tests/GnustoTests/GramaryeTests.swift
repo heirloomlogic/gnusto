@@ -24,7 +24,10 @@ struct GramaryeTests {
                 "north",
                 "cast firebolt at golem",  // energy destroys the guardian
                 "take amulet",
-            ])
+            ],
+            // No random draws today; pinned so the walkthrough in
+            // `docs/games/gramarye.md` replays exactly if the game ever grows one.
+            seed: 0)
 
         expectInOrder(
             transcript,

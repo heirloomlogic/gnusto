@@ -45,9 +45,16 @@ what a game depends on: `GnustoClock` → `clock`, `GnustoConversation` → `tal
 `GnustoScoring` → `score`, `GnustoSpellcasting` → `magic`. Charters filter themselves
 on that, so a game with no clock gets no clock-watcher.
 
-**`docPath` is `docs/games/<game>.md` if it exists and `null` if it doesn't.** Today
-only Fulminate has one. A missing doc doesn't stop the round finding defects; it stops
-it *fixing* prose, because the repo makes the design doc the copy source of truth.
+**`docPath` is `docs/games/<game>.md` if it exists and `null` if it doesn't.** Check
+with `ls docs/games/`; don't work from a list, here or anywhere. A missing doc doesn't
+stop the round finding defects; it stops it *fixing* prose, because the repo makes the
+design doc the copy source of truth.
+
+Pass the doc **even for a `fix: "none"` round**. It changes what the verifiers can
+argue: with a contract they refute on "the doc licenses this", and without one they
+fall back to "you cannot tell intent from outside, so a preference is refuted", which
+rejects good findings along with bad. See the Refuted section of
+`docs/games/gramarye-playtest-2026-07-30.md` for what that looked like in practice.
 
 **Derive `routedIssues` fresh, every round, from the issues that are open right now:**
 

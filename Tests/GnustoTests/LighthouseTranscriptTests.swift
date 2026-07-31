@@ -7,8 +7,9 @@ import Testing
 
 /// End-to-end playthroughs of *The Lighthouse*, the feature-tour example. Each
 /// test drives one idiom the game exists to demonstrate — the full winning
-/// route, then the locked door, the container, the lamp fuse, the tide daemon,
-/// the keeper (actor + custom verb + `@Global`), and save/restore.
+/// route, then the locked door, the container, the dark lamp room, the
+/// cross-bundle fuel gate, the lamp fuse, the tide daemon, the keeper (actor +
+/// custom verb + `@Global`), and save/restore.
 struct LighthouseTranscriptTests {
     /// The whole game, start to scored win: key off the shelf, through the
     /// locked door, oil and lamp from the chest, up the dark stairs, beacon
@@ -81,6 +82,38 @@ struct LighthouseTranscriptTests {
                 "Taken.",
                 "Taken.",
             ])
+    }
+
+    /// Darkness: the Lamp Room has no light of its own — the beacon in it is out
+    /// — so climbing the stairs without a lit lamp reaches the room and sees
+    /// nothing. This is what makes the portable light load-bearing rather than
+    /// scenery, per the game's mechanics contract.
+    @Test func theLampRoomIsDarkWithoutTheLamp() async throws {
+        let transcript = try await play(Lighthouse(), ["north", "up"])
+
+        expectInOrder(transcript, ["> up", "It is pitch black. You can't see a thing."])
+    }
+
+    /// The cross-bundle seam: the beacon belongs to the `Tower` bundle, the oil
+    /// belongs to the host, and the winning rule is the host's because it checks
+    /// for one while acting on the other. Reaching the beacon with a lit lamp and
+    /// no oil can is refused, and the refusal names where the oil is.
+    @Test func theBeaconRefusesToLightWithoutTheOil() async throws {
+        let transcript = try await play(
+            Lighthouse(),
+            [
+                "north", "take key", "unlock door with key", "open door", "east",
+                "open chest", "take lamp", "light lamp", "west", "up",
+                "light beacon",
+            ])
+
+        expectInOrder(
+            transcript,
+            [
+                "Lamp Room",
+                "The beacon's reservoir is dry. You'll want the oil from the storeroom.",
+            ])
+        #expect(!transcript.contains("beacon roars alight"))
     }
 
     /// A fuse: a lit lamp burns down — a warning flicker, then out — and

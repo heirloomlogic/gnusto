@@ -16,7 +16,7 @@ that covers your task before writing code.
 | `Sources/Gnusto*/` | optional libraries spliced in as `GameContent`/`GamePlugin`: `GnustoClock`, `GnustoConversation`, `GnustoScoring`, `GnustoSpellcasting`, `GnustoMeleeCombat`, `GnustoDangerousDark`, `GnustoActors`. Plus `GnustoMacros` (the `#verb` macro) and `GnustoTestSupport` (the `play` harness) |
 | `Sources/CloakOfDarkness`, `Lighthouse`, `Zork1`, `Gramarye`, `Fulminate` | demo games, also the engine's real test corpus |
 | `Tests/GnustoTests/` | one suite per subject; `Support/` holds the fixture games |
-| `docs/games/*.md` | per-game design docs — **story-and-copy source of truth**, iterated separately from code. Only Fulminate has one so far |
+| `docs/games/*.md` | per-game design docs — **story-and-copy source of truth**, iterated separately from code. Not every game has one; alongside each, its play-test round reports and ledger |
 | `docs/playtesting.md` | how to play a game by hand and read the transcript as prose, plus the calibration answer key |
 | `.claude/skills/playtest/`, `.claude/workflows/playtest.js` | the automated play-test harness: subagents play, read prose, and report lines untrue of their frame |
 | `bin/playtest-replay` | one-line non-interactive replay of any game, seed pinned |
@@ -151,8 +151,10 @@ rewriting copy, grep the fragment. Fixture games live in `Tests/GnustoTests/Supp
 
 ## Working on a demo game
 
-Read `docs/games/<game>.md` first. It owns the story, the copy, and — for Fulminate —
-a **mechanics contract** stating which counts and structures may not change even
-though all prose may. Commit doc changes with the code. Then actually play the game
+Read `docs/games/<game>.md` first, if there is one. It owns the story, the copy, and a
+**mechanics contract** stating which counts and structures may not change even though
+all prose may. Alongside it, `<game>-playtest-*.md` is what the last round found and
+`<game>-playtest-ledger.md` is every finding ever filed. Commit doc changes with the
+code. Then actually play the game
 (`swift run <Game>` with piped stdin) and read the transcript as prose: passing tests
 do not tell you whether a line is true of where the player is standing.
