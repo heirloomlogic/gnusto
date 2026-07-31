@@ -48,6 +48,69 @@ struct StubLab: Game {
     }
 }
 
+/// The reachability fixture: everything in it is *visible*, and only some of it
+/// is *reachable*. Both of the engine's ways of putting a nameable thing out of
+/// arm's reach are here — the shut glass case (the coin and the doll), and an
+/// actor's hands (the crust) — with the rod on the floor as the one object every
+/// verb can get at.
+struct ReachLab: Game {
+    let title = "Reach Lab"
+    let intro = "A vault, and a case you can see into."
+
+    let vault = Location {
+        name("Vault")
+        description("A stone vault. A glass case stands on the floor.")
+    }
+
+    /// Openable and transparent, so it starts shut with its contents in plain
+    /// view and out of reach.
+    let glassCase = Item {
+        name("glass case")
+        adjectives("glass")
+        container
+        openable
+        transparent
+    }
+
+    let coin = Item {
+        name("gold coin")
+        adjectives("gold")
+    }
+
+    /// The unreachable *recipient*, for the one stub whose second slot needs
+    /// reach. A doll rather than a person: an actor can only start in a room,
+    /// so nobody can stand behind the glass.
+    let doll = Item {
+        name("porcelain doll")
+        adjectives("porcelain")
+    }
+
+    let rat = Actor {
+        name("grey rat")
+        adjectives("grey")
+    }
+
+    let crust = Item {
+        name("bread crust")
+        adjectives("bread")
+    }
+
+    let rod = Item {
+        name("brass rod")
+        adjectives("brass")
+    }
+
+    var map: WorldMap {
+        player.starts(in: vault)
+        glassCase.starts(in: vault)
+        coin.starts(inside: glassCase)
+        doll.starts(inside: glassCase)
+        rat.starts(in: vault)
+        crust.starts(heldBy: rat)
+        rod.starts(in: vault)
+    }
+}
+
 /// The scope-honesty fixture. The grue is declared but never placed, so "grue"
 /// is a word the game knows and an object that is never in view — which is
 /// exactly the case that must answer "You can't see any such thing." rather than

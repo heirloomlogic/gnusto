@@ -111,6 +111,12 @@ In any rule body: `say`, `refuse`, `reply`, `require(_:else:)`, `end(won:)`, `di
 - **Actors are always listed** if perceivable. `scenery` has no effect on them; only
   `hidden`-and-unrevealed or offstage suppresses one.
 - **`reveal()` is one-way** and `isTouched` is read-only — neither is a toggle.
+- **`maxScore` is checked against the `Scoring` award table.** `Scoring(awards:)` is the
+  one place a register's points are written — `awardOnce("beacon")` and
+  `visit(_:register:)` read them from there, and an unlisted register is a `fatalError`,
+  not a silent zero. The bootstrap adds the table to every treasure's
+  `.takeValue`/`.depositValue` and warns when the total misses `maxScore`. Content that
+  declares nothing (an empty table, no valued treasures) opts out.
 - **Meta intents and parse failures cost no turn** (`Command.metaIntents`,
   `freeReply`). A test that counts turns by counting commands will be wrong the
   moment one of them fails to parse. This is the single most common test-timing bug.
@@ -148,8 +154,15 @@ In any rule body: `say`, `refuse`, `reply`, `require(_:else:)`, `end(won:)`, `di
   item/actor name without `properName` warns at bootstrap (locations are exempt).
 - **Every noun a room description prints must be answerable.** A named thing the
   parser doesn't know reads as a bug; add the scenery item with the noun. Item
-  vocabulary comes from `name` (last word = noun, earlier words = adjectives) plus
-  `synonyms` (nouns) and `adjectives`. The final token of a phrase must be a noun.
+  vocabulary comes from `name` and `synonyms` (each a noun phrase: last word =
+  noun, earlier words = adjectives) plus `adjectives`. The final token of a
+  phrase must be a noun.
+- **One splitter, both sides.** `Vocabulary.words(in:)` splits every declared
+  phrase exactly as `StandardParser.tokenize` splits player input — lowercased, a
+  trailing `'s` dropped, every other non-alphanumeric a separator. So
+  `adjectives("master's")` and `adjectives("master")` are the same declaration;
+  write the second. A declared word with no letters or digits in it, or one made
+  of nothing but filler, is a **fatal** bootstrap diagnostic.
 - **`clock.now` needs a live turn** — legal in rules, `describe` blocks and actions;
   not in a `map` block, which runs at bootstrap.
 - Bootstrap diagnostics are thorough and fatal. If a game fails to start, read the

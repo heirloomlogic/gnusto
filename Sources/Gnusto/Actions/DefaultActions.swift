@@ -18,6 +18,9 @@ enum DefaultActions {
             try handler(command, frame)
         } else if let stub = stubsByIntent[command.intent] {
             // A stub verb: a word the parser knows with no mechanic behind it.
+            // The reach guard first, so `squeeze water` through a shut glass
+            // bottle answers what `push water` answers.
+            try requireReach(stub.reach, for: command, frame: frame)
             // `say`, not `reply`, so `after` rules still get their turn and the
             // world clock advances — flailing at the chair takes time.
             frame.say(stub.line(frame.definition.text, command))
@@ -714,6 +717,29 @@ enum DefaultActions {
             try refuse(Ctx.current.definition.text.didntUnderstand)
         }
         return item
+    }
+
+    /// Refuses a stub verb whose objects the player can see but not touch —
+    /// the same `cantReach` line, from the same set, that every core physical
+    /// default answers with. Which slots are checked is the stub's own call:
+    /// see ``StubVerb/Reach``.
+    ///
+    /// A slot the command didn't fill is nothing to check: `wave` and `wave
+    /// <object>` are one intent, and only the second has anything to reach.
+    private static func requireReach(
+        _ reach: StubVerb.Reach,
+        for command: Command,
+        frame: TurnFrame
+    ) throws {
+        let slots: [Item?] =
+            switch reach {
+            case .notNeeded: []
+            case .directObject: [command.directObject]
+            case .bothObjects: [command.directObject, command.indirectObject]
+            }
+        for case let item? in slots where !isReachable(item.id, frame: frame) {
+            try refuse(frame.definition.text.cantReach(item.definiteName))
+        }
     }
 
     /// Whether `id` is currently reachable by the player — the stricter set

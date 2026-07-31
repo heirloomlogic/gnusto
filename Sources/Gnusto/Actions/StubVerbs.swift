@@ -26,16 +26,44 @@ struct StubVerb: Sendable {
     /// the player mentioned.
     let line: @Sendable (GameText, Command) -> String
 
+    /// Which of this verb's object slots the player has to be able to *touch*.
+    let reach: Reach
+
+    /// Which object slots a stub needs within arm's reach, as opposed to merely
+    /// in view.
+    ///
+    /// Parser scope is the *visible* set, which admits what can be seen through
+    /// the glass of a shut jar or in somebody else's hands. Half this table is
+    /// fine with that — you can smell a fire across a room and count coins
+    /// behind glass — and half of it is nonsense at a distance, so the answer is
+    /// per verb rather than a blanket guard.
+    ///
+    /// Three cases and not a `Bool` because the two-slot shapes disagree with
+    /// each other: `give X to Y` has to reach the recipient, and `throw X at Y`
+    /// must *not* have to reach the target, which is the whole point of
+    /// throwing. Nothing wants the indirect object alone, so there is no case
+    /// for it.
+    enum Reach: Sendable {
+        /// Works at a distance — or takes no object at all.
+        case notNeeded
+        /// The direct object must be reachable.
+        case directObject
+        /// Both objects must be reachable.
+        case bothObjects
+    }
+
     /// Patterns in, rows out — spelled the way `#verb` spells them, and the
     /// reason no row below has to repeat `intent:`.
     private init(
         _ intent: Intent,
         _ patterns: [[SyntaxElement]],
+        _ reach: Reach,
         line: @escaping @Sendable (GameText, Command) -> String
     ) {
         self.intent = intent
         self.rows = patterns.map { SyntaxRule($0, intent: intent) }
         self.line = line
+        self.reach = reach
     }
 }
 
@@ -45,9 +73,10 @@ extension StubVerb {
     static func plain(
         _ intent: Intent,
         _ patterns: [[SyntaxElement]],
+        reach: Reach,
         _ line: @escaping @Sendable (GameText) -> String
     ) -> StubVerb {
-        .init(intent, patterns) { text, _ in line(text) }
+        .init(intent, patterns, reach) { text, _ in line(text) }
     }
 
     /// A stub whose every row carries a direct object, so its reply can name
@@ -63,9 +92,10 @@ extension StubVerb {
     static func named(
         _ intent: Intent,
         _ patterns: [[SyntaxElement]],
+        reach: Reach,
         _ line: @escaping @Sendable (GameText, String) -> String
     ) -> StubVerb {
-        .init(intent, patterns) { text, command in
+        .init(intent, patterns, reach) { text, command in
             guard let object = command.directObject else { return text.didntUnderstand }
             guard !object.isPlayer else { return text.stubs.yourself }
             return line(text, object.definiteName)
@@ -77,9 +107,10 @@ extension StubVerb {
     static func custom(
         _ intent: Intent,
         _ patterns: [[SyntaxElement]],
+        reach: Reach,
         _ line: @escaping @Sendable (GameText, Command) -> String
     ) -> StubVerb {
-        .init(intent, patterns, line: line)
+        .init(intent, patterns, reach, line: line)
     }
 }
 
@@ -236,6 +267,9 @@ extension DefaultActions {
     static let stubs: [StubVerb] = [
         // MARK: Violence and force
 
+        // Melee, so it wants arm's length. Nothing is lost by saying so: the
+        // ranged case has its own intent one row down. The weapon slot goes
+        // unchecked — a stub doesn't check that you're holding it either.
         .plain(
             .attack,
             [
@@ -246,7 +280,8 @@ extension DefaultActions {
                 ["hit", .directObject],
                 ["hit", .directObject, "with", .indirectObject],
                 ["fight", .directObject],
-            ]
+            ],
+            reach: .directObject
         ) { $0.stubs.attack },
 
         .named(
@@ -255,17 +290,19 @@ extension DefaultActions {
                 ["break", .directObject],
                 ["smash", .directObject],
                 ["destroy", .directObject],
-            ]
+            ],
+            reach: .directObject
         ) { $0.stubs.smash($1) },
 
-        .named(.burn, [["burn", .directObject]]) { $0.stubs.burn($1) },
+        .named(.burn, [["burn", .directObject]], reach: .directObject) { $0.stubs.burn($1) },
 
         .named(
             .cut,
             [
                 ["cut", .directObject],
                 ["slice", .directObject],
-            ]
+            ],
+            reach: .directObject
         ) { $0.stubs.cut($1) },
 
         // `dig <object> with <second object>` is what lets a game gate digging
@@ -276,7 +313,8 @@ extension DefaultActions {
                 ["dig"],
                 ["dig", .directObject],
                 ["dig", .directObject, "with", .indirectObject],
-            ]
+            ],
+            reach: .directObject
         ) { $0.stubs.dig },
 
         .named(
@@ -284,7 +322,8 @@ extension DefaultActions {
             [
                 ["pull", .directObject],
                 ["drag", .directObject],
-            ]
+            ],
+            reach: .directObject
         ) { $0.stubs.pull($1) },
 
         .named(
@@ -292,26 +331,31 @@ extension DefaultActions {
             [
                 ["turn", .directObject],
                 ["rotate", .directObject],
-            ]
+            ],
+            reach: .directObject
         ) { $0.stubs.turn($1) },
 
-        .named(.squeeze, [["squeeze", .directObject]]) {
+        .named(.squeeze, [["squeeze", .directObject]], reach: .directObject) {
             $0.stubs.squeeze($1)
         },
 
-        .named(.shake, [["shake", .directObject]]) { $0.stubs.shake($1) },
+        .named(.shake, [["shake", .directObject]], reach: .directObject) { $0.stubs.shake($1) },
 
         .plain(
             .knock,
             [
                 ["knock", .directObject],
                 ["knock", "on", .directObject],
-            ]
+            ],
+            reach: .directObject
         ) { $0.stubs.knock },
 
+        // The projectile has to be in hand; the target emphatically does not.
+        // This is the row shape a single `Bool` couldn't have described.
         .plain(
             .throwAt,
-            [["throw", .directObject, "at", .indirectObject]]
+            [["throw", .directObject, "at", .indirectObject]],
+            reach: .directObject
         ) { $0.stubs.throwAt },
 
         // MARK: Senses
@@ -322,9 +366,12 @@ extension DefaultActions {
                 ["touch", .directObject],
                 ["feel", .directObject],
                 ["rub", .directObject],
-            ]
+            ],
+            reach: .directObject
         ) { $0.stubs.touch },
 
+        // A smell crosses a room, and so does a sound. These two are the reason
+        // the guard is per verb.
         .plain(
             .smell,
             [
@@ -332,7 +379,8 @@ extension DefaultActions {
                 ["smell", .directObject],
                 ["sniff"],
                 ["sniff", .directObject],
-            ]
+            ],
+            reach: .notNeeded
         ) { $0.stubs.smell },
 
         .plain(
@@ -340,7 +388,8 @@ extension DefaultActions {
             [
                 ["listen"],
                 ["listen", "to", .directObject],
-            ]
+            ],
+            reach: .notNeeded
         ) { $0.stubs.listen },
 
         .plain(
@@ -348,21 +397,23 @@ extension DefaultActions {
             [
                 ["taste", .directObject],
                 ["lick", .directObject],
-            ]
+            ],
+            reach: .directObject
         ) { $0.stubs.taste },
 
         // MARK: Body
 
-        .named(.eat, [["eat", .directObject]]) { $0.stubs.eat($1) },
+        .named(.eat, [["eat", .directObject]], reach: .directObject) { $0.stubs.eat($1) },
 
-        .plain(.drink, [["drink", .directObject]]) { $0.stubs.drink },
+        .plain(.drink, [["drink", .directObject]], reach: .directObject) { $0.stubs.drink },
 
-        .plain(.sleep, [["sleep"]]) { $0.stubs.sleep },
+        .plain(.sleep, [["sleep"]], reach: .notNeeded) { $0.stubs.sleep },
 
         // `wake up <object>` earns its row: without it, "wake up the troll"
         // falls to `wake <object>`, which swallows "up troll", fails the
         // lexicon, and answers "You can't see any such thing" about a troll
         // standing in plain view.
+        // No reach: a shout wakes somebody through glass.
         .plain(
             .wake,
             [
@@ -370,7 +421,8 @@ extension DefaultActions {
                 ["wake", "up"],
                 ["wake", .directObject],
                 ["wake", "up", .directObject],
-            ]
+            ],
+            reach: .notNeeded
         ) { $0.stubs.wake },
 
         // MARK: Social
@@ -380,15 +432,19 @@ extension DefaultActions {
             [
                 ["kiss", .directObject],
                 ["hug", .directObject],
-            ]
+            ],
+            reach: .directObject
         ) { $0.stubs.kiss },
 
+        // The one stub that needs both slots: handing something over is contact
+        // with the gift *and* with whoever is taking it.
         .custom(
             .give,
             [
                 ["give", .directObject, "to", .indirectObject],
                 ["hand", .directObject, "to", .indirectObject],
-            ]
+            ],
+            reach: .bothObjects
         ) { text, command in
             guard let item = command.directObject, let recipient = command.indirectObject
             else { return text.didntUnderstand }
@@ -403,18 +459,21 @@ extension DefaultActions {
                 ["yell"],
                 ["shout"],
                 ["scream"],
-            ]
+            ],
+            reach: .notNeeded
         ) { $0.stubs.yell },
 
+        // Waving a thing means waving a thing you've got hold of.
         .plain(
             .wave,
             [
                 ["wave"],
                 ["wave", .directObject],
-            ]
+            ],
+            reach: .directObject
         ) { $0.stubs.wave },
 
-        .plain(.point, [["point", "at", .directObject]]) { $0.stubs.point },
+        .plain(.point, [["point", "at", .directObject]], reach: .notNeeded) { $0.stubs.point },
 
         // MARK: Motion
 
@@ -426,7 +485,8 @@ extension DefaultActions {
                 ["climb", "up", .directObject],
                 ["climb", "down", .directObject],
                 ["climb", "on", .directObject],
-            ]
+            ],
+            reach: .directObject
         ) { $0.stubs.climb },
 
         .plain(
@@ -434,19 +494,21 @@ extension DefaultActions {
             [
                 ["jump"],
                 ["jump", "over", .directObject],
-            ]
+            ],
+            reach: .directObject
         ) { $0.stubs.jump },
 
-        .plain(.swim, [["swim"]]) { $0.stubs.swim },
+        .plain(.swim, [["swim"]], reach: .notNeeded) { $0.stubs.swim },
 
-        .plain(.dive, [["dive"]]) { $0.stubs.dive },
+        .plain(.dive, [["dive"]], reach: .notNeeded) { $0.stubs.dive },
 
         .plain(
             .stand,
             [
                 ["stand"],
                 ["stand", "up"],
-            ]
+            ],
+            reach: .notNeeded
         ) { $0.stubs.stand },
 
         .plain(
@@ -455,7 +517,8 @@ extension DefaultActions {
                 ["sit"],
                 ["sit", "down"],
                 ["sit", "on", .directObject],
-            ]
+            ],
+            reach: .directObject
         ) { $0.stubs.sit },
 
         // Bare `lie` earns its row for the same reason `sit down` does: `lie
@@ -466,19 +529,25 @@ extension DefaultActions {
             [
                 ["lie"],
                 ["lie", "down"],
-            ]
+            ],
+            reach: .notNeeded
         ) { $0.stubs.lie },
 
-        .plain(.kneel, [["kneel"]]) { $0.stubs.kneel },
+        .plain(.kneel, [["kneel"]], reach: .notNeeded) { $0.stubs.kneel },
 
         // MARK: Liquids and containers
 
+        // These five check the vessel and not the second slot. The direct
+        // object is the thing in the player's hands, and its refusal is the one
+        // that reads right; whether you must also reach what you're tying the
+        // rope *to* is a call for the day a game needs it.
         .named(
             .fill,
             [
                 ["fill", .directObject],
                 ["fill", .directObject, "with", .indirectObject],
-            ]
+            ],
+            reach: .directObject
         ) { $0.stubs.fill($1) },
 
         .named(
@@ -487,17 +556,19 @@ extension DefaultActions {
                 ["pour", .directObject],
                 ["pour", .directObject, "in", .indirectObject],
                 ["pour", .directObject, "on", .indirectObject],
-            ]
+            ],
+            reach: .directObject
         ) { $0.stubs.pour($1) },
 
-        .named(.empty, [["empty", .directObject]]) { $0.stubs.empty($1) },
+        .named(.empty, [["empty", .directObject]], reach: .directObject) { $0.stubs.empty($1) },
 
         .named(
             .tie,
             [
                 ["tie", .directObject],
                 ["tie", .directObject, "to", .indirectObject],
-            ]
+            ],
+            reach: .directObject
         ) { $0.stubs.tie($1) },
 
         .named(
@@ -505,21 +576,23 @@ extension DefaultActions {
             [
                 ["untie", .directObject],
                 ["untie", .directObject, "from", .indirectObject],
-            ]
+            ],
+            reach: .directObject
         ) { $0.stubs.untie($1) },
 
         // MARK: Ritual and flavor
 
-        .plain(.pray, [["pray"]]) { $0.stubs.pray },
+        .plain(.pray, [["pray"]], reach: .notNeeded) { $0.stubs.pray },
 
-        .plain(.sing, [["sing"]]) { $0.stubs.sing },
+        .plain(.sing, [["sing"]], reach: .notNeeded) { $0.stubs.sing },
 
         .plain(
             .curse,
             [
                 ["curse"],
                 ["swear"],
-            ]
+            ],
+            reach: .notNeeded
         ) { $0.stubs.curse },
 
         .plain(
@@ -527,27 +600,30 @@ extension DefaultActions {
             [
                 ["xyzzy"],
                 ["plugh"],
-            ]
+            ],
+            reach: .notNeeded
         ) { $0.stubs.xyzzy },
 
-        .plain(.count, [["count", .directObject]]) { $0.stubs.count },
+        // Counting coins behind glass is exactly what a display case is for.
+        .plain(.count, [["count", .directObject]], reach: .notNeeded) { $0.stubs.count },
 
         // Bare `think` only. `think about <topic>` would match "think about"
         // with an empty topic and rob the parser of its "What do you want to
         // think about?" question.
-        .plain(.think, [["think"]]) { $0.stubs.think },
+        .plain(.think, [["think"]], reach: .notNeeded) { $0.stubs.think },
 
-        .plain(.wish, [["wish"]]) { $0.stubs.wish },
+        .plain(.wish, [["wish"]], reach: .notNeeded) { $0.stubs.wish },
 
         // MARK: Commerce
 
-        .plain(.buy, [["buy", .directObject]]) { $0.stubs.buy },
+        // Asking after the price of something in a window is ordinary shopping.
+        .plain(.buy, [["buy", .directObject]], reach: .notNeeded) { $0.stubs.buy },
 
-        .plain(.sell, [["sell", .directObject]]) { $0.stubs.sell },
+        .plain(.sell, [["sell", .directObject]], reach: .notNeeded) { $0.stubs.sell },
 
         // MARK: Fixtures
 
-        .named(.blow, [["blow", .directObject]]) { $0.stubs.blow($1) },
+        .named(.blow, [["blow", .directObject]], reach: .directObject) { $0.stubs.blow($1) },
     ]
 
     /// Keyed for the stage-4 lookup.

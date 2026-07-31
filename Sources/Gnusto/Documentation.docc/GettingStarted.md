@@ -150,7 +150,9 @@ var map: WorldMap {
 }
 ```
 
-Now the player can walk `north`, `examine lantern`, `take lantern`, and see it in their `inventory`. The ``adjectives(_:)`` let them type `take brass lantern` or just `take brass`. The last word of `name(_:)` ("lantern") is the noun the parser keys on.
+Now the player can walk `north`, `examine lantern`, `take lantern`, and see it in their `inventory`. The ``adjectives(_:)`` let them type `take brass lantern` or `take old lantern`; a phrase has to end on a noun, so `take brass` on its own is not one of them. The last word of `name(_:)` ("lantern") is the noun the parser keys on.
+
+Everything you declare is split into words the same way the parser splits what the player types — lowercased, a trailing possessive dropped, every other punctuation mark a separator. So `name("Mrs. Vane")` prints its period and answers to `mrs vane`, and `adjectives("master's")` is the same declaration as `adjectives("master")`. Write the second: a declaration should read the way the parser stores it.
 
 ## React with a rule
 

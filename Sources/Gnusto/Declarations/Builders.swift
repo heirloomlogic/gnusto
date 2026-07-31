@@ -94,23 +94,23 @@ extension GnustoBuilder where Element == SyntaxRule {
         table
     }
 
-    /// Lets a `verbs` block list a `#verb`-declared intent — `.ring` — and
-    /// splice the rows the intent carries.
+    /// Lets a `verbs` block list an intent — `.ring`, `.attack` — and splice the
+    /// rows that produce it: the ones a `#verb` intent carries, or the standard
+    /// table's for an engine intent, which keeps its rows there instead.
     /// - Parameter intent: the intent whose rows to splice.
-    /// - Returns: the intent's syntax rows.
+    /// - Returns: the intent's verb rows.
     public static func buildExpression(_ intent: Intent) -> [SyntaxRule] {
-        intent.syntax
+        intent.verbRows
     }
 
-    /// Lets a `verbs` block list several `#verb`-declared intents at once —
-    /// `[.ring, .polish, .sing]`. The array form isn't just taste: bare
-    /// leading-dot statements on consecutive lines parse as one chained
-    /// member access (`.ring.polish`), so multiple intents need either this
-    /// or an `Intent.` prefix per line.
+    /// Lets a `verbs` block list several intents at once — `[.ring, .polish,
+    /// .sing]`. The array form isn't just taste: bare leading-dot statements on
+    /// consecutive lines parse as one chained member access (`.ring.polish`),
+    /// so multiple intents need either this or an `Intent.` prefix per line.
     /// - Parameter intents: the intents whose rows to splice.
-    /// - Returns: the intents' syntax rows.
+    /// - Returns: the intents' verb rows.
     public static func buildExpression(_ intents: [Intent]) -> [SyntaxRule] {
-        intents.flatMap(\.syntax)
+        intents.flatMap(\.verbRows)
     }
 }
 

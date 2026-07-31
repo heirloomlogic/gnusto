@@ -115,7 +115,7 @@ let package = Package(
         ),
         .executableTarget(
             name: "CloakOfDarkness",
-            dependencies: ["Gnusto"],
+            dependencies: ["Gnusto", "GnustoScoring"],
             plugins: devPlugins
         ),
         // The feature-tour example: a mid-size game that demonstrates the
@@ -141,7 +141,7 @@ let package = Package(
         // GnustoSpellcasting — the "prove the engine hosts a spell system" game.
         .executableTarget(
             name: "Gramarye",
-            dependencies: ["Gnusto", "GnustoSpellcasting"],
+            dependencies: ["Gnusto", "GnustoScoring", "GnustoSpellcasting"],
             plugins: devPlugins
         ),
         // The mystery demo: a one-evening whodunit on a wall clock, where the

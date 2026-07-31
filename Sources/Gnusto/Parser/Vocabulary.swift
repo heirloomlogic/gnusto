@@ -55,6 +55,36 @@ struct Vocabulary: Sendable {
         allKnownWords.contains(word)
     }
 
+    /// Splits a phrase into words, the one way this engine splits anything:
+    /// lowercased, a trailing possessive dropped, every other non-alphanumeric
+    /// character a separator. `"Master's Spellbook"` yields
+    /// `["master", "spellbook"]` and `"half-moon"` yields `["half", "moon"]`.
+    ///
+    /// Both sides go through here — the author's declarations at bootstrap and
+    /// the player's typing in ``StandardParser/tokenize(_:)`` — because they
+    /// have to agree on where one word ends and the next begins. When they
+    /// didn't, a declared `master's` was a string no token could ever equal.
+    ///
+    /// The possessive is the one mark that carries a word rather than
+    /// separating two, so it is dropped rather than split on. Only a `'s`
+    /// ending a word: `don't` is still `["don", "t"]`.
+    ///
+    /// Filler is *not* stripped here — the tokenizer drops noise words from
+    /// what the player types, and a declaration made of nothing but filler is a
+    /// bootstrap error rather than a silent nothing.
+    ///
+    /// - Parameter phrase: any text, author-written or player-typed.
+    /// - Returns: its words, in order, possibly none.
+    static func words(in phrase: String) -> [String] {
+        phrase.lowercased()
+            .split(whereSeparator: { !($0.isLetter || $0.isNumber || $0 == "'") })
+            .flatMap { chunk in
+                (chunk.hasSuffix("'s") ? chunk.dropLast(2) : chunk[...])
+                    .split(separator: "'")
+            }
+            .map(String.init)
+    }
+
     /// Called once at bootstrap, after all words are registered.
     mutating func finalize() {
         allKnownWords =

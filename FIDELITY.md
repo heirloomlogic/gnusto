@@ -1010,6 +1010,11 @@ rooms verified against `1dungeon.zil` / `1actions.zil` (`CANARY-OBJECT`, `FOREST
 - **The canary joins the host roster** (find 6 / case 4) and **the brass bauble** (find 1 /
   case 1), bringing it to the full **19 of 19** treasures. `maxScore` stays 350 (fixed in
   10.2). The roster is shared with the thief's steal list, so he now covets both — canonical.
+- **The 350 is now checked rather than trusted.** The five event awards live in the
+  `Scoring` award table (10 + 25 + 5 + 13 + 25 = 78) and the nineteen treasures carry
+  143 points of `.takeValue` and 129 of `.depositValue`; the bootstrap sums all three
+  and warns if the total misses `maxScore`. It comes to exactly 350, so the original's
+  ceiling is genuinely reachable here and not merely asserted.
 - **The ruined canary is worthless here.** The original grudgingly pays a single point
   (`TVALUE 1`) for casing the `broken clockwork canary`; here it carries no value and is not in
   the roster, so forcing the egg simply forfeits the canary's score. Keeping the broken bird

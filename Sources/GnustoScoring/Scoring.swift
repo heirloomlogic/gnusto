@@ -8,19 +8,20 @@ extension TraitKey<Int> {
     public static let depositValue = Self("depositValue")
 }
 
-/// Treasure scoring: typed point values on items, an award-once register,
-/// and take/deposit wiring for a trophy case. Add it to a game's `content`
-/// block, put values on the treasures, and splice one factory call into
-/// the rules:
+/// Treasure scoring: typed point values on items, a declared table of
+/// award-once registers, and take/deposit wiring for a trophy case. Add it to
+/// a game's `content` block, name every award it can pay, put values on the
+/// treasures, and splice one factory call into the rules:
 ///
 /// ```swift
-/// let scoring = Scoring()
+/// let scoring = Scoring(awards: ["cellar": 25])
 ///
 /// let idol = Item { name("jade idol"); trait(.takeValue, 5); trait(.depositValue, 8) }
 ///
 /// var content: GameContents { scoring }
 /// var rules: Rules {
 ///     scoring.treasures([idol], into: trophyCase)
+///     scoring.visit(cellar, register: "cellar")
 /// }
 /// ```
 ///
@@ -32,8 +33,11 @@ extension TraitKey<Int> {
 /// again when the treasure leaves, so the displayed score rises and falls as
 /// the hoard is rearranged.
 ///
-/// `maxScore` stays the host's responsibility (the engine reads it at
-/// bootstrap, before any rule can run): sum your declared values.
+/// `maxScore` is still the host's own literal — the engine reads it at
+/// bootstrap, before any rule can run — but it is no longer unchecked. The
+/// ``awards`` table is the one place a register's value is written, so the
+/// manifest and the payout cannot drift apart, and ``ScoreDeclaring`` hands
+/// the total to the bootstrap, which warns when it disagrees with `maxScore`.
 public struct Scoring: GameContent {
     /// Register names already paid out. A wrapper struct rather than a bare
     /// `Set` so the `GlobalValue` conformance is owned here, not declared
@@ -54,21 +58,62 @@ public struct Scoring: GameContent {
     @Global var claimed = Claimed()
     @Global var cased = Cased()
 
-    /// Creates the scoring content.
-    public init() {}
+    /// Every award-once register this game can pay, and what each pays. The
+    /// single source of truth: ``awardOnce(_:)`` and ``visit(_:register:)``
+    /// read their points from here rather than carrying them at the call site,
+    /// so the total the bootstrap checks is the total the game pays.
+    ///
+    /// Treasure values are *not* listed here — they are already declared on the
+    /// items themselves as `.takeValue`/`.depositValue` traits, and are summed
+    /// from the world.
+    public let awards: [String: Int]
 
-    /// Awards `points` exactly once per register name; later calls with the
+    /// Creates the scoring content.
+    ///
+    /// - Parameter awards: the award-once registers this game can pay, keyed by
+    ///   register name. An empty table with no valued treasures declares
+    ///   nothing, and opts the game out of the `maxScore` check.
+    public init(awards: [String: Int] = [:]) {
+        self.awards = awards
+    }
+
+    /// Awards a register's declared points exactly once; later calls with the
     /// same name are silent no-ops, as is a zero-point award. Callable from
     /// any rule body:
     ///
     /// ```swift
-    /// world.before(solveIntent) { scoring.awardOnce("puzzle", points: 5) }
+    /// let scoring = Scoring(awards: ["puzzle": 5])
+    /// world.before(solveIntent) { scoring.awardOnce("puzzle") }
     /// ```
+    ///
+    /// A register missing from ``awards`` is an authoring error — a typo pays
+    /// nothing and would silently put the game beyond its own maximum — so it
+    /// traps rather than awarding zero.
+    ///
+    /// - Parameter register: name gating the award — paid out at most once,
+    ///   and listed in ``awards``.
+    public func awardOnce(_ register: String) {
+        guard let points = awards[register] else {
+            fatalError(
+                """
+                Gnusto: scoring register "\(register)" is not in the award table. \
+                Add it to Scoring(awards:) — the table is what the bootstrap \
+                checks maxScore against.
+                """)
+        }
+        payOnce(register, points: points)
+    }
+
+    /// The register machinery behind ``awardOnce(_:)``, for awards whose value
+    /// is declared on an item as a trait rather than in ``awards`` — the
+    /// take/deposit registers ``treasures(_:into:)`` derives from item names.
+    /// Those are already counted by ``declaredMaxScore(items:)`` straight from
+    /// the traits, so they never need a table entry.
     ///
     /// - Parameters:
     ///   - register: name gating the award — paid out at most once.
     ///   - points: points added to the score on the first call.
-    public func awardOnce(_ register: String, points: Int) {
+    func payOnce(_ register: String, points: Int) {
         guard points != 0, !claimed.names.contains(register) else { return }
         claimed.names.insert(register)
         player.score += points
@@ -89,22 +134,23 @@ public struct Scoring: GameContent {
         player.score -= points
     }
 
-    /// An `onEnter` rule that pays `points` the first time the player enters
-    /// `room`, keyed by `register` through `awardOnce` — the event-scoring
-    /// idiom (Zork's "into the cellar, +25"). Splice into the host's rules:
+    /// An `onEnter` rule that pays `register`'s declared points the first time
+    /// the player enters `room`, through `awardOnce` — the event-scoring idiom
+    /// (Zork's "into the cellar, +25"). Splice into the host's rules:
     ///
     /// ```swift
-    /// scoring.visit(cellar, register: "cellar", points: 25)
+    /// let scoring = Scoring(awards: ["cellar": 25])
+    /// scoring.visit(cellar, register: "cellar")
     /// ```
     ///
     /// - Parameters:
     ///   - room: the location whose first entry pays out.
-    ///   - register: name gating the award through `awardOnce`.
-    ///   - points: points paid on the first entry.
+    ///   - register: name gating the award through ``awardOnce(_:)``, and
+    ///     listed in ``awards``.
     /// - Returns: the `onEnter` rule scoring the first visit.
-    public func visit(_ room: Location, register: String, points: Int) -> Rule {
+    public func visit(_ room: Location, register: String) -> Rule {
         room.onEnter {
-            awardOnce(register, points: points)
+            awardOnce(register)
         }
     }
 
@@ -127,7 +173,7 @@ public struct Scoring: GameContent {
     public func treasures(_ items: [Item], into trophyCase: Item) -> Rules {
         for item in items {
             item.after(.take) {
-                awardOnce("take.\(item.name)", points: item[.takeValue] ?? 0)
+                payOnce("take.\(item.name)", points: item[.takeValue] ?? 0)
                 // In-case accounting: taking a treasure out of the case
                 // revokes its deposit value. The `take` has already moved it
                 // into the player's hands, so a treasure no longer in the case
@@ -148,5 +194,28 @@ public struct Scoring: GameContent {
                 player.score += item[.depositValue] ?? 0
             }
         }
+    }
+}
+
+// MARK: - The maxScore check
+
+extension Scoring: ScoreDeclaring {
+    /// Everything this plugin can pay over a complete playthrough: the declared
+    /// ``awards`` table, plus every treasure's `.takeValue` and `.depositValue`.
+    /// The bootstrap compares the total against the game's `maxScore`.
+    ///
+    /// Treasure values are read from the items rather than the table because
+    /// that is where an author already declares them; the two halves of a
+    /// treasure both pay at most once over a playthrough, so the ceiling is
+    /// their sum.
+    ///
+    /// - Parameter items: every item in the assembled world.
+    /// - Returns: the total, or `nil` when this game declared nothing to check.
+    public func declaredMaxScore(items: [Item]) -> Int? {
+        let treasureValue = items.reduce(0) { total, item in
+            total + (item[.takeValue] ?? 0) + (item[.depositValue] ?? 0)
+        }
+        guard !awards.isEmpty || treasureValue != 0 else { return nil }
+        return awards.values.reduce(0, +) + treasureValue
     }
 }

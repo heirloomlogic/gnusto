@@ -1,4 +1,5 @@
 import Gnusto
+import GnustoScoring
 import GnustoSpellcasting
 
 extension TraitKey<Bool> {
@@ -34,6 +35,9 @@ extension Intent {
 struct Gramarye: Game, GameMain {
     let title = "Gramarye"
     let tagline = "A novice's first working."
+    /// One award, paid on taking the amulet. It is declared in ``scoring``'s
+    /// table rather than added to the score by hand, so the bootstrap can check
+    /// this literal against what the game can actually pay.
     let maxScore = 10
     let intro = """
         The tower has been in an uproar since dawn — cloak, staff, letters, a hat he cannot find because he is wearing \
@@ -52,6 +56,10 @@ struct Gramarye: Game, GameMain {
         """
 
     let magic = Spellcasting(memorySlots: 3, maxMana: 12)
+
+    /// The game's single award. Not a scoring demo — one register, declared so
+    /// that ``maxScore`` is checked rather than trusted.
+    let scoring = Scoring(awards: ["amulet": 10])
 
     /// Tracks the moment the wards catch. The warded door starts open with its
     /// wards dormant; a draught seals it a few turns in (see `timers`). This
@@ -78,7 +86,7 @@ struct Gramarye: Game, GameMain {
 
     let spellbook = Item {
         name("spellbook")
-        adjectives("master's", "leather")
+        adjectives("master", "leather")
         synonyms("book")
         description(
             """
@@ -155,7 +163,7 @@ struct Gramarye: Game, GameMain {
     /// Hidden behind the golem's bulk until **firebolt** clears it.
     let amulet = Item {
         name("silver amulet")
-        adjectives("silver", "master's")
+        adjectives("silver", "master")
         synonyms("amulet", "talisman")
         description("The master's amulet, a moon of worn silver on a fine chain.")
         hidden
@@ -165,6 +173,7 @@ struct Gramarye: Game, GameMain {
 
     var content: GameContents {
         magic
+        scoring
     }
 
     var verbs: [SyntaxRule] {
@@ -398,7 +407,7 @@ struct Gramarye: Game, GameMain {
         // brings the master back — through his own dispersed wall — to explain
         // the draught and, to your relief, to laugh.
         amulet.after(.take) {
-            player.score += 10
+            scoring.awardOnce("amulet")
             say(
                 """
                 You lift the master's amulet from its hook. Secure at last — held personally by the one responsible \

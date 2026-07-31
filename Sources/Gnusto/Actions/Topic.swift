@@ -51,9 +51,7 @@ public struct Topic: Sendable, Hashable, CustomStringConvertible {
     /// - Parameter phrase: the keyword as the author wrote it.
     /// - Returns: its normalized words.
     public static func normalize(_ phrase: String) -> [String] {
-        phrase.lowercased()
-            .split(whereSeparator: { !($0.isLetter || $0.isNumber) })
-            .map(String.init)
+        Vocabulary.words(in: phrase)
             .filter { !Vocabulary.defaultNoiseWords.contains($0) }
     }
 }

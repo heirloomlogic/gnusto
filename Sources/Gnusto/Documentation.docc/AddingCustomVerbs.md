@@ -132,13 +132,17 @@ The two forms interoperate: an `Intent("ring")` built from a string matches a `#
 
 The `verbs` block exists on more than the game type. A ``GameContent`` bundle and a ``GamePlugin`` each carry their own `verbs`, all merged into one table at startup. That is how a reusable plugin ships a whole verb — `GnustoMeleeCombat` promotes the engine's `attack`/`kill`/`hit`/`fight` stubs to real combat with an `actions` row, and adds the two rows the engine doesn't ship (`stab … with …`, `strike … with …`) to the same intent. See <doc:Plugins>.
 
-One trap worth naming, because it fails silently. Listing an *intent* in a `verbs` block splices the rows that intent carries — and an engine intent carries none, because its rows live in the standard table. So `verbs { .attack }` compiles, contributes nothing, and produces no diagnostic. When you're adding rows to an engine intent, spell them as ``SyntaxRule`` values:
+Engine intents list the same way your own do. A `#verb` intent carries its rows on the constant; an engine intent keeps its rows in the standard table, and listing it splices those. Rows you're adding to that intent go alongside, spelled as ``SyntaxRule`` values — which is what melee's `verbs` block is:
 
 ```swift
 public var verbs: [SyntaxRule] {
+    .attack                                                                     // the engine's rows
     SyntaxRule("stab", .directObject, "with", .indirectObject, intent: .attack)
+    SyntaxRule("strike", .directObject, "with", .indirectObject, intent: .attack)
 }
 ```
+
+Reclaiming a built-in shape *for the intent that already held it* — which is what listing an engine intent does — isn't an override, so it doesn't warn. Reclaiming one for a different intent still does.
 
 ## See also
 

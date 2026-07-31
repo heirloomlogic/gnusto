@@ -347,10 +347,15 @@ enum Bootstrap {
         // warning, so an author can override a verb while keeping it visible.
         // Keyed off `coreTable`, not `standardTable`: reclaiming a *stub* row
         // shadows no behavior, and overriding one is the expected end state, so
-        // that case is silent.
+        // that case is silent. The intent has to match too, not just the shape:
+        // a `verbs` block that lists an engine intent splices rows identical to
+        // the built-in ones, and a row that reclaims a shape for the intent
+        // that already held it overrides nothing.
         var verbWarnings: [String] = []
-        let builtInKeys = Set(SyntaxRule.coreTable.map(\.key))
-        for verb in customVerbs where builtInKeys.contains(verb.key) {
+        let coreIntentsByShape = Dictionary(
+            uniqueKeysWithValues: SyntaxRule.coreTable.map { ($0.key, $0.intent) })
+        for verb in customVerbs {
+            guard let claimed = coreIntentsByShape[verb.key], claimed != verb.intent else { continue }
             verbWarnings.append(
                 "custom verb \"\(verb.patternDescription)\" overrides a "
                     + "built-in verb of the same shape.")
@@ -358,6 +363,22 @@ enum Bootstrap {
         let syntaxRules = Self.dedupedLastWins(SyntaxRule.standardTable + customVerbs)
         var vocabulary = Vocabulary()
         vocabulary.directions = Vocabulary.standardDirections
+        // Every declared word — an item's, a verb pattern's, a game's filler
+        // list — goes through `Vocabulary.words(in:)`, the same split the
+        // tokenizer applies to what the player types. Registering a declaration
+        // verbatim instead is what made `adjectives("master's")` a string no
+        // token could equal: dead on arrival, and silent both ways.
+        var wordDiagnostics: [String] = []
+        /// Splits a declared phrase, or reports it if there is no word in it.
+        func declaredWords(_ phrase: String, _ role: String, _ id: EntityID) -> [String] {
+            let words = Vocabulary.words(in: phrase)
+            if words.isEmpty {
+                wordDiagnostics.append(
+                    "\"\(id)\" declares the \(role) \"\(phrase)\", which has no letters "
+                        + "or digits in it; there is no word there for the parser to match.")
+            }
+            return words
+        }
         for rule in syntaxRules {
             // Leading words identify the verb; literals deeper in the pattern
             // (particles, prepositions) are structural words the parser must
@@ -365,17 +386,34 @@ enum Bootstrap {
             vocabulary.verbWords.formUnion(rule.leadingWords)
             vocabulary.prepositions.formUnion(
                 rule.literalWords.dropFirst(rule.leadingWords.count))
+            // A pattern's literals are declarations too, and die the same way.
+            for word in rule.literalWords
+            where Vocabulary.words(in: word) != [word.lowercased()] {
+                wordDiagnostics.append(
+                    "the verb pattern \"\(rule.patternDescription)\" declares the word "
+                        + "\"\(word)\", which the parser splits differently from what the "
+                        + "player types; no input can reach it.")
+            }
         }
         var vocabularyWarnings: [String] = []
         for (id, item) in items {
             var lexicon = ItemLexicon()
-            let nameWords = (item.name ?? "").lowercased().split(separator: " ").map(String.init)
+            // A name and a synonym are both noun phrases: the last word is the
+            // noun, the words in front of it are adjectives.
+            let nameWords = item.name.map { declaredWords($0, "name", id) } ?? []
             if let noun = nameWords.last {
                 lexicon.nouns.insert(noun)
             }
             lexicon.adjectives.formUnion(nameWords.dropLast())
-            lexicon.adjectives.formUnion(item.adjectives.map { $0.lowercased() })
-            lexicon.nouns.formUnion(item.synonyms.map { $0.lowercased() })
+            for phrase in item.adjectives {
+                lexicon.adjectives.formUnion(declaredWords(phrase, "adjective", id))
+            }
+            for phrase in item.synonyms {
+                let words = declaredWords(phrase, "synonym", id)
+                guard let noun = words.last else { continue }
+                lexicon.nouns.insert(noun)
+                lexicon.adjectives.formUnion(words.dropLast())
+            }
             // Pronouns and multi-object keywords resolve before any lexicon,
             // so a word claimed here would never reach this item.
             for word in lexicon.nouns.union(lexicon.adjectives)
@@ -393,11 +431,13 @@ enum Bootstrap {
         // Game- and bundle-declared filler words join the built-in articles.
         // Noise words are stripped at tokenize time, before any matching, so
         // one that doubles as a verb, preposition, direction, or item word
-        // would make that word untypeable — a fatal authoring error.
+        // would make that word untypeable — a fatal authoring error. The
+        // built-in articles are checked alongside the game's own: a declaration
+        // that lands on one of those is just as untypeable, and nothing was
+        // looking.
         let customNoise = (modules.flatMap(\.noiseWords) + game.noiseWords)
-            .map { $0.lowercased() }
-        var noiseDiagnostics: [String] = []
-        for word in customNoise {
+            .flatMap(Vocabulary.words(in:))
+        for word in customNoise + Vocabulary.defaultNoiseWords.sorted() {
             let clash: String? =
                 if vocabulary.verbWords.contains(word) {
                     "a verb word"
@@ -413,13 +453,13 @@ enum Bootstrap {
                     nil
                 }
             if let clash {
-                noiseDiagnostics.append(
+                wordDiagnostics.append(
                     "noise word \"\(word)\" is also \(clash); stripping it "
                         + "would make that word untypeable.")
             }
         }
-        guard noiseDiagnostics.isEmpty else {
-            throw BootstrapError(diagnostics: noiseDiagnostics)
+        guard wordDiagnostics.isEmpty else {
+            throw BootstrapError(diagnostics: wordDiagnostics)
         }
         vocabulary.noiseWords.formUnion(customNoise)
         vocabulary.finalize()
@@ -534,11 +574,19 @@ enum Bootstrap {
             onDeath: { game.onDeath() })
 
         let registrationFrame = TurnFrame(definition: definition, state: state)
-        let (declaredRules, declaredTimers) = Ctx.$frame.withValue(registrationFrame) {
-            () -> ([Rule], [TimedEvent]) in
+        let (declaredRules, declaredTimers, declaredScores) = Ctx.$frame.withValue(
+            registrationFrame
+        ) { () -> ([Rule], [TimedEvent], [Int]) in
             let rules: [Rule] = game.rules.rules + modules.flatMap { $0.rules.rules }
             let timers: [TimedEvent] = game.timers + modules.flatMap { $0.timers }
-            return (rules, timers)
+            // Content that can total its own awards is asked here rather than
+            // later, because the totals may be declared as item traits and a
+            // trait read needs a live frame.
+            let declaredItems = Array(registry.items.values)
+            let scores: [Int] = modules.compactMap {
+                ($0 as? ScoreDeclaring)?.declaredMaxScore(items: declaredItems)
+            }
+            return (rules, timers, scores)
         }
         _ = registrationFrame.retire()  // discard any stray writes
 
@@ -707,6 +755,23 @@ enum Bootstrap {
                 "a verb row produces intent \"\(intent.raw)\", but nothing answers "
                     + "it; give it an action(.\(intent.raw)) or a rule, or the verb "
                     + "just prints the engine's fall-back line.")
+        }
+
+        // `maxScore` is read before any rule can run, so on its own it is the
+        // author's arithmetic and nothing verifies it. Content conforming to
+        // `ScoreDeclaring` knows its own award table; where one exists, the two
+        // numbers must agree. Non-fatal — nothing breaks in play, and a
+        // deliberately unreachable ceiling stays shippable.
+        let declaredScore = declaredScores.reduce(0, +)
+        if !declaredScores.isEmpty, declaredScore != game.maxScore {
+            let drift = declaredScore - game.maxScore
+            let consequence =
+                drift > 0
+                ? "\(drift) point(s) can be scored past the maximum"
+                : "\(-drift) point(s) of the maximum are unreachable"
+            definition.warnings.append(
+                "the game's maxScore is \(game.maxScore), but its scoring content "
+                    + "declares awards totalling \(declaredScore); \(consequence).")
         }
 
         definition.rules = table

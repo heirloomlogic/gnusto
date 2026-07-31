@@ -135,10 +135,10 @@ struct ParserTests {
     // MARK: - Tokenizer
 
     /// Pins the tokenizer contract directly: lowercase-fold, keep runs of
-    /// letters/digits, treat every other character as a separator, collapse
-    /// runs of separators, and drop noise words. A plain `Vocabulary` fixes the
-    /// noise set to the default (`the a an my that this some`) so the cases are
-    /// deterministic.
+    /// letters/digits, drop a trailing possessive, treat every other character
+    /// as a separator, collapse runs of separators, and drop noise words. A
+    /// plain `Vocabulary` fixes the noise set to the default
+    /// (`the a an my that this some`) so the cases are deterministic.
     ///
     /// The one exception is the comma, which survives as a token of its own so
     /// `parse` can read `butler, hello` as addressed at somebody. It is
@@ -149,6 +149,8 @@ struct ParserTests {
             ("TAKE Lamp", ["take", "lamp"]),  // case-folded
             ("put the lamp on the table", ["put", "lamp", "on", "table"]),  // noise dropped
             ("don't panic", ["don", "t", "panic"]),  // apostrophe splits
+            ("x master's spellbook", ["x", "master", "spellbook"]),  // but 's is dropped
+            ("the boys' own annual", ["boys", "own", "annual"]),  // as is a bare one
             ("north-west", ["north", "west"]),  // hyphen splits
             ("take 3 coins", ["take", "3", "coins"]),  // digits kept
             ("3.5", ["3", "5"]),  // period splits digits
