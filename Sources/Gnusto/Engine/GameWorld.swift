@@ -235,13 +235,17 @@ public actor GameWorld {
     // MARK: - The turn pipeline
 
     private func runTurn(_ command: Command, snapshot: WorldState) -> TurnResult {
-        if !command.intent.isMeta {
-            undoSnapshot = snapshot
-        }
         let frame = TurnFrame(definition: definition, state: state, command: command)
         Ctx.$frame.withValue(frame) {
             performStages(command, frame: frame, upkeep: true)
             finishTurn(intent: command.intent, frame: frame)
+        }
+        // Stored only once the turn is known to have been one — the same rule
+        // `run` states for a free reply, and a command nothing answered is no
+        // more a turn than a parse error was. Nothing in the pipeline reads
+        // the snapshot, so the decision keeps until the frame comes back.
+        if !command.intent.isMeta, !frame.with({ $0.unhandled }) {
+            undoSnapshot = snapshot
         }
         return commit(frame)
     }
@@ -320,6 +324,10 @@ public actor GameWorld {
                         topic: parsed.topic.map(Topic.init),
                         verbPhrase: parsed.verbPhrase,
                         rawInput: parsed.rawInput)
+                    // `unhandled` is not reset alongside `defaultRan`: every
+                    // intent in `multiObjectIntents` is a core verb with a
+                    // handler, so stage 4 always answers here and the flag
+                    // can never be set part-way through the loop.
                     frame.with { scratch in
                         scratch.command = command
                         scratch.defaultRan = false
@@ -466,11 +474,15 @@ public actor GameWorld {
     }
 
     /// Stage 6 and the epilogue: world time passes even on refused turns —
-    /// but not for meta intents, and not once the game has ended. Runs once
-    /// per typed command, however many objects it covered.
+    /// but not for meta intents, not for a command nothing answered, and not
+    /// once the game has ended. Runs once per typed command, however many
+    /// objects it covered.
     private func finishTurn(intent: Intent, frame: TurnFrame) {
         let rules = definition.rules
-        if !intent.isMeta {
+        // A command stage 4 had no answer for is free, like a parse error:
+        // the player was told nothing happened, so nothing may happen.
+        let costsTurn = !intent.isMeta && !frame.with { $0.unhandled }
+        if costsTurn {
             if frame.with({ $0.state.status }) == .playing {
                 let here = frame.with { $0.state.playerLocation }
                 runCatching(rules.locationAfterEachTurn[here] ?? [], matching: intent, frame: frame)
@@ -575,11 +587,18 @@ public actor GameWorld {
 
     private func handle(_ interrupt: TurnInterrupt, frame: TurnFrame) {
         switch interrupt {
-        case .refused(let message), .replied(let message):
+        case .refused(let message), .replied(let message), .unhandled(let message):
             // An empty message ends the turn without adding a line — for
             // rule bodies that have already said everything with `say`.
             if !message.isEmpty {
                 frame.say(message)
+            }
+            // `unhandled` is the refusal nobody made: nothing in the game
+            // claimed the command, so `finishTurn` reads this flag and skips
+            // the each-turn rules, the timers and the move count. The line and
+            // the price agree the way a parse error's do.
+            if case .unhandled = interrupt {
+                frame.with { $0.unhandled = true }
             }
         case .gameOver(let won):
             frame.with { $0.state.status = won ? .won : .lost }

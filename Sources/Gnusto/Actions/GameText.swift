@@ -414,6 +414,12 @@ public struct GameText: Sendable {
     /// A line no verb pattern fits.
     public var didntUnderstand = "I didn't understand that sentence."
 
+    /// Stage 4's last resort: a verb row matched, so the parser understood the
+    /// sentence, but nothing in the game answers this intent — no action, no
+    /// rule, no stub line. Distinct from ``didntUnderstand``, which is the
+    /// parser's own failure, and free for the same reason: nothing happened.
+    public var cantDoThat = "You can't do that."
+
     /// Giving somebody an order — `butler, open the door`. The engine has no
     /// system for one character to act on another's word, so a character hears
     /// you out and declines. `butler, hello` is the one addressed form that

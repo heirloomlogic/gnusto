@@ -146,10 +146,11 @@ var verbs: [SyntaxRule] {
   ``SyntaxRule/stubTable`` is these, and `standardTable` is both. Bootstrap keys
   its override warning off `coreTable`, and that split *is* the stub flag.
 - A stub's intent, rows and line are one `StubVerb` value, so a stub can't be
-  half-declared — rows with no line would answer `didntUnderstand` and read as a
-  parser bug. Core verbs have the same shape for the same reason: a `CoreVerb`
-  is an intent, its rows and its handler, and both tables and both intent sets
-  are derived from those two arrays rather than restated.
+  half-declared — rows with no line would fall through to stage 4's last resort,
+  so a word the engine advertises would answer "You can't do that." Core verbs
+  have the same shape for the same reason: a `CoreVerb` is an intent, its rows
+  and its handler, and both tables and both intent sets are derived from those
+  two arrays rather than restated.
 - Stub intents are deliberately **not** in `DefaultActions.builtInIntents`, which
   is what keeps `action(.dig)` from warning. `handledIntents` is the union, used
   for the dead-intent check. `engineIntents` is the third set — UNDO, RESTART,

@@ -180,6 +180,25 @@ struct LighthouseTranscriptTests {
             ])
     }
 
+    /// The jetty is a three-turn room, and `.talk` is answered by a rule on the
+    /// keeper and by nothing else. Talking to yourself there used to spend all
+    /// three turns while insisting the parser had failed — the first play-test
+    /// round's drowning. Nothing answers the command, so nothing happens: the
+    /// tide does not move.
+    @Test func talkingToNobodyOnTheJettyCostsNoTurn() async throws {
+        let transcript = try await play(
+            Lighthouse(),
+            ["talk to me", "talk to me", "talk to me", "score"],
+            seed: 0)
+
+        #expect(transcript.contains("You can't do that."))
+        #expect(!transcript.contains("I didn't understand that sentence."))
+        // The tide never gets a turn to rise in, so it never gets to drown you.
+        #expect(!transcript.contains("Cold water sluices between the planks of the jetty."))
+        #expect(!transcript.contains("The sea closes over the jetty, and over you."))
+        #expect(turnOutput(of: "score", in: transcript).contains("in 0 turns."))
+    }
+
     /// Save and restore round-trip the whole world: the brass key, dropped after
     /// saving, is back in hand once the save is restored.
     @Test func saveAndRestoreRoundTrip() async throws {

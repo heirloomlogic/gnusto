@@ -14,6 +14,10 @@ struct Scratch: Sendable {
     /// against running it twice and tells the pipeline to skip its own
     /// stage-4 step after a `proceed()`.
     var defaultRan = false
+    /// Set when stage 4 found nothing to answer the command with. The turn
+    /// prints a line that says nothing happened, so it costs what nothing
+    /// costs: no each-turn rules, no timers, no move.
+    var unhandled = false
 }
 
 /// The per-turn context every proxy reads and writes through.
