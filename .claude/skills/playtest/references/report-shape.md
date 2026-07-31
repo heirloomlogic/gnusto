@@ -5,13 +5,18 @@ isn't committed.
 
 | Path | Committed | Contents |
 |---|---|---|
-| `.context/playtest/<label>/` | no | every probe's transcript with its `//` annotations, and its effective command list |
+| `.context/playtest/<label>/<probe>/` | no | one run: its transcript with the `//` annotations, its effective command list, its stderr, and a summary naming the game, seed and label |
 | `docs/games/<game>-playtest-<YYYY-MM-DD>.md` | **yes** | the round report below |
 | `docs/games/<game>-playtest-ledger.md` | **yes** | append-only: every dedupe key ever seen, with its verdict |
 | one GitHub issue | — | every confirmed class as a checklist — see `issue-shape.md` |
 
 What a reader needs in order to *judge* a finding goes in the report; what a fixer needs
 in order to pick up one class goes in the issue. `issue-shape.md` owns the second.
+
+**Cite the probe, never the label.** A label is a namespace holding every run a tester
+made; the probe directory under it is one run, written once and never rewritten. So a
+citation is `.context/playtest/<label>/probe-004/transcript.txt` — the path the tool
+printed — and a citation ending at the label points at a directory, not at evidence.
 
 The report is committed even when the round found nothing. "We ran and found
 nothing" is the single most useful thing to be able to prove six months later, and

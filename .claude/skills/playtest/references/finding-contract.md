@@ -1,8 +1,8 @@
 # What a dispatchable finding carries
 
 A finding is a claim that someone else has to be able to check without replaying
-your whole session. Five things make that possible, and a finding missing any of
-them gets dropped at triage rather than verified.
+your whole session. Six things make that possible, and a finding missing any of
+the first five gets dropped at triage rather than verified.
 
 | Field | Why it exists |
 |---|---|
@@ -11,6 +11,7 @@ them gets dropped at triage rather than verified.
 | `excerpt` | The offending text quoted **verbatim**, plus enough surrounding lines to show the frame. A paraphrase cannot be verified and cannot be grepped for. |
 | `frame` | Room, hour (**anchored** to a real reading in the transcript), and the world state that matters — what has and hasn't happened yet. |
 | `fault` | Which prose or which rule is at fault, and why. Name the mechanism (a static `firstSight` on an actor, an unbranched fuse body), not just the symptom. |
+| `transcriptPath` | The `[playtest] transcript=…` path of the clean replay, copied verbatim from the trailer. A probe directory is written once and never rewritten, so this resolves to the session you judged for as long as the scratch survives. Cite the path, never a bare label — a label is a namespace holding many probes, and pointing at one is how the 2026-07-30 Lighthouse round ended up with three refutations citing one directory that held none of them. |
 
 Plus, for routing:
 

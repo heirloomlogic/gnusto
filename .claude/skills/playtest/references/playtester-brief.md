@@ -38,7 +38,7 @@ Every turn is a fresh process. You do not hold a session open; you replay the wh
 command list from the start each time, with the seed pinned, and read the result.
 
 ```sh
-bin/playtest-replay <Game> --commands <your-file> --seed 0 --label <your-label> --tail 60
+bin/playtest-replay <Game> --commands <your-file> --seed 0 --label <the label you were given> --tail 60
 ```
 
 Append to your command file, run again, read the new tail. A boot plus a hundred
@@ -46,7 +46,7 @@ turns is milliseconds, so replaying is free. Determinism falls out of it: the
 transcript you just read is exactly the transcript `play(Game(), [...], seed: 0)`
 will produce, which is why your command list *is* your reproducer.
 
-Four things to know:
+Five things to know:
 
 - **Batch commands when you are only walking.** Add five at a time to cross the
   map, one at a time when you are reading closely.
@@ -59,7 +59,14 @@ Four things to know:
   will read.
 - **For a deep state, save once and restore.** `--save <slot>` at the end of a
   prologue, then `--restore <slot>` in each probe, instead of replaying forty
-  `z`s. Restoring costs no turn, so it does not move the clock.
+  `z`s. Restoring costs no turn, so it does not move the clock. Saves live at the
+  label, which is what lets a later probe restore an earlier probe's anchor.
+- **Your label is a namespace; each run is a probe under it.** Use the label you
+  were given and don't invent a short one — every run allocates its own
+  `.context/playtest/<label>/probe-NNN/`, so nothing you or anyone else replays can
+  overwrite a transcript. Cite the `[playtest] transcript=…` path the tool prints,
+  never a bare label: the path is fixed, and a label is not. Write nothing outside
+  `.context/playtest/`.
 
 ## Your reproducer is the deliverable
 

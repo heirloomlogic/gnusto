@@ -33,6 +33,21 @@ than guessing: under the swiftbuild build system the binary is in
 `.build/out/Products/Debug`, not `.build/debug`, and a stale copy from an earlier
 `swift run` may be sitting in the other one.
 
+`--label` names *you*, not a file. Every run allocates a fresh probe directory beneath
+it — `probe-001`, `probe-002`, and so on — so re-running under one label keeps every
+earlier transcript, and two testers who pick the same label cost each other nothing.
+The trailer prints the path that run wrote:
+
+```
+[playtest] game=Fulminate seed=0 label=mine probe=probe-003 commands=12 exit=0
+[playtest] transcript=…/.context/playtest/mine/probe-003/transcript.txt
+```
+
+That path is what a finding cites. A probe directory is written once and never
+rewritten, so it still holds the session you judged when somebody follows the citation
+a year from now. `--probe <name>` takes a name of your own instead of the next number,
+and refuses one that already holds output.
+
 `bin/playtest-replay --help` lists every flag.
 
 ## Iterative replay
@@ -126,8 +141,12 @@ bin/playtest-replay Fulminate --commands probe.txt   --label deep --restore anch
 Both `save` and `restore` are two-turn interactions — the parser knows only the bare
 verb, and the engine asks for a filename on the next line — which the flags handle.
 Restoring costs no turn, so it doesn't move the clock. Saves land under
-`GNUSTO_SAVE_DIR` inside the label's scratch directory, so they never touch your real
+`GNUSTO_SAVE_DIR` at `.context/playtest/<label>/saves/`, so they never touch your real
 save slots and parallel testers can't read each other's.
+
+Note the division: saves belong to the **label**, which is what lets the second command
+restore what the first saved, while transcripts belong to the **probe**, so the two runs
+above leave two transcripts rather than one.
 
 ## What to look for
 
@@ -153,7 +172,8 @@ actually ringing.
 
 | Path | Committed | What |
 |---|---|---|
-| `.context/playtest/<label>/` | no | transcripts, effective command lists, stderr |
+| `.context/playtest/<label>/<probe>/` | no | one run: transcript, effective command list, stderr, summary |
+| `.context/playtest/<label>/saves/` | no | the label's save slots, shared by its probes |
 | `docs/games/<game>-playtest-<date>.md` | yes | the round report |
 | `docs/games/<game>-playtest-ledger.md` | yes | append-only dedupe keys and verdicts |
 | one GitHub issue | — | every confirmed class as a checklist — see `.claude/skills/playtest/references/issue-shape.md` |
