@@ -72,10 +72,32 @@ testers to forward the exact symptoms that had just become regressions. A stale
 "already owned" rule doesn't produce a bad finding a verifier can catch — it produces
 silence.
 
-Afterwards, write the returned report to
-`docs/games/<game>-playtest-<YYYY-MM-DD>.md` and append every dedupe key to
-`docs/games/<game>-playtest-ledger.md`. See `references/report-shape.md`. Commit the
-report even when the round found nothing — a provable empty round is the point.
+## Afterwards
+
+Three artifacts, in this order — the ledger's preamble names the issue, so it goes last:
+
+1. the round report, `docs/games/<game>-playtest-<YYYY-MM-DD>.md`
+2. **exactly one issue** for the round
+3. every dedupe key, appended to `docs/games/<game>-playtest-ledger.md`
+
+`references/report-shape.md` has the two files, `references/issue-shape.md` the issue.
+Commit the report even when the round found nothing — a provable empty round is the
+point — but a round that confirmed nothing files no issue.
+
+**One issue per round, per game, holding every class as a checklist** — not one per
+class, not a separate one for the engine's share. 2026-07-30 filed thirteen in a day;
+`issue-shape.md` has the shape and the round that made the rule necessary. Not
+`routedIssues`, which runs the other way: those are open issues that *receive*
+forwarded symptoms.
+
+The title is the key, so search before you create:
+
+```sh
+gh issue list --state all --search "<Game>: play-test round <YYYY-MM-DD>"
+```
+
+A second filing should collide the way a second report would, rather than resting on
+whoever remembered the rule.
 
 ## Options
 
@@ -84,7 +106,7 @@ report even when the round found nothing — a provable empty round is the point
 | `seed` | `0` | Pins the stream via `GNUSTO_SEED`. Record it; a finding without a seed isn't reproducible. |
 | `turns` | `60` | Engine turns per charter. Token cost, not CPU cost, is the real budget. |
 | `charters` | all applicable | Comma-separated subset, e.g. `"tourist,clock-watcher"`. |
-| `fix` | `"none"` | `none` files everything. `game` also fixes findings owned by the game's own files. `all` fixes engine findings too. |
+| `fix` | `"none"` | `none` files everything, in the round's one issue. `game` also fixes findings owned by the game's own files. `all` fixes engine findings too. |
 | `rounds` / `dryRounds` | `1` / `2` | Loop until N consecutive rounds surface nothing new. |
 | `packagePath` | `"."` | Drive another checkout — a worktree at an older commit, for calibration. |
 | `ledgerKeys` | `[]` | Keys from previous reports, so the loop doesn't re-find its own rejections. |
@@ -111,6 +133,7 @@ the offender checks is not a prohibition.
     finding-contract.md                what a finding must carry
     fixer-brief.md                     the rules a fixer is bound by
     report-shape.md                    the round report and the ledger
+    issue-shape.md                     the one issue a round files
 bin/playtest-replay                    the replay helper
 docs/playtesting.md                    driving it by hand, without any of this
 ```

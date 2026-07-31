@@ -156,6 +156,7 @@ actually ringing.
 | `.context/playtest/<label>/` | no | transcripts, effective command lists, stderr |
 | `docs/games/<game>-playtest-<date>.md` | yes | the round report |
 | `docs/games/<game>-playtest-ledger.md` | yes | append-only dedupe keys and verdicts |
+| one GitHub issue | — | every confirmed class as a checklist — see `.claude/skills/playtest/references/issue-shape.md` |
 
 The report is committed even when the round found nothing — a provable empty round is
 the most useful thing to have six months later, and the only way to catch the harness

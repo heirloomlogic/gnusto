@@ -3,10 +3,14 @@
   "permissions": {
     "allow": [
       "Bash(bin/playtest-replay:*)",
+      "Bash(gh issue list:*)",
       "Bash(swift build:*)",
       "Bash(swift test:*)",
       "Bash(swift package describe)",
       "Bash(xcrun swift-format lint:*)"
+    ],
+    "ask": [
+      "Bash(gh issue create:*)"
     ]
   }
 }

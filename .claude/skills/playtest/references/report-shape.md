@@ -1,12 +1,17 @@
 # The round report
 
-Two committed artifacts per round, and a scratch directory that isn't committed.
+Two committed artifacts per round, one tracker entry, and a scratch directory that
+isn't committed.
 
 | Path | Committed | Contents |
 |---|---|---|
 | `.context/playtest/<label>/` | no | every probe's transcript with its `//` annotations, and its effective command list |
 | `docs/games/<game>-playtest-<YYYY-MM-DD>.md` | **yes** | the round report below |
 | `docs/games/<game>-playtest-ledger.md` | **yes** | append-only: every dedupe key ever seen, with its verdict |
+| one GitHub issue | — | every confirmed class as a checklist — see `issue-shape.md` |
+
+What a reader needs in order to *judge* a finding goes in the report; what a fixer needs
+in order to pick up one class goes in the issue. `issue-shape.md` owns the second.
 
 The report is committed even when the round found nothing. "We ran and found
 nothing" is the single most useful thing to be able to prove six months later, and
@@ -15,6 +20,11 @@ it is the only way the harness can be caught grading itself generously.
 The ledger is the loop's memory. Refuted keys suppress re-finding, so the loop
 doesn't rediscover its own rejections forever. A key marked `fixed` that reappears
 is not a new finding — it is a **regression**, and it goes back at raised severity.
+
+A ledger section's preamble names the one issue its `confirmed` rows were filed as, so
+a key traces to a ticket without a column per row: *"Every `confirmed` row is an open
+defect in the game as it ships, filed as #<N>."* Which is why the ledger is appended
+after the issue is filed, not before.
 
 ## Sections, in order
 
@@ -28,8 +38,9 @@ is not a new finding — it is a **regression**, and it goes back at raised seve
    branch. Where a defect was introduced by an earlier fix, the lead sentence says
    so.
 3. **Fixed** — each with the test that fails without it.
-4. **Filed, not fixed** — with the reason. "Needs a human to pick a design" is a
-   good reason; "ran out of budget" is also a good reason, and must be said.
+4. **Filed, not fixed** — the round's one issue, named once, then the classes inside
+   it and the reason each wasn't fixed. "Needs a human to pick a design" is a good
+   reason; "ran out of budget" is also a good reason, and must be said.
 5. **Routed elsewhere** — one entry per open issue the round forwarded symptoms to,
    with counts, plus anything promoted *out* of a bucket and the argument for it. Omit
    the section when the round routed nothing, which is the common case. An issue that
@@ -98,9 +109,11 @@ Doc changes in this commit: `docs/games/fulminate.md` — Cast copy for Mrs. Ket
 
 ## Filed, not fixed
 
-| # | Finding | Why not fixed here |
+Two findings, deduplicating to one class. Filed as #80.
+
+| Class | Severity | Why not fixed here |
 |---|---|---|
-| F-0002 | Mrs. Vane's location-blind listing line | More than one reasonable design; `needs-human`. Filed as #80. |
+| Mrs. Vane's location-blind listing line | major | More than one reasonable design; `needs-human`. |
 
 ## Routed elsewhere
 
