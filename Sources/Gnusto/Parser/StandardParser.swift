@@ -435,34 +435,29 @@ struct StandardParser {
 
     // MARK: - Pieces
 
-    /// Splits an input line into lowercased tokens, dropping noise words. Any
-    /// run of letters or digits is a token; every other character —
-    /// whitespace, punctuation, symbols — is a separator, so `"don't"` yields
-    /// `["don", "t"]` and `"north-west"` yields `["north", "west"]`.
+    /// Splits an input line into lowercased tokens, dropping noise words.
+    /// ``Vocabulary/words(in:)`` does the splitting and documents the rule —
+    /// it is the same call the bootstrap makes of every declared name,
+    /// adjective and synonym, so what the author writes and what the player
+    /// types are one word or two by the same rule.
     ///
     /// **The one exception is the comma**, which survives as a token of its
     /// own (`"delphine,hello"` yields three tokens). It is the only mark that
     /// changes what a sentence means — `butler, open the door` is addressed at
     /// somebody — so `parse` reads it and then strips it. Everywhere else it
-    /// goes straight back to being noise.
+    /// goes straight back to being noise. Splitting the line on commas first is
+    /// what keeps it: inside a segment it is just another separator.
     func tokenize(_ input: String) -> [String] {
         var tokens: [String] = []
-        var word = ""
-        func flush() {
-            if !word.isEmpty {
-                if !vocabulary.noiseWords.contains(word) { tokens.append(word) }
-                word = ""
-            }
+        for (index, segment)
+            in input
+            .split(separator: ",", omittingEmptySubsequences: false)
+            .enumerated()
+        {
+            if index > 0 { tokens.append(",") }
+            tokens += Vocabulary.words(in: String(segment))
+                .filter { !vocabulary.noiseWords.contains($0) }
         }
-        for character in input.lowercased() {
-            if character.isLetter || character.isNumber {
-                word.append(character)
-            } else {
-                flush()
-                if character == "," { tokens.append(",") }
-            }
-        }
-        flush()
         return tokens
     }
 

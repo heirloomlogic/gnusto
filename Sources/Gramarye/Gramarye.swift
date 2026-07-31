@@ -78,7 +78,7 @@ struct Gramarye: Game, GameMain {
 
     let spellbook = Item {
         name("spellbook")
-        adjectives("master's", "leather")
+        adjectives("master", "leather")
         synonyms("book")
         description(
             """
@@ -155,7 +155,7 @@ struct Gramarye: Game, GameMain {
     /// Hidden behind the golem's bulk until **firebolt** clears it.
     let amulet = Item {
         name("silver amulet")
-        adjectives("silver", "master's")
+        adjectives("silver", "master")
         synonyms("amulet", "talisman")
         description("The master's amulet, a moon of worn silver on a fine chain.")
         hidden

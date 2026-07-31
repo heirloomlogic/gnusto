@@ -143,8 +143,15 @@ In any rule body: `say`, `refuse`, `reply`, `require(_:else:)`, `end(won:)`, `di
   item/actor name without `properName` warns at bootstrap (locations are exempt).
 - **Every noun a room description prints must be answerable.** A named thing the
   parser doesn't know reads as a bug; add the scenery item with the noun. Item
-  vocabulary comes from `name` (last word = noun, earlier words = adjectives) plus
-  `synonyms` (nouns) and `adjectives`. The final token of a phrase must be a noun.
+  vocabulary comes from `name` and `synonyms` (each a noun phrase: last word =
+  noun, earlier words = adjectives) plus `adjectives`. The final token of a
+  phrase must be a noun.
+- **One splitter, both sides.** `Vocabulary.words(in:)` splits every declared
+  phrase exactly as `StandardParser.tokenize` splits player input — lowercased, a
+  trailing `'s` dropped, every other non-alphanumeric a separator. So
+  `adjectives("master's")` and `adjectives("master")` are the same declaration;
+  write the second. A declared word with no letters or digits in it, or one made
+  of nothing but filler, is a **fatal** bootstrap diagnostic.
 - **`clock.now` needs a live turn** — legal in rules, `describe` blocks and actions;
   not in a `map` block, which runs at bootstrap.
 - Bootstrap diagnostics are thorough and fatal. If a game fails to start, read the
