@@ -1,67 +1,34 @@
 /// The built-in behavior of each intent, running under the same frame and
 /// with the same helpers as author rules — no privileged path.
 enum DefaultActions {
-    /// Every intent the built-in switch below handles itself. Used by
-    /// Bootstrap to decide whether a game/bundle/plugin action row is
-    /// overriding a built-in (warning) or giving a fresh intent its first
-    /// default behavior (no warning).
-    static let builtInIntents: Set<Intent> = [
-        .take, .drop, .wear, .doff, .putOn, .putIn, .open, .close, .lock, .unlock,
-        .lookIn, .push, .turnOn, .turnOff, .go, .follow, .greet, .board, .disembark,
-        .look, .examine, .read, .inventory, .score, .version, .quit, .wait,
-    ]
-
-    /// Runs the default action for a command: a game/bundle/plugin override
-    /// if one is registered for this intent, else the built-in switch.
+    /// Runs the default action for a command: a game/bundle/plugin override if
+    /// one is registered for this intent, else the engine's own answer — a core
+    /// verb's handler, or a stub verb's line.
+    ///
+    /// Both tables are keyed by intent, which is the one dispatch mechanism
+    /// ``CoreVerb`` and ``StubVerb`` were shaped to share. An engine-level core
+    /// verb (UNDO and friends) never arrives here: `GameWorld.run` answers it
+    /// before the pipeline starts.
     static func run(_ command: Command, frame: TurnFrame) throws {
         if let override = frame.definition.actionOverrides[command.intent] {
             try override.body()
             return
         }
-        switch command.intent {
-        case .take: try take(command, frame: frame)
-        case .drop: try drop(command, frame: frame)
-        case .wear: try wear(command, frame: frame)
-        case .doff: try doff(command, frame: frame)
-        case .putOn: try putOn(command, frame: frame)
-        case .putIn: try putIn(command, frame: frame)
-        case .open: try open(command, frame: frame)
-        case .close: try close(command, frame: frame)
-        case .lock: try lock(command, frame: frame)
-        case .unlock: try unlock(command, frame: frame)
-        case .lookIn: try lookIn(command, frame: frame)
-        case .push: try push(command, frame: frame)
-        case .turnOn: try turnOn(command, frame: frame)
-        case .turnOff: try turnOff(command, frame: frame)
-        case .go: try go(command, frame: frame)
-        case .follow: try follow(command, frame: frame)
-        case .greet: try greet(command, frame: frame)
-        case .board: try board(command, frame: frame)
-        case .disembark: try disembark(command, frame: frame)
-        case .wait: frame.say(frame.definition.text.timePasses)
-        case .look: RoomDescriber.describeCurrentLocation(mode: .look, frame: frame)
-        case .examine: try examine(command, frame: frame)
-        case .read: try read(command, frame: frame)
-        case .inventory: inventory(frame)
-        case .score: score(frame)
-        case .version: version(frame)
-        case .quit: quit(frame)
-        default:
+        if let handler = coresByIntent[command.intent]?.handler {
+            try handler(command, frame)
+        } else if let stub = stubsByIntent[command.intent] {
             // A stub verb: a word the parser knows with no mechanic behind it.
             // `say`, not `reply`, so `after` rules still get their turn and the
             // world clock advances — flailing at the chair takes time.
-            let text = frame.definition.text
-            if let stub = stubsByIntent[command.intent] {
-                frame.say(stub.line(text, command))
-            } else {
-                frame.say(text.didntUnderstand)
-            }
+            frame.say(stub.line(frame.definition.text, command))
+        } else {
+            frame.say(frame.definition.text.didntUnderstand)
         }
     }
 
     // MARK: - Manipulation
 
-    private static func take(_ command: Command, frame: TurnFrame) throws {
+    static func take(_ command: Command, frame: TurnFrame) throws {
         let item = try requireDirectObject(command)
         let id = item.id
         // People get the person-specific refusal, not scenery's — and the
@@ -101,7 +68,7 @@ enum DefaultActions {
         frame.say(frame.definition.text.taken)
     }
 
-    private static func drop(_ command: Command, frame: TurnFrame) throws {
+    static func drop(_ command: Command, frame: TurnFrame) throws {
         let item = try requireDirectObject(command)
         let id = item.id
         guard item.isHeld else {
@@ -127,7 +94,7 @@ enum DefaultActions {
         frame.say(frame.definition.text.dropped)
     }
 
-    private static func wear(_ command: Command, frame: TurnFrame) throws {
+    static func wear(_ command: Command, frame: TurnFrame) throws {
         let item = try requireDirectObject(command)
         if item.isWorn {
             try refuse(frame.definition.text.alreadyWearing)
@@ -143,7 +110,7 @@ enum DefaultActions {
         frame.say(frame.definition.text.putOn(item.definiteName))
     }
 
-    private static func doff(_ command: Command, frame: TurnFrame) throws {
+    static func doff(_ command: Command, frame: TurnFrame) throws {
         let item = try requireDirectObject(command)
         guard item.isWorn else {
             try refuse(frame.definition.text.notWearing)
@@ -153,7 +120,7 @@ enum DefaultActions {
         frame.say(frame.definition.text.takeOff(item.definiteName))
     }
 
-    private static func putOn(_ command: Command, frame: TurnFrame) throws {
+    static func putOn(_ command: Command, frame: TurnFrame) throws {
         let item = try requireDirectObject(command)
         guard let surface = command.indirectObject else {
             try refuse(frame.definition.text.didntUnderstand)
@@ -186,7 +153,7 @@ enum DefaultActions {
         frame.say(frame.definition.text.putItemOn(item.definiteName, surface.definiteName))
     }
 
-    private static func putIn(_ command: Command, frame: TurnFrame) throws {
+    static func putIn(_ command: Command, frame: TurnFrame) throws {
         let item = try requireDirectObject(command)
         guard let container = command.indirectObject else {
             try refuse(frame.definition.text.didntUnderstand)
@@ -261,7 +228,7 @@ enum DefaultActions {
             .map { frame.indefiniteName(of: $0) }
     }
 
-    private static func open(_ command: Command, frame: TurnFrame) throws {
+    static func open(_ command: Command, frame: TurnFrame) throws {
         let item = try requireDirectObject(command)
         let id = item.id
         guard frame.definition.items[id]?.isOpenable == true else {
@@ -287,7 +254,7 @@ enum DefaultActions {
         }
     }
 
-    private static func close(_ command: Command, frame: TurnFrame) throws {
+    static func close(_ command: Command, frame: TurnFrame) throws {
         let item = try requireDirectObject(command)
         let id = item.id
         guard frame.definition.items[id]?.isOpenable == true else {
@@ -303,11 +270,11 @@ enum DefaultActions {
         frame.say(frame.definition.text.closed)
     }
 
-    private static func lock(_ command: Command, frame: TurnFrame) throws {
+    static func lock(_ command: Command, frame: TurnFrame) throws {
         try setLocked(command, frame: frame, to: true)
     }
 
-    private static func unlock(_ command: Command, frame: TurnFrame) throws {
+    static func unlock(_ command: Command, frame: TurnFrame) throws {
         try setLocked(command, frame: frame, to: false)
     }
 
@@ -344,7 +311,7 @@ enum DefaultActions {
         frame.say(locked ? frame.definition.text.lockedMessage : frame.definition.text.unlockedMessage)
     }
 
-    private static func lookIn(_ command: Command, frame: TurnFrame) throws {
+    static func lookIn(_ command: Command, frame: TurnFrame) throws {
         let item = try requireDirectObject(command)
         let id = item.id
         if id == .player {
@@ -374,7 +341,7 @@ enum DefaultActions {
         }
     }
 
-    private static func push(_ command: Command, frame: TurnFrame) throws {
+    static func push(_ command: Command, frame: TurnFrame) throws {
         let item = try requireDirectObject(command)
         guard isReachable(item.id, frame: frame) else {
             try refuse(frame.definition.text.cantReach(item.definiteName))
@@ -384,7 +351,7 @@ enum DefaultActions {
 
     // MARK: - Light
 
-    private static func turnOn(_ command: Command, frame: TurnFrame) throws {
+    static func turnOn(_ command: Command, frame: TurnFrame) throws {
         let item = try requireDirectObject(command)
         let id = item.id
         let definition = frame.definition
@@ -418,7 +385,7 @@ enum DefaultActions {
         }
     }
 
-    private static func turnOff(_ command: Command, frame: TurnFrame) throws {
+    static func turnOff(_ command: Command, frame: TurnFrame) throws {
         let item = try requireDirectObject(command)
         let id = item.id
         let definition = frame.definition
@@ -448,7 +415,7 @@ enum DefaultActions {
 
     // MARK: - Movement & perception
 
-    private static func go(_ command: Command, frame: TurnFrame) throws {
+    static func go(_ command: Command, frame: TurnFrame) throws {
         guard let direction = command.direction else {
             try refuse(frame.definition.text.whichWay)
         }
@@ -527,7 +494,7 @@ enum DefaultActions {
     /// player into rooms the quarry isn't in, chosen by a heuristic the author
     /// never wrote. A game that wants a longer pursuit buys it explicitly with
     /// `actor.before(.follow)`, which runs ahead of this.
-    private static func follow(_ command: Command, frame: TurnFrame) throws {
+    static func follow(_ command: Command, frame: TurnFrame) throws {
         let target = try requireDirectObject(command)
         let id = target.id
         let name = target.definiteName
@@ -591,7 +558,7 @@ enum DefaultActions {
 
     /// Says hello. The stock line is a placeholder an actor's own rules — or a
     /// conversation plugin — are expected to answer over.
-    private static func greet(_ command: Command, frame: TurnFrame) throws {
+    static func greet(_ command: Command, frame: TurnFrame) throws {
         let definition = frame.definition
         guard let target = command.directObject else {
             // The cast, not `isActor`: the player is a person, but "hello" in
@@ -614,7 +581,7 @@ enum DefaultActions {
         frame.say(definition.text.greets(target.definiteName))
     }
 
-    private static func board(_ command: Command, frame: TurnFrame) throws {
+    static func board(_ command: Command, frame: TurnFrame) throws {
         let item = try requireDirectObject(command)
         let id = item.id
         guard frame.definition.items[id]?.isEnterable == true else {
@@ -647,7 +614,7 @@ enum DefaultActions {
         frame.say(frame.definition.text.boarded(item.definiteName))
     }
 
-    private static func disembark(_ command: Command, frame: TurnFrame) throws {
+    static func disembark(_ command: Command, frame: TurnFrame) throws {
         let vehicle = frame.with {
             Visibility.boardedVehicle(definition: frame.definition, state: $0.state)
         }
@@ -661,7 +628,7 @@ enum DefaultActions {
         frame.say(frame.definition.text.disembarked(frame.definiteName(of: vehicle)))
     }
 
-    private static func examine(_ command: Command, frame: TurnFrame) throws {
+    static func examine(_ command: Command, frame: TurnFrame) throws {
         // The player's own item carries no `description(…)` trait, so that a
         // game is free to give it a `describe { }` rule; its stock text is a
         // `GameText` line instead of the generic "nothing special" shrug.
@@ -672,7 +639,7 @@ enum DefaultActions {
         }
     }
 
-    private static func read(_ command: Command, frame: TurnFrame) throws {
+    static func read(_ command: Command, frame: TurnFrame) throws {
         try describeItem(command, frame: frame) { _ in frame.definition.text.nothingWritten }
     }
 
@@ -686,7 +653,17 @@ enum DefaultActions {
         frame.say(text.isEmpty ? fallback(item) : text)
     }
 
-    private static func inventory(_ frame: TurnFrame) {
+    /// A turn spent on purpose. A normal turn otherwise: rules run and
+    /// fuses/daemons tick, which is the whole point of typing it.
+    static func wait(_ frame: TurnFrame) {
+        frame.say(frame.definition.text.timePasses)
+    }
+
+    static func look(_ frame: TurnFrame) {
+        RoomDescriber.describeCurrentLocation(mode: .look, frame: frame)
+    }
+
+    static func inventory(_ frame: TurnFrame) {
         let held = frame.with { scratch in
             (scratch.state.containment().held[.player] ?? [])
                 .map { id in
@@ -716,12 +693,12 @@ enum DefaultActions {
         frame.say(line)
     }
 
-    private static func version(_ frame: TurnFrame) {
+    static func version(_ frame: TurnFrame) {
         frame.say(
             frame.definition.text.banner(frame.definition.title, frame.definition.tagline))
     }
 
-    private static func quit(_ frame: TurnFrame) {
+    static func quit(_ frame: TurnFrame) {
         // The pipeline's end-of-game epilogue reports the score.
         frame.with { $0.state.status = .quit }
     }

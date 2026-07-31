@@ -88,6 +88,11 @@ public struct Intent: Hashable, Sendable {
     public static let quit = Intent("quit")
     /// Report the engine version.
     public static let version = Intent("version")
+    // The engine-level four. `GameWorld.run` answers these before the turn
+    // pipeline starts, so no rule sees them and no `actions` row can reclaim
+    // them — `DefaultActions.engineIntents` is where that is declared, and the
+    // bootstrap warns about a row that tries.
+
     /// Reverse the last turn (engine-level; not overridable).
     public static let undo = Intent("undo")
     /// Rewind to the opening (engine-level; not overridable).

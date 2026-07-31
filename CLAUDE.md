@@ -26,7 +26,7 @@ that covers your task before writing code.
 
 ```sh
 swift build
-swift test                                    # ~780 tests, sub-second
+swift test                                    # ~880 tests, sub-second
 swift test --filter FulminateTests
 swift run Fulminate                            # pipe stdin to play scripted; GNUSTO_PLAIN=1 forces plain output
 swift package --allow-writing-to-package-directory format-source-code
@@ -50,11 +50,16 @@ or `#` is a tester comment that never reaches the parser. See `docs/playtesting.
   Turn order → `TheTurnPipeline.md`.
 - Actors → `ActorsAndVehicles.md`. Plugins/bundles → `Plugins.md`, `ContentBundles.md`.
 - Tests → `TestingYourGame.md`.
-- The built-in verb table is two arrays in `Sources/Gnusto/Actions/SyntaxRule.swift`:
-  `coreTable` (verbs the engine backs with behavior) plus `stubTable`, together
-  `standardTable`. Stub verbs — ~47 intents that are words with one line of prose and
-  no mechanic — live in `Actions/StubVerbs.swift`; their copy is `GameText.stubs`.
-  The core intent list is `Actions/Command.swift`. Stock lines are `Actions/GameText.swift`.
+- The built-in verb table is two declaration arrays, one per file, each stating its
+  intent once and deriving the rest. `Actions/CoreVerbs.swift` holds `cores` — the
+  ~31 intents the engine backs with behavior — and derives `SyntaxRule.coreTable`,
+  `builtInIntents`, `engineIntents` and the stage-4 dispatch from it; the handler
+  bodies stay in `Actions/DefaultActions.swift`. `Actions/StubVerbs.swift` holds
+  `stubs` — ~47 intents that are words with one line of prose and no mechanic — and
+  derives `stubTable` and `stubIntents`; their copy is `GameText.stubs`.
+  `SyntaxRule.standardTable` is both tables. The intent constants are split the same
+  way: core in `Actions/Command.swift`, stub in `Actions/StubVerbs.swift`. Stock
+  lines are `Actions/GameText.swift`.
 
 ## The shape of a game
 
@@ -115,6 +120,10 @@ In any rule body: `say`, `refuse`, `reply`, `require(_:else:)`, `end(won:)`, `di
   the warning off `coreTable`, so `action(.dig)` or a rule on `.attack` costs you
   nothing. Promote a stub with `reply`/`refuse` — stage 4 uses `say`, so a rule that
   only `say`s prints *both* lines.
+- **UNDO, RESTART, SAVE and RESTORE can't be overridden at all.** `GameWorld.run`
+  answers them before the pipeline, so no rule sees them and `action(.save)` never
+  runs. That's `DefaultActions.engineIntents`, and declaring one now warns rather
+  than failing silently.
 - **`search X` / `find X` / `look for X` all mean `.lookIn`**, which refuses in a
   fixed order: `cantReach` for something out of reach, `cantSearchActor` for a
   person, then `nothingToSearch` ("You find nothing of interest in the X") for
