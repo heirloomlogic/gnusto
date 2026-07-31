@@ -31,8 +31,9 @@ struct Lighthouse: Game {
     let title = "The Lighthouse"
     let tagline = "Relight the beacon before the tide comes in."
     /// The two scored events: reaching the storeroom (5) and relighting the
-    /// beacon (20). `maxScore` is the author's to total — the engine reads it at
-    /// bootstrap, before any scoring rule can run.
+    /// beacon (20). The engine reads `maxScore` at bootstrap, before any scoring
+    /// rule can run, so it stays a literal — but the bootstrap now checks it
+    /// against ``scoring``'s declared award table and warns if they disagree.
     let maxScore = 25
     let intro = """
         The keeper's boat brought you out on the last of the ebb, and already
@@ -144,8 +145,11 @@ struct Lighthouse: Game {
     let tower = Tower()
 
     /// Treasure/event scoring, a `GameContent` plugin. Added to `content`; its
-    /// awards are spliced into `rules` below.
-    let scoring = Scoring()
+    /// awards are spliced into `rules` below. The table is what `maxScore` is
+    /// checked against, so a third award added here without touching the total
+    /// is a bootstrap warning rather than a game that quietly outruns its own
+    /// ceiling.
+    let scoring = Scoring(awards: ["storeroom": 5, "beacon": 20])
 
     /// NPC behavior (roaming), a logic-only `GamePlugin`. It owns no state — the
     /// keeper's position *is* her placement — so the host splices its factories
@@ -301,7 +305,7 @@ struct Lighthouse: Game {
             try require(
                 oilCan.isHeld,
                 else: "The beacon's reservoir is dry. You'll want the oil from the storeroom.")
-            scoring.awardOnce("beacon", points: 20)
+            scoring.awardOnce("beacon")
             say(
                 """
                 You tip the last of the oil into the beacon's reservoir and
@@ -313,6 +317,6 @@ struct Lighthouse: Game {
         }
 
         // Scoring: reaching the storeroom pays five points, once.
-        scoring.visit(storeroom, register: "storeroom", points: 5)
+        scoring.visit(storeroom, register: "storeroom")
     }
 }

@@ -534,11 +534,19 @@ enum Bootstrap {
             onDeath: { game.onDeath() })
 
         let registrationFrame = TurnFrame(definition: definition, state: state)
-        let (declaredRules, declaredTimers) = Ctx.$frame.withValue(registrationFrame) {
-            () -> ([Rule], [TimedEvent]) in
+        let (declaredRules, declaredTimers, declaredScores) = Ctx.$frame.withValue(
+            registrationFrame
+        ) { () -> ([Rule], [TimedEvent], [Int]) in
             let rules: [Rule] = game.rules.rules + modules.flatMap { $0.rules.rules }
             let timers: [TimedEvent] = game.timers + modules.flatMap { $0.timers }
-            return (rules, timers)
+            // Content that can total its own awards is asked here rather than
+            // later, because the totals may be declared as item traits and a
+            // trait read needs a live frame.
+            let declaredItems = Array(registry.items.values)
+            let scores: [Int] = modules.compactMap {
+                ($0 as? ScoreDeclaring)?.declaredMaxScore(items: declaredItems)
+            }
+            return (rules, timers, scores)
         }
         _ = registrationFrame.retire()  // discard any stray writes
 
@@ -684,6 +692,23 @@ enum Bootstrap {
                 "a rule watches intent \"\(intent.raw)\", but no verb row produces "
                     + "it; if it was declared with #verb, list .\(intent.raw) in a "
                     + "verbs block.")
+        }
+
+        // `maxScore` is read before any rule can run, so on its own it is the
+        // author's arithmetic and nothing verifies it. Content conforming to
+        // `ScoreDeclaring` knows its own award table; where one exists, the two
+        // numbers must agree. Non-fatal — nothing breaks in play, and a
+        // deliberately unreachable ceiling stays shippable.
+        let declaredScore = declaredScores.reduce(0, +)
+        if !declaredScores.isEmpty, declaredScore != game.maxScore {
+            let drift = declaredScore - game.maxScore
+            let consequence =
+                drift > 0
+                ? "\(drift) point(s) can be scored past the maximum"
+                : "\(-drift) point(s) of the maximum are unreachable"
+            definition.warnings.append(
+                "the game's maxScore is \(game.maxScore), but its scoring content "
+                    + "declares awards totalling \(declaredScore); \(consequence).")
         }
 
         definition.rules = table

@@ -157,7 +157,7 @@ example that wires the first four:
 | Product | Shape | Owns | The host passes |
 | --- | --- | --- | --- |
 | `GnustoDangerousDark` | `GameContent` | one dark-turn counter, the grue daemon | prose + grace period at init |
-| `GnustoScoring` | `GameContent` | award-once registers | treasures + the trophy case to `treasures(_:into:)` |
+| `GnustoScoring` | `GameContent` | award-once registers | the award table to `init(awards:)`, treasures + the trophy case to `treasures(_:into:)` |
 | `GnustoActors` | `GamePlugin` | nothing — position *is* the actor's placement | actors, room sets, candidates to `roams`/`steals`/`reaction` |
 | `GnustoMeleeCombat` | `GameContent` | the combat ledger (health/stun by key) | villains, weapons, prose to `villain`/`aggression` |
 | `GnustoSpellcasting` | `GameContent` | the spell memory and the energy pool | spells + their ``SpellCost`` to `spell(_:cost:effect:)` |
@@ -174,7 +174,7 @@ string in the game's own voice.
 
 ## Worked examples
 
-- `Sources/Lighthouse/` — a small host that splices just two: `GnustoScoring` (a `visit` award and a one-off `awardOnce`) and `GnustoActors` (a roaming keeper). The smallest of these examples.
+- `Sources/Lighthouse/` — a small host that splices just two: `GnustoScoring` (a `visit` award and a one-off `awardOnce`, both declared in its award table so the bootstrap can check `maxScore`) and `GnustoActors` (a roaming keeper). The smallest of these examples.
 - `Sources/Zork1/Zork1.swift` — the host that wires four first-party plugins over entities from three content bundles.
 - `Sources/Gramarye/Gramarye.swift` — a small original game built entirely around `GnustoSpellcasting`, with one puzzle per casting paradigm.
 - `Sources/Fulminate/Fulminate.swift` — the mystery demo, built around `GnustoClock`: an evening on a wall clock with three alarms bracketing it. Its story and mechanics contract live in `docs/games/fulminate.md`.

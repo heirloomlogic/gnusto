@@ -111,6 +111,12 @@ In any rule body: `say`, `refuse`, `reply`, `require(_:else:)`, `end(won:)`, `di
 - **Actors are always listed** if perceivable. `scenery` has no effect on them; only
   `hidden`-and-unrevealed or offstage suppresses one.
 - **`reveal()` is one-way** and `isTouched` is read-only — neither is a toggle.
+- **`maxScore` is checked against the `Scoring` award table.** `Scoring(awards:)` is the
+  one place a register's points are written — `awardOnce("beacon")` and
+  `visit(_:register:)` read them from there, and an unlisted register is a `fatalError`,
+  not a silent zero. The bootstrap adds the table to every treasure's
+  `.takeValue`/`.depositValue` and warns when the total misses `maxScore`. Content that
+  declares nothing (an empty table, no valued treasures) opts out.
 - **Meta intents and parse failures cost no turn** (`Command.metaIntents`,
   `freeReply`). A test that counts turns by counting commands will be wrong the
   moment one of them fails to parse. This is the single most common test-timing bug.
