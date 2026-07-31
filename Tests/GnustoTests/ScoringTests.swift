@@ -2,7 +2,11 @@ import Foundation
 import GnustoTestSupport
 import Testing
 
+@testable import CloakOfDarkness
 @testable import Gnusto
+@testable import Gramarye
+@testable import Lighthouse
+@testable import Zork1
 
 /// The `GnustoScoring` plugin: treasure values as typed traits, award-once
 /// registers, and deposit scoring gated on landing in the right container.
@@ -19,10 +23,10 @@ struct ScoringTests {
         expectInOrder(
             transcript,
             [
-                "Your score is 0 of a possible 10",
+                "Your score is 0 of a possible 15",
                 "Taken.",
-                "Your score is 4 of a possible 10",
-                "Your score is 10 of a possible 10",
+                "Your score is 4 of a possible 15",
+                "Your score is 10 of a possible 15",
             ])
     }
 
@@ -39,10 +43,10 @@ struct ScoringTests {
         expectInOrder(
             transcript,
             [
-                "Your score is 4 of a possible 10",
-                "Your score is 10 of a possible 10",
-                "Your score is 4 of a possible 10",
-                "Your score is 10 of a possible 10",
+                "Your score is 4 of a possible 15",
+                "Your score is 10 of a possible 15",
+                "Your score is 4 of a possible 15",
+                "Your score is 10 of a possible 15",
             ])
         // Take value never doubles (re-taking a dropped gem adds nothing)...
         #expect(!transcript.contains("score is 8"))
@@ -54,7 +58,7 @@ struct ScoringTests {
         let transcript = try await play(
             TreasureVaultGame(),
             ["take gem", "put gem in sack", "score", "quit"])
-        expectInOrder(transcript, ["Your score is 4 of a possible 10"])
+        expectInOrder(transcript, ["Your score is 4 of a possible 15"])
         #expect(!transcript.contains("score is 10"))
     }
 
@@ -62,7 +66,7 @@ struct ScoringTests {
         let transcript = try await play(
             TreasureVaultGame(),
             ["take pebble", "put pebble in case", "score", "quit"])
-        expectInOrder(transcript, ["Your score is 0 of a possible 10"])
+        expectInOrder(transcript, ["Your score is 0 of a possible 15"])
     }
 
     @Test func awardOnceIsIdempotentByRegister() async throws {
@@ -83,7 +87,7 @@ struct ScoringTests {
             [
                 "The dust was not dust.",
                 "*** You have died ***",
-                "Your score is 4 of a possible 10",
+                "Your score is 4 of a possible 15",
             ])
     }
 
@@ -132,6 +136,81 @@ struct ScoringTests {
                 "take gem", "put gem in case", "score",
                 "quit",
             ])
-        expectInOrder(transcript, ["Saved.", "Restored.", "Your score is 10 of a possible 10"])
+        expectInOrder(transcript, ["Saved.", "Restored.", "Your score is 10 of a possible 15"])
+    }
+}
+
+/// The bootstrap's `maxScore` check. `maxScore` is read before any rule can run,
+/// so on its own it is the author's arithmetic; `ScoreDeclaring` content hands
+/// the bootstrap the total it can actually pay, and the two must agree.
+///
+/// A transcript test cannot stand in for this: `"Your score is 25 of a possible
+/// 25"` agrees with `maxScore` only because that particular route collects every
+/// award, and an award added outside the route would pass the same assertion.
+struct MaxScoreCheckTests {
+    /// Every score warning names both numbers, so callers can key on the shape
+    /// without repeating the whole sentence.
+    private func scoreWarnings(_ warnings: [String]) -> [String] {
+        warnings.filter { $0.contains("maxScore") }
+    }
+
+    @Test func aCeilingThatMatchesItsAwardsIsSilent() throws {
+        let (definition, _) = try Bootstrap.build(DeclaredScoreGame(maxScore: 10))
+        #expect(scoreWarnings(definition.warnings).isEmpty)
+    }
+
+    @Test func aCeilingBelowItsAwardsWarnsThatPointsOverrunIt() throws {
+        let (definition, _) = try Bootstrap.build(DeclaredScoreGame(maxScore: 6))
+        let warning = try #require(scoreWarnings(definition.warnings).first)
+        #expect(warning.contains("maxScore is 6"))
+        #expect(warning.contains("totalling 10"))
+        #expect(warning.contains("4 point(s) can be scored past the maximum"))
+    }
+
+    @Test func aCeilingAboveItsAwardsWarnsThatPointsAreUnreachable() throws {
+        let (definition, _) = try Bootstrap.build(DeclaredScoreGame(maxScore: 25))
+        let warning = try #require(scoreWarnings(definition.warnings).first)
+        #expect(warning.contains("maxScore is 25"))
+        #expect(warning.contains("totalling 10"))
+        #expect(warning.contains("15 point(s) of the maximum are unreachable"))
+    }
+
+    @Test func contentThatDeclaresNothingOptsOut() throws {
+        // An empty table and no valued treasures: the plugin is present but has
+        // declared nothing to check, so a game scoring by hand elsewhere is not
+        // nagged about a ceiling this content knows nothing about.
+        let (definition, _) = try Bootstrap.build(
+            DeclaredScoreGame(maxScore: 30, awards: [:]))
+        #expect(scoreWarnings(definition.warnings).isEmpty)
+    }
+
+    @Test func treasureTraitsCountTowardTheTotal() throws {
+        // The vault's 15 is 4 + 6 on the gem, nothing on the pebble, and 5 for
+        // `meditate` — half declared in the table, half on the items.
+        let (definition, _) = try Bootstrap.build(TreasureVaultGame())
+        #expect(scoreWarnings(definition.warnings).isEmpty)
+        #expect(definition.maxScore == 15)
+    }
+
+    @Test func theCheckIsNotFatal() async throws {
+        // A mismatched ceiling is a warning, not a diagnostic: the game still
+        // boots and still plays, and a deliberately unreachable ceiling ships.
+        let transcript = try await play(
+            DeclaredScoreGame(maxScore: 6), ["reach", "score", "quit"])
+        #expect(transcript.contains("You reach the hook."))
+        #expect(transcript.contains("Your score is 10 of a possible 6"))
+    }
+
+    /// Every demo game's ceiling, pinned where a transcript test cannot pin it.
+    /// Each game's mechanics contract states a `maxScore` — Cloak's 2,
+    /// Lighthouse's 25, Gramarye's 10, Zork's 350 — and this is the row that
+    /// checks the number, no matter which route the transcript tests walk.
+    @Test func everyDemoGameCanPayItsOwnMaximum() throws {
+        #expect(scoreWarnings(try Bootstrap.build(OperaHouse()).0.warnings) == [])
+        #expect(scoreWarnings(try Bootstrap.build(Lighthouse()).0.warnings) == [])
+        #expect(scoreWarnings(try Bootstrap.build(Gramarye()).0.warnings) == [])
+        // 143 points of `.takeValue` + 129 of `.depositValue` across the
+        // nineteen treasures, plus 78 in event awards. Exactly 350.
+        #expect(scoreWarnings(try Bootstrap.build(Zork1()).0.warnings) == [])
     }
 }

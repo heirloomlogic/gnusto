@@ -74,7 +74,7 @@ column is what has to remain true no matter how the story is rewritten.
 | State-keyed `describe` | Study, gallery, warded door, granite wall, niche — five rules, each reading its own state. | Every solved gate is visible the next time the player looks. No room describes a barrier that is no longer there. |
 | Clue ladder | Six spellbook reads, one per obstacle, never reading ahead. | The book answers the *current* obstacle and no later one. A read that hands out two spells at once collapses the game. |
 | Blocked exits | `out` and `down` from the study, refused in the game's own words. | The tower cannot be left. The refusal is authored, never the stock line. |
-| Scoring | Ten points on taking the amulet, and that ends the game. | `maxScore == 10`, paid by **one** award, at the win. This game is not a scoring demo and should not grow into one. |
+| Scoring | Ten points on taking the amulet, and that ends the game. | `maxScore == 10`, paid by **one** award, at the win, declared in the `Scoring` award table so the bootstrap checks the total. This game is not a scoring demo and should not grow into one. |
 
 **Free to change:** every name, all prose, the room descriptions, the master's
 voice, the tone, the title, and the specific spell words.

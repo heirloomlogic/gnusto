@@ -69,7 +69,7 @@ column is what has to remain true no matter how the story is rewritten.
 | Content bundle | `Tower` owns the Lamp Room and the beacon. | The goal lives in a bundle and the fuel for it lives in the host. The seam is the demonstration. |
 | Cross-bundle rule | Lighting the beacon is the host's rule, because it checks for the oil can found downstairs. | The winning rule stays the host's. A bundle that could win on its own proves nothing about bundles. |
 | Plugins | `GnustoScoring` (stateful, in `content`) and `GnustoActors` (logic-only, spliced into `timers`). | **Both** kinds of plugin, wired the two different ways. |
-| Scoring | Five for reaching the storeroom, twenty for the beacon. | `maxScore` stays the sum of its declared awards, and there are **two** of them — one for progress, one for the win. |
+| Scoring | Five for reaching the storeroom, twenty for the beacon. | `maxScore` stays the sum of its declared awards — checked at bootstrap against the `Scoring` award table — and there are **two** of them, one for progress, one for the win. |
 
 **Free to change:** every name, all prose, the room descriptions, the keeper's
 identity and voice, the tone, the title, the tagline, and the specific numbers on
@@ -78,11 +78,13 @@ the tide and the lamp.
 **Not free to change without revisiting the implementation plan:** everything in the
 right-hand column above.
 
-One of those rows has teeth the others don't. The engine reads `maxScore` at
-bootstrap, before any scoring rule can run, so the total is the author's arithmetic
-and **nothing checks it** — not the tests, not the harness. A rewrite that adds a
-third award and forgets the total ships a game that can never reach its own maximum,
-and nothing will say so.
+The Scoring row used to be the one nothing checked. The engine still reads `maxScore`
+at bootstrap, before any scoring rule can run, so it is still a literal — but the two
+awards are now declared in the `Scoring` award table, which is the only place a
+register's points are written, and the bootstrap compares the table's total against
+`maxScore` and warns when they disagree. A rewrite that adds a third award and forgets
+the total is a warning on startup and a red test, not a game that quietly ships a
+maximum it can never reach.
 
 ---
 
