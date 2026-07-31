@@ -25,7 +25,11 @@ enum DefaultActions {
             // world clock advances — flailing at the chair takes time.
             frame.say(stub.line(frame.definition.text, command))
         } else {
-            frame.say(frame.definition.text.didntUnderstand)
+            // Nothing claims this intent. The parser understood the sentence —
+            // a row produced the intent or we would not be here — so this is
+            // not `didntUnderstand`, and since nothing happened it costs what
+            // nothing costs: `unhandled` makes the turn free.
+            throw TurnInterrupt.unhandled(message: frame.definition.text.cantDoThat)
         }
     }
 

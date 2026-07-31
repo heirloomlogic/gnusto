@@ -122,6 +122,11 @@ In any rule body: `say`, `refuse`, `reply`, `require(_:else:)`, `end(won:)`, `di
   moment one of them fails to parse. This is the single most common test-timing bug.
   A **stub verb does** cost a turn, so `sing` or `xyzzy` is not a free line — use
   `frotz` when a test needs a guaranteed parse error.
+- **A custom verb nothing answers is also free.** A declared intent with no action,
+  no matching rule and no stub line reaches stage 4's last resort: `text.cantDoThat`
+  ("You can't do that."), thrown as `TurnInterrupt.unhandled`, which skips the `after`
+  rules and every part of `finishTurn` that costs — no each-turn rules, no timer tick,
+  no move, and the UNDO snapshot is left where it was.
 - **Overriding a stub verb is silent; overriding a core verb warns.** Bootstrap keys
   the warning off `coreTable`, so `action(.dig)` or a rule on `.attack` costs you
   nothing. Promote a stub with `reply`/`refuse` — stage 4 uses `say`, so a rule that

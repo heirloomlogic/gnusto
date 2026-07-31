@@ -5,9 +5,10 @@
 /// same fact was stated in three places nothing checked against each other: the
 /// rows, a hand-written `builtInIntents` set, and a `switch` in
 /// ``DefaultActions/run(_:frame:)``. Every way those three could disagree was
-/// silent — a row with no arm answered `didntUnderstand` and read to the player
-/// as a parser bug; an arm with no row was dead code; an intent in the set but
-/// not the switch made `action(…)` warn about shadowing nothing.
+/// silent — a row with no arm fell through to stage 4's last resort and read to
+/// the player as a verb the game refused; an arm with no row was dead code; an
+/// intent in the set but not the switch made `action(…)` warn about shadowing
+/// nothing.
 ///
 /// Stating the intent once and deriving the rest makes all of that
 /// unrepresentable, so `CoreVerbTests` doesn't assert it: the initializer

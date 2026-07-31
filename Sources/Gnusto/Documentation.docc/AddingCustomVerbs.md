@@ -30,7 +30,7 @@ Patterns are validated as you type — a malformed shape is a compile-time error
 
 ## List it, then respond to it
 
-The rows reach the parser through your game's `verbs` block, which splices everything a listed intent carries. A rule keyed on the same constant gives the verb behavior — a custom intent has no built-in default action, so an unhandled one just reports that the game didn't understand:
+The rows reach the parser through your game's `verbs` block, which splices everything a listed intent carries. A rule keyed on the same constant gives the verb behavior — a custom intent has no built-in default action, so any noun your rules don't cover falls through to `text.cantDoThat` ("You can't do that."), and costs no turn, exactly as a parse error costs none:
 
 ```swift
 struct Temple: Game {
@@ -56,7 +56,7 @@ var verbs: [SyntaxRule] {
 }
 ```
 
-If you forget the listing, the rule silently never fires from typed input; the bootstrap records a non-fatal warning naming the intent and the fix.
+If you forget the listing, the rule silently never fires from typed input; the bootstrap records a non-fatal warning naming the intent and the fix. It warns about the mirror mistake too — a verb you list and then wire to nothing, which the parser will match and stage 4 will have no answer for.
 
 Because the object resolves into ``Command/directObject``, you can attach the rule to the object (`bell.before(…)`) or handle the intent more broadly on the ``World`` when several objects share behavior:
 

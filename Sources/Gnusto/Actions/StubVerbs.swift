@@ -18,7 +18,8 @@ struct StubVerb: Sendable {
     /// The rows that reach this intent, built from the declared patterns so the
     /// intent is stated once. Kept beside the intent and the line so a stub
     /// can't be half-declared: rows with no line, or a line no row reaches,
-    /// would both answer `didntUnderstand` and look like a parser bug.
+    /// would both fall through to stage 4's last resort, so a word the engine
+    /// advertises would answer "You can't do that."
     let rows: [SyntaxRule]
 
     /// The stock reply. Takes the whole command so a line can name the objects

@@ -5,6 +5,13 @@ enum TurnInterrupt: Error {
     case replied(message: String)
     case gameOver(won: Bool)
     case died(message: String)
+
+    /// Stage 4 had no answer at all: a verb row produced this intent, so the
+    /// parser understood the sentence, but no action, no rule and no stub line
+    /// claims it. Mechanically a `refuse` that costs nothing — the player is
+    /// told the game has no answer for them, and the world does not move on
+    /// the strength of a non-event.
+    case unhandled(message: String)
 }
 
 /// Prints a message as part of the turn's output.

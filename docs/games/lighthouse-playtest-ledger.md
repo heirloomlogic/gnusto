@@ -61,7 +61,7 @@ on the fact, so it is filed as the design call #95 rather than as a defect.
 | `Lighthouse.swift::jetty a short stone jetty runs out from the foot of the lighthouse to the…` | confirmed | unanswerable-noun |
 | `Lighthouse.swift::lamp room the old keeper stands by the window favoring one leg talk to keeper…` | confirmed | prose-untrue-of-state |
 | `Lighthouse.swift::drop can dropped turn on beacon the beacons reservoir is dry youll want the…` | confirmed | mechanic-contradicts-prose |
-| `Lighthouse.swift::talk to me i didnt understand that sentence cold water sluices between the…` | confirmed | mechanic-contradicts-prose |
+| `Lighthouse.swift::talk to me i didnt understand that sentence cold water sluices between the…` | fixed | mechanic-contradicts-prose |
 | `Lighthouse.swift::take brass key taken look base of the lighthouse the round stone room at the…` | confirmed | prose-untrue-of-state |
 | `Lighthouse.swift::the old keeper stands by the window favoring one leg the keeper limps away up…` | confirmed | unanswerable-noun |
 | `Lighthouse.swift::the keeper climbs stiffly into the room x keeper you see nothing special…` | refuted | unanswerable-noun |
@@ -93,3 +93,14 @@ git log -S 'limps away up the stairs' --oneline -- Sources/Lighthouse/Lighthouse
 
 Nothing in this round was introduced by an earlier fix. Lighthouse has never had a
 playtest round before this one.
+
+## Amendments
+
+**2026-07-30 — `talk to me` marked `fixed`.** Fixed in the engine, not in Lighthouse.
+An intent nothing answers now reaches stage 4's last resort as
+`TurnInterrupt.unhandled`: it says "You can't do that." instead of claiming a parse
+failure, and it costs no turn, so the three commands that drowned a tester on the jetty
+no longer move the tide. Lighthouse's own source is unchanged — answering `.talk` with
+a rule on the keeper and leaving every other noun to the fall-back was never the defect.
+Regression cover: `LighthouseTranscriptTests.talkingToNobodyOnTheJettyCostsNoTurn`. See
+[#96](https://github.com/heirloomlogic/gnusto/issues/96).

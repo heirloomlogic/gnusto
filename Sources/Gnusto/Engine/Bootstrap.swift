@@ -726,12 +726,35 @@ enum Bootstrap {
         let deadIntents =
             watchedIntents
             .subtracting(producedIntents)
-            .filter { !DefaultActions.handledIntents.contains($0) }
+            .subtracting(DefaultActions.handledIntents)
         for intent in deadIntents.sorted(by: { $0.raw < $1.raw }) {
             definition.warnings.append(
                 "a rule watches intent \"\(intent.raw)\", but no verb row produces "
                     + "it; if it was declared with #verb, list .\(intent.raw) in a "
                     + "verbs block.")
+        }
+
+        // The mirror of the check above: a row the parser can match whose
+        // intent nothing anywhere answers. Typing it reaches stage 4, which
+        // has no handler, no stub line and no override to offer, so the
+        // player gets the engine's fall-back line and a free turn — correct,
+        // but never what the author meant by adding the verb.
+        //
+        // Deliberately keyed on intents something *names*. A rule that answers
+        // one noun and leaves the rest to the fall-back is the documented
+        // pattern and warns nothing; a catch-all rule (empty `intents`, which
+        // `Rule.matches` treats as "any") names no intent, so a game's
+        // `world.beforeEachTurn` cannot quietly switch this check off.
+        let unansweredIntents =
+            producedIntents
+            .subtracting(watchedIntents)
+            .subtracting(DefaultActions.handledIntents)
+            .subtracting(DefaultActions.engineIntents)
+        for intent in unansweredIntents.sorted(by: { $0.raw < $1.raw }) {
+            definition.warnings.append(
+                "a verb row produces intent \"\(intent.raw)\", but nothing answers "
+                    + "it; give it an action(.\(intent.raw)) or a rule, or the verb "
+                    + "just prints the engine's fall-back line.")
         }
 
         // `maxScore` is read before any rule can run, so on its own it is the
