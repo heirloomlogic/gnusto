@@ -313,7 +313,7 @@ const FINDINGS_SCHEMA = {
     },
     unknownWords: {
       type: 'array',
-      description: 'Words the parser did not know. Collected as one list rather than filed one-by-one — but note that ~48 verbs are now stubs, so an unknown word is unusual: if the game printed the word it is a K8 unanswerable-noun finding, and otherwise it is a verb with no stub yet.',
+      description: 'Every word the parser did not know, with how many times you saw it. Collected as one list rather than filed one-by-one. This is a census and not a verdict: a word the game printed IS a K8 unanswerable-noun finding and you file it as one, AND it still belongs in this list — the two are not alternatives, and treating them as alternatives is how a round once reported 2 occurrences against transcripts holding 261. Set gamePrintedIt to tell the two kinds apart. Note that ~48 verbs are now stubs, so an unknown word that the game did NOT print is a verb with no stub yet.',
       items: {
         type: 'object',
         additionalProperties: false,
@@ -403,6 +403,31 @@ const FIX_SCHEMA = {
     docUpdated: { type: 'boolean' },
     escalated: { type: 'string', description: 'Set when the only available fix would breach the mechanics contract.' },
     notes: { type: 'string' },
+  },
+}
+
+/// Counted off the transcripts, not asked of the testers — see the census agent
+/// in the Gate phase for why the difference matters.
+const CENSUS_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['totalOccurrences', 'words'],
+  properties: {
+    totalOccurrences: { type: 'integer', description: 'Every unknown-word reply in every transcript this round wrote.' },
+    words: {
+      type: 'array',
+      description: 'One row per distinct word, with its count. Every word, not the interesting ones.',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['word', 'count'],
+        properties: {
+          word: { type: 'string' },
+          count: { type: 'integer' },
+        },
+      },
+    },
+    note: { type: 'string', description: 'Only if the count needs one — an empty glob, an unreadable transcript.' },
   },
 }
 
@@ -1173,7 +1198,34 @@ for (const name of coverage.flatMap((c) => c.roomsVisited || [])) {
 }
 const neverVisited = survey.rooms.filter((r) => !visited.has(r))
 const turnsSpent = coverage.reduce((n, c) => n + (c.turnsSpent || 0), 0)
-const unknownWordTotal = [...unknownWords.values()].reduce((a, b) => a + b, 0)
+const reportedWordTotal = [...unknownWords.values()].reduce((a, b) => a + b, 0)
+
+// The census, counted off the transcripts rather than asked of the testers.
+// Self-reporting is what made this number wrong: the schema told testers that a
+// word the game printed is a K8 finding, they read that as "file it there
+// INSTEAD", and the 2026-07-31 round returned 2 occurrences against transcripts
+// holding 261 over 59 words. The schema now says both; this counts anyway,
+// because a derived number does not depend on seventy-nine agents reading a
+// field description the same way.
+const census = await agent(
+  `${groundMin(labelFor('census'))}
+
+You are the unknown-word census. You count; you do not judge, file or explain.
+
+From \`${pkg}\`, run exactly this and read the output:
+
+    grep -rhoE 'I don.t know the word "[a-z]+"' .context/playtest/${game}-*/*/transcript.txt | sort | uniq -c | sort -rn
+
+Report every distinct word with its count, and the total number of occurrences.
+Leave nothing out and open no findings: a word the game printed is somebody
+else's K8 finding and it still counts here. If the glob matches no files, report
+zero and say so in \`note\` — that is a real answer and it means the round wrote
+no transcripts.`,
+  { label: 'census', phase: 'Gate', schema: CENSUS_SCHEMA, effort: 'low' })
+
+const censusWords = (census && census.words) || []
+const unknownWordTotal = Math.max(reportedWordTotal, (census && census.totalOccurrences) || 0)
+const unknownWordDistinct = Math.max(unknownWords.size, censusWords.length)
 
 const criticThunk = () =>
   agent(
@@ -1193,7 +1245,7 @@ truth and they win over anything below.
 - Charters run: ${playRoster.map((c) => c.key).join(', ')}. NOT run: ${skipped.map((c) => c.key).join(', ') || 'none'}.
 - Confirmed ${confirmed.length}, refuted ${refuted.length}, findings routed to another issue ${routed.length}, fixed ${fixes.filter((f) => f.result && f.result.fixed).length}.
 - Filed rather than fixed: ${filed.length} (${filedBreakdown}). \`${REF}/report-shape.md\` defines the four reasons.
-- Unknown-word replies collected: ${unknownWordTotal} occurrences over ${unknownWords.size} distinct words. Not findings in themselves and not coverage — but ~48 verbs are stubs now, so a large number here is itself worth a sentence. If this is empty while the transcripts are full of unknown-word replies, say so.
+- Unknown-word replies: ${unknownWordTotal} occurrences over ${unknownWordDistinct} distinct words, counted off the transcripts (the testers self-reported ${reportedWordTotal} over ${unknownWords.size}; a gap between the two is a reporting defect, not a coverage one, and is worth a line). Not findings in themselves and not coverage — but ~48 verbs are stubs now, so a large number here is itself worth a sentence.
 - Timers, and whether any was left unexercised: ${(survey.timers || []).map((t) => t.label).join(', ') || 'none'}.
 
 Each charter's own coverage note:
@@ -1236,7 +1288,12 @@ return {
   filedByReason,
   refuted,
   routed,
-  unknownWords: [...unknownWords.entries()].map(([word, count]) => ({ word, count })).sort((a, b) => b.count - a.count),
+  // The census is the authority; what the testers said is kept beside it so a
+  // reader can see the two disagree.
+  unknownWords: censusWords.length
+    ? [...censusWords].sort((a, b) => b.count - a.count)
+    : [...unknownWords.entries()].map(([word, count]) => ({ word, count })).sort((a, b) => b.count - a.count),
+  unknownWordsSelfReported: [...unknownWords.entries()].map(([word, count]) => ({ word, count })).sort((a, b) => b.count - a.count),
   fixes: fixes.map((f) => ({ file: f.file, ...(f.result || {}), findings: f.group.map((g) => g.claim) })),
   gate,
   critic,

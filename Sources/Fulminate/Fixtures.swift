@@ -26,7 +26,6 @@ import Gnusto
 /// to be a noun, which is why several words declared as adjectives elsewhere in
 /// this game are declared as synonyms here.
 struct Fixtures: GameContent {
-
     // MARK: - The front hall
 
     /// The hall's description sends the player south down it, and the aftermath

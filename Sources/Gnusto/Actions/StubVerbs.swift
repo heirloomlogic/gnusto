@@ -89,6 +89,13 @@ extension StubVerb {
     /// "yourself", so "The yourself is not food." That is why `named` checks for
     /// it and `plain` doesn't — a nameless line like "You smell nothing out of
     /// the ordinary." answers `smell me` perfectly well.
+    ///
+    /// Everybody *else* is the second object they can't name, for the sister
+    /// reason: these lines are about objects, and "Mrs. Kettle is not food."
+    /// puts a witness on the same footing as a chair. `cantSearchActor` has
+    /// refused actor contact by design since the beginning, so before this
+    /// guard `search the cook` and `eat the cook` gave opposite rulings one
+    /// line apart.
     static func named(
         _ intent: Intent,
         _ patterns: [[SyntaxElement]],
@@ -98,7 +105,29 @@ extension StubVerb {
         .init(intent, patterns, reach) { text, command in
             guard let object = command.directObject else { return text.didntUnderstand }
             guard !object.isPlayer else { return text.stubs.yourself }
+            guard !object.isActor else { return text.stubs.somebodyElse(object.definiteName) }
             return line(text, object.definiteName)
+        }
+    }
+
+    /// A stub whose reply names no object but whose verb is an act of physical
+    /// contact — so a person is the one object it must not report back about.
+    ///
+    /// "You feel nothing out of the ordinary." is a fine answer for a wall and
+    /// a claim about a completed act on a witness, one turn after the game has
+    /// refused to let you search her. Only `touch` wants this today: `smell`
+    /// and `listen` cross a room and lay no hand on anybody, and `taste` and
+    /// `knock` say nothing a person could object to.
+    static func contact(
+        _ intent: Intent,
+        _ patterns: [[SyntaxElement]],
+        reach: Reach,
+        _ line: @escaping @Sendable (GameText) -> String
+    ) -> StubVerb {
+        .init(intent, patterns, reach) { text, command in
+            guard let object = command.directObject, object.isActor, !object.isPlayer
+            else { return line(text) }
+            return text.stubs.somebodyElse(object.definiteName)
         }
     }
 
@@ -360,7 +389,7 @@ extension DefaultActions {
 
         // MARK: Senses
 
-        .plain(
+        .contact(
             .touch,
             [
                 ["touch", .directObject],

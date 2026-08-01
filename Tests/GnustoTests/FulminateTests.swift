@@ -201,7 +201,7 @@ struct FulminateTests {
             [
                 "Ask them, they know me.",
                 "hat already on",
-                "check her arithmetic",
+                "check her figures",
             ])
         #expect(!turnOutput(of: "ask teague about his alibi", in: transcript).contains("Coca-Cola"))
     }
@@ -252,7 +252,7 @@ struct FulminateTests {
         #expect(
             turnOutput(of: "ask teague about drugstore", in: stillLying)
                 .contains("Ask them, they know me"))
-        #expect(!stillLying.contains("I'd check her arithmetic"))
+        #expect(!stillLying.contains("I'd check her figures"))
 
         // Teague's own alibi has the same shape and the same repair: at 5:34,
         // standing in his own room, he used to say he had walked down and
@@ -716,6 +716,142 @@ struct FulminateTests {
         #expect(!answer.contains("the patrolman looks at it"))
     }
 
+    // MARK: - Frames the stock lines were never told about
+
+    /// Fulminate set five `text` keys and no `text.stubs.*` at all, so the
+    /// engine's room-blind and state-blind defaults answered in frames the game
+    /// had just built. `stand` is the sharpest of them: the game models being
+    /// knocked flat, so there is exactly one turn on which "You're already
+    /// standing." contradicts the sentence printed directly above it.
+    @Test func theStubVerbsKnowWhatTheGameHasJustSaid() async throws {
+        let flat = try await play(
+            Fulminate(), ["south", "west"] + Array(repeating: "z", count: 7) + ["stand", "stand"])
+        expectInOrder(
+            flat,
+            [
+                "the ground hits you in the back",
+                "You get an elbow under you and stop there.",
+                "You get up.",
+            ])
+        #expect(!flat.contains("You're already standing."))
+        // And once the fuse has stood him up, the ordinary line is true again.
+        #expect(
+            turnOutput(of: "stand", in: flat).contains("You get an elbow under you")
+                || flat.contains("You are on your feet, and have been since the streetcar."))
+
+        // `climb stairs` was disproved by `up` on the very next command.
+        let stairs = try await play(Fulminate(), ["climb stairs", "up"])
+        #expect(!stairs.contains("You can't climb that."))
+        expectInOrder(stairs, ["You go up in this house by going up.", "Upstairs Landing"])
+
+        // And the parlour is built out of armchairs with a woman sitting in one.
+        let parlour = try await play(Fulminate(), ["west", "sit"])
+        #expect(!parlour.contains("There's nothing comfortable to sit on."))
+        #expect(turnOutput(of: "sit", in: parlour).contains("every person this house used to hold"))
+    }
+
+    /// Thirty feet from a building the game has just said took the hair off the
+    /// back of your hand, "You hear nothing out of the ordinary." and "You smell
+    /// nothing out of the ordinary." are both false.
+    @Test func theYardSoundsAndSmellsLikeWhatIsInIt() async throws {
+        let transcript = try await play(
+            Fulminate(), ["south", "west"] + Array(repeating: "z", count: 8) + ["listen", "smell"])
+        #expect(turnOutput(of: "listen", in: transcript).contains("ticking as it cools"))
+        #expect(turnOutput(of: "smell", in: transcript).contains("It is not a smell that came out of a stove."))
+        #expect(!transcript.contains("nothing out of the ordinary"))
+    }
+
+    /// The naming stubs rendered a witness as furniture — "Mrs. Kettle is not
+    /// food." — one line after `cantSearchActor` had refused to let the player
+    /// lay a hand on her, and `touch` reported a completed act of contact on
+    /// her. Two adjacent commands, opposite rulings.
+    @Test func theStubVerbsTreatThePeopleInThisHouseAsPeople() async throws {
+        let transcript = try await play(
+            Fulminate(),
+            [
+                "south", "search mrs. kettle", "touch mrs. kettle", "eat mrs. kettle",
+                "pull mrs. kettle", "break mrs. kettle", "touch stove",
+            ])
+        #expect(
+            turnOutput(of: "search mrs. kettle", in: transcript)
+                .contains("You are not putting a hand on Mrs. Kettle tonight."))
+        for command in ["touch mrs. kettle", "eat mrs. kettle", "pull mrs. kettle", "break mrs. kettle"] {
+            #expect(
+                turnOutput(of: command, in: transcript)
+                    .contains("Mrs. Kettle is a person, and this is not 1948."))
+        }
+        // A stove is still a stove.
+        #expect(
+            turnOutput(of: "touch stove", in: transcript).contains("You feel nothing out of the ordinary."))
+    }
+
+    /// Four faults on one object: `container` with nothing in it, so the stock
+    /// empty line answered a question three sentences of prose had answered the
+    /// other way and deleted one of the game's three character tells doing it;
+    /// takeable, so `TAKE ALL` lifted a boarder's packed case out of his rented
+    /// room while he stood downstairs being helpful; and named inline by the
+    /// room description, which went on asserting a position the world no longer
+    /// held.
+    @Test func theSuitcaseStaysPackedAndStaysOnTheBed() async throws {
+        let transcript = try await play(
+            Fulminate(), ["up", "east", "search suitcase", "open suitcase", "take suitcase", "take all", "i"])
+        #expect(!transcript.contains("The suitcase is empty."))
+        #expect(!transcript.contains("You can't open that."))
+        #expect(turnOutput(of: "search suitcase", in: transcript).contains("you leave it buckled"))
+        #expect(
+            turnOutput(of: "take suitcase", in: transcript).contains("belongs to a man who is somewhere in this house"))
+        #expect(!turnOutput(of: "i", in: transcript).contains("suitcase"))
+    }
+
+    /// The can is the coroner's answer sitting where the stove's heat can reach
+    /// it, and it was pocketable in the first five turns — which put a static
+    /// description of a bench sixty feet away into the front hall and then had
+    /// the blast take it out of the player's hands with no line of prose.
+    @Test func theSealedCanStaysOnTheBench() async throws {
+        let transcript = try await play(
+            Fulminate(), ["south", "west", "north", "take can", "i"])
+        #expect(turnOutput(of: "take can", in: transcript).contains("Ask him about it at six."))
+        #expect(!turnOutput(of: "i", in: transcript).contains("can"))
+    }
+
+    /// The only timed event with no branch on where the player has been, so it
+    /// credited a man who spent the evening in the front hall — or at the bottom
+    /// of a pitch-black cellar — with having looked at the wreckage.
+    @Test func theCoronerDoesNotCreditYouWithSomethingYouDidNotDo() async throws {
+        let neverWent = try await play(Fulminate(), Array(repeating: "z", count: 41))
+        #expect(!neverWent.contains("rather less time than you did"))
+        #expect(neverWent.contains("which is more than you managed"))
+
+        let went = try await play(
+            Fulminate(), ["south", "west"] + Array(repeating: "z", count: 39))
+        #expect(went.contains("rather less time than you did"))
+    }
+
+    /// This game declares no `Scoring`, so every ending — the win included —
+    /// closed on an engine-voice line asserting nothing had been achieved,
+    /// directly under the paragraph saying it had.
+    @Test func noEndingReportsAScoreThisGameDoesNotKeep() async throws {
+        let win = try await play(
+            Fulminate(), ["west"] + Array(repeating: "z", count: 8) + ["accuse mrs. vane"])
+        #expect(!win.contains("Your score is"))
+        #expect(win.contains("You were in that house for"))
+
+        let deadline = try await play(Fulminate(), Array(repeating: "z", count: 41))
+        #expect(!deadline.contains("Your score is"))
+    }
+
+    /// `docs/games/fulminate.md` reserves one word to Constance's shock, and the
+    /// code spent it twice elsewhere first — Teague at 5:38, the ledger from the
+    /// first time it is read, against a branch of hers gated on the blast.
+    @Test func arithmeticIsSpentOnlyWhereTheDocReservesIt() async throws {
+        let transcript = try await play(
+            Fulminate(),
+            ["south", "ask kettle about teague"] + Array(repeating: "z", count: 19)
+                + ["north", "up", "west", "x ledger", "east", "down", "west", "x mrs. vane"])
+        #expect(occurrencesInFulminate(of: "arithmetic", in: transcript) == 1)
+        #expect(turnOutput(of: "x mrs. vane", in: transcript).contains("doing arithmetic"))
+    }
+
     /// The coat is a container with the case's hinge in it, not luggage. You
     /// cannot take it and you cannot wear it, and going through the pockets
     /// goes on working, which is the only thing it was ever for.
@@ -954,8 +1090,10 @@ struct FulminateTests {
     @Test func theEvidenceDoesNotReciteItself() async throws {
         let transcript = try await play(
             Fulminate(),
-            ["south", "open drawer", "take flashlight", "turn on flashlight", "down",
-             "take glove", "up", "north", "west"] + Array(repeating: "z", count: 4)
+            [
+                "south", "open drawer", "take flashlight", "turn on flashlight", "down",
+                "take glove", "up", "north", "west",
+            ] + Array(repeating: "z", count: 4)
                 + ["show glove to constance", "show glove to constance", "i"])
         #expect(
             occurrencesInFulminate(of: "trying to remember whether I put it back", in: transcript) == 1)

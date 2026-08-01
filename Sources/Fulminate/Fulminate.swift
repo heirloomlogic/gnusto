@@ -114,6 +114,17 @@ struct Fulminate: Game, GameMain {
     /// where they were knocked down, not where they are now.
     @Global var wasInTheYardForTheBlast = false
 
+    /// Whether the player is on their back. True for exactly one turn — the
+    /// 5:46 alarm puts them there and the 5:48 fuse stands them up — which is
+    /// also the one turn on which "You're already standing." contradicts the
+    /// line printed directly above it.
+    @Global var knockedFlat = false
+
+    /// Whether the player has been out where the wreckage is since it became
+    /// wreckage. The coroner's line credits them with having looked at it, and
+    /// he says it to a man who spent the evening in the front hall.
+    @Global var sawTheWreckage = false
+
     /// Whether Delphine has declined a question in front of you yet.
     ///
     /// Deliberately not a `Fact`. Facts are what the player has worked out, and
@@ -139,6 +150,27 @@ struct Fulminate: Game, GameMain {
         // gets read more often than you would think. The Oxford comma is the
         // house style, not an article workaround.
         text.ambiguous = { "Which do you mean: \($0.joined(separator: ", or "))?" }
+
+        // This game keeps no score, and every ending — the win included — used
+        // to close on an engine-voice line saying nothing had been achieved,
+        // directly under the paragraph saying it had. The evening is measured
+        // in minutes, so the epilogue is too.
+        text.scoreLine = { _, _, moves in
+            "You were in that house for \(moves) \(moves == 1 ? "turn" : "turns")."
+        }
+
+        // The stock stub lines are room-blind and state-blind, and this game
+        // spends its evening contradicting them. The ones below are true of the
+        // house at large; the frames where they still would not be — flat on
+        // your back in the yard, the parlour full of armchairs — are rules.
+        text.stubs.listen = "The house is doing what a house does, which tonight is not much of anything."
+        text.stubs.smell = "The stove, and the dust a house like this keeps between the wars."
+        text.stubs.climb = "You go up in this house by going up. It is that kind of house."
+        text.stubs.stand = "You are on your feet, and have been since the streetcar."
+        text.stubs.sit = "You did not come out on a Tuesday to sit down."
+        // A house of witnesses, so the sister lines to the two already
+        // re-skinned above want the same voice.
+        text.stubs.somebodyElse = { "\(GameText.sentenceCase($0)) is a person, and this is not 1948." }
         return text
     }
 
@@ -836,8 +868,8 @@ struct Fulminate: Game, GameMain {
         synonyms("ledger", "book", "accounts", "pages", "page", "dates")
         description(
             """
-            A green cloth accounts book kept in a small hand. Most of it is the ordinary arithmetic of a man with no \
-            money. The last four pages are a list of dates against page numbers, and page numbers are not money.
+            A green cloth accounts book kept in a small hand. Most of it is the ordinary bookkeeping of a man with \
+            no money. The last four pages are a list of dates against page numbers, and page numbers are not money.
             """)
     }
 
@@ -865,12 +897,19 @@ struct Fulminate: Game, GameMain {
         scenery
     }
 
+    /// One of the game's three character tells, and it was declared `container`
+    /// with nothing in it — so `SEARCH SUITCASE` answered "The suitcase is
+    /// empty" to a question three sentences of prose had answered the other
+    /// way, and deleted the tell doing it. Scenery with a voiced refusal
+    /// instead, on the overcoat's model: it is a boarder's packed case in a
+    /// boarder's rented room, and `TAKE ALL` used to lift it while he stood
+    /// there being helpful.
     let suitcase = Item {
         name("suitcase")
         adjectives("brown", "packed")
         synonyms("suitcase", "case", "bag", "luggage", "strap", "buckle", "corners")
         description("Brown, scuffed at the corners, and packed. The strap is buckled. It has been packed a while.")
-        container
+        scenery
     }
 
     // MARK: - The evening, written down
@@ -1097,6 +1136,7 @@ struct Fulminate: Game, GameMain {
             }
 
             wasInTheYardForTheBlast = player.location == backYard
+            knockedFlat = wasInTheYardForTheBlast
             say(
                 wasInTheYardForTheBlast
                     ? """
@@ -1146,6 +1186,7 @@ struct Fulminate: Game, GameMain {
             // going above and below a man standing on grass. `blast.settling`
             // eleven lines down already keeps them apart; so does this now.
             let outBack = player.location == backYard || player.location == carriageHouse
+            knockedFlat = false
 
             if wasInTheYardForTheBlast {
                 say(
@@ -1273,15 +1314,29 @@ struct Fulminate: Game, GameMain {
 
         // 6:50. The deadline. The county man writes down what he is given,
         // and tonight he is being given nothing.
+        // It was the only one of the game's timed events with no branch on
+        // where the player has been, so "rather less time than you did" was
+        // said to a man who never left the front hall and to a man sitting at
+        // the bottom of a pitch-black cellar. The ending is right as a loss;
+        // the clause is the one thing in it that named something they had
+        // not done, and it stung most for the player who most deserved it.
         clock.at(TimeOfDay(18, 50), named: "clock.coroner") {
             say(
-                """
+                sawTheWreckage
+                    ? """
 
-                The county man comes up the path at ten to seven, and he is not in a hurry, because nobody has given \
-                him a reason to be. He looks at the wreckage for rather less time than you did. Then he writes \
-                *accidental* in the box marked cause, and the whole of tonight becomes a page in a drawer in a \
-                building in Los Angeles.
-                """)
+                    The county man comes up the path at ten to seven, and he is not in a hurry, because nobody has \
+                    given him a reason to be. He looks at the wreckage for rather less time than you did. Then he \
+                    writes *accidental* in the box marked cause, and the whole of tonight becomes a page in a drawer \
+                    in a building in Los Angeles.
+                    """
+                    : """
+
+                    The county man comes up the path at ten to seven, and he is not in a hurry, because nobody has \
+                    given him a reason to be. He goes out to the back and looks at what is left of it, which is more \
+                    than you managed. Then he writes *accidental* in the box marked cause, and the whole of tonight \
+                    becomes a page in a drawer in a building in Los Angeles.
+                    """)
             try end(won: false)
         }
     }
@@ -1378,6 +1433,40 @@ struct Fulminate: Game, GameMain {
                 """)
         }
 
+        // Unbuckling a stranger's case in his own room while he is downstairs
+        // being helpful is a thing the player should have to decide to do, and
+        // then not get to do. Both refusals are in the same voice as the
+        // overcoat's, which is the house rule for other people's property.
+        suitcase.before(.take) {
+            try refuse(
+                """
+                It is packed, it is heavy, and it belongs to a man who is somewhere in this house. Leave it where he \
+                put it. That it is packed at all is the interesting part.
+                """)
+        }
+
+        suitcase.before(.lookIn, .open) {
+            try reply(
+                """
+                The strap is buckled and you leave it buckled. A boarder who has packed for a longer trip than \
+                anybody has mentioned has told you the only thing this case had to say.
+                """)
+        }
+
+        // The can is the coroner's answer sitting in plain sight, and it was
+        // takeable in the first five turns — which put a static description of
+        // a bench sixty feet away into the front hall, and then had the blast
+        // `vanish()` it out of the player's hands with no line of prose. The
+        // refusal cures both, because a can that cannot be picked up is a can
+        // that is still on the bench when the stove reaches it.
+        can.before(.take) {
+            try refuse(
+                """
+                You put a hand on it and take the hand off again. It is somebody's work, it is sealed, and it is \
+                sitting where somebody meant it to sit. Ask him about it at six.
+                """)
+        }
+
         // Not a container — the glove stays loose on the cellar floor — but
         // looking behind it is the obvious move and deserves an answer.
         coalBin.before(.lookIn) {
@@ -1400,6 +1489,60 @@ struct Fulminate: Game, GameMain {
                     You could stand here all evening and it would be exactly this useful. There is a drawer under the \
                     counter in the kitchen, and houses like this keep a light in it.
                     """)
+        }
+
+        // Where the wreckage is, and therefore what the coroner is entitled to
+        // say the player looked at. Both rooms count: the lab is open for the
+        // three turns between the blast and the radio car.
+        backYard.afterEachTurn {
+            if blastHappened { sawTheWreckage = true }
+        }
+
+        carriageHouse.afterEachTurn {
+            if blastHappened { sawTheWreckage = true }
+        }
+
+        // The one turn on which the stock line contradicts the sentence
+        // printed directly above it: the 5:46 alarm says the ground hit you in
+        // the back, and the 5:48 fuse stands you up again.
+        world.before(.stand) {
+            guard knockedFlat else { return }
+            try reply(
+                """
+                You get an elbow under you and stop there. Whatever went off has not finished with the evening yet, \
+                and the grass is as good a place as any to find that out from.
+                """)
+        }
+
+        // The room is built out of armchairs and has a seventy-one-year-old
+        // woman sitting in one of them, so "There's nothing comfortable to sit
+        // on." is the one place the re-skinned line is still false.
+        parlour.before(.sit) {
+            try refuse(
+                """
+                There is a chair here for every person this house used to hold. Mrs. Vane is in the only one that \
+                has taken anybody's shape, and you did not come to keep her company.
+                """)
+        }
+
+        // Thirty feet from a building the game has just said took the hair off
+        // the back of your hand.
+        backYard.before(.listen) {
+            guard blastHappened else { return }
+            try reply(
+                """
+                What is left of the carriage house is ticking as it cools, and finding its level a piece at a time, \
+                and none of it is in any hurry either.
+                """)
+        }
+
+        backYard.before(.smell) {
+            guard blastHappened else { return }
+            try reply(
+                """
+                Burnt timber, and under it something sharper that gets into the back of your throat and stays there. \
+                It is not a smell that came out of a stove.
+                """)
         }
 
         dryGrass.describe {
@@ -1855,7 +1998,7 @@ struct Fulminate: Game, GameMain {
                 knowing: .kettleSawTeague, unless: .teagueRecanted,
                 reply: """
                     "Mrs. Kettle keeps a good kitchen and a better clock." He recrosses his legs. "A man can pass \
-                    through a kitchen on his way to the drugstore. I'd check her arithmetic."
+                    through a kitchen on his way to the drugstore. I'd check her figures."
                     """)
             topic(
                 "drugstore", "alibi", "evening", "colorado", "where", "kitchen",

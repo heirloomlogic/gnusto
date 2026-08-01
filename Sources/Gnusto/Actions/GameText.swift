@@ -553,6 +553,19 @@ extension GameText {
         /// them rather than fifteen self-specific variants.
         public var yourself = "Best leave yourself out of it."
 
+        /// A stub verb aimed at somebody else, where the verb would otherwise
+        /// have reported a completed act on a person — "The cook is not food.",
+        /// "You feel nothing out of the ordinary." about a witness. Every stub
+        /// that has to *reach* its object goes through this, so one line covers
+        /// all of them, the way ``yourself`` does.
+        ///
+        /// It is deliberately close in shape to ``GameText/cantTakeActor`` and
+        /// ``GameText/cantSearchActor``, which have always refused this way: a
+        /// game that re-skins one usually wants all three in the same voice.
+        public var somebodyElse: @Sendable (_ name: String) -> String = {
+            "\(GameText.sentenceCase($0)) is a person, and would rather you didn't."
+        }
+
         // MARK: Violence and force
 
         /// Attacking something with no combat behind it.

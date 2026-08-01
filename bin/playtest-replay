@@ -15,6 +15,10 @@
 #                       skips it, so annotate freely. A blank line is a
 #                       separator: this tool strips it while building the
 #                       effective command file, so group your probes with them.
+#   --keep-blank-lines  Pass blank lines through to the engine instead of
+#                       stripping them. The one reason to: probing what the
+#                       parser does with empty input, which is otherwise
+#                       unreachable. Every blank line then costs a turn.
 #   --seed N            GNUSTO_SEED (default 0). Pins the one random stream, so
 #                       the transcript you read is the transcript that
 #                       play(Game(), commands, seed: N) produces in the suite.
@@ -84,6 +88,7 @@ plain_name() { [[ "$1" =~ ^[A-Za-z0-9_-][A-Za-z0-9._-]*$ ]]; }
 
 game=""; commands=""; seed=0; tail_lines=0; restore_slot=""; save_slot=""
 max_turns=250; timeout_secs=60; label=""; probe=""; pkg="$PWD"; build_only=0
+keep_blanks=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -98,6 +103,7 @@ while [[ $# -gt 0 ]]; do
     --max-turns)    max_turns="${2:-}"; shift 2 ;;
     --timeout)      timeout_secs="${2:-}"; shift 2 ;;
     --package-path) pkg="${2:-}"; shift 2 ;;
+    --keep-blank-lines) keep_blanks=1; shift ;;
     -h|--help)      usage; exit 0 ;;
     -*)             die "unknown option $1" ;;
     *)              [[ -z "$game" ]] || die "unexpected argument '$1'"; game="$1"; shift ;;
@@ -202,15 +208,26 @@ effective="$probe_dir/commands.effective.txt"
   # set -e — and not BSD sed, which passes an unterminated last line through
   # unterminated: awk always emits the trailing newline, so a command file saved
   # without one can no longer glue its last command onto the epilogue below.
-  awk '!/^[[:space:]]*$/' "$commands"
+  #
+  # --keep-blank-lines passes them through instead, which is the only way to
+  # probe what the engine does with empty input: the strip is right for every
+  # ordinary probe and made that one case unreachable from any charter. The
+  # `1` branch is still an awk pass rather than `cat`, so the trailing-newline
+  # guarantee above holds either way.
+  if [[ $keep_blanks -eq 1 ]]; then
+    awk '1' "$commands"
+  else
+    awk '!/^[[:space:]]*$/' "$commands"
+  fi
   [[ -n "$save_slot" ]] && printf 'save\n%s\n' "$save_slot"
   # Twice. `quit` needs no confirmation on this path — the confirm prompt lives
   # only in TerminalIOHandler, which piped input never builds — but a pending
   # save/restore filename prompt or a death prompt is answered before any verb
   # is parsed, so the first `quit` can be eaten as an answer. The second is
-  # simply unread in the ordinary case. The epilogue it produces —
-  # "Your score is N, in M turns." — is the proof the session ran to the end
-  # rather than wedging partway.
+  # simply unread in the ordinary case. The epilogue it produces — the stock
+  # "Your score is N, in M turns.", or whatever the game has re-skinned
+  # `text.scoreLine` to — is the proof the session ran to the end rather than
+  # wedging partway.
   printf 'quit\nquit\n'
 } > "$effective"
 
