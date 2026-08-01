@@ -489,7 +489,11 @@ struct KindlyDeep: Game, GameMain {
         // fatigue by `rest` on the straw.
         clock(
             "thirst", fuse: "dehydration",
-            tick: { let n = thirst + 1; thirst = n; return n },
+            tick: {
+                let n = thirst + 1
+                thirst = n
+                return n
+            },
             warnings: [
                 (
                     12,
@@ -522,7 +526,11 @@ struct KindlyDeep: Game, GameMain {
 
         clock(
             "fatigue", fuse: "collapse",
-            tick: { let n = fatigue + 1; fatigue = n; return n },
+            tick: {
+                let n = fatigue + 1
+                fatigue = n
+                return n
+            },
             warnings: [
                 (
                     16,
@@ -565,12 +573,13 @@ struct KindlyDeep: Game, GameMain {
     ///
     /// - Parameters:
     ///   - name: the daemon's name.
-    ///   - fuse: the death fuse's name — the last warning arms it, and the
+    ///   - fuseName: the death fuse's name — the last warning arms it, and the
     ///     relieving action stops it.
     ///   - tick: advances the counter and returns its new value.
     ///   - warnings: `(turn, prose)` pairs; reaching the last one arms the fuse.
     ///   - grace: turns between that last warning and the death.
     ///   - death: what the fuse dies on.
+    /// - Returns: the clock's daemon and fuse, for the game's `timers` block.
     @TimerBuilder private func clock(
         _ name: String,
         fuse fuseName: String,

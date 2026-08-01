@@ -287,7 +287,7 @@ struct KindlyDeepTests {
         // each a thirst reset, and a fourth attempt finds dry tin.
         let transcript = try await play(
             KindlyDeep(),
-Self.withCanteen + Array(repeating: "drink canteen", count: 4))
+            Self.withCanteen + Array(repeating: "drink canteen", count: 4))
         #expect(turnOutput(of: "take canteen", in: transcript).contains("Taken."))
         #expect(occurrences(of: "It goes down cold and tastes of tin", in: transcript) == 3)
         #expect(transcript.contains("The canteen is dry, and turning it over one more time"))
