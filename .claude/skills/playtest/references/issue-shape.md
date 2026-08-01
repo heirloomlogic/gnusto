@@ -95,21 +95,22 @@ with boxes. The recurring ones:
 - each site branches on its frame, or stops claiming what it can't check;
 - a transcript test per site;
 - `docs/games/<game>.md` updated in the same commit where prose changed;
-- **a PR fixing one box references this issue and must not write `Closes #N`. Only the
-  PR that ticks the last box closes it.**
+- **a PR may fix one box, several, or all of them. It references this issue and ticks
+  what it fixed; it writes `Closes #N` only when no box is left unticked.**
 
 ## How it closes
 
-One issue covers several independent fixes, so a fix PR ticks its box and references the
-issue; only the last one closes it. The first fix PR of a round, left alone, would close
-five unfixed classes.
+A fix PR takes as many boxes as it can sensibly carry — one, several, or the whole
+checklist — ticks them, and references the issue. `Closes #N` goes in only when the PR
+leaves nothing unticked, because a PR that fixes four of six classes and closes the issue
+closes the other two along with them.
 
 **That last acceptance bullet is load-bearing and belongs in the issue body itself, not
 only here.** The reflex it fights lives outside this repo — the `journeyman` skill is
 user-global and tells every PR body it writes to carry `Closes #<n>` so merging
-auto-closes the issue. A fixer picking up one box reads the issue and its own skill, and
-neither mentions the exception unless the issue does. This file is the one thing in the
-chain such a fixer never opens.
+auto-closes the issue. A fixer reads the issue and its own skill, and neither mentions the
+exception unless the issue does. This file is the one thing in the chain such a fixer
+never opens.
 
 ## Worked example
 
@@ -180,6 +181,6 @@ independent.
 - Every noun the prose prints is in the vocabulary, or leaves the prose.
 - A transcript test per site; `docs/games/gramarye.md` updated in the same commit — its
   Copy and Spellbook sections quote three of these verbatim.
-- **A PR fixing one box references this issue and must not write `Closes #N`. Only the
-  PR that ticks the last box closes it.**
+- **A PR may fix one box, several, or all of them. It references this issue and ticks
+  what it fixed; it writes `Closes #N` only when no box is left unticked.**
 ````
