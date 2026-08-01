@@ -153,6 +153,56 @@ struct ConversationTests {
         #expect(transcript.contains("The butler shows no interest."))
     }
 
+    /// `shows` had no `again:` where `greeting` and `topic` both did, so the
+    /// paragraphs a mystery turns on — the ones a player is most likely to try
+    /// twice — recited word for word. Same retirement key mechanism as the
+    /// other two.
+    @Test func aShownThingWithARepeatLineIsReactedToInFullOnlyOnce() async throws {
+        let transcript = try await play(
+            Guardroom(), ["show whistle to corporal", "show whistle to corporal"])
+        #expect(
+            occurrences(of: "He looks at the whistle and does not take it.", in: transcript)
+                == 1)
+        #expect(transcript.contains("\"Still a whistle,\" he says."))
+    }
+
+    /// The backwards-compatibility guarantee, matched to the one `topics` and
+    /// `greeting` already make: a reaction with no `again:` repeats forever and
+    /// records nothing, so a game that never writes one is unchanged.
+    @Test func aShowReactionWithNoRepeatLineRepeatsForever() async throws {
+        let transcript = try await play(
+            Guardroom(), ["show order to sergeant", "show order to sergeant"])
+        #expect(occurrences(of: "He reads it.", in: transcript) == 2)
+    }
+
+    /// And the `perform:` form, which is what lets a reaction that claims to
+    /// move something actually move it. On a repeat the body does not run, so
+    /// the transfer happens once.
+    @Test func aShowReactionThatMovesTheWorldDoesItOnce() async throws {
+        let transcript = try await play(
+            Guardroom(),
+            ["take drum", "show drum to corporal", "show drum to corporal", "inventory"])
+        #expect(occurrences(of: "He takes the drum off you.", in: transcript) == 1)
+        #expect(transcript.contains("The drum is under his arm, where he put it."))
+        #expect(!turnOutput(of: "inventory", in: transcript).contains("drum"))
+    }
+
+    /// A greeting body reads the world it is said in, which is what an actor
+    /// who keeps a timetable needs: the hello that names the furniture has to
+    /// know whose furniture it is standing next to.
+    @Test func aGreetingBodyReadsTheWorldItIsSaidIn() async throws {
+        let before = try await play(Guardroom(), ["greet corporal"])
+        #expect(before.contains("Nobody's on the gate."))
+
+        let after = try await play(Guardroom(), ["ring bell", "greet corporal"])
+        #expect(turnOutput(of: "greet corporal", in: after).contains("Gate's manned."))
+
+        // And it still retires on the second hello.
+        let twice = try await play(Guardroom(), ["greet corporal", "greet corporal"])
+        #expect(occurrences(of: "Corporal Vane, sir.", in: twice) == 1)
+        #expect(twice.contains("\"Sir.\" Nothing more."))
+    }
+
     // MARK: - Composing with GnustoActors
 
     /// Both are before-rules on the same actor, so declaration order decides.
@@ -188,8 +238,8 @@ struct ConversationTests {
     }
 
     @Test func anActorWithNoGreetingWaitsForThePoint() async throws {
-        let transcript = try await play(Guardroom(), ["talk to the corporal"])
-        #expect(transcript.contains("The corporal waits for you to come to the point."))
+        let transcript = try await play(Guardroom(), ["talk to the sentry"])
+        #expect(transcript.contains("The sentry waits for you to come to the point."))
     }
 
     @Test func talkingToAThingIsRefused() async throws {
@@ -464,6 +514,13 @@ struct Guardroom: Game {
         description("The corporal.")
     }
 
+    /// Kept greeting-less so `anActorWithNoGreetingWaitsForThePoint` has
+    /// somebody to ask; the corporal now has one.
+    let sentry = Actor {
+        name("sentry")
+        description("The sentry.")
+    }
+
     let order = Item {
         name("order")
         description("A written order.")
@@ -559,7 +616,32 @@ struct Guardroom: Game {
             topic("south gate", id: "gate", reply: "\"South gate is shut.\"")
         }
 
+        // No `again:`: the backwards-compatibility case, which must go on
+        // reacting in full however often the order is put in front of him.
         talk.shows(order, to: sergeant, learning: .sawTheOrder, reply: "He reads it.")
+
+        // The same row with a repeat line, and one whose body moves the world —
+        // the shape a line like "she takes it out of your hand" needs if it is
+        // going to be true.
+        talk.shows(
+            whistle, to: corporal,
+            again: "\"Still a whistle,\" he says.",
+            reply: "He looks at the whistle and does not take it.")
+        talk.shows(
+            drum, to: corporal,
+            again: "The drum is under his arm, where he put it."
+        ) {
+            drum.move(heldBy: corporal)
+            try reply("He takes the drum off you.")
+        }
+
+        // A greeting that reads the world it is said in.
+        talk.greeting(of: corporal, again: "\"Sir.\" Nothing more.") {
+            try reply(
+                gateManned
+                    ? "\"Corporal Vane, sir. Gate's manned.\""
+                    : "\"Corporal Vane, sir. Nobody's on the gate.\"")
+        }
 
         whistle.before(.take) { talk.forget(.heardTheRumour) }
         drum.before(.take) { talk.unhearEverything(from: sergeant) }
@@ -578,6 +660,7 @@ struct Guardroom: Game {
         player.starts(in: post)
         sergeant.starts(in: post)
         corporal.starts(in: post)
+        sentry.starts(in: post)
         order.starts(in: post)
         whistle.starts(in: post)
         drum.starts(in: post)

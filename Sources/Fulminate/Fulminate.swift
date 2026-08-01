@@ -902,10 +902,19 @@ struct Fulminate: Game, GameMain {
                 at: TimeOfDay(17, 42), in: kitchen,
                 departure: "Teague comes back out of the carriage house, not hurrying.",
                 arrival: "Teague comes back through the kitchen and says nothing to anybody."),
+            // These two used to be one sentence in the wrong place: the 5:44
+            // stop carried an *arrival* string whose content was a departure,
+            // and the 5:46 stop that actually takes him off the map carried
+            // nothing at all. Since the daemon moves him after the player's
+            // action, he stood in the hall for the whole of the 5:46 turn
+            // wearing his `firstSight`, in a room he had been narrated leaving.
             Stop(
                 at: TimeOfDay(17, 44), in: frontHall,
-                arrival: "Teague crosses the hall, says he is going for cigarettes, and goes."),
-            Stop(at: TimeOfDay(17, 46), in: street),
+                departure: "Teague goes through towards the front of the house, patting a pocket.",
+                arrival: "Teague comes through from the kitchen passage, already talking about cigarettes."),
+            Stop(
+                at: TimeOfDay(17, 46), in: street,
+                departure: "Teague says the drugstore shuts at six, and the front door goes behind him."),
             Stop(
                 at: TimeOfDay(18, 10), in: frontHall,
                 arrival: "The front door goes. Teague is back, with a paper bag and a great deal to say."
@@ -914,7 +923,8 @@ struct Fulminate: Game, GameMain {
             },
             Stop(
                 at: TimeOfDay(18, 30), in: boardersRoom,
-                departure: "Teague goes up, saying he needs to sit down."),
+                departure: "Teague goes up, saying he needs to sit down.",
+                arrival: "Teague comes in, sits on the end of the bed, and does not put the light on."),
         ])
     }
 
@@ -931,9 +941,19 @@ struct Fulminate: Game, GameMain {
                     Mrs. Vane comes out as far as the step and stops there. She does not call his name. She looks at \
                     the fire the way you would look at a bill you had been expecting for years.
                     """),
+            // The mirror of Teague's: departure only, so a player who
+            // deliberately waited in the parlour to watch her come back got the
+            // crossing as a silent difference between two room listings. The
+            // contract asks for one crossing the player can witness and one
+            // they can miss; this was one they had positioned themself for and
+            // still missed.
             Stop(
                 at: TimeOfDay(17, 54), in: parlour,
-                departure: "Mrs. Vane goes back inside without having said anything at all."),
+                departure: "Mrs. Vane goes back inside without having said anything at all.",
+                arrival: """
+                    Mrs. Vane comes in from the passage, sits down, and puts her hands back on the arms of the chair \
+                    where they were.
+                    """),
         ])
     }
 
@@ -951,7 +971,8 @@ struct Fulminate: Game, GameMain {
                     """),
             Stop(
                 at: TimeOfDay(18, 0), in: kitchen,
-                departure: "Mrs. Kettle goes back to her kitchen, on the grounds that somebody has to."
+                departure: "Mrs. Kettle goes back to her kitchen, on the grounds that somebody has to.",
+                arrival: "Mrs. Kettle comes back in, washes her hands, and gives the pot a stir it does not need."
             ),
         ])
     }
@@ -1548,10 +1569,18 @@ struct Fulminate: Game, GameMain {
             of: julian,
             again: "\"Mm,\" he says, to the clamp.",
             reply: "\"You're early,\" he says to the bench. \"That's all right. Nothing's early enough.\"")
+        // Her presence rule has always known that six minutes of her evening are
+        // spent out of that chair. Her greeting did not, and said them to a
+        // cold grate one room and one wall away from where she was standing.
         talk.greeting(
             of: constance,
-            again: "Mrs. Vane has already said the one word she means to say to you.",
-            reply: "\"Yes,\" says Mrs. Vane, to no question, and goes on looking at the grate.")
+            again: "Mrs. Vane has already said the one word she means to say to you."
+        ) {
+            try reply(
+                constance.isIn(parlour)
+                    ? "\"Yes,\" says Mrs. Vane, to no question, and goes on looking at the grate."
+                    : "\"Yes,\" says Mrs. Vane, to no question, and goes on looking at the fire.")
+        }
         talk.greeting(
             of: delphine,
             again: "\"We've met,\" she says, without unfolding her arms.",
@@ -1637,19 +1666,33 @@ struct Fulminate: Game, GameMain {
         // Constance's table is nearly all refusals until the glove — every
         // investigative habit the player owns slides off a seventy-one-year-old
         // woman in an unlit parlour, which is why she is the answer.
+        // No `fallback:` on the table. Hers named the parlour wallpaper and was
+        // the most-printed of her three flat strings, so it is a rule below
+        // instead — the same shape Delphine's deflection already uses.
         talk.topics(
-            of: constance, fallback: "Mrs. Vane looks past you at the wallpaper.",
+            of: constance,
             again: "\"I have answered that.\" She has not moved at all."
         ) {
             // The lie. Note it matches her timetable exactly: the timetable is
             // where she was seen, and the can was placed before half past five.
+            // `perform:` rather than `reply:` because for six minutes of the
+            // evening she says it in the back garden, where there is no grate.
             topic(
                 "evening", "parlour", "alibi", "where",
                 unless: .constanceBroke,
-                reply: """
-                    "I have been in the parlour all evening." She says it to the cold grate, in the voice of a woman \
-                    reading a timetable.
-                    """)
+                again: "\"I have answered that.\" She has not moved at all."
+            ) {
+                try reply(
+                    constance.isIn(parlour)
+                        ? """
+                        "I have been in the parlour all evening." She says it to the cold grate, in the voice of a \
+                        woman reading a timetable.
+                        """
+                        : """
+                        "I have been in the parlour all evening." She says it without turning round, in the voice of \
+                        a woman reading a timetable.
+                        """)
+            }
             topic(
                 "evening", "parlour", "alibi", "where",
                 knowing: .constanceBroke,
@@ -1697,6 +1740,18 @@ struct Fulminate: Game, GameMain {
                     "Mr. Teague told me Julian had gone out." She folds her hands. "So you see it mattered, what he \
                     said. It mattered more than he will ever let himself work out."
                     """)
+        }
+
+        // Her fallback, which is the line she gives most often and therefore
+        // the one that most needed to know which room she is in. `topics` stays
+        // quiet when nothing matches and it has no `fallback:`, so this rule —
+        // declared after the table — is what answers.
+        constance.before(.ask, .tell) {
+            guard command.topic != nil else { return }
+            try reply(
+                constance.isIn(parlour)
+                    ? "Mrs. Vane looks past you at the wallpaper."
+                    : "Mrs. Vane looks past you at the end of the garden.")
         }
 
         // Everything about Delphine invites the wrong conclusion, and the
@@ -1775,12 +1830,25 @@ struct Fulminate: Game, GameMain {
             of: teague, fallback: "\"Couldn't tell you, friend.\"",
             again: "\"We've been over that, friend.\" He finds something else on his sleeve."
         ) {
+            // The lie, and it cannot be told before there is anything to tell
+            // it about. He leaves at 5:44 and is off the map until ten past
+            // six; asked at 5:34 in his own room he used to say he had left,
+            // walked down, had a Coca-Cola and walked back — ten minutes before
+            // he goes and twelve before there is anything to alibi.
+            topic(
+                "drugstore", "alibi", "evening", "colorado", "where",
+                unless: .kettleSawTeague,
+                when: { clock.now >= TimeOfDay(17, 46) },
+                reply: """
+                    "Drugstore on Colorado. Left here about half past, walked down, had a Coca-Cola, walked back. \
+                    Ask them, they know me."
+                    """)
             topic(
                 "drugstore", "alibi", "evening", "colorado", "where",
                 unless: .kettleSawTeague,
                 reply: """
-                    "Drugstore on Colorado. Left here about half past, walked down, had a Coca-Cola, walked back. \
-                    Ask them, they know me."
+                    "Tonight? Nothing to tell yet, friend. I want cigarettes and there's a drugstore on Colorado \
+                    that has them." He is pleased to be asked.
                     """)
             topic(
                 "drugstore", "alibi", "evening", "colorado", "where", "kitchen",
@@ -1861,11 +1929,23 @@ struct Fulminate: Game, GameMain {
         // person's timetable, so a schedule edit changes what she says with
         // it. This is the demonstration the whole game exists to make — see
         // the mechanics contract in `docs/games/fulminate.md`.
+        //
+        // The lookup is the mechanic and is untouched. What each row gained is
+        // the check that the clock has *reached* the minute it quotes: they
+        // used to interpolate a hard-coded future `TimeOfDay` into
+        // unconditional past tense, so at 5:38 she testified in the past tense
+        // about a blast eight minutes off. The Teague row was worse than prose,
+        // because it carries `learning:` and so taught a fact before the event
+        // that teaches it. Constance's `julian` row is the precedent.
         talk.topics(
             of: kettle, fallback: "\"That I couldn't say.\"",
             again: "\"I've said my piece on that one.\" The pot gets another stir."
         ) {
-            topic("teague", "boarder", "howard", learning: .kettleSawTeague) {
+            topic(
+                "teague", "boarder", "howard",
+                learning: .kettleSawTeague,
+                when: { clock.now >= TimeOfDay(17, 42) }
+            ) {
                 let room = clock.location(of: teagueDay, at: TimeOfDay(17, 42))
                 try reply(
                     """
@@ -1874,7 +1954,17 @@ struct Fulminate: Game, GameMain {
                     right there getting it ready."
                     """)
             }
-            topic("constance", "mrs vane", "mother", "old lady") {
+            // The present-tense halves. Each one declines the account rather
+            // than giving it early, and the Teague row says when to come back:
+            // the pot goes on at a quarter to six, which is the same fact her
+            // testimony is anchored on.
+            topic(
+                "teague", "boarder", "howard",
+                reply: """
+                    "Mr. Teague?" The pot gets a stir. "He's about. Ask me again once the pot's on and I'll have \
+                    something for you."
+                    """)
+            topic("constance", "mrs vane", "mother", "old lady", when: { clock.now >= TimeOfDay(17, 54) }) {
                 let then = clock.location(of: constanceDay, at: TimeOfDay(17, 46))
                 let after = clock.location(of: constanceDay, at: TimeOfDay(17, 50))
                 try reply(
@@ -1883,7 +1973,15 @@ struct Fulminate: Game, GameMain {
                     \(after.name.lowercased()) after with the rest of us. Then back in, without a word said."
                     """)
             }
-            topic("delphine", "marsh", "miss") {
+            topic("constance", "mrs vane", "mother", "old lady") {
+                let room = clock.location(of: constanceDay, at: clock.now)
+                try reply(
+                    """
+                    "Mrs. Vane is in the \(room.name.lowercased()). You will get more out of me than you will out of \
+                    her, and you will not get much out of me."
+                    """)
+            }
+            topic("delphine", "marsh", "miss", when: { clock.now >= TimeOfDay(17, 46) }) {
                 let room = clock.location(of: delphineDay, at: TimeOfDay(17, 46))
                 try reply(
                     """
@@ -1891,13 +1989,28 @@ struct Fulminate: Game, GameMain {
                     can do with it what she likes."
                     """)
             }
-            topic("pike", "doctor", "visitor") {
+            topic("delphine", "marsh", "miss") {
+                let room = clock.location(of: delphineDay, at: clock.now)
+                try reply(
+                    """
+                    "Miss Marsh is in the \(room.name.lowercased()), and has been since she got here. She does that."
+                    """)
+            }
+            topic("pike", "doctor", "visitor", when: { clock.now >= TimeOfDay(17, 50) }) {
                 let then = clock.location(of: pikeDay, at: TimeOfDay(17, 46))
                 let after = clock.location(of: pikeDay, at: TimeOfDay(17, 50))
                 try reply(
                     """
                     "The doctor sat in the \(then.name.lowercased()) with his hat on from the minute he come. He was \
                     out in the \(after.name.lowercased()) after, holding it."
+                    """)
+            }
+            topic("pike", "doctor", "visitor") {
+                let room = clock.location(of: pikeDay, at: clock.now)
+                try reply(
+                    """
+                    "The doctor is in the \(room.name.lowercased()) with his hat on, and he has not had it off since \
+                    he come. Make of that what you like."
                     """)
             }
             // Julian keeps no timetable, so this one is hers alone.
@@ -1938,26 +2051,54 @@ struct Fulminate: Game, GameMain {
         }
 
         // The four pieces of physical evidence, each of which flips a story.
+        // These are the four paragraphs the case turns on, and they are
+        // therefore the four a player is most likely to try twice; each carries
+        // an `again:` so that trying twice gets an answer rather than a
+        // recital. The mechanics contract's exception is Mrs. Kettle, who has
+        // no row here.
+
+        // He is in the front hall until half past six and his own room after,
+        // and neither has a chair in it — the gesture is his hands now, which
+        // he has wherever he is standing.
         talk.shows(
             receipt, to: teague, learning: .teagueRecanted,
+            again: "\"You've got the slip,\" he says, and does not look at it a second time.",
             reply: """
-                He looks at it for a while. "Six-oh-five," he says. "Yeah." He sits down on the arm of the chair, \
-                which is not his chair. "I went after. I needed to have been somewhere."
+                He looks at it for a while. "Six-oh-five," he says. "Yeah." He hands it back and does not let go of \
+                it straight away. "I went after. I needed to have been somewhere."
                 """)
+
+        // The line says she takes it, so she takes it. It used to assert a
+        // transfer nothing performed, which is also what let the player hand
+        // her the same glove all evening.
         talk.shows(
             glove, to: constance, learning: .constanceBroke,
-            reply: """
-                She takes it out of your hand, which you were not expecting, and turns it over once. "I have been \
-                sitting here," she says, "trying to remember whether I put it back."
-                """)
+            again: "The glove is in her lap. She has not looked down at it since she put it there."
+        ) {
+            glove.move(heldBy: constance)
+            try reply(
+                constance.isIn(parlour)
+                    ? """
+                    She takes it out of your hand, which you were not expecting, and turns it over once. "I have been \
+                    sitting here," she says, "trying to remember whether I put it back."
+                    """
+                    : """
+                    She takes it out of your hand, which you were not expecting, and turns it over once. "I have been \
+                    standing here," she says, "trying to remember whether I put it back."
+                    """)
+        }
+
         talk.shows(
             ledger, to: pike, learning: .notebooksSold,
+            again: "\"You have shown me that,\" he says, from under the brim. \"My answer has not improved.\"",
             reply: """
-                He reads the last four pages without touching the book. "Dates and page numbers," he says, and sits \
-                down, and takes his hat off at last. "I paid for those. I never asked whose hand did the copying."
+                He reads the last four pages without touching the book. "Dates and page numbers," he says, and takes \
+                his hat off at last. "I paid for those. I never asked whose hand did the copying."
                 """)
+
         talk.shows(
             letters, to: delphine, learning: .delphineCleared,
+            again: "\"I have read them,\" she says. \"Once was more than enough for both of us.\"",
             reply: """
                 She unties the string and reads the top one through, all the way, before she hands it back. "Now \
                 you've read them," she says. "So you know what they are not."

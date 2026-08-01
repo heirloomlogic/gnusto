@@ -214,11 +214,55 @@ struct FulminateTests {
         #expect(game.teagueDay.location(at: TimeOfDay(17, 42)) == game.kitchen)
 
         // "kitchen" below is the name of the room the lookup returns,
-        // interpolated into her line — not a word anybody typed into it.
-        let transcript = try await play(Fulminate(), ["south", "ask kettle about teague"])
+        // interpolated into her line — not a word anybody typed into it. Asked
+        // at 5:42, which is the minute she is quoting: the row used to answer
+        // in the past tense from 5:32, ten minutes before Teague came down.
+        let transcript = try await play(
+            Fulminate(), ["south"] + Array(repeating: "z", count: 5) + ["ask kettle about teague"])
         #expect(
             turnOutput(of: "ask kettle about teague", in: transcript)
                 .contains("into the kitchen at eighteen minutes to six"))
+    }
+
+    /// The other half of the same mechanic. Her rows read a hard-coded minute
+    /// out of somebody's timetable, and a row that quotes 5:46 has no business
+    /// answering at 5:32 — the lookup is right and the tense is not. Worse, the
+    /// Teague row carries `learning:`, so the fact that kills his alibi was
+    /// taught fourteen minutes before the event that teaches it.
+    @Test func nobodyTestifiesInThePastTenseAboutTheFuture() async throws {
+        let early = try await play(
+            Fulminate(),
+            [
+                "south", "ask kettle about teague", "ask kettle about constance",
+                "ask kettle about delphine", "ask kettle about pike", "time",
+            ])
+        #expect(turnOutput(of: "time", in: early).contains("5:40 pm"))
+        #expect(!early.contains("when it went"))
+        #expect(!early.contains("at eighteen minutes to six"))
+        #expect(
+            turnOutput(of: "ask kettle about teague", in: early)
+                .contains("Ask me again once the pot's on"))
+
+        // And the fact goes with the testimony: asking early must not teach
+        // that she saw him, because she has not seen him yet.
+        let stillLying = try await play(
+            Fulminate(),
+            ["south", "ask kettle about teague"] + Array(repeating: "z", count: 19)
+                + ["north", "ask teague about drugstore"])
+        #expect(
+            turnOutput(of: "ask teague about drugstore", in: stillLying)
+                .contains("Ask them, they know me"))
+        #expect(!stillLying.contains("I'd check her arithmetic"))
+
+        // Teague's own alibi has the same shape and the same repair: at 5:34,
+        // standing in his own room, he used to say he had walked down and
+        // walked back — ten minutes before he goes.
+        let earlyTeague = try await play(
+            Fulminate(), ["up", "east", "ask teague about drugstore"])
+        #expect(
+            turnOutput(of: "ask teague about drugstore", in: earlyTeague)
+                .contains("Nothing to tell yet"))
+        #expect(!earlyTeague.contains("walked down, had a Coca-Cola, walked back"))
     }
 
     /// The receipt breaks Teague, and what he told Constance — the keystone
@@ -893,11 +937,87 @@ struct FulminateTests {
     /// however often they are asked. A table's repeat line retires prose, not
     /// behavior.
     @Test func mrsKettlesTestimonyIsAlwaysAvailable() async throws {
+        // In the yard at 5:50, which is where she is and after the minute her
+        // answer quotes.
         let transcript = try await play(
             Fulminate(),
-            ["south", "ask kettle about pike", "ask kettle about pike"])
+            ["south", "west"] + Array(repeating: "z", count: 8)
+                + ["ask kettle about pike", "ask kettle about pike"])
         #expect(
             occurrencesInFulminate(of: "The doctor sat in the parlour", in: transcript) == 2)
+    }
+
+    /// The four paragraphs the case turns on are the four a player is most
+    /// likely to try twice, and `Conversation.shows` had no `again:` at all
+    /// where `greeting` and `topic` both did — so all four recited word for
+    /// word. The contract's one exception is Mrs. Kettle, who has no row here.
+    @Test func theEvidenceDoesNotReciteItself() async throws {
+        let transcript = try await play(
+            Fulminate(),
+            ["south", "open drawer", "take flashlight", "turn on flashlight", "down",
+             "take glove", "up", "north", "west"] + Array(repeating: "z", count: 4)
+                + ["show glove to constance", "show glove to constance", "i"])
+        #expect(
+            occurrencesInFulminate(of: "trying to remember whether I put it back", in: transcript) == 1)
+        #expect(transcript.contains("The glove is in her lap."))
+
+        // And the line says she takes it, so she has it and you do not. That is
+        // also what stops you handing her the same glove all evening.
+        #expect(!turnOutput(of: "i", in: transcript).contains("scorched glove"))
+    }
+
+    /// Teague's 5:44 stop carried an *arrival* string whose content was a
+    /// departure, and the 5:46 stop that takes him off the map carried nothing,
+    /// so he was narrated out the front door and then listed in the hall on the
+    /// next turn. Constance's 5:54 stop was the mirror image.
+    @Test func everyCrossingIsNarratedByTheStopThatPerformsIt() async throws {
+        let hall = try await play(Fulminate(), Array(repeating: "z", count: 7) + ["look", "time"])
+        expectInOrder(
+            hall,
+            [
+                "Teague comes through from the kitchen passage",
+                "Your watch says 5:46 pm.",
+                "the front door goes behind him",
+            ])
+
+        // The crossing a player can position themself to witness. She leaves
+        // the parlour at 5:48 and comes back at 5:54, and both are said out
+        // loud in the room the player is sitting in.
+        let parlour = try await play(Fulminate(), ["west"] + Array(repeating: "z", count: 13))
+        expectInOrder(
+            parlour,
+            [
+                "puts both hands on the arms of her chair and gets up",
+                "Mrs. Vane comes in from the passage, sits down",
+            ])
+    }
+
+    /// Her presence rule always knew that six minutes of her evening are spent
+    /// out of that chair. Her greeting, her alibi row and her fallback did not,
+    /// and staged themselves at the parlour grate and the parlour wallpaper
+    /// while she stood in the back garden watching the fire.
+    @Test func mrsVaneSpeaksFromTheRoomSheIsStandingIn() async throws {
+        let yard = try await play(
+            Fulminate(),
+            ["south", "west"] + Array(repeating: "z", count: 8)
+                + ["greet mrs. vane", "ask mrs. vane about rockets", "ask mrs. vane about parlour"])
+        #expect(turnOutput(of: "greet mrs. vane", in: yard).contains("goes on looking at the fire"))
+        #expect(
+            turnOutput(of: "ask mrs. vane about rockets", in: yard)
+                .contains("looks past you at the end of the garden"))
+        #expect(
+            turnOutput(of: "ask mrs. vane about parlour", in: yard)
+                .contains("She says it without turning round"))
+        #expect(!yard.contains("looking at the grate"))
+        #expect(!yard.contains("at the wallpaper"))
+
+        // And in the parlour, where the grate and the wallpaper are, she goes
+        // on saying what she always said.
+        let parlour = try await play(
+            Fulminate(), ["west", "greet mrs. vane", "ask mrs. vane about rockets"])
+        #expect(turnOutput(of: "greet mrs. vane", in: parlour).contains("looking at the grate"))
+        #expect(
+            turnOutput(of: "ask mrs. vane about rockets", in: parlour).contains("at the wallpaper"))
     }
 
     // MARK: - Being described in the right place at the right time
