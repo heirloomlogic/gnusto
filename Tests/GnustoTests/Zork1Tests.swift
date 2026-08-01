@@ -835,7 +835,9 @@ struct Zork1Tests {
     /// kill as the Round Room tests), press east into the hub, then in the
     /// Maintenance Room take the wrench and charge the panel with the yellow
     /// button, and end standing on the Dam with the bolt in reach.
-    private static let approachTheChargedDam: [String] = [
+    ///
+    /// Not private: `Zork1SystemsTests` reuses it to reach the bolt too.
+    static let approachTheChargedDam: [String] = [
         "south", "east", "open window", "west", "west",
         "take sword", "take lantern", "turn on lantern",
         "push rug", "open trap door", "down",

@@ -25,14 +25,20 @@ private let gnustoTerminalActive = Atomic<Bool>(false)
 /// Set by the `SIGWINCH` handler; the input loop drains it and re-renders.
 private let gnustoWindowResized = Atomic<Bool>(false)
 
-/// Restores cooked mode, leaves the alternate screen, and shows the cursor.
-/// Idempotent (the `exchange` gate) and async-signal-safe enough for the fatal
-/// signal path: only `tcsetattr` and a single `write`.
+/// Restores cooked mode, leaves bracketed-paste mode and the alternate screen,
+/// and shows the cursor. Idempotent (the `exchange` gate) and async-signal-safe
+/// enough for the fatal signal path: only `tcsetattr` and a single `write`.
 private func gnustoEmergencyRestore() {
     guard gnustoTerminalActive.exchange(false, ordering: .relaxed) else { return }
     tcsetattr(STDIN_FILENO, TCSAFLUSH, &gnustoSavedTermios)
-    let reset = "\u{1B}[?1049l\u{1B}[?25h"
-    _ = reset.withCString { write(STDOUT_FILENO, $0, strlen($0)) }
+    // A `StaticString` literal is a pointer into the binary's constant data: no
+    // allocation, no `swift_once`, nothing here that isn't async-signal-safe. (A
+    // `String` this long has left the small-string form, so whether `withCString`
+    // allocates becomes a stdlib implementation detail — not a bet worth making
+    // inside a signal handler. Keep it a local, too: a file-scope `let` would
+    // reintroduce `swift_once`.) Modes are dropped in the order they were set.
+    let reset: StaticString = "\u{1B}[?2004l\u{1B}[?1049l\u{1B}[?25h"
+    reset.withUTF8Buffer { _ = write(STDOUT_FILENO, $0.baseAddress, $0.count) }
 }
 
 private func gnustoResizeHandler(_ signal: Int32) {
@@ -82,6 +88,12 @@ public final class TerminalIOHandler: IOHandler {
         var completions = CompletionCandidates()
         /// Lines scrolled up from the live bottom; 0 pins to the newest text.
         var scrollOffset = 0
+        /// Lines a bracketed paste submitted that `readLine` hasn't returned yet.
+        /// The REPL runs one command per call, so a pasted walkthrough is folded
+        /// once and handed over a line at a time. The tty input buffer used to do
+        /// this implicitly, one `\n` at a time; consuming a paste whole makes it
+        /// explicit.
+        var pendingLines: [String] = []
 
         /// The transcript wrapped to `wrappedCols`, rebuilt only when the
         /// transcript grows or the width changes — so a keystroke repaints
@@ -178,11 +190,12 @@ public final class TerminalIOHandler: IOHandler {
     /// line as `.line`, `.quit` on a confirmed Ctrl-C, or `nil` (EOF) to end
     /// the game.
     public func readLine(prompt: String) -> Input? {
-        box.withLock {
-            $0.prompt = prompt
-            $0.input = ""
-            $0.cursor = 0
-        }
+        // The buffer is deliberately *not* cleared here: it holds the line being
+        // edited, and a multi-line paste leaves its unterminated last line mid-edit
+        // while the lines before it are submitted one `readLine` at a time. Every
+        // way out of this method either submits the buffer or clears it, so the
+        // only thing that can survive into the next call is a paste still draining.
+        box.withLock { $0.prompt = prompt }
         render()
 
         // History browsing state, local to this line. `historyCursor` counts
@@ -191,6 +204,18 @@ public final class TerminalIOHandler: IOHandler {
         var draft = ""
 
         while true {
+            // Hand over anything a paste already submitted before reading a key.
+            if let queued = box.withLock({ st -> String? in
+                guard !st.pendingLines.isEmpty else { return nil }
+                let line = st.pendingLines.removeFirst()
+                Self.record(line, in: &st)
+                return line
+            }) {
+                persistHistory(queued)
+                render()
+                return .line(queued)
+            }
+
             guard let key = nextKey() else { continue }  // resize or timeout; loop
 
             // The editing cases only mutate state; the single `render()` at the
@@ -200,24 +225,12 @@ public final class TerminalIOHandler: IOHandler {
             case .enter:
                 let line = box.withLock { st -> String in
                     let line = st.input
-                    let isComment = TesterInput.isComment(line)
-                    if isComment {
-                        st.commentIndices.insert(st.transcript.count)
-                    }
-                    st.transcript.append(st.prompt + line)
-                    // Comments are notes, not commands: keep them out of Up/Down
-                    // recall so history stays a list of things the game ran.
-                    if !isComment, !line.trimmingCharacters(in: .whitespaces).isEmpty {
-                        st.history.append(line)
-                    }
                     st.input = ""
                     st.cursor = 0
-                    st.scrollOffset = 0
+                    Self.record(line, in: &st)
                     return line
                 }
-                if let historyURL, !TesterInput.isComment(line) {
-                    Self.appendHistory(line, to: historyURL)
-                }
+                persistHistory(line)
                 render()
                 return .line(line)
 
@@ -235,7 +248,16 @@ public final class TerminalIOHandler: IOHandler {
                 // the intent (not the editable "quit" verb word) means the quit
                 // lands even while a save/restore prompt is pending, and can't
                 // drift if a game redefines the verb.
-                if confirmQuit() { return .quit }
+                if confirmQuit() {
+                    // Abandoning the line, so drop it — the buffer now persists
+                    // across calls, and only a draining paste should outlive one.
+                    box.withLock {
+                        $0.input = ""
+                        $0.cursor = 0
+                        $0.pendingLines.removeAll()
+                    }
+                    return .quit
+                }
                 render()
                 continue
 
@@ -249,6 +271,14 @@ public final class TerminalIOHandler: IOHandler {
                         st.transcript.append(Self.formatCandidateListing(outcome.listing))
                         st.scrollOffset = 0
                     }
+                }
+
+            case .paste(let text):
+                box.withLock { st in
+                    let outcome = Self.applyPaste(text, input: st.input, cursor: st.cursor)
+                    st.input = outcome.newInput
+                    st.cursor = outcome.newCursor
+                    st.pendingLines.append(contentsOf: outcome.submitted)
                 }
 
             case .character(let ch):
@@ -340,6 +370,34 @@ public final class TerminalIOHandler: IOHandler {
         }
     }
 
+    /// Books a submitted line into the session: the echoed prompt line joins the
+    /// transcript, marked as a comment when it is one so it paints as an aside,
+    /// and a real command joins Up/Down history. Comments are notes, not commands,
+    /// so history stays a list of things the game actually ran.
+    ///
+    /// Deliberately does *not* clear the editor buffer — a line handed over from
+    /// the paste queue leaves the paste's unterminated tail mid-edit — so
+    /// clearing belongs to the Enter key that meant it.
+    private static func record(_ line: String, in st: inout State) {
+        let isComment = TesterInput.isComment(line)
+        if isComment {
+            st.commentIndices.insert(st.transcript.count)
+        }
+        st.transcript.append(st.prompt + line)
+        if !isComment, !line.trimmingCharacters(in: .whitespaces).isEmpty {
+            st.history.append(line)
+        }
+        st.scrollOffset = 0
+    }
+
+    /// Appends a submitted command to the persistent history file, when there is
+    /// one. Comments are never persisted, for the same reason they're kept out of
+    /// Up/Down recall.
+    private func persistHistory(_ line: String) {
+        guard let historyURL, !TesterInput.isComment(line) else { return }
+        Self.appendHistory(line, to: historyURL)
+    }
+
     // MARK: - Terminal setup
 
     private func enableRawModeAndAltScreen() {
@@ -363,7 +421,10 @@ public final class TerminalIOHandler: IOHandler {
             signal(sig, gnustoFatalSignalHandler)
         }
 
-        emit("\u{1B}[?1049h")  // alternate screen buffer
+        // Alternate screen buffer, then bracketed paste — which wraps pasted text
+        // in `ESC[200~`/`ESC[201~` so the editor can tell it from typing. Both are
+        // dropped again by `gnustoEmergencyRestore`, on every exit path.
+        emit("\u{1B}[?1049h\u{1B}[?2004h")
     }
 
     /// Sets one entry of the `c_cc` control-character array. `c_cc` imports as
@@ -511,30 +572,9 @@ public final class TerminalIOHandler: IOHandler {
 
     // MARK: - Input
 
-    /// A decoded keypress: an editing command or one or more printable
-    /// characters.
-    private enum Key {
-        case character(String)
-        case enter, backspace, deleteForward, tab
-        case left, right, home, end
-        case wordLeft, wordRight
-        case deleteWordBack, deleteWordForward, deleteToStart
-        case historyPrev, historyNext
-        case pageUp, pageDown
-        case eof, interrupt
-    }
-
-    /// One raw byte, or `interrupted` for a read that timed out (the `VTIME`
-    /// poll) or was broken by a signal — the caller loops to service a resize.
-    /// A genuine terminal close arrives as `SIGHUP`, handled separately, so a
-    /// zero-length read here is treated as a timeout, not EOF.
-    private enum RawByte {
-        case byte(UInt8)
-        case eof
-        case interrupted
-    }
-
-    private func readRawByte() -> RawByte {
+    /// Reads one byte from stdin for ``KeyDecoder``. Touches no instance state,
+    /// so it can be handed over as a plain function value.
+    private static func readStandardInputByte() -> KeyDecoder.RawByte {
         var byte: UInt8 = 0
         let n = read(STDIN_FILENO, &byte, 1)
         if n == 1 { return .byte(byte) }
@@ -546,135 +586,11 @@ public final class TerminalIOHandler: IOHandler {
     /// decoded key, or `nil` when the read timed out — so callers loop. Shared
     /// by the line editor and the Ctrl-C confirm so the resize/poll contract
     /// lives in one place.
-    private func nextKey() -> Key? {
+    private func nextKey() -> KeyDecoder.Key? {
         if gnustoWindowResized.exchange(false, ordering: .relaxed) {
             render()
         }
-        return readKey()
-    }
-
-    /// Reads and decodes the next keypress. Returns `nil` when interrupted, so
-    /// the caller can service a pending resize and try again.
-    private func readKey() -> Key? {
-        switch readRawByte() {
-        case .interrupted:
-            return nil
-        case .eof:
-            return .eof
-        case .byte(let b):
-            switch b {
-            case 0x01: return .home  // Ctrl-A — start of line
-            case 0x03: return .interrupt
-            case 0x04: return .eof
-            case 0x05: return .end  // Ctrl-E — end of line
-            case 0x09: return .tab
-            case 0x0A, 0x0D: return .enter
-            case 0x15: return .deleteToStart  // Ctrl-U — kill to line start
-            case 0x17: return .deleteWordBack  // Ctrl-W — delete word before caret
-            case 0x7F, 0x08: return .backspace
-            case 0x1B: return readEscapeSequence()
-            case 0x00..<0x20: return readKey()  // ignore other control bytes
-            default: return decodeUTF8(leadByte: b)
-            }
-        }
-    }
-
-    /// Parses an escape sequence: a CSI/SS3 sequence (arrows, Home/End, Delete,
-    /// Page keys, and their modified word-jump forms), or a Meta/Alt-prefixed
-    /// key — Option-as-Meta terminals send a bare `ESC` then the key. A bare or
-    /// unrecognized ESC is swallowed.
-    private func readEscapeSequence() -> Key? {
-        guard case .byte(let b1) = readRawByte() else { return readKey() }
-        guard b1 == 0x5B || b1 == 0x4F else {
-            // Not a CSI/SS3 introducer, so this is a Meta/Alt prefix (Terminal's
-            // "Use Option as Meta", readline's M-…): the byte *is* the key. Only
-            // the word-editing metas are recognized; any other lone ESC is
-            // swallowed, as before.
-            switch b1 {
-            case 0x62: return .wordLeft  // ESC b — Option/Meta-left
-            case 0x66: return .wordRight  // ESC f — Option/Meta-right
-            case 0x64: return .deleteWordForward  // ESC d — delete word after caret
-            case 0x7F, 0x08: return .deleteWordBack  // ESC DEL — Option-backspace
-            default: return readKey()  // lone ESC; move on to the next key
-            }
-        }
-        guard case .byte(let b2) = readRawByte() else { return readKey() }
-        switch b2 {
-        case 0x41: return .historyPrev  // Up
-        case 0x42: return .historyNext  // Down
-        case 0x43: return .right
-        case 0x44: return .left
-        case 0x48: return .home  // ESC[H / ESC OH
-        case 0x46: return .end  // ESC[F / ESC OF
-        case 0x30...0x39:  // numeric parameter(s), ended by the CSI final byte
-            var param = String(UnicodeScalar(b2))
-            while case .byte(let n) = readRawByte() {
-                // A final byte (a letter or '~', 0x40–0x7E) ends the sequence;
-                // the bytes before it are parameter digits and ';' separators.
-                if n >= 0x40, n <= 0x7E { return decodeCSI(param: param, final: n) }
-                // Cap the accumulator: a real parameter is a few bytes, so a
-                // stream that never sends the terminator can't grow it without
-                // bound. An overlong sequence falls through to the unknown-
-                // sequence discard path below.
-                guard param.count < 8 else { return readKey() }
-                param.append(Character(UnicodeScalar(n)))
-            }
-            return readKey()  // truncated sequence; move on
-        default:
-            return readKey()
-        }
-    }
-
-    /// Maps a parameterized CSI sequence — its parameter string (e.g. `"1;3"`)
-    /// and final byte (e.g. `'D'`) — to a key. Covers the `ESC [ n ~` navigation
-    /// and edit keys and the modified arrows `ESC [ 1 ; m D/C`, whose modifier
-    /// (xterm's `3` = Alt/Option, `5` = Ctrl) turns a plain arrow into a
-    /// word jump. Unknown combinations are swallowed.
-    private func decodeCSI(param: String, final: UInt8) -> Key? {
-        // The modifier is the parameter after the first ';'; its presence
-        // upgrades an arrow to a word jump for Alt (3) or Ctrl (5).
-        let fields = param.split(separator: ";", omittingEmptySubsequences: false)
-        let modifier = fields.count > 1 ? Int(fields[1]) : nil
-        let wordJump = modifier == 3 || modifier == 5
-        switch final {
-        case 0x7E:  // '~' — parameterized navigation / edit keys
-            switch fields.first.map(String.init) {
-            case "1", "7": return .home
-            case "4", "8": return .end
-            case "3": return .deleteForward
-            case "5": return .pageUp
-            case "6": return .pageDown
-            default: return readKey()
-            }
-        case 0x44: return wordJump ? .wordLeft : .left  // …D — left arrow
-        case 0x43: return wordJump ? .wordRight : .right  // …C — right arrow
-        case 0x48: return .home  // …H
-        case 0x46: return .end  // …F
-        case 0x41: return .historyPrev  // …A — up
-        case 0x42: return .historyNext  // …B — down
-        default: return readKey()
-        }
-    }
-
-    /// Gathers the continuation bytes of a UTF-8 sequence begun by `leadByte`
-    /// and returns the resulting character(s).
-    private func decodeUTF8(leadByte: UInt8) -> Key? {
-        let extra: Int
-        switch leadByte {
-        case 0xC0...0xDF: extra = 1
-        case 0xE0...0xEF: extra = 2
-        case 0xF0...0xF7: extra = 3
-        default: extra = 0
-        }
-        var bytes = [leadByte]
-        for _ in 0..<extra {
-            guard case .byte(let b) = readRawByte() else { break }
-            bytes.append(b)
-        }
-        guard let string = String(bytes: bytes, encoding: .utf8), !string.isEmpty else {
-            return readKey()  // invalid sequence; skip it
-        }
-        return .character(string)
+        return KeyDecoder(nextByte: Self.readStandardInputByte).next()
     }
 
     /// Writes a string straight to stdout, bypassing stdio buffering so frames
@@ -857,6 +773,102 @@ public final class TerminalIOHandler: IOHandler {
     /// Formats ambiguous candidate words into one transcript line.
     private static func formatCandidateListing(_ candidates: [String]) -> String {
         candidates.joined(separator: "   ")
+    }
+
+    // MARK: - Bracketed paste
+
+    /// The result of folding a bracketed paste into the line being edited: the
+    /// lines it submitted, and the buffer and caret it left behind.
+    struct PasteOutcome: Equatable {
+        var submitted: [String]
+        var newInput: String
+        var newCursor: Int
+    }
+
+    /// Folds a pasted block into the line being edited.
+    ///
+    /// The text is sanitized first: a tab becomes a space (a literal tab measures
+    /// zero columns in ``DisplayWidth`` but advances the real terminal, so one in
+    /// the buffer would desync the caret math for the rest of the line), and other
+    /// control characters are dropped — bracketed paste doesn't escape them, so
+    /// otherwise a stray `0x03` in the payload would open the quit-confirm and the
+    /// text after it would answer.
+    ///
+    /// What the newlines mean depends on the buffer as it stands, decided once,
+    /// before the paste:
+    ///
+    /// - **Already a comment** (``TesterInput/isComment(_:)``): the block folds
+    ///   into one line, each break becoming a single space, with whitespace around
+    ///   the break and any blank lines absorbed into it. Nothing is submitted —
+    ///   the tester presses Return when the note reads right. This is the point of
+    ///   the exercise: a pasted multiline note is one note, costing one transcript
+    ///   entry and no turns.
+    /// - **Anything else**: a break is a submit, so pasting a walkthrough still
+    ///   runs one command per line. Whitespace-only lines submit nothing, and a
+    ///   block without a trailing newline leaves its last line mid-edit.
+    ///
+    /// Either way the text lands at the caret with the old remainder after it, so
+    /// a paste containing no line break is indistinguishable from typing.
+    ///
+    /// - Parameters:
+    ///   - pasted: the text between the bracketed-paste markers.
+    ///   - input: the line currently being edited.
+    ///   - cursor: the caret's character offset into `input`.
+    /// - Returns: the lines to submit, and the resulting line and caret.
+    static func applyPaste(_ pasted: String, input: String, cursor: Int) -> PasteOutcome {
+        let chars = Array(input)
+        let caret = max(0, min(cursor, chars.count))
+        let head = String(chars[0..<caret])
+        let tail = String(chars[caret...])
+
+        // Folding a comment is just pasting a single line: one piece, so there are
+        // no breaks left to submit on. Otherwise each break between pieces is a
+        // submit. Either way the buffer's two halves belong to the outer pieces,
+        // and the last piece is what stays in the editor.
+        let segments = pastedSegments(pasted)
+        var pieces = TesterInput.isComment(input) ? [joinedWithSpaces(segments)] : segments
+        pieces[0] = head + pieces[0]
+        let last = pieces.removeLast()
+        return PasteOutcome(
+            submitted: pieces.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty },
+            newInput: last + tail,
+            newCursor: last.count)
+    }
+
+    /// Splits pasted text into the lines it spells, sanitizing as it goes: a tab
+    /// becomes a space, other control characters are dropped, and any newline ends
+    /// a segment — including a `\r\n` pair, which is a single `Character`, so a
+    /// Windows-ended paste yields one break rather than two. Always returns at
+    /// least one segment.
+    private static func pastedSegments(_ pasted: String) -> [String] {
+        let sanitized = String(
+            pasted.compactMap { character -> Character? in
+                if character.isNewline { return "\n" }
+                if character == "\t" { return " " }
+                if let ascii = character.asciiValue, ascii < 0x20 || ascii == 0x7F { return nil }
+                return character
+            })
+        return
+            sanitized
+            .split(separator: "\n", omittingEmptySubsequences: false)
+            .map(String.init)
+    }
+
+    /// Joins pasted segments into one line, each break becoming a single space.
+    /// Whitespace on either side of a break is absorbed into that space and blank
+    /// lines contribute nothing, so wrapped or double-spaced prose folds to clean
+    /// single spacing. The first segment keeps its leading whitespace, so a paste
+    /// with no break stays indistinguishable from typing.
+    private static func joinedWithSpaces(_ segments: [String]) -> String {
+        var joined = segments[0]
+        for segment in segments.dropFirst() {
+            let trimmed = segment.drop(while: \.isWhitespace)
+            guard !trimmed.isEmpty else { continue }
+            while let last = joined.last, last.isWhitespace { joined.removeLast() }
+            if !joined.isEmpty { joined.append(" ") }
+            joined.append(contentsOf: trimmed)
+        }
+        return joined
     }
 
     // MARK: - Persistent history

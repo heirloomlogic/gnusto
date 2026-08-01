@@ -17,6 +17,7 @@ public struct ItemTrait: Sendable {
         case description(String)
         case adjectives([String])
         case synonyms([String])
+        case properName
         case firstSight(String)
         case wearable
         case scenery
@@ -50,9 +51,10 @@ public func name(_ text: String) -> LocationTrait {
 /// The display name of an item. The last word becomes the item's primary
 /// noun; the leading words double as adjectives.
 ///
-/// Words are separated by punctuation as well as spaces, so `name("air-door")`
-/// gives the noun `door` and the adjective `air`, matching what a player types
-/// rather than the hyphenated string. The display name itself is untouched.
+/// The name is split the way the parser splits what the player types, so the
+/// punctuation you want on the page costs nothing: `name("Mrs. Vane")` prints
+/// with its period and answers to `mrs vane`, and `name("half-moon table")`
+/// answers to `half moon table`.
 ///
 /// - Parameter text: the item's display name.
 /// - Returns: the name trait.
@@ -78,9 +80,11 @@ public func description(_ text: String) -> ItemTrait {
 
 /// Additional words the parser accepts before the item's noun.
 ///
-/// Each entry is split on punctuation and spaces, and every word it yields
-/// stands alone: `adjectives("twelve-foot")` matches `twelve` and `foot`
-/// independently, so `x foot beam` resolves.
+/// Each is split the way player input is split, so `adjectives("jewel", "encrusted")`
+/// and `adjectives("jewel-encrusted")` register the same two words. Prefer the
+/// first: a declaration should read the way the parser stores it. An entry with
+/// no letters or digits in it, or one made of nothing but filler, is a fatal
+/// bootstrap error rather than a word that quietly never matches.
 ///
 /// - Parameter words: the adjectives to accept.
 /// - Returns: the adjectives trait.
@@ -90,16 +94,26 @@ public func adjectives(_ words: String...) -> ItemTrait {
 
 /// Alternative nouns the parser accepts for the item.
 ///
-/// Each entry decomposes exactly as ``name(_:)`` does — last word the noun,
-/// earlier words adjectives — so a multi-word synonym contributes both:
-/// `synonyms("old works")` registers the noun `works` and the adjective `old`,
-/// matching `works` and `old works` alike.
+/// Each entry is a noun *phrase*, split the way a name is: its last word
+/// becomes a noun and any words in front of it become adjectives, so
+/// `synonyms("carriage lantern")` answers to `lantern` and `carriage lantern`
+/// both.
 ///
 /// - Parameter words: the alternative nouns to accept.
 /// - Returns: the synonyms trait.
 public func synonyms(_ words: String...) -> ItemTrait {
     ItemTrait(kind: .synonyms(words))
 }
+
+/// The name is a proper name, so the engine's stock lines never put an article
+/// in front of it: "Mrs. Vane is right here." rather than "The Mrs. Vane is
+/// right here.", and "Mrs. Vane is here." rather than "A Mrs. Vane is here."
+///
+/// Declared rather than inferred, as in ZIL and Inform. A capital letter is
+/// close to a reliable signal and not quite one — "Elvish sword" is a common
+/// noun — so the bootstrap warns about a capitalized name without this trait
+/// instead of guessing.
+public let properName = ItemTrait(kind: .properName)
 
 /// The paragraph used to mention the item in a room description until the
 /// player has touched it (ZIL's FDESC).

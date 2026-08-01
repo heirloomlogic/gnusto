@@ -174,7 +174,7 @@ struct ZorkMaze: GameContent {
     let cyclops = Actor {
         name("cyclops")
         synonyms("cyclops", "monster", "eye", "giant")
-        adjectives("hungry", "giant", "one-eyed")
+        adjectives("hungry", "giant", "one", "eyed")
         description(Prose.cyclops)
         firstSight(Prose.cyclopsPresence)
     }
@@ -237,7 +237,7 @@ struct ZorkMaze: GameContent {
     /// junk, no light left in it.
     let burnedOutLantern = Item {
         name("burned-out lantern")
-        adjectives("burned-out", "rusty", "dead", "useless")
+        adjectives("burned", "out", "rusty", "dead", "useless")
         synonyms("lantern", "lamp")
         firstSight(Prose.burnedOutLanternFirstSight)
         description(Prose.burnedOutLantern)

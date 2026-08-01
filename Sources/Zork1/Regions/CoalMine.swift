@@ -144,7 +144,7 @@ struct ZorkCoalMine: GameContent {
     /// The sapphire-encrusted bracelet: five on the find, five in the case.
     let sapphireBracelet = Item {
         name("sapphire-encrusted bracelet")
-        adjectives("sapphire", "sapphire-encrusted")
+        adjectives("sapphire", "encrusted")
         synonyms("bracelet", "jewel")
         firstSight(Prose.sapphireBraceletFirstSight)
         description(Prose.sapphireBracelet)

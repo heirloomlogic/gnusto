@@ -47,6 +47,13 @@ struct ParserTests {
             "put the velvet cloak onto the small brass hook",
             Expected(intent: .putOn, direct: "cloak", indirect: "hook")
         ),
+        // A player who asks the game to find something is asking it to look,
+        // so all four spellings land on the one intent.
+        ("search cloak", Expected(intent: .lookIn, direct: "cloak")),
+        ("look in cloak", Expected(intent: .lookIn, direct: "cloak")),
+        ("find cloak", Expected(intent: .lookIn, direct: "cloak")),
+        ("look for the velvet cloak", Expected(intent: .lookIn, direct: "cloak")),
+        ("search for cloak", Expected(intent: .lookIn, direct: "cloak")),
         ("n", Expected(intent: .go, direction: .north)),
         ("south", Expected(intent: .go, direction: .south)),
         ("go north", Expected(intent: .go, direction: .north)),
@@ -103,7 +110,7 @@ struct ParserTests {
             parser.parse("hang cloak", scope: Self.fullScope)
                 == .failure(
                     .missingIndirect(
-                        verb: "hang", objectName: "velvet cloak", preposition: "on",
+                        verb: "hang", objectName: "the velvet cloak", preposition: "on",
                         prefix: ["hang", "cloak", "on"])))
     }
 
@@ -128,16 +135,22 @@ struct ParserTests {
     // MARK: - Tokenizer
 
     /// Pins the tokenizer contract directly: lowercase-fold, keep runs of
-    /// letters/digits, treat every other character as a separator, collapse
-    /// runs of separators, and drop noise words. A plain `Vocabulary` fixes the
-    /// noise set to the default (`the a an my that this some`) so the cases are
-    /// deterministic.
+    /// letters/digits, drop a trailing possessive, treat every other character
+    /// as a separator, collapse runs of separators, and drop noise words. A
+    /// plain `Vocabulary` fixes the noise set to the default
+    /// (`the a an my that this some`) so the cases are deterministic.
+    ///
+    /// The one exception is the comma, which survives as a token of its own so
+    /// `parse` can read `butler, hello` as addressed at somebody. It is
+    /// stripped there; nothing downstream ever sees one.
     @Test(
         arguments: [
             ("take lamp", ["take", "lamp"]),
             ("TAKE Lamp", ["take", "lamp"]),  // case-folded
             ("put the lamp on the table", ["put", "lamp", "on", "table"]),  // noise dropped
             ("don't panic", ["don", "t", "panic"]),  // apostrophe splits
+            ("x master's spellbook", ["x", "master", "spellbook"]),  // but 's is dropped
+            ("the boys' own annual", ["boys", "own", "annual"]),  // as is a bare one
             ("north-west", ["north", "west"]),  // hyphen splits
             ("take 3 coins", ["take", "3", "coins"]),  // digits kept
             ("3.5", ["3", "5"]),  // period splits digits
@@ -147,33 +160,13 @@ struct ParserTests {
             ("the a an my that this some", []),  // all noise
             ("!!!", []),  // no alphanumerics
             ("", []),  // empty line
+            ("delphine, hello", ["delphine", ",", "hello"]),  // the comma survives
+            ("hello,there", ["hello", ",", "there"]),  // no space needed
+            ("take lamp, rope", ["take", "lamp", ",", "rope"]),
+            (",", [","]),  // a bare comma is still a token
         ] as [(String, [String])])
     func tokenizePinsItsContract(input: String, expected: [String]) {
         let parser = StandardParser(vocabulary: Vocabulary(), syntaxRules: [])
         #expect(parser.tokenize(input) == expected)
-    }
-
-    // MARK: - Declared vocabulary
-
-    /// Hyphenated and multi-word declarations decompose into typable words:
-    /// the last word of a name or synonym is the noun, everything ahead of it
-    /// qualifies it, and adjectives split into their pieces.
-    @Test func hyphenatedAndMultiWordDeclarationsBecomeTypableWords() throws {
-        let (definition, _) = try Bootstrap.build(HyphenatedGame())
-        let id = try #require(
-            definition.vocabulary.displayNames.first { $0.value == "air-door" }?.key)
-        let lexicon = try #require(definition.vocabulary.itemLexicons[id])
-        #expect(lexicon.nouns == ["door", "works"])
-        #expect(lexicon.adjectives == ["air", "twelve", "foot", "old"])
-
-        let parser = StandardParser(
-            vocabulary: definition.vocabulary, syntaxRules: definition.syntaxRules)
-        let scope = Scope(visibleItems: [id])
-        for input in ["x air-door", "x air door", "open door", "x twelve-foot door", "x old works"] {
-            let parsed = try parser.parse(input, scope: scope).get()
-            #expect(parsed.directObject == id, "input: \(input)")
-        }
-        // The display name is untouched by the split.
-        #expect(definition.vocabulary.displayNames[id] == "air-door")
     }
 }

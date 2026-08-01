@@ -157,4 +157,17 @@ struct MeleeCombatTests {
         #expect(extract(afterSave) == extract(afterRestore))
         #expect(extract(afterSave).contains { $0.contains("Defeated: true.") })
     }
+
+    /// The two rows the plugin adds beyond the engine's `attack` stubs. Worth a
+    /// test of its own because the failure mode is silent: drop them and `stab`
+    /// falls back to "I don't know the word" with nothing red anywhere else —
+    /// the standard table still answers `attack`, so the loss doesn't show.
+    @Test func stabAndStrikeReachTheCombatIntent() async throws {
+        let transcript = try await play(
+            ArenaGame(),
+            ["take sword", "stab dummy with sword", "strike dummy with sword", "quit"],
+            seed: 9)
+        #expect(!transcript.contains("I don't know the word"))
+        #expect(!transcript.contains("I didn't understand"))
+    }
 }

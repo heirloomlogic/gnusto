@@ -43,7 +43,7 @@ enum RoomDescriber {
         if let vehicle {
             frame.say(
                 frame.definition.text.locationInVehicle(
-                    roomName, definition.items[vehicle]?.name ?? vehicle.raw))
+                    roomName, frame.definiteName(of: vehicle)))
         } else {
             frame.say(roomName)
         }
@@ -73,10 +73,10 @@ enum RoomDescriber {
 
         for itemID in roomItems {
             guard let item = definition.items[itemID] else { continue }
-            if !touched.contains(itemID), let firstSight = item.firstSight {
+            if !touched.contains(itemID), let firstSight = frame.presenceText(of: itemID) {
                 frame.say(firstSight)
             } else if !item.isScenery {
-                frame.say(frame.definition.text.itemHere(item.name ?? itemID.raw))
+                frame.say(frame.definition.text.itemHere(frame.indefiniteName(of: itemID)))
             }
 
             // One level of "On the X is a Y." for surfaces in the room.
@@ -84,8 +84,9 @@ enum RoomDescriber {
                 let onTop = (index.onSurface[itemID] ?? [])
                     .filter { Visibility.isPerceivable($0, definition: definition, state: state) }
                 for topID in onTop {
-                    let topName = definition.items[topID]?.name ?? topID.raw
-                    frame.say(frame.definition.text.itemOnSurface(topName, item.name ?? itemID.raw))
+                    frame.say(
+                        frame.definition.text.itemOnSurface(
+                            frame.indefiniteName(of: topID), frame.definiteName(of: itemID)))
                 }
             }
 
@@ -97,22 +98,23 @@ enum RoomDescriber {
                 let inside = (index.inContainer[itemID] ?? [])
                     .filter { Visibility.isPerceivable($0, definition: definition, state: state) }
                 for insideID in inside {
-                    let insideName = definition.items[insideID]?.name ?? insideID.raw
-                    frame.say(frame.definition.text.itemInContainer(insideName, item.name ?? itemID.raw))
+                    frame.say(
+                        frame.definition.text.itemInContainer(
+                            frame.indefiniteName(of: insideID), frame.definiteName(of: itemID)))
                 }
             }
         }
 
-        // Actor paragraphs. An actor's `firstSight` is its standing
-        // presence line — printed every time, not gated on `touched` the
-        // way an item's is (people aren't props; handling them doesn't
-        // wear off their entrance). What an actor carries is not listed.
+        // Actor paragraphs. An actor's presence line — `firstSight`, or the
+        // live `presence { … }` rule that supersedes it — is printed every
+        // time, not gated on `touched` the way an item's is (people aren't
+        // props; handling them doesn't wear off their entrance). What an
+        // actor carries is not listed.
         for actorID in present where definition.items[actorID]?.isActor == true {
-            guard let actor = definition.items[actorID] else { continue }
-            if let presence = actor.firstSight {
+            if let presence = frame.presenceText(of: actorID) {
                 frame.say(presence)
             } else {
-                frame.say(frame.definition.text.actorHere(actor.name ?? actorID.raw))
+                frame.say(frame.definition.text.actorHere(frame.indefiniteName(of: actorID)))
             }
         }
     }

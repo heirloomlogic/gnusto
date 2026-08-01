@@ -215,29 +215,52 @@ score ranks, and a longer lantern burn. No new rooms this task.
   (extensions on the same `enum Prose`). Pure relocation — the text was
   unchanged, and the one-constant-per-entity structure is the path the
   verbatim swap later flowed through cleanly.
-- **The custom verbs' responses are now the original Zork I text**, same as
+- **The custom verbs' responses are the original Zork I text**, same as
   every other line. Infocom's famous joke replies (the hollow voice's
-  "Fool.", the wave-of-nausea, and so on) now carry through; the verb
+  "Fool.", the wave-of-nausea, and so on) carry through; the verb
   *words* the player types (`xyzzy`, `plugh`, `pray`, …) are the iconic ones
-  and were always used as-is.
+  and were always used as-is. That still holds for every verb Zork has original
+  text for, including the ones the engine has since taken over as stubs: Zork
+  overrides those verbs' stage-4 defaults, so the reproduced text stays inside
+  `Sources/Zork1/` where `THIRD_PARTY_NOTICES` scopes it.
+- **Verbs the original didn't have answer in the engine's voice.** The engine's
+  stub set is wider than Zork's verb pack, so `sing`, `jump`, `kneel`, `listen`,
+  `eat` and the rest reply with Gnusto's generic line rather than anything
+  Infocom wrote. A departure, and the right one: the alternative is
+  `I don't know the word "sing"`.
 
 ### Custom verbs (`Systems.swift`)
 
-- **The verbs are declared now but mostly inert.** `dig`, `wave`, `touch`,
-  `wind`, `inflate`/`deflate`, `launch`, `raise`/`lower`, `turn … with …`,
-  `tie`/`untie`, `give`, `ring`, and the magic words (`xyzzy`, `plugh`,
-  `odysseus`/`ulysses`) parse and answer with a polite stage-4 default. Their
-  real mechanics arrive with the regions that need them (the shovel, the
-  clockwork canary, the plastic boat, the dam controls, the Cyclops), which
-  only have to add an item-scoped rule — the parser already knows the word.
-- **`diagnose` is modeled; `count` is not (closed in the fidelity pass).**
-  `diagnose` now reports the death toll and how many resurrections remain
+- **Most of the verb pack moved into the engine.** `dig`, `wave`, `touch`,
+  `tie`/`untie`, `give`, `smell`, `drink`, `fill`, `pour`, `climb`, `pray` and the
+  magic words `xyzzy`/`plugh` are engine *stub verbs* now, so every Gnusto game
+  gets them. What stays in `Systems.swift` is the vocabulary that is actually
+  Zork's: `wind`, `inflate`/`deflate`, `launch`, `raise`/`lower`, `turn … with …`,
+  `ring`, `echo`, `odysseus`/`ulysses`, `hello`/`hi`, `fix`, `diagnose`.
+  **No player-visible text changed for the verbs Zork already had**: it keeps an
+  `action(…)` override for each of those thirteen, so the reply is still the
+  original's line, not the engine's. That is also deliberate on licensing
+  grounds — the reproduced Infocom text stays inside `Sources/Zork1/`, per
+  `THIRD_PARTY_NOTICES`. The ~34 stub verbs Zork *never* had (`sing`, `jump`,
+  `kneel`, `eat`, …) are new vocabulary answering in the engine's voice.
+- **The verbs that remain are still mostly inert.** Their real mechanics arrive
+  with the regions that need them (the clockwork canary, the plastic boat, the dam
+  controls, the Cyclops), which only have to add an item-scoped rule — the parser
+  already knows the word.
+- **`diagnose` is modeled; `count` is now the engine's.**
+  `diagnose` reports the death toll and how many resurrections remain
   (`action(.diagnose)` in `Zork1`, reading the host's `deaths` counter): perfect
   health while unscathed, otherwise "killed N times" with the survivals left. The
   original's per-wound severity is not reported — the slice tracks no numeric
-  player-wound state, only deaths. The original's `count` verb stays out of scope.
-- **`turn … with …` outspecifies `turn … on`** (specificity 22 vs 21) so a
-  future "turn bolt with wrench" never trips the light switch.
+  player-wound state, only deaths. `count` parses (it is an engine stub) but Zork
+  gives it no meaning of its own.
+- **`turn … with …` outspecifies `turn … on`** (specificity 22 vs 21) so
+  "turn bolt with wrench" never trips the light switch. The engine's bare
+  `turn <object>` stub sits below both at 11.
+- **Bare `turn bolt` is ours, not the original's.** The original had no bare
+  `turn` verb; the engine ships one, so the bolt gets a `bolt.before(.turn)` rule
+  pointing at the tool ("Your bare hands aren't enough. The bolt needs a tool.")
+  rather than the engine's generic "The bolt doesn't turn."
 
 ### Burden / weight (`Burden.swift`)
 
@@ -987,6 +1010,11 @@ rooms verified against `1dungeon.zil` / `1actions.zil` (`CANARY-OBJECT`, `FOREST
 - **The canary joins the host roster** (find 6 / case 4) and **the brass bauble** (find 1 /
   case 1), bringing it to the full **19 of 19** treasures. `maxScore` stays 350 (fixed in
   10.2). The roster is shared with the thief's steal list, so he now covets both — canonical.
+- **The 350 is now checked rather than trusted.** The five event awards live in the
+  `Scoring` award table (10 + 25 + 5 + 13 + 25 = 78) and the nineteen treasures carry
+  143 points of `.takeValue` and 129 of `.depositValue`; the bootstrap sums all three
+  and warns if the total misses `maxScore`. It comes to exactly 350, so the original's
+  ceiling is genuinely reachable here and not merely asserted.
 - **The ruined canary is worthless here.** The original grudgingly pays a single point
   (`TVALUE 1`) for casing the `broken clockwork canary`; here it carries no value and is not in
   the roster, so forcing the egg simply forfeits the canary's score. Keeping the broken bird

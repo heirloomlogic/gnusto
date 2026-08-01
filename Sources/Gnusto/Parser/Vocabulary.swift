@@ -3,41 +3,6 @@ struct ItemLexicon: Sendable {
     var nouns: Set<String> = []
     var adjectives: Set<String> = []
 
-    init(nouns: Set<String> = [], adjectives: Set<String> = []) {
-        self.nouns = nouns
-        self.adjectives = adjectives
-    }
-
-    /// Decomposes an item's declarations into the words a player can type.
-    ///
-    /// A name or synonym is a *phrase*: its last word is the noun and the
-    /// words ahead of it qualify that noun, so `"air-door"` answers to `door`
-    /// and `air door`, and `"old works"` to `works` and `old works`. Declared
-    /// adjectives are phrases too, and every word in one stands alone.
-    ///
-    /// Every phrase is split by `Vocabulary.words(in:)` — the parser's own
-    /// splitter — which is what makes punctuation harmless here.
-    init(name: String?, synonyms: [String], adjectives: [String]) {
-        self.init()
-        for phrase in synonyms {
-            learn(phrase)
-        }
-        if let name {
-            learn(name)
-        }
-        for phrase in adjectives {
-            self.adjectives.formUnion(Vocabulary.words(in: phrase))
-        }
-    }
-
-    /// Files one name-or-synonym phrase: last word noun, the rest adjectives.
-    private mutating func learn(_ phrase: String) {
-        let words = Vocabulary.words(in: phrase)
-        guard let noun = words.last else { return }
-        nouns.insert(noun)
-        adjectives.formUnion(words.dropLast())
-    }
-
     /// True when `tokens` is a valid way to refer to this item: every token
     /// is one of its words, and the final token is a noun.
     func matches(_ tokens: [String]) -> Bool {
@@ -51,10 +16,20 @@ struct ItemLexicon: Sendable {
 struct Vocabulary: Sendable {
     var itemLexicons: [EntityID: ItemLexicon] = [:]
     var displayNames: [EntityID: String] = [:]
+    /// The items whose display name is a proper name. The parser's own lines
+    /// name entities too — "Which do you mean: Mrs. Vane or Dr. Pike?" — and
+    /// it has no frame to ask, so the article rule travels with the lexicon.
+    var properNames: Set<EntityID> = []
     var verbWords: Set<String> = []
     var directions: [String: Direction] = [:]
     var prepositions: Set<String> = []
-    var noiseWords: Set<String> = ["the", "a", "an", "my", "that", "this", "some"]
+    var noiseWords: Set<String> = Vocabulary.defaultNoiseWords
+
+    /// Filler the parser drops from every input line. Hoisted to a static so
+    /// that anything normalizing author-written text the same way the parser
+    /// normalizes player input — ``Topic/normalize(_:)`` — reads the one list
+    /// rather than keeping a copy of it that can drift.
+    static let defaultNoiseWords: Set<String> = ["the", "a", "an", "my", "that", "this", "some"]
 
     /// Words the parser claims for itself — pronouns and the multi-object
     /// keywords. They resolve before any item lexicon is consulted, so an
@@ -80,18 +55,33 @@ struct Vocabulary: Sendable {
         allKnownWords.contains(word)
     }
 
-    /// The one rule for what counts as a word: any run of letters or digits,
-    /// with every other character a separator.
+    /// Splits a phrase into words, the one way this engine splits anything:
+    /// lowercased, a trailing possessive dropped, every other non-alphanumeric
+    /// character a separator. `"Master's Spellbook"` yields
+    /// `["master", "spellbook"]` and `"half-moon"` yields `["half", "moon"]`.
     ///
-    /// Both halves of the parser go through it — `StandardParser.tokenize`
-    /// splitting the player's line, and `ItemLexicon.init(name:synonyms:adjectives:)`
-    /// splitting what the game declared — so the two can never disagree about
-    /// where a word ends. That shared rule is why `name("air-door")` answers to
-    /// something: split identically on both sides, it registers `air` and
-    /// `door`, and not a hyphenated token the tokenizer could never produce.
+    /// Both sides go through here — the author's declarations at bootstrap and
+    /// the player's typing in ``StandardParser/tokenize(_:)`` — because they
+    /// have to agree on where one word ends and the next begins. When they
+    /// didn't, a declared `master's` was a string no token could ever equal.
+    ///
+    /// The possessive is the one mark that carries a word rather than
+    /// separating two, so it is dropped rather than split on. Only a `'s`
+    /// ending a word: `don't` is still `["don", "t"]`.
+    ///
+    /// Filler is *not* stripped here — the tokenizer drops noise words from
+    /// what the player types, and a declaration made of nothing but filler is a
+    /// bootstrap error rather than a silent nothing.
+    ///
+    /// - Parameter phrase: any text, author-written or player-typed.
+    /// - Returns: its words, in order, possibly none.
     static func words(in phrase: String) -> [String] {
         phrase.lowercased()
-            .split(whereSeparator: { !($0.isLetter || $0.isNumber) })
+            .split(whereSeparator: { !($0.isLetter || $0.isNumber || $0 == "'") })
+            .flatMap { chunk in
+                (chunk.hasSuffix("'s") ? chunk.dropLast(2) : chunk[...])
+                    .split(separator: "'")
+            }
             .map(String.init)
     }
 

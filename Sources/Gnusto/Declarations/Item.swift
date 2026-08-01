@@ -47,6 +47,28 @@ public struct Item: Sendable, Equatable {
         return frame.displayName(of: id)
     }
 
+    /// The name behind its definite article — "the brass lantern", or
+    /// "Mrs. Vane" for an item declared `properName`. The form the engine's
+    /// stock lines are given, and the one a rule's own prose usually wants.
+    public var definiteName: String {
+        let (frame, id) = resolved
+        return frame.definiteName(of: id)
+    }
+
+    /// The name behind its indefinite article — "a brass lantern", or
+    /// "Mrs. Vane" for an item declared `properName`. The form the room and
+    /// inventory listings use.
+    public var indefiniteName: String {
+        let (frame, id) = resolved
+        return frame.indefiniteName(of: id)
+    }
+
+    /// True if the item's name is a proper name, so no article precedes it.
+    public var isProperName: Bool {
+        let (frame, id) = resolved
+        return frame.isProperName(id)
+    }
+
     /// The item's examine/read text. Assigning replaces it for the rest of
     /// the game.
     public var description: String {
@@ -64,6 +86,51 @@ public struct Item: Sendable, Equatable {
     public var isHeld: Bool {
         let (frame, id) = resolved
         return frame.with { $0.state.placements[id] == .heldBy(.player) }
+    }
+
+    /// True if the player could put a hand on the item from where they are
+    /// standing: carried, lying in the room, or on or inside something open
+    /// here — **to any depth**. This is the set the default actions gate on, so
+    /// a rule that guards with it refuses exactly where `take` would. In the
+    /// dark it is only what the player is carrying.
+    ///
+    /// Ask this rather than rebuilding it from ``isHeld``, ``isIn(_:)`` and
+    /// ``holds(_:)``; <doc:ContainersDoorsAndLocks> says why.
+    public var isReachable: Bool {
+        let (frame, id) = resolved
+        return Visibility.isReachable(id, frame: frame)
+    }
+
+    /// True if `actor` could put a hand on the item from the room they are
+    /// standing in: in their own hands, lying in that room, or on or inside
+    /// something open there — **to any depth**, as ``isReachable``.
+    ///
+    /// Two things differ from the player's own reach. Darkness does not gate
+    /// it: an unlit room stops the player's eyes, not somebody else's arm. And
+    /// what the *player* is holding is not in it — lifting from those hands is
+    /// stealing, which is a plugin's job, the same rule that keeps another
+    /// actor's hands out of ``isReachable``. A thief wants both sets:
+    ///
+    /// ```swift
+    /// let loot = treasures.filter { $0.isReachable || $0.isReachable(from: thief) }
+    /// ```
+    ///
+    /// An actor who is in no room at all — held, contained, or ``Actor/vanish()``ed
+    /// — reaches only what they are carrying.
+    public func isReachable(from actor: Actor) -> Bool {
+        let (frame, id) = resolved
+        return Visibility.isReachable(id, from: actor.asItem.id, frame: frame)
+    }
+
+    /// True if the player could see the item from where they are standing:
+    /// everything ``isReachable``, plus what's behind the glass of a closed
+    /// `transparent` container, plus whatever an actor in the room is holding.
+    ///
+    /// This one is about what the player can *watch*; ``isReachable`` is about
+    /// what they can *touch*.
+    public var isVisible: Bool {
+        let (frame, id) = resolved
+        return Visibility.isVisible(id, frame: frame)
     }
 
     /// True if the player is wearing the item.
@@ -84,6 +151,26 @@ public struct Item: Sendable, Equatable {
     public var isTakable: Bool {
         let (frame, id) = resolved
         return frame.definition.items[id]?.isTakable == true
+    }
+
+    /// True if this is a person — declared as an ``Actor`` rather than an
+    /// ``Item``. Actors are stored in the item registry and reach rules
+    /// through the same object slots, so this is what tells "ask the butler"
+    /// from "ask the lamp."
+    public var isActor: Bool {
+        let (frame, id) = resolved
+        return frame.definition.items[id]?.isActor == true
+    }
+
+    /// True if this is the player themselves. ``isActor`` is true for them
+    /// too — they are a person — so any rule or plugin that means *somebody
+    /// else* has to say so:
+    ///
+    /// ```swift
+    /// try require(addressee.isActor && !addressee.isPlayer, else: "Nobody to tell.")
+    /// ```
+    public var isPlayer: Bool {
+        self == Player().item
     }
 
     /// Whether the item is open. A container without the `openable` trait is
@@ -395,5 +482,23 @@ public struct Item: Sendable, Equatable {
     /// - Returns: the assembled describe rule.
     public func describe(_ body: @escaping @Sendable () -> String) -> Rule {
         Rule(scope: .item(token), phase: .describe, intents: [], body: {}, describeBody: body)
+    }
+
+    /// A live standing-presence line, recomputed every time the room is
+    /// described — the dynamic form of the ``firstSight(_:)`` trait:
+    ///
+    /// ```swift
+    /// bench.presence { blastHappened ? Prose.benchBurnt : Prose.benchWhole }
+    /// ```
+    ///
+    /// On an item this is the paragraph shown until the player touches it; on
+    /// an ``Actor`` it is the presence line shown on every look. Declared in a
+    /// `rules` block. A static `firstSight(…)` trait on the same entity, or a
+    /// second `presence` rule for it, is a fatal bootstrap diagnostic.
+    ///
+    /// - Parameter body: the closure recomputing the line on each read.
+    /// - Returns: the assembled presence rule.
+    public func presence(_ body: @escaping @Sendable () -> String) -> Rule {
+        Rule(scope: .item(token), phase: .presence, intents: [], body: {}, describeBody: body)
     }
 }

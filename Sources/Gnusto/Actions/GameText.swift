@@ -13,6 +13,13 @@
 ///
 /// Fixed lines are plain strings; lines built around names are `@Sendable`
 /// closures taking those names.
+///
+/// A closure receives a *rendered noun phrase* — "the troll", "a troll",
+/// "Mrs. Vane" — not a bare name. The article belongs to the engine, which
+/// knows which entities carry the `properName` trait; a template that wrote
+/// its own would say "the Mrs. Vane". Use ``sentenceCase(_:)`` where a line
+/// opens on the phrase, since "the troll" has to be capitalized and
+/// "Mrs. Vane" must not be.
 public struct GameText: Sendable {
     /// Creates the default table: the engine's classic voice.
     public init() {}
@@ -29,7 +36,7 @@ public struct GameText: Sendable {
     public var cantTake = "You can't take that."
     /// Taking a person.
     public var cantTakeActor: @Sendable (_ name: String) -> String = {
-        "The \($0) would take exception to that."
+        "\(GameText.sentenceCase($0)) would take exception to that."
     }
     /// Dropping (or otherwise handling) something not carried.
     public var notCarrying = "You aren't carrying that."
@@ -53,33 +60,33 @@ public struct GameText: Sendable {
     public var cantEnterCarried = "You can't get into something you're carrying."
     /// Entering the vehicle the player is already in.
     public var alreadyInVehicle: @Sendable (_ name: String) -> String = {
-        "You're already in the \($0)."
+        "You're already in \($0)."
     }
     /// Entering a second enterable without leaving the first.
     public var mustExitFirst: @Sendable (_ name: String) -> String = {
-        "You'll have to get out of the \($0) first."
+        "You'll have to get out of \($0) first."
     }
     /// A successful board.
     public var boarded: @Sendable (_ name: String) -> String = {
-        "You are now in the \($0)."
+        "You are now in \($0)."
     }
     /// A successful disembark.
     public var disembarked: @Sendable (_ name: String) -> String = {
-        "You get out of the \($0)."
+        "You get out of \($0)."
     }
     /// Disembarking while on foot.
     public var notInVehicle = "You aren't in anything."
     /// Disembarking from something other than the boarded vehicle.
     public var notInThat: @Sendable (_ name: String) -> String = {
-        "You aren't in the \($0)."
+        "You aren't in \($0)."
     }
     /// The room title while the player is in a vehicle.
     public var locationInVehicle: @Sendable (_ room: String, _ vehicle: String) -> String = {
-        "\($0), in the \($1)"
+        "\($0), in \($1)"
     }
     /// Taking (or otherwise relocating) the vehicle the player is inside.
     public var notWhileInside: @Sendable (_ name: String) -> String = {
-        "Not while you're in the \($0)."
+        "Not while you're in \($0)."
     }
     /// A bare `go` with no direction.
     public var whichWay = "Which way?"
@@ -91,6 +98,42 @@ public struct GameText: Sendable {
     public var nothingWritten = "There's nothing written on that."
     /// A `wait` turn — a beat passes while fuses and daemons tick.
     public var timePasses = "Time passes."
+
+    // MARK: - Following
+
+    /// The aside printed as the player sets off after somebody.
+    public var following: @Sendable (_ name: String) -> String = {
+        "(after \($0))"
+    }
+    /// Following somebody who is standing right here.
+    public var alreadyFollowing: @Sendable (_ name: String) -> String = {
+        "\(GameText.sentenceCase($0)) is right here."
+    }
+    /// Following something that isn't a person.
+    public var cantFollowThat: @Sendable (_ name: String) -> String = {
+        "\(GameText.sentenceCase($0)) isn't going anywhere."
+    }
+    /// Following somebody who has gone somewhere no exit from here leads. The
+    /// search is one exit deep, so this is also the answer for a quarry who is
+    /// two rooms away — see `DefaultActions.follow`.
+    public var lostThem: @Sendable (_ name: String) -> String = {
+        "You have no idea which way \($0) went."
+    }
+
+    // MARK: - Greeting
+
+    /// Saying hello to somebody who has nothing of their own to say.
+    public var greets: @Sendable (_ name: String) -> String = {
+        "\(GameText.sentenceCase($0)) nods, and says nothing."
+    }
+    /// Greeting something that isn't a person.
+    public var cantGreetThat: @Sendable (_ name: String) -> String = {
+        "\(GameText.sentenceCase($0)) is unlikely to answer."
+    }
+    /// A bare hello with nobody about.
+    public var nobodyToGreet = "There's nobody here to greet."
+    /// A bare hello where several people could have been meant.
+    public var greetsTheRoom = "You say hello to the room in general."
 
     // MARK: - Containers
 
@@ -133,11 +176,11 @@ public struct GameText: Sendable {
 
     /// A successful `turn on` of a light source.
     public var nowOn: @Sendable (_ name: String) -> String = {
-        "The \($0) is now on."
+        "\(GameText.sentenceCase($0)) is now on."
     }
     /// A successful `turn off`.
     public var nowOff: @Sendable (_ name: String) -> String = {
-        "The \($0) is now off."
+        "\(GameText.sentenceCase($0)) is now off."
     }
     /// Turning on something already lit.
     public var alreadyOn = "It's already on."
@@ -192,110 +235,127 @@ public struct GameText: Sendable {
     /// shut glass jar). Distinct from `cantSeeAnySuchThing`, which is for a
     /// noun that isn't in scope at all.
     public var cantReach: @Sendable (_ name: String) -> String = {
-        "You can't reach the \($0)."
+        "You can't reach \($0)."
     }
 
     /// Refusal for putting a container into something it (transitively)
     /// contains — the ancestor-chain cycle case, distinct from putting an item
     /// directly into itself.
     public var cantPutInsideOwnContents: @Sendable (_ name: String) -> String = {
-        "You can't put the \($0) inside something it contains."
+        "You can't put \($0) inside something it contains."
     }
 
     /// The `putOn` counterpart to `cantPutInsideOwnContents`.
     public var cantPutOntoOwnContents: @Sendable (_ name: String) -> String = {
-        "You can't put the \($0) onto something it contains."
+        "You can't put \($0) onto something it contains."
     }
 
     /// Opening something that is locked.
     public var locked: @Sendable (_ name: String) -> String = {
-        "The \($0) is locked."
+        "\(GameText.sentenceCase($0)) is locked."
     }
 
     /// Reaching into (or moving through) something that is closed.
     public var closedContainer: @Sendable (_ name: String) -> String = {
-        "The \($0) is closed."
+        "\(GameText.sentenceCase($0)) is closed."
     }
 
     /// Looking into a container with nothing in it.
     public var emptyContainer: @Sendable (_ name: String) -> String = {
-        "The \($0) is empty."
+        "\(GameText.sentenceCase($0)) is empty."
+    }
+
+    /// Searching something that has no inside to search: the noun resolved and
+    /// the player can reach it, it simply isn't a `container`. Deliberately not
+    /// ``cantSeeAnySuchThing``, which is only ever for a noun that isn't in
+    /// scope — the player can see this perfectly well, and SEARCH GRASS
+    /// answering "You can't see any such thing" about grass the game will
+    /// happily describe is the defect this line exists to retire.
+    public var nothingToSearch: @Sendable (_ name: String) -> String = {
+        "You find nothing of interest in \($0)."
+    }
+
+    /// Searching a person. Distinct from ``nothingToSearch`` because "you find
+    /// nothing of interest in the cook" claims you frisked her and came up
+    /// empty, which is a good deal more than happened.
+    public var cantSearchActor: @Sendable (_ name: String) -> String = {
+        "\(GameText.sentenceCase($0)) would have something to say about that."
     }
 
     /// Locking or unlocking with a key that isn't in hand.
     public var keyNotHeld: @Sendable (_ name: String) -> String = {
-        "You aren't holding the \($0)."
+        "You aren't holding \($0)."
     }
 
     /// A successful `putIn`.
     public var putItemIn: @Sendable (_ name: String, _ container: String) -> String = {
-        "You put the \($0) in the \($1)."
+        "You put \($0) in \($1)."
     }
 
     /// Opening a container with visible contents.
-    public var openingReveals: @Sendable (_ name: String, _ contentNames: [String]) -> String = {
-        "Opening the \($0) reveals \(GameText.indefiniteList($1))."
+    public var openingReveals: @Sendable (_ name: String, _ contents: [String]) -> String = {
+        "Opening \($0) reveals \(GameText.list($1))."
     }
 
     /// "In the X is a Y." / "In the X are a Y and a Z." — verb agreement
     /// follows the content count.
-    public var inTheContainer: @Sendable (_ name: String, _ contentNames: [String]) -> String = {
+    public var inTheContainer: @Sendable (_ name: String, _ contents: [String]) -> String = {
         let verb = $1.count == 1 ? "is" : "are"
-        return "In the \($0) \(verb) \(GameText.indefiniteList($1))."
+        return "In \($0) \(verb) \(GameText.list($1))."
     }
 
     /// The aside printed when handling a worn item removes it first.
     public var firstTakingOff: @Sendable (_ name: String) -> String = {
-        "(first taking off the \($0))"
+        "(first taking off \($0))"
     }
 
     /// A successful `wear`.
     public var putOn: @Sendable (_ name: String) -> String = {
-        "You put on the \($0)."
+        "You put on \($0)."
     }
 
     /// A successful `doff`.
     public var takeOff: @Sendable (_ name: String) -> String = {
-        "You take off the \($0)."
+        "You take off \($0)."
     }
 
     /// A successful `putOn` (placing onto a surface).
     public var putItemOn: @Sendable (_ name: String, _ surface: String) -> String = {
-        "You put the \($0) on the \($1)."
+        "You put \($0) on \($1)."
     }
 
     /// Examining something with no description of its own.
     public var nothingSpecial: @Sendable (_ name: String) -> String = {
-        "You see nothing special about the \($0)."
+        "You see nothing special about \($0)."
     }
 
     /// A room description's line for a loose item.
     public var itemHere: @Sendable (_ name: String) -> String = {
-        "There is \(GameText.indefinite($0)) here."
+        "There is \($0) here."
     }
     /// A room description's line for an actor with no `firstSight` presence
     /// line of its own.
     public var actorHere: @Sendable (_ name: String) -> String = {
-        let phrase = GameText.indefinite($0)
-        return phrase.prefix(1).uppercased() + phrase.dropFirst() + " is here."
+        "\(GameText.sentenceCase($0)) is here."
     }
 
     /// A room description's line for an item resting on a surface.
     public var itemOnSurface: @Sendable (_ name: String, _ surface: String) -> String = {
-        "On the \($1) is \(GameText.indefinite($0))."
+        "On \($1) is \($0)."
     }
 
     /// A room description's line for an item visible inside a container.
     public var itemInContainer: @Sendable (_ name: String, _ container: String) -> String = {
-        "In the \($1) is \(GameText.indefinite($0))."
+        "In \($1) is \($0)."
     }
 
     /// The `inventory` listing, as one sentence ("You are carrying a brass
-    /// lantern, an apple, and a velvet cloak (being worn)."). Only called with
-    /// at least one item; `emptyHanded` covers the rest.
+    /// lantern, an apple, and a velvet cloak (being worn)."). The names arrive
+    /// already articled, since only the caller knows which are proper names.
+    /// Only called with at least one item; `emptyHanded` covers the rest.
     public var inventorySentence: @Sendable (_ items: [(name: String, isWorn: Bool)]) -> String = {
-        let phrases = $0.map { GameText.indefinite($0.name) + ($0.isWorn ? " (being worn)" : "") }
-        return "You are carrying \(GameText.englishList(phrases))."
+        let phrases = $0.map { $0.name + ($0.isWorn ? " (being worn)" : "") }
+        return "You are carrying \(GameText.list(phrases))."
     }
 
     /// The title banner shown at startup and by `version`. The `<br>` keeps the
@@ -311,6 +371,33 @@ public struct GameText: Sendable {
         let possible = $1 > 0 ? " of a possible \($1)" : ""
         return "Your score is \($0)\(possible), in \($2) \($2 == 1 ? "turn" : "turns")."
     }
+
+    // MARK: - Yourself
+
+    /// Examining yourself, when the game has neither set a description on
+    /// `player.item` nor given it a `describe { }` rule.
+    public var selfDescription = "You look much as you always do."
+
+    /// Taking yourself. The stock person's refusal reads as though somebody
+    /// else were involved, so the player gets their own line.
+    public var cantTakeSelf = "You have yourself well in hand already."
+
+    /// Searching yourself. Nothing is turned out, because the player's
+    /// pockets are the inventory and `i` already reports them.
+    public var cantSearchSelf = "You pat yourself down and find only what you're carrying."
+
+    /// Greeting yourself.
+    public var cantGreetSelf = "You and yourself have already met."
+
+    /// Following yourself.
+    public var cantFollowSelf = "You are already right here."
+
+    // MARK: - Stub verbs
+
+    /// The stock replies for the verbs the parser knows as words but the engine
+    /// gives no mechanic. Re-skin one with `text.stubs.dig = "…"`; give one real
+    /// behavior with a rule or an `actions` row.
+    public var stubs = StubReplies()
 
     // MARK: - Parser replies
 
@@ -329,6 +416,20 @@ public struct GameText: Sendable {
     /// A line no verb pattern fits.
     public var didntUnderstand = "I didn't understand that sentence."
 
+    /// Stage 4's last resort: a verb row matched, so the parser understood the
+    /// sentence, but nothing in the game answers this intent — no action, no
+    /// rule, no stub line. Distinct from ``didntUnderstand``, which is the
+    /// parser's own failure, and free for the same reason: nothing happened.
+    public var cantDoThat = "You can't do that."
+
+    /// Giving somebody an order — `butler, open the door`. The engine has no
+    /// system for one character to act on another's word, so a character hears
+    /// you out and declines. `butler, hello` is the one addressed form that
+    /// does something, and it becomes a GREET.
+    public var notTakingOrders: @Sendable (_ name: String) -> String = {
+        "\(GameText.sentenceCase($0)) has no intention of taking orders from you."
+    }
+
     /// A verb missing its object — answerable on the next line.
     public var missingObject: @Sendable (_ verb: String) -> String = {
         "What do you want to \($0)?"
@@ -336,12 +437,21 @@ public struct GameText: Sendable {
 
     /// A verb missing its second object — answerable on the next line.
     public var missingIndirect: @Sendable (_ verb: String, _ objectName: String, _ preposition: String) -> String = {
-        "What do you want to \($0) the \($1) \($2)?"
+        "What do you want to \($0) \($1) \($2)?"
+    }
+
+    /// A verb missing its topic — answerable on the next line. The object and
+    /// the word introducing the subject are both optional, so one line covers
+    /// "ask the butler about", "think about", and a bare "mutter".
+    public var missingTopic: @Sendable (_ verb: String, _ objectName: String?, _ preposition: String) -> String = {
+        let object = $1.map { " \($0)" } ?? ""
+        let about = $2.isEmpty ? "" : " \($2)"
+        return "What do you want to \($0)\(object)\(about)?"
     }
 
     /// A noun phrase matching several things — answerable on the next line.
     public var ambiguous: @Sendable (_ names: [String]) -> String = {
-        "Which do you mean: \($0.map { "the \($0)" }.joined(separator: " or "))?"
+        "Which do you mean: \($0.joined(separator: " or "))?"
     }
 
     // MARK: - Multi-object commands
@@ -360,36 +470,49 @@ public struct GameText: Sendable {
 
     // MARK: - Formatting helpers
 
-    /// The name with its indefinite article, for listings ("a velvet cloak",
-    /// "an apple"). Standard action lines use "the" instead. A formatting
-    /// utility, not a skinnable line — custom closures can call it too.
+    /// The name with its definite article ("the velvet cloak"), or the name
+    /// alone when it is a proper name ("Mrs. Vane").
     ///
-    /// - Parameter name: the bare name to article.
-    /// - Returns: the name prefixed with "a" or "an".
-    public static func indefinite(_ name: String) -> String {
-        if let first = name.lowercased().first, "aeiou".contains(first) {
+    /// The engine calls this — and ``indefinite(_:proper:)`` — *before* it
+    /// reaches a line's closure, which is why every template above interpolates
+    /// a finished phrase rather than putting an article in front of a bare
+    /// name. A custom closure receives the same finished phrase; these statics
+    /// are here for lines that build a phrase of their own.
+    ///
+    /// - Parameters:
+    ///   - name: the bare name to article.
+    ///   - proper: whether the name is a proper name, in which case it is
+    ///     returned unchanged.
+    /// - Returns: the rendered noun phrase.
+    public static func definite(_ name: String, proper: Bool = false) -> String {
+        proper ? name : "the \(name)"
+    }
+
+    /// The name with its indefinite article, for listings ("a velvet cloak",
+    /// "an apple"), or the name alone when it is a proper name ("Mrs. Vane").
+    ///
+    /// - Parameters:
+    ///   - name: the bare name to article.
+    ///   - proper: whether the name is a proper name, in which case it is
+    ///     returned unchanged.
+    /// - Returns: the rendered noun phrase.
+    public static func indefinite(_ name: String, proper: Bool = false) -> String {
+        if proper {
+            name
+        } else if let first = name.lowercased().first, "aeiou".contains(first) {
             "an \(name)"
         } else {
             "a \(name)"
         }
     }
 
-    /// Joins names with their indefinite articles into an English list ("a Y",
-    /// "a Y and a Z", "a Y, a Z, and a W") for contents listings.
+    /// Joins already-rendered phrases into an English list ("a Y", "a Y and a
+    /// Z", "a Y, a Z, and a W") for contents listings. The articles are the
+    /// caller's, since only the caller knows which of them are proper names.
     ///
-    /// - Parameter names: the bare names to article and join.
-    /// - Returns: the names articled and joined into an English list.
-    public static func indefiniteList(_ names: [String]) -> String {
-        englishList(names.map(indefinite))
-    }
-
-    /// Joins already-formatted phrases into an English list ("Y", "Y and Z",
-    /// "Y, Z, and W") — the serial-comma join behind `indefiniteList`, for
-    /// callers whose phrases carry their own articles or annotations.
-    ///
-    /// - Parameter phrases: the phrases to join.
+    /// - Parameter phrases: the rendered phrases to join.
     /// - Returns: the phrases joined into an English list.
-    public static func englishList(_ phrases: [String]) -> String {
+    public static func list(_ phrases: [String]) -> String {
         guard let last = phrases.last else { return "" }
         switch phrases.count {
         case 1: return last
@@ -397,6 +520,205 @@ public struct GameText: Sendable {
         default:
             let allButLast = phrases.dropLast().joined(separator: ", ")
             return "\(allButLast), and \(last)"
+        }
+    }
+
+    /// A phrase with its first letter capitalized, for a line that opens on
+    /// one. "the troll" becomes "The troll"; "Mrs. Vane" is already right.
+    ///
+    /// - Parameter phrase: the rendered phrase to capitalize.
+    /// - Returns: the phrase, sentence-cased.
+    public static func sentenceCase(_ phrase: String) -> String {
+        phrase.prefix(1).uppercased() + phrase.dropFirst()
+    }
+}
+
+extension GameText {
+    /// The stock replies for stub verbs — the words the parser knows even where
+    /// the game has no mechanic behind them. Reached as `text.stubs.dig`.
+    ///
+    /// These are the engine's floor, not its ceiling. Overriding a line re-skins
+    /// it; a rule or an `actions` row replaces it with behavior. Both are
+    /// expected, and neither warns.
+    ///
+    /// Lines that name the object are closures, as elsewhere in ``GameText``,
+    /// and only where the name earns its keep: "The chair is sturdier than
+    /// that." says something "That's sturdier than that." can't.
+    public struct StubReplies: Sendable {
+        /// The classic replies. Build one and mutate the lines you want to
+        /// change; ``GameText`` already holds a default instance.
+        public init() {}
+
+        /// A stub verb aimed at yourself, where the verb's own line would have
+        /// named its object. The player item is called "yourself", so those
+        /// lines would read "The yourself is not food." — one line covers all of
+        /// them rather than fifteen self-specific variants.
+        public var yourself = "Best leave yourself out of it."
+
+        /// A stub verb aimed at somebody else, where the verb would otherwise
+        /// have reported a completed act on a person — "The cook is not food.",
+        /// "You feel nothing out of the ordinary." about a witness. Every stub
+        /// that has to *reach* its object goes through this, so one line covers
+        /// all of them, the way ``yourself`` does.
+        ///
+        /// It is deliberately close in shape to ``GameText/cantTakeActor`` and
+        /// ``GameText/cantSearchActor``, which have always refused this way: a
+        /// game that re-skins one usually wants all three in the same voice.
+        public var somebodyElse: @Sendable (_ name: String) -> String = {
+            "\(GameText.sentenceCase($0)) is a person, and would rather you didn't."
+        }
+
+        // MARK: Violence and force
+
+        /// Attacking something with no combat behind it.
+        public var attack = "Attacking things rarely improves them."
+        /// Breaking, smashing or destroying something.
+        public var smash: @Sendable (_ name: String) -> String = {
+            "\(GameText.sentenceCase($0)) is sturdier than that."
+        }
+        /// Setting fire to something.
+        public var burn: @Sendable (_ name: String) -> String = {
+            "You have no way to set fire to \($0)."
+        }
+        /// Cutting or slicing something.
+        public var cut: @Sendable (_ name: String) -> String = {
+            "You have nothing to cut \($0) with."
+        }
+        /// Digging, with or without a tool.
+        public var dig = "You have nothing to dig with."
+        /// Pulling or dragging something.
+        public var pull: @Sendable (_ name: String) -> String = {
+            "\(GameText.sentenceCase($0)) doesn't budge."
+        }
+        /// Turning something that doesn't turn. Names the object so the reply
+        /// doesn't read as a failed `turn on`.
+        public var turn: @Sendable (_ name: String) -> String = {
+            "\(GameText.sentenceCase($0)) doesn't turn."
+        }
+        /// Squeezing something.
+        public var squeeze: @Sendable (_ name: String) -> String = {
+            "Squeezing \($0) changes nothing."
+        }
+        /// Shaking something.
+        public var shake: @Sendable (_ name: String) -> String = {
+            "You shake \($0). Nothing rattles loose."
+        }
+        /// Knocking on something.
+        public var knock = "Nobody answers."
+        /// Throwing something at something else.
+        public var throwAt = "Throwing things about achieves nothing."
+
+        // MARK: Senses
+
+        /// Touching, feeling or rubbing something.
+        public var touch = "You feel nothing out of the ordinary."
+        /// Smelling the room or something in it.
+        public var smell = "You smell nothing out of the ordinary."
+        /// Listening to the room or something in it.
+        public var listen = "You hear nothing out of the ordinary."
+        /// Tasting or licking something.
+        public var taste = "You'd rather not."
+
+        // MARK: Body
+
+        /// Eating something inedible.
+        public var eat: @Sendable (_ name: String) -> String = {
+            "\(GameText.sentenceCase($0)) is not food."
+        }
+        /// Drinking something undrinkable.
+        public var drink = "There's nothing here worth drinking."
+        /// Going to sleep.
+        public var sleep = "You're not sleepy."
+        /// Waking, or waking somebody who isn't asleep.
+        public var wake = "There's no sleeping to be interrupted."
+
+        // MARK: Social
+
+        /// Kissing or hugging somebody.
+        public var kiss = "That would be presumptuous."
+        /// Handing something to somebody who doesn't want it. Names both, since
+        /// every row carries both slots.
+        public var give: @Sendable (_ name: String, _ recipient: String) -> String = {
+            "\(GameText.sentenceCase($1)) doesn't want \($0)."
+        }
+        /// Yelling, shouting or screaming.
+        public var yell = "You shout. Nothing shouts back."
+        /// Waving, with or without something in hand.
+        public var wave = "You wave. Nothing comes of it."
+        /// Pointing at something.
+        public var point = "Pointing at things accomplishes little."
+
+        // MARK: Motion
+
+        /// Climbing something unclimbable.
+        public var climb = "You can't climb that."
+        /// Jumping, on the spot or over something.
+        public var jump = "You jump on the spot. Nothing is achieved."
+        /// Swimming with no water to swim in.
+        public var swim = "There's nothing here to swim in."
+        /// Diving with nothing to dive into.
+        public var dive = "There's nothing here to dive into."
+        /// Standing when already upright.
+        public var stand = "You're already standing."
+        /// Sitting with nowhere to sit.
+        public var sit = "There's nothing comfortable to sit on."
+        /// Lying down.
+        public var lie = "The floor doesn't look inviting."
+        /// Kneeling.
+        public var kneel = "You kneel. Nothing takes notice."
+
+        // MARK: Liquids and containers
+
+        /// Filling something with nothing to fill it from.
+        public var fill: @Sendable (_ name: String) -> String = {
+            "There's nothing here to fill \($0) from."
+        }
+        /// Pouring something that holds nothing.
+        public var pour: @Sendable (_ name: String) -> String = {
+            "There's nothing in \($0) to pour."
+        }
+        /// Emptying something that holds nothing.
+        public var empty: @Sendable (_ name: String) -> String = {
+            "There's nothing in \($0) to empty out."
+        }
+        /// Tying something with nothing to tie it to.
+        public var tie: @Sendable (_ name: String) -> String = {
+            "There's nothing here to tie \($0) to."
+        }
+        /// Untying something that isn't tied.
+        public var untie: @Sendable (_ name: String) -> String = {
+            "\(GameText.sentenceCase($0)) isn't tied to anything."
+        }
+
+        // MARK: Ritual and flavor
+
+        /// Praying.
+        public var pray = "Your prayers go unanswered."
+        /// Singing.
+        public var sing = "Your singing is better kept to yourself."
+        /// Cursing or swearing.
+        public var curse = "Nobody here is offended."
+        /// The magic words, `xyzzy` and `plugh`, where they mean nothing.
+        public var xyzzy = "Nothing happens."
+        /// Counting something.
+        public var count = "You lose count."
+        /// Thinking.
+        public var think = "You think. Nothing occurs to you."
+        /// Wishing.
+        public var wish = "Wishing doesn't make it so."
+
+        // MARK: Commerce
+
+        /// Buying where nothing is sold.
+        public var buy = "Nothing here is for sale."
+        /// Selling where nobody buys.
+        public var sell = "Nobody here is buying."
+
+        // MARK: Fixtures
+
+        /// Blowing on something. Distinct from `blow out`, which is `turnOff`.
+        public var blow: @Sendable (_ name: String) -> String = {
+            "Blowing on \($0) has no effect."
         }
     }
 }

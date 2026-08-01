@@ -118,19 +118,16 @@ public struct ActorBehaviors: GamePlugin {
     /// `chancePerTurn` and moves one random *reachable* item from `candidates`
     /// into the actor's inventory, announcing it with the stolen item's name.
     /// Like the original's thief, the actor lifts a candidate from wherever it
-    /// lies in the shared room: held by the player, on the floor, or inside an
-    /// open container listed in `containers` that is itself here (or held) —
-    /// the trophy case among them. Only another actor's hands are beyond reach.
-    /// The theft is announced only when the player's room is lit: in the dark
-    /// you find out when you check your pockets.
+    /// lies in the shared room: out of the player's hands, off the floor, or
+    /// from inside anything open — a sack, a trophy case, a table top — to any
+    /// depth. Only another actor's hands are beyond reach. The theft is
+    /// announced only when the player's room is lit: in the dark you find out
+    /// when you check your pockets.
     ///
     /// - Parameters:
     ///   - actor: the thieving NPC.
     ///   - daemonName: the daemon's global timer name.
     ///   - candidates: the items eligible to be stolen.
-    ///   - containers: open, co-located containers the actor may rifle (e.g.
-    ///     the trophy case). A candidate inside one is fair game when the
-    ///     container is open and shares the room (or is held).
     ///   - percent: per-turn chance of a theft, while sharing the room.
     ///   - announcement: builds the theft line from the stolen item's name.
     /// - Returns: the theft daemon, for the host's `timers` block.
@@ -138,20 +135,24 @@ public struct ActorBehaviors: GamePlugin {
         _ actor: Actor,
         daemonName: String,
         candidates: [Item],
-        containers: [Item] = [],
         chancePerTurn percent: Int = 30,
         announcement: @escaping @Sendable (String) -> String
     ) -> TimedEvent {
         daemon(daemonName, autostart: true) {
             // Guards before any draw, so absent actors burn no randomness.
             guard let here = actor.location, player.location == here else { return }
-            // Open containers the actor can reach into: co-located (or held)
-            // and not shut.
-            let openHere = containers.filter { ($0.isIn(here) || $0.isHeld) && $0.isOpen }
-            // Reachable candidates: held, on the floor here, or inside one of
-            // those open containers.
+            // Two reach sets, unioned — the decision #119 asked for. The
+            // player's is here for the pockets, which an actor's own reach set
+            // never contains; the actor's is here for the room, lit or not.
+            // Between them they retired the old `containers:` allowlist, which
+            // saw one level and no surfaces at all.
+            //
+            // `possesses` is not decoration: his own hands are in his reach
+            // set, so without it he re-steals his own haul and burns the roll
+            // announcing it — and it has to walk all the way up, because the
+            // coin in the purse he just lifted is not one his `holds` knows.
             let reachable = candidates.filter { loot in
-                loot.isHeld || loot.isIn(here) || openHere.contains { $0.holds(loot) }
+                !actor.possesses(loot) && (loot.isReachable || loot.isReachable(from: actor))
             }
             guard !reachable.isEmpty else { return }
             guard chance(percent) else { return }

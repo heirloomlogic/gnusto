@@ -112,6 +112,9 @@ A game type that also conforms to ``GameMain`` is a complete `@main` executable 
 - ``startsUnlocked``
 - ``Item/isOpen``
 - ``Item/isLocked``
+- ``Item/isReachable``
+- ``Item/isReachable(from:)``
+- ``Item/isVisible``
 - ``Item/reveal()``
 - ``Item/isRevealed``
 - ``Location/exit(_:to:via:)``
@@ -131,11 +134,16 @@ A game type that also conforms to ``GameMain`` is a complete `@main` executable 
 - ``die(_:)``
 - ``Item/describe(_:)``
 - ``Location/describe(_:)``
+- ``Item/presence(_:)``
 
 ### Actors & Vehicles
 
 - <doc:ActorsAndVehicles>
 - ``Actor``
+- ``Actor/describe(_:)``
+- ``Actor/presence(_:)``
+- ``Actor/holds(_:)``
+- ``Actor/possesses(_:)``
 - ``enterable``
 - ``Player/vehicle``
 - ``describeSurroundings()``
@@ -163,6 +171,7 @@ A game type that also conforms to ``GameMain`` is a complete `@main` executable 
 ### Adding Vocabulary
 
 - <doc:AddingCustomVerbs>
+- <doc:StubVerbs>
 - ``verb(_:_:)``
 - ``SyntaxRule``
 - ``SyntaxElement``
@@ -171,6 +180,7 @@ A game type that also conforms to ``GameMain`` is a complete `@main` executable 
 
 - <doc:TextAndRandomness>
 - ``GameText``
+- ``GameText/StubReplies``
 - ``random(_:)``
 - ``chance(_:)``
 

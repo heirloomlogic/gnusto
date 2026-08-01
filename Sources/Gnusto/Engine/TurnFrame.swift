@@ -14,6 +14,10 @@ struct Scratch: Sendable {
     /// against running it twice and tells the pipeline to skip its own
     /// stage-4 step after a `proceed()`.
     var defaultRan = false
+    /// Set when stage 4 found nothing to answer the command with. The turn
+    /// prints a line that says nothing happened, so it costs what nothing
+    /// costs: no each-turn rules, no timers, no move.
+    var unhandled = false
 }
 
 /// The per-turn context every proxy reads and writes through.
@@ -78,6 +82,26 @@ final class TurnFrame: Sendable {
             ?? id.raw
     }
 
+    /// The entity's name behind its definite article — "the troll", or
+    /// "Mrs. Vane" for a `properName`. What every stock line that names one
+    /// thing is handed.
+    func definiteName(of id: EntityID) -> String {
+        GameText.definite(displayName(of: id), proper: isProperName(id))
+    }
+
+    /// The entity's name behind its indefinite article — "a troll", or
+    /// "Mrs. Vane" for a `properName`. What the room and inventory listings
+    /// are handed.
+    func indefiniteName(of id: EntityID) -> String {
+        GameText.indefinite(displayName(of: id), proper: isProperName(id))
+    }
+
+    /// Whether the entity's name is a proper name. Locations are never
+    /// articled by the engine, so only items carry the trait.
+    func isProperName(_ id: EntityID) -> Bool {
+        definition.items[id]?.isProperName == true
+    }
+
     /// A declared custom trait of any entity, or `nil` if it has none by that
     /// key. Custom traits are immutable definition data, so no lock is taken.
     func customTrait(_ key: String, of id: EntityID) -> StateValue? {
@@ -105,6 +129,18 @@ final class TurnFrame: Sendable {
         return definition.items[id]?.description
             ?? definition.locations[id]?.description
             ?? ""
+    }
+
+    /// The current standing-presence line of an entity: the live
+    /// `presence { … }` rule result if one was declared, else the static
+    /// `firstSight(…)` trait, else nil.
+    ///
+    /// Called outside `with { … }` for the same reason as `describedText`.
+    func presenceText(of id: EntityID) -> String? {
+        if let dynamic = definition.rules.itemPresence[id] {
+            return dynamic()
+        }
+        return definition.items[id]?.firstSight
     }
 
     var command: Command {

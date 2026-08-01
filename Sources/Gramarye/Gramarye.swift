@@ -1,4 +1,5 @@
 import Gnusto
+import GnustoScoring
 import GnustoSpellcasting
 
 extension TraitKey<Bool> {
@@ -34,12 +35,15 @@ extension Intent {
 struct Gramarye: Game, GameMain {
     let title = "Gramarye"
     let tagline = "A novice's first working."
+    /// One award, paid on taking the amulet. It is declared in ``scoring``'s
+    /// table rather than added to the score by hand, so the bootstrap can check
+    /// this literal against what the game can actually pay.
     let maxScore = 10
     let intro = """
         The tower has been in an uproar since dawn — cloak, staff, letters, a hat he cannot find because he is wearing \
         it. The Circle has summoned your master, and the Circle does not care to wait.
 
-        At the threshold he stops, turns back, and takes you by the shoulder, fixing you with the look he otherwise \
+        At the threshold he stops, turns back, and takes hold of you, fixing you with the look he otherwise \
         reserves for cracked cauldrons. "The amulet," he says. "Is it secret? Is it safe?" He then reminds you, at \
         some volume, that it hangs on its hook in the undercroft, behind the warded door — which rather settles the \
         first question. Should anything happen while he is away — anything at all — you are to see that it remains \
@@ -52,6 +56,10 @@ struct Gramarye: Game, GameMain {
         """
 
     let magic = Spellcasting(memorySlots: 3, maxMana: 12)
+
+    /// The game's single award. Not a scoring demo — one register, declared so
+    /// that ``maxScore`` is checked rather than trusted.
+    let scoring = Scoring(awards: ["amulet": 10])
 
     /// Tracks the moment the wards catch. The warded door starts open with its
     /// wards dormant; a draught seals it a few turns in (see `timers`). This
@@ -69,31 +77,46 @@ struct Gramarye: Game, GameMain {
         name("The Long Gallery")
     }
 
+    /// Two states, so its `describe` rule lives in ``rules`` and it declares no
+    /// static `description` — the two are mutually exclusive.
     let undercroft = Location {
         name("The Undercroft")
-        description("A low vaulted cellar, the air chalky with old magic.")
     }
 
     // MARK: - Items
 
     let spellbook = Item {
         name("spellbook")
-        adjectives("master's", "leather")
-        synonyms("book")
+        adjectives("master", "leather")
+        // Every noun the book's own description and its six read rungs put on
+        // the page. They all answer with the description below, which is why
+        // the description names the receipt and the index rather than leaving
+        // them to be discovered only in a rung the player may never reach.
+        synonyms(
+            "book", "pages", "page", "margins", "margin", "notes", "note",
+            "leather", "binding", "index", "receipt", "bookmark", "newts")
         description(
             """
             The master's working book, bound in cracked leather, the pages dense with his careful hand. The margins \
-            are crowded with notes to himself, which is the nearest he comes to conversation. You could read them.
+            are crowded with notes to himself, which is the nearest he comes to conversation; a stationer's receipt \
+            keeps his place, and the index proceeds from "divination" directly to "drowning, avoidance of". You could \
+            read it.
             """)
     }
 
     /// The shadowed niche beside the warded door: examinable scenery whose
     /// description carries the **glow** clue, and tracks the scroll's fate.
+    ///
+    /// A `container`, because the scroll is genuinely inside it — `search
+    /// niche` refuses anything that isn't one, and the room listing has to
+    /// agree with what `x niche` says. Not `openable`: a container that isn't
+    /// openable is always open, which a hole in a wall is.
     let niche = Item {
         name("shadowed niche")
         adjectives("shadowed", "dark")
         synonyms("niche", "alcove", "shadow")
         scenery
+        container
     }
 
     /// Hidden in the niche until **glow** reveals it — so the cantrip is not
@@ -112,16 +135,36 @@ struct Gramarye: Game, GameMain {
     let wardedDoor = Item {
         name("warded door")
         adjectives("warded", "heavy")
-        synonyms("door")
+        synonyms("door", "frame")
         scenery
         openable
         startsOpen
     }
 
+    /// The marks the whole first puzzle is about, named in six passages and
+    /// until now not a word the parser knew: the tokenizer splits the hyphen
+    /// the prose writes, so `name("warding marks")` — adjective `warding`,
+    /// noun `marks` — is what makes `x warding-marks` parse.
+    ///
+    /// Declared here rather than in ``Fixtures`` because its two states read
+    /// the door, and a bundle cannot see the host's items.
+    let wardingMarks = Item {
+        name("warding marks")
+        adjectives("old")
+        synonyms("mark", "wards", "ward", "warding", "sigils", "sigil", "markings")
+        scenery
+    }
+
     let graniteWall = Item {
         name("granite wall")
         adjectives("granite", "blank", "dressed")
-        synonyms("wall", "stone")
+        // Both states of the same item: the granite, and the mist that replaces
+        // it. One item, so the gallery's two descriptions answer to one noun
+        // set. Not `stone` — the gallery is made of the stuff, and the room's
+        // own stonework has the better claim on the bare word.
+        synonyms(
+            "wall", "granite", "seams", "seam", "passage",
+            "mist", "archway", "arch", "curtain")
         scenery
         openable
     }
@@ -129,7 +172,7 @@ struct Gramarye: Game, GameMain {
     let golem = Actor {
         name("clay golem")
         adjectives("clay", "hulking", "raw")
-        synonyms("guardian")
+        synonyms("guardian", "clay")
         description(
             """
             A hulking figure of raw clay, planted between you and the amulet's hook. It has the patient look of \
@@ -143,7 +186,7 @@ struct Gramarye: Game, GameMain {
     let window = Item {
         name("study window")
         adjectives("study", "open")
-        synonyms("window")
+        synonyms("window", "draught", "draft", "breeze", "air", "morning")
         scenery
         description(
             """
@@ -152,19 +195,44 @@ struct Gramarye: Game, GameMain {
             """)
     }
 
-    /// Hidden behind the golem's bulk until **firebolt** clears it.
+    /// Hidden behind the golem's bulk until **firebolt** clears it, and hanging
+    /// on ``Fixtures/hook`` rather than lying on the floor, because the intro,
+    /// firebolt's success line and the ending all say it hangs.
     let amulet = Item {
         name("silver amulet")
-        adjectives("silver", "master's")
-        synonyms("amulet", "talisman")
+        adjectives("silver", "master")
+        synonyms("amulet", "talisman", "moon", "chain")
         description("The master's amulet, a moon of worn silver on a fine chain.")
+        hidden
+    }
+
+    /// What is left of the golem. The ending inventories it as "redistributed
+    /// evenly across the floor" and the master regards it, so it has to be on
+    /// the floor to be regarded; `hidden` until the firebolt makes it.
+    let rubble = Item {
+        name("rubble")
+        adjectives("baked", "fired")
+        synonyms("clay", "shards", "shard", "fragments", "pieces", "dust")
+        description(
+            """
+            An even layer of fired clay across the flags, still warm, in pieces small enough that nobody is going to \
+            be putting it back together. The master will have views.
+            """)
+        scenery
         hidden
     }
 
     // MARK: - Composition
 
+    /// The nouns the tower's prose prints and nothing else answered to. A
+    /// bundle rather than another screenful of stored properties here; see
+    /// ``Fixtures``.
+    let fixtures = Fixtures()
+
     var content: GameContents {
         magic
+        scoring
+        fixtures
     }
 
     var verbs: [SyntaxRule] {
@@ -175,14 +243,19 @@ struct Gramarye: Game, GameMain {
     /// fires only while the apprentice is in the study — if it caught them in
     /// the gallery they would be sealed out with the spellbook still on the
     /// desk — so the fuse re-arms and waits whenever they have wandered off.
+    ///
+    /// And it stands down entirely if the door is already shut, because the
+    /// only way that happens is that the apprentice shut it himself, and a slam
+    /// that insisted "You touched nothing" over his own hand on the door would
+    /// be the game telling him a lie about the last thing he did.
     var timers: [TimedEvent] {
         fuse("doorSeals", after: 2, autostart: true) {
             guard player.location == study else {
                 startFuse("doorSeals", after: 1)  // wait until the apprentice is back
                 return
             }
-            wardedDoor.isOpen = false
-            doorSealed = true
+            guard wardedDoor.isOpen else { return }  // he got there first
+            sealTheDoor()
             say(
                 """
                 Behind you, the warded door meets its frame with a boom that rattles the inkwells. The warding-marks \
@@ -192,6 +265,20 @@ struct Gramarye: Game, GameMain {
                 and your instructions were not ambiguous.
                 """)
         }
+    }
+
+    /// Shuts the door and records that the wards have caught, in that order and
+    /// always together.
+    ///
+    /// Two things close this door — the draught and the apprentice — and the
+    /// book's read ladder keys its first rung on `doorSealed`, not on the door's
+    /// position, because "nothing is wrong yet" and "open again because you
+    /// unbarred it" look identical to `isOpen`. A closer that set one and forgot
+    /// the other would freeze the book on *Nothing is currently wrong* with the
+    /// amulet sealed away, which is the defect this pairing exists to prevent.
+    private func sealTheDoor() {
+        wardedDoor.isOpen = false
+        doorSealed = true
     }
 
     var actions: [IntentAction] {
@@ -227,10 +314,23 @@ struct Gramarye: Game, GameMain {
             guard let target = command.directObject else {
                 try reply("Cast firebolt at what?")
             }
+            guard !target.isPlayer else {
+                try reply(
+                    """
+                    You consider it, briefly, and then don't. The book is silent on apprentices who set fire to \
+                    themselves, which is itself a kind of advice.
+                    """)
+            }
+            // `definiteName` and not "the \(name)": the article is the engine's,
+            // chosen from the `properName` trait. The line used to write its own
+            // and answer `firebolt me` with "the yourself"; the guard above is
+            // what handles the player now, and this is what keeps the same
+            // mistake from arriving with the first proper-named target.
             try require(
                 target[.combustible] == true,
-                else: "The firebolt washes over the \(target.name) and leaves it untouched.")
+                else: "The firebolt washes over \(target.definiteName) and leaves it untouched.")
             target.vanish()
+            rubble.reveal()
             amulet.reveal()
             say(
                 """
@@ -284,8 +384,35 @@ struct Gramarye: Game, GameMain {
                 """
                 : """
                 A cold stone gallery. The way east runs back to the study; to the north the passage is stopped by a \
-                blank wall of dressed granite, fitted so close a knife could not find the seams. You are, for \
-                reference, larger than a knife.
+                blank wall of dressed granite, fitted so close the seams are a matter of faith. You are, for \
+                reference, not a matter of faith.
+                """
+        }
+        // Two states, like the other two rooms: the way back, the hook the
+        // ending says the amulet was lifted from, and — once the firebolt has
+        // been thrown — what is left on the floor for the master to regard.
+        //
+        // The second state appends rather than rewrites, so the room is written
+        // once — the study and the gallery diverge from their first clause and
+        // are two paragraphs, this one is one paragraph and a consequence.
+        undercroft.describe {
+            let cellar = """
+                A low vaulted cellar, the air chalky with old magic. The gallery is back the way you came, to the \
+                south; at the far end, an iron hook is driven into the stone at head height.
+                """
+            return golem.isIn(undercroft)
+                ? cellar
+                : cellar + " Between here and there, the floor wears an even layer of what used to be a golem."
+        }
+        wardingMarks.describe {
+            wardedDoor.isOpen
+                ? """
+                Cut deep into the door's frame and dark all the way along, the way a thing is dark when it has \
+                finished. Whatever they are made of, it is not ink.
+                """
+                : """
+                Cut deep into the door's frame and burning steadily along every stroke, without smoke and without \
+                heat. They are not doing anything, in the sense that a locked door is not doing anything.
                 """
         }
         wardedDoor.describe {
@@ -301,16 +428,27 @@ struct Gramarye: Game, GameMain {
                 """
                 : "A wall of dressed granite, seamless and cold. No door, no crack — just stone."
         }
+        // Four states, not three. The old ladder asked whether the scroll was
+        // *held*, so the spent scroll — `vanish()`ed by the reading — fell into
+        // the branch written for "revealed and not yet picked up" and went on
+        // advertising a parchment that was ash. `niche.holds` asks where the
+        // thing actually is, and the last rung is what is true once it is
+        // nowhere.
         niche.describe {
             if !scroll.isRevealed {
                 """
                 A niche cut shoulder-high into the stone beside the door. The shadow in it lies deeper than any candle \
                 can account for; if something rests there, no unaided eye will find it.
                 """
-            } else if !scroll.isHeld {
+            } else if niche.holds(scroll) {
                 "The shadow has been persuaded to give up its secret: a rolled parchment rests in the niche."
-            } else {
+            } else if scroll.isHeld {
                 "An empty niche cut shoulder-high into the stone. What it kept, you carry now. Do try not to lose it."
+            } else {
+                """
+                An empty niche cut shoulder-high into the stone. What it kept is out of it, and out of your hands too, \
+                and the shadow has gone back to keeping nothing.
+                """
             }
         }
 
@@ -337,12 +475,16 @@ struct Gramarye: Game, GameMain {
                     master has never yet wasted ink. Probably.
                     """)
             } else if !wardedDoor.isOpen {
+                // No "a second time": the ladder is keyed on world state, and
+                // `glow` can be cast without ever opening the book, so a rung
+                // that back-referenced the rung above it would narrate a read
+                // the player never saw.
                 try reply(
                     """
-                    You put the question of doors to the book a second time, and this time it relents: unbar, the \
-                    unbinding, for doors that wards hold fast. Then the small print. It must be memorized fresh, book \
-                    in hand, and it is spent in the speaking — one door per sitting. The master calls this discipline. \
-                    You have other words for it.
+                    You put the question of doors to the book, and the book relents: unbar, the unbinding, for doors \
+                    that wards hold fast. Then the small print. It must be memorized fresh, book in hand, and it is \
+                    spent in the speaking — one door per sitting. The master calls this discipline. You have other \
+                    words for it.
                     """)
             } else if !graniteWall.isOpen {
                 try reply(
@@ -385,6 +527,13 @@ struct Gramarye: Game, GameMain {
                 """)
         }
         graniteWall.before(.open) {
+            // The same `isOpen` guard the door has twenty lines up. Without it
+            // the hint went on being offered after the mage had unfit the
+            // stone and the only means of doing so was ash.
+            if graniteWall.isOpen {
+                try reply(
+                    "The mist parts around your hand and closes behind it. There is nothing left here to open.")
+            }
             try reply(
                 """
                 You push; the wall declines to notice. It was built by someone who knew what they were doing, which \
@@ -393,12 +542,72 @@ struct Gramarye: Game, GameMain {
                 """)
         }
 
+        // Both barriers refuse to be shut into an unwinnable game. This is the
+        // player-driven half of the guard the `doorSeals` fuse already carries:
+        // the fuse waits for the apprentice to be on the book's side of the
+        // door, and so, now, does the apprentice.
+        wardedDoor.before(.close) {
+            if !wardedDoor.isOpen {
+                try reply("It is shut, and the warding-marks are seeing to it.")
+            }
+            // Not a warning and not a death: he simply declines. The wards catch
+            // whenever this door shuts, and everything that could unmake them is
+            // in the book.
+            try require(
+                spellbook.isReachable,
+                else: """
+                    You put a hand to the door and think better of it. These wards catch of their own accord whenever \
+                    it shuts, and the master's book is on the wrong side of it. There is a version of this morning \
+                    where you do that anyway, and you would rather not live in it.
+                    """)
+            sealTheDoor()
+            try reply(
+                """
+                You push the door to. The warding-marks take light and settle into a steady burn — the wards lock of \
+                their own accord, a feature the master has always been rather proud of. The book, at least, is on \
+                this side.
+                """)
+        }
+        graniteWall.before(.close) {
+            // Refused outright rather than conditionally, because `passwall` is
+            // the only writer that can open the granite again and the scroll is
+            // ash by the time anybody could try this. Every path refuses; the
+            // state only picks which words.
+            try refuse(
+                graniteWall.isOpen
+                    ? """
+                    You reach for the mist and your hand goes through it. Whatever the working did to the granite, it \
+                    did not leave you anything to take hold of.
+                    """
+                    : "The granite is as shut as granite gets.")
+        }
+
+        // The book files firebolt under the firing of kilns and notes that raw
+        // clay cannot abide it, so the stock "you have no way to set fire to
+        // this" is the one thing the game must not say about the golem.
+        // `reply`, not `say`: stage 4 uses `say`, and both lines would print.
+        golem.before(.burn) {
+            try reply(
+                """
+                You have nothing to set it alight with, and nothing in the undercroft does either. Fire, if it is \
+                coming, will have to come out of you.
+                """)
+        }
+
         // The amulet is out of reach until the golem is dealt with; the reveal
         // in firebolt's effect is what actually makes it takable. Taking it
         // brings the master back — through his own dispersed wall — to explain
         // the draught and, to your relief, to laugh.
         amulet.after(.take) {
-            player.score += 10
+            scoring.awardOnce("amulet")
+            // The inventory is of the world he is standing in, so the one item
+            // of it the player can still change has to be read rather than
+            // assumed. The wall is safe to assert: nothing can close it, and
+            // he is standing in the hole.
+            let door =
+                wardedDoor.isOpen
+                ? "the warded door unbound"
+                : "the warded door shut again and burning quietly to itself"
             say(
                 """
                 You lift the master's amulet from its hook. Secure at last — held personally by the one responsible \
@@ -407,11 +616,11 @@ struct Gramarye: Game, GameMain {
                 Behind you, someone clears his throat.
 
                 The master stands in the archway that was, until recently, his granite wall. He takes a slow \
-                inventory: the warded door unbound, the wall dispersed, the golem redistributed evenly across the \
-                floor, and his amulet in your fist. "The window," he says at last, mildly. "I have asked you before to \
-                keep it shut. A draught takes that door, and the wards see to the rest." He regards the rubble that \
-                was, as of this morning, the finest guardian clay can make. And then, to your lasting relief, he \
-                begins — quite helplessly — to laugh.
+                inventory: \(door), the wall dispersed, the golem redistributed evenly across the floor, and his \
+                amulet in your fist. "The window," he says at last, mildly. "I have asked you before to keep it shut. \
+                A draught takes that door, and the wards see to the rest." He regards the rubble that was, as of this \
+                morning, the finest guardian clay can make. And then, to your lasting relief, he begins — quite \
+                helplessly — to laugh.
                 """)
             try end(won: true)
         }
@@ -434,13 +643,33 @@ struct Gramarye: Game, GameMain {
         )
 
         player.starts(in: study)
-        spellbook.starts(in: study)
         niche.starts(in: study)
-        scroll.starts(in: study)
         wardedDoor.starts(in: study)
+        wardingMarks.starts(in: study)
         window.starts(in: study)
         graniteWall.starts(in: gallery)
         golem.starts(in: undercroft)
-        amulet.starts(in: undercroft)
+        rubble.starts(in: undercroft)
+
+        // Where the prose says these are. The intro's one instruction is "The
+        // master's spellbook is on the desk"; the niche's whole job is to be
+        // where the scroll is; and the amulet has hung on its hook since the
+        // master shouted about it from the threshold.
+        spellbook.starts(on: fixtures.desk)
+        scroll.starts(inside: niche)
+        amulet.starts(on: fixtures.hook)
+
+        // The nouns the tower's prose prints. A bundle can only place into
+        // rooms it can name, and these are ours.
+        fixtures.desk.starts(in: study)
+        fixtures.books.starts(in: study)
+        fixtures.studyWalls.starts(in: study)
+        fixtures.candle.starts(in: study)
+        fixtures.cauldrons.starts(in: study)
+        fixtures.master.starts(in: study)
+        fixtures.hill.starts(in: study)
+        fixtures.galleryStone.starts(in: gallery)
+        fixtures.vault.starts(in: undercroft)
+        fixtures.hook.starts(in: undercroft)
     }
 }

@@ -118,6 +118,22 @@ enum Bootstrap {
             register(module, namespace: module.namespace)
         }
 
+        // The player is a thing in the world too, so `X ME` has something to
+        // answer with. Synthesized rather than declared — every game has
+        // exactly one player and no game should have to write it down — but
+        // stored exactly like any other item, so vocabulary, scope, rules and
+        // saves need no second code path. It bypasses `claim`, which exists to
+        // stop an *author* taking this ID.
+        registry.ids[ObjectIdentifier(Player.itemToken)] = .player
+        registry.items[.player] = Player().item
+        var playerItem = ItemDefinition(traits: Player.itemTraits)
+        playerItem.isActor = true
+        // "yourself" takes no article. The self lines cover the sites that
+        // matter, but a line reached with the player in the object slot should
+        // say "You can't reach yourself.", never "the yourself".
+        playerItem.isProperName = true
+        items[.player] = playerItem
+
         // Custom verb rows are validated up front: a malformed pattern is a
         // wiring error, reported alongside every other fatal diagnostic. The
         // rows themselves are merged into the table in phase 3 below.
@@ -329,9 +345,17 @@ enum Bootstrap {
         // beats a bundle that claims the same shape. A custom row whose verb
         // and shape match a built-in reclaims it (last-wins) with a non-fatal
         // warning, so an author can override a verb while keeping it visible.
+        // Keyed off `coreTable`, not `standardTable`: reclaiming a *stub* row
+        // shadows no behavior, and overriding one is the expected end state, so
+        // that case is silent. The intent has to match too, not just the shape:
+        // a `verbs` block that lists an engine intent splices rows identical to
+        // the built-in ones, and a row that reclaims a shape for the intent
+        // that already held it overrides nothing.
         var verbWarnings: [String] = []
-        let builtInKeys = Set(SyntaxRule.standardTable.map(\.key))
-        for verb in customVerbs where builtInKeys.contains(verb.key) {
+        let coreIntentsByShape = Dictionary(
+            uniqueKeysWithValues: SyntaxRule.coreTable.map { ($0.key, $0.intent) })
+        for verb in customVerbs {
+            guard let claimed = coreIntentsByShape[verb.key], claimed != verb.intent else { continue }
             verbWarnings.append(
                 "custom verb \"\(verb.patternDescription)\" overrides a "
                     + "built-in verb of the same shape.")
@@ -339,6 +363,22 @@ enum Bootstrap {
         let syntaxRules = Self.dedupedLastWins(SyntaxRule.standardTable + customVerbs)
         var vocabulary = Vocabulary()
         vocabulary.directions = Vocabulary.standardDirections
+        // Every declared word — an item's, a verb pattern's, a game's filler
+        // list — goes through `Vocabulary.words(in:)`, the same split the
+        // tokenizer applies to what the player types. Registering a declaration
+        // verbatim instead is what made `adjectives("master's")` a string no
+        // token could equal: dead on arrival, and silent both ways.
+        var wordDiagnostics: [String] = []
+        /// Splits a declared phrase, or reports it if there is no word in it.
+        func declaredWords(_ phrase: String, _ role: String, _ id: EntityID) -> [String] {
+            let words = Vocabulary.words(in: phrase)
+            if words.isEmpty {
+                wordDiagnostics.append(
+                    "\"\(id)\" declares the \(role) \"\(phrase)\", which has no letters "
+                        + "or digits in it; there is no word there for the parser to match.")
+            }
+            return words
+        }
         for rule in syntaxRules {
             // Leading words identify the verb; literals deeper in the pattern
             // (particles, prepositions) are structural words the parser must
@@ -346,11 +386,34 @@ enum Bootstrap {
             vocabulary.verbWords.formUnion(rule.leadingWords)
             vocabulary.prepositions.formUnion(
                 rule.literalWords.dropFirst(rule.leadingWords.count))
+            // A pattern's literals are declarations too, and die the same way.
+            for word in rule.literalWords
+            where Vocabulary.words(in: word) != [word.lowercased()] {
+                wordDiagnostics.append(
+                    "the verb pattern \"\(rule.patternDescription)\" declares the word "
+                        + "\"\(word)\", which the parser splits differently from what the "
+                        + "player types; no input can reach it.")
+            }
         }
         var vocabularyWarnings: [String] = []
         for (id, item) in items {
-            let lexicon = ItemLexicon(
-                name: item.name, synonyms: item.synonyms, adjectives: item.adjectives)
+            var lexicon = ItemLexicon()
+            // A name and a synonym are both noun phrases: the last word is the
+            // noun, the words in front of it are adjectives.
+            let nameWords = item.name.map { declaredWords($0, "name", id) } ?? []
+            if let noun = nameWords.last {
+                lexicon.nouns.insert(noun)
+            }
+            lexicon.adjectives.formUnion(nameWords.dropLast())
+            for phrase in item.adjectives {
+                lexicon.adjectives.formUnion(declaredWords(phrase, "adjective", id))
+            }
+            for phrase in item.synonyms {
+                let words = declaredWords(phrase, "synonym", id)
+                guard let noun = words.last else { continue }
+                lexicon.nouns.insert(noun)
+                lexicon.adjectives.formUnion(words.dropLast())
+            }
             // Pronouns and multi-object keywords resolve before any lexicon,
             // so a word claimed here would never reach this item.
             for word in lexicon.nouns.union(lexicon.adjectives)
@@ -362,16 +425,19 @@ enum Bootstrap {
             }
             vocabulary.itemLexicons[id] = lexicon
             vocabulary.displayNames[id] = item.name ?? id.raw
+            if item.isProperName { vocabulary.properNames.insert(id) }
         }
 
         // Game- and bundle-declared filler words join the built-in articles.
         // Noise words are stripped at tokenize time, before any matching, so
         // one that doubles as a verb, preposition, direction, or item word
-        // would make that word untypeable — a fatal authoring error.
+        // would make that word untypeable — a fatal authoring error. The
+        // built-in articles are checked alongside the game's own: a declaration
+        // that lands on one of those is just as untypeable, and nothing was
+        // looking.
         let customNoise = (modules.flatMap(\.noiseWords) + game.noiseWords)
-            .map { $0.lowercased() }
-        var noiseDiagnostics: [String] = []
-        for word in customNoise {
+            .flatMap(Vocabulary.words(in:))
+        for word in customNoise + Vocabulary.defaultNoiseWords.sorted() {
             let clash: String? =
                 if vocabulary.verbWords.contains(word) {
                     "a verb word"
@@ -387,13 +453,13 @@ enum Bootstrap {
                     nil
                 }
             if let clash {
-                noiseDiagnostics.append(
+                wordDiagnostics.append(
                     "noise word \"\(word)\" is also \(clash); stripping it "
                         + "would make that word untypeable.")
             }
         }
-        guard noiseDiagnostics.isEmpty else {
-            throw BootstrapError(diagnostics: noiseDiagnostics)
+        guard wordDiagnostics.isEmpty else {
+            throw BootstrapError(diagnostics: wordDiagnostics)
         }
         vocabulary.noiseWords.formUnion(customNoise)
         vocabulary.finalize()
@@ -408,6 +474,20 @@ enum Bootstrap {
             traitWarnings.append(
                 "item \"\(id)\" declares startsUnlocked but has no lockedBy entry; "
                     + "the flag has no effect.")
+        }
+        // A capitalized name is very nearly a proper name, and the stock lines
+        // put an article in front of anything that isn't one — "the Mrs. Vane".
+        // Not inferred, because "Elvish sword" is a common noun and so is
+        // "Orange Grove Avenue"; warned about, because the author who meant a
+        // proper name will otherwise find out from a transcript. Locations are
+        // exempt: the engine never articles a room name.
+        for (id, item) in items
+        where !item.isProperName && item.name?.first?.isUppercase == true {
+            traitWarnings.append(
+                "\(item.isActor ? "actor" : "item") \"\(id)\" is named "
+                    + "\"\(item.name ?? id.raw)\", which reads as a proper name but is "
+                    + "not declared properName; stock lines will say "
+                    + "\"the \(item.name ?? id.raw)\".")
         }
         // Mechanical item traits on an actor are legal but almost never
         // intended — an actor holds things via its inventory, not by being a
@@ -440,7 +520,16 @@ enum Bootstrap {
         var actionWarnings: [String] = []
         var actionOverrides: [Intent: IntentAction] = [:]
         for action in customActions {
-            if DefaultActions.builtInIntents.contains(action.intent) {
+            if DefaultActions.engineIntents.contains(action.intent) {
+                // UNDO and its neighbours are answered in `GameWorld.run`,
+                // before any stage runs, so this row is dead on arrival. Silence
+                // here would read as "registered" and cost somebody an
+                // afternoon.
+                actionWarnings.append(
+                    "custom action for intent \"\(action.intent.raw)\" will never run; "
+                        + "the engine answers \(action.intent.raw) before the turn "
+                        + "pipeline.")
+            } else if DefaultActions.builtInIntents.contains(action.intent) {
                 actionWarnings.append(
                     "custom action for intent \"\(action.intent.raw)\" overrides the "
                         + "built-in default of the same intent.")
@@ -462,7 +551,18 @@ enum Bootstrap {
             text: game.text,
             locations: locations,
             items: items,
+            castIDs: Set(items.filter { $0.key != .player && $0.value.isActor }.keys),
             exits: exits,
+            reachableRooms: Set(
+                exits.values.flatMap(\.values).compactMap { target in
+                    switch target {
+                    case .to(let destination), .door(let destination, _),
+                        .conditional(let destination, _, _):
+                        destination
+                    case .blocked:
+                        nil
+                    }
+                }),
             globalDefaults: globalDefaults,
             playerStart: playerStart,
             rules: RuleTable(),
@@ -474,32 +574,42 @@ enum Bootstrap {
             onDeath: { game.onDeath() })
 
         let registrationFrame = TurnFrame(definition: definition, state: state)
-        let (declaredRules, declaredTimers) = Ctx.$frame.withValue(registrationFrame) {
-            () -> ([Rule], [TimedEvent]) in
+        let (declaredRules, declaredTimers, declaredScores) = Ctx.$frame.withValue(
+            registrationFrame
+        ) { () -> ([Rule], [TimedEvent], [Int]) in
             let rules: [Rule] = game.rules.rules + modules.flatMap { $0.rules.rules }
             let timers: [TimedEvent] = game.timers + modules.flatMap { $0.timers }
-            return (rules, timers)
+            // Content that can total its own awards is asked here rather than
+            // later, because the totals may be declared as item traits and a
+            // trait read needs a live frame.
+            let declaredItems = Array(registry.items.values)
+            let scores: [Int] = modules.compactMap {
+                ($0 as? ScoreDeclaring)?.declaredMaxScore(items: declaredItems)
+            }
+            return (rules, timers, scores)
         }
         _ = registrationFrame.retire()  // discard any stray writes
 
         var table = RuleTable()
         var ruleDiagnostics: [String] = []
 
-        // Files a `describe { … }` rule into the given slot, reporting the same
-        // conflicts for items and locations alike: a static description(…)
-        // trait already present, or a second describe rule for the entity.
-        func fileDescribe(
-            _ id: EntityID, noun: String, hasStaticDescription: Bool,
+        // Files a text-returning rule — `describe { … }` or `presence { … }` —
+        // into the given slot, reporting the same two conflicts wherever it is
+        // used: the static trait it competes with is already present, or the
+        // entity declares the rule twice.
+        func fileText(
+            _ id: EntityID, noun: String, rule kind: String, trait: String,
+            hasStaticText: Bool,
             into slot: WritableKeyPath<RuleTable, [EntityID: @Sendable () -> String]>,
             _ rule: Rule
         ) {
-            if hasStaticDescription {
+            if hasStaticText {
                 ruleDiagnostics.append(
-                    "\(noun) \"\(id)\" declares both a static description(…) and a "
-                        + "describe { … } rule; a \(noun) may have only one.")
+                    "\(noun) \"\(id)\" declares both a static \(trait) and a "
+                        + "\(kind) { … } rule; a \(noun) may have only one.")
             } else if table[keyPath: slot][id] != nil {
                 ruleDiagnostics.append(
-                    "\(noun) \"\(id)\" declares more than one describe { … } rule.")
+                    "\(noun) \"\(id)\" declares more than one \(kind) { … } rule.")
             } else if let describeBody = rule.describeBody {
                 table[keyPath: slot][id] = describeBody
             }
@@ -527,9 +637,15 @@ enum Bootstrap {
                 case .before: table.itemBefore[id, default: []].append(rule)
                 case .after: table.itemAfter[id, default: []].append(rule)
                 case .describe:
-                    fileDescribe(
-                        id, noun: "item", hasStaticDescription: items[id]?.description != nil,
+                    fileText(
+                        id, noun: "item", rule: "describe", trait: "description(…)",
+                        hasStaticText: items[id]?.description != nil,
                         into: \.itemDescribe, rule)
+                case .presence:
+                    fileText(
+                        id, noun: "item", rule: "presence", trait: "firstSight(…)",
+                        hasStaticText: items[id]?.firstSight != nil,
+                        into: \.itemPresence, rule)
                 case .beforeEachTurn, .afterEachTurn, .onEnter:
                     ruleDiagnostics.append(
                         "item \"\(id)\" has a \(rule.phase) rule, which only "
@@ -549,10 +665,14 @@ enum Bootstrap {
                 case .afterEachTurn: table.locationAfterEachTurn[id, default: []].append(rule)
                 case .onEnter: table.locationOnEnter[id, default: []].append(rule)
                 case .describe:
-                    fileDescribe(
-                        id, noun: "location",
-                        hasStaticDescription: locations[id]?.description != nil,
+                    fileText(
+                        id, noun: "location", rule: "describe", trait: "description(…)",
+                        hasStaticText: locations[id]?.description != nil,
                         into: \.locationDescribe, rule)
+                case .presence:
+                    ruleDiagnostics.append(
+                        "location \"\(id)\" has a \(rule.phase) rule, which only items "
+                            + "and actors support.")
                 }
             case .world:
                 switch rule.phase {
@@ -562,6 +682,8 @@ enum Bootstrap {
                     ruleDiagnostics.append("a world-level onEnter rule is not supported.")
                 case .describe:
                     ruleDiagnostics.append("a world-level describe rule is not supported.")
+                case .presence:
+                    ruleDiagnostics.append("a world-level presence rule is not supported.")
                 }
             }
         }
@@ -604,12 +726,52 @@ enum Bootstrap {
         let deadIntents =
             watchedIntents
             .subtracting(producedIntents)
-            .filter { !DefaultActions.builtInIntents.contains($0) }
+            .subtracting(DefaultActions.handledIntents)
         for intent in deadIntents.sorted(by: { $0.raw < $1.raw }) {
             definition.warnings.append(
                 "a rule watches intent \"\(intent.raw)\", but no verb row produces "
                     + "it; if it was declared with #verb, list .\(intent.raw) in a "
                     + "verbs block.")
+        }
+
+        // The mirror of the check above: a row the parser can match whose
+        // intent nothing anywhere answers. Typing it reaches stage 4, which
+        // has no handler, no stub line and no override to offer, so the
+        // player gets the engine's fall-back line and a free turn — correct,
+        // but never what the author meant by adding the verb.
+        //
+        // Deliberately keyed on intents something *names*. A rule that answers
+        // one noun and leaves the rest to the fall-back is the documented
+        // pattern and warns nothing; a catch-all rule (empty `intents`, which
+        // `Rule.matches` treats as "any") names no intent, so a game's
+        // `world.beforeEachTurn` cannot quietly switch this check off.
+        let unansweredIntents =
+            producedIntents
+            .subtracting(watchedIntents)
+            .subtracting(DefaultActions.handledIntents)
+            .subtracting(DefaultActions.engineIntents)
+        for intent in unansweredIntents.sorted(by: { $0.raw < $1.raw }) {
+            definition.warnings.append(
+                "a verb row produces intent \"\(intent.raw)\", but nothing answers "
+                    + "it; give it an action(.\(intent.raw)) or a rule, or the verb "
+                    + "just prints the engine's fall-back line.")
+        }
+
+        // `maxScore` is read before any rule can run, so on its own it is the
+        // author's arithmetic and nothing verifies it. Content conforming to
+        // `ScoreDeclaring` knows its own award table; where one exists, the two
+        // numbers must agree. Non-fatal — nothing breaks in play, and a
+        // deliberately unreachable ceiling stays shippable.
+        let declaredScore = declaredScores.reduce(0, +)
+        if !declaredScores.isEmpty, declaredScore != game.maxScore {
+            let drift = declaredScore - game.maxScore
+            let consequence =
+                drift > 0
+                ? "\(drift) point(s) can be scored past the maximum"
+                : "\(-drift) point(s) of the maximum are unreachable"
+            definition.warnings.append(
+                "the game's maxScore is \(game.maxScore), but its scoring content "
+                    + "declares awards totalling \(declaredScore); \(consequence).")
         }
 
         definition.rules = table

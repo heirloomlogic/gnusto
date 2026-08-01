@@ -63,6 +63,7 @@ public struct VerbMacro: DeclarationMacro {
         case directObject
         case indirectObject
         case direction
+        case topic
 
         /// The element re-spelled as source for the generated `SyntaxRule`.
         /// The word round-trips through a `StringLiteralExprSyntax` so quotes
@@ -74,6 +75,7 @@ public struct VerbMacro: DeclarationMacro {
             case .directObject: ".directObject"
             case .indirectObject: ".indirectObject"
             case .direction: ".direction"
+            case .topic: ".topic"
             }
         }
 
@@ -84,6 +86,7 @@ public struct VerbMacro: DeclarationMacro {
             case .directObject: "<object>"
             case .indirectObject: "<second object>"
             case .direction: "<direction>"
+            case .topic: "<topic>"
             }
         }
     }
@@ -139,12 +142,13 @@ public struct VerbMacro: DeclarationMacro {
             case "directObject": return .directObject
             case "indirectObject": return .indirectObject
             case "direction": return .direction
+            case "topic": return .topic
             default: break
             }
         }
         throw error(
             "pattern elements must be literal words or the slots .directObject, "
-                + ".indirectObject, and .direction.")
+                + ".indirectObject, .direction, and .topic.")
     }
 
     /// The parser's own notion of a usable identifier — rejects keywords
@@ -190,6 +194,23 @@ public struct VerbMacro: DeclarationMacro {
             }
             if count(of: .direction) > 1 {
                 problems.append("\(pattern) has more than one direction slot.")
+            }
+        }
+        // A topic swallows the rest of the line without a scope check to fall
+        // back on, so it may only end a pattern: a mid-pattern topic would
+        // mis-split on the first occurrence of whatever closed it, silently.
+        if elements.contains(.topic) {
+            if elements.last != .topic {
+                problems.append("\(pattern) must end with its topic slot.")
+            }
+            if count(of: .topic) > 1 {
+                problems.append("\(pattern) has more than one topic slot.")
+            }
+            if elements.contains(.indirectObject) {
+                problems.append("\(pattern) combines a topic slot with a <second object> slot.")
+            }
+            if elements.contains(.direction) {
+                problems.append("\(pattern) combines a topic slot with a direction slot.")
             }
         }
         for (index, element) in elements.enumerated()

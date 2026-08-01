@@ -3,8 +3,9 @@ import GnustoActors
 
 /// Fixtures for `GnustoActors`. `WanderGame` exercises roaming (100% so
 /// every turn moves, announcements asserted under a pinned seed);
-/// `PickpocketGame` exercises theft, reactions, and daemon stopping;
-/// `FollowGame` exercises following (deterministic, no seeds).
+/// `PickpocketGame` exercises theft, reactions, theft in the dark (`douse`),
+/// and daemon stopping; `FollowGame` exercises the companion daemon
+/// (deterministic, no seeds).
 struct WanderGame: Game {
     let title = "Wander"
     let intro = "Someone is pacing the grounds."
@@ -108,6 +109,53 @@ struct PickpocketGame: Game {
         adjectives("green")
     }
 
+    /// An open bag in the player's own hands, and a candidate itself. The old
+    /// allowlist never reached inside it — the thief's whole point is that he
+    /// does — and once the bag is in his bag, its ruby must stop counting as
+    /// loot he can still lift.
+    let satchel = Item {
+        name("canvas satchel")
+        adjectives("canvas")
+        container
+        openable
+        startsOpen
+    }
+
+    let ruby = Item {
+        name("cracked ruby")
+        adjectives("cracked")
+    }
+
+    /// The thief's own open pouch, with a candidate already in it. His hands
+    /// are in his own reach set, so only a guard that walks the whole way up
+    /// stops him "stealing" what is already his and announcing it.
+    let pouch = Item {
+        name("leather pouch")
+        adjectives("leather")
+        container
+        openable
+        startsOpen
+    }
+
+    let token = Item {
+        name("tin token")
+        adjectives("tin")
+    }
+
+    /// A `surface` in the room. Surfaces were never `isOpen`, so no allowlist
+    /// of containers could ever have covered the medal lying on it.
+    let plinth = Item {
+        name("stone plinth")
+        adjectives("stone")
+        surface
+        scenery
+    }
+
+    let medal = Item {
+        name("tin medal")
+        adjectives("tin")
+    }
+
     let behaviors = ActorBehaviors()
 
     var map: WorldMap {
@@ -118,27 +166,33 @@ struct PickpocketGame: Game {
         pebble.starts(in: plaza)
         strongbox.starts(in: plaza)
         gem.starts(inside: strongbox)
+        satchel.startsHeld
+        ruby.starts(inside: satchel)
+        plinth.starts(in: plaza)
+        medal.starts(on: plinth)
+        pouch.starts(heldBy: thief)
+        token.starts(inside: pouch)
     }
 
     var verbs: [SyntaxRule] {
-        SyntaxRule("greet", .directObject, intent: Intent("greet"))
+        SyntaxRule("hail", .directObject, intent: Intent("hail"))
         SyntaxRule("accuse", intent: Intent("accuse"))
         SyntaxRule("whistle", intent: Intent("whistle"))
+        SyntaxRule("douse", intent: Intent("douse"))
     }
 
     var timers: [TimedEvent] {
         behaviors.steals(
             thief,
             daemonName: "pick",
-            candidates: [locket, coin, pebble, gem],
-            containers: [strongbox],
+            candidates: [locket, coin, pebble, gem, ruby, medal, satchel, token],
             chancePerTurn: 100,
             announcement: { "Featherlight fingers make off with the \($0)." })
     }
 
     var rules: Rules {
         behaviors.reaction(
-            of: thief, to: [Intent("greet")],
+            of: thief, to: [Intent("hail")],
             reply: "He nods, warily.")
         world.before(Intent("accuse")) {
             let haul = thief.inventory.map(\.name).joined(separator: ", ")
@@ -147,6 +201,12 @@ struct PickpocketGame: Game {
         world.before(Intent("whistle")) {
             stopDaemon("pick")
             try reply("The whistle freezes every hand in the plaza.")
+        }
+        // Puts the plaza out, so a theft can be watched from inside the dark
+        // the player's own reach set stops at.
+        world.before(Intent("douse")) {
+            plaza.isLit = false
+            try reply("The sun goes out over the plaza.")
         }
     }
 }

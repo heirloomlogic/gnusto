@@ -1,4 +1,5 @@
 import Gnusto
+import GnustoScoring
 
 /// "Cloak of Darkness" — the classic IF demonstration game by Roger Firth,
 /// ported to Gnusto. This file is the engine's acceptance benchmark: every
@@ -8,7 +9,9 @@ struct OperaHouse: Game {
     let title = "Cloak of Darkness"
     /// The game's one-line tagline.
     let tagline = "A basic IF demonstration."
-    /// The maximum achievable score.
+    /// The maximum achievable score: one point for hanging the cloak, one for
+    /// reading an untrampled message. Both are declared in ``scoring``'s table,
+    /// so the bootstrap checks this literal against what the game can pay.
     let maxScore = 2
     /// The opening text shown when play begins.
     let intro = """
@@ -95,6 +98,16 @@ struct OperaHouse: Game {
     @Global var disturbances = 0
     @Global var cloakIsHung = false
 
+    // MARK: - Plugins
+
+    /// Both of the game's points, declared where the bootstrap can total them
+    /// and check ``maxScore`` against the result.
+    let scoring = Scoring(awards: ["cloakHung": 1, "messageRead": 1])
+
+    var content: GameContents {
+        scoring
+    }
+
     // MARK: - Map
 
     /// Geography and initial entity placement.
@@ -135,7 +148,7 @@ struct OperaHouse: Game {
             bar.isLit = true
             if !cloakIsHung {
                 cloakIsHung = true
-                player.score += 1
+                scoring.awardOnce("cloakHung")
             }
         }
 
@@ -167,7 +180,7 @@ struct OperaHouse: Game {
         }
 
         message.before(.read, .examine) {
-            if disturbances < 2 { player.score += 1 }
+            if disturbances < 2 { scoring.awardOnce("messageRead") }
             say(message.description)
             try end(won: disturbances < 2)
         }

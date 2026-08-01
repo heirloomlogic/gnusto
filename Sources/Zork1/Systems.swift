@@ -5,50 +5,19 @@ import Gnusto
 /// rows are spliced into the parser by ``ZorkSystems``'s `verbs` block, and
 /// each intent gets a polite stage-4 default in that bundle's `actions`.
 ///
-/// Most of these do nothing *yet*: the mechanics that make `dig`, `wind`,
-/// `inflate`, `tie`, `raise`/`lower`, and `turn … with …` matter arrive with
-/// the regions that need them (the shovel, the canary, the plastic pile, the
-/// dam controls). Declaring the verbs now means the parser understands them
-/// from the start — a later region only has to add an item-scoped rule, never
-/// teach the game a new word.
+/// Most of these do nothing *yet*: the mechanics that make `wind`, `inflate`,
+/// `raise`/`lower`, and `turn … with …` matter arrive with the regions that
+/// need them (the canary, the plastic pile, the dam controls). Declaring the
+/// verbs now means the parser understands them from the start — a later region
+/// only has to add an item-scoped rule, never teach the game a new word.
+///
+/// The generic half of this list used to live here too — `dig`, `give`, `tie`,
+/// `touch`, `smell`, `climb`, `pray`, `xyzzy` and the rest. Those are engine
+/// stub verbs now, so every game gets them; what remains below is the vocabulary
+/// that is actually *Zork's*. Zork keeps its own voice for the shared ones by
+/// overriding their stage-4 defaults in ``ZorkSystems``, which is why the
+/// `actions` block is longer than this list.
 extension Intent {
-    /// Hand an object to someone.
-    #verb(
-        "give",
-        ["give", .directObject, "to", .indirectObject],
-        ["hand", .directObject, "to", .indirectObject])
-
-    /// Tie something to something else (the rope, later).
-    #verb(
-        "tie",
-        ["tie", .directObject],
-        ["tie", .directObject, "to", .indirectObject])
-
-    /// Undo a tie.
-    #verb(
-        "untie",
-        ["untie", .directObject],
-        ["untie", .directObject, "from", .indirectObject])
-
-    /// Dig — bare-handed (futile) or with a tool (the shovel, later).
-    #verb(
-        "dig",
-        ["dig"],
-        ["dig", .directObject],
-        ["dig", .directObject, "with", .indirectObject])
-
-    /// Wave something about (the sceptre, later).
-    #verb(
-        "wave",
-        ["wave"],
-        ["wave", .directObject])
-
-    /// Touch or rub a thing.
-    #verb(
-        "touch",
-        ["touch", .directObject],
-        ["rub", .directObject])
-
     /// Wind a mechanism (the clockwork canary, later).
     #verb("wind", ["wind", .directObject])
 
@@ -71,12 +40,10 @@ extension Intent {
     #verb("lower", ["lower", .directObject])
 
     /// Turn a fixture *with* a tool. Two literals plus two object slots give
-    /// this a specificity of 22, one above the built-in `turn … on` (21), so
-    /// "turn bolt with wrench" resolves here and never to the light switch.
+    /// this a specificity of 22, one above the built-in `turn … on` (21) and
+    /// well above the engine's bare `turn …` stub (11), so "turn bolt with
+    /// wrench" resolves here and never to the light switch.
     #verb("turnWith", ["turn", .directObject, "with", .indirectObject])
-
-    /// Pray (at the altar, later).
-    #verb("pray", ["pray"])
 
     /// Ring a bell (later).
     #verb("ring", ["ring", .directObject])
@@ -87,44 +54,9 @@ extension Intent {
     /// The Cyclops's magic word — inert until he's met (later).
     #verb("odysseus", ["odysseus"], ["ulysses"])
 
-    /// Cavern-crawler magic words — inert here, but the parser knows them.
-    #verb("xyzzy", ["xyzzy"])
-    #verb("plugh", ["plugh"])
-
-    /// Say hello.
+    /// Say hello. The engine deliberately leaves the bare one-word forms to
+    /// games, so Zork owns them outright.
     #verb("hello", ["hello"], ["hi"])
-
-    /// Smell the room or a thing.
-    #verb(
-        "smell",
-        ["smell"],
-        ["smell", .directObject],
-        ["sniff"],
-        ["sniff", .directObject])
-
-    /// Drink a liquid (water from the bottle).
-    #verb("drink", ["drink", .directObject])
-
-    /// Fill a container at a water source.
-    #verb(
-        "fill",
-        ["fill", .directObject],
-        ["fill", .directObject, "with", .indirectObject])
-
-    /// Empty a container out.
-    #verb(
-        "pour",
-        ["pour", .directObject],
-        ["pour", .directObject, "in", .indirectObject],
-        ["pour", .directObject, "on", .indirectObject])
-
-    /// Climb a thing (the tree). `climb X` and `climb up/on X` all reach here;
-    /// a climbable object's own rule takes over, anything else gets the default.
-    #verb(
-        "climb",
-        ["climb", .directObject],
-        ["climb", "up", .directObject],
-        ["climb", "on", .directObject])
 
     /// Repair something (the punctured boat, sealed with the tube's gunk).
     #verb(
@@ -142,18 +74,22 @@ extension Intent {
     #verb("diagnose", ["diagnose"])
 }
 
-/// The game-wide verb layer: it teaches the parser every custom verb above
-/// and gives each a courteous "nothing happens" default. Item- and
-/// room-scoped rules elsewhere (the bottle's `fill`/`drink`/`pour`, a future
-/// shovel's `dig`) run first and take over when a verb actually does
-/// something; anything they don't claim falls through to these defaults.
+/// The game-wide verb layer: it teaches the parser Zork's own verbs and gives
+/// every verb Zork cares about — its own and the engine's stubs alike — a
+/// courteous default in the original's voice. Item- and room-scoped rules
+/// elsewhere (the bottle's `fill`/`drink`/`pour`, the shovel's `dig`) run first
+/// and take over when a verb actually does something; anything they don't claim
+/// falls through to these defaults.
+///
+/// The `actions` block is longer than `verbs` on purpose. A row for an engine
+/// stub intent needs no `verbs` entry — the engine already put the word in the
+/// vocabulary — so overriding one is a single line and, because a stub shadows
+/// no behavior, it warns about nothing.
 struct ZorkSystems: GameContent {
     var verbs: [SyntaxRule] {
         [
-            .give, .tie, .untie, .dig, .wave, .touch, .wind, .inflate, .deflate,
-            .launch, .raise, .lower, .turnWith, .pray, .ring, .echo, .odysseus,
-            .xyzzy, .plugh, .hello, .smell, .drink, .fill, .pour, .climb, .fix,
-            .diagnose,
+            .wind, .inflate, .deflate, .launch, .raise, .lower, .turnWith,
+            .ring, .echo, .odysseus, .hello, .fix, .diagnose,
         ]
     }
 
@@ -175,8 +111,9 @@ struct ZorkSystems: GameContent {
         action(.ring) { try reply(Prose.verbRingNothing) }
         action(.echo) { try reply(Prose.verbEcho) }
         action(.odysseus) { try reply(Prose.verbMagicWordInert) }
+        // One row covers `xyzzy` and `plugh` both: the engine puts them on a
+        // single intent.
         action(.xyzzy) { try reply(Prose.verbMagicWordInert) }
-        action(.plugh) { try reply(Prose.verbMagicWordInert) }
         action(.hello) { try reply(Prose.verbHello) }
         action(.smell) { try reply(Prose.verbSmell) }
         action(.drink) { try reply(Prose.nothingToDrink) }

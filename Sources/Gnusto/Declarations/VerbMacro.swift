@@ -7,17 +7,24 @@
 /// ```swift
 /// extension Intent {
 ///     #verb("ring", ["ring", .directObject])
-///     #verb("attack",
-///           ["attack", .directObject],
-///           ["attack", .directObject, "with", .indirectObject],
-///           ["kill", .directObject])
-///     #verb("sing")                            // pattern defaults to ["sing"]
+///     #verb("barter",
+///           ["barter", .directObject],
+///           ["barter", .directObject, "for", .indirectObject],
+///           ["haggle", "over", .directObject])
+///     #verb("chime")                           // pattern defaults to ["chime"]
 ///     #verb("steal", ["take", .directObject])  // reclaim a built-in verb
 /// }
 /// ```
 ///
+/// Pick a name the engine doesn't already ship. The macro mints
+/// `Intent.<name>`, so a second declaration of a name the engine owns — a core
+/// verb, or a stub verb like `dig`, `attack` or `sing` — makes `.<name>`
+/// ambiguous in every file that imports both modules. Reclaiming the *word*
+/// under a name of your own is always safe:
+/// `#verb("excavate", ["dig", .directObject])`.
+///
 /// Each pattern is a complete row: literal words the player types plus
-/// `.directObject` / `.indirectObject` / `.direction` slots. Patterns are
+/// `.directObject` / `.indirectObject` / `.direction` / `.topic` slots. Patterns are
 /// validated at compile time with the same rules the bootstrap applies to
 /// hand-built rows.
 ///
@@ -27,7 +34,7 @@
 /// chained member access.)
 ///
 /// ```swift
-/// var verbs: [SyntaxRule] { [.ring, .attack] }
+/// var verbs: [SyntaxRule] { [.ring, .barter] }
 /// var rules: Rules {
 ///     bell.before(.ring) { try reply("The bell chimes sweetly.") }
 /// }

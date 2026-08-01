@@ -265,6 +265,128 @@ struct DoubleDescribeGame: Game {
     }
 }
 
+// MARK: - Presence rules
+
+/// Exercises live `presence { … }` rules — the dynamic form of `firstSight`.
+/// The porter is an actor, so his line prints on every look; the crate is an
+/// item, so its line prints until the player touches it and then gives way to
+/// the standard mention. Both read the same flag, which `light`/`douse` flip.
+///
+/// The flag is a stored property of the game itself — `LampFlag` above is split
+/// into a bundle only to demonstrate bundle-namespaced globals, which is not
+/// what this fixture is for.
+struct PresenceGame: Game {
+    let title = "Presence"
+    let intro = ""
+
+    @Global var rung = false
+
+    let yard = Location {
+        name("Yard")
+        description("A cobbled yard.")
+    }
+
+    /// No static `description`: the rules block gives him one, which is the
+    /// point of the third test.
+    let porter = Actor {
+        name("porter")
+    }
+
+    let crate = Item {
+        name("crate")
+        description("A wooden crate.")
+    }
+
+    var map: WorldMap {
+        player.starts(in: yard)
+        porter.starts(in: yard)
+        crate.starts(in: yard)
+    }
+
+    var verbs: [SyntaxRule] {
+        [.light, .douse]
+    }
+
+    var rules: Rules {
+        porter.presence {
+            rung
+                ? "The porter is on his feet and looking at the gate."
+                : "The porter is dozing against the wall."
+        }
+
+        crate.presence {
+            rung
+                ? "A crate sits in the middle of the yard, forgotten."
+                : "A crate sits in the middle of the yard."
+        }
+
+        // An actor's examine text can be a rule too, now that `Actor` has one.
+        porter.describe {
+            rung ? "Awake, and not pleased about it." : "Asleep on his feet."
+        }
+
+        crate.before(.light) {
+            rung = true
+            try reply("The bell rings.")
+        }
+        crate.before(.douse) {
+            rung = false
+            try reply("The bell stops.")
+        }
+    }
+}
+
+/// Exercises the ambiguous-presence diagnostic: an entity with both a static
+/// `firstSight(…)` trait and a `presence { … }` rule.
+struct AmbiguousPresenceGame: Game {
+    let title = "AmbiguousPresence"
+    let intro = ""
+
+    let room = Location {
+        name("Room")
+        description("A room.")
+    }
+
+    let widget = Item {
+        name("widget")
+        firstSight("A widget lies here.")
+    }
+
+    var map: WorldMap {
+        player.starts(in: room)
+        widget.starts(in: room)
+    }
+
+    var rules: Rules {
+        widget.presence { "A shifting widget lies here." }
+    }
+}
+
+/// Exercises the double-presence diagnostic.
+struct DoublePresenceGame: Game {
+    let title = "DoublePresence"
+    let intro = ""
+
+    let room = Location {
+        name("Room")
+        description("A room.")
+    }
+
+    let widget = Item {
+        name("widget")
+    }
+
+    var map: WorldMap {
+        player.starts(in: room)
+        widget.starts(in: room)
+    }
+
+    var rules: Rules {
+        widget.presence { "A shifting widget lies here." }
+        widget.presence { "A different widget lies here." }
+    }
+}
+
 // MARK: - GameMain
 
 /// A trivial fixture proving `GameMain` compiles when a `Game` opts in.

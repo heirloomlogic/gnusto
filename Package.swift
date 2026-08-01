@@ -46,11 +46,14 @@ let package = Package(
         .library(name: "GnustoActors", targets: ["GnustoActors"]),
         .library(name: "GnustoMeleeCombat", targets: ["GnustoMeleeCombat"]),
         .library(name: "GnustoSpellcasting", targets: ["GnustoSpellcasting"]),
+        .library(name: "GnustoClock", targets: ["GnustoClock"]),
+        .library(name: "GnustoConversation", targets: ["GnustoConversation"]),
         .library(name: "GnustoTestSupport", targets: ["GnustoTestSupport"]),
         .executable(name: "CloakOfDarkness", targets: ["CloakOfDarkness"]),
         .executable(name: "Lighthouse", targets: ["Lighthouse"]),
         .executable(name: "Zork1", targets: ["Zork1"]),
         .executable(name: "Gramarye", targets: ["Gramarye"]),
+        .executable(name: "Fulminate", targets: ["Fulminate"]),
         .executable(name: "KindlyDeep", targets: ["KindlyDeep"]),
     ],
     dependencies: devDependencies + [
@@ -97,9 +100,23 @@ let package = Package(
             dependencies: ["Gnusto"],
             plugins: devPlugins
         ),
+        // A time-of-day clock and deterministic NPC timetables: the temporal
+        // layer a mystery needs, where `roams` gives a stochastic wanderer.
+        .target(
+            name: "GnustoClock",
+            dependencies: ["Gnusto"],
+            plugins: devPlugins
+        ),
+        // ASK/TELL/SHOW over per-actor topic tables, gated on and feeding a
+        // saved set of facts the player has worked out.
+        .target(
+            name: "GnustoConversation",
+            dependencies: ["Gnusto"],
+            plugins: devPlugins
+        ),
         .executableTarget(
             name: "CloakOfDarkness",
-            dependencies: ["Gnusto"],
+            dependencies: ["Gnusto", "GnustoScoring"],
             plugins: devPlugins
         ),
         // The feature-tour example: a mid-size game that demonstrates the
@@ -125,7 +142,16 @@ let package = Package(
         // GnustoSpellcasting — the "prove the engine hosts a spell system" game.
         .executableTarget(
             name: "Gramarye",
-            dependencies: ["Gnusto", "GnustoSpellcasting"],
+            dependencies: ["Gnusto", "GnustoScoring", "GnustoSpellcasting"],
+            plugins: devPlugins
+        ),
+        // The mystery demo: a one-evening whodunit on a wall clock, where the
+        // suspects keep a timetable and their movements are the evidence — the
+        // "prove the engine hosts a clock-driven mystery" game. Design notes
+        // and the story's mechanics contract live in `docs/games/fulminate.md`.
+        .executableTarget(
+            name: "Fulminate",
+            dependencies: ["Gnusto", "GnustoClock", "GnustoConversation"],
             plugins: devPlugins
         ),
         // The survival demo: two failing clocks (thirst, fatigue) and a mule
@@ -155,8 +181,10 @@ let package = Package(
             name: "GnustoTests",
             dependencies: [
                 "Gnusto", "GnustoDangerousDark", "GnustoScoring", "GnustoActors",
-                "GnustoMeleeCombat", "GnustoSpellcasting", "GnustoTestSupport",
-                "CloakOfDarkness", "Lighthouse", "Zork1", "Gramarye", "KindlyDeep",
+                "GnustoMeleeCombat", "GnustoSpellcasting", "GnustoClock", "GnustoConversation",
+                "GnustoTestSupport",
+                "CloakOfDarkness", "Lighthouse", "Zork1", "Gramarye", "Fulminate",
+                "KindlyDeep",
             ],
             plugins: devPlugins
         ),

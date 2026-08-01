@@ -40,7 +40,7 @@ struct Zork1: Game, GameMain {
         // The famous dark-room line (gverbs.zil V-LOOK / the grue clause).
         text.pitchBlack = "It is pitch black. You are likely to be eaten by a grue."
         // Examining an ordinary thing (gverbs.zil V-EXAMINE).
-        text.nothingSpecial = { "There's nothing special about the \($0)." }
+        text.nothingSpecial = { "There's nothing special about \($0)." }
         // Open/close and possession refusals (gverbs.zil).
         text.alreadyOpen = "It is already open."
         text.alreadyClosed = "It is already closed."
@@ -70,7 +70,18 @@ struct Zork1: Game, GameMain {
         death: Prose.grueDeath
     )
 
-    let scoring = Scoring()
+    /// The five event awards, declared where the bootstrap can total them. With
+    /// the nineteen treasures' `.takeValue` (143) and `.depositValue` (129) this
+    /// comes to exactly ``maxScore`` — the original's 350, now checked at
+    /// bootstrap rather than trusted.
+    let scoring = Scoring(
+        awards: [
+            "kitchen": 10,
+            "cellar": 25,
+            "eastWestPassage": 5,
+            "draftyRoom": 13,
+            "treasureRoom": 25,
+        ])
     let melee = MeleeCombat()
     let actors = ActorBehaviors()
 
@@ -235,10 +246,10 @@ struct Zork1: Game, GameMain {
         // way into the house), for descending into the cellar, and for
         // pressing east past the troll into the East-West Passage. All are
         // rooms the host owns the wiring for.
-        scoring.visit(house.kitchen, register: "kitchen", points: 10)
-        scoring.visit(house.cellar, register: "cellar", points: 25)
-        scoring.visit(roundRoom.eastWestPassage, register: "eastWestPassage", points: 5)
-        scoring.visit(coalMine.draftyRoom, register: "draftyRoom", points: 13)
+        scoring.visit(house.kitchen, register: "kitchen")
+        scoring.visit(house.cellar, register: "cellar")
+        scoring.visit(roundRoom.eastWestPassage, register: "eastWestPassage")
+        scoring.visit(coalMine.draftyRoom, register: "draftyRoom")
 
         // The chimney is climbable only lightly loaded: the original lets you
         // carry at most one item plus the lamp up it. The lamp rides free; any
@@ -683,7 +694,7 @@ struct Zork1: Game, GameMain {
 
         // The lair pays 25 on first entry, and entering it summons the thief
         // (off prowling elsewhere) home to defend his hoard.
-        scoring.visit(maze.treasureRoom, register: "treasureRoom", points: 25)
+        scoring.visit(maze.treasureRoom, register: "treasureRoom")
         maze.treasureRoom.onEnter {
             guard !thief.thiefDefeated else { return }
             thief.thief.move(to: maze.treasureRoom)
@@ -742,7 +753,6 @@ struct Zork1: Game, GameMain {
         actors.steals(
             thief.thief, daemonName: "thiefSteals",
             candidates: treasureRoster,
-            containers: [house.trophyCase],
             chancePerTurn: 30,
             announcement: { Prose.thiefSteals($0) })
 

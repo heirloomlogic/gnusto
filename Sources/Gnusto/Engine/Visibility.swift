@@ -2,6 +2,11 @@
 /// here" — used by the parser's scope, the room describer, and any default
 /// action that needs to walk placements. Pure functions over a definition and
 /// a state snapshot; callers hold whatever lock they need before calling in.
+///
+/// The two `…(_:frame:)` helpers are the one exception: they ask the same
+/// question of a live turn and take the frame lock themselves. They back both
+/// the default actions' reach gate and the public ``Item/isReachable`` /
+/// ``Item/isVisible``, so there is one walk and not four.
 enum Visibility {
     /// Items the player can currently perceive: carried items always, plus —
     /// with light — the room's direct contents and everything reachable by
@@ -16,8 +21,8 @@ enum Visibility {
         index: ContainmentIndex
     ) -> Set<EntityID> {
         collect(
-            at: location, definition: definition, state: state, index: index,
-            descendClosedTransparent: true)
+            observer: .player, at: location, definition: definition, state: state,
+            index: index, descendClosedTransparent: true)
     }
 
     /// Items the player can currently manipulate: like `visibleItems`, but a
@@ -30,23 +35,92 @@ enum Visibility {
         index: ContainmentIndex
     ) -> Set<EntityID> {
         collect(
-            at: location, definition: definition, state: state, index: index,
-            descendClosedTransparent: false)
+            observer: .player, at: location, definition: definition, state: state,
+            index: index, descendClosedTransparent: false)
     }
 
-    /// Shared walk for both sets. Held items are always included. With light,
-    /// the room's direct contents are included, and each surface/open-container
-    /// is descended into to any depth. `descendClosedTransparent` decides
-    /// whether a closed transparent container's contents come along (visible)
-    /// or not (reachable).
+    /// Where an observer is standing. `nil` for an actor who is in no room at
+    /// all — held, contained, or `vanish()`ed — who reaches only their own
+    /// hands. The player's item is placed `.nowhere`, so they are the one
+    /// entity whose room is tracked separately.
+    private static func standing(_ observer: EntityID, in state: WorldState) -> EntityID? {
+        if observer == .player { return state.playerLocation }
+        if case .room(let here)? = state.placements[observer] { return here }
+        return nil
+    }
+
+    /// Whether the player can reach `id` from where they are standing right
+    /// now — `reachableItems` asked about one item, against the live turn.
+    static func isReachable(_ id: EntityID, frame: TurnFrame) -> Bool {
+        inScope(id, observer: .player, frame: frame, descendClosedTransparent: false)
+    }
+
+    /// Whether `actor` can reach `id` from the room they are standing in —
+    /// their own hands always, plus that room's contents and everything under a
+    /// surface or an open container there, to any depth.
+    ///
+    /// Two deliberate departures from the player's own set. Darkness does not
+    /// gate it — the dark is the player's problem, not an NPC's arm — and what
+    /// *other* people are holding stays out, the player included: lifting from
+    /// those hands is stealing, which is a plugin's job, exactly as it is for
+    /// the player's own reach set.
+    static func isReachable(_ id: EntityID, from actor: EntityID, frame: TurnFrame) -> Bool {
+        inScope(id, observer: actor, frame: frame, descendClosedTransparent: false)
+    }
+
+    /// Whether the player can see `id` from where they are standing right now —
+    /// `visibleItems` asked about one item, against the live turn.
+    static func isVisible(_ id: EntityID, frame: TurnFrame) -> Bool {
+        inScope(id, observer: .player, frame: frame, descendClosedTransparent: true)
+    }
+
+    /// Takes the frame lock, so it must never be called from inside a
+    /// `frame.with { … }` closure — the `Mutex` is not reentrant.
+    private static func inScope(
+        _ id: EntityID,
+        observer: EntityID,
+        frame: TurnFrame,
+        descendClosedTransparent: Bool
+    ) -> Bool {
+        let definition = frame.definition
+        return frame.with { scratch in
+            collect(
+                observer: observer,
+                at: standing(observer, in: scratch.state),
+                definition: definition,
+                state: scratch.state,
+                index: scratch.state.containment(),
+                descendClosedTransparent: descendClosedTransparent
+            )
+            .contains(id)
+        }
+    }
+
+    /// Shared walk for every set. `observer`'s held items are always included.
+    /// With light — or from anybody but the player, in the dark too —
+    /// `location`'s direct contents are included, and each surface/open-container
+    /// is descended into to any depth. `descendClosedTransparent` decides whether
+    /// a closed transparent container's contents come along (visible) or not
+    /// (reachable). A `nil` `location` is an observer standing in no room at
+    /// all, and stops the walk at their own hands.
     private static func collect(
-        at location: EntityID,
+        observer: EntityID,
+        at location: EntityID?,
         definition: GameDefinition,
         state: WorldState,
         index: ContainmentIndex,
         descendClosedTransparent: Bool
     ) -> Set<EntityID> {
-        var result: Set<EntityID> = []
+        // The observer is always to hand — in the dark too, exactly like the
+        // things they are carrying.
+        var result: Set<EntityID> = [observer]
+        // …and so is the player, who is placed `.nowhere` and so is never found
+        // by the room walk below. That placement is what keeps them out of room
+        // listings and a location's contents; this line is the only way they
+        // enter scope, whether the walk is their own or somebody else's asking
+        // "can I get at him". `TAKE ALL` reads this set, and is kept off the
+        // player by `isTakable`, which is false for people.
+        if location == state.playerLocation { result.insert(.player) }
         // Guards against a runtime-created placement cycle (e.g. a container
         // moved inside its own contents) sending this walk into an infinite
         // recursion — the containment graph should never have cycles, but the
@@ -77,12 +151,19 @@ enum Visibility {
         }
 
         // Held items are always perceivable, and we descend into what they hold.
-        for id in index.held[.player] ?? [] where isPerceivable(id, definition: definition, state: state) {
+        for id in index.held[observer] ?? []
+        where isPerceivable(id, definition: definition, state: state) {
             result.insert(id)
             if shouldDescend(into: id) { descend(into: id) }
         }
 
-        guard !isDark(at: location, definition: definition, state: state) else {
+        // Darkness gates the player's walk and nobody else's: these sets are
+        // also the parser's scope, and you cannot refer to what you cannot see.
+        // An NPC has no parser, so an unlit room stops their eyes and not their
+        // arm (#119).
+        guard let location,
+            observer != .player || !isDark(at: location, definition: definition, state: state)
+        else {
             return result
         }
 
@@ -137,6 +218,42 @@ enum Visibility {
             state.placements[vehicle] == .room(state.playerLocation)
         else { return nil }
         return vehicle
+    }
+
+    /// Every actor currently standing in a room other than `location`.
+    ///
+    /// **This is not a visibility set.** Nobody can see these people. It is
+    /// the naming reach of FOLLOW and nothing else: the verb has to be able to
+    /// hear the name of somebody who walked out one turn ago, which is exactly
+    /// when `visibleItems` no longer contains them. The parser consults it
+    /// only for a far-sighted intent, and only after the visible set has
+    /// failed — see `Intent.farSightedIntents`.
+    ///
+    /// Actors held or contained by something (a familiar in a pocket, a body
+    /// in a crate) are deliberately excluded: you cannot walk to a placement
+    /// that isn't a room. So are actors standing in a room no exit leads to —
+    /// a game's off-map holding pen. Naming those would be a spoiler: an
+    /// unmet character's own name coming back in a refusal is how a player
+    /// learns there is a policeman in this story before one arrives.
+    ///
+    /// - Parameters:
+    ///   - location: the room to exclude — where the player is standing.
+    ///   - definition: the static game definition.
+    ///   - state: the current world state.
+    /// - Returns: the perceivable actors standing elsewhere.
+    static func actorsElsewhere(
+        excluding location: EntityID,
+        definition: GameDefinition,
+        state: WorldState
+    ) -> Set<EntityID> {
+        definition.castIDs.filter { id in
+            guard case .room(let room)? = state.placements[id], room != location,
+                definition.reachableRooms.contains(room)
+            else {
+                return false
+            }
+            return isPerceivable(id, definition: definition, state: state)
+        }
     }
 
     /// Whether an item should be included in any visibility/description walk

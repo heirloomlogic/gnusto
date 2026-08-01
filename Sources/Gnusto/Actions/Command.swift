@@ -5,10 +5,12 @@ public struct Intent: Hashable, Sendable {
     /// The intent's stable identifier.
     public let raw: String
 
-    /// The verb rows that produce this intent, carried by `#verb`-declared
-    /// intents so a `verbs` block can list the intent itself (`.ring`)
-    /// instead of re-spelling its rows. Not part of the intent's identity:
-    /// `Intent("ring")` in a rule matches a `#verb`-minted `.ring`.
+    /// The verb rows this intent carries. `#verb` puts them here, which is what
+    /// lets a `verbs` block list the intent itself (`.ring`) instead of
+    /// re-spelling its rows; an engine intent carries none and is resolved
+    /// against the standard table instead — see `verbRows`. Not part of the
+    /// intent's identity: `Intent("ring")` in a rule matches a `#verb`-minted
+    /// `.ring`.
     public let syntax: [SyntaxRule]
 
     /// Creates an intent with the given identifier. `#verb` expands to the
@@ -21,6 +23,17 @@ public struct Intent: Hashable, Sendable {
     public init(_ raw: String, syntax: [SyntaxRule] = []) {
         self.raw = raw
         self.syntax = syntax
+    }
+
+    /// The rows a `verbs` block splices when it lists this intent: the ones it
+    /// carries, or the standard table's for an engine intent, which keeps its
+    /// rows there instead of on the constant.
+    ///
+    /// The fallback is what lets both kinds of intent spell the same way at a
+    /// `verbs` block. Without it `verbs { .attack }` compiled, contributed
+    /// nothing, and said nothing about it.
+    var verbRows: [SyntaxRule] {
+        syntax.isEmpty ? SyntaxRule.standardRows(producing: self) : syntax
     }
 
     /// Identity is the `raw` name alone — see `syntax`.
@@ -67,6 +80,10 @@ public struct Intent: Hashable, Sendable {
     public static let turnOff = Intent("turnOff")
     /// Move in a direction.
     public static let go = Intent("go")
+    /// Go after somebody who has left the room ("follow", "chase", "go after").
+    public static let follow = Intent("follow")
+    /// Say hello to somebody ("greet", "hello", "hi").
+    public static let greet = Intent("greet")
     /// Get into an `enterable` item ("enter", "board", "get in").
     public static let board = Intent("board")
     /// Get out of the boarded item ("exit", "disembark", "get out").
@@ -84,6 +101,11 @@ public struct Intent: Hashable, Sendable {
     public static let quit = Intent("quit")
     /// Report the engine version.
     public static let version = Intent("version")
+    // The engine-level four. `GameWorld.run` answers these before the turn
+    // pipeline starts, so no rule sees them and no `actions` row can reclaim
+    // them — `DefaultActions.engineIntents` is where that is declared, and the
+    // bootstrap warns about a row that tries.
+
     /// Reverse the last turn (engine-level; not overridable).
     public static let undo = Intent("undo")
     /// Rewind to the opening (engine-level; not overridable).
@@ -100,6 +122,15 @@ public struct Intent: Hashable, Sendable {
     ]
 
     var isMeta: Bool { Intent.metaIntents.contains(self) }
+
+    /// Intents whose object may be out of sight. FOLLOW names somebody who has
+    /// just walked out, so its noun phrase falls back to the wider set of
+    /// actors still on stage when nothing in the room answers to it. Every
+    /// other intent is room-scoped, which is what keeps "You can't see any
+    /// such thing" honest.
+    static let farSightedIntents: Set<Intent> = [.follow]
+
+    var isFarSighted: Bool { Intent.farSightedIntents.contains(self) }
 }
 
 /// A parsed player command, available inside rule bodies as `command`.
@@ -114,6 +145,8 @@ public struct Command: Sendable {
     public let preposition: String?
     /// The direction the player named, if any.
     public let direction: Direction?
+    /// What the player wants to talk about, for verbs with a topic slot.
+    public let topic: Topic?
     /// The verb word as typed ("hang"), for use in messages.
     public let verbPhrase: String
     /// The full line the player typed.
@@ -125,6 +158,7 @@ public struct Command: Sendable {
         indirectObject: Item? = nil,
         preposition: String? = nil,
         direction: Direction? = nil,
+        topic: Topic? = nil,
         verbPhrase: String,
         rawInput: String
     ) {
@@ -133,6 +167,7 @@ public struct Command: Sendable {
         self.indirectObject = indirectObject
         self.preposition = preposition
         self.direction = direction
+        self.topic = topic
         self.verbPhrase = verbPhrase
         self.rawInput = rawInput
     }

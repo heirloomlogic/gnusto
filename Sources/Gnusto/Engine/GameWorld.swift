@@ -204,6 +204,18 @@ public actor GameWorld {
         default: break
         }
 
+        // A bare HELLO in a room with exactly one person in it is addressed to
+        // them, filled in here rather than in the parser — which has no world
+        // to consult — so that it reaches that actor's rules exactly as
+        // "hello, keeper" would. With nobody, or with a crowd, it stays
+        // unaddressed and the default action says so.
+        var parsed = parsed
+        if parsed.intent == .greet, parsed.directObject == nil,
+            let only = soleVisibleActor()
+        {
+            parsed.directObject = only
+        }
+
         // The would-be UNDO snapshot: the state before *anything* this turn
         // touches, pronouns included. Stored only when the turn actually
         // runs stages — a free reply ("There is nothing here to take.")
@@ -223,13 +235,17 @@ public actor GameWorld {
     // MARK: - The turn pipeline
 
     private func runTurn(_ command: Command, snapshot: WorldState) -> TurnResult {
-        if !command.intent.isMeta {
-            undoSnapshot = snapshot
-        }
         let frame = TurnFrame(definition: definition, state: state, command: command)
         Ctx.$frame.withValue(frame) {
             performStages(command, frame: frame, upkeep: true)
             finishTurn(intent: command.intent, frame: frame)
+        }
+        // Stored only once the turn is known to have been one — the same rule
+        // `run` states for a free reply, and a command nothing answered is no
+        // more a turn than a parse error was. Nothing in the pipeline reads
+        // the snapshot, so the decision keeps until the frame comes back.
+        if !command.intent.isMeta, !frame.with({ $0.unhandled }) {
+            undoSnapshot = snapshot
         }
         return commit(frame)
     }
@@ -305,8 +321,13 @@ public actor GameWorld {
                         directObject: item,
                         indirectObject: indirectItem,
                         preposition: parsed.preposition,
+                        topic: parsed.topic.map(Topic.init),
                         verbPhrase: parsed.verbPhrase,
                         rawInput: parsed.rawInput)
+                    // `unhandled` is not reset alongside `defaultRan`: every
+                    // intent in `multiObjectIntents` is a core verb with a
+                    // handler, so stage 4 always answers here and the flag
+                    // can never be set part-way through the loop.
                     frame.with { scratch in
                         scratch.command = command
                         scratch.defaultRan = false
@@ -453,11 +474,15 @@ public actor GameWorld {
     }
 
     /// Stage 6 and the epilogue: world time passes even on refused turns —
-    /// but not for meta intents, and not once the game has ended. Runs once
-    /// per typed command, however many objects it covered.
+    /// but not for meta intents, not for a command nothing answered, and not
+    /// once the game has ended. Runs once per typed command, however many
+    /// objects it covered.
     private func finishTurn(intent: Intent, frame: TurnFrame) {
         let rules = definition.rules
-        if !intent.isMeta {
+        // A command stage 4 had no answer for is free, like a parse error:
+        // the player was told nothing happened, so nothing may happen.
+        let costsTurn = !intent.isMeta && !frame.with { $0.unhandled }
+        if costsTurn {
             if frame.with({ $0.state.status }) == .playing {
                 let here = frame.with { $0.state.playerLocation }
                 runCatching(rules.locationAfterEachTurn[here] ?? [], matching: intent, frame: frame)
@@ -562,11 +587,18 @@ public actor GameWorld {
 
     private func handle(_ interrupt: TurnInterrupt, frame: TurnFrame) {
         switch interrupt {
-        case .refused(let message), .replied(let message):
+        case .refused(let message), .replied(let message), .unhandled(let message):
             // An empty message ends the turn without adding a line — for
             // rule bodies that have already said everything with `say`.
             if !message.isEmpty {
                 frame.say(message)
+            }
+            // `unhandled` is the refusal nobody made: nothing in the game
+            // claimed the command, so `finishTurn` reads this flag and skips
+            // the each-turn rules, the timers and the move count. The line and
+            // the price agree the way a parse error's do.
+            if case .unhandled = interrupt {
+                frame.with { $0.unhandled = true }
             }
         case .gameOver(let won):
             frame.with { $0.state.status = won ? .won : .lost }
@@ -597,6 +629,7 @@ public actor GameWorld {
             indirectObject: parsed.indirectObject.flatMap { definition.registry.items[$0] },
             preposition: parsed.preposition,
             direction: parsed.direction,
+            topic: parsed.topic.map(Topic.init),
             verbPhrase: parsed.verbPhrase,
             rawInput: parsed.rawInput)
     }
@@ -610,7 +643,29 @@ public actor GameWorld {
         let here = state.playerLocation
         let visible = Visibility.visibleItems(
             at: here, definition: definition, state: state, index: state.containment())
-        return Scope(visibleItems: visible, pronounIt: state.pronounIt)
+        return Scope(
+            visibleItems: visible,
+            visibleActors: visible.intersection(definition.castIDs),
+            // Not visibility: the naming reach of FOLLOW alone. Note
+            // `completionCandidates()` below deliberately stays on
+            // `visibleItems`, since offering an offstage actor's nouns to Tab
+            // completion would be a spoiler leak.
+            distantActors: Visibility.actorsElsewhere(
+                excluding: here, definition: definition, state: state),
+            pronounIt: state.pronounIt)
+    }
+
+    /// The one person in the room, or nil for nobody and nil for a crowd.
+    /// Only a bare greeting uses this: "hello" in a room with one other
+    /// person in it can only have meant them.
+    ///
+    /// - Returns: the sole visible actor, if there is exactly one.
+    private func soleVisibleActor() -> EntityID? {
+        let actors = Visibility.visibleItems(
+            at: state.playerLocation, definition: definition, state: state,
+            index: state.containment()
+        ).intersection(definition.castIDs)
+        return actors.count == 1 ? actors.first : nil
     }
 
     /// Where this game's persistent command history lives — the history

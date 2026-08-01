@@ -14,6 +14,12 @@ public enum SyntaxElement: Sendable, Hashable, ExpressibleByStringLiteral {
     case indirectObject
     /// A compass direction.
     case direction
+    /// An abstract subject of conversation — "ask the butler about **the
+    /// murder**". Unlike the object slots, a topic is never resolved against
+    /// the world: it takes the rest of the line as typed, so a subject the
+    /// game has never heard of still reaches the rules instead of dying as
+    /// "You can't see any such thing."
+    case topic
 
     /// A string literal in a pattern is a literal word.
     ///
@@ -30,6 +36,22 @@ public struct SyntaxRule: Sendable {
     let elements: [SyntaxElement]
     let intent: Intent
 
+    /// The row's leading run of literal words: what identifies the verb when
+    /// filtering candidates, and the `verbPhrase` shown in messages.
+    ///
+    /// Stored rather than computed: the parser filters the whole table by
+    /// `leadingWords` on every command, and the bootstrap reads it once per row
+    /// per game. Both were allocating a fresh array per access.
+    let leadingWords: [String]
+
+    /// Every literal word in the pattern, in order.
+    let literalWords: [String]
+
+    /// Specificity for rule-selection order: rows with more literal structure
+    /// are tried first, and among those, rows that consume more slots. Ties
+    /// keep their table order (the parser's sort is stable by construction).
+    let specificity: Int
+
     /// Builds a verb row from its pattern. The pattern must start with a
     /// literal word; the bootstrap validates custom rows and reports
     /// malformed patterns as fatal diagnostics.
@@ -38,8 +60,33 @@ public struct SyntaxRule: Sendable {
     ///   - elements: the pattern of literal words and slots.
     ///   - intent: the intent a match produces.
     public init(_ elements: SyntaxElement..., intent: Intent) {
+        self.init(elements, intent: intent)
+    }
+
+    /// The array-taking form, for callers that already hold a pattern — the
+    /// stub table builds its rows this way.
+    ///
+    /// - Parameters:
+    ///   - elements: the pattern of literal words and slots.
+    ///   - intent: the intent a match produces.
+    init(_ elements: [SyntaxElement], intent: Intent) {
         self.elements = elements
         self.intent = intent
+
+        var leading: [String] = []
+        var literals: [String] = []
+        var stillLeading = true
+        for element in elements {
+            guard case .word(let word) = element else {
+                stillLeading = false
+                continue
+            }
+            literals.append(word)
+            if stillLeading { leading.append(word) }
+        }
+        self.leadingWords = leading
+        self.literalWords = literals
+        self.specificity = literals.count * 10 + (elements.count - literals.count)
     }
 
     /// Identifies a row by what the player types — the full pattern — so the
@@ -51,32 +98,6 @@ public struct SyntaxRule: Sendable {
 
     var key: Key { Key(elements: elements) }
 
-    /// The row's leading run of literal words: what identifies the verb when
-    /// filtering candidates, and the `verbPhrase` shown in messages.
-    var leadingWords: [String] {
-        var words: [String] = []
-        for element in elements {
-            guard case .word(let word) = element else { break }
-            words.append(word)
-        }
-        return words
-    }
-
-    /// Every literal word in the pattern, in order.
-    var literalWords: [String] {
-        elements.compactMap { element in
-            if case .word(let word) = element { word } else { nil }
-        }
-    }
-
-    /// Specificity for rule-selection order: rows with more literal structure
-    /// are tried first, and among those, rows that consume more slots. Ties
-    /// keep their table order (the parser's sort is stable by construction).
-    var specificity: Int {
-        let literals = literalWords.count
-        return literals * 10 + (elements.count - literals)
-    }
-
     /// The pattern rendered for diagnostics: `give <object> to <second object>`.
     var patternDescription: String {
         elements.map { element in
@@ -85,6 +106,7 @@ public struct SyntaxRule: Sendable {
             case .directObject: "<object>"
             case .indirectObject: "<second object>"
             case .direction: "<direction>"
+            case .topic: "<topic>"
             }
         }.joined(separator: " ")
     }
@@ -126,6 +148,23 @@ public struct SyntaxRule: Sendable {
                 problems.append("\(pattern) has more than one direction slot.")
             }
         }
+        // A topic swallows the rest of the line without a scope check to fall
+        // back on, so it may only end a pattern: a mid-pattern topic would
+        // mis-split on the first occurrence of whatever closed it, silently.
+        if elements.contains(.topic) {
+            if elements.last != .topic {
+                problems.append("\(pattern) must end with its topic slot.")
+            }
+            if count(of: .topic) > 1 {
+                problems.append("\(pattern) has more than one topic slot.")
+            }
+            if elements.contains(.indirectObject) {
+                problems.append("\(pattern) combines a topic slot with a <second object> slot.")
+            }
+            if elements.contains(.direction) {
+                problems.append("\(pattern) combines a topic slot with a direction slot.")
+            }
+        }
         for (index, element) in elements.enumerated()
         where element == .directObject || element == .indirectObject {
             guard index < elements.count - 1 else { continue }
@@ -141,121 +180,22 @@ public struct SyntaxRule: Sendable {
 }
 
 extension SyntaxRule {
-    /// The default verb table. Ordering within the table doesn't matter;
-    /// the parser sorts candidate rules by specificity.
-    static let standardTable: [SyntaxRule] = [
-        // take
-        .init("take", .directObject, intent: .take),
-        .init("get", .directObject, intent: .take),
-        .init("grab", .directObject, intent: .take),
-        .init("hold", .directObject, intent: .take),
-        .init("carry", .directObject, intent: .take),
-        .init("pick", "up", .directObject, intent: .take),
-        .init("pick", .directObject, "up", intent: .take),
+    /// Every verb the engine ships: the mechanically load-bearing rows, then
+    /// the stub rows that are words without mechanics. Ordering within the
+    /// table doesn't matter; the parser sorts candidate rules by specificity.
+    static let standardTable: [SyntaxRule] = coreTable + stubTable
 
-        // drop
-        .init("drop", .directObject, intent: .drop),
-        .init("discard", .directObject, intent: .drop),
-        .init("put", "down", .directObject, intent: .drop),
-        .init("put", .directObject, "down", intent: .drop),
-
-        // examine
-        .init("examine", .directObject, intent: .examine),
-        .init("x", .directObject, intent: .examine),
-        .init("inspect", .directObject, intent: .examine),
-        .init("look", "at", .directObject, intent: .examine),
-        .init("l", "at", .directObject, intent: .examine),
-
-        // read
-        .init("read", .directObject, intent: .read),
-
-        // wear
-        .init("wear", .directObject, intent: .wear),
-        .init("don", .directObject, intent: .wear),
-        .init("put", "on", .directObject, intent: .wear),
-
-        // doff
-        .init("remove", .directObject, intent: .doff),
-        .init("doff", .directObject, intent: .doff),
-        .init("take", "off", .directObject, intent: .doff),
-        .init("take", .directObject, "off", intent: .doff),
-
-        // putOn
-        .init("put", .directObject, "on", .indirectObject, intent: .putOn),
-        .init("put", .directObject, "onto", .indirectObject, intent: .putOn),
-        .init("hang", .directObject, "on", .indirectObject, intent: .putOn),
-        .init("place", .directObject, "on", .indirectObject, intent: .putOn),
-
-        // putIn
-        .init("put", .directObject, "in", .indirectObject, intent: .putIn),
-        .init("put", .directObject, "into", .indirectObject, intent: .putIn),
-
-        // open / close
-        .init("open", .directObject, intent: .open),
-        .init("close", .directObject, intent: .close),
-        .init("shut", .directObject, intent: .close),
-
-        // lock / unlock
-        .init("lock", .directObject, "with", .indirectObject, intent: .lock),
-        .init("unlock", .directObject, "with", .indirectObject, intent: .unlock),
-
-        // turnOn / turnOff
-        .init("turn", "on", .directObject, intent: .turnOn),
-        .init("turn", .directObject, "on", intent: .turnOn),
-        .init("switch", "on", .directObject, intent: .turnOn),
-        .init("switch", .directObject, "on", intent: .turnOn),
-        .init("light", .directObject, intent: .turnOn),
-        .init("turn", "off", .directObject, intent: .turnOff),
-        .init("turn", .directObject, "off", intent: .turnOff),
-        .init("switch", "off", .directObject, intent: .turnOff),
-        .init("switch", .directObject, "off", intent: .turnOff),
-        .init("extinguish", .directObject, intent: .turnOff),
-        .init("douse", .directObject, intent: .turnOff),
-        .init("blow", "out", .directObject, intent: .turnOff),
-        .init("blow", .directObject, "out", intent: .turnOff),
-
-        // lookIn / search
-        .init("look", "in", .directObject, intent: .lookIn),
-        .init("search", .directObject, intent: .lookIn),
-
-        // push
-        .init("push", .directObject, intent: .push),
-        .init("move", .directObject, intent: .push),
-
-        // movement
-        .init("go", .direction, intent: .go),
-        .init("walk", .direction, intent: .go),
-        .init("run", .direction, intent: .go),
-
-        // board / disembark. Bare "in"/"out" stay directions: the parser's
-        // bare-direction check runs before any verb row.
-        .init("enter", .directObject, intent: .board),
-        .init("board", .directObject, intent: .board),
-        .init("get", "in", .directObject, intent: .board),
-        .init("get", "into", .directObject, intent: .board),
-        .init("exit", intent: .disembark),
-        .init("exit", .directObject, intent: .disembark),
-        .init("disembark", intent: .disembark),
-        .init("get", "out", intent: .disembark),
-        .init("get", "out", "of", .directObject, intent: .disembark),
-
-        // wait
-        .init("wait", intent: .wait),
-        .init("z", intent: .wait),
-
-        // perception & meta
-        .init("look", intent: .look),
-        .init("l", intent: .look),
-        .init("inventory", intent: .inventory),
-        .init("inv", intent: .inventory),
-        .init("i", intent: .inventory),
-        .init("score", intent: .score),
-        .init("quit", intent: .quit),
-        .init("q", intent: .quit),
-        .init("version", intent: .version),
-        .init("undo", intent: .undo),
-        .init("restart", intent: .restart),
-        .init("save", intent: .save),
-        .init("restore", intent: .restore),
-    ]
+    /// The standard rows that reach one intent, for a `verbs` block that lists
+    /// an engine intent rather than re-spelling its rows — see
+    /// ``Intent/verbRows``. Reads the two stage-4 lookups instead of grouping
+    /// the table again: `cores` and `stubs` already hold their rows per intent.
+    ///
+    /// - Parameter intent: the intent whose standard rows to fetch.
+    /// - Returns: the rows that produce it, or none if the engine ships no verb
+    ///   for it.
+    static func standardRows(producing intent: Intent) -> [SyntaxRule] {
+        DefaultActions.coresByIntent[intent]?.rows
+            ?? DefaultActions.stubsByIntent[intent]?.rows
+            ?? []
+    }
 }

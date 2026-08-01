@@ -62,6 +62,23 @@ public struct Actor: Sendable, Equatable {
         asItem.name
     }
 
+    /// The name behind its definite article — "the surly troll", or
+    /// "Mrs. Vane" for an actor declared `properName`.
+    public var definiteName: String {
+        asItem.definiteName
+    }
+
+    /// The name behind its indefinite article — "a surly troll", or
+    /// "Mrs. Vane" for an actor declared `properName`.
+    public var indefiniteName: String {
+        asItem.indefiniteName
+    }
+
+    /// True if the actor's name is a proper name, so no article precedes it.
+    public var isProperName: Bool {
+        asItem.isProperName
+    }
+
     /// The actor's examine text. Assigning replaces it for the rest of the
     /// game.
     public var description: String {
@@ -78,6 +95,26 @@ public struct Actor: Sendable, Equatable {
     /// Reveals a `hidden` actor. A no-op for one that isn't `hidden`.
     public func reveal() {
         asItem.reveal()
+    }
+
+    /// True if the player could see the actor from where they are standing —
+    /// ``Item/isVisible``, and the one a rule about a person usually wants:
+    /// "does he watch you do it" is a question about being seen, not touched.
+    public var isVisible: Bool {
+        asItem.isVisible
+    }
+
+    /// True if the player could put a hand on the actor — ``Item/isReachable``.
+    /// Reaching a person is what `give`, `attack` and `show` need; seeing one
+    /// is ``isVisible``.
+    public var isReachable: Bool {
+        asItem.isReachable
+    }
+
+    /// True if `other` could put a hand on this actor — ``Item/isReachable(from:)``,
+    /// which is to say they are standing in the same room.
+    public func isReachable(from other: Actor) -> Bool {
+        asItem.isReachable(from: other)
     }
 
     /// The room the actor is in, or nil while offstage.
@@ -119,6 +156,21 @@ public struct Actor: Sendable, Equatable {
         let (frame, myID) = asItem.resolved
         let itemID = item.id
         return frame.with { $0.state.placements[itemID] == .heldBy(myID) }
+    }
+
+    /// True if the item is anywhere in the actor's possession: in their hands,
+    /// or on or inside something they are carrying — **to any depth**.
+    ///
+    /// ``holds(_:)`` tests one level, which is the wrong question the moment
+    /// somebody carries a bag: a coin in a purse in a satchel over his shoulder
+    /// is his, and `holds(coin)` says no.
+    ///
+    /// - Parameter item: the item to test.
+    /// - Returns: true if the item is somewhere under the actor.
+    public func possesses(_ item: Item) -> Bool {
+        let (frame, myID) = asItem.resolved
+        let itemID = item.id
+        return frame.with { $0.state.isPossession(itemID, of: myID) }
     }
 
     /// The items the actor is carrying, sorted by ID for stable iteration.
@@ -184,5 +236,30 @@ public struct Actor: Sendable, Equatable {
         perform body: @escaping @Sendable () throws -> Void
     ) -> Rule {
         Rule(scope: .item(token), phase: .after, intents: Set(intents), body: body)
+    }
+
+    /// A live examine text, recomputed every time the actor is described.
+    ///
+    /// - Parameter body: the closure recomputing the description on each read.
+    /// - Returns: the assembled describe rule.
+    public func describe(_ body: @escaping @Sendable () -> String) -> Rule {
+        asItem.describe(body)
+    }
+
+    /// A live standing-presence line, recomputed every time the actor's room is
+    /// described — the dynamic form of the ``firstSight(_:)`` trait, and the way
+    /// a person on a schedule says something different in each room they stand
+    /// in:
+    ///
+    /// ```swift
+    /// constance.presence {
+    ///     constance.isIn(parlour) ? Prose.inHerChair : Prose.onTheStep
+    /// }
+    /// ```
+    ///
+    /// - Parameter body: the closure recomputing the line on each read.
+    /// - Returns: the assembled presence rule.
+    public func presence(_ body: @escaping @Sendable () -> String) -> Rule {
+        asItem.presence(body)
     }
 }

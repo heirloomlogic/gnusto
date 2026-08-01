@@ -118,4 +118,12 @@ struct DefaultActionTests {
         // The REPL stops after quit: the queued "look" is never consumed.
         #expect(!transcript.contains("> look"))
     }
+
+    /// `press` is a synonym of `push`, so it gets `push`'s real behavior —
+    /// including the reachability check — rather than a stub line.
+    @Test func pressIsASynonymOfPush() async throws {
+        let transcript = try await play(MiniGame(), ["push table", "press table"])
+        #expect(turnOutput(of: "push table", in: transcript).contains("You can't move that."))
+        #expect(turnOutput(of: "press table", in: transcript).contains("You can't move that."))
+    }
 }

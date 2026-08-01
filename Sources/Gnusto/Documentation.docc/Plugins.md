@@ -12,18 +12,19 @@ A plugin is **logic only**. It contributes the player-typeable vocabulary a syst
 
 ```swift
 extension Intent {
-    #verb("buy", ["buy", .directObject])
-    #verb("sell", ["sell", .directObject])
+    #verb("haggle", ["haggle", "over", .directObject])
 }
 
 struct CommercePlugin: GamePlugin {
     var verbs: [SyntaxRule] {
-        [.buy, .sell]
+        .haggle
     }
 }
 ```
 
-`verbs`, `actions`, `rules`, and `timers` all default to empty, so a plugin declares only what it needs. The `#verb` declarations (see <doc:AddingCustomVerbs>) give the plugin *and* its hosts the same typed constants — host rules key on `.buy` exactly as the plugin's verbs emit it.
+`verbs`, `actions`, `rules`, and `timers` all default to empty, so a plugin declares only what it needs. The `#verb` declarations (see <doc:AddingCustomVerbs>) give the plugin *and* its hosts the same typed constants — host rules key on `.haggle` exactly as the plugin's verbs emit it.
+
+Note what *isn't* declared here. `buy` and `sell` are engine stub verbs (see <doc:StubVerbs>), so the words are already in every game's vocabulary; a commerce plugin only has to supply the behavior, which it does with the rules below. `haggle` is genuinely the plugin's own, so it needs the `#verb`. `GnustoMeleeCombat` splits the same way: the `attack` family is promoted, `stab` and `strike` are added.
 
 A plugin's `timers` splice the same way (`var timers: [TimedEvent] { actors.timers }`), and parameterized timer *factories* — methods returning a ``TimedEvent`` for the host's own `timers` block — are how a plugin animates the host's actors on the end-of-turn clock. Timer names are global to the game: prefix yours by convention (`"actors.roam"`).
 
@@ -149,16 +150,19 @@ References stay token-based across the boundary, so a host item can sit in a plu
 
 ## The first-party plugins
 
-Four shipped library products exercise both plugin shapes for real — each
+Seven shipped library products exercise both plugin shapes for real — each
 imports only `Gnusto`, and the Zork 1 executable target is the worked
-example that wires all four:
+example that wires the first four:
 
 | Product | Shape | Owns | The host passes |
 | --- | --- | --- | --- |
 | `GnustoDangerousDark` | `GameContent` | one dark-turn counter, the grue daemon | prose + grace period at init |
-| `GnustoScoring` | `GameContent` | award-once registers | treasures + the trophy case to `treasures(_:into:)` |
+| `GnustoScoring` | `GameContent` | award-once registers | the award table to `init(awards:)`, treasures + the trophy case to `treasures(_:into:)` |
 | `GnustoActors` | `GamePlugin` | nothing — position *is* the actor's placement | actors, room sets, candidates to `roams`/`steals`/`reaction` |
 | `GnustoMeleeCombat` | `GameContent` | the combat ledger (health/stun by key) | villains, weapons, prose to `villain`/`aggression` |
+| `GnustoSpellcasting` | `GameContent` | the spell memory and the energy pool | spells + their ``SpellCost`` to `spell(_:cost:effect:)` |
+| `GnustoClock` | `GameContent` | the clock's offset and pause state | start time, minutes per turn, alarms to `at(_:named:perform:)`, timetables to `schedule(_:daemonName:_:)` |
+| `GnustoConversation` | `GameContent` | the facts the player has worked out, and which answers each actor has already given | actors + topic rows to `topics(of:)` (with `again:` lines for the answers that should land once), opening lines to `greeting(of:)`, evidence to `shows(_:to:)` |
 
 The split follows one rule: a system that needs its own saved state is a
 `GameContent` bundle (its `@Global`s namespace automatically and travel in
@@ -170,8 +174,10 @@ string in the game's own voice.
 
 ## Worked examples
 
-- `Sources/Lighthouse/` — a small host that splices just two: `GnustoScoring` (a `visit` award and a one-off `awardOnce`) and `GnustoActors` (a roaming keeper). The smallest of these examples.
-- `Sources/Zork1/Zork1.swift` — the host that wires all four first-party plugins over entities from three content bundles.
+- `Sources/Lighthouse/` — a small host that splices just two: `GnustoScoring` (a `visit` award and a one-off `awardOnce`, both declared in its award table so the bootstrap can check `maxScore`) and `GnustoActors` (a roaming keeper). The smallest of these examples.
+- `Sources/Zork1/Zork1.swift` — the host that wires four first-party plugins over entities from three content bundles.
+- `Sources/Gramarye/Gramarye.swift` — a small original game built entirely around `GnustoSpellcasting`, with one puzzle per casting paradigm.
+- `Sources/Fulminate/Fulminate.swift` — the mystery demo, built around `GnustoClock`: an evening on a wall clock with three alarms bracketing it. Its story and mechanics contract live in `docs/games/fulminate.md`.
 - `Sources/KindlyDeep/` — a survival-and-companion host: `GnustoActors.follows` for a mule who trails you, is parked by a crawl he cannot fit through, and rejoins through a door, plus `GnustoScoring.awardOnce` on each of its five beats.
 - `Tests/GnustoTests/Support/CommerceGame.swift` — the logic-only commerce plugin (`buy`/`sell` verbs, `purchase`/`sale` factories, `LampShop` host); `PluginTests` drives a buy/sell turn end to end.
 - `Tests/GnustoTests/Support/ShrineContent.swift` — the content-bearing `ShrineContent` plugin (owns a namespaced shrine region *and* exposes an `offering` factory) with its `PilgrimGame` host; `ContentPluginTests` drives a donate turn across the namespace boundary and checks the namespacing.

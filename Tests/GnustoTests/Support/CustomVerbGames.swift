@@ -6,10 +6,18 @@ import Gnusto
 extension Intent {
     #verb("ring", ["ring", .directObject])
     #verb("polish", ["polish", .directObject, "with", .indirectObject])
-    #verb("sing")
+    // Deliberately a word the engine's stub table doesn't own, and deliberately
+    // wired to nothing: this verb's job is to prove the *unhandled* path
+    // answers the fall-back line for free, and warns about itself at bootstrap.
+    // A stub verb would answer its own line instead, and cost a turn doing it.
+    #verb("hum")
     // Same verb token and slot shape as the built-in `take`, so listing this
     // row reclaims it (last-wins) and emits `.steal` instead.
     #verb("steal", ["take", .directObject])
+    // Answered by a rule on one entity and left to the fall-back for every
+    // other noun — the documented pattern, and the one that used to spend a
+    // turn saying the parser had failed.
+    #verb("salute", ["salute", .directObject])
 }
 
 /// Exercises vocabulary extension: a game that teaches the parser new
@@ -46,9 +54,9 @@ struct CustomVerbGame: Game {
     /// Three new verbs: a plain transitive verb, a verb with a preposition
     /// shape (proving the preposition is harvested into the vocabulary), and a
     /// verb with no handling rule (proving the unhandled path falls through to
-    /// the default "I didn't understand").
+    /// the fall-back line).
     var verbs: [SyntaxRule] {
-        [.ring, .polish, .sing]
+        [.ring, .polish, .hum]
     }
 
     var rules: Rules {
@@ -58,8 +66,8 @@ struct CustomVerbGame: Game {
         bell.before(.polish) {
             try reply("You polish the bell to a warm shine.")
         }
-        // No rule handles `sing`: the parser still emits the intent, and the
-        // default action reports that it didn't understand.
+        // No rule handles `hum`: the parser still emits the intent, and stage
+        // 4 has nothing to answer it with.
     }
 }
 
@@ -97,6 +105,60 @@ struct VerbOverrideGame: Game {
     }
 }
 
+/// The `GnustoMeleeCombat` verbs block in miniature: an engine intent listed by
+/// name for the rows the engine already ships, with the plugin's own rows spelled
+/// beside it. Only its `verbs` block is under test — nothing here is played, and
+/// the merged table would supply those rows either way.
+struct EngineIntentVerbGame: Game {
+    let title = "Practice Yard"
+    let intro = "A yard for weapons drill."
+
+    let yard = Location {
+        name("Practice Yard")
+        description("A packed-dirt yard for weapons drill.")
+    }
+
+    var map: WorldMap {
+        player.starts(in: yard)
+    }
+
+    var verbs: [SyntaxRule] {
+        .attack
+        SyntaxRule("stab", .directObject, "with", .indirectObject, intent: .attack)
+        SyntaxRule("strike", .directObject, "with", .indirectObject, intent: .attack)
+    }
+}
+
+/// A game that reclaims the built-in `take <thing>` row for `.steal`, then puts
+/// it back by listing `.take`. Last-wins means the restoration only lands if
+/// listing an engine intent actually splices its rows — so this is where the
+/// fallback is visible in a transcript rather than in a table.
+struct RestoredCoreVerbGame: Game {
+    let title = "Restored"
+    let intro = "A counting house, and one penny left in it."
+
+    let countingHouse = Location {
+        name("Counting House")
+        description("A narrow room of empty ledgers.")
+    }
+
+    let penny = Item {
+        name("silver penny")
+    }
+
+    var map: WorldMap {
+        player.starts(in: countingHouse)
+        penny.starts(in: countingHouse)
+    }
+
+    /// Spelled `Intent.take` rather than `.take`: a bare leading dot on the line
+    /// after another statement would parse as a member access on it.
+    var verbs: [SyntaxRule] {
+        .steal
+        Intent.take
+    }
+}
+
 /// A game that keys a rule on a `#verb` intent but forgets to list it in a
 /// `verbs` block — the mistake the dead-intent bootstrap warning names.
 struct ForgottenVerbGame: Game {
@@ -122,6 +184,63 @@ struct ForgottenVerbGame: Game {
     var rules: Rules {
         bell.before(.ring) {
             try reply("The bell chimes sweetly.")
+        }
+    }
+}
+
+/// The Lighthouse shape, reduced to its bones: one custom verb, answered by a
+/// rule on one actor and by nothing else, in a room where a daemon is counting.
+/// `salute sentry` is a turn; `salute banner` reaches stage 4 with nothing to
+/// answer it and must therefore cost nothing — the bug that drowned a
+/// play-tester on the jetty.
+struct SentryPostGame: Game {
+    let title = "Sentry Post"
+    let intro = "A gate, a sentry, and a bell that keeps the watch."
+
+    let gate = Location {
+        name("Gate")
+        description("A stone arch over a road going nowhere.")
+    }
+
+    let sentry = Actor {
+        name("weathered sentry")
+        adjectives("weathered")
+        description("Straight-backed, and bored past caring.")
+    }
+
+    /// The noun the rule doesn't cover — and the one carrying the `after` rule,
+    /// so a skipped stage 5 is observable.
+    let banner = Item {
+        name("faded banner")
+        adjectives("faded")
+        description("A regimental banner, sun-bleached to no colour at all.")
+    }
+
+    @Global var strokes = 0
+
+    var map: WorldMap {
+        player.starts(in: gate)
+        sentry.starts(in: gate)
+        banner.starts(in: gate)
+    }
+
+    var verbs: [SyntaxRule] {
+        .salute
+    }
+
+    var timers: [TimedEvent] {
+        daemon("watch", autostart: true) {
+            strokes += 1
+            say("The watch bell strikes \(strokes).")
+        }
+    }
+
+    var rules: Rules {
+        sentry.before(.salute) {
+            try reply("The sentry returns your salute, crisply.")
+        }
+        banner.after(.salute) {
+            say("The banner stirs.")
         }
     }
 }

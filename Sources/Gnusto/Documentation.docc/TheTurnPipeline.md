@@ -28,7 +28,7 @@ Once a command parses, the engine runs these stages in order. Rules are matched 
 2. **Location `beforeEachTurn`** — ``Location/beforeEachTurn(perform:)`` for the current room, every turn regardless of intent.
 3. **Location `before`** — ``Location/before(_:perform:)`` for the current room.
 4. **Item `before`** — ``Item/before(_:perform:)`` for the indirect object, then the direct object.
-5. **The default action** — the engine's built-in behavior for the intent (pick up the item, walk through the exit, describe the thing). This is where the turn actually *does* something if no rule intervened.
+5. **The default action** — the engine's built-in behavior for the intent (pick up the item, walk through the exit, describe the thing). This is where the turn actually *does* something if no rule intervened. A custom verb has no built-in behavior, so if nothing else claims the intent this stage answers `text.cantDoThat` and the turn ends here, free (see below).
 6. **Item `after`** — ``Item/after(_:perform:)`` for the direct object, then the indirect object.
 7. **Location `after`** — ``Location/after(_:perform:)`` for the current room.
 8. **Location `afterEachTurn`** — ``Location/afterEachTurn(perform:)`` for the room, every turn.
@@ -65,6 +65,8 @@ To add output *without* stopping the turn, use ``say(_:)``. It appends a line to
 There is one important asymmetry. When a `before` rule refuses an action, the default action and later `before`/`after` rules are skipped — but the turn is still a turn. The each-turn tail (stages 8 and 9) still runs, and the move counter still advances.
 
 This is what makes timed puzzles work. A lantern burning down, a guard on patrol, or — in Cloak of Darkness — the darkness that penalizes *any* fumbling in the dark bar, all live in `afterEachTurn` rules or in fuses and daemons (<doc:DarknessTimeAndDeath>), and they tick even on the turns the player wasted trying something forbidden. Each-turn rules run independently: if one throws, the engine catches it and moves on to the next, so one region's daemon can't silently kill another's.
+
+There is exactly one exception, and it is the case where *nobody* refused. If a custom verb reaches stage 5 with no action, no rule and no stub line to answer it, the player is told "You can't do that." — and that turn is free, like a parse error. The message says nothing happened, so nothing may: no each-turn rules, no timer tick, no move, and the UNDO snapshot still points at the last command that did something. A refusal is the game answering; this is the game having no answer.
 
 ## Meta intents skip everything
 

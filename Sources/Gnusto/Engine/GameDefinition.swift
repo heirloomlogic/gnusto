@@ -34,6 +34,9 @@ struct ItemDefinition: Sendable {
     var description: String?
     var adjectives: [String] = []
     var synonyms: [String] = []
+    /// The name is a proper name: the stock lines render it bare rather than
+    /// behind "the" or "a". See `GameText.definite(_:proper:)`.
+    var isProperName = false
     var firstSight: String?
     var isWearable = false
     var isScenery = false
@@ -69,6 +72,7 @@ struct ItemDefinition: Sendable {
             case .description(let text): description = text
             case .adjectives(let words): adjectives += words
             case .synonyms(let words): synonyms += words
+            case .properName: isProperName = true
             case .firstSight(let text): firstSight = text
             case .wearable: isWearable = true
             case .scenery: isScenery = true
@@ -117,6 +121,10 @@ struct RuleTable: Sendable {
     /// static `description(…)` trait.
     var itemDescribe: [EntityID: @Sendable () -> String] = [:]
     var locationDescribe: [EntityID: @Sendable () -> String] = [:]
+    /// Live room-listing paragraphs declared via `item.presence { … }` or
+    /// `actor.presence { … }`. Consulted by `TurnFrame.presenceText(of:)`
+    /// before a static `firstSight(…)` trait.
+    var itemPresence: [EntityID: @Sendable () -> String] = [:]
 }
 
 /// Everything about a game that never changes during play. Built once at
@@ -130,7 +138,23 @@ struct GameDefinition: Sendable {
     let text: GameText
     let locations: [EntityID: LocationDefinition]
     let items: [EntityID: ItemDefinition]
+    /// The cast: the `actor` entries of ``items``, minus the player's own item.
+    /// Every consumer of this set means *somebody else* — who a command can be
+    /// addressed to, who a bare HELLO must have meant, who FOLLOW may name — so
+    /// the player is excluded even though `items[.player].isActor` is true and
+    /// the person-shaped refusals depend on it.
+    ///
+    /// Precomputed because `currentScope()` runs every turn *and* again for Tab
+    /// completion: rescanning the item table twice a turn to rediscover a set
+    /// that never changes is work for nothing.
+    let castIDs: Set<EntityID>
     let exits: [EntityID: [Direction: ExitTarget]]
+    /// Every room some exit leads to. A game's off-map holding pens — the
+    /// street a character is "out on", the limbo an actor waits in before their
+    /// entrance — are exactly the rooms missing from this set, and FOLLOW uses
+    /// it to keep from naming somebody the player has no business knowing
+    /// about yet.
+    let reachableRooms: Set<EntityID>
     let globalDefaults: [EntityID: StateValue]
     let playerStart: EntityID
     /// `var` so the bootstrap can install the rule table after evaluating the

@@ -3,6 +3,39 @@
 public struct Player: Sendable {
     init() {}
 
+    /// The identity token the player's item answers to. One token for the
+    /// whole process, because `player` is vended as a fresh value on every
+    /// access and item identity is reference identity on this token — a
+    /// per-access token would make `player.item == player.item` false and
+    /// leave every rule attached to a stranger.
+    static let itemToken = RefToken()
+
+    /// The traits the bootstrap builds the player's item from. Nouns only:
+    /// no `description(…)`, so a game is free to attach `describe { }`
+    /// without tripping the trait-and-rule conflict. The stock examine text
+    /// comes from ``GameText/selfDescription`` instead.
+    static let itemTraits: [ItemTrait] = [
+        name("yourself"),
+        synonyms("me", "myself", "self"),
+    ]
+
+    /// The player as a thing in the world — what `X ME` resolves to, and
+    /// where per-game text and rules about the player's own body hang:
+    ///
+    /// ```swift
+    /// player.item.describe {
+    ///     player.isCarrying(lantern) ? "Lit from below, and grubby." : "Grubby."
+    /// }
+    /// player.item.before(.take) { try refuse("You have quite enough of yourself.") }
+    /// ```
+    ///
+    /// The engine synthesizes it; no game declares it. It is always in scope
+    /// and never in a room, so it appears in no room description, no
+    /// inventory, and no `TAKE ALL`.
+    public var item: Item {
+        Item(token: Player.itemToken, traits: Player.itemTraits)
+    }
+
     /// Where the player is. Assigning teleports without describing the
     /// destination; normal movement happens through the `go` action.
     public var location: Location {

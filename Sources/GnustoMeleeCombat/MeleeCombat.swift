@@ -13,26 +13,11 @@ extension TraitKey<Int> {
     public static let weaponStrength = Self("weaponStrength", default: 2)
 }
 
-extension Intent {
-    /// The one intent every combat verb emits: attack/kill/hit/fight
-    /// bare-handed or `with` a weapon, plus stab/strike (weapon required).
-    #verb(
-        "attack",
-        ["attack", .directObject],
-        ["attack", .directObject, "with", .indirectObject],
-        ["kill", .directObject],
-        ["kill", .directObject, "with", .indirectObject],
-        ["hit", .directObject],
-        ["hit", .directObject, "with", .indirectObject],
-        ["fight", .directObject],
-        ["stab", .directObject, "with", .indirectObject],
-        ["strike", .directObject, "with", .indirectObject])
-}
-
-/// Zork-style-lite melee: attack verbs, a weapon trait, per-villain health,
-/// a seeded outcome table (miss / wound / knockout / kill), and an
-/// aggression daemon so villains hit back. Deterministic under a pinned
-/// seed — every roll draws from the game's saved random stream.
+/// Zork-style-lite melee: the engine's attack verbs promoted to real behavior,
+/// a weapon trait, per-villain health, a seeded outcome table (miss / wound /
+/// knockout / kill), and an aggression daemon so villains hit back.
+/// Deterministic under a pinned seed — every roll draws from the game's saved
+/// random stream.
 ///
 /// Add it to the game's `content` block (the verbs and the futile stage-4
 /// default come along automatically), mark the weapons, then register each
@@ -69,11 +54,11 @@ public struct MeleeCombat: GameContent {
         public var noWeapon = "Bare hands won't do it. You need a weapon."
         /// Naming a weapon that isn't one ("attack troll with feather").
         public var notAWeapon: @Sendable (_ name: String) -> String = {
-            "The \($0) is no weapon."
+            "\(GameText.sentenceCase($0)) is no weapon."
         }
         /// Naming a real weapon the player isn't holding.
         public var weaponNotHeld: @Sendable (_ name: String) -> String = {
-            "You aren't holding the \($0)."
+            "You aren't holding \($0)."
         }
 
         /// Creates the default combat text; override any line after construction.
@@ -150,10 +135,19 @@ public struct MeleeCombat: GameContent {
         self.text = text
     }
 
-    /// The attack syntax: attack/kill/hit/fight bare-handed or `with` a weapon,
-    /// plus stab/strike, which always name a weapon.
+    /// Everything that reaches `.attack`, claimed as melee's: the engine's rows,
+    /// spliced by listing the intent, and the two it adds. attack/kill/hit/fight
+    /// are core vocabulary, bare-handed or `with` a weapon; stab and strike are
+    /// melee's own, and always name the weapon.
+    ///
+    /// The spliced rows are the standard table's, so the merged table is the
+    /// same either way — what listing `.attack` changes is arbitration: melee
+    /// re-asserts those shapes, last-wins, over an earlier bundle that reclaimed
+    /// one of them for something else.
     public var verbs: [SyntaxRule] {
         .attack
+        SyntaxRule("stab", .directObject, "with", .indirectObject, intent: .attack)
+        SyntaxRule("strike", .directObject, "with", .indirectObject, intent: .attack)
     }
 
     /// The stage-4 default for a target no villain rule claimed.
@@ -209,10 +203,10 @@ public struct MeleeCombat: GameContent {
             let weaponUsed: Item
             if let named = command.indirectObject {
                 guard weapons.contains(named) else {
-                    try refuse(text.notAWeapon(named.name))
+                    try refuse(text.notAWeapon(named.definiteName))
                 }
                 guard named.isHeld else {
-                    try refuse(text.weaponNotHeld(named.name))
+                    try refuse(text.weaponNotHeld(named.definiteName))
                 }
                 weaponUsed = named
             } else if let best = weapons.filter(\.isHeld)

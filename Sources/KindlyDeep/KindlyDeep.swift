@@ -94,7 +94,15 @@ struct KindlyDeep: Game, GameMain {
 
     // MARK: - Plugins
 
-    let scoring = Scoring()
+    /// The five scored beats. Declared rather than scattered, so the bootstrap
+    /// can check them against `maxScore`.
+    let scoring = Scoring(awards: [
+        "lamp": 5,  // the striker
+        "canteen": 5,  // the water, however you find it
+        "door": 5,  // the air-door, and the mule back
+        "beam": 5,  // the haul
+        "bell": 5,  // the cage
+    ])
     let actors = ActorBehaviors()
 
     var content: GameContents {
@@ -675,7 +683,7 @@ struct KindlyDeep: Game, GameMain {
             !beamHauled,
             else: "The beam is off the gate and Biscuit is done with it. He would rather not be reminded.")
         beamHauled = true
-        scoring.awardOnce("beam", points: 5)
+        scoring.awardOnce("beam")
         try reply(
             """
             You back him up to the beam and hitch on, and Biscuit takes the strain the way he takes everything — \
@@ -696,7 +704,7 @@ struct KindlyDeep: Game, GameMain {
     /// through the corn bin yourself. Either way it scores once.
     private func findTheCanteen() {
         canteen.reveal()
-        scoring.awardOnce("canteen", points: 5)
+        scoring.awardOnce("canteen")
     }
 
     // MARK: - Rules
@@ -716,7 +724,7 @@ struct KindlyDeep: Game, GameMain {
             }
             lampFirstLit = true
             capLamp.isLit = true
-            scoring.awardOnce("lamp", points: 5)
+            scoring.awardOnce("lamp")
             try reply(
                 """
                 The flame takes on the second strike, steadies, and the dark steps back to a respectful distance. The \
@@ -825,7 +833,7 @@ struct KindlyDeep: Game, GameMain {
                     """)
             }
             airDoor.isOpen = true
-            scoring.awardOnce("door", points: 5)
+            scoring.awardOnce("door")
             biscuit.move(to: shaftBottom)
             startDaemon("biscuit.follow")
             try reply(
@@ -891,7 +899,7 @@ struct KindlyDeep: Game, GameMain {
                     You could ring, and the cage could come, and it could sit there on the far side of a gate with a \
                     twelve-foot beam across it while everyone above forms opinions. Shift the beam first.
                     """)
-            scoring.awardOnce("bell", points: 5)
+            scoring.awardOnce("bell")
             say(
                 """
                 You take the pull and ring — one long stroke, and the sound goes up the shaft like a bird out of a \

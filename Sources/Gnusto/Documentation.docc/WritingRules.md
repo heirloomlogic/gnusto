@@ -52,7 +52,7 @@ The built-in intents are constants on ``Intent`` (``Intent/take``, ``Intent/drop
 
 Inside a rule body, your declarations *are* the live entities. The bare identifiers `player`, `command`, `world`, and every room and item you declared resolve to the current turn's state.
 
-Items expose ``Item/isHeld``, ``Item/isWorn``, ``Item/isTouched``, ``Item/name``, a settable ``Item/description``, ``Item/holds(_:)``, and the movers ``Item/move(to:)`` and ``Item/vanish()``:
+Items expose ``Item/isHeld``, ``Item/isWorn``, ``Item/isTouched``, ``Item/name``, a settable ``Item/description``, ``Item/holds(_:)``, the scope questions ``Item/isReachable``, ``Item/isReachable(from:)`` and ``Item/isVisible``, and the movers ``Item/move(to:)`` and ``Item/vanish()``:
 
 ```swift
 lever.after(.take) {
@@ -76,6 +76,16 @@ message.before(.read) {
     try end(won: true)
 }
 ```
+
+``Player/item`` is the player themselves as a thing in the world — what `X ME` examines. The engine synthesizes it, so no game declares it, but it is an ordinary ``Item``: give it a `describe { }` rule, set its ``Item/description`` at runtime, hang `before`/`after` rules on it. It is always in scope and never in a room, so it appears in no room description, no inventory, and no `TAKE ALL`.
+
+```swift
+player.item.describe {
+    player.isCarrying(lantern) ? "Lit from below, and grubby." : "Grubby."
+}
+```
+
+Without a rule, examining yourself prints ``GameText/selfDescription``, alongside the other stock lines a game can re-skin — ``GameText/cantTakeSelf``, ``GameText/cantSearchSelf``, ``GameText/cantGreetSelf``, ``GameText/cantFollowSelf``.
 
 The command being performed is available as `command` (``Command``): its ``Command/intent``, ``Command/directObject``, ``Command/indirectObject``, ``Command/direction``, ``Command/preposition``, and the raw ``Command/verbPhrase`` the player typed.
 
@@ -110,6 +120,24 @@ Three things are worth knowing:
 - **`describe` and a static `description(…)` are mutually exclusive.** Declaring both on the same entity — or two `describe` rules for it — is a fatal ``BootstrapError`` caught at startup, not a silent last-writer-wins. Pick one per entity.
 - **A runtime assignment still wins.** Setting ``Item/description`` (or ``Location/description``) directly in a rule overrides the `describe` closure from then on — useful for a one-way change like a lever that reveals a passage.
 - **Keep the closure pure.** It runs on every look and examine; read state, return a string, and don't mutate the world from inside it.
+
+## Live room-listing lines with `presence`
+
+`describe` supplies the *examine* text. The other line the engine prints about an entity is its paragraph in the room description — the ``firstSight(_:)`` trait, shown until the player touches an item and shown on every look for an actor. ``Item/presence(_:)`` (or ``Actor/presence(_:)``) is its live form, and it follows exactly the same rules as `describe`:
+
+```swift
+var rules: Rules {
+    constance.presence {
+        constance.isIn(parlour)
+            ? "Mrs. Vane is in her chair with the lamp unlit."
+            : "Mrs. Vane is on the step and no further."
+    }
+}
+```
+
+`presence` and a static `firstSight(…)` on the same entity — or two `presence` rules for it — is the same fatal ``BootstrapError``. A `presence` rule on a location is a diagnostic too: rooms have descriptions, not presence lines.
+
+This is the rule to reach for when somebody moves. A person on a schedule ends up described in terms of the room they left, and no amount of careful static wording fixes that.
 
 ## Produce output and control the turn
 
