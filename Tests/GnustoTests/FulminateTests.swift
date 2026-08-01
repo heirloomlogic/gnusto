@@ -36,11 +36,11 @@ struct FulminateTests {
             Fulminate(), Array(repeating: "look", count: 8) + ["time"])
         let ninth = turnOutput(of: "time", in: transcript)
         #expect(ninth.contains("Your watch says 5:46 pm."))
-        #expect(ninth.contains("loose sash in the place shivers"))
+        #expect(ninth.contains("everything in the place shivers at once"))
     }
 
-    /// From the yard you get the whole thing; from indoors, a flat thump and
-    /// the windows. Same alarm, two vantage points.
+    /// From the yard you get the whole thing; from indoors, a flat thump and a
+    /// house going quiet. Same alarm, two vantage points.
     @Test func theBlastIsSeenFromTheYardAndOnlyHeardIndoors() async throws {
         let fromYard = try await play(
             Fulminate(), ["south", "west"] + Array(repeating: "z", count: 7))
@@ -539,6 +539,86 @@ struct FulminateTests {
         #expect(!transcript.contains("can't see any such thing"))
     }
 
+    /// The same walk one level down: not the things a room lists, but the
+    /// things the *examine* text of those things names in passing. Every word
+    /// here was a `I don't know the word` or a `You can't see any such thing`
+    /// before the 2026-07-31 round, several of them because the word was
+    /// declared as an adjective and so could never be typed on its own.
+    @Test func theGroundFloorAnswersToItsOwnExamineText() async throws {
+        let hall = try await play(
+            Fulminate(),
+            [
+                "x corner", "x passage", "x diamond", "x treads", "x rods",
+                "x carpet", "x marble", "x ring", "x pad", "x fanlight", "x hat",
+                "west", "x bulb", "x fringe", "x rectangle", "x roses",
+                "east", "south", "x pine", "x grain", "x counter", "x switch", "x pot",
+            ])
+        #expect(!hall.contains("I don't know the word"))
+        #expect(!hall.contains("can't see any such thing"))
+
+        // The cellar's is the one that hurt most: the search refusal ends "the
+        // dust is the interesting part" and pointed the player at a word the
+        // vocabulary did not contain.
+        let cellar = try await play(
+            Fulminate(),
+            [
+                "south", "open drawer", "take flashlight", "turn on flashlight", "down",
+                "x dust", "search coal bin",
+            ])
+        #expect(!cellar.contains("I don't know the word"))
+        #expect(!cellar.contains("can't see any such thing"))
+        #expect(turnOutput(of: "x dust", in: cellar).contains("three winters of coal dust"))
+    }
+
+    /// The gap the suite itself left: this walk never fired a timed event, so
+    /// every word the blast and its aftermath put on the page went unchecked —
+    /// which is exactly where the round found the most of them. This one waits
+    /// for 5:46 and then asks the yard for what it has just described.
+    @Test func theYardAnswersForWhatTheBlastPutInIt() async throws {
+        let transcript = try await play(
+            Fulminate(),
+            ["south", "west"] + Array(repeating: "z", count: 7)
+                + [
+                    "look", "x fire", "x flames", "x wreckage", "x roof", "x slates",
+                    "x timber", "x body", "x step", "x wall", "x grass",
+                ])
+        #expect(!transcript.contains("I don't know the word"))
+        #expect(!transcript.contains("can't see any such thing"))
+        #expect(turnOutput(of: "x fire", in: transcript).contains("where the roof came down"))
+    }
+
+    /// And the lab from inside, which calls itself somebody's workshop and
+    /// somebody else's chapel and then puts its own roof in the yard.
+    @Test func theCarriageHouseAnswersForTheWordsItCallsItselfBy() async throws {
+        let transcript = try await play(
+            Fulminate(),
+            [
+                "south", "west", "north",
+                "x workshop", "x chapel", "x walls", "x roof", "x rafters",
+                "x vice", "x nail", "x board", "x outline", "x blanket", "x corner",
+            ])
+        #expect(!transcript.contains("I don't know the word"))
+        #expect(!transcript.contains("can't see any such thing"))
+    }
+
+    /// Dr. Pike's hat is named in five sentences across three rooms and was a
+    /// word none of them knew, because it was declared as an adjective on a
+    /// coat stand in a fourth room he never enters. It travels with him now.
+    @Test func theHatGoesWhereTheDoctorGoes() async throws {
+        let parlour = try await play(Fulminate(), ["west", "x pike", "x hat", "x doctor"])
+        #expect(turnOutput(of: "x hat", in: parlour).contains("Grey felt"))
+        #expect(turnOutput(of: "x doctor", in: parlour).contains("has not had the hat off"))
+
+        // And in the yard, where he arrives holding it against his chest.
+        let yard = try await play(
+            Fulminate(), ["south", "west"] + Array(repeating: "z", count: 9) + ["x hat"])
+        #expect(turnOutput(of: "x hat", in: yard).contains("Grey felt"))
+
+        // The hall's own hat stand keeps the word where he is not.
+        let hall = try await play(Fulminate(), ["x hat"])
+        #expect(turnOutput(of: "x hat", in: hall).contains("six hooks"))
+    }
+
     /// And upstairs, and the lab. Separately, because the walk is long enough
     /// that the blast would land in the middle of one trip.
     @Test func theUpstairsAndTheLabAnswerToo() async throws {
@@ -562,6 +642,34 @@ struct FulminateTests {
             Fulminate(),
             ["south", "open drawer", "take flashlight", "turn on flashlight", "down", "x coal bin"])
         #expect(turnOutput(of: "x coal bin", in: cellar).contains("three winters of coal dust"))
+    }
+
+    /// The study is a paragraph about a desk whose drawers are standing open,
+    /// and all three of the ways a player asks about that used to answer with
+    /// the engine's shrug.
+    @Test func theStudyDeskGivesUpItsDrawers() async throws {
+        let transcript = try await play(
+            Fulminate(), ["up", "west", "x desk", "x drawers", "search desk"])
+        #expect(turnOutput(of: "x desk", in: transcript).contains("Every drawer is standing open"))
+        #expect(turnOutput(of: "x drawers", in: transcript).contains("square to the fronts"))
+        #expect(
+            turnOutput(of: "search desk", in: transcript)
+                .contains("Somebody has done this before you"))
+        #expect(!transcript.contains("You see nothing special"))
+        #expect(!transcript.contains("You find nothing of interest"))
+    }
+
+    /// The patrolman is the one actor in this house without `properName`, so he
+    /// is the one who exposed a template that interpolated a rendered phrase at
+    /// sentence-initial position. It printed "the patrolman looks at it and
+    /// looks away." The five proper-named actors capitalise themselves and hid
+    /// it for the whole of the game's life.
+    @Test func theOneActorWithoutAProperNameStillGetsACapitalLetter() async throws {
+        let transcript = try await play(
+            Fulminate(), ["south", "west"] + Array(repeating: "z", count: 10) + ["show watch to patrolman"])
+        let answer = turnOutput(of: "show watch to patrolman", in: transcript)
+        #expect(answer.contains("The patrolman looks at it and looks away."))
+        #expect(!answer.contains("the patrolman looks at it"))
     }
 
     /// The coat is a container with the case's hinge in it, not luggage. You
@@ -643,7 +751,7 @@ struct FulminateTests {
         expectInOrder(
             fromHall,
             [
-                "one long run of breakage",
+                "a long run of breakage",
                 "The house holds still for a count of three.",
                 "everybody who was in them is out on the grass",
                 "the house hears it and holds still for it",
@@ -674,6 +782,36 @@ struct FulminateTests {
         let kitchenTurn = turnOutput(of: "south", in: indoors)
         #expect(kitchenTurn.contains("The house holds still for a count of three."))
         #expect(!kitchenTurn.contains("There is grass in your cuff"))
+
+        // The case the fuse used to get wrong. Indoors when it went, out on the
+        // lawn a turn later: the house is a thing you are now standing outside
+        // of, and doors are not going above and below a man in a garden.
+        let inThenOut = try await play(
+            Fulminate(),
+            ["south"] + Array(repeating: "z", count: 8) + ["west"])
+        let lawnTurn = turnOutput(of: "west", in: inThenOut)
+        #expect(!lawnTurn.contains("a door goes above you, and another one below"))
+        #expect(!lawnTurn.contains("Dust comes along behind all of it"))
+        #expect(lawnTurn.contains("the house is emptying itself into the garden"))
+        // And he was not knocked down, so he is not getting up.
+        #expect(!lawnTurn.contains("There is grass in your cuff"))
+    }
+
+    /// The wreckage lands in the yard at 5:46 and the yard starts describing it
+    /// on the same turn. It used to stay in the room next door until 5:52, so
+    /// for three turns the settling fuse named a thing that `X WRECKAGE`
+    /// answered for with the line reserved for a noun that isn't there.
+    @Test func theWreckageIsInTheYardTheMomentItLands() async throws {
+        let transcript = try await play(
+            Fulminate(), ["south", "west"] + Array(repeating: "z", count: 7) + ["x wreckage"])
+        let answer = turnOutput(of: "x wreckage", in: transcript)
+        #expect(answer.contains("Roof slates, black timber"))
+        #expect(!answer.contains("can't see any such thing"))
+
+        // And it is still his to guard once he is posted over it.
+        let later = try await play(
+            Fulminate(), ["south", "west"] + Array(repeating: "z", count: 11) + ["search wreckage"])
+        #expect(turnOutput(of: "search wreckage", in: later).contains("Best keep back from there"))
     }
 
     /// She is not a woman with nothing to say about her son being dead; she is
