@@ -68,10 +68,19 @@ what has to remain true no matter how the story is rewritten.
 | Content gated on knowledge (`knowing:`) | Constance breaks only once you have the glove. | The confession stays gated on physical evidence. |
 | A fact taught by evidence (`learning:`) | The receipt teaches that Teague lied to Constance. | The keystone fact is *learned*, never assumed. |
 | Per-actor fallback replies | "Mrs. Vane looks past you." | Everyone has a fallback. No dead air. |
-| Answers that land once | Every table carries an `again:` line in its own voice. | Nobody recites an important paragraph twice. Mrs. Kettle is the deliberate exception: her rows read the timetable live, so they go on answering. |
+| Answers that land once | Every table carries an `again:` line in its own voice, and so does every `talk.shows` row. | Nobody recites an important paragraph twice. Mrs. Kettle is the deliberate exception: her rows read the timetable live, so they go on answering. |
+| Nothing speaks from a room it has left | Constance's greeting, alibi row and fallback branch on which of her two rooms she is in; the aftermath fuse branches on where the player is standing, not on where they were. | A reply or a timed-event body either reads the frame it prints in or stops naming anything that room-specific. |
 
 **Free to change:** every name, all prose, room descriptions, topic keywords, the tone, the
 title, and which suspect is guilty.
+
+**Free to change is not the same as free to be wrong.** That clause licenses a rewrite; it
+does not license a line that is false of the frame it prints in. A sentence naming the
+parlour grate while the speaker stands in the back garden, a stub verb reporting an
+ordinary evening thirty feet from a burning building, an account in the past tense of an
+event eight minutes off — each is a defect whatever the prose around it says, and "all
+prose is free to change" is not a refutation of one. Nine of the 2026-07-31 round's
+thirteen refutations leaned on this clause and two leaned on it too hard.
 
 **Not free to change without revisiting the implementation plan:** the counts in the right
 column, the three-alarm structure, the dark room on somebody's route, and the rule that
@@ -179,6 +188,11 @@ written to be true in the parlour, the yard and the study alike, which is the ch
 where it works.
 
 One word is reserved: **arithmetic** belongs to Constance's shock and appears nowhere else.
+The 2026-07-31 round found the code spending it in two other places first — Teague's
+"I'd check her arithmetic" at 5:38, and the ledger's "the ordinary arithmetic of a man
+with no money" — against a branch of hers gated on the blast, so the reserved word was
+always spent before it did its work. Both are `figures` and `bookkeeping` now. A
+rewrite that wants the word back somewhere else has to take it out of her first.
 
 ### Constance Vane — the mother
 
@@ -195,7 +209,9 @@ refusals until the glove.
 player owns slides off a seventy-one-year-old woman in an unlit parlour, which is why she
 is the answer.
 **Her lie:** that she was in the parlour all evening.
-**Her fallback:** *Mrs. Vane looks past you at the wallpaper.*
+**Her fallback:** *Mrs. Vane looks past you at the wallpaper* — in the parlour, where the
+wallpaper is. She spends 5:48 to 5:54 on the back step, and her greeting, her alibi row
+and this fallback all branch on which of the two she is standing in.
 
 ### Delphine Marsh — the partner
 
@@ -439,6 +455,25 @@ the game doesn't know the word for reads like a bug, so a rewrite that introduce
 noun should introduce the scenery item with it. `FulminateTests` walks the house asking
 for each of them.
 
+**And every noun the *examine* text puts on the page, and every noun a timed event puts
+on it.** The 2026-07-31 round counted 261 unknown-word replies over 59 distinct words the
+game had printed itself, because the walk covered only the room descriptions and never
+fired a timed event. Three things close that class, and a rewrite has all three:
+
+- a scenery item, where the noun is a stable thing a room owns — the six in
+  `Sources/Fulminate/Fixtures.swift`, plus the yard's fire and the lab's shell, which
+  read `blastHappened` and so live in the host;
+- a synonym, where the noun is a facet of something that already exists. Watch for a word
+  declared as an **adjective**: the tokenizer will never accept one as the last word of a
+  phrase, so `hat`, `marble`, `pine` and `doctor` were unreachable words the prose printed;
+- deleting the noun, where it belongs to no room. The indoor blast paragraph prints in six
+  rooms, and this engine has no backdrop scenery, so it may not name the crockery or the
+  ceiling: what a paragraph like that can carry is a sound and a house going quiet.
+
+A word that travels with a person goes `heldBy` them — Dr. Pike's hat, the patrolman's
+notebook. Held items are in scope wherever their owner is standing and are not listed, so
+the word answers in three rooms and no room listing changes.
+
 **Front Hall** — *Black and white tile, worn through to the grout along the line people
 walk. A hat stand with one coat on it. A longcase clock in the corner keeps better time
 than the household does. The front door is east, the parlour west, the kitchen passage
@@ -490,8 +525,13 @@ The full topic tables go in the implementation. These are the beats that must su
 5:42, per the mechanics contract.)
 
 **Teague, shown the receipt:**
-> He looks at it for a while. "Six-oh-five," he says. "Yeah." He sits down on the arm of
-> the chair, which is not his chair. "I went after. I needed to have been somewhere."
+> He looks at it for a while. "Six-oh-five," he says. "Yeah." He hands it back and does
+> not let go of it straight away. "I went after. I needed to have been somewhere."
+
+(The gesture is his hands, not the furniture. The receipt does not exist until 6:10, and
+his timetable puts him in the front hall until half past and his own room after — neither
+of which has a chair in it, so the line this used to carry was false in every frame it
+could reach.)
 
 **Teague, on what he told Constance:**
 > "I told the old lady he'd gone out. That's all I told her. I wanted half an hour in
@@ -502,7 +542,16 @@ The full topic tables go in the implementation. These are the beats that must su
 > She takes it out of your hand, which you were not expecting, and turns it over once.
 > "I have been sitting here," she says, "trying to remember whether I put it back."
 
+(She takes it, so the glove moves to her. "Sitting" is "standing" on the back step, where
+she spends six minutes of the evening.)
+
 ### Endings
+
+This game declares no `Scoring`, so `text.scoreLine` is re-skinned to count minutes rather
+than points: *You were in that house for N turns.* Every ending used to close on "Your
+score is 0, in N turns." — the win included, directly under the paragraph saying something
+had been achieved. An award table would be a different game; the evening is measured in
+time, so the epilogue is too.
 
 **Full win** — accuse Constance knowing `teagueLied`:
 > The county man writes for a long time. When he is finished he reads it back, and there

@@ -267,17 +267,44 @@ public struct Conversation: GameContent {
                 // `forget` in between, where re-teaching is the least
                 // surprising thing to do.
                 if let taught = row.taught { learn(taught) }
-                if let line = row.again ?? (row.inheritsTableAgain ? again : nil) {
-                    let key = row.key(inTableOf: actor.name)
-                    // Marked *before* the body, not after: `reply` throws, so
-                    // for a `reply:` row there is no "after". Moving this
-                    // below `row.body()` silently disables the feature.
-                    if heard.rows.contains(key) { try reply(line) }
-                    heard.rows.insert(key)
-                }
-                try row.body()
+                try sayOnce(
+                    row.again ?? (row.inheritsTableAgain ? again : nil),
+                    key: { row.key(inTableOf: actor.name) },
+                    then: row.body)
             }
         }
+    }
+
+    /// Give `body` once and `again` every time after — the retirement rule
+    /// `topics`, `greeting` and `shows` all share.
+    ///
+    /// The mark goes down *before* the body, not after: a `reply:` answer
+    /// throws, so for it there is no "after", and moving the insert below the
+    /// body silently disables the feature. That invariant is the reason this is
+    /// one function rather than three copies of six lines.
+    ///
+    /// `key` is a closure because `topics` derives its key from the matched row
+    /// and only wants to pay for that when there is an `again:` to track.
+    ///
+    /// - Parameters:
+    ///   - again: what to say on a repeat, or `nil` to repeat forever and
+    ///     record nothing — which is what keeps a game that writes no `again:`
+    ///     byte-identical across saves.
+    ///   - key: the heard-set key, evaluated only when `again` is non-nil.
+    ///   - body: the answer in full.
+    /// - Throws: whatever `body` throws, and the `TurnInterrupt` that `reply`
+    ///   raises to end the turn on a repeat.
+    func sayOnce(
+        _ again: String?,
+        key: () -> String,
+        then body: () throws -> Void
+    ) throws {
+        if let again {
+            let key = key()
+            if heard.rows.contains(key) { try reply(again) }
+            heard.rows.insert(key)
+        }
+        try body()
     }
 
     /// What an actor does when a particular thing is put in front of them.
@@ -287,21 +314,63 @@ public struct Conversation: GameContent {
     ///   - actor: who it is shown to.
     ///   - fact: a fact the player learns by showing it — the usual way a
     ///     `knowing:` row gets unlocked.
+    ///   - again: what they say when the same thing is put in front of them a
+    ///     second time. The four paragraphs a mystery turns on are the ones a
+    ///     player is most likely to show twice, so a reaction without one of
+    ///     these recites the confession word for word.
     ///   - line: the actor's reaction. Ends the turn.
+    /// - Returns: the before-phase rule, for the host's `rules` block.
+    ///
+    /// ## Saying it once
+    ///
+    /// As with ``greeting(of:for:learning:again:reply:)``: a reaction with no
+    /// `again:` repeats forever and records nothing, so a game that never
+    /// writes one produces byte-identical saves.
+    public func shows(
+        _ item: Item,
+        to actor: Actor,
+        learning fact: Fact? = nil,
+        again: String? = nil,
+        reply line: String
+    ) -> Rule {
+        shows(item, to: actor, learning: fact, again: again) { try reply(line) }
+    }
+
+    /// What an actor does when a particular thing is put in front of them, for
+    /// a reaction that also moves the world — takes the thing, sits down, opens
+    /// a door.
+    ///
+    /// The body runs like any rule body, so `say`, `reply`, `refuse` and world
+    /// mutation all behave normally. On a repeat the body does **not** run and
+    /// `again:` is the whole of the answer, which is what makes the transfer in
+    /// a line like "she takes it out of your hand" safe to write down.
+    ///
+    /// - Parameters:
+    ///   - item: the thing shown.
+    ///   - actor: who it is shown to.
+    ///   - fact: a fact the player learns by showing it.
+    ///   - again: what they say the second time.
+    ///   - body: what happens.
     /// - Returns: the before-phase rule, for the host's `rules` block.
     public func shows(
         _ item: Item,
         to actor: Actor,
         learning fact: Fact? = nil,
-        reply line: String
+        again: String? = nil,
+        perform body: @escaping @Sendable () throws -> Void
     ) -> Rule {
+        // `!` rather than the `#` an author-supplied topic `id:` gets, so a row
+        // declared `id: "glove"` cannot retire the showing of the glove.
+        let key = "\(actor.name)\u{1F}!shows\u{1F}\(item.name)"
         // Scoped on the actor rather than the item because item `before`
         // rules run indirect-object first, so this fires ahead of any rule
         // the shown item has of its own.
-        actor.before(.show) {
+        return actor.before(.show) {
             guard command.directObject == item else { return }
+            // Teaching happens on every showing, repeat or not, matching
+            // `topics`. `learn` is idempotent.
             if let fact { learn(fact) }
-            try reply(line)
+            try sayOnce(again, key: { key }, then: body)
         }
     }
 
@@ -330,6 +399,32 @@ public struct Conversation: GameContent {
         again: String? = nil,
         reply line: String
     ) -> Rules {
+        greeting(of: actor, for: intents, learning: fact, again: again) { try reply(line) }
+    }
+
+    /// What an actor says when the player opens with them, for a greeting that
+    /// reads the world it is said in — an actor who keeps a timetable is not in
+    /// the same room all evening, and a hello that names the furniture has to
+    /// know which room's furniture it is naming.
+    ///
+    /// The body runs like any rule body. On a repeat it does not run and
+    /// `again:` is the whole of the answer.
+    ///
+    /// - Parameters:
+    ///   - actor: whose greeting this is.
+    ///   - intents: which openings it answers.
+    ///   - fact: a fact the player learns by being greeted.
+    ///   - again: what they say on being greeted a second time.
+    ///   - body: what happens.
+    /// - Returns: the before-phase rules, for the host's `rules` block.
+    @RuleBuilder
+    public func greeting(
+        of actor: Actor,
+        for intents: [Intent] = [.greet, .talk],
+        learning fact: Fact? = nil,
+        again: String? = nil,
+        perform body: @escaping @Sendable () throws -> Void
+    ) -> Rules {
         // One key for the whole greeting, not one per intent: GREET and TALK
         // are two ways of saying the same thing, and having said it once by
         // either is having said it. `!` rather than the `#` an author-supplied
@@ -339,11 +434,7 @@ public struct Conversation: GameContent {
         for intent in intents {
             actor.before(intent) {
                 if let fact { learn(fact) }
-                if let again {
-                    if heard.rows.contains(key) { try reply(again) }
-                    heard.rows.insert(key)
-                }
-                try reply(line)
+                try sayOnce(again, key: { key }, then: body)
             }
         }
     }

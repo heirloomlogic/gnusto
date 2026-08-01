@@ -89,6 +89,13 @@ extension StubVerb {
     /// "yourself", so "The yourself is not food." That is why `named` checks for
     /// it and `plain` doesn't — a nameless line like "You smell nothing out of
     /// the ordinary." answers `smell me` perfectly well.
+    ///
+    /// Everybody *else* is the second object they can't name, for the sister
+    /// reason: these lines are about objects, and "Mrs. Kettle is not food."
+    /// puts a witness on the same footing as a chair. `cantSearchActor` has
+    /// refused actor contact by design since the beginning, so before this
+    /// guard `search the cook` and `eat the cook` gave opposite rulings one
+    /// line apart.
     static func named(
         _ intent: Intent,
         _ patterns: [[SyntaxElement]],
@@ -98,12 +105,13 @@ extension StubVerb {
         .init(intent, patterns, reach) { text, command in
             guard let object = command.directObject else { return text.didntUnderstand }
             guard !object.isPlayer else { return text.stubs.yourself }
+            guard !object.isActor else { return text.stubs.somebodyElse(object.definiteName) }
             return line(text, object.definiteName)
         }
     }
 
     /// The escape hatch, for a reply that needs more of the ``Command`` than the
-    /// direct object's name. Only `give` wants it today.
+    /// direct object's name. `give` and `touch` want it today.
     static func custom(
         _ intent: Intent,
         _ patterns: [[SyntaxElement]],
@@ -360,7 +368,14 @@ extension DefaultActions {
 
         // MARK: Senses
 
-        .plain(
+        // `custom` rather than `plain`, for the one guard `named` gets for
+        // free: "You feel nothing out of the ordinary." is a fine answer about
+        // a wall and a claim about a completed act of contact on a witness, one
+        // turn after `cantSearchActor` has refused to let the player put a hand
+        // on her. `smell` and `listen` below need no such guard — both cross a
+        // room and lay a hand on nobody — and neither do `taste` and `knock`,
+        // which say nothing a person could object to.
+        .custom(
             .touch,
             [
                 ["touch", .directObject],
@@ -368,7 +383,11 @@ extension DefaultActions {
                 ["rub", .directObject],
             ],
             reach: .directObject
-        ) { $0.stubs.touch },
+        ) { text, command in
+            guard let object = command.directObject, object.isActor, !object.isPlayer
+            else { return text.stubs.touch }
+            return text.stubs.somebodyElse(object.definiteName)
+        },
 
         // A smell crosses a room, and so does a sound. These two are the reason
         // the guard is per verb.

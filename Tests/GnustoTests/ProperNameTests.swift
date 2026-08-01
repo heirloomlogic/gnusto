@@ -131,12 +131,16 @@ struct ProperNameTests {
 
     // MARK: - Stub verbs and plugins
 
+    /// Arthur and the troll reach the naming stubs' person line rather than
+    /// its object line, and it renders their names by the same rule: the
+    /// article is the engine's, chosen from `properName`.
     @Test func stubVerbsNameAProperNameBare() async throws {
         let transcript = try await play(
             NamedCastGame(), ["eat arthur", "eat troll", "pull lantern"])
-        #expect(transcript.contains("Arthur is not food."))
-        #expect(transcript.contains("The troll is not food."))
+        #expect(transcript.contains("Arthur is a person, and would rather you didn't."))
+        #expect(transcript.contains("The troll is a person, and would rather you didn't."))
         #expect(transcript.contains("The brass lantern doesn't budge."))
+        #expect(!transcript.contains("is not food"))
     }
 
     /// The conversation layer keeps its own lines, and the same rule applies —
