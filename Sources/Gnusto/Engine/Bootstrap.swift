@@ -349,14 +349,8 @@ enum Bootstrap {
         }
         var vocabularyWarnings: [String] = []
         for (id, item) in items {
-            var lexicon = ItemLexicon()
-            let nameWords = (item.name ?? "").lowercased().split(separator: " ").map(String.init)
-            if let noun = nameWords.last {
-                lexicon.nouns.insert(noun)
-            }
-            lexicon.adjectives.formUnion(nameWords.dropLast())
-            lexicon.adjectives.formUnion(item.adjectives.map { $0.lowercased() })
-            lexicon.nouns.formUnion(item.synonyms.map { $0.lowercased() })
+            let lexicon = ItemLexicon(
+                name: item.name, synonyms: item.synonyms, adjectives: item.adjectives)
             // Pronouns and multi-object keywords resolve before any lexicon,
             // so a word claimed here would never reach this item.
             for word in lexicon.nouns.union(lexicon.adjectives)

@@ -4,8 +4,9 @@ import Testing
 
 @testable import Gnusto
 
-/// The `GnustoActors` plugin: roaming, theft, and reactions — all
-/// deterministic under a pinned seed, all silent in the dark.
+/// The `GnustoActors` plugin: roaming, theft, following, and reactions —
+/// all deterministic under a pinned seed (following needs no seed at all),
+/// all silent in the dark.
 struct ActorBehaviorTests {
     @Test func roamingIsAnnouncedWhenLitAndInvolved() async throws {
         // 100% roam over four rooms with the player parked in one of them:
@@ -98,5 +99,46 @@ struct ActorBehaviorTests {
             }
         }
         #expect(strip(afterSave) == strip(afterRestore))
+    }
+
+    // MARK: - Following
+
+    @Test func theCompanionCatchesUpInEachLitRoom() async throws {
+        // The daemon ticks after the move resolves and the room is described,
+        // so each arrival line trails the new room's description.
+        let transcript = try await play(FollowGame(), ["east", "east", "quit"])
+        expectInOrder(
+            transcript,
+            [
+                "Hall",
+                "The hound pads in after you.",
+                "Parlor",
+                "The hound pads in after you.",
+            ])
+    }
+
+    @Test func theCompanionArrivesUnseenInTheDark() async throws {
+        // Down into the pitch-dark cellar: the hound follows but the arrival
+        // is swallowed. Back up into the lit foyer it prints again.
+        let transcript = try await play(FollowGame(), ["down", "up", "quit"])
+        #expect(!turnOutput(of: "down", in: transcript).contains("pads in"))
+        #expect(turnOutput(of: "up", in: transcript).contains("The hound pads in after you."))
+    }
+
+    @Test func theDaemonIdlesAfterVanish() async throws {
+        // An offstage companion (location == nil) hits the guard and nothing
+        // else: no line, no crash, and the walk continues normally.
+        let transcript = try await play(FollowGame(), ["dismiss", "east", "quit"])
+        #expect(transcript.contains("A long rug."))
+        #expect(!transcript.contains("pads in"))
+    }
+
+    @Test func stopDaemonParksAndStartDaemonResumes() async throws {
+        // Parked: the player walks off alone. Resumed: a started daemon first
+        // runs at the end of that same turn, so the hound catches up on the
+        // spot — arrival line and all.
+        let transcript = try await play(FollowGame(), ["park", "east", "resume", "quit"])
+        #expect(!turnOutput(of: "east", in: transcript).contains("pads in"))
+        #expect(turnOutput(of: "resume", in: transcript).contains("The hound pads in after you."))
     }
 }

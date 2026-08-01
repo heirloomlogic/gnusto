@@ -313,13 +313,10 @@ struct StandardParser {
     /// noise words. Any run of letters or digits is a token; every other
     /// character — whitespace, punctuation, symbols — is a separator, so
     /// `"don't"` yields `["don", "t"]` and `"north-west"` yields
-    /// `["north", "west"]`. Splitting straight on the alphanumeric predicate
-    /// skips the intermediate cleaned `String` and `[Character]` array a
-    /// map-to-spaces pass would allocate per line.
+    /// `["north", "west"]`. The split itself is `Vocabulary.words(in:)`,
+    /// shared with the lexicon that registers what the game declared.
     func tokenize(_ input: String) -> [String] {
-        input.lowercased()
-            .split(whereSeparator: { !($0.isLetter || $0.isNumber) })
-            .map(String.init)
+        Vocabulary.words(in: input)
             .filter { !vocabulary.noiseWords.contains($0) }
     }
 

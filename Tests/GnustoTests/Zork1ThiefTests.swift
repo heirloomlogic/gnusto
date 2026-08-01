@@ -61,8 +61,7 @@ struct Zork1ThiefTests {
                 "unexpected generosity",
                 "stops to admire its beauty.",  // he takes it (the service is armed)
                 "You can't see any such thing.",  // examine egg — it's gone with him
-                "You are carrying:",
-                "a brass lantern",  // …and only the lantern; the egg is his now
+                "You are carrying a brass lantern",  // …and only the lantern; the egg is his now
             ])
         // The egg really did leave your hands — the inventory names only the
         // lantern.

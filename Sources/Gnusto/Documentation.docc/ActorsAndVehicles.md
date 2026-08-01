@@ -104,6 +104,12 @@ The **Lighthouse** example (`Sources/Lighthouse/`) wires exactly this: a
 keeper declared as an ``Actor`` and set roaming two rooms by `GnustoActors`,
 with a custom `talk` verb she answers. `LighthouseTranscriptTests` drives it.
 
+The **Kindly Deep** example (`Sources/KindlyDeep/`) is the companion half:
+`follows` keeps a mule at your shoulder, `stopDaemon`/`startDaemon` park him
+where he cannot go and pick him up again on the far side, and starting him
+co-located with the player avoids a spurious turn-one arrival.
+`KindlyDeepTests` pins the follow/park/rejoin contract.
+
 ## Vehicles
 
 One trait makes something boardable:

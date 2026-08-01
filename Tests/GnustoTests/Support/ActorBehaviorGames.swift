@@ -3,7 +3,8 @@ import GnustoActors
 
 /// Fixtures for `GnustoActors`. `WanderGame` exercises roaming (100% so
 /// every turn moves, announcements asserted under a pinned seed);
-/// `PickpocketGame` exercises theft, reactions, and daemon stopping.
+/// `PickpocketGame` exercises theft, reactions, and daemon stopping;
+/// `FollowGame` exercises following (deterministic, no seeds).
 struct WanderGame: Game {
     let title = "Wander"
     let intro = "Someone is pacing the grounds."
@@ -146,6 +147,83 @@ struct PickpocketGame: Game {
         world.before(Intent("whistle")) {
             stopDaemon("pick")
             try reply("The whistle freezes every hand in the plaza.")
+        }
+    }
+}
+
+/// `FollowGame` exercises following: a companion hound that catches up with
+/// the player each turn — silently in the dark, never while parked or
+/// offstage. No randomness, so no seed pinning anywhere.
+struct FollowGame: Game {
+    let title = "Follow"
+    let intro = "The hound pads at your heel."
+
+    let foyer = Location {
+        name("Foyer")
+        description("Coats and boot-scrapes.")
+    }
+
+    let hall = Location {
+        name("Hall")
+        description("A long rug.")
+    }
+
+    let parlor = Location {
+        name("Parlor")
+        description("Doilies everywhere.")
+    }
+
+    let cellar = Location {
+        name("Cellar")
+        description("You should not be able to read this.")
+        dark
+    }
+
+    let hound = Actor {
+        name("loyal hound")
+        adjectives("loyal")
+        description("All ears and devotion.")
+    }
+
+    let behaviors = ActorBehaviors()
+
+    var map: WorldMap {
+        foyer.east(hall)
+        hall.west(foyer)
+        hall.east(parlor)
+        parlor.west(hall)
+        foyer.down(cellar)
+        cellar.up(foyer)
+
+        player.starts(in: foyer)
+        hound.starts(in: foyer)  // co-located: no spurious turn-one arrival
+    }
+
+    var verbs: [SyntaxRule] {
+        SyntaxRule("dismiss", intent: Intent("dismiss"))
+        SyntaxRule("park", intent: Intent("park"))
+        SyntaxRule("resume", intent: Intent("resume"))
+    }
+
+    var timers: [TimedEvent] {
+        behaviors.follows(
+            hound,
+            daemonName: "follow",
+            arrivals: ["The hound pads in after you."])
+    }
+
+    var rules: Rules {
+        world.before(Intent("dismiss")) {
+            hound.vanish()
+            try reply("The hound is spirited away.")
+        }
+        world.before(Intent("park")) {
+            stopDaemon("follow")
+            try reply("\"Stay,\" you say. The hound sits.")
+        }
+        world.before(Intent("resume")) {
+            startDaemon("follow")
+            try reply("\"Come along,\" you say.")
         }
     }
 }

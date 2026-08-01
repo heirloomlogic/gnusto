@@ -36,16 +36,10 @@ struct AggressionGateTests {
             ["provoke", "wait", "quit"],
             seed: seed)
         // The first post-provoke aggression line is the same in both runs.
-        let idleLine = firstHecklerLine(in: turnOutputAfterProvoke(idleFirst))
-        let directLine = firstHecklerLine(in: turnOutputAfterProvoke(straightIn))
+        let idleLine = firstHecklerLine(in: output(after: "You provoke the heckler.", in: idleFirst))
+        let directLine = firstHecklerLine(in: output(after: "You provoke the heckler.", in: straightIn))
         #expect(idleLine != nil)
         #expect(idleLine == directLine)
-    }
-
-    /// Everything the game printed after the `provoke` command.
-    private func turnOutputAfterProvoke(_ transcript: String) -> String {
-        guard let range = transcript.range(of: "You provoke the heckler.") else { return "" }
-        return String(transcript[range.upperBound...])
     }
 
     /// The first heckler aggression line in a slice of transcript.

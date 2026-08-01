@@ -152,4 +152,28 @@ struct ParserTests {
         let parser = StandardParser(vocabulary: Vocabulary(), syntaxRules: [])
         #expect(parser.tokenize(input) == expected)
     }
+
+    // MARK: - Declared vocabulary
+
+    /// Hyphenated and multi-word declarations decompose into typable words:
+    /// the last word of a name or synonym is the noun, everything ahead of it
+    /// qualifies it, and adjectives split into their pieces.
+    @Test func hyphenatedAndMultiWordDeclarationsBecomeTypableWords() throws {
+        let (definition, _) = try Bootstrap.build(HyphenatedGame())
+        let id = try #require(
+            definition.vocabulary.displayNames.first { $0.value == "air-door" }?.key)
+        let lexicon = try #require(definition.vocabulary.itemLexicons[id])
+        #expect(lexicon.nouns == ["door", "works"])
+        #expect(lexicon.adjectives == ["air", "twelve", "foot", "old"])
+
+        let parser = StandardParser(
+            vocabulary: definition.vocabulary, syntaxRules: definition.syntaxRules)
+        let scope = Scope(visibleItems: [id])
+        for input in ["x air-door", "x air door", "open door", "x twelve-foot door", "x old works"] {
+            let parsed = try parser.parse(input, scope: scope).get()
+            #expect(parsed.directObject == id, "input: \(input)")
+        }
+        // The display name is untouched by the split.
+        #expect(definition.vocabulary.displayNames[id] == "air-door")
+    }
 }

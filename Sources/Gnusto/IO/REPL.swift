@@ -89,7 +89,7 @@ public struct REPL: Sendable {
                 io.write("[Couldn't start transcript recording.]\n\n")
                 return nil
             }
-            io.write("[Recording transcript to \(started.path)]\n\n")
+            io.write("[Recording transcript to \(shellEscaped(started.path))]\n\n")
             return started
         case .stop:
             guard let recorder else {
@@ -97,8 +97,14 @@ public struct REPL: Sendable {
                 return nil
             }
             recorder.close()
-            io.write("[Transcript recording ended: \(recorder.path)]\n\n")
+            io.write("[Transcript recording ended: \(shellEscaped(recorder.path))]\n\n")
             return nil
         }
+    }
+
+    /// Backslash-escapes spaces so the announced path can be pasted into a
+    /// shell as-is.
+    private func shellEscaped(_ path: String) -> String {
+        path.replacingOccurrences(of: " ", with: "\\ ")
     }
 }

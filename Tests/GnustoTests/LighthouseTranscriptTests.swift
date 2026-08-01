@@ -168,7 +168,7 @@ struct LighthouseTranscriptTests {
                 "Save to what file?", "Saved.",
                 "Dropped.", "You are empty-handed.",
                 "Restore from what file?", "Restored.",
-                "You are carrying:", "brass key",
+                "You are carrying a brass key",
             ])
     }
 }

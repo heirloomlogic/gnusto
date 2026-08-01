@@ -3,6 +3,41 @@ struct ItemLexicon: Sendable {
     var nouns: Set<String> = []
     var adjectives: Set<String> = []
 
+    init(nouns: Set<String> = [], adjectives: Set<String> = []) {
+        self.nouns = nouns
+        self.adjectives = adjectives
+    }
+
+    /// Decomposes an item's declarations into the words a player can type.
+    ///
+    /// A name or synonym is a *phrase*: its last word is the noun and the
+    /// words ahead of it qualify that noun, so `"air-door"` answers to `door`
+    /// and `air door`, and `"old works"` to `works` and `old works`. Declared
+    /// adjectives are phrases too, and every word in one stands alone.
+    ///
+    /// Every phrase is split by `Vocabulary.words(in:)` — the parser's own
+    /// splitter — which is what makes punctuation harmless here.
+    init(name: String?, synonyms: [String], adjectives: [String]) {
+        self.init()
+        for phrase in synonyms {
+            learn(phrase)
+        }
+        if let name {
+            learn(name)
+        }
+        for phrase in adjectives {
+            self.adjectives.formUnion(Vocabulary.words(in: phrase))
+        }
+    }
+
+    /// Files one name-or-synonym phrase: last word noun, the rest adjectives.
+    private mutating func learn(_ phrase: String) {
+        let words = Vocabulary.words(in: phrase)
+        guard let noun = words.last else { return }
+        nouns.insert(noun)
+        adjectives.formUnion(words.dropLast())
+    }
+
     /// True when `tokens` is a valid way to refer to this item: every token
     /// is one of its words, and the final token is a noun.
     func matches(_ tokens: [String]) -> Bool {
@@ -43,6 +78,21 @@ struct Vocabulary: Sendable {
     /// True if the word appears anywhere in the game's vocabulary.
     func knows(_ word: String) -> Bool {
         allKnownWords.contains(word)
+    }
+
+    /// The one rule for what counts as a word: any run of letters or digits,
+    /// with every other character a separator.
+    ///
+    /// Both halves of the parser go through it — `StandardParser.tokenize`
+    /// splitting the player's line, and `ItemLexicon.init(name:synonyms:adjectives:)`
+    /// splitting what the game declared — so the two can never disagree about
+    /// where a word ends. That shared rule is why `name("air-door")` answers to
+    /// something: split identically on both sides, it registers `air` and
+    /// `door`, and not a hyphenated token the tokenizer could never produce.
+    static func words(in phrase: String) -> [String] {
+        phrase.lowercased()
+            .split(whereSeparator: { !($0.isLetter || $0.isNumber) })
+            .map(String.init)
     }
 
     /// Called once at bootstrap, after all words are registered.

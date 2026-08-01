@@ -87,8 +87,6 @@ public struct GameText: Sendable {
     public var pitchBlack = "It is pitch black. You can't see a thing."
     /// An `inventory` with nothing carried.
     public var emptyHanded = "You are empty-handed."
-    /// The header above the inventory listing.
-    public var carrying = "You are carrying:"
     /// Reading something with no description to read.
     public var nothingWritten = "There's nothing written on that."
     /// A `wait` turn — a beat passes while fuses and daemons tick.
@@ -292,9 +290,12 @@ public struct GameText: Sendable {
         "In the \($1) is \(GameText.indefinite($0))."
     }
 
-    /// One carried item in the inventory listing.
-    public var inventoryLine: @Sendable (_ name: String, _ isWorn: Bool) -> String = {
-        "  \(GameText.indefinite($0))\($1 ? " (being worn)" : "")"
+    /// The `inventory` listing, as one sentence ("You are carrying a brass
+    /// lantern, an apple, and a velvet cloak (being worn)."). Only called with
+    /// at least one item; `emptyHanded` covers the rest.
+    public var inventorySentence: @Sendable (_ items: [(name: String, isWorn: Bool)]) -> String = {
+        let phrases = $0.map { GameText.indefinite($0.name) + ($0.isWorn ? " (being worn)" : "") }
+        return "You are carrying \(GameText.englishList(phrases))."
     }
 
     /// The title banner shown at startup and by `version`. The `<br>` keeps the
@@ -379,13 +380,22 @@ public struct GameText: Sendable {
     /// - Parameter names: the bare names to article and join.
     /// - Returns: the names articled and joined into an English list.
     public static func indefiniteList(_ names: [String]) -> String {
-        let articled = names.map(indefinite)
-        guard let last = articled.last else { return "" }
-        switch articled.count {
+        englishList(names.map(indefinite))
+    }
+
+    /// Joins already-formatted phrases into an English list ("Y", "Y and Z",
+    /// "Y, Z, and W") — the serial-comma join behind `indefiniteList`, for
+    /// callers whose phrases carry their own articles or annotations.
+    ///
+    /// - Parameter phrases: the phrases to join.
+    /// - Returns: the phrases joined into an English list.
+    public static func englishList(_ phrases: [String]) -> String {
+        guard let last = phrases.last else { return "" }
+        switch phrases.count {
         case 1: return last
-        case 2: return "\(articled[0]) and \(last)"
+        case 2: return "\(phrases[0]) and \(last)"
         default:
-            let allButLast = articled.dropLast().joined(separator: ", ")
+            let allButLast = phrases.dropLast().joined(separator: ", ")
             return "\(allButLast), and \(last)"
         }
     }

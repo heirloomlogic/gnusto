@@ -263,3 +263,31 @@ struct ProxyProbeGame: Game {
         }
     }
 }
+
+/// A one-room vocabulary probe whose words are deliberately punctuated and
+/// multi-word. Whatever a game declares has to be split the way player input
+/// is, or it names a token the tokenizer can never produce.
+struct HyphenatedGame: Game {
+    let title = "Hyphens"
+    let tagline = "A vocabulary fixture."
+    let maxScore = 0
+    let intro = "A fixture."
+
+    let room = Location {
+        name("Room")
+        description("A room.")
+    }
+
+    let airDoor = Item {
+        name("air-door")
+        adjectives("twelve-foot")
+        synonyms("old works")
+        description("A stout ventilation door.")
+        scenery
+    }
+
+    var map: WorldMap {
+        player.starts(in: room)
+        airDoor.starts(in: room)
+    }
+}

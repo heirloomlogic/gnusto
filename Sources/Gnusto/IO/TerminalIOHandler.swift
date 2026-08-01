@@ -285,6 +285,34 @@ public final class TerminalIOHandler: IOHandler {
             case .end:
                 box.withLock { $0.cursor = $0.input.count }
 
+            case .wordLeft:
+                box.withLock { $0.cursor = Self.wordBackward(input: $0.input, cursor: $0.cursor) }
+
+            case .wordRight:
+                box.withLock { $0.cursor = Self.wordForward(input: $0.input, cursor: $0.cursor) }
+
+            case .deleteWordBack:
+                box.withLock { st in
+                    let start = Self.wordBackward(input: st.input, cursor: st.cursor)
+                    let chars = Array(st.input)
+                    st.input = String(chars[0..<start] + chars[st.cursor...])
+                    st.cursor = start
+                }
+
+            case .deleteWordForward:
+                box.withLock { st in
+                    let end = Self.wordForward(input: st.input, cursor: st.cursor)
+                    let chars = Array(st.input)
+                    st.input = String(chars[0..<st.cursor] + chars[end...])
+                    // Caret stays put: the word to its right is what's removed.
+                }
+
+            case .deleteToStart:
+                box.withLock { st in
+                    st.input = String(Array(st.input)[st.cursor...])
+                    st.cursor = 0
+                }
+
             case .historyPrev:
                 box.withLock { st in
                     guard historyCursor > 0 else { return }
@@ -489,6 +517,8 @@ public final class TerminalIOHandler: IOHandler {
         case character(String)
         case enter, backspace, deleteForward, tab
         case left, right, home, end
+        case wordLeft, wordRight
+        case deleteWordBack, deleteWordForward, deleteToStart
         case historyPrev, historyNext
         case pageUp, pageDown
         case eof, interrupt
@@ -533,10 +563,14 @@ public final class TerminalIOHandler: IOHandler {
             return .eof
         case .byte(let b):
             switch b {
+            case 0x01: return .home  // Ctrl-A — start of line
             case 0x03: return .interrupt
             case 0x04: return .eof
+            case 0x05: return .end  // Ctrl-E — end of line
             case 0x09: return .tab
             case 0x0A, 0x0D: return .enter
+            case 0x15: return .deleteToStart  // Ctrl-U — kill to line start
+            case 0x17: return .deleteWordBack  // Ctrl-W — delete word before caret
             case 0x7F, 0x08: return .backspace
             case 0x1B: return readEscapeSequence()
             case 0x00..<0x20: return readKey()  // ignore other control bytes
@@ -545,11 +579,24 @@ public final class TerminalIOHandler: IOHandler {
         }
     }
 
-    /// Parses a CSI escape sequence (arrows, Home/End, Delete, Page keys). A
-    /// bare or unrecognized ESC is swallowed.
+    /// Parses an escape sequence: a CSI/SS3 sequence (arrows, Home/End, Delete,
+    /// Page keys, and their modified word-jump forms), or a Meta/Alt-prefixed
+    /// key — Option-as-Meta terminals send a bare `ESC` then the key. A bare or
+    /// unrecognized ESC is swallowed.
     private func readEscapeSequence() -> Key? {
-        guard case .byte(let b1) = readRawByte(), b1 == 0x5B || b1 == 0x4F else {
-            return readKey()  // lone ESC; move on to the next key
+        guard case .byte(let b1) = readRawByte() else { return readKey() }
+        guard b1 == 0x5B || b1 == 0x4F else {
+            // Not a CSI/SS3 introducer, so this is a Meta/Alt prefix (Terminal's
+            // "Use Option as Meta", readline's M-…): the byte *is* the key. Only
+            // the word-editing metas are recognized; any other lone ESC is
+            // swallowed, as before.
+            switch b1 {
+            case 0x62: return .wordLeft  // ESC b — Option/Meta-left
+            case 0x66: return .wordRight  // ESC f — Option/Meta-right
+            case 0x64: return .deleteWordForward  // ESC d — delete word after caret
+            case 0x7F, 0x08: return .deleteWordBack  // ESC DEL — Option-backspace
+            default: return readKey()  // lone ESC; move on to the next key
+            }
         }
         guard case .byte(let b2) = readRawByte() else { return readKey() }
         switch b2 {
@@ -559,18 +606,39 @@ public final class TerminalIOHandler: IOHandler {
         case 0x44: return .left
         case 0x48: return .home  // ESC[H / ESC OH
         case 0x46: return .end  // ESC[F / ESC OF
-        case 0x30...0x39:  // numeric parameter, terminated by '~'
+        case 0x30...0x39:  // numeric parameter(s), ended by the CSI final byte
             var param = String(UnicodeScalar(b2))
             while case .byte(let n) = readRawByte() {
-                if n == 0x7E { break }
-                // Cap the accumulator: a real parameter is a digit or two, so a
+                // A final byte (a letter or '~', 0x40–0x7E) ends the sequence;
+                // the bytes before it are parameter digits and ';' separators.
+                if n >= 0x40, n <= 0x7E { return decodeCSI(param: param, final: n) }
+                // Cap the accumulator: a real parameter is a few bytes, so a
                 // stream that never sends the terminator can't grow it without
                 // bound. An overlong sequence falls through to the unknown-
                 // sequence discard path below.
                 guard param.count < 8 else { return readKey() }
                 param.append(Character(UnicodeScalar(n)))
             }
-            switch param {
+            return readKey()  // truncated sequence; move on
+        default:
+            return readKey()
+        }
+    }
+
+    /// Maps a parameterized CSI sequence — its parameter string (e.g. `"1;3"`)
+    /// and final byte (e.g. `'D'`) — to a key. Covers the `ESC [ n ~` navigation
+    /// and edit keys and the modified arrows `ESC [ 1 ; m D/C`, whose modifier
+    /// (xterm's `3` = Alt/Option, `5` = Ctrl) turns a plain arrow into a
+    /// word jump. Unknown combinations are swallowed.
+    private func decodeCSI(param: String, final: UInt8) -> Key? {
+        // The modifier is the parameter after the first ';'; its presence
+        // upgrades an arrow to a word jump for Alt (3) or Ctrl (5).
+        let fields = param.split(separator: ";", omittingEmptySubsequences: false)
+        let modifier = fields.count > 1 ? Int(fields[1]) : nil
+        let wordJump = modifier == 3 || modifier == 5
+        switch final {
+        case 0x7E:  // '~' — parameterized navigation / edit keys
+            switch fields.first.map(String.init) {
             case "1", "7": return .home
             case "4", "8": return .end
             case "3": return .deleteForward
@@ -578,8 +646,13 @@ public final class TerminalIOHandler: IOHandler {
             case "6": return .pageDown
             default: return readKey()
             }
-        default:
-            return readKey()
+        case 0x44: return wordJump ? .wordLeft : .left  // …D — left arrow
+        case 0x43: return wordJump ? .wordRight : .right  // …C — right arrow
+        case 0x48: return .home  // …H
+        case 0x46: return .end  // …F
+        case 0x41: return .historyPrev  // …A — up
+        case 0x42: return .historyNext  // …B — down
+        default: return readKey()
         }
     }
 
@@ -617,6 +690,34 @@ public final class TerminalIOHandler: IOHandler {
                 offset += written
             }
         }
+    }
+
+    // MARK: - Word boundaries
+
+    /// The caret offset one word to the *left* of `cursor`: skips any spaces
+    /// immediately before the caret, then the run of non-spaces before them —
+    /// readline's unix-word boundary. This is both where Option-left lands and
+    /// where Option-backspace / Ctrl-W delete back to. Character offsets, to
+    /// match the arrow keys and backspace, so multi-byte input doesn't regress.
+    /// Pure — unit-tested directly.
+    static func wordBackward(input: String, cursor: Int) -> Int {
+        let chars = Array(input)
+        var i = max(0, min(cursor, chars.count))
+        while i > 0, chars[i - 1].isWhitespace { i -= 1 }
+        while i > 0, !chars[i - 1].isWhitespace { i -= 1 }
+        return i
+    }
+
+    /// The caret offset one word to the *right* of `cursor`: skips any spaces at
+    /// the caret, then the run of non-spaces after them. This is where
+    /// Option-right lands and where Option-forward-delete (`ESC d`) deletes to.
+    /// Pure — unit-tested directly.
+    static func wordForward(input: String, cursor: Int) -> Int {
+        let chars = Array(input)
+        var i = max(0, min(cursor, chars.count))
+        while i < chars.count, chars[i].isWhitespace { i += 1 }
+        while i < chars.count, !chars[i].isWhitespace { i += 1 }
+        return i
     }
 
     // MARK: - Ctrl-C confirm

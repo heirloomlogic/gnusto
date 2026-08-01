@@ -50,6 +50,10 @@ public func name(_ text: String) -> LocationTrait {
 /// The display name of an item. The last word becomes the item's primary
 /// noun; the leading words double as adjectives.
 ///
+/// Words are separated by punctuation as well as spaces, so `name("air-door")`
+/// gives the noun `door` and the adjective `air`, matching what a player types
+/// rather than the hyphenated string. The display name itself is untouched.
+///
 /// - Parameter text: the item's display name.
 /// - Returns: the name trait.
 public func name(_ text: String) -> ItemTrait {
@@ -74,6 +78,10 @@ public func description(_ text: String) -> ItemTrait {
 
 /// Additional words the parser accepts before the item's noun.
 ///
+/// Each entry is split on punctuation and spaces, and every word it yields
+/// stands alone: `adjectives("twelve-foot")` matches `twelve` and `foot`
+/// independently, so `x foot beam` resolves.
+///
 /// - Parameter words: the adjectives to accept.
 /// - Returns: the adjectives trait.
 public func adjectives(_ words: String...) -> ItemTrait {
@@ -81,6 +89,11 @@ public func adjectives(_ words: String...) -> ItemTrait {
 }
 
 /// Alternative nouns the parser accepts for the item.
+///
+/// Each entry decomposes exactly as ``name(_:)`` does — last word the noun,
+/// earlier words adjectives — so a multi-word synonym contributes both:
+/// `synonyms("old works")` registers the noun `works` and the adjective `old`,
+/// matching `works` and `old works` alike.
 ///
 /// - Parameter words: the alternative nouns to accept.
 /// - Returns: the synonyms trait.
