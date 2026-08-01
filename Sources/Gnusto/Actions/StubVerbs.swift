@@ -110,29 +110,8 @@ extension StubVerb {
         }
     }
 
-    /// A stub whose reply names no object but whose verb is an act of physical
-    /// contact — so a person is the one object it must not report back about.
-    ///
-    /// "You feel nothing out of the ordinary." is a fine answer for a wall and
-    /// a claim about a completed act on a witness, one turn after the game has
-    /// refused to let you search her. Only `touch` wants this today: `smell`
-    /// and `listen` cross a room and lay no hand on anybody, and `taste` and
-    /// `knock` say nothing a person could object to.
-    static func contact(
-        _ intent: Intent,
-        _ patterns: [[SyntaxElement]],
-        reach: Reach,
-        _ line: @escaping @Sendable (GameText) -> String
-    ) -> StubVerb {
-        .init(intent, patterns, reach) { text, command in
-            guard let object = command.directObject, object.isActor, !object.isPlayer
-            else { return line(text) }
-            return text.stubs.somebodyElse(object.definiteName)
-        }
-    }
-
     /// The escape hatch, for a reply that needs more of the ``Command`` than the
-    /// direct object's name. Only `give` wants it today.
+    /// direct object's name. `give` and `touch` want it today.
     static func custom(
         _ intent: Intent,
         _ patterns: [[SyntaxElement]],
@@ -389,7 +368,14 @@ extension DefaultActions {
 
         // MARK: Senses
 
-        .contact(
+        // `custom` rather than `plain`, for the one guard `named` gets for
+        // free: "You feel nothing out of the ordinary." is a fine answer about
+        // a wall and a claim about a completed act of contact on a witness, one
+        // turn after `cantSearchActor` has refused to let the player put a hand
+        // on her. `smell` and `listen` below need no such guard — both cross a
+        // room and lay a hand on nobody — and neither do `taste` and `knock`,
+        // which say nothing a person could object to.
+        .custom(
             .touch,
             [
                 ["touch", .directObject],
@@ -397,7 +383,11 @@ extension DefaultActions {
                 ["rub", .directObject],
             ],
             reach: .directObject
-        ) { $0.stubs.touch },
+        ) { text, command in
+            guard let object = command.directObject, object.isActor, !object.isPlayer
+            else { return text.stubs.touch }
+            return text.stubs.somebodyElse(object.definiteName)
+        },
 
         // A smell crosses a room, and so does a sound. These two are the reason
         // the guard is per verb.

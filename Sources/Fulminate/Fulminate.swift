@@ -174,6 +174,39 @@ struct Fulminate: Game, GameMain {
         return text
     }
 
+    /// Whether the player is out where the carriage house is — the yard or
+    /// what is left of the lab. Three things read it: both aftermath fuses,
+    /// which narrate a house from outside it, and the rule that records having
+    /// seen the wreckage. Computed rather than stored, so the bootstrap's
+    /// reflection walk doesn't take it for an entity, and legal only inside a
+    /// rule body, where there is a live frame to ask.
+    var playerIsOutBack: Bool {
+        player.location == backYard || player.location == carriageHouse
+    }
+
+    /// Where somebody was at a given minute, as Mrs. Kettle would say it.
+    ///
+    /// The lookup is the whole demonstration — see the mechanics contract — and
+    /// this only puts the room's name in her mouth rather than in a `let` above
+    /// each of her nine interpolations. Lowercasing is a house-style decision
+    /// and belongs in one place.
+    ///
+    /// - Parameters:
+    ///   - day: whose evening to read.
+    ///   - time: the minute being quoted.
+    /// - Returns: the room's name as it goes after "the".
+    func room(_ day: Timetable, at time: TimeOfDay) -> String {
+        clock.location(of: day, at: time).name.lowercased()
+    }
+
+    /// The three minutes Mrs. Kettle's testimony is anchored on, named once so
+    /// that a row's gate and the minute it quotes cannot drift apart — the
+    /// whole class of defect those gates exist to close. `static` for the same
+    /// reason `streetRefusal` is: the reflection walk looks for entities.
+    static let sawTeague = TimeOfDay(17, 42)
+    static let blast = TimeOfDay(17, 46)
+    static let afterBlast = TimeOfDay(17, 50)
+
     /// Both ways out of the front hall refuse in the same words. A `static`
     /// rather than a stored property so the bootstrap's reflection walk, which
     /// looks for entities, doesn't have to step over it.
@@ -577,14 +610,24 @@ struct Fulminate: Game, GameMain {
     /// The building from outside it. The room is `carriageHouse`; this is what
     /// the player is looking at from the yard, facing north.
     ///
-    /// `lamp` and `door` because its own description names both from the yard
-    /// side, and `gap` because the patrolman's refusal puts an arm across one.
+    /// `door` because its own description names one from the yard side, and
+    /// `gap` because the patrolman's refusal puts an arm across one. The lamp
+    /// is its own item: it stops existing at 5:46 and this one doesn't.
     let carriageHouseOutside = Item {
         name("carriage house")
         adjectives("carriage", "brick", "old")
-        synonyms(
-            "house", "shed", "lab", "laboratory", "workshop", "building",
-            "door", "doors", "gap", "doorway", "lamp", "light")
+        synonyms("house", "shed", "lab", "laboratory", "workshop", "building", "door", "doors", "gap", "doorway")
+        scenery
+    }
+
+    /// The light the yard's pre-blast description is written around — "with its
+    /// lamp burning and its door ajar" — and the reason a player looking north
+    /// across the grass can see anything at all. It reads host state, so it is
+    /// here rather than in ``Fixtures``.
+    let labLamp = Item {
+        name("lamp")
+        adjectives("tin", "shaded", "yard")
+        synonyms("light", "bulb")
         scenery
     }
 
@@ -1185,7 +1228,6 @@ struct Fulminate: Game, GameMain {
             // got the house narrated at him from the middle of the lawn — doors
             // going above and below a man standing on grass. `blast.settling`
             // eleven lines down already keeps them apart; so does this now.
-            let outBack = player.location == backYard || player.location == carriageHouse
             knockedFlat = false
 
             if wasInTheYardForTheBlast {
@@ -1198,7 +1240,7 @@ struct Fulminate: Game, GameMain {
             }
 
             say(
-                outBack
+                playerIsOutBack
                     ? """
 
                     The dust is coming down out of the air slowly, the way it does indoors, and there is nothing \
@@ -1232,8 +1274,7 @@ struct Fulminate: Game, GameMain {
         // to step down. Indoors at sixty feet through two walls, nobody's ears
         // are singing, so the note has no business in that sentence.
         fuse("blast.settling", after: 1) {
-            let outBack = player.location == backYard || player.location == carriageHouse
-            let source = outBack ? "Something in the wreckage" : "Something out at the back"
+            let source = playerIsOutBack ? "Something in the wreckage" : "Something out at the back"
             say(
                 wasInTheYardForTheBlast
                     ? """
@@ -1321,22 +1362,17 @@ struct Fulminate: Game, GameMain {
         // the clause is the one thing in it that named something they had
         // not done, and it stung most for the player who most deserved it.
         clock.at(TimeOfDay(18, 50), named: "clock.coroner") {
-            say(
+            let atTheWreckage =
                 sawTheWreckage
-                    ? """
+                ? "He looks at the wreckage for rather less time than you did."
+                : "He goes out to the back and looks at what is left of it, which is more than you managed."
+            say(
+                """
 
-                    The county man comes up the path at ten to seven, and he is not in a hurry, because nobody has \
-                    given him a reason to be. He looks at the wreckage for rather less time than you did. Then he \
-                    writes *accidental* in the box marked cause, and the whole of tonight becomes a page in a drawer \
-                    in a building in Los Angeles.
-                    """
-                    : """
-
-                    The county man comes up the path at ten to seven, and he is not in a hurry, because nobody has \
-                    given him a reason to be. He goes out to the back and looks at what is left of it, which is more \
-                    than you managed. Then he writes *accidental* in the box marked cause, and the whole of tonight \
-                    becomes a page in a drawer in a building in Los Angeles.
-                    """)
+                The county man comes up the path at ten to seven, and he is not in a hurry, because nobody has given \
+                him a reason to be. \(atTheWreckage) Then he writes *accidental* in the box marked cause, and the \
+                whole of tonight becomes a page in a drawer in a building in Los Angeles.
+                """)
             try end(won: false)
         }
     }
@@ -1494,12 +1530,8 @@ struct Fulminate: Game, GameMain {
         // Where the wreckage is, and therefore what the coroner is entitled to
         // say the player looked at. Both rooms count: the lab is open for the
         // three turns between the blast and the radio car.
-        backYard.afterEachTurn {
-            if blastHappened { sawTheWreckage = true }
-        }
-
-        carriageHouse.afterEachTurn {
-            if blastHappened { sawTheWreckage = true }
+        world.afterEachTurn {
+            if blastHappened, playerIsOutBack { sawTheWreckage = true }
         }
 
         // The one turn on which the stock line contradicts the sentence
@@ -1601,8 +1633,23 @@ struct Fulminate: Game, GameMain {
 
         gardenWall.describe {
             blastHappened
-                ? "Four courses of brick where there were nine, and the missing five are distributed across the grass."
+                ? """
+                Four courses of brick where there were nine, and the missing five are distributed across the grass. \
+                The ivy is holding up what is left of it rather better than the mortar was.
+                """
                 : "Low brick, and losing an argument with the ivy."
+        }
+
+        labLamp.describe {
+            blastHappened
+                ? """
+                In the grass with everything else, and the bulb somehow whole. There is light enough out here \
+                tonight without it.
+                """
+                : """
+                A bulb in a tin shade over the side door, burning at half past five in June because the man inside \
+                works to the bench and not to the window.
+                """
         }
 
         workbench.describe {
@@ -1720,9 +1767,10 @@ struct Fulminate: Game, GameMain {
             again: "Mrs. Vane has already said the one word she means to say to you."
         ) {
             try reply(
-                constance.isIn(parlour)
-                    ? "\"Yes,\" says Mrs. Vane, to no question, and goes on looking at the grate."
-                    : "\"Yes,\" says Mrs. Vane, to no question, and goes on looking at the fire.")
+                """
+                "Yes," says Mrs. Vane, to no question, and goes on looking at \
+                \(constance.isIn(parlour) ? "the grate" : "the fire").
+                """)
         }
         talk.greeting(
             of: delphine,
@@ -1826,15 +1874,11 @@ struct Fulminate: Game, GameMain {
                 again: "\"I have answered that.\" She has not moved at all."
             ) {
                 try reply(
-                    constance.isIn(parlour)
-                        ? """
-                        "I have been in the parlour all evening." She says it to the cold grate, in the voice of a \
-                        woman reading a timetable.
-                        """
-                        : """
-                        "I have been in the parlour all evening." She says it without turning round, in the voice of \
-                        a woman reading a timetable.
-                        """)
+                    """
+                    "I have been in the parlour all evening." She says it \
+                    \(constance.isIn(parlour) ? "to the cold grate" : "without turning round"), in the voice of a \
+                    woman reading a timetable.
+                    """)
             }
             topic(
                 "evening", "parlour", "alibi", "where",
@@ -2087,73 +2131,72 @@ struct Fulminate: Game, GameMain {
             topic(
                 "teague", "boarder", "howard",
                 learning: .kettleSawTeague,
-                when: { clock.now >= TimeOfDay(17, 42) }
+                when: { clock.now >= Fulminate.sawTeague }
             ) {
-                let room = clock.location(of: teagueDay, at: TimeOfDay(17, 42))
                 try reply(
                     """
-                    "Mr. Teague come down my back stairs into the \(room.name.lowercased()) at eighteen minutes to \
-                    six with his hat already on. I know because the pot goes on at a quarter to, and I was standing \
-                    right there getting it ready."
+                    "Mr. Teague come down my back stairs into the \(room(teagueDay, at: Fulminate.sawTeague)) at \
+                    eighteen minutes to six with his hat already on. I know because the pot goes on at a quarter to, \
+                    and I was standing right there getting it ready."
                     """)
             }
             // The present-tense halves. Each one declines the account rather
             // than giving it early, and the Teague row says when to come back:
             // the pot goes on at a quarter to six, which is the same fact her
             // testimony is anchored on.
+            // Its own `again:`, because the table's — "I've said my piece on
+            // that one" — would take back the invitation this row just made,
+            // and the invitation is the whole of its job.
             topic(
                 "teague", "boarder", "howard",
+                again: "\"Once the pot's on,\" she says. \"I'll not guess for you before then.\"",
                 reply: """
                     "Mr. Teague?" The pot gets a stir. "He's about. Ask me again once the pot's on and I'll have \
                     something for you."
                     """)
+            // Her account of the blast is not complete until Mrs. Vane has gone
+            // back in at 5:54, which is the last minute it quotes.
             topic("constance", "mrs vane", "mother", "old lady", when: { clock.now >= TimeOfDay(17, 54) }) {
-                let then = clock.location(of: constanceDay, at: TimeOfDay(17, 46))
-                let after = clock.location(of: constanceDay, at: TimeOfDay(17, 50))
                 try reply(
                     """
-                    "Mrs. Vane was in the \(then.name.lowercased()) when it went, and stood out in the \
-                    \(after.name.lowercased()) after with the rest of us. Then back in, without a word said."
+                    "Mrs. Vane was in the \(room(constanceDay, at: Fulminate.blast)) when it went, and stood out in \
+                    the \(room(constanceDay, at: Fulminate.afterBlast)) after with the rest of us. Then back in, \
+                    without a word said."
                     """)
             }
             topic("constance", "mrs vane", "mother", "old lady") {
-                let room = clock.location(of: constanceDay, at: clock.now)
                 try reply(
                     """
-                    "Mrs. Vane is in the \(room.name.lowercased()). You will get more out of me than you will out of \
-                    her, and you will not get much out of me."
+                    "Mrs. Vane is in the \(room(constanceDay, at: clock.now)). You will get more out of me than you \
+                    will out of her, and you will not get much out of me."
                     """)
             }
-            topic("delphine", "marsh", "miss", when: { clock.now >= TimeOfDay(17, 46) }) {
-                let room = clock.location(of: delphineDay, at: TimeOfDay(17, 46))
+            topic("delphine", "marsh", "miss", when: { clock.now >= Fulminate.blast }) {
                 try reply(
                     """
-                    "Miss Marsh was in the \(room.name.lowercased()) when it went. I'll say that for her, and she \
-                    can do with it what she likes."
+                    "Miss Marsh was in the \(room(delphineDay, at: Fulminate.blast)) when it went. I'll say that for \
+                    her, and she can do with it what she likes."
                     """)
             }
             topic("delphine", "marsh", "miss") {
-                let room = clock.location(of: delphineDay, at: clock.now)
                 try reply(
                     """
-                    "Miss Marsh is in the \(room.name.lowercased()), and has been since she got here. She does that."
+                    "Miss Marsh is in the \(room(delphineDay, at: clock.now)), and has been since she got here. She \
+                    does that."
                     """)
             }
-            topic("pike", "doctor", "visitor", when: { clock.now >= TimeOfDay(17, 50) }) {
-                let then = clock.location(of: pikeDay, at: TimeOfDay(17, 46))
-                let after = clock.location(of: pikeDay, at: TimeOfDay(17, 50))
+            topic("pike", "doctor", "visitor", when: { clock.now >= Fulminate.afterBlast }) {
                 try reply(
                     """
-                    "The doctor sat in the \(then.name.lowercased()) with his hat on from the minute he come. He was \
-                    out in the \(after.name.lowercased()) after, holding it."
+                    "The doctor sat in the \(room(pikeDay, at: Fulminate.blast)) with his hat on from the minute he \
+                    come. He was out in the \(room(pikeDay, at: Fulminate.afterBlast)) after, holding it."
                     """)
             }
             topic("pike", "doctor", "visitor") {
-                let room = clock.location(of: pikeDay, at: clock.now)
                 try reply(
                     """
-                    "The doctor is in the \(room.name.lowercased()) with his hat on, and he has not had it off since \
-                    he come. Make of that what you like."
+                    "The doctor is in the \(room(pikeDay, at: clock.now)) with his hat on, and he has not had it off \
+                    since he come. Make of that what you like."
                     """)
             }
             // Julian keeps no timetable, so this one is hers alone.
@@ -2220,15 +2263,11 @@ struct Fulminate: Game, GameMain {
         ) {
             glove.move(heldBy: constance)
             try reply(
-                constance.isIn(parlour)
-                    ? """
-                    She takes it out of your hand, which you were not expecting, and turns it over once. "I have been \
-                    sitting here," she says, "trying to remember whether I put it back."
-                    """
-                    : """
-                    She takes it out of your hand, which you were not expecting, and turns it over once. "I have been \
-                    standing here," she says, "trying to remember whether I put it back."
-                    """)
+                """
+                She takes it out of your hand, which you were not expecting, and turns it over once. "I have been \
+                \(constance.isIn(parlour) ? "sitting" : "standing") here," she says, "trying to remember whether I \
+                put it back."
+                """)
         }
 
         talk.shows(
@@ -2355,6 +2394,7 @@ struct Fulminate: Game, GameMain {
         dryGrass.starts(in: backYard)
         carriageHouseOutside.starts(in: backYard)
         fixtures.backStep.starts(in: backYard)
+        labLamp.starts(in: backYard)
         // Hidden until 5:46. Before that there is nothing alight in this garden.
         yardFire.starts(in: backYard)
 

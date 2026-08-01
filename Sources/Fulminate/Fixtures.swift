@@ -10,8 +10,8 @@ import Gnusto
 /// takeable, and none is listed — they exist so that `X PASSAGE` gets an answer
 /// instead of *I don't know the word "passage"*.
 ///
-/// They live in a ``GameContent`` bundle for the reason ``Gramarye``'s do: six
-/// more scenery items would otherwise push the host file past two thousand
+/// They live in a ``GameContent`` bundle for the reason ``Gramarye``'s do: five
+/// more items would otherwise push the host file further past two thousand
 /// lines. The host places them, because a bundle can only place into rooms and
 /// onto people it can *name*, and both are ``Fulminate``'s.
 ///

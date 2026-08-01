@@ -1207,7 +1207,11 @@ const reportedWordTotal = [...unknownWords.values()].reduce((a, b) => a + b, 0)
 // holding 261 over 59 words. The schema now says both; this counts anyway,
 // because a derived number does not depend on seventy-nine agents reading a
 // field description the same way.
-const census = await agent(
+// Started here, awaited by the critic — not `await`ed on this line. Nothing in
+// the gate reads it, and the gate is the round's longest pole (`swift test`
+// plus a strict recursive lint), so blocking on a subagent round-trip in front
+// of it is dead wall clock on every round.
+const censusPromise = agent(
   `${groundMin(labelFor('census'))}
 
 You are the unknown-word census. You count; you do not judge, file or explain.
@@ -1223,12 +1227,11 @@ zero and say so in \`note\` — that is a real answer and it means the round wro
 no transcripts.`,
   { label: 'census', phase: 'Gate', schema: CENSUS_SCHEMA, effort: 'low' })
 
-const censusWords = (census && census.words) || []
-const unknownWordTotal = Math.max(reportedWordTotal, (census && census.totalOccurrences) || 0)
-const unknownWordDistinct = Math.max(unknownWords.size, censusWords.length)
-
-const criticThunk = () =>
-  agent(
+const criticThunk = async () => {
+  const census = await censusPromise
+  const unknownWordTotal = Math.max(reportedWordTotal, (census && census.totalOccurrences) || 0)
+  const unknownWordDistinct = Math.max(unknownWords.size, ((census && census.words) || []).length)
+  return agent(
   `${groundMin(labelFor('critic'))}
 
 You are the completeness critic. You do not look for defects; you look for what this
@@ -1269,12 +1272,20 @@ Be blunt. An honest thin round is useful; a thin round dressed as a thorough one
 worse than not running.`,
     { label: 'critic', phase: 'Gate', schema: CRITIC_SCHEMA, effort: 'high' }
   )
+}
 
 // The gate runs the suite and the lint; the critic re-counts coverage from the
 // transcripts. Neither reads the other's output, and both are slow, so they run
-// together rather than one waiting on the other.
+// together rather than one waiting on the other. The census, started above,
+// finishes inside the critic's own wait.
 const [gate, critic] = await parallel(
   touched.length ? [gateThunk, criticThunk] : [() => null, criticThunk])
+
+const census = await censusPromise
+const censusWords = (census && census.words) || []
+const selfReportedWords = [...unknownWords.entries()]
+  .map(([word, count]) => ({ word, count }))
+  .sort((a, b) => b.count - a.count)
 
 return {
   game,
@@ -1290,10 +1301,8 @@ return {
   routed,
   // The census is the authority; what the testers said is kept beside it so a
   // reader can see the two disagree.
-  unknownWords: censusWords.length
-    ? [...censusWords].sort((a, b) => b.count - a.count)
-    : [...unknownWords.entries()].map(([word, count]) => ({ word, count })).sort((a, b) => b.count - a.count),
-  unknownWordsSelfReported: [...unknownWords.entries()].map(([word, count]) => ({ word, count })).sort((a, b) => b.count - a.count),
+  unknownWords: censusWords.length ? [...censusWords].sort((a, b) => b.count - a.count) : selfReportedWords,
+  unknownWordsSelfReported: selfReportedWords,
   fixes: fixes.map((f) => ({ file: f.file, ...(f.result || {}), findings: f.group.map((g) => g.claim) })),
   gate,
   critic,

@@ -267,17 +267,44 @@ public struct Conversation: GameContent {
                 // `forget` in between, where re-teaching is the least
                 // surprising thing to do.
                 if let taught = row.taught { learn(taught) }
-                if let line = row.again ?? (row.inheritsTableAgain ? again : nil) {
-                    let key = row.key(inTableOf: actor.name)
-                    // Marked *before* the body, not after: `reply` throws, so
-                    // for a `reply:` row there is no "after". Moving this
-                    // below `row.body()` silently disables the feature.
-                    if heard.rows.contains(key) { try reply(line) }
-                    heard.rows.insert(key)
-                }
-                try row.body()
+                try sayOnce(
+                    row.again ?? (row.inheritsTableAgain ? again : nil),
+                    key: { row.key(inTableOf: actor.name) },
+                    then: row.body)
             }
         }
+    }
+
+    /// Give `body` once and `again` every time after — the retirement rule
+    /// `topics`, `greeting` and `shows` all share.
+    ///
+    /// The mark goes down *before* the body, not after: a `reply:` answer
+    /// throws, so for it there is no "after", and moving the insert below the
+    /// body silently disables the feature. That invariant is the reason this is
+    /// one function rather than three copies of six lines.
+    ///
+    /// `key` is a closure because `topics` derives its key from the matched row
+    /// and only wants to pay for that when there is an `again:` to track.
+    ///
+    /// - Parameters:
+    ///   - again: what to say on a repeat, or `nil` to repeat forever and
+    ///     record nothing — which is what keeps a game that writes no `again:`
+    ///     byte-identical across saves.
+    ///   - key: the heard-set key, evaluated only when `again` is non-nil.
+    ///   - body: the answer in full.
+    /// - Throws: whatever `body` throws, and the `TurnInterrupt` that `reply`
+    ///   raises to end the turn on a repeat.
+    func sayOnce(
+        _ again: String?,
+        key: () -> String,
+        then body: () throws -> Void
+    ) throws {
+        if let again {
+            let key = key()
+            if heard.rows.contains(key) { try reply(again) }
+            heard.rows.insert(key)
+        }
+        try body()
     }
 
     /// What an actor does when a particular thing is put in front of them.
@@ -343,13 +370,7 @@ public struct Conversation: GameContent {
             // Teaching happens on every showing, repeat or not, matching
             // `topics`. `learn` is idempotent.
             if let fact { learn(fact) }
-            if let again {
-                // Marked *before* the body, not after: a `reply:` reaction
-                // throws, so for it there is no "after".
-                if heard.rows.contains(key) { try reply(again) }
-                heard.rows.insert(key)
-            }
-            try body()
+            try sayOnce(again, key: { key }, then: body)
         }
     }
 
@@ -413,11 +434,7 @@ public struct Conversation: GameContent {
         for intent in intents {
             actor.before(intent) {
                 if let fact { learn(fact) }
-                if let again {
-                    if heard.rows.contains(key) { try reply(again) }
-                    heard.rows.insert(key)
-                }
-                try body()
+                try sayOnce(again, key: { key }, then: body)
             }
         }
     }

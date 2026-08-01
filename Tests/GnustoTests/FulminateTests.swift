@@ -254,6 +254,21 @@ struct FulminateTests {
                 .contains("Ask them, they know me"))
         #expect(!stillLying.contains("I'd check her figures"))
 
+        // Asking early must not spend the answer. The two rows are tracked
+        // apart, so the testimony still lands at 5:42 — and the early row keeps
+        // its invitation open rather than taking it back with the table's
+        // "I've said my piece on that one."
+        let askedTwice = try await play(
+            Fulminate(),
+            [
+                "south", "ask kettle about teague",  // 5:32, too early
+                "z", "z", "ask kettle about teague",  // 5:38, still too early
+                "z", "ask kettle about teague",  // 5:42, the minute she quotes
+            ])
+        #expect(askedTwice.contains("I'll not guess for you before then."))
+        #expect(!askedTwice.contains("I've said my piece on that one."))
+        #expect(askedTwice.contains("at eighteen minutes to six"))
+
         // Teague's own alibi has the same shape and the same repair: at 5:34,
         // standing in his own room, he used to say he had walked down and
         // walked back — ten minutes before he goes.
@@ -579,8 +594,7 @@ struct FulminateTests {
                 "east", "south", "x pine table", "x back stairs", "x cellar steps",
                 "x yard door", "x drawer", "x stove",
             ])
-        #expect(!transcript.contains("I don't know the word"))
-        #expect(!transcript.contains("can't see any such thing"))
+        expectEveryNounAnswered(transcript)
     }
 
     /// The same walk one level down: not the things a room lists, but the
@@ -597,8 +611,7 @@ struct FulminateTests {
                 "west", "x bulb", "x fringe", "x rectangle", "x roses",
                 "east", "south", "x pine", "x grain", "x counter", "x switch", "x pot",
             ])
-        #expect(!hall.contains("I don't know the word"))
-        #expect(!hall.contains("can't see any such thing"))
+        expectEveryNounAnswered(hall)
 
         // The cellar's is the one that hurt most: the search refusal ends "the
         // dust is the interesting part" and pointed the player at a word the
@@ -609,8 +622,7 @@ struct FulminateTests {
                 "south", "open drawer", "take flashlight", "turn on flashlight", "down",
                 "x dust", "search coal bin",
             ])
-        #expect(!cellar.contains("I don't know the word"))
-        #expect(!cellar.contains("can't see any such thing"))
+        expectEveryNounAnswered(cellar)
         #expect(turnOutput(of: "x dust", in: cellar).contains("three winters of coal dust"))
     }
 
@@ -626,9 +638,23 @@ struct FulminateTests {
                     "look", "x fire", "x flames", "x wreckage", "x roof", "x slates",
                     "x timber", "x body", "x step", "x wall", "x grass",
                 ])
-        #expect(!transcript.contains("I don't know the word"))
-        #expect(!transcript.contains("can't see any such thing"))
+        expectEveryNounAnswered(transcript)
         #expect(turnOutput(of: "x fire", in: transcript).contains("where the roof came down"))
+    }
+
+    /// The yard's two-sided props. Answering a noun is not enough on its own —
+    /// the lamp the pre-blast description is written around stops existing at
+    /// 5:46, and a synonym hung on the building would have gone on describing
+    /// the building to a player asking about a lamp in the grass.
+    @Test func theYardsPropsReadDifferentlyOnTheTwoSidesOfTheBlast() async throws {
+        let before = try await play(Fulminate(), ["south", "west", "x lamp", "x wall"])
+        #expect(turnOutput(of: "x lamp", in: before).contains("burning at half past five in June"))
+        #expect(turnOutput(of: "x wall", in: before).contains("losing an argument with the ivy"))
+
+        let after = try await play(
+            Fulminate(), ["south", "west"] + Array(repeating: "z", count: 8) + ["x lamp", "x wall"])
+        #expect(turnOutput(of: "x lamp", in: after).contains("In the grass with everything else"))
+        #expect(turnOutput(of: "x wall", in: after).contains("The ivy is holding up what is left"))
     }
 
     /// And the lab from inside, which calls itself somebody's workshop and
@@ -641,8 +667,7 @@ struct FulminateTests {
                 "x workshop", "x chapel", "x walls", "x roof", "x rafters",
                 "x vice", "x nail", "x board", "x outline", "x blanket", "x corner",
             ])
-        #expect(!transcript.contains("I don't know the word"))
-        #expect(!transcript.contains("can't see any such thing"))
+        expectEveryNounAnswered(transcript)
     }
 
     /// Dr. Pike's hat is named in five sentences across three rooms and was a
@@ -672,14 +697,12 @@ struct FulminateTests {
                 "up", "x runner", "west", "x desk", "x drawer", "x lamp",
                 "east", "east", "x typewriter", "x sheet", "x bed", "x suitcase",
             ])
-        #expect(!upstairs.contains("I don't know the word"))
-        #expect(!upstairs.contains("can't see any such thing"))
+        expectEveryNounAnswered(upstairs)
 
         let lab = try await play(
             Fulminate(),
             ["south", "west", "north", "x bench", "x tool rack", "x cot", "x stove pipe"])
-        #expect(!lab.contains("I don't know the word"))
-        #expect(!lab.contains("can't see any such thing"))
+        expectEveryNounAnswered(lab)
 
         // And the cellar's coal bin, which the glove's own description names.
         let cellar = try await play(
@@ -1328,4 +1351,24 @@ struct FulminateTests {
 /// `expectInOrder` for sequence, but "exactly twice" needs a count.
 private func occurrencesInFulminate(of needle: String, in haystack: String) -> Int {
     haystack.components(separatedBy: needle).count - 1
+}
+
+/// The two ways this house can fail to know a word it printed, asserted
+/// together because they are one defect wearing two replies: the parser says
+/// *I don't know the word* for a word in no vocabulary at all, and *You can't
+/// see any such thing* for one that resolves somewhere else — to an item in
+/// another room, or to a word declared as an adjective, which can never be the
+/// last token of a phrase. A noun walk that checked only the first would pass
+/// while the second went on answering words the room printed one line earlier.
+///
+/// - Parameters:
+///   - transcript: the play to check.
+///   - sourceLocation: filled in by the compiler, so a failure points at the
+///     walk rather than at this line.
+private func expectEveryNounAnswered(
+    _ transcript: String,
+    sourceLocation: SourceLocation = #_sourceLocation
+) {
+    #expect(!transcript.contains("I don't know the word"), sourceLocation: sourceLocation)
+    #expect(!transcript.contains("can't see any such thing"), sourceLocation: sourceLocation)
 }
