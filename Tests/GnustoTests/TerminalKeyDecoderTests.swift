@@ -45,7 +45,36 @@ struct TerminalKeyDecoderTests {
     }
 
     @Test func otherControlBytesAreIgnored() {
-        #expect(decode("\u{01}a\u{02}b\u{1F}") == [.character("a"), .character("b")])
+        // 0x02, 0x06 and 0x1F carry no binding; the readline keys that do
+        // (Ctrl-A/E/U/W) are covered by `readlineControlKeys`.
+        #expect(decode("\u{02}a\u{06}b\u{1F}") == [.character("a"), .character("b")])
+    }
+
+    /// The readline line-editing bindings every shell has, so a player who
+    /// types them in the game gets what they type everywhere else.
+    @Test func readlineControlKeys() {
+        #expect(decode("\u{01}") == [.home])  // Ctrl-A
+        #expect(decode("\u{05}") == [.end])  // Ctrl-E
+        #expect(decode("\u{15}") == [.deleteToStart])  // Ctrl-U
+        #expect(decode("\u{17}") == [.deleteWordBack])  // Ctrl-W
+    }
+
+    /// Option-as-Meta terminals send a bare ESC and then the key.
+    @Test func metaPrefixedWordKeys() {
+        #expect(decode("\u{1B}b") == [.wordLeft])
+        #expect(decode("\u{1B}f") == [.wordRight])
+        #expect(decode("\u{1B}d") == [.deleteWordForward])
+        #expect(decode("\u{1B}\u{7F}") == [.deleteWordBack])
+    }
+
+    /// A modified arrow — xterm's `3` for Alt/Option, `5` for Ctrl — is a word
+    /// jump rather than a character step.
+    @Test func modifiedArrowsJumpByWord() {
+        #expect(decode("\u{1B}[1;3D") == [.wordLeft])
+        #expect(decode("\u{1B}[1;3C") == [.wordRight])
+        #expect(decode("\u{1B}[1;5D") == [.wordLeft])
+        #expect(decode("\u{1B}[1;5C") == [.wordRight])
+        #expect(decode("\u{1B}[D") == [.left])  // unmodified still steps
     }
 
     // MARK: - Escape sequences

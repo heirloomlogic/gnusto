@@ -134,6 +134,54 @@ struct TerminalUXTests {
         #expect(out.listing.isEmpty)
     }
 
+    // MARK: - wordBackward / wordForward: the pure word-boundary logic
+
+    // The escape-sequence *decoding* (which bytes map to which key) is verified
+    // by desk-checking against a live terminal; these cover the pure boundary
+    // math that word-navigation and word-deletion share. Offsets are Character
+    // counts, matching the arrow keys and backspace.
+
+    @Test func wordBackwardStopsAtTheStartOfThePrecedingWord() {
+        // Caret at end of "take book"; back one word lands before "book".
+        #expect(TerminalIOHandler.wordBackward(input: "take book", cursor: 9) == 5)
+    }
+
+    @Test func wordBackwardSkipsTrailingSpacesFirst() {
+        // Caret after the spaces in "take   "; skip the spaces, then "take".
+        #expect(TerminalIOHandler.wordBackward(input: "take   ", cursor: 7) == 0)
+    }
+
+    @Test func wordBackwardFromTheStartStaysPut() {
+        #expect(TerminalIOHandler.wordBackward(input: "take book", cursor: 0) == 0)
+    }
+
+    @Test func wordBackwardMidWordStopsAtThatWordsStart() {
+        // Caret inside "book" (after "bo"): back to the start of "book".
+        #expect(TerminalIOHandler.wordBackward(input: "take book", cursor: 7) == 5)
+    }
+
+    @Test func wordForwardStopsAtTheEndOfTheFollowingWord() {
+        // Caret at start; forward one word lands after "take".
+        #expect(TerminalIOHandler.wordForward(input: "take book", cursor: 0) == 4)
+    }
+
+    @Test func wordForwardSkipsLeadingSpacesFirst() {
+        // Caret on the space after "take": skip it, then to the end of "book".
+        #expect(TerminalIOHandler.wordForward(input: "take book", cursor: 4) == 9)
+    }
+
+    @Test func wordForwardFromTheEndStaysPut() {
+        #expect(TerminalIOHandler.wordForward(input: "take book", cursor: 9) == 9)
+    }
+
+    @Test func wordBoundariesCountCharactersNotBytesForMultibyteInput() {
+        // A café + emoji word: offsets are Character counts, so a back-word from
+        // the end lands at the start of the second word, not mid-scalar.
+        let line = "café 🍎x"  // "café" (4 chars), space, "🍎x" (2 chars) = 7
+        #expect(TerminalIOHandler.wordForward(input: line, cursor: 0) == 4)
+        #expect(TerminalIOHandler.wordBackward(input: line, cursor: 7) == 5)
+    }
+
     // MARK: - Persistent history
 
     /// A fresh, empty temp directory for one test.

@@ -674,15 +674,16 @@ enum DefaultActions {
         let held = frame.with { scratch in
             (scratch.state.containment().held[.player] ?? [])
                 .map { id in
-                    frame.definition.text.inventoryLine(
-                        frame.indefiniteName(of: id),
-                        scratch.state.wornItems.contains(id))
+                    (
+                        name: frame.indefiniteName(of: id),
+                        isWorn: scratch.state.wornItems.contains(id)
+                    )
                 }
         }
         if held.isEmpty {
             frame.say(frame.definition.text.emptyHanded)
         } else {
-            frame.say(([frame.definition.text.carrying] + held).joined(separator: "\n"))
+            frame.say(frame.definition.text.inventorySentence(held))
         }
     }
 

@@ -94,8 +94,6 @@ public struct GameText: Sendable {
     public var pitchBlack = "It is pitch black. You can't see a thing."
     /// An `inventory` with nothing carried.
     public var emptyHanded = "You are empty-handed."
-    /// The header above the inventory listing.
-    public var carrying = "You are carrying:"
     /// Reading something with no description to read.
     public var nothingWritten = "There's nothing written on that."
     /// A `wait` turn — a beat passes while fuses and daemons tick.
@@ -351,9 +349,13 @@ public struct GameText: Sendable {
         "In \($1) is \($0)."
     }
 
-    /// One carried item in the inventory listing.
-    public var inventoryLine: @Sendable (_ name: String, _ isWorn: Bool) -> String = {
-        "  \($0)\($1 ? " (being worn)" : "")"
+    /// The `inventory` listing, as one sentence ("You are carrying a brass
+    /// lantern, an apple, and a velvet cloak (being worn)."). The names arrive
+    /// already articled, since only the caller knows which are proper names.
+    /// Only called with at least one item; `emptyHanded` covers the rest.
+    public var inventorySentence: @Sendable (_ items: [(name: String, isWorn: Bool)]) -> String = {
+        let phrases = $0.map { $0.name + ($0.isWorn ? " (being worn)" : "") }
+        return "You are carrying \(GameText.list(phrases))."
     }
 
     /// The title banner shown at startup and by `version`. The `<br>` keeps the

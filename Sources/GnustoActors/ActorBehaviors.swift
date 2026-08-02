@@ -71,6 +71,49 @@ public struct ActorBehaviors: GamePlugin {
         }
     }
 
+    /// A daemon that keeps `actor` in the player's room: each turn, if the
+    /// actor is onstage but elsewhere, it teleports to wherever the player
+    /// now stands. Daemons tick at the end of the turn, after the player's
+    /// `go` has resolved and the new room is described, so the companion
+    /// catches up the same turn and its `arrival` line trails the room
+    /// description. The line prints only when the destination is lit: in
+    /// the dark the companion arrives unseen. There is deliberately no
+    /// `departure` line — the companion only ever moves *to* the player,
+    /// so no one is ever in the room it leaves to watch it go (unlike
+    /// `roams`). The daemon idles while the actor is offstage — including
+    /// after `vanish()` — and the host may `stopDaemon(_:)` to park the
+    /// companion for a "wait here" beat, then `startDaemon(_:)` to resume.
+    /// It draws no randomness at all (unlike `roams` and `steals`), so a
+    /// following companion never perturbs the seeded stream: `arrivals` is
+    /// cycled by the saved turn counter, so the line varies from arrival to
+    /// arrival yet stays deterministic across save and restore. Pass one
+    /// line for a fixed announcement, a dozen so a constant companion does
+    /// not wear his welcome out. Start the companion co-located with the
+    /// player (`starts(in:)` the player's start room) to avoid a spurious
+    /// arrival on turn one.
+    ///
+    /// - Parameters:
+    ///   - actor: the companion NPC.
+    ///   - daemonName: the daemon's global timer name.
+    ///   - arrivals: lines printed when the companion catches up, if lit —
+    ///     cycled by the turn counter; empty for a silent companion.
+    /// - Returns: the following daemon, for the host's `timers` block.
+    public func follows(
+        _ actor: Actor,
+        daemonName: String,
+        arrivals: [String] = []
+    ) -> TimedEvent {
+        daemon(daemonName, autostart: true) {
+            guard let here = actor.location else { return }  // idle while offstage
+            let dest = player.location
+            guard here != dest else { return }  // already together
+            actor.move(to: dest)
+            if !arrivals.isEmpty, dest.isLit {
+                say(arrivals[player.moves % arrivals.count])
+            }
+        }
+    }
+
     /// A daemon that, when `actor` shares the player's room, rolls
     /// `chancePerTurn` and moves one random *reachable* item from `candidates`
     /// into the actor's inventory, announcing it with the stolen item's name.

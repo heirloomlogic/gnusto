@@ -19,6 +19,8 @@ struct KeyDecoder {
         case character(String)
         case enter, backspace, deleteForward, tab
         case left, right, home, end
+        case wordLeft, wordRight
+        case deleteWordBack, deleteWordForward, deleteToStart
         case historyPrev, historyNext
         case pageUp, pageDown
         case eof, interrupt
@@ -67,10 +69,14 @@ struct KeyDecoder {
                 return .eof
             case .byte(let b):
                 switch b {
+                case 0x01: return .home  // Ctrl-A — start of line
                 case 0x03: return .interrupt
                 case 0x04: return .eof
+                case 0x05: return .end  // Ctrl-E — end of line
                 case 0x09: return .tab
                 case 0x0A, 0x0D: return .enter
+                case 0x15: return .deleteToStart  // Ctrl-U — kill to line start
+                case 0x17: return .deleteWordBack  // Ctrl-W — delete word before caret
                 case 0x7F, 0x08: return .backspace
                 case 0x1B:
                     if let key = escapeSequence() { return key }
@@ -88,8 +94,19 @@ struct KeyDecoder {
     /// Parses a CSI escape sequence (arrows, Home/End, Delete, Page keys).
     /// Returns `nil` for a bare or unrecognized ESC, which the caller swallows.
     private func escapeSequence() -> Key? {
-        guard case .byte(let b1) = nextByte(), b1 == 0x5B || b1 == 0x4F else {
-            return nil  // lone ESC
+        guard case .byte(let b1) = nextByte() else { return nil }
+        guard b1 == 0x5B || b1 == 0x4F else {
+            // Not a CSI/SS3 introducer, so this is a Meta/Alt prefix (Terminal's
+            // "Use Option as Meta", readline's M-…): the byte *is* the key. Only
+            // the word-editing metas are recognized; any other lone ESC is
+            // swallowed, as before.
+            switch b1 {
+            case 0x62: return .wordLeft  // ESC b — Option/Meta-left
+            case 0x66: return .wordRight  // ESC f — Option/Meta-right
+            case 0x64: return .deleteWordForward  // ESC d — delete word after caret
+            case 0x7F, 0x08: return .deleteWordBack  // ESC DEL — Option-backspace
+            default: return nil  // lone ESC
+            }
         }
         guard case .byte(let b2) = nextByte() else { return nil }
         switch b2 {
@@ -99,10 +116,12 @@ struct KeyDecoder {
         case 0x44: return .left
         case 0x48: return .home  // ESC[H / ESC OH
         case 0x46: return .end  // ESC[F / ESC OF
-        case 0x30...0x39:  // numeric parameter, terminated by '~'
+        case 0x30...0x39:  // numeric parameter(s), ended by the CSI final byte
             var param = String(UnicodeScalar(b2))
             while case .byte(let n) = nextByte() {
-                if n == 0x7E { break }
+                // A final byte (a letter or '~', 0x40–0x7E) ends the sequence;
+                // the bytes before it are parameter digits and ';' separators.
+                if n >= 0x40, n <= 0x7E { return decodeCSI(param: param, final: n) }
                 // A real parameter is a digit or two, so a stream that never sends
                 // the terminator can't grow the accumulator without bound.
                 guard param.count < 8 else {
@@ -111,7 +130,29 @@ struct KeyDecoder {
                 }
                 param.append(Character(UnicodeScalar(n)))
             }
-            switch param {
+            // Out of bytes before the final one: resolve on what we have, as if
+            // it had been terminated by '~'. A real terminal sends a sequence in
+            // one burst, so this only bites when one straddles the VTIME poll.
+            return decodeCSI(param: param, final: 0x7E)
+        default:
+            return nil
+        }
+    }
+
+    /// Maps a parameterized CSI sequence — its parameter string (e.g. `"1;3"`)
+    /// and final byte (e.g. `'D'`) — to a key. Covers the `ESC [ n ~` navigation
+    /// and edit keys and the modified arrows `ESC [ 1 ; m D/C`, whose modifier
+    /// (xterm's `3` = Alt/Option, `5` = Ctrl) turns a plain arrow into a word
+    /// jump. Unknown combinations are swallowed.
+    private func decodeCSI(param: String, final: UInt8) -> Key? {
+        // The modifier is the parameter after the first ';'; its presence
+        // upgrades an arrow to a word jump for Alt (3) or Ctrl (5).
+        let fields = param.split(separator: ";", omittingEmptySubsequences: false)
+        let modifier = fields.count > 1 ? Int(fields[1]) : nil
+        let wordJump = modifier == 3 || modifier == 5
+        switch final {
+        case 0x7E:  // '~' — parameterized navigation / edit keys
+            switch fields.first.map(String.init) {
             case "1", "7": return .home
             case "4", "8": return .end
             case "3": return .deleteForward
@@ -121,8 +162,13 @@ struct KeyDecoder {
             case "201": return nil  // a paste end with no paste open; discard it
             default: return nil
             }
-        default:
-            return nil
+        case 0x44: return wordJump ? .wordLeft : .left  // …D — left arrow
+        case 0x43: return wordJump ? .wordRight : .right  // …C — right arrow
+        case 0x48: return .home  // …H
+        case 0x46: return .end  // …F
+        case 0x41: return .historyPrev  // …A — up
+        case 0x42: return .historyNext  // …B — down
+        default: return nil
         }
     }
 

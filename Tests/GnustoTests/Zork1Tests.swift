@@ -712,9 +712,7 @@ struct Zork1Tests {
                 "Living Room",
                 "brass lantern: Taken.",
                 "elvish sword: Taken.",
-                "You are carrying:",
-                "brass lantern",
-                "elvish sword",
+                "You are carrying a glass bottle, a brass lantern, and an elvish sword.",
             ])
         #expect(!transcript.contains("window: "))
         #expect(!transcript.contains("trap door: "))

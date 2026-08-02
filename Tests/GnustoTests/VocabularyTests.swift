@@ -7,6 +7,7 @@ import Testing
 @testable import Fulminate
 @testable import Gnusto
 @testable import Gramarye
+@testable import KindlyDeep
 @testable import Lighthouse
 @testable import Zork1
 
@@ -115,6 +116,7 @@ struct VocabularyTests {
             ("Gramarye", try Bootstrap.build(Gramarye()).0),
             ("Fulminate", try Bootstrap.build(Fulminate()).0),
             ("Zork1", try Bootstrap.build(Zork1()).0),
+            ("KindlyDeep", try Bootstrap.build(KindlyDeep()).0),
         ]
         for (title, definition) in definitions {
             let parser = StandardParser(

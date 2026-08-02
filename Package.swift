@@ -54,6 +54,7 @@ let package = Package(
         .executable(name: "Zork1", targets: ["Zork1"]),
         .executable(name: "Gramarye", targets: ["Gramarye"]),
         .executable(name: "Fulminate", targets: ["Fulminate"]),
+        .executable(name: "KindlyDeep", targets: ["KindlyDeep"]),
     ],
     dependencies: devDependencies + [
         // The #verb macro's expansion machinery. Unlike the dev tooling above,
@@ -153,6 +154,14 @@ let package = Package(
             dependencies: ["Gnusto", "GnustoClock", "GnustoConversation"],
             plugins: devPlugins
         ),
+        // The survival demo: two failing clocks (thirst, fatigue) and a mule
+        // who follows, is parked, and rejoins — issue #39's companion/survival
+        // substrate, via GnustoActors and GnustoScoring.
+        .executableTarget(
+            name: "KindlyDeep",
+            dependencies: ["Gnusto", "GnustoActors", "GnustoScoring"],
+            plugins: devPlugins
+        ),
         // Transcript-testing helpers for game authors. Link it into TEST
         // targets only: the Testing library it imports ships in the toolchain,
         // not the OS, so a plain executable linking it can fail at load time.
@@ -175,6 +184,7 @@ let package = Package(
                 "GnustoMeleeCombat", "GnustoSpellcasting", "GnustoClock", "GnustoConversation",
                 "GnustoTestSupport",
                 "CloakOfDarkness", "Lighthouse", "Zork1", "Gramarye", "Fulminate",
+                "KindlyDeep",
             ],
             plugins: devPlugins
         ),

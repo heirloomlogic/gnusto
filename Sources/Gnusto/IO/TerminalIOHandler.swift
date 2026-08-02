@@ -315,6 +315,34 @@ public final class TerminalIOHandler: IOHandler {
             case .end:
                 box.withLock { $0.cursor = $0.input.count }
 
+            case .wordLeft:
+                box.withLock { $0.cursor = Self.wordBackward(input: $0.input, cursor: $0.cursor) }
+
+            case .wordRight:
+                box.withLock { $0.cursor = Self.wordForward(input: $0.input, cursor: $0.cursor) }
+
+            case .deleteWordBack:
+                box.withLock { st in
+                    let start = Self.wordBackward(input: st.input, cursor: st.cursor)
+                    let chars = Array(st.input)
+                    st.input = String(chars[0..<start] + chars[st.cursor...])
+                    st.cursor = start
+                }
+
+            case .deleteWordForward:
+                box.withLock { st in
+                    let end = Self.wordForward(input: st.input, cursor: st.cursor)
+                    let chars = Array(st.input)
+                    st.input = String(chars[0..<st.cursor] + chars[end...])
+                    // Caret stays put: the word to its right is what's removed.
+                }
+
+            case .deleteToStart:
+                box.withLock { st in
+                    st.input = String(Array(st.input)[st.cursor...])
+                    st.cursor = 0
+                }
+
             case .historyPrev:
                 box.withLock { st in
                     guard historyCursor > 0 else { return }
@@ -578,6 +606,34 @@ public final class TerminalIOHandler: IOHandler {
                 offset += written
             }
         }
+    }
+
+    // MARK: - Word boundaries
+
+    /// The caret offset one word to the *left* of `cursor`: skips any spaces
+    /// immediately before the caret, then the run of non-spaces before them —
+    /// readline's unix-word boundary. This is both where Option-left lands and
+    /// where Option-backspace / Ctrl-W delete back to. Character offsets, to
+    /// match the arrow keys and backspace, so multi-byte input doesn't regress.
+    /// Pure — unit-tested directly.
+    static func wordBackward(input: String, cursor: Int) -> Int {
+        let chars = Array(input)
+        var i = max(0, min(cursor, chars.count))
+        while i > 0, chars[i - 1].isWhitespace { i -= 1 }
+        while i > 0, !chars[i - 1].isWhitespace { i -= 1 }
+        return i
+    }
+
+    /// The caret offset one word to the *right* of `cursor`: skips any spaces at
+    /// the caret, then the run of non-spaces after them. This is where
+    /// Option-right lands and where Option-forward-delete (`ESC d`) deletes to.
+    /// Pure — unit-tested directly.
+    static func wordForward(input: String, cursor: Int) -> Int {
+        let chars = Array(input)
+        var i = max(0, min(cursor, chars.count))
+        while i < chars.count, chars[i].isWhitespace { i += 1 }
+        while i < chars.count, !chars[i].isWhitespace { i += 1 }
+        return i
     }
 
     // MARK: - Ctrl-C confirm

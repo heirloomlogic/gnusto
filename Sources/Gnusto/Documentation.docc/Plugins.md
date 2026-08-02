@@ -178,5 +178,6 @@ string in the game's own voice.
 - `Sources/Zork1/Zork1.swift` — the host that wires four first-party plugins over entities from three content bundles.
 - `Sources/Gramarye/Gramarye.swift` — a small original game built entirely around `GnustoSpellcasting`, with one puzzle per casting paradigm.
 - `Sources/Fulminate/Fulminate.swift` — the mystery demo, built around `GnustoClock`: an evening on a wall clock with three alarms bracketing it. Its story and mechanics contract live in `docs/games/fulminate.md`.
+- `Sources/KindlyDeep/` — a survival-and-companion host: `GnustoActors.follows` for a mule who trails you, is parked by a crawl he cannot fit through, and rejoins through a door, plus `GnustoScoring.awardOnce` on each of its five beats.
 - `Tests/GnustoTests/Support/CommerceGame.swift` — the logic-only commerce plugin (`buy`/`sell` verbs, `purchase`/`sale` factories, `LampShop` host); `PluginTests` drives a buy/sell turn end to end.
 - `Tests/GnustoTests/Support/ShrineContent.swift` — the content-bearing `ShrineContent` plugin (owns a namespaced shrine region *and* exposes an `offering` factory) with its `PilgrimGame` host; `ContentPluginTests` drives a donate turn across the namespace boundary and checks the namespacing.

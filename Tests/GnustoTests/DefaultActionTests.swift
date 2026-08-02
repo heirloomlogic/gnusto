@@ -107,11 +107,8 @@ struct DefaultActionTests {
         expectInOrder(
             transcript,
             [
-                "You are carrying:",
-                "a felt hat",
-                "You are carrying:",
-                "a dusty book",
-                "a felt hat (being worn)",
+                "You are carrying a felt hat.",
+                "You are carrying a dusty book and a felt hat (being worn).",
             ])
     }
 

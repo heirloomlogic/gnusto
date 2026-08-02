@@ -217,6 +217,12 @@ teague.before(.follow) {
 That is `Sources/Fulminate/`, where one crossing on the household's timetable
 is two rooms long and the rest are one.
 
+The **Kindly Deep** example (`Sources/KindlyDeep/`) is the companion half:
+`follows` keeps a mule at your shoulder, `stopDaemon`/`startDaemon` park him
+where he cannot go and pick him up again on the far side, and starting him
+co-located with the player avoids a spurious turn-one arrival.
+`KindlyDeepTests` pins the follow/park/rejoin contract.
+
 ## Vehicles
 
 One trait makes something boardable:

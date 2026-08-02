@@ -46,3 +46,38 @@ public func turnOutput(of command: String, in transcript: String) -> String {
     }
     return String(rest)
 }
+
+/// Everything a transcript printed after its first occurrence of `marker` —
+/// the slice to assert against when what matters is "and then, later…".
+///
+/// - Parameters:
+///   - marker: the text to slice after.
+///   - transcript: the transcript to search.
+/// - Returns: the text following `marker`, or "" when it never appears.
+public func output(after marker: String, in transcript: String) -> String {
+    guard let range = transcript.range(of: marker) else { return "" }
+    return String(transcript[range.upperBound...])
+}
+
+/// Everything a transcript printed before its first occurrence of `marker`.
+///
+/// - Parameters:
+///   - marker: the text to slice before.
+///   - transcript: the transcript to search.
+/// - Returns: the text preceding `marker`, or the whole transcript when it
+///   never appears.
+public func output(before marker: String, in transcript: String) -> String {
+    guard let range = transcript.range(of: marker) else { return transcript }
+    return String(transcript[..<range.lowerBound])
+}
+
+/// How many times `needle` occurs in `haystack` — the count assertions in
+/// transcript tests are usually about ("this beat fires exactly once").
+///
+/// - Parameters:
+///   - needle: the text to count.
+///   - haystack: the text to count it in.
+/// - Returns: the number of non-overlapping occurrences.
+public func occurrences(of needle: String, in haystack: some StringProtocol) -> Int {
+    haystack.ranges(of: needle).count
+}
