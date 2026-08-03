@@ -3,6 +3,7 @@ import Gnusto
 import GnustoTestSupport
 import Testing
 
+@testable import Gnusto
 @testable import KindlyDeep
 
 /// End-to-end play of the survival-and-companion demo: the win path lights the
@@ -21,6 +22,10 @@ struct KindlyDeepTests {
     /// Four turns: strike the lamp and walk the entry, the forks, and the crawl
     /// to the shaft bottom. Biscuit is parked at the forks on arrival.
     private static let toShaftBottom = ["light lamp", "east", "east", "east"]
+
+    /// The same four turns plus the rejoin: the bar lifts, he comes through, and
+    /// the two of you are at the shaft together.
+    private static let toShaftBottomTogether = toShaftBottom + ["open air-door"]
 
     // MARK: - The full walkthrough
 
@@ -249,11 +254,14 @@ struct KindlyDeepTests {
 
     @Test func theForksStayShutWhileBiscuitStandsAcrossThem() async throws {
         // North into the old works is refused with beat 3's prose — every time
-        // it is tried, since the mule does not tire of the argument.
+        // it is tried, since the mule does not tire of the argument. Now that
+        // the room beyond is reachable, this is also the guard that keeps it
+        // reachable *only* by leaving him: the bad air stays behind him.
         let transcript = try await play(
             KindlyDeep(), ["light lamp", "east", "north", "north"])
         #expect(occurrences(of: "puts himself across the mouth of the old works", in: transcript) == 2)
         #expect(transcript.contains("the mule has seniority"))
+        #expect(!transcript.contains("syrup-thick"))
     }
 
     // MARK: - Reactions
@@ -436,17 +444,417 @@ struct KindlyDeepTests {
         #expect(transcript.contains("the door declines, politely but with the whole weight of the racked frame"))
     }
 
-    @Test func theBellWillNotRingWhileTheBeamBlocksTheGate() async throws {
-        // The rope invites pulling as much as the bell invites ringing, and both
-        // meet the same refusal while twelve feet of poplar lies across the gate.
-        let transcript = try await play(
-            KindlyDeep(), Self.toShaftBottom + ["ring bell", "pull rope"])
-        #expect(occurrences(of: "Shift the beam first.", in: transcript) == 2)
-    }
-
     @Test func theBeamWillNotBudgeByHand() async throws {
         let transcript = try await play(
-            KindlyDeep(), Self.toShaftBottom + ["push beam", "pull beam"])
+            KindlyDeep(), Self.toShaftBottomTogether + ["push beam", "pull beam"])
         #expect(occurrences(of: "It wants hauling, not heroics", in: transcript) == 2)
+    }
+
+    // MARK: - The game cannot be made unwinnable
+
+    /// The blocking box of #126. Every room is dark, the cap-lamp is the only
+    /// light in the game, and a doused lamp on the floor of a dark room cannot
+    /// be seen, taken or relit — so dousing and dropping it ended the game on
+    /// turn three, with no death and no warning. The striker has always had this
+    /// guard; the lamp's doc comment claimed the invariant without enforcing it.
+    @Test func theLampNeverLeavesYourCap() async throws {
+        let transcript = try await play(
+            KindlyDeep(),
+            [
+                "light lamp", "turn off lamp", "drop lamp", "light lamp", "west", "put lamp in corn bin",
+                "inventory",
+            ])
+        #expect(occurrences(of: "It goes on your cap and it stays there", in: transcript) == 2)
+        #expect(!transcript.contains("Dropped."))
+        #expect(turnOutput(of: "inventory", in: transcript).contains("cap-lamp"))
+    }
+
+    /// And the lamp being out is a recoverable state rather than a terminal
+    /// one: you can still see it, take hold of it, and strike the striker.
+    @Test func aDousedLampCanAlwaysBeRelit() async throws {
+        let transcript = try await play(
+            KindlyDeep(), ["light lamp", "turn off lamp", "look", "light lamp", "look"])
+        #expect(turnOutput(of: "look", in: transcript).contains("Dark of the sort found only underground"))
+        #expect(output(after: "Flint, sparks, and the wick takes", in: transcript).contains("The Fresh Fall"))
+    }
+
+    // MARK: - The two endings
+
+    /// Ring with the mule on the wrong side of a crawl he cannot use and the
+    /// game does not congratulate you for a rescue you did not perform. It is a
+    /// legal ending, it is not scolded, and it costs exactly the two awards he
+    /// earns — `door` and `beam` — which is why `maxScore` never moves.
+    @Test func ringingAloneIsTheOtherEndingAndCostsTenPoints() async throws {
+        let transcript = try await play(
+            KindlyDeep(),
+            [
+                "light lamp", "west", "search corn bin", "take canteen", "east", "east", "east", "east",
+                "ring bell",
+            ])
+        expectInOrder(
+            transcript,
+            [
+                "the sound goes up the shaft like a bird out of a trap",
+                "three men and a chain and a good deal of shouted advice",
+                "there is no version of it that is about the beam",
+                "goes on waiting to hear what the two of you do next",
+                "Your score is 15 of a possible 25",
+            ])
+        // Not one line of the ending he is not in.
+        #expect(!transcript.contains("Biscuit has stepped forward to inspect the cage"))
+        #expect(!transcript.contains("the sling goes on him first"))
+    }
+
+    /// The bleak ending's own state check. Haul the beam, walk back west through
+    /// the door, close it behind you, and take the crawl: the shaft's `onEnter`
+    /// only restarts his daemon while the door is open, so you arrive alone with
+    /// the gate already clear. An ending that narrated three men working the
+    /// beam off there would be the very defect this PR exists to retire.
+    @Test func theBleakEndingKnowsWhoMovedTheBeam() async throws {
+        let transcript = try await play(
+            KindlyDeep(),
+            Self.toShaftBottomTogether
+                + ["harness biscuit", "west", "close air-door", "east", "east", "ring bell"])
+        #expect(transcript.contains("lands behind a gate with nothing across it"))
+        #expect(transcript.contains("no version of it that does not begin with the beam he moved for you"))
+        #expect(!transcript.contains("three men and a chain"))
+        #expect(transcript.contains("Your score is 20 of a possible 25"))
+    }
+
+    /// The haul is a gate rather than a branch: the scene is four sentences
+    /// about his shoulders and his hooves, and there is no honest version of it
+    /// performed by a man alone. The refusal is also the game's last chance to
+    /// say plainly what the player has done.
+    @Test func theHaulRefusesWithoutHim() async throws {
+        let transcript = try await play(
+            KindlyDeep(), Self.toShaftBottom + ["harness tack", "x beam", "score"])
+        #expect(transcript.contains("this is a two-body problem. He is not here."))
+        #expect(!transcript.contains("the beam grinds off the gate"))
+        // Unhauled, so the beam still reads as lying across the gate…
+        #expect(turnOutput(of: "x beam", in: transcript).contains("now lying across the cage gate"))
+        // …and `beam` went unawarded.
+        #expect(transcript.contains("Your score is 5 of a possible 25"))
+    }
+
+    // MARK: - No sentence asserts where he is without asking
+
+    /// The central invariant, and the class ten of the round's sixty-four
+    /// findings belonged to. Each of these prints with him parked two rooms west
+    /// behind a crawl he cannot enter, and each used to put him at your elbow.
+    @Test func everyLineAboutTheMuleAsksWhereHeIsFirst() async throws {
+        let transcript = try await play(
+            KindlyDeep(),
+            Self.toShaftBottom + ["turn off lamp", "look", "light lamp", "push beam", "harness tack"])
+        let alone = output(after: "The bray that follows you into the crawl", in: transcript)
+
+        // The pitch-black line, which used to put his hooves nearby in the same
+        // turn's output as the beat saying the stone had shut his bray out.
+        #expect(alone.contains("Nothing shifts in it and nothing breathes but you"))
+        #expect(!alone.contains("hooves shift on stone"))
+        // The beam refusal, which located a professional eight feet away.
+        #expect(alone.contains("the professional is two rooms back the way you came"))
+        #expect(!alone.contains("a professional standing eight feet away"))
+        // And the haul.
+        #expect(alone.contains("You left him on the other side of a crawl he cannot use."))
+    }
+
+    /// With him actually there, every one of those lines is the shipped one
+    /// again — the guard adds a branch, it does not replace the good version.
+    @Test func thoseSameLinesAreUnchangedWhenHeIsThere() async throws {
+        let transcript = try await play(
+            KindlyDeep(), Self.toShaftBottomTogether + ["turn off lamp", "look", "light lamp", "push beam"])
+        let together = output(after: "the door swings wide with a groan of old hinges", in: transcript)
+        #expect(together.contains("Somewhere near, hooves shift on stone."))
+        #expect(together.contains("hauling is a trade with a professional standing eight feet away"))
+    }
+
+    @Test func thirstKillsYouAloneInItsOwnWords() async throws {
+        // Parked at the forks by the crawl beat, and never a drop to drink.
+        let commands = Self.toShaftBottom + Array(repeating: "wait", count: 33)
+        let transcript = try await play(KindlyDeep(), commands)
+        #expect(transcript.contains("the last thing you hear is nothing at all, which is worse"))
+        #expect(!transcript.contains("hooves on stone, coming near, too late"))
+        #expect(transcript.contains("*** You have died ***"))
+    }
+
+    @Test func thirstKillsYouWithHimThereInTheOtherWords() async throws {
+        let commands = ["light lamp"] + Array(repeating: "wait", count: 40)
+        let transcript = try await play(KindlyDeep(), commands)
+        #expect(transcript.contains("hooves on stone, coming near, too late"))
+        #expect(!transcript.contains("the last thing you hear is nothing at all"))
+    }
+
+    /// The rest scene has two guards, not one: the watch is his, and the lamp
+    /// clause only prints for a lamp that is burning. A second rest used to
+    /// re-pinch a lamp the first rest had put out and nothing had relit.
+    @Test func theRestSceneAsksAboutBothTheLampAndTheMule() async throws {
+        let transcript = try await play(KindlyDeep(), ["light lamp", "down", "rest", "rest"])
+        #expect(turnOutput(of: "rest", in: transcript).contains("You pinch the lamp out first"))
+        #expect(occurrences(of: "You pinch the lamp out first", in: transcript) == 1)
+        #expect(transcript.contains("The lamp is already out, which saves you the argument"))
+        // He followed you down, so the watch is his both times.
+        #expect(occurrences(of: "Biscuit stands over you in the dark", in: transcript) == 2)
+    }
+
+    @Test func restingAloneHasNobodyStandingOverYou() async throws {
+        // Park him at the shaft, come back west through the open door, and go
+        // down to the straw by way of the crawl so he cannot follow.
+        let transcript = try await play(
+            KindlyDeep(), Self.toShaftBottomTogether + ["down", "west", "west", "down", "rest"])
+        let alone = turnOutput(of: "rest", in: transcript)
+        #expect(alone.contains("Nobody stands over you; there is nobody down here to do it"))
+        #expect(!alone.contains("Biscuit stands over you"))
+    }
+
+    /// The hard route to the canteen ends on a reaction shot from a mule who may
+    /// be three rooms east.
+    @Test func theCornBinFindWaitsForSomebodyToBeSmugAtYou() async throws {
+        let withHim = try await play(
+            KindlyDeep(), ["light lamp", "west", "search corn bin"])
+        #expect(withHim.contains("the expression of an animal who was about to mention it"))
+
+        // Leave him at the shaft, then walk back for the bin the long way.
+        let alone = try await play(
+            KindlyDeep(),
+            Self.toShaftBottomTogether + ["down", "west", "west", "west", "search corn bin"])
+        let find = turnOutput(of: "search corn bin", in: alone)
+        #expect(find.contains("wishing briefly and uselessly that there were somebody here"))
+        #expect(!find.contains("about to mention it"))
+    }
+
+    // MARK: - Descriptions that re-read their own state
+
+    /// Three sites went on putting twelve feet of poplar across the gate one
+    /// turn after the game narrated it being dragged off.
+    @Test func theShaftBottomRereadsTheBeamAfterTheHaul() async throws {
+        let transcript = try await play(
+            KindlyDeep(),
+            Self.toShaftBottomTogether
+                + ["look", "x beam", "x cage gate", "harness biscuit", "look", "x beam", "x cage gate"])
+        let after = output(after: "the beam grinds off the gate an inch at a time", in: transcript)
+        #expect(after.contains("The cage gate stands clear in its frame"))
+        #expect(after.contains("now lying off to one side"))
+        #expect(after.contains("good for exactly the one thing it was built for"))
+        #expect(!after.contains("twelve-foot beam lying square across it"))
+        #expect(!after.contains("perfectly useless"))
+    }
+
+    /// The Forks' paragraph was the last thing in the game insisting the route
+    /// was shut, and it contradicted `x air-door` in the adjacent turn. The
+    /// round's own reproducer, kept as one transcript so the two lines have to
+    /// agree with each other.
+    @Test func theForksParagraphAndTheDoorAgreeInEveryState() async throws {
+        let transcript = try await play(
+            KindlyDeep(),
+            [
+                "light lamp", "east", "look", "x air-door", "east", "east", "open air-door", "west", "look",
+                "x air-door",
+            ])
+        let shut = output(before: "The Low Crawl", in: transcript)
+        #expect(shut.contains("jammed it fast from this side"))
+        #expect(shut.contains("jammed hard into it from this side"))
+
+        let open = output(after: "the door swings wide with a groan of old hinges", in: transcript)
+        #expect(open.contains("The air-door stands open at the far side"))
+        #expect(open.contains("The air-door stands wide on its hinges"))
+        #expect(!open.contains("jammed it fast from this side"))
+    }
+
+    /// The paragraph used to assign "East" to the door, when `east` from the
+    /// Forks has always been the crawl. The door swings one way and the map was
+    /// right; the prose was wrong.
+    @Test func theForksSendYouEastByTheCrawlInEveryState() async throws {
+        let transcript = try await play(
+            KindlyDeep(), ["light lamp", "east", "east", "east", "open air-door", "west", "look", "east"])
+        let open = output(after: "the door swings wide", in: transcript)
+        #expect(open.contains("It will not take you east — it opens toward you and always will."))
+        #expect(open.contains("The crawl still runs east at floor level"))
+        // And east is still the crawl, exactly as the corrected paragraph says.
+        #expect(turnOutput(of: "east", in: open).contains("The Low Crawl"))
+    }
+
+    // MARK: - The Old Works
+
+    /// Dead content until this round: no description, unreachable in 237 probes,
+    /// and an `onEnter` death that could not fire. One map line — the crawl's
+    /// eastern mouth — makes it the price of having left him behind, because
+    /// entering the crawl from the shaft parks him at the shaft and drops you
+    /// into the Forks alone.
+    @Test func theOldWorksOpenOnlyOnceHeIsParkedBehindYou() async throws {
+        let transcript = try await play(
+            KindlyDeep(), Self.toShaftBottomTogether + ["down", "west", "north"])
+        #expect(transcript.contains("the sweetness in the air turns syrup-thick"))
+        #expect(transcript.contains("The mule would have stopped you; the mule was not there to."))
+        #expect(transcript.contains("*** You have died ***"))
+    }
+
+    @Test func theOldWorksReadPleasantAndAnswerTheirOwnNouns() async throws {
+        // Consume the death so the room's own turn can be inspected: the gas
+        // kills on entry, so the description prints in the same output.
+        let transcript = try await play(
+            KindlyDeep(), Self.toShaftBottomTogether + ["down", "west", "north"])
+        let arrival = turnOutput(of: "north", in: transcript)
+        #expect(arrival.contains("the most restful room in these workings"))
+        #expect(arrival.contains("the props still stand"))
+    }
+
+    // MARK: - The warnings that used to stare at a flame that was not lit
+
+    /// Both rungs fire off a turn counter, so both are reachable having never
+    /// struck the striker at all — by doing nothing but waiting from turn one.
+    @Test func theSurvivalWarningsDoNotDescribeALampThatIsNotLit() async throws {
+        let transcript = try await play(KindlyDeep(), Array(repeating: "wait", count: 29))
+        #expect(!transcript.contains("lamp-flame"))
+        #expect(transcript.contains("standing still in the dark, thinking nothing at all"))
+        #expect(transcript.contains("an ache setting up behind your eyes that the dark does nothing to help"))
+    }
+
+    @Test func theSameWarningsDoDescribeItWhenItIsBurning() async throws {
+        let transcript = try await play(
+            KindlyDeep(), ["light lamp"] + Array(repeating: "wait", count: 29))
+        #expect(transcript.contains("staring at the lamp-flame"))
+        #expect(transcript.contains("the lamp-flame doubles when you look at it too long"))
+    }
+
+    // MARK: - The last swallow
+
+    /// All three swallows used to print one line, so the one that emptied the
+    /// only water in the workings still said he stopped "while there is still
+    /// something to stop for."
+    @Test func theLastSwallowKnowsThatItIsTheLast() async throws {
+        let transcript = try await play(
+            KindlyDeep(), Self.withCanteen + Array(repeating: "drink canteen", count: 3))
+        #expect(occurrences(of: "still something to stop for", in: transcript) == 2)
+        #expect(transcript.contains("nothing to count and no reason to stop early, so you finish it"))
+        #expect(occurrences(of: "It goes down cold and tastes of tin", in: transcript) == 3)
+    }
+
+    // MARK: - The stock lines the mine was getting wrong about itself
+
+    /// Every "shipped" line here was the *engine's*, left standing where it is
+    /// false. Each assertion checks the stock line is **gone** as well as that
+    /// the replacement is present, because a rule written with `say` instead of
+    /// `reply` prints both — the correction and the line it meant to replace.
+    @Test func theStockLinesThatWereFalseAreGoneAndNotMerelyPrefixed() async throws {
+        let transcript = try await play(
+            KindlyDeep(),
+            [
+                "light lamp", "smell", "listen",  // the Fresh Fall: register, not truth
+                "west", "smell", "search corn bin", "take canteen", "search canteen",
+                "east", "down", "sit", "burn straw",
+                "up", "east", "smell", "listen",
+                "east", "stand", "kneel",
+                "east", "climb",
+            ])
+        // The room whose first line names a smell, and the room whose smell kills.
+        #expect(turnOutput(of: "smell", in: transcript).contains("air that has stopped moving"))
+        #expect(transcript.contains("Hay, brick, and mule."))
+        #expect(transcript.contains("a faint sweetness off the north heading"))
+        #expect(!transcript.contains("You smell nothing out of the ordinary"))
+        // Listening at the Forks, thirty feet from a mule the game just narrated.
+        #expect(transcript.contains("Hooves shifting, a mule breathing"))
+        #expect(!transcript.contains("You hear nothing out of the ordinary"))
+        // The bench the room has, found by a bare `sit`.
+        #expect(turnOutput(of: "sit", in: transcript).contains("It is a good bench"))
+        #expect(!transcript.contains("There is nothing here built for sitting"))
+        // Two ignition sources and a room full of straw.
+        #expect(transcript.contains("the single worst idea available to you down here"))
+        #expect(!transcript.contains("You have no way to set fire to"))
+        // A body the crawl forbids.
+        #expect(occurrences(of: "the rock has strong opinions about alternatives", in: transcript) == 2)
+        #expect(!transcript.contains("You're already standing"))
+        // A completed, fruitless search of the only water in the workings.
+        #expect(transcript.contains("There is water in it, which is the entire point of it"))
+        #expect(!transcript.contains("You find nothing of interest in the canteen"))
+        // Four hundred feet of shaft, and one thing worth doing at the bottom.
+        #expect(transcript.contains("Men who try it are found at the bottom of it"))
+    }
+
+    /// Three default actions denied the actor standing in the room, in a game
+    /// whose entire cast is one mule at your elbow for the whole running time.
+    @Test func theMeShapedCommandsFindTheMuleWhoIsStandingThere() async throws {
+        let transcript = try await play(
+            KindlyDeep(), ["light lamp", "pet me", "give lamp to me", "eat biscuit"])
+        #expect(turnOutput(of: "pet me", in: transcript).contains("You scratch the spot under his forelock"))
+        #expect(!transcript.contains("There is nothing here that would care to be petted"))
+        #expect(transcript.contains("works out that it is not water"))
+        #expect(!transcript.contains("There is no one here to give it to but yourself"))
+        // He is a mule. The stock actor-directed stub had no way to know that.
+        #expect(transcript.contains("He is a colleague, and a thin one at that."))
+        #expect(!transcript.contains("is a person, and people are not for eating"))
+    }
+
+    @Test func theSameCommandsKeepTheirStockAnswersWhenHeIsGone() async throws {
+        let transcript = try await play(
+            KindlyDeep(), Self.toShaftBottom + ["pet me", "give lamp to me"])
+        #expect(transcript.contains("There is nothing down here that would care to be petted, including you."))
+        #expect(transcript.contains("There is no one here to give it to but yourself"))
+    }
+
+    // MARK: - Biscuit is a proper name, and the rails are plural
+
+    /// The bootstrap has been printing this warning on stderr at every launch
+    /// since the game shipped, naming the entity, the trait and the consequence.
+    @Test func biscuitIsDeclaredAProperNameAndTheGameBootsClean() async throws {
+        let (definition, _) = try Bootstrap.build(KindlyDeep())
+        #expect(definition.warnings.isEmpty, "\(definition.warningReport ?? "no report")")
+
+        let transcript = try await play(KindlyDeep(), ["light lamp", "take biscuit", "search biscuit"])
+        #expect(transcript.contains("Biscuit would take exception to that."))
+        #expect(!transcript.contains("The Biscuit"))
+    }
+
+    /// A mine has rails, not a rails, and the noun is not going to be renamed to
+    /// suit a stub line's copula. The engine agrees with it now instead.
+    @Test func theRailsArePluralAndTheStockLinesAgreeWithThem() async throws {
+        let transcript = try await play(KindlyDeep(), ["light lamp", "eat rails", "break rails"])
+        #expect(transcript.contains("The rails are not food."))
+        #expect(transcript.contains("The rails are sturdier than that."))
+        #expect(!transcript.contains("The rails is"))
+    }
+
+    // MARK: - The nouns the mine prints
+
+    /// Per CLAUDE.md, every noun a room description prints must be answerable; a
+    /// named thing the parser doesn't know reads as a bug. The round counted 286
+    /// occurrences over about sixty words, and this walks the ones the rooms say
+    /// are *present* — the referents (the stable boss, the trip, the cager, the
+    /// dinner bucket under the rock) are correctly unanswerable and not here.
+    @Test func everyNounTheMinesRoomsPrintAnswersInTheRoomThatPrintsIt() async throws {
+        let transcript = try await play(
+            KindlyDeep(),
+            [
+                "light lamp", "x entry", "x wall", "x dust", "x props", "x gauge", "x belt", "x wick",
+                "west", "x entry", "x walls", "x whitewash", "x floor", "x brick", "x stall", "x trough",
+                "x hooves", "x animal", "search corn bin", "take canteen", "x stopper",
+                "east", "down", "x entry", "x rib", "x shelter", "x timbers", "x initials",
+                "up", "east", "x entry", "x fall", "x mouth", "x frame", "x hinges", "x crawl", "x gap",
+                "east", "x rock", "x stone", "x sides", "x shadow", "x crawl",
+                "east", "x wall", "x crawl", "x ladderway", "x bracket", "x collar", "x chains",
+            ])
+        #expect(!transcript.contains("You can't see any such thing"))
+        #expect(!transcript.contains("I don't know the word"))
+    }
+
+    /// `entry` is the single most-printed noun in the game — four of the six
+    /// room descriptions plus the intro twice — and answered in none of them.
+    /// Each stretch of it has something of its own to say.
+    @Test func theEntryAnswersInEveryRoomThatNamesIt() async throws {
+        let transcript = try await play(
+            KindlyDeep(), ["light lamp", "x entry", "west", "x entry", "east", "down", "x entry"])
+        #expect(transcript.contains("The main entry, which stops here now."))
+        #expect(transcript.contains("The stable entry, running back east toward the fall."))
+        #expect(transcript.contains("The entry runs past above you, back up to the north."))
+    }
+
+    /// At the Shaft Bottom two things have frames and the room says so, so `x
+    /// frame` asks which. That is the right answer to an ambiguous noun, and it
+    /// is worth pinning: it is not the same thing as the parser not knowing the
+    /// word.
+    @Test func theShaftBottomAsksWhichFrameYouMeant() async throws {
+        let transcript = try await play(KindlyDeep(), Self.toShaftBottom + ["x frame"])
+        let asked = turnOutput(of: "x frame", in: transcript)
+        #expect(asked.contains("Which do you mean"))
+        #expect(!asked.contains("I don't know the word"))
     }
 }

@@ -18,6 +18,7 @@ public struct ItemTrait: Sendable {
         case adjectives([String])
         case synonyms([String])
         case properName
+        case plural
         case firstSight(String)
         case wearable
         case scenery
@@ -114,6 +115,16 @@ public func synonyms(_ words: String...) -> ItemTrait {
 /// noun — so the bootstrap warns about a capitalized name without this trait
 /// instead of guessing.
 public let properName = ItemTrait(kind: .properName)
+
+/// The name is grammatically plural, so the engine's stock lines agree with it:
+/// "The rails don't budge." rather than "The rails doesn't budge.", and "some
+/// rails" rather than "a rails".
+///
+/// Declared rather than inferred for the same reason as `properName`: a
+/// trailing "s" is not a number ("the brass", "a glass"), and the alternative
+/// is asking a game to rename a thing to suit a stub line. A mine has rails,
+/// not a rails, and the noun should not have to apologize for it.
+public let plural = ItemTrait(kind: .plural)
 
 /// The paragraph used to mention the item in a room description until the
 /// player has touched it (ZIL's FDESC).

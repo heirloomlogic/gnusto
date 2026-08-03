@@ -93,13 +93,25 @@ final class TurnFrame: Sendable {
     /// "Mrs. Vane" for a `properName`. What the room and inventory listings
     /// are handed.
     func indefiniteName(of id: EntityID) -> String {
-        GameText.indefinite(displayName(of: id), proper: isProperName(id))
+        GameText.indefinite(
+            displayName(of: id), proper: isProperName(id), plural: isPlural(id))
+    }
+
+    /// The entity behind its definite article *and* its number — what the stock
+    /// lines whose verb has to agree with it are handed.
+    func definiteNoun(of id: EntityID) -> GameText.Noun {
+        GameText.Noun(definiteName(of: id), plural: isPlural(id))
     }
 
     /// Whether the entity's name is a proper name. Locations are never
     /// articled by the engine, so only items carry the trait.
     func isProperName(_ id: EntityID) -> Bool {
         definition.items[id]?.isProperName == true
+    }
+
+    /// Whether the entity's name is grammatically plural.
+    func isPlural(_ id: EntityID) -> Bool {
+        definition.items[id]?.isPlural == true
     }
 
     /// A declared custom trait of any entity, or `nil` if it has none by that

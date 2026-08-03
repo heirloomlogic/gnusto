@@ -39,12 +39,24 @@ struct StubLab: Game {
         description("A grey rat, watching you.")
     }
 
+    /// A noun that is honestly plural — a single scale is a different object —
+    /// so every stub line whose verb agrees with its object has to agree in the
+    /// plural. Nothing about it is otherwise special: the point is that a game
+    /// declares the number and stops thinking about it.
+    let scales = Item {
+        name("scales")
+        adjectives("brass")
+        description("A set of brass scales, in balance and idle.")
+        plural
+    }
+
     var map: WorldMap {
         player.starts(in: lab)
         rod.starts(in: lab)
         flask.starts(in: lab)
         bench.starts(in: lab)
         rat.starts(in: lab)
+        scales.starts(in: lab)
     }
 }
 

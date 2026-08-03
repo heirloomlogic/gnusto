@@ -79,6 +79,18 @@ public struct Actor: Sendable, Equatable {
         asItem.isProperName
     }
 
+    /// True if the actor's name is grammatically plural, so the verbs in a line
+    /// about them agree in the plural.
+    public var isPlural: Bool {
+        asItem.isPlural
+    }
+
+    /// The definite name paired with its number, for a line whose verb has to
+    /// agree with it.
+    public var definiteNoun: GameText.Noun {
+        asItem.definiteNoun
+    }
+
     /// The actor's examine text. Assigning replaces it for the rest of the
     /// game.
     public var description: String {

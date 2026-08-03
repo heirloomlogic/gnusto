@@ -117,3 +117,39 @@ aggregate.
 | `KindlyDeep.swift::x me you look much as you always do  x myself you look much as you…` | refuted | register-mismatch |
 | `KindlyDeep.swift::east the low crawl  east the shaft bottom biscuit walks in and sta…` | refuted | repeat-behavior |
 | `KindlyDeep.swift::east the airdoor stands in its frame  and past it the shaft   x ai…` | refuted | exit-prose-mismatch |
+
+## 2026-08-03 — #126 fixed, `e148364`..HEAD
+
+Every `confirmed` row in the 2026-08-02 section above is now **fixed**. Rather than
+restate sixty-odd abbreviated keys — which would give the loop two rows per defect to
+argue with — this section is the verdict change, and it applies to all of them.
+
+**So every one of those keys is now a tripwire.** A line from that round appearing in a
+transcript again is a **regression**, not a new finding, and goes back at raised
+severity. Pass the whole 2026-08-02 confirmed set into `ledgerKeys` alongside the
+refuted ones.
+
+The `refuted` rows are unchanged and stay refuted. In particular the two
+`exit-prose-mismatch` rows about the air-door were right to be refuted: the door
+swings one way by design, the player's route east is the crawl in every state, and the
+prose was what needed fixing, not the map.
+
+Three rows deserve a note on *how* they closed, because the shape of the fix is not
+what the row's category suggests:
+
+| Key (abbreviated) | Closed by |
+|---|---|
+| `Actions/GameText.swift::eat rails the rails is not food` | Not a re-skin. A `plural` trait in the engine, beside `properName`, and seven stub lines that take a `GameText.Noun` and conjugate for themselves. The game's noun stayed plural, which was its stated position. |
+| `KindlyDeep.swift::sing your singing is better kept to yourself  dig you have nothing…` (confirmed) | A ten-line `text.stubs` block, deliberately narrow. The **refuted** rows with the same opening text are the aggregate complaint and stay refuted; do not re-file it. |
+| `KindlyDeep.swift::ring bell you take the pull and ring…` (both rows) | A second ending rather than a guard. Abandonment is still permitted and now has its own four paragraphs; it forfeits exactly the two awards the mule earns. |
+
+One finding closed that has no key here, because it came from the completeness critic
+rather than a charter: **The Old Works is dead content.** It is reachable now — one map
+line, `shaftBottom.down(lowCrawl)` — with a description of its own, and its gas death
+fires. A future round can and should probe north from the Forks after coming up out of
+the crawl from the east.
+
+And one thing the round did not find, which the fix did: the Old Works' `onEnter` kills
+on arrival, and `onEnter` runs *before* the room is auto-described, so the room's new
+description would never have printed. It calls `describeSurroundings()` first. Worth
+knowing, because it is a trap any lethal room in any game walks into.

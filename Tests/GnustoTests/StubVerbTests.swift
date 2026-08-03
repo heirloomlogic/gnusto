@@ -371,6 +371,49 @@ struct StubVerbTests {
         #expect(bare.contains("Attacking things rarely improves them."))
     }
 
+    // MARK: - Nouns that are plural
+
+    /// The defect this closes: `GameText.stubs.eat` hard-coded a singular
+    /// copula, so a game with rails in it printed *"The rails is not food."* and
+    /// its only escape was to rename them. Every stub line whose verb agrees
+    /// with its object now asks the object's number instead.
+    @Test func everyStubWhoseVerbAgreesWithItsObjectAgreesInThePlural() async throws {
+        let transcript = try await play(
+            StubLab(), ["eat scales", "break scales", "pull scales", "turn scales", "untie scales"])
+        expectInOrder(
+            transcript,
+            [
+                "The scales are not food.",
+                "The scales are sturdier than that.",
+                "The scales don't budge.",
+                "The scales don't turn.",
+                "The scales aren't tied to anything.",
+            ])
+    }
+
+    /// The other half, so the plural branch cannot quietly become the only one.
+    @Test func aSingularNounStillTakesTheSingularVerb() async throws {
+        let transcript = try await play(
+            StubLab(), ["eat rod", "break rod", "pull rod", "turn rod", "untie rod"])
+        expectInOrder(
+            transcript,
+            [
+                "The brass rod is not food.",
+                "The brass rod is sturdier than that.",
+                "The brass rod doesn't budge.",
+                "The brass rod doesn't turn.",
+                "The brass rod isn't tied to anything.",
+            ])
+    }
+
+    /// The trait reaches the listing article too, since English has no plural
+    /// indefinite of its own: "a scales" was as wrong as "the scales is".
+    @Test func aPluralNounIsListedWithSomeRatherThanAn() async throws {
+        let transcript = try await play(StubLab(), ["look"])
+        #expect(transcript.contains("There is some scales here."))
+        #expect(!transcript.contains("a scales"))
+    }
+
     // MARK: - Aimed at yourself
 
     /// The player is an entity, and it is called "yourself" — so a stub line

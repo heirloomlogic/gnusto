@@ -12,9 +12,15 @@ Tracking issue: [#126](https://github.com/heirloomlogic/gnusto/issues/126).
 
 > **This file arrived after the game did.** KindlyDeep shipped in `0b78ad8` with no
 > design doc, was play-tested on 2026-08-02, and came back with 64 findings. So the
-> [Copy](#copy) section below is **prescriptive**: where the shipped line is wrong it
-> is quoted as *shipped* and the corrected line is written out beside it. A fixer
-> works from the corrected column. See [Known defects](#known-defects).
+> [Copy](#copy) section below was written **prescriptively**: where the shipped line
+> was wrong it is quoted as *shipped* and the corrected line is written out beside
+> it.
+>
+> **Those corrections have now been applied.** The whole of #126 landed on
+> 2026-08-03, so the "shipped" column below is a record of what the game *used to*
+> say, kept because a fixer reading this next round needs to know which lines were
+> deliberately changed and why. See [Known defects](#known-defects) for what that
+> means for the next round.
 
 ---
 
@@ -66,8 +72,8 @@ not a habit.
 
 The one thing that rule does not cover is scenery, and scenery is not an exception
 to it — it is the price of the prose. Every noun a room prints has to be a noun the
-parser knows, or the room reads as unfinished. This game currently prints about sixty
-it doesn't. See [The nouns the mine prints](#the-nouns-the-mine-prints).
+parser knows, or the room reads as unfinished. This game printed about sixty it
+didn't. See [The nouns the mine prints](#the-nouns-the-mine-prints).
 
 ---
 
@@ -82,7 +88,7 @@ column is what has to remain true no matter how the story is rewritten.
 | Clock numbers | Thirst warns at 12/20/28; fatigue at 16/26/36; grace 8, so the deaths land on turns 36 and 44. | The two ladders stay **offset**, so a player never meets both crises at once, and thirst always bites first. The grace stays long enough to cross the map. |
 | Relief resets both halves | `drink` zeroes `thirst` *and* `stopFuse("dehydration")`; `rest` does the same for fatigue. | Relieving a condition must stop the armed fuse, not merely reset the counter. A reset that leaves the fuse running is a death the player earned their way out of. |
 | Companion actor | Biscuit, following by daemon, parked by the crawl, rejoined through the air-door. | **One** companion. Follow → park → rejoin is the whole cycle and the reason this game exists. |
-| **Every line about the companion reads his location** | Ten sites currently assert his presence without checking. | **No sentence asserts where he is without asking.** This is the central invariant. It is not a stylistic preference; it is the thing the demo demonstrates. |
+| **Every line about the companion reads his location** | Ten sites did not, until #126 closed. | **No sentence asserts where he is without asking.** This is the central invariant. It is not a stylistic preference; it is the thing the demo demonstrates. |
 | Consumable resource | Three swallows in the canteen, and no other water in the workings. | **Three**, and no second source. Sharing one with the mule costs a swallow and does **not** reset thirst — a generosity that costs nothing is not a beat. |
 | Two-sided barrier | The air-door: a wall from the Forks, a liftable bar from the shaft. | One barrier whose description reads which side you are standing on, refuses from the bad side, and reunites the companion from the good one. |
 | Scoring | Five awards of five: `lamp`, `canteen`, `door`, `beam`, `bell`. `maxScore` 25, declared in the `Scoring` award table. | Five awards, five points each, total checked against `maxScore` at bootstrap. **`door` and `beam` are the mule's** — see below. |
@@ -90,7 +96,7 @@ column is what has to remain true no matter how the story is rewritten.
 | No unwinnable state, by any route | The lamp cannot be dropped; closing the air-door cannot seal the game, because the crawl runs both ways. | **The game cannot be made unwinnable.** Not by a dropped light, not by a closed door, not by any order of operations. |
 | Two plugins, two wirings | `GnustoScoring` is stateful and goes in `content`; `GnustoActors` is logic-only and splices into `timers`. | **Both** kinds, wired the two different ways. |
 | Custom verbs | Nine intents — `drink`, `rest`, `give`, `talk`, `ring`, `pull`, `sit`, `pet`, `harness` — each with the phrasings a player might actually reach for. | A verb a player cannot guess is a verb the game does not have. The haul answers to seven words because nobody who has not driven a mule knows which one is right. |
-| Every printed noun answerable | ~60 currently unanswered, `wall`, `entry` and `frame` chief among them. | A named thing the parser doesn't know reads as a bug. |
+| Every printed noun answerable | The words the rooms say are *present* all answer; a `Fixtures` bundle holds the seventeen with nothing else to hang on. | A named thing the parser doesn't know reads as a bug. |
 
 **Free to change:** every name, all prose, the room descriptions, the mule's name
 and character, the tone, the title, the tagline, and the setting.
@@ -211,7 +217,7 @@ Seven rooms. Six of them are one move apart; the seventh kills you.
                               │                   │ east
                        south │ down               │
                               │             The Low Crawl ─ east ─┐
-                     The Shelter Hole              ╵ down (new)   │
+                     The Shelter Hole              ╵ down         │
                                                    └──────────── The Shaft Bottom
                                                                   ╵
                                       The Forks ══ air-door ══════╯
@@ -236,15 +242,15 @@ is the crawl, in every state of the door. This is coherent and should not be
 "fixed" into a two-way passage: a door that only swings one way is a real thing, and
 the asymmetry is what makes the crawl matter after the reunion.
 
-**One map change this document introduces:** the Low Crawl needs a mouth at the
-Shaft Bottom end (`shaftBottom.down(lowCrawl)`). Today the Shaft Bottom declares
-exactly one exit, so the crawl can never be re-entered from the east and the Low
-Crawl's own "the crawl runs east and west" is true only westbound. Adding it does
-three things at once: it makes that sentence honest, it makes the crawl a genuine
+**One map change this document introduced,** and the game now has it: the Low Crawl
+has a mouth at the Shaft Bottom end (`shaftBottom.down(lowCrawl)`). The Shaft Bottom
+used to declare exactly one exit, so the crawl could never be re-entered from the east
+and the Low Crawl's own "the crawl runs east and west" was true only westbound. It
+does three things at once: it makes that sentence honest, it makes the crawl a genuine
 two-way route so no closed door can strand the player, and it is what makes the Old
 Works reachable — see below.
 
-**How the Old Works becomes reachable.** `lowCrawl.onEnter` stops the follow daemon,
+**How the Old Works became reachable.** `lowCrawl.onEnter` stops the follow daemon,
 parking Biscuit *wherever he is standing*. Enter the crawl from the Forks and he is
 parked at the Forks, which is why north stays shut. Enter it from the **Shaft
 Bottom** and he is parked at the Shaft Bottom — so you come up out of the crawl into
@@ -845,6 +851,11 @@ closed, and a stale entry is worse than none: a play-test verifier reading it wo
 dismiss a genuine regression as somebody else's problem. Two files carry it instead,
 and neither can rot.
 
+**As of 2026-08-03 the list is empty.** Every box in #126 is fixed, which means the
+ledger's `fixed` rows are now live tripwires: a line from that round showing up again
+in a transcript is a **regression**, not a new finding, and goes back at raised
+severity.
+
 - [`kindly-deep-playtest-2026-08-02.md`](kindly-deep-playtest-2026-08-02.md) is the
   first round, dated in its own filename. It names each wrong line, the frame it
   printed in, and the cause.
@@ -854,24 +865,56 @@ and neither can rot.
 For what is open right now, ask the tracker: `gh issue list --state open --search
 KindlyDeep`.
 
-Nothing has been fixed yet. The 2026-08-02 round ran `fix: "none"` and, because this
-document did not exist, the harness clamped prose fixing off regardless. All twenty
-classes are open in [#126](https://github.com/heirloomlogic/gnusto/issues/126). Three
-of its boxes are superseded by decisions recorded in [Settled](#settled) and should be
-re-read against this document rather than taken at face value: the ending is now a
-branch rather than a gate, the Old Works is now reachable rather than cut, and the
-haul is now gated on the mule.
+The 2026-08-02 round ran `fix: "none"` and, because this document did not exist, the
+harness clamped prose fixing off regardless — so all twenty classes went to
+[#126](https://github.com/heirloomlogic/gnusto/issues/126) unfixed. **All of them
+closed on 2026-08-03**, working from the corrected column above and from
+[Settled](#settled) rather than from the boxes at face value: the ending is a branch
+rather than a gate, the Old Works is reachable rather than cut, and the haul is gated
+on the mule.
+
+Four decisions were made during the fix that this document had not anticipated, all of
+them the same rule applied to prose that did not exist when it was written:
+
+- **The bleak ending's first paragraph branches on `beamHauled`.** The version written
+  above has three men working the beam off the gate from above, which is true if you
+  never hauled it — and false in the state where you hauled it and *then* left him.
+  That state is reachable: haul, walk back west through the door, close it behind you,
+  and take the crawl, because the shaft's `onEnter` only restarts his daemon while the
+  door is open. One unconditional paragraph there would have reintroduced the exact
+  defect this round existed to retire. Both branches converge on *"Nobody asks about
+  the mule until the deck lifts"*, whose closing clause also branches: with the beam
+  already moved, there is no version of the sentence that does not begin with the beam
+  he moved for you. Score on that route is 20 — `beam` was earned and `door` was too.
+- **The Old Works death describes the room first.** `onEnter` runs *before* the room
+  is auto-described and this one ends the turn, so the description written above would
+  never have printed. It calls `describeSurroundings()` first: the whole beat is that
+  the place reads restful right up until the fourth step.
+- **Three more scenery items than the noun table lists**, each forced by this round's
+  own new prose rather than by the census. The Shaft Bottom's corrected paragraph names
+  the crawl mouth, so the crawl mouth is an item; the Old Works has a description now,
+  so its props and its air are items; and the Forks' paragraph names the fall twice
+  while the fall itself lives a room west, so the Forks has its own edge of it.
+- **`x frame` at the Shaft Bottom asks which.** Both the cage gate and the air-door
+  answer to `frame` and the room names both, so the parser disambiguates. The noun
+  table below assumed the two were never in scope together; they are, because a door
+  is in scope from both sides. A disambiguation prompt is the right answer to a room
+  with two framed things in it, and is not the same failure as an unknown word.
 
 ---
 
 ## Open questions
 
-1. **How much stub register is worth buying?** The game re-skins six of about
-   forty-seven stubs. The 2026-08-02 round refuted the aggregate complaint twice —
-   "the engine's voice in a coal mine" is a preference, not a falsehood — and confirmed
-   only the individual stubs that make a false claim about the room. The open question
-   is whether the rest is worth a `text.stubs` block and a contract row of its own, or
-   whether promoting the liars one at a time is the whole job.
+1. **How much stub register is worth buying?** Partly answered on 2026-08-03, and the
+   answer was *both, in that order*. Every stub that made a false claim about the room
+   is promoted per entity with `reply` — `smell` at the Forks and in the Stable,
+   `listen` at the Forks, `climb` at the shaft, `stand`/`kneel` in the crawl, `burn` on
+   the straw, `lookIn` on the canteen, `eat` on the mule — because those were
+   falsehoods and a promotion is the only thing that removes one. Under those sits a
+   ten-line `text.stubs` block for the rooms where the stock answer is merely in the
+   wrong century. What is still open is whether the remaining ~35 are worth the same
+   treatment, and the round's own refutations say probably not: the aggregate complaint
+   is a preference, and a contract row for it would be a promise to keep forever.
 2. **Does the companion surface deserve more than three beats?** `talk`, `pet` and
    `give` are the entire social mechanic, and the water-sharing beat — the best thing
    in the game — printed in *no transcript in the entire first round*, because the
@@ -881,16 +924,16 @@ haul is now gated on the mule.
    avoid the striker scene, so every player meets Biscuit before they can leave him. A
    version where the lamp is lit in a room he is not in would make the abandonment
    colder and the game meaner. Probably not worth it, but it has not been tried.
-4. **The rails are plural and the engine's stubs are not.** `eat rails` prints *"The
-   rails is not food."*, because `GameText.stubs.eat` hard-codes a singular copula and
-   `definiteName` for an item named "rails" is "the rails". Every `named` stub with a
-   copula has the hazard — `smash rails` would read *"The rails is sturdier than
-   that."* **This game's position: the noun stays plural.** "Rails" is what they are
-   called, a single rail is a different object, and renaming them to dodge an engine
-   limitation would be the game lying about a mine to make a stub line scan. The fix
-   belongs in `Sources/Gnusto/Actions/GameText.swift` — a plural flag on the item, or
-   copula-free stub phrasing — and it is filed as an engine box on
-   [#126](https://github.com/heirloomlogic/gnusto/issues/126), not a game one.
+4. ~~**The rails are plural and the engine's stubs are not.**~~ **Answered
+   2026-08-03**, and in the game's favor: the noun stayed plural and the engine learned
+   to agree with it. `Sources/Gnusto/Declarations/Traits.swift` grows a `plural` trait
+   beside `properName`, declared for the same reason — a trailing "s" is not a number
+   ("the brass", "a glass"), so the engine asks rather than guesses. The seven stub
+   lines whose verb agrees with their object (`eat`, `smash`, `pull`, `turn`, `untie`,
+   `give`, `somebodyElse`) now take a `GameText.Noun`, which is the rendered phrase
+   plus its number, and conjugate for themselves. `eat rails` reads *"The rails are not
+   food."*, and the trait reaches the indefinite article too, since English has no
+   plural form of its own: a plural thing lying in a room lists as *"some"*.
 
 ### Settled
 
