@@ -14,7 +14,7 @@ that covers your task before writing code.
 |---|---|
 | `Sources/Gnusto/` | the engine. `Declarations/` is the author-facing DSL; `Engine/` is the runtime; `Actions/` is verbs, default actions and player-facing text; `Parser/` is the parser and vocabulary |
 | `Sources/Gnusto*/` | optional libraries spliced in as `GameContent`/`GamePlugin`: `GnustoClock`, `GnustoConversation`, `GnustoScoring`, `GnustoSpellcasting`, `GnustoMeleeCombat`, `GnustoDangerousDark`, `GnustoActors`. Plus `GnustoMacros` (the `#verb` macro) and `GnustoTestSupport` (the `play` harness) |
-| `Sources/CloakOfDarkness`, `Lighthouse`, `Zork1`, `Gramarye`, `Fulminate` | demo games, also the engine's real test corpus |
+| `Sources/CloakOfDarkness`, `Lighthouse`, `Zork1`, `Gramarye`, `Fulminate`, `KindlyDeep` | demo games, also the engine's real test corpus |
 | `Tests/GnustoTests/` | one suite per subject; `Support/` holds the fixture games |
 | `docs/games/*.md` | per-game design docs — **story-and-copy source of truth**, iterated separately from code. Not every game has one; alongside each, its play-test round reports and ledger |
 | `docs/playtesting.md` | how to play a game by hand and read the transcript as prose, plus the calibration answer key |
@@ -26,10 +26,12 @@ that covers your task before writing code.
 
 ```sh
 swift build
-swift test                                    # ~880 tests, sub-second
+swift test                                    # ~1,060 tests, sub-second
 swift test --filter FulminateTests
 swift run Fulminate                            # pipe stdin to play scripted; GNUSTO_PLAIN=1 forces plain output
 swift package --allow-writing-to-package-directory format-source-code
+
+.build/checkouts/Persnicket/bin/ci-lint-setup  # once per checkout — generates .swift-format
 xcrun swift-format lint --strict --parallel --recursive --configuration .swift-format Sources Tests
 
 bin/playtest-replay --build Fulminate                              # once
@@ -37,6 +39,13 @@ bin/playtest-replay Fulminate --commands probe.txt --seed 0 --label mine --tail 
 ```
 
 CI runs the strict lint. Run it before you claim done.
+
+**`.swift-format` is gitignored and generated, not checked in.** The lint fails with
+*"Unable to read configuration"* in a fresh checkout until `ci-lint-setup` writes it,
+and that script lives in the Persnicket checkout — so `swift build` (or `swift package
+resolve`) has to have run first. `.dev-tooling` is the sentinel that turns the dev
+plugins on; CI touches it, and a workspace that has it already is set. See
+`.github/workflows/lint.yml`, which is the authority on the sequence.
 
 `GNUSTO_SEED` pins a binary's random stream the way `play(_:_:seed:)` pins a test's, so
 a hand-played session replays as a test. `GNUSTO_TRANSCRIPT` records it,
@@ -46,6 +55,8 @@ or `#` is a tester comment that never reaches the parser. See `docs/playtesting.
 ## Reading order for a new task
 
 - **Any game work** — `Sources/Lighthouse/` is the feature tour and the shortest complete read.
+  For a companion actor or a survival clock, `Sources/KindlyDeep/` is the worked example:
+  a follow daemon that parks and rejoins, and two failing clocks built from one helper.
 - New verb → `AddingCustomVerbs.md`, then `StubVerbs.md`. Rules → `WritingRules.md`.
   Turn order → `TheTurnPipeline.md`.
 - Actors → `ActorsAndVehicles.md`. Plugins/bundles → `Plugins.md`, `ContentBundles.md`.
