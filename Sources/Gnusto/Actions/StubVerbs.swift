@@ -105,8 +105,30 @@ extension StubVerb {
         .init(intent, patterns, reach) { text, command in
             guard let object = command.directObject else { return text.didntUnderstand }
             guard !object.isPlayer else { return text.stubs.yourself }
-            guard !object.isActor else { return text.stubs.somebodyElse(object.definiteName) }
+            guard !object.isActor else { return text.stubs.somebodyElse(object.definiteNoun) }
             return line(text, object.definiteName)
+        }
+    }
+
+    /// A `named` stub whose line carries a **verb agreeing with the object**, so
+    /// the name alone is not enough to write it: "The rails is not food." is
+    /// what a template gets for assuming the singular, and the game's only way
+    /// out would be to rename its rails. These lines are handed a
+    /// ``GameText/Noun`` and conjugate for themselves.
+    ///
+    /// Everything else about it is `named` — the same self and actor guards, for
+    /// the same reasons.
+    static func numbered(
+        _ intent: Intent,
+        _ patterns: [[SyntaxElement]],
+        reach: Reach,
+        _ line: @escaping @Sendable (GameText, GameText.Noun) -> String
+    ) -> StubVerb {
+        .init(intent, patterns, reach) { text, command in
+            guard let object = command.directObject else { return text.didntUnderstand }
+            guard !object.isPlayer else { return text.stubs.yourself }
+            guard !object.isActor else { return text.stubs.somebodyElse(object.definiteNoun) }
+            return line(text, object.definiteNoun)
         }
     }
 
@@ -292,7 +314,7 @@ extension DefaultActions {
             reach: .directObject
         ) { $0.stubs.attack },
 
-        .named(
+        .numbered(
             .smash,
             [
                 ["break", .directObject],
@@ -325,7 +347,7 @@ extension DefaultActions {
             reach: .directObject
         ) { $0.stubs.dig },
 
-        .named(
+        .numbered(
             .pull,
             [
                 ["pull", .directObject],
@@ -334,7 +356,7 @@ extension DefaultActions {
             reach: .directObject
         ) { $0.stubs.pull($1) },
 
-        .named(
+        .numbered(
             .turn,
             [
                 ["turn", .directObject],
@@ -386,7 +408,7 @@ extension DefaultActions {
         ) { text, command in
             guard let object = command.directObject, object.isActor, !object.isPlayer
             else { return text.stubs.touch }
-            return text.stubs.somebodyElse(object.definiteName)
+            return text.stubs.somebodyElse(object.definiteNoun)
         },
 
         // A smell crosses a room, and so does a sound. These two are the reason
@@ -422,7 +444,7 @@ extension DefaultActions {
 
         // MARK: Body
 
-        .named(.eat, [["eat", .directObject]], reach: .directObject) { $0.stubs.eat($1) },
+        .numbered(.eat, [["eat", .directObject]], reach: .directObject) { $0.stubs.eat($1) },
 
         .plain(.drink, [["drink", .directObject]], reach: .directObject) { $0.stubs.drink },
 
@@ -469,7 +491,7 @@ extension DefaultActions {
             else { return text.didntUnderstand }
             // Either slot can be the player, and neither reads with its name.
             guard !item.isPlayer, !recipient.isPlayer else { return text.stubs.yourself }
-            return text.stubs.give(item.definiteName, recipient.definiteName)
+            return text.stubs.give(item.definiteName, recipient.definiteNoun)
         },
 
         .plain(
@@ -590,7 +612,7 @@ extension DefaultActions {
             reach: .directObject
         ) { $0.stubs.tie($1) },
 
-        .named(
+        .numbered(
             .untie,
             [
                 ["untie", .directObject],

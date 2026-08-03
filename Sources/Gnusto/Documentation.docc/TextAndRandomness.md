@@ -58,10 +58,12 @@ The stub verbs' stock replies are grouped on ``GameText/stubs`` rather than sitt
 
 ```swift
 text.stubs.attack = "The Institute frowns on that sort of thing."
-text.stubs.smash = { "\(GameText.sentenceCase($0)) is stouter than your temper." }
+text.stubs.smash = { "\($0.sentenceCased) \($0.verb("is", "are")) stouter than your temper." }
 ```
 
 Overriding one re-skins the line; replacing the *behavior* is a rule or an `actions` row. See <doc:StubVerbs>.
+
+Seven stub lines take a ``GameText/Noun`` rather than a `String`, and they are the seven whose verb agrees with the object: `eat`, `smash`, `pull`, `turn`, `untie`, `give` and `somebodyElse`. A `Noun` is the rendered phrase plus its number, and ``GameText/Noun/verb(_:_:)`` picks the form that agrees — so a game may call a thing `rails` and get "The rails are not food." The number comes from the `plural` trait, declared for the same reason `properName` is: no engine should guess it, and no game should have to rename a thing to suit a stock line.
 
 ## Randomness that replays
 

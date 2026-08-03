@@ -20,9 +20,56 @@
 /// its own would say "the Mrs. Vane". Use ``sentenceCase(_:)`` where a line
 /// opens on the phrase, since "the troll" has to be capitalized and
 /// "Mrs. Vane" must not be.
+///
+/// A line whose *grammar* depends on the noun — anything with a verb agreeing
+/// with it — takes a ``Noun`` instead of a `String`, for the same reason the
+/// article is the engine's: only the engine knows which entities carry
+/// `plural`. See ``StubReplies``.
 public struct GameText: Sendable {
     /// Creates the default table: the engine's classic voice.
     public init() {}
+
+    /// A rendered noun phrase that also knows its own number, for the lines
+    /// whose verb has to agree with it.
+    ///
+    /// Most stock lines can take the phrase alone, because English nouns cost
+    /// their sentence nothing until a verb turns up. The handful that carry one
+    /// take this instead, so "The rails is not food." — a game's real noun made
+    /// ungrammatical by a template's assumption — cannot be written.
+    public struct Noun: Sendable {
+        /// The rendered phrase, article and all: "the rails", "Mrs. Vane".
+        public let phrase: String
+        /// Whether the phrase is grammatically plural.
+        public let isPlural: Bool
+
+        /// Creates a noun phrase.
+        ///
+        /// - Parameters:
+        ///   - phrase: the rendered phrase, article and all.
+        ///   - plural: whether it is grammatically plural.
+        public init(_ phrase: String, plural: Bool = false) {
+            self.phrase = phrase
+            self.isPlural = plural
+        }
+
+        /// The phrase with its first letter capitalized, for a line that opens
+        /// on it. See ``GameText/sentenceCase(_:)``.
+        public var sentenceCased: String { GameText.sentenceCase(phrase) }
+
+        /// The form of a verb that agrees with this noun.
+        ///
+        /// ```swift
+        /// "\($0.sentenceCased) \($0.verb("is", "are")) not food."
+        /// ```
+        ///
+        /// - Parameters:
+        ///   - singular: the form for a singular noun.
+        ///   - plural: the form for a plural one.
+        /// - Returns: whichever agrees.
+        public func verb(_ singular: String, _ plural: String) -> String {
+            isPlural ? plural : singular
+        }
+    }
 
     /// The reply to an empty input line.
     public var beg = "I beg your pardon?"
@@ -90,8 +137,13 @@ public struct GameText: Sendable {
     }
     /// A bare `go` with no direction.
     public var whichWay = "Which way?"
-    /// Looking around a dark room.
-    public var pitchBlack = "It is pitch black. You can't see a thing."
+    /// Looking around a dark room. A closure rather than a string because the
+    /// line prints on every dark turn, in every dark room, and a game whose
+    /// darkness has anything in it — a companion, a sound, a smell — has to be
+    /// able to check that the thing is still there before saying so.
+    public var pitchBlack: @Sendable () -> String = {
+        "It is pitch black. You can't see a thing."
+    }
     /// An `inventory` with nothing carried.
     public var emptyHanded = "You are empty-handed."
     /// Reading something with no description to read.
@@ -489,16 +541,25 @@ public struct GameText: Sendable {
     }
 
     /// The name with its indefinite article, for listings ("a velvet cloak",
-    /// "an apple"), or the name alone when it is a proper name ("Mrs. Vane").
+    /// "an apple", "some rails"), or the name alone when it is a proper name
+    /// ("Mrs. Vane").
     ///
     /// - Parameters:
     ///   - name: the bare name to article.
     ///   - proper: whether the name is a proper name, in which case it is
     ///     returned unchanged.
+    ///   - plural: whether the name is grammatically plural, which takes
+    ///     "some" — English has no plural indefinite article of its own.
     /// - Returns: the rendered noun phrase.
-    public static func indefinite(_ name: String, proper: Bool = false) -> String {
+    public static func indefinite(
+        _ name: String, proper: Bool = false, plural: Bool = false
+    )
+        -> String
+    {
         if proper {
             name
+        } else if plural {
+            "some \(name)"
         } else if let first = name.lowercased().first, "aeiou".contains(first) {
             "an \(name)"
         } else {
@@ -544,6 +605,13 @@ extension GameText {
     /// Lines that name the object are closures, as elsewhere in ``GameText``,
     /// and only where the name earns its keep: "The chair is sturdier than
     /// that." says something "That's sturdier than that." can't.
+    ///
+    /// Seven of them take a ``GameText/Noun`` rather than a `String`, and they
+    /// are exactly the seven whose verb agrees with the object. A template that
+    /// hard-codes the agreement makes a game's honest plural noun ungrammatical
+    /// — "The rails is not food." — and the game's only escape would be to
+    /// rename the thing, which is a mine lying about itself to make a stub line
+    /// scan. See the `plural` trait.
     public struct StubReplies: Sendable {
         /// The classic replies. Build one and mutate the lines you want to
         /// change; ``GameText`` already holds a default instance.
@@ -564,8 +632,8 @@ extension GameText {
         /// It is deliberately close in shape to ``GameText/cantTakeActor`` and
         /// ``GameText/cantSearchActor``, which have always refused this way: a
         /// game that re-skins one usually wants all three in the same voice.
-        public var somebodyElse: @Sendable (_ name: String) -> String = {
-            "\(GameText.sentenceCase($0)) is a person, and would rather you didn't."
+        public var somebodyElse: @Sendable (_ person: Noun) -> String = {
+            "\($0.sentenceCased) \($0.verb("is", "are")) a person, and would rather you didn't."
         }
 
         // MARK: Violence and force
@@ -573,8 +641,8 @@ extension GameText {
         /// Attacking something with no combat behind it.
         public var attack = "Attacking things rarely improves them."
         /// Breaking, smashing or destroying something.
-        public var smash: @Sendable (_ name: String) -> String = {
-            "\(GameText.sentenceCase($0)) is sturdier than that."
+        public var smash: @Sendable (_ noun: Noun) -> String = {
+            "\($0.sentenceCased) \($0.verb("is", "are")) sturdier than that."
         }
         /// Setting fire to something.
         public var burn: @Sendable (_ name: String) -> String = {
@@ -587,13 +655,13 @@ extension GameText {
         /// Digging, with or without a tool.
         public var dig = "You have nothing to dig with."
         /// Pulling or dragging something.
-        public var pull: @Sendable (_ name: String) -> String = {
-            "\(GameText.sentenceCase($0)) doesn't budge."
+        public var pull: @Sendable (_ noun: Noun) -> String = {
+            "\($0.sentenceCased) \($0.verb("doesn't", "don't")) budge."
         }
         /// Turning something that doesn't turn. Names the object so the reply
         /// doesn't read as a failed `turn on`.
-        public var turn: @Sendable (_ name: String) -> String = {
-            "\(GameText.sentenceCase($0)) doesn't turn."
+        public var turn: @Sendable (_ noun: Noun) -> String = {
+            "\($0.sentenceCased) \($0.verb("doesn't", "don't")) turn."
         }
         /// Squeezing something.
         public var squeeze: @Sendable (_ name: String) -> String = {
@@ -622,8 +690,8 @@ extension GameText {
         // MARK: Body
 
         /// Eating something inedible.
-        public var eat: @Sendable (_ name: String) -> String = {
-            "\(GameText.sentenceCase($0)) is not food."
+        public var eat: @Sendable (_ noun: Noun) -> String = {
+            "\($0.sentenceCased) \($0.verb("is", "are")) not food."
         }
         /// Drinking something undrinkable.
         public var drink = "There's nothing here worth drinking."
@@ -638,8 +706,8 @@ extension GameText {
         public var kiss = "That would be presumptuous."
         /// Handing something to somebody who doesn't want it. Names both, since
         /// every row carries both slots.
-        public var give: @Sendable (_ name: String, _ recipient: String) -> String = {
-            "\(GameText.sentenceCase($1)) doesn't want \($0)."
+        public var give: @Sendable (_ name: String, _ recipient: Noun) -> String = {
+            "\($1.sentenceCased) \($1.verb("doesn't", "don't")) want \($0)."
         }
         /// Yelling, shouting or screaming.
         public var yell = "You shout. Nothing shouts back."
@@ -686,8 +754,8 @@ extension GameText {
             "There's nothing here to tie \($0) to."
         }
         /// Untying something that isn't tied.
-        public var untie: @Sendable (_ name: String) -> String = {
-            "\(GameText.sentenceCase($0)) isn't tied to anything."
+        public var untie: @Sendable (_ noun: Noun) -> String = {
+            "\($0.sentenceCased) \($0.verb("isn't", "aren't")) tied to anything."
         }
 
         // MARK: Ritual and flavor

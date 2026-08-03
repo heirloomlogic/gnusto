@@ -170,7 +170,9 @@ struct Fulminate: Game, GameMain {
         text.stubs.sit = "You did not come out on a Tuesday to sit down."
         // A house of witnesses, so the sister lines to the two already
         // re-skinned above want the same voice.
-        text.stubs.somebodyElse = { "\(GameText.sentenceCase($0)) is a person, and this is not 1948." }
+        text.stubs.somebodyElse = {
+            "\($0.sentenceCased) \($0.verb("is", "are")) a person, and this is not 1948."
+        }
         return text
     }
 

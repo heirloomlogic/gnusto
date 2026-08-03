@@ -69,6 +69,20 @@ public struct Item: Sendable, Equatable {
         return frame.isProperName(id)
     }
 
+    /// True if the item's name is grammatically plural, so the verbs in a line
+    /// about it agree in the plural.
+    public var isPlural: Bool {
+        let (frame, id) = resolved
+        return frame.isPlural(id)
+    }
+
+    /// The definite name paired with its number, for a line whose verb has to
+    /// agree with it — "the rails" plus the fact that they are plural.
+    public var definiteNoun: GameText.Noun {
+        let (frame, id) = resolved
+        return frame.definiteNoun(of: id)
+    }
+
     /// The item's examine/read text. Assigning replaces it for the rest of
     /// the game.
     public var description: String {

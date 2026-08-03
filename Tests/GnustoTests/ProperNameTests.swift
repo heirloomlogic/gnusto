@@ -196,6 +196,28 @@ struct ProperNameTests {
         #expect(GameText.indefinite("Mrs. Vane", proper: true) == "Mrs. Vane")
     }
 
+    /// `plural` is the sister trait, declared for the same reason: a trailing
+    /// "s" is not a number ("the brass", "a glass"), so the engine asks rather
+    /// than guesses. It reaches the indefinite article, which English has no
+    /// plural form of, and a proper name still outranks both.
+    @Test func thePluralHelperTakesSomeAndProperNamesStillTakeNothing() {
+        #expect(GameText.indefinite("rails", plural: true) == "some rails")
+        #expect(GameText.indefinite("axe", plural: true) == "some axe")  // "some" outranks the vowel rule
+        #expect(GameText.indefinite("The Wilsons", proper: true, plural: true) == "The Wilsons")
+        #expect(GameText.definite("rails") == "the rails")
+    }
+
+    /// A `Noun` is a rendered phrase that also knows its number, and it is what
+    /// the seven stub lines with a verb in them are handed.
+    @Test func aNounConjugatesTheVerbHandedToIt() {
+        let singular = GameText.Noun("the brass rod")
+        let plural = GameText.Noun("the rails", plural: true)
+        #expect(singular.verb("is", "are") == "is")
+        #expect(plural.verb("is", "are") == "are")
+        #expect(singular.sentenceCased == "The brass rod")
+        #expect(GameText.Noun("Mrs. Vane").sentenceCased == "Mrs. Vane")
+    }
+
     /// `sentenceCase` is what lets one template open on either kind: "the
     /// troll" has to be capitalized and "Mrs. Vane" must be left alone.
     @Test func sentenceCaseCapitalizesOnlyTheArticle() {

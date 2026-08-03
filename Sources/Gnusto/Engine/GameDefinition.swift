@@ -37,6 +37,9 @@ struct ItemDefinition: Sendable {
     /// The name is a proper name: the stock lines render it bare rather than
     /// behind "the" or "a". See `GameText.definite(_:proper:)`.
     var isProperName = false
+    /// The name is grammatically plural: the stock lines agree with it, and the
+    /// indefinite article becomes "some". See `GameText.Noun`.
+    var isPlural = false
     var firstSight: String?
     var isWearable = false
     var isScenery = false
@@ -73,6 +76,7 @@ struct ItemDefinition: Sendable {
             case .adjectives(let words): adjectives += words
             case .synonyms(let words): synonyms += words
             case .properName: isProperName = true
+            case .plural: isPlural = true
             case .firstSight(let text): firstSight = text
             case .wearable: isWearable = true
             case .scenery: isScenery = true
