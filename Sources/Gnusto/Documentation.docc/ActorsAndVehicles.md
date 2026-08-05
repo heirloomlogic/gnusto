@@ -268,6 +268,16 @@ boarded vehicle carries the passenger; follow with
 vehicle that leaves the room any other way strands its passenger on foot,
 gracefully.
 
+"Boarded" means the same thing to `move(to:)` as it does to
+``Player/vehicle``: the flag is set *and* the vehicle is in the room the
+player is standing in. Once a rule has put the player somewhere their
+vehicle isn't, the vehicle's later travels leave them where they are.
+
+Disembarking is worth one warning. `get out` carries no direct object, so
+a rule on the vehicle itself never sees it — a gate that has to hold
+(open water below, nine hundred feet of nothing below) belongs on
+`world.before(.disembark)`, keyed on ``Player/vehicle``.
+
 ## Topics
 
 - ``Actor``

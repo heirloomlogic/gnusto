@@ -210,6 +210,31 @@ struct VehicleTests {
             ])
     }
 
+    /// The other half of stranding: once the player is standing somewhere the
+    /// vehicle isn't, the vehicle's own travels must leave them where they are.
+    ///
+    /// `playerVehicle` is still set here — nothing clears it, and every *read*
+    /// of the boarded state goes through `Visibility.boardedVehicle`, which
+    /// pairs it with the vehicle being in the player's room. `move(to:)` has to
+    /// make the same pairing check, or a boat two rooms away drags a player who
+    /// is demonstrably on foot into a cave they never entered.
+    @Test func aStrandedPassengerIsNotDraggedAlongByTheirOldVehicle() async throws {
+        let transcript = try await play(
+            HarborGame(),
+            ["enter boat", "hurl", "tow", "look", "quit"])
+        expectInOrder(
+            transcript,
+            [
+                "You are now in the red boat.",
+                "A gull carries you off to the boathouse.",
+                "The boat is towed away into the cave.",
+            ])
+        let look = turnOutput(of: "look", in: transcript)
+        #expect(look.contains("Boathouse"))
+        #expect(!look.contains("Sea Cave"))
+        #expect(!look.contains("It is pitch black"))
+    }
+
     @Test func boardedStateSurvivesSaveAndRestore() async throws {
         let path = FileManager.default.temporaryDirectory
             .appendingPathComponent("gnusto-vehicle-\(UUID().uuidString).sav").path

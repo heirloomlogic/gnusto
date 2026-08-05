@@ -167,7 +167,7 @@ or engine change?*
 |---|---|
 | **Royal Puzzle** | The room's geometry mutates. The player pushes sandstone walls through a grid; marble walls do not move. Expected to be an in-game rule: a grid in `@Global` and a custom `push <dir>` verb that rewrites exits. |
 | **Bank of Zork** | Non-Euclidean. Which room the curtain of light delivers you to depends on hidden state. Expected to fall out of conditional exits. |
-| **Balloon** | A vehicle that rises and falls a volcano shaft on a timer, with a receptacle you feed to keep it aloft. Vehicles exist (`player.vehicle`); the vertical daemon does not. |
+| **Balloon** | A vehicle that rises and falls a volcano shaft on a timer, with a receptacle you feed to keep it aloft. Vehicles exist (`player.vehicle`); the vertical daemon does not. **Spiked — see below.** |
 | **Robot, and the mirror box** | Commanding an actor (`robot, push button`) and riding a vehicle you steer from inside. Load-bearing for the Endgame. **Sized — see below.** |
 
 ### The actor-imperative question, answered
@@ -194,7 +194,68 @@ That is engine work in `Sources/Gnusto/`, and per the program plan it becomes it
 own phase before any region depends on it — not something improvised inside
 `Sources/Dungeon/` at the Endgame.
 
-The remaining three spikes are unstarted.
+### The balloon question, answered
+
+**In-game rule.** No plugin, no engine subsystem. The whole mechanism is stock
+verbs and rules, and the proof is `Tests/GnustoTests/Support/BalloonGames.swift`
+— a fixture that flies the shaft with **no `verbs` block at all**, driven by
+`BalloonTests`.
+
+**"Vertical" was the red herring.** The engine's vehicle model has no notion of
+direction anywhere in it. `Item.move(to:)`
+(`Sources/Gnusto/Declarations/Item.swift:324`) moves a vehicle to any room and
+carries the boarded player and everything in the hull along with it; whether that
+reads as drifting downstream or climbing a shaft is the room graph and the prose,
+nothing else. **The balloon and the river boat are the same mechanism.** What is
+actually new is that the balloon's direction is a *resource* the player manages
+rather than a schedule the author fixed — and a resource is a fuse.
+
+Every beat had a home already:
+
+| Beat | What carries it |
+|---|---|
+| board, disembark | the `enterable` trait; core `.board` / `.disembark` (`Actions/DefaultActions.swift:591`, `:624`) |
+| the receptacle | a `container` placed inside the hull. Reachable while aboard: `Visibility.collect` walks the room's contents and descends open containers (`Engine/Visibility.swift:106`) |
+| feed it | core `.putIn`, with the rule on the receptacle reading `command.directObject` — `Zork1`'s `magicBoat.before(.putIn)` (`Regions/River.swift:321`) is the same shape |
+| light it | `.burn` is a **stub** (`Actions/StubVerbs.swift:332`), promoted with `before(.burn)` ending in `reply`/`refuse` |
+| rise, sink | a `daemon` calling `balloon.move(to:)` — the river current (`Regions/River.swift:388`) with a different room list |
+| the fuel clock | one `fuse`, started by the fire and read by the daemon (`Declarations/Timers.swift:36`) |
+| tie off | `.tie` / `.untie` are stubs whose `tie <thing> to <thing>` rows **already parse an indirect object** (`Actions/StubVerbs.swift:618`) |
+| no steering | `before(.go)` keyed on `player.vehicle` — the documented terrain gate |
+| fatal landing | `die` |
+
+Two gaps turned up, both small and both now **fixed**. Only the second was a
+defect; the first is convenience, and the distinction matters for sizing M6:
+
+1. **`.burn` had no `with` row** — its only pattern was `burn <object>`, and the
+   mainframe needs `burn newspaper with match`. A game *can* declare the row for
+   itself (`SyntaxRule("burn", .directObject, "with", .indirectObject, intent:
+   .burn)` parses and delivers the indirect object, with no override warning,
+   because `.burn` is a stub rather than a core verb). It now ships in
+   `Actions/StubVerbs.swift` for parity with `attack`, `dig` and `fill`, which all
+   carry a `with` row already — not because M6 was blocked without it.
+2. **`Item.move(to:)` trusted a stale boarded flag.** It read
+   `state.playerVehicle` raw, while every *read* of the boarded state goes through
+   `Visibility.boardedVehicle` (`Engine/Visibility.swift:213`), which additionally
+   requires the vehicle to be in the player's room. So a player teleported out
+   from under their vehicle was correctly on foot by every read — and the
+   vehicle's next `move(to:)` dragged them back inside it from another room.
+   `move(to:)` now makes the same pairing test, pinned by
+   `VehicleTests.aStrandedPassengerIsNotDraggedAlongByTheirOldVehicle`.
+
+Two notes for M6, both found by playing the fixture rather than by reading it:
+
+- **Guard disembarking on `world`, not on the vehicle.** Bare `get out` carries no
+  direct object, so an item rule never sees it and a gate written on the balloon
+  holds only against players who type `get out of basket`. `Zork1` guards open
+  water the same way (`Regions/River.swift:306`).
+- **The softlock #139 warns about is real, and it is seven turns away.** Untie a
+  still-burning balloon from the ledge and it leaves without you;
+  `BalloonTests.untyingAStillBurningBalloonStrandsYouOnTheLedge` reproduces it, so
+  M6 can decide deliberately whether to keep it and record the choice in
+  `FIDELITY.md`.
+
+The remaining two spikes are unstarted.
 
 ## Relationship to `Sources/Zork1/`
 

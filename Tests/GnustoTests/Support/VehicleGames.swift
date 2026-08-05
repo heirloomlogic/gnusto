@@ -75,6 +75,8 @@ struct HarborGame: Game {
         SyntaxRule("chain", intent: Intent("chain"))
         SyntaxRule("row", .direction, intent: Intent("row"))
         SyntaxRule("scuttle", intent: Intent("scuttle"))
+        SyntaxRule("hurl", intent: Intent("hurl"))
+        SyntaxRule("tow", intent: Intent("tow"))
     }
 
     var rules: Rules {
@@ -98,6 +100,17 @@ struct HarborGame: Game {
         world.before(Intent("chain")) {
             chained = true
             try reply("You loop the chain through the bow ring.")
+        }
+        // The two halves of the stale-boarding case: `hurl` teleports the player
+        // out from under the boat, leaving the boarded flag set behind them, and
+        // `tow` then moves the boat with nobody actually aboard it.
+        world.before(Intent("hurl")) {
+            player.location = boathouse
+            try reply("A gull carries you off to the boathouse.")
+        }
+        world.before(Intent("tow")) {
+            boat.move(to: cave)
+            try reply("The boat is towed away into the cave.")
         }
         // A6: the "river current" pattern — a rule moves the vehicle and
         // the boarded player comes along.
