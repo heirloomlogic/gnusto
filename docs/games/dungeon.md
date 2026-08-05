@@ -166,7 +166,7 @@ or engine change?*
 
 | Mechanism | The hard part |
 |---|---|
-| **Royal Puzzle** | The room's geometry mutates. The player pushes sandstone walls through a grid; marble walls do not move. Expected to be an in-game rule: a grid in `@Global` and a custom `push <dir>` verb that rewrites exits. |
+| **Royal Puzzle** | The room's geometry mutates. The player pushes sandstone walls through a grid; marble walls do not move. **Answered — in-game rule, and it costs the engine nothing. See below.** |
 | **Bank of Zork** | Non-Euclidean. Which room the curtain of light delivers you to depends on hidden state. **Answered — see below.** |
 | **Balloon** | A vehicle that rises and falls a volcano shaft on a timer, with a receptacle you feed to keep it aloft. Vehicles exist (`player.vehicle`); the vertical daemon does not. **Answered — see below.** |
 | **Robot, and the mirror box** | Commanding an actor (`robot, push button`) and riding a vehicle you steer from inside. Load-bearing for the Endgame. **Sized — see below.** |
@@ -194,6 +194,93 @@ for actors that have not opted in.
 That is engine work in `Sources/Gnusto/`, and per the program plan it becomes its
 own phase before any region depends on it — not something improvised inside
 `Sources/Dungeon/` at the Endgame.
+
+### The Royal-Puzzle question, answered
+
+**In-game rule. Nothing in `Sources/Gnusto/` has to change.** The spike is
+`RoyalPuzzleGame` in `Tests/GnustoTests/Support/RoyalPuzzleGames.swift`, and
+`RoyalPuzzleTests` walks a nineteen-move solution end to end, plus both of the
+orders that lose the treasure.
+
+The shape this charter predicted was half right, and the half that is wrong is
+the load-bearing half.
+
+**A conditional exit really does read the grid.** `when:` is evaluated inside
+the live turn frame (`Sources/Gnusto/Actions/DefaultActions.swift:464`), so it
+sees `@Global` state as of this turn. All three ways out of the puzzle are
+ordinary conditional exits: the ladder block under the ceiling hole, the low
+door, the hatch.
+
+**But "rewrites exits" is the wrong shape for the problem, and no exit kind
+fits it.** Since the Bank of Zork spike, a destination *can* be computed at `go`
+time — ``Location/exit(_:toward:)``, below. That still does not help here, for
+two reasons that outlast it. An exit answers *where you go*, and walking one
+square north inside the puzzle is not travel between rooms at all: there is no
+destination to compute, and routing it through an exit would fire the room's
+`onEnter` and re-describe on every step. And a blocked step has to name *which
+material* is in the way, which no exit kind can do — a conditional exit's
+`otherwise:` is a single string chosen at declaration, and a `toward:` exit
+cannot refuse at all, since its closure must return a room and `travel` always
+enters it (`Sources/Gnusto/Actions/DefaultActions.swift:468`).
+
+So movement inside the grid is a `location.before(.go)` rule, which runs at
+stage 3, ahead of stage 4's exit lookup — the exit table is never consulted and
+never needs to change. The whole puzzle is **one `Location`**; the player's
+square is an `Int` in a `@Global` struct beside the cells.
+
+**`push <direction>` works, for any intent.** `SyntaxElement.direction` binds
+into `Command.direction` whatever the verb (`StandardParser.swift:304`), and a
+custom `["push", .direction]` row shares no shape with core `push <object>`, so
+the bootstrap raises nothing.
+
+Three sharp edges came out of it. None blocks M7; each is filed.
+
+1. **The wordier phrasings cost a row each, and the noun in them is
+   decorative** (#151). A direction slot may not share a pattern with an *object* slot
+   (`Sources/Gnusto/Actions/SyntaxRule.swift:140-150`), so
+   `PUSH THE SANDSTONE WALL NORTH` has no single expression. Literal words are
+   allowed, so `["push", "sandstone", "wall", .direction]` buys the sentence
+   back — but a literal is matched, not resolved, so `Command.directObject`
+   stays nil and the rule cannot tell which wall was named. In the fixture,
+   `push marble wall west` pushes the sandstone. Pinned by
+   `theNounInALiteralRowIsDecorative`.
+2. **A room whose description carries state loses it on every rewind**
+   (#149). UNDO,
+   RESTORE and walking back in all re-describe with `mode: .entry`
+   (`Engine/GameWorld.swift:373`, `Actions/DefaultActions.swift:490`), which is
+   brief once the room is visited (`Engine/RoomDescriber.swift:45`) — so the
+   grid paragraph silently stops printing and the player gets a bare room name.
+   `describeSurroundings()` is the only public entry point and is always
+   verbose, which is the opposite problem: stepping between squares reprints
+   the room's *name* every time. Two modes, neither of them the one a sub-room
+   grid wants. Pinned by `aRewindRedescribesBrieflyAndDropsTheGeometry`.
+3. **Containment is room-granular** (#150). The brass card is "in the room" from the
+   moment its block is pushed off it, so it lists from every square and is
+   reachable from every square. Both had to be faked by hand against the
+   player's index — a `presence { }` line worded to stay true from anywhere,
+   and a `before(.take)` rule for the reach.
+
+Two things worth carrying into M7 unchanged. Nothing in the engine rolls a turn
+back — `commit` writes the scratch state unconditionally
+(`Engine/GameWorld.swift:709`) — so a rule that mutates the grid and then falls
+through prints "You can't do that." over a world that already moved, and leaves
+the UNDO snapshot a turn stale; every path out of the push rule replies or
+refuses. And a struct `@Global` is touched once per rule body, not field by
+field, because each read decodes and each write encodes; that one is general
+enough that it now lives in `CustomStateAndTraits.md` rather than here.
+
+`PuzzleGrid` owns the two operations — `step(_:)` and `push(_:)`, each returning
+an outcome the rule maps onto prose — so the puzzle's invariants are stated once,
+on the type, and the type is liftable into `Sources/Dungeon/` when M7 starts.
+Its landmark squares are Royal-Puzzle content sitting on an otherwise generic
+sliding-block grid; if the mirror box or the Endgame want the same mechanism,
+that is the seam to split on.
+
+The grid itself survives UNDO, SAVE and RESTORE with no special handling.
+`PuzzleGrid` decodes leniently anyway, because a `.data` global that fails to
+decode is a `fatalError` rather than a fall back to its default
+(`Declarations/Global.swift:44-50`) and save validation cannot tell one `.data`
+payload from another (`Engine/WorldState.swift:264-271`).
 
 ### The non-Euclidean-walls question, answered
 
@@ -312,7 +399,7 @@ Two notes for M6, both found by playing the fixture rather than by reading it:
   M6 can decide deliberately whether to keep it and record the choice in
   `FIDELITY.md`.
 
-One spike remains unstarted: the Royal Puzzle.
+All four spikes are answered. M1 is unblocked.
 
 ## Relationship to `Sources/Zork1/`
 
@@ -352,3 +439,8 @@ transcript.
 3. **Objects declared but never placed.** Several valued objects sit in no room's
    contents because they start inside another object or are made by a puzzle. The
    atlas does not yet distinguish those from genuinely unreachable content.
+4. **Sub-room space, three times over.** The Royal Puzzle spike had to fake
+   per-square presence and reach by hand, because an item's position is a room
+   and nothing finer (#150). The mirror box and the Endgame are the same shape.
+   Whatever M7 builds is what they will copy, so it is worth deciding before
+   #140 whether that is three hand-rolled griddings or one mechanism.

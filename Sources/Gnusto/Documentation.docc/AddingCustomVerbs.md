@@ -85,6 +85,10 @@ A pattern reads the way it's typed. Some shapes, from the standard table and bey
 
 The rules: a pattern starts with at least one literal word (the verb); it can hold at most one direct-object and one indirect-object slot, direct first, with a literal word between them; a direction slot ends its pattern and never mixes with object slots; a topic slot also ends its pattern, and never mixes with a second object or a direction.
 
+A direction slot is barred from sharing a pattern with an *object* slot, not with a literal word — so `["tunnel", "shaft", .direction]` is legal, and `tunnel shaft down` arrives with its ``Command/direction`` set. That is how a verb takes a noun *and* a direction at all, and it costs one row per spelling: the word is matched, never resolved, so ``Command/directObject`` stays nil and the rule cannot tell which shaft the player named. Adjectives, synonyms and disambiguation all stop at the pattern.
+
+And a direction slot with nothing left to fill it still *succeeds*, with a nil direction — that is the branch that lets bare `go` ask "Which way?". So a row like `["push", .direction]` means bare `push` reaches your intent instead of the built-in's "What do you want to push?", and your rule has to answer it.
+
 A **topic** is the odd one out, and deliberately so. The object slots resolve against what the player can see, and refuse anything else — which is right for things and wrong for subjects. A topic instead takes the rest of the line as typed, normalized but never looked up, so `ask the monk about zeppelins` reaches the monk's rules and lets him shrug rather than dying in the parser as "You can't see any such thing." It arrives as a ``Topic`` on ``Command/topic``, with the words already lowercased, stripped of punctuation and filler; ``Topic/normalize(_:)`` puts an author's own keyword through the same mill so the two can be compared. The line exactly as typed is still on ``Command/rawInput``.
 
 Several patterns on one `#verb` share the intent — that is how synonyms and alternate word orders work:
