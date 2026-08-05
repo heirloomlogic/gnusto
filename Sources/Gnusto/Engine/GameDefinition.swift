@@ -143,6 +143,11 @@ struct RuleTable: Sendable {
     /// `actor.presence { … }`. Consulted by `TurnFrame.presenceText(of:)`
     /// before a static `firstSight(…)` trait.
     var itemPresence: [EntityID: @Sendable () -> String] = [:]
+    /// Live reach rules declared via `item.reach { … }` or `actor.reach { … }`.
+    /// Consulted by `Visibility` on top of containment and by the stage-0 gate
+    /// in `GameWorld.performStages`. Empty for a game that declares none, which
+    /// is what makes the whole feature opt-in.
+    var itemReach: [EntityID: Reach.Rule] = [:]
 }
 
 /// Everything about a game that never changes during play. Built once at

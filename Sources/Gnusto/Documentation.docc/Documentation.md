@@ -116,6 +116,7 @@ A game type that also conforms to ``GameMain`` is a complete `@main` executable 
 - ``Item/isReachable``
 - ``Item/isReachable(from:)``
 - ``Item/isVisible``
+- ``Item/reach(otherwise:_:)``
 - ``Item/reveal()``
 - ``Item/isRevealed``
 - ``Location/exit(_:to:via:)``

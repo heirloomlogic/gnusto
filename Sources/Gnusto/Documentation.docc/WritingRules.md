@@ -166,6 +166,20 @@ var rules: Rules {
 
 This is the rule to reach for when somebody moves. A person on a schedule ends up described in terms of the room they left, and no amount of careful static wording fixes that.
 
+## Live reach with `reach`
+
+The third text-free phase. ``Item/reach(otherwise:_:)`` answers "can the player put a hand on this from where they are standing", and the engine asks it wherever a verb has to *touch* something — so a room the map keeps as one place and the game divides into squares says that once rather than guarding `take`, `open` and `put in` one rule at a time:
+
+```swift
+var rules: Rules {
+    card.reach(otherwise: "The card is squares away from you, across the sand.") {
+        grid.playerSquare == PuzzleGrid.cardSquare
+    }
+}
+```
+
+It runs at **stage 0**, ahead of every `before` rule — which is the point, since an item that answers its own verb pre-empts the default action. Two `reach` rules on one entity is a fatal ``BootstrapError``; locations don't take one. <doc:ContainersDoorsAndLocks> has what it does and doesn't cover.
+
 ## Produce output and control the turn
 
 Four free functions are available in any rule body:

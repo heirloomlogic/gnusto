@@ -654,20 +654,31 @@ struct RoyalPuzzleGame: Game {
             }
         }
 
-        // Containment is room-granular: the card is "in the room" from the
-        // moment it is uncovered, so its listing line and its reach both have
-        // to be faked against the player's square by hand.
-        card.presence {
+        // Containment is room-granular, so a square-indexed room has to tell the
+        // engine what a square means. Each of these three says it once, and
+        // every verb that needs to *touch* the thing is gated on it — `take`
+        // for the card, `put in` for the two wall fixtures — without a rule
+        // per verb. Issue #150.
+        card.reach(otherwise: Prose.cardOutOfReach) {
             grid.playerSquare == PuzzleGrid.cardSquare
-                ? Prose.cardAtYourFeet : Prose.cardAcrossTheFloor
         }
-        card.before(.take) {
-            try require(grid.playerSquare == PuzzleGrid.cardSquare, else: Prose.cardOutOfReach)
+        slot.reach(otherwise: Prose.slotOutOfReach) {
+            grid.playerSquare == PuzzleGrid.doorSquare
+        }
+        niche.reach(otherwise: Prose.nicheOutOfReach) {
+            grid.playerSquare == PuzzleGrid.hatchSquare
+        }
+
+        // The half a reach rule can't answer: which paragraph the room listing
+        // prints. That is a *position* question, not a reach one, so the wording
+        // still switches by hand — but on the engine's answer rather than on a
+        // second copy of the square index.
+        card.presence {
+            card.isReachable ? Prose.cardAtYourFeet : Prose.cardAcrossTheFloor
         }
 
         slot.before(.putIn) {
             try require(command.directObject == card, else: Prose.slotTakesOnlyTheCard)
-            try require(grid.playerSquare == PuzzleGrid.doorSquare, else: Prose.slotOutOfReach)
             try require(card.isHeld, else: Prose.mustHoldTheCard)
             card.vanish()
             lowDoorOpen = true
@@ -676,7 +687,6 @@ struct RoyalPuzzleGame: Game {
 
         niche.before(.putIn) {
             try require(command.directObject == card, else: Prose.nicheTakesOnlyTheCard)
-            try require(grid.playerSquare == PuzzleGrid.hatchSquare, else: Prose.nicheOutOfReach)
             try require(card.isHeld, else: Prose.mustHoldTheCard)
             card.vanish()
             hatchOpen = true

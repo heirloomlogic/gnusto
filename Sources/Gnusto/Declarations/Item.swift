@@ -525,4 +525,47 @@ public struct Item: Sendable, Equatable {
     public func presence(_ body: @escaping @Sendable () -> String) -> Rule {
         Rule(scope: .item(token), phase: .presence, intents: [], body: {}, describeBody: body)
     }
+
+    /// Whether the player can put a hand on this from where they are standing —
+    /// asked by the engine on top of containment, wherever a verb needs to
+    /// *touch* the thing:
+    ///
+    /// ```swift
+    /// card.reach(otherwise: "The card is squares away from you, across the sand.") {
+    ///     grid.playerSquare == PuzzleGrid.cardSquare
+    /// }
+    /// ```
+    ///
+    /// Containment is room-granular: a thing lying in one square of a floor the
+    /// map models as a single room is "in the room" from every square, and so
+    /// reachable from every square. This is where a game says otherwise, once,
+    /// instead of guarding `take`, `open` and `put in` one verb at a time.
+    ///
+    /// It narrows reach and nothing else. The item stays **visible** — the
+    /// player can still name it, examine it and read about it in the room
+    /// description — which is what makes `take` answer "it's across the sand"
+    /// rather than "you can't see any such thing".
+    ///
+    /// Two things the engine settles so the closure doesn't have to. What the
+    /// asker is **holding** always passes, so a rule keyed to a square can't
+    /// stop the player opening a box they are carrying. And the rule is
+    /// consulted **before any `before` rule runs**, so an item's own rules never
+    /// fire for something out of reach.
+    ///
+    /// Declared in a `rules` block; a second `reach` rule for the same entity is
+    /// a fatal bootstrap diagnostic. Locations don't take one.
+    ///
+    /// - Parameters:
+    ///   - refusal: the line shown when the closure says no. Defaults to the
+    ///     stock ``GameText/cantReach``.
+    ///   - body: the closure answering "can they touch it from here".
+    /// - Returns: the assembled reach rule.
+    public func reach(
+        otherwise refusal: String? = nil,
+        _ body: @escaping @Sendable () -> Bool
+    ) -> Rule {
+        Rule(
+            scope: .item(token), phase: .reach, intents: [], body: {},
+            reachRule: Reach.Rule(allows: body, refusal: refusal))
+    }
 }

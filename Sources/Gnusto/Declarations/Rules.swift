@@ -28,6 +28,9 @@ public struct Rule: Sendable {
         /// the room description's mention of the entity rather than its
         /// examine text.
         case presence
+        /// Answers "can the player put a hand on this from where they are
+        /// standing" via `reach { … }`. Its work is in `reachRule`, not `body`.
+        case reach
     }
 
     let scope: Scope
@@ -38,6 +41,9 @@ public struct Rule: Sendable {
     /// The text-returning body of a `.describe` or `.presence` rule; `nil` for
     /// every other phase.
     var describeBody: (@Sendable () -> String)? = nil
+    /// The predicate of a `.reach` rule, and the line it refuses with; `nil` for
+    /// every other phase.
+    var reachRule: Reach.Rule? = nil
 
     func matches(_ intent: Intent) -> Bool {
         intents.isEmpty || intents.contains(intent)

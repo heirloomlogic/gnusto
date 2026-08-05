@@ -24,6 +24,16 @@ struct CoreVerb: Sendable {
     /// What answers the intent once the rows have matched.
     let behavior: Behavior
 
+    /// Which of this verb's object slots the player has to be able to *touch*.
+    ///
+    /// Each handler still runs its own containment guard, in its own order among
+    /// its own refusals — moving those would change what a dozen shipped games
+    /// print. What this column adds is the one thing containment can't answer:
+    /// the item's own ``Item/reach(otherwise:_:)`` rule, consulted before any
+    /// rule runs. `engineLevel` rows have no slots to check and take
+    /// ``Reach/notNeeded``.
+    let reach: Reach
+
     /// The two ways a core verb can be answered. There is no third: a row that
     /// reaches neither would be the drift this type exists to prevent.
     enum Behavior: Sendable {
@@ -41,9 +51,12 @@ struct CoreVerb: Sendable {
 
     /// Patterns in, rows out — spelled the way `#verb` spells them, and the
     /// reason no row below has to repeat `intent:`.
-    private init(_ intent: Intent, _ patterns: [[SyntaxElement]], _ behavior: Behavior) {
+    private init(
+        _ intent: Intent, _ patterns: [[SyntaxElement]], _ reach: Reach, _ behavior: Behavior
+    ) {
         self.intent = intent
         self.rows = patterns.map { SyntaxRule($0, intent: intent) }
+        self.reach = reach
         self.behavior = behavior
     }
 
@@ -63,15 +76,16 @@ extension CoreVerb {
     static func handled(
         _ intent: Intent,
         _ patterns: [[SyntaxElement]],
+        reach: Reach,
         _ handler: @escaping @Sendable (Command, TurnFrame) throws -> Void
     ) -> CoreVerb {
-        .init(intent, patterns, .handler(handler))
+        .init(intent, patterns, reach, .handler(handler))
     }
 
     /// A verb the engine intercepts ahead of the pipeline — see
     /// ``Behavior/engineLevel``.
     static func engineLevel(_ intent: Intent, _ patterns: [[SyntaxElement]]) -> CoreVerb {
-        .init(intent, patterns, .engineLevel)
+        .init(intent, patterns, .notNeeded, .engineLevel)
     }
 }
 
@@ -92,7 +106,8 @@ extension DefaultActions {
                 ["carry", .directObject],
                 ["pick", "up", .directObject],
                 ["pick", .directObject, "up"],
-            ]
+            ],
+            reach: .directObject
         ) { try take($0, frame: $1) },
 
         .handled(
@@ -102,7 +117,8 @@ extension DefaultActions {
                 ["discard", .directObject],
                 ["put", "down", .directObject],
                 ["put", .directObject, "down"],
-            ]
+            ],
+            reach: .notNeeded
         ) { try drop($0, frame: $1) },
 
         .handled(
@@ -113,10 +129,11 @@ extension DefaultActions {
                 ["inspect", .directObject],
                 ["look", "at", .directObject],
                 ["l", "at", .directObject],
-            ]
+            ],
+            reach: .notNeeded
         ) { try examine($0, frame: $1) },
 
-        .handled(.read, [["read", .directObject]]) { try read($0, frame: $1) },
+        .handled(.read, [["read", .directObject]], reach: .notNeeded) { try read($0, frame: $1) },
 
         .handled(
             .wear,
@@ -124,7 +141,8 @@ extension DefaultActions {
                 ["wear", .directObject],
                 ["don", .directObject],
                 ["put", "on", .directObject],
-            ]
+            ],
+            reach: .notNeeded
         ) { try wear($0, frame: $1) },
 
         .handled(
@@ -134,7 +152,8 @@ extension DefaultActions {
                 ["doff", .directObject],
                 ["take", "off", .directObject],
                 ["take", .directObject, "off"],
-            ]
+            ],
+            reach: .notNeeded
         ) { try doff($0, frame: $1) },
 
         .handled(
@@ -144,7 +163,8 @@ extension DefaultActions {
                 ["put", .directObject, "onto", .indirectObject],
                 ["hang", .directObject, "on", .indirectObject],
                 ["place", .directObject, "on", .indirectObject],
-            ]
+            ],
+            reach: .bothObjects
         ) { try putOn($0, frame: $1) },
 
         .handled(
@@ -152,27 +172,31 @@ extension DefaultActions {
             [
                 ["put", .directObject, "in", .indirectObject],
                 ["put", .directObject, "into", .indirectObject],
-            ]
+            ],
+            reach: .bothObjects
         ) { try putIn($0, frame: $1) },
 
-        .handled(.open, [["open", .directObject]]) { try open($0, frame: $1) },
+        .handled(.open, [["open", .directObject]], reach: .directObject) { try open($0, frame: $1) },
 
         .handled(
             .close,
             [
                 ["close", .directObject],
                 ["shut", .directObject],
-            ]
+            ],
+            reach: .directObject
         ) { try close($0, frame: $1) },
 
         .handled(
             .lock,
-            [["lock", .directObject, "with", .indirectObject]]
+            [["lock", .directObject, "with", .indirectObject]],
+            reach: .directObject
         ) { try lock($0, frame: $1) },
 
         .handled(
             .unlock,
-            [["unlock", .directObject, "with", .indirectObject]]
+            [["unlock", .directObject, "with", .indirectObject]],
+            reach: .directObject
         ) { try unlock($0, frame: $1) },
 
         .handled(
@@ -183,7 +207,8 @@ extension DefaultActions {
                 ["switch", "on", .directObject],
                 ["switch", .directObject, "on"],
                 ["light", .directObject],
-            ]
+            ],
+            reach: .directObject
         ) { try turnOn($0, frame: $1) },
 
         .handled(
@@ -197,7 +222,8 @@ extension DefaultActions {
                 ["douse", .directObject],
                 ["blow", "out", .directObject],
                 ["blow", .directObject, "out"],
-            ]
+            ],
+            reach: .directObject
         ) { try turnOff($0, frame: $1) },
 
         // FIND and LOOK FOR land here too: a player who asks the game to find
@@ -211,7 +237,8 @@ extension DefaultActions {
                 ["find", .directObject],
                 ["look", "for", .directObject],
                 ["search", "for", .directObject],
-            ]
+            ],
+            reach: .directObject
         ) { try lookIn($0, frame: $1) },
 
         .handled(
@@ -220,7 +247,8 @@ extension DefaultActions {
                 ["push", .directObject],
                 ["move", .directObject],
                 ["press", .directObject],
-            ]
+            ],
+            reach: .directObject
         ) { try push($0, frame: $1) },
 
         .handled(
@@ -229,7 +257,8 @@ extension DefaultActions {
                 ["go", .direction],
                 ["walk", .direction],
                 ["run", .direction],
-            ]
+            ],
+            reach: .notNeeded
         ) { try go($0, frame: $1) },
 
         // `go after <object>` outscores `go <direction>`, so the follow rows are
@@ -242,7 +271,8 @@ extension DefaultActions {
                 ["go", "after", .directObject],
                 ["run", "after", .directObject],
                 ["walk", "after", .directObject],
-            ]
+            ],
+            reach: .notNeeded
         ) { try follow($0, frame: $1) },
 
         // Bare "hello"/"hi" are deliberately *not* here: they are the kind of
@@ -256,7 +286,8 @@ extension DefaultActions {
                 ["hello", .directObject],
                 ["hi", .directObject],
                 ["greet"],
-            ]
+            ],
+            reach: .notNeeded
         ) { try greet($0, frame: $1) },
 
         // Bare "in"/"out" stay directions: the parser's bare-direction check
@@ -268,7 +299,8 @@ extension DefaultActions {
                 ["board", .directObject],
                 ["get", "in", .directObject],
                 ["get", "into", .directObject],
-            ]
+            ],
+            reach: .directObject
         ) { try board($0, frame: $1) },
 
         .handled(
@@ -279,7 +311,8 @@ extension DefaultActions {
                 ["disembark"],
                 ["get", "out"],
                 ["get", "out", "of", .directObject],
-            ]
+            ],
+            reach: .notNeeded
         ) { try disembark($0, frame: $1) },
 
         .handled(
@@ -287,7 +320,8 @@ extension DefaultActions {
             [
                 ["wait"],
                 ["z"],
-            ]
+            ],
+            reach: .notNeeded
         ) { _, frame in wait(frame) },
 
         .handled(
@@ -295,7 +329,8 @@ extension DefaultActions {
             [
                 ["look"],
                 ["l"],
-            ]
+            ],
+            reach: .notNeeded
         ) { _, frame in look(frame) },
 
         .handled(
@@ -304,20 +339,22 @@ extension DefaultActions {
                 ["inventory"],
                 ["inv"],
                 ["i"],
-            ]
+            ],
+            reach: .notNeeded
         ) { _, frame in inventory(frame) },
 
-        .handled(.score, [["score"]]) { _, frame in score(frame) },
+        .handled(.score, [["score"]], reach: .notNeeded) { _, frame in score(frame) },
 
         .handled(
             .quit,
             [
                 ["quit"],
                 ["q"],
-            ]
+            ],
+            reach: .notNeeded
         ) { _, frame in quit(frame) },
 
-        .handled(.version, [["version"]]) { _, frame in version(frame) },
+        .handled(.version, [["version"]], reach: .notNeeded) { _, frame in version(frame) },
 
         // The engine-level four. They own rows so the parser knows the words and
         // the vocabulary reports them, but `GameWorld.run` acts on the actor's

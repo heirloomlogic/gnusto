@@ -98,7 +98,7 @@ Rule phases by scope, all filed in `Engine/Bootstrap.swift`:
 
 | Scope | Phases |
 |---|---|
-| item / actor | `before`, `after`, `describe`, `presence` |
+| item / actor | `before`, `after`, `describe`, `presence`, `reach` |
 | location | `before`, `after`, `beforeEachTurn`, `afterEachTurn`, `onEnter`, `describe` |
 | world | `before`, `after` |
 
@@ -161,6 +161,13 @@ In any rule body: `say`, `refuse`, `reply`, `require(_:else:)`, `end(won:)`, `di
   `container`. `cantSeeAnySuchThing` is reserved for a noun that isn't in scope at
   all, so "You can't see any such thing" in answer to `search <a thing the room just
   described>` is a **bug**, not stock behavior.
+- **Containment is room-granular; `reach { }` is the escape hatch.** A thing in one
+  square of a floor the player walks around inside is "in the room" from every
+  square. `item.reach(otherwise: "…") { … }` narrows that once, for every verb that
+  has to *touch* it, and gates `Item.isReachable` too. It runs at **stage 0**,
+  ahead of every `before` rule — so it refuses *before* a verb's own complaints,
+  where containment refuses after them. Which slots an intent needs is the `reach:`
+  column of `cores` and `stubs`; a custom intent is `.notNeeded`.
 - **The player is an entity**, synthesized by the bootstrap as `EntityID.player` and
   reachable as `player.item`. It answers to `me`/`myself`/`self`, is always in scope,
   and is placed nowhere — so it never appears in a room listing, an inventory, or

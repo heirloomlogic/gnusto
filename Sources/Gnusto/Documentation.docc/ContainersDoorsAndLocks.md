@@ -123,6 +123,29 @@ let loot = treasures.filter { $0.isReachable || $0.isReachable(from: thief) }
 
 Two things differ from the player's own reach. **Darkness does not gate it**: an unlit room stops the player's eyes, not somebody else's arm. And **what the player is holding is not in it**, exactly as another actor's hands are not in ``Item/isReachable`` — lifting from somebody's hands is stealing, which is a plugin's job. That is why a thief wants both sets, as above: one for the room, one for the pockets. An actor who is in no room at all reaches only what they carry.
 
+### When the room is bigger than one place
+
+Containment is room-granular. A thing lying in one square of a floor the player walks around *inside* — a sliding-block puzzle, a mirror box, a gallery with two ends — is "in the room" from every square, and so reachable from every square. ``Item/reach(otherwise:_:)`` is where a game says otherwise, once:
+
+```swift
+card.reach(otherwise: "The card is squares away from you, across the sand.") {
+    grid.playerSquare == PuzzleGrid.cardSquare
+}
+```
+
+The alternative is a guard per verb — `before(.take)`, `before(.putIn)`, `before(.open)` — and each one is a place the next author forgets. The rule is asked wherever a verb has to *touch* the thing, core and stub alike, and `otherwise:` is the line it refuses with (omit it for the stock ``GameText/cantReach``).
+
+Four things the engine settles:
+
+- **It narrows reach, not sight.** The item is still listed, still named, still examined — which is what makes `take card` answer "it's across the sand" rather than "you can't see any such thing".
+- **What the asker is holding always passes.** A rule keyed to a square can't stop the player opening a box they are carrying.
+- **It runs before any rule does.** An item that answers its own verb — `slot.before(.putIn)` — replies and the default action never runs, so a gate any later would miss exactly the cases that need it. It therefore refuses *ahead* of a verb's own complaints: `take` says "it's across the sand" where it would otherwise have said "You can't take that."
+- **It gates ``Item/isReachable``**, so a `presence { }` line that wants to say "at your feet" versus "across the floor" can read the engine's answer instead of keeping a second copy of the index. That answer costs a scope walk, so a rule in a hot loop is better off reading the game's own position directly.
+
+Actors take one too, with ``Actor/reach(otherwise:_:)``. Locations don't: the rule belongs to the thing being reached for, not to the room around it. And the rule is not told *who* is asking — ``Item/isReachable(from:)`` is gated by it as well, because a game that tracks one position inside a room tracks the player's.
+
+Positions themselves are still yours to keep. The engine knows the answer to "can he touch it"; it does not know where in the room either of them is standing, so a room-listing paragraph that changes with the player's square is still a `presence { }` rule you write.
+
 Possession is a different question again, and ``Actor/possesses(_:)`` answers it: is this thing anywhere under them — in their hands, or in a bag on their belt, to any depth? It is true in the dark, in another room, and offstage, because owning a thing has nothing to do with seeing it. ``Actor/holds(_:)`` is its one-level form, and the coin in the purse in the satchel is where the two part company.
 
 ## Locks and keys
