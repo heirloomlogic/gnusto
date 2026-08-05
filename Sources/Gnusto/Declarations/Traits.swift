@@ -33,6 +33,7 @@ public struct ItemTrait: Sendable {
         case lightSource
         case startsLit
         case enterable
+        case takesOrders
         case custom(key: String, value: StateValue)
     }
 
@@ -206,6 +207,18 @@ public let startsLit = ItemTrait(kind: .startsLit)
 /// refuses `.go` in a rule; one that should hold cargo also declares
 /// `container` (an open-topped one — no `openable`).
 public let enterable = ItemTrait(kind: .enterable)
+
+/// This character carries out orders: `robot, push the triangular button`
+/// becomes a real command with the robot as its agent, instead of the stock
+/// refusal ``GameText/notTakingOrders``.
+///
+/// Opt-in, one actor at a time, because obeying is a mechanic a game has to
+/// write. The engine's own default actions are all written for the player and
+/// never run for somebody else — an order is answered by the addressee's own
+/// rules, or by a rule on the thing it names, or not at all. Only an ``Actor``
+/// can hold it; on an item the bootstrap warns that the flag has nobody to
+/// describe. See <doc:ActorsAndVehicles>.
+public let takesOrders = ItemTrait(kind: .takesOrders)
 
 // Custom traits are declared with a typed `TraitKey` (`trait(.price, 5)`,
 // read back with `item[.price]`) — see `TraitKey.swift`. The underlying

@@ -64,6 +64,10 @@ struct ItemDefinition: Sendable {
     var isLightSource = false
     var startsLit = false
     var isEnterable = false
+    /// This character carries out orders — `robot, push the button` reaches the
+    /// rules instead of the parser's stock refusal. Only meaningful on an
+    /// actor; the bootstrap warns about it anywhere else.
+    var takesOrders = false
     var customTraits: [String: StateValue] = [:]
     /// True when this entity was declared as an `Actor`. Set by Bootstrap
     /// after trait evaluation — actors share the item trait vocabulary, so
@@ -96,6 +100,7 @@ struct ItemDefinition: Sendable {
             case .lightSource: isLightSource = true
             case .startsLit: startsLit = true
             case .enterable: isEnterable = true
+            case .takesOrders: takesOrders = true
             case .custom(let key, let value): customTraits[key] = value
             }
         }
@@ -157,6 +162,10 @@ struct GameDefinition: Sendable {
     /// completion: rescanning the item table twice a turn to rediscover a set
     /// that never changes is work for nothing.
     let castIDs: Set<EntityID>
+    /// The cast members declared ``takesOrders``: who `<name>, <words>` can be
+    /// an order to rather than a greeting. Empty for almost every game, which
+    /// is what lets `currentScope()` skip the extra scope walk entirely.
+    let orderTakerIDs: Set<EntityID>
     let exits: [EntityID: [Direction: ExitTarget]]
     /// Every room some exit leads to. A game's off-map holding pens — the
     /// street a character is "out on", the limbo an actor waits in before their

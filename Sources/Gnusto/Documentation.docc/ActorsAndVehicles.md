@@ -171,11 +171,88 @@ Bare `hello`, `talk to <somebody>` and `say hello to <somebody>` come from
 declaration answering GREET and TALK together, with a second line for the
 second time, because nobody introduces themselves twice.
 
-Anything *other* than a greeting after the comma — `keeper, open the door` —
-is refused with ``GameText/notTakingOrders``. The engine has no system for one
-character to act on another's word, and the alternative most parsers reach for
-(run the command, but as the player) is worse than not understanding the
-sentence.
+Anything *other* than a greeting after the comma — `keeper, open the door` — is
+an order, and is refused with ``GameText/notTakingOrders`` unless the person
+addressed has been declared able to take one. See below.
+
+## Giving orders
+
+One trait makes somebody order-taking:
+
+```swift
+let robot = Actor {
+    name("robot")
+    takesOrders
+}
+```
+
+`robot, push the triangular button` then becomes a real command with the robot
+as its agent, and reaches the rules with ``Command/actor`` naming it:
+
+```swift
+button.before(.push) {
+    guard command.actor == robot else { try refuse("You can't reach it.") }
+    try reply("Whirr, click. Something heavy lifts in the darkness.")
+}
+```
+
+`command.actor` is `nil` for everything the player does on their own account,
+which is every command typed without an addressee. Nobody who hasn't opted in
+is affected: an order to them is refused at the parser exactly as it always was.
+
+Four things are worth knowing, and all four follow from one decision.
+
+**The engine's own default actions never run for somebody else.** Every one of
+them takes into the player's hands, walks the player's legs, and reaches with
+the player's arm; running one for a robot is the "addressee field that quietly
+ran the command as the player" that makes a parser lie. So an order gets the
+`before` stages — the world's rules, the room's, the addressee's own, the
+objects' — and never stage 4, the game's `actions` rows included. An order
+happens where a rule makes it happen, or not at all. `after` rules don't see
+one either, for the ordinary reason: answering means `reply` or `refuse`, which
+end the turn where they stand, exactly as they do for the player.
+
+The room whose `before` rules run is the room the **addressee** is standing in,
+not the player's — that is where the thing is being done. The one told is told
+*first*, ahead of the thing it names, so a rule like `robot.before(.go)` can
+answer an order that carries no object at all:
+
+```swift
+robot.before(.go) {
+    guard command.direction == .north else { try refuse("The treads grind.") }
+    robot.move(to: closet)
+    try reply("The robot clanks north through the doorway.")
+}
+```
+
+**An order nobody wrote a rule for says so and costs nothing** —
+``GameText/doesNotKnowHow``, thrown as the same free `unhandled` a custom verb
+nothing answers gets. An order a rule *does* answer is an ordinary turn: the
+each-turn rules run, the clock ticks, the move counts. As with a stub verb,
+answer with `reply` or `refuse` rather than a bare `say`, or the stock line
+prints underneath yours.
+
+**The words after the comma are read where the addressee is standing**, not
+where the player is. That is the point of sending somebody somewhere: the robot
+in the closet can name the button in the closet, and `push the triangular
+button` typed on your own behalf still answers "You can't see any such thing".
+Darkness doesn't gate it, for the same reason it doesn't gate an NPC's reach —
+the dark is the player's problem. A robot that should be blind in an unlit room
+refuses in a rule.
+
+**An order-taker is nameable while out of sight**, the way FOLLOW's quarry is:
+you call after the robot through the doorway. That widening reaches the address
+slot alone — `examine robot` in the room it left is still "You can't see any
+such thing", and so is `robot, hello`, because calling after somebody carries
+an order and not a greeting. It reaches only actors that opted in. A question
+an incomplete order raises stays an order: `robot, push` asks "What do you want
+to push?", and the answer completes the robot's command, not yours.
+
+Two things an order deliberately isn't. `robot, take all` is refused: the
+multi-object loop expands against what the *player* can see and runs stage 4 per
+object. And an order-taker who is in no room at all — held, contained,
+`vanish()`ed — falls back to the stock refusal, because there is nowhere for the
+order to be carried out.
 
 ## Following somebody out of the room
 
@@ -281,6 +358,8 @@ a rule on the vehicle itself never sees it — a gate that has to hold
 ## Topics
 
 - ``Actor``
+- ``takesOrders``
+- ``Command/actor``
 - ``enterable``
 - ``Player/vehicle``
 - ``describeSurroundings()``

@@ -210,7 +210,7 @@ public actor GameWorld {
         // "hello, keeper" would. With nobody, or with a crowd, it stays
         // unaddressed and the default action says so.
         var parsed = parsed
-        if parsed.intent == .greet, parsed.directObject == nil,
+        if parsed.intent == .greet, parsed.directObject == nil, parsed.actor == nil,
             let only = soleVisibleActor()
         {
             parsed.directObject = only
@@ -264,7 +264,10 @@ public actor GameWorld {
         snapshot: WorldState
     ) -> TurnResult {
         let intent = parsed.intent
-        guard Self.multiObjectIntents.contains(intent) else {
+        // "robot, take all" fails the first clause: the loop expands against
+        // what the *player* can see and runs stage 4 once per object, and
+        // stage 4 is exactly what an order never reaches.
+        guard parsed.actor == nil, Self.multiObjectIntents.contains(intent) else {
             return freeReply(definition.text.multipleNotAllowedWith(parsed.verbPhrase))
         }
 
@@ -415,6 +418,12 @@ public actor GameWorld {
     private func performStages(_ command: Command, frame: TurnFrame, upkeep: Bool) {
         let intent = command.intent
         let rules = definition.rules
+        // Who is carrying this out, and where. The player, in their own room,
+        // unless somebody was told to do it — then it is the person told and
+        // the room *they* are standing in.
+        let agent = command.actor?.id
+        let here = frame.with { $0.state.playerLocation }
+        let stage = agent.flatMap { id in frame.with { Visibility.standing(id, in: $0.state) } } ?? here
 
         do {
             // Stages 1–3: world, location, and item `before` rules.
@@ -431,7 +440,6 @@ public actor GameWorld {
             if !intent.isMeta {
                 frame.with { $0.inBeforeRule = true }
                 defer { frame.with { $0.inBeforeRule = false } }
-                let here = frame.with { $0.state.playerLocation }
                 let worldBefore =
                     upkeep
                     ? rules.worldBefore
@@ -440,7 +448,14 @@ public actor GameWorld {
                 if upkeep {
                     try runBefore(rules.locationBeforeEachTurn[here] ?? [], matching: intent, frame: frame)
                 }
-                try runBefore(rules.locationBefore[here] ?? [], matching: intent, frame: frame)
+                try runBefore(rules.locationBefore[stage] ?? [], matching: intent, frame: frame)
+                // The one told is told first — before the thing they were told
+                // about — so `robot.before(.go)` can answer an order that names
+                // no object at all. Skipped when they *are* one of the objects,
+                // so nobody's rules run twice.
+                if let agent, agent != command.directObject?.id, agent != command.indirectObject?.id {
+                    try runBefore(rules.itemBefore[agent] ?? [], matching: intent, frame: frame)
+                }
                 if let indirect = command.indirectObject {
                     try runBefore(rules.itemBefore[indirect.id] ?? [], matching: intent, frame: frame)
                 }
@@ -463,7 +478,11 @@ public actor GameWorld {
                 if let indirect = command.indirectObject {
                     try run(rules.itemAfter[indirect.id] ?? [], matching: intent)
                 }
-                let here = frame.with { $0.state.playerLocation }
+                // No agent pass here: an order can only be *answered* by a
+                // `before` rule's `reply`/`refuse`, which throws, and an order
+                // nobody answered throws `unhandled` out of stage 4. Either
+                // way stage 5 is already unwound — the same contract `reply`
+                // has always had for the player.
                 try run(rules.locationAfter[here] ?? [], matching: intent)
             }
         } catch let interrupt as TurnInterrupt {
@@ -630,6 +649,7 @@ public actor GameWorld {
             preposition: parsed.preposition,
             direction: parsed.direction,
             topic: parsed.topic.map(Topic.init),
+            actor: parsed.actor.flatMap { definition.registry.items[$0] }.map(Actor.init),
             verbPhrase: parsed.verbPhrase,
             rawInput: parsed.rawInput)
     }
@@ -639,10 +659,16 @@ public actor GameWorld {
     /// containers. Parser scope keys off *visible* items — you can name what you
     /// can see, even through a shut glass jar; the actions enforce
     /// reachability.
-    private func currentScope() -> Scope {
+    ///
+    /// - Parameter orders: whether to walk each order-taking actor's own scope
+    ///   too. Only a parse needs them; Tab completion reads `visibleItems`
+    ///   alone, and would be paying for a walk per robot on every keystroke.
+    /// - Returns: what the parser may resolve a noun phrase against this turn.
+    private func currentScope(orders: Bool = true) -> Scope {
         let here = state.playerLocation
+        let index = state.containment()
         let visible = Visibility.visibleItems(
-            at: here, definition: definition, state: state, index: state.containment())
+            at: here, definition: definition, state: state, index: index)
         return Scope(
             visibleItems: visible,
             visibleActors: visible.intersection(definition.castIDs),
@@ -652,7 +678,27 @@ public actor GameWorld {
             // completion would be a spoiler leak.
             distantActors: Visibility.actorsElsewhere(
                 excluding: here, definition: definition, state: state),
-            pronounIt: state.pronounIt)
+            pronounIt: state.pronounIt,
+            orderTakers: orders ? orderTakerScopes(index: index) : [:])
+    }
+
+    /// What each order-taking actor could name from where *it* is standing —
+    /// the set `robot, push the button` is read against. Built here because
+    /// the parser has no world to walk, and skipped outright by the games
+    /// (nearly all of them) that never declared an order-taker.
+    ///
+    /// An actor who is in nobody's room — held, contained, `vanish()`ed — gets
+    /// no entry, and so falls back to the stock refusal: there is nowhere for
+    /// the order to be carried out.
+    private func orderTakerScopes(index: ContainmentIndex) -> [EntityID: Set<EntityID>] {
+        guard !definition.orderTakerIDs.isEmpty else { return [:] }
+        var scopes: [EntityID: Set<EntityID>] = [:]
+        for id in definition.orderTakerIDs {
+            guard let there = Visibility.standing(id, in: state) else { continue }
+            scopes[id] = Visibility.visibleItems(
+                for: id, at: there, definition: definition, state: state, index: index)
+        }
+        return scopes
     }
 
     /// The one person in the room, or nil for nobody and nil for a crowd.
@@ -691,7 +737,7 @@ public actor GameWorld {
             context = .command
         }
 
-        let scope = currentScope()
+        let scope = currentScope(orders: false)
         var nouns: Set<String> = []
         for id in scope.visibleItems {
             guard let lexicon = definition.vocabulary.itemLexicons[id] else { continue }

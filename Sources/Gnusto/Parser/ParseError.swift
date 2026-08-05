@@ -69,4 +69,34 @@ enum ParseError: Error, Equatable {
             nil
         }
     }
+
+    /// The same error, re-anchored on the person it was really about.
+    ///
+    /// An order is parsed from the tokens *after* the comma, so a question it
+    /// raises carries only those — and the player's answer would come back as
+    /// their own command. Putting the address back on the front keeps
+    /// `robot, push` / `the button` an order to the robot. Nothing to do for
+    /// the errors that aren't questions.
+    ///
+    /// - Parameter address: the tokens naming the addressee.
+    /// - Returns: the error with its answer context re-anchored.
+    func addressed(to address: [String]) -> ParseError {
+        let anchor = address + [","]
+        switch self {
+        case .missingObject(let verb, let prefix):
+            return .missingObject(verb: verb, prefix: anchor + prefix)
+        case .missingIndirect(let verb, let objectName, let preposition, let prefix):
+            return .missingIndirect(
+                verb: verb, objectName: objectName, preposition: preposition,
+                prefix: anchor + prefix)
+        case .missingTopic(let verb, let objectName, let preposition, let prefix):
+            return .missingTopic(
+                verb: verb, objectName: objectName, preposition: preposition,
+                prefix: anchor + prefix)
+        case .ambiguous(let names, let prefix, let suffix):
+            return .ambiguous(names: names, prefix: anchor + prefix, suffix: suffix)
+        default:
+            return self
+        }
+    }
 }

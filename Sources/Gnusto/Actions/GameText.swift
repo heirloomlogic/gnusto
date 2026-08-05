@@ -474,12 +474,22 @@ public struct GameText: Sendable {
     /// parser's own failure, and free for the same reason: nothing happened.
     public var cantDoThat = "You can't do that."
 
-    /// Giving somebody an order — `butler, open the door`. The engine has no
-    /// system for one character to act on another's word, so a character hears
-    /// you out and declines. `butler, hello` is the one addressed form that
-    /// does something, and it becomes a GREET.
+    /// Giving an order to somebody who doesn't take them — `butler, open the
+    /// door`. Obeying is a mechanic a game writes, one character at a time
+    /// (see ``takesOrders``), so anybody who hasn't opted in hears you out and
+    /// declines. `butler, hello` is the one addressed form that always does
+    /// something, and it becomes a GREET.
     public var notTakingOrders: @Sendable (_ name: String) -> String = {
         "\(GameText.sentenceCase($0)) has no intention of taking orders from you."
+    }
+
+    /// An order to somebody who *does* take them that nothing in the game
+    /// answers — ``cantDoThat`` in the third person. The engine's own default
+    /// actions are all written for the player and never run for somebody else,
+    /// so an order happens only where a rule makes it happen. Free, for the
+    /// same reason `cantDoThat` is: nothing happened.
+    public var doesNotKnowHow: @Sendable (_ person: Noun) -> String = {
+        "\($0.sentenceCased) \($0.verb("does", "do")) not know how to do that."
     }
 
     /// A verb missing its object — answerable on the next line.

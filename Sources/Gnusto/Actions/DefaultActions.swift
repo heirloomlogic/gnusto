@@ -10,6 +10,17 @@ enum DefaultActions {
     /// verb (UNDO and friends) never arrives here: `GameWorld.run` answers it
     /// before the pipeline starts.
     static func run(_ command: Command, frame: TurnFrame) throws {
+        // An order stops here. Every default below — the engine's and the
+        // game's alike — takes from the player's hands, walks the player's
+        // legs, and reaches with the player's arm; running one for somebody
+        // else is the "addressee field that ran the command as the player"
+        // this whole design exists to avoid. So a character does what its
+        // rules say it does, and nothing else, and an order nobody wrote a
+        // rule for says so and costs nothing.
+        if let actor = command.actor {
+            throw TurnInterrupt.unhandled(
+                message: frame.definition.text.doesNotKnowHow(actor.definiteNoun))
+        }
         if let override = frame.definition.actionOverrides[command.intent] {
             try override.body()
             return

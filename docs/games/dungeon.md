@@ -169,7 +169,7 @@ or engine change?*
 | **Royal Puzzle** | The room's geometry mutates. The player pushes sandstone walls through a grid; marble walls do not move. **Answered — in-game rule, and it costs the engine nothing. See below.** |
 | **Bank of Zork** | Non-Euclidean. Which room the curtain of light delivers you to depends on hidden state. **Answered — see below.** |
 | **Balloon** | A vehicle that rises and falls a volcano shaft on a timer, with a receptacle you feed to keep it aloft. Vehicles exist (`player.vehicle`); the vertical daemon does not. **Answered — see below.** |
-| **Robot, and the mirror box** | Commanding an actor (`robot, push button`) and riding a vehicle you steer from inside. Load-bearing for the Endgame. **Sized — see below.** |
+| **Robot, and the mirror box** | Commanding an actor (`robot, push button`) and riding a vehicle you steer from inside. Load-bearing for the Endgame. **Half answered — the actor imperative shipped as an engine change (#130); the mirror box is still sized. See below.** |
 
 ### The actor-imperative question, answered
 
@@ -186,14 +186,23 @@ already re-skins it), and pinned by `AddressingTests`:
 - `anOrderIsDeclinedRatherThanObeyed` — the order must not take effect
 - `anOrderCostsNoTurn` — it is a parse failure, so the clock does not move
 
-So the work is **extending a deliberate, tested seam**, not inventing a grammar:
-let a game mark an actor as order-taking, and route the post-comma tokens through
-a normal parse with that actor as the agent. Both pinned tests keep their meaning
-for actors that have not opted in.
+So the work was **extending a deliberate, tested seam**, not inventing a grammar,
+and that is what shipped: the `takesOrders` trait marks an actor order-taking,
+the post-comma tokens are parsed against the scope of the room *that actor* is
+standing in, and the result reaches the rules with `command.actor` naming the
+agent. Both pinned tests keep their meaning, because no Antechamber usher ever
+opted in.
 
-That is engine work in `Sources/Gnusto/`, and per the program plan it becomes its
-own phase before any region depends on it — not something improvised inside
-`Sources/Dungeon/` at the Endgame.
+The one line the region has to build around: **the engine's own default actions
+never run for somebody else.** They are all written for the player, so an order
+is answered by the addressee's own rules or by a rule on the thing it names, and
+an order nobody wrote a rule for is free and says so. `robot, go north` is
+therefore a `robot.before(.go)` in `Sources/Dungeon/`, not something the engine
+does for us. `ActorsAndVehicles.md` has the full rule set.
+
+That was engine work in `Sources/Gnusto/`, taken as its own phase before any
+region depended on it — not something improvised inside `Sources/Dungeon/` at
+the Endgame.
 
 ### The Royal-Puzzle question, answered
 
