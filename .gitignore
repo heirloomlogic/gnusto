@@ -25,3 +25,5 @@ xcuserdata/
 .build
 # Exported game binaries produced by bin/export-game.
 /dist
+# Bytecode from bin/atlas/, the Dungeon atlas generator.
+__pycache__/
