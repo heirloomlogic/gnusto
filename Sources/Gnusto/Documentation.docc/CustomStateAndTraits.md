@@ -36,7 +36,16 @@ lantern.before(.buy) {
 
 The type needs only `Codable` and `Sendable` — not `Hashable`. The boxed bytes are what participate in the world state's equality and hashing.
 
-> Note: A custom global is stored as opaque bytes, so if you change its shape, an old save may no longer decode — the global then falls back to its declared default. Keep plugin/system state structs additive and optional-tolerant (new fields with defaults), and you'll stay compatible. Versioned codecs are a later effort.
+Those bytes are the reason to touch a struct global once per rule body rather than field by field. Reading one decodes and writing one encodes, so `purse.coins -= 5` is a decode, a mutate and an encode — fine on its own, but a rule that sets four fields pays for four round trips and, worse, loses an update if a nested expression writes the same global between the read and the write. Read it into a local, mutate the local, and assign it back once:
+
+```swift
+var wallet = purse
+wallet.coins -= 5
+wallet.receipts.append("lantern")
+purse = wallet
+```
+
+> Note: A custom global is stored as opaque bytes, so if you change its shape, an old save may no longer decode — and a stored value that fails to decode is a `fatalError`, not a fall back to the declared default. (The default is only reached when the global's ID is *absent* from the save, which is what happens when you add a whole new global.) Save validation cannot catch it first: it checks only that a `.data` case is still a `.data` case, and one payload looks like another. So keep custom state structs additive and optional-tolerant — new fields with defaults, and a hand-written `init(from:)` that keeps the default when a field won't decode. Versioned codecs are a later effort.
 
 ## Custom traits
 
