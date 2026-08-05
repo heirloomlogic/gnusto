@@ -102,7 +102,8 @@ voice:
 **This makes Dungeon an adaptation, not a reproduction** — the sharpest
 difference from `Sources/Zork1/`, which reproduces verbatim throughout. A
 contributor who assumes the `Zork1` rule applies here will get it wrong, so
-`FIDELITY.md` must say so at the head of the Dungeon section.
+`FIDELITY.md` states this rule at the head of its Dungeon section, ahead of any
+region entry.
 
 A side effect worth noting: under this policy **nothing reproduces 1981 MDL
 text**, so the one gap in the licensing picture stops mattering.
