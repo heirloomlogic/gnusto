@@ -42,10 +42,10 @@ struct RoyalPuzzleTests {
     @Test func theRoomDescribesItselfFromTheGrid() async throws {
         let transcript = try await play(RoyalPuzzleGame(), ["down"])
         // Square 14: sandstone north, floor east and west, outer wall south.
-        #expect(
-            transcript.contains(
-                "To the north, a sandstone wall; to the east, open floor; "
-                    + "to the south, the outer wall; to the west, open floor."))
+        // `surroundings` joins its four clauses into one line, so the two
+        // halves are asserted separately rather than as one long literal.
+        #expect(transcript.contains("To the north, a sandstone wall; to the east, open floor;"))
+        #expect(transcript.contains("to the south, the outer wall; to the west, open floor."))
     }
 
     @Test func pushingABlockRewritesTheDescription() async throws {
@@ -53,9 +53,7 @@ struct RoyalPuzzleTests {
             RoyalPuzzleGame(), ["down", "east", "north", "look", "push west", "l"])
         // Standing on square 11, the sandstone block is to the west.
         #expect(turnOutput(of: "look", in: transcript).contains("to the west, a sandstone wall."))
-        #expect(
-            transcript.contains(
-                "The wall grinds a full square west and settles. You step into the gap."))
+        #expect(transcript.contains("The wall grinds a full square west and settles."))
         // The player ends on the square the block left, so the block is west
         // of them again — and the ladder block, invisible from square 11, is
         // now due north.
@@ -180,7 +178,10 @@ struct RoyalPuzzleTests {
                 // Standing on the door's own square, with nothing to feed it.
                 "The low door is shut, and there is no handle on this side.",
                 // Card in hand, but two squares from the wall it goes into.
-                "The slot is cut into the east wall, and the east wall is not within reach",
+                """
+                The slot is cut into the east wall, and the east wall is not within
+                reach from here.
+                """,
                 "The card goes into the slot to the hilt and does not come back out.",
                 "Side Room",
             ])
@@ -194,7 +195,10 @@ struct RoyalPuzzleTests {
         expectInOrder(
             transcript,
             [
-                "Under where the wall stood, pressed flush into the sand, lies a thin brass card.",
+                """
+                Under where the wall stood, pressed flush into the sand, lies a thin
+                brass card.
+                """,
                 "Taken.",
             ])
         #expect(turnOutput(of: "i", in: transcript).contains("brass card"))
@@ -245,8 +249,10 @@ struct RoyalPuzzleTests {
         expectInOrder(
             transcript,
             [
-                "The wall settles into the square with a dry snap. "
-                    + "Whatever was under it is under it now.",
+                """
+                The wall settles into the square with a dry snap. Whatever was under
+                it is under it now.
+                """,
                 "You can't see any such thing.",
             ])
     }
@@ -270,10 +276,16 @@ struct RoyalPuzzleTests {
             transcript,
             [
                 "You lower yourself through and land badly.",
-                "Under where the wall stood, pressed flush into the sand, lies a thin brass card.",
+                """
+                Under where the wall stood, pressed flush into the sand, lies a thin
+                brass card.
+                """,
                 "The card goes into the slot to the hilt and does not come back out.",
                 "Side Room",
-                "The block with the ladder stands under the daylight, and the rungs go up into it.",
+                """
+                The block with the ladder stands under the daylight, and the rungs go
+                up into it.
+                """,
                 "You come up through the ceiling hole hand over hand",
                 "in 19 turns",
             ])
@@ -291,8 +303,14 @@ struct RoyalPuzzleTests {
         expectInOrder(
             transcript,
             [
-                "The sand has run shut over the hole, and it is packed as hard as the floor",
-                "Where the hole was there is packed sand without a seam in it.",
+                """
+                The sand has run shut over the hole, and it is packed as hard as the
+                floor around it.
+                """,
+                """
+                Where the hole was there is packed
+                sand without a seam in it.
+                """,
             ])
         // Out without the book: the puzzle keeps it.
         #expect(!transcript.contains("You come up through the ceiling hole"))

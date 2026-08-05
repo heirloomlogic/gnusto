@@ -197,53 +197,60 @@ struct PuzzleGrid: Codable, Sendable, GlobalValue {
 /// checks, so they have exactly one thing to point at.
 private enum Prose {
     static let anteroomOpen = """
-        A small square room, swept bare, with sand drifted into the corners. A hole gapes in \
-        the middle of the floor, and at the far end a second opening looks down into shadow.
+        A small square room, swept bare, with sand drifted into the corners.
+        A hole gapes in the middle of the floor, and at the far end a second
+        opening looks down into shadow.
         """
     static let anteroomSealed = """
-        A small square room, swept bare. Where the hole was there is packed sand without a \
-        seam in it. At the far end the second opening still looks down into shadow.
+        A small square room, swept bare. Where the hole was there is packed
+        sand without a seam in it. At the far end the second opening still
+        looks down into shadow.
         """
     static let sideRoom = """
-        A cell hollowed out behind the puzzle's east wall, no deeper than a cupboard. The low \
-        door is the only way in or out.
+        A cell hollowed out behind the puzzle's east wall, no deeper than a
+        cupboard. The low door is the only way in or out.
         """
 
     static let dropIn = """
-        You lower yourself through and land badly. Above you the sand runs shut over the hole \
-        with a sound like a held breath.
+        You lower yourself through and land badly. Above you the sand runs
+        shut over the hole with a sound like a held breath.
         """
     static let holeSealed = """
-        The sand has run shut over the hole, and it is packed as hard as the floor around it.
+        The sand has run shut over the hole, and it is packed as hard as the
+        floor around it.
         """
     static let climbOut = """
-        You come up through the ceiling hole hand over hand, and the puzzle goes back to being \
-        a square of sand.
+        You come up through the ceiling hole hand over hand, and the puzzle
+        goes back to being a square of sand.
         """
 
     static let puzzleBody = """
-        You are inside the puzzle, standing in one square of it. Sand grits underfoot and the \
-        blocks stand higher than your head.
+        You are inside the puzzle, standing in one square of it. Sand grits
+        underfoot and the blocks stand higher than your head.
         """
     static let daylightOutOfReach = """
-        Above the northwest square a hole of daylight shows in the ceiling, well out of reach.
+        Above the northwest square a hole of daylight shows in the ceiling,
+        well out of reach.
         """
     static let daylightReachable = """
-        The block with the ladder stands under the daylight, and the rungs go up into it.
+        The block with the ladder stands under the daylight, and the rungs go
+        up into it.
         """
     static let doorWallShut = """
-        The outer wall is at your shoulder. A narrow slot is cut into it at waist height, and \
-        under the slot a low door, shut.
+        The outer wall is at your shoulder. A narrow slot is cut into it at
+        waist height, and under the slot a low door, shut.
         """
     static let doorWallOpen = """
-        The outer wall is at your shoulder. The low door under the slot stands open on the dark.
+        The outer wall is at your shoulder. The low door under the slot stands
+        open on the dark.
         """
     static let hatchWallShut = """
-        The outer wall is at your shoulder. A niche the width of a card is cut into it, and \
-        beside the niche a hatch, shut.
+        The outer wall is at your shoulder. A niche the width of a card is cut
+        into it, and beside the niche a hatch, shut.
         """
     static let hatchWallOpen = """
-        The outer wall is at your shoulder. The hatch beside the niche stands open on a crawlway.
+        The outer wall is at your shoulder. The hatch beside the niche stands
+        open on a crawlway.
         """
 
     /// The four labels the room description reads off the grid. This is the
@@ -279,7 +286,8 @@ private enum Prose {
         The wall with the ladder cut into it stands in the way.
         """
     static let noDiagonals = """
-        The squares of the puzzle meet edge to edge. You can go north, south, east or west.
+        The squares of the puzzle meet edge to edge. You can go north, south,
+        east or west.
         """
     static let floorIsBedrock = """
         The floor is a hand's depth of sand over bedrock.
@@ -309,15 +317,20 @@ private enum Prose {
         """
 
     static func wallGrinds(_ direction: Direction) -> String {
-        "The wall grinds a full square \(direction.rawValue) and settles. You step into the gap."
+        """
+        The wall grinds a full square \(direction.rawValue) and settles. You
+        step into the gap.
+        """
     }
 
     // The card.
     static let cardRevealed = """
-        Under where the wall stood, pressed flush into the sand, lies a thin brass card.
+        Under where the wall stood, pressed flush into the sand, lies a thin
+        brass card.
         """
     static let cardCrushed = """
-        The wall settles into the square with a dry snap. Whatever was under it is under it now.
+        The wall settles into the square with a dry snap. Whatever was under
+        it is under it now.
         """
     static let cardAtYourFeet = """
         A thin brass card lies at your feet, pressed into the sand.
@@ -331,10 +344,12 @@ private enum Prose {
 
     // The two slots, and the one card that can only feed one of them.
     static let slotOutOfReach = """
-        The slot is cut into the east wall, and the east wall is not within reach from here.
+        The slot is cut into the east wall, and the east wall is not within
+        reach from here.
         """
     static let nicheOutOfReach = """
-        The niche is cut into the west wall, and the west wall is not within reach from here.
+        The niche is cut into the west wall, and the west wall is not within
+        reach from here.
         """
     static let slotTakesOnlyTheCard = """
         The slot is a card's width and no more.
@@ -346,12 +361,12 @@ private enum Prose {
         You would have to be holding it.
         """
     static let doorOpens = """
-        The card goes into the slot to the hilt and does not come back out. Under it, the low \
-        door swings inward.
+        The card goes into the slot to the hilt and does not come back out.
+        Under it, the low door swings inward.
         """
     static let hatchOpens = """
-        The card goes into the niche to the hilt and does not come back out. Beside it, the \
-        hatch swings inward on a crawlway going up.
+        The card goes into the niche to the hilt and does not come back out.
+        Beside it, the hatch swings inward on a crawlway going up.
         """
 
     // The conditional exits. Each of these is one string covering every case
