@@ -117,6 +117,13 @@ class MdlObject:
     size: int = 0
     find_value: int = 0
     case_value: int = 0
+    # What starts inside this object. A room says where its objects begin and an
+    # object says the same thing about the objects inside it — the egg in the
+    # nest, the canary in the egg — so an object with no room is not therefore
+    # unplaced. The declaration is positional: <OBJECT names adjs desc flags
+    # action contents props>, and `makstr.44` turns that sixth argument into the
+    # runtime `OCONTENTS`, filling each member's `OCAN` back-pointer.
+    contents: list[str] = field(default_factory=list)
 
 
 def _strings(node) -> list[str]:
@@ -129,6 +136,19 @@ def _flags(node) -> list[str]:
     if isinstance(node, str):
         return [node.lstrip(",")] if node.startswith(",") else []
     return [x.lstrip(",") for x in node if isinstance(x, str) and x.startswith(",")]
+
+
+def _contained(node) -> list[str]:
+    """(<GET-OBJ "EGG"> <GET-OBJ "GCANA">) -> ['EGG', 'GCANA'].
+
+    The one form both a room and an object use to say what starts inside it.
+    """
+    return [
+        oid
+        for item in node
+        if isinstance(item, Form) and item.head() == "GET-OBJ"
+        for oid in _strings(item)
+    ]
 
 
 def _props(node) -> dict:
@@ -262,9 +282,7 @@ def parse_mdl_dungeon(text: str) -> tuple[list[MdlRoom], list[MdlObject]]:
                                 room.value = int(props["RVAL"])
                             except (TypeError, ValueError):
                                 pass
-                        for item in part:
-                            if isinstance(item, Form) and item.head() == "GET-OBJ":
-                                room.contents.extend(_strings(item))
+                        room.contents.extend(_contained(part))
                 elif isinstance(part, str) and part.startswith(","):
                     room.flags.extend(_flags(part))
             rooms.append(room)
@@ -292,6 +310,7 @@ def parse_mdl_dungeon(text: str) -> tuple[list[MdlRoom], list[MdlObject]]:
                         desc = resolve(props.get("ODESC1"))
                         if desc:
                             obj.description = desc
+                        obj.contents.extend(_contained(part))
                         for key, attr in (
                             ("OSIZE", "size"),
                             ("OFVAL", "find_value"),

@@ -23,6 +23,7 @@ import os
 import re
 import subprocess
 import sys
+import textwrap
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -111,9 +112,27 @@ class Sources:
     def zil(self, game: str) -> Path:
         return self.root / ZIL_SUBPATHS[game]
 
+    def mdl_code(self) -> list[Path]:
+        """The MDL game code — every source file beside `dung.355`.
+
+        `dung.355` is data: it declares the dungeon and says where things start.
+        Anything that arrives later is put there from here — the diamond the
+        machine makes, the bauble the songbird drops — so these files are the only
+        evidence separating content a puzzle produces from content nothing reaches.
+        """
+        return sorted(
+            p for p in self.mdl.parent.glob("*") if p.is_file() and p != self.mdl
+        )
+
     def missing(self) -> list[Path]:
         absent = [self.zil(g) for g in GAME_ORDER if not self.zil(g).is_dir()]
-        return ([] if self.mdl.is_file() else [self.mdl]) + absent
+        if not self.mdl.is_file():
+            return [self.mdl] + absent
+        # `dung.355` alone is not enough. Without its siblings every object the
+        # game places at runtime reads as unreachable, which is a plausible-looking
+        # wrong answer in a committed document — the same reason all four trees are
+        # required rather than warned about.
+        return ([] if self.mdl_code() else [self.mdl.parent]) + absent
 
     def complaint(self) -> str:
         wanted = "\n".join(
@@ -136,6 +155,133 @@ class Sources:
             for f in sorted(self.zil(game).glob("*.zil"))
             for entity in parse_zil(read(f), game)
         ]
+
+
+# ----------------------------------------------------------------- placement
+
+# How MDL code reaches an object it did not declare in place: by id string.
+# `<SFIND-OBJ "DIAMO">` is the machine conjuring the diamond. Matching the form
+# rather than the bare id keeps `EGG` out of `EGG-SOLVE`.
+_OBJECT_LOOKUP = re.compile(r'\b(?:S?FIND-OBJ|GET-OBJ)\s+"([A-Z0-9]+)"')
+
+# Why a particular object is one nothing places. That is a fact about the source
+# rather than about its structure, so it is read by hand, once, and recorded here;
+# an object that turns up in that row without a note is one nobody has looked at.
+UNPLACED_NOTES = {
+    "BUTTO": "a placeholder with no name, no description and no value. The comment "
+    "above it in `dung.355` says it is kept only so that restoring a save file "
+    "written by an older build still works.",
+}
+
+PLACEMENT_LABELS = {
+    "room": "In a room",
+    "object": "Inside another object",
+    "code": "Named only by the game code",
+    "nowhere": "Named nowhere but its own declaration",
+}
+
+
+@dataclass(frozen=True)
+class Placement:
+    """Where one object starts, and what says so."""
+
+    kind: str  # a key of PLACEMENT_LABELS
+    where: str = ""  # the room or the containing object
+    cites: tuple[str, ...] = ()  # file:line, for kind 'code'
+
+    def cell(self) -> str:
+        """How the atlas's `starts in` column says it, in one table cell."""
+        if self.kind == "room":
+            return f"`{self.where}`"
+        if self.kind == "object":
+            return f"in `{self.where}`"
+        return "by code" if self.kind == "code" else "—"
+
+    def detail(self, oid: str, placed: dict[str, Placement]) -> str:
+        """The whole claim, for `--audit` to print.
+
+        A nested object is only as reachable as what finally holds it, so its
+        claim is the chain rather than the container next to it.
+        """
+        if self.kind == "object":
+            return " in ".join(chain(oid, placed))
+        return self.where or ", ".join(self.cites) or "—"
+
+
+def object_placements(
+    rooms: list, objects: list, code: list[Path]
+) -> tuple[dict[str, Placement], dict[str, str]]:
+    """Say where every object starts, and on what evidence.
+
+    Four answers, because three do not fit the source. A room's contents list
+    places most objects. An object's contents list places the rest of the ones
+    the file places at all — the egg in the nest, the canary in the egg — and
+    reading only rooms is what made those look unplaced. What neither list
+    mentions is either something the running game knows about, or nothing at all.
+
+    That last distinction is the one worth reporting and the one that cannot be
+    inferred, so it is cited instead. The claim a citation supports is exactly
+    "the game code names this object", not "this line is what puts it in play":
+    the placement itself is often several MDL forms away from the lookup, and this
+    generator reads structure, not semantics. So the file and line travel with the
+    claim and `--audit` prints them. The discrimination that matters survives the
+    weaker reading — an object no line of code names can never enter play.
+
+    Also returns any contents entry naming no declared object, so a dangling
+    reference is reported rather than silently dropped.
+    """
+    declared = {o.id for o in objects}
+    holders: dict[str, Placement] = {}
+    unresolved: dict[str, str] = {}
+    for kind, group in (("room", rooms), ("object", objects)):
+        for holder in group:
+            for oid in holder.contents:
+                if oid not in declared:
+                    unresolved.setdefault(oid, holder.id)
+                else:
+                    holders.setdefault(oid, Placement(kind, holder.id))
+
+    cites: dict[str, list[str]] = defaultdict(list)
+    for path in code:
+        for n, line in enumerate(read(path).splitlines(), 1):
+            if "-OBJ" not in line:
+                continue
+            for m in _OBJECT_LOOKUP.finditer(line):
+                if m.group(1) in declared:
+                    cites[m.group(1)].append(f"{path.name}:{n}")
+
+    def elsewhere(oid: str) -> Placement:
+        """Neither list mentions it: the code either knows it or nothing does."""
+        if oid in cites:
+            return Placement("code", cites=tuple(cites[oid]))
+        return Placement("nowhere")
+
+    placed = {oid: holders.get(oid) or elsewhere(oid) for oid in sorted(declared)}
+    return placed, unresolved
+
+
+def chain(oid: str, placed: dict[str, Placement]) -> list[str]:
+    """The containment chain out of `oid`, ending at whatever finally holds it."""
+    out: list[str] = []
+    while (p := placed[oid]).kind == "object" and p.where not in out:
+        out.append(p.where)
+        oid = p.where
+    return out
+
+
+def placement_tally(
+    objects: list, placed: dict[str, Placement]
+) -> dict[str, tuple[list[str], int]]:
+    """Group the objects by where they start, with the points riding on each.
+
+    One tally, so the section the atlas publishes and the listing `--audit`
+    prints cannot drift apart.
+    """
+    value = {o.id: o.find_value + o.case_value for o in objects}
+    grouped: dict[str, list[str]] = {kind: [] for kind in PLACEMENT_LABELS}
+    for oid in sorted(placed):
+        grouped[placed[oid].kind].append(oid)
+    return {kind: (g, sum(value[o] for o in g)) for kind, g in grouped.items()}
 
 
 # ------------------------------------------------------------- cross-matching
@@ -267,28 +413,37 @@ def pair_by_graph(
             del pairs[mid]
 
 
-def pair_contents_by_room(
-    mdl_rooms: dict,
-    mdl_objects: dict,
-    zil_objects: list[ZilEntity],
-    room_pairs: dict[str, str],
-) -> dict[str, ZilEntity]:
-    """Identify an object by the room it starts in, once the rooms are paired.
-
-    The second half of the same problem: two mirrors, two leaks, two red
-    buttons. Where the rooms holding them are known to correspond, the name is
-    unambiguous again — but only inside that pair of rooms, so the same
-    mutual-uniqueness rule applies.
-    """
-    by_room: dict[str, list[ZilEntity]] = defaultdict(list)
+def by_holder(zil_objects: list[ZilEntity]) -> dict[str, list[ZilEntity]]:
+    """Index a game's objects by what holds them. ZIL states it as `(IN …)`,
+    naming a room or another object indifferently."""
+    index: dict[str, list[ZilEntity]] = defaultdict(list)
     for obj in zil_objects:
         if obj.location:
-            by_room[obj.location].append(obj)
+            index[obj.location].append(obj)
+    return index
 
+
+def pair_contents(
+    contents: dict[str, list[str]],
+    mdl_objects: dict,
+    zil_by_holder: dict[str, list[ZilEntity]],
+    holder_pairs: dict[str, str],
+) -> dict[str, ZilEntity]:
+    """Identify an object by what it starts inside, once the holders are paired.
+
+    The second half of the same problem: two mirrors, two leaks, two red
+    buttons. Where the things holding them are known to correspond, the name is
+    unambiguous again — but only inside that pair of holders, so the same
+    mutual-uniqueness rule applies.
+
+    A holder is a room or another object, indifferently: MDL states both as a
+    contents list, so the water in the bottle resolves exactly the way the hook in
+    the Dome Room does.
+    """
     pairs: dict[str, ZilEntity] = {}
-    for mid, zid in sorted(room_pairs.items()):
-        mine = _by_name(mdl_objects[o] for o in mdl_rooms[mid].contents if o in mdl_objects)
-        theirs = _by_name(by_room[zid], lambda o: o.desc)
+    for mid, zid in sorted(holder_pairs.items()):
+        mine = _by_name(mdl_objects[o] for o in contents.get(mid, ()) if o in mdl_objects)
+        theirs = _by_name(zil_by_holder[zid], lambda o: o.desc)
         for name in mine.keys() & theirs.keys():
             if len(mine[name]) == len(theirs[name]) == 1:
                 pairs.setdefault(mine[name][0].id, theirs[name][0])
@@ -341,6 +496,12 @@ class Matching:
     rooms_by_graph: dict[str, ZilEntity] = field(default_factory=dict)
     objects_by_graph: dict[str, ZilEntity] = field(default_factory=dict)
     rejected: dict[str, tuple[ZilEntity, int]] = field(default_factory=dict)
+    # What the containment pass said about pairs that were already settled.
+    # A second, independent route to the same answer is worth as much as a new
+    # pair; a second route to a different one would mean one of them is wrong.
+    # The kept pair is `objects[id]` either way, so only the challenger is stored.
+    confirmed: set[str] = field(default_factory=set)
+    contradicted: dict[str, ZilEntity] = field(default_factory=dict)
 
     def of(self, eid: str, kind: str) -> ZilEntity | None:
         return (self.rooms if kind == "ROOM" else self.objects).get(eid)
@@ -353,11 +514,18 @@ def cross_reference(rooms: list, objects: list, zil: list[ZilEntity]) -> Matchin
     separately, seeded with the pairs the name already settled, so what the name
     could not say the graph can. A room paired in more than one game — which only
     the graph can produce — resolves to the earliest, per GAME_ORDER.
+
+    Then the same step once more, one level in: an object holds objects the way a
+    room does, so a settled container settles what is inside it. That pass runs to
+    a fixpoint, since pairing a container can settle a container it holds.
     """
     zil_rooms = [z for z in zil if z.kind == "ROOM"]
     zil_objects = [z for z in zil if z.kind == "OBJECT"]
     mdl_rooms = {r.id: r for r in rooms}
     mdl_objects = {o.id: o for o in objects}
+    held_by = {g: by_holder([o for o in zil_objects if o.game == g]) for g in GAME_ORDER}
+    room_contents = {r.id: r.contents for r in rooms}
+    object_contents = {o.id: o.contents for o in objects if o.contents}
 
     m = Matching(
         rooms_by_name=pair_by_name(rooms, zil_rooms),
@@ -374,14 +542,39 @@ def cross_reference(rooms: list, objects: list, zil: list[ZilEntity]) -> Matchin
                 m.rooms_by_graph.setdefault(mid, here[zid])
         for mid, (zid, agree) in rejected.items():
             m.rejected.setdefault(mid, (here[zid], agree))
-        for mid, z in pair_contents_by_room(
-            mdl_rooms, mdl_objects, [o for o in zil_objects if o.game == game], placed
+        for mid, z in pair_contents(
+            room_contents, mdl_objects, held_by[game], placed
         ).items():
             if mid not in m.objects_by_name:
                 m.objects_by_graph.setdefault(mid, z)
 
     m.rooms = {**m.rooms_by_name, **m.rooms_by_graph}
     m.objects = {**m.objects_by_name, **m.objects_by_graph}
+
+    def by_containment() -> dict[str, ZilEntity]:
+        """Everything a settled container settles, over all three games."""
+        out: dict[str, ZilEntity] = {}
+        for game in GAME_ORDER:
+            holders = {mid: z.id for mid, z in m.objects.items() if z.game == game}
+            for mid, z in pair_contents(
+                object_contents, mdl_objects, held_by[game], holders
+            ).items():
+                out.setdefault(mid, z)
+        return out
+
+    while new := {mid: z for mid, z in by_containment().items() if mid not in m.objects}:
+        m.objects_by_graph.update(new)
+        m.objects.update(new)
+
+    # Run once more over the settled match, now purely as a check: every pair
+    # containment reaches that something else had already settled is a second,
+    # independent route to an answer — or, if the two differ, evidence that one
+    # of them is wrong. The earlier pair stands either way; this only reports.
+    for mid, z in by_containment().items():
+        if (was := m.objects[mid]).id == z.id:
+            m.confirmed.add(mid)
+        elif was.game == z.game:
+            m.contradicted[mid] = z
     return m
 
 
@@ -413,19 +606,39 @@ def md_escape(text: str) -> str:
     return (text or "").replace("|", "\\|").replace("\n", " ").strip()
 
 
+def para(text: str, indent: str = "") -> str:
+    """Wrap a paragraph to the width the hand-written prose here is written at.
+
+    Only for the paragraphs that interpolate a figure: a number that grows a
+    digit would otherwise push a hand-wrapped line over on its own.
+    """
+    return textwrap.fill(text, 79, subsequent_indent=indent)
+
+
 def truncate(text: str, n: int = 90) -> str:
     text = md_escape(text)
     return text if len(text) <= n else text[: n - 1] + "…"
 
 
-def audit(rooms: list, objects: list, m: Matching) -> int:
-    """Print every pairing so a human can check it. Writes nothing.
+def audit(
+    rooms: list,
+    objects: list,
+    m: Matching,
+    placed: dict[str, Placement],
+    unresolved: dict[str, str],
+) -> int:
+    """Print every pairing and every placement so a human can check them. Writes
+    nothing.
 
     A generated coverage figure is only worth what its worst pairing is worth,
     and the graph-derived ones are the pairings nobody wrote down by hand. The
     rejected section is the evidence for MIN_CORROBORATION: if a run ever shows
     a sound pairing in there, or a bad one above the line, the threshold is
     wrong and this is how you would find out.
+
+    Placement is here for the same reason. Saying an object is reachable because
+    the game code puts it somewhere is a claim about code this generator does not
+    interpret, so the claim travels with its file and line.
     """
     def line(eid: str, name: str, z: ZilEntity, note: str = "") -> None:
         print(f"  {eid:8s} {name[:34]:36s} -> {z.id:24s} {z.desc[:30]:32s} "
@@ -456,6 +669,28 @@ def audit(rooms: list, objects: list, m: Matching) -> int:
         if kept := m.rooms.get(eid):
             note += f"; matched anyway to {kept.id} ({kept.game})"
         line(eid, named[eid], z, note)
+
+    print(f"\n=== OBJECT pairs confirmed a second time by containment "
+          f"({len(m.confirmed)}) ===")
+    for eid in sorted(m.confirmed):
+        print(f"  {eid:8s} -> {m.objects[eid].id}")
+    print(f"\n=== OBJECT pairs containment contradicts ({len(m.contradicted)}) ===")
+    for eid in sorted(m.contradicted):
+        was, now = m.objects[eid], m.contradicted[eid]
+        print(f"  {eid:8s} kept {was.id} ({was.game}); containment said {now.id}")
+
+    objs = {o.id: o for o in objects}
+    print("\n=== OBJECT placement ===")
+    for kind, (group, value) in placement_tally(objects, placed).items():
+        print(f"\n--- {PLACEMENT_LABELS[kind]} ({len(group)}, {value} points) ---")
+        for eid in group:
+            o = objs[eid]
+            print(f"  {eid:8s} {o.name[:34]:36s} {o.find_value + o.case_value:3d}  "
+                  f"{placed[eid].detail(eid, placed)}")
+
+    print(f"\n=== contents entries naming no declared object ({len(unresolved)}) ===")
+    for oid in sorted(unresolved):
+        print(f"  {oid:8s} named by {unresolved[oid]}")
     return 0
 
 
@@ -485,8 +720,9 @@ def main(argv: list[str] | None = None) -> int:
     rooms, objects = parse_mdl_dungeon(read(sources.mdl))
     zil = sources.load_zil()
     matching = cross_reference(rooms, objects, zil)
+    placed, unresolved = object_placements(rooms, objects, sources.mdl_code())
     if args.audit:
-        return audit(rooms, objects, matching)
+        return audit(rooms, objects, matching, placed, unresolved)
 
     zil_for = matching.of
     swift = zork1_swift_index()
@@ -610,30 +846,94 @@ def main(argv: list[str] | None = None) -> int:
             )
         lines.append("")
 
+    tally = placement_tally(objects, placed)
+    roomless = sum(pts for kind, (_, pts) in tally.items() if kind != "room")
+    nested, _ = tally["object"]
+    rooted = Counter(placed[chain(o, placed)[-1]].kind for o in nested)
+    elsewhere = len(tally["code"][0]) + len(tally["nowhere"][0])
+
     lines += [
         "## Objects",
         "",
         "`OFVAL` is the score for first acquiring the object, `OTVAL` for depositing it",
         "in the trophy case. `OSIZE` is its weight against the carrying capacity.",
+        "**starts in** is the room or the object it begins inside; see Placement below",
+        f"for the {elsewhere} entries that are neither.",
         "",
-        "| id | name | OSIZE | OFVAL | OTVAL | trilogy | in `Sources/Zork1/` |",
-        "|---|---|---:|---:|---:|---|---|",
+        "| id | name | OSIZE | OFVAL | OTVAL | starts in | trilogy | in `Sources/Zork1/` |",
+        "|---|---|---:|---:|---:|---|---|---|",
     ]
     for o in sorted(objects, key=lambda x: x.id):
         z = zil_for(o.id, "OBJECT")
         here = swift.get(norm(o.name), "")
         lines.append(
             f"| `{o.id}` | {md_escape(o.name)} | {o.size or ''} | {o.find_value or ''} "
-            f"| {o.case_value or ''} | {z.game if z else '—'} "
+            f"| {o.case_value or ''} | {placed[o.id].cell()} | {z.game if z else '—'} "
             f"| {'`' + here + '`' if here else '—'} |"
         )
+
+    lines += [
+        "",
+        "## Placement",
+        "",
+        para(
+            "Where each object starts, taken from the source's own contents lists. A"
+            " room says what begins in it; an object says the same about what begins"
+            " inside it. Reading only the first is what used to make a nested object"
+            f" look unplaced, and it left {roomless} of the"
+            f" {sum(pts for _, pts in tally.values())} points in object values sitting"
+            " in entries that read as unreachable."
+        ),
+        "",
+        "| Where an object starts | Objects | `OFVAL`+`OTVAL` |",
+        "|---|---:|---:|",
+        *(
+            f"| {label} | {len(tally[kind][0])} | {tally[kind][1]} |"
+            for kind, label in PLACEMENT_LABELS.items()
+        ),
+        "",
+        para(
+            f"Nesting accounts for {tally['object'][1]} of those {roomless} points."
+            f" Followed to what finally holds it, {rooted['room']} of the {len(nested)}"
+            " nested objects end in a room — the egg in the nest, the canary in the egg,"
+            " the emerald in the buoy, the crown in the safe, the violin in the steel"
+            f" box, the Flathead stamp in the purple book. The other {rooted['code']} end"
+            " inside something the code brings in: the stiletto the thief carries, the"
+            " label on the magic boat, the broken canary in the broken egg, the Don Woods"
+            " stamp in the brochure."
+        ),
+        "",
+        para(
+            f"The other {tally['code'][1]} points are in objects `dung.355` declares and"
+            " never places: the huge diamond, which does not exist until the machine"
+            " makes it, and the brass bauble the songbird drops. Those are found by"
+            " scanning the rest of the MDL for the lookup forms the code reaches an"
+            ' object by — `<SFIND-OBJ "DIAMO">` — so the claim is exactly that the code'
+            " names the object, not that the cited line is what puts it in play. In MDL"
+            " the placement is usually several forms away from the lookup, and this"
+            " generator reads structure, not semantics. `--audit` prints every citation"
+            " with its file and line."
+        ),
+        "",
+        para(
+            "The weaker reading still settles the question worth asking, because an"
+            " object no line of code names can never enter play at all. **On that test no"
+            " valued object in mainframe Zork is unreachable** — which is the figure a"
+            " scoring target has to rest on."
+        ),
+        "",
+    ]
+    if unplaced := tally["nowhere"][0]:
+        lines += ["What is in that last row:", ""]
+        for eid in unplaced:
+            note = UNPLACED_NOTES.get(eid, "not looked into yet.")
+            lines += [para(f"- `{eid}` — {note}", indent="  "), ""]
 
     in_swift = sum(1 for r in rooms if norm(r.name) in swift)
     loose_rooms = len(rooms) - len(matching.rooms)
     loose_objs = len(objects) - len(matching.objects)
 
     lines += [
-        "",
         "## Coverage",
         "",
         "Every row counts **mainframe entities**. The two matched rows and the",
@@ -645,7 +945,7 @@ def main(argv: list[str] | None = None) -> int:
         f"| Total in the 1981 MDL | {len(rooms)} | {len(objects)} |",
         f"| Matched to a trilogy entity by display name "
         f"| {len(matching.rooms_by_name)} | {len(matching.objects_by_name)} |",
-        f"| Matched by position — exit graph, or the room it starts in "
+        f"| Matched by position — exit graph, or what it starts inside "
         f"| {len(matching.rooms_by_graph)} | {len(matching.objects_by_graph)} |",
         f"| **Matched, either way** | **{len(matching.rooms)}** "
         f"| **{len(matching.objects)}** |",
@@ -669,6 +969,12 @@ def main(argv: list[str] | None = None) -> int:
         "",
         "Objects go the same way once the rooms are known: two hooks, two metal lids and",
         "two walls with etchings stop being ambiguous when the room holding each one is.",
+        "A container settles what is inside it for the same reason a room does, so the",
+        "step repeats one level in — that is how the water is known to be Zork I's, from",
+        "the bottle holding it, when the name alone is shared across the trilogy. That",
+        "pass is also a check on the name matcher, since it reaches pairs the name had",
+        f"already settled by an independent route: {len(matching.confirmed)} of them, of"
+        f" which {len(matching.contradicted)} disagree.",
         "",
         "What is still unmatched is mostly content the trilogy never carried over — the",
         "Bank of Zork, the Royal Puzzle, the Endgame. The rest is rooms the trilogy",
@@ -677,10 +983,13 @@ def main(argv: list[str] | None = None) -> int:
         "",
         "## Open questions",
         "",
-        "1. **Objects declared but never placed.** Several valued objects appear in no",
-        "   room's contents list because they start inside another object (the egg in the",
-        "   nest, the emerald in the buoy) or are created by a puzzle (the diamond). The",
-        "   atlas does not yet distinguish these from genuinely unreachable content.",
+        "1. **Objects declared `<GOBJECT …>` are not inventoried.** A mainframe global is",
+        "   one object a bitmask makes present in many rooms at once, and it is declared",
+        "   by a different form, which the reader skips. So the dungeon master, `MASTE`,",
+        "   is missing from the Objects table even though `BDOOR` lists him in its",
+        "   contents — the one contents entry naming no object this document knows,",
+        "   which `--audit` reports. Inventorying the globals would move every figure",
+        "   here and is its own piece of work.",
         "",
         "2. **`DEAD1` and `DEAD2` are named with their own description.** A mainframe",
         "   room is declared long description first, short name second: the maze rooms",
@@ -834,6 +1143,9 @@ def main(argv: list[str] | None = None) -> int:
     print(f"matched rooms={len(matching.rooms)} objects={len(matching.objects)}"
           f"  (by name {len(matching.rooms_by_name)}/{len(matching.objects_by_name)},"
           f" by position {len(matching.rooms_by_graph)}/{len(matching.objects_by_graph)})")
+    print("placement: " + "  ".join(
+        f"{kind}={len(group)}/{pts}pts" for kind, (group, pts) in tally.items()
+    ))
     print(f"prose comparison: identical={len(ident)} minor={len(minor)} "
           f"substantial={len(sub)}")
     print(f"wrote {DOCS/'dungeon-atlas.md'}")
