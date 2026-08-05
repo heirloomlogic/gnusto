@@ -465,6 +465,12 @@ enum DefaultActions {
             // current turn's state (globals, proxies) via `Ctx.current`.
             guard condition() else { try refuse(blocked) }
             try enter(destination, frame: frame, announcing: aside)
+        case .dynamic(let destination):
+            // Same reason as the conditional gate: the closure reads this
+            // turn's state through `Ctx.current`. Nothing downstream checks
+            // that the room it names has anything to do with `direction` —
+            // which is what makes a non-Euclidean passage possible at all.
+            try enter(destination(), frame: frame, announcing: aside)
         }
     }
 
@@ -542,6 +548,12 @@ enum DefaultActions {
                     }
             case .conditional(let destination, _, _):
                 return gatedOnly && destination == there
+            case .dynamic(let destination):
+                // Second-class like a conditional, so an ordinary exit onto the
+                // same room still wins. This is the one kind whose destination
+                // has to be *run* to be compared — `&&` keeps that off the
+                // ungated pass, and `travel` runs it again a moment later.
+                return gatedOnly && destination() == there
             case .blocked, nil:
                 return false
             }

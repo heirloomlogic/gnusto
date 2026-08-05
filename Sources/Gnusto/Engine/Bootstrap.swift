@@ -175,6 +175,17 @@ enum Bootstrap {
             return id
         }
 
+        /// Files a resolved exit under its direction, complaining first if that
+        /// direction has already been claimed. Every exit kind ends here, so a
+        /// sixth one cannot forget the check or word it differently.
+        func claimExit(_ target: ExitTarget, _ direction: Direction, from fromID: EntityID) {
+            if exits[fromID]?[direction] != nil {
+                diagnostics.append(
+                    "\"\(fromID)\" declares its \(direction) exit more than once.")
+            }
+            exits[fromID, default: [:]][direction] = target
+        }
+
         let mapEntries = game.map.entries + modules.flatMap { $0.map.entries }
         for entry in mapEntries {
             switch entry.kind {
@@ -182,11 +193,7 @@ enum Bootstrap {
                 guard let fromID = resolveLocation(from, role: "the source of a \(direction) exit"),
                     let toID = resolveLocation(to, role: "the \(direction) exit")
                 else { continue }
-                if exits[fromID]?[direction] != nil {
-                    diagnostics.append(
-                        "\"\(fromID)\" declares its \(direction) exit more than once.")
-                }
-                exits[fromID, default: [:]][direction] = .to(toID)
+                claimExit(.to(toID), direction, from: fromID)
 
             case .blockedExit(let from, let direction, let message):
                 guard
@@ -195,11 +202,7 @@ enum Bootstrap {
                 else {
                     continue
                 }
-                if exits[fromID]?[direction] != nil {
-                    diagnostics.append(
-                        "\"\(fromID)\" declares its \(direction) exit more than once.")
-                }
-                exits[fromID, default: [:]][direction] = .blocked(message)
+                claimExit(.blocked(message), direction, from: fromID)
 
             case .doorExit(let from, let direction, let to, let doorToken):
                 guard
@@ -217,11 +220,7 @@ enum Bootstrap {
                         "\"\(fromID)\"'s \(direction) exit uses \"\(doorID)\" as a door, "
                             + "which is not declared openable.")
                 }
-                if exits[fromID]?[direction] != nil {
-                    diagnostics.append(
-                        "\"\(fromID)\" declares its \(direction) exit more than once.")
-                }
-                exits[fromID, default: [:]][direction] = .door(to: toID, door: doorID)
+                claimExit(.door(to: toID, door: doorID), direction, from: fromID)
 
             case .conditionalExit(let from, let direction, let to, let condition, let blocked):
                 guard
@@ -229,12 +228,21 @@ enum Bootstrap {
                         from, role: "the source of a conditional \(direction) exit"),
                     let toID = resolveLocation(to, role: "the \(direction) exit")
                 else { continue }
-                if exits[fromID]?[direction] != nil {
-                    diagnostics.append(
-                        "\"\(fromID)\" declares its \(direction) exit more than once.")
-                }
-                exits[fromID, default: [:]][direction] = .conditional(
-                    to: toID, condition: condition, blocked: blocked)
+                claimExit(
+                    .conditional(to: toID, condition: condition, blocked: blocked),
+                    direction, from: fromID)
+
+            case .dynamicExit(let from, let direction, let destination):
+                guard
+                    let fromID = resolveLocation(
+                        from, role: "the source of a dynamic \(direction) exit")
+                else { continue }
+                // The destination is a closure, so there is nothing to resolve
+                // here and nothing to add to `reachableRooms` — see
+                // `Location.exit(_:toward:)` for what that costs. Claiming the
+                // direction is still checked: it is the one mistake this exit
+                // kind can make that bootstrap can still catch.
+                claimExit(.dynamic(destination: { destination().id }), direction, from: fromID)
 
             case .placement(let itemToken, let target):
                 guard let itemID = resolveItem(itemToken, role: "a placement") else {
@@ -559,7 +567,9 @@ enum Bootstrap {
                     case .to(let destination), .door(let destination, _),
                         .conditional(let destination, _, _):
                         destination
-                    case .blocked:
+                    // A dynamic exit names no room until it runs, so it can
+                    // contribute none — documented on `exit(_:toward:)`.
+                    case .blocked, .dynamic:
                         nil
                     }
                 }),

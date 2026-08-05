@@ -110,7 +110,7 @@ public struct Location: Sendable, Equatable {
     // Per-direction sugar (`north`, `down`, `west`, …) lives in
     // `LocationExits.swift`, generated from one private helper per exit kind so
     // the direction names stay a single family and this file stays lean. All of
-    // it funnels into the four general `exit(_:…)` forms below.
+    // it funnels into the five general `exit(_:…)` forms below.
 
     /// The general destination exit, for directions chosen dynamically
     /// (e.g. built in a loop).
@@ -166,6 +166,50 @@ public struct Location: Sendable, Equatable {
             kind: .conditionalExit(
                 from: token, direction: direction, to: destination.token,
                 condition: condition, blocked: blocked))
+    }
+
+    /// The general dynamic exit: `destination` is evaluated at `go` time, so
+    /// one direction can lead to different rooms on different turns.
+    ///
+    /// This is the non-Euclidean passage — the Bank of Zork's curtain of
+    /// light, where the room you arrive in depends on state rather than on
+    /// the exit you took:
+    ///
+    /// ```swift
+    /// depository.north { lastViewingRoom == .west ? smallRoom : vault }
+    /// ```
+    ///
+    /// Travel runs through the same path as every other passable exit, so the
+    /// destination's `onEnter` rules fire and a boarded vehicle rides along —
+    /// which is the difference between this and assigning `player.location`
+    /// from a rule, where neither happens.
+    ///
+    /// The closure is a *read*: it may run more than once in a turn — FOLLOW
+    /// asks it which way the quarry went before travel takes it — so it must
+    /// answer from state rather than change any.
+    ///
+    /// Two consequences of the destination being a closure:
+    ///
+    /// - **It is not validated at bootstrap.** The other exit forms name a
+    ///   room the bootstrap can resolve; this one is opaque until it runs, so
+    ///   a destination that isn't a stored property of the game surfaces on
+    ///   the turn the player takes the exit, not at launch.
+    /// - **It contributes nothing to the reachable-room set**, which is built
+    ///   from declared destinations. A room reachable *only* this way reads to
+    ///   the engine as off-map, so FOLLOW will not name somebody standing
+    ///   there. For a room the map doesn't admit to, that is usually what you
+    ///   want; when it isn't, give the room an ordinary exit as well.
+    ///
+    /// - Parameters:
+    ///   - direction: the direction the exit lies in.
+    ///   - destination: evaluated at `go` time; the room the exit leads to.
+    /// - Returns: the map entry declaring the exit.
+    public func exit(
+        _ direction: Direction,
+        toward destination: @escaping @Sendable () -> Location
+    ) -> MapEntry {
+        MapEntry(
+            kind: .dynamicExit(from: token, direction: direction, destination: destination))
     }
 
     // MARK: - Rule factories
