@@ -14,7 +14,7 @@ that covers your task before writing code.
 |---|---|
 | `Sources/Gnusto/` | the engine. `Declarations/` is the author-facing DSL; `Engine/` is the runtime; `Actions/` is verbs, default actions and player-facing text; `Parser/` is the parser and vocabulary |
 | `Sources/Gnusto*/` | optional libraries spliced in as `GameContent`/`GamePlugin`: `GnustoClock`, `GnustoConversation`, `GnustoScoring`, `GnustoSpellcasting`, `GnustoMeleeCombat`, `GnustoDangerousDark`, `GnustoActors`. Plus `GnustoMacros` (the `#verb` macro) and `GnustoTestSupport` (the `play` harness) |
-| `Sources/CloakOfDarkness`, `Lighthouse`, `Zork1`, `Gramarye`, `Fulminate`, `KindlyDeep` | demo games, also the engine's real test corpus |
+| `Sources/CloakOfDarkness`, `Lighthouse`, `Zork1`, `Gramarye`, `Fulminate`, `KindlyDeep`, `Dungeon` | demo games, also the engine's real test corpus. `Dungeon` (mainframe Zork) is built one milestone at a time and **adapts** its prose where the others reproduce or invent — read `FIDELITY.md`'s Dungeon section before writing a line of it |
 | `Tests/GnustoTests/` | one suite per subject; `Support/` holds the fixture games |
 | `docs/games/*.md` | per-game design docs — **story-and-copy source of truth**, iterated separately from code. Not every game has one; alongside each, its play-test round reports and ledger |
 | `docs/playtesting.md` | how to play a game by hand and read the transcript as prose, plus the calibration answer key |
