@@ -7,7 +7,17 @@ enum DescribeMode {
 
 /// Composes room descriptions per classic IF conventions.
 enum RoomDescriber {
-    static func describeCurrentLocation(mode: DescribeMode, frame: TurnFrame) {
+    /// - Parameters:
+    ///   - mode: entering the room, or an explicit LOOK.
+    ///   - withRoomName: whether to open with the room's name. See
+    ///     ``describeSurroundings(withRoomName:)``, which is where an author
+    ///     reaches this.
+    ///   - frame: the live turn.
+    static func describeCurrentLocation(
+        mode: DescribeMode,
+        withRoomName: Bool = true,
+        frame: TurnFrame
+    ) {
         let definition = frame.definition
 
         // One snapshot of everything this function reads; the visited mark
@@ -42,15 +52,20 @@ enum RoomDescriber {
         }
 
         let location = definition.locations[locationID]
-        let verbose = mode == .look || !wasVisited
+        // A revisit is brief — the player has read the room already — unless the
+        // room's description is the state they are changing, in which case
+        // withholding it withholds the only readout there is.
+        let verbose = mode == .look || !wasVisited || location?.isAlwaysDescribed == true
 
-        let roomName = location?.name ?? locationID.raw
-        if let vehicle {
-            frame.say(
-                frame.definition.text.locationInVehicle(
-                    roomName, frame.definiteName(of: vehicle)))
-        } else {
-            frame.say(roomName)
+        if withRoomName {
+            let roomName = location?.name ?? locationID.raw
+            if let vehicle {
+                frame.say(
+                    frame.definition.text.locationInVehicle(
+                        roomName, frame.definiteName(of: vehicle)))
+            } else {
+                frame.say(roomName)
+            }
         }
         if verbose {
             // Reads outside the lock above: `describedText` may call a

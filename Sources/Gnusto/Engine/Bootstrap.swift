@@ -776,6 +776,23 @@ enum Bootstrap {
                     + "just prints the engine's fall-back line.")
         }
 
+        // `alwaysDescribed` un-hides a long description on revisits. A room with
+        // no long description at all — no `description(…)` trait, no
+        // `describe { … }` rule — has nothing for it to un-hide, and the author
+        // who meant to attach one will otherwise find out from a transcript that
+        // reads identically with the trait and without it. Checked here rather
+        // than beside the other trait warnings because it needs the rule table,
+        // which is assembled above.
+        let mutelyAlwaysDescribed = locations.compactMap { id, location in
+            location.isAlwaysDescribed && location.description == nil
+                && table.locationDescribe[id] == nil ? id : nil
+        }
+        for id in mutelyAlwaysDescribed.sorted() {
+            definition.warnings.append(
+                "location \"\(id)\" declares alwaysDescribed but has no description(…) "
+                    + "trait and no describe { … } rule; the flag has nothing to print.")
+        }
+
         // `maxScore` is read before any rule can run, so on its own it is the
         // author's arithmetic and nothing verifies it. Content conforming to
         // `ScoreDeclaring` knows its own award table; where one exists, the two

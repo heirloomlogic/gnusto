@@ -92,8 +92,27 @@ public func die(_ message: String) throws -> Never {
 /// is or what they can see ("The current carries the boat downstream.") and
 /// want the classic follow-up description. Safe in darkness (prints the
 /// pitch-black line); marks the room visited exactly as a real LOOK would.
-public func describeSurroundings() {
-    RoomDescriber.describeCurrentLocation(mode: .look, frame: Ctx.current)
+///
+/// Pass `withRoomName: false` when the player has moved *within* a single room
+/// rather than between rooms — a square of a sliding-block floor, a step along a
+/// ledge the map models as one place. The room's name is a heading announcing
+/// arrival somewhere; reprinting it on every step says the player arrived
+/// nineteen times in a room they never left. Everything else — the long
+/// description, the item paragraphs, the people — prints as usual:
+///
+/// ```swift
+/// puzzle.before(.go) {
+///     // …walk one square of the grid…
+///     describeSurroundings(withRoomName: false)
+///     try reply("")
+/// }
+/// ```
+///
+/// - Parameter withRoomName: whether to open with the room's name. Defaults to
+///   true, which is a full LOOK.
+public func describeSurroundings(withRoomName: Bool = true) {
+    RoomDescriber.describeCurrentLocation(
+        mode: .look, withRoomName: withRoomName, frame: Ctx.current)
 }
 
 /// Runs the stage-4 default action (a game/plugin override if one is

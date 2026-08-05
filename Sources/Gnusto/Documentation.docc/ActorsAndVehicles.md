@@ -147,7 +147,7 @@ var timers: [TimedEvent] {
 ```
 
 Rules and daemons that change what the player sees can call
-``describeSurroundings()`` for the classic follow-up LOOK.
+``describeSurroundings(withRoomName:)`` for the classic follow-up LOOK.
 
 The **Lighthouse** example (`Sources/Lighthouse/`) wires exactly this: a
 keeper declared as an ``Actor`` and set roaming two rooms by `GnustoActors`,
@@ -340,7 +340,7 @@ in and out (bare `in`/`out` remain directions). While boarded:
 
 For currents and other rule-driven travel, `Item/move(to:)` on the
 boarded vehicle carries the passenger; follow with
-``describeSurroundings()`` if they should see the new banks.
+``describeSurroundings(withRoomName:)`` if they should see the new banks.
 `move(inside:)`, `move(onto:)`, and `vanish()` deliberately do *not* — a
 vehicle that leaves the room any other way strands its passenger on foot,
 gracefully.
@@ -362,4 +362,4 @@ a rule on the vehicle itself never sees it — a gate that has to hold
 - ``Command/actor``
 - ``enterable``
 - ``Player/vehicle``
-- ``describeSurroundings()``
+- ``describeSurroundings(withRoomName:)``

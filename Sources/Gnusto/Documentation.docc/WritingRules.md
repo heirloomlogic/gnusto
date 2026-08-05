@@ -121,6 +121,33 @@ Three things are worth knowing:
 - **A runtime assignment still wins.** Setting ``Item/description`` (or ``Location/description``) directly in a rule overrides the `describe` closure from then on — useful for a one-way change like a lever that reveals a passage.
 - **Keep the closure pure.** It runs on every look and examine; read state, return a string, and don't mutate the world from inside it.
 
+## When the room's description *is* the state
+
+A room is described in full the first time the player walks in and briefly on every entry after that — its name and the things lying in it, but not its long description, because the player has already read it. That is the classic behaviour and it is right for a room made of stone.
+
+It is wrong for a room the player is *rewriting*. A sliding-block floor, a mirror box, a machine whose dials have moved: there the `describe { … }` closure is the only readout there is, and a brief re-entry silently withholds it. The player types `undo` after a push and gets the heading and nothing under it. Declare ``alwaysDescribed`` and the long description prints on every entry too:
+
+```swift
+let puzzle = Location {
+    name("Room in a Puzzle")
+    alwaysDescribed
+}
+```
+
+It is opt-in, one room at a time; every other room keeps the brief revisit. The three paths it fixes are UNDO, RESTORE, and walking back in through an exit — all of which re-describe as an entry rather than as a LOOK. On a room with nothing to print — no `description(…)` and no `describe { … }` — the trait is a bootstrap warning, since it has no text to un-hide.
+
+The other half of the same problem is a rule that moves the player *within* one room. ``describeSurroundings(withRoomName:)`` re-describes from a rule body, and by default it is a full LOOK, heading included — so a step-by-step puzzle that re-describes on every move announces the same arrival nineteen times. Pass `withRoomName: false` and everything but the heading prints:
+
+```swift
+puzzle.before(.go) {
+    // …walk one square of the grid…
+    describeSurroundings(withRoomName: false)
+    try reply("")
+}
+```
+
+Between them: the trait decides *what* a description contains, the argument decides whether it opens by announcing where the player is.
+
 ## Live room-listing lines with `presence`
 
 `describe` supplies the *examine* text. The other line the engine prints about an entity is its paragraph in the room description — the ``firstSight(_:)`` trait, shown until the player touches an item and shown on every look for an actor. ``Item/presence(_:)`` (or ``Actor/presence(_:)``) is its live form, and it follows exactly the same rules as `describe`:

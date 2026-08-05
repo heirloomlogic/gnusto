@@ -24,13 +24,15 @@ struct BrawlPlugin: GamePlugin {
         }
     }
 
-    /// A "current" that drags the player somewhere and re-describes.
+    /// A "current" that drags the player somewhere and re-describes. Its
+    /// `withRoomName` passes straight through to
+    /// `describeSurroundings(withRoomName:)`, so the seam covers both spellings.
     @RuleBuilder
-    func drift(to destination: Location, on intent: Intent) -> Rules {
+    func drift(to destination: Location, on intent: Intent, withRoomName: Bool = true) -> Rules {
         world.before(intent) {
             player.location = destination
             say("The floor tilts and deposits you elsewhere.")
-            describeSurroundings()
+            describeSurroundings(withRoomName: withRoomName)
             try reply("")
         }
     }
@@ -79,6 +81,7 @@ struct BrawlGame: Game {
         brawl.verbs
         SyntaxRule("slide", intent: Intent("slide"))
         SyntaxRule("slip", intent: Intent("slip"))
+        SyntaxRule("slither", intent: Intent("slither"))
     }
 
     var actions: [IntentAction] {
@@ -96,6 +99,8 @@ struct BrawlGame: Game {
         }
         brawl.drift(to: gym, on: Intent("slide"))
         brawl.drift(to: storeroom, on: Intent("slip"))
+        // Same room, no heading: the player shifted, they did not arrive.
+        brawl.drift(to: gym, on: Intent("slither"), withRoomName: false)
     }
 }
 

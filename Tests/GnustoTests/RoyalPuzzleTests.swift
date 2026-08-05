@@ -10,6 +10,27 @@ import Testing
 /// The fixture is `RoyalPuzzleGame` in `Support/RoyalPuzzleGames.swift`. Its
 /// grid, the squares it names, and the solution these tests walk are laid out
 /// in that file's doc comment.
+/// The nineteen-move solve, written once because three tests walk it and a
+/// stale copy of a grid walkthrough still passes an assertion about counts.
+private let scriptedSolution = [
+    // Down into the puzzle, round to the card's block, push it off.
+    "down", "east", "north", "push west", "take card",
+    // Round to the slot, spend the card, collect the book.
+    "east", "north", "put card in slot", "east", "take book", "west",
+    // Walk the ladder block three squares to the ceiling hole.
+    "south", "west", "push north", "east", "north",
+    "push west", "push west",
+    "up",
+]
+
+/// The same climb out, minus the detour for the book — so the player leaves
+/// empty-handed and the game does not end.
+private let climbOutWithoutTheBook = [
+    "down", "east", "north", "push west",
+    "push north", "east", "north", "push west", "push west",
+    "up",
+]
+
 struct RoyalPuzzleTests {
     // MARK: - The mechanism
 
@@ -260,18 +281,7 @@ struct RoyalPuzzleTests {
     // MARK: - The whole thing, end to end
 
     @Test func theScriptedSolutionWalksTheGridAndClimbsOutWithTheBook() async throws {
-        let transcript = try await play(
-            RoyalPuzzleGame(),
-            [
-                // Down into the puzzle, round to the card's block, push it off.
-                "down", "east", "north", "push west", "take card",
-                // Round to the slot, spend the card, collect the book.
-                "east", "north", "put card in slot", "east", "take book", "west",
-                // Walk the ladder block three squares to the ceiling hole.
-                "south", "west", "push north", "east", "north",
-                "push west", "push west",
-                "up",
-            ])
+        let transcript = try await play(RoyalPuzzleGame(), scriptedSolution)
         expectInOrder(
             transcript,
             [
@@ -294,12 +304,7 @@ struct RoyalPuzzleTests {
     /// Climbing out is one-way, because the sand ran shut on the way in.
     @Test func theDropInSealsBehindThePlayer() async throws {
         let transcript = try await play(
-            RoyalPuzzleGame(),
-            [
-                "down", "east", "north", "push west",
-                "push north", "east", "north", "push west", "push west",
-                "up", "down", "look",
-            ])
+            RoyalPuzzleGame(), climbOutWithoutTheBook + ["down", "look"])
         expectInOrder(
             transcript,
             [
@@ -319,10 +324,6 @@ struct RoyalPuzzleTests {
     // MARK: - The grid as saved state
 
     /// A `.data` global carries the whole grid through both rewind paths.
-    /// Both re-describe with `.entry`, which is brief on a room the player has
-    /// already visited — so the geometry only comes back on an explicit LOOK.
-    /// That is worth watching: for a room whose description *is* the state,
-    /// the state silently stops printing.
     @Test func theGridSurvivesUndoAndSaveAndRestore() async throws {
         let dir = FileManager.default.temporaryDirectory
             .appendingPathComponent("gnusto-royal-\(UUID().uuidString)", isDirectory: true)
@@ -348,14 +349,40 @@ struct RoyalPuzzleTests {
         #expect(turnOutput(of: "l", in: transcript).contains("to the west, a sandstone wall."))
     }
 
-    /// The room's own description is the state, so a rewind that re-describes
-    /// briefly prints the room's name and none of its geometry.
-    @Test func aRewindRedescribesBrieflyAndDropsTheGeometry() async throws {
+    /// The room's own description is the state, so `alwaysDescribed` makes the
+    /// brief `.entry` a rewind produces print the geometry anyway — the player
+    /// gets the board back with the move, not one turn later on an explicit
+    /// LOOK. Issue #149.
+    @Test func aRewindReprintsTheGeometryItRewound() async throws {
         let transcript = try await play(
             RoyalPuzzleGame(), ["down", "east", "north", "push west", "undo"])
         let rewind = turnOutput(of: "undo", in: transcript)
         #expect(rewind.contains("Room in a Puzzle"))
-        #expect(!rewind.contains("To the north,"))
+        // Back on square 11, before the push: sandstone to the west again.
+        #expect(rewind.contains("To the north, open floor; to the east, the outer wall;"))
+        #expect(rewind.contains("to the west, a sandstone wall."))
+    }
+
+    /// The control for the trait: the anteroom declares no `alwaysDescribed`,
+    /// so its `describe { … }` still obeys the ordinary brief-on-revisit rule.
+    /// Climbing back out prints its name and not its description.
+    @Test func aRoomWithoutTheTraitIsStillBriefOnARevisit() async throws {
+        let transcript = try await play(RoyalPuzzleGame(), climbOutWithoutTheBook)
+        let reentry = turnOutput(of: "up", in: transcript)
+        #expect(reentry.contains("Small Square Room"))
+        #expect(!reentry.contains("A small square room, swept bare"))
+    }
+
+    /// The other half of #149. Every step and every push re-describes, but the
+    /// player never leaves the room, so the heading is printed only by the
+    /// three descriptions that really are arrivals: the drop in, and the two
+    /// LOOKs. Nineteen moves, three headings — not nineteen.
+    @Test func stepsInsideTheRoomDoNotReprintTheHeading() async throws {
+        let transcript = try await play(RoyalPuzzleGame(), scriptedSolution)
+        // Entering the puzzle, and re-entering it from the Side Room.
+        #expect(occurrences(of: "Room in a Puzzle", in: transcript) == 2)
+        // The geometry, meanwhile, printed on every one of those moves.
+        #expect(occurrences(of: "To the north,", in: transcript) > 10)
     }
 
     // MARK: - Vocabulary
