@@ -13,10 +13,19 @@ Reproduced textual content
 --------------------------
 
 The room descriptions, object descriptions, and player-facing messages in
-`Sources/Zork1/` reproduce text from the original Zork I source code. That text
-was taken from the publicly available source-code collection published at:
+`Sources/Zork1/` — and the Zork I/II/III columns of the reference documents under
+`docs/games/` — reproduce text from the original Zork source code. That text was
+taken from the publicly available source-code collections published at:
 
     https://github.com/historicalsource/zork1
+    https://github.com/historicalsource/zork2
+    https://github.com/historicalsource/zork3
+
+Those three repositories were open-sourced in November 2025 by Microsoft's Open
+Source Programs Office with Team Xbox and Activision, in collaboration with Jason
+Scott of the Internet Archive. Note that the sibling repository
+`historicalsource/zork` (an Infocom-era mainframe port) was NOT part of that
+release and is not relied on here.
 
 The source code in that collection is written in ZIL (Zork Implementation
 Language) and is made available under the MIT License:
@@ -46,6 +55,75 @@ Language) and is made available under the MIT License:
 "ZORK" and "Zork" are trademarks of their respective owners. This project is not
 affiliated with, endorsed by, or sponsored by Infocom, Activision, or any other
 rights holder.
+
+
+Mainframe Zork (MDL) — a separate grant
+---------------------------------------
+
+The demonstration game "Dungeon" (`Sources/Dungeon/`) and the reference documents
+`docs/games/dungeon-atlas.md` and `docs/games/dungeon-prose-comparison.md` draw on
+the *original mainframe Zork*, written in MDL at the MIT Laboratory for Computer
+Science between 1977 and 1981 by Tim Anderson, Marc Blank, Bruce Daniels, and
+Dave Lebling.
+
+This is a DIFFERENT body of source code under a DIFFERENT grant from the Zork I
+material above. The two must not be conflated. The MIT Libraries Department of
+Distinctive Collections published the MDL sources at:
+
+    https://github.com/MITDDC/zork
+    https://github.com/MITDDC/zork-1977-07
+    https://github.com/MITDDC/zork-1978-01
+
+under the MIT No Attribution License. Their LICENSE.md states, in full:
+
+    MIT No Attribution
+
+    To the extent that MIT holds rights to these files,
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy
+    of this software and associated documentation files (the "Software"), to deal
+    in the Software without restriction, including without limitation the rights
+    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is
+    furnished to do so.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+    SOFTWARE.
+
+Note the qualifier "to the extent that MIT holds rights" — it is reproduced here
+deliberately rather than paraphrased. MIT directs permissions questions to
+permissions-lib@mit.edu.
+
+
+Two limits on the above, recorded so a later pass does not have to rediscover them
+-----------------------------------------------------------------------------------
+
+1. The MITDDC grant covers the 1977 and 1978 versions it published. The version
+   this project reconstructs is the final MDL, dated 1981-07-22, which reached the
+   public through Bob Supnik's 2003 release rather than through MITDDC, and for
+   which no comparable grant has been located.
+
+   Accordingly, the 1981 source is consulted for STRUCTURE — map topology, exit
+   tables, point values, object properties, puzzle logic — and reproduced TEXT is
+   taken only from clearly granted sources: the Zork I/II/III ZIL above, and the
+   MITDDC MDL versions. Where a room or object exists only in the 1981 source and
+   in neither granted body, its prose is written fresh for this project and the
+   divergence is recorded in FIDELITY.md.
+
+   In practice this gap is narrow: the content present in 1981 but absent from the
+   1978 MDL is almost entirely the Bank of Zork, the mirror box, and the Endgame,
+   all three of which the trilogy preserved — Zork III keeps even the mainframe's
+   own room identifiers for the Endgame.
+
+2. https://github.com/heasm66/mdlzork, which hosts the runnable reconstructions of
+   each MDL version, states no license for its own reconstruction and patching
+   work. It is used here only to identify versions and to run the original for
+   behavioural reference. Nothing is reproduced from it.
 
 
 Purpose
