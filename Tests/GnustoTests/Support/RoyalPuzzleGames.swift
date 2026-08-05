@@ -372,9 +372,11 @@ private enum Prose {
 ///
 /// The whole 4×4 grid is **one `Location`**. The player's square within it
 /// lives in a `@Global` struct alongside the cell states; walking from square
-/// to square is a `before(.go)` rule, not the exit table, because a
-/// conditional exit gates a fixed destination with a fixed refusal and cannot
-/// say *which material* is in the way. The three ways out of the room — the
+/// to square is a `before(.go)` rule, not the exit table. No exit kind fits:
+/// there is no destination to compute, since every step stays in this room,
+/// and a blocked step has to name *which material* is in the way — where a
+/// conditional exit's `otherwise:` is one string fixed at declaration and a
+/// `toward:` exit cannot refuse at all. The three ways *out* of the room — the
 /// ladder, the low door, the hatch — are genuine conditional exits whose
 /// `when:` closures read the grid.
 ///

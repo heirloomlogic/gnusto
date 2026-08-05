@@ -130,6 +130,30 @@ struct FollowTests {
         #expect(!followed.contains("The crypt gate is barred."))
     }
 
+    /// A dynamic exit is the one kind whose destination isn't on the map, so
+    /// FOLLOW has to run the closure to find out. With the hatch open, the
+    /// hall's northwest exit currently comes out in the attic — which no
+    /// declared exit from the hall does.
+    @Test func aDynamicExitIsFollowedWhenItCurrentlyLeadsToTheQuarry() async throws {
+        let transcript = try await play(
+            FollowLab(), ["send attic marker", "unbar", "follow walker"])
+        let followed = turnOutput(of: "follow walker", in: transcript)
+        #expect(followed.contains("(after the walker)"))
+        #expect(followed.contains("Attic"))
+    }
+
+    /// And it is asked afresh each time rather than remembered: with the hatch
+    /// shut the same exit comes out on the porch, so the walker in the attic is
+    /// somewhere the hall cannot reach. He is still in scope to be named — the
+    /// refusal is "lost them", not "no such thing".
+    @Test func aDynamicExitIsNotFollowedWhenItLeadsSomewhereElse() async throws {
+        let transcript = try await play(FollowLab(), ["send attic marker", "follow walker"])
+        let followed = turnOutput(of: "follow walker", in: transcript)
+        #expect(followed.contains("You have no idea which way the walker went."))
+        #expect(!followed.contains("Attic"))
+        #expect(!followed.contains("Porch"))
+    }
+
     /// In-room ambiguity is untouched: those are people the player can see, so
     /// asking which one is the right question.
     @Test func ambiguityAmongPeopleInTheRoomStillAsks() async throws {

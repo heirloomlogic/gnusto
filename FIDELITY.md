@@ -5,6 +5,13 @@ source material it's modeling, or from a "finished" implementation of its
 own mechanics — so a later pass has a checklist instead of a memory. Each
 entry below is grouped by the task that introduced it.
 
+**Two games are ledgered here, and they do not follow the same prose rule.**
+Everything from *Task 8* down to *Fidelity pass — the long tail* is Zork 1, which
+reproduces its source verbatim and says so in every section. Everything from
+*Dungeon* onward is an adaptation instead, and that section states its own rule
+before any region entry. Read it before writing a line of Dungeon prose; carrying
+Zork 1's across is the mistake it exists to prevent.
+
 ## Task 8 — Zork 1 slice: White House (`Sources/Zork1/`)
 
 ### Prose
@@ -1249,3 +1256,58 @@ unlocked them:
 Deliberately still deferred (documented, low value): the cyclops's eyeing/gasping room-look
 variants; the mirror's "seven years' bad luck" as narration rather than a mechanic; held items
 riding along through the mirror (as the original).
+
+## Dungeon (`Sources/Dungeon/`)
+
+### The prose rule, stated before any region entry
+
+**Dungeon is an adaptation, not a reproduction.** That is the sharpest difference
+from every section above. `Sources/Zork1/` reproduces the original Zork I text
+verbatim, one named constant at a time, under the MIT grant recorded in
+`THIRD_PARTY_NOTICES`; that is what fidelity means there. Dungeon reproduces the
+trilogy only where the trilogy fits the mainframe world, and writes its own prose
+everywhere else. Swapping a trilogy line in unchecked is a defect here, however
+much it looks like a fidelity fix.
+
+The authority is `docs/games/dungeon-prose-comparison.md` ("The adopted policy —
+Infocom voice, mainframe world"). Per line:
+
+1. **`identical` (36) and `minor` (23)** — take the trilogy line verbatim. Same
+   sentence, cleaner typography (the MDL doubles spaces after full stops),
+   MIT-licensed, exactly as `Sources/Zork1/` already does.
+2. **`substantial` (48)** — check the trilogy line against that room's exit table
+   in `docs/games/dungeon-atlas.md` *first*. The trilogy usually rewrote the prose
+   because it had rewritten the room, so its line can name exits this game does
+   not have. Where it contradicts the mainframe map or a mainframe puzzle, adapt
+   it: keep the voice, fix the facts.
+3. **Mainframe-only content** — written fresh in the Infocom register. The Bank of
+   Zork, the Royal Puzzle, the Endgame and the rest have trilogy counterparts to
+   learn the voice from; the words are this project's own.
+
+**Where a description and the exit table disagree, the table wins.** Mainframe
+descriptions routinely enumerate their exits in prose, so the description is what
+yields. The topology is not negotiable (`docs/games/dungeon.md`, mechanics
+contract).
+
+### Known divergences
+
+- **`maxScore` is 691 — one ceiling where the original keeps two.** The mainframe
+  carries `SCORE-MAX` 591 (main dungeon) and `EG-SCORE-MAX` 100 (endgame), and
+  `score` reports whichever region the player is standing in (`rooms.394`,
+  `SCORE-BLESS`); the two are summed nowhere in the source. We sum them, because
+  Gnusto models one `maxScore` and its bootstrap totals the `Scoring` award table
+  against it — one ceiling makes that check earn its keep, two would need it
+  disabled or worked around. The cost is cosmetic and known: a player who finishes
+  the main dungeon perfectly sees 591/691 where the original showed 591/591, and
+  the endgame then carries them the rest of the way rather than restarting at
+  zero. Full reasoning in `docs/games/dungeon-atlas.md` ("What `Sources/Dungeon/`
+  uses").
+- **No 1981 MDL text is reproduced.** `THIRD_PARTY_NOTICES` records that the
+  1981-07-22 MDL — the version this game reconstructs — reached the public through
+  Bob Supnik's 2003 release rather than through MITDDC, and that no comparable
+  licence grant has been located for it, unlike the 1977 and 1978 MDL that MITDDC
+  published under MIT No Attribution. So the 1981 source is consulted for structure
+  only: map topology, exit tables, point values, object properties, puzzle logic.
+  The prose rule above is what keeps that true of the text: every line is either
+  the MIT-licensed trilogy's or this project's own. That is a constraint the policy
+  has to go on satisfying, not a coincidence it happens to satisfy today.

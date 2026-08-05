@@ -57,11 +57,18 @@ struct HarborGame: Game {
 
     @Global var chained = false
 
+    /// Switches where the dock's east channel comes out, so a boarded vehicle
+    /// can be shown riding a dynamic exit the way it rides every other kind.
+    @Global var tideIsOut = false
+
     var map: WorldMap {
         dock.north(boathouse)
         boathouse.south(dock)
         boathouse.east(cave)
         cave.west(boathouse)
+
+        // A destination chosen at `go` time rather than declared.
+        dock.east { tideIsOut ? cave : boathouse }
 
         player.starts(in: dock)
         boat.starts(in: dock)
@@ -75,6 +82,9 @@ struct HarborGame: Game {
         SyntaxRule("chain", intent: Intent("chain"))
         SyntaxRule("row", .direction, intent: Intent("row"))
         SyntaxRule("scuttle", intent: Intent("scuttle"))
+        SyntaxRule("hurl", intent: Intent("hurl"))
+        SyntaxRule("tow", intent: Intent("tow"))
+        SyntaxRule("ebb", intent: Intent("ebb"))
     }
 
     var rules: Rules {
@@ -98,6 +108,21 @@ struct HarborGame: Game {
         world.before(Intent("chain")) {
             chained = true
             try reply("You loop the chain through the bow ring.")
+        }
+        // The two halves of the stale-boarding case: `hurl` teleports the player
+        // out from under the boat, leaving the boarded flag set behind them, and
+        // `tow` then moves the boat with nobody actually aboard it.
+        world.before(Intent("hurl")) {
+            player.location = boathouse
+            try reply("A gull carries you off to the boathouse.")
+        }
+        world.before(Intent("tow")) {
+            boat.move(to: cave)
+            try reply("The boat is towed away into the cave.")
+        }
+        world.before(Intent("ebb")) {
+            tideIsOut = true
+            try reply("The water pulls back off the flats.")
         }
         // A6: the "river current" pattern — a rule moves the vehicle and
         // the boarded player comes along.

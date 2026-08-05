@@ -187,6 +187,18 @@ var map: WorldMap {
 }
 ```
 
+A conditional exit decides *whether* the player moves. When what you need to decide is *where* they arrive — one passage that leads to different rooms on different turns — use ``Location/exit(_:toward:)``, whose destination is the closure rather than the gate:
+
+```swift
+@Global var lastViewingRoom = ViewingSide.west
+
+var map: WorldMap {
+    depository.north { lastViewingRoom == .west ? smallRoom : vault }
+}
+```
+
+Travel takes the same path as any other passable exit, so the destination's ``Location/onEnter(perform:)`` rules run and a boarded vehicle rides along. That is the difference between this and assigning ``Player/location`` from a rule, where neither happens. In exchange, a closure is opaque to the bootstrap: the destination isn't validated at launch, and a room reachable *only* this way isn't in the reachable-room set, so `FOLLOW` won't name somebody standing there.
+
 ## Hidden items
 
 An item declared ``hidden`` exists and is placed like any other, but it's kept out of visibility and room descriptions until it's revealed — a panel behind a painting, a trap door under a rug. Call ``Item/reveal()`` when the player uncovers it; from then on it behaves normally. ``Item/isRevealed`` reports the current state (and is always `true` for an item that was never `hidden`).

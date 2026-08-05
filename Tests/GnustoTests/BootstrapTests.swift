@@ -79,6 +79,16 @@ struct BootstrapTests {
         }
     }
 
+    @Test func aDirectionClaimedTwiceIsADiagnosticEvenForADynamicExit() {
+        #expect {
+            try Bootstrap.build(TwoNorthExitsGame())
+        } throws: { error in
+            guard let bootstrapError = error as? BootstrapError else { return false }
+            return bootstrapError.description.contains(
+                "declares its north exit more than once")
+        }
+    }
+
     @Test func danglingRuleAttachmentNamesItsPhase() {
         #expect {
             try Bootstrap.build(DanglingRuleGame())

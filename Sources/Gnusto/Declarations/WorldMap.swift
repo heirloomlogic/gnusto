@@ -16,6 +16,12 @@ public struct MapEntry: Sendable {
         case conditionalExit(
             from: RefToken, direction: Direction, to: RefToken,
             condition: @Sendable () -> Bool, blocked: String)
+        /// An exit whose *destination* is chosen at `go` time. The other four
+        /// kinds name their destination up front; this one names a closure,
+        /// which is what a non-Euclidean passage needs.
+        case dynamicExit(
+            from: RefToken, direction: Direction,
+            destination: @Sendable () -> Location)
         case placement(item: RefToken, target: PlacementTarget)
         case playerStart(RefToken)
         /// Wires an item to its lock key. Confers lockability on the item

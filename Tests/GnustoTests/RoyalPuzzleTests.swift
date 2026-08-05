@@ -159,8 +159,8 @@ struct RoyalPuzzleTests {
     // MARK: - The ways out, which are genuine conditional exits
 
     /// The half of the issue's expected shape that holds: a real exit reads
-    /// the grid. `up` leads to a fixed destination and opens only when the
-    /// ladder block stands under the ceiling hole with the player beside it.
+    /// the grid. `up` opens only when the ladder block stands under the
+    /// ceiling hole with the player beside it.
     @Test func theWayOutIsAConditionalExitReadingTheGrid() async throws {
         let transcript = try await play(RoyalPuzzleGame(), ["down", "up"])
         #expect(transcript.contains("Nothing within reach will take you as high as the ceiling."))

@@ -119,6 +119,7 @@ A game type that also conforms to ``GameMain`` is a complete `@main` executable 
 - ``Item/isRevealed``
 - ``Location/exit(_:to:via:)``
 - ``Location/exit(_:to:when:otherwise:)``
+- ``Location/exit(_:toward:)``
 
 ### Writing Rules
 

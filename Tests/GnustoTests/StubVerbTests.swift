@@ -64,7 +64,7 @@ struct StubVerbTests {
         "attack rat", "attack rat with rod", "kill rat", "kill rat with rod",
         "hit rat", "hit rat with rod", "fight rat",
         "break rod", "smash rod", "destroy rod",
-        "burn rod", "cut rod", "slice rod",
+        "burn rod", "burn rod with flask", "cut rod", "slice rod",
         "dig", "dig bench", "dig bench with rod",
         "pull rod", "drag rod", "turn rod", "rotate rod",
         "squeeze rod", "shake rod", "knock bench", "knock on bench",
