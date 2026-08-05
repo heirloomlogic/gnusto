@@ -11,7 +11,7 @@ source, not from a walkthrough or a memory.
 > source are permissively licensed — see `THIRD_PARTY_NOTICES` at the repo root
 > for the two separate grants and their limits.
 >
-> Generated against Gnusto `f074f10`.
+> Generated against Gnusto `4d92c79`.
 
 ## Scoring
 
@@ -280,218 +280,263 @@ The reasoning:
 
 `OFVAL` is the score for first acquiring the object, `OTVAL` for depositing it
 in the trophy case. `OSIZE` is its weight against the carrying capacity.
+**starts in** is the room or the object it begins inside; see Placement below
+for the 18 entries that are neither.
 
-| id | name | OSIZE | OFVAL | OTVAL | trilogy | in `Sources/Zork1/` |
-|---|---|---:|---:|---:|---|---|
-| `ADVER` | leaflet | 2 |  |  | Zork I | `Sources/Zork1/AboveGround.swift` |
-| `ARROW` | compass arrow |  |  |  | — | — |
-| `ATABL` | large oblong table |  |  |  | Zork II | — |
-| `AXE` | bloody axe | 25 |  |  | Zork I | `Sources/Zork1/Cellar.swift` |
-| `BAGCO` | bag of coins | 15 | 10 | 5 | — | `Sources/Zork1/Regions/Maze.swift` |
-| `BALLO` | basket | 70 |  |  | Zork II | `Sources/Zork1/Regions/CoalMine.swift` |
-| `BAR` | platinum bar | 20 | 12 | 10 | Zork I | `Sources/Zork1/Regions/RoundRoom.swift` |
-| `BARRE` | wooden barrel | 70 |  |  | — | — |
-| `BAT` | bat |  |  |  | Zork I | — |
-| `BAUBL` | beautiful brass bauble |  | 1 | 1 | Zork I | — |
-| `BCANA` | broken clockwork canary |  |  |  | Zork I | `Sources/Zork1/House.swift` |
-| `BEGG` | broken jewel-encrusted egg |  |  |  | Zork I | — |
-| `BELL` | bell |  |  |  | — | — |
-| `BILLS` | stack of zorkmid bills | 10 | 10 | 15 | Zork II | — |
-| `BLABE` | blue label | 1 |  |  | Zork II | — |
-| `BLAMP` | broken lamp |  |  |  | — | — |
-| `BLANT` | burned-out lantern | 20 |  |  | Zork I | `Sources/Zork1/Regions/Maze.swift` |
-| `BLBK` | blue book | 10 |  |  | Zork II | — |
-| `BLBUT` | blue button |  |  |  | Zork I | `Sources/Zork1/Regions/Dam.swift` |
-| `BLICE` | piece of cake with blue icing | 4 |  |  | — | — |
-| `BLWAL` | black panel |  |  |  | — | — |
-| `BODIE` | pile of bodies |  |  |  | Zork I | — |
-| `BOLT` | bolt |  |  |  | Zork I | — |
-| `BONES` | skeleton |  |  |  | Zork I | `Sources/Zork1/Regions/Maze.swift` |
-| `BOOK` | book | 10 |  |  | — | — |
-| `BOTTL` | glass bottle |  |  |  | Zork I | `Sources/Zork1/House.swift` |
-| `BRACE` | sapphire bracelet | 10 | 5 | 3 | — | — |
-| `BRBUT` | brown button |  |  |  | Zork I | `Sources/Zork1/Regions/Dam.swift` |
-| `BRICK` | brick | 9 |  |  | Zork II | — |
-| `BROCH` | free brochure | 30 |  |  | — | — |
-| `BROPE` | braided wire |  |  |  | Zork II | — |
-| `BUBBL` | green bubble |  |  |  | Zork I | `Sources/Zork1/Regions/Dam.swift` |
-| `BUCKE` | wooden bucket | 100 |  |  | Zork II | — |
-| `BUOY` | red buoy | 10 |  |  | Zork I | `Sources/Zork1/Regions/River.swift` |
-| `BUTTO` |  |  |  |  | — | — |
-| `CAGE` | steel cage | 60 |  |  | — | — |
-| `CANDL` | pair of candles | 10 |  |  | Zork I | `Sources/Zork1/Regions/Temple.swift` |
-| `CARD` | card | 1 |  |  | Zork II | — |
-| `CBAG` | cloth bag |  |  |  | Zork II | — |
-| `CCLIF` | cliff |  |  |  | — | — |
-| `CDOOR` | cell door |  |  |  | — | — |
-| `CHALI` | chalice | 10 | 10 | 10 | Zork I | — |
-| `COAL` | small pile of coal | 20 |  |  | Zork I | `Sources/Zork1/Regions/CoalMine.swift` |
-| `COFFI` | gold coffin | 55 | 3 | 7 | Zork I | `Sources/Zork1/Regions/Temple.swift` |
-| `COIN` | priceless zorkmid | 10 | 10 | 12 | Zork II | — |
-| `COKES` | bunch of Coke bottles | 15 |  |  | — | — |
-| `CORPS` | pile of corpses |  |  |  | — | — |
-| `CPANL` | control panel |  |  |  | Zork I | `Sources/Zork1/Regions/Dam.swift` |
-| `CPDR2` | steel door |  |  |  | — | — |
-| `CROWN` | crown | 10 | 15 | 10 | — | — |
-| `CYCLO` | cyclops |  |  |  | Zork I | `Sources/Zork1/Regions/Maze.swift` |
-| `DAM` | dam |  |  |  | Zork I | `Sources/Zork1/Regions/Dam.swift` |
-| `DBALL` | broken balloon | 40 |  |  | Zork II | — |
-| `DBOAT` | plastic boat (with hole) | 20 |  |  | — | — |
-| `DBUTT` | large button |  |  |  | — | — |
-| `DIAL` | sundial |  |  |  | — | — |
-| `DIAMO` | huge diamond |  | 10 | 6 | Zork I | `Sources/Zork1/Regions/CoalMine.swift` |
-| `DOOR` | trap door |  |  |  | Zork I | `Sources/Zork1/House.swift` |
-| `DSTMP` | Don Woods stamp | 1 |  | 1 | — | — |
-| `ECAKE` | piece of 'Eat-Me' cake | 10 |  |  | — | — |
-| `EGG` | jewel-encrusted egg |  | 5 | 5 | Zork I | `Sources/Zork1/AboveGround.swift` |
-| `EIGHT` | number eight |  |  |  | — | — |
-| `EMERA` | large emerald |  | 5 | 10 | Zork I | `Sources/Zork1/Regions/River.swift` |
-| `ENGRA` | wall with engravings |  |  |  | Zork I | — |
-| `ETCH1` | wall with etchings |  |  |  | Zork II | — |
-| `ETCH2` | wall with etchings |  |  |  | Zork II | — |
-| `FBASK` | lowered basket |  |  |  | — | — |
-| `FDOOR` | door |  |  |  | Zork I | — |
-| `FIVE` | number five |  |  |  | — | — |
-| `FLASK` | glass flask filled with liquid | 10 |  |  | — | — |
-| `FOOD` | lunch |  |  |  | Zork I | `Sources/Zork1/House.swift` |
-| `FOUR` | number four |  |  |  | — | — |
-| `FTREE` | large tree |  |  |  | — | `Sources/Zork1/AboveGround.swift` |
-| `FUSE` | wire coil | 1 |  |  | — | — |
-| `GARLI` | clove of garlic |  |  |  | Zork I | `Sources/Zork1/House.swift` |
-| `GATES` | gates |  |  |  | — | — |
-| `GCANA` | clockwork canary |  | 6 | 2 | — | — |
-| `GHOST` | number of ghosts |  |  |  | Zork I | — |
-| `GNOME` | Volcano Gnome |  |  |  | Zork II | — |
-| `GRAIL` | grail | 10 | 2 | 5 | — | — |
-| `GRATE` | grating |  |  |  | Zork I | — |
-| `GRBK` | green book | 10 |  |  | Zork II | — |
-| `GUANO` | hunk of bat guano | 20 |  |  | — | — |
-| `GUIDE` | tour guidebook |  |  |  | Zork I | `Sources/Zork1/Regions/Dam.swift` |
-| `GUNK` | piece of vitreous slag | 10 |  |  | — | — |
-| `HBELL` | red hot brass bell |  |  |  | Zork I | — |
-| `HEADS` | set of poled heads |  |  |  | Zork II | — |
-| `HOOK1` | hook |  |  |  | Zork II | — |
-| `HOOK2` | hook |  |  |  | Zork II | — |
-| `HPOLE` | head on a pole |  |  |  | — | — |
-| `IBOAT` | pile of plastic | 20 |  |  | Zork I | `Sources/Zork1/Regions/River.swift` |
-| `ICE` | glacier |  |  |  | Zork II | — |
-| `IRBOX` | steel box | 40 |  |  | Zork II | — |
-| `JADE` | jade figurine | 10 | 5 | 5 | Zork I | `Sources/Zork1/Regions/CoalMine.swift` |
-| `KEYS` | set of skeleton keys | 10 |  |  | — | — |
-| `KNIFE` | knife |  |  |  | — | — |
-| `LABEL` | tan label | 2 |  |  | Zork I | — |
-| `LAMP` | lamp | 15 |  |  | — | — |
-| `LCASE` | large case |  |  |  | — | — |
-| `LDOOR` | locked door |  |  |  | — | — |
-| `LEAK` | leak |  |  |  | Zork I | — |
-| `LEAVE` | pile of leaves | 25 |  |  | Zork I | `Sources/Zork1/AboveGround.swift` |
-| `LISTS` | stack of listings | 70 |  |  | — | — |
-| `LPOLE` | long pole |  |  |  | — | — |
-| `MACHI` | machine |  |  |  | Zork I | `Sources/Zork1/Regions/CoalMine.swift` |
-| `MAILB` | mailbox |  |  |  | — | — |
-| `MAT` | welcome mat | 12 |  |  | — | — |
-| `MATCH` | matchbook | 2 |  |  | Zork I | `Sources/Zork1/Regions/Dam.swift` |
-| `MDOOR` | locked door |  |  |  | — | — |
-| `MSWIT` | switch |  |  |  | Zork I | `Sources/Zork1/Regions/CoalMine.swift` |
-| `NEST` | birds nest |  |  |  | — | — |
-| `OAKND` | mahogany wall |  |  |  | — | — |
-| `ODOOR` | bronze door |  |  |  | — | — |
-| `ONE` | number one |  |  |  | — | — |
-| `ORICE` | piece of cake with orange icing | 4 |  |  | — | — |
-| `OTIMB` | broken timber | 50 |  |  | — | — |
-| `PAINT` | painting | 15 | 4 | 7 | Zork I | `Sources/Zork1/Cellar.swift` |
-| `PAL3` | red crystal sphere |  | 10 | 5 | Zork II | — |
-| `PALAN` | blue crystal sphere |  | 10 | 5 | Zork II | — |
-| `PAPER` | newspaper | 2 |  |  | Zork II | — |
-| `PCRAK` | narrow crack |  |  |  | Zork II | — |
-| `PDOOR` | door made of oak |  |  |  | Zork II | — |
-| `PEARL` | pearl necklace | 10 | 9 | 5 | Zork II | — |
-| `PINND` | pine wall |  |  |  | — | — |
-| `PKEY` | rusty iron key |  |  |  | Zork II | — |
-| `PKH1` | keyhole |  |  |  | Zork II | — |
-| `PKH2` | keyhole |  |  |  | Zork II | — |
-| `PLEAK` | leak |  |  |  | Zork II | — |
-| `PLID1` | metal lid |  |  |  | Zork II | — |
-| `PLID2` | metal lid |  |  |  | Zork II | — |
-| `POOL` | pool of sewage |  |  |  | — | — |
-| `PORTR` | portrait of J. Pierpont Flathead | 25 | 10 | 5 | Zork II | — |
-| `POSTS` | group of wooden posts |  |  |  | Zork II | — |
-| `POT` | pot of gold | 15 | 10 | 10 | Zork I | `Sources/Zork1/Regions/River.swift` |
-| `PRAYE` | prayer |  |  |  | Zork I | — |
-| `PTABL` | table |  |  |  | Zork II | — |
-| `PUBK` | purple book | 10 |  |  | Zork II | — |
-| `PUMP` | hand-held air pump |  |  |  | Zork I | `Sources/Zork1/Regions/Dam.swift` |
-| `PUTTY` | viscous material | 6 |  |  | Zork I | — |
-| `PWIND` | barred window |  |  |  | Zork II | — |
-| `QDOOR` | wooden door |  |  |  | — | — |
-| `RAILI` | wooden railing |  |  |  | Zork I | — |
-| `RAINB` | rainbow |  |  |  | Zork I | — |
-| `RBEAM` | red beam of light |  |  |  | — | — |
-| `RBOAT` | magic boat | 20 |  |  | Zork I | `Sources/Zork1/Regions/River.swift` |
-| `RBTLB` | green piece of paper | 3 |  |  | Zork II | — |
-| `RBUTT` | red button |  |  |  | Zork I | `Sources/Zork1/Regions/Dam.swift` |
-| `RCAGE` | steel cage |  |  |  | — | — |
-| `RDICE` | piece of cake with red icing | 4 |  |  | — | — |
-| `RDWAL` | red panel |  |  |  | — | — |
-| `RECEP` | receptacle |  |  |  | Zork II | — |
-| `REFL1` | mirror |  |  |  | Zork I | `Sources/Zork1/Regions/Mirror.swift` |
-| `REFL2` | mirror |  |  |  | — | `Sources/Zork1/Regions/Mirror.swift` |
-| `RKNIF` | rusty knife | 20 |  |  | Zork I | `Sources/Zork1/Regions/Maze.swift` |
-| `RNBUT` | round button |  |  |  | Zork II | — |
-| `ROBOT` | robot |  |  |  | Zork II | — |
-| `ROPE` | rope | 10 |  |  | Zork I | — |
-| `RSWIT` | red button |  |  |  | — | `Sources/Zork1/Regions/Dam.swift` |
-| `RUBY` | ruby |  | 15 | 8 | Zork II | — |
-| `RUG` | carpet |  |  |  | Zork I | — |
-| `SAFE` | box |  |  |  | Zork II | — |
-| `SAFFR` | tin of spices | 8 | 5 | 5 | — | — |
-| `SAND` | sandy beach |  |  |  | — | `Sources/Zork1/Regions/River.swift` |
-| `SBAG` | brown sack | 3 |  |  | Zork I | `Sources/Zork1/House.swift` |
-| `SCOL` | shimmering curtain of light |  |  |  | Zork II | — |
-| `SCREW` | screwdriver |  |  |  | Zork I | `Sources/Zork1/Regions/Dam.swift` |
-| `SDOOR` | stone door |  |  |  | Zork II | — |
-| `SEVEN` | number seven |  |  |  | — | — |
-| `SHOVE` | shovel | 15 |  |  | Zork I | `Sources/Zork1/Regions/River.swift` |
-| `SIX` | number six |  |  |  | — | — |
-| `SPHER` | white crystal sphere | 10 | 6 | 6 | — | — |
-| `SPOLE` | short pole |  |  |  | — | — |
-| `SQBUT` | square button |  |  |  | Zork II | — |
-| `SSLOT` | hole |  |  |  | Zork II | — |
-| `STAMP` | Flathead stamp | 1 | 4 | 10 | Zork II | — |
-| `STATU` | statue | 8 | 10 | 13 | — | — |
-| `STICK` | broken sharp stick | 3 |  |  | — | — |
-| `STILL` | stiletto | 10 |  |  | Zork I | `Sources/Zork1/Thief.swift` |
-| `STOVE` | old coal stove |  |  |  | — | — |
-| `STRAD` | fancy violin | 10 | 10 | 10 | Zork II | — |
-| `SWORD` | sword | 30 |  |  | Zork I | — |
-| `TBAR` | T-bar |  |  |  | — | — |
-| `TBASK` | basket |  |  |  | Zork I | `Sources/Zork1/Regions/CoalMine.swift` |
-| `TCASE` | trophy case |  |  |  | Zork I | `Sources/Zork1/House.swift` |
-| `TCHST` | group of tool chests |  |  |  | Zork I | — |
-| `THIEF` | thief |  |  |  | Zork I | `Sources/Zork1/Thief.swift` |
-| `THREE` | number three |  |  |  | — | — |
-| `TOMB` | crypt door |  |  |  | Zork II | — |
-| `TORCH` | torch | 20 | 14 | 6 | — | — |
-| `TRBUT` | triangular button |  |  |  | Zork II | — |
-| `TRIDE` | crystal trident | 20 | 4 | 11 | Zork I | `Sources/Zork1/Regions/Mirror.swift` |
-| `TROLL` | troll |  |  |  | Zork I | `Sources/Zork1/Cellar.swift` |
-| `TRUNK` | trunk of jewels | 35 | 15 | 8 | Zork I | `Sources/Zork1/Regions/Dam.swift` |
-| `TTREE` | large tree |  |  |  | — | `Sources/Zork1/AboveGround.swift` |
-| `TUBE` | tube | 10 |  |  | Zork I | `Sources/Zork1/Regions/Dam.swift` |
-| `TWO` | number two |  |  |  | — | — |
-| `VAULT` | large stone cube |  |  |  | Zork II | — |
-| `WARNI` | note of warning |  |  |  | — | — |
-| `WATER` | quantity of water | 4 |  |  | — | `Sources/Zork1/House.swift` |
-| `WCLIF` | white cliffs |  |  |  | Zork I | — |
-| `WDBAR` | wooden bar |  |  |  | — | — |
-| `WDOOR` | wooden door |  |  |  | Zork I | — |
-| `WHBK` | white book | 10 |  |  | Zork II | — |
-| `WHWAL` | white panel |  |  |  | — | — |
-| `WINDO` | window |  |  |  | — | — |
-| `WRENC` | wrench | 10 |  |  | Zork I | `Sources/Zork1/Regions/Dam.swift` |
-| `YBUTT` | yellow button |  |  |  | Zork I | `Sources/Zork1/Regions/Dam.swift` |
-| `YLWAL` | yellow panel |  |  |  | — | — |
-| `ZGNOM` | Gnome of Zurich |  |  |  | Zork II | — |
+| id | name | OSIZE | OFVAL | OTVAL | starts in | trilogy | in `Sources/Zork1/` |
+|---|---|---:|---:|---:|---|---|---|
+| `ADVER` | leaflet | 2 |  |  | in `MAILB` | Zork I | `Sources/Zork1/AboveGround.swift` |
+| `ARROW` | compass arrow |  |  |  | `INMIR` | — | — |
+| `ATABL` | large oblong table |  |  |  | `ALICE` | Zork II | — |
+| `AXE` | bloody axe | 25 |  |  | in `TROLL` | Zork I | `Sources/Zork1/Cellar.swift` |
+| `BAGCO` | bag of coins | 15 | 10 | 5 | `MAZE5` | — | `Sources/Zork1/Regions/Maze.swift` |
+| `BALLO` | basket | 70 |  |  | `VLBOT` | Zork II | `Sources/Zork1/Regions/CoalMine.swift` |
+| `BAR` | platinum bar | 20 | 12 | 10 | `ECHO` | Zork I | `Sources/Zork1/Regions/RoundRoom.swift` |
+| `BARRE` | wooden barrel | 70 |  |  | `FALLS` | — | — |
+| `BAT` | bat |  |  |  | `BATS` | Zork I | — |
+| `BAUBL` | beautiful brass bauble |  | 1 | 1 | by code | Zork I | — |
+| `BCANA` | broken clockwork canary |  |  |  | in `BEGG` | Zork I | `Sources/Zork1/House.swift` |
+| `BEGG` | broken jewel-encrusted egg |  |  |  | by code | Zork I | — |
+| `BELL` | bell |  |  |  | `TEMP1` | — | — |
+| `BILLS` | stack of zorkmid bills | 10 | 10 | 15 | `BKVAU` | Zork II | — |
+| `BLABE` | blue label | 1 |  |  | by code | Zork II | — |
+| `BLAMP` | broken lamp |  |  |  | by code | — | — |
+| `BLANT` | burned-out lantern | 20 |  |  | `MAZE5` | Zork I | `Sources/Zork1/Regions/Maze.swift` |
+| `BLBK` | blue book | 10 |  |  | `LIBRA` | Zork II | — |
+| `BLBUT` | blue button |  |  |  | `MAINT` | Zork I | `Sources/Zork1/Regions/Dam.swift` |
+| `BLICE` | piece of cake with blue icing | 4 |  |  | `ALICE` | — | — |
+| `BLWAL` | black panel |  |  |  | `INMIR` | — | — |
+| `BODIE` | pile of bodies |  |  |  | `LLD2` | Zork I | — |
+| `BOLT` | bolt |  |  |  | `DAM` | Zork I | — |
+| `BONES` | skeleton |  |  |  | `MAZE5` | Zork I | `Sources/Zork1/Regions/Maze.swift` |
+| `BOOK` | book | 10 |  |  | `TEMP2` | — | — |
+| `BOTTL` | glass bottle |  |  |  | `KITCH` | Zork I | `Sources/Zork1/House.swift` |
+| `BRACE` | sapphire bracelet | 10 | 5 | 3 | `BOOM` | — | — |
+| `BRBUT` | brown button |  |  |  | `MAINT` | Zork I | `Sources/Zork1/Regions/Dam.swift` |
+| `BRICK` | brick | 9 |  |  | `ATTIC` | Zork II | — |
+| `BROCH` | free brochure | 30 |  |  | by code | — | — |
+| `BROPE` | braided wire |  |  |  | in `BALLO` | Zork II | — |
+| `BUBBL` | green bubble |  |  |  | `DAM` | Zork I | `Sources/Zork1/Regions/Dam.swift` |
+| `BUCKE` | wooden bucket | 100 |  |  | `BWELL` | Zork II | — |
+| `BUOY` | red buoy | 10 |  |  | `RIVR4` | Zork I | `Sources/Zork1/Regions/River.swift` |
+| `BUTTO` |  |  |  |  | — | — | — |
+| `CAGE` | steel cage | 60 |  |  | `CAGED` | — | — |
+| `CANDL` | pair of candles | 10 |  |  | `TEMP2` | Zork I | `Sources/Zork1/Regions/Temple.swift` |
+| `CARD` | card | 1 |  |  | in `SAFE` | Zork II | — |
+| `CBAG` | cloth bag |  |  |  | in `BALLO` | Zork II | — |
+| `CCLIF` | cliff |  |  |  | `CLBOT` | — | — |
+| `CDOOR` | cell door |  |  |  | `NCORR` | — | — |
+| `CHALI` | chalice | 10 | 10 | 10 | `TREAS` | Zork I | — |
+| `COAL` | small pile of coal | 20 |  |  | `DEAD7` | Zork I | `Sources/Zork1/Regions/CoalMine.swift` |
+| `COFFI` | gold coffin | 55 | 3 | 7 | `EGYPT` | Zork I | `Sources/Zork1/Regions/Temple.swift` |
+| `COIN` | priceless zorkmid | 10 | 10 | 12 | `LEDG2` | Zork II | — |
+| `COKES` | bunch of Coke bottles | 15 |  |  | `TOMB` | — | — |
+| `CORPS` | pile of corpses |  |  |  | `LLD1` | — | — |
+| `CPANL` | control panel |  |  |  | `DAM` | Zork I | `Sources/Zork1/Regions/Dam.swift` |
+| `CPDR2` | steel door |  |  |  | `CPOUT` | — | — |
+| `CROWN` | crown | 10 | 15 | 10 | in `SAFE` | — | — |
+| `CYCLO` | cyclops |  |  |  | `CYCLO` | Zork I | `Sources/Zork1/Regions/Maze.swift` |
+| `DAM` | dam |  |  |  | `DAM` | Zork I | `Sources/Zork1/Regions/Dam.swift` |
+| `DBALL` | broken balloon | 40 |  |  | by code | Zork II | — |
+| `DBOAT` | plastic boat (with hole) | 20 |  |  | by code | — | — |
+| `DBUTT` | large button |  |  |  | `PARAP` | — | — |
+| `DIAL` | sundial |  |  |  | `PARAP` | — | — |
+| `DIAMO` | huge diamond |  | 10 | 6 | by code | Zork I | `Sources/Zork1/Regions/CoalMine.swift` |
+| `DOOR` | trap door |  |  |  | `LROOM` | Zork I | `Sources/Zork1/House.swift` |
+| `DSTMP` | Don Woods stamp | 1 |  | 1 | in `BROCH` | — | — |
+| `ECAKE` | piece of 'Eat-Me' cake | 10 |  |  | `ALICE` | — | — |
+| `EGG` | jewel-encrusted egg |  | 5 | 5 | in `NEST` | Zork I | `Sources/Zork1/AboveGround.swift` |
+| `EIGHT` | number eight |  |  |  | `PARAP` | — | — |
+| `EMERA` | large emerald |  | 5 | 10 | in `BUOY` | Zork I | `Sources/Zork1/Regions/River.swift` |
+| `ENGRA` | wall with engravings |  |  |  | `CAVE4` | Zork I | — |
+| `ETCH1` | wall with etchings |  |  |  | `BWELL` | Zork II | — |
+| `ETCH2` | wall with etchings |  |  |  | `TWELL` | Zork II | — |
+| `FBASK` | lowered basket |  |  |  | `BSHAF` | — | — |
+| `FDOOR` | door |  |  |  | `WHOUS` | Zork I | — |
+| `FIVE` | number five |  |  |  | `PARAP` | — | — |
+| `FLASK` | glass flask filled with liquid | 10 |  |  | `ALITR` | — | — |
+| `FOOD` | lunch |  |  |  | in `SBAG` | Zork I | `Sources/Zork1/House.swift` |
+| `FOUR` | number four |  |  |  | `PARAP` | — | — |
+| `FTREE` | large tree |  |  |  | `FORE3` | — | `Sources/Zork1/AboveGround.swift` |
+| `FUSE` | wire coil | 1 |  |  | `STREA` | — | — |
+| `GARLI` | clove of garlic |  |  |  | in `SBAG` | Zork I | `Sources/Zork1/House.swift` |
+| `GATES` | gates |  |  |  | `LLD1` | — | — |
+| `GCANA` | clockwork canary |  | 6 | 2 | in `EGG` | — | — |
+| `GHOST` | number of ghosts |  |  |  | `LLD1` | Zork I | — |
+| `GNOME` | Volcano Gnome |  |  |  | by code | Zork II | — |
+| `GRAIL` | grail | 10 | 2 | 5 | `MGRAI` | — | — |
+| `GRATE` | grating |  |  |  | `CLEAR` | Zork I | — |
+| `GRBK` | green book | 10 |  |  | `LIBRA` | Zork II | — |
+| `GUANO` | hunk of bat guano | 20 |  |  | `TCAVE` | — | — |
+| `GUIDE` | tour guidebook |  |  |  | `LOBBY` | Zork I | `Sources/Zork1/Regions/Dam.swift` |
+| `GUNK` | piece of vitreous slag | 10 |  |  | by code | — | — |
+| `HBELL` | red hot brass bell |  |  |  | by code | Zork I | — |
+| `HEADS` | set of poled heads |  |  |  | `TOMB` | Zork II | — |
+| `HOOK1` | hook |  |  |  | `LEDG2` | Zork II | — |
+| `HOOK2` | hook |  |  |  | `LEDG4` | Zork II | — |
+| `HPOLE` | head on a pole |  |  |  | by code | — | — |
+| `IBOAT` | pile of plastic | 20 |  |  | `DOCK` | Zork I | `Sources/Zork1/Regions/River.swift` |
+| `ICE` | glacier |  |  |  | `ICY` | Zork II | — |
+| `IRBOX` | steel box | 40 |  |  | `CAROU` | Zork II | — |
+| `JADE` | jade figurine | 10 | 5 | 5 | `BATS` | Zork I | `Sources/Zork1/Regions/CoalMine.swift` |
+| `KEYS` | set of skeleton keys | 10 |  |  | `MAZE5` | — | — |
+| `KNIFE` | knife |  |  |  | `ATTIC` | — | — |
+| `LABEL` | tan label | 2 |  |  | in `RBOAT` | Zork I | — |
+| `LAMP` | lamp | 15 |  |  | `LROOM` | — | — |
+| `LCASE` | large case |  |  |  | by code | — | — |
+| `LDOOR` | locked door |  |  |  | `PCELL` | — | — |
+| `LEAK` | leak |  |  |  | `MAINT` | Zork I | — |
+| `LEAVE` | pile of leaves | 25 |  |  | `CLEAR` | Zork I | `Sources/Zork1/AboveGround.swift` |
+| `LISTS` | stack of listings | 70 |  |  | `TOMB` | — | — |
+| `LPOLE` | long pole |  |  |  | `INMIR` | — | — |
+| `MACHI` | machine |  |  |  | `MACHI` | Zork I | `Sources/Zork1/Regions/CoalMine.swift` |
+| `MAILB` | mailbox |  |  |  | `WHOUS` | — | — |
+| `MAT` | welcome mat | 12 |  |  | `WHOUS` | — | — |
+| `MATCH` | matchbook | 2 |  |  | `LOBBY` | Zork I | `Sources/Zork1/Regions/Dam.swift` |
+| `MDOOR` | locked door |  |  |  | `NCELL` | — | — |
+| `MSWIT` | switch |  |  |  | `MACHI` | Zork I | `Sources/Zork1/Regions/CoalMine.swift` |
+| `NEST` | birds nest |  |  |  | `TREE` | — | — |
+| `OAKND` | mahogany wall |  |  |  | `INMIR` | — | — |
+| `ODOOR` | bronze door |  |  |  | `SCORR` | — | — |
+| `ONE` | number one |  |  |  | `PARAP` | — | — |
+| `ORICE` | piece of cake with orange icing | 4 |  |  | `ALICE` | — | — |
+| `OTIMB` | broken timber | 50 |  |  | `TIMBE` | — | — |
+| `PAINT` | painting | 15 | 4 | 7 | `GALLE` | Zork I | `Sources/Zork1/Cellar.swift` |
+| `PAL3` | red crystal sphere |  | 10 | 5 | `SPAL` | Zork II | — |
+| `PALAN` | blue crystal sphere |  | 10 | 5 | `PALAN` | Zork II | — |
+| `PAPER` | newspaper | 2 |  |  | `LROOM` | Zork II | — |
+| `PCRAK` | narrow crack |  |  |  | `PALAN` | Zork II | — |
+| `PDOOR` | door made of oak |  |  |  | `PALAN` | Zork II | — |
+| `PEARL` | pearl necklace | 10 | 9 | 5 | `MPEAR` | Zork II | — |
+| `PINND` | pine wall |  |  |  | `INMIR` | — | — |
+| `PKEY` | rusty iron key |  |  |  | in `PKH2` | Zork II | — |
+| `PKH1` | keyhole |  |  |  | `PRM` | Zork II | — |
+| `PKH2` | keyhole |  |  |  | `PALAN` | Zork II | — |
+| `PLEAK` | leak |  |  |  | `ALITR` | Zork II | — |
+| `PLID1` | metal lid |  |  |  | `PRM` | Zork II | — |
+| `PLID2` | metal lid |  |  |  | `PALAN` | Zork II | — |
+| `POOL` | pool of sewage |  |  |  | `ALITR` | — | — |
+| `PORTR` | portrait of J. Pierpont Flathead | 25 | 10 | 5 | `BKEXE` | Zork II | — |
+| `POSTS` | group of wooden posts |  |  |  | `ALISM` | Zork II | — |
+| `POT` | pot of gold | 15 | 10 | 10 | `POG` | Zork I | `Sources/Zork1/Regions/River.swift` |
+| `PRAYE` | prayer |  |  |  | `TEMP1` | Zork I | — |
+| `PTABL` | table |  |  |  | `PALAN` | Zork II | — |
+| `PUBK` | purple book | 10 |  |  | `LIBRA` | Zork II | — |
+| `PUMP` | hand-held air pump |  |  |  | `RESEN` | Zork I | `Sources/Zork1/Regions/Dam.swift` |
+| `PUTTY` | viscous material | 6 |  |  | in `TUBE` | Zork I | — |
+| `PWIND` | barred window |  |  |  | `PALAN` | Zork II | — |
+| `QDOOR` | wooden door |  |  |  | `BDOOR` | — | — |
+| `RAILI` | wooden railing |  |  |  | `DOME` | Zork I | — |
+| `RAINB` | rainbow |  |  |  | `FALLS` | Zork I | — |
+| `RBEAM` | red beam of light |  |  |  | `MREYE` | — | — |
+| `RBOAT` | magic boat | 20 |  |  | by code | Zork I | `Sources/Zork1/Regions/River.swift` |
+| `RBTLB` | green piece of paper | 3 |  |  | `MAGNE` | Zork II | — |
+| `RBUTT` | red button |  |  |  | `MAINT` | Zork I | `Sources/Zork1/Regions/Dam.swift` |
+| `RCAGE` | steel cage |  |  |  | by code | — | — |
+| `RDICE` | piece of cake with red icing | 4 |  |  | `ALICE` | — | — |
+| `RDWAL` | red panel |  |  |  | `INMIR` | — | — |
+| `RECEP` | receptacle |  |  |  | in `BALLO` | Zork II | — |
+| `REFL1` | mirror |  |  |  | `MIRR1` | Zork I | `Sources/Zork1/Regions/Mirror.swift` |
+| `REFL2` | mirror |  |  |  | `MIRR2` | — | `Sources/Zork1/Regions/Mirror.swift` |
+| `RKNIF` | rusty knife | 20 |  |  | `MAZE5` | Zork I | `Sources/Zork1/Regions/Maze.swift` |
+| `RNBUT` | round button |  |  |  | `CMACH` | Zork II | — |
+| `ROBOT` | robot |  |  |  | `MAGNE` | Zork II | — |
+| `ROPE` | rope | 10 |  |  | `ATTIC` | Zork I | — |
+| `RSWIT` | red button |  |  |  | `MRANT` | — | `Sources/Zork1/Regions/Dam.swift` |
+| `RUBY` | ruby |  | 15 | 8 | `RUBYR` | Zork II | — |
+| `RUG` | carpet |  |  |  | `LROOM` | Zork I | — |
+| `SAFE` | box |  |  |  | `SAFE` | Zork II | — |
+| `SAFFR` | tin of spices | 8 | 5 | 5 | `ALITR` | — | — |
+| `SAND` | sandy beach |  |  |  | `BEACH` | — | `Sources/Zork1/Regions/River.swift` |
+| `SBAG` | brown sack | 3 |  |  | `KITCH` | Zork I | `Sources/Zork1/House.swift` |
+| `SCOL` | shimmering curtain of light |  |  |  | `BKBOX` | Zork II | — |
+| `SCREW` | screwdriver |  |  |  | `MAINT` | Zork I | `Sources/Zork1/Regions/Dam.swift` |
+| `SDOOR` | stone door |  |  |  | `RIDDL` | Zork II | — |
+| `SEVEN` | number seven |  |  |  | `PARAP` | — | — |
+| `SHOVE` | shovel | 15 |  |  | `TCAVE` | Zork I | `Sources/Zork1/Regions/River.swift` |
+| `SIX` | number six |  |  |  | `PARAP` | — | — |
+| `SPHER` | white crystal sphere | 10 | 6 | 6 | `CAGER` | — | — |
+| `SPOLE` | short pole |  |  |  | `INMIR` | — | — |
+| `SQBUT` | square button |  |  |  | `CMACH` | Zork II | — |
+| `SSLOT` | hole |  |  |  | `SAFE` | Zork II | — |
+| `STAMP` | Flathead stamp | 1 | 4 | 10 | in `PUBK` | Zork II | — |
+| `STATU` | statue | 8 | 10 | 13 | `BEACH` | — | — |
+| `STICK` | broken sharp stick | 3 |  |  | `DOCK` | — | — |
+| `STILL` | stiletto | 10 |  |  | in `THIEF` | Zork I | `Sources/Zork1/Thief.swift` |
+| `STOVE` | old coal stove |  |  |  | `SPAL` | — | — |
+| `STRAD` | fancy violin | 10 | 10 | 10 | in `IRBOX` | Zork II | — |
+| `SWORD` | sword | 30 |  |  | `LROOM` | Zork I | — |
+| `TBAR` | T-bar |  |  |  | `INMIR` | — | — |
+| `TBASK` | basket |  |  |  | `TSHAF` | Zork I | `Sources/Zork1/Regions/CoalMine.swift` |
+| `TCASE` | trophy case |  |  |  | `LROOM` | Zork I | `Sources/Zork1/House.swift` |
+| `TCHST` | group of tool chests |  |  |  | `MAINT` | Zork I | — |
+| `THIEF` | thief |  |  |  | by code | Zork I | `Sources/Zork1/Thief.swift` |
+| `THREE` | number three |  |  |  | `PARAP` | — | — |
+| `TOMB` | crypt door |  |  |  | `TOMB` | Zork II | — |
+| `TORCH` | torch | 20 | 14 | 6 | `MTORC` | — | — |
+| `TRBUT` | triangular button |  |  |  | `CMACH` | Zork II | — |
+| `TRIDE` | crystal trident | 20 | 4 | 11 | `ATLAN` | Zork I | `Sources/Zork1/Regions/Mirror.swift` |
+| `TROLL` | troll |  |  |  | `MTROL` | Zork I | `Sources/Zork1/Cellar.swift` |
+| `TRUNK` | trunk of jewels | 35 | 15 | 8 | `RESER` | Zork I | `Sources/Zork1/Regions/Dam.swift` |
+| `TTREE` | large tree |  |  |  | `TREE` | — | `Sources/Zork1/AboveGround.swift` |
+| `TUBE` | tube | 10 |  |  | `MAINT` | Zork I | `Sources/Zork1/Regions/Dam.swift` |
+| `TWO` | number two |  |  |  | `PARAP` | — | — |
+| `VAULT` | large stone cube |  |  |  | `BKBOX` | Zork II | — |
+| `WARNI` | note of warning |  |  |  | `CPANT` | — | — |
+| `WATER` | quantity of water | 4 |  |  | in `BOTTL` | Zork I | `Sources/Zork1/House.swift` |
+| `WCLIF` | white cliffs |  |  |  | `WCLF1` | Zork I | — |
+| `WDBAR` | wooden bar |  |  |  | `INMIR` | — | — |
+| `WDOOR` | wooden door |  |  |  | `LROOM` | Zork I | — |
+| `WHBK` | white book | 10 |  |  | `LIBRA` | Zork II | — |
+| `WHWAL` | white panel |  |  |  | `INMIR` | — | — |
+| `WINDO` | window |  |  |  | `EHOUS` | — | — |
+| `WRENC` | wrench | 10 |  |  | `MAINT` | Zork I | `Sources/Zork1/Regions/Dam.swift` |
+| `YBUTT` | yellow button |  |  |  | `MAINT` | Zork I | `Sources/Zork1/Regions/Dam.swift` |
+| `YLWAL` | yellow panel |  |  |  | `INMIR` | — | — |
+| `ZGNOM` | Gnome of Zurich |  |  |  | by code | Zork II | — |
+
+## Placement
+
+Where each object starts, taken from the source's own contents lists. A room
+says what begins in it; an object says the same about what begins inside it.
+Reading only the first is what used to make a nested object look unplaced, and
+it left 111 of the 466 points in object values sitting in entries that read as
+unreachable.
+
+| Where an object starts | Objects | `OFVAL`+`OTVAL` |
+|---|---:|---:|
+| In a room | 170 | 355 |
+| Inside another object | 21 | 93 |
+| Named only by the game code | 17 | 18 |
+| Named nowhere but its own declaration | 1 | 0 |
+
+Nesting accounts for 93 of those 111 points. Followed to what finally holds it,
+17 of the 21 nested objects end in a room — the egg in the nest, the canary in
+the egg, the emerald in the buoy, the crown in the safe, the violin in the
+steel box, the Flathead stamp in the purple book. The other 4 end inside
+something the code brings in: the stiletto the thief carries, the label on the
+magic boat, the broken canary in the broken egg, the Don Woods stamp in the
+brochure.
+
+The other 18 points are in objects `dung.355` declares and never places: the
+huge diamond, which does not exist until the machine makes it, and the brass
+bauble the songbird drops. Those are found by scanning the rest of the MDL for
+the lookup forms the code reaches an object by — `<SFIND-OBJ "DIAMO">` — so the
+claim is exactly that the code names the object, not that the cited line is
+what puts it in play. In MDL the placement is usually several forms away from
+the lookup, and this generator reads structure, not semantics. `--audit` prints
+every citation with its file and line.
+
+The weaker reading still settles the question worth asking, because an object
+no line of code names can never enter play at all. **On that test no valued
+object in mainframe Zork is unreachable** — which is the figure a scoring
+target has to rest on.
+
+What is in that last row:
+
+- `BUTTO` — a placeholder with no name, no description and no value. The
+  comment above it in `dung.355` says it is kept only so that restoring a save
+  file written by an older build still works.
 
 ## Coverage
 
@@ -503,9 +548,9 @@ is not part of that sum.
 |---|---:|---:|
 | Total in the 1981 MDL | 196 | 209 |
 | Matched to a trilogy entity by display name | 85 | 106 |
-| Matched by position — exit graph, or the room it starts in | 31 | 22 |
-| **Matched, either way** | **116** | **128** |
-| No trilogy counterpart found | 80 | 81 |
+| Matched by position — exit graph, or what it starts inside | 31 | 23 |
+| **Matched, either way** | **116** | **129** |
+| No trilogy counterpart found | 80 | 80 |
 | Already built in `Sources/Zork1/` | 104 | — |
 
 **Position matching is what closes the mazes.** Fifteen mainframe passages are
@@ -525,6 +570,11 @@ mainframe maze and Zork I's, checked this way, correspond room for room.
 
 Objects go the same way once the rooms are known: two hooks, two metal lids and
 two walls with etchings stop being ambiguous when the room holding each one is.
+A container settles what is inside it for the same reason a room does, so the
+step repeats one level in — that is how the water is known to be Zork I's, from
+the bottle holding it, when the name alone is shared across the trilogy. That
+pass is also a check on the name matcher, since it reaches pairs the name had
+already settled by an independent route: 16 of them, of which 0 disagree.
 
 What is still unmatched is mostly content the trilogy never carried over — the
 Bank of Zork, the Royal Puzzle, the Endgame. The rest is rooms the trilogy
@@ -533,10 +583,13 @@ the map around them survived. So these are still floors, but much higher ones.
 
 ## Open questions
 
-1. **Objects declared but never placed.** Several valued objects appear in no
-   room's contents list because they start inside another object (the egg in the
-   nest, the emerald in the buoy) or are created by a puzzle (the diamond). The
-   atlas does not yet distinguish these from genuinely unreachable content.
+1. **Objects declared `<GOBJECT …>` are not inventoried.** A mainframe global is
+   one object a bitmask makes present in many rooms at once, and it is declared
+   by a different form, which the reader skips. So the dungeon master, `MASTE`,
+   is missing from the Objects table even though `BDOOR` lists him in its
+   contents — the one contents entry naming no object this document knows,
+   which `--audit` reports. Inventorying the globals would move every figure
+   here and is its own piece of work.
 
 2. **`DEAD1` and `DEAD2` are named with their own description.** A mainframe
    room is declared long description first, short name second: the maze rooms
