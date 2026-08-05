@@ -324,7 +324,18 @@ extension DefaultActions {
             reach: .directObject
         ) { $0.stubs.smash($1) },
 
-        .named(.burn, [["burn", .directObject]], reach: .directObject) { $0.stubs.burn($1) },
+        // Ships `with` for the same reason `attack`, `dig` and `fill` do: the
+        // instrument is half the command. Without it `burn paper with match` is
+        // a parse error, and every game that gates a fire on the right tinder
+        // re-declares the identical row.
+        .named(
+            .burn,
+            [
+                ["burn", .directObject],
+                ["burn", .directObject, "with", .indirectObject],
+            ],
+            reach: .directObject
+        ) { $0.stubs.burn($1) },
 
         .named(
             .cut,
