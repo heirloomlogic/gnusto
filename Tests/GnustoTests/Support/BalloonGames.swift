@@ -271,9 +271,7 @@ struct VolcanoGame: Game {
         // safe to leave.
         //
         // On `world`, not on the balloon: bare `get out` carries no direct
-        // object, so an item rule would never see it and the gate would hold
-        // only for players who typed `get out of basket`. `Zork1`'s river boat
-        // guards open water the same way.
+        // object, so an item rule would never see it. See `ActorsAndVehicles.md`.
         world.before(.disembark) {
             guard player.vehicle == balloon else { return }
             if balloon.isIn(narrowLedge) {

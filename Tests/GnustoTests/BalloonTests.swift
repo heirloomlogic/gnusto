@@ -203,9 +203,10 @@ struct BalloonTests {
 
     /// The promoted `.burn` stub in both of its rows. `burn newspaper` and
     /// `burn newspaper with match` are one intent and one rule, and the second
-    /// row — added to the engine's stub table for this spike — is what carries
-    /// the match through as an indirect object. Without it, the fire has no way
-    /// to ask what lit it.
+    /// row is what carries the match through as an indirect object. That row
+    /// now ships in the stub table for parity with `attack`, `dig` and `fill` —
+    /// a game could equally have declared it, since overriding a stub warns
+    /// nothing. See `docs/games/dungeon.md`.
     @Test func burningNeedsBothTheReceptacleAndTheMatch() async throws {
         let transcript = try await play(
             VolcanoGame(),

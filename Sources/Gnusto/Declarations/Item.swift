@@ -324,11 +324,12 @@ public struct Item: Sendable, Equatable {
         let (frame, id) = resolved
         let locationID = location.id
         frame.with { scratch in
-            // Asked before the placement changes, or the pairing this depends
-            // on would be the one this call is about to create.
+            // Asked before `place`, which would otherwise satisfy the pairing
+            // itself. Through the same funnel every read uses, so there is one
+            // definition of "boarded" rather than a second copy here.
             let carriesPassenger =
-                scratch.state.playerVehicle == id
-                && scratch.state.placements[id] == .room(scratch.state.playerLocation)
+                Visibility.boardedVehicle(
+                    definition: frame.definition, state: scratch.state) == id
             scratch.state.place(id, .room(locationID))
             if carriesPassenger {
                 scratch.state.playerLocation = locationID
