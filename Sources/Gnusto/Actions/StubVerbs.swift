@@ -29,29 +29,6 @@ struct StubVerb: Sendable {
     /// Which of this verb's object slots the player has to be able to *touch*.
     let reach: Reach
 
-    /// Which object slots a stub needs within arm's reach, as opposed to merely
-    /// in view.
-    ///
-    /// Parser scope is the *visible* set, which admits what can be seen through
-    /// the glass of a shut jar or in somebody else's hands. Half this table is
-    /// fine with that — you can smell a fire across a room and count coins
-    /// behind glass — and half of it is nonsense at a distance, so the answer is
-    /// per verb rather than a blanket guard.
-    ///
-    /// Three cases and not a `Bool` because the two-slot shapes disagree with
-    /// each other: `give X to Y` has to reach the recipient, and `throw X at Y`
-    /// must *not* have to reach the target, which is the whole point of
-    /// throwing. Nothing wants the indirect object alone, so there is no case
-    /// for it.
-    enum Reach: Sendable {
-        /// Works at a distance — or takes no object at all.
-        case notNeeded
-        /// The direct object must be reachable.
-        case directObject
-        /// Both objects must be reachable.
-        case bothObjects
-    }
-
     /// Patterns in, rows out — spelled the way `#verb` spells them, and the
     /// reason no row below has to repeat `intent:`.
     private init(
@@ -690,6 +667,17 @@ extension DefaultActions {
     /// Every intent stage 4 answers itself, whether with real behavior or a
     /// canned line. A rule watching one of these is never a dead intent.
     static let handledIntents: Set<Intent> = builtInIntents.union(stubIntents)
+
+    /// Which object slots an intent needs within arm's reach — the `reach:`
+    /// column of whichever half of the standard table declares it, read through
+    /// the two dispatch tables `run(_:frame:)` already uses rather than a third
+    /// keyed copy of them.
+    ///
+    /// A custom intent is in neither and takes ``Reach/notNeeded``: a verb the
+    /// game invented is a verb the game defines the reach of, in its own rule.
+    static func reachRequirement(of intent: Intent) -> Reach {
+        coresByIntent[intent]?.reach ?? stubsByIntent[intent]?.reach ?? .notNeeded
+    }
 }
 
 extension SyntaxRule {

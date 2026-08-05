@@ -33,6 +33,10 @@ enum Visibility {
     /// Items the player can currently manipulate: like `visibleItems`, but a
     /// container's contents count only while it is open — a transparent-but-shut
     /// jar shows its contents without letting the player touch them.
+    ///
+    /// **Containment only.** A `reach { … }` rule is a closure that reads the
+    /// live world, so it needs a turn frame and cannot be asked of a bare state
+    /// snapshot; ``isReachable(_:frame:)`` is the form that asks both.
     static func reachableItems(
         at location: EntityID,
         definition: GameDefinition,
@@ -55,9 +59,35 @@ enum Visibility {
     }
 
     /// Whether the player can reach `id` from where they are standing right
-    /// now — `reachableItems` asked about one item, against the live turn.
+    /// now — `reachableItems` asked about one item, against the live turn, plus
+    /// whatever `reach { … }` rule the item declared.
     static func isReachable(_ id: EntityID, frame: TurnFrame) -> Bool {
-        inScope(id, observer: .player, frame: frame, descendClosedTransparent: false)
+        // The rule first: it is a dictionary lookup that almost always finds
+        // nothing, where the walk below builds a whole scope set.
+        reachRuleAllows(id, for: .player, frame: frame)
+            && inScope(id, observer: .player, frame: frame, descendClosedTransparent: false)
+    }
+
+    /// Whether an item's `reach { … }` rule lets `observer` touch it. True when
+    /// there is no such rule, which is every item of every game that has not
+    /// opted in.
+    ///
+    /// What the observer is **holding** always passes without asking. A rule
+    /// keyed to a square of a sliding-block floor answers "is this within arm's
+    /// reach of where I stand", and a thing already in the hand is not a
+    /// question — vetoing it would stop the player opening a box they carry.
+    ///
+    /// Takes the frame lock for the placement read and then calls the closure
+    /// *outside* it: a rule body re-enters the frame through `Ctx.current`, and
+    /// the `Mutex` is not reentrant.
+    static func reachRuleAllows(_ id: EntityID, for observer: EntityID, frame: TurnFrame) -> Bool {
+        // `isEmpty` before the subscript: a dictionary lookup hashes the key
+        // even when there is nothing to find, and for every game that declares
+        // no reach rule there never is.
+        let declared = frame.definition.rules.itemReach
+        guard !declared.isEmpty, let rule = declared[id] else { return true }
+        if frame.with({ $0.state.placements[id] == .heldBy(observer) }) { return true }
+        return rule.allows()
     }
 
     /// Whether `actor` can reach `id` from the room they are standing in —
@@ -69,8 +99,13 @@ enum Visibility {
     /// *other* people are holding stays out, the player included: lifting from
     /// those hands is stealing, which is a plugin's job, exactly as it is for
     /// the player's own reach set.
+    /// A `reach { … }` rule gates this too, and is not told who is asking. The
+    /// rule models a room the map keeps as one place and the game divides by
+    /// hand; a sub-room position the game tracks for the player is the only one
+    /// it tracks, so a thing out of the player's reach is out of everybody's.
     static func isReachable(_ id: EntityID, from actor: EntityID, frame: TurnFrame) -> Bool {
         inScope(id, observer: actor, frame: frame, descendClosedTransparent: false)
+            && reachRuleAllows(id, for: actor, frame: frame)
     }
 
     /// Whether the player can see `id` from where they are standing right now —

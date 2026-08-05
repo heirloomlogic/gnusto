@@ -286,4 +286,19 @@ public struct Actor: Sendable, Equatable {
     public func presence(_ body: @escaping @Sendable () -> String) -> Rule {
         asItem.presence(body)
     }
+
+    /// Whether the player can put a hand on this person from where they are
+    /// standing — ``Item/reach(otherwise:_:)``, asked of an actor.
+    ///
+    /// - Parameters:
+    ///   - refusal: the line shown when the closure says no. Defaults to the
+    ///     stock ``GameText/cantReach``.
+    ///   - body: the closure answering "can they touch him from here".
+    /// - Returns: the assembled reach rule.
+    public func reach(
+        otherwise refusal: String? = nil,
+        _ body: @escaping @Sendable () -> Bool
+    ) -> Rule {
+        asItem.reach(otherwise: refusal, body)
+    }
 }

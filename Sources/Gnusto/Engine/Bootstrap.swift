@@ -612,15 +612,17 @@ enum Bootstrap {
         var table = RuleTable()
         var ruleDiagnostics: [String] = []
 
-        // Files a text-returning rule — `describe { … }` or `presence { … }` —
-        // into the given slot, reporting the same two conflicts wherever it is
-        // used: the static trait it competes with is already present, or the
-        // entity declares the rule twice.
-        func fileText(
+        // Files a rule whose work is a payload rather than a body —
+        // `describe { … }`, `presence { … }`, `reach { … }` — into the given
+        // slot, reporting the same two conflicts wherever it is used: the static
+        // trait it competes with is already present, or the entity declares the
+        // rule twice. A phase with no competing trait passes `hasStaticText:
+        // false`, and its `trait` name is never printed.
+        func file<Payload>(
             _ id: EntityID, noun: String, rule kind: String, trait: String,
             hasStaticText: Bool,
-            into slot: WritableKeyPath<RuleTable, [EntityID: @Sendable () -> String]>,
-            _ rule: Rule
+            into slot: WritableKeyPath<RuleTable, [EntityID: Payload]>,
+            _ payload: Payload?
         ) {
             if hasStaticText {
                 ruleDiagnostics.append(
@@ -629,8 +631,8 @@ enum Bootstrap {
             } else if table[keyPath: slot][id] != nil {
                 ruleDiagnostics.append(
                     "\(noun) \"\(id)\" declares more than one \(kind) { … } rule.")
-            } else if let describeBody = rule.describeBody {
-                table[keyPath: slot][id] = describeBody
+            } else if let payload {
+                table[keyPath: slot][id] = payload
             }
         }
 
@@ -656,15 +658,21 @@ enum Bootstrap {
                 case .before: table.itemBefore[id, default: []].append(rule)
                 case .after: table.itemAfter[id, default: []].append(rule)
                 case .describe:
-                    fileText(
+                    file(
                         id, noun: "item", rule: "describe", trait: "description(…)",
                         hasStaticText: items[id]?.description != nil,
-                        into: \.itemDescribe, rule)
+                        into: \.itemDescribe, rule.describeBody)
                 case .presence:
-                    fileText(
+                    file(
                         id, noun: "item", rule: "presence", trait: "firstSight(…)",
                         hasStaticText: items[id]?.firstSight != nil,
-                        into: \.itemPresence, rule)
+                        into: \.itemPresence, rule.describeBody)
+                case .reach:
+                    // No competing trait: reach has no static spelling.
+                    file(
+                        id, noun: "item", rule: "reach", trait: "",
+                        hasStaticText: false,
+                        into: \.itemReach, rule.reachRule)
                 case .beforeEachTurn, .afterEachTurn, .onEnter:
                     ruleDiagnostics.append(
                         "item \"\(id)\" has a \(rule.phase) rule, which only "
@@ -684,11 +692,11 @@ enum Bootstrap {
                 case .afterEachTurn: table.locationAfterEachTurn[id, default: []].append(rule)
                 case .onEnter: table.locationOnEnter[id, default: []].append(rule)
                 case .describe:
-                    fileText(
+                    file(
                         id, noun: "location", rule: "describe", trait: "description(…)",
                         hasStaticText: locations[id]?.description != nil,
-                        into: \.locationDescribe, rule)
-                case .presence:
+                        into: \.locationDescribe, rule.describeBody)
+                case .presence, .reach:
                     ruleDiagnostics.append(
                         "location \"\(id)\" has a \(rule.phase) rule, which only items "
                             + "and actors support.")
@@ -697,12 +705,9 @@ enum Bootstrap {
                 switch rule.phase {
                 case .before, .beforeEachTurn: table.worldBefore.append(rule)
                 case .after, .afterEachTurn: table.worldAfter.append(rule)
-                case .onEnter:
-                    ruleDiagnostics.append("a world-level onEnter rule is not supported.")
-                case .describe:
-                    ruleDiagnostics.append("a world-level describe rule is not supported.")
-                case .presence:
-                    ruleDiagnostics.append("a world-level presence rule is not supported.")
+                case .onEnter, .describe, .presence, .reach:
+                    ruleDiagnostics.append(
+                        "a world-level \(rule.phase) rule is not supported.")
                 }
             }
         }

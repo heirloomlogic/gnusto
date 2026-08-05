@@ -746,23 +746,43 @@ enum DefaultActions {
     /// Refuses a stub verb whose objects the player can see but not touch —
     /// the same `cantReach` line, from the same set, that every core physical
     /// default answers with. Which slots are checked is the stub's own call:
-    /// see ``StubVerb/Reach``.
-    ///
-    /// A slot the command didn't fill is nothing to check: `wave` and `wave
-    /// <object>` are one intent, and only the second has anything to reach.
+    /// see ``Reach``.
     private static func requireReach(
-        _ reach: StubVerb.Reach,
+        _ reach: Reach,
         for command: Command,
         frame: TurnFrame
     ) throws {
-        let slots: [Item?] =
-            switch reach {
-            case .notNeeded: []
-            case .directObject: [command.directObject]
-            case .bothObjects: [command.directObject, command.indirectObject]
-            }
-        for case let item? in slots where !Visibility.isReachable(item.id, frame: frame) {
+        for case let item? in reach.slots(of: command)
+        where !Visibility.isReachable(item.id, frame: frame) {
             try refuse(frame.definition.text.cantReach(item.definiteName))
+        }
+    }
+
+    /// Stage 0: the `reach { … }` rules of whatever objects this command named.
+    ///
+    /// A `reach { … }` rule is settled here, ahead of every rule, because
+    /// anywhere later is useless: an item that answers its own verb —
+    /// `slot.before(.putIn)` — replies, and stage 4 never runs at all.
+    /// Containment is *not* moved up with it, and the reason is compatibility
+    /// rather than principle: each handler checks it at its own point in its own
+    /// cascade of refusals, and hoisting those would change which line a dozen
+    /// shipped games print. The visible consequence is that a reach rule refuses
+    /// ahead of a verb's trait complaints, where containment refuses after them.
+    ///
+    /// Nothing to check for a game that declares no reach rules, which is every
+    /// game until one opts in — that empty table is the first thing tested, and
+    /// the whole cost of this stage for everybody else. Orders are skipped: a
+    /// command carried out by somebody else never reaches a default action at
+    /// all, and the rule speaks for where the *player* stands. Meta intents need
+    /// no test of their own; every one of them declares ``Reach/notNeeded``.
+    static func requireReachRules(for command: Command, frame: TurnFrame) throws {
+        let rules = frame.definition.rules
+        guard !rules.itemReach.isEmpty, command.actor == nil else { return }
+        for case let item? in reachRequirement(of: command.intent).slots(of: command)
+        where !Visibility.reachRuleAllows(item.id, for: .player, frame: frame) {
+            try refuse(
+                rules.itemReach[item.id]?.refusal
+                    ?? frame.definition.text.cantReach(item.definiteName))
         }
     }
 }

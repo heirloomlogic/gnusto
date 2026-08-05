@@ -426,6 +426,10 @@ public actor GameWorld {
         let stage = agent.flatMap { id in frame.with { Visibility.standing(id, in: $0.state) } } ?? here
 
         do {
+            // Stage 0: the objects' `reach { … }` rules, which have to be
+            // settled ahead of the rules that could pre-empt stage 4.
+            try DefaultActions.requireReachRules(for: command, frame: frame)
+
             // Stages 1–3: world, location, and item `before` rules.
             // Meta intents talk to the game program; no rules see them.
             // `inBeforeRule` is set for the span of these stages so
