@@ -62,6 +62,15 @@ struct BootstrapTests {
         #expect(report.contains("verbs block"))  // the suggested fix
     }
 
+    @Test func alwaysDescribedWithNothingToPrintWarns() throws {
+        let (definition, _) = try Bootstrap.build(EmptyStateRoomGame())
+        let report = try #require(definition.warningReport)
+        #expect(report.contains("\"alcove\" declares alwaysDescribed"))
+        #expect(report.contains("nothing to print"))
+        // The landing has a description and no trait, so it is not implicated.
+        #expect(!report.contains("landing"))
+    }
+
     @Test func warningReportIsNilForACleanGame() throws {
         let (definition, _) = try Bootstrap.build(MiniGame())
         #expect(definition.warnings.isEmpty)

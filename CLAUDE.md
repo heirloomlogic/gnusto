@@ -115,6 +115,14 @@ In any rule body: `say`, `refuse`, `reply`, `require(_:else:)`, `end(won:)`, `di
   `describe { }`, or `firstSight(…)` plus `presence { }`, on one entity is a fatal
   `BootstrapError`. So is declaring the rule twice. Precedence for descriptions:
   runtime assignment > rule > static trait. Presence has no runtime setter.
+- **A revisited room is described briefly.** UNDO, RESTORE and walking back in
+  through an exit all re-describe as an *entry*, which prints the room name and
+  the item paragraphs but skips `description(…)`/`describe { }`. For a room whose
+  description **is** the state (a sliding-block floor, a mirror box), declare
+  `alwaysDescribed` on the `Location` and it prints every time. The mirror
+  problem: `describeSurroundings()` is always a full LOOK, so a rule that moves
+  the player *within* one room reprints the heading — pass
+  `describeSurroundings(withRoomName: false)`.
 - **`onEnter` runs *after* the player has moved.** It cannot block entry. To block a
   move, use `sourceRoom.before(.go)` + `guard command.direction` + `refuse`, or a
   conditional exit `exit(_:to:when:otherwise:)` whose `when:` closure is evaluated in

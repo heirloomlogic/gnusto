@@ -63,4 +63,17 @@ struct PluginSeamTests {
                 "It is pitch black. You can't see a thing.",
             ])
     }
+
+    /// `withRoomName: false` drops the heading and nothing else — issue #149.
+    /// The room's own name is an announcement of arrival, and a rule that moves
+    /// the player *within* one room has no arrival to announce.
+    @Test func describeSurroundingsCanOmitTheRoomName() async throws {
+        let transcript = try await play(BrawlGame(), ["slither", "quit"])
+        let shift = turnOutput(of: "slither", in: transcript)
+        #expect(shift.contains("The floor tilts and deposits you elsewhere."))
+        #expect(shift.contains("Mats everywhere."))
+        #expect(!shift.contains("Gymnasium"))
+        // The people in the room are still announced; only the heading went.
+        #expect(shift.contains("bruiser"))
+    }
 }

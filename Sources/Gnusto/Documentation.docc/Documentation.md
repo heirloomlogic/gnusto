@@ -93,6 +93,7 @@ A game type that also conforms to ``GameMain`` is a complete `@main` executable 
 - ``synonyms(_:)``
 - ``firstSight(_:)``
 - ``dark``
+- ``alwaysDescribed``
 - ``lightSource``
 - ``startsLit``
 - ``wearable``
@@ -149,7 +150,7 @@ A game type that also conforms to ``GameMain`` is a complete `@main` executable 
 - ``Command/actor``
 - ``enterable``
 - ``Player/vehicle``
-- ``describeSurroundings()``
+- ``describeSurroundings(withRoomName:)``
 
 ### Time, Light, and Death
 

@@ -4,6 +4,7 @@ public struct LocationTrait: Sendable {
         case name(String)
         case description(String)
         case dark
+        case alwaysDescribed
         case custom(key: String, value: StateValue)
     }
 
@@ -143,6 +144,30 @@ public func firstSight(_ text: String) -> ItemTrait {
 /// The location has no light of its own; it is dark unless lit by author code
 /// (`room.isLit = true`) or by a light-providing item. Locations default to lit.
 public let dark = LocationTrait(kind: .dark)
+
+/// The location's description is *state*, not scenery: print it in full every
+/// time the room is described, not only on the first visit.
+///
+/// A room is normally described briefly on a revisit — its name and the things
+/// lying in it, but not its long description, because the player has already
+/// read it. That is right for a room made of stone. It is wrong for a room whose
+/// ``Location/describe(_:)`` closure reports something the player is
+/// manipulating: a sliding-block floor, a mirror box, a machine whose dials have
+/// moved. There the long description is the only readout there is, and dropping
+/// it on a revisit — after UNDO, after RESTORE, on walking back in through a
+/// door — silently withholds the state.
+///
+/// ```swift
+/// let puzzle = Location {
+///     name("Room in a Puzzle")
+///     alwaysDescribed
+/// }
+/// ```
+///
+/// Opt-in, one room at a time. Declaring it on a room with nothing to print —
+/// no `description(…)` trait and no `describe { … }` rule — is a bootstrap
+/// warning, since the flag then has no text to un-hide.
+public let alwaysDescribed = LocationTrait(kind: .alwaysDescribed)
 
 /// The item can be worn.
 public let wearable = ItemTrait(kind: .wearable)

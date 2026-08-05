@@ -360,3 +360,27 @@ struct ProxyProbeGame: Game {
         }
     }
 }
+
+/// `alwaysDescribed` on a room with no long description at all — neither the
+/// static trait nor a `describe { … }` rule — so the flag has nothing to
+/// un-hide on a revisit. A warning, not a diagnostic: nothing breaks, the room
+/// just reads identically with the trait and without it.
+struct EmptyStateRoomGame: Game {
+    let title = "EmptyStateRoom"
+    let intro = ""
+
+    let landing = Location {
+        name("Landing")
+        description("A landing.")
+    }
+    let alcove = Location {
+        name("Alcove")
+        alwaysDescribed
+    }
+
+    var map: WorldMap {
+        landing.north(alcove)
+        alcove.south(landing)
+        player.starts(in: landing)
+    }
+}

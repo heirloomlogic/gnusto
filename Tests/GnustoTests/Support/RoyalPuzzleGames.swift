@@ -404,9 +404,12 @@ private enum Prose {
 ///      ↑ niche, hatch
 /// ```
 ///
-/// Every step and every push calls `describeSurroundings()`, so the room name
-/// reprints on each one. That is deliberate — the description *is* the state —
-/// and not something a play-test should file.
+/// The description *is* the state, so the room declares `alwaysDescribed` and
+/// every step and every push re-describes. Both halves of issue #149 are load-
+/// bearing here: the trait is why a rewind (UNDO, RESTORE, walking back in from
+/// the Side Room) still prints the geometry, and `withRoomName: false` is why
+/// nineteen moves inside one room don't print nineteen "Room in a Puzzle"
+/// headings.
 ///
 /// Only one starting grid exists, because `cachedWorld` keys its cache on the
 /// game's *type*: a second `RoyalPuzzleGame` configured differently would
@@ -426,6 +429,7 @@ struct RoyalPuzzleGame: Game {
     }
     let puzzle = Location {
         name("Room in a Puzzle")
+        alwaysDescribed
     }
     let sideRoom = Location {
         name("Side Room")
@@ -554,17 +558,13 @@ struct RoyalPuzzleGame: Game {
             try end(won: true)
         }
 
-        // The room the player never leaves while solving it. `.entry` mode is
-        // brief on a revisited room, which would print the room's name and
-        // none of its geometry when the player walks back in from the Side
-        // Room — so the description is replaced outright with a verbose one.
+        // The room the player never leaves while solving it. The automatic
+        // entry description is left to run, so this rule adds the drop-in line
+        // and gets out of the way.
         puzzle.onEnter {
-            if !holeSealed {
-                holeSealed = true
-                say(Prose.dropIn)
-            }
-            describeSurroundings()
-            try reply("")
+            guard !holeSealed else { return }
+            holeSealed = true
+            say(Prose.dropIn)
         }
 
         puzzle.describe {
@@ -606,7 +606,9 @@ struct RoyalPuzzleGame: Game {
             case .blocked: try refuse(Prose.ladderInTheWay)
             case .moved:
                 grid = state
-                describeSurroundings()
+                // Still in the same room: the heading would claim an arrival
+                // that never happened.
+                describeSurroundings(withRoomName: false)
                 try reply("")
             }
         }
@@ -636,7 +638,7 @@ struct RoyalPuzzleGame: Game {
                     card.move(to: puzzle)
                     say(Prose.cardRevealed)
                 }
-                describeSurroundings()
+                describeSurroundings(withRoomName: false)
                 try reply("")
             }
         }

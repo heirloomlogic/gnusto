@@ -19,6 +19,9 @@ struct LocationDefinition: Sendable {
     var name: String?
     var description: String?
     var inherentlyLit = true
+    /// The description is state the player is changing, so it prints on every
+    /// description rather than only the first. See the `alwaysDescribed` trait.
+    var isAlwaysDescribed = false
     var customTraits: [String: StateValue] = [:]
 
     init(traits: [LocationTrait]) {
@@ -27,6 +30,7 @@ struct LocationDefinition: Sendable {
             case .name(let text): name = text
             case .description(let text): description = text
             case .dark: inherentlyLit = false
+            case .alwaysDescribed: isAlwaysDescribed = true
             case .custom(let key, let value): customTraits[key] = value
             }
         }
