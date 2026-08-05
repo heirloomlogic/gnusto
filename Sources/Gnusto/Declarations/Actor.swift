@@ -55,6 +55,18 @@ public struct Actor: Sendable, Equatable {
         Item(token: token, traits: traits)
     }
 
+    /// The actor-shaped view of an item the engine already knows is a person —
+    /// how ``Command/actor`` is minted from the registry. Identity is the
+    /// shared token, so the result compares equal to the declaration.
+    init(_ item: Item) {
+        self.token = item.token
+        self.traits = item.traits
+    }
+
+    var id: EntityID {
+        asItem.id
+    }
+
     // MARK: - Live state
 
     /// The actor's display name.

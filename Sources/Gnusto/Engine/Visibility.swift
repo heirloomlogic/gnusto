@@ -14,14 +14,19 @@ enum Visibility {
     /// while closed if transparent). An item seen through the glass of a shut
     /// jar is visible but not reachable — that is where this diverges from
     /// `reachableItems`.
+    ///
+    /// `observer` is the player unless a game has somebody else doing the
+    /// looking — an actor declared ``takesOrders``, whose own scope is what
+    /// `robot, push the button` resolves against.
     static func visibleItems(
+        for observer: EntityID = .player,
         at location: EntityID,
         definition: GameDefinition,
         state: WorldState,
         index: ContainmentIndex
     ) -> Set<EntityID> {
         collect(
-            observer: .player, at: location, definition: definition, state: state,
+            observer: observer, at: location, definition: definition, state: state,
             index: index, descendClosedTransparent: true)
     }
 
@@ -43,7 +48,7 @@ enum Visibility {
     /// all — held, contained, or `vanish()`ed — who reaches only their own
     /// hands. The player's item is placed `.nowhere`, so they are the one
     /// entity whose room is tracked separately.
-    private static func standing(_ observer: EntityID, in state: WorldState) -> EntityID? {
+    static func standing(_ observer: EntityID, in state: WorldState) -> EntityID? {
         if observer == .player { return state.playerLocation }
         if case .room(let here)? = state.placements[observer] { return here }
         return nil
@@ -178,15 +183,25 @@ enum Visibility {
         // and the default refusal is `cantReach`, exactly like the contents
         // of a shut glass jar.
         if descendClosedTransparent {
-            for holderID in index.inRoom[location] ?? [] {
+            func absorbWhatIsHeld(by holderID: EntityID) {
                 guard definition.items[holderID]?.isActor == true,
                     isPerceivable(holderID, definition: definition, state: state)
-                else { continue }
+                else { return }
                 for id in index.held[holderID] ?? []
                 where isPerceivable(id, definition: definition, state: state) {
                     result.insert(id)
                     if shouldDescend(into: id) { descend(into: id) }
                 }
+            }
+            for holderID in index.inRoom[location] ?? [] {
+                absorbWhatIsHeld(by: holderID)
+            }
+            // The player's hands belong to that rule too, and the room walk
+            // can never find them: the player is placed `.nowhere`. Only
+            // somebody else's walk needs the line — the player's own set
+            // already has everything they carry.
+            if observer != .player, location == state.playerLocation {
+                absorbWhatIsHeld(by: .player)
             }
         }
 

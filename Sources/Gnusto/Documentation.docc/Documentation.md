@@ -145,6 +145,8 @@ A game type that also conforms to ``GameMain`` is a complete `@main` executable 
 - ``Actor/presence(_:)``
 - ``Actor/holds(_:)``
 - ``Actor/possesses(_:)``
+- ``takesOrders``
+- ``Command/actor``
 - ``enterable``
 - ``Player/vehicle``
 - ``describeSurroundings()``

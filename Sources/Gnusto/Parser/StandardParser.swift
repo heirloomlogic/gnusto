@@ -26,6 +26,10 @@ struct ParsedCommand: Equatable {
     /// The raw words of a topic slot, kept at the same level as the object
     /// phrases; `GameWorld` mints the author-facing `Topic` from them.
     var topic: [String]?
+    /// Who was told to do this, when the line was `<actor>, <words>` and that
+    /// actor takes orders. `nil` — overwhelmingly the common case — means the
+    /// player is acting on their own account.
+    var actor: EntityID?
     var verbPhrase: String
     var rawInput: String
 }
@@ -44,17 +48,27 @@ struct Scope: Sendable {
     let distantActors: Set<EntityID>
     /// What "it" currently refers to, if anything.
     var pronounIt: EntityID?
+    /// For each actor declared `takesOrders` who is standing in a room, what
+    /// *that* actor could name from where it stands. The parser has no world
+    /// to walk, so `GameWorld` hands these down alongside the player's own set
+    /// and the parser stays a pure function of its inputs. Item sets rather
+    /// than whole scopes, so `Scope` doesn't become a type that contains
+    /// itself: an order is never an order to somebody else, and the scope the
+    /// order is read in is built at the one place that needs it.
+    let orderTakers: [EntityID: Set<EntityID>]
 
     init(
         visibleItems: Set<EntityID>,
         visibleActors: Set<EntityID> = [],
         distantActors: Set<EntityID> = [],
-        pronounIt: EntityID? = nil
+        pronounIt: EntityID? = nil,
+        orderTakers: [EntityID: Set<EntityID>] = [:]
     ) {
         self.visibleItems = visibleItems
         self.visibleActors = visibleActors
         self.distantActors = distantActors
         self.pronounIt = pronounIt
+        self.orderTakers = orderTakers
     }
 }
 
@@ -94,9 +108,10 @@ struct StandardParser {
             return .failure(.empty)
         }
 
-        // "delphine, hello" — addressing somebody. The engine has no way for
-        // one character to act on another's word, so the only order it can
-        // honour is a greeting; everything else is heard and declined.
+        // "delphine, hello" — addressing somebody. A greeting is the one thing
+        // anybody answers; anything else is an order, and only an actor
+        // declared `takesOrders` has a way to act on another's word. The rest
+        // are heard and declined, exactly as they always were.
         if let comma = tokens.firstIndex(of: ","), comma > 0 {
             let address = Array(tokens[..<comma])
             let rest = tokens[(comma + 1)...].filter { $0 != "," }
@@ -109,7 +124,33 @@ struct StandardParser {
                             intent: .greet, directObject: addressee,
                             verbPhrase: "greet", rawInput: rawInput))
                 }
-                return .failure(.notTakingOrders(definiteName(of: addressee)))
+                guard scope.orderTakers[addressee] != nil else {
+                    return .failure(.notTakingOrders(definiteName(of: addressee)))
+                }
+                return order(rest, to: addressee, address: address, scope: scope, rawInput: rawInput)
+            }
+            // Nobody in sight answers to that name — but somebody you sent out
+            // of the room might. An order-taker is nameable while out of sight
+            // the way FOLLOW's quarry is: you call after the robot through the
+            // doorway, which is the whole point of sending it where you can't
+            // go. Second pass, so no phrase that already resolves in the room
+            // can change meaning.
+            if !scope.orderTakers.isEmpty,
+                case .success(let addressee) = resolve(
+                    address, in: scope, alsoConsidering: Set(scope.orderTakers.keys)),
+                let theirs = scope.orderTakers[addressee]
+            {
+                // Calling after somebody carries an order and not a hello: you
+                // can shout "push the button" through a doorway, but greeting
+                // a person you can't see is simply not seeing them.
+                guard !rest.isEmpty,
+                    !isGreeting(
+                        rest, at: addressee, address: address,
+                        scope: Scope(visibleItems: theirs, pronounIt: scope.pronounIt))
+                else {
+                    return .failure(.notInScope)
+                }
+                return order(rest, to: addressee, address: address, scope: scope, rawInput: rawInput)
             }
         }
         // Not an address, or not to a person: the comma goes back to being
@@ -156,6 +197,32 @@ struct StandardParser {
         }
 
         return .failure(bestFailure ?? .unmatchedSyntax)
+    }
+
+    /// The words after the comma, read as a command in the addressee's own
+    /// scope and stamped with them as its agent.
+    ///
+    /// Recursion is bounded the same way ``isGreeting(_:at:address:scope:)``'s
+    /// is: a strictly shorter token list, the first comma already consumed, and
+    /// an inner scope carrying no order-takers — so an order can never be an
+    /// order to somebody else.
+    ///
+    /// A failure is re-anchored on the address, so that the question an
+    /// incomplete order asks ("What do you want to push?") is answered as an
+    /// order too, and not as the player's own next move.
+    private func order(
+        _ rest: [String], to addressee: EntityID, address: [String],
+        scope: Scope, rawInput: String
+    ) -> Result<ParsedCommand, ParseError> {
+        let theirs = Scope(
+            visibleItems: scope.orderTakers[addressee] ?? [], pronounIt: scope.pronounIt)
+        return parse(tokens: rest, rawInput: rawInput, scope: theirs)
+            .map { parsed in
+                var parsed = parsed
+                parsed.actor = addressee
+                return parsed
+            }
+            .mapError { $0.addressed(to: address) }
     }
 
     /// Whether the words after the comma are a greeting aimed at `addressee`.

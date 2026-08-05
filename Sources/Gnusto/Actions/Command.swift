@@ -147,6 +147,20 @@ public struct Command: Sendable {
     public let direction: Direction?
     /// What the player wants to talk about, for verbs with a topic slot.
     public let topic: Topic?
+    /// Who was ordered to do this — `robot, push the button` — or `nil` when
+    /// the player is acting on their own account, which is every command that
+    /// came in without an addressee:
+    ///
+    /// ```swift
+    /// button.before(.push) {
+    ///     guard command.actor == robot else { try refuse("You can't reach it.") }
+    ///     try reply("Whirr, click.")
+    /// }
+    /// ```
+    ///
+    /// Only an actor declared ``takesOrders`` ever appears here. The engine's
+    /// own default actions never run for one — see <doc:ActorsAndVehicles>.
+    public let actor: Actor?
     /// The verb word as typed ("hang"), for use in messages.
     public let verbPhrase: String
     /// The full line the player typed.
@@ -159,6 +173,7 @@ public struct Command: Sendable {
         preposition: String? = nil,
         direction: Direction? = nil,
         topic: Topic? = nil,
+        actor: Actor? = nil,
         verbPhrase: String,
         rawInput: String
     ) {
@@ -168,6 +183,7 @@ public struct Command: Sendable {
         self.preposition = preposition
         self.direction = direction
         self.topic = topic
+        self.actor = actor
         self.verbPhrase = verbPhrase
         self.rawInput = rawInput
     }

@@ -483,6 +483,13 @@ enum Bootstrap {
                 "item \"\(id)\" declares startsUnlocked but has no lockedBy entry; "
                     + "the flag has no effect.")
         }
+        // Obeying is something a *person* does. On anything else the trait has
+        // nobody to describe: the parser only ever addresses an actor.
+        for (id, item) in items where item.takesOrders && !item.isActor {
+            traitWarnings.append(
+                "item \"\(id)\" declares takesOrders but is not an actor; only a "
+                    + "person can be given an order, and the flag has no effect.")
+        }
         // A capitalized name is very nearly a proper name, and the stock lines
         // put an article in front of anything that isn't one — "the Mrs. Vane".
         // Not inferred, because "Elvish sword" is a common noun and so is
@@ -551,6 +558,7 @@ enum Bootstrap {
 
         // Phase 4 — evaluate the rules block inside a registration frame, so
         // any stray live reads see the initial state rather than trapping.
+        let cast = Set(items.filter { $0.key != .player && $0.value.isActor }.keys)
         var definition = GameDefinition(
             title: game.title,
             tagline: game.tagline,
@@ -559,7 +567,8 @@ enum Bootstrap {
             text: game.text,
             locations: locations,
             items: items,
-            castIDs: Set(items.filter { $0.key != .player && $0.value.isActor }.keys),
+            castIDs: cast,
+            orderTakerIDs: cast.filter { items[$0]?.takesOrders == true },
             exits: exits,
             reachableRooms: Set(
                 exits.values.flatMap(\.values).compactMap { target in
