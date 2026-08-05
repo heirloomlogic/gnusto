@@ -3,6 +3,7 @@ import GnustoTestSupport
 import Testing
 
 @testable import CloakOfDarkness
+@testable import Dungeon
 @testable import Gnusto
 @testable import Gramarye
 @testable import Lighthouse
@@ -212,5 +213,9 @@ struct MaxScoreCheckTests {
         // 143 points of `.takeValue` + 129 of `.depositValue` across the
         // nineteen treasures, plus 78 in event awards. Exactly 350.
         #expect(scoreWarnings(try Bootstrap.build(Zork1()).0.warnings) == [])
+        // Dungeon's ceiling ratchets per milestone toward the mainframe's 691,
+        // so this row is what stops a milestone from declaring content it
+        // cannot pay for. See `Dungeon.maxScore`.
+        #expect(scoreWarnings(try Bootstrap.build(Dungeon()).0.warnings) == [])
     }
 }

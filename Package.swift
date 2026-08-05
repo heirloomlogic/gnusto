@@ -52,6 +52,7 @@ let package = Package(
         .executable(name: "CloakOfDarkness", targets: ["CloakOfDarkness"]),
         .executable(name: "Lighthouse", targets: ["Lighthouse"]),
         .executable(name: "Zork1", targets: ["Zork1"]),
+        .executable(name: "Dungeon", targets: ["Dungeon"]),
         .executable(name: "Gramarye", targets: ["Gramarye"]),
         .executable(name: "Fulminate", targets: ["Fulminate"]),
         .executable(name: "KindlyDeep", targets: ["KindlyDeep"]),
@@ -137,6 +138,19 @@ let package = Package(
             ],
             plugins: devPlugins
         ),
+        // The scale test: a reconstruction of the original MIT mainframe Zork —
+        // three times Zork1's size, and the first demo game whose prose is
+        // *adapted* rather than reproduced. Built one milestone at a time; the
+        // charter, the mechanics contract and the prose rule are in
+        // `docs/games/dungeon.md`, and `FIDELITY.md`'s Dungeon section states
+        // that prose rule before any region entry.
+        .executableTarget(
+            name: "Dungeon",
+            dependencies: [
+                "Gnusto", "GnustoDangerousDark", "GnustoScoring", "GnustoMeleeCombat",
+            ],
+            plugins: devPlugins
+        ),
         // The spellcasting demo: a small original game that exercises all four
         // magic paradigms (cantrip, memorized, energy, scroll) via
         // GnustoSpellcasting — the "prove the engine hosts a spell system" game.
@@ -183,8 +197,8 @@ let package = Package(
                 "Gnusto", "GnustoDangerousDark", "GnustoScoring", "GnustoActors",
                 "GnustoMeleeCombat", "GnustoSpellcasting", "GnustoClock", "GnustoConversation",
                 "GnustoTestSupport",
-                "CloakOfDarkness", "Lighthouse", "Zork1", "Gramarye", "Fulminate",
-                "KindlyDeep",
+                "CloakOfDarkness", "Lighthouse", "Zork1", "Dungeon", "Gramarye",
+                "Fulminate", "KindlyDeep",
             ],
             plugins: devPlugins
         ),

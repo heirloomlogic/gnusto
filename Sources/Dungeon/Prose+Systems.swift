@@ -1,0 +1,99 @@
+/// The systems layer's prose: the game's own front matter, the stage-4 verb
+/// defaults, the liquid lines, and the handful of stock engine messages this
+/// game re-voices.
+///
+/// The three-way rule, and the rule for which file a line goes in, are stated
+/// once on ``Prose``.
+extension Prose {
+    // MARK: - Front matter
+
+    static let intro = """
+        Somewhere under a white house on a forgotten lawn lies the Great
+        Underground Empire — a dam, a temple, a coal mine, a river, a volcano,
+        a bank, and a maze that was old when the Empire fell. There are
+        treasures down there, and a trophy case up here to put them in, and a
+        good many things between the two that would rather you did not.
+        """
+
+    // MARK: - Verb defaults
+
+    static let verbWindNothing = "You cannot wind that up."
+
+    static let verbGiveNoTaker = "There is nobody here who wants it."
+
+    static let verbDigFutile = "Digging here gets you nothing but dirty hands."
+
+    static let verbWave = "You wave. Nothing happens."
+
+    static let verbTouch = "You feel nothing unexpected."
+
+    static let verbSmell = "You smell nothing out of the ordinary."
+
+    static let verbPray = "Nothing in particular answers."
+
+    static let verbClimbNothing = "There is nothing here worth climbing."
+
+    static let verbTieNothing = "You cannot tie that to anything."
+
+    static let verbUntieNothing = "That is not tied to anything."
+
+    static let verbMagicWordInert = "A hollow voice says nothing at all."
+
+    // MARK: - Liquids
+
+    static let waterSlipsAway = "The water slips through your fingers."
+
+    static let nothingToDrink = "There is nothing here to drink."
+
+    static let nothingToPour = "There is nothing here to pour."
+
+    static let bottleNeedsToBeOpen = "The bottle is closed."
+
+    static let bottleAlreadyFull = "The bottle is already full of water."
+
+    static let drinkWater = "Thank you very much. It really hit the spot."
+
+    static let bottleEmptied = "The water spills out and is quickly gone."
+
+    static let noWaterSource = "There is no water here to fill it from."
+
+    // MARK: - Burden
+
+    static let handsFull = """
+        Your load is too great for that. You will have to put something down
+        first.
+        """
+
+    // MARK: - Diagnose
+
+    /// Wounds are not modelled — the melee plugin tracks the villain's health,
+    /// not yours — so the report counts deaths, and this is the answer before
+    /// there are any.
+    static let diagnoseUnscathed = """
+        You have not been killed yet, which is more than most of your
+        predecessors managed.
+        """
+
+    static func diagnoseDeaths(_ deaths: Int, resurrectionsLeft: Int) -> String {
+        let toll =
+            deaths == 1
+            ? "You have been killed once."
+            : "You have been killed \(deaths) times."
+        let mercy =
+            resurrectionsLeft > 0
+            ? "You may expect to be put back together once more, and no oftener."
+            : "Whatever has been putting you back together is out of patience."
+        return "\(toll) \(mercy)"
+    }
+
+    // MARK: - Death and resurrection
+
+    /// Adapted. The mainframe's resurrection dumps you back among the trees,
+    /// lighter by ten points and by everything you were carrying.
+    static let resurrection = """
+        As you take your last breath, you feel relieved of your burdens. The
+        feeling passes as a peculiar sensation of falling overtakes you, and
+        you find yourself standing among the trees with the daylight on your
+        face, and nothing at all in your hands.
+        """
+}

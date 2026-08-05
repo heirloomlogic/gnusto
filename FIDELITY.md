@@ -1311,3 +1311,69 @@ contract).
   The prose rule above is what keeps that true of the text: every line is either
   the MIT-licensed trilogy's or this project's own. That is a constraint the policy
   has to go on satisfying, not a coincidence it happens to satisfy today.
+- **`maxScore` ratchets while the game is being built.** 691 is the finished
+  figure; each milestone declares the ceiling its own content can pay, and the last
+  one lands on 691. The bootstrap's award-table check writes to standard error on
+  every launch, so seven milestones of a deliberate mismatch would train everyone to
+  ignore the one check that keeps the table honest. `Sources/Zork1/` set the
+  precedent. Full reasoning in `docs/games/dungeon.md` ("The ceiling ratchets while
+  the game is being built"); `ScoringTests.everyDemoGameCanPayItsOwnMaximum` is the
+  row that holds each milestone to its own number.
+
+### Milestone 1 — above ground, the white house, the cellar
+
+23 rooms: the four sides of the house, five Forest rooms and the perch above one of
+them, the Clearing, the three canyon rooms, Kitchen / Living Room / Attic / Cellar,
+and — below — the Troll Room, the North-South Crawlway, West of Chasm, the Gallery
+and the Studio.
+
+**Where this departs from `Sources/Zork1/`, and why.** All of it is the mainframe's
+map, taken from `dung.355` and checked room by room against the exit counts in
+`docs/games/dungeon-atlas.md`. These are not liberties; they are the source.
+
+- Behind House opens **east onto the Clearing**, not into forest.
+- There is **no Forest Path**. The great climbable tree stands in an ordinary Forest
+  room, north of the house.
+- There is **one Clearing**, and it is the hub the whole wood drains into. Two of
+  its exits (north, east) lead back into it, as do two of the deep forest's — the
+  mainframe's way of making the wood feel like a wood.
+- **Canyon View stands on the canyon's south wall**, reached east from one Forest
+  room and southeast from another, with the forest west and south of it. Zork I
+  stands it on the west wall and leads a path northwest.
+- The **Cellar runs east** to the Troll Room and south to West of Chasm; Zork I
+  runs it north and south.
+- The **Troll Room opens in four directions**, and the troll gates three of them.
+- The **Gallery and Studio hang off the crawlway**, so the painting can be had
+  without ever meeting the troll — where Zork I puts the Gallery behind him. The
+  Studio's doors are north and northwest, not south.
+- The **Attic is dark.** The mainframe gives it no light bit, so the lamp has to go
+  up the stairs.
+- The **trap door bars itself for good** on the first descent, with nobody in the
+  story to blame and no negotiating from below ("The door is locked from above").
+  Zork I makes it the thief's doing and frees it when he falls. The Studio chimney
+  is the way back, and the mainframe's rule for it is exact: at most two things in
+  hand, and one of them the lamp.
+- Values are the mainframe's, and two are not Zork I's: the painting cases for
+  **7** where the trilogy pays 6, and the clockwork canary for **2** where it pays
+  4. The egg is 5/5 and the bauble 1/1 in both.
+
+**Declared but not yet walkable.** `maxScore` is 66; a perfect milestone-1
+playthrough scores **56**. The clockwork canary (6+2) and the brass bauble (1+1) it
+summons both need the egg opened by careful hands, and the only careful hands in
+this game are the thief's, who lands with a later region. Forcing the egg yourself
+wrecks the bird and forfeits both — as the mainframe intends. The content is
+correct; only the route is missing.
+
+**Seams left for later milestones**, each an exit the source has and this milestone
+does not build the far side of:
+
+- the Clearing's grating, down into the Grating Room (the maze);
+- Canyon Bottom's path north to the End of Rainbow (the river and the rainbow);
+- the Troll Room's north passage to the East-West Passage and south into the maze;
+- the Gallery's west door into the Bank of Zork's entrance hall;
+- the Living Room's nailed west door onto the Strange Passage (the cyclops opens
+  it). The door and its lettering are declared here; the exit is not.
+
+**Deferred, and deliberately.** The score-rank ladder (meaningless under a
+ratcheting ceiling); the thief; the brick's fuse (the brick starts in the Attic, so
+the object lands here inert); burning the leaves and the paper.

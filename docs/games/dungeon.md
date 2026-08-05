@@ -125,10 +125,52 @@ The original keeps the two maxima separate and reports whichever region the play
 is in. We sum them into one ceiling, because Gnusto models one `maxScore` and its
 bootstrap check earns its keep that way. See the atlas for the full reasoning.
 
+### The ceiling ratchets while the game is being built
+
+691 is the **finished** figure, and the mechanics contract holds it there. It is not
+what `Dungeon.maxScore` reads on the way, and this section is the revisiting the
+contract asks for.
+
+The bootstrap totals the `Scoring` award table against `maxScore` and warns on a
+mismatch — and `GameMain.main` writes that warning to standard error on **every
+launch**. Declaring 691 at M1 would mean seven milestones of a complaint everybody
+learns to scroll past, on the one check that keeps the award table honest. So each
+milestone declares the ceiling its own content can pay, and M8 lands on 691.
+`Sources/Zork1/` set the precedent: a placeholder 20, raised phase by phase.
+
+Two consequences worth stating.
+
+- **A milestone may declare points it cannot yet walk to**, where the *content* has
+  landed and the *route* has not. M1 declares 66 and a perfect M1 playthrough
+  scores 56: the clockwork canary and the bauble it summons both need the egg
+  opened by careful hands, and the only careful hands in the game are the thief's.
+  Each such gap is named at the declaration site and in `FIDELITY.md`.
+- **`LIGHT-SHAFT` is documented before it is declared.** It is an `awardOnce`
+  register worth 10, not a room `VALUE` (as a room value it would pay out to
+  anyone who arrived in the Lower Shaft in the dark, which is the opposite of the
+  puzzle). The reasoning lives as a doc comment on `Dungeon.scoring` from M1; the
+  entry itself lands with the coal mine, along with the 10 points it adds to the
+  ceiling.
+
 ## Map
 
 The authority is [`dungeon-atlas.md`](dungeon-atlas.md), generated from
-`dung.355`. Regions, for the purpose of splitting the work across files:
+`dung.355`.
+
+**The atlas carries exit *counts*, not exit *tables*.** Its per-room `exits` column
+is a number, so the exit graph the mechanics contract calls non-negotiable cannot be
+read off the committed document — even though `bin/atlas/mdl_reader.py` already
+parses the full tables to do its graph matching, and the source trees it reads are
+fetched rather than vendored. Emitting them is #156.
+
+Until then, a milestone reads the exits from the 1981-07-22 MDL itself, which is the
+sanctioned use of that source: `THIRD_PARTY_NOTICES` admits it for **structure
+only**, and the atlas is generated from it. The atlas's counts are the checksum on
+that reading — every room a milestone builds must come out with the number of exits
+the atlas already records for it, and a mismatch means the reading is wrong. Nothing
+of that source is vendored, and none of its *text* is reproduced.
+
+Regions, for the purpose of splitting the work across files:
 
 | Region | Rooms | Already in `Sources/Zork1/`? |
 |---|---:|---|
@@ -143,6 +185,28 @@ The authority is [`dungeon-atlas.md`](dungeon-atlas.md), generated from
 | Riddle Room, Grail Room, Crypt, Tomb | ~8 | no |
 | Royal Puzzle / mirror box | 18 | no |
 | Endgame | 31 | no |
+
+### Seams between milestones
+
+A milestone always builds rooms whose exits reach rooms it is not building. The
+rule, so that each one does not re-decide it:
+
+1. **Where the source itself refuses the exit, declare it `blocked:` and carry
+   the source's refusal.** The Living Room's west door is nailed shut until the
+   cyclops smashes it; that is a real mainframe answer for a real mainframe
+   state, so `livingRoom.west(blocked: Prose.woodenDoorNailedShut)` is not a
+   placeholder — it is the game. The milestone that builds the far side replaces
+   the line with the conditional exit and nothing else moves.
+2. **Where the source leaves the exit open, leave it undeclared** and let the
+   engine's "You can't go that way" stand. Inventing a barrier to cover an
+   unbuilt room would be inventing world, which the mechanics contract forbids
+   more strictly than it forbids an unfinished edge.
+3. **Never soften the room's description to hide the seam.** Where the source
+   enumerates its exits, the description keeps them; the temporary state of the
+   build is not a reason to edit the world.
+
+Every seam of either kind is listed in that milestone's `FIDELITY.md` entry, so
+the milestone that closes it has a checklist rather than a memory.
 
 Two independent third-party maps were used to cross-check the extraction. Both are
 other people's work and **neither is committed to this repository**; they are
