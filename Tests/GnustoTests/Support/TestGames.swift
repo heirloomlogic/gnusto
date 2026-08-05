@@ -123,6 +123,30 @@ struct DanglingExitSourceGame: Game {
     }
 }
 
+/// A direction claimed twice — once plainly, once by a dynamic exit. A dynamic
+/// destination is opaque until it runs, so claiming the direction is the one
+/// mistake about that exit kind the bootstrap can still catch.
+struct TwoNorthExitsGame: Game {
+    let title = "TwoNorths"
+    let intro = ""
+
+    let start = Location {
+        name("Start")
+        description("A room with an argument about its north wall.")
+    }
+
+    let hall = Location {
+        name("Hall")
+        description("A hall.")
+    }
+
+    var map: WorldMap {
+        start.north(hall)
+        start.north { hall }
+        player.starts(in: start)
+    }
+}
+
 /// A rule attached to an inline (undiscoverable) item. The bootstrap can't name
 /// the dangling item, so it names the rule's phase and watched intent instead.
 struct DanglingRuleGame: Game {

@@ -20,7 +20,7 @@ that covers your task before writing code.
 | `docs/playtesting.md` | how to play a game by hand and read the transcript as prose, plus the calibration answer key |
 | `.claude/skills/playtest/`, `.claude/workflows/playtest.js` | the automated play-test harness: subagents play, read prose, and report lines untrue of their frame |
 | `bin/playtest-replay` | one-line non-interactive replay of any game, seed pinned |
-| `FIDELITY.md` | Zork 1 only: where its content departs from the original. Nothing else uses it |
+| `FIDELITY.md` | Zork 1 and Dungeon only: where their content departs from the original. Nothing else uses it. The two do **not** share a prose rule: Zork 1 reproduces verbatim, Dungeon adapts, and the Dungeon section states its rule before any region entry |
 
 ## Commands
 

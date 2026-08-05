@@ -7,6 +7,11 @@ enum ExitTarget: Sendable {
     /// An exit gated by a live condition evaluated at `go` time; when the
     /// condition is false the player is refused with `blocked`.
     case conditional(to: EntityID, condition: @Sendable () -> Bool, blocked: String)
+    /// An exit whose destination is resolved at `go` time rather than declared
+    /// — the non-Euclidean passage. The other cases carry an `EntityID` the
+    /// bootstrap resolved; this one carries the closure that produces one, so
+    /// it can answer differently on different turns.
+    case dynamic(destination: @Sendable () -> EntityID)
 }
 
 /// The immutable, declared facts about a location.

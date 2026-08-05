@@ -102,7 +102,8 @@ voice:
 **This makes Dungeon an adaptation, not a reproduction** — the sharpest
 difference from `Sources/Zork1/`, which reproduces verbatim throughout. A
 contributor who assumes the `Zork1` rule applies here will get it wrong, so
-`FIDELITY.md` must say so at the head of the Dungeon section.
+`FIDELITY.md` states this rule at the head of its Dungeon section, ahead of any
+region entry.
 
 A side effect worth noting: under this policy **nothing reproduces 1981 MDL
 text**, so the one gap in the licensing picture stops mattering.
@@ -166,8 +167,8 @@ or engine change?*
 | Mechanism | The hard part |
 |---|---|
 | **Royal Puzzle** | The room's geometry mutates. The player pushes sandstone walls through a grid; marble walls do not move. Expected to be an in-game rule: a grid in `@Global` and a custom `push <dir>` verb that rewrites exits. |
-| **Bank of Zork** | Non-Euclidean. Which room the curtain of light delivers you to depends on hidden state. Expected to fall out of conditional exits. |
-| **Balloon** | A vehicle that rises and falls a volcano shaft on a timer, with a receptacle you feed to keep it aloft. Vehicles exist (`player.vehicle`); the vertical daemon does not. **Spiked — see below.** |
+| **Bank of Zork** | Non-Euclidean. Which room the curtain of light delivers you to depends on hidden state. **Answered — see below.** |
+| **Balloon** | A vehicle that rises and falls a volcano shaft on a timer, with a receptacle you feed to keep it aloft. Vehicles exist (`player.vehicle`); the vertical daemon does not. **Answered — see below.** |
 | **Robot, and the mirror box** | Commanding an actor (`robot, push button`) and riding a vehicle you steer from inside. Load-bearing for the Endgame. **Sized — see below.** |
 
 ### The actor-imperative question, answered
@@ -194,6 +195,62 @@ That is engine work in `Sources/Gnusto/`, and per the program plan it becomes it
 own phase before any region depends on it — not something improvised inside
 `Sources/Dungeon/` at the Endgame.
 
+### The non-Euclidean-walls question, answered
+
+This spike was expected to cost nothing, and it cost one small engine addition.
+
+**Conditional exits cannot do it.** `exit(_:to:when:otherwise:)` takes a *static* destination
+(`Sources/Gnusto/Declarations/Location.swift:159`) — the condition is live, the
+room is not — and exits are keyed one per direction, so declaring a direction
+twice is a fatal diagnostic (`Sources/Gnusto/Engine/Bootstrap.swift:181`). A
+conditional exit decides *whether* you move, never *where* to. One direction
+could not reach two rooms.
+
+**Nothing in the engine assumes travel is Euclidean.** `travel` resolves a
+direction to an exit and hands off to `enter()`, which sets the location, carries
+a boarded vehicle, runs the destination's `onEnter` rules and describes the room
+(`Sources/Gnusto/Actions/DefaultActions.swift:438`). No step checks that the room
+has anything to do with the direction. The narration half of the question needed
+no work.
+
+**The gap was the destination, and hand-rolling it costs more than it looks.**
+Zork 1 already moves the player from a rule — `player.location =` /
+`describeSurroundings()` / `reply("")`, at `Sources/Zork1/Regions/Mirror.swift:184`
+and `Regions/RoundRoom.swift:155`. But `locationOnEnter` is dispatched from
+exactly one place, `enter()`, so a hand-rolled teleport silently skips the
+destination's `onEnter` rules and leaves a boarded vehicle behind. At the Bank
+that is survivable. At the balloon (spiked next) it is not.
+
+So the answer is **a fifth exit kind, then ordinary in-game rules on top of it**:
+``Location/exit(_:toward:)``, whose destination is a closure evaluated in the live
+turn frame and which travels through the same `enter()` as every other passable
+exit.
+
+```swift
+depository.north { lastViewingRoom == .west ? smallRoom : vault }
+```
+
+Two things it deliberately does not do, both documented on the symbol:
+
+- The destination is **not validated at bootstrap** — a closure is opaque until it
+  runs. Claiming the direction twice is still caught, because that is the one
+  mistake this exit kind can make that bootstrap can still see.
+- It contributes nothing to `reachableRooms`, so a room reachable *only* this way
+  reads as off-map and `FOLLOW` will not name somebody standing in it. For a room
+  the map does not admit to — `BKVAU` and `BKTWI` both have zero declared exits —
+  that is the right answer. `FOLLOW` does take the exit when the quarry is where
+  it currently leads, which `FollowTests` pins alongside the other four kinds.
+
+`BankOfZorkGame` in `Tests/GnustoTests/Support/NonEuclideanGames.swift` is the
+fixture, under the atlas's own room names, carrying both routes side by side.
+
+**What this leaves.** Every teleport site in the repo still hand-rolls the move,
+and still loses the destination's `onEnter` rules doing it. Extracting `enter()`
+as an author-facing move — and converting `Sources/Zork1/`, `Sources/Fulminate/`
+and the two DocC articles that teach the idiom — is a larger change than this
+spike, and it changes behavior in two shipped games, so it is filed on its own
+rather than folded into this one.
+
 ### The balloon question, answered
 
 **In-game rule.** No plugin, no engine subsystem. The whole mechanism is stock
@@ -203,7 +260,7 @@ verbs and rules, and the proof is `Tests/GnustoTests/Support/BalloonGames.swift`
 
 **"Vertical" was the red herring.** The engine's vehicle model has no notion of
 direction anywhere in it. `Item.move(to:)`
-(`Sources/Gnusto/Declarations/Item.swift:324`) moves a vehicle to any room and
+(`Sources/Gnusto/Declarations/Item.swift:323`) moves a vehicle to any room and
 carries the boarded player and everything in the hull along with it; whether that
 reads as drifting downstream or climbing a shaft is the room graph and the prose,
 nothing else. **The balloon and the river boat are the same mechanism.** What is
@@ -214,7 +271,7 @@ Every beat had a home already:
 
 | Beat | What carries it |
 |---|---|
-| board, disembark | the `enterable` trait; core `.board` / `.disembark` (`Actions/DefaultActions.swift:591`, `:624`) |
+| board, disembark | the `enterable` trait; core `.board` / `.disembark` (`Actions/DefaultActions.swift:603`, `:636`) |
 | the receptacle | a `container` placed inside the hull. Reachable while aboard: `Visibility.collect` walks the room's contents and descends open containers (`Engine/Visibility.swift:106`) |
 | feed it | core `.putIn`, with the rule on the receptacle reading `command.directObject` — `Zork1`'s `magicBoat.before(.putIn)` (`Regions/River.swift:321`) is the same shape |
 | light it | `.burn` is a **stub** (`Actions/StubVerbs.swift:332`), promoted with `before(.burn)` ending in `reply`/`refuse` |
@@ -255,7 +312,7 @@ Two notes for M6, both found by playing the fixture rather than by reading it:
   M6 can decide deliberately whether to keep it and record the choice in
   `FIDELITY.md`.
 
-The remaining two spikes are unstarted.
+One spike remains unstarted: the Royal Puzzle.
 
 ## Relationship to `Sources/Zork1/`
 

@@ -150,6 +150,11 @@ struct FollowLab: Game {
         hall.down(porch)
         hall.south(porch)
 
+        // A dynamic exit, whose destination is only known at `go` time. It is
+        // the one exit kind FOLLOW has to *evaluate* to compare rather than
+        // read off the map, and `hatchOpen` is what it reads.
+        hall.northwest { hatchOpen ? attic : porch }
+
         player.starts(in: hall)
         walker.starts(in: hall)
         porter.starts(in: study)
