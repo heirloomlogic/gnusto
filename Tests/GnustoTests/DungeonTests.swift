@@ -362,9 +362,9 @@ struct DungeonTests {
         expectInOrder(
             transcript,
             [
-                "Your score is 10 of a possible 616",
+                "Your score is 10 of a possible 716",
                 "Cellar",
-                "Your score is 35 of a possible 616",
+                "Your score is 35 of a possible 716",
             ])
     }
 
@@ -438,7 +438,7 @@ struct DungeonTests {
                 "Gallery",
                 "The vandals left through the north,",
                 "Taken.",
-                "Your score is 39 of a possible 616",
+                "Your score is 39 of a possible 716",
             ])
         #expect(!transcript.contains("nasty-looking troll"))
     }
@@ -492,7 +492,7 @@ struct DungeonTests {
                 "Forest",
                 "You have been killed once.",
                 // Thirty-five points earned, ten paid back to the troll.
-                "Your score is 25 of a possible 616",
+                "Your score is 25 of a possible 716",
             ])
     }
 
@@ -550,7 +550,7 @@ struct DungeonTests {
     @Test func theCeilingTotalsTheAwardTableExactly() throws {
         let (definition, _) = try Bootstrap.build(Dungeon())
 
-        #expect(definition.maxScore == 616)
+        #expect(definition.maxScore == 716)
         #expect(definition.warnings.isEmpty, "\(definition.warnings)")
     }
 
@@ -576,7 +576,7 @@ struct DungeonTests {
                 "The lid is sprung and will not sit true again.",  // the wreck's own text
                 "the mainspring seems sprung",
                 "You are carrying a broken jewel-encrusted egg",
-                "Your score is 5 of a possible 616",
+                "Your score is 5 of a possible 716",
             ])
 
         // The jewel-encrusted egg is gone from the game rather than merely
@@ -639,13 +639,13 @@ struct DungeonTests {
                 "Up a Tree",
                 "Kitchen",
                 "Living Room",
-                "Your score is 20 of a possible 616",
+                "Your score is 20 of a possible 716",
                 "Cellar",
                 "Gallery",
                 "Studio",
                 "Kitchen",
                 "Living Room",
-                "Your score is 56 of a possible 616",
+                "Your score is 56 of a possible 716",
             ])
     }
 
@@ -761,7 +761,7 @@ struct DungeonTests {
             transcript,
             [
                 "East-West Passage",
-                "Your score is 40 of a possible 616",
+                "Your score is 40 of a possible 716",
                 // North and down out of the passage are the same stair, and
                 // they reach a room Zork I does not have.
                 "Deep Ravine",
@@ -821,7 +821,7 @@ struct DungeonTests {
                 "Taken.",
                 // Five for the passage, twelve for the bar — and twelve is the
                 // mainframe's find value, where Zork I pays ten.
-                "Your score is 52 of a possible 616",
+                "Your score is 52 of a possible 716",
             ])
     }
 
@@ -1078,16 +1078,16 @@ struct DungeonTests {
         expectInOrder(
             transcript,
             [
-                "Your score is 56 of a possible 616",
+                "Your score is 56 of a possible 716",
                 "The troll takes a fatal blow",
                 "Loud Room",
                 "The acoustics of the room change subtly.",
                 "You put the platinum bar in the trophy case.",
-                "Your score is 83 of a possible 616",
+                "Your score is 83 of a possible 716",
                 "The sluice gates open and water pours through the dam.",
                 "Lying half buried in the mud is an old trunk",
                 "You put the trunk of jewels in the trophy case.",
-                "Your score is 106 of a possible 616",
+                "Your score is 106 of a possible 716",
             ])
     }
 
@@ -1588,10 +1588,10 @@ struct DungeonTests {
                 "The basket is raised to the top of the shaft.",
                 "The basket is lowered to the bottom of the shaft.",
                 "Timber Room",
-                "Your score is 54 of a possible 616",
+                "Your score is 54 of a possible 716",
                 "Lower Shaft",
                 "In the basket is an ivory torch.",
-                "Your score is 64 of a possible 616",
+                "Your score is 64 of a possible 716",
             ])
     }
 
@@ -1656,11 +1656,11 @@ struct DungeonTests {
             [
                 "On the shore lies Poseidon's own crystal trident.",
                 "On the pedestal is a grail.",
-                "Your score is 46 of a possible 616",
+                "Your score is 46 of a possible 716",
                 "the temple dissolves around you",
                 "Forest",
                 "Living Room",
-                "Your score is 62 of a possible 616",
+                "Your score is 62 of a possible 716",
             ])
     }
 
@@ -1947,9 +1947,9 @@ struct DungeonTests {
         expectInOrder(
             transcript,
             [
-                "Your score is 35 of a possible 616",
-                "Your score is 60 of a possible 616",
-                "Your score is 70 of a possible 616",
+                "Your score is 35 of a possible 716",
+                "Your score is 60 of a possible 716",
+                "Your score is 70 of a possible 716",
             ])
     }
 
@@ -2125,7 +2125,7 @@ struct DungeonTests {
                 "Sandy Beach",
                 "You seem to be digging a hole here.",
                 "You can see a small statue here in the sand.",
-                "Your score is 50 of a possible 616",
+                "Your score is 50 of a possible 716",
                 "The hole collapses, smothering you.",
             ])
     }
@@ -2150,7 +2150,7 @@ struct DungeonTests {
                 "End of Rainbow",
                 "the rainbow appears to become solid",
                 "At the end of the rainbow is a pot of gold.",
-                "Your score is 50 of a possible 616",
+                "Your score is 50 of a possible 716",
                 "Rainbow Room",
                 "and fifty feet above the river, do you",
             ])
@@ -2342,8 +2342,8 @@ struct DungeonTests {
             [
                 "This is a former broom closet.",
                 "There is a pearl necklace here with hundreds of large pearls.",
-                "Your score is 40 of a possible 616",
-                "Your score is 49 of a possible 616",
+                "Your score is 40 of a possible 716",
+                "Your score is 49 of a possible 716",
             ])
     }
 
@@ -2385,7 +2385,7 @@ struct DungeonTests {
 
         expectInOrder(
             transcript,
-            ["Your score is 40 of a possible 616", "Your score is 50 of a possible 616"])
+            ["Your score is 40 of a possible 716", "Your score is 50 of a possible 716"])
     }
 
     /// Two rooms carry the well's etchings, and the ring of letters is legible
@@ -2499,7 +2499,7 @@ struct DungeonTests {
                 "goes up at once in a column of steam",
                 "There is a tin of rare spices here.",
                 "Taken.",
-                "Your score is 55 of a possible 616",
+                "Your score is 55 of a possible 716",
             ])
     }
 
@@ -2579,7 +2579,7 @@ struct DungeonTests {
                 "a steel cage falls from the ceiling",
                 "You are trapped inside a solid steel cage.",
                 "the robot stands exactly where you",
-                "Your score is 56 of a possible 616",
+                "Your score is 56 of a possible 716",
                 "with a scream of tearing steel",
                 "There is a mangled steel cage here.",
             ])
@@ -2669,7 +2669,7 @@ struct DungeonTests {
                 "Safety Depository",
                 "This is the Vault of the Bank of Zork, in which there are no doors.",
                 "On the floor sit 200 neatly stacked zorkmid bills.",
-                "Your score is 45 of a possible 616",
+                "Your score is 45 of a possible 716",
             ])
     }
 
@@ -2721,7 +2721,7 @@ struct DungeonTests {
                 "An alarm rings briefly and an invisible force prevents your leaving.",
                 "The wall gives like water",
                 "Bank Entrance",
-                "Your score is 55 of a possible 616",
+                "Your score is 55 of a possible 716",
             ])
     }
 
@@ -3005,7 +3005,7 @@ struct DungeonTests {
                 "The basket is anchored to a small hook by the braided wire.",
                 "Taken.",
                 "IN FROBS WE TRUST",
-                "of a possible 616",
+                "of a possible 716",
                 "Library",
                 "gnawed to pieces by unfriendly gnomes",
                 "Narrow Ledge",
@@ -3032,7 +3032,7 @@ struct DungeonTests {
                 "The pages fall apart at a place somebody kept",
                 "Taken.",
                 "OUR EXCESSIVE LEADER",
-                "of a possible 616",
+                "of a possible 716",
             ])
     }
 
@@ -3151,7 +3151,7 @@ struct DungeonTests {
                 "Dusty Room",
                 "whose door has been blown off",
                 "In the rusty box is a gaudy crown.",
-                "of a possible 616",
+                "of a possible 716",
             ])
     }
 
@@ -3418,11 +3418,11 @@ struct DungeonTests {
                 "The thief is taken aback by your unexpected generosity",
                 "The thief takes a fatal blow",
                 "reappear: the jewel-encrusted egg",
-                "Your score is 106 of a possible 616",
+                "Your score is 106 of a possible 716",
                 "a beautiful brass bauble drops from its mouth",
                 "You put the golden clockwork canary in the trophy case.",
                 "You put the beautiful brass bauble in the trophy case.",
-                "Your score is 110 of a possible 616",
+                "Your score is 110 of a possible 716",
             ])
     }
 
@@ -3794,8 +3794,8 @@ struct DungeonTests {
             [
                 "The middle of the floor here is noticeably depressed.",
                 "There is a solid gold engraved card here.",
-                "Your score is 60 of a possible 616",
-                "Your score is 70 of a possible 616",
+                "Your score is 60 of a possible 716",
+                "Your score is 70 of a possible 716",
                 "Door Pass",
             ])
     }
@@ -3836,7 +3836,7 @@ struct DungeonTests {
                 "There is a ladder here, firmly attached to the east wall.",
                 "With the ladder under you, you get a hand over the lip",
                 "Small Square Room",
-                "Your score is 70 of a possible 616",
+                "Your score is 70 of a possible 716",
                 "a gold card",
             ])
     }
@@ -4150,7 +4150,7 @@ struct DungeonTests {
                 "Dreary Room",
                 "In the center of the table sits a blue crystal sphere.",
                 // Forty for the road in, and ten for finding the sphere.
-                "Your score is 50 of a possible 616",
+                "Your score is 50 of a possible 716",
             ])
     }
 
@@ -4289,7 +4289,7 @@ struct DungeonTests {
                 "There is a beautiful red crystal sphere here.",
                 // Back at the top, and the room now says what is hanging in it.
                 "A rope is tied off at the head of the slide",
-                "Your score is 50 of a possible 616",
+                "Your score is 50 of a possible 716",
             ])
         #expect(!transcript.contains("Your grip goes"))
     }
@@ -4373,7 +4373,7 @@ struct DungeonTests {
                 "red crystal sphere",
                 // And it is worth nothing: the score has not moved off the ten
                 // the sphere itself paid for being found.
-                "Your score is 50 of a possible 616",
+                "Your score is 50 of a possible 716",
             ])
     }
 
@@ -4449,10 +4449,10 @@ struct DungeonTests {
                 "Distraction, Uglification and Derision",
                 "Affixed loosely to the brochure is a small stamp.",
                 // Ten for the Kitchen, and not a point for the stamp.
-                "Your score is 10 of a possible 616",
+                "Your score is 10 of a possible 716",
                 "Drawling, Stretching",
                 // Cased, it pays its one lousy point.
-                "Your score is 11 of a possible 616",
+                "Your score is 11 of a possible 716",
             ])
         // Once the stamp is out of it, the brochure stops saying it is there.
         #expect(occurrences(of: "Affixed loosely to the brochure", in: transcript) == 1)
@@ -4527,15 +4527,15 @@ struct DungeonTests {
             ])
     }
 
-    /// The ceiling lands on **616**, which is `SCORE-MAX` — the whole of the
-    /// main dungeon. The thirty-one points milestone 8's first two pieces add
-    /// are the last main-dungeon object values there are, so what stands
-    /// between here and the finished 716 is the endgame's hundred and nothing
-    /// else.
+    /// The ceiling lands on **716**, which is `SCORE-MAX` plus `EG-SCORE-MAX`
+    /// — the whole of the main dungeon and the whole of the endgame. Milestone
+    /// 8's first two pieces closed the main dungeon at 616 with the last
+    /// main-dungeon object values there are; milestone 9's hundred is all room
+    /// value and finishes the ceiling.
     @Test func theMainDungeonCanNowPayItsWholeSixHundredAndSixteen() throws {
         let (definition, _) = try Bootstrap.build(Dungeon())
 
-        #expect(definition.maxScore == 616)
+        #expect(definition.maxScore == 716)
         #expect(definition.warnings.isEmpty, "\(definition.warnings)")
 
         // The three objects that closed the gap, with the source's own values.

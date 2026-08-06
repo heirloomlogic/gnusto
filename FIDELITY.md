@@ -2581,3 +2581,205 @@ standing in it working a lock with a screwdriver is exactly the sort he visits.
 One more room is one more draw from the same seeded stream, so
 `theThiefProwlsAndLiftsWhatYouAreCarrying` was re-pinned from seed 18 to seed 36.
 Milestone 7 paid the same toll for the same reason.
+
+### Milestone 9 — the Endgame
+
+The last region: the 31 rooms `dung.355` flags `RENDGAME`, worth 100, plus the
+Tomb of the Unknown Implementer that is their front door. One bundle, the
+eighteenth, and with it `maxScore` reaches **716** — `SCORE-MAX` plus
+`EG-SCORE-MAX`, everything the game can pay.
+
+#### Prose
+
+Case 3 throughout, and for once with no exception to name. Not one of the
+thirty-two rooms and not one of the objects in them appears in any bucket of
+`docs/games/dungeon-prose-comparison.md`, which was checked rather than assumed.
+Every line is this project's own words in the Infocom register.
+
+**The Zork III caveat bears hardest here and is still unresolved.** The atlas
+pairs nothing at all against Zork III — the string does not appear in the
+generated document, across 196 rooms and 253 objects — even though
+`bin/atlas/build_atlas.py` loads the corpus. Zork III is where the trilogy put
+its own endgame, its own Dungeon Master and its own Guardians. So "the trilogy
+never carried this over" is **unproven** for every line of this region, and it is
+not asserted anywhere in the committed prose. Writing fresh is correct either
+way, because that is what the policy directs for content with no located
+counterpart. The fix belongs in the atlas builder; milestone 7 filed the same
+observation about the Royal Puzzle.
+
+#### Map topology
+
+- **`FROBOZZ` is `FCHMP` by another name.** Every row the atlas records as
+  `conditional (FROBOZZ)` is a `CEXIT` on a flag nothing ever sets — the
+  mainframe's idiom for "the room function owns this direction", exactly as
+  `FCHMP` is in the Royal Puzzle. None of them is a declared exit here: they are
+  `DungeonEndgame.hallwayRules`, a `before(.go)` rule at stage 3. So the declared
+  exit counts are short of the atlas's by precisely the `FROBOZZ` rows, and
+  milestone 7's `CP` is short of its nine for the same reason.
+- **The ten narrow rooms are reached only by the diagonal slip**, never by the
+  exit table. The atlas says as much already: `MRDE`, `MRDW`, `MRGE` and `MRGW`
+  have nought exits, and none of the ten is listed as any room's destination.
+- **`TOMB` is not a `RENDGAME` room and carries no `RVAL`.** It is the front door
+  rather than part of the house, and it is dark and unsacred, so the thief could
+  walk into it if he could reach it.
+
+#### Mechanics — now modeled
+
+- **The herald and its score test.** `SCORE-BLESS` arms it at `SCORE-MAX`, with
+  the ten a death costs forgiven — so the test is `score + 10 × deaths >= 616`.
+  Fifteen turns later a cloaked wraith welcomes you and sets `END-GAME!-FLAG`,
+  and until it does, every verb on the Crypt's marble door falls through to
+  `HEAD-FUNCTION` and kills you.
+- **The crypt transition.** Shut the door, put the light out, and three turns
+  later your hands are empty but for a lamp refilled to 350 turns and switched
+  off, and the elvish sword. The thief's three daemons stop for good; the sword's
+  glow daemon starts. Lit when the fuse fires, it re-arms; left, it does not.
+- **Death past the crypt is final**, whatever the death count.
+- **The mirror box entire**: bearing in 45-degree steps, five berths along the
+  channel, the pole in its four positions, both mirrors, the openable mirror's
+  seven turns and the pine end's five, the four coloured panels, the diagonal
+  slip past an end-on box, and all four of the Guardians' conditions.
+- **The examination**: three questions drawn from eight without replacement,
+  re-asked every second turn, five wrong answers to one of them ending it for
+  good.
+- **The prison**: eight cells on a carousel, a sundial that picks one and a
+  button that docks it, and a Dungeon Master who follows you, refuses to enter a
+  cell, and carries out an order in the room he is standing in.
+
+#### Mechanics simplified or deferred
+
+- **`INCANT` is dropped.** The source's shortcut back into the endgame is a
+  hashed word pair keyed to the player's login name. This engine has no login
+  name and no analogue; the transition's own paragraph says the knowledge is
+  given rather than naming a word the player could type and find inert.
+- **The quiz answers are `answer X` and `say X`, not bare words.** This is
+  `Intent/answerWell`'s shape and a deliberate narrowing of what #187 proposed. A
+  bare `["skeleton"]` row would put *skeleton* into the verb vocabulary, where
+  the maze already has a skeleton and the forest a set of skeleton keys; `forest`,
+  `flask` and `knife` are the same problem. The cost the issue names is real and
+  unchanged: **an answer outside the eight is a parse failure rather than a wrong
+  answer, and a parse failure costs no turn.**
+- **`set dial to four` is not reproduced; the dial steps.** Naming a number
+  needs one object per number, because this engine hands a rule the *item* a
+  noun resolved to and never the word the player typed — and eight more objects
+  is more than the eighteenth bundle had, which is the hazard note below rather
+  than a design preference. `turn dial` advances it one and reads out where it
+  stands, so choosing cell four is three turns of the dial instead of one
+  sentence. The puzzle is unchanged: choose a cell, dock it, be inside it when
+  it leaves.
+- **The heads' large case is not reproduced either.** The mainframe sweeps every
+  valuable you carry and every valuable loose in the Tomb into a case that
+  appears in the Living Room. There is no case here for the same reason there
+  are no numerals, and the death line does not name one — a line that promised a
+  case would send a resurrected player to look for something that is not there.
+  What is kept is that the valuables go.
+- **The cell carousel is modeled as three rooms and two numbers**, which is what
+  the atlas already carries: `CELL` docked, `NCELL` cell four riding away,
+  `PCELL` any other cell riding away. The source shuffles per-cell object lists
+  between them; what is left out is "objects left in a cell ride with it".
+- **`MIRROR-DIR?`'s hard-coded north exit is not reproduced.** In the source
+  `MRA IN` enters a box standing one room *north* while `MRAE WEST` enters one
+  standing in `MRA` itself, which cannot both be true of one geometry. Here you
+  step into the box from any room beside it — the hallway to its south or either
+  flanking narrow room — and only where mirror #1 is actually facing you. Both
+  spellings survive; the inconsistency does not.
+- **`MRGO`'s blocked branches do not fall through to `NOGO`.** The source appends
+  "There is a wall there." after the mirror message, which reads as two refusals
+  for one move. One refusal here, and it says which part of the box is in the
+  way.
+- **One pole, not `LPOLE` and `SPOLE`.** `POLEUP` is the state, and a `describe`
+  rule reads it.
+- **One compass instrument, not `ARROW` and `ROSE`**, because the arrow is the
+  pointer and the rose is the dial it turns over. The five floor roses `ROSEBIT`
+  carries in the hallway are not reproduced at all, and the hallway's description
+  does not name one.
+- **The bronze door is one object that moves.** `ODOOR` stands between the South
+  Corridor and the docked cell, and between cell four and the Treasury; here it
+  is hidden until cell four docks and follows the player into the cell that
+  carries them out.
+- **There are no grues in the Crypt.** This is the one room in the game whose
+  solution is to stand in the dark on purpose, and `DangerousDark`'s stock
+  schedule starts rolling dice on the third dark turn — against a three-turn fuse
+  that re-arms if the room is lit when it fires. A player who shut the door with
+  the lamp still burning could be eaten for doing exactly the right thing. The
+  daemon stops when the door closes and starts again if the door is opened on
+  this side of the transition, so the main dungeon's dark is as dangerous as it
+  ever was.
+
+#### Scoring
+
+`maxScore` ratchets 616 → **716**, and every point of the hundred is a room
+value: no endgame object carries an `OFVAL` or an `OTVAL`, so the treasure roster
+does not move and stays at thirty-two.
+
+| room | | how it is paid |
+|---|---:|---|
+| Crypt (`CRYPT`) | 5 | `scoring.visit` |
+| Top of Stairs (`TSTRS`) | 10 | `awardOnce`, inside the transition |
+| Inside Mirror (`INMIR`) | 15 | `afterEachTurn`, `Bool`-guarded |
+| Dungeon Entrance (`FDOOR`) | 15 | `afterEachTurn`, `Bool`-guarded |
+| Narrow Corridor (`BDOOR`) | 20 | `scoring.visit` |
+| Treasury of Zork (`NIRVA`) | 35 | `afterEachTurn`, and it ends the game |
+
+**Three of the six cannot be a `scoring.visit`, and it is not the three #187
+names.** The issue says `TSTRS` and `CRYPT` are the two that cannot fire
+`onEnter`. That is true of the source and false of this engine: `TOMB` NORTH →
+`CRYPT` is a door exit, so walking in fires `onEnter` normally, and the marble
+door cannot open before the herald — so the Crypt is an ordinary first-visit
+award and is declared as one. What the issue misses is the other direction. The
+rule that mattered is the general one `docs/games/dungeon.md` already states: *a
+room reached by anything but walking never passes through `onEnter`*. The mirror
+box's rooms are all reached by a rule assigning `player.location`, so `INMIR`
+cannot be a visit — and neither can `FDOOR`, which is walked into from the
+hallway *and* stepped into out of the pine end.
+
+The total is checked against the table at bootstrap and there is no warning on
+stderr. `theEndgamesHundredIsAllRoomValue` holds each of the six.
+
+#### Hazard #174, for whoever adds the nineteenth bundle
+
+**It bit, and what it turned out to be is worse than milestone 8 thought.**
+
+Milestone 8 measured the limit as a budget in entities and found that removing
+four scenery objects moved the suite from crashing to passing. That reading held
+here up to a point: this bundle declares 32 rooms, 35 items and one actor, and
+three scenery objects added late — two doorways and a pit — took the suite from
+green to `signal code 10` and then `signal 11`, no message either time, while
+`swift run Dungeon` and the 815-turn walkthrough stayed fine. Removing three
+objects brought it back.
+
+**But the boundary is not a boundary.** The same commit that passed four
+consecutive full runs later failed three consecutive ones with nothing changed
+between them, and `origin/main` on the same machine passed throughout. So the
+eighteenth bundle does not sit under the limit or over it — it sits **on** it,
+and whether a given run dies depends on something outside the source. Reading a
+single green run as headroom is what this note exists to prevent.
+
+Two things follow, and the second is the load-bearing one:
+
+- **Splitting bodies is not the remedy.** Every `map`, `rules` and `timers`
+  member in this bundle is already a sub-builder, and further splitting bought
+  nothing — the same result milestone 8 reported.
+- **Surface had to be surrendered to get a usable margin**, and each thing
+  surrendered is named at its declaration site. Three objects were unreachable
+  and cost nothing: the box as seen from the Guardians' own hallway room, which
+  kills you before any description prints; the box as seen from `MRD`, which is
+  only ever passed through inside the box; and a second pair of Guardian statues
+  in a room whose description does not name them. **The eight numerals cost
+  something**, and they are the entry above about `set dial to four`.
+
+**The nineteenth bundle should assume there is none.** Nothing further can be
+added without an engine fix for #174, and this milestone's own findings from
+`/simplify` — a dozen of them, all sound — could not be applied for the same
+reason: each attempt to land them put the suite back over the edge. They are
+listed in the pull request rather than in the code, which is not where anybody
+wants them.
+
+#### The thief
+
+His prowl does not move. Every endgame room is behind the crypt's transition,
+which switches his three daemons off for good before the player sets foot in one,
+so there is nothing for the exclusion list to exclude. The Tomb is the one room
+this milestone adds that he could otherwise reach, and it is not in the set:
+`LLD2` is not in it either, because the Land of the Living Dead is sacred ground,
+so the Tomb sits behind a room he can never stand in.

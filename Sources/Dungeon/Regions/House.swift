@@ -158,6 +158,26 @@ struct DungeonHouse: GameContent {
     @Global var lanternDiesIn = Self.lanternDiesAt
     @Global var lanternBurnedOut = false
 
+    /// Puts the lamp back to full and out, fuses and all.
+    ///
+    /// **The three fuses have to be stopped by hand.** Assigning
+    /// `lantern.isLit = false` fires no `after(.turnOff)` rule, so a caller that
+    /// only reset the four counters would leave the fuel clocks running against
+    /// a lamp reading as full and unlit — and the lamp would go out three
+    /// hundred turns later with none of its warnings printed. The endgame's
+    /// crypt transition is the only caller and it is in another bundle, so the
+    /// invariant lives here with the state it keeps.
+    func refillTheLantern() {
+        stopFuse("lanternDim")
+        stopFuse("lanternLastGasp")
+        stopFuse("lanternDies")
+        lantern.isLit = false
+        lanternBurnedOut = false
+        lanternDimIn = Self.lanternDimAt
+        lanternLastGaspIn = Self.lanternLastGaspAt
+        lanternDiesIn = Self.lanternDiesAt
+    }
+
     let sword = Item {
         name("elvish sword")
         adjectives("elvish")
