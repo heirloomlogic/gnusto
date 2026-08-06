@@ -11,7 +11,7 @@ source, not from a walkthrough or a memory.
 > source are permissively licensed — see `THIRD_PARTY_NOTICES` at the repo root
 > for the two separate grants and their limits.
 >
-> Generated against Gnusto `c8cdf9e`.
+> Generated against Gnusto `3855be2`.
 
 ## Scoring
 
@@ -21,7 +21,7 @@ not summed anywhere in the source.
 
 | Maximum | Value | Composition |
 |---|---:|---|
-| `SCORE-MAX` (main dungeon) | **591** | 115 room `RVAL` + 466 object `OFVAL`+`OTVAL` + 10 `LIGHT-SHAFT` |
+| `SCORE-MAX` (main dungeon) | **616** | 115 room `RVAL` + 491 object `OFVAL`+`OTVAL` + 10 `LIGHT-SHAFT` |
 | `EG-SCORE-MAX` (endgame) | **100** | room `RVAL` over the 31 `RENDGAME` rooms |
 
 Both are accumulated at build time by `makstr.44`: a room's `RVAL` goes to
@@ -35,22 +35,27 @@ and torch puzzle. In Gnusto terms it is an `awardOnce` register, not a room
 
 ### What `Sources/Dungeon/` uses
 
-**`maxScore` = 691** — a single ceiling, the sum of both maxima.
+**`maxScore` = 716** — a single ceiling, the sum of both maxima.
 
-The commonly cited "616 points" appears nowhere in this source, so it is not a
-candidate. The choice is between the original's two separate maxima (591 and 100,
+`SCORE-MAX` comes to 616 — the figure mainframe Zork is usually quoted at. 25
+of those points are the Royal Puzzle's gold card, which `dung.355` declares
+inside `<PUT <OBJECT …> ,OROOM <GET-ROOM "CP">>` rather than at top level,
+where a reader looking only at top-level forms misses it. `makstr.44:315`
+totals every `<OBJECT …>` call wherever it sits, so it counts.
+
+The choice is between the original's two separate maxima (616 and 100,
 reported one at a time by `SCORE-BLESS` in `rooms.394`) and one combined figure.
-**Decision: one ceiling of 691.**
+**Decision: one ceiling of 716.**
 
 The reasoning:
 
 - Gnusto models a single `maxScore`, and its bootstrap already totals the award
   table against it and warns on a mismatch. One ceiling makes that invariant do
   real work; two would need the check disabled or worked around.
-- 691 is genuinely everything a player can score, so the progress
+- 716 is genuinely everything a player can score, so the progress
   reading is honest end to end.
 - The cost is small and cosmetic: a player who finishes the main dungeon perfectly
-  sees 591/691 where the original showed 591/591,
+  sees 616/716 where the original showed 616/616,
   and the endgame then carries them the rest of the way rather than restarting at
   zero. That is a divergence, and belongs in `FIDELITY.md`.
 
@@ -60,8 +65,9 @@ The reasoning:
 |---|---:|
 | Rooms | 196 |
 | — of them endgame (`RENDGAME`) | 31 |
-| Objects | 209 |
-| — of them valued (treasures) | 31 |
+| Objects | 253 |
+| — of them valued (treasures) | 32 |
+| — of them global (`GOBJECT`) | 40 |
 
 ## Rooms
 
@@ -912,14 +918,21 @@ shut.
 
 `OFVAL` is the score for first acquiring the object, `OTVAL` for depositing it
 in the trophy case. `OSIZE` is its weight against the carrying capacity.
-**starts in** is the room or the object it begins inside; see Placement below
-for the 18 entries that are neither.
+
+**starts in** is the room or the object it begins inside. A global begins in no
+one place, so its cell names the `RGLOBAL` bit that carries it — or says *every
+room*, for the ones the mask always has. See Globals below for which rooms
+those are, and Placement for the 20 entries that are neither a place nor a bit.
 
 | id | name | OSIZE | OFVAL | OTVAL | starts in | trilogy | in `Sources/Zork1/` |
 |---|---|---:|---:|---:|---|---|---|
+| `!!!!!` |  |  |  |  | — | — | — |
+| `#####` | cretin |  |  |  | every room | — | — |
+| `*BUN*` |  |  |  |  | by code | — | — |
 | `ADVER` | leaflet | 2 |  |  | in `MAILB` | Zork I | `Sources/Zork1/AboveGround.swift` |
 | `ARROW` | compass arrow |  |  |  | `INMIR` | — | — |
 | `ATABL` | large oblong table |  |  |  | `ALICE` | Zork II | — |
+| `AVIAT` | flyer |  |  |  | every room | — | — |
 | `AXE` | bloody axe | 25 |  |  | in `TROLL` | Zork I | `Sources/Zork1/Cellar.swift` |
 | `BAGCO` | bag of coins | 15 | 10 | 5 | `MAZE5` | — | `Sources/Zork1/Regions/Maze.swift` |
 | `BALLO` | basket | 70 |  |  | `VLBOT` | Zork II | `Sources/Zork1/Regions/CoalMine.swift` |
@@ -931,6 +944,7 @@ for the 18 entries that are neither.
 | `BEGG` | broken jewel-encrusted egg |  |  |  | by code | Zork I | — |
 | `BELL` | bell |  |  |  | `TEMP1` | — | — |
 | `BILLS` | stack of zorkmid bills | 10 | 10 | 15 | `BKVAU` | Zork II | — |
+| `BIRD` | bird |  |  |  | by `BIRDBIT` | — | — |
 | `BLABE` | blue label | 1 |  |  | by code | Zork II | — |
 | `BLAMP` | broken lamp |  |  |  | by code | — | — |
 | `BLANT` | burned-out lantern | 20 |  |  | `MAZE5` | Zork I | `Sources/Zork1/Regions/Maze.swift` |
@@ -959,13 +973,21 @@ for the 18 entries that are neither.
 | `CCLIF` | cliff |  |  |  | `CLBOT` | — | — |
 | `CDOOR` | cell door |  |  |  | `NCORR` | — | — |
 | `CHALI` | chalice | 10 | 10 | 10 | `TREAS` | Zork I | — |
+| `CHANN` | stone channel |  |  |  | by `CHANBIT` | — | — |
 | `COAL` | small pile of coal | 20 |  |  | `DEAD7` | Zork I | `Sources/Zork1/Regions/CoalMine.swift` |
 | `COFFI` | gold coffin | 55 | 3 | 7 | `EGYPT` | Zork I | `Sources/Zork1/Regions/Temple.swift` |
 | `COIN` | priceless zorkmid | 10 | 10 | 12 | `LEDG2` | Zork II | — |
 | `COKES` | bunch of Coke bottles | 15 |  |  | `TOMB` | — | — |
 | `CORPS` | pile of corpses |  |  |  | `LLD1` | — | — |
 | `CPANL` | control panel |  |  |  | `DAM` | Zork I | `Sources/Zork1/Regions/Dam.swift` |
+| `CPDOR` | steel door |  |  |  | `CP` | — | — |
 | `CPDR2` | steel door |  |  |  | `CPOUT` | — | — |
+| `CPEWL` | eastern wall |  |  |  | by `CPWALL` | — | — |
+| `CPLAD` | ladder |  |  |  | by `CPLADDER` | — | — |
+| `CPNWL` | northern wall |  |  |  | by `CPWALL` | — | — |
+| `CPSLT` | small slit |  |  |  | `CP` | — | — |
+| `CPSWL` | southern wall |  |  |  | by `CPWALL` | — | — |
+| `CPWWL` | western wall |  |  |  | by `CPWALL` | — | — |
 | `CROWN` | crown | 10 | 15 | 10 | in `SAFE` | — | — |
 | `CYCLO` | cyclops |  |  |  | `CYCLO` | Zork I | `Sources/Zork1/Regions/Maze.swift` |
 | `DAM` | dam |  |  |  | `DAM` | Zork I | `Sources/Zork1/Regions/Dam.swift` |
@@ -983,6 +1005,8 @@ for the 18 entries that are neither.
 | `ENGRA` | wall with engravings |  |  |  | `CAVE4` | Zork I | — |
 | `ETCH1` | wall with etchings |  |  |  | `BWELL` | Zork II | — |
 | `ETCH2` | wall with etchings |  |  |  | `TWELL` | Zork II | — |
+| `EVERY` | everything |  |  |  | every room | — | — |
+| `EXCEP` | moby lossage |  |  |  | every room | — | — |
 | `FBASK` | lowered basket |  |  |  | `BSHAF` | — | — |
 | `FDOOR` | door |  |  |  | `WHOUS` | Zork I | — |
 | `FIVE` | number five |  |  |  | `PARAP` | — | — |
@@ -993,23 +1017,33 @@ for the 18 entries that are neither.
 | `FUSE` | wire coil | 1 |  |  | `STREA` | — | — |
 | `GARLI` | clove of garlic |  |  |  | in `SBAG` | Zork I | `Sources/Zork1/House.swift` |
 | `GATES` | gates |  |  |  | `LLD1` | — | — |
+| `GBROC` | free brochure |  |  |  | every room | — | — |
 | `GCANA` | clockwork canary |  | 6 | 2 | in `EGG` | — | — |
+| `GCARD` | gold card | 4 | 10 | 15 | `CP` | — | — |
 | `GHOST` | number of ghosts |  |  |  | `LLD1` | Zork I | — |
 | `GNOME` | Volcano Gnome |  |  |  | by code | Zork II | — |
 | `GRAIL` | grail | 10 | 2 | 5 | `MGRAI` | — | — |
 | `GRATE` | grating |  |  |  | `CLEAR` | Zork I | — |
 | `GRBK` | green book | 10 |  |  | `LIBRA` | Zork II | — |
+| `GROUN` | ground |  |  |  | every room | — | — |
+| `GRUE` | lurking grue |  |  |  | every room | — | — |
 | `GUANO` | hunk of bat guano | 20 |  |  | `TCAVE` | — | — |
+| `GUARD` | Guardian of Zork |  |  |  | by `GUARDBIT` | — | — |
 | `GUIDE` | tour guidebook |  |  |  | `LOBBY` | Zork I | `Sources/Zork1/Regions/Dam.swift` |
 | `GUNK` | piece of vitreous slag | 10 |  |  | by code | — | — |
+| `GWALL` | granite wall |  |  |  | every room | Zork I | — |
+| `GWATE` | water |  |  |  | by `RGWATER` | — | — |
+| `HANDS` | pair of hands |  |  |  | every room | — | — |
 | `HBELL` | red hot brass bell |  |  |  | by code | Zork I | — |
 | `HEADS` | set of poled heads |  |  |  | `TOMB` | Zork II | — |
 | `HOOK1` | hook |  |  |  | `LEDG2` | Zork II | — |
 | `HOOK2` | hook |  |  |  | `LEDG4` | Zork II | — |
+| `HOUSE` | white house |  |  |  | by `HOUSEBIT` | Zork I | `Sources/Zork1/AboveGround.swift` |
 | `HPOLE` | head on a pole |  |  |  | by code | — | — |
 | `IBOAT` | pile of plastic | 20 |  |  | `DOCK` | Zork I | `Sources/Zork1/Regions/River.swift` |
 | `ICE` | glacier |  |  |  | `ICY` | Zork II | — |
 | `IRBOX` | steel box | 40 |  |  | `CAROU` | Zork II | — |
+| `IT` | random object |  |  |  | every room | — | — |
 | `JADE` | jade figurine | 10 | 5 | 5 | `BATS` | Zork I | `Sources/Zork1/Regions/CoalMine.swift` |
 | `KEYS` | set of skeleton keys | 10 |  |  | `MAZE5` | — | — |
 | `KNIFE` | knife |  |  |  | `ATTIC` | — | — |
@@ -1021,11 +1055,14 @@ for the 18 entries that are neither.
 | `LEAVE` | pile of leaves | 25 |  |  | `CLEAR` | Zork I | `Sources/Zork1/AboveGround.swift` |
 | `LISTS` | stack of listings | 70 |  |  | `TOMB` | — | — |
 | `LPOLE` | long pole |  |  |  | `INMIR` | — | — |
+| `LUNGS` | breath |  |  |  | every room | — | — |
 | `MACHI` | machine |  |  |  | `MACHI` | Zork I | `Sources/Zork1/Regions/CoalMine.swift` |
 | `MAILB` | mailbox |  |  |  | `WHOUS` | — | — |
+| `MASTE` | dungeon master |  |  |  | `BDOOR` | — | — |
 | `MAT` | welcome mat | 12 |  |  | `WHOUS` | — | — |
 | `MATCH` | matchbook | 2 |  |  | `LOBBY` | Zork I | `Sources/Zork1/Regions/Dam.swift` |
 | `MDOOR` | locked door |  |  |  | `NCELL` | — | — |
+| `MIRRO` | mirror |  |  |  | by `MIRRORBIT` | — | `Sources/Zork1/Regions/Mirror.swift` |
 | `MSWIT` | switch |  |  |  | `MACHI` | Zork I | `Sources/Zork1/Regions/CoalMine.swift` |
 | `NEST` | birds nest |  |  |  | `TREE` | — | — |
 | `OAKND` | mahogany wall |  |  |  | `INMIR` | — | — |
@@ -1036,6 +1073,7 @@ for the 18 entries that are neither.
 | `PAINT` | painting | 15 | 4 | 7 | `GALLE` | Zork I | `Sources/Zork1/Cellar.swift` |
 | `PAL3` | red crystal sphere |  | 10 | 5 | `SPAL` | Zork II | — |
 | `PALAN` | blue crystal sphere |  | 10 | 5 | `PALAN` | Zork II | — |
+| `PANEL` | panel |  |  |  | by `PANELBIT` | — | — |
 | `PAPER` | newspaper | 2 |  |  | `LROOM` | Zork II | — |
 | `PCRAK` | narrow crack |  |  |  | `PALAN` | Zork II | — |
 | `PDOOR` | door made of oak |  |  |  | `PALAN` | Zork II | — |
@@ -1049,6 +1087,7 @@ for the 18 entries that are neither.
 | `PLID2` | metal lid |  |  |  | `PALAN` | Zork II | — |
 | `POOL` | pool of sewage |  |  |  | `ALITR` | — | — |
 | `PORTR` | portrait of J. Pierpont Flathead | 25 | 10 | 5 | `BKEXE` | Zork II | — |
+| `POSSE` | possessions |  |  |  | every room | — | — |
 | `POSTS` | group of wooden posts |  |  |  | `ALISM` | Zork II | — |
 | `POT` | pot of gold | 15 | 10 | 10 | `POG` | Zork I | `Sources/Zork1/Regions/River.swift` |
 | `PRAYE` | prayer |  |  |  | `TEMP1` | Zork I | — |
@@ -1074,11 +1113,13 @@ for the 18 entries that are neither.
 | `RNBUT` | round button |  |  |  | `CMACH` | Zork II | — |
 | `ROBOT` | robot |  |  |  | `MAGNE` | Zork II | — |
 | `ROPE` | rope | 10 |  |  | `ATTIC` | Zork I | — |
+| `ROSE` | compass rose |  |  |  | by `ROSEBIT` | — | — |
 | `RSWIT` | red button |  |  |  | `MRANT` | — | `Sources/Zork1/Regions/Dam.swift` |
 | `RUBY` | ruby |  | 15 | 8 | `RUBYR` | Zork II | — |
 | `RUG` | carpet |  |  |  | `LROOM` | Zork I | — |
 | `SAFE` | box |  |  |  | `SAFE` | Zork II | — |
 | `SAFFR` | tin of spices | 8 | 5 | 5 | `ALITR` | — | — |
+| `SAILO` | sailor |  |  |  | every room | — | — |
 | `SAND` | sandy beach |  |  |  | `BEACH` | — | `Sources/Zork1/Regions/River.swift` |
 | `SBAG` | brown sack | 3 |  |  | `KITCH` | Zork I | `Sources/Zork1/House.swift` |
 | `SCOL` | shimmering curtain of light |  |  |  | `BKBOX` | Zork II | — |
@@ -1087,9 +1128,11 @@ for the 18 entries that are neither.
 | `SEVEN` | number seven |  |  |  | `PARAP` | — | — |
 | `SHOVE` | shovel | 15 |  |  | `TCAVE` | Zork I | `Sources/Zork1/Regions/River.swift` |
 | `SIX` | number six |  |  |  | `PARAP` | — | — |
+| `SLIDE` | chute |  |  |  | by `SLIDEBIT` | Zork I | — |
 | `SPHER` | white crystal sphere | 10 | 6 | 6 | `CAGER` | — | — |
 | `SPOLE` | short pole |  |  |  | `INMIR` | — | — |
 | `SQBUT` | square button |  |  |  | `CMACH` | Zork II | — |
+| `SROPE` | piece of rope |  |  |  | by `ROPEBIT` | — | — |
 | `SSLOT` | hole |  |  |  | `SAFE` | Zork II | — |
 | `STAMP` | Flathead stamp | 1 | 4 | 10 | in `PUBK` | Zork II | — |
 | `STATU` | statue | 8 | 10 | 13 | `BEACH` | — | — |
@@ -1102,27 +1145,37 @@ for the 18 entries that are neither.
 | `TBASK` | basket |  |  |  | `TSHAF` | Zork I | `Sources/Zork1/Regions/CoalMine.swift` |
 | `TCASE` | trophy case |  |  |  | `LROOM` | Zork I | `Sources/Zork1/House.swift` |
 | `TCHST` | group of tool chests |  |  |  | `MAINT` | Zork I | — |
+| `TEETH` | set of teeth |  |  |  | every room | Zork I | — |
 | `THIEF` | thief |  |  |  | by code | Zork I | `Sources/Zork1/Thief.swift` |
 | `THREE` | number three |  |  |  | `PARAP` | — | — |
 | `TOMB` | crypt door |  |  |  | `TOMB` | Zork II | — |
 | `TORCH` | torch | 20 | 14 | 6 | `MTORC` | — | — |
 | `TRBUT` | triangular button |  |  |  | `CMACH` | Zork II | — |
+| `TREE` | tree |  |  |  | by `TREEBIT` | — | — |
 | `TRIDE` | crystal trident | 20 | 4 | 11 | `ATLAN` | Zork I | `Sources/Zork1/Regions/Mirror.swift` |
 | `TROLL` | troll |  |  |  | `MTROL` | Zork I | `Sources/Zork1/Cellar.swift` |
 | `TRUNK` | trunk of jewels | 35 | 15 | 8 | `RESER` | Zork I | `Sources/Zork1/Regions/Dam.swift` |
 | `TTREE` | large tree |  |  |  | `TREE` | — | `Sources/Zork1/AboveGround.swift` |
 | `TUBE` | tube | 10 |  |  | `MAINT` | Zork I | `Sources/Zork1/Regions/Dam.swift` |
 | `TWO` | number two |  |  |  | `PARAP` | — | — |
+| `VALUA` | valuables |  |  |  | every room | — | — |
 | `VAULT` | large stone cube |  |  |  | `BKBOX` | Zork II | — |
+| `WALL` | wall |  |  |  | every room | — | — |
 | `WARNI` | note of warning |  |  |  | `CPANT` | — | — |
 | `WATER` | quantity of water | 4 |  |  | in `BOTTL` | Zork I | `Sources/Zork1/House.swift` |
 | `WCLIF` | white cliffs |  |  |  | `WCLF1` | Zork I | — |
 | `WDBAR` | wooden bar |  |  |  | `INMIR` | — | — |
 | `WDOOR` | wooden door |  |  |  | `LROOM` | Zork I | — |
+| `WEAST` | eastern wall |  |  |  | by `WALL-ESWBIT` | — | — |
+| `WELL` | well |  |  |  | by `WELLBIT` | Zork II | — |
 | `WHBK` | white book | 10 |  |  | `LIBRA` | Zork II | — |
 | `WHWAL` | white panel |  |  |  | `INMIR` | — | — |
 | `WINDO` | window |  |  |  | `EHOUS` | — | — |
+| `WISH` | wish |  |  |  | every room | Zork II | — |
+| `WNORT` | northern wall |  |  |  | by `WALL-NBIT` | — | — |
 | `WRENC` | wrench | 10 |  |  | `MAINT` | Zork I | `Sources/Zork1/Regions/Dam.swift` |
+| `WSOUT` | southern wall |  |  |  | by `WALL-ESWBIT` | — | — |
+| `WWEST` | western wall |  |  |  | by `WALL-ESWBIT` | — | — |
 | `YBUTT` | yellow button |  |  |  | `MAINT` | Zork I | `Sources/Zork1/Regions/Dam.swift` |
 | `YLWAL` | yellow panel |  |  |  | `INMIR` | — | — |
 | `ZGNOM` | Gnome of Zurich |  |  |  | by code | Zork II | — |
@@ -1132,15 +1185,23 @@ for the 18 entries that are neither.
 Where each object starts, taken from the source's own contents lists. A room
 says what begins in it; an object says the same about what begins inside it.
 Reading only the first is what used to make a nested object look unplaced, and
-it left 111 of the 466 points in object values sitting in entries that read as
+it left 111 of the 491 points in object values sitting in entries that read as
 unreachable.
+
+The 38 globals are the row that is not a place at all: a bit in the declaration
+and a mask on the room put one object in many rooms at once. They carry 0
+points between them, so the figures above are unmoved by them — the section
+they do move is Coverage. A contents list is the more specific claim and wins
+where both apply, which is why the dungeon master counts as starting in `BDOOR`
+rather than here.
 
 | Where an object starts | Objects | `OFVAL`+`OTVAL` |
 |---|---:|---:|
-| In a room | 170 | 355 |
+| In a room | 174 | 380 |
 | Inside another object | 21 | 93 |
-| Named only by the game code | 17 | 18 |
-| Named nowhere but its own declaration | 1 | 0 |
+| In every room whose `RGLOBAL` mask carries its bit | 38 | 0 |
+| Named only by the game code | 18 | 18 |
+| Named nowhere but its own declaration | 2 | 0 |
 
 Nesting accounts for 93 of those 111 points. Followed to what finally holds it,
 17 of the 21 nested objects end in a room — the egg in the nest, the canary in
@@ -1166,9 +1227,91 @@ target has to rest on.
 
 What is in that last row:
 
+- `!!!!!` — the same shape as `BUTTO` — no name, no description, no flag word,
+  no value — and declared immediately after it, under the same comment. Nothing
+  else in the source names it.
+
 - `BUTTO` — a placeholder with no name, no description and no value. The
   comment above it in `dung.355` says it is kept only so that restoring a save
   file written by an older build still works.
+
+## Globals
+
+One object many rooms share. `makstr.44:270` declares it `<GOBJECT bit names
+adjectives description flags …>` — an ordinary `<OBJECT …>` with one extra
+leading argument — and a room carries `(RGLOBAL <sum of bits>)`. Presence is
+that and nothing more: `defs.171:38` is `<ANDB bit <RGLOBAL room>>`. So the
+wall, the water and the white house are each declared once and appear wherever
+their bit is set.
+
+This is the mechanism to reach for in place of a near-duplicate scenery item
+per room. Several objects may share one bit — the Royal Puzzle's four walls do
+— so what a room names is the bit, not the object.
+
+17 of the 40 name no bit at all. `makstr.44:279` allocates one anyway and adds
+it to `STAR-BITS`, which `defs.171:88` makes the *default* value of every
+room's mask — so those are present in all 196 rooms whether the room declares a
+mask or not. The rest share 18 named bits between them, and 66 rooms declare
+one.
+
+### Present in every room (17)
+
+| id | name |
+|---|---|
+| `#####` | cretin |
+| `AVIAT` | flyer |
+| `EVERY` | everything |
+| `EXCEP` | moby lossage |
+| `GBROC` | free brochure |
+| `GROUN` | ground |
+| `GRUE` | lurking grue |
+| `GWALL` | granite wall |
+| `HANDS` | pair of hands |
+| `IT` | random object |
+| `LUNGS` | breath |
+| `POSSE` | possessions |
+| `SAILO` | sailor |
+| `TEETH` | set of teeth |
+| `VALUA` | valuables |
+| `WALL` | wall |
+| `WISH` | wish |
+
+### Present by a named bit (23 over 18 bits)
+
+| bit | globals | rooms |
+|---|---|---|
+| `BIRDBIT` | `BIRD` bird | `FORE1`, `FORE2`, `FORE3`, `FORE4`, `FORE5`, `TREE` |
+| `CHANBIT` | `CHANN` stone channel | `INMIR`, `MRA`, `MRB`, `MRC`, `MRD` |
+| `CPLADDER` | `CPLAD` ladder | `CP` |
+| `CPWALL` | `CPEWL` eastern wall, `CPNWL` northern wall, `CPSWL` southern wall, `CPWWL` western wall | `CP` |
+| `DWINDOW` | `WINDO` window | `NHOUS`, `SHOUS` |
+| `GUARDBIT` | `GUARD` Guardian of Zork | `INMIR`, `MRC`, `MRCE`, `MRCW`, `MRD`, `MRDE`, `MRDW`, `MRG`, `MRGE`, `MRGW` |
+| `HOUSEBIT` | `HOUSE` white house | `CLEAR`, `EHOUS`, `FORE1`, `FORE2`, `FORE3`, `FORE4`, `FORE5`, `NHOUS`, `SHOUS`, `TREE`, `WHOUS` |
+| `MASTERBIT` | `MASTE` dungeon master | `CELL`, `FDOOR`, `NCELL`, `NCORR`, `PARAP`, `PCELL` |
+| `MIRRORBIT` | `MIRRO` mirror | `MRA`, `MRAE`, `MRAW`, `MRB`, `MRBE`, `MRBW`, `MRC`, `MRCE`, `MRCW`, `MRDE`, `MRDW`, `MRGE`, `MRGW` |
+| `PANELBIT` | `PANEL` panel | `MRA`, `MRAE`, `MRAW`, `MRB`, `MRBE`, `MRBW`, `MRC`, `MRCE`, `MRCW`, `MRDE`, `MRDW`, `MRGE`, `MRGW` |
+| `RGWATER` | `GWATE` water | `BEACH`, `CLBOT`, `DAM`, `DOCK`, `FALLS`, `FANTE`, `INSTR`, `POG`, `RCAVE`, `RESEN`, `RESER`, `RESES`, `RIVR1`, `RIVR2`, `RIVR3`, `RIVR4`, `RIVR5`, `STREA`, `WCLF1`, `WCLF2` |
+| `ROPEBIT` | `SROPE` piece of rope | `SLEDG`, `SLID1`, `SLID2`, `SLID3` |
+| `ROSEBIT` | `ROSE` compass rose | `INMIR`, `MRA`, `MRB`, `MRC`, `MRD` |
+| `SLIDEBIT` | `SLIDE` chute | `SLEDG`, `SLID1`, `SLID2`, `SLID3`, `SLIDE` |
+| `TREEBIT` | `TREE` tree | `FORE1`, `FORE2`, `FORE4`, `FORE5` |
+| `WALL-ESWBIT` | `WEAST` eastern wall, `WSOUT` southern wall, `WWEST` western wall | `BKTWI`, `BKVAU`, `BKVE`, `BKVW` |
+| `WALL-NBIT` | `WNORT` northern wall | `BKBOX`, `BKTWI`, `BKVAU`, `BKVE`, `BKVW` |
+| `WELLBIT` | `WELL` well | `BWELL`, `TWELL` |
+
+The trilogy keeps the same mechanism and states it from the other end: an
+object goes on the `GLOBAL-OBJECTS` shelf to be everywhere or the
+`LOCAL-GLOBALS` shelf to be somewhere, and a ZIL room lists the local ones it
+wants as `(GLOBAL …)`. 6 of the mainframe globals pair with a trilogy object,
+and on which shelf they sit the two sources agree 6 times and differ 0.
+
+Room by room is the thinner list and the better check, because it reaches
+presences the shelf reading knows nothing about, by an independent route. Where
+a mainframe room and a global carried into it are *both* paired, the trilogy
+carries the same global into the same room 10 times out of 10 — the white house
+seen from all four sides of it and from the forest, the well from top and
+bottom, the chute in the Slide Room. It contradicts 0. `--audit` prints both
+listings.
 
 ## Coverage
 
@@ -1178,11 +1321,11 @@ is not part of that sum.
 
 | | Rooms | Objects |
 |---|---:|---:|
-| Total in the 1981 MDL | 196 | 209 |
-| Matched to a trilogy entity by display name | 85 | 106 |
+| Total in the 1981 MDL | 196 | 253 |
+| Matched to a trilogy entity by display name | 85 | 112 |
 | Matched by position — exit graph, or what it starts inside | 32 | 23 |
-| **Matched, either way** | **117** | **129** |
-| No trilogy counterpart found | 79 | 80 |
+| **Matched, either way** | **117** | **135** |
+| No trilogy counterpart found | 79 | 118 |
 | Already built in `Sources/Zork1/` | 104 | — |
 
 **Position matching is what closes the mazes.** Fifteen mainframe passages are
@@ -1213,17 +1356,15 @@ Bank of Zork, the Royal Puzzle, the Endgame. The rest is rooms the trilogy
 renamed, which the name cannot catch and the graph reaches only where enough of
 the map around them survived. So these are still floors, but much higher ones.
 
+The object rows include the 40 globals, since a `<GOBJECT …>` is an `<OBJECT
+…>` with a bit and the trilogy shelves its own globals as ordinary objects too.
+They pair badly on purpose: a global tends to be called *wall* or *water*,
+which names several things in each source, and the container pass cannot reach
+one because nothing contains it.
+
 ## Open questions
 
-1. **Objects declared `<GOBJECT …>` are not inventoried.** A mainframe global is
-   one object a bitmask makes present in many rooms at once, and it is declared
-   by a different form, which the reader skips. So the dungeon master, `MASTE`,
-   is missing from the Objects table even though `BDOOR` lists him in its
-   contents — the one contents entry naming no object this document knows,
-   which `--audit` reports. Inventorying the globals would move every figure
-   here and is its own piece of work.
-
-2. **`DEAD1` and `DEAD2` are named with their own description.** A mainframe
+1. **`DEAD1` and `DEAD2` are named with their own description.** A mainframe
    room is declared long description first, short name second: the maze rooms
    give `,MAZEDESC ,SMAZEDESC`, in that order. These two give
    `,DEADEND ,SDEADEND`, the other way round, so the atlas prints *"You have
