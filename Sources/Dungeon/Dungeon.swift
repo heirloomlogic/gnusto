@@ -24,7 +24,7 @@ struct Dungeon: Game, GameMain {
     let tagline = "The Great Underground Empire, as it stood on a PDP-10."
 
     /// The ceiling **for the milestones built so far**. It ratchets, and lands
-    /// on the mainframe's 691 at the last one.
+    /// on the mainframe's 716 at the last one.
     ///
     /// Milestone 1's 66 is the Kitchen (10) and Cellar (25) room values plus
     /// four treasures found and cased: the egg (5+5), the canary (6+2), the

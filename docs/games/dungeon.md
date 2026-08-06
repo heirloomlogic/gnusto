@@ -1,7 +1,7 @@
 # Dungeon — design document
 
-A reconstruction of the original MIT mainframe Zork — the 616-room-and-object
-game Infocom later cut into the Zork I/II/III trilogy — on the Gnusto engine.
+A reconstruction of the original MIT mainframe Zork — the 196-room game Infocom
+later cut into the Zork I/II/III trilogy — on the Gnusto engine.
 
 This document is the story-and-copy source of truth. **Read [Mechanics
 contract](#mechanics-contract) before changing anything.** Unlike the other demo
@@ -63,11 +63,11 @@ column is what must remain true.
 | **The map is the mainframe's** | 196 rooms and their exit tables, extracted from `dung.355` into [`dungeon-atlas.md`](dungeon-atlas.md). | **The topology is not negotiable.** Every room, every exit, every one-way drop. Where a description names its exits, the description yields to the table — never the reverse. |
 | **The puzzles are the mainframe's** | Bank of Zork, Royal Puzzle, balloon, robot, mirror box, Endgame, plus everything Zork I kept. | Puzzle *logic* and *solution order* come from the MDL. Trilogy variants of the same puzzle are reference, not authority. |
 | **The voice is Infocom's** | Trilogy prose where it fits the mainframe world; newly written in that register where it does not. | The game reads as Zork. It does not read as the terser MDL, and it does not read as a modern pastiche. |
-| Scoring | One ceiling, `maxScore` 691 — the main dungeon's 591 plus the endgame's 100. | The total is checked against the `Scoring` award table at bootstrap. Individual values are the original's and are used as-is. |
+| Scoring | One ceiling, `maxScore` 716 — the main dungeon's 616 plus the endgame's 100. | The total is checked against the `Scoring` award table at bootstrap. Individual values are the original's and are used as-is. |
 | `LIGHT-SHAFT` | 10 points, once, for reaching the Lower Shaft lit. An `awardOnce` register, not a room value. | It is an *event* award. Modelling it as a room `VALUE` would pay it on arrival in the dark. |
 | Endgame | Reached after the main dungeon; 31 `RENDGAME` rooms worth 100. | The endgame is **in scope**. It is not an optional epilogue. |
-| Treasures | 31 valued objects, each with the original's find and case values. | The count and the values are data, used as-is. |
-| Two-maxima divergence | The original reports 591 and 100 separately; we report one 691. | This is a **known, deliberate** divergence. It is the only place the scoring model departs from the source, and it belongs in `FIDELITY.md`. |
+| Treasures | 32 valued objects, each with the original's find and case values. | The count and the values are data, used as-is. |
+| Two-maxima divergence | The original reports 616 and 100 separately; we report one 716. | This is a **known, deliberate** divergence. It is the only place the scoring model departs from the source, and it belongs in `FIDELITY.md`. |
 | Every printed noun answerable | As every other Gnusto game: a named thing the parser does not know reads as a bug. | Non-negotiable, and much harder at this scale than at `KindlyDeep`'s. |
 
 **Free to change:** individual sentences, within the voice constraint; the
@@ -112,14 +112,27 @@ text**, so the one gap in the licensing picture stops mattering.
 
 | | |
 |---|---:|
-| Main dungeon (`SCORE-MAX`) | 591 |
+| Main dungeon (`SCORE-MAX`) | 616 |
 | Endgame (`EG-SCORE-MAX`) | 100 |
-| **`maxScore`** | **691** |
+| **`maxScore`** | **716** |
 
-591 = 115 room values + 466 object find/case values + the 10-point `LIGHT-SHAFT`
+616 = 115 room values + 491 object find/case values + the 10-point `LIGHT-SHAFT`
 award. 100 = the room values of the 31 `RENDGAME` rooms. Both figures are computed
-from the source by `bin/atlas/build_atlas.py`, not taken from secondary sources —
-**the commonly cited "616 points" appears nowhere in the MDL.**
+from the source by `bin/atlas/build_atlas.py`, not taken from secondary sources.
+
+**This document used to say the commonly cited "616 points" appeared nowhere in
+the MDL.** It appeared in a form nobody was scanning. `dung.355` declares the
+Royal Puzzle's gold card — `OFVAL 10 OTVAL 15`, 25 points — at line 6324, inside
+`<PUT <OBJECT …> ,OROOM <GET-ROOM "CP">>` rather than as a top-level `<OBJECT …>`
+form. The atlas reader only looked at top-level forms until #159 widened it, and
+a human reading the file for objects makes the same skip. `makstr.44:315` makes
+no such distinction: it is the last line of the `OBJECT` constructor and it adds
+`OFVAL`+`OTVAL` to `SCORE-MAX` on every call, wherever the call sits. So the 25
+always counted, and 591 + 25 = 616.
+
+**The 25 belongs to M7**, which is where the Royal Puzzle and the gold card in
+its niche land. The correction moves no points between milestones; it moves the
+number they are ratcheting toward.
 
 The original keeps the two maxima separate and reports whichever region the player
 is in. We sum them into one ceiling, because Gnusto models one `maxScore` and its
@@ -127,15 +140,15 @@ bootstrap check earns its keep that way. See the atlas for the full reasoning.
 
 ### The ceiling ratchets while the game is being built
 
-691 is the **finished** figure, and the mechanics contract holds it there. It is not
+716 is the **finished** figure, and the mechanics contract holds it there. It is not
 what `Dungeon.maxScore` reads on the way, and this section is the revisiting the
 contract asks for.
 
 The bootstrap totals the `Scoring` award table against `maxScore` and warns on a
 mismatch — and `GameMain.main` writes that warning to standard error on **every
-launch**. Declaring 691 at M1 would mean seven milestones of a complaint everybody
+launch**. Declaring 716 at M1 would mean seven milestones of a complaint everybody
 learns to scroll past, on the one check that keeps the award table honest. So each
-milestone declares the ceiling its own content can pay, and M8 lands on 691.
+milestone declares the ceiling its own content can pay, and M8 lands on 716.
 `Sources/Zork1/` set the precedent: a placeholder 20, raised phase by phase.
 
 Two consequences worth stating.
@@ -566,7 +579,7 @@ graph instead.
 
 ## Content scope
 
-In scope: the whole 1981-07-22 game, all 196 rooms, all 209 objects, all 691
+In scope: the whole 1981-07-22 game, all 196 rooms, all 209 objects, all 716
 points, Endgame included.
 
 Out of scope: the 1977 and 1978 variants, except as licensed prose sources; the
