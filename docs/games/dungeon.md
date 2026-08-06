@@ -772,3 +772,73 @@ wreck — nothing refuses it — and it pays nothing. A player who forces the eg
 therefore never complete the case, which is what the mainframe intends and what
 milestone 8's walkthrough has to route around: the 716-point run goes through the
 thief, and there is no other way it can.
+
+## What milestone 8 actually owes, and the thirty-one points nobody counted
+
+Issue #141 describes milestone 8 as *"31 `RENDGAME` rooms worth 100 points"* and
+says `maxScore` must balance at 691 when it lands. Both figures are wrong, and
+the second is wrong in a way that changes the shape of the milestone rather than
+just its arithmetic.
+
+The ceiling has been 716 since #167. Milestone 7 left `maxScore` at **585**. And
+585 + 100 = **685**.
+
+The missing 31 are main-dungeon object values that no milestone has declared,
+because no milestone has built the rooms they lie in. Computed from the committed
+atlas, they are every valued object not in `Dungeon.treasureRoster`:
+
+| id | object | find | case | starts in |
+|---|---|---:|---:|---|
+| `PAL3` | red crystal sphere | 10 | 5 | `SPAL`, the Sooty Room |
+| `PALAN` | blue crystal sphere | 10 | 5 | `PALAN`, the Dreary Room |
+| `DSTMP` | Don Woods stamp | 0 | 1 | inside `BROCH`, the free brochure |
+
+The room-value side is already closed: the award table's 125 is the 115 of
+`BLROO`, `CELLA`, `KITCH`, `LLD2`, `PASS1`, `TREAS` and `TWELL` plus the
+ten-point `LIGHT-SHAFT`, and those seven are every `RVAL` the main dungeon has.
+So the whole of the shortfall is objects, and 100 + 31 = 131 lands 585 on 716
+exactly.
+
+**Nine rooms are unbuilt, and eight of them are not endgame rooms.** Checked by
+display name and by MDL id against `dungeon-atlas.md`:
+
+| id | name | why it is missing |
+|---|---|---|
+| `TOMB` | Tomb of the Unknown Implementer | `LLD2` east — the seam milestone 3 left, and the Crypt's antechamber |
+| `PRM` | Tiny Room | `MTORC` west — the seam milestone 3 left, and named in `Temple.swift` |
+| `PALAN` | Dreary Room | behind `PDOOR`, the oak door with the keyhole |
+| `SPAL` | Sooty Room | south of `SLEDG` |
+| `SLID1`–`SLID3` | Slide | the coal chute, climbed on a rope tied to the timber |
+| `SLEDG` | Slide Ledge | the ledge off the chute that the Sooty Room hangs from |
+
+`SLIDE`'s own `down` is a plain one-way drop to the Cellar today. In the source
+it is `SLIDE-EXIT` (`act3.199:1179`): with the timber tied it puts you in
+`SLID1` clinging to a rope, with a fuse counting your weight down until your grip
+goes; without it you tumble to the Cellar. Milestone 3 declared the shortcut and
+said in `Dungeon.swift` that those five rooms were a later milestone's. They are
+milestone 8's, because the red sphere is behind them.
+
+`FCHMP` — "Moby lossage" — stays unbuilt, for the reason milestone 7 recorded.
+
+**So milestone 8 is three pieces, not one:**
+
+1. the **palantir wing** — the Tiny Room, the Dreary Room, the coal chute, the
+   Slide Ledge and the Sooty Room, with the oak-door-and-keyhole puzzle and two
+   treasures, worth 30;
+2. the **free brochure** and the Don Woods stamp affixed to it, worth 1 —
+   `send for brochure` at the mailbox, and the postal service takes its time
+   (`BROCHURE`, `act3.199:1423`);
+3. the **Endgame** proper — the Tomb, the Crypt, the mirror box, the Guardians,
+   the Dungeon Master's quiz, the prison carousel and the Treasury of Zork,
+   worth 100.
+
+The first two are not optional garnish on the third. The endgame's entry gate is
+`SCORE-BLESS` (`rooms.394:794`), which arms the herald only when the score has
+reached `SCORE-MAX` — the whole 616 the main dungeon can pay. A reconstruction
+that stops at 585 cannot open the Crypt at all, so the 31 points are a strict
+prerequisite for the 100 rather than a parallel errand.
+
+**And the walkthrough is a fourth piece.** The 716-point run has to collect
+thirty-two treasures, route through the thief for the egg, solve the Royal
+Puzzle, and then play the whole endgame, on one pinned seed. `Zork1`'s seed-32
+walkthrough is 408 lines for nineteen treasures and one barrow.
