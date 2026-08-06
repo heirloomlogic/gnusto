@@ -147,7 +147,8 @@ let package = Package(
         .executableTarget(
             name: "Dungeon",
             dependencies: [
-                "Gnusto", "GnustoDangerousDark", "GnustoScoring", "GnustoMeleeCombat",
+                "Gnusto", "GnustoActors", "GnustoDangerousDark", "GnustoScoring",
+                "GnustoMeleeCombat",
             ],
             plugins: devPlugins
         ),

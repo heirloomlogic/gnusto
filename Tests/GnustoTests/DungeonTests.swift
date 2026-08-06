@@ -1008,14 +1008,18 @@ struct DungeonTests {
     /// The whole game as it stands: egg, painting, platinum bar and trunk of
     /// jewels in the trophy case, both room values and the East-West Passage's
     /// five. 106 of the declared 116 — the other ten are the canary and the
-    /// bauble, which still wait on the thief.
+    /// bauble, which this route does not go the long way round for; the thief
+    /// pays them out in ``theThiefOpensTheEggAndTheBirdPaysItsTen``.
     ///
     /// Four descents, because the trap door bars itself behind you and the
     /// chimney takes the lamp and one thing more. The troll has to be cut down
     /// on the second of them, and the crossroads and the dam are both behind
     /// him.
     @Test func aCompleteHaulThroughMilestoneTwoScoresOneHundredAndSix() async throws {
-        // Seed 1, recorded: the troll needs two blows and lands one of his own.
+        // Seed 9, recorded, and re-recorded when the thief landed: the painting
+        // comes out of the Gallery before the second descent, which is the
+        // treasure that puts him into play, so his roaming has been drawing
+        // from the stream since — and the troll's fight is a different fight.
         let transcript = try await play(
             Dungeon(),
             // The egg out of the tree and into the case, then the painting.
@@ -1041,7 +1045,7 @@ struct DungeonTests {
                 + ["south", "northwest", "north", "take trunk"]
                 + ["south", "south", "south", "west"] + Self.outByTheChimney
                 + ["put trunk in case", "score"],
-            seed: 1)
+            seed: 9)
 
         expectInOrder(
             transcript,
@@ -1522,7 +1526,7 @@ struct DungeonTests {
             Self.toTheShaftWithTheTorch + ["put torch in basket", "lower basket"]
                 + Self.throughTheCoalMaze
                 + ["southwest", "drop all", "southwest", "northeast"],
-            seed: 11)
+            seed: 12)
 
         expectInOrder(
             transcript,
@@ -1547,7 +1551,7 @@ struct DungeonTests {
                 + ["put torch in basket", "lower basket", "raise basket", "lower basket"]
                 + Self.throughTheCoalMaze
                 + ["southwest", "score", "drop all", "southwest", "score"],
-            seed: 11)
+            seed: 12)
 
         expectInOrder(
             transcript,
@@ -1585,7 +1589,7 @@ struct DungeonTests {
                     "put coal in machine", "close machine",
                     "turn switch with screwdriver", "open machine", "take diamond",
                 ],
-            seed: 11)
+            seed: 12)
 
         expectInOrder(
             transcript,
@@ -1926,11 +1930,15 @@ struct DungeonTests {
     /// nothing in the trilogy connects them, and the trilogy's Treasure Room
     /// puts its granite on the east wall because it has no Royal Puzzle to open
     /// onto.
+    ///
+    /// The word is said on the turn after arrival, and the wall is examined at
+    /// the Temple end rather than the hoard's, because the hoard has a thief
+    /// standing over it who does not wait for you to finish sightseeing.
     @Test func theGraniteWallCarriesYouBetweenTheTempleAndTheHoard() async throws {
         let transcript = try await play(
             Dungeon(),
             Self.toMazeFive + Self.mazeFiveToTheCyclops
-                + ["odysseus", "up", "examine granite wall", "temple", "treasure"],
+                + ["odysseus", "up", "temple", "examine granite wall", "treasure"],
             seed: 11)
 
         expectInOrder(
@@ -1938,9 +1946,9 @@ struct DungeonTests {
             [
                 "whose north wall is solid granite",
                 "newly created",
-                "The north wall is solid granite here.",
                 "The granite wall shivers",
                 "Temple",
+                "The north wall is solid granite here.",
                 "The granite wall shivers",
                 "Treasure Room",
             ])
@@ -2189,11 +2197,10 @@ struct DungeonTests {
                 ]
                 + Self.mazeFiveToTheCyclops
                 + ["examine cyclops", "examine staircase", "examine wall", "odysseus", "examine wall"]
-                + ["up", "examine bags", "examine granite wall", "examine chalice"]
-                + ["down", "north", "examine passage", "examine hole"],
+                + ["north", "examine passage", "examine hole"],
             seed: 11)
 
-        expectEveryNounAnswered(transcript, "the maze, the cyclops and the Treasure Room")
+        expectEveryNounAnswered(transcript, "the maze, the cyclops and the Strange Passage")
     }
 
     @Test func everyNounTheWesternApproachPrints() async throws {
@@ -3224,5 +3231,261 @@ struct DungeonTests {
                 "Volcano View",
                 "Egyptian Room",
             ])
+    }
+
+    // MARK: - The thief
+
+    /// The whole road to the hoard: down, past the troll, through the maze,
+    /// past the cyclops, up. Every test below needs it before it can get to
+    /// what it is about.
+    ///
+    /// Seeds vary from test to test here in a way they do not elsewhere in this
+    /// file, and the reason is the thief himself. He draws from the seeded
+    /// stream every turn he is at large, and his fight is the one in the game
+    /// that can go either way, so each test records the seed that gives it the
+    /// fight it is describing.
+    private static let trollRoomToTheHoard =
+        trollRoomToMazeFive + mazeFiveToTheCyclops + ["odysseus", "up"]
+    private static let toTheHoard = pastTheTroll + trollRoomToTheHoard
+
+    /// He guards the Treasure Room whether or not you have met him before —
+    /// this route lifts nothing on the way, so the only thing that puts him
+    /// into play is arriving at the hoard.
+    ///
+    /// The 25 points milestone 4 declared for walking in are what he is
+    /// standing on, and until this milestone the room was a room with a chalice
+    /// in it and nothing to take it back from.
+    @Test func theHoardIsGuardedByWhoeverFilledIt() async throws {
+        let transcript = try await play(Dungeon(), Self.toTheHoard, seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "Treasure Room",
+                "There is a silver chalice, intricately engraved, here.",
+                "There is a suspicious-looking individual, holding a large bag",
+                "He is armed with a deadly stiletto.",
+            ])
+    }
+
+    /// He fights to the death in his lair, and when he falls everything in the
+    /// bag falls with him — named in the line, because a colon that promises a
+    /// list should deliver one.
+    ///
+    /// Seed 55, recorded: he pinks your arm and lifts the chalice off the
+    /// floor on the turn you arrive, takes a gash in the side, misses three
+    /// times more, and dies to the fourth blow.
+    @Test func theThiefFallsAndTheHoardFallsWithHim() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheHoard
+                + Array(repeating: "attack thief with sword", count: 4)
+                + ["look"],
+            seed: 55)
+
+        expectInOrder(
+            transcript,
+            [
+                "You suddenly notice that the silver chalice vanished.",
+                "The thief takes a fatal blow and slumps to the floor dead.",
+                "reappear: the silver chalice",
+                "His stiletto clatters to the floor",
+                "There is a silver chalice, intricately engraved, here.",
+                "There is a stiletto here.",
+            ])
+    }
+
+    /// **The sharpest divergence from `Sources/Zork1/`'s thief.** There, the
+    /// bar under the trap door is his doing and his death lifts it. Here the
+    /// trap door bars itself for good — milestone 1's finding, and the reason
+    /// the chimney is the way home — so killing him changes nothing about it.
+    @Test func killingTheThiefDoesNotUnbarTheTrapDoor() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheHoard
+                + Array(repeating: "attack thief with sword", count: 4)
+                // Out by the Strange Passage, in again by the trap door, and
+                // the bolt is exactly where it was.
+                + ["down", "north", "east", "open trap door", "down", "open trap door"],
+            seed: 55)
+
+        expectInOrder(
+            transcript,
+            [
+                "The thief takes a fatal blow",
+                "Living Room",
+                "Cellar",
+                "The door is locked from above.",
+            ])
+    }
+
+    /// He prowls, and what he prowls for is what the trophy case scores. Seed
+    /// 18, recorded: the painting out of the Gallery is what puts him into
+    /// play, and twenty-one turns later he walks into the crawlway, lifts it
+    /// back out of your hands on the same turn, and is gone two turns later.
+    ///
+    /// The wait is long because he teleports among a hundred and five rooms and
+    /// only half the turns, which is roughly a one-in-two-hundred chance of
+    /// finding you on any given turn — the roaming thief is a rumour you meet
+    /// occasionally, not a pursuer.
+    @Test func theThiefProwlsAndLiftsWhatYouAreCarrying() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.intoTheCellar
+                + ["south", "south", "take painting", "north", "north"]
+                + Array(repeating: "wait", count: 52),
+            seed: 18)
+
+        expectInOrder(
+            transcript,
+            [
+                "North-South Crawlway",
+                "A shadowy figure slips into the room.",
+                "You suddenly notice that the painting vanished.",
+                "The shadowy figure melts away into the dark.",
+            ])
+    }
+
+    /// **The ten points milestone 1 declared and could not reach.** The egg's
+    /// mechanism is too fine for your fingers; his are the only careful pair in
+    /// the game. Hand it over, leave him to it, come back four turns later and
+    /// kill him, and the bird is still whole — six points for lifting it, two
+    /// for the case, and the brass bauble the songbird trades for its song is
+    /// one and one more.
+    ///
+    /// Seed 2, recorded: the troll falls to the third blow; the thief takes the
+    /// egg, lifts the chalice off the floor for good measure, and dies to the
+    /// first blow you land when you come back. Both come out of the bag when he
+    /// does, and the egg is open, because the fuse ran while you were four
+    /// turns away in the Cyclops Room.
+    @Test func theThiefOpensTheEggAndTheBirdPaysItsTen() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            // The egg out of the tree, then in at the window and down.
+            ["north", "north", "up", "take egg", "down"]
+                + ["east", "southwest", "open window", "west"] + Self.downTheTrapDoor
+                + ["east"] + Array(repeating: "attack troll with sword", count: 3)
+                + Self.trollRoomToTheHoard
+                // Hand it over, step out of his reach, and let him work.
+                + ["give egg to thief", "down"] + Array(repeating: "wait", count: 4)
+                + ["up"] + Array(repeating: "attack thief with sword", count: 6)
+                + ["take egg", "take canary", "take chalice"]
+                // Home by the Strange Passage, and the case takes three.
+                + ["down", "north", "east", "open case", "put egg in case"]
+                + ["put chalice in case", "score"]
+                // And out to the wood, where the songbird answers the canary.
+                + ["east", "east", "north", "north", "wind canary", "take bauble"]
+                + ["west", "east", "west", "west", "put canary in case"]
+                + ["put bauble in case", "score"],
+            seed: 2)
+
+        expectInOrder(
+            transcript,
+            [
+                "The thief is taken aback by your unexpected generosity",
+                "The thief takes a fatal blow",
+                "reappear: the jewel-encrusted egg",
+                "Your score is 106 of a possible 560",
+                "a beautiful brass bauble drops from its mouth",
+                "You put the golden clockwork canary in the trophy case.",
+                "You put the beautiful brass bauble in the trophy case.",
+                "Your score is 110 of a possible 560",
+            ])
+    }
+
+    /// He takes what you hand him, and says so with a mocking little bow — but
+    /// only what is actually in your hands. He lifts things off the floor and
+    /// out of your pockets, so the thing you are offering him is often already
+    /// in his bag, and the bow would be a lie. Found by playing: stage 4's
+    /// answer to an unheld gift is that nobody here wants it, which with the
+    /// thief standing over the hoard is the one thing that is certainly untrue.
+    @Test func heTakesWhatYouHandHimAndNotWhatHeIsAlreadyHolding() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheHoard + ["give chalice to thief", "give sword to thief"],
+            seed: 55)
+
+        expectInOrder(
+            transcript,
+            [
+                // Seed 55: he has the chalice in the bag by the time you offer it.
+                "You suddenly notice that the silver chalice vanished.",
+                "You aren't holding that.",
+                "The thief takes it with a mocking little bow",
+            ])
+    }
+
+    /// The prowl set is a hand-written list of a hundred and five rooms, and the
+    /// hazard of a hand-written list is that a later milestone adds a region and
+    /// nobody notices the thief has stopped going there. The count is pinned so
+    /// the omission has to be deliberate: a milestone that builds rooms he
+    /// should walk changes this number in the same commit, and one that builds
+    /// rooms he should not — the volcano's water, another sealed vault — says so
+    /// here by leaving it alone.
+    ///
+    /// The second assertion is the other half of the same worry: no room
+    /// appears twice, which is the mistake the four regional lists invite when
+    /// a milestone moves a room from one of them to another. A duplicate would
+    /// not fail anything at runtime — it would just weight his wandering
+    /// quietly toward one room.
+    ///
+    /// Read off the declarations rather than through a transcript, because
+    /// `Location` resolves its `EntityID` only inside a live turn; comparing the
+    /// values themselves needs no frame.
+    @Test func theThiefProwlsAHundredAndFiveRoomsAndNoRoomTwice() throws {
+        let prowl = Dungeon().thiefProwl
+
+        #expect(prowl.count == 105)
+        for (index, room) in prowl.enumerated() {
+            #expect(!prowl[..<index].contains(room), "room \(index) is in the set twice")
+        }
+    }
+
+    /// Every treasure the trophy case scores is one he covets, because both
+    /// read the host's one `treasureRoster`. This is the test that keeps it
+    /// that way: a milestone that declares a treasure and forgets the roster
+    /// would score it, and he would never touch it.
+    ///
+    /// Milestone 6 is why it is worth pinning. The zorkmid, the crown and the
+    /// stamp became stealable the moment they were declared, with no
+    /// line of the thief's changed — that is the shared list doing its job, and
+    /// it is only luck until something checks.
+    @Test func heCovetsEveryTreasureTheCaseScores() throws {
+        let (definition, _) = try Bootstrap.build(Dungeon())
+        let valued = definition.items.values
+            .filter { $0.customTraits["takeValue"] != nil || $0.customTraits["depositValue"] != nil }
+            .compactMap(\.name)
+            .sorted()
+        // 28: the twenty-five of milestones 1 to 5 and milestone 6's three.
+        #expect(valued.count == 28, "scored but not coveted: \(valued)")
+        for volcanic in ["priceless zorkmid", "gaudy crown", "stamp"] {
+            #expect(valued.contains { $0.contains(volcanic) }, "\(volcanic) is not scored")
+        }
+    }
+
+    /// His blade is a blade and nothing more. Zork I makes the stiletto one of
+    /// five sharp things that hole the river boat; this game carries no `sharp`
+    /// trait at all, because milestone 4 found that the broken sharp stick is
+    /// the only thing in the mainframe that punctures it.
+    @Test func theStilettoIsNotOneOfTheThingsThatHolesTheBoat() throws {
+        let (definition, _) = try Bootstrap.build(Dungeon())
+        let sharp = definition.items.values.filter { $0.customTraits["sharp"] != nil }
+
+        #expect(sharp.isEmpty, "\(sharp.compactMap(\.name))")
+    }
+
+    /// Every noun the lair prints while its owner is standing in it, which is
+    /// the one room in the game whose description gains a second paragraph the
+    /// moment a milestone lands.
+    @Test func everyNounTheThiefAndHisHoardPrint() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheHoard
+                + ["examine thief", "examine stiletto"]
+                + Array(repeating: "attack thief with sword", count: 3)
+                + ["examine bags", "examine granite wall", "examine chalice"],
+            seed: 55)
+
+        expectEveryNounAnswered(transcript, "the thief and his hoard")
     }
 }
