@@ -2323,3 +2323,44 @@ a destination anybody reaches.
 
 **Seams left for later milestones: none.** Every exit these three rooms declare
 reaches a room that exists.
+
+### Milestone 8 — the ceiling's last 131 points, and where they are
+
+No rooms land here. This entry records what milestone 8 turned out to be, because
+the issue that describes it (#141) understates it by two regions and the
+understatement is not obvious from the atlas.
+
+**The claim in the issue that is not true.** #141 says milestone 8 is *"31
+`RENDGAME` rooms worth 100 points"* and that `maxScore` must balance at 691. The
+ceiling has been 716 since #167. Milestone 7 left it at 585. **585 + 100 = 685**,
+and the missing 31 are main-dungeon object values in rooms nothing has built:
+`PAL3` the red crystal sphere (10+5) in the Sooty Room, `PALAN` the blue crystal
+sphere (10+5) in the Dreary Room, and `DSTMP` the Don Woods stamp (0+1) affixed
+to the free brochure. Every one of the main dungeon's 115 room values is already
+in the award table, so the shortfall is entirely objects.
+
+**The 31 are a prerequisite for the 100, not a parallel errand.** `SCORE-BLESS`
+(`rooms.394:794`) arms the endgame's herald only once the score has reached
+`SCORE-MAX`, and the herald is what makes the Crypt's marble door open at all
+(`CRYPT-OBJECT` tests `END-GAME!-FLAG`, `act4.231:39`). A reconstruction stalled
+at 585 can never enter the endgame, however completely the endgame is built.
+
+**Nine rooms are unbuilt**, and eight of them are not endgame rooms: `TOMB`,
+`PRM`, `PALAN`, `SPAL`, `SLID1`, `SLID2`, `SLID3` and `SLEDG`, plus `FCHMP`,
+which stays unbuilt for the reason milestone 7 gave. Two of the eight sit behind
+seams earlier milestones declared and named — `LLD2` east and `MTORC` west — and
+four of them are the coal chute that milestone 3 stood in for with a single
+one-way drop into the Cellar, saying at the declaration site that those five
+rooms belonged to a later milestone. They belong to this one.
+
+**Where `Sources/Dungeon/`'s slide departs from the source, and why it still
+does.** `SLIDE`'s `down` is `SLIDE-EXIT` (`act3.199:1179`): with a rope tied to
+the timber it drops you into `SLID1`, hanging in the chute, with a fuse whose
+length is `100 / your carried weight` before your grip fails and you land in the
+Cellar anyway; without the rope it is the plain fall the reconstruction already
+has. So the shortcut is the source's own unroped outcome and is not wrong today —
+it is incomplete, and what it leaves out is the only route to the red sphere.
+
+**`maxScore` does not move.** It stays at 585 and a perfect run still scores 585
+of 585. This entry adds no content; it corrects the number the remaining work is
+aimed at and says what that work is.
