@@ -219,12 +219,16 @@ rule, so that each one does not re-decide it:
 Every seam of either kind is listed in that milestone's `FIDELITY.md` entry, so
 the milestone that closes it has a checklist rather than a memory.
 
-A fourth rule, learned at M2 and cheap to obey: **an `EntityID` is the property
-name, and the bootstrap does not check that two bundles have not used the same
-one.** `DungeonCellar` owns `chasm`, so the Chasm room's own scenery had to be
-`chasmEdge` — and the way that turned up was `examine chasm` answering "You can't
-see any such thing" in a room whose description had just named one. Grep the
-existing bundles for a property name before adding it.
+A fourth rule, and the useful half of one M2 got wrong: **two region bundles may
+use the same property name freely.** A bundle's entity IDs are namespaced under
+its own type, so `DungeonCellar`'s `chasm` is `DungeonCellar.chasm` and a
+`DungeonRoundRoom` one would be `DungeonRoundRoom.chasm`. What a bundle cannot do
+is spell two of *its own* properties the same way — which is what actually forced
+`chasmEdge` apart from `chasmRoom` — and Swift catches that at compile time.
+(M2 recorded the opposite here, that "the bootstrap does not check that two
+bundles have not used the same one"; issue #162 was written from that line and
+withdrew it. See `ContentBundles.md` for the collisions the bootstrap does
+check.)
 
 Two independent third-party maps were used to cross-check the extraction. Both are
 other people's work and **neither is committed to this repository**; they are

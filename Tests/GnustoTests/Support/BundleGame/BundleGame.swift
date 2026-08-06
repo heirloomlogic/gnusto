@@ -30,11 +30,32 @@ struct BundleGame: Game {
     }
 }
 
-/// A bundle that declares an entity named `foyer`.
+/// A bundle that declares one of every entity kind the reflection walk knows —
+/// a location, an item, an actor, and a `@Global` — so a game that stores two of
+/// them proves the collision check covers all four and not just rooms.
 struct AlphaBundle: GameContent {
     let foyer = Location {
         name("Alpha Foyer")
         description("The alpha foyer.")
+    }
+
+    let umbrella = Item {
+        name("black umbrella")
+        adjectives("black")
+        description("A furled black umbrella.")
+    }
+
+    let porter = Actor {
+        name("night porter")
+        adjectives("night")
+        description("He minds the desk.")
+    }
+
+    @Global var arrivals = 0
+
+    var map: WorldMap {
+        umbrella.starts(in: foyer)
+        porter.starts(in: foyer)
     }
 }
 
@@ -57,5 +78,25 @@ struct CollidingBundleGame: Game {
 
     var map: WorldMap {
         player.starts(in: alpha.foyer)
+    }
+}
+
+/// A deliberately invalid game: it stores ``CellarContent`` but never lists it
+/// in `content`, so nothing registers the bundle and its whole region — rooms,
+/// items, rules, verbs, timers, map — would silently not exist. The bootstrap
+/// must say so rather than boot a game missing half its world.
+struct UnlistedBundleGame: Game {
+    let title = "Half a World"
+    let intro = "One region listed, one forgotten."
+
+    let attic = AtticContent()
+    let cellar = CellarContent()
+
+    var content: GameContents {
+        attic
+    }
+
+    var map: WorldMap {
+        player.starts(in: attic.hall)
     }
 }

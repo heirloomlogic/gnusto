@@ -29,6 +29,38 @@ enum Bootstrap {
         // bundles' own map/rules reference.
         let modules = game.content.modules
 
+        // One namespace per bundle, or two bundles mint the same `EntityID` for
+        // every property name they have in common and the later one loses. The
+        // per-entity collisions below do catch that, but they name the namespace
+        // on both sides ("declared by both Attic and Attic"), say nothing about
+        // the cure, and repeat once per shadowed room. Say it once, up front,
+        // with both declaring types and the fix — hence ahead of Phase 1, so it
+        // lands in `diagnostics` before the lines it explains.
+        let listedNamespaces = Set(modules.map(\.namespace))
+        if listedNamespaces.count < modules.count {
+            let byNamespace = Dictionary(grouping: modules, by: \.namespace)
+            for (namespace, owners) in byNamespace.sorted(by: { $0.key < $1.key })
+            where owners.count > 1 {
+                diagnostics.append(
+                    Self.sharedNamespace(namespace, owners.map { "\(type(of: $0))" }))
+            }
+        }
+
+        // A bundle the game stores but never lists in `content` is registered by
+        // nothing: its rooms, items, `@Global`s, rules, verbs and timers all go
+        // quietly missing, and the author's first symptom is a region that is
+        // not there. Matched by namespace rather than by value, because a bundle
+        // is a `Sendable` struct with no identity to compare and its namespace is
+        // exactly what decides whether its declarations were registered. Only the
+        // game is walked: `content` is a `Game`'s block, so a bundle held by
+        // another bundle has no way to be listed and is a deliberate injection.
+        for child in Mirror(reflecting: game).children {
+            guard let label = child.label, let bundle = child.value as? any GameContent,
+                !listedNamespaces.contains(bundle.namespace)
+            else { continue }
+            diagnostics.append(Self.unlistedBundle(label, "\(type(of: bundle))"))
+        }
+
         // Phase 1 — discover stored declarations by reflection, over the game
         // itself and each of its content bundles. The property name is the
         // entity's ID; a name claimed by two declarations is a fatal collision.
@@ -36,7 +68,12 @@ enum Bootstrap {
         // reusable bundle can't collide with the host; the game passes `nil` and
         // keeps bare IDs.
         func register(_ subject: Any, namespace: String?) {
-            let owner = namespace ?? "\(type(of: subject))"
+            // Named for the *type* that declared it, not the namespace. A
+            // namespace is the one thing two owners can share, so naming it
+            // here produced "declared by both Attic and Attic" — a string
+            // identifying neither declaration. A type name is grep-able in
+            // source, which is where the author has to go.
+            let owner = "\(type(of: subject))"
 
             // Claims `id` for this owner, or records a collision and returns
             // false if another declaration already took it. The bare `player`
@@ -830,6 +867,27 @@ enum Bootstrap {
     /// game and a bundle, or two different bundles.
     private static func collision(_ id: EntityID, _ first: String, _ second: String) -> String {
         "entity \"\(id)\" is declared by both \(first) and \(second)."
+    }
+
+    /// The diagnostic for two or more content bundles that prefix their
+    /// entity IDs with the same namespace — every property name they share
+    /// mints one ID, and one bundle's declaration silently loses.
+    private static func sharedNamespace(_ namespace: String, _ owners: [String]) -> String {
+        // "A and B" for two, "A, B and C" for more — the check is per namespace,
+        // so any number of bundles can land in one of these.
+        let named = owners.dropLast().joined(separator: ", ") + " and " + (owners.last ?? "")
+        return "content bundles \(named) share the namespace \"\(namespace)\", so every "
+            + "property name any two of them have in common mints one entity ID and only "
+            + "one of those declarations survives; override `var namespace` to give each "
+            + "bundle its own."
+    }
+
+    /// The diagnostic for a bundle the game stores but never lists in its
+    /// `content` block, which registers nothing it declares.
+    private static func unlistedBundle(_ label: String, _ type: String) -> String {
+        "the game stores \"\(label)\" (\(type)), a content bundle it never lists in its "
+            + "content block; nothing it declares — rooms, items, globals, rules, verbs, "
+            + "timers — is registered. Add \(label) to `var content`."
     }
 
     /// The diagnostic for a declaration that claims the reserved `"player"`

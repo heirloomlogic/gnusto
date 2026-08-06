@@ -155,9 +155,12 @@ struct DungeonRoundRoom: GameContent {
         scenery
     }
 
-    /// Named `chasmEdge` rather than `chasm` on purpose: an `EntityID` is the
-    /// *property* name, so a second `chasm` anywhere in the game would collide
-    /// with ``DungeonCellar``'s, and the bootstrap does not say so.
+    /// Named `chasmEdge` rather than `chasm` because ``chasmRoom`` — the room
+    /// this scenery stands in — is the other half of the pair, and one bundle
+    /// cannot spell two properties the same way. ``DungeonCellar``'s `chasm` is
+    /// no constraint on this one: a bundle's entity IDs are namespaced under its
+    /// type, so that one is `DungeonCellar.chasm` and this one would be
+    /// `DungeonRoundRoom.chasm`.
     let chasmEdge = Item {
         name("chasm")
         synonyms("crack", "path")
