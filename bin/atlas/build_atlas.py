@@ -30,7 +30,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from mdl_reader import MdlRoom, ZilEntity, parse_mdl_dungeon, parse_zil
+from mdl_reader import Exit, MdlRoom, ZilEntity, parse_mdl_dungeon, parse_zil
 
 ROOT = Path(__file__).resolve().parents[2]
 DOCS = ROOT / "docs" / "games"
@@ -286,31 +286,38 @@ def placement_tally(
 
 # ------------------------------------------------------------- cross-matching
 
-# A destination the readers could not resolve to a room: a blocked or
-# conditional exit, an indirection through a global, an unparsed form.
-_REAL_ID = re.compile(r"[A-Z][A-Z0-9-]*")
-
-
 def _is_room(dest: str, known: dict) -> bool:
-    return bool(_REAL_ID.fullmatch(dest)) and dest in known
+    """Does this edge land somewhere the map declares?
+
+    An exit that names no destination — a blocked one, or a form neither reader
+    could classify — carries `""`, which no map declares, so the one lookup
+    answers both questions.
+    """
+    return dest in known
 
 
 def _adjacency(
-    nodes: dict, exits_of
+    nodes: dict,
 ) -> tuple[dict[str, dict[str, str]], dict[str, dict[str, list[str]]]]:
     """Index a map's edges by direction, forwards and backwards.
 
     The reverse index matters as much as the forward one: a maze passage is
     often reached from an already-identified room before it leads to one.
+
+    A gated edge still counts, because it still says where the passage goes: the
+    ZIL reader has always taken the destination out of `(NORTH TO CELLAR IF …)`,
+    and now the MDL reader resolves `<CEXIT …>` and `<DOOR …>` to the same thing.
+    Reading one side's conditional exits and not the other's was undercounting
+    corroboration for exactly the rooms that have them.
     """
     out: dict[str, dict[str, str]] = defaultdict(dict)
     into: dict[str, dict[str, list[str]]] = defaultdict(lambda: defaultdict(list))
     for nid, node in nodes.items():
-        for way, dest in exits_of(node):
-            if not _is_room(dest, nodes) or way in out[nid]:
+        for e in node.exits:
+            if not _is_room(e.dest, nodes) or e.direction in out[nid]:
                 continue
-            out[nid][way] = dest
-            into[dest][way].append(nid)
+            out[nid][e.direction] = e.dest
+            into[e.dest][e.direction].append(nid)
     return out, into
 
 
@@ -354,8 +361,8 @@ def pair_by_graph(
     how many agreeing edges — the evidence for MIN_CORROBORATION, which `--audit`
     prints so the threshold can be re-checked rather than taken on trust.
     """
-    m_out, m_in = _adjacency(mdl_rooms, lambda r: r.exits)
-    z_out, z_in = _adjacency(zil_rooms, lambda z: z.exits)
+    m_out, m_in = _adjacency(mdl_rooms)
+    z_out, z_in = _adjacency(zil_rooms)
     pairs = dict(seeds)
 
     def corroboration(mid: str, zid: str) -> int:
@@ -602,6 +609,102 @@ def region_of(room: MdlRoom) -> str:
     return MAIN_REGION
 
 
+# ---------------------------------------------------------------------- exits
+
+# How each kind reads in `dung.355` — the forms `mdl_reader._exit` classifies —
+# and what it means. `exit_tally` refuses to publish a kind this table has no row
+# for, so the four counts always sum to the total the section claims.
+EXIT_KINDS = {
+    "plain": ('`"NORTH" "NHOUS"`', "always open"),
+    "conditional": ("`<CEXIT flag dest …>`", "open while the named flag is set"),
+    "door": ("`<DOOR obj here there …>`", "through the named object, while it is open"),
+    "blocked": ('`#NEXIT "…"`', "never open; the source's refusal text is not reproduced"),
+}
+
+
+def one_way(e: Exit, home: str, rooms: dict) -> bool:
+    """Does the destination declare no way back to `home`?
+
+    Any returning edge counts, not only the reverse bearing. The mainframe maze
+    is full of passages that come back by some other direction than the one you
+    left by, so "is there a way back at all" is the question a map is actually
+    read for — and it is a fact about the graph rather than about the
+    declaration, which is why it is derived here and not stored on `Exit`.
+
+    The answer is only as good as the destination's own table: an unresolved edge
+    out of `there` cannot match `home` and so reads as no way back. `--audit`
+    reports every unresolved destination for that reason.
+    """
+    there = rooms.get(e.dest)
+    return there is not None and all(back.dest != home for back in there.exits)
+
+
+@dataclass(frozen=True)
+class Exits:
+    """One reading of the map's edges, for the document and for `--audit`.
+
+    The same reason `placement_tally` exists: the published section and the
+    listing `--audit` prints are two views of one walk, and computing them
+    separately is how they drift apart.
+    """
+
+    rooms: dict  # room id -> MdlRoom
+    kinds: Counter
+    one_ways: int
+
+    @property
+    def total(self) -> int:
+        return sum(self.kinds.values())
+
+    def cells(self, e: Exit, home: str) -> tuple[str, str]:
+        """The destination and kind cells for one edge, in markdown."""
+        dest = "—" if not e.dest else f"`{e.dest}`"
+        if e.dest and not _is_room(e.dest, self.rooms):
+            dest += " *(no such room)*"
+        kind = f"{e.kind} (`{e.via}`)" if e.via else e.kind
+        return dest, f"{kind}, one-way" if one_way(e, home, self.rooms) else kind
+
+    def detail(self, e: Exit, home: str) -> str:
+        """The same claim as plain text, for `--audit`."""
+        parts = [e.kind]
+        if e.via:
+            parts.append(f"via {e.via}")
+        if one_way(e, home, self.rooms):
+            parts.append("one-way")
+        if e.dest and not _is_room(e.dest, self.rooms):
+            parts.append("NO SUCH ROOM")
+        return ", ".join(parts)
+
+    def unresolved(self, ordered: list) -> list[tuple[str, Exit]]:
+        """Every edge that should name a room and does not."""
+        return [
+            (r.id, e)
+            for r in ordered
+            for e in r.exits
+            if e.kind != "blocked" and not _is_room(e.dest, self.rooms)
+        ]
+
+
+def exit_tally(rooms: list) -> Exits:
+    """Read every edge once.
+
+    A kind `EXIT_KINDS` has no row for is a hard stop rather than a missing row:
+    an unclassified edge would otherwise be published as `plain` — "always open"
+    — which is the most permissive claim the vocabulary can make about a form
+    nobody understood, and the counts would quietly stop summing to the total.
+    """
+    known = {r.id: r for r in rooms}
+    kinds = Counter(e.kind for r in rooms for e in r.exits)
+    if stray := sorted(set(kinds) - set(EXIT_KINDS)):
+        raise SystemExit(
+            f"exit kinds with no row in EXIT_KINDS: {', '.join(stray)}\n"
+            "Classify them in mdl_reader._exit, or give them a row. Publishing "
+            "an edge nobody classified would assert it is always open."
+        )
+    loops = sum(1 for r in rooms for e in r.exits if one_way(e, r.id, known))
+    return Exits(known, kinds, loops)
+
+
 def md_escape(text: str) -> str:
     return (text or "").replace("|", "\\|").replace("\n", " ").strip()
 
@@ -626,6 +729,7 @@ def audit(
     m: Matching,
     placed: dict[str, Placement],
     unresolved: dict[str, str],
+    exits: Exits,
 ) -> int:
     """Print every pairing and every placement so a human can check them. Writes
     nothing.
@@ -691,6 +795,24 @@ def audit(
     print(f"\n=== contents entries naming no declared object ({len(unresolved)}) ===")
     for oid in sorted(unresolved):
         print(f"  {oid:8s} named by {unresolved[oid]}")
+
+    by_id = sorted(rooms, key=lambda r: r.id)
+    print(f"\n=== EXITS ({exits.total} over {len(rooms)} rooms: "
+          + ", ".join(f"{k}={v}" for k, v in sorted(exits.kinds.items()))
+          + f", one-way={exits.one_ways}) ===")
+    for r in by_id:
+        for e in r.exits:
+            print(f"  {r.id:8s} {e.direction:8s} -> {e.dest or '—':24s} "
+                  f"{exits.detail(e, r.id)}")
+
+    # A destination this document cannot resolve is the one way an exit table can
+    # be quietly wrong, so it is reported rather than left to be noticed. The
+    # rooms declared `<GOBJECT …>` are the expected source of these — the same
+    # gap the Objects table has.
+    stranded = exits.unresolved(by_id)
+    print(f"\n=== exits naming no declared room ({len(stranded)}) ===")
+    for rid, e in stranded:
+        print(f"  {rid:8s} {e.direction:8s} -> {e.dest or '(none)':24s} {e.kind}")
     return 0
 
 
@@ -721,8 +843,9 @@ def main(argv: list[str] | None = None) -> int:
     zil = sources.load_zil()
     matching = cross_reference(rooms, objects, zil)
     placed, unresolved = object_placements(rooms, objects, sources.mdl_code())
+    exits = exit_tally(rooms)
     if args.audit:
-        return audit(rooms, objects, matching, placed, unresolved)
+        return audit(rooms, objects, matching, placed, unresolved, exits)
 
     zil_for = matching.of
     swift = zork1_swift_index()
@@ -821,9 +944,10 @@ def main(argv: list[str] | None = None) -> int:
         "",
     ]
 
-    # rooms grouped by region
+    # rooms grouped by region, in id order — one ordering, read by both the
+    # Rooms tables and the Exits tables below them
     by_region: dict[str, list[MdlRoom]] = defaultdict(list)
-    for r in rooms:
+    for r in sorted(rooms, key=lambda x: x.id):
         by_region[region_of(r)].append(r)
 
     lines += ["## Rooms", ""]
@@ -837,7 +961,7 @@ def main(argv: list[str] | None = None) -> int:
             "| id | name | RVAL | exits | trilogy | in `Sources/Zork1/` |",
             "|---|---|---:|---:|---|---|",
         ]
-        for r in sorted(group, key=lambda x: x.id):
+        for r in group:
             z = zil_for(r.id, "ROOM")
             here = swift.get(norm(r.name), "")
             lines.append(
@@ -845,6 +969,58 @@ def main(argv: list[str] | None = None) -> int:
                 f"| {z.game if z else '—'} | {'`' + here + '`' if here else '—'} |"
             )
         lines.append("")
+
+    # ---- the exit tables the `exits` column above is a checksum on ----------
+    lines += [
+        "## Exits",
+        "",
+        para(
+            f"Every one of the {exits.total} edges `dung.355` declares, in the order"
+            " it declares them, so a row can be read straight against the source. The"
+            " **exits** column in the Rooms tables above counts the rows here for"
+            " that room, and is the checksum on them."
+        ),
+        "",
+        "| kind | in the source | meaning | count |",
+        "|---|---|---|---:|",
+        *(
+            f"| {kind} | {form} | {means} | {exits.kinds[kind]} |"
+            for kind, (form, means) in EXIT_KINDS.items()
+        ),
+        "",
+        para(
+            "**one-way** is not a fifth kind but an observation about the graph:"
+            f" {exits.one_ways} of those edges arrive in a room that declares no edge"
+            " back. Any returning edge counts, not only the reverse bearing — the"
+            " maze is full of passages that return by some other direction than the"
+            " one you left by."
+        ),
+        "",
+        "Where the source names the mechanism, the kind carries it: the door object",
+        "for a door, the flag a conditional exit tests. A blocked exit carries",
+        "neither a destination nor a message. `#NEXIT`'s second argument is 1981 MDL",
+        "prose and `THIRD_PARTY_NOTICES` records that source as the one body that",
+        "reached the public without a located licence grant, so this generator steps",
+        "over those strings without reading them and records only that the way is",
+        "shut.",
+        "",
+    ]
+    for region in REGION_ORDER:
+        rows = []
+        for r in by_region.get(region, []):
+            for e in r.exits:
+                dest, kind = exits.cells(e, r.id)
+                rows.append(f"| `{r.id}` | {e.direction} | {dest} | {kind} |")
+        if not rows:
+            continue
+        lines += [
+            f"### {region} ({len(rows)} exits)",
+            "",
+            "| room | direction | destination | kind |",
+            "|---|---|---|---|",
+            *rows,
+            "",
+        ]
 
     tally = placement_tally(objects, placed)
     roomless = sum(pts for kind, (_, pts) in tally.items() if kind != "room")

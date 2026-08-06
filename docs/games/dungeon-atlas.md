@@ -11,7 +11,7 @@ source, not from a walkthrough or a memory.
 > source are permissively licensed — see `THIRD_PARTY_NOTICES` at the repo root
 > for the two separate grants and their limits.
 >
-> Generated against Gnusto `4d92c79`.
+> Generated against Gnusto `c8cdf9e`.
 
 ## Scoring
 
@@ -138,7 +138,7 @@ The reasoning:
 | `LEDG4` | Wide Ledge |  | 4 | Zork II | — |
 | `LIBRA` | Library |  | 2 | Zork II | — |
 | `LLD1` | Entrance to Hades |  | 3 | Zork I | `Sources/Zork1/Regions/Temple.swift` |
-| `LLD2` | Land of the Living Dead | 30 | 3 | — | — |
+| `LLD2` | Land of the Living Dead | 30 | 3 | Zork I | — |
 | `LOBBY` | Dam Lobby |  | 3 | Zork I | `Sources/Zork1/Regions/Dam.swift` |
 | `LROOM` | Living Room |  | 3 | Zork I | `Sources/Zork1/House.swift` |
 | `MACHI` | Machine Room |  | 1 | — | `Sources/Zork1/Regions/CoalMine.swift` |
@@ -150,7 +150,7 @@ The reasoning:
 | `MAZ13` | Maze |  | 4 | Zork I | `Sources/Zork1/Regions/Maze.swift` |
 | `MAZ14` | Maze |  | 4 | Zork I | `Sources/Zork1/Regions/Maze.swift` |
 | `MAZ15` | Maze |  | 3 | Zork I | `Sources/Zork1/Regions/Maze.swift` |
-| `MAZE1` | Maze |  | 4 | Zork I | `Sources/Zork1/Regions/Maze.swift` |
+| `MAZE1` | Maze |  | 4 | — | `Sources/Zork1/Regions/Maze.swift` |
 | `MAZE2` | Maze |  | 3 | Zork I | `Sources/Zork1/Regions/Maze.swift` |
 | `MAZE3` | Maze |  | 3 | Zork I | `Sources/Zork1/Regions/Maze.swift` |
 | `MAZE4` | Maze |  | 3 | Zork I | `Sources/Zork1/Regions/Maze.swift` |
@@ -181,7 +181,7 @@ The reasoning:
 | `PASS5` | North-South Passage |  | 3 | Zork I | `Sources/Zork1/Regions/RoundRoom.swift` |
 | `POG` | End of Rainbow |  | 5 | Zork I | `Sources/Zork1/AboveGround.swift` |
 | `PRM` | Tiny Room |  | 4 | Zork II | — |
-| `RAINB` | Rainbow Room |  | 2 | — | — |
+| `RAINB` | Rainbow Room |  | 2 | Zork I | — |
 | `RAVI1` | Deep Ravine |  | 4 | — | — |
 | `RCAVE` | Rocky Shore |  | 2 | — | — |
 | `RESEN` | Reservoir North |  | 4 | Zork I | `Sources/Zork1/Regions/Dam.swift` |
@@ -275,6 +275,638 @@ The reasoning:
 | `SCORR` | South Corridor |  | 4 | — | — |
 | `TSTRS` | Top of Stairs | 10 | 3 | — | — |
 | `WCORR` | West Corridor |  | 2 | — | — |
+
+## Exits
+
+Every one of the 590 edges `dung.355` declares, in the order it declares them,
+so a row can be read straight against the source. The **exits** column in the
+Rooms tables above counts the rows here for that room, and is the checksum on
+them.
+
+| kind | in the source | meaning | count |
+|---|---|---|---:|
+| plain | `"NORTH" "NHOUS"` | always open | 396 |
+| conditional | `<CEXIT flag dest …>` | open while the named flag is set | 116 |
+| door | `<DOOR obj here there …>` | through the named object, while it is open | 29 |
+| blocked | `#NEXIT "…"` | never open; the source's refusal text is not reproduced | 49 |
+
+**one-way** is not a fifth kind but an observation about the graph: 72 of those
+edges arrive in a room that declares no edge back. Any returning edge counts,
+not only the reverse bearing — the maze is full of passages that return by some
+other direction than the one you left by.
+
+Where the source names the mechanism, the kind carries it: the door object
+for a door, the flag a conditional exit tests. A blocked exit carries
+neither a destination nor a message. `#NEXIT`'s second argument is 1981 MDL
+prose and `THIRD_PARTY_NOTICES` records that source as the one body that
+reached the public without a located licence grant, so this generator steps
+over those strings without reading them and records only that the way is
+shut.
+
+### Main dungeon (473 exits)
+
+| room | direction | destination | kind |
+|---|---|---|---|
+| `ALICE` | EAST | — | blocked |
+| `ALICE` | WEST | `TWELL` | plain |
+| `ALICE` | NW | `MAGNE` | plain |
+| `ALISM` | NW | — | blocked |
+| `ALISM` | EAST | `ALITR` | plain |
+| `ALISM` | WEST | — | blocked |
+| `ALISM` | DOWN | — | blocked |
+| `ALITR` | OUT | `ALISM` | plain |
+| `ALITR` | WEST | `ALISM` | plain |
+| `ATLAN` | SE | `RESEN` | plain |
+| `ATLAN` | UP | `CAVE1` | plain |
+| `ATTIC` | DOWN | `KITCH` | plain |
+| `BATS` | EAST | `SQUEE` | plain |
+| `BEACH` | LAUNC | `RIVR4` | plain |
+| `BEACH` | SOUTH | `FANTE` | plain |
+| `BLADD` | NE | `DEAD7` | plain |
+| `BLADD` | SOUTH | `TIMBE` | plain |
+| `BLADD` | UP | `TLADD` | plain |
+| `BLROO` | SOUTH | `CYCLO` | plain |
+| `BLROO` | EAST | `LROOM` | plain |
+| `BOOM` | UP | `SMELL` | plain |
+| `BSHAF` | EAST | `MACHI` | plain |
+| `BSHAF` | OUT | `TIMBE` | conditional (`EMPTY-HANDED`) |
+| `BSHAF` | NE | `TIMBE` | conditional (`EMPTY-HANDED`) |
+| `BSHAF` | UP | — | blocked |
+| `BWELL` | WEST | `MPEAR` | plain |
+| `BWELL` | UP | — | blocked |
+| `CAGED` | NORTH | — | blocked |
+| `CAGER` | NORTH | `CMACH` | plain |
+| `CANY1` | NW | `RESES` | conditional (`EGYPT-FLAG`) |
+| `CANY1` | EAST | `DAM` | plain |
+| `CANY1` | SOUTH | `CAROU` | plain |
+| `CAROU` | NORTH | `CAVE4` | conditional (`CAROUSEL-FLIP`) |
+| `CAROU` | SOUTH | `CAVE4` | conditional (`CAROUSEL-FLIP`) |
+| `CAROU` | EAST | `MGRAI` | conditional (`CAROUSEL-FLIP`) |
+| `CAROU` | WEST | `PASS1` | conditional (`CAROUSEL-FLIP`) |
+| `CAROU` | NW | `CANY1` | conditional (`CAROUSEL-FLIP`) |
+| `CAROU` | NE | `PASS5` | conditional (`CAROUSEL-FLIP`) |
+| `CAROU` | SE | `PASS4` | conditional (`CAROUSEL-FLIP`), one-way |
+| `CAROU` | SW | `MAZE1` | conditional (`CAROUSEL-FLIP`), one-way |
+| `CAROU` | OUT | `PASS3` | conditional (`CAROUSEL-FLIP`), one-way |
+| `CAVE1` | NORTH | `MIRR1` | plain |
+| `CAVE1` | DOWN | `ATLAN` | plain |
+| `CAVE2` | NORTH | `CRAW3` | plain |
+| `CAVE2` | WEST | `MIRR2` | plain |
+| `CAVE2` | DOWN | `LLD1` | plain |
+| `CAVE3` | SOUTH | `ECHO` | plain |
+| `CAVE3` | EAST | `DAM` | plain |
+| `CAVE3` | WEST | — | blocked |
+| `CAVE4` | NORTH | `CAROU` | plain |
+| `CAVE4` | SE | `RIDDL` | plain |
+| `CELLA` | EAST | `MTROL` | plain |
+| `CELLA` | SOUTH | `CHAS2` | plain |
+| `CELLA` | UP | `LROOM` | door (`DOOR`) |
+| `CELLA` | WEST | — | blocked |
+| `CHAS1` | SOUTH | `RAVI1` | plain |
+| `CHAS1` | EAST | `PASS5` | plain |
+| `CHAS1` | DOWN | — | blocked |
+| `CHAS2` | WEST | `CELLA` | plain |
+| `CHAS2` | NORTH | `CRAW4` | plain |
+| `CHAS2` | SOUTH | `GALLE` | plain |
+| `CHAS2` | DOWN | — | blocked |
+| `CHAS3` | SOUTH | `ECHO` | plain |
+| `CHAS3` | EAST | `TCAVE` | plain |
+| `CHAS3` | NORTH | `DEAD5` | plain |
+| `CHAS3` | WEST | `DEAD6` | plain |
+| `CLBOT` | UP | `CLMID` | plain |
+| `CLBOT` | NORTH | `POG` | plain |
+| `CLEAR` | SW | `EHOUS` | plain |
+| `CLEAR` | SE | `FORE5` | plain, one-way |
+| `CLEAR` | NORTH | `CLEAR` | plain |
+| `CLEAR` | EAST | `CLEAR` | plain |
+| `CLEAR` | WEST | `FORE3` | plain |
+| `CLEAR` | SOUTH | `FORE2` | plain |
+| `CLEAR` | DOWN | `MGRAT` | door (`GRATE`) |
+| `CLMID` | UP | `CLTOP` | plain |
+| `CLMID` | DOWN | `CLBOT` | plain |
+| `CLTOP` | DOWN | `CLMID` | plain |
+| `CLTOP` | SOUTH | `FORE4` | plain |
+| `CLTOP` | WEST | `FORE5` | plain |
+| `CMACH` | WEST | `MAGNE` | plain |
+| `CMACH` | SOUTH | `CAGER` | plain |
+| `CP` | NORTH | `FCHMP` | conditional (`FROBOZZ`), one-way |
+| `CP` | SOUTH | `FCHMP` | conditional (`FROBOZZ`), one-way |
+| `CP` | EAST | `FCHMP` | conditional (`FROBOZZ`), one-way |
+| `CP` | WEST | `FCHMP` | conditional (`FROBOZZ`), one-way |
+| `CP` | NE | `FCHMP` | conditional (`FROBOZZ`), one-way |
+| `CP` | NW | `FCHMP` | conditional (`FROBOZZ`), one-way |
+| `CP` | SE | `FCHMP` | conditional (`FROBOZZ`), one-way |
+| `CP` | UP | `FCHMP` | conditional (`FROBOZZ`), one-way |
+| `CP` | SW | `FCHMP` | conditional (`FROBOZZ`), one-way |
+| `CPANT` | SOUTH | `CPOUT` | plain |
+| `CPANT` | WEST | `TREAS` | plain |
+| `CPANT` | DOWN | `FCHMP` | conditional (`FROBOZZ`), one-way |
+| `CPOUT` | NORTH | `CPANT` | plain |
+| `CPOUT` | EAST | `CP` | conditional (`CPOUT`), one-way |
+| `CRAW1` | WEST | `RAVI1` | plain |
+| `CRAW1` | EAST | `DOME` | plain |
+| `CRAW1` | NW | `EGYPT` | conditional (`EGYPT-FLAG`) |
+| `CRAW2` | SOUTH | `MIRR1` | plain |
+| `CRAW2` | SW | `PASS3` | plain |
+| `CRAW3` | SOUTH | `CAVE2` | plain |
+| `CRAW3` | SW | `MIRR2` | plain |
+| `CRAW3` | NORTH | `MGRAI` | plain |
+| `CRAW4` | NORTH | `CHAS2` | plain |
+| `CRAW4` | SOUTH | `STUDI` | plain |
+| `CRAW4` | EAST | `MTROL` | plain |
+| `CRAW4` | UP | — | blocked |
+| `CYCLO` | WEST | `MAZ15` | plain |
+| `CYCLO` | NORTH | `BLROO` | conditional (`MAGIC-FLAG`) |
+| `CYCLO` | UP | `TREAS` | conditional (`CYCLOPS-FLAG`) |
+| `DAM` | SOUTH | `CANY1` | plain |
+| `DAM` | DOWN | `DOCK` | plain |
+| `DAM` | EAST | `CAVE3` | plain |
+| `DAM` | NORTH | `LOBBY` | plain |
+| `DEAD1` | SOUTH | `MAZE4` | plain |
+| `DEAD2` | WEST | `MAZE5` | plain |
+| `DEAD3` | NORTH | `MAZE8` | plain |
+| `DEAD4` | SOUTH | `MAZ12` | plain |
+| `DEAD5` | SW | `CHAS3` | plain |
+| `DEAD6` | EAST | `CHAS3` | plain |
+| `DEAD7` | SOUTH | `BLADD` | plain |
+| `DOCK` | NORTH | `DAM` | plain |
+| `DOCK` | UP | `DAM` | plain |
+| `DOCK` | LAUNC | `RIVR1` | plain |
+| `DOME` | EAST | `CRAW1` | plain |
+| `DOME` | DOWN | `MTORC` | conditional (`DOME-FLAG`), one-way |
+| `ECHO` | EAST | `CHAS3` | plain |
+| `ECHO` | WEST | `PASS5` | plain |
+| `ECHO` | UP | `CAVE3` | plain |
+| `EGYPT` | UP | `ICY` | plain |
+| `EGYPT` | SOUTH | `LEDG3` | plain |
+| `EGYPT` | EAST | `CRAW1` | conditional (`EGYPT-FLAG`) |
+| `EHOUS` | NORTH | `NHOUS` | plain |
+| `EHOUS` | SOUTH | `SHOUS` | plain |
+| `EHOUS` | EAST | `CLEAR` | plain |
+| `EHOUS` | WEST | `KITCH` | door (`WINDO`) |
+| `EHOUS` | IN | `KITCH` | door (`WINDO`) |
+| `ENTRA` | SOUTH | `SLIDE` | plain |
+| `ENTRA` | NW | `SQUEE` | plain |
+| `ENTRA` | NE | `TSHAF` | plain |
+| `FALLS` | EAST | `RAINB` | conditional (`RAINBOW`) |
+| `FALLS` | DOWN | — | blocked |
+| `FALLS` | NORTH | `FANTE` | plain |
+| `FALLS` | UP | `RAINB` | conditional (`RAINBOW`) |
+| `FANTE` | LAUNC | `RIVR5` | plain |
+| `FANTE` | NORTH | `BEACH` | plain |
+| `FANTE` | SOUTH | `FALLS` | plain |
+| `FCHMP` | NORTH | — | blocked |
+| `FORE1` | UP | — | blocked |
+| `FORE1` | NORTH | `FORE1` | plain |
+| `FORE1` | EAST | `FORE3` | plain, one-way |
+| `FORE1` | SOUTH | `FORE2` | plain |
+| `FORE1` | WEST | `FORE1` | plain |
+| `FORE2` | UP | — | blocked |
+| `FORE2` | NORTH | `SHOUS` | plain |
+| `FORE2` | EAST | `CLEAR` | plain |
+| `FORE2` | SOUTH | `FORE4` | plain |
+| `FORE2` | WEST | `FORE1` | plain |
+| `FORE3` | UP | `TREE` | plain |
+| `FORE3` | NORTH | `FORE2` | plain, one-way |
+| `FORE3` | EAST | `CLEAR` | plain |
+| `FORE3` | SOUTH | `CLEAR` | plain |
+| `FORE3` | WEST | `NHOUS` | plain |
+| `FORE4` | UP | — | blocked |
+| `FORE4` | EAST | `CLTOP` | plain |
+| `FORE4` | NORTH | `FORE5` | plain |
+| `FORE4` | SOUTH | `FORE4` | plain |
+| `FORE4` | WEST | `FORE2` | plain |
+| `FORE5` | UP | — | blocked |
+| `FORE5` | NORTH | `FORE5` | plain |
+| `FORE5` | SE | `CLTOP` | plain |
+| `FORE5` | SOUTH | `FORE4` | plain |
+| `FORE5` | WEST | `FORE2` | plain, one-way |
+| `GALLE` | NORTH | `CHAS2` | plain |
+| `GALLE` | SOUTH | `STUDI` | plain |
+| `GALLE` | WEST | `BKENT` | plain |
+| `ICY` | NORTH | `STREA` | plain |
+| `ICY` | EAST | `EGYPT` | plain |
+| `ICY` | WEST | `RUBYR` | conditional (`GLACIER-FLAG`) |
+| `INSTR` | UP | — | blocked |
+| `INSTR` | LAND | `STREA` | plain |
+| `INSTR` | DOWN | `RESER` | plain |
+| `KITCH` | EAST | `EHOUS` | door (`WINDO`) |
+| `KITCH` | WEST | `LROOM` | plain |
+| `KITCH` | OUT | `EHOUS` | door (`WINDO`) |
+| `KITCH` | UP | `ATTIC` | plain |
+| `KITCH` | DOWN | — | blocked |
+| `LAVA` | SOUTH | `VLBOT` | plain |
+| `LAVA` | WEST | `RUBYR` | plain |
+| `LEDG2` | DOWN | — | blocked |
+| `LEDG2` | LAUNC | `VAIR2` | plain |
+| `LEDG2` | WEST | `VLBOT` | conditional (`GNOME-DOOR`), one-way |
+| `LEDG2` | SOUTH | `LIBRA` | plain |
+| `LEDG3` | DOWN | — | blocked |
+| `LEDG3` | CROSS | — | blocked |
+| `LEDG3` | EAST | `EGYPT` | plain |
+| `LEDG4` | DOWN | — | blocked |
+| `LEDG4` | LAUNC | `VAIR4` | plain |
+| `LEDG4` | WEST | `VLBOT` | conditional (`GNOME-DOOR`), one-way |
+| `LEDG4` | SOUTH | `SAFE` | plain |
+| `LIBRA` | NORTH | `LEDG2` | plain |
+| `LIBRA` | OUT | `LEDG2` | plain |
+| `LLD1` | EAST | `LLD2` | conditional (`LLD-FLAG`) |
+| `LLD1` | UP | `CAVE2` | plain |
+| `LLD1` | IN | `LLD2` | conditional (`LLD-FLAG`) |
+| `LLD2` | EAST | `TOMB` | plain |
+| `LLD2` | OUT | `LLD1` | plain |
+| `LLD2` | WEST | `LLD1` | plain |
+| `LOBBY` | SOUTH | `DAM` | plain |
+| `LOBBY` | NORTH | `MAINT` | plain |
+| `LOBBY` | EAST | `MAINT` | plain |
+| `LROOM` | EAST | `KITCH` | plain |
+| `LROOM` | WEST | `BLROO` | conditional (`MAGIC-FLAG`) |
+| `LROOM` | DOWN | `CELLA` | door (`DOOR`) |
+| `MACHI` | NW | `BSHAF` | plain |
+| `MAGNE` | NORTH | `CMACH` | conditional (`FROBOZZ`) |
+| `MAGNE` | SOUTH | `CMACH` | conditional (`FROBOZZ`) |
+| `MAGNE` | WEST | `CMACH` | conditional (`FROBOZZ`) |
+| `MAGNE` | NE | `CMACH` | conditional (`FROBOZZ`) |
+| `MAGNE` | NW | `ALICE` | conditional (`FROBOZZ`) |
+| `MAGNE` | SW | `ALICE` | conditional (`FROBOZZ`) |
+| `MAGNE` | SE | `ALICE` | conditional (`FROBOZZ`) |
+| `MAGNE` | EAST | `CMACH` | conditional (`FROBOZZ`) |
+| `MAGNE` | OUT | `ALICE` | conditional (`FROBOZZ`) |
+| `MAINT` | SOUTH | `LOBBY` | plain |
+| `MAINT` | WEST | `LOBBY` | plain |
+| `MAZ10` | EAST | `MAZE9` | plain |
+| `MAZ10` | WEST | `MAZ13` | plain |
+| `MAZ10` | UP | `MAZ11` | plain |
+| `MAZ11` | NE | `MGRAT` | plain |
+| `MAZ11` | DOWN | `MAZ10` | plain |
+| `MAZ11` | NW | `MAZ13` | plain |
+| `MAZ11` | SW | `MAZ12` | plain |
+| `MAZ12` | WEST | `MAZE5` | plain, one-way |
+| `MAZ12` | SW | `MAZ11` | plain |
+| `MAZ12` | EAST | `MAZ13` | plain |
+| `MAZ12` | UP | `MAZE9` | plain |
+| `MAZ12` | NORTH | `DEAD4` | plain |
+| `MAZ13` | EAST | `MAZE9` | plain |
+| `MAZ13` | DOWN | `MAZ12` | plain |
+| `MAZ13` | SOUTH | `MAZ10` | plain |
+| `MAZ13` | WEST | `MAZ11` | plain |
+| `MAZ14` | WEST | `MAZ15` | plain |
+| `MAZ14` | NW | `MAZ14` | plain |
+| `MAZ14` | NE | `MAZE7` | plain |
+| `MAZ14` | SOUTH | `MAZE7` | plain |
+| `MAZ15` | WEST | `MAZ14` | plain |
+| `MAZ15` | SOUTH | `MAZE7` | plain |
+| `MAZ15` | NE | `CYCLO` | plain |
+| `MAZE1` | WEST | `MTROL` | plain |
+| `MAZE1` | NORTH | `MAZE1` | plain |
+| `MAZE1` | SOUTH | `MAZE2` | plain |
+| `MAZE1` | EAST | `MAZE4` | plain |
+| `MAZE2` | SOUTH | `MAZE1` | plain |
+| `MAZE2` | NORTH | `MAZE4` | plain, one-way |
+| `MAZE2` | EAST | `MAZE3` | plain |
+| `MAZE3` | WEST | `MAZE2` | plain |
+| `MAZE3` | NORTH | `MAZE4` | plain |
+| `MAZE3` | UP | `MAZE5` | plain |
+| `MAZE4` | WEST | `MAZE3` | plain |
+| `MAZE4` | NORTH | `MAZE1` | plain |
+| `MAZE4` | EAST | `DEAD1` | plain |
+| `MAZE5` | EAST | `DEAD2` | plain |
+| `MAZE5` | NORTH | `MAZE3` | plain |
+| `MAZE5` | SW | `MAZE6` | plain |
+| `MAZE6` | DOWN | `MAZE5` | plain |
+| `MAZE6` | EAST | `MAZE7` | plain |
+| `MAZE6` | WEST | `MAZE6` | plain |
+| `MAZE6` | UP | `MAZE9` | plain |
+| `MAZE7` | UP | `MAZ14` | plain |
+| `MAZE7` | WEST | `MAZE6` | plain |
+| `MAZE7` | NE | `DEAD1` | plain, one-way |
+| `MAZE7` | EAST | `MAZE8` | plain |
+| `MAZE7` | SOUTH | `MAZ15` | plain |
+| `MAZE8` | NE | `MAZE7` | plain |
+| `MAZE8` | WEST | `MAZE8` | plain |
+| `MAZE8` | SE | `DEAD3` | plain |
+| `MAZE9` | NORTH | `MAZE6` | plain |
+| `MAZE9` | EAST | `MAZ11` | plain, one-way |
+| `MAZE9` | DOWN | `MAZ10` | plain |
+| `MAZE9` | SOUTH | `MAZ13` | plain |
+| `MAZE9` | WEST | `MAZ12` | plain |
+| `MAZE9` | NW | `MAZE9` | plain |
+| `MGRAI` | WEST | `CAROU` | plain |
+| `MGRAI` | EAST | `CRAW3` | plain |
+| `MGRAI` | UP | `TEMP1` | plain |
+| `MGRAT` | SW | `MAZ11` | plain |
+| `MGRAT` | UP | `CLEAR` | door (`GRATE`) |
+| `MINE1` | NORTH | `MINE4` | plain |
+| `MINE1` | SW | `MINE2` | plain |
+| `MINE1` | EAST | `TUNNE` | plain |
+| `MINE2` | SOUTH | `MINE1` | plain |
+| `MINE2` | WEST | `MINE5` | plain |
+| `MINE2` | UP | `MINE3` | plain |
+| `MINE2` | NE | `MINE4` | plain |
+| `MINE3` | WEST | `MINE2` | plain |
+| `MINE3` | NE | `MINE5` | plain |
+| `MINE3` | EAST | `MINE5` | plain |
+| `MINE4` | UP | `MINE5` | plain |
+| `MINE4` | NE | `MINE6` | plain |
+| `MINE4` | SOUTH | `MINE1` | plain |
+| `MINE4` | WEST | `MINE2` | plain |
+| `MINE5` | DOWN | `MINE6` | plain |
+| `MINE5` | NORTH | `MINE7` | plain |
+| `MINE5` | WEST | `MINE2` | plain |
+| `MINE5` | SOUTH | `MINE3` | plain |
+| `MINE5` | UP | `MINE3` | plain |
+| `MINE5` | EAST | `MINE4` | plain |
+| `MINE6` | SE | `MINE4` | plain |
+| `MINE6` | UP | `MINE5` | plain |
+| `MINE6` | NW | `MINE7` | plain |
+| `MINE7` | EAST | `MINE1` | plain, one-way |
+| `MINE7` | WEST | `MINE5` | plain |
+| `MINE7` | DOWN | `TLADD` | plain |
+| `MINE7` | SOUTH | `MINE6` | plain |
+| `MIRR1` | WEST | `PASS3` | plain |
+| `MIRR1` | NORTH | `CRAW2` | plain |
+| `MIRR1` | EAST | `CAVE1` | plain |
+| `MIRR2` | WEST | `PASS4` | plain |
+| `MIRR2` | NORTH | `CRAW3` | plain |
+| `MIRR2` | EAST | `CAVE2` | plain |
+| `MPEAR` | EAST | `BWELL` | plain |
+| `MPEAR` | WEST | `RIDDL` | plain |
+| `MTORC` | UP | — | blocked |
+| `MTORC` | WEST | `PRM` | plain |
+| `MTORC` | DOWN | `CRAW4` | plain, one-way |
+| `MTROL` | WEST | `CELLA` | plain |
+| `MTROL` | EAST | `CRAW4` | conditional (`TROLL-FLAG`) |
+| `MTROL` | NORTH | `PASS1` | conditional (`TROLL-FLAG`) |
+| `MTROL` | SOUTH | `MAZE1` | conditional (`TROLL-FLAG`) |
+| `NHOUS` | WEST | `WHOUS` | plain |
+| `NHOUS` | EAST | `EHOUS` | plain |
+| `NHOUS` | NORTH | `FORE3` | plain |
+| `NHOUS` | SOUTH | — | blocked |
+| `PALAN` | SOUTH | `PRM` | door (`PDOOR`) |
+| `PALAN` | OUT | `PRM` | door (`PDOOR`) |
+| `PALAN` | #!#!# | `PRM` | door (`PWIND`) |
+| `PASS1` | EAST | `CAROU` | plain |
+| `PASS1` | WEST | `MTROL` | plain |
+| `PASS1` | DOWN | `RAVI1` | plain |
+| `PASS1` | NORTH | `RAVI1` | plain |
+| `PASS3` | EAST | `MIRR1` | plain |
+| `PASS3` | WEST | `SLIDE` | plain |
+| `PASS3` | NORTH | `CRAW2` | plain |
+| `PASS4` | EAST | `MIRR2` | plain |
+| `PASS4` | NORTH | — | blocked |
+| `PASS5` | NORTH | `CHAS1` | plain |
+| `PASS5` | NE | `ECHO` | plain |
+| `PASS5` | SOUTH | `CAROU` | plain |
+| `POG` | UP | `RAINB` | conditional (`RAINBOW`) |
+| `POG` | NW | `RAINB` | conditional (`RAINBOW`) |
+| `POG` | WEST | `RAINB` | conditional (`RAINBOW`) |
+| `POG` | SE | `CLBOT` | plain |
+| `POG` | LAUNC | — | blocked |
+| `PRM` | NORTH | `PALAN` | door (`PDOOR`) |
+| `PRM` | IN | `PALAN` | door (`PDOOR`) |
+| `PRM` | #!#!# | `PALAN` | door (`PWIND`) |
+| `PRM` | EAST | `MTORC` | plain |
+| `RAINB` | EAST | `POG` | plain |
+| `RAINB` | WEST | `FALLS` | plain |
+| `RAVI1` | SOUTH | `PASS1` | plain |
+| `RAVI1` | DOWN | `RESES` | conditional (`EGYPT-FLAG`) |
+| `RAVI1` | EAST | `CHAS1` | plain |
+| `RAVI1` | WEST | `CRAW1` | plain |
+| `RCAVE` | LAUNC | `RIVR3` | plain |
+| `RCAVE` | NW | `TCAVE` | plain |
+| `RESEN` | NORTH | `ATLAN` | plain |
+| `RESEN` | LAUNC | `RESER` | plain |
+| `RESEN` | CROSS | `RESER` | conditional (`LOW-TIDE`) |
+| `RESEN` | SOUTH | `RESER` | conditional (`LOW-TIDE`) |
+| `RESER` | NORTH | `RESEN` | plain |
+| `RESER` | SOUTH | `RESES` | plain |
+| `RESER` | UP | `INSTR` | plain |
+| `RESER` | DOWN | — | blocked |
+| `RESER` | LAND | — | blocked |
+| `RESES` | SOUTH | `RAVI1` | conditional (`EGYPT-FLAG`) |
+| `RESES` | WEST | `STREA` | plain |
+| `RESES` | CROSS | `RESER` | conditional (`LOW-TIDE`) |
+| `RESES` | NORTH | `RESER` | conditional (`LOW-TIDE`) |
+| `RESES` | LAUNC | `RESER` | plain |
+| `RESES` | UP | `CANY1` | conditional (`EGYPT-FLAG`) |
+| `RIDDL` | DOWN | `CAVE4` | plain |
+| `RIDDL` | EAST | `MPEAR` | conditional (`RIDDLE-FLAG`) |
+| `RIVR1` | UP | — | blocked |
+| `RIVR1` | WEST | `DOCK` | plain |
+| `RIVR1` | LAND | `DOCK` | plain |
+| `RIVR1` | DOWN | `RIVR2` | plain, one-way |
+| `RIVR1` | EAST | — | blocked |
+| `RIVR2` | UP | — | blocked |
+| `RIVR2` | DOWN | `RIVR3` | plain, one-way |
+| `RIVR2` | EAST | — | blocked |
+| `RIVR3` | UP | — | blocked |
+| `RIVR3` | DOWN | `RIVR4` | plain, one-way |
+| `RIVR3` | EAST | `WCLF1` | plain |
+| `RIVR3` | WEST | `RCAVE` | plain |
+| `RIVR3` | LAND | — | blocked |
+| `RIVR4` | UP | — | blocked |
+| `RIVR4` | DOWN | `RIVR5` | plain, one-way |
+| `RIVR4` | EAST | `WCLF2` | plain |
+| `RIVR4` | WEST | `BEACH` | plain |
+| `RIVR4` | LAND | — | blocked |
+| `RIVR5` | UP | — | blocked |
+| `RIVR5` | DOWN | `FCHMP` | plain, one-way |
+| `RIVR5` | LAND | `FANTE` | plain |
+| `RUBYR` | WEST | `LAVA` | plain |
+| `RUBYR` | SOUTH | `ICY` | plain |
+| `SAFE` | NORTH | `LEDG4` | plain |
+| `SHOUS` | WEST | `WHOUS` | plain |
+| `SHOUS` | EAST | `EHOUS` | plain |
+| `SHOUS` | SOUTH | `FORE2` | plain |
+| `SHOUS` | NORTH | — | blocked |
+| `SLEDG` | DOWN | `CELLA` | plain, one-way |
+| `SLEDG` | UP | `SLID2` | plain, one-way |
+| `SLEDG` | SOUTH | `SPAL` | plain |
+| `SLID1` | DOWN | `SLID2` | plain |
+| `SLID1` | UP | `SLIDE` | plain, one-way |
+| `SLID2` | DOWN | `SLID3` | plain |
+| `SLID2` | UP | `SLID1` | plain |
+| `SLID3` | DOWN | `CELLA` | plain, one-way |
+| `SLID3` | UP | `SLID2` | plain |
+| `SLID3` | EAST | `SLEDG` | plain, one-way |
+| `SLIDE` | EAST | `PASS3` | plain |
+| `SLIDE` | NORTH | `ENTRA` | plain |
+| `SLIDE` | DOWN | `CAVE4` | conditional (`FROBOZZ`), one-way |
+| `SMELL` | DOWN | `BOOM` | plain |
+| `SMELL` | EAST | `TUNNE` | plain |
+| `SPAL` | NORTH | `SLEDG` | plain |
+| `SQUEE` | WEST | `BATS` | plain |
+| `SQUEE` | SOUTH | `ENTRA` | plain |
+| `STREA` | LAUNC | `INSTR` | plain |
+| `STREA` | EAST | `RESES` | plain |
+| `STREA` | NORTH | `ICY` | plain |
+| `STUDI` | NORTH | `CRAW4` | plain |
+| `STUDI` | NW | `GALLE` | plain |
+| `STUDI` | UP | `KITCH` | conditional (`LIGHT-LOAD`), one-way |
+| `TCAVE` | SOUTH | `RCAVE` | plain |
+| `TCAVE` | NW | `CHAS3` | plain |
+| `TEMP1` | WEST | `MGRAI` | plain |
+| `TEMP1` | EAST | `TEMP2` | plain |
+| `TEMP2` | WEST | `TEMP1` | plain |
+| `TIMBE` | NORTH | `BLADD` | plain |
+| `TIMBE` | SW | `BSHAF` | conditional (`EMPTY-HANDED`) |
+| `TLADD` | DOWN | `BLADD` | plain |
+| `TLADD` | UP | `MINE7` | plain |
+| `TOMB` | WEST | `LLD2` | plain |
+| `TOMB` | NORTH | `CRYPT` | door (`TOMB`) |
+| `TOMB` | IN | `CRYPT` | door (`TOMB`) |
+| `TREAS` | DOWN | `CYCLO` | plain |
+| `TREAS` | EAST | `CPANT` | plain |
+| `TREE` | DOWN | `FORE3` | plain |
+| `TREE` | UP | — | blocked |
+| `TSHAF` | DOWN | — | blocked |
+| `TSHAF` | WEST | `ENTRA` | plain |
+| `TSHAF` | NORTH | `TUNNE` | plain |
+| `TUNNE` | SOUTH | `TSHAF` | plain |
+| `TUNNE` | WEST | `SMELL` | plain |
+| `TUNNE` | NE | `MINE1` | plain |
+| `TWELL` | EAST | `ALICE` | plain |
+| `TWELL` | DOWN | — | blocked |
+| `VAIR2` | WEST | `LEDG2` | plain |
+| `VAIR2` | LAND | `LEDG2` | plain |
+| `VAIR4` | LAND | `LEDG4` | plain |
+| `VAIR4` | EAST | `LEDG4` | plain |
+| `VLBOT` | NORTH | `LAVA` | plain |
+| `WCLF1` | SOUTH | `WCLF2` | conditional (`DEFLATE`) |
+| `WCLF1` | LAUNC | `RIVR3` | plain |
+| `WCLF2` | NORTH | `WCLF1` | conditional (`DEFLATE`) |
+| `WCLF2` | LAUNC | `RIVR4` | plain |
+| `WHOUS` | NORTH | `NHOUS` | plain |
+| `WHOUS` | SOUTH | `SHOUS` | plain |
+| `WHOUS` | WEST | `FORE1` | plain, one-way |
+| `WHOUS` | EAST | — | blocked |
+
+### Bank of Zork (16 exits)
+
+| room | direction | destination | kind |
+|---|---|---|---|
+| `BKBOX` | NORTH | — | blocked |
+| `BKBOX` | WEST | `BKTW` | conditional (`FROBOZZ`) |
+| `BKBOX` | EAST | `BKTE` | conditional (`FROBOZZ`) |
+| `BKBOX` | SOUTH | `BKEXE` | plain |
+| `BKENT` | NW | `BKTW` | plain |
+| `BKENT` | NE | `BKTE` | plain |
+| `BKENT` | SOUTH | `GALLE` | plain |
+| `BKEXE` | NORTH | `BKBOX` | plain |
+| `BKTE` | NORTH | `BKVE` | plain, one-way |
+| `BKTE` | SOUTH | `BKENT` | plain |
+| `BKTE` | EAST | `BKBOX` | plain |
+| `BKTW` | NORTH | `BKVW` | plain, one-way |
+| `BKTW` | SOUTH | `BKENT` | plain |
+| `BKTW` | WEST | `BKBOX` | plain |
+| `BKVE` | SOUTH | `BKENT` | plain, one-way |
+| `BKVW` | SOUTH | `BKENT` | plain, one-way |
+
+### Endgame (101 exits)
+
+| room | direction | destination | kind |
+|---|---|---|---|
+| `BDOOR` | NORTH | `SCORR` | plain |
+| `BDOOR` | SOUTH | `FDOOR` | door (`QDOOR`) |
+| `CELL` | OUT | `NCORR` | door (`CDOOR`) |
+| `CELL` | NORTH | `NCORR` | door (`CDOOR`) |
+| `CELL` | SOUTH | `SCORR` | door (`ODOOR`) |
+| `CRYPT` | SOUTH | `TOMB` | door (`TOMB`) |
+| `CRYPT` | OUT | `TOMB` | door (`TOMB`) |
+| `ECORR` | NORTH | `NCORR` | plain |
+| `ECORR` | SOUTH | `SCORR` | plain |
+| `FDOOR` | NORTH | `BDOOR` | door (`QDOOR`) |
+| `FDOOR` | IN | `BDOOR` | door (`QDOOR`) |
+| `FDOOR` | SOUTH | `MRD` | conditional (`FROBOZZ`) |
+| `FDOOR` | SE | `MRD` | conditional (`FROBOZZ`) |
+| `FDOOR` | SW | `MRD` | conditional (`FROBOZZ`) |
+| `INMIR` | NORTH | `MRA` | conditional (`FROBOZZ`) |
+| `INMIR` | SOUTH | `MRA` | conditional (`FROBOZZ`) |
+| `INMIR` | EAST | `MRA` | conditional (`FROBOZZ`) |
+| `INMIR` | WEST | `MRA` | conditional (`FROBOZZ`) |
+| `INMIR` | NE | `MRA` | conditional (`FROBOZZ`) |
+| `INMIR` | NW | `MRA` | conditional (`FROBOZZ`) |
+| `INMIR` | SE | `MRA` | conditional (`FROBOZZ`) |
+| `INMIR` | SW | `MRA` | conditional (`FROBOZZ`) |
+| `INMIR` | OUT | `MRA` | conditional (`FROBOZZ`) |
+| `MRA` | NORTH | `MRB` | conditional (`FROBOZZ`) |
+| `MRA` | NW | `MRB` | conditional (`FROBOZZ`) |
+| `MRA` | NE | `MRB` | conditional (`FROBOZZ`) |
+| `MRA` | IN | `INMIR` | conditional (`MIRROR-OPEN`) |
+| `MRA` | SOUTH | `MREYE` | plain |
+| `MRAE` | IN | `INMIR` | conditional (`MIRROR-OPEN`), one-way |
+| `MRAE` | WEST | `INMIR` | conditional (`MIRROR-OPEN`), one-way |
+| `MRAE` | NORTH | `MRB` | plain, one-way |
+| `MRAE` | SOUTH | `MREYE` | plain, one-way |
+| `MRANT` | SOUTH | `TSTRS` | plain |
+| `MRANT` | UP | `TSTRS` | plain |
+| `MRANT` | NORTH | `MREYE` | plain |
+| `MRAW` | IN | `INMIR` | conditional (`MIRROR-OPEN`), one-way |
+| `MRAW` | EAST | `INMIR` | conditional (`MIRROR-OPEN`), one-way |
+| `MRAW` | NORTH | `MRB` | plain, one-way |
+| `MRAW` | SOUTH | `MREYE` | plain, one-way |
+| `MRB` | NORTH | `MRC` | conditional (`FROBOZZ`) |
+| `MRB` | NW | `MRC` | conditional (`FROBOZZ`) |
+| `MRB` | NE | `MRC` | conditional (`FROBOZZ`) |
+| `MRB` | IN | `INMIR` | conditional (`MIRROR-OPEN`), one-way |
+| `MRB` | SOUTH | `MRA` | conditional (`FROBOZZ`) |
+| `MRB` | SW | `MRA` | conditional (`FROBOZZ`) |
+| `MRB` | SE | `MRA` | conditional (`FROBOZZ`) |
+| `MRBE` | IN | `INMIR` | conditional (`MIRROR-OPEN`), one-way |
+| `MRBE` | WEST | `INMIR` | conditional (`MIRROR-OPEN`), one-way |
+| `MRBE` | NORTH | `MRC` | plain, one-way |
+| `MRBE` | SOUTH | `MRA` | plain, one-way |
+| `MRBW` | IN | `INMIR` | conditional (`MIRROR-OPEN`), one-way |
+| `MRBW` | EAST | `INMIR` | conditional (`MIRROR-OPEN`), one-way |
+| `MRBW` | NORTH | `MRC` | plain, one-way |
+| `MRBW` | SOUTH | `MRA` | plain, one-way |
+| `MRC` | NORTH | `MRG` | conditional (`FROBOZZ`) |
+| `MRC` | NW | `MRG` | conditional (`FROBOZZ`) |
+| `MRC` | NE | `MRG` | conditional (`FROBOZZ`) |
+| `MRC` | IN | `INMIR` | conditional (`MIRROR-OPEN`), one-way |
+| `MRC` | SOUTH | `MRB` | conditional (`FROBOZZ`) |
+| `MRC` | SW | `MRB` | conditional (`FROBOZZ`) |
+| `MRC` | SE | `MRB` | conditional (`FROBOZZ`) |
+| `MRCE` | IN | `INMIR` | conditional (`MIRROR-OPEN`), one-way |
+| `MRCE` | WEST | `INMIR` | conditional (`MIRROR-OPEN`), one-way |
+| `MRCE` | NORTH | `MRG` | plain, one-way |
+| `MRCE` | SOUTH | `MRB` | plain, one-way |
+| `MRCW` | IN | `INMIR` | conditional (`MIRROR-OPEN`), one-way |
+| `MRCW` | EAST | `INMIR` | conditional (`MIRROR-OPEN`), one-way |
+| `MRCW` | NORTH | `MRG` | plain, one-way |
+| `MRCW` | SOUTH | `MRB` | plain, one-way |
+| `MRD` | NORTH | `FDOOR` | plain |
+| `MRD` | NE | `FDOOR` | plain |
+| `MRD` | NW | `FDOOR` | plain |
+| `MRD` | SOUTH | `MRG` | conditional (`FROBOZZ`) |
+| `MRD` | SE | `MRG` | conditional (`FROBOZZ`) |
+| `MRD` | SW | `MRG` | conditional (`FROBOZZ`) |
+| `MREYE` | NORTH | `MRA` | conditional (`FROBOZZ`) |
+| `MREYE` | NW | `MRA` | conditional (`FROBOZZ`) |
+| `MREYE` | NE | `MRA` | conditional (`FROBOZZ`) |
+| `MREYE` | SOUTH | `MRANT` | plain |
+| `MRG` | NORTH | `MRD` | conditional (`FROBOZZ`) |
+| `MRG` | SOUTH | `MRC` | conditional (`FROBOZZ`) |
+| `NCELL` | SOUTH | — | blocked |
+| `NCELL` | OUT | `NIRVA` | door (`ODOOR`), one-way |
+| `NCELL` | NORTH | `NIRVA` | door (`ODOOR`), one-way |
+| `NCORR` | EAST | `ECORR` | plain |
+| `NCORR` | WEST | `WCORR` | plain |
+| `NCORR` | NORTH | `PARAP` | plain |
+| `NCORR` | SOUTH | `CELL` | door (`CDOOR`) |
+| `NCORR` | IN | `CELL` | door (`CDOOR`) |
+| `PARAP` | SOUTH | `NCORR` | plain |
+| `PARAP` | NORTH | — | blocked |
+| `PCELL` | OUT | — | blocked |
+| `SCORR` | WEST | `WCORR` | plain |
+| `SCORR` | EAST | `ECORR` | plain |
+| `SCORR` | NORTH | `CELL` | door (`ODOOR`) |
+| `SCORR` | SOUTH | `BDOOR` | plain |
+| `TSTRS` | NORTH | `MRANT` | plain |
+| `TSTRS` | DOWN | `MRANT` | plain |
+| `TSTRS` | SOUTH | — | blocked |
+| `WCORR` | NORTH | `NCORR` | plain |
+| `WCORR` | SOUTH | `SCORR` | plain |
 
 ## Objects
 
@@ -548,9 +1180,9 @@ is not part of that sum.
 |---|---:|---:|
 | Total in the 1981 MDL | 196 | 209 |
 | Matched to a trilogy entity by display name | 85 | 106 |
-| Matched by position — exit graph, or what it starts inside | 31 | 23 |
-| **Matched, either way** | **116** | **129** |
-| No trilogy counterpart found | 80 | 80 |
+| Matched by position — exit graph, or what it starts inside | 32 | 23 |
+| **Matched, either way** | **117** | **129** |
+| No trilogy counterpart found | 79 | 80 |
 | Already built in `Sources/Zork1/` | 104 | — |
 
 **Position matching is what closes the mazes.** Fifteen mainframe passages are
