@@ -126,6 +126,37 @@ struct DungeonRoundRoom: GameContent {
         trait(.depositValue, 10)
     }
 
+    /// `IRBOX`. It stands in the Round Room from the first turn and the source
+    /// withholds its `OVISON`, so nobody sees it while the floor is turning.
+    /// Milestone 2 declined to declare it — "declare ahead of the *route*, not
+    /// ahead of the *mechanism*" — because the mechanism is the triangular
+    /// button in the Machine Room, and that room is milestone 5's. It is, so
+    /// this is where the box lands.
+    let steelBox = Item {
+        name("dented steel box")
+        adjectives("dented", "steel")
+        synonyms("box", "case")
+        firstSight(Prose.steelBoxFirstSight)
+        description(Prose.steelBox)
+        container
+        openable
+        hidden
+        trait(.weight, 40)
+    }
+
+    /// `STRAD`. Ten to find and ten to case, and the source's own joke is the
+    /// label inside it.
+    let violin = Item {
+        name("fancy violin")
+        adjectives("fancy", "stradivarius")
+        synonyms("violin", "fiddle", "strad")
+        firstSight(Prose.violinFirstSight)
+        description(Prose.violin)
+        trait(.weight, 10)
+        trait(.takeValue, 10)
+        trait(.depositValue, 10)
+    }
+
     // MARK: - Scenery
 
     /// The Round Room's whirring is the one thing about it a player can point
@@ -135,7 +166,6 @@ struct DungeonRoundRoom: GameContent {
         name("machinery")
         adjectives("unseen")
         synonyms("machine", "whirring", "whir", "floor")
-        description(Prose.roundRoomMachinery)
         scenery
     }
 
@@ -242,6 +272,8 @@ struct DungeonRoundRoom: GameContent {
         dampCave.west(blocked: Prose.dampCaveTooNarrow)
 
         platinumBar.starts(in: loudRoom)
+        steelBox.starts(in: roundRoom)
+        violin.starts(inside: steelBox)
         machinery.starts(in: roundRoom)
         eastWestStairway.starts(in: eastWestPassage)
         passageFork.starts(in: nsPassage)
@@ -260,7 +292,12 @@ struct DungeonRoundRoom: GameContent {
         roundRoom.describe {
             carouselSpinning
                 ? "\(Prose.roundRoom)\n\n\(Prose.roundRoomCompass)"
-                : Prose.roundRoom
+                : Prose.roundRoomStilled
+        }
+
+        // The machinery under the floor, which milestone 5 gave an off switch.
+        machinery.describe {
+            carouselSpinning ? Prose.roundRoomMachinery : Prose.roundRoomMachineryStopped
         }
 
         // The Loud Room's read-loop: your voice booms and the walls fling the

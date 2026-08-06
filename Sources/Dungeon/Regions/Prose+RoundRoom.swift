@@ -32,6 +32,16 @@ extension Prose {
         directions. Somewhere beneath the floor, machinery whirs.
         """
 
+    /// The same room once the triangular button in the Machine Room has
+    /// stopped the machinery. Milestone 5 built that button, and a room that
+    /// went on whirring afterwards would be telling the player their own
+    /// solution had not worked.
+    static let roundRoomStilled = """
+        This is a circular stone room with passages leading off in eight
+        directions. Beneath the floor, the machinery that turned it has
+        stopped.
+        """
+
     /// Written fresh. The mainframe prints a second line while the carousel
     /// turns, and this is that beat in this game's own words.
     static let roundRoomCompass = """
@@ -42,6 +52,11 @@ extension Prose {
     static let roundRoomMachinery = """
         Whatever is turning under the floor is bedded too deep to see and too
         steady to argue with. It sounds enormous, and it sounds patient.
+        """
+
+    static let roundRoomMachineryStopped = """
+        Whatever was turning under the floor is bedded too deep to see, and it
+        is not turning now.
         """
 
     /// Written fresh. Where the mainframe tells you plainly that directions
@@ -176,4 +191,23 @@ extension Prose {
         """
 
     static let dampCaveTooNarrow = "It is too narrow for most insects."
+
+    // MARK: - What the carousel was hiding
+
+    /// Verbatim — `IRBOX` is one of the comparison's `identical` entries.
+    static let steelBoxFirstSight = "There is a dented steel box here."
+
+    static let steelBox = """
+        A steel box, badly dented down one side, of the sort that gets shipped
+        and not carried.
+        """
+
+    /// Verbatim — `STRAD` is `identical` too, and the joke in it is the
+    /// source's.
+    static let violinFirstSight = "There is a Stradivarius here."
+
+    static let violin = """
+        A violin in a case lined with felt, and the label glued inside it says
+        exactly what you were hoping it would say.
+        """
 }

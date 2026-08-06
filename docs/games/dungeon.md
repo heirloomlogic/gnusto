@@ -172,14 +172,31 @@ Two consequences worth stating.
   the pot of gold, the bag of coins and the silver chalice. The ceiling is 393
   and a perfect playthrough of the four together scores 383; the ten still
   missing are, still, M1's canary and bauble.
+  M5 adds 106, all of it walkable: the Top of Well's room value (10) and six
+  treasures — the stack of zorkmid bills, the portrait of J. Pierpont Flathead,
+  the pearl necklace, the white crystal sphere, the tin of rare spices and the
+  Stradivarius. The ceiling is 499 and a perfect playthrough of the five
+  together scores 489; the ten still missing are, still, M1's canary and
+  bauble.
 - **A milestone may also decline to declare content that sits in one of its own
   rooms**, where the *thing* is here and the *mechanism that reveals it* is not.
   The dented steel box and the Stradivarius inside it stand in the Round Room from
   the first turn and are invisible until the triangular button in the Machine Room
-  stops the carousel, which is a later milestone's room. Declaring them at M2 would
-  put twenty unpayable points on the ceiling and an unreachable object in a room,
-  which is the opposite of what the ratchet is for. The rule of thumb: declare
-  ahead of the *route*, not ahead of the *mechanism*.
+  stops the carousel, which was a later milestone's room. Declaring them at M2 would
+  have put twenty unpayable points on the ceiling and an unreachable object in a
+  room, which is the opposite of what the ratchet is for. The rule of thumb:
+  declare ahead of the *route*, not ahead of the *mechanism*. M5 built the button,
+  so the box and the violin are declared there, in `DungeonRoundRoom` beside the
+  room they have stood in since turn one.
+- **A room value is an *arrival* award, and arriving is not the only way to be
+  somewhere.** `scoring.visit` hangs off `onEnter`, and `onEnter` is dispatched
+  from exactly one place — the engine's `enter()`. A player carried into a room by
+  a vehicle never passes through it, and neither does one moved by a rule. M5's
+  Top of Well is the first room in the game where the *usual* way in is a vehicle:
+  you ride the bucket up the well. Its ten points are therefore paid from an
+  `afterEachTurn` rule guarded by a `Bool`, the way `LIGHT-SHAFT` already is. The
+  rule of thumb: if a room can be reached by anything but walking, its value is an
+  each-turn award and not a visit.
 - **`LIGHT-SHAFT` is documented before it is declared.** It is an `awardOnce`
   register worth 10, not a room `VALUE` (as a room value it would pay out to
   anyone who arrived in the Lower Shaft in the dark, which is the opposite of the
@@ -279,6 +296,19 @@ the whole game answers (`diagnose`, `dig`, `pray`), and words that cross two
 bundles (`launch` and `land`, whose moorings include the dam's; `temple` and
 `treasure`, which join two).
 
+An eighth, learned at M5: **a declaration body has a size limit, and the limit
+is the stack.** Adding twenty rooms made every `DungeonTests` test
+— milestone 1's included — die with a bus error and no message. Nothing was
+wrong with the game: `swift run Dungeon` was fine. `Bootstrap.build` reads the
+host's `map` and `rules` and every content bundle's in one call chain, and the
+depth of that chain grows with the size of the largest single declaration body,
+while a shipped game boots on the main thread's 8 MB and a Swift Testing test
+body runs on a cooperative thread with far less. Splitting the host's `rules`
+into eight `@RuleBuilder` properties and its `map` into four `@MapBuilder` ones
+fixed it, and each region bundle's own `rules` is split the same way. So keep a
+single `map` or `rules` body to a few dozen statements and group the rest behind
+named sub-builders. The failure it prevents names nothing and points nowhere.
+
 A fifth, learned at M3: **a mechanism outgrows its bundle.** M2 put the Round
 Room's carousel inside `DungeonRoundRoom` because all three of its built passages
 led to rooms that bundle owned. M3 built five more, reaching three other bundles,
@@ -312,9 +342,9 @@ or engine change?*
 | Mechanism | The hard part |
 |---|---|
 | **Royal Puzzle** | The room's geometry mutates. The player pushes sandstone walls through a grid; marble walls do not move. **Answered — in-game rule, and it costs the engine nothing. See below.** |
-| **Bank of Zork** | Non-Euclidean. Which room the curtain of light delivers you to depends on hidden state. **Answered — see below.** |
+| **Bank of Zork** | Non-Euclidean. Which room the curtain of light delivers you to depends on hidden state. **Answered — see below — and built at M5.** |
 | **Balloon** | A vehicle that rises and falls a volcano shaft on a timer, with a receptacle you feed to keep it aloft. Vehicles exist (`player.vehicle`); the vertical daemon does not. **Answered — see below.** |
-| **Robot, and the mirror box** | Commanding an actor (`robot, push button`) and riding a vehicle you steer from inside. Load-bearing for the Endgame. **Half answered — the actor imperative shipped as an engine change (#130); the mirror box is still sized. See below.** |
+| **Robot, and the mirror box** | Commanding an actor (`robot, push button`) and riding a vehicle you steer from inside. Load-bearing for the Endgame. **Half answered — the actor imperative shipped as an engine change (#130) and the robot was built at M5; the mirror box is still sized. See below.** |
 
 ### The actor-imperative question, answered
 

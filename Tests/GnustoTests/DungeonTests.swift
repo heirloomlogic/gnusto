@@ -362,9 +362,9 @@ struct DungeonTests {
         expectInOrder(
             transcript,
             [
-                "Your score is 10 of a possible 393",
+                "Your score is 10 of a possible 499",
                 "Cellar",
-                "Your score is 35 of a possible 393",
+                "Your score is 35 of a possible 499",
             ])
     }
 
@@ -438,7 +438,7 @@ struct DungeonTests {
                 "Gallery",
                 "The vandals left through the north,",
                 "Taken.",
-                "Your score is 39 of a possible 393",
+                "Your score is 39 of a possible 499",
             ])
         #expect(!transcript.contains("nasty-looking troll"))
     }
@@ -492,7 +492,7 @@ struct DungeonTests {
                 "Forest",
                 "You have been killed once.",
                 // Thirty-five points earned, ten paid back to the troll.
-                "Your score is 25 of a possible 393",
+                "Your score is 25 of a possible 499",
             ])
     }
 
@@ -550,7 +550,7 @@ struct DungeonTests {
     @Test func theCeilingTotalsTheAwardTableExactly() throws {
         let (definition, _) = try Bootstrap.build(Dungeon())
 
-        #expect(definition.maxScore == 393)
+        #expect(definition.maxScore == 499)
         #expect(definition.warnings.isEmpty, "\(definition.warnings)")
     }
 
@@ -568,7 +568,7 @@ struct DungeonTests {
                 "Taken.",
                 "The egg is now open, but the clumsiness of your attempt has",
                 "the mainspring seems sprung",
-                "Your score is 5 of a possible 393",
+                "Your score is 5 of a possible 499",
             ])
     }
 
@@ -611,13 +611,13 @@ struct DungeonTests {
                 "Up a Tree",
                 "Kitchen",
                 "Living Room",
-                "Your score is 20 of a possible 393",
+                "Your score is 20 of a possible 499",
                 "Cellar",
                 "Gallery",
                 "Studio",
                 "Kitchen",
                 "Living Room",
-                "Your score is 56 of a possible 393",
+                "Your score is 56 of a possible 499",
             ])
     }
 
@@ -733,7 +733,7 @@ struct DungeonTests {
             transcript,
             [
                 "East-West Passage",
-                "Your score is 40 of a possible 393",
+                "Your score is 40 of a possible 499",
                 // North and down out of the passage are the same stair, and
                 // they reach a room Zork I does not have.
                 "Deep Ravine",
@@ -793,7 +793,7 @@ struct DungeonTests {
                 "Taken.",
                 // Five for the passage, twelve for the bar — and twelve is the
                 // mainframe's find value, where Zork I pays ten.
-                "Your score is 52 of a possible 393",
+                "Your score is 52 of a possible 499",
             ])
     }
 
@@ -1046,16 +1046,16 @@ struct DungeonTests {
         expectInOrder(
             transcript,
             [
-                "Your score is 56 of a possible 393",
+                "Your score is 56 of a possible 499",
                 "The troll takes a fatal blow",
                 "Loud Room",
                 "The acoustics of the room change subtly.",
                 "You put the platinum bar in the trophy case.",
-                "Your score is 83 of a possible 393",
+                "Your score is 83 of a possible 499",
                 "The sluice gates open and water pours through the dam.",
                 "Lying half buried in the mud is an old trunk",
                 "You put the trunk of jewels in the trophy case.",
-                "Your score is 106 of a possible 393",
+                "Your score is 106 of a possible 499",
             ])
     }
 
@@ -1556,10 +1556,10 @@ struct DungeonTests {
                 "The basket is raised to the top of the shaft.",
                 "The basket is lowered to the bottom of the shaft.",
                 "Timber Room",
-                "Your score is 54 of a possible 393",
+                "Your score is 54 of a possible 499",
                 "Lower Shaft",
                 "In the basket is an ivory torch.",
-                "Your score is 64 of a possible 393",
+                "Your score is 64 of a possible 499",
             ])
     }
 
@@ -1624,11 +1624,11 @@ struct DungeonTests {
             [
                 "On the shore lies Poseidon's own crystal trident.",
                 "On the pedestal is a grail.",
-                "Your score is 46 of a possible 393",
+                "Your score is 46 of a possible 499",
                 "the temple dissolves around you",
                 "Forest",
                 "Living Room",
-                "Your score is 62 of a possible 393",
+                "Your score is 62 of a possible 499",
             ])
     }
 
@@ -1915,9 +1915,9 @@ struct DungeonTests {
         expectInOrder(
             transcript,
             [
-                "Your score is 35 of a possible 393",
-                "Your score is 60 of a possible 393",
-                "Your score is 70 of a possible 393",
+                "Your score is 35 of a possible 499",
+                "Your score is 60 of a possible 499",
+                "Your score is 70 of a possible 499",
             ])
     }
 
@@ -2089,7 +2089,7 @@ struct DungeonTests {
                 "Sandy Beach",
                 "You seem to be digging a hole here.",
                 "You can see a small statue here in the sand.",
-                "Your score is 50 of a possible 393",
+                "Your score is 50 of a possible 499",
                 "The hole collapses, smothering you.",
             ])
     }
@@ -2114,7 +2114,7 @@ struct DungeonTests {
                 "End of Rainbow",
                 "the rainbow appears to become solid",
                 "At the end of the rainbow is a pot of gold.",
-                "Your score is 50 of a possible 393",
+                "Your score is 50 of a possible 499",
                 "Rainbow Room",
                 "and fifty feet above the river, do you",
             ])
@@ -2220,5 +2220,547 @@ struct DungeonTests {
             seed: 11)
 
         expectEveryNounAnswered(afloat, "the river, its banks and the falls")
+    }
+
+    // MARK: - Milestone 5: the roads in
+
+    /// Milestone 5's road: down, past the troll, and out of the Round Room's
+    /// carousel into the Engravings Cave. Seed 10 throughout, recorded, because
+    /// the carousel is a lottery until the triangular button stops it and this
+    /// is the draw that lands.
+    ///
+    /// The bottle comes along from the kitchen table with the water still in
+    /// it: the well will not lift anybody without it.
+    private static let toTheEngravingsCave =
+        intoTheKitchen + ["take bottle", "open bottle"] + downTheTrapDoor
+        + ["east", "attack troll with sword", "drop sword", "north", "east", "north"]
+
+    /// On through the riddle to the bottom of the well.
+    private static let toTheWell =
+        toTheEngravingsCave + ["southeast", "answer well", "east", "east"]
+
+    /// And up it, into the tea party.
+    private static let toTheTeaRoom =
+        toTheWell + ["board bucket", "pour water in bucket", "get out", "east"]
+
+    /// The Bank hangs off the Gallery, which is two rooms south of the Cellar
+    /// and needs no fight and no seed.
+    private static let toTheBank = intoTheCellar + ["south", "south", "west"]
+
+    // MARK: - Milestone 5: the riddle
+
+    /// The Engravings Cave's second passage. Zork I's cave has two exits too,
+    /// and they are northwest and east; the mainframe's are north and
+    /// **southeast**, and the southeast one is the only road to the well, the
+    /// Bank's neighbours and everything above them.
+    @Test func theEngravingsCaveOpensSoutheastOnTheRiddleRoom() async throws {
+        let transcript = try await play(
+            Dungeon(), Self.toTheEngravingsCave + ["southeast", "look"], seed: 10)
+
+        expectInOrder(
+            transcript,
+            ["Engravings Cave", "Riddle Room", "great door of dressed stone"])
+    }
+
+    /// The door opens for one word and for nothing else. The riddle is written
+    /// fresh — `RIDDL`'s trilogy column in the comparison document is empty,
+    /// because no trilogy room answers to it — but the **answer** is the
+    /// source's, since the answer is puzzle logic and puzzle logic is
+    /// structure.
+    @Test func theStoneDoorOpensOnlyForTheWordWell() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheEngravingsCave
+                + ["southeast", "read inscription", "east", "answer well", "east"],
+            seed: 10)
+
+        expectInOrder(
+            transcript,
+            [
+                "No one passes who cannot say",
+                "Something you cannot see stands between you and the doorway",
+                "the great door swings back",
+                "Pearl Room",
+            ])
+    }
+
+    /// And the word is inert everywhere else, because it is a word in the
+    /// game's vocabulary everywhere.
+    @Test func theRiddleWordIsInertEverywhereElse() async throws {
+        let transcript = try await play(Dungeon(), ["answer well"], seed: 10)
+
+        #expect(transcript.contains("Nothing here is waiting on an answer."))
+    }
+
+    /// `MPEAR` is an `identical` entry, so the room is the trilogy's line
+    /// verbatim. The pearls pay **9** to find and **5** to case — the one
+    /// treasure in this milestone worth more in the hand than in the case.
+    @Test func thePearlNecklaceIsWorthMoreFoundThanCased() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheEngravingsCave
+                + ["southeast", "answer well", "east", "score", "take necklace", "score"],
+            seed: 10)
+
+        expectInOrder(
+            transcript,
+            [
+                "This is a former broom closet.",
+                "There is a pearl necklace here with hundreds of large pearls.",
+                "Your score is 40 of a possible 499",
+                "Your score is 49 of a possible 499",
+            ])
+    }
+
+    // MARK: - Milestone 5: the well
+
+    /// The bucket is a vehicle, and the only lift in the game. Water in it
+    /// sends it up; emptying it sends it back down, which is what keeps the
+    /// whole area above the well from being a one-way trip — it has no other
+    /// exit.
+    @Test func theBucketRisesOnWaterAndSinksWhenItIsEmptied() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheWell
+                + ["board bucket", "pour water in bucket", "empty bucket", "look"],
+            seed: 10)
+
+        expectInOrder(
+            transcript,
+            [
+                "There is a wooden bucket here, 3 feet in diameter",
+                "The bucket rises",
+                "Top of Well",
+                "the bucket sinks gently",
+                "Circular Room",
+            ])
+    }
+
+    /// The Top of Well's ten points are the mainframe's `RVAL`, and this game
+    /// pays them from an each-turn rule rather than from `scoring.visit`. A
+    /// room value is an arrival award, and the usual way into this room is
+    /// riding a vehicle up — which moves the bucket and carries the player,
+    /// and runs no `onEnter` at all. The Bank of Zork spike (#132) recorded
+    /// that hole; this is the first room in the game to fall into it.
+    @Test func theTopOfWellPaysItsRoomValueToSomebodyWhoRodeUp() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheWell + ["score", "board bucket", "pour water in bucket", "score"],
+            seed: 10)
+
+        expectInOrder(
+            transcript,
+            ["Your score is 40 of a possible 499", "Your score is 50 of a possible 499"])
+    }
+
+    /// Two rooms carry the well's etchings, and the ring of letters is legible
+    /// only at the top. Written fresh: the source's figure is 1981 MDL
+    /// typography and this game reproduces none of that — but what it spells is
+    /// the riddle's answer, which is a hint, and a hint is structure.
+    @Test func theEtchingsAreHalfGoneBelowAndWholeAbove() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheWell
+                + ["read etchings", "board bucket", "pour water in bucket", "read etchings"],
+            seed: 10)
+
+        expectInOrder(
+            transcript,
+            ["the damp has had the", "M A G I C", "W E L L"])
+    }
+
+    // MARK: - Milestone 5: the tea party
+
+    /// The three iced cakes carry writing the size of the icing, and only
+    /// somebody four inches high can read it.
+    @Test func theIcedCakesCannotBeReadUntilYouAreSmall() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheTeaRoom
+                + [
+                    "take red cake", "take eat-me cake", "read red cake",
+                    "eat eat-me cake", "read red cake",
+                ],
+            seed: 10)
+
+        expectInOrder(
+            transcript,
+            [
+                "far too small to make out",
+                "Posts Room",
+                "EVAPORATE ME",
+            ])
+    }
+
+    /// The 'Eat-Me' cake works in the Tea Room and nowhere else, and what it
+    /// does is put you on the floor under the table — which is `ALISM`, a room
+    /// with no exit into it anywhere in the atlas because eating is the only
+    /// way to arrive.
+    @Test func theEatMeCakeDropsYouUnderTheTable() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheTeaRoom + ["take eat-me cake", "eat eat-me cake", "east"],
+            seed: 10)
+
+        expectInOrder(
+            transcript,
+            [
+                "four wooden posts",
+                "Pool Room",
+                "rope of goop falls from a leak",
+            ])
+    }
+
+    /// And the orange one brings you back, but only from under the table:
+    /// there is nowhere in the Pool Room for a full-sized person to be.
+    @Test func theOrangeCakeOnlyWorksUnderTheTable() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheTeaRoom
+                + [
+                    "take eat-me cake", "take orange cake", "eat eat-me cake",
+                    "east", "eat orange cake", "west", "eat orange cake",
+                ],
+            seed: 10)
+
+        expectInOrder(
+            transcript,
+            [
+                "Posts Room",
+                "Pool Room",
+                "growing to full size in here would be the last",
+                "Posts Room",
+                "you are standing in the Tea Room at your proper size",
+            ])
+    }
+
+    /// The blue one is a mistake, and the source's own adjective for it —
+    /// *ecch* — says so before you make it.
+    @Test func theBlueCakeIsAMistake() async throws {
+        let transcript = try await play(
+            Dungeon(), Self.toTheTeaRoom + ["take blue cake", "eat blue cake"], seed: 10)
+
+        #expect(transcript.contains("chemistry set ever sold"))
+    }
+
+    /// The red cake in the pool is the source's `LOW-TIDE`: the depression
+    /// boils dry and the tin of spices the Pool Room has been holding all along
+    /// — declared in its contents and denied its `OVISON` — is finally there to
+    /// pick up. Five to find and five to case.
+    @Test func theRedCakeEvaporatesThePoolAndShowsTheSpices() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheTeaRoom
+                + [
+                    "take eat-me cake", "take red cake", "eat eat-me cake", "east",
+                    "take tin", "throw red cake in pool", "look", "take tin", "score",
+                ],
+            seed: 10)
+
+        expectInOrder(
+            transcript,
+            [
+                "You can't see any such thing.",
+                "goes up at once in a column of steam",
+                "There is a tin of rare spices here.",
+                "Taken.",
+                "Your score is 55 of a possible 499",
+            ])
+    }
+
+    /// The flask is not a puzzle. It is a skull and crossbones with a stopper
+    /// in it.
+    @Test func theFlaskIsATrapAndNotATool() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheTeaRoom
+                + ["take eat-me cake", "eat eat-me cake", "east", "open flask"],
+            seed: 10)
+
+        #expect(transcript.contains("the vapour goes into you"))
+    }
+
+    // MARK: - Milestone 5: the robot
+
+    /// `MAGNE` has **nine** exits and they reach two rooms: five of them the
+    /// Machine Room and four the Tea Room. The source gates every one on
+    /// `MAGNET-ROOM-EXIT`, a routine `dung.355` does not carry, so the
+    /// destinations are the atlas's and the gate is not built.
+    @Test func theLowRoomsNinePassagesReachExactlyTwoRooms() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheTeaRoom
+                + ["northwest", "north", "west", "northeast", "west", "southwest", "northwest"],
+            seed: 10)
+
+        expectInOrder(
+            transcript,
+            ["Low Room", "Machine Room", "Low Room", "Machine Room", "Low Room", "Tea Room"])
+    }
+
+    /// The robot walks on your word, and the engine runs no default action for
+    /// somebody else — so the order is answered by a rule in this game or by
+    /// nothing at all. #130 is what made the sentence reach a rule; the table
+    /// it walks is `DungeonAlice`'s.
+    @Test func theRobotWalksOnYourWordAndNotOtherwise() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheTeaRoom + ["northwest", "read paper", "robot, up", "robot, north", "north"],
+            seed: 10)
+
+        expectInOrder(
+            transcript,
+            [
+                "FROBOZZ MAGIC ROBOT COMPANY",
+                "ROBOT, LIFT THE CAGE",
+                "The robot's treads grind against the rock",
+                "The robot turns on its treads and clanks away.",
+                "Machine Room",
+                "There is a robot here.",
+            ])
+    }
+
+    /// Lifting the sphere off its pedestal drops a steel cage on whoever did
+    /// it. Done by hand it costs you the room; the way out is the one order
+    /// the green paper spells out, and the robot mangles the cage getting it
+    /// up. The six points are paid on the take, because the trap is an `after`
+    /// rule that does not throw.
+    @Test func theSphereSpringsACageAndTheRobotLiftsItOff() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheTeaRoom
+                + [
+                    "northwest", "robot, north", "north", "robot, south", "south",
+                    "take sphere", "score", "robot, lift cage", "look",
+                ],
+            seed: 10)
+
+        expectInOrder(
+            transcript,
+            [
+                "Dingy Closet",
+                "There is a beautiful white crystal sphere here.",
+                "Taken.",
+                "a steel cage falls from the ceiling",
+                "You are trapped inside a solid steel cage.",
+                "the robot stands exactly where you",
+                "Your score is 56 of a possible 499",
+                "with a scream of tearing steel",
+                "There is a mangled steel cage here.",
+            ])
+    }
+
+    /// Ordered to fetch it instead, the robot springs the trap on itself and
+    /// does not mind. An order never reaches stage 4, so that half of the trap
+    /// has to be a `before` rule where the player's half is an `after` one.
+    @Test func theRobotOrderedToTakeTheSphereWearsTheCageInstead() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheTeaRoom
+                + [
+                    "northwest", "robot, north", "north", "robot, south", "south",
+                    "robot, take sphere", "look", "take sphere",
+                ],
+            seed: 10)
+
+        expectInOrder(
+            transcript,
+            [
+                "lands on the robot, which does not appear",
+                "There is a mangled steel cage here.",
+                "Taken.",
+            ])
+    }
+
+    // MARK: - Milestone 5: the three buttons
+
+    /// The triangular button stops the machinery under the Round Room — a room
+    /// in another bundle a very long way off, which is why the host presses it
+    /// — and what the stopped floor stops hiding is the dented steel box that
+    /// has stood in the Round Room since turn one. Milestone 2 declined to
+    /// declare the box for exactly this reason.
+    @Test func theTriangularButtonStopsTheCarouselAndShowsTheSteelBox() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheTeaRoom
+                + [
+                    "northwest", "north", "push triangular button", "push triangular button",
+                    "push round button", "push square button",
+                ],
+            seed: 10)
+
+        expectInOrder(
+            transcript,
+            [
+                "a great deal of machinery slows and",
+                "the machinery it spoke to has already",
+                "takes note of the round",
+                "takes note of the square",
+            ])
+    }
+
+    // MARK: - Milestone 5: the Bank of Zork
+
+    /// The Gallery's west door, which milestone 1 left undeclared. Nine rooms
+    /// hang off it and none of them reached Zork I.
+    @Test func theGalleryOpensWestOnTheBankOfZork() async throws {
+        let transcript = try await play(Dungeon(), Self.toTheBank + ["look"], seed: 10)
+
+        expectInOrder(
+            transcript,
+            ["Gallery", "Bank Entrance", "the largest banking"])
+    }
+
+    /// The whole of the Bank's puzzle in one run: the curtain of light answers
+    /// to the bearing you last walked into the Depository on, and the one
+    /// bearing that opens the Vault is *south* — which no doorway can give you,
+    /// because the only thing north of the Depository is the curtain itself.
+    @Test func theCurtainAnswersToTheBearingYouCameInOn() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheBank
+                + [
+                    "northwest", "west", "walk through curtain", "walk through curtain",
+                    "walk through curtain", "take bills", "score",
+                ],
+            seed: 10)
+
+        expectInOrder(
+            transcript,
+            [
+                "West Teller's Room",
+                "Safety Depository",
+                "Viewing Room",
+                "Safety Depository",
+                "This is the Vault of the Bank of Zork, in which there are no doors.",
+                "On the floor sit 200 neatly stacked zorkmid bills.",
+                "Your score is 45 of a possible 499",
+            ])
+    }
+
+    /// And the other road in: from the Chairman's Office you walk into the
+    /// Depository heading north, and the curtain opens on the Small Room, whose
+    /// south wall is one of the four pairings in the source's `SCOL-WALLS`.
+    @Test func theSmallRoomsSouthWallIsTheOtherWayIntoTheVault() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheBank
+                + [
+                    "northeast", "east", "south", "north", "walk through curtain",
+                    "walk through south wall", "look",
+                ],
+            seed: 10)
+
+        expectInOrder(
+            transcript,
+            [
+                "East Teller's Room",
+                "Chairman's Office",
+                "Safety Depository",
+                "This is a small, bare room",
+                "The wall gives like water",
+                "This is the Vault of the Bank of Zork",
+            ])
+    }
+
+    /// Every wall the source does not pair puts you in the entrance hall, which
+    /// is `SCOLEXIT`'s destination — and the only way to leave the building
+    /// with the takings, because the Depository's own doorways ring the alarm
+    /// on anything belonging to the bank.
+    @Test func theAlarmHoldsBankPropertyAndTheWallsDoNot() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheBank
+                + [
+                    "northwest", "west", "south", "take portrait", "north", "west", "east",
+                    "walk through curtain", "walk through curtain", "walk through curtain",
+                    "take bills", "walk through east wall", "score",
+                ],
+            seed: 10)
+
+        expectInOrder(
+            transcript,
+            [
+                "A portrait of J. Pierpont Flathead hangs on the wall.",
+                "An alarm rings briefly and an invisible force prevents your leaving.",
+                "An alarm rings briefly and an invisible force prevents your leaving.",
+                "The wall gives like water",
+                "Bank Entrance",
+                "Your score is 55 of a possible 499",
+            ])
+    }
+
+    // MARK: - Milestone 5: every printed noun answers
+
+    @Test func everyNounTheRiddleRoomAndTheWellPrint() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheEngravingsCave
+                + ["southeast", "examine door", "examine inscription", "answer well"]
+                + ["east", "examine necklace", "examine shelves"]
+                + ["east", "examine bucket", "examine etchings", "examine well"]
+                + ["board bucket", "pour water in bucket", "get out", "examine crack"],
+            seed: 10)
+
+        expectEveryNounAnswered(transcript, "the Riddle Room, the Pearl Room and the well")
+    }
+
+    @Test func everyNounTheTeaPartyAndTheRobotPrint() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheTeaRoom
+                + ["examine table", "examine hole", "examine eat-me cake", "examine blue cake"]
+                + ["northwest", "examine robot", "examine paper", "examine ceiling"]
+                + ["north", "examine round button", "examine square button"]
+                + ["examine triangular button", "south", "examine sphere", "examine pedestal"]
+                + ["examine sticker"],
+            seed: 10)
+
+        expectEveryNounAnswered(transcript, "the Tea Room, the Low Room and the closet")
+    }
+
+    @Test func everyNounTheBankPrints() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheBank
+                + ["examine signs", "northwest", "examine counter", "west"]
+                + ["examine cube", "read cube", "examine curtain", "south"]
+                + ["examine wreckage", "examine portrait", "north", "walk through curtain"]
+                + ["examine northern wall", "examine eastern wall", "examine curtain"]
+                + ["walk through curtain", "walk through curtain", "examine bills"],
+            seed: 10)
+
+        expectEveryNounAnswered(transcript, "the Bank of Zork")
+    }
+
+    /// With milestone 5 in, the Bank and everything above the well join the
+    /// graph — the Bank off the Gallery, the well off the Engravings Cave — and
+    /// the Round Room stops being a lottery for anybody who has reached the
+    /// Machine Room.
+    @Test func milestoneFiveJoinsTheBankAndTheWellToTheGraph() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheTeaRoom
+                + ["northwest", "north", "push triangular button", "west", "southeast"]
+                + ["west", "board bucket", "empty bucket", "get out", "west", "west", "down"]
+                + ["north", "look"],
+            seed: 10)
+
+        expectInOrder(
+            transcript,
+            [
+                "Machine Room",
+                "a great deal of machinery slows and",
+                "Low Room",
+                "Tea Room",
+                "Top of Well",
+                "Circular Room",
+                "Pearl Room",
+                "Riddle Room",
+                "Engravings Cave",
+                "Round Room",
+                "the machinery that turned it has",
+                "There is a dented steel box here.",
+            ])
     }
 }

@@ -1771,3 +1771,153 @@ the source puts you after River-5, and this game dies at the lip instead.
 milestone does not build the far side of:
 
 - the Treasure Room's east passage into the Royal Puzzle's antechamber.
+
+### Milestone 5 — the Bank of Zork, the well, the tea party and the robot
+
+20 rooms in three region bundles, and the first milestone that forked nothing
+from `Sources/Zork1/`, because there was nothing there to fork. The Bank of
+Zork — the entrance hall, both teller's rooms, both
+Viewing Rooms, the Safety Depository, the Chairman's Office, the Small Room and
+the Vault. The Alice area, which is `dung.355`'s own heading and this bundle's
+boundary too — the Circular Room at the bottom of the well, the Top of Well, the
+Tea Room, the Posts Room and the Pool Room under its table, the Low Room, the
+Machine Room, the Dingy Closet and the Cage. And the two rooms of the riddle,
+the Riddle Room and the Pearl Room, which are the only road to any of it. Every
+room came out with the number of exits `docs/games/dungeon-atlas.md` records for
+it.
+
+**Where this departs from `Sources/Zork1/`, and why.** Zork I has none of these
+rooms, so the comparison that matters here is with Zork II, which took most of
+them and rebuilt the game around them.
+
+- **The Bank hangs off the Gallery**, west, through a door milestone 1 left
+  undeclared. Nine rooms and 40 points come through one doorway.
+- **`BKTWI` and `BKVAU` declare no exits.** Both are `NULEXIT` in the source.
+  The way out of either is through a wall.
+- **The curtain of light reaches four rooms, and which one depends on the
+  bearing you last walked into the Depository on.** That is `SCOL-ROOMS`: west
+  from the West Teller's Room gives the West Viewing Room, east from the East
+  Teller's the East Viewing Room, north from the Chairman's Office the Small
+  Room — and *south*, which no doorway can give you, the Vault. The only thing
+  north of the Depository is the curtain itself, so the one way to arrive
+  heading south is to come back out through it.
+- **Four walls out of sixteen lead anywhere but the front door.**
+  `SCOL-WALLS` pairs the west Viewing Room's east wall with the east Viewing
+  Room, the Small Room's south wall with the Vault, and both of those backwards.
+  Every other wall puts you in the Bank Entrance, which is `SCOLEXIT`'s
+  destination and the only way to leave the building with the takings: the
+  Depository's own east and west doorways ring `BKALARM` on anything belonging
+  to the bank.
+- **Two rooms in this game are called Machine Room, and they are not the same
+  room.** `MACHI` is the coal mine's, with the lid and the switch, and milestone
+  3 built it. `CMACH` is this one, with the round, square and triangular
+  buttons, west of the Low Room and north of the Dingy Closet. The atlas's *in
+  `Sources/Zork1/`* column points `CMACH` at `Regions/CoalMine.swift` because
+  that column matches on display name; it is matching the wrong room.
+- **The Low Room has nine exits and they reach two rooms** — five the Machine
+  Room, four the Tea Room.
+- **The Posts Room has no way in.** No exit anywhere in the atlas leads to
+  `ALISM`; you arrive by eating the 'Eat-Me' cake in the Tea Room and finding
+  that the table has become a roof and its legs four posts. The orange-icing
+  cake is the way back, and it works under the table and nowhere else.
+- **The well is a vehicle.** `BUCKE` carries `VEHBIT` and the two well rooms
+  carry `RBUCKBIT`; pouring the bottle's water into the bucket raises it, and
+  emptying it lowers it. The water stays in the bucket, which is what makes the
+  trip reversible — the Alice area has no other exit in either direction.
+- **The white crystal sphere is a trap with two answers.** Lifting it off its
+  pedestal drops a steel cage on whoever did the lifting. Done by hand it costs
+  you the room and the way out is `robot, lift the cage`; ordered, the cage
+  lands on the robot, which does not mind, and the sphere is free.
+- **The triangular button stops the Round Room's carousel**, which is what
+  finally puts the dented steel box and the Stradivarius inside it in play —
+  milestone 2 declared neither and named this button as the reason.
+- Values are the mainframe's throughout: the zorkmid bills 10+15, the portrait
+  10+5, the pearl necklace **9+5** — the one treasure in the game worth more
+  found than cased — the sphere 6+6, the tin of spices 5+5, the Stradivarius
+  10+10, and the Top of Well's room `RVAL` 10.
+
+**Adapted rather than reproduced, line by line.** Eleven of this milestone's
+entries are in the comparison's `identical` bucket — `BKEXE`, `BKVAU`, `BUCKE`,
+`BWELL`, `IRBOX`, `MPEAR`, `PEARL`, `RBTLB`, `ROBOT`, `STRAD` and `TWELL` — so
+the Chairman's Office, the Vault, the wooden bucket, the Circular Room, the
+steel box, the Pearl Room, the pearl necklace, the green piece of paper, the
+robot, the Stradivarius and the Top of Well are the trilogy's lines verbatim.
+`CAGED` is `minor` and taken as it stands. The issue that commissioned this milestone
+said the opposite: that all of this prose had to be written fresh, because the
+trilogy's versions belonged to changed puzzles. Fifteen entries out of
+twenty-three say otherwise, so the milestone followed the policy.
+
+**Two `minor` entries are adapted anyway, for the reason milestones 3 and 4 both
+recorded: the bucket measures string distance, not whether the room is the same
+room.** `ALICE` and `ALISM` both enumerate their exits in prose, and the
+trilogy's versions of both drop or change them.
+
+`ALITR`, `BKBOX`, `BKVE`, `BKVW`, `CAGER`, `BILLS` and `PORTR` are
+`substantial` and differ because the puzzle differs, so each keeps the voice and
+loses the wrong facts — `ALITR` is the comparison's own worked example of that,
+since what leaks from that ceiling is not the same substance in the two
+versions. `RIDDL` is filed `substantial` and its trilogy column is **empty**:
+no trilogy room answers to it at all.
+
+The Bank Entrance, both teller's rooms, the Small Room, the stone cube, the
+curtain, all sixteen walls, the Riddle Room and its verse, the well's etchings,
+the cakes, the posts, the pool, the flask, the tin of spices, the Low Room, the
+Machine Room, the three buttons, the pedestal, the cage in both of its states
+and the robot's instruction sheet are written fresh. **No 1981 MDL text is
+reproduced anywhere** — including the ring of letters round the well and the
+sheet that came with the robot, both of which are 1981 typography in the source.
+Each says what the source's says, because what they say is a hint and a hint is
+structure; neither says it in the source's characters.
+
+**Where this game is gentler than its source, and why.**
+
+- **The Cage is lit, and it kills you on a clock.** `dung.355` withholds
+  `RLIGHTBIT` from `CAGED` and gives the room no exit at all. A dark room with no
+  exits and no way to die is a save file the player has to reload; this game
+  lights the cage — it is a cage standing on the floor of a lit closet — and
+  admits the gas the alarm company plainly installed, on a six-turn fuse. The
+  resurrection milestone 1 built is what makes that recoverable.
+- **The cakes survive being bitten.** The source declares one of each. The only
+  way out of the small world under the table is the orange-icing cake, so a cake
+  eaten to nothing would strand a player four inches high with the spices in
+  hand and nothing to do with them.
+- **The bucket does not travel.** The engine carries a boarded vehicle wherever
+  its passenger walks, which is right for the boat and the balloon and would let
+  a player wheel the well's only lift into the Round Room and shut the Alice
+  area behind them for good. Both ends of the trip also require you to be *in*
+  the bucket, so it can never be left at one end of a shaft that has no other
+  way up or down.
+- **The robot has one room of earshot.** The engine deliberately lets an
+  order-taker be named out of sight — that is what makes "the robot goes where
+  you cannot" work — and deliberately leaves *how far* to the game. This game
+  says one room, plus the cage you are standing in while the robot is outside
+  it. Without it you can order the robot to lift a cage in the Dingy Closet
+  while standing in a forest two hundred rooms above it.
+
+**Also landed here.** The Round Room's description stopped being permanent:
+until this milestone nothing could stop the machinery under its floor, and a
+room that went on whirring afterwards would be telling the player their own
+solution had not worked. Its `describe` rule and the machinery's own now read
+`carouselSpinning`, and both stayed in `DungeonRoundRoom`, because everything
+they read is that bundle's. The Top of Well's ten points are paid from an
+`afterEachTurn` rule rather than from `scoring.visit`: a room value is an
+arrival award, and the usual way into that room is riding a vehicle up, which
+moves the bucket and carries the player and runs no `onEnter` at all. That is
+the hole the Bank of Zork spike recorded (#132), and this is the first room in
+the game to fall into it.
+
+**Declared but not yet walkable: nothing.** `maxScore` goes 393 → **499**, and a
+perfect playthrough of milestones 1 to 5 together scores **489** — the ten still
+missing are still milestone 1's canary and bauble, which wait on the thief.
+
+**Not built, deliberately.** The gate on the Low Room's nine exits. All nine are
+`<CEXIT "FROBOZZ" … MAGNET-ROOM-EXIT>`, and `FROBOZZ` is a flag `dung.355` never
+sets anywhere — the source's idiom for *a routine decides this*. That routine is
+in a file the extraction does not carry, so the destinations are the atlas's and
+the gate is left out rather than invented, which is the seam convention's second
+rule. The same is true of the Depository's east and west doorways: what is built
+there is `BKALARM`, whose sentence the source does carry, on the one condition
+the four `SCOL` tables imply.
+
+**Seams left for later milestones: none.** Every exit these twenty rooms declare
+reaches a room that exists.
