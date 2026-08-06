@@ -45,6 +45,16 @@ extension Prose {
 
     static let verbPlugNothing = "That is not leaking."
 
+    static let verbRingNothing = "There is no ringing that."
+
+    static let verbMeltNothing = "You can't melt that."
+
+    static let verbExorciseNothing = "There is nothing here that needs banishing."
+
+    static let verbRaiseNothing = "You can't raise that."
+
+    static let verbLowerNothing = "You can't lower that."
+
     static let verbSqueezeNothing = "Squeezing it accomplishes nothing."
 
     // MARK: - Liquids

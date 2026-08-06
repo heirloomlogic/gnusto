@@ -1,5 +1,15 @@
 import Gnusto
 
+extension TraitKey<Bool> {
+    /// An item carrying a live, naked flame — the ivory torch, the lit candles,
+    /// a struck match. The Gas Room reads it to tell a safe light from one that
+    /// sets the air alight, and the glacier reads it to tell what will melt ice.
+    /// The electric lantern carries no flame and so never sets it. Three
+    /// bundles set it and a fourth reads it, so it is declared here with the
+    /// rest of the game-wide vocabulary.
+    public static let openFlame = Self("openFlame", default: false)
+}
+
 /// The mainframe's verb vocabulary that the engine does not already carry.
 ///
 /// The list is deliberately short. Most of what Zork's player types — `dig`,
@@ -30,6 +40,23 @@ extension Intent {
     /// Stop something up. The mainframe's verb for the dam's leak, and the
     /// only thing in the game it works on.
     #verb("plug", ["plug", .directObject], ["plug", .directObject, "with", .indirectObject])
+
+    /// Ring a bell. One bell, and one place where ringing it matters.
+    #verb("ring", ["ring", .directObject])
+
+    /// Melt a thing, optionally with another. The mainframe answers it in one
+    /// place, and the answer there is fatal.
+    #verb("melt", ["melt", .directObject], ["melt", .directObject, "with", .indirectObject])
+
+    /// Ask the game whether you are equipped for an exorcism. The mainframe's
+    /// own hint verb: it never performs the ceremony, it only tells you
+    /// whether you are carrying the three things it takes.
+    #verb("exorcise", ["exorcise"], ["exorcism"])
+
+    /// Work the chain over the coal mine's shaft. Two verbs for one mechanism,
+    /// because a basket at the bottom is raised and one at the top is lowered.
+    #verb("raise", ["raise", .directObject])
+    #verb("lower", ["lower", .directObject])
 }
 
 /// The game-wide verb layer: the vocabulary above, plus a courteous default in
@@ -41,7 +68,7 @@ extension Intent {
 /// behavior, so re-voicing one is a single line that warns about nothing.
 struct DungeonSystems: GameContent {
     var verbs: [SyntaxRule] {
-        [.wind, .diagnose, .echo, .turnWith, .plug]
+        [.wind, .diagnose, .echo, .turnWith, .plug, .ring, .melt, .exorcise, .raise, .lower]
     }
 
     var actions: [IntentAction] {
@@ -49,6 +76,11 @@ struct DungeonSystems: GameContent {
         action(.echo) { try reply(Prose.verbEcho) }
         action(.turnWith) { try reply(Prose.verbTurnWithNothing) }
         action(.plug) { try reply(Prose.verbPlugNothing) }
+        action(.ring) { try reply(Prose.verbRingNothing) }
+        action(.melt) { try reply(Prose.verbMeltNothing) }
+        action(.exorcise) { try reply(Prose.verbExorciseNothing) }
+        action(.raise) { try reply(Prose.verbRaiseNothing) }
+        action(.lower) { try reply(Prose.verbLowerNothing) }
         action(.squeeze) { try reply(Prose.verbSqueezeNothing) }
         action(.give) { try reply(Prose.verbGiveNoTaker) }
         action(.dig) { try reply(Prose.verbDigFutile) }
