@@ -87,6 +87,10 @@ public protocol Game: Sendable {
     /// List the bundles the game stores as properties — `var content { attic;
     /// cellar }` — so the bootstrap discovers those exact instances. Defaults
     /// to empty, in which case the game's own declarations are all there is.
+    ///
+    /// A stored bundle left off this list is registered by nothing, so its whole
+    /// region would silently not exist; the bootstrap rejects that outright and
+    /// names the property it found.
     @ContentBuilder var content: GameContents { get }
 
     /// The game's fuses and daemons: named timed events whose bodies run at

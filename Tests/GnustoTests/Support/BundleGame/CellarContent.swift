@@ -15,8 +15,17 @@ struct CellarContent: GameContent {
         description("A tarnished silver coin.")
     }
 
+    /// The other half of the shared-property-name case: see ``AtticContent/lamp``.
+    let lamp = Item {
+        name("oil lamp")
+        adjectives("oil")
+        description("[cellar] A miner's lamp on a hook, still faintly warm.")
+        scenery
+    }
+
     var map: WorldMap {
         coin.starts(in: vault)
+        lamp.starts(in: vault)
     }
 
     var rules: Rules {

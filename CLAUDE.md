@@ -94,6 +94,13 @@ property. Not extensions — Swift won't allow stored properties there, and `Mir
 won't see them. Same for `@Global`. This is why big games use `GameContent` bundles
 rather than extensions.
 
+**A bundle's entity IDs are namespaced under its type**, so two bundles may use the
+same property name freely — `DungeonCellar.chasm` and `DungeonRoundRoom.chasm` are
+different entities and neither shadows the other. What is fatal is two bundles
+sharing a *namespace* (two instances of one type — override `var namespace`), and a
+bundle the game stores but forgets to list in `content`, which registers nothing it
+declares.
+
 Rule phases by scope, all filed in `Engine/Bootstrap.swift`:
 
 | Scope | Phases |

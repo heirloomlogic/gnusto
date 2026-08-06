@@ -58,11 +58,17 @@ The game's own `map`/`rules`/`verbs` still work and are merged with every bundle
 
 Each ``Location``/``Item``/``Global`` mints a reference token when it's created, and the bootstrap matches the tokens it discovers against the tokens a bundle's `map`/`rules` reference. A freshly constructed bundle carries *different* tokens than the one the game stored, so its references wouldn't resolve. Listing the stored instances keeps the identities aligned. (The bootstrap reads `content` once and reuses it, so a single build is always self-consistent; the contract matters because the game's top-level `map` references the stored `attic`.)
 
+A bundle the game stores but never lists is registered by nothing: its rooms, items, `@Global`s, rules, verbs, and timers all go quietly missing, and the first symptom is a region that isn't there. That is a fatal bootstrap diagnostic too, naming the property it found and the bundle's type.
+
 ## EntityIDs are namespaced by the bundle
 
 A bundle's entities are namespaced by the bundle, while the game's own entities stay bare. `attic.landing` becomes ``EntityID`` `"Attic.landing"`; the game's `foyer` stays `"foyer"`. The namespace defaults to the bundle's **type name**, so each distinct bundle type gets a distinct prefix automatically and a reusable bundle dropped into any host can't clash — even if the host and the bundle both declare a `landing`, they resolve to `"landing"` and `"Attic.landing"`. References at the authoring site are token-based (`attic.landing`), so the namespace is invisible there; it only shows up in the raw ID string, which is internal (display and parsing use each entity's `name(_:)`).
 
-Collisions are still fatal, but now only when two bundles share a namespace **and** a property name. That happens when a host stores **two instances of the same bundle type** — both default to the type-name namespace, so `Attic.landing` is declared twice and the bootstrap rejects the game: `entity "Attic.landing" is declared by both Attic and Attic.` Give each instance a distinct namespace by overriding `var namespace`:
+So two bundles may use the same property name freely: an `Attic` and a `Cellar` that each declare a `chasm` mint `Attic.chasm` and `Cellar.chasm`, and neither can shadow the other. Namespacing is what makes region bundles safe to write independently, and the natural names (`chasm`, `stream`, `ladder`, `door`) are exactly the ones two regions both want.
+
+Collisions are still fatal, but now only when two bundles share a **namespace** and a property name. That happens when a host stores **two instances of the same bundle type** — both default to the type-name namespace, so `Attic.landing` is declared twice. The bootstrap rejects the game with a fatal diagnostic naming the shared namespace, both declaring types, and the cure — printed ahead of the per-entity lines (`entity "Attic.landing" is declared by both Attic and Attic.`) that say which IDs were lost.
+
+Give each instance a distinct namespace by overriding `var namespace`:
 
 ```swift
 struct Attic: GameContent {

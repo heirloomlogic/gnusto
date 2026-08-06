@@ -16,8 +16,20 @@ struct AtticContent: GameContent {
         description("A battered steamer trunk bound in iron.")
     }
 
+    /// Deliberately shares the property name `lamp` with ``CellarContent``'s —
+    /// the ordinary case of two regions both wanting the obvious word. The two
+    /// namespace apart into `AtticContent.lamp` and `CellarContent.lamp`, so
+    /// neither shadows the other (issue #162).
+    let lamp = Item {
+        name("oil lamp")
+        adjectives("oil")
+        description("[attic] A sooty oil lamp, long dry.")
+        scenery
+    }
+
     var map: WorldMap {
         trunk.starts(in: hall)
+        lamp.starts(in: hall)
     }
 
     var rules: Rules {

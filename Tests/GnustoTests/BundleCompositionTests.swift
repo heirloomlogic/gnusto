@@ -54,19 +54,91 @@ struct BundleCompositionTests {
                 == .room(EntityID("CellarContent.vault")))
     }
 
+    /// Two instances of the same bundle type share the default (type-name)
+    /// namespace, so every property name they have in common collides — the
+    /// backstop a host escapes by overriding `namespace` per instance. All four
+    /// entity kinds travel through one `declaredBy` map, so locations, items,
+    /// actors and `@Global`s are shadowed alike, and each is named.
     @Test func sameNamespaceCollisionIsFatal() throws {
-        // Two instances of the same bundle type share the default (type-name)
-        // namespace, so their identical property names collide — the backstop a
-        // host escapes by overriding `namespace` per instance.
         do {
             _ = try Bootstrap.build(CollidingBundleGame())
-            Issue.record("expected a BootstrapError for the colliding EntityID")
+            Issue.record("expected a BootstrapError for the colliding EntityIDs")
+        } catch let error as BootstrapError {
+            // `arrivals` is the `@Global`: its wrapper storage is `_arrivals`,
+            // and the bootstrap strips the underscore, so the ID collides under
+            // the author's own spelling.
+            for id in [
+                "AlphaBundle.foyer", "AlphaBundle.umbrella", "AlphaBundle.porter",
+                "AlphaBundle.arrivals",
+            ] {
+                #expect(
+                    error.diagnostics.contains {
+                        $0.contains("declared by both") && $0.contains(id)
+                    },
+                    "no collision diagnostic named \(id)")
+            }
+        }
+    }
+
+    /// The shared namespace is named once, up front, with both declaring types
+    /// and the remedy — the per-entity lines above say which IDs were lost, but
+    /// on their own they read "declared by both AlphaBundle and AlphaBundle",
+    /// which names the mistake twice and the cure not at all.
+    @Test func sharedNamespaceIsReportedOnceWithBothTypesAndTheRemedy() throws {
+        do {
+            _ = try Bootstrap.build(CollidingBundleGame())
+            Issue.record("expected a BootstrapError for the shared namespace")
+        } catch let error as BootstrapError {
+            let shared = error.diagnostics.filter { $0.contains("share the namespace") }
+            #expect(shared.count == 1)
+            #expect(shared.first?.contains("\"AlphaBundle\"") == true)
+            #expect(shared.first?.contains("AlphaBundle and AlphaBundle") == true)
+            #expect(shared.first?.contains("var namespace") == true)
+        }
+    }
+
+    /// The regression for issue #162. Two bundles of *different* types may both
+    /// declare a `lamp`: each namespaces its entities under its own type name,
+    /// so neither can shadow the other and each answers with its own text.
+    @Test func twoBundlesMayShareAPropertyName() async throws {
+        let (definition, state) = try Bootstrap.build(BundleGame())
+
+        #expect(definition.items[EntityID("AtticContent.lamp")] != nil)
+        #expect(definition.items[EntityID("CellarContent.lamp")] != nil)
+        #expect(
+            state.placements[EntityID("AtticContent.lamp")]
+                == .room(EntityID("AtticContent.hall")))
+        #expect(
+            state.placements[EntityID("CellarContent.lamp")]
+                == .room(EntityID("CellarContent.vault")))
+
+        // And in play each room's lamp answers with its own description rather
+        // than one bundle's text turning up in the other's room.
+        let transcript = try await play(BundleGame(), ["examine lamp", "down", "x lamp"])
+        expectInOrder(
+            transcript,
+            [
+                "[attic] A sooty oil lamp, long dry.",
+                "Cellar Vault",
+                "[cellar] A miner's lamp on a hook, still faintly warm.",
+            ])
+    }
+
+    /// A bundle the game stores but never lists in `content` is registered by
+    /// nothing, so its whole region would quietly not exist. Fatal, and it names
+    /// the property and the type.
+    @Test func storedButUnlistedBundleIsFatal() throws {
+        do {
+            _ = try Bootstrap.build(UnlistedBundleGame())
+            Issue.record("expected a BootstrapError for the unlisted bundle")
         } catch let error as BootstrapError {
             #expect(
                 error.diagnostics.contains {
-                    $0.contains("declared by both")
-                        && $0.contains("AlphaBundle.foyer")
+                    $0.contains("\"cellar\"") && $0.contains("CellarContent")
+                        && $0.contains("content")
                 })
+            // The listed bundle is not accused of anything.
+            #expect(!error.diagnostics.contains { $0.contains("AtticContent") })
         }
     }
 }
