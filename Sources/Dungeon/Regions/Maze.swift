@@ -368,7 +368,15 @@ struct DungeonMaze: GameContent {
 
     // MARK: - Map
 
+    /// Split into exits and placements for hazard #174's reason: peak bootstrap
+    /// stack depth scales with the largest single declaration body, and
+    /// milestone 8's seventeenth bundle put the suite over the edge again.
     var map: WorldMap {
+        mazeExits
+        mazePlacements
+    }
+
+    @MapBuilder private var mazeExits: WorldMap {
         // The mainframe's maze, edge for edge, in the order `dung.355`
         // declares them. Six of these bearings are not Zork I's; each has a
         // test that says so.
@@ -470,10 +478,12 @@ struct DungeonMaze: GameContent {
         // source leaves open, so it stays undeclared.
         strangePassage.south(cyclopsRoom)
         treasureRoom.down(cyclopsRoom)
+    }
 
-        // Entities. The skeleton keys are a ``DungeonAboveGround`` item — they
-        // lock the grating — so the host places them here in Maze-5, and the
-        // Temple's granite wall likewise.
+    /// The skeleton keys are a ``DungeonAboveGround`` item — they lock the
+    /// grating — so the host places them here in Maze-5, and the Temple's
+    /// granite wall likewise.
+    @MapBuilder private var mazePlacements: WorldMap {
         skeleton.starts(in: maze5)
         rustyKnife.starts(in: maze5)
         bagOfCoins.starts(in: maze5)

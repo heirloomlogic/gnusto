@@ -23,11 +23,24 @@ struct DungeonBurden: GameContent {
     var rules: Rules {
         world.before(.take) {
             guard let target = command.directObject else { return }
-            let carried = player.inventory.reduce(0) { $0 + burdenWeight(of: $1) }
             try require(
-                carried + burdenWeight(of: target) <= Self.carryCap,
+                player.carriedWeight() + burdenWeight(of: target) <= Self.carryCap,
                 else: Prose.handsFull)
         }
+    }
+}
+
+extension Player {
+    /// Everything in your hands, weighed the way the cap weighs it.
+    ///
+    /// One traversal in one place, because milestone 8's grip clock is the
+    /// second thing to ask it: `SLIDE-EXIT` divides a hundred by this figure to
+    /// decide how long a rope holds. Two copies of the fold would have been two
+    /// things to keep in step with ``burdenWeight(of:)``.
+    ///
+    /// - Returns: the total burden of the inventory, contents included.
+    func carriedWeight() -> Int {
+        inventory.reduce(0) { $0 + burdenWeight(of: $1) }
     }
 }
 

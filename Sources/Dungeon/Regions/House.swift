@@ -375,6 +375,11 @@ struct DungeonHouse: GameContent {
     // MARK: - Rules
 
     var rules: Rules {
+        houseRules
+        moreHouseRules
+    }
+
+    @RuleBuilder private var houseRules: Rules {
         rug.before(.push) {
             guard !trapDoor.isRevealed else { try reply(Prose.rugAlreadyMoved) }
             trapDoor.reveal()
@@ -431,7 +436,12 @@ struct DungeonHouse: GameContent {
             trapDoor.isOpen = true
             try reply(Prose.trapDoorOpens)
         }
+    }
 
+    /// The second half of the same list, split for hazard #174's reason: peak
+    /// bootstrap stack depth scales with the largest single declaration body,
+    /// and milestone 8's seventeenth bundle put the suite over the edge again.
+    @RuleBuilder private var moreHouseRules: Rules {
         // The classic moment, and in this game it is permanent: the first
         // descent throws the bar, and nothing in this milestone lifts it. The
         // Studio chimney is the way back up.

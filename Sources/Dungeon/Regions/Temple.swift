@@ -544,6 +544,11 @@ struct DungeonTemple: GameContent {
     // MARK: - Rules
 
     var rules: Rules {
+        templeRules
+        moreTempleRules
+    }
+
+    @RuleBuilder private var templeRules: Rules {
         // The four rooms whose description carries state. Each is
         // ``alwaysDescribed``, so the state survives a rewind and a re-entry.
         domeRoom.describe {
@@ -574,7 +579,12 @@ struct DungeonTemple: GameContent {
         ivoryTorch.before(.turnOff) {
             try refuse(torchBurnedOut ? Prose.torchAlreadyOut : Prose.torchWontExtinguish)
         }
+    }
 
+    /// The second half of the same list, split for hazard #174's reason: peak
+    /// bootstrap stack depth scales with the largest single declaration body,
+    /// and milestone 8's seventeenth bundle put the suite over the edge again.
+    @RuleBuilder private var moreTempleRules: Rules {
         // The bell, red hot from the gate, is a *reach* problem rather than a
         // per-verb one: the mainframe refuses take, ring and everything else
         // with the same sentence, so one rule says it once and `take`, `open`

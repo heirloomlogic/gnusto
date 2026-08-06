@@ -1,5 +1,24 @@
 import Gnusto
 
+extension Intent {
+    /// Order the free brochure by post. The word is spelled into its rows
+    /// rather than parsed as a free noun, which is ``Intent/answerWell``'s
+    /// shape exactly and for its reason: the brochure is nowhere at all until
+    /// it is asked for, so an object slot would answer the one sentence that
+    /// starts the whole business with "You can't see any such thing."
+    ///
+    /// Declared here because this bundle owns the mailbox it arrives in and the
+    /// leaflet that advertises it, and a verb lives with the region that
+    /// answers it.
+    #verb(
+        "sendForBrochure",
+        ["send", "for", "brochure"],
+        ["send", "for", "free", "brochure"],
+        ["send", "away", "for", "brochure"],
+        ["order", "brochure"],
+        ["order", "free", "brochure"])
+}
+
 /// Everything above ground: the white house's four sides, the forest that
 /// wraps around them, the clearing with the grating in it, and the Great
 /// Canyon east of the wood.
@@ -121,9 +140,48 @@ struct DungeonAboveGround: GameContent {
         trait(.burnable, true)
     }
 
-    /// Mainframe-only: the trilogy dropped the welcome mat. Its one trick —
-    /// sliding under a door — belongs to a door this milestone has not built,
-    /// so here it is a readable thing lying by the step.
+    /// `BROCH`. Mainframe-only, free, and slow. It starts nowhere at all: the
+    /// only way to get one is to ask for one, and then to go home and wait for
+    /// the knock. No static description — while the stamp is still on it, the
+    /// prospectus has an extra line.
+    let brochure = Item {
+        name("free brochure")
+        adjectives("free", "mit", "tech")
+        synonyms("brochure", "prospectus", "pamphlet", "mail")
+        // A container, and open, because that is how the source affixes the
+        // stamp. No `capacity(_:)`: the rule below refuses every insertion
+        // outright, and two mechanisms aimed at one behaviour is one too many.
+        container
+        startsOpen
+        trait(.weight, 30)
+        trait(.burnable, true)
+    }
+
+    /// `DSTMP`. The only treasure in the game worth **nothing** to find and
+    /// something to case, and the stamp's own face is the joke: one lousy
+    /// point, and it says so.
+    ///
+    /// Named *postage stamp* rather than *Don Woods stamp*, with the name in
+    /// the adjectives, for milestone 6's reason and one of its own: a
+    /// capitalised display name warns at bootstrap unless it is `properName`,
+    /// and a stamp is not a person — and the Library's Flathead stamp is
+    /// already called *stamp*, so two treasures under one display name would
+    /// have the parser asking which stamp you meant every time both were in the
+    /// trophy case.
+    let donWoodsStamp = Item {
+        name("postage stamp")
+        adjectives("don", "woods", "donald", "postage", "small", "green")
+        synonyms("stamp", "stamps")
+        description(Prose.donWoodsStamp)
+        trait(.weight, 1)
+        trait(.takeValue, 0)
+        trait(.depositValue, 1)
+    }
+
+    /// Mainframe-only: the trilogy dropped the welcome mat. Milestone 8 gives
+    /// it back the one trick it was built for — sliding under the oak door in
+    /// the Tiny Room, which is what a punched-out key lands on. The door is
+    /// ``DungeonPalantir``'s, so ``Dungeon`` wires the two together.
     let welcomeMat = Item {
         name("welcome mat")
         adjectives("welcome", "rubber")
@@ -373,6 +431,10 @@ struct DungeonAboveGround: GameContent {
         firstSight(Prose.skeletonKeysInPlace)
         description(Prose.skeletonKeys)
         trait(.weight, 10)
+        // One of the source's four `PALOBJS`. They will punch the oak door's
+        // key out of the far keyhole and they will not turn its lock — the
+        // mainframe answers that with its own line. See ``DungeonPalantir``.
+        trait(.keyholeTool, true)
     }
 
     // MARK: - The Great Canyon
@@ -446,9 +508,52 @@ struct DungeonAboveGround: GameContent {
         scenery
     }
 
+    // MARK: - The post
+
+    /// Whether the brochure has been asked for. The source's `BROCHURE-FLAG`.
+    @Global var brochureOrdered = false
+
+    /// Whether it has come. Asked for again after that, the clerk is sarcastic
+    /// rather than helpful.
+    @Global var brochureDelivered = false
+
+    // MARK: - Verbs
+
+    var verbs: [SyntaxRule] { [.sendForBrochure] }
+
+    /// `send for brochure`, from anywhere in the Empire. The order goes out at
+    /// once; what starts the three-turn clock is walking into the Kitchen, and
+    /// the Kitchen is a ``DungeonHouse`` room, so ``Dungeon`` arms it.
+    var actions: [IntentAction] {
+        action(.sendForBrochure) {
+            guard !brochureDelivered else { try reply(Prose.brochureAgain) }
+            guard !brochureOrdered else { try reply(Prose.brochureOnItsWay) }
+            brochureOrdered = true
+            try reply(Prose.brochureOrdered)
+        }
+    }
+
+    /// Called from ``Dungeon`` on every entry into the Kitchen. Re-arms until
+    /// it fires, so a player who orders one and then goes underground gets it
+    /// on their next visit home.
+    func armTheBrochureClock() {
+        guard brochureOrdered, !brochureDelivered else { return }
+        startFuse("brochureArrives", after: 3)
+    }
+
     // MARK: - Map
 
+    /// Split into exits and placements for the reason `docs/games/dungeon.md`
+    /// records as its eighth seam lesson: peak bootstrap stack depth scales
+    /// with the largest single declaration body, and milestone 8's seventeenth
+    /// bundle put the whole suite over the edge again. This one was the biggest
+    /// body in the game after the split of milestone 7's.
     var map: WorldMap {
+        aboveGroundExits
+        aboveGroundPlacements
+    }
+
+    @MapBuilder private var aboveGroundExits: WorldMap {
         // The house exterior. East out of West of House is the locked front
         // door; north and south out of the side rooms are the barred windows.
         westOfHouse.north(northOfHouse)
@@ -523,8 +628,9 @@ struct DungeonAboveGround: GameContent {
         rockyLedge.up(canyonView)
         rockyLedge.down(canyonBottom)
         canyonBottom.up(rockyLedge)
+    }
 
-        // Entities.
+    @MapBuilder private var aboveGroundPlacements: WorldMap {
         whiteHouseAtWest.starts(in: westOfHouse)
         whiteHouseAtNorth.starts(in: northOfHouse)
         whiteHouseAtSouth.starts(in: southOfHouse)
@@ -535,6 +641,11 @@ struct DungeonAboveGround: GameContent {
         mailbox.starts(in: westOfHouse)
         leaflet.starts(inside: mailbox)
         welcomeMat.starts(in: westOfHouse)
+
+        // The brochure starts nowhere and the stamp starts in the brochure,
+        // which is what the atlas records for both: `BROCH` "by code", `DSTMP`
+        // "in `BROCH`".
+        donWoodsStamp.starts(inside: brochure)
 
         treesDeep.starts(in: forestDeep)
         treesSouth.starts(in: forestSouth)
@@ -568,6 +679,11 @@ struct DungeonAboveGround: GameContent {
     // MARK: - Rules
 
     var rules: Rules {
+        groundRules
+        brochureRules
+    }
+
+    @RuleBuilder private var groundRules: Rules {
         // The source's own `CLEARING` routine: one line for a grating that has
         // been uncovered, another once it is open, and nothing at all while the
         // leaves are still over it.
@@ -615,6 +731,25 @@ struct DungeonAboveGround: GameContent {
         }
     }
 
+    /// The prospectus, and the stamp on it.
+    @RuleBuilder private var brochureRules: Rules {
+        // The stamp's own line, printed only while it is still affixed. The
+        // engine's `read` prints the item's description, so this is a `describe`
+        // rule and not an `after(.read)` embellishment: the two would otherwise
+        // both be true of one object and the second would be a static trait the
+        // first is forbidden to sit beside.
+        brochure.describe {
+            guard brochure.holds(donWoodsStamp) else { return Prose.brochure }
+            return "\(Prose.brochure)\n\n\(Prose.brochureStampAffixed)"
+        }
+
+        // Taking the stamp is the whole of what the brochure is a container
+        // for, so once it is out the brochure stops behaving as one. Nothing
+        // else in the game fits in it anyway; what this stops is `put the coffin
+        // in the brochure`.
+        brochure.before(.putIn) { try refuse(Prose.brochureHoldsNothing) }
+    }
+
     // MARK: - The wood
 
     /// Whether `here` is somewhere the songbird can hear you — the mainframe's
@@ -640,6 +775,16 @@ struct DungeonAboveGround: GameContent {
             guard isInTheWood(player.location) else { return }
             guard chance(10) else { return }
             say(Prose.songbirdHeard)
+        }
+
+        // The postal service, three turns after you last walked into the
+        // Kitchen. The knock is heard wherever you are — the source prints it
+        // unconditionally, and a player who orders one and then goes down the
+        // trap door hears it from the cellar.
+        fuse("brochureArrives", after: 3) {
+            brochureDelivered = true
+            brochure.move(inside: mailbox)
+            say(Prose.brochureKnock)
         }
     }
 }

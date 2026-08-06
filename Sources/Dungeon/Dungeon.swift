@@ -82,10 +82,26 @@ struct Dungeon: Game, GameMain {
     /// everything built now scores **585 of 585**, and for the second milestone
     /// running nothing is declared ahead of its route.
     ///
+    /// Milestone 8's first two pieces add 31, and all of it is walkable: the
+    /// blue crystal sphere (10+5) on the table in the Dreary Room, the red one
+    /// (10+5) in the Sooty Room at the foot of the coal chute, and the Don
+    /// Woods stamp (0+1) affixed to the free brochure. Not one of the seven new
+    /// rooms carries an `RVAL`, so the whole of it is object values and the
+    /// award table does not move. A perfect playthrough now scores **616 of
+    /// 616** — and 616 is `SCORE-MAX`, the whole of the main dungeon. What
+    /// stands between here and the finished 716 is the endgame's hundred and
+    /// nothing else.
+    ///
+    /// That is not a coincidence and it is not merely tidy. `SCORE-BLESS`
+    /// (`rooms.394:794`) arms the endgame's herald only at `SCORE-MAX`, and the
+    /// herald is what makes the Crypt's marble door open at all. A
+    /// reconstruction stalled at 585 could never enter the endgame, however
+    /// completely the endgame was built.
+    ///
     /// Why the ceiling moves at all, and what may be declared ahead of its
     /// route: `docs/games/dungeon.md`, "The ceiling ratchets while the game is
     /// being built", and the matching `FIDELITY.md` entry.
-    let maxScore = 585
+    let maxScore = 616
 
     let intro = Prose.intro
 
@@ -126,6 +142,7 @@ struct Dungeon: Game, GameMain {
     let volcano = DungeonVolcano()
     let thief = DungeonThief()
     let royalPuzzle = DungeonRoyalPuzzle()
+    let palantirWing = DungeonPalantir()
 
     /// The grue: this game's prose, the plugin's stock warn-then-kill schedule.
     let dangerousDark = DangerousDark(
@@ -197,6 +214,7 @@ struct Dungeon: Game, GameMain {
         volcano
         thief
         royalPuzzle
+        palantirWing
         dangerousDark
         scoring
         melee
@@ -265,6 +283,8 @@ struct Dungeon: Game, GameMain {
             bank.bills, bank.portrait,
             volcano.zorkmid, volcano.crown, volcano.stamp,
             royalPuzzle.goldCard,
+            palantirWing.blueSphere, palantirWing.redSphere,
+            aboveGround.donWoodsStamp,
         ]
     }
 
@@ -308,6 +328,7 @@ struct Dungeon: Game, GameMain {
         balloonRules
         blastRules
         thiefRules
+        palantirRules
     }
 
     /// Milestones 1 to 3, and everything that belongs to no one milestone.
@@ -365,12 +386,21 @@ struct Dungeon: Game, GameMain {
         // the knot.
         house.rope.before(.tie) {
             guard command.directObject == house.rope else { return }
+            // Milestone 8 gives the rope a second knot: the head of the coal
+            // chute, where it is tied to the broken timber or the gold coffin
+            // rather than to a railing. `Dungeon+Palantir.swift` answers that
+            // one, and this rule stands aside for it — the two run in
+            // declaration order and `coreRules` is first.
+            guard player.location != mirrors.slideRoom else { return }
             try require(
                 player.location == templeQuarter.domeRoom
                     && (command.indirectObject == nil
                         || command.indirectObject == templeQuarter.railing),
                 else: Prose.ropeNeedsRailing)
             try require(!templeQuarter.ropeTiedToRailing, else: Prose.ropeCarriesNothing)
+            // One rope, one knot: milestone 8 gave it a second place to be
+            // tied, and it may not be tied in both at once.
+            try require(!palantirWing.chuteRopeRigged, else: Prose.ropeAlreadyTied)
             templeQuarter.ropeTiedToRailing = true
             try reply(Prose.ropeTiedToRailing)
         }
@@ -402,6 +432,14 @@ struct Dungeon: Game, GameMain {
             try reply("")
         }
 
+        mainframeRules
+    }
+
+    /// The second half of the same list, split for hazard #174's reason: peak
+    /// bootstrap stack depth scales with the largest single declaration body,
+    /// and milestone 8's seventeenth bundle put the suite over the edge again.
+    /// This was the longest body left in the game.
+    @RuleBuilder private var mainframeRules: Rules {
         // Lighting the candles. They need a live flame named, and the two the
         // game has are a struck match — which lights them — and the ivory
         // torch, which does not: it vaporises them.
@@ -438,6 +476,12 @@ struct Dungeon: Game, GameMain {
             try reply(Prose.glacierMeltsAwayTheTorch)
         }
 
+        undergroundRules
+    }
+
+    /// And the third slice of the same list. Split for hazard #174's reason,
+    /// stated on ``Dungeon/mainframeRules``.
+    @RuleBuilder private var undergroundRules: Rules {
         // The bat. It reads the garlic, which is a ``DungeonHouse`` item, and
         // drops you anywhere in the coal maze — the source's `BAT-DROPS`, all
         // seven mine rooms and both ends of the ladder.
@@ -856,6 +900,7 @@ struct Dungeon: Game, GameMain {
                 playerDeath: Prose.trollKillsYou))
 
         thiefTimers
+        palantirTimers
     }
 
     var map: WorldMap {
@@ -865,10 +910,12 @@ struct Dungeon: Game, GameMain {
         milestoneFiveMap
         milestoneSixMap
         milestoneSevenMap
+        milestoneEightMap
     }
 
     /// Milestones 1 to 3, and the placements that belong to no one milestone.
     @MapBuilder private var coreMap: WorldMap {
+        moreCoreMap
         // The kitchen window: the one door between ``DungeonAboveGround`` and
         // ``DungeonHouse``. Starts closed.
         aboveGround.behindHouse.west(house.kitchen, via: house.window)
@@ -978,12 +1025,15 @@ struct Dungeon: Game, GameMain {
         // seam, and the only way into the mirror network on foot.
         mirrors.atlantisRoom.southeast(dam.reservoirNorth)
         dam.reservoirNorth.north(mirrors.atlantisRoom)
+    }
 
-        // The Slide Room. Its chute drops one-way into the Cellar — the
-        // source's slide becomes a rope-climb down the coal chute once a timber
-        // has been tied at the top, and those five rooms are a later
-        // milestone's — and its small opening north is the mine.
-        mirrors.slideRoom.down(house.cellar)
+    /// The second half of the same list, split for hazard #174's reason: peak
+    /// bootstrap stack depth scales with the largest single declaration body,
+    /// and milestone 8's seventeenth bundle put the suite over the edge again.
+    @MapBuilder private var moreCoreMap: WorldMap {
+        // The Slide Room's small opening north is the mine. Its chute down is
+        // milestone 8's — `SLIDE-EXIT`, which reads the rope — and lives in
+        // ``Dungeon/milestoneEightMap`` with the rest of the palantir wing.
         mirrors.slideRoom.north(mine.mineEntrance)
         mine.mineEntrance.south(mirrors.slideRoom)
     }

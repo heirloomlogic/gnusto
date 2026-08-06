@@ -415,6 +415,11 @@ struct DungeonCoalMine: GameContent {
     // MARK: - Map
 
     var map: WorldMap {
+        mineExits
+        minePlacements
+    }
+
+    @MapBuilder private var mineExits: WorldMap {
         // The Mine Entrance. South is the Slide Room, a ``DungeonMirror``
         // room — host-wired.
         mineEntrance.northwest(squeakyRoom)
@@ -501,7 +506,12 @@ struct DungeonCoalMine: GameContent {
         }
 
         machineRoom.northwest(lowerShaft)
+    }
 
+    /// The second half of the same list, split for hazard #174's reason: peak
+    /// bootstrap stack depth scales with the largest single declaration body,
+    /// and milestone 8's seventeenth bundle put the suite over the edge again.
+    @MapBuilder private var minePlacements: WorldMap {
         mineEntrances.starts(in: mineEntrance)
         squeakySounds.starts(in: squeakyRoom)
         bat.starts(in: batRoom)

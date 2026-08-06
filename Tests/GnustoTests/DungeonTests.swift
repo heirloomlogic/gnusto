@@ -362,9 +362,9 @@ struct DungeonTests {
         expectInOrder(
             transcript,
             [
-                "Your score is 10 of a possible 585",
+                "Your score is 10 of a possible 616",
                 "Cellar",
-                "Your score is 35 of a possible 585",
+                "Your score is 35 of a possible 616",
             ])
     }
 
@@ -438,7 +438,7 @@ struct DungeonTests {
                 "Gallery",
                 "The vandals left through the north,",
                 "Taken.",
-                "Your score is 39 of a possible 585",
+                "Your score is 39 of a possible 616",
             ])
         #expect(!transcript.contains("nasty-looking troll"))
     }
@@ -492,7 +492,7 @@ struct DungeonTests {
                 "Forest",
                 "You have been killed once.",
                 // Thirty-five points earned, ten paid back to the troll.
-                "Your score is 25 of a possible 585",
+                "Your score is 25 of a possible 616",
             ])
     }
 
@@ -550,7 +550,7 @@ struct DungeonTests {
     @Test func theCeilingTotalsTheAwardTableExactly() throws {
         let (definition, _) = try Bootstrap.build(Dungeon())
 
-        #expect(definition.maxScore == 585)
+        #expect(definition.maxScore == 616)
         #expect(definition.warnings.isEmpty, "\(definition.warnings)")
     }
 
@@ -576,7 +576,7 @@ struct DungeonTests {
                 "The lid is sprung and will not sit true again.",  // the wreck's own text
                 "the mainspring seems sprung",
                 "You are carrying a broken jewel-encrusted egg",
-                "Your score is 5 of a possible 585",
+                "Your score is 5 of a possible 616",
             ])
 
         // The jewel-encrusted egg is gone from the game rather than merely
@@ -639,13 +639,13 @@ struct DungeonTests {
                 "Up a Tree",
                 "Kitchen",
                 "Living Room",
-                "Your score is 20 of a possible 585",
+                "Your score is 20 of a possible 616",
                 "Cellar",
                 "Gallery",
                 "Studio",
                 "Kitchen",
                 "Living Room",
-                "Your score is 56 of a possible 585",
+                "Your score is 56 of a possible 616",
             ])
     }
 
@@ -761,7 +761,7 @@ struct DungeonTests {
             transcript,
             [
                 "East-West Passage",
-                "Your score is 40 of a possible 585",
+                "Your score is 40 of a possible 616",
                 // North and down out of the passage are the same stair, and
                 // they reach a room Zork I does not have.
                 "Deep Ravine",
@@ -821,7 +821,7 @@ struct DungeonTests {
                 "Taken.",
                 // Five for the passage, twelve for the bar — and twelve is the
                 // mainframe's find value, where Zork I pays ten.
-                "Your score is 52 of a possible 585",
+                "Your score is 52 of a possible 616",
             ])
     }
 
@@ -1078,16 +1078,16 @@ struct DungeonTests {
         expectInOrder(
             transcript,
             [
-                "Your score is 56 of a possible 585",
+                "Your score is 56 of a possible 616",
                 "The troll takes a fatal blow",
                 "Loud Room",
                 "The acoustics of the room change subtly.",
                 "You put the platinum bar in the trophy case.",
-                "Your score is 83 of a possible 585",
+                "Your score is 83 of a possible 616",
                 "The sluice gates open and water pours through the dam.",
                 "Lying half buried in the mud is an old trunk",
                 "You put the trunk of jewels in the trophy case.",
-                "Your score is 106 of a possible 585",
+                "Your score is 106 of a possible 616",
             ])
     }
 
@@ -1588,10 +1588,10 @@ struct DungeonTests {
                 "The basket is raised to the top of the shaft.",
                 "The basket is lowered to the bottom of the shaft.",
                 "Timber Room",
-                "Your score is 54 of a possible 585",
+                "Your score is 54 of a possible 616",
                 "Lower Shaft",
                 "In the basket is an ivory torch.",
-                "Your score is 64 of a possible 585",
+                "Your score is 64 of a possible 616",
             ])
     }
 
@@ -1656,11 +1656,11 @@ struct DungeonTests {
             [
                 "On the shore lies Poseidon's own crystal trident.",
                 "On the pedestal is a grail.",
-                "Your score is 46 of a possible 585",
+                "Your score is 46 of a possible 616",
                 "the temple dissolves around you",
                 "Forest",
                 "Living Room",
-                "Your score is 62 of a possible 585",
+                "Your score is 62 of a possible 616",
             ])
     }
 
@@ -1947,9 +1947,9 @@ struct DungeonTests {
         expectInOrder(
             transcript,
             [
-                "Your score is 35 of a possible 585",
-                "Your score is 60 of a possible 585",
-                "Your score is 70 of a possible 585",
+                "Your score is 35 of a possible 616",
+                "Your score is 60 of a possible 616",
+                "Your score is 70 of a possible 616",
             ])
     }
 
@@ -2125,7 +2125,7 @@ struct DungeonTests {
                 "Sandy Beach",
                 "You seem to be digging a hole here.",
                 "You can see a small statue here in the sand.",
-                "Your score is 50 of a possible 585",
+                "Your score is 50 of a possible 616",
                 "The hole collapses, smothering you.",
             ])
     }
@@ -2150,7 +2150,7 @@ struct DungeonTests {
                 "End of Rainbow",
                 "the rainbow appears to become solid",
                 "At the end of the rainbow is a pot of gold.",
-                "Your score is 50 of a possible 585",
+                "Your score is 50 of a possible 616",
                 "Rainbow Room",
                 "and fifty feet above the river, do you",
             ])
@@ -2342,8 +2342,8 @@ struct DungeonTests {
             [
                 "This is a former broom closet.",
                 "There is a pearl necklace here with hundreds of large pearls.",
-                "Your score is 40 of a possible 585",
-                "Your score is 49 of a possible 585",
+                "Your score is 40 of a possible 616",
+                "Your score is 49 of a possible 616",
             ])
     }
 
@@ -2385,7 +2385,7 @@ struct DungeonTests {
 
         expectInOrder(
             transcript,
-            ["Your score is 40 of a possible 585", "Your score is 50 of a possible 585"])
+            ["Your score is 40 of a possible 616", "Your score is 50 of a possible 616"])
     }
 
     /// Two rooms carry the well's etchings, and the ring of letters is legible
@@ -2499,7 +2499,7 @@ struct DungeonTests {
                 "goes up at once in a column of steam",
                 "There is a tin of rare spices here.",
                 "Taken.",
-                "Your score is 55 of a possible 585",
+                "Your score is 55 of a possible 616",
             ])
     }
 
@@ -2579,7 +2579,7 @@ struct DungeonTests {
                 "a steel cage falls from the ceiling",
                 "You are trapped inside a solid steel cage.",
                 "the robot stands exactly where you",
-                "Your score is 56 of a possible 585",
+                "Your score is 56 of a possible 616",
                 "with a scream of tearing steel",
                 "There is a mangled steel cage here.",
             ])
@@ -2669,7 +2669,7 @@ struct DungeonTests {
                 "Safety Depository",
                 "This is the Vault of the Bank of Zork, in which there are no doors.",
                 "On the floor sit 200 neatly stacked zorkmid bills.",
-                "Your score is 45 of a possible 585",
+                "Your score is 45 of a possible 616",
             ])
     }
 
@@ -2721,7 +2721,7 @@ struct DungeonTests {
                 "An alarm rings briefly and an invisible force prevents your leaving.",
                 "The wall gives like water",
                 "Bank Entrance",
-                "Your score is 55 of a possible 585",
+                "Your score is 55 of a possible 616",
             ])
     }
 
@@ -3005,7 +3005,7 @@ struct DungeonTests {
                 "The basket is anchored to a small hook by the braided wire.",
                 "Taken.",
                 "IN FROBS WE TRUST",
-                "of a possible 585",
+                "of a possible 616",
                 "Library",
                 "gnawed to pieces by unfriendly gnomes",
                 "Narrow Ledge",
@@ -3032,7 +3032,7 @@ struct DungeonTests {
                 "The pages fall apart at a place somebody kept",
                 "Taken.",
                 "OUR EXCESSIVE LEADER",
-                "of a possible 585",
+                "of a possible 616",
             ])
     }
 
@@ -3151,7 +3151,7 @@ struct DungeonTests {
                 "Dusty Room",
                 "whose door has been blown off",
                 "In the rusty box is a gaudy crown.",
-                "of a possible 585",
+                "of a possible 616",
             ])
     }
 
@@ -3348,21 +3348,26 @@ struct DungeonTests {
     }
 
     /// He prowls, and what he prowls for is what the trophy case scores. Seed
-    /// 18, recorded: the painting out of the Gallery is what puts him into
-    /// play, and twenty-one turns later he walks into the crawlway, lifts it
+    /// 36, recorded: the painting out of the Gallery is what puts him into
+    /// play, and some forty turns later he walks into the crawlway, lifts it
     /// back out of your hands on the same turn, and is gone two turns later.
     ///
-    /// The wait is long because he teleports among a hundred and five rooms and
-    /// only half the turns, which is roughly a one-in-two-hundred chance of
+    /// The wait is long because he teleports among a hundred and eight rooms
+    /// and only half the turns, which is roughly a one-in-two-hundred chance of
     /// finding you on any given turn — the roaming thief is a rumour you meet
     /// occasionally, not a pursuer.
+    ///
+    /// The seed was 18 until milestone 8 put the Tiny Room into the prowl set.
+    /// One more room is one more draw from the same stream, so the walk this
+    /// test is about happens on a different turn; 36 is the lowest seed under
+    /// which it still happens inside the wait.
     @Test func theThiefProwlsAndLiftsWhatYouAreCarrying() async throws {
         let transcript = try await play(
             Dungeon(),
             Self.intoTheCellar
                 + ["south", "south", "take painting", "north", "north"]
                 + Array(repeating: "wait", count: 52),
-            seed: 18)
+            seed: 36)
 
         expectInOrder(
             transcript,
@@ -3413,11 +3418,11 @@ struct DungeonTests {
                 "The thief is taken aback by your unexpected generosity",
                 "The thief takes a fatal blow",
                 "reappear: the jewel-encrusted egg",
-                "Your score is 106 of a possible 585",
+                "Your score is 106 of a possible 616",
                 "a beautiful brass bauble drops from its mouth",
                 "You put the golden clockwork canary in the trophy case.",
                 "You put the beautiful brass bauble in the trophy case.",
-                "Your score is 110 of a possible 585",
+                "Your score is 110 of a possible 616",
             ])
     }
 
@@ -3460,16 +3465,29 @@ struct DungeonTests {
     /// Read off the declarations rather than through a transcript, because
     /// `Location` resolves its `EntityID` only inside a live turn; comparing the
     /// values themselves needs no frame.
-    /// Milestone 7 took it from 105 to **107**: the Small Square Room and the
+    /// Milestone 7 took it from 105 to 107: the Small Square Room and the
     /// Side Room, both plain two-way passages off his own lair. The third room
     /// of that region, the Room in a Puzzle, is deliberately not among them —
     /// the drop in is one-way and both ways out are earned, so a teleporting
     /// thief put on that floor is sealed in with the gold card. Same reasoning
     /// as the Small Room and the Vault.
-    @Test func theThiefProwlsAHundredAndSevenRoomsAndNoRoomTwice() throws {
-        let prowl = Dungeon().thiefProwl
+    ///
+    /// Milestone 8 took it to **108**, and added exactly one room out of seven:
+    /// the Tiny Room, which is the one room of the palantir wing the source
+    /// does not mark `RSACREDBIT`. The other six are a locked oak door and five
+    /// rooms you reach by hanging on a rope.
+    @Test func theThiefProwlsAHundredAndEightRoomsAndNoRoomTwice() throws {
+        let game = Dungeon()
+        let prowl = game.thiefProwl
 
-        #expect(prowl.count == 107)
+        #expect(prowl.count == 108)
+        #expect(prowl.contains(game.palantirWing.tinyRoom))
+        for sacred in [
+            game.palantirWing.drearyRoom, game.palantirWing.slideOne,
+            game.palantirWing.slideLedge, game.palantirWing.sootyRoom,
+        ] {
+            #expect(!prowl.contains(sacred))
+        }
         for (index, room) in prowl.enumerated() {
             #expect(!prowl[..<index].contains(room), "room \(index) is in the set twice")
         }
@@ -3490,9 +3508,11 @@ struct DungeonTests {
             .filter { $0.customTraits["takeValue"] != nil || $0.customTraits["depositValue"] != nil }
             .compactMap(\.name)
             .sorted()
-        // 29: the twenty-five of milestones 1 to 5, milestone 6's three, and
-        // milestone 7's gold card.
-        #expect(valued.count == 29, "scored but not coveted: \(valued)")
+        // 32: the twenty-five of milestones 1 to 5, milestone 6's three,
+        // milestone 7's gold card, and milestone 8's two spheres and the Don
+        // Woods stamp. Thirty-two is also the number the mechanics contract
+        // gives for the finished game, so this row is now the whole roster.
+        #expect(valued.count == 32, "scored but not coveted: \(valued)")
         for volcanic in ["priceless zorkmid", "gaudy crown", "stamp"] {
             #expect(valued.contains { $0.contains(volcanic) }, "\(volcanic) is not scored")
         }
@@ -3774,8 +3794,8 @@ struct DungeonTests {
             [
                 "The middle of the floor here is noticeably depressed.",
                 "There is a solid gold engraved card here.",
-                "Your score is 60 of a possible 585",
-                "Your score is 70 of a possible 585",
+                "Your score is 60 of a possible 616",
+                "Your score is 70 of a possible 616",
                 "Door Pass",
             ])
     }
@@ -3816,7 +3836,7 @@ struct DungeonTests {
                 "There is a ladder here, firmly attached to the east wall.",
                 "With the ladder under you, you get a hand over the lip",
                 "Small Square Room",
-                "Your score is 70 of a possible 585",
+                "Your score is 70 of a possible 616",
                 "a gold card",
             ])
     }
@@ -3970,5 +3990,563 @@ struct DungeonTests {
                 "Small Square Room",
                 "Room in a Puzzle",
             ])
+    }
+
+    // MARK: - Milestone 8: the roads in
+
+    /// From the Dam back to the Troll Room the long way round the crossroads,
+    /// which is how anything fetched out of the Maintenance Room reaches the
+    /// temple quarter: east into the Damp Cave, down to the Loud Room, west and
+    /// north round the chasm, and south twice to the East-West Passage.
+    private static let damRoomBackToTheTrollRoom = [
+        "east", "south", "west", "north", "south", "south", "west",
+    ]
+
+    /// And out of Maze-5 the same way: north three times to Maze-1, then west.
+    /// The maze is not symmetrical, so this is not `trollRoomToMazeFive`
+    /// reversed — it is its own thread.
+    private static let mazeFiveBackToTheTrollRoom = ["north", "north", "north", "west"]
+
+    /// The whole road to the Tiny Room with the welcome mat and the screwdriver
+    /// in hand — the two things the oak door's puzzle needs that are not in the
+    /// room with it.
+    ///
+    /// Seed 11 throughout, recorded: the troll falls to the first blow.
+    private static let toTheTinyRoom =
+        ["take mat"] + intoTheCellarWithTheRope
+        + ["east", "attack troll with sword", "drop sword"]
+        + crossroadsToTheDam
+        + ["north", "north", "push yellow button", "take screwdriver", "south", "south"]
+        + damRoomBackToTheTrollRoom + trollRoomToTheDome
+        + ["tie rope to railing", "down", "west"]
+
+    /// The solve, from standing in the Tiny Room with the mat and a tool. The
+    /// order of the last four commands is the whole puzzle: the key has to come
+    /// off the mat before the mat is worth moving, and the near keyhole has to
+    /// be empty before the lock will turn.
+    private static let theOakDoorSolve = [
+        "open lid", "put mat under door", "put screwdriver in keyhole",
+        "take mat", "take key", "take screwdriver",
+        "unlock door with key", "open door", "north",
+    ]
+
+    /// From the Timber Room back up out of the mine and round to the head of
+    /// the chute: the ladder, the coal maze the other way about, the Wooden
+    /// Tunnel, the Shaft Room and the Mine Entrance.
+    private static let timberRoomToTheSlideRoom = [
+        "north", "up", "up", "east", "east", "south", "west", "south",
+    ]
+
+    /// The whole road to the head of the coal chute with the rope in hand and
+    /// the broken timber carried up out of the mine. Those two are what
+    /// `SLIDE-EXIT` reads, and there is no other way to the red sphere.
+    ///
+    /// Seed 11 throughout, recorded: the troll falls to the first blow.
+    private static let toTheChuteWithTheTimber =
+        intoTheCellarWithTheRope
+        + ["east", "attack troll with sword", "drop sword"]
+        + crossroadsToTheDam + damToTheMirrors + mirrorsToTheShaft
+        + coalMazeToTheLadderBottom + ["south", "take timber"]
+        + timberRoomToTheSlideRoom
+
+    /// Rig it and ride it. Four moves from the Slide Room to the ledge, and the
+    /// grip clock is set to `100 / carried weight` — so the descent has to be
+    /// walked rather than sightseen.
+    private static let downTheChuteToTheLedge =
+        ["drop timber", "tie rope to timber", "down", "down", "down", "east"]
+
+    // MARK: - Milestone 8: the Tiny Room and the oak door
+
+    /// **The Torch Room's west doorway is the Tiny Room.** Milestone 3 built
+    /// the Torch Room with the doorway in its description and said at the
+    /// declaration site that the room behind it belonged to a later milestone.
+    /// This is that milestone, and the seam is the whole of what joins the
+    /// palantir wing to the rest of the map on foot.
+    @Test func theTorchRoomsWestDoorwayOpensOnTheTinyRoom() async throws {
+        let transcript = try await play(Dungeon(), Self.toTheTinyRoom + ["east"], seed: 11)
+
+        expectInOrder(
+            transcript,
+            ["Torch Room", "Tiny Room", "beside the door a small barred window", "Torch Room"])
+    }
+
+    /// The door starts locked with its key in the far keyhole, and the barred
+    /// window is what tells you so — it shows the Dreary Room entire, table and
+    /// sphere and all, long before either can be reached. It does **not** show
+    /// what is inside the far keyhole: a window that reported the key would
+    /// hand over the puzzle from the wrong side of the door.
+    @Test func theBarredWindowShowsTheRoomYouCannotYetReach() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheTinyRoom + ["look through window", "north", "enter window"],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "This is a dreary room",
+                "You can make out a blue crystal sphere in there.",
+                // The engine's own answer for a shut door on an exit. The lock
+                // is what `open door` reports.
+                "The door made of oak is closed.",
+                "Not unless somebody dices you first.",
+            ])
+        #expect(!transcript.contains("blue crystal sphere and a rusty iron key"))
+    }
+
+    /// The keyhole answers only when both lids are up and both keyholes empty,
+    /// and even then only in the direction there is light to see in: the Dreary
+    /// Room is lit and the Tiny Room is not.
+    @Test func theKeyholeShowsALightedRoomOnlyWhenNothingIsInTheWay() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheTinyRoom
+                + [
+                    "look through keyhole", "open lid", "look through keyhole",
+                    "put mat under door", "put screwdriver in keyhole",
+                    "take mat", "take key", "take screwdriver",
+                    "look through keyhole", "open lid", "look through keyhole",
+                ],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                // The lid is down, so there is nothing to look through at all.
+                "The lid is over it.",
+                // Lid up, but the key is still filling the far keyhole.
+                "No light comes through the keyhole at all.",
+                // The screwdriver punched the key out, and `PCHECK` shut the
+                // lid on the second tool taken — so it has to go up again.
+                "The lid is over it.",
+                "The lid swings up.",
+                // Both keyholes empty at last, and there is light on the far
+                // side because the Dreary Room is lit and the Tiny Room is not.
+                "You can just make out a lit room at the far end of it.",
+            ])
+    }
+
+    /// **The whole solve, in the order the source insists on.** Slide the mat
+    /// under the door first, then punch the key through; the key lands on the
+    /// mat, the mat gives it up when it is lifted, and the near keyhole has to
+    /// be emptied before the lock will turn.
+    @Test func theOakDoorGivesUpItsKeyAndTheBlueSpherePaysTen() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheTinyRoom + ["open lid", "put mat under door", "examine door"]
+                + Array(Self.theOakDoorSolve.dropFirst(2))
+                + ["take blue sphere", "score"],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "The lid swings up.",
+                "The mat goes under the door with room to spare.",
+                "The edge of a welcome mat",
+                "There is a faint noise from the far side of the door",
+                "As the mat comes up, a rusty iron key slides off it and onto the floor.",
+                "Something turns over inside the door, and the lock gives.",
+                "Dreary Room",
+                "In the center of the table sits a blue crystal sphere.",
+                // Forty for the road in, and ten for finding the sphere.
+                "Your score is 50 of a possible 616",
+            ])
+    }
+
+    /// **Punching the key out with no mat under the door loses it for good.**
+    /// The source removes it from the game rather than dropping it, and nothing
+    /// anywhere puts it back — so the wing is unwinnable from that turn on, and
+    /// nothing says so at the time.
+    @Test func punchingTheKeyThroughWithNoMatLosesItForever() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheTinyRoom
+                + [
+                    "open lid", "put screwdriver in keyhole", "take screwdriver",
+                    "take key", "unlock door with key", "open door",
+                ],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "There is a faint noise from the far side of the door",
+                // There is no key anywhere any more, and nothing says so.
+                "You can't see any such thing.",
+                "The door is locked.",
+            ])
+    }
+
+    /// `PCHECK`, which the source runs every turn: the **second** time a
+    /// keyhole tool is taken while the near lid stands open, the lid falls back
+    /// over the keyhole. It is not fatal — the lid opens again — but it falls
+    /// on exactly the turn a player has stopped watching the door.
+    @Test func theLidFallsOnTheSecondToolTakenWhileItStandsOpen() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheTinyRoom
+                + [
+                    "open lid", "put mat under door", "put screwdriver in keyhole",
+                    "take mat", "take key", "take screwdriver", "examine lid",
+                ],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "As the mat comes up, a rusty iron key slides off it",
+                "The lid drops, and the keyhole is covered again.",
+                "lying flat over the keyhole",
+            ])
+    }
+
+    /// The four `PALOBJS` are the only things that go into a keyhole, and only
+    /// one of them turns the lock afterwards.
+    @Test func onlyFourThingsFitTheKeyholeAndOnlyOneTurnsIt() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheTinyRoom
+                + [
+                    "put lamp in keyhole", "open lid", "put lamp in keyhole",
+                    "put mat under door", "put mat under door",
+                    "put screwdriver in keyhole",
+                    "take mat", "take key", "unlock door with key",
+                    "take screwdriver", "unlock door with lamp",
+                    "unlock door with key",
+                ],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "The lid is over it.",
+                "The brass lantern will not go in.",
+                "The mat is already under the door.",
+                // The screwdriver is still standing in the near keyhole.
+                "There is something in the keyhole already.",
+                "That will not unlock it.",
+                "Something turns over inside the door, and the lock gives.",
+            ])
+    }
+
+    /// The skeleton keys punch the far key out perfectly well and will not turn
+    /// this lock, and the mainframe has its own line about it.
+    @Test func theSkeletonKeysPunchTheKeyOutAndStillWillNotTurnTheLock() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            ["take mat"] + Self.intoTheCellarWithTheRope
+                + ["east", "attack troll with sword", "drop sword"]
+                + Self.trollRoomToMazeFive + ["take keys"]
+                + Self.mazeFiveBackToTheTrollRoom + Self.trollRoomToTheDome
+                + ["tie rope to railing", "down", "west"]
+                + ["open lid", "put mat under door", "put skeleton keys in keyhole"]
+                + ["take mat", "take skeleton keys", "unlock door with skeleton keys"],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "There is a faint noise from the far side of the door",
+                "As the mat comes up, a rusty iron key slides off it",
+                "Whatever these open, it is not this.",
+            ])
+    }
+
+    // MARK: - Milestone 8: the coal chute
+
+    /// **Without a rope the chute is milestone 3's one-way drop into the
+    /// Cellar**, which is the source's own unroped outcome and is why the
+    /// shortcut was never wrong — only incomplete.
+    @Test func theChuteWithoutARopeIsStillTheDropIntoTheCellar() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheChuteWithTheTimber + ["drop timber", "down"],
+            seed: 11)
+
+        expectInOrder(transcript, ["Slide Room", "Cellar"])
+        #expect(!transcript.contains("You are hanging on a rope"))
+    }
+
+    /// With the rope tied to the timber — on the ground, not in your hands — it
+    /// is a climb instead, and the ledge three stretches down is the only way
+    /// to the Sooty Room. Reaching the ledge cancels the grip clock outright,
+    /// so the climb back up is untimed.
+    @Test func theRopeTurnsTheChuteIntoAClimbAndTheLedgeIsSafe() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheChuteWithTheTimber + Self.downTheChuteToTheLedge
+                + ["south", "take red sphere", "north", "up", "up", "up", "score"],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "The rope is tied fast",
+                "You are hanging on a rope",
+                "Slide Ledge",
+                "Sooty Room",
+                "There is a beautiful red crystal sphere here.",
+                // Back at the top, and the room now says what is hanging in it.
+                "A rope is tied off at the head of the slide",
+                "Your score is 50 of a possible 616",
+            ])
+        #expect(!transcript.contains("Your grip goes"))
+    }
+
+    /// The anchor has to be on the ground and it has to be one of two. A rope
+    /// tied to something in your hands holds nothing, and the source insists.
+    @Test func theChutesAnchorHasToBeOnTheGroundAndHasToBeOneOfTwo() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheChuteWithTheTimber
+                + ["tie rope to timber", "tie rope to lamp", "tie rope"],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "You would have to put it down first",
+                "That would not hold a bucket",
+                "Tie it to what?",
+            ])
+    }
+
+    /// `SLIDE-EXIT`'s grip clock: `100 / carried weight`, floored at two turns.
+    /// Dawdle in the chute and it lets go, and where it lets you go is the
+    /// Cellar — which is where the unroped drop would have put you anyway.
+    @Test func dawdlingInTheChuteCostsYouYourGrip() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheChuteWithTheTimber
+                + ["drop timber", "tie rope to timber", "down"]
+                + Array(repeating: "listen", count: 8),
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "You are hanging on a rope",
+                "Your grip goes, and the chute takes the rest.",
+                "Cellar",
+            ])
+    }
+
+    /// Anything let go of in the chute is gone: it falls the rest of the way
+    /// and turns up in the Cellar. The rope is the one exception, and letting
+    /// go of that takes you with it.
+    @Test func whatYouDropInTheChuteEndsUpInTheCellarAndSoDoYou() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheChuteWithTheTimber
+                + ["drop timber", "tie rope to timber", "down", "take rope", "drop rope"],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "You are hanging on a rope",
+                "And what do you imagine is holding you up?",
+                "You let go, and the chute has you.",
+                "Cellar",
+            ])
+    }
+
+    // MARK: - Milestone 8: the three palantirs, which do not combine
+
+    /// **`look in <sphere>` shows the room the *next* sphere is in**, on a
+    /// fixed one-way cycle blue → red → white → blue, and does nothing else.
+    /// No teleport, no score, no third-sphere effect: the only routine in the
+    /// source that touches more than one palantir is this one. Worth pinning
+    /// because assembling them is the obvious guess and it is wrong.
+    @Test func onePalantirShowsTheRoomTheNextOneIsIn() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheTinyRoom + Self.theOakDoorSolve
+                + ["take blue sphere", "look in blue sphere", "score"],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "A room swims up in the depths of the crystal: Sooty Room.",
+                "red crystal sphere",
+                // And it is worth nothing: the score has not moved off the ten
+                // the sphere itself paid for being found.
+                "Your score is 50 of a possible 616",
+            ])
+    }
+
+    /// And the cycle runs on. The red one shows the Dingy Closet, which is
+    /// behind the robot's puzzle at the top of the well and a very long way
+    /// from the bottom of the coal chute — so the second palantir is a
+    /// signpost to the third long before there is any road to it.
+    @Test func theCycleRunsOnFromTheRedSphereToTheWhiteOne() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheChuteWithTheTimber + Self.downTheChuteToTheLedge
+                + ["south", "take red sphere", "look in red sphere"],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "Sooty Room",
+                "A room swims up in the depths of the crystal: Dingy Closet.",
+                "white crystal sphere",
+            ])
+    }
+
+    // MARK: - Milestone 8: the free brochure and the Don Woods stamp
+
+    /// **The leaflet is what tells you the brochure exists**, and `send for
+    /// brochure` works from anywhere. Three answers, in the source's order: the
+    /// order goes out, then it is on its way, then the clerk is sarcastic. What
+    /// starts the postman is walking into the Kitchen, not the mailbox.
+    @Test func theBrochureIsOrderedAnywhereAndArrivesAtTheHouse() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            [
+                "open mailbox", "read leaflet", "send for brochure",
+                "send for brochure",
+            ]
+                + Self.intoTheKitchen
+                + [
+                    "wait", "wait", "east", "north", "west", "look",
+                    "send for brochure",
+                ])
+
+        expectInOrder(
+            transcript,
+            [
+                "send for our free brochure",
+                "Ordered. You know what the post is like, though.",
+                "It is presumably on its way.",
+                "Somebody knocks at the front of the house.",
+                "In the small mailbox is a free brochure.",
+                "Why? Has the first one worn out?",
+            ])
+    }
+
+    /// The brochure is a prospectus for MIT whose curriculum is the Mock
+    /// Turtle's, and the stamp affixed to it is worth **nothing to find and one
+    /// to case** — the only treasure in the game that way round, and its own
+    /// face says so.
+    @Test func theDonWoodsStampIsWorthNothingToFindAndOneToCase() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            ["send for brochure"] + Self.intoTheKitchen
+                + [
+                    "wait", "wait", "east", "north", "west", "open mailbox",
+                    "take brochure", "read brochure", "take stamp", "score",
+                    "read brochure", "south", "east", "west", "west",
+                    "open case", "put stamp in case", "score",
+                ])
+
+        expectInOrder(
+            transcript,
+            [
+                "Distraction, Uglification and Derision",
+                "Affixed loosely to the brochure is a small stamp.",
+                // Ten for the Kitchen, and not a point for the stamp.
+                "Your score is 10 of a possible 616",
+                "Drawling, Stretching",
+                // Cased, it pays its one lousy point.
+                "Your score is 11 of a possible 616",
+            ])
+        // Once the stamp is out of it, the brochure stops saying it is there.
+        #expect(occurrences(of: "Affixed loosely to the brochure", in: transcript) == 1)
+    }
+
+    // MARK: - Milestone 8: every printed noun answers
+
+    @Test func everyNounThePalantirWingPrints() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheTinyRoom
+                + ["examine door", "examine window", "examine lid", "examine keyhole"]
+                + Self.theOakDoorSolve
+                + [
+                    "examine table", "examine crack", "examine sphere", "examine window",
+                    "examine lid", "examine keyhole", "examine key", "examine glow",
+                ],
+            seed: 11)
+
+        expectEveryNounAnswered(transcript, "the Tiny Room and the Dreary Room")
+    }
+
+    @Test func everyNounTheChuteAndTheSootyRoomPrint() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheChuteWithTheTimber
+                + ["examine slide", "examine granite wall"]
+                + Self.downTheChuteToTheLedge
+                + [
+                    "examine chute", "examine rope", "examine opening",
+                    "south", "examine stove", "examine crack", "examine sphere",
+                ],
+            seed: 11)
+
+        expectEveryNounAnswered(transcript, "the chute, the ledge and the Sooty Room")
+    }
+
+    @Test func everyNounTheBrochureAndItsStampPrint() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            ["send for brochure"] + Self.intoTheKitchen
+                + [
+                    "wait", "wait", "east", "north", "west", "open mailbox",
+                    "examine brochure", "examine stamp", "examine mailbox",
+                    "examine leaflet",
+                ])
+
+        expectEveryNounAnswered(transcript, "the brochure and the stamp")
+    }
+
+    /// With milestone 8 in, the palantir wing joins the graph at the two places
+    /// the source joins it: west out of the Torch Room, and down the Slide
+    /// Room's chute on a rope. Neither half is reachable from the other without
+    /// leaving the wing, which is why it takes two roads to walk it.
+    @Test func milestoneEightJoinsThePalantirWingToTheGraph() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheChuteWithTheTimber + Self.downTheChuteToTheLedge
+                + ["south", "north", "up", "up", "up"],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "Slide Room",
+                "Slide",
+                "Slide Ledge",
+                "Sooty Room",
+                "Slide Ledge",
+                "Slide",
+                "Slide Room",
+            ])
+    }
+
+    /// The ceiling lands on **616**, which is `SCORE-MAX` — the whole of the
+    /// main dungeon. The thirty-one points milestone 8's first two pieces add
+    /// are the last main-dungeon object values there are, so what stands
+    /// between here and the finished 716 is the endgame's hundred and nothing
+    /// else.
+    @Test func theMainDungeonCanNowPayItsWholeSixHundredAndSixteen() throws {
+        let (definition, _) = try Bootstrap.build(Dungeon())
+
+        #expect(definition.maxScore == 616)
+        #expect(definition.warnings.isEmpty, "\(definition.warnings)")
+
+        // The three objects that closed the gap, with the source's own values.
+        for (name, find, deposit) in [
+            ("blue crystal sphere", 10, 5),
+            ("red crystal sphere", 10, 5),
+            ("postage stamp", 0, 1),
+        ] {
+            let item = definition.items.values.first { $0.name == name }
+            #expect(item?.customTraits["takeValue"] == .int(find), "\(name) find value")
+            #expect(item?.customTraits["depositValue"] == .int(deposit), "\(name) case value")
+        }
     }
 }

@@ -842,3 +842,39 @@ prerequisite for the 100 rather than a parallel errand.
 thirty-two treasures, route through the thief for the egg, solve the Royal
 Puzzle, and then play the whole endgame, on one pinned seed. `Zork1`'s seed-32
 walkthrough is 408 lines for nineteen treasures and one barrow.
+
+## The main dungeon is complete at 616
+
+Milestone 8's first two pieces landed together and took the ceiling 585 → 616,
+which is `SCORE-MAX`. Every room value and every object value the main dungeon
+has is now declared and walkable, all thirty-two treasures the mechanics
+contract counts exist, and a perfect run scores 616 of 616. What stands between
+that and the finished 716 is the endgame's hundred and nothing else.
+
+The three objects that closed the gap were the ones the milestone-8 arithmetic
+above named: the blue crystal sphere (10+5) on the table in the Dreary Room, the
+red one (10+5) in the Sooty Room at the foot of the coal chute, and the Don Woods
+stamp (0+1) affixed to the free brochure. Not one of the seven new rooms carries
+an `RVAL`, so the `Scoring` award table did not move at all.
+
+**Two things this unblocks.** The endgame's entry gate is a score test, so #187
+was blocked by arithmetic rather than by convention and is not any more. And the
+716-point walkthrough (#189) now has 616 of its 716 points on a committed,
+pinned script: `Tests/GnustoTests/DungeonWalkthroughTests.swift`, seed 2, 728
+turns, ending *"Your score is 616 of a possible 616"*. It is the 585-point route
+with three commands added to its middle and one appendix on the end, so the
+remaining work for #189 is the endgame's hundred rather than a route from
+scratch.
+
+**Why the palantir wing is an appendix rather than an insertion**, since a later
+reader will wonder. The wing is two puzzles at opposite corners of the map, and
+neither is on the way to anything else: the Tiny Room hangs off the Torch Room,
+which is the bottom of a one-way drop, and the Sooty Room is three stretches down
+a coal chute on the far side of the mine. Threading either into the tuned middle
+of the route means carrying a welcome mat, a set of skeleton keys and a coil of
+rope through fifteen stages of a route whose carrying cap is already the binding
+constraint — and the first attempt at it cost the trunk of jewels, which is
+twenty-three points, to buy thirty-one. Done at the end, with everything cased
+and the hands empty, it costs nothing. The rope is what makes it possible: stage
+4 ties it to the Dome Room's railing and never unties it, so the drop into the
+Torch Room stays open for the rest of the game.
