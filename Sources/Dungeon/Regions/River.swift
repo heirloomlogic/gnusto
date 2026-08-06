@@ -184,6 +184,9 @@ struct DungeonRiver: GameContent {
         firstSight(Prose.stickInPlace)
         description(Prose.stick)
         trait(.weight, 3)
+        // And one of the source's four `PALOBJS`, which is this object's third
+        // job. See ``DungeonPalantir``.
+        trait(.keyholeTool, true)
     }
 
     // MARK: - The buoy
@@ -459,6 +462,11 @@ struct DungeonRiver: GameContent {
     // MARK: - Map
 
     var map: WorldMap {
+        riverExits
+        riverPlacements
+    }
+
+    @MapBuilder private var riverExits: WorldMap {
         // The river. Upstream is refused from every stretch, `down` is the
         // only way on, and the last `down` is the falls (the host's rule, so
         // that it can die rather than travel). The mainframe's `FCHMP`
@@ -541,6 +549,12 @@ struct DungeonRiver: GameContent {
         // Entities. The pile of plastic and the broken sharp stick both start
         // at the Dam Base, so the host places them.
         tanLabel.starts(inside: magicBoat)
+    }
+
+    /// The second half of the same list, split for hazard #174's reason: peak
+    /// bootstrap stack depth scales with the largest single declaration body,
+    /// and milestone 8's seventeenth bundle put the suite over the edge again.
+    @MapBuilder private var riverPlacements: WorldMap {
         buoy.starts(in: river4)
         emerald.starts(inside: buoy)
         sand.starts(in: sandyBeach)
@@ -574,6 +588,11 @@ struct DungeonRiver: GameContent {
     // MARK: - Rules
 
     var rules: Rules {
+        riverRules
+        moreRiverRules
+    }
+
+    @RuleBuilder private var riverRules: Rules {
         // Aragain Falls reports the rainbow's state, and only ever from here —
         // unless you have climbed into the barrel, in which case the falls are
         // exactly what you cannot see. The source answers `look` from the
@@ -629,7 +648,12 @@ struct DungeonRiver: GameContent {
 
         magicBoat.before(.inflate) { try reply(Prose.boatAlreadyFirm) }
         puncturedBoat.before(.inflate) { try reply(Prose.boatWillNotInflate) }
+    }
 
+    /// The second half of the same list, split for hazard #174's reason: peak
+    /// bootstrap stack depth scales with the largest single declaration body,
+    /// and milestone 8's seventeenth bundle put the suite over the edge again.
+    @RuleBuilder private var moreRiverRules: Rules {
         // The buoy gives itself away once, and only while it is in your hands
         // on the stretch it floats on — the source's `RIVR4-ROOM`.
         river4.afterEachTurn {

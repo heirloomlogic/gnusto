@@ -37,6 +37,14 @@ extension Dungeon {
     /// - **The shrunken world.** The Posts Room, the Pool Room, the Low Room,
     ///   the Machine Room, the Dingy Closet and the Cage are reached only by
     ///   eating your way down to the size of the tea table.
+    /// - **Six of the palantir wing's seven rooms.** The source marks
+    ///   `RSACREDBIT` on the Dreary Room, the three chute stretches, the Slide
+    ///   Ledge and the Sooty Room, and every one of them earns it: five are
+    ///   reached only by hanging on a rope, and the sixth is behind a locked
+    ///   oak door whose key starts on the wrong side of it. `PRM`, the Tiny
+    ///   Room, carries no such bit and is in the set — it is a plain step west
+    ///   of the Torch Room, and a player solving the door there with a
+    ///   screwdriver in one hand is exactly the kind of person he visits.
     /// - **The Royal Puzzle itself**, for the Small Room's reason exactly. The
     ///   drop into `CP` is one-way — the sand runs shut — and both ways out are
     ///   earned: a sliding-block problem, or a steel door that eats the only
@@ -82,6 +90,7 @@ extension Dungeon {
             templeQuarter.egyptianRoom, templeQuarter.glacierRoom, templeQuarter.rubyRoom,
             templeQuarter.engravingsCave, templeQuarter.entranceToHades,
             volcano.volcanoBottom, volcano.lavaRoom, volcano.volcanoView,
+            palantirWing.tinyRoom,
             mirrors.mirrorRoomNorth, mirrors.mirrorRoomSouth, mirrors.caveNorth,
             mirrors.caveSouth, mirrors.steepCrawlway, mirrors.narrowCrawlway,
             mirrors.coldPassage, mirrors.windingPassage, mirrors.atlantisRoom,
@@ -124,6 +133,7 @@ extension Dungeon {
     /// everything he does.
     @RuleBuilder
     var thiefRules: Rules {
+        moreThiefRules
         // Into play. He is placed by code, which is what the atlas records for
         // him, and the code is this: he comes out when you give him a reason
         // to. The first treasure you lift off the dungeon floor is the reason,
@@ -180,7 +190,12 @@ extension Dungeon {
             }
             try reply(Prose.thiefTakesGift)
         }
+    }
 
+    /// The second half of the same list, split for hazard #174's reason: peak
+    /// bootstrap stack depth scales with the largest single declaration body,
+    /// and milestone 8's seventeenth bundle put the suite over the edge again.
+    @RuleBuilder private var moreThiefRules: Rules {
         // The fight. He carries two hits, like the troll, and dies to the same
         // two blades. When he falls, everything in his bag falls with him —
         // and that is all that happens. Zork I's thief unbars the trap door on

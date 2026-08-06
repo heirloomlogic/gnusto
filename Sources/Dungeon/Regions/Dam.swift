@@ -292,6 +292,9 @@ struct DungeonDam: GameContent {
         synonyms("driver", "tool")
         firstSight(Prose.screwdriverInPlace)
         description(Prose.screwdriver)
+        // One of the source's four `PALOBJS` — the things long enough to go
+        // into the oak door's keyhole. See ``DungeonPalantir``.
+        trait(.keyholeTool, true)
     }
 
     /// The Frobozz Magic Gunk Company's finest, and the only thing in the game
@@ -526,6 +529,11 @@ struct DungeonDam: GameContent {
     // MARK: - Rules
 
     var rules: Rules {
+        damRules
+        moreDamRules
+    }
+
+    @RuleBuilder private var damRules: Rules {
         // The four rooms whose description is the state of the water.
         damRoom.describe {
             var paragraphs = [
@@ -592,7 +600,12 @@ struct DungeonDam: GameContent {
             maintenanceRoom.isLit = maintenanceRoomLit
             try reply(maintenanceRoomLit ? Prose.lightsOn : Prose.lightsOff)
         }
+    }
 
+    /// The second half of the same list, split for hazard #174's reason: peak
+    /// bootstrap stack depth scales with the largest single declaration body,
+    /// and milestone 8's seventeenth bundle put the suite over the edge again.
+    @RuleBuilder private var moreDamRules: Rules {
         // Blue springs the leak. Once only: after that it is jammed, whether
         // the water is still rising or the room has already been given up for
         // lost.

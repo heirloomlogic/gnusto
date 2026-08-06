@@ -63,15 +63,86 @@ extension Prose {
 
     static let mailboxEmbellishment = "A leaflet sits inside, waiting to be read."
 
-    /// Verbatim Zork I. The mainframe leaflet says the same thing at greater
-    /// length and addresses a PDP-10; the trilogy's is the licensed one, and it
-    /// contradicts nothing about this world.
+    /// Zork I verbatim, and then one paragraph that is not. The mainframe's
+    /// leaflet says the trilogy's thing at greater length, addresses a PDP-10,
+    /// and — the part milestone 8 needs — advertises the free brochure that
+    /// carries the Don Woods stamp. The trilogy dropped both the advertisement
+    /// and the brochure, so the closing paragraph is case 3: written fresh, in
+    /// the register of a thing printed to be given away.
     static let leaflet = """
         "WELCOME TO ZORK!
 
         ZORK is a game of adventure, danger, and low cunning. In it you
         will explore some of the most amazing territory ever seen by
-        mortals. No computer should be without one!"
+        mortals. No computer should be without one!
+
+        For further particulars, send for our free brochure. Simply say
+        SEND FOR BROCHURE, and allow the customary interval for delivery."
+        """
+
+    // MARK: - The free brochure, and the stamp on it
+
+    static let brochureOrdered = """
+        Ordered. You know what the post is like, though.
+        """
+
+    static let brochureOnItsWay = """
+        It is presumably on its way.
+        """
+
+    static let brochureAgain = """
+        Why? Has the first one worn out?
+        """
+
+    static let brochureKnock = """
+        Somebody knocks at the front of the house.
+        """
+
+    static let brochureHoldsNothing = """
+        The brochure is a brochure. Nothing goes in it.
+        """
+
+    static let brochureStampAffixed = """
+        Affixed loosely to the brochure is a small stamp.
+        """
+
+    /// Written fresh, framing and all. `BROCH` appears in no bucket of
+    /// `dungeon-prose-comparison.md`, so it is case 3 — but the curriculum in
+    /// the middle of it is the Mock Turtle's from *Alice in Wonderland*, which
+    /// is public domain and is the entire joke of the object, so it crosses
+    /// over as the source's own joke does. The mailing label is the one place
+    /// this game cannot follow the source at all: the mainframe interpolates
+    /// the player's login name, and this engine has no login name to
+    /// interpolate. See `FIDELITY.md`.
+    static let brochure = """
+        A stiff folded card, printed in two colours, addressed to
+
+            The Adventurer
+            c/o Local Dungeon Master
+            White House, GUE
+
+        MIT — the Mediocre Institute of Technology — invites applications
+        for the coming term. Our faculty offer instruction in Ambition,
+        Distraction, Uglification and Derision; in Reeling and Writhing; in
+        Mystery, Ancient and Modern; in Seaography; in Drawling, Stretching
+        and Fainting in Coils; and, for the advanced student, in Laughing
+        and Grief.
+
+        Founded in antiquity by William Barton Flathead, Fovnder.
+
+        (It goes on in this vein for several hundred further pages.)
+        """
+
+    /// The stamp's face says exactly what it is worth, which is the joke. Zero
+    /// to find and one to case: the only treasure in the game that pays
+    /// nothing for being picked up.
+    static let donWoodsStamp = """
+        A small postage stamp, printed in a dull green, reading:
+
+            WORTH ONE LOUSY POINT
+            GUE POSTAGE
+            Donald Woods, Editor
+            Spelunker Today
         """
 
     /// Written fresh, both of them. The welcome mat is mainframe-only — the

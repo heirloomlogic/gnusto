@@ -93,9 +93,14 @@ struct DungeonMirror: GameContent {
         dark
     }
 
+    /// Always described, and with no static description: as of milestone 8 the
+    /// chute can have a rope tied off at the head of it, and whether it has is
+    /// a fact the room's paragraph carries. ``Dungeon/palantirRules`` supplies
+    /// the text, because the rope and the chute below it are
+    /// ``DungeonPalantir``'s.
     let slideRoom = Location {
         name("Slide Room")
-        description(Prose.slideRoom)
+        alwaysDescribed
         dark
     }
 

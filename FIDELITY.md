@@ -2364,3 +2364,220 @@ it is incomplete, and what it leaves out is the only route to the red sphere.
 **`maxScore` does not move.** It stays at 585 and a perfect run still scores 585
 of 585. This entry adds no content; it corrects the number the remaining work is
 aimed at and says what that work is.
+
+### Milestone 8, part one — the palantir wing and the free brochure
+
+7 rooms in one region bundle, 2 items added to an existing one, and the last
+thirty-one points the main dungeon has to pay. The Tiny Room is west of the Torch
+Room, the seam milestone 3 declared and named at its declaration site. The Dreary
+Room is behind an oak door with a keyhole on each side of it and the key in the
+far one. The rest hangs off the coal chute the Slide Room has always had a hole
+for: three stretches down to a ledge, and south of the ledge the Sooty Room. Each
+room came out with the number of exits `docs/games/dungeon-atlas.md` records,
+`PWIND` excepted — see below.
+
+#### Prose
+
+Case 3 throughout — written fresh — **except for two lines the issue that
+specified this region did not expect to exist**. It says none of this content
+appears in any bucket of `docs/games/dungeon-prose-comparison.md`. That is true
+of all seven rooms and of every fixture in them. It is not true of the two
+treasures: `PAL3` and `PALAN` are both filed `substantial`, so case 2 applies,
+and the trilogy's lines were checked against the atlas before being taken.
+
+- **The blue sphere.** Zork II: *"In the center of the table sits a blue crystal
+  sphere."* It asserts a table, and `PTABL` is in `PALAN`, so it agrees with the
+  atlas and stands as written.
+- **The red sphere.** Zork II: *"There is a beautiful red crystal sphere here."*
+  It asserts nothing, so there is nothing to check.
+
+That also settles a question the issue raised and left open. Both mainframe lines
+are missing their article — *"There is blue crystal sphere here."* — and the
+issue notes the quirk is authentic and almost certainly not worth adapting. The
+committed policy answers it without anyone having to decide by taste: the
+trilogy's are the lines this game takes, and they have the article.
+
+**Every other line here is this project's own words, including the refusals.**
+The issue quotes the mainframe's strings throughout — "The lid falls to cover the
+keyhole.", "These are apparently the wrong keys.", "Perhaps if you were
+diced....", "Ok, but you know the postal service...", and a dozen more — as the
+specification of what each line has to *mean*. None of them is reproduced. No
+licence grant has been located for the 1981 MDL, so its text is off limits
+however short and however functional the line, and the rule does not bend for a
+four-word refusal. What crossed over is the behaviour each string reports.
+
+The brochure's Mock-Turtle curriculum — Ambition, Distraction, Uglification and
+Derision; Reeling and Writhing; Mystery, Ancient and Modern; Seaography;
+Drawling, Stretching and Fainting in Coils; Laughing and Grief — is Lewis
+Carroll's and is public domain. It crosses over because it is the whole joke of
+the object. Every framing sentence around it is this game's.
+
+#### Map topology
+
+- **`PWIND` is not an exit, and it is not one item.** The source files the barred
+  window in *both* `PRM` and `PALAN` under `#!#!#`, a direction atom no player
+  input can produce; that gives the window scope on both sides without giving it
+  a walkable direction. Here it is a scenery item in each room, which is the
+  shape `DungeonMirror` already uses for the two faces of one mirror passage. So
+  the atlas's exit counts of 4 for `PRM` and 3 for `PALAN` come out as 3 and 2
+  declared exits, and the missing one is the pseudo-direction in both cases.
+- **`SLEDG`'s `up` goes to `SLID2`, not `SLID3`.** The source's own asymmetry,
+  reproduced: climbing out of the wing is one stretch shorter than climbing in.
+- **`SLIDE`'s `down` is now `SLIDE-EXIT`.** A dynamic exit rather than a
+  conditional one, because there is no refusal in it: the chute always takes you,
+  and what the rope decides is whether you land in `SLID1` hanging or in the
+  Cellar on your back. Milestone 3's plain drop was the source's own unroped
+  outcome and remains exactly that.
+- **The Slide Room lost its static description** and gained a `describe` rule on
+  the host, because whether a rope is tied off at the head of the chute is a fact
+  that paragraph now carries. Same shape as the Grating Room, milestone 4.
+
+#### Mechanics — now modeled
+
+- **The oak-door puzzle entire.** Open the near lid, slide the welcome mat under
+  the door, put one of the four `PALOBJS` into the near keyhole to punch the key
+  out of the far one, lift the mat to get the key off it, empty the near keyhole,
+  unlock, open, go north. Both of the source's soft traps with it: `PCHECK`'s lid
+  falling on the second tool taken while it stands open, and the key removed from
+  the game for good when it is punched through with no mat under the door.
+- **The four `PALOBJS` are a trait, not a list.** `TraitKey<Bool>.keyholeTool`,
+  declared in `Systems.swift` beside `.openFlame` and for that trait's stated
+  reason: the screwdriver is `DungeonDam`'s, the skeleton keys
+  `DungeonAboveGround`'s, the broken sharp stick `DungeonRiver`'s and the rusty
+  iron key the wing's own, so a list would have had to live on the host and the
+  whole puzzle would have followed it there.
+- **The grip clock.** `100 / carried weight`, floored at two turns, set at the
+  moment of the descent and cancelled outright by reaching the ledge. Travelling
+  light is what buys the turns, which is the source's arithmetic read the way it
+  reads.
+- **Anything let go of in the chute is lost to the Cellar**, and letting go of
+  the rope takes you with it.
+- **The scrying cycle.** Blue → red → white → blue, one way, fixed, and nothing
+  else: no teleport, no score, no combination, no third-sphere effect. Stated
+  plainly because assembling the three palantirs is the obvious guess and it is
+  wrong.
+- **The brochure's post.** `send for brochure` from anywhere, the Kitchen arms a
+  three-turn clock and re-arms it on every entry until it fires, and the knock is
+  heard wherever the player is standing.
+
+#### Mechanics simplified or deferred
+
+- **`TIMBER-TIE!-FLAG`'s global scope is not reproduced.** In the source the flag
+  is not room-scoped, so a rope tied to the timber in the Royal Puzzle's
+  antechamber also turns the Slide Room's `down` into a rope descent — with no
+  rope visible anywhere in the Slide Room. Here the anchor has to be in the Slide
+  Room and on the ground. The reason is the standard this project holds every
+  other line to: a rope descent in a room with no rope in it prints a paragraph
+  that is not true of where the player is standing, which is the one defect the
+  play-test method exists to catch. The mechanics contract protects topology,
+  puzzle logic and values; the scope of a flag is none of those. What is lost is
+  a shortcut nobody would find on purpose. What is kept is the source's own
+  requirement that the anchor be on the ground rather than in your hands.
+- **`SROPE` is not reproduced as a separate object.** The source needs a second
+  rope because its `ROPEBIT` rooms have no way to name the coil tied at the top;
+  this engine does, because the coil is in the player's hands the whole way down
+  and a held item is always in scope. The coil stays in hand while it is tied,
+  exactly as it already does at the Dome Room's railing — milestone 3's
+  behaviour, matched rather than revisited. Four more scenery objects would also
+  have cost more bootstrap stack than the seventeenth bundle had left; see the
+  hazard note below.
+- **One rope, one knot.** Milestone 8 gives the rope a second place to be tied,
+  and the two are mutually exclusive: rigging the chute refuses while the Dome
+  Room's railing still holds it, and vice versa. The source needs no such rule
+  because its `TIMBER-TIE!-FLAG` is global and it simply does not care; here the
+  alternative is a Slide Room whose paragraph reports a rope that is forty rooms
+  away, which is the same defect this milestone declined to reproduce two
+  entries up. The cost is an ordering the map already forces — down the rope
+  into the Torch Room and the Tiny Room first, then round to the chute.
+- **`GBROC` has no equivalent, so `brochure` is a word before it is a thing.**
+  The source carries a global "free brochure" object that gives the noun scope in
+  every room; Gnusto has no such facility, and an item that is nowhere is not in
+  scope. `send for brochure` is therefore a literal syntax row rather than a verb
+  with an object slot — `Intent/answerWell`'s shape exactly, and for its reason.
+  The cost is that `examine brochure`, typed after reading the leaflet and before
+  the brochure has come, answers "You can't see any such thing." That is true of
+  the world, and it is not the noun-answering defect it resembles: the leaflet is
+  a document naming a thing that does not exist yet, not a room description naming
+  a thing that does.
+- **The mailing label has no login name in it.** The source interpolates the
+  player's and addresses the brochure to them "c/o Local Dungeon Master, White
+  House, GUE". This engine has no login name, so the label reads *The Adventurer,
+  c/o Local Dungeon Master, White House, GUE*. The joke is the address, and the
+  address survives.
+- **Scrying searches a named set of rooms rather than asking an object where it
+  is.** The source asks `,OROOM` and gets an answer; Gnusto exposes containment
+  only as "is this item in *that* room", so `Dungeon.scryableRooms` is the set
+  searched — the thief's prowl, plus the wing's seven, the Dingy Closet where the
+  white sphere starts, the Cage, and the Living Room. A palantir left anywhere
+  else reads as darkness, which is the source's own answer for a palantir with no
+  room. A general fix belongs in the engine, not here.
+- **`SPAL` gets a crack the source does not have.** Its description names "a very
+  narrow crack in the north wall" and `PCRAK`, the only crack object, is filed in
+  `PALAN` — so `examine crack` in the Sooty Room finds nothing in the source.
+  Every printed noun must answer, so the Sooty Room has one of its own. The two
+  cracks are a matched pair of hints (the stove's red glow is the glow that lights
+  the Dreary Room) and the two rooms are **not** connected.
+- **The Don Woods stamp is displayed as *postage stamp*.** A capitalised display
+  name warns at bootstrap unless it is `properName`, and a stamp is not a person —
+  milestone 6 settled that for the Flathead stamp by putting the name in the
+  adjectives, and this follows it. There is a second reason: the Library's stamp
+  is already displayed as *stamp*, and two treasures under one display name would
+  have the parser asking which stamp you meant every time both stood in the
+  trophy case.
+
+#### Scoring
+
+`maxScore` ratchets 585 → **616**, and 616 is `SCORE-MAX`: the main dungeon is
+complete. Three objects and no room value — not one of the seven new rooms
+carries an `RVAL`, so the award table does not move at all.
+
+| | find | case |
+|---|---:|---:|
+| blue crystal sphere (`PALAN`, on the table in the Dreary Room) | 10 | 5 |
+| red crystal sphere (`PAL3`, in the Sooty Room) | 10 | 5 |
+| Don Woods stamp (`DSTMP`, in the free brochure) | 0 | 1 |
+
+Every point is walkable, and the thirty-two treasures the mechanics contract
+counts are all declared now.
+`theMainDungeonCanNowPayItsWholeSixHundredAndSixteen` holds the figure,
+`heCovetsEveryTreasureTheCaseScores` holds the roster at 32, and the bootstrap
+raises no award-table warning.
+
+This matters beyond arithmetic. `SCORE-BLESS` (`rooms.394:794`) arms the
+endgame's herald only at `SCORE-MAX`, and the herald is what makes the Crypt's
+marble door open at all. Until this milestone the reconstruction could not have
+entered the endgame however completely the endgame was built.
+
+#### Hazard #174, for whoever adds the eighteenth bundle
+
+It bit again, exactly as the issue predicted, and it is worth recording what
+did and did not move it. Adding this bundle put the whole test process over the
+bootstrap stack limit — `signal 11`, no message, while `swift run Dungeon` and
+the 725-turn walkthrough were fine, because a Swift Testing body runs on a
+cooperative thread with far less stack than `main`.
+
+**Splitting declaration bodies bought less than milestone 7's note implies.**
+Ten of them were cut in half — `Dungeon.coreRules` into three, `Maze.map`,
+`Temple.rules`, `River.rules`, `River.map`, `Dam.rules`, `House.rules`,
+`CoalMine.map`, `AboveGround.map` and `AboveGround.rules` — and the process
+still died. What settled it was **four scenery objects**: with them the
+bootstrap crashed, without them it did not, and one object plus four `onEnter`
+rules in their place crashed too. So the limit is a budget over the *whole*
+declaration surface, not a ceiling on the largest body, and the splitting is
+worth doing because it lowers the peak rather than because it raises the roof.
+The eighteenth bundle should assume it has very little room and count entities,
+not lines.
+
+#### The thief
+
+His prowl went 107 → **108**, and it gained exactly one of the wing's seven
+rooms. The source marks `RSACREDBIT` on the Dreary Room, all three chute
+stretches, the Slide Ledge and the Sooty Room; every one of them earns it, since
+five are reached only by hanging on a rope and the sixth is behind a locked door
+whose key starts on the wrong side of it. `PRM`, the Tiny Room, carries no such
+bit and is in the set — it is a plain step west of the Torch Room, and a player
+standing in it working a lock with a screwdriver is exactly the sort he visits.
+
+One more room is one more draw from the same seeded stream, so
+`theThiefProwlsAndLiftsWhatYouAreCarrying` was re-pinned from seed 18 to seed 36.
+Milestone 7 paid the same toll for the same reason.

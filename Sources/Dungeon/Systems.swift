@@ -15,6 +15,16 @@ extension TraitKey<Bool> {
     /// it for is which of the things a player might drop in the pan will lift
     /// a balloon and which will simply sit there being gold.
     public static let burnable = Self("burnable", default: false)
+
+    /// An item long and thin enough to go into the oak door's keyhole — the
+    /// source's `PALOBJS`, which is a list of exactly four: the screwdriver, the
+    /// skeleton keys, the broken sharp stick and the rusty iron key itself.
+    ///
+    /// A trait rather than a list, for ``TraitKey/openFlame``'s reason exactly:
+    /// the four live in four different bundles and the puzzle that reads them
+    /// lives in a fifth, so a list would have to be the host's and the whole
+    /// door would follow it there.
+    public static let keyholeTool = Self("keyholeTool", default: false)
 }
 
 extension Player {
@@ -34,6 +44,22 @@ extension Player {
         guard let named else { return lit.first }
         return lit.contains(named) ? named : nil
     }
+}
+
+/// What somebody standing somewhere else can make out lying loose in a room,
+/// joined into an English list — or `nil` when the floor is bare.
+///
+/// Two things ask it, and they are in two different bundles: the barred window
+/// between the Tiny Room and the Dreary Room (``DungeonPalantir``), and one
+/// palantir looking at the next (``Dungeon/palantirRules``). One answer, so
+/// *loose* cannot come to mean two things. Declared here beside
+/// ``Player/heldFlame(named:)`` for that helper's reason exactly.
+///
+/// - Parameter room: the room being looked into.
+/// - Returns: the list, or `nil` for an empty one.
+func remoteView(of room: Location) -> String? {
+    let loose = room.contents.filter(\.isTakable).map(\.indefiniteName)
+    return loose.isEmpty ? nil : GameText.list(loose)
 }
 
 /// The mainframe's verb vocabulary that the engine does not already carry.

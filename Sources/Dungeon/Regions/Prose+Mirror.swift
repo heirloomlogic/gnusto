@@ -154,6 +154,16 @@ extension Prose {
         a small opening.
         """
 
+    /// The paragraph the room gains once a rope has been tied off at the head
+    /// of the chute. Written fresh; the trilogy's Slide Room has no rope,
+    /// because it has nothing at the bottom of its slide to climb down to.
+    /// ``Dungeon/palantirRules`` supplies it, because what it reports is
+    /// ``DungeonPalantir``'s state.
+    static let slideRoomRopeRigged = """
+        A rope is tied off at the head of the slide, and its far end has gone
+        down into the dark out of sight.
+        """
+
     static let graniteWallLettering = """
         The words "Granite Wall" are cut into the rock in letters a foot high.
         The wall itself is nothing of the sort.
