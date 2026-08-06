@@ -12,13 +12,13 @@ which one does `Sources/Dungeon/` use?**
 > source are permissively licensed — see `THIRD_PARTY_NOTICES` at the repo root
 > for the two separate grants and their limits.
 >
-> Generated against Gnusto `4d92c79`.
+> Generated against Gnusto `c8cdf9e`.
 
 ## How to read this
 
-- **Identical (55)** — the trilogy carried the mainframe line
+- **Identical (54)** — the trilogy carried the mainframe line
   across unchanged. Listed as ids only; there is nothing to decide.
-- **Minor (26)** — same sentence, changed punctuation or a
+- **Minor (27)** — same sentence, changed punctuation or a
   reworded clause (≥85% similar). Skim.
 - **Substantial (62)** — genuinely different writing, or text
   the trilogy rewrote because the puzzle around it changed. **This is the section
@@ -652,7 +652,7 @@ map — is also settled there, under Coverage.
 
 > You are near the rim of the volcano. Above you it is open to the sky. To the west, there is a place to land on a wide ledge.
 
-## Minor differences (26)
+## Minor differences (27)
 
 | id | name | mainframe | trilogy |
 |---|---|---|---|
@@ -674,6 +674,7 @@ map — is also settled there, under Coverage.
 | `LIBRA` | Library | This is a room which must have been a large library, probably for the royal family.  All … | This must have been a large library, probably for the royal family. All of the shelves ha… (Zork II) |
 | `PASS3` | Cold Passage | This is a cold and damp corridor where a long east-west passageway intersects with a nort… | This is a cold and damp corridor where a long east-west passageway turns into a southward… (Zork I) |
 | `POG` | End of Rainbow | You are on a small, rocky beach on the continuation of the Frigid River past the Falls.  … | You are on a small, rocky beach on the continuation of the Frigid River past the Falls. T… (Zork I) |
+| `RAINB` | Rainbow Room | You are on top of a rainbow (I bet you never thought you would walk on a rainbow), with a… | You are on top of a rainbow (I bet you never thought you would walk on a rainbow), with a… (Zork I) |
 | `RIVR1` | Frigid River | You are on the River Frigid in the vicinity of the Dam.  The river flows quietly here.  T… | You are on the Frigid River in the vicinity of the Dam. The river flows quietly here. The… (Zork I) |
 | `RIVR5` | Frigid River | The sound of rushing water is nearly unbearable here.  On the west shore is a large landi… | The sound of rushing water is nearly unbearable here. On the east shore is a large landin… (Zork I) |
 | `SHOUS` | South of House | You are facing the south side of a white house. There is no door here, and all the window… | You are facing the south side of a white house. There is no door here, and all the window… (Zork I) |
@@ -683,11 +684,11 @@ map — is also settled there, under Coverage.
 | `TREAS` | Treasure Room | This is a large room, whose north wall is solid granite.  A number of discarded bags, whi… | This is a large room, whose east wall is solid granite. A number of discarded bags, which… (Zork I) |
 | `VLBOT` | Volcano Bottom | You are at the bottom of a large dormant volcano.  High above you light may be seen enter… | You are at the bottom of a large dormant volcano. High above you light enters from the co… (Zork II) |
 
-## Identical (55)
+## Identical (54)
 
 The trilogy kept these lines verbatim, so either source yields the same game.
 
-> `BEGG`, `BKEXE`, `BKVAU`, `BLABE`, `BRICK`, `BUCKE`, `BUOY`, `BWELL`, `CARD`, `CHALI`, `COFFI`, `DBALL`, `DIAMO`, `ENGRA`, `FOOD`, `GNOME`, `HBELL`, `HOOK1`, `HOOK2`, `IBOAT`, `ICE`, `IRBOX`, `JADE`, `LEDG3`, `MAZ10`, `MAZ11`, `MAZ12`, `MAZ13`, `MAZ14`, `MAZ15`, `MAZE1`, `MAZE2`, `MAZE3`, `MAZE4`, `MAZE6`, `MAZE7`, `MAZE8`, `MAZE9`, `MPEAR`, `PASS1`, `PASS5`, `PEARL`, `RBTLB`, `RIVR2`, `ROBOT`, `STAMP`, `STRAD`, `TBASK`, `TROLL`, `TSHAF`, `TUBE`, `TWELL`, `VAIR1`, `VAIR2`, `ZGNOM`
+> `BEGG`, `BKEXE`, `BKVAU`, `BLABE`, `BRICK`, `BUCKE`, `BUOY`, `BWELL`, `CARD`, `CHALI`, `COFFI`, `DBALL`, `DIAMO`, `ENGRA`, `FOOD`, `GNOME`, `HBELL`, `HOOK1`, `HOOK2`, `IBOAT`, `ICE`, `IRBOX`, `JADE`, `LEDG3`, `MAZ10`, `MAZ11`, `MAZ12`, `MAZ13`, `MAZ14`, `MAZ15`, `MAZE2`, `MAZE3`, `MAZE4`, `MAZE6`, `MAZE7`, `MAZE8`, `MAZE9`, `MPEAR`, `PASS1`, `PASS5`, `PEARL`, `RBTLB`, `RIVR2`, `ROBOT`, `STAMP`, `STRAD`, `TBASK`, `TROLL`, `TSHAF`, `TUBE`, `TWELL`, `VAIR1`, `VAIR2`, `ZGNOM`
 
 ## The adopted policy — Infocom voice, mainframe world
 
