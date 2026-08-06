@@ -12,11 +12,12 @@ import GnustoScoring
 /// `docs/games/dungeon-prose-comparison.md`. Read the first before changing
 /// anything here.
 ///
-/// **Built one milestone at a time.** This is milestone 1: above ground, the
-/// white house, and the cellar. Each later milestone adds region bundles to
-/// ``content`` and their crossings to ``rules`` and ``map``, and raises
-/// ``maxScore`` by exactly what it makes payable — see the note on that
-/// property. Nothing here has to move for a region to land.
+/// **Built one milestone at a time.** Milestone 1 is above ground, the white
+/// house and the cellar; milestone 2 is the underground crossroads and Flood
+/// Control Dam #3. Each later milestone adds region bundles to ``content`` and
+/// their crossings to ``rules`` and ``map``, and raises ``maxScore`` by exactly
+/// what it makes payable — see the note on that property. Nothing here has to
+/// move for a region to land.
 @main
 struct Dungeon: Game, GameMain {
     let title = "Dungeon"
@@ -30,10 +31,14 @@ struct Dungeon: Game, GameMain {
     /// painting (4+7), the bauble (1+1). Ten of those are declared before their
     /// route exists, so a perfect milestone-1 playthrough scores **56**.
     ///
+    /// Milestone 2 adds 50, all of it walkable: the East-West Passage's room
+    /// value (5), the platinum bar (12+10) and the trunk of jewels (15+8). A
+    /// perfect playthrough of the two together scores **106**.
+    ///
     /// Why the ceiling moves at all, and what may be declared ahead of its
     /// route: `docs/games/dungeon.md`, "The ceiling ratchets while the game is
     /// being built", and the matching `FIDELITY.md` entry.
-    let maxScore = 66
+    let maxScore = 116
 
     let intro = Prose.intro
 
@@ -54,6 +59,8 @@ struct Dungeon: Game, GameMain {
     let aboveGround = DungeonAboveGround()
     let house = DungeonHouse()
     let cellar = DungeonCellar()
+    let crossroads = DungeonRoundRoom()
+    let dam = DungeonDam()
 
     /// The grue: this game's prose, the plugin's stock warn-then-kill schedule.
     let dangerousDark = DangerousDark(
@@ -74,6 +81,7 @@ struct Dungeon: Game, GameMain {
         awards: [
             "kitchen": 10,
             "cellar": 25,
+            "eastWestPassage": 5,
         ])
 
     let melee = MeleeCombat()
@@ -91,6 +99,8 @@ struct Dungeon: Game, GameMain {
         aboveGround
         house
         cellar
+        crossroads
+        dam
         dangerousDark
         scoring
         melee
@@ -141,7 +151,10 @@ struct Dungeon: Game, GameMain {
     /// The treasures this milestone can score, shared by the trophy-case
     /// wiring below. Later milestones append their own.
     private var treasureRoster: [Item] {
-        [aboveGround.egg, house.canary, house.bauble, cellar.painting]
+        [
+            aboveGround.egg, house.canary, house.bauble, cellar.painting,
+            crossroads.platinumBar, dam.trunk,
+        ]
     }
 
     var rules: Rules {
@@ -151,6 +164,7 @@ struct Dungeon: Game, GameMain {
         // kitchen, and getting below the house.
         scoring.visit(house.kitchen, register: "kitchen")
         scoring.visit(house.cellar, register: "cellar")
+        scoring.visit(crossroads.eastWestPassage, register: "eastWestPassage")
 
         // The chimney. The mainframe lets you up it with the lamp and at most
         // one other thing, and refuses the climb empty-handed outright. The
@@ -250,6 +264,30 @@ struct Dungeon: Game, GameMain {
         // host's `before(.go)` rule above rather than a conditional exit,
         // because it has two different refusals to choose between.
         cellar.studio.up(house.kitchen)
+
+        // The troll's north passage, which milestone 1 left as a seam: it is
+        // the front door of the underground crossroads, and he holds it the
+        // same way he holds the crawlway east.
+        cellar.trollRoom.north(
+            crossroads.eastWestPassage, when: { cellar.trollDefeated },
+            otherwise: Prose.trollBlocksTheWay)
+        crossroads.eastWestPassage.west(cellar.trollRoom)
+
+        // Where ``DungeonRoundRoom`` meets ``DungeonDam``. Three crossings, and
+        // not one of them is the west door Zork I hangs off the Dam: the
+        // mainframe has no exit at all between the dam and the reservoir's
+        // south shore.
+        crossroads.deepCanyon.east(dam.damRoom)
+        dam.damRoom.south(crossroads.deepCanyon)
+        crossroads.dampCave.east(dam.damRoom)
+        dam.damRoom.east(crossroads.dampCave)
+        crossroads.deepCanyon.northwest(dam.reservoirSouth)
+        dam.reservoirSouth.up(crossroads.deepCanyon)
+
+        // The Deep Ravine's staircase down onto the reservoir's south shore,
+        // and the stone steps back up to it.
+        crossroads.deepRavine.down(dam.reservoirSouth)
+        dam.reservoirSouth.south(crossroads.deepRavine)
 
         // The clockwork canary rides sealed inside the egg — one bundle's item
         // inside another's, so the host places it. Its broken twin waits

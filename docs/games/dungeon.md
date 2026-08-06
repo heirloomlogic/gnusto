@@ -145,6 +145,17 @@ Two consequences worth stating.
   scores 56: the clockwork canary and the bauble it summons both need the egg
   opened by careful hands, and the only careful hands in the game are the thief's.
   Each such gap is named at the declaration site and in `FIDELITY.md`.
+  M2 adds 50 — the East-West Passage's room value, the platinum bar and the trunk
+  of jewels — and every point of it is walkable, so the ceiling is 116 and a
+  perfect playthrough of the two together scores 106.
+- **A milestone may also decline to declare content that sits in one of its own
+  rooms**, where the *thing* is here and the *mechanism that reveals it* is not.
+  The dented steel box and the Stradivarius inside it stand in the Round Room from
+  the first turn and are invisible until the triangular button in the Machine Room
+  stops the carousel, which is a later milestone's room. Declaring them at M2 would
+  put twenty unpayable points on the ceiling and an unreachable object in a room,
+  which is the opposite of what the ratchet is for. The rule of thumb: declare
+  ahead of the *route*, not ahead of the *mechanism*.
 - **`LIGHT-SHAFT` is documented before it is declared.** It is an `awardOnce`
   register worth 10, not a room `VALUE` (as a room value it would pay out to
   anyone who arrived in the Lower Shaft in the dark, which is the opposite of the
@@ -207,6 +218,13 @@ rule, so that each one does not re-decide it:
 
 Every seam of either kind is listed in that milestone's `FIDELITY.md` entry, so
 the milestone that closes it has a checklist rather than a memory.
+
+A fourth rule, learned at M2 and cheap to obey: **an `EntityID` is the property
+name, and the bootstrap does not check that two bundles have not used the same
+one.** `DungeonCellar` owns `chasm`, so the Chasm room's own scenery had to be
+`chasmEdge` — and the way that turned up was `examine chasm` answering "You can't
+see any such thing" in a room whose description had just named one. Grep the
+existing bundles for a property name before adding it.
 
 Two independent third-party maps were used to cross-check the extraction. Both are
 other people's work and **neither is committed to this repository**; they are
