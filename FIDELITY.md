@@ -1636,3 +1636,130 @@ milestone does not build the far side of:
   Implementer;
 - the Slide Room's chute, which becomes a rope-climb down the coal chute once a
   timber is tied at the top.
+
+### Milestone 4 — the Frigid River, the maze, the Cyclops and the Treasure Room
+
+40 rooms in two region bundles. The river: five stretches of the Frigid River,
+both White Cliffs beaches, the Sandy Beach, the Shore, Aragain Falls, the Rainbow
+Room, the End of Rainbow, and the rocky western approach — Rocky Shore, the Small
+Cave, the Ancient Chasm and two dead ends off it. The maze: fifteen twisting
+passages, four dead ends, the Grating Room, the Cyclops Room, the Treasure Room
+and the Strange Passage. Forked from `Sources/Zork1/`'s `Regions/River.swift` and
+`Regions/Maze.swift` and re-topologized. Every room came out with the number of
+exits `docs/games/dungeon-atlas.md` records for it — the atlas now publishes the
+tables themselves (#156), so this is the first milestone whose map was read off
+the committed document rather than out of `dung.355`.
+
+**Where this departs from `Sources/Zork1/`, and why.**
+
+- **The maze is entered from the south**, through the Troll Room's third gated
+  passage, and Maze-1 comes back **west**. Zork I hangs the whole maze west of
+  him and makes the return symmetric.
+- **Six bearings inside the maze are not the trilogy's**, and each is exactly the
+  sort of thing a contributor would "fix" back: Maze-2 reaches Maze-4 by going
+  **north** where Zork I goes down; Maze-7 reaches Dead End-1 **northeast** where
+  Zork I goes down; Maze-9 reaches Maze-11 **east** and Maze-10 **down**, which is
+  Zork I's pair swapped; Maze-12 reaches Maze-5 **west** where Zork I goes down;
+  Maze-15 opens on the cyclops **northeast** where Zork I goes southeast.
+- **The cyclops leaves by the north wall**, not the east, so the Strange Passage
+  hangs north of his room and comes back south. Its one entrance is therefore
+  "to the south", where the trilogy says west.
+- **The Strange Passage is worth 10 points and the Treasure Room 25**, both room
+  `RVAL`s. Zork I has no room value anywhere in this region.
+- **The Treasure Room's granite wall is its north one**, because its **east** wall
+  is a passage into the Royal Puzzle's antechamber — a door Zork I has no use for
+  and therefore walls up. That east door is a seam this milestone leaves open.
+- **`temple` and `treasure` are magic words.** Said in the Temple, `treasure`
+  puts you in the Treasure Room; said in the Treasure Room, `temple` puts you
+  back. The shared north wall of solid granite is the hint, and the endgame's own
+  question set asks about it. Nothing in the trilogy connects the two rooms.
+- **The dead ends are named "Dead End" and described with the trilogy's
+  sentence.** `dung.355` gives `DEAD1` and `DEAD2` their long and short strings
+  the wrong way round and gives `DEAD3`–`DEAD7` the short string twice, so the
+  source's own display names are inconsistent five ways. The trilogy wrote the
+  sentence the slip was meant to be, and it is taken verbatim — except for the two
+  dead ends off the Ancient Chasm, which are nowhere near a maze and get a line of
+  their own.
+- **The river's banks are reversed.** The White Cliffs wall the **east** shore and
+  the Sandy Beach, the Shore and Rocky Shore are all **west**; Zork I puts them the
+  other way round and rewrote every description that names a bank.
+- **There is no current.** `dung.355` registers no clock interrupt for the river,
+  so a boat that is not paddled stays where it is. Zork I's eight-turn drift, and
+  the fuse that carries it, are the trilogy's invention.
+- **The river is dark.** The mainframe gives `RLIGHTBIT` to the Rainbow Room and
+  the End of Rainbow and to nothing else down here — not the five stretches, not
+  either beach, not the Shore, not Aragain Falls. The Attic set the precedent at
+  milestone 1: where the source withholds the light bit, so does this game.
+- **There is no Sandy Cave and no jewelled scarab.** The shovel lies in the Small
+  Cave on the western approach, and what four digs in the beach turn up is a
+  **statue**, worth 10 to find and 13 to case. The fifth dig collapses the hole,
+  as in both sources.
+- **The White Cliffs have no way inland.** Zork I bores a foot-path west into the
+  Damp Cave; here the wall is solid, and the road to the west bank on foot is the
+  Loud Room's own east door — the Ancient Chasm, the Small Cave and Rocky Shore,
+  four rooms Zork I does not have.
+- **There is no sceptre.** The broken sharp stick at the Dam Base does both of the
+  sceptre's jobs: waved at either end of the rainbow it makes the rainbow solid
+  and reveals the pot of gold, and carried aboard the boat it lets the air out.
+  **It is also the only thing in the game that holes the boat** — Zork I bursts it
+  on a whole class of sharp things, and this game therefore has no `sharp` trait
+  at all.
+- **The pot of gold stands at the End of Rainbow from the first turn**, hidden
+  rather than conjured: the source flips its visible bit, it does not create it.
+  And the End of Rainbow is walkable from Canyon Bottom, so the pot never needs a
+  boat.
+- **The barrel at Aragain Falls is a vehicle.** Climb into it and `look` shows the
+  inside of a barrel rather than the falls; say `geronimo` and it goes over.
+- Values are the mainframe's, and two are not Zork I's: the silver chalice cases
+  for **10** where the trilogy pays 5, and the statue (**10 and 13**) has no
+  trilogy counterpart. The emerald (5+10), the pot of gold (10+10) and the bag of
+  coins (10+5) are the same in both.
+
+**Adapted rather than reproduced, line by line.** `RIVR2`, `MAZE2`–`MAZE9`,
+`MAZ10`–`MAZ15`, `BUOY`, `IBOAT` and `CHALI` are in the comparison's `identical`
+bucket and `RIVR1` and `RAINB` in its `minor` one, so those are the trilogy
+verbatim, as are Aragain Falls, the White Cliffs' southern beach, the Grating
+Room and its three overhead lines, the skeleton and its curse, the bag of coins,
+the rusty knife, the burned-out lantern, the boat's inflate and deflate answers,
+the three digging lines, and the cyclops's whole repertoire — his blocking, his
+eyeing, his gasping, his sleep, the wrath ladder and the meal.
+
+**Four `minor` entries are adapted anyway, and all four for the same reason
+milestone 3 recorded: the bucket measures string distance, not whether the room
+is the same room.** `RIVR5`, `FANTE`, `BLROO` and `TREAS` each differ from the
+trilogy by a single compass point, and in each of them that point is an exit this
+game does not have — the Shore is west, not east; the Strange Passage's entrance
+is south, not west; the Treasure Room's granite is north, not east.
+
+`BEACH`, `RIVR3`, `RIVR4`, `WCLF1`, `MAZE5` and `DEAD1`–`DEAD4` are `substantial`
+and differ because the room differs, so each keeps the voice and loses the wrong
+facts. The Cyclops Room, Rocky Shore, the Small Cave, the Ancient Chasm, the two
+chasm dead ends, the barrel, the broken sharp stick, the statue, the guano, the
+boat's label and the granite wall's word are written fresh. **No 1981 MDL text is
+reproduced anywhere.**
+
+**Where this game is stricter than its source.** The mainframe's cliff path asks
+only whether you are *carrying* the inflated boat, so a player sitting in it can
+ride an inflatable down a foot-wide ledge. That is a case the source did not
+think to forbid rather than one it meant to allow, and this game refuses it both
+ways.
+
+**Also landed here.** Two rooms are ``alwaysDescribed`` — Aragain Falls, whose
+rainbow is reported nowhere else, and the Cyclops Room, whose hole in the north
+wall is the only sign he was ever there. Milestone 1's Clearing joins them,
+because it now has to report the grating: its description moved to the host,
+where the grating's state is visible, and its `before(.open)` refusal became a
+conditional one now that the keys exist.
+
+**Declared but not yet walkable: nothing.** `maxScore` goes 265 → **393**, and a
+perfect playthrough of milestones 1 to 4 together scores **383** — the ten still
+missing are still milestone 1's canary and bauble, which wait on the thief.
+
+**Not built, deliberately.** `FCHMP`, "Moby lossage": one blocked exit, an empty
+description, and a room function that kills on any verb but `look`. It is where
+the source puts you after River-5, and this game dies at the lip instead.
+
+**Seams left for later milestones**, each an exit the source has and this
+milestone does not build the far side of:
+
+- the Treasure Room's east passage into the Royal Puzzle's antechamber.

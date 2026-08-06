@@ -158,6 +158,52 @@ struct DungeonTests {
         "north", "north", "push yellow button", "take wrench", "south", "south",
     ]
 
+    /// Milestone 4's roads.
+
+    /// From the Troll Room into the maze and along to Maze-5, where the dead
+    /// adventurer and the grating's keys are: south into it, then south, east
+    /// and up.
+    private static let trollRoomToMazeFive = ["south", "south", "east", "up"]
+
+    /// And on from Maze-5 to the Cyclops Room: southwest, east, south,
+    /// northeast.
+    private static let mazeFiveToTheCyclops = ["southwest", "east", "south", "northeast"]
+
+    /// From Maze-5 to the Grating Room: southwest, up, east, northeast.
+    private static let mazeFiveToTheGrating = ["southwest", "up", "east", "northeast"]
+
+    /// The whole descent, past the troll, and into the maze as far as the
+    /// skeleton. Seed 11 throughout: the troll falls to the first blow.
+    private static let toMazeFive = pastTheTroll + trollRoomToMazeFive
+
+    /// From the Loud Room out to the west bank of the Frigid River on foot —
+    /// the mainframe's own road, and the one Zork I replaced with a passage
+    /// through the White Cliffs.
+    private static let loudRoomToTheRiver = ["east", "east", "south"]
+
+    /// From the top of the dam: charge the panel, open the gates, fetch the
+    /// pump off the drained reservoir's north shore, and come back down to the
+    /// Dam Base where the boat is.
+    private static let damToTheBoat =
+        fetchTheWrench
+        + ["turn bolt with wrench", "drop wrench", "south", "northwest"]
+        + ["north", "north", "take pump", "south", "south", "up", "east", "down"]
+
+    /// Pump the boat up, get in, and push off. The last three commands of any
+    /// road to the water.
+    private static let castOff = ["inflate plastic with pump", "board boat", "launch"]
+
+    /// The whole road to the Dam Base with the boat inflated and boarded.
+    private static let afloatOnTheRiver =
+        pastTheTroll + ["drop sword"] + crossroadsToTheDam + damToTheBoat + castOff
+
+    /// From the Dam Base back to the Troll Room, which is the road out once the
+    /// trap door has barred itself: up the dam, east and south to the Loud
+    /// Room, and west along the crossroads.
+    private static let damBackToTheTrollRoom = [
+        "east", "south", "west", "north", "south", "south", "west",
+    ]
+
     /// From the Troll Room out to the trophy case, the only way there is once
     /// the trap door has barred itself: the crawlway south, the Gallery, the
     /// Studio, and up the chimney.
@@ -316,9 +362,9 @@ struct DungeonTests {
         expectInOrder(
             transcript,
             [
-                "Your score is 10 of a possible 265",
+                "Your score is 10 of a possible 393",
                 "Cellar",
-                "Your score is 35 of a possible 265",
+                "Your score is 35 of a possible 393",
             ])
     }
 
@@ -392,7 +438,7 @@ struct DungeonTests {
                 "Gallery",
                 "The vandals left through the north,",
                 "Taken.",
-                "Your score is 39 of a possible 265",
+                "Your score is 39 of a possible 393",
             ])
         #expect(!transcript.contains("nasty-looking troll"))
     }
@@ -446,7 +492,7 @@ struct DungeonTests {
                 "Forest",
                 "You have been killed once.",
                 // Thirty-five points earned, ten paid back to the troll.
-                "Your score is 25 of a possible 265",
+                "Your score is 25 of a possible 393",
             ])
     }
 
@@ -504,7 +550,7 @@ struct DungeonTests {
     @Test func theCeilingTotalsTheAwardTableExactly() throws {
         let (definition, _) = try Bootstrap.build(Dungeon())
 
-        #expect(definition.maxScore == 265)
+        #expect(definition.maxScore == 393)
         #expect(definition.warnings.isEmpty, "\(definition.warnings)")
     }
 
@@ -522,7 +568,7 @@ struct DungeonTests {
                 "Taken.",
                 "The egg is now open, but the clumsiness of your attempt has",
                 "the mainspring seems sprung",
-                "Your score is 5 of a possible 265",
+                "Your score is 5 of a possible 393",
             ])
     }
 
@@ -565,13 +611,13 @@ struct DungeonTests {
                 "Up a Tree",
                 "Kitchen",
                 "Living Room",
-                "Your score is 20 of a possible 265",
+                "Your score is 20 of a possible 393",
                 "Cellar",
                 "Gallery",
                 "Studio",
                 "Kitchen",
                 "Living Room",
-                "Your score is 56 of a possible 265",
+                "Your score is 56 of a possible 393",
             ])
     }
 
@@ -687,7 +733,7 @@ struct DungeonTests {
             transcript,
             [
                 "East-West Passage",
-                "Your score is 40 of a possible 265",
+                "Your score is 40 of a possible 393",
                 // North and down out of the passage are the same stair, and
                 // they reach a room Zork I does not have.
                 "Deep Ravine",
@@ -747,7 +793,7 @@ struct DungeonTests {
                 "Taken.",
                 // Five for the passage, twelve for the bar — and twelve is the
                 // mainframe's find value, where Zork I pays ten.
-                "Your score is 52 of a possible 265",
+                "Your score is 52 of a possible 393",
             ])
     }
 
@@ -1000,16 +1046,16 @@ struct DungeonTests {
         expectInOrder(
             transcript,
             [
-                "Your score is 56 of a possible 265",
+                "Your score is 56 of a possible 393",
                 "The troll takes a fatal blow",
                 "Loud Room",
                 "The acoustics of the room change subtly.",
                 "You put the platinum bar in the trophy case.",
-                "Your score is 83 of a possible 265",
+                "Your score is 83 of a possible 393",
                 "The sluice gates open and water pours through the dam.",
                 "Lying half buried in the mud is an old trunk",
                 "You put the trunk of jewels in the trophy case.",
-                "Your score is 106 of a possible 265",
+                "Your score is 106 of a possible 393",
             ])
     }
 
@@ -1510,10 +1556,10 @@ struct DungeonTests {
                 "The basket is raised to the top of the shaft.",
                 "The basket is lowered to the bottom of the shaft.",
                 "Timber Room",
-                "Your score is 54 of a possible 265",
+                "Your score is 54 of a possible 393",
                 "Lower Shaft",
                 "In the basket is an ivory torch.",
-                "Your score is 64 of a possible 265",
+                "Your score is 64 of a possible 393",
             ])
     }
 
@@ -1578,11 +1624,11 @@ struct DungeonTests {
             [
                 "On the shore lies Poseidon's own crystal trident.",
                 "On the pedestal is a grail.",
-                "Your score is 46 of a possible 265",
+                "Your score is 46 of a possible 393",
                 "the temple dissolves around you",
                 "Forest",
                 "Living Room",
-                "Your score is 62 of a possible 265",
+                "Your score is 62 of a possible 393",
             ])
     }
 
@@ -1644,5 +1690,535 @@ struct DungeonTests {
             seed: 11)
 
         expectEveryNounAnswered(transcript, "the mirror network and the coal mine")
+    }
+
+    // MARK: - Milestone 4: the maze is entered from the south
+
+    /// Zork I hangs the maze west of the Troll Room. The mainframe hangs it
+    /// **south**, and Maze-1 comes back **west** — an asymmetry that is the
+    /// first thing the maze does to you.
+    @Test func theMazeIsEnteredSouthAndComesBackWest() async throws {
+        let transcript = try await play(
+            Dungeon(), Self.pastTheTroll + ["south", "west"], seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "The Troll Room",
+                "Maze",
+                "This is part of a maze of twisty little passages,",
+                "The Troll Room",
+            ])
+    }
+
+    /// Six bearings in this maze are not the trilogy's, and every one would
+    /// look like a transcription slip to somebody checking against Zork I.
+    /// Maze-2 reaches Maze-4 by going **north** where the trilogy goes down.
+    @Test func theMazeBearingsAreTheMainframesNotTheTrilogys() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.pastTheTroll + ["south", "south", "north", "east"],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "Maze", "Maze", "Maze",
+                "Dead End",
+                "You have come to a dead end in the maze.",
+            ])
+    }
+
+    /// The mainframe's Maze-15 opens on the cyclops to the **northeast**; Zork
+    /// I's does it to the southeast.
+    @Test func theCyclopsIsNortheastOfMazeFifteen() async throws {
+        let transcript = try await play(
+            Dungeon(), Self.toMazeFive + Self.mazeFiveToTheCyclops, seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "Cyclops Room",
+                "This room has an exit on the west side, and a",
+            ])
+    }
+
+    // MARK: - Milestone 4: the maze's finds
+
+    /// Disturbing the dead adventurer's bones curses everything you are
+    /// carrying and everything loose in the room, and sends it all to the Land
+    /// of the Living Dead.
+    @Test func theSkeletonsGhostBanishesYourValuablesToTheDead() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toMazeFive + ["take bag", "take skeleton", "inventory"],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "An old leather bag, bulging with coins, is here.",
+                "A ghost appears in the room",
+                "banishes them to the Land of the Living Dead",
+            ])
+        #expect(!transcript.contains("bag of coins\n"))
+    }
+
+    /// The rusty knife announces itself to the elvish sword, and then kills
+    /// whoever swings it — which is very likely what happened to the last
+    /// person who carried it this far.
+    @Test func theRustyKnifeFlaresTheSwordAndThenTurnsOnYou() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toMazeFive + ["take knife", "attack skeleton with rusty knife"],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "gives a single pulse of",
+                "twists round and buries itself in you",
+            ])
+    }
+
+    // MARK: - Milestone 4: the grating
+
+    /// The grating is locked with a skull-and-crossbones lock, the keys are in
+    /// Maze-5, and the lock is on the underside — so it opens only from the
+    /// maze, and opening it lets the daylight into the room below.
+    @Test func theGratingIsUnlockedFromBelowAndLetsTheDaylightIn() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toMazeFive + ["take keys"] + Self.mazeFiveToTheGrating
+                + ["open grating", "unlock grating with keys", "open grating", "turn off lamp"],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "Above you is a grating locked with a",
+                "The grating is locked.",
+                "The grate is unlocked.",
+                "The grating opens to reveal trees above you.",
+            ])
+        #expect(!transcript.contains("It is pitch black"))
+    }
+
+    /// And from above, the Clearing reports it — which the mainframe does in
+    /// its own room routine and milestone 1's static description could not.
+    @Test func theClearingReportsTheGratingOnceItIsOpen() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toMazeFive + ["take keys"] + Self.mazeFiveToTheGrating
+                + ["unlock grating with keys", "open grating", "up", "look"],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            ["Clearing", "There is an open grating, descending into darkness."])
+    }
+
+    // MARK: - Milestone 4: the cyclops
+
+    /// The shout sends him through the **north** wall — Zork I's goes through
+    /// the east one — and that opens both the stair he was blocking and the
+    /// shortcut back to the Living Room.
+    @Test func theCyclopsLeavesByTheNorthWallAndOpensTheWayHome() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toMazeFive + Self.mazeFiveToTheCyclops
+                + ["north", "odysseus", "look", "north", "east"],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "The north wall is solid rock.",
+                "knocking down the wall on the north",
+                "previously solid, now has a cyclops-sized",
+                "Strange Passage",
+                "To the south is one entrance.",
+                "Living Room",
+            ])
+    }
+
+    /// Feeding him works too, and it does **not** open the wall: the drugged
+    /// water only puts him to sleep at the foot of the stairs. The hot peppers
+    /// have to come first — the water alone he refuses.
+    @Test func theLunchAndTheWaterPutHimToSleepButOpenNoWall() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.intoTheKitchen + ["take bottle", "open sack", "take lunch"]
+                + Self.downTheTrapDoor + ["east", "attack troll with sword"]
+                + Self.trollRoomToMazeFive + Self.mazeFiveToTheCyclops
+                + ["give water to cyclops", "give lunch to cyclops", "give water to cyclops"]
+                + ["up", "down", "north"],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "apparently is not thirsty",
+                "I love hot peppers",
+                "falls fast asleep",
+                "Treasure Room",
+                "The north wall is solid rock.",
+            ])
+    }
+
+    /// And the shout still works on the sleeper — the source asks only whether
+    /// he is still standing in the room, and the water leaves him there.
+    @Test func theShoutStillWorksOnTheSleepingCyclops() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.intoTheKitchen + ["take bottle", "open sack", "take lunch"]
+                + Self.downTheTrapDoor + ["east", "attack troll with sword"]
+                + Self.trollRoomToMazeFive + Self.mazeFiveToTheCyclops
+                + ["give lunch to cyclops", "give water to cyclops", "odysseus", "north"],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            ["falls fast asleep", "knocking down the wall on the north", "Strange Passage"])
+    }
+
+    /// Provoke him and stay, and the wrath ladder runs its six rungs and then
+    /// he eats you. Steel never touches him on the way.
+    @Test func theCyclopsEatsYouIfYouProvokeHimAndLinger() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toMazeFive + Self.mazeFiveToTheCyclops
+                + ["attack cyclops with sword", "wait", "wait", "wait", "wait", "wait", "wait"],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "The cyclops ignores all injury to his body with a shrug.",
+                "The cyclops seems somewhat agitated.",
+                "You have two choices: 1. Leave  2. Become dinner.",
+                "Just like Mom used to make 'em",
+            ])
+    }
+
+    // MARK: - Milestone 4: the Treasure Room
+
+    /// The Treasure Room pays 25 for arriving and the Strange Passage 10 — two
+    /// room values Zork I does not have at all.
+    @Test func theTreasureRoomPaysTwentyFiveAndTheStrangePassageTen() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toMazeFive + Self.mazeFiveToTheCyclops
+                + ["odysseus", "score", "up", "score", "down", "north", "score"],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "Your score is 35 of a possible 393",
+                "Your score is 60 of a possible 393",
+                "Your score is 70 of a possible 393",
+            ])
+    }
+
+    /// The Temple and the Treasure Room share a north wall of solid granite,
+    /// and one word said in either room takes you to the other. Mainframe-only:
+    /// nothing in the trilogy connects them, and the trilogy's Treasure Room
+    /// puts its granite on the east wall because it has no Royal Puzzle to open
+    /// onto.
+    @Test func theGraniteWallCarriesYouBetweenTheTempleAndTheHoard() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toMazeFive + Self.mazeFiveToTheCyclops
+                + ["odysseus", "up", "examine granite wall", "temple", "treasure"],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "whose north wall is solid granite",
+                "newly created",
+                "The north wall is solid granite here.",
+                "The granite wall shivers",
+                "Temple",
+                "The granite wall shivers",
+                "Treasure Room",
+            ])
+    }
+
+    /// The word is inert everywhere the granite wall is not.
+    @Test func theGraniteWordDoesNothingElsewhere() async throws {
+        let transcript = try await play(Dungeon(), ["treasure", "temple"])
+
+        #expect(transcript.contains("Nothing happens."))
+    }
+
+    // MARK: - Milestone 4: the Frigid River
+
+    /// The Loud Room's east door is the mainframe's road to the west bank on
+    /// foot: the Ancient Chasm, the Small Cave and Rocky Shore. Zork I has none
+    /// of these rooms and reaches the water only by boat.
+    @Test func theLoudRoomsEastDoorReachesTheRiverOnFoot() async throws {
+        let transcript = try await play(
+            Dungeon(), Self.toTheLoudRoom + Self.loudRoomToTheRiver, seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "Loud Room",
+                "Ancient Chasm",
+                "Passages lead off in every direction.",
+                "Small Cave",
+                "Rocky Shore",
+                "You are on the west shore of the river.",
+            ])
+    }
+
+    /// The banks are reversed from the trilogy's: the White Cliffs are **east**
+    /// and the sandy beach **west**. Both stretches that touch a bank say so,
+    /// and both exits go the mainframe's way.
+    @Test func theRiverBanksAreReversedFromTheTrilogys() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.afloatOnTheRiver + ["down", "down", "east", "launch", "down", "west"],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "There is a narrow beach on the",
+                "White Cliffs Beach",
+                "On the west shore is a sandy beach.",
+                "Sandy Beach",
+            ])
+    }
+
+    /// There is no current in this river. `dung.355` registers no clock
+    /// interrupt for it, so a boat that is not paddled stays exactly where it
+    /// is — where Zork I's drifts a stretch downstream every few turns.
+    @Test func thereIsNoCurrentAndTheBoatStaysWhereYouLeaveIt() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.afloatOnTheRiver + ["wait", "wait", "wait", "wait", "wait", "wait", "look"],
+            seed: 11)
+
+        #expect(!transcript.contains("carries you"))
+        expectInOrder(
+            transcript, ["Frigid River", "There is a landing on the west shore."])
+    }
+
+    /// Paddling off the end of River-5 goes over Aragain Falls. The mainframe
+    /// drops you into a room whose only job is to kill you; this does it in one
+    /// move.
+    @Test func paddlingOffTheEndOfRiverFiveGoesOverTheFalls() async throws {
+        let transcript = try await play(
+            Dungeon(), Self.afloatOnTheRiver + ["down", "down", "down", "down", "down"],
+            seed: 11)
+
+        #expect(transcript.contains("swept over the lip of Aragain Falls"))
+    }
+
+    /// Only one thing in this game holes the boat, and the label names it. Zork
+    /// I bursts it on any sharp thing at all; here the broken sharp stick is
+    /// the whole class.
+    @Test func onlyTheBrokenStickHolesTheBoatAndTheGunkPatchesIt() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.pastTheTroll + ["drop sword"] + Self.crossroadsToTheDam
+                + ["north", "north", "take tube", "south", "south"] + Self.damToTheBoat
+                + [
+                    "inflate plastic with pump", "read label", "take stick", "board boat",
+                    "open tube", "take putty", "plug boat with putty",
+                    "drop stick", "inflate plastic with pump", "board boat",
+                ],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "Keep sharp objects, such as",
+                "There is a hissing sound and the boat deflates.",
+                "Well done. The boat is repaired.",
+                "The boat inflates and appears seaworthy.",
+            ])
+    }
+
+    /// The White Cliffs path is too narrow for the boat — whether you carry it
+    /// or sit in it — and the cliffs have no way inland at all, where Zork I
+    /// bores a foot-path west into the Damp Cave.
+    @Test func theCliffPathRefusesTheBoatAndTheCliffsHaveNoWayInland() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.afloatOnTheRiver
+                + ["down", "down", "east", "south", "west", "get out", "deflate boat", "south"],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "White Cliffs Beach",
+                "The path is too narrow to take the boat along it.",
+                "You can't go that way.",
+                "The boat deflates.",
+                "White Cliffs Beach",
+            ])
+    }
+
+    // MARK: - Milestone 4: the beach, the falls and the rainbow
+
+    /// Four digs in the sand bare a statue worth ten and **thirteen** — where
+    /// Zork I buries a scarab in a Sandy Cave the mainframe does not have — and
+    /// a fifth brings the hole down on you.
+    @Test func theBeachGivesUpAStatueAndThenBuriesYou() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.pastTheTroll + ["drop sword"] + Self.crossroadsToTheLoudRoom
+                + ["east", "east", "take shovel", "northwest", "south", "up", "east"]
+                + Self.damToTheBoat + Self.castOff
+                + ["down", "down", "down", "west"]
+                + [
+                    "dig sand with shovel", "dig sand with shovel", "dig sand with shovel",
+                    "dig sand with shovel", "take statue", "score",
+                    "dig sand with shovel",
+                ],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "Sandy Beach",
+                "You seem to be digging a hole here.",
+                "You can see a small statue here in the sand.",
+                "Your score is 50 of a possible 393",
+                "The hole collapses, smothering you.",
+            ])
+    }
+
+    /// Waving the broken sharp stick at either end of the rainbow makes the
+    /// rainbow solid and the pot of gold visible. The 1981 source has **no
+    /// sceptre at all**; this stick does both of the sceptre's jobs — and doing
+    /// it while standing on the rainbow takes the rainbow out from under you.
+    @Test func theStickWavesTheRainbowSolidAndShowsThePotOfGold() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.pastTheTroll + ["drop sword"] + Self.crossroadsToTheDam
+                + ["down", "take stick", "north"] + Self.damBackToTheTrollRoom
+                + Self.outByTheChimney
+                + ["east", "east", "east", "southeast", "southeast", "down", "down", "north"]
+                + ["wave stick", "look", "take pot", "score", "west", "wave stick"],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "End of Rainbow",
+                "the rainbow appears to become solid",
+                "At the end of the rainbow is a pot of gold.",
+                "Your score is 50 of a possible 393",
+                "Rainbow Room",
+                "and fifty feet above the river, do you",
+            ])
+    }
+
+    /// Aragain Falls says which kind of rainbow it has, every time — the room
+    /// is ``alwaysDescribed`` for exactly that.
+    @Test func aragainFallsReportsTheRainbowOnEveryLook() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.afloatOnTheRiver + ["down", "down", "down", "down", "land", "south"]
+                + ["get out", "look", "board barrel", "look", "geronimo"],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "Aragain Falls",
+                "A beautiful rainbow can be seen over the falls and to the east.",
+                "There is a man-sized barrel here",
+                "You are inside a barrel. Congratulations.",
+                "the finest ride in the Great Underground",
+            ])
+    }
+
+    // MARK: - Milestone 4: the graph is joined up
+
+    /// With this milestone in, the main dungeon is one connected graph: the
+    /// house, the crossroads, the dam, the river, the temple quarter, the
+    /// mirrors, the mine and the maze all reach one another without a save.
+    /// This walks the seams milestone 4 closed, in one run.
+    @Test func theMainDungeonIsOneConnectedGraph() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.pastTheTroll
+                // North through the crossroads and out to the river on foot,
+                // by the Loud Room's east door.
+                + Self.crossroadsToTheLoudRoom + Self.loudRoomToTheRiver
+                // Back the way we came, and south into the maze instead.
+                + ["northwest", "northwest", "south", "west", "north", "south", "south", "west"]
+                + Self.trollRoomToMazeFive + Self.mazeFiveToTheCyclops
+                // Out by the cyclops's north wall, into the Living Room.
+                + ["odysseus", "north", "east"],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "The Troll Room",
+                "East-West Passage",
+                "Loud Room",
+                "Ancient Chasm",
+                "Small Cave",
+                "Rocky Shore",
+                "The Troll Room",
+                "Maze",
+                "Cyclops Room",
+                "Strange Passage",
+                "Living Room",
+            ])
+    }
+
+    // MARK: - Milestone 4: every printed noun answers
+
+    @Test func everyNounTheMazeAndTheCyclopsPrint() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toMazeFive
+                + [
+                    "examine maze", "examine passages", "examine skeleton",
+                    "examine bag", "examine knife", "examine lantern", "examine keys",
+                ]
+                + Self.mazeFiveToTheCyclops
+                + ["examine cyclops", "examine staircase", "examine wall", "odysseus", "examine wall"]
+                + ["up", "examine bags", "examine granite wall", "examine chalice"]
+                + ["down", "north", "examine passage", "examine hole"],
+            seed: 11)
+
+        expectEveryNounAnswered(transcript, "the maze, the cyclops and the Treasure Room")
+    }
+
+    @Test func everyNounTheWesternApproachPrints() async throws {
+        let onFoot = try await play(
+            Dungeon(),
+            Self.toTheLoudRoom + ["east", "examine chasm", "examine passages"]
+                + ["east", "examine cave", "examine guano", "examine shovel"]
+                + ["south", "examine river", "examine cave"],
+            seed: 11)
+
+        expectEveryNounAnswered(onFoot, "the Ancient Chasm, the Small Cave and Rocky Shore")
+    }
+
+    @Test func everyNounTheRiverPrints() async throws {
+        let afloat = try await play(
+            Dungeon(),
+            Self.afloatOnTheRiver
+                + ["examine river", "examine label", "examine boat"]
+                + ["down", "examine river", "down", "examine river", "examine beach"]
+                + ["east", "examine cliffs", "examine path", "launch"]
+                + ["down", "examine buoy", "west", "examine river", "examine sand"]
+                + ["south", "examine shore", "south", "examine falls", "examine rainbow"]
+                + ["examine barrel"],
+            seed: 11)
+
+        expectEveryNounAnswered(afloat, "the river, its banks and the falls")
     }
 }

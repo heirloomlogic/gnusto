@@ -43,10 +43,17 @@ struct Dungeon: Game, GameMain {
     /// perfect playthrough of the three together scores **255**; the ten still
     /// missing are milestone 1's canary and bauble, which wait on the thief.
     ///
+    /// Milestone 4 adds 128, and all of it is walkable: the Treasure Room's
+    /// room value (25), the Strange Passage's (10), and five treasures — the
+    /// large emerald (5+10), the statue (10+13), the pot of gold (10+10), the
+    /// bag of coins (10+5) and the silver chalice (10+10). A perfect
+    /// playthrough of the four together scores **383**; the ten still missing
+    /// are still milestone 1's canary and bauble.
+    ///
     /// Why the ceiling moves at all, and what may be declared ahead of its
     /// route: `docs/games/dungeon.md`, "The ceiling ratchets while the game is
     /// being built", and the matching `FIDELITY.md` entry.
-    let maxScore = 265
+    let maxScore = 393
 
     let intro = Prose.intro
 
@@ -64,6 +71,10 @@ struct Dungeon: Game, GameMain {
         // The basket carrying the only light down the shaft darkens a room the
         // way turning a lamp off does, so the two say the same sentence.
         text.nowDark = Prose.itIsNowPitchBlack
+        // The grating is the only lock in the game, so its two lines are the
+        // engine's stock ones re-voiced rather than a rule of their own.
+        text.unlockedMessage = Prose.gratingUnlocked
+        text.locked = { _ in Prose.gratingLocked }
         return text
     }
 
@@ -75,6 +86,8 @@ struct Dungeon: Game, GameMain {
     let templeQuarter = DungeonTemple()
     let mirrors = DungeonMirror()
     let mine = DungeonCoalMine()
+    let river = DungeonRiver()
+    let maze = DungeonMaze()
 
     /// The grue: this game's prose, the plugin's stock warn-then-kill schedule.
     let dangerousDark = DangerousDark(
@@ -98,6 +111,8 @@ struct Dungeon: Game, GameMain {
             "eastWestPassage": 5,
             "landOfTheLivingDead": 30,
             "lightShaft": 10,
+            "treasureRoom": 25,
+            "strangePassage": 10,
         ])
 
     let melee = MeleeCombat()
@@ -126,6 +141,8 @@ struct Dungeon: Game, GameMain {
         templeQuarter
         mirrors
         mine
+        river
+        maze
         dangerousDark
         scoring
         melee
@@ -182,17 +199,18 @@ struct Dungeon: Game, GameMain {
             templeQuarter.ivoryTorch, templeQuarter.coffin, templeQuarter.grail,
             templeQuarter.ruby, mirrors.crystalTrident,
             mine.jade, mine.sapphireBracelet, mine.diamond,
+            river.emerald, river.statue, river.potOfGold,
+            maze.bagOfCoins, maze.chalice,
         ]
     }
 
     /// Every passage out of the Round Room this game has built, and where each
     /// of them goes once the machinery under the floor has been stopped.
     ///
-    /// The source has nine. Eight of them are built, and they reach four
-    /// different bundles — which is why the carousel lives here rather than in
-    /// ``DungeonRoundRoom``: the map loops over this list, the draw rolls
-    /// against its length, and the `before(.go)` rule guards on it. The ninth,
-    /// southwest into the maze, is the last seam left in the room.
+    /// The source has nine, and as of milestone 4 all nine are built. They
+    /// reach five different bundles — which is why the carousel lives here
+    /// rather than in ``DungeonRoundRoom``: the map loops over this list, the
+    /// draw rolls against its length, and the `before(.go)` rule guards on it.
     private var carouselExits: [(Direction, Location)] {
         [
             (.west, crossroads.eastWestPassage),
@@ -203,7 +221,15 @@ struct Dungeon: Game, GameMain {
             (.east, templeQuarter.grailRoom),
             (.southeast, mirrors.windingPassage),
             (.out, mirrors.coldPassage),
+            (.southwest, maze.maze1),
         ]
+    }
+
+    /// Every mooring in the game: ``DungeonRiver``'s five, plus the Dam Base,
+    /// which is a ``DungeonDam`` room and so the one the river cannot name.
+    /// `launch` is the forward lookup and `land` the inverse.
+    private var moorings: [(shore: Location, water: Location)] {
+        river.moorings + [(dam.damBase, river.river1)]
     }
 
     var rules: Rules {
@@ -215,6 +241,8 @@ struct Dungeon: Game, GameMain {
         scoring.visit(house.cellar, register: "cellar")
         scoring.visit(crossroads.eastWestPassage, register: "eastWestPassage")
         scoring.visit(templeQuarter.landOfTheLivingDead, register: "landOfTheLivingDead")
+        scoring.visit(maze.treasureRoom, register: "treasureRoom")
+        scoring.visit(maze.strangePassage, register: "strangePassage")
 
         // The carousel. One draw per attempt, taken at stage 3 so the exit
         // lookup that follows reads a settled answer — the mainframe's
@@ -416,6 +444,186 @@ struct Dungeon: Game, GameMain {
         }
         // The ruined bird's answer is `DungeonHouse`'s own — it names nothing
         // outside that bundle, so it lives there.
+
+        // MARK: Milestone 4 — the boat
+
+        // Inflating the pile of plastic. The pump is a ``DungeonDam`` item and
+        // the pile a ``DungeonRiver`` one, so the host owns the valve. The
+        // mainframe grades the refusal by what you offer it.
+        river.pileOfPlastic.before(.inflate) {
+            let here = player.location
+            try require(here.contains(river.pileOfPlastic), else: Prose.inflateNotOnGround)
+            guard let tool = command.indirectObject else {
+                try reply(Prose.inflateNeedsPump)
+            }
+            try require(tool == dam.handPump, else: Prose.inflateWithWrongThing(tool.indefiniteName))
+            river.pileOfPlastic.vanish()
+            river.magicBoat.move(to: here)
+            try reply(Prose.boatInflates)
+        }
+
+        // Patching the wreck. The gunk in the tube is the only thing that
+        // closes a hole in plastic, and `plug` is milestone 2's verb.
+        river.puncturedBoat.before(.plug) {
+            try require(command.indirectObject == dam.putty, else: Prose.boatNeedsPutty)
+            dam.putty.vanish()
+            river.puncturedBoat.vanish()
+            river.pileOfPlastic.move(to: player.location)
+            try reply(Prose.boatPatched)
+        }
+
+        // Launching. Six shores can do it and one of them is the Dam Base, so
+        // the table is the host's. Moving the boat rather than the player is
+        // what carries the hull's cargo along — the same move `land` makes.
+        world.before(.launch) {
+            try require(player.vehicle == river.magicBoat, else: Prose.launchNotAboard)
+            let here = player.location
+            try require(here != river.endOfRainbow, else: Prose.launchRocksTooSharp)
+            guard let water = moorings.first(where: { $0.shore == here })?.water else {
+                try reply(Prose.launchNoWater)
+            }
+            river.magicBoat.move(to: water)
+            say(Prose.boatLaunches)
+            describeSurroundings()
+            try reply("")
+        }
+
+        // Landing: the same table read the other way. A stretch with one
+        // mooring puts you on it, a stretch with two makes you say which, and
+        // River-2 — rocks one side and the White Cliffs the other — has none.
+        world.before(.land) {
+            try require(player.vehicle == river.magicBoat, else: Prose.landNoBoat)
+            let here = player.location
+            let banks = moorings.filter { $0.water == here }.map(\.shore)
+            guard banks.count == 1, let bank = banks.first else {
+                try reply(banks.isEmpty ? Prose.landNowhereHere : Prose.landWhichWay)
+            }
+            river.magicBoat.move(to: bank)
+            describeSurroundings()
+            try reply("")
+        }
+
+        // MARK: Milestone 4 — the grating
+
+        // What the Grating Room says about the sky over it. The grating is a
+        // ``DungeonAboveGround`` item and the room a ``DungeonMaze`` one, so
+        // the description is the host's.
+        maze.gratingRoom.describe {
+            let overhead =
+                if aboveGround.grating.isOpen {
+                    Prose.gratingAboveOpen
+                } else if aboveGround.grating.isLocked {
+                    Prose.gratingAboveLocked
+                } else {
+                    Prose.gratingAboveUnlocked
+                }
+            return "\(Prose.gratingRoom)\n\n\(overhead)"
+        }
+
+        // The grating is perceivable from below the moment you stand under it,
+        // whichever side revealed it.
+        maze.gratingRoom.onEnter { aboveGround.grating.reveal() }
+
+        // The grating reads differently from the two sides of it, because from
+        // one of them you are the thing underneath.
+        aboveGround.grating.describe {
+            player.location == maze.gratingRoom ? Prose.gratingFromBelow : Prose.grating
+        }
+
+        // Unlocking it. `lockedBy(_:)` already tells the engine which key fits
+        // and where it has to be, so the only thing this rule adds is the one
+        // fact the engine cannot know: the lock is on the underside, and there
+        // is nothing to put a key into from the forest.
+        aboveGround.grating.before(.unlock) {
+            try require(
+                player.location == maze.gratingRoom, else: Prose.gratingLockNotReachable)
+        }
+
+        // Opening it lights the room below — the source's own light bit,
+        // written at runtime — and says which side of it you are standing on,
+        // which is why this replaces the default rather than embellishing it.
+        aboveGround.grating.before(.open) {
+            try require(!aboveGround.grating.isLocked, else: Prose.gratingLocked)
+            try require(!aboveGround.grating.isOpen, else: text.alreadyOpen)
+            aboveGround.grating.isOpen = true
+            maze.gratingRoom.isLit = true
+            try reply(
+                player.location == maze.gratingRoom
+                    ? Prose.gratingOpensFromBelow : Prose.gratingOpensFromAbove)
+        }
+        aboveGround.grating.before(.close) {
+            try require(aboveGround.grating.isOpen, else: text.alreadyClosed)
+            aboveGround.grating.isOpen = false
+            maze.gratingRoom.isLit = false
+            try reply(Prose.gratingCloses)
+        }
+
+        // MARK: Milestone 4 — the cyclops
+
+        // Feeding him. The lunch, the bottle and the water are ``DungeonHouse``
+        // items and the cyclops a ``DungeonMaze`` one, so the host bridges
+        // them. The hot peppers make him thirsty — which the source records by
+        // flipping his hunger negative — and the water then puts him out.
+        maze.cyclops.before(.give) {
+            guard !maze.cyclopsSubdued else { try reply(Prose.cyclopsAsleep) }
+            switch command.directObject {
+            case house.lunch:
+                house.lunch.vanish()
+                maze.cyclopsWrath = min(-1, -maze.cyclopsWrath)
+                maze.cyclopsProvoked = true
+                try reply(Prose.cyclopsEatsLunch)
+            case house.water:
+                try require(maze.cyclopsWrath < 0, else: Prose.cyclopsNotThirsty)
+                house.water.vanish()
+                maze.cyclopsSubdued = true
+                try reply(Prose.cyclopsDrinksAndSleeps)
+            case house.garlic:
+                try reply(Prose.cyclopsWontEatGarlic)
+            default:
+                try reply(Prose.cyclopsWontEatThat)
+            }
+        }
+
+        // MARK: Milestone 4 — the maze's finds
+
+        // Disturbing the dead adventurer. The ghost banishes everything loose
+        // in the room and everything in your hands to the Land of the Living
+        // Dead, which is a ``DungeonTemple`` room.
+        maze.skeleton.before(.take, .push, .attack, .lookIn) {
+            let dead = templeQuarter.landOfTheLivingDead
+            for item in player.inventory {
+                item.move(to: dead)
+            }
+            for item in maze.maze5.contents where item.isTakable {
+                item.move(to: dead)
+            }
+            try reply(Prose.skeletonCurse)
+        }
+
+        // The elvish sword answers the haunted knife. A ``DungeonHouse`` item
+        // and a ``DungeonMaze`` one, so the host says so.
+        maze.rustyKnife.after(.take) {
+            guard house.sword.isHeld else { return }
+            say(Prose.rustyKnifeBluePulse)
+        }
+
+        // MARK: Milestone 4 — the granite wall
+
+        // The two words that use it. Each works in exactly one room and takes
+        // you to the other; the Temple is a ``DungeonTemple`` room and the
+        // Treasure Room a ``DungeonMaze`` one, so the pair lives here.
+        let acrossTheGranite: [(Location, Intent, Location)] = [
+            (templeQuarter.temple, .treasure, maze.treasureRoom),
+            (maze.treasureRoom, .temple, templeQuarter.temple),
+        ]
+        for (here, word, there) in acrossTheGranite {
+            here.before(word) {
+                player.location = there
+                say(Prose.graniteWallCarriesYou)
+                describeSurroundings()
+                try reply("")
+            }
+        }
     }
 
     var timers: [TimedEvent] {
@@ -548,10 +756,58 @@ struct Dungeon: Game, GameMain {
         mirrors.slideRoom.north(mine.mineEntrance)
         mine.mineEntrance.south(mirrors.slideRoom)
 
+        // MARK: Milestone 4 — the maze
+
+        // The troll's south passage, which milestone 1 left as a seam: it is
+        // the mouth of the maze, and he holds it the way he holds the other
+        // two. Maze-1 comes back **west** — the mainframe's own asymmetry, and
+        // the first thing the maze does to you.
+        cellar.trollRoom.south(
+            maze.maze1, when: { cellar.trollDefeated },
+            otherwise: Prose.trollBlocksTheWay)
+        maze.maze1.west(cellar.trollRoom)
+
+        // The grating, a real door between the forest Clearing and the room
+        // under it. Locked from both sides until the skeleton keys turn up in
+        // Maze-5.
+        aboveGround.clearing.down(maze.gratingRoom, via: aboveGround.grating)
+        maze.gratingRoom.up(aboveGround.clearing, via: aboveGround.grating)
+
+        // The Living Room's west door, which milestone 1 nailed shut and
+        // declared as the seam it was. The cyclops opens it from the far side
+        // by going through the wall next to it.
+        house.livingRoom.west(
+            maze.strangePassage, when: { maze.northWallOpen },
+            otherwise: Prose.woodenDoorNailedShut)
+        maze.strangePassage.east(house.livingRoom)
+
+        // MARK: Milestone 4 — the river
+
+        // The Dam Base is the boat's first launching point, and River-1's only
+        // bank. `launch` and `land` are rules; the compass exit is here.
+        river.river1.west(dam.damBase)
+
+        // The Loud Room's east door onto the Ancient Chasm — milestone 2's
+        // last seam, and the whole reason the river can be reached on foot.
+        crossroads.loudRoom.east(river.ancientChasm)
+        river.ancientChasm.south(crossroads.loudRoom)
+
+        // Canyon Bottom's path north to the End of Rainbow, which milestone 1
+        // left as a seam. It is also how the pot of gold is carried home
+        // without ever setting foot in a boat.
+        aboveGround.canyonBottom.north(river.endOfRainbow)
+        river.endOfRainbow.southeast(aboveGround.canyonBottom)
+
         // The clockwork canary rides sealed inside the egg — one bundle's item
         // inside another's, so the host places it. Its broken twin waits
         // offstage until a forced opening trades them.
         house.canary.starts(inside: aboveGround.egg)
+
+        // Milestone 4's cross-bundle placements: the boat and the stick wait
+        // at the Dam Base, and the grating's keys in Maze-5.
+        river.pileOfPlastic.starts(in: dam.damBase)
+        river.sharpStick.starts(in: dam.damBase)
+        aboveGround.skeletonKeys.starts(in: maze.maze5)
 
         player.starts(in: aboveGround.westOfHouse)
     }

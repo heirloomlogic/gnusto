@@ -154,6 +154,11 @@ Two consequences worth stating.
   sapphire bracelet and the huge diamond. The ceiling is 265 and a perfect
   playthrough of the three together scores 255; the ten still missing are still
   M1's canary and bauble.
+  M4 adds 128, all of it walkable: the Treasure Room's room value (25), the
+  Strange Passage's (10), and five treasures — the large emerald, the statue,
+  the pot of gold, the bag of coins and the silver chalice. The ceiling is 393
+  and a perfect playthrough of the four together scores 383; the ten still
+  missing are, still, M1's canary and bauble.
 - **A milestone may also decline to declare content that sits in one of its own
   rooms**, where the *thing* is here and the *mechanism that reveals it* is not.
   The dented steel box and the Stradivarius inside it stand in the Round Room from
@@ -174,18 +179,20 @@ Two consequences worth stating.
 The authority is [`dungeon-atlas.md`](dungeon-atlas.md), generated from
 `dung.355`.
 
-**The atlas carries exit *counts*, not exit *tables*.** Its per-room `exits` column
-is a number, so the exit graph the mechanics contract calls non-negotiable cannot be
-read off the committed document — even though `bin/atlas/mdl_reader.py` already
-parses the full tables to do its graph matching, and the source trees it reads are
-fetched rather than vendored. Emitting them is #156.
+**The atlas publishes the exit tables** as of #156: every one of the 590 edges the
+source declares, with its direction, its destination and its kind, plus the
+`starts in` column for objects that begin inside other objects. So the map a
+milestone builds is read off the committed document, and the per-room `exits`
+count in the Rooms table is the checksum on having read it right.
 
-Until then, a milestone reads the exits from the 1981-07-22 MDL itself, which is the
+Where the atlas still leaves a gap — what a flag *means*, what sets it, what a room
+function prints — a milestone consults the 1981-07-22 MDL itself, which is the
 sanctioned use of that source: `THIRD_PARTY_NOTICES` admits it for **structure
-only**, and the atlas is generated from it. The atlas's counts are the checksum on
-that reading — every room a milestone builds must come out with the number of exits
-the atlas already records for it, and a mismatch means the reading is wrong. Nothing
-of that source is vendored, and none of its *text* is reproduced.
+only**, and the atlas is generated from it. Nothing of that source is vendored, and
+none of its *text* is reproduced. M4's rainbow is the worked example: the atlas
+records that three exits are conditional on `RAINBOW` and nothing about what turns
+it on, and the answer — the broken sharp stick, which the 1981 source uses in place
+of a sceptre it does not have — is not derivable from the tables.
 
 Regions, for the purpose of splitting the work across files:
 
@@ -235,6 +242,29 @@ is spell two of *its own* properties the same way — which is what actually for
 bundles have not used the same one"; issue #162 was written from that line and
 withdrew it. See `ContentBundles.md` for the collisions the bootstrap does
 check.)
+
+A sixth, learned at M4: **a static description outgrows its room, and the test
+for where it lands is the same one.** M1's Clearing had a static
+`description(...)`, which was right while nothing under it could change; M4 put
+a room under it, and the source's own Clearing routine prints one more line once
+the leaves are off the grating and another once it is open. So the Clearing
+became `alwaysDescribed` with a `describe { }` rule — but the rule stayed in
+`DungeonAboveGround`, because everything it reads (`grating.isRevealed`,
+`grating.isOpen`) is that bundle's own. The Grating Room's description names
+*both* bundles, so that one is the host's. The rule is what it was at M5: a
+description belongs where its state does, and only what genuinely crosses two
+bundles moves.
+
+A seventh, and the answer to a question M2 left open: **a verb lives with the
+region that answers it.** M2 flagged `Systems.swift` as "becoming the verb
+dumping ground" and asked whether region bundles should declare their own
+`verbs`. They should, and as of M4 they do — `GameContent` carries `verbs` and
+`actions` exactly as `Clock` and `MeleeCombat` do, so `odysseus` lives in
+`DungeonMaze` and `geronimo` in `DungeonRiver`, each next to the prose that
+voices it. What stays in `Systems.swift` is what belongs to no one region: words
+the whole game answers (`diagnose`, `dig`, `pray`), and words that cross two
+bundles (`launch` and `land`, whose moorings include the dam's; `temple` and
+`treasure`, which join two).
 
 A fifth, learned at M3: **a mechanism outgrows its bundle.** M2 put the Round
 Room's carousel inside `DungeonRoundRoom` because all three of its built passages

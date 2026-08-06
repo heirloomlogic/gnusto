@@ -55,6 +55,10 @@ extension Prose {
 
     static let verbLowerNothing = "You can't lower that."
 
+    static let verbInflateNothing = "You can't inflate that."
+
+    static let verbDeflateNothing = "You can't deflate that."
+
     static let verbSqueezeNothing = "Squeezing it accomplishes nothing."
 
     // MARK: - Liquids

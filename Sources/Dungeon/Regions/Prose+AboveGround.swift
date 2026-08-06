@@ -234,7 +234,30 @@ extension Prose {
         lock. Cool air drifts up from whatever lies beneath it.
         """
 
+    /// The same grating, seen from the room it is the ceiling of. Milestone 4
+    /// built that room, and the line above is written from the wrong side of
+    /// it.
+    static let gratingFromBelow = """
+        A sturdy iron grating overhead, set into the roof of the room and
+        fastened on this side with a heavy lock.
+        """
+
+    /// Trilogy verbatim — what the Clearing says once the leaves are off.
+    static let gratingInClearing = """
+        There is a grating securely fastened into the ground.
+        """
+
+    /// Trilogy verbatim — and once it is open.
+    static let gratingOpenInClearing = """
+        There is an open grating, descending into darkness.
+        """
+
     static let gratingLocked = "The grating is locked."
+
+    /// The grating has no keyhole on the forest side; the lock is underneath.
+    static let gratingLockNotReachable = """
+        You cannot reach the lock from up here.
+        """
 
     // MARK: - The Great Canyon
 
