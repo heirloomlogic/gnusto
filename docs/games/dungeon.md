@@ -658,3 +658,72 @@ transcript.
    and nothing finer (#150). The mirror box and the Endgame are the same shape.
    Whatever M7 builds is what they will copy, so it is worth deciding before
    #140 whether that is three hand-rolled griddings or one mechanism.
+
+## The thief, who belongs to no milestone
+
+The milestone breakdown above never assigns him, and two milestones were built
+that depend on him: milestone 1 declared the canary and the bauble and recorded
+that their ten points had no route, and milestone 4 built the Treasure Room and
+left it a room with a chalice in it and nothing to take the chalice back from. He
+landed on his own (#170), between milestone 5 and the pinned walkthrough
+milestone 8 owes, and he sits at the end of this document rather than inside a
+milestone because he is not one.
+
+### What he is
+
+`Sources/Dungeon/Thief.swift` holds his entities and his two flags. Everything he
+does crosses bundles, so all of it is the host's, in `Dungeon+Thief.swift`.
+Three daemons, a counter-attack, and two fuses:
+
+| | |
+|---|---|
+| **roams** | teleports among a hundred and five rooms of the built dungeon, half the turns |
+| **steals** | lifts anything the trophy case scores, out of your hands or off the floor, when he shares your room |
+| **stashes** | unloads the bag onto the floor of the Treasure Room — but not while you are standing in it |
+| **fights** | swings back, and only in his lair; everywhere else he is evasive |
+| **admires a gift** | two turns of appraisal, during which he is not stabbing anybody |
+| **opens the egg** | four turns after you hand it to him, the mechanism gives and the bird is still whole |
+
+### The three decisions the atlas could not make
+
+**When he comes into play.** The atlas records `THIEF`'s start as *by code*, so
+there is no room to put him in and the code has to say. It says: the first
+treasure lifted off the dungeon floor. That is his motive, it keeps the lamp and
+the sword and the rope from waking him, and it leaves the egg out of the tree as
+your own business. The trigger is not simply "you came downstairs" for a
+mechanical reason: `roams` draws from the seeded stream every turn its actor is
+inside the room set and none at all while he is outside it. A thief who is
+nowhere costs nothing, so every pinned transcript recorded before the first
+treasure is byte-for-byte what it was.
+
+**Where he goes.** A hundred and five rooms. He teleports, so the set has to do
+the work a walk would have done, and every exclusion is a place he could not have
+walked to or could not have walked out of with your emerald: the water, the volcano's air rooms and
+ledges, the Land of the Living Dead, the Small Room and the Vault (zero exits
+each, per the atlas), and the shrunken world under the tea table. Milestone 6's
+Volcano Bottom, Lava Room and Volcano View *are* his, because all three are a
+step from a room he already walked. His own lair is *in* the set, and has to be — it is the
+only room the stash daemon unloads in, so a thief who could not wander home would
+carry the hoard around the dungeon forever.
+
+**How hard he is.** He is `GnustoMeleeCombat`'s standard villain at strength 2,
+the same as the troll, with a stiletto rated as a clumsy blade in your hands. He
+swings on the turn you arrive. Milestone 1 already recorded that the troll kills
+readily at an unpinned seed and that the plugin's cutpoints deserve a look; the
+thief is that complaint again, one flight of stairs further up, and this time
+35 points and the whole hoard are behind it.
+
+### What he does not do
+
+He does not free the trap door, his blade is not sharp, and he never leaves the
+dungeon. Each of the three is the mainframe's and differs from
+`Sources/Zork1/`; `FIDELITY.md` gives the reason for each.
+
+### What he is worth
+
+Nothing. `THIEF` and `STILL` both carry no `OFVAL` and no `OTVAL`, so the ceiling
+stays where milestone 6 left it, at 560. What he changes is the walkable total:
+milestone 1's canary and bauble are the ten points every milestone since has had
+to describe as still waiting, and he is the route to them. A perfect playthrough
+of everything built goes 550 to **560 of 560** — the first time nothing declared
+is out of reach.

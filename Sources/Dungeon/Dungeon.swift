@@ -1,4 +1,5 @@
 import Gnusto
+import GnustoActors
 import GnustoDangerousDark
 import GnustoMeleeCombat
 import GnustoScoring
@@ -110,6 +111,7 @@ struct Dungeon: Game, GameMain {
     let alice = DungeonAlice()
     let bank = DungeonBank()
     let volcano = DungeonVolcano()
+    let thief = DungeonThief()
 
     /// The grue: this game's prose, the plugin's stock warn-then-kill schedule.
     let dangerousDark = DangerousDark(
@@ -139,6 +141,10 @@ struct Dungeon: Game, GameMain {
         ])
 
     let melee = MeleeCombat()
+
+    /// Roaming and theft, for the one actor who does both. Logic only — the
+    /// plugin owns no entities, so it is a stored property and not `content`.
+    let actors = ActorBehaviors()
 
     /// The custom verb vocabulary and its stage-4 defaults.
     let systems = DungeonSystems()
@@ -175,6 +181,7 @@ struct Dungeon: Game, GameMain {
         alice
         bank
         volcano
+        thief
         dangerousDark
         scoring
         melee
@@ -224,7 +231,11 @@ struct Dungeon: Game, GameMain {
 
     /// The treasures this milestone can score, shared by the trophy-case
     /// wiring below. Later milestones append their own.
-    private var treasureRoster: [Item] {
+    ///
+    /// Internal rather than private because the thief covets exactly what the
+    /// trophy case scores, and one list in one place is what stops the two from
+    /// drifting apart. ``Dungeon/thiefTimers`` is the other reader.
+    var treasureRoster: [Item] {
         [
             aboveGround.egg, house.canary, house.bauble, cellar.painting,
             crossroads.platinumBar, dam.trunk,
@@ -280,6 +291,7 @@ struct Dungeon: Game, GameMain {
         buttonRules
         balloonRules
         blastRules
+        thiefRules
     }
 
     /// Milestones 1 to 3, and everything that belongs to no one milestone.
@@ -813,6 +825,8 @@ struct Dungeon: Game, GameMain {
                 miss: [Prose.trollSwipeMiss],
                 wound: [Prose.trollSwipeWound],
                 playerDeath: Prose.trollKillsYou))
+
+        thiefTimers
     }
 
     var map: WorldMap {

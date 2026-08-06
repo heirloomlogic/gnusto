@@ -2065,3 +2065,70 @@ is Zork II content and does not exist in the mainframe.
 
 **Seams left for later milestones: none.** Every exit these ten rooms declare
 reaches a room that exists.
+### The thief (#170)
+
+The thief belongs to no milestone. `docs/games/dungeon.md`'s eight-milestone
+breakdown never assigns him, and two milestones had already been built that
+depend on him: milestone 1 declared the canary and the bauble and said plainly
+that their ten points could not be walked to, and milestone 4 built the Treasure
+Room and left it a room with a chalice in it and nothing to take the chalice back
+from. He lands here, between milestone 5 and the walkthrough milestone 8 has to
+pin, and he is filed at the end of this section rather than folded into a
+milestone because he is not one.
+
+**Where this departs from `Sources/Zork1/`'s thief, and why.** That thief is the
+nearest thing in the repository to a working model of this one, and four of the
+things he does are wrong here.
+
+- **He does not free the trap door.** In Zork I the bar under it is the thief's
+  doing and his death lifts it. In the mainframe the trap door bars itself for
+  good and the chimney is the way home — recorded under milestone 1 above — so
+  killing him changes nothing about the way out. His `onDefeat` is shorter than
+  Zork I's by that one line.
+- **His stiletto is not sharp.** Zork I makes it one of five blades that hole the
+  river boat. Milestone 4 found that the mainframe punctures the boat on the
+  broken sharp stick and nothing else, so this game carries no `sharp` trait at
+  all, and the stiletto is a weapon and a weight and nothing more.
+- **He starts nowhere.** `docs/games/dungeon-atlas.md` records `THIEF`'s start as
+  *by code*, not in a room; Zork I stands him in the Gallery from turn one. Here
+  the code is a rule: the first treasure lifted off the dungeon floor puts him
+  into play, in the Treasure Room, standing over what he has already taken. A
+  player who reaches the hoard without lifting anything gets him at the door.
+- **His lair pays.** `TREAS` carries a room value of 25 and the chalice in it is
+  worth 10 and 10, where Zork I gives the room nothing and the chalice half. The
+  35 points milestone 4 declared for walking in are what he is guarding.
+
+**Prose.** `docs/games/dungeon-prose-comparison.md` files `THIEF` as *minor* —
+the mainframe has him holding "a bag" and the trilogy "a large bag", and nothing
+else between the two differs — so the policy above takes the trilogy's line. His
+presence line and his examine text are Zork I's, verbatim. The stiletto's
+description is written fresh, because `STILL` carries a size in the source and
+nothing else. The death line is adapted: Zork I's ends on a colon and leaves the
+listing to whatever the player types next, which is a promise the turn does not
+keep, so this one names what fell.
+
+**Reconstructed, and labelled as such.** Two things about him are decisions
+rather than findings, because the atlas carries his objects and his lair but not
+his routine.
+
+- **Where he will and will not go.** The roam daemon teleports, so the set of
+  rooms it draws from has to do the work a walk would have done. He is kept out
+  of the Land of the Living Dead, off the water, out of the Small Room and the
+  Vault — which the atlas records with zero exits, so a thief dropped in either
+  would be sealed in with the hoard — and out of the shrunken world under the tea
+  table, which is reached only by eating. Above ground is a boundary rather than
+  an exclusion.
+- **He does not tidy up in front of a drawn sword, and he does not slip out of
+  his own lair while you are standing in it.** Both are there because the
+  alternative contradicts itself inside one turn. Daemons fire in name order, so
+  the stash would put the chalice back on the floor and the theft would then
+  announce having taken it; and the summons brings him home during the command
+  stage while his own roaming carries him off again before the turn ends.
+
+**Declared but not walkable: nothing, and for the first time nothing was left
+over.** `maxScore` does not move. He scores nothing himself — `THIEF` and `STILL`
+both carry no `OFVAL` or `OTVAL` — so the ceiling stays where milestone 6 left
+it, at **560**. What moves is the walkable total. Milestone 1's canary (6 and 2)
+and bauble (1 and 1) were the ten points every milestone since has had to
+describe as still waiting; the route to them is him. A perfect playthrough of
+everything built goes 550 to **560 of 560**.

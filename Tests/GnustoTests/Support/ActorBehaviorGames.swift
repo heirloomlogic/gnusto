@@ -2,7 +2,8 @@ import Gnusto
 import GnustoActors
 
 /// Fixtures for `GnustoActors`. `WanderGame` exercises roaming (100% so
-/// every turn moves, announcements asserted under a pinned seed);
+/// every turn moves, announcements asserted under a pinned seed) and its
+/// `while:` gate, which is shut for as long as the player stands in the chapel;
 /// `PickpocketGame` exercises theft, reactions, theft in the dark (`douse`),
 /// and daemon stopping; `FollowGame` exercises the companion daemon
 /// (deterministic, no seeds).
@@ -57,6 +58,8 @@ struct WanderGame: Game {
             daemonName: "wander",
             rooms: [yard, armory, chapel, crypt],
             chancePerTurn: 100,
+            // The gate: stand in the chapel and he holds still, wherever he is.
+            while: { player.location != chapel },
             arrival: "The wanderer saunters in.",
             departure: "The wanderer slips away.")
     }

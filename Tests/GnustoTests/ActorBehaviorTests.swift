@@ -31,6 +31,40 @@ struct ActorBehaviorTests {
         #expect(!inTheDark.contains("slips away"))
     }
 
+    /// A shut `while:` gate freezes the roamer where he stands, and — because
+    /// it is checked before the position guard and before any draw — costs the
+    /// seeded stream nothing, so the wandering resumes exactly where an ungated
+    /// run would have had it.
+    @Test func aShutGateHoldsTheRoamerStillAndDrawsNothing() async throws {
+        // The chapel is the gated room. Sit in it and nobody moves; the
+        // wanderer's own room never changes, so no arrival or departure lands.
+        let gated = try await play(
+            WanderGame(),
+            ["north", "east"] + Array(repeating: "look", count: 12) + ["quit"],
+            seed: 7)
+        let inTheChapel = gated.components(separatedBy: "> east")[1]
+        #expect(!inTheChapel.contains("saunters"))
+        #expect(!inTheChapel.contains("slips away"))
+
+        // And the draws are intact: twelve gated turns leave the stream where
+        // twelve absent turns would, so stepping back out into the armory
+        // resumes the same wander a run that never entered the chapel sees.
+        let ungated = try await play(
+            WanderGame(),
+            ["north"] + Array(repeating: "look", count: 12) + ["quit"],
+            seed: 7)
+        let resumed = try await play(
+            WanderGame(),
+            ["north", "east"] + Array(repeating: "look", count: 12)
+                + ["west"] + Array(repeating: "look", count: 6) + ["quit"],
+            seed: 7)
+        let firstSixAfterTheGate = resumed.components(separatedBy: "> west")[1]
+        let firstSixUngated = ungated.components(separatedBy: "> north")[1]
+        #expect(
+            firstSixAfterTheGate.contains("saunters")
+                == firstSixUngated.contains("saunters"))
+    }
+
     @Test func sameSeedSameWander() async throws {
         let commands = Array(repeating: "look", count: 10) + ["quit"]
         let first = try await play(WanderGame(), commands, seed: 42)

@@ -35,11 +35,19 @@ public struct ActorBehaviors: GamePlugin {
     /// while the actor is outside `rooms` — including after `vanish()` —
     /// but the host should still `stopDaemon(_:)` on the actor's death.
     ///
+    /// `while:` is an extra gate evaluated *first*, before the position guard
+    /// and before any draw, exactly as `MeleeCombat.aggression(of:…)`'s is — so
+    /// a roamer whose wandering is scoped (the thief holds still while you are
+    /// standing in his lair) burns no randomness on the turns his gate is shut,
+    /// keeping every seeded draw sequence intact. The default gate is always
+    /// open, so a caller that does not pass one behaves exactly as before.
+    ///
     /// - Parameters:
     ///   - actor: the NPC to teleport.
     ///   - daemonName: the daemon's global timer name.
     ///   - rooms: the set of rooms the actor teleports within.
     ///   - percent: per-turn chance of a move, while in the set.
+    ///   - gate: extra gate checked first — a false gate is a quiet, draw-free turn.
     ///   - arrival: line printed when the player watches the actor arrive.
     ///   - departure: line printed when the player watches the actor leave.
     /// - Returns: the roaming daemon, for the host's `timers` block.
@@ -48,10 +56,13 @@ public struct ActorBehaviors: GamePlugin {
         daemonName: String,
         rooms: [Location],
         chancePerTurn percent: Int = 50,
+        while gate: @escaping @Sendable () -> Bool = { true },
         arrival: String? = nil,
         departure: String? = nil
     ) -> TimedEvent {
         daemon(daemonName, autostart: true) {
+            // The host's gate first: a false gate is a quiet turn, no draw.
+            guard gate() else { return }
             // Guards before any draw, so absent actors burn no randomness.
             guard let here = actor.location, rooms.contains(here) else { return }
             guard chance(percent) else { return }
