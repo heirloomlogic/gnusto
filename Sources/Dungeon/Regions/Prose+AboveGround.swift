@@ -179,6 +179,27 @@ extension Prose {
         seriously compromised its esthetic appeal.
         """
 
+    /// What the forced shell reveals, printed on the same turn. The built-in
+    /// open never runs here — the egg it would have opened has left the game
+    /// with the bird — so this line does the revealing.
+    static let eggForcedRevealsRuin = """
+        Inside, among the sprung gold inlay, lies a broken clockwork canary.
+        """
+
+    /// The wreck's own examine text. Written fresh: the intact egg's
+    /// description is about a clasp and a delicate hinge, neither of which
+    /// survived.
+    static let brokenEgg = """
+        The lid is sprung and will not sit true again. Gold inlay has lifted
+        away from the shell in curls, the lapis is starred where your thumb
+        went through it, and half the mother-of-pearl is somewhere on the
+        forest floor. It is still, unmistakably, an egg, and worth nothing
+        at all.
+        """
+
+    /// Verbatim Zork I: the shell's room line.
+    static let brokenEggHere = "There is a somewhat ruined egg here."
+
     static let bauble = """
         A small brass bauble, beautifully worked, that catches the light with
         a warm glow. It is the sort of trinket a songbird might treasure.

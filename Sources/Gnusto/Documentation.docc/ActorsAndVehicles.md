@@ -126,8 +126,17 @@ troll.vanish()       // gone (inventory goes along if not dropped)
 // …or move a corpse Item in, or flip a custom trait — the game's voice.
 ```
 
-`GnustoMeleeCombat` composes exactly this; a game that wants wounded,
-sleeping, or petrified characters builds them from custom traits.
+`GnustoMeleeCombat` composes exactly this. A game that wants wounded,
+sleeping, or petrified characters keeps that state in a ``Global`` of its own —
+declared traits are bootstrap data and cannot be written during play.
+
+``Actor/isUnconscious`` is the one condition the engine holds itself, and the
+reason has nothing to do with the engine: two plugins have to agree on it. A
+villain `GnustoMeleeCombat` has just knocked down must stop roaming and
+stealing under `GnustoActors`, and neither library can see the other, so the
+flag lives where both can reach it. The engine still branches on it nowhere.
+Set and clear it yourself if your game puts somebody out by its own means, and
+the daemons that consult it will behave.
 
 ## Actors take their turns on the clock
 

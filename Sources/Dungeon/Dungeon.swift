@@ -489,17 +489,30 @@ struct Dungeon: Game, GameMain {
             })
 
         // Forcing the egg open by hand. The mechanism is too fine for brute
-        // fingers: prying it yourself wrecks the canary inside, swapping the
-        // intact bird for the ruined one, before the built-in open completes.
-        // The `isOpen` clause is redundant today and will not stay so: forcing
-        // is the only thing that opens the egg here, but the thief opens it
-        // with the bird still inside, and then this rule must not fire.
+        // fingers, and what your thumbs cost you is both objects, not one: the
+        // mainframe swaps `EGG` and `GCANA` out of the game together and hands
+        // you `BEGG` with `BCANA` already inside it, neither of which is worth
+        // a point. `docs/games/dungeon.md` totals the forfeit; the thief is the
+        // only one who opens the egg without charging it.
+        //
+        // Both clauses of the guard are the thief's doing and neither is
+        // redundant. He opens the egg with the bird still whole, so `isOpen`
+        // stops a second `open` wrecking what he saved; and once you have
+        // lifted the canary out, `holds` stops a *closed* egg being forced
+        // onto a bird that is no longer in it.
         aboveGround.egg.before(.open) {
             guard !aboveGround.egg.isOpen, aboveGround.egg.holds(house.canary) else { return }
+            if aboveGround.egg.isHeld {
+                aboveGround.brokenEgg.moveToPlayer()
+            } else {
+                aboveGround.brokenEgg.move(to: player.location)
+            }
             house.canary.vanish()
-            house.brokenCanary.move(inside: aboveGround.egg)
+            aboveGround.egg.vanish()
             say(Prose.eggForcedRuinsCanary)
-            // Falls through to the built-in open.
+            // The built-in open is not reached: the egg it would have opened
+            // has left the game, so the reveal is this rule's to print.
+            try reply(Prose.eggForcedRevealsRuin)
         }
 
         // Wind the intact canary among the trees and a songbird answers,
@@ -1024,9 +1037,12 @@ struct Dungeon: Game, GameMain {
         bank.bankEntrance.south(cellar.gallery)
 
         // The clockwork canary rides sealed inside the egg — one bundle's item
-        // inside another's, so the host places it. Its broken twin waits
-        // offstage until a forced opening trades them.
+        // inside another's, so the host places it. The ruined pair wait
+        // offstage in the same arrangement, `BCANA` inside `BEGG` exactly as
+        // `docs/games/dungeon-atlas.md` has them, until a forced opening
+        // trades one pair for the other.
         house.canary.starts(inside: aboveGround.egg)
+        house.brokenCanary.starts(inside: aboveGround.brokenEgg)
 
         // Milestone 4's cross-bundle placements: the boat and the stick wait
         // at the Dam Base, and the grating's keys in Maze-5.

@@ -118,6 +118,11 @@ public struct MeleeCombat: GameContent {
     /// The plugin-owned combat ledger: villain health and stun counters
     /// keyed by registration key, plus the player's own hits. Health seeds
     /// lazily from each villain's declared strength.
+    ///
+    /// `stunned` is the countdown, and a villain has an entry in it for exactly
+    /// as long as he is unconscious — counting down to zero and resting there
+    /// for the last of those turns. ``Actor/isUnconscious`` is the same fact
+    /// where other plugins can see it; ``stun(_:key:turnsLeft:)`` writes both.
     struct Ledger: Codable, Sendable, GlobalValue {
         var health: [String: Int] = [:]
         var stunned: [String: Int] = [:]
@@ -157,6 +162,22 @@ public struct MeleeCombat: GameContent {
         }
     }
 
+    /// Writes both halves of "he is out cold" at once: the ledger's countdown,
+    /// which is this plugin's, and ``Actor/isUnconscious``, which is the
+    /// engine's and is how `GnustoActors` — a plugin that cannot see this
+    /// ledger — knows to stop him roaming and picking pockets. Going through
+    /// one funnel is what keeps the two from drifting.
+    ///
+    /// - Parameters:
+    ///   - actor: the villain going down or getting up.
+    ///   - key: his ledger key.
+    ///   - turnsLeft: turns still to spend on the floor, or `nil` for back on
+    ///     his feet. Zero is a real value: it is the last of those turns.
+    func stun(_ actor: Actor, key: String, turnsLeft: Int?) {
+        ledger.stunned[key] = turnsLeft
+        actor.isUnconscious = turnsLeft != nil
+    }
+
     /// The per-weapon outcome cutpoints out of 100 for one swing: miss ≤ first,
     /// wound ≤ second, knockout ≤ third, kill above. A keener weapon (higher
     /// `.weaponStrength`) misses less and kills more — the original's per-weapon
@@ -179,6 +200,12 @@ public struct MeleeCombat: GameContent {
     /// One roll per swing against a per-weapon table (see
     /// `outcomeCutpoints(weaponStrength:)`). A stunned villain doesn't roll —
     /// the next blow lands clean.
+    ///
+    /// A knockout also sets ``Actor/isUnconscious`` — see ``stun(_:key:turnsLeft:)``.
+    /// It is cleared again by the villain's own
+    /// ``aggression(of:key:daemonName:playerStrength:while:prose:)`` daemon, so
+    /// a villain registered here without one stays down for good once knocked
+    /// out, exactly as his stun counter already did.
     ///
     /// - Parameters:
     ///   - actor: the villain being attacked and tracked.
@@ -220,7 +247,7 @@ public struct MeleeCombat: GameContent {
             var health = ledger.health[key] ?? strength
             if ledger.stunned[key, default: 0] > 0 {
                 // Finishing the unconscious: no roll, the blow lands clean.
-                ledger.stunned[key] = nil
+                stun(actor, key: key, turnsLeft: nil)
                 health = 0
             } else {
                 // The original's per-weapon table: a keener weapon slides the
@@ -241,7 +268,7 @@ public struct MeleeCombat: GameContent {
                     }
                 case ...knockoutMax:
                     ledger.health[key] = health
-                    ledger.stunned[key] = 2
+                    stun(actor, key: key, turnsLeft: 2)
                     try reply(prose.knockout)
                 default:
                     health = 0
@@ -262,10 +289,12 @@ public struct MeleeCombat: GameContent {
     /// wounds don't heal this phase. A stunned villain spends his turn
     /// coming to instead (no roll).
     ///
-    /// `while:` is an extra gate evaluated *first*, before the alive/conscious/
-    /// same-room guards and before any draw — so a villain whose combat is
-    /// scoped (the thief only fights in his lair) burns no randomness on the
-    /// turns his gate is closed, keeping every seeded draw sequence intact.
+    /// `while:` is an extra gate evaluated before the same-room guard and
+    /// before any draw — so a villain whose combat is scoped (the thief only
+    /// fights in his lair) burns no randomness on the turns his gate is
+    /// closed, keeping every seeded draw sequence intact. It does *not* gate
+    /// coming round, which happens first: a man knocked out where his gate is
+    /// shut still wakes up.
     ///
     /// - Parameters:
     ///   - actor: the villain who fights back each turn.
@@ -284,15 +313,31 @@ public struct MeleeCombat: GameContent {
         prose: AggressionProse
     ) -> TimedEvent {
         daemon(daemonName, autostart: true) {
-            // The host's gate first: a false gate is a quiet turn, no draw.
-            guard gate() else { return }
+            // One snapshot for both guards below: `ledger` is a `@Global`, and
+            // every read of one decodes the whole struct.
+            let ledgered = ledger
             // Guards before any draw, so quiet turns burn no randomness.
-            guard ledger.health[key] ?? 1 > 0 else { return }
-            if ledger.stunned[key, default: 0] > 0 {
-                let remaining = ledger.stunned[key, default: 0] - 1
-                ledger.stunned[key] = remaining == 0 ? nil : remaining
-                return
+            guard ledgered.health[key] ?? 1 > 0 else { return }
+            // Coming round happens ahead of the host's gate, because it is not
+            // an aggressive act: a villain knocked out somewhere his gate is
+            // shut — the thief anywhere but his own lair — would otherwise
+            // never wake at all. It draws no randomness, so nothing seeded
+            // moves by being here.
+            if let stunTurns = ledgered.stunned[key] {
+                guard stunTurns == 0 else {
+                    // Still out. He spends the turn coming to.
+                    stun(actor, key: key, turnsLeft: stunTurns - 1)
+                    return
+                }
+                // Zero is the last of the turns he spends down — the counter
+                // rests there rather than clearing, so that "unconscious"
+                // lasts exactly as long as the turns he skips. Without it he
+                // woke halfway through the last one and picked a pocket on the
+                // way up, which is this bug again, one daemon over.
+                stun(actor, key: key, turnsLeft: nil)
             }
+            // The host's gate: a false gate is a quiet turn, no draw.
+            guard gate() else { return }
             guard let here = actor.location, player.location == here else { return }
 
             let roll = random(1...100)

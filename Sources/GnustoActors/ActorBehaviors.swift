@@ -22,6 +22,14 @@ import Gnusto
 /// out of position (or whose player has nothing worth taking) consumes no
 /// randomness, so transcripts that never meet the actor stay stable no
 /// matter what he does elsewhere.
+///
+/// **None of these daemons acts for an actor whose ``Actor/isUnconscious`` is
+/// set.** A man lying on the floor does not wander off, catch you up, or lift
+/// anything out of your hands, and he draws no randomness deciding not to.
+/// That flag is the engine's rather than this plugin's for a reason worth
+/// knowing: what usually puts a villain down is a combat plugin, and two
+/// plugins cannot see each other. `GnustoMeleeCombat` sets it and this one
+/// reads it, without either library knowing the other exists.
 public struct ActorBehaviors: GamePlugin {
     /// Creates the plugin.
     public init() {}
@@ -65,6 +73,7 @@ public struct ActorBehaviors: GamePlugin {
             guard gate() else { return }
             // Guards before any draw, so absent actors burn no randomness.
             guard let here = actor.location, rooms.contains(here) else { return }
+            guard !actor.isUnconscious else { return }
             guard chance(percent) else { return }
             let elsewhere = rooms.filter { $0 != here }
             guard !elsewhere.isEmpty else { return }
@@ -116,6 +125,7 @@ public struct ActorBehaviors: GamePlugin {
     ) -> TimedEvent {
         daemon(daemonName, autostart: true) {
             guard let here = actor.location else { return }  // idle while offstage
+            guard !actor.isUnconscious else { return }
             let dest = player.location
             guard here != dest else { return }  // already together
             actor.move(to: dest)
@@ -152,6 +162,7 @@ public struct ActorBehaviors: GamePlugin {
         daemon(daemonName, autostart: true) {
             // Guards before any draw, so absent actors burn no randomness.
             guard let here = actor.location, player.location == here else { return }
+            guard !actor.isUnconscious else { return }
             // Two reach sets, unioned — the decision #119 asked for. The
             // player's is here for the pockets, which an actor's own reach set
             // never contains; the actor's is here for the room, lit or not.

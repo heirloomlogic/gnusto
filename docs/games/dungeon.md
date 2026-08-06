@@ -727,3 +727,39 @@ milestone 1's canary and bauble are the ten points every milestone since has had
 to describe as still waiting, and he is the route to them. A perfect playthrough
 of everything built goes 550 to **560 of 560** — the first time nothing declared
 is out of reach.
+
+## The broken egg, and what forcing it costs
+
+Filed as #178, after the thief landed. Milestone 1 built half of the mainframe's
+egg: forcing it by hand swapped `GCANA` for `BCANA` inside the surviving `EGG`,
+so the shell kept its five for the find and five for the case while only the bird
+was forfeit. `docs/games/dungeon-atlas.md` carries **four** objects, not three —
+`EGG`, `BEGG`, `GCANA`, `BCANA` — and the mainframe swaps both pairs at once.
+
+Before the thief, forcing was the only way into the egg, so nobody could tell the
+two routes apart and the shortfall did not show. Now they can, and the cheap
+route was too cheap.
+
+`DungeonAboveGround.brokenEgg` is `BEGG`: no `OFVAL`, no `OTVAL`, `BCANA` inside
+it from the start, both offstage until your thumbs go through the clasp. The
+forcing rule takes `EGG` and `GCANA` out of the game and hands you the wreck.
+
+**What it costs.** The ceiling does not move — `BEGG` and `BCANA` are worth
+nothing, so `maxScore` is still 560 and a perfect run still scores 560. What
+moves is the price of impatience, from ten points to twenty:
+
+| forfeit | points |
+|---|---|
+| the egg, deposited | 5 |
+| the egg, found — if you force it before you ever pick it up | 5 |
+| the canary, 6 to find and 2 to case | 8 |
+| the bauble the songbird trades for the canary's song | 2 |
+
+Take the egg first and you keep the five you have already banked and lose
+fifteen; force it on the nest and you lose the whole twenty.
+
+**What the endgame has to know.** The trophy case can still be *filled* with the
+wreck — nothing refuses it — and it pays nothing. A player who forces the egg can
+therefore never complete the case, which is what the mainframe intends and what
+milestone 8's walkthrough has to route around: the 716-point run goes through the
+thief, and there is no other way it can.
