@@ -184,6 +184,15 @@ Two consequences worth stating.
   the Flathead stamp (4+10) pressed inside the Library's purple book. The
   ceiling is 560 and a perfect playthrough of the six together scores 550; the
   ten still missing are, still, M1's canary and bauble.
+  M7 adds 25, all of it walkable, and all of it one object: the gold card
+  (10+15) lying under a sandstone block in the Royal Puzzle. Not one of the
+  three rooms carries an `RVAL`, so the region is worth exactly the card. It is
+  also the object that moved the finished ceiling from 691 to 716 (#167), since
+  `dung.355:6324` declares it inside a `<PUT <OBJECT …> ,OROOM …>` wrapper
+  rather than at top level. The ceiling is 585, and because the thief landed
+  between M6 and M7 and closed M1's canary-and-bauble gap, a perfect playthrough
+  of everything built scores 585 of 585. This is the first milestone with no
+  gap of its own to name and none inherited.
 - **A milestone may also decline to declare content that sits in one of its own
   rooms**, where the *thing* is here and the *mechanism that reveals it* is not.
   The dented steel box and the Stradivarius inside it stand in the Round Room from

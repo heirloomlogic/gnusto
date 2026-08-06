@@ -69,10 +69,23 @@ struct Dungeon: Game, GameMain {
     /// playthrough of the six together scores **550**; the ten still missing
     /// are, still, milestone 1's canary and bauble.
     ///
+    /// Milestone 7 adds 25, and all of it is walkable: the gold card (10+15)
+    /// under a sandstone block in the Royal Puzzle. One treasure and no room
+    /// value — `CP`, `CPANT` and `CPOUT` carry no `RVAL` between them, so the
+    /// whole region is worth exactly the one object. It is also the object that
+    /// moved the finished ceiling from 691 to 716 (#167): `dung.355:6324`
+    /// declares it inside a `<PUT <OBJECT …> ,OROOM <GET-ROOM "CP">>` wrapper
+    /// rather than at top level, and a reader scanning only top-level forms
+    /// misses it. The thief landed between milestone 6 and this one and closed
+    /// the last gap — milestone 1's canary and bauble, which every milestone
+    /// since has had to describe as still waiting — so a perfect playthrough of
+    /// everything built now scores **585 of 585**, and for the second milestone
+    /// running nothing is declared ahead of its route.
+    ///
     /// Why the ceiling moves at all, and what may be declared ahead of its
     /// route: `docs/games/dungeon.md`, "The ceiling ratchets while the game is
     /// being built", and the matching `FIDELITY.md` entry.
-    let maxScore = 560
+    let maxScore = 585
 
     let intro = Prose.intro
 
@@ -112,6 +125,7 @@ struct Dungeon: Game, GameMain {
     let bank = DungeonBank()
     let volcano = DungeonVolcano()
     let thief = DungeonThief()
+    let royalPuzzle = DungeonRoyalPuzzle()
 
     /// The grue: this game's prose, the plugin's stock warn-then-kill schedule.
     let dangerousDark = DangerousDark(
@@ -182,6 +196,7 @@ struct Dungeon: Game, GameMain {
         bank
         volcano
         thief
+        royalPuzzle
         dangerousDark
         scoring
         melee
@@ -249,6 +264,7 @@ struct Dungeon: Game, GameMain {
             crossroads.violin,
             bank.bills, bank.portrait,
             volcano.zorkmid, volcano.crown, volcano.stamp,
+            royalPuzzle.goldCard,
         ]
     }
 
@@ -848,6 +864,7 @@ struct Dungeon: Game, GameMain {
         riverMap
         milestoneFiveMap
         milestoneSixMap
+        milestoneSevenMap
     }
 
     /// Milestones 1 to 3, and the placements that belong to no one milestone.
@@ -1067,5 +1084,15 @@ struct Dungeon: Game, GameMain {
         // neither, which is the whole of what that room is for.
         templeQuarter.egyptianRoom.south(volcano.volcanoView)
         volcano.volcanoView.east(templeQuarter.egyptianRoom)
+    }
+
+    /// The one seam milestone 4 left open: the Treasure Room's east passage,
+    /// which its description has been naming ever since ("what appears to be a
+    /// newly created passage to the east"). The Treasure Room is a
+    /// ``DungeonMaze`` room and the antechamber a ``DungeonRoyalPuzzle`` one, so
+    /// the pair lives here.
+    @MapBuilder private var milestoneSevenMap: WorldMap {
+        maze.treasureRoom.east(royalPuzzle.anteroom)
+        royalPuzzle.anteroom.west(maze.treasureRoom)
     }
 }
