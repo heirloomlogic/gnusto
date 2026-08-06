@@ -63,7 +63,11 @@ extension Intent {
 
     /// Work the chain over the coal mine's shaft. Two verbs for one mechanism,
     /// because a basket at the bottom is raised and one at the top is lowered.
-    #verb("raise", ["raise", .directObject])
+    ///
+    /// `lift` is the same intent, and it is not decoration: the robot's own
+    /// instruction sheet tells the player to say `ROBOT, LIFT THE CAGE`, so the
+    /// word has to be in the vocabulary or the sheet is a lie.
+    #verb("raise", ["raise", .directObject], ["lift", .directObject])
     #verb("lower", ["lower", .directObject])
 
     /// Put air into something, and let it back out. One thing in the game

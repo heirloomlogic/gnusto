@@ -50,10 +50,20 @@ struct Dungeon: Game, GameMain {
     /// playthrough of the four together scores **383**; the ten still missing
     /// are still milestone 1's canary and bauble.
     ///
+    /// Milestone 5 adds 106, and all of it is walkable: the Top of Well's room
+    /// value (10) and six treasures — the stack of zorkmid bills (10+15), the
+    /// portrait (10+5), the pearl necklace (9+5), the white crystal sphere
+    /// (6+6), the tin of spices (5+5) and the Stradivarius (10+10). The violin
+    /// is the one milestone 2 declared nothing for and named the reason: the
+    /// steel box holding it is invisible until the triangular button stops the
+    /// carousel, and that button is this milestone's. A perfect playthrough of
+    /// the five together scores **489**; the ten still missing are, still,
+    /// milestone 1's canary and bauble.
+    ///
     /// Why the ceiling moves at all, and what may be declared ahead of its
     /// route: `docs/games/dungeon.md`, "The ceiling ratchets while the game is
     /// being built", and the matching `FIDELITY.md` entry.
-    let maxScore = 393
+    let maxScore = 499
 
     let intro = Prose.intro
 
@@ -88,6 +98,9 @@ struct Dungeon: Game, GameMain {
     let mine = DungeonCoalMine()
     let river = DungeonRiver()
     let maze = DungeonMaze()
+    let riddle = DungeonRiddle()
+    let alice = DungeonAlice()
+    let bank = DungeonBank()
 
     /// The grue: this game's prose, the plugin's stock warn-then-kill schedule.
     let dangerousDark = DangerousDark(
@@ -113,6 +126,7 @@ struct Dungeon: Game, GameMain {
             "lightShaft": 10,
             "treasureRoom": 25,
             "strangePassage": 10,
+            "topOfWell": 10,
         ])
 
     let melee = MeleeCombat()
@@ -132,6 +146,11 @@ struct Dungeon: Game, GameMain {
     /// there — so a plain `Bool` guards it.
     @Global var lightShaftPaid = false
 
+    /// The same guard for the Top of Well's ten, for the same reason. Two
+    /// `Bool`s rather than one `Set<String>`: a set would need a `GlobalValue`
+    /// wrapper, and a wrapper is the JSON box these two exist to avoid.
+    @Global var topOfWellPaid = false
+
     var content: GameContents {
         aboveGround
         house
@@ -143,6 +162,9 @@ struct Dungeon: Game, GameMain {
         mine
         river
         maze
+        riddle
+        alice
+        bank
         dangerousDark
         scoring
         melee
@@ -201,6 +223,10 @@ struct Dungeon: Game, GameMain {
             mine.jade, mine.sapphireBracelet, mine.diamond,
             river.emerald, river.statue, river.potOfGold,
             maze.bagOfCoins, maze.chalice,
+            riddle.pearlNecklace,
+            alice.sphere, alice.spices,
+            crossroads.violin,
+            bank.bills, bank.portrait,
         ]
     }
 
@@ -233,6 +259,18 @@ struct Dungeon: Game, GameMain {
     }
 
     var rules: Rules {
+        coreRules
+        boatRules
+        gratingRules
+        cyclopsRules
+        mazeFindRules
+        graniteRules
+        bucketRules
+        buttonRules
+    }
+
+    /// Milestones 1 to 3, and everything that belongs to no one milestone.
+    @RuleBuilder private var coreRules: Rules {
         scoring.treasures(treasureRoster, into: house.trophyCase)
 
         // The mainframe's room values, as event awards: getting into the
@@ -256,6 +294,18 @@ struct Dungeon: Game, GameMain {
             guard exits.contains(where: { $0.0 == heading }) else { return }
             crossroads.carouselTwist = random(0...(exits.count - 1))
             say(Prose.roundRoomNoBearings)
+        }
+
+        // The Top of Well's ten points, paid the same way `LIGHT-SHAFT` is
+        // rather than by `scoring.visit`. A room value is an `onEnter` award,
+        // and the usual way into this room is riding the bucket up — which
+        // moves the *vehicle* and carries the player along, so no `onEnter`
+        // fires. That is the hole the Bank of Zork spike recorded (#132) and
+        // this is the first room in the game to fall into it.
+        alice.topOfWell.afterEachTurn {
+            guard !topOfWellPaid else { return }
+            topOfWellPaid = true
+            scoring.awardOnce("topOfWell")
         }
 
         // `LIGHT-SHAFT`: ten points, once, for standing at the bottom of the
@@ -444,9 +494,10 @@ struct Dungeon: Game, GameMain {
         }
         // The ruined bird's answer is `DungeonHouse`'s own — it names nothing
         // outside that bundle, so it lives there.
+    }
 
-        // MARK: Milestone 4 — the boat
-
+    /// Milestone 4 — the boat
+    @RuleBuilder private var boatRules: Rules {
         // Inflating the pile of plastic. The pump is a ``DungeonDam`` item and
         // the pile a ``DungeonRiver`` one, so the host owns the valve. The
         // mainframe grades the refusal by what you offer it.
@@ -502,9 +553,10 @@ struct Dungeon: Game, GameMain {
             describeSurroundings()
             try reply("")
         }
+    }
 
-        // MARK: Milestone 4 — the grating
-
+    /// Milestone 4 — the grating
+    @RuleBuilder private var gratingRules: Rules {
         // What the Grating Room says about the sky over it. The grating is a
         // ``DungeonAboveGround`` item and the room a ``DungeonMaze`` one, so
         // the description is the host's.
@@ -557,9 +609,10 @@ struct Dungeon: Game, GameMain {
             maze.gratingRoom.isLit = false
             try reply(Prose.gratingCloses)
         }
+    }
 
-        // MARK: Milestone 4 — the cyclops
-
+    /// Milestone 4 — the cyclops
+    @RuleBuilder private var cyclopsRules: Rules {
         // Feeding him. The lunch, the bottle and the water are ``DungeonHouse``
         // items and the cyclops a ``DungeonMaze`` one, so the host bridges
         // them. The hot peppers make him thirsty — which the source records by
@@ -583,9 +636,10 @@ struct Dungeon: Game, GameMain {
                 try reply(Prose.cyclopsWontEatThat)
             }
         }
+    }
 
-        // MARK: Milestone 4 — the maze's finds
-
+    /// Milestone 4 — the maze's finds
+    @RuleBuilder private var mazeFindRules: Rules {
         // Disturbing the dead adventurer. The ghost banishes everything loose
         // in the room and everything in your hands to the Land of the Living
         // Dead, which is a ``DungeonTemple`` room.
@@ -606,9 +660,10 @@ struct Dungeon: Game, GameMain {
             guard house.sword.isHeld else { return }
             say(Prose.rustyKnifeBluePulse)
         }
+    }
 
-        // MARK: Milestone 4 — the granite wall
-
+    /// Milestone 4 — the granite wall
+    @RuleBuilder private var graniteRules: Rules {
         // The two words that use it. Each works in exactly one room and takes
         // you to the other; the Temple is a ``DungeonTemple`` room and the
         // Treasure Room a ``DungeonMaze`` one, so the pair lives here.
@@ -626,6 +681,54 @@ struct Dungeon: Game, GameMain {
         }
     }
 
+    /// Milestone 5 — the bucket
+    @RuleBuilder private var bucketRules: Rules {
+        // The lift at the bottom of the well. The bucket is a ``DungeonAlice``
+        // vehicle and the water a ``DungeonHouse`` liquid, so the host owns
+        // both halves of the trip. Location rules rather than item ones,
+        // because `before` runs world, then location, then item — and the
+        // bottle's own pour rule would otherwise answer first and empty it on
+        // the floor.
+        alice.circularRoom.before(.pour, .putIn) {
+            guard command.directObject == house.water else { return }
+            guard
+                command.indirectObject == nil || command.indirectObject == alice.bucket
+            else { return }
+            try require(player.vehicle == alice.bucket, else: Prose.bucketBoardFirst)
+            try require(house.bottle.holds(house.water), else: Prose.nothingToPour)
+            try require(house.bottle.isOpen, else: Prose.bottleNeedsToBeOpen)
+            house.water.move(inside: alice.bucket)
+            try alice.raiseBucket()
+        }
+
+        // And the way back down: take the water out of it, by any of the three
+        // sentences that mean that, and the bucket follows the water.
+        alice.topOfWell.before(.pour, .empty, .take) {
+            let named = command.directObject
+            guard named == house.water || named == alice.bucket else { return }
+            try require(player.vehicle == alice.bucket, else: Prose.bucketBoardFirst)
+            try require(alice.bucket.holds(house.water), else: Prose.bucketNeedsWater)
+            house.water.vanish()
+            try alice.lowerBucket()
+        }
+    }
+
+    /// Milestone 5 — the three buttons
+    @RuleBuilder private var buttonRules: Rules {
+        // The triangular one stops the machinery under the Round Room, which
+        // is a ``DungeonRoundRoom`` room a very long way from the switch — so
+        // the host presses it. What the stopped floor stops hiding is the
+        // dented steel box, which has stood there since turn one.
+        alice.triangularButton.before(.push, .turnOn) {
+            guard crossroads.carouselSpinning else {
+                try reply(Prose.triangularButtonAgain)
+            }
+            crossroads.carouselSpinning = false
+            crossroads.steelBox.reveal()
+            try reply(Prose.triangularButtonStopsTheCarousel)
+        }
+    }
+
     var timers: [TimedEvent] {
         // The troll swings back. He is the only thing in this milestone that
         // will kill you other than the dark.
@@ -638,6 +741,14 @@ struct Dungeon: Game, GameMain {
     }
 
     var map: WorldMap {
+        coreMap
+        mazeMap
+        riverMap
+        milestoneFiveMap
+    }
+
+    /// Milestones 1 to 3, and the placements that belong to no one milestone.
+    @MapBuilder private var coreMap: WorldMap {
         // The kitchen window: the one door between ``DungeonAboveGround`` and
         // ``DungeonHouse``. Starts closed.
         aboveGround.behindHouse.west(house.kitchen, via: house.window)
@@ -755,9 +866,10 @@ struct Dungeon: Game, GameMain {
         mirrors.slideRoom.down(house.cellar)
         mirrors.slideRoom.north(mine.mineEntrance)
         mine.mineEntrance.south(mirrors.slideRoom)
+    }
 
-        // MARK: Milestone 4 — the maze
-
+    /// Milestone 4 — the maze
+    @MapBuilder private var mazeMap: WorldMap {
         // The troll's south passage, which milestone 1 left as a seam: it is
         // the mouth of the maze, and he holds it the way he holds the other
         // two. Maze-1 comes back **west** — the mainframe's own asymmetry, and
@@ -780,9 +892,10 @@ struct Dungeon: Game, GameMain {
             maze.strangePassage, when: { maze.northWallOpen },
             otherwise: Prose.woodenDoorNailedShut)
         maze.strangePassage.east(house.livingRoom)
+    }
 
-        // MARK: Milestone 4 — the river
-
+    /// Milestone 4 — the river
+    @MapBuilder private var riverMap: WorldMap {
         // The Dam Base is the boat's first launching point, and River-1's only
         // bank. `launch` and `land` are rules; the compass exit is here.
         river.river1.west(dam.damBase)
@@ -797,6 +910,28 @@ struct Dungeon: Game, GameMain {
         // without ever setting foot in a boat.
         aboveGround.canyonBottom.north(river.endOfRainbow)
         river.endOfRainbow.southeast(aboveGround.canyonBottom)
+    }
+
+    /// Milestone 5 — the road to the well
+    @MapBuilder private var milestoneFiveMap: WorldMap {
+        // The Engravings Cave's southeast passage, which milestone 2 left as a
+        // seam and milestone 3 built the room around: it is the only way into
+        // the Riddle Room, and through it the only way to the well, the Bank
+        // and everything above them. One-way in the source, and one-way here —
+        // the Riddle Room's own way back is down.
+        templeQuarter.engravingsCave.southeast(riddle.riddleRoom)
+        riddle.riddleRoom.down(templeQuarter.engravingsCave)
+
+        // The Pearl Room's east door onto the bottom of the well. The two ends
+        // are in different bundles, so the host joins them.
+        riddle.pearlRoom.east(alice.circularRoom)
+        alice.circularRoom.west(riddle.pearlRoom)
+
+        // The Gallery's west door into the Bank of Zork, which milestone 1
+        // left undeclared. The Gallery is a ``DungeonCellar`` room, and this is
+        // the whole of the Bank's frontage: nine rooms hang off one doorway.
+        cellar.gallery.west(bank.bankEntrance)
+        bank.bankEntrance.south(cellar.gallery)
 
         // The clockwork canary rides sealed inside the egg — one bundle's item
         // inside another's, so the host places it. Its broken twin waits
