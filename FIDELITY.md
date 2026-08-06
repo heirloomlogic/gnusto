@@ -1291,17 +1291,25 @@ contract).
 
 ### Known divergences
 
-- **`maxScore` is 691 — one ceiling where the original keeps two.** The mainframe
-  carries `SCORE-MAX` 591 (main dungeon) and `EG-SCORE-MAX` 100 (endgame), and
+- **`maxScore` is 716 — one ceiling where the original keeps two.** The mainframe
+  carries `SCORE-MAX` 616 (main dungeon) and `EG-SCORE-MAX` 100 (endgame), and
   `score` reports whichever region the player is standing in (`rooms.394`,
   `SCORE-BLESS`); the two are summed nowhere in the source. We sum them, because
   Gnusto models one `maxScore` and its bootstrap totals the `Scoring` award table
   against it — one ceiling makes that check earn its keep, two would need it
   disabled or worked around. The cost is cosmetic and known: a player who finishes
-  the main dungeon perfectly sees 591/691 where the original showed 591/591, and
+  the main dungeon perfectly sees 616/716 where the original showed 616/616, and
   the endgame then carries them the rest of the way rather than restarting at
   zero. Full reasoning in `docs/games/dungeon-atlas.md` ("What `Sources/Dungeon/`
   uses").
+- **`SCORE-MAX` is 616, and this file said 591 until #167.** The missing 25 are
+  the Royal Puzzle's gold card, which `dung.355:6324` declares inside
+  `<PUT <OBJECT …> ,OROOM <GET-ROOM "CP">>` instead of at top level.
+  `makstr.44:315` totals every `<OBJECT …>` call wherever the form sits, so the
+  card always counted; the reader that produced 591 — and anyone scanning that
+  file for top-level objects — did not. 616 is the figure mainframe Zork is
+  usually quoted at. Recorded here because the wrong number was published in this
+  repo, not because the original diverges.
 - **No 1981 MDL text is reproduced.** `THIRD_PARTY_NOTICES` records that the
   1981-07-22 MDL — the version this game reconstructs — reached the public through
   Bob Supnik's 2003 release rather than through MITDDC, and that no comparable
@@ -1311,9 +1319,9 @@ contract).
   The prose rule above is what keeps that true of the text: every line is either
   the MIT-licensed trilogy's or this project's own. That is a constraint the policy
   has to go on satisfying, not a coincidence it happens to satisfy today.
-- **`maxScore` ratchets while the game is being built.** 691 is the finished
+- **`maxScore` ratchets while the game is being built.** 716 is the finished
   figure; each milestone declares the ceiling its own content can pay, and the last
-  one lands on 691. The bootstrap's award-table check writes to standard error on
+  one lands on 716. The bootstrap's award-table check writes to standard error on
   every launch, so seven milestones of a deliberate mismatch would train everyone to
   ignore the one check that keeps the table honest. `Sources/Zork1/` set the
   precedent. Full reasoning in `docs/games/dungeon.md` ("The ceiling ratchets while
