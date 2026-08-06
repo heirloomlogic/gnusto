@@ -161,8 +161,10 @@ class Sources:
 
 # How MDL code reaches an object it did not declare in place: by id string.
 # `<SFIND-OBJ "DIAMO">` is the machine conjuring the diamond. Matching the form
-# rather than the bare id keeps `EGG` out of `EGG-SOLVE`.
-_OBJECT_LOOKUP = re.compile(r'\b(?:S?FIND-OBJ|GET-OBJ)\s+"([A-Z0-9]+)"')
+# rather than the bare id keeps `EGG` out of `EGG-SOLVE`. The id can be any
+# string `GET-OBJ` interns, punctuation included — `<SFIND-OBJ "#####">` is five
+# files' way of reaching the player's own body.
+_OBJECT_LOOKUP = re.compile(r'\b(?:S?FIND-OBJ|GET-OBJ)\s+"([^"]+)"')
 
 # Why a particular object is one nothing places. That is a fact about the source
 # rather than about its structure, so it is read by hand, once, and recorded here;
@@ -171,11 +173,15 @@ UNPLACED_NOTES = {
     "BUTTO": "a placeholder with no name, no description and no value. The comment "
     "above it in `dung.355` says it is kept only so that restoring a save file "
     "written by an older build still works.",
+    "!!!!!": "the same shape as `BUTTO` — no name, no description, no flag word, no "
+    "value — and declared immediately after it, under the same comment. Nothing "
+    "else in the source names it.",
 }
 
 PLACEMENT_LABELS = {
     "room": "In a room",
     "object": "Inside another object",
+    "global": "In every room whose `RGLOBAL` mask carries its bit",
     "code": "Named only by the game code",
     "nowhere": "Named nowhere but its own declaration",
 }
@@ -186,7 +192,7 @@ class Placement:
     """Where one object starts, and what says so."""
 
     kind: str  # a key of PLACEMENT_LABELS
-    where: str = ""  # the room or the containing object
+    where: str = ""  # the room, the containing object, or the `RGLOBAL` bit
     cites: tuple[str, ...] = ()  # file:line, for kind 'code'
 
     def cell(self) -> str:
@@ -195,6 +201,8 @@ class Placement:
             return f"`{self.where}`"
         if self.kind == "object":
             return f"in `{self.where}`"
+        if self.kind == "global":
+            return f"by `{self.where}`" if self.where else "every room"
         return "by code" if self.kind == "code" else "—"
 
     def detail(self, oid: str, placed: dict[str, Placement]) -> str:
@@ -205,6 +213,8 @@ class Placement:
         """
         if self.kind == "object":
             return " in ".join(chain(oid, placed))
+        if self.kind == "global":
+            return self.where or "(star bits — every room)"
         return self.where or ", ".join(self.cites) or "—"
 
 
@@ -213,11 +223,13 @@ def object_placements(
 ) -> tuple[dict[str, Placement], dict[str, str]]:
     """Say where every object starts, and on what evidence.
 
-    Four answers, because three do not fit the source. A room's contents list
+    Five answers, because fewer do not fit the source. A room's contents list
     places most objects. An object's contents list places the rest of the ones
     the file places at all — the egg in the nest, the canary in the egg — and
-    reading only rooms is what made those look unplaced. What neither list
-    mentions is either something the running game knows about, or nothing at all.
+    reading only rooms is what made those look unplaced. A global starts in no
+    one place at all: a bit in its declaration and a mask on the room put it in
+    every room that asks for it. What none of those mentions is either something
+    the running game knows about, or nothing at all.
 
     That last distinction is the one worth reporting and the one that cannot be
     inferred, so it is cited instead. The claim a citation supports is exactly
@@ -240,6 +252,12 @@ def object_placements(
                     unresolved.setdefault(oid, holder.id)
                 else:
                     holders.setdefault(oid, Placement(kind, holder.id))
+    for obj in objects:
+        # A contents list is the more specific claim, so the mask only answers
+        # for a global no list mentions. The dungeon master is both: `BDOOR`
+        # lists him, and `FDOOR`'s mask shows him from next door.
+        if obj.is_global:
+            holders.setdefault(obj.id, Placement("global", obj.bit))
 
     cites: dict[str, list[str]] = defaultdict(list)
     for path in code:
@@ -282,6 +300,80 @@ def placement_tally(
     for oid in sorted(placed):
         grouped[placed[oid].kind].append(oid)
     return {kind: (g, sum(value[o] for o in g)) for kind, g in grouped.items()}
+
+
+# --------------------------------------------------------------------- globals
+
+
+@dataclass(frozen=True)
+class Globals:
+    """Which rooms each `<GOBJECT …>` object is present in.
+
+    One reading of the shared scenery, for the document and for `--audit`, the
+    same reason `Exits` and `placement_tally` exist: two views of one walk, and
+    computing them separately is how they drift apart.
+
+    A mainframe global is one object many rooms share, and the sharing is a
+    bitmask and nothing more: `makstr.44:270` gives the object a bit, a room
+    carries `(RGLOBAL <sum of bits>)`, and `defs.171:38` tests one against the
+    other. Several objects can hold the same bit — the Royal Puzzle's four walls
+    do — so the bit, not the object, is what a room names.
+
+    `stars` are the globals declared `<GOBJECT <> …>`. `makstr.44:279` allocates
+    them a bit and adds it to `STAR-BITS`, which `defs.171:88` makes the default
+    value of the slot, so they are in every room whether it declares a mask or
+    not. They are held apart rather than given a room list of all 196.
+    """
+
+    by_bit: dict[str, list[str]]  # named bit -> the object ids sharing it
+    rooms: dict[str, list[str]]  # named bit -> the rooms whose mask carries it
+    stars: list[str]  # object ids present in every room
+    total_rooms: int
+    masked_rooms: int  # rooms that declare an `RGLOBAL` of their own
+
+    @property
+    def named(self) -> int:
+        """Globals reached by a named bit rather than by the star bits."""
+        return sum(len(g) for g in self.by_bit.values())
+
+    @property
+    def total(self) -> int:
+        return self.named + len(self.stars)
+
+
+def global_presence(rooms: list, objects: list) -> Globals:
+    """Read the globals and the room masks into one index.
+
+    A mask naming a bit nothing declares is a hard stop, the same rule
+    `exit_tally` applies to an unclassified edge: the Globals section would
+    otherwise publish a room list quietly short of the rooms whose bit went
+    unread, in a committed document.
+    """
+    by_bit: dict[str, list[str]] = defaultdict(list)
+    stars: list[str] = []
+    for o in sorted(objects, key=lambda x: x.id):
+        if not o.is_global:
+            continue
+        (by_bit[o.bit] if o.bit else stars).append(o.id)
+
+    where: dict[str, list[str]] = defaultdict(list)
+    for r in sorted(rooms, key=lambda x: x.id):
+        for bit in r.globals:
+            where[bit].append(r.id)
+    if stray := sorted(set(where) - set(by_bit)):
+        raise SystemExit(
+            f"`RGLOBAL` bits no <GOBJECT …> declares: {', '.join(stray)}\n"
+            "Every bit a room's mask names has to come from a global's "
+            "declaration. Publishing the mask without it would understate where "
+            "the globals carrying that bit are present."
+        )
+    return Globals(
+        dict(by_bit),
+        {b: where[b] for b in by_bit},
+        stars,
+        len(rooms),
+        sum(1 for r in rooms if r.globals),
+    )
 
 
 # ------------------------------------------------------------- cross-matching
@@ -714,13 +806,87 @@ def para(text: str, indent: str = "") -> str:
 
     Only for the paragraphs that interpolate a figure: a number that grows a
     digit would otherwise push a hand-wrapped line over on its own.
+
+    Hyphens are not break points here. Almost every hyphen in this document is
+    inside an identifier — `LOCAL-GLOBALS`, `EG-SCORE-MAX`, `WALL-ESWBIT` — and
+    breaking one splits the code span across two lines, where markdown renders it
+    with a space in the middle and the identifier stops being greppable.
     """
-    return textwrap.fill(text, 79, subsequent_indent=indent)
+    return textwrap.fill(text, 79, subsequent_indent=indent, break_on_hyphens=False)
 
 
 def truncate(text: str, n: int = 90) -> str:
     text = md_escape(text)
     return text if len(text) <= n else text[: n - 1] + "…"
+
+
+@dataclass(frozen=True)
+class SharedScenery:
+    """Each matched global set against how the trilogy states the same thing.
+
+    Both maps have the mechanism and state it from opposite ends. MDL gives the
+    object a bit and the room a mask; ZIL puts the object on one of two shelves —
+    `GLOBAL-OBJECTS` for everywhere, `LOCAL-GLOBALS` for somewhere — and names
+    the local ones in each room's `(GLOBAL …)` list. So a mainframe star global
+    should answer a trilogy `GLOBAL-OBJECTS` one, and a bit global a
+    `LOCAL-GLOBALS` one.
+
+    Two readings, computed together because they are one walk: the *shelf*, over
+    every matched global, and the *room*, over every place a matched global sits
+    in a room that is itself matched. The second is the thinner list and the
+    better check — it reaches presences the first knows nothing about, by an
+    independent route, exactly as the containment pass checks the name matcher.
+    """
+
+    shelves: list[tuple[str, ZilEntity, str, bool]]  # global, pair, reading, agrees
+    places: list[tuple[str, str, ZilEntity, bool]]  # room, global, pair, agrees
+
+    @staticmethod
+    def _tally(rows) -> Counter:
+        return Counter("agree" if r[-1] else "differ" for r in rows)
+
+    @property
+    def by_shelf(self) -> Counter:
+        return self._tally(self.shelves)
+
+    @property
+    def by_room(self) -> Counter:
+        return self._tally(self.places)
+
+
+def shared_scenery(
+    rooms: list, m: Matching, shared: Globals, zil: list[ZilEntity]
+) -> SharedScenery:
+    """Read both comparisons in one pass. See `SharedScenery`."""
+    shelf_of = {"GLOBAL-OBJECTS": "everywhere", "LOCAL-GLOBALS": "per-room"}
+    everywhere = set(shared.stars)
+
+    shelves = []
+    for oid in sorted(shared.stars + [o for g in shared.by_bit.values() for o in g]):
+        if not (z := m.objects.get(oid)):
+            continue
+        mine = "everywhere" if oid in everywhere else "per-room"
+        theirs = shelf_of.get(z.location, "an ordinary object")
+        shelves.append((oid, z, f"{mine} here, {theirs} there", mine == theirs))
+
+    zil_rooms = {z.id: z for z in zil if z.kind == "ROOM"}
+    places = []
+    for r in sorted(rooms, key=lambda x: x.id):
+        if not (zr := m.rooms.get(r.id)):
+            continue
+        listed = zil_rooms[zr.id].globals
+        # Only the globals a bit puts here. A star global is in this room by
+        # definition and in every other one too, so asking whether the trilogy
+        # also has it here answers nothing the shelf reading has not.
+        for oid in sorted(o for b in r.globals for o in shared.by_bit[b]):
+            z = m.objects.get(oid)
+            # Only a pair in the same game can be asked the question at all: a
+            # Zork II object is not absent from a Zork I room, it is elsewhere.
+            if not z or z.game != zr.game:
+                continue
+            here = z.id in listed or z.location == "GLOBAL-OBJECTS"
+            places.append((r.id, oid, z, here))
+    return SharedScenery(shelves, places)
 
 
 def audit(
@@ -730,6 +896,8 @@ def audit(
     placed: dict[str, Placement],
     unresolved: dict[str, str],
     exits: Exits,
+    shared: Globals,
+    scenery: SharedScenery,
 ) -> int:
     """Print every pairing and every placement so a human can check them. Writes
     nothing.
@@ -813,6 +981,32 @@ def audit(
     print(f"\n=== exits naming no declared room ({len(stranded)}) ===")
     for rid, e in stranded:
         print(f"  {rid:8s} {e.direction:8s} -> {e.dest or '(none)':24s} {e.kind}")
+
+    print(f"\n=== GLOBALS present in every room ({len(shared.stars)}) ===")
+    for oid in shared.stars:
+        print(f"  {oid:8s} {objs[oid].name}")
+    print(f"\n=== GLOBALS present by a named bit ({shared.named} over "
+          f"{len(shared.by_bit)} bits) ===")
+    for bit in sorted(shared.by_bit):
+        where = shared.rooms[bit]
+        print(f"  {bit:14s} {', '.join(shared.by_bit[bit])}")
+        print(f"  {'':14s} {len(where)} room(s): {', '.join(where) or '(none)'}")
+
+    shelf = scenery.by_shelf
+    print(f"\n=== GLOBALS on the same shelf as the trilogy's "
+          f"({len(scenery.shelves)} matched: {shelf['agree']} agree, "
+          f"{shelf['differ']} differ) ===")
+    for oid, z, reading, agrees in scenery.shelves:
+        print(f"  {'ok' if agrees else '!!':3s}{oid:8s} -> {z.id:24s} {z.game:9s}"
+              f" {reading}")
+
+    room = scenery.by_room
+    print(f"\n=== GLOBALS present in the same room as the trilogy's "
+          f"({len(scenery.places)} presences: {room['agree']} agree, "
+          f"{room['differ']} differ) ===")
+    for rid, oid, z, agrees in scenery.places:
+        print(f"  {'ok' if agrees else '!!':3s}{rid:8s} {oid:8s} -> {z.id:24s}"
+              f" {z.game}")
     return 0
 
 
@@ -844,8 +1038,10 @@ def main(argv: list[str] | None = None) -> int:
     matching = cross_reference(rooms, objects, zil)
     placed, unresolved = object_placements(rooms, objects, sources.mdl_code())
     exits = exit_tally(rooms)
+    shared = global_presence(rooms, objects)
+    scenery = shared_scenery(rooms, matching, shared, zil)
     if args.audit:
-        return audit(rooms, objects, matching, placed, unresolved, exits)
+        return audit(rooms, objects, matching, placed, unresolved, exits, shared, scenery)
 
     zil_for = matching.of
     swift = zork1_swift_index()
@@ -913,9 +1109,17 @@ def main(argv: list[str] | None = None) -> int:
         "",
         f"**`maxScore` = {score_max + eg_max}** — a single ceiling, the sum of both maxima.",
         "",
-        "The commonly cited \"616 points\" appears nowhere in this source, so it is not a",
-        f"candidate. The choice is between the original's two separate maxima"
-        f" ({score_max} and {eg_max},",
+        para(
+            f"`SCORE-MAX` comes to {score_max} — the figure mainframe Zork is usually"
+            " quoted at. 25 of those points are the Royal Puzzle's gold card, which"
+            ' `dung.355` declares inside `<PUT <OBJECT …> ,OROOM <GET-ROOM "CP">>`'
+            " rather than at top level, where a reader looking only at top-level forms"
+            " misses it. `makstr.44:315` totals every `<OBJECT …>` call wherever it"
+            " sits, so it counts."
+        ),
+        "",
+        f"The choice is between the original's two separate maxima ({score_max} and"
+        f" {eg_max},",
         "reported one at a time by `SCORE-BLESS` in `rooms.394`) and one combined figure.",
         f"**Decision: one ceiling of {score_max + eg_max}.**",
         "",
@@ -941,6 +1145,7 @@ def main(argv: list[str] | None = None) -> int:
         f"| Objects | {len(objects)} |",
         f"| — of them valued (treasures) | "
         f"{len([o for o in objects if o.find_value or o.case_value])} |",
+        f"| — of them global (`GOBJECT`) | {shared.total} |",
         "",
     ]
 
@@ -1033,8 +1238,14 @@ def main(argv: list[str] | None = None) -> int:
         "",
         "`OFVAL` is the score for first acquiring the object, `OTVAL` for depositing it",
         "in the trophy case. `OSIZE` is its weight against the carrying capacity.",
-        "**starts in** is the room or the object it begins inside; see Placement below",
-        f"for the {elsewhere} entries that are neither.",
+        "",
+        para(
+            "**starts in** is the room or the object it begins inside. A global begins"
+            " in no one place, so its cell names the `RGLOBAL` bit that carries it —"
+            " or says *every room*, for the ones the mask always has. See Globals"
+            f" below for which rooms those are, and Placement for the {elsewhere}"
+            " entries that are neither a place nor a bit."
+        ),
         "",
         "| id | name | OSIZE | OFVAL | OTVAL | starts in | trilogy | in `Sources/Zork1/` |",
         "|---|---|---:|---:|---:|---|---|---|",
@@ -1059,6 +1270,16 @@ def main(argv: list[str] | None = None) -> int:
             f" look unplaced, and it left {roomless} of the"
             f" {sum(pts for _, pts in tally.values())} points in object values sitting"
             " in entries that read as unreachable."
+        ),
+        "",
+        para(
+            f"The {len(tally['global'][0])} globals are the row that is not a place at"
+            " all: a bit in the declaration and a mask on the room put one object in"
+            f" many rooms at once. They carry {tally['global'][1]} points between"
+            " them, so the figures above are unmoved by them — the section they do"
+            " move is Coverage. A contents list is the more specific claim and wins"
+            " where both apply, which is why the dungeon master counts as starting in"
+            " `BDOOR` rather than here."
         ),
         "",
         "| Where an object starts | Objects | `OFVAL`+`OTVAL` |",
@@ -1104,6 +1325,79 @@ def main(argv: list[str] | None = None) -> int:
         for eid in unplaced:
             note = UNPLACED_NOTES.get(eid, "not looked into yet.")
             lines += [para(f"- `{eid}` — {note}", indent="  "), ""]
+
+    obj_name = {o.id: o.name for o in objects}
+    lines += [
+        "## Globals",
+        "",
+        para(
+            "One object many rooms share. `makstr.44:270` declares it"
+            " `<GOBJECT bit names adjectives description flags …>` — an ordinary"
+            " `<OBJECT …>` with one extra leading argument — and a room carries"
+            " `(RGLOBAL <sum of bits>)`. Presence is that and nothing more:"
+            " `defs.171:38` is `<ANDB bit <RGLOBAL room>>`. So the wall, the water"
+            " and the white house are each declared once and appear wherever their"
+            " bit is set."
+        ),
+        "",
+        para(
+            "This is the mechanism to reach for in place of a near-duplicate scenery"
+            " item per room. Several objects may share one bit — the Royal Puzzle's"
+            " four walls do — so what a room names is the bit, not the object."
+        ),
+        "",
+        para(
+            f"{len(shared.stars)} of the {shared.total}"
+            f" name no bit at all. `makstr.44:279` allocates one anyway and adds it to"
+            " `STAR-BITS`, which `defs.171:88` makes the *default* value of every"
+            f" room's mask — so those are present in all {shared.total_rooms} rooms"
+            " whether the room declares a mask or not. The rest share"
+            f" {len(shared.by_bit)} named bits between them, and"
+            f" {shared.masked_rooms} rooms declare one."
+        ),
+        "",
+        f"### Present in every room ({len(shared.stars)})",
+        "",
+        "| id | name |",
+        "|---|---|",
+        *(f"| `{oid}` | {md_escape(obj_name[oid])} |" for oid in shared.stars),
+        "",
+        f"### Present by a named bit ({shared.named} over {len(shared.by_bit)} bits)",
+        "",
+        "| bit | globals | rooms |",
+        "|---|---|---|",
+        *(
+            f"| `{bit}` | "
+            + ", ".join(f"`{o}` {md_escape(obj_name[o])}" for o in shared.by_bit[bit])
+            + " | "
+            + (", ".join(f"`{r}`" for r in shared.rooms[bit]) or "*none*")
+            + " |"
+            for bit in sorted(shared.by_bit)
+        ),
+        "",
+        para(
+            "The trilogy keeps the same mechanism and states it from the other end:"
+            " an object goes on the `GLOBAL-OBJECTS` shelf to be everywhere or the"
+            " `LOCAL-GLOBALS` shelf to be somewhere, and a ZIL room lists the local"
+            f" ones it wants as `(GLOBAL …)`. {len(scenery.shelves)} of the mainframe"
+            " globals pair with a trilogy object, and on which shelf they sit the two"
+            f" sources agree {scenery.by_shelf['agree']} times and differ"
+            f" {scenery.by_shelf['differ']}."
+        ),
+        "",
+        para(
+            "Room by room is the thinner list and the better check, because it reaches"
+            " presences the shelf reading knows nothing about, by an independent route."
+            " Where a mainframe room and a global carried into it are *both* paired,"
+            f" the trilogy carries the same global into the same room"
+            f" {scenery.by_room['agree']} times out of"
+            f" {len(scenery.places)} — the white house seen from all four sides of it"
+            " and from the forest, the well from top and bottom, the chute in the"
+            f" Slide Room. It contradicts {scenery.by_room['differ']}. `--audit`"
+            " prints both listings."
+        ),
+        "",
+    ]
 
     in_swift = sum(1 for r in rooms if norm(r.name) in swift)
     loose_rooms = len(rooms) - len(matching.rooms)
@@ -1157,17 +1451,18 @@ def main(argv: list[str] | None = None) -> int:
         "renamed, which the name cannot catch and the graph reaches only where enough of",
         "the map around them survived. So these are still floors, but much higher ones.",
         "",
+        para(
+            f"The object rows include the {shared.total} globals, since a"
+            " `<GOBJECT …>` is an `<OBJECT …>` with a bit and the trilogy shelves its"
+            " own globals as ordinary objects too. They pair badly on purpose: a"
+            " global tends to be called *wall* or *water*, which names several things"
+            " in each source, and the container pass cannot reach one because nothing"
+            " contains it."
+        ),
+        "",
         "## Open questions",
         "",
-        "1. **Objects declared `<GOBJECT …>` are not inventoried.** A mainframe global is",
-        "   one object a bitmask makes present in many rooms at once, and it is declared",
-        "   by a different form, which the reader skips. So the dungeon master, `MASTE`,",
-        "   is missing from the Objects table even though `BDOOR` lists him in its",
-        "   contents — the one contents entry naming no object this document knows,",
-        "   which `--audit` reports. Inventorying the globals would move every figure",
-        "   here and is its own piece of work.",
-        "",
-        "2. **`DEAD1` and `DEAD2` are named with their own description.** A mainframe",
+        "1. **`DEAD1` and `DEAD2` are named with their own description.** A mainframe",
         "   room is declared long description first, short name second: the maze rooms",
         "   give `,MAZEDESC ,SMAZEDESC`, in that order. These two give",
         "   `,DEADEND ,SDEADEND`, the other way round, so the atlas prints *\"You have",

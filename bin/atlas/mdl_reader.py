@@ -17,6 +17,7 @@ Used by `build_atlas.py`; see that file for how to run it.
 from __future__ import annotations
 
 import re
+from collections import defaultdict
 from dataclasses import dataclass, field
 
 # ---------------------------------------------------------------- MDL reader
@@ -141,9 +142,22 @@ class MdlRoom:
     description: str = ""
     name: str = ""
     exits: list[Exit] = field(default_factory=list)
+    # What starts here: the room's own contents list, plus anything that declared
+    # itself into the room with `<PUT <OBJECT …> ,OROOM …>` — the same `OROOM`
+    # slot, stated from the object's end. See `declared_into`.
     contents: list[str] = field(default_factory=list)
     flags: list[str] = field(default_factory=list)
     value: int = 0
+    # The bits of this room's `RGLOBAL` mask, by name. A global object is present
+    # here when its own bit is one of them — `defs.171:38` is the whole test,
+    # `<ANDB bit <RGLOBAL room>>`. The mask names bits, not objects, and several
+    # objects can share one, so resolving it needs the global index.
+    #
+    # Every room additionally carries the star bits whether it declares a mask or
+    # not: `defs.171:88` gives the slot `,STAR-BITS` as its default value, and
+    # `makstr.44:74` adds them again to a room that does declare one. That is not
+    # recorded here — it is a fact about all 196 rooms, not about this one.
+    globals: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -162,6 +176,15 @@ class MdlObject:
     # action contents props>, and `makstr.44` turns that sixth argument into the
     # runtime `OCONTENTS`, filling each member's `OCAN` back-pointer.
     contents: list[str] = field(default_factory=list)
+    # Which `RGLOBAL` bit makes this object present in a room, for an object
+    # declared `<GOBJECT …>`. `None` for an ordinary `<OBJECT …>`; the empty
+    # string for a *star* global, which is present in every room because the
+    # bit `makstr.44:279` allocates for it also joins `STAR-BITS`.
+    bit: str | None = None
+
+    @property
+    def is_global(self) -> bool:
+        return self.bit is not None
 
 
 def _strings(node) -> list[str]:
@@ -223,6 +246,12 @@ def direction(word: str) -> str:
 
 
 _SETG_FORMS = ("SETG", "PSETG")
+
+# The two forms that declare an object, each with the one thing that differs
+# between them: how far in its arguments start. `GOBJECT` wraps `OBJECT`
+# (`makstr.44:270`) with one extra leading argument — the `RGLOBAL` bit — and is
+# otherwise the same declaration, so one reader answers both.
+_DECLARES = {"OBJECT": 0, "GOBJECT": 1}
 
 # The forms an exit constant can be bound to. A `<SETG …>` holding anything else
 # is a description or a message, and no exit slot names one — filtering keeps the
@@ -338,9 +367,25 @@ def _constants(forms) -> dict[str, str]:
     return out
 
 
+def _declared_id(names) -> str:
+    """The id a declaration's names argument interns under.
+
+    `<GET-OBJ "…">` and `<GET-ROOM "…">` intern under the first name, so that
+    string *is* the id — including the three object ids that are nothing but
+    punctuation. `#####` is the cretin, the player's own body, which
+    `dung.355:1222` binds the PLAYER actor to and which four other files reach by
+    name; `!!!!!` and `*BUN*` are the parser's own placeholders. No rule
+    separates the first from the other two that does not also throw out `BUTTO`,
+    which is the same shape and has always been in the table, so all three are
+    read the same way.
+    """
+    strings = _strings(names) if isinstance(names, Form) else [names]
+    return str(strings[0]) if strings else ""
+
+
 def parse_mdl_dungeon(text: str) -> tuple[list[MdlRoom], list[MdlObject]]:
     rooms: list[MdlRoom] = []
-    objects: list[MdlObject] = []
+    objects: dict[str, MdlObject] = {}
 
     forms = read_forms(text)
     consts = _constants(forms)
@@ -363,6 +408,83 @@ def parse_mdl_dungeon(text: str) -> tuple[list[MdlRoom], list[MdlObject]]:
             return consts.get(node.lstrip(","))
         return None
 
+    def read_object(form: Form) -> None:
+        """`<OBJECT names adjs …>`, or `<GOBJECT bit names adjs …>` one slot on.
+
+        `GOBJECT` wraps `OBJECT` with one extra *leading* argument, so every
+        positional slot shifts by one and the rest of the reading is shared.
+
+        Redeclaration merges rather than duplicates. `GET-OBJ` interns by id
+        string, so `<GOBJECT DWINDOW ["WINDO"] …>` and the later
+        `<OBJECT ["WINDO"] …>` are one object declared twice — the kitchen
+        window, which is a global *and* the door between the Kitchen and the
+        house's east side. A later declaration overwrites the fields it states
+        and leaves the rest, which is what MDL itself does.
+        """
+        is_global = form.head() == "GOBJECT"
+        body = list(form[1 + _DECLARES[form.head()]:])
+        if not body:
+            return
+        oid = _declared_id(body[0])
+        if not oid:
+            return
+        obj = objects.setdefault(oid, MdlObject(id=oid))
+        if is_global:
+            # A named bit arrives as the atom naming it. The star case is
+            # `<GOBJECT <> …>`, and `<>` cannot tokenize as an atom — it reads as
+            # an empty form — so "not a string" is the whole test. `makstr.44:279`
+            # allocates those a bit too and adds it to STAR-BITS, which every room
+            # carries; the empty string records that the source names it nothing.
+            obj.bit = form[1] if isinstance(form[1], str) else ""
+        texts = [t for t in (resolve(x) for x in body[2:]) if t is not None]
+        if texts:
+            obj.name = texts[0]
+        for part in body[2:]:
+            if isinstance(part, Form):
+                if part.head() == "+":
+                    obj.flags = _flags(part)
+                elif part.kind == "(":
+                    props = _props(part)
+                    desc = resolve(props.get("ODESC1"))
+                    if desc:
+                        obj.description = desc
+                    obj.contents.extend(_contained(part))
+                    for key, attr in (
+                        ("OSIZE", "size"),
+                        ("OFVAL", "find_value"),
+                        ("OTVAL", "case_value"),
+                    ):
+                        if key in props:
+                            try:
+                                setattr(obj, attr, int(props[key]))
+                            except (TypeError, ValueError):
+                                pass
+            elif isinstance(part, str) and part.startswith(","):
+                obj.flags.extend(_flags(part))
+
+    # What an object declared `<PUT <OBJECT …> ,OROOM <GET-ROOM "CP">>` says
+    # about where it starts. That is the same `OROOM` slot a room's contents list
+    # fills, stated from the object's end, so it is folded into the room's
+    # contents below rather than carried separately — every consumer of a
+    # starting place then works on it unchanged. A room id nothing declares
+    # leaves its object unplaced, which `--audit` reports.
+    declared_into: dict[str, list[str]] = defaultdict(list)
+
+    # An object declaration is one wherever it sits, so this scan is over every
+    # form rather than the top-level ones. Five of the 254 are nested: the `IT`
+    # global inside `<SETG IT-OBJECT …>`, the parser's `*BUN*` inside
+    # `<SETG BUNCH-OBJ …>`, and the Royal Puzzle's slit, steel door and gold card
+    # inside the `<PUT …>` above. Depth-first over the top-level forms in order,
+    # so a redeclaration still merges in file order.
+    for form in walk(forms):
+        if form.head() in _DECLARES:
+            read_object(form)
+        elif form.head() == "PUT" and len(form) > 3 and form[2] == ",OROOM":
+            held = form[1]
+            if isinstance(held, Form) and held.head() in _DECLARES:
+                oid = _declared_id(held[1 + _DECLARES[held.head()]])
+                declared_into[_declared_id(form[3])].append(oid)
+
     for form in forms:
         if not isinstance(form, Form) or form.kind != "<":
             continue
@@ -376,11 +498,10 @@ def parse_mdl_dungeon(text: str) -> tuple[list[MdlRoom], list[MdlObject]]:
             body = list(form[1:])
             if not body:
                 continue
-            ids = body[0]
-            names = _strings(ids) if isinstance(ids, Form) else [ids]
-            if not names:
+            rid = _declared_id(body[0])
+            if not rid:
                 continue
-            room = MdlRoom(id=names[0])
+            room = MdlRoom(id=rid, contents=list(declared_into[rid]))
             texts = [t for t in (resolve(x) for x in body[1:]) if t is not None]
             if texts:
                 room.description = texts[0]
@@ -400,49 +521,15 @@ def parse_mdl_dungeon(text: str) -> tuple[list[MdlRoom], list[MdlObject]]:
                             except (TypeError, ValueError):
                                 pass
                         room.contents.extend(_contained(part))
+                        # `,HOUSEBIT`, or `<+ ,DWINDOW ,HOUSEBIT>`: one bit or a
+                        # sum of them, which `_flags` reads either way.
+                        if "RGLOBAL" in props:
+                            room.globals.extend(_flags(props["RGLOBAL"]))
                 elif isinstance(part, str) and part.startswith(","):
                     room.flags.extend(_flags(part))
             rooms.append(room)
 
-        elif head == "OBJECT":
-            body = list(form[1:])
-            if not body:
-                continue
-            ids = body[0]
-            names = _strings(ids) if isinstance(ids, Form) else [ids]
-            # MDL's ! splice syntax leaves a pseudo-id behind; not a real object.
-            names = [n for n in names if re.fullmatch(r"[A-Z0-9]+", n)]
-            if not names:
-                continue
-            obj = MdlObject(id=names[0])
-            texts = [t for t in (resolve(x) for x in body[2:]) if t is not None]
-            if texts:
-                obj.name = texts[0]
-            for part in body[2:]:
-                if isinstance(part, Form):
-                    if part.head() == "+":
-                        obj.flags = _flags(part)
-                    elif part.kind == "(":
-                        props = _props(part)
-                        desc = resolve(props.get("ODESC1"))
-                        if desc:
-                            obj.description = desc
-                        obj.contents.extend(_contained(part))
-                        for key, attr in (
-                            ("OSIZE", "size"),
-                            ("OFVAL", "find_value"),
-                            ("OTVAL", "case_value"),
-                        ):
-                            if key in props:
-                                try:
-                                    setattr(obj, attr, int(props[key]))
-                                except (TypeError, ValueError):
-                                    pass
-                elif isinstance(part, str) and part.startswith(","):
-                    obj.flags.extend(_flags(part))
-            objects.append(obj)
-
-    return rooms, objects
+    return rooms, list(objects.values())
 
 
 # ------------------------------------------------------------------ ZIL side
@@ -458,6 +545,10 @@ class ZilEntity:
     fdesc: str = ""  # first-sight description
     exits: list[Exit] = field(default_factory=list)
     location: str = ""  # the (IN …) room, for an object
+    # A room's `(GLOBAL a b c)` — the trilogy's answer to `RGLOBAL`, and the one
+    # place the two mechanisms line up. ZIL names the objects directly where MDL
+    # names bits, so no index is needed to read it.
+    globals: list[str] = field(default_factory=list)
 
 
 def _zil_exit(key: str, atoms: list[str]) -> Exit | None:
@@ -518,6 +609,9 @@ def parse_zil(text: str, game: str) -> list[ZilEntity]:
                 # On a room, (IN TO CELLAR) is the "in" exit — but (IN ROOMS)
                 # only files the room in the room table, and names no edge.
                 if key == "IN" and atoms == ["ROOMS"]:
+                    continue
+                if key == "GLOBAL":
+                    ent.globals = atoms
                     continue
                 edge = _zil_exit(key, atoms)
                 if edge:
