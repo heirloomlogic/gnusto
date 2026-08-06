@@ -126,6 +126,10 @@ struct DungeonDam: GameContent {
     /// un-break the pipe.
     @Global var floodLevel = 0
 
+    /// The mainframe's five matches. `MATCH` is one object with a count on
+    /// it, which is why the book itself lights rather than a separate flame.
+    @Global var matchesLeft = 5
+
     /// Whether the leak is still running. The daemon *is* the leak, so this
     /// asks it rather than keeping a second flag beside it — as `Zork1`'s dam
     /// does for the same button.
@@ -177,12 +181,18 @@ struct DungeonDam: GameContent {
         description(Prose.guidebook)
     }
 
+    /// The matchbook, and — as in the mainframe, where `MATCH` is one object
+    /// with a count on it — the match itself: lighting it lights the book in
+    /// your hand for two turns. Milestone 2 left it a readable object because
+    /// nothing yet needed a flame; the temple's candles do.
     let matchbook = Item {
         name("matchbook")
         adjectives("match")
-        synonyms("matches")
+        synonyms("matches", "match")
         firstSight(Prose.matchbookInPlace)
         description(Prose.matchbook)
+        lightSource
+        trait(.openFlame, true)
         trait(.weight, 2)
     }
 
@@ -594,6 +604,27 @@ struct DungeonDam: GameContent {
             try reply(Prose.blueButtonPush)
         }
 
+        // Striking a match. The source keeps the count on the matchbook and
+        // lights the book itself, so that is what happens here; the flame
+        // lasts two turns, and the candles it exists for are the temple's.
+        matchbook.before(.burn, .turnOn) {
+            // An item rule fires for the indirect object too, and the whole
+            // point of a match is to be named as one — so `burn candles with
+            // match` must reach the candles rather than light a second match.
+            guard command.directObject == matchbook, !matchbook.isLit else { return }
+            try require(matchesLeft > 0, else: Prose.matchesGone)
+            matchesLeft -= 1
+            matchbook.isLit = true
+            startFuse("matchBurnsOut", after: 2)
+            try reply(Prose.matchStrikes)
+        }
+        matchbook.before(.turnOff) {
+            guard matchbook.isLit else { return }
+            matchbook.isLit = false
+            stopFuse("matchBurnsOut")
+            try reply(Prose.matchIsOut)
+        }
+
         // The tube gives up its gunk when squeezed — the mainframe's own verb
         // for it, and the only way to get the putty into your hand.
         tube.before(.squeeze) {
@@ -622,6 +653,12 @@ struct DungeonDam: GameContent {
     // MARK: - Timers
 
     var timers: [TimedEvent] {
+        // A struck match lasts two turns.
+        fuse("matchBurnsOut", after: 2) {
+            matchbook.isLit = false
+            say(Prose.matchBurnsOut)
+        }
+
         // The rising water. One rung of the ladder each turn; when it goes over
         // the last of them the room is full, whoever is still in it drowns, and
         // the doors are shut for the rest of the game.

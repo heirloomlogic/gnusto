@@ -158,6 +158,16 @@ extension Prose {
         you earn your degree from GUE Tech, your future will be brighter.
         """
 
+    // MARK: - The matches
+
+    static let matchStrikes = "One of the matches starts to burn."
+
+    static let matchesGone = "I'm afraid that you have run out of matches."
+
+    static let matchIsOut = "The match is out."
+
+    static let matchBurnsOut = "The match has gone out."
+
     // MARK: - Maintenance Room
 
     /// Adapted. The trilogy's line is the skeleton; the mainframe keeps two

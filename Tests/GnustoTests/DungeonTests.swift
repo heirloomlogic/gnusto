@@ -57,6 +57,101 @@ struct DungeonTests {
     private static let toTheLoudRoom = pastTheTroll + crossroadsToTheLoudRoom
     private static let toTheDam = pastTheTroll + crossroadsToTheDam
 
+    /// Milestone 3's roads, spliced onto milestone 2's.
+    ///
+    /// The temple quarter is reached west out of the Deep Ravine; the mirror
+    /// network is reached by draining the reservoir and walking its bed; and
+    /// the coal mine hangs off the Slide Room past the northern Mirror Room.
+    /// Each is a road several tests need before they can get to what they are
+    /// about.
+
+    /// The descent with the attic rope in hand. The Attic is dark in this
+    /// game, so the lamp has to be lit before the stairs.
+    private static let intoTheCellarWithTheRope =
+        intoTheKitchen + [
+            "west", "take lamp", "take sword", "turn on lamp",
+            "east", "up", "take rope", "down", "west",
+            "push rug", "open trap door", "down",
+        ]
+
+    /// From the Troll Room to the rim of the dome, rope in hand.
+    private static let trollRoomToTheDome = [
+        "north", "down", "west", "east",
+    ]
+
+    /// Down the rope into the Torch Room, torch in hand.
+    private static let toTheTorchRoom =
+        intoTheCellarWithTheRope
+        + ["east", "attack troll with sword"]
+        + trollRoomToTheDome
+        + ["tie rope to railing", "down", "take torch"]
+
+    /// And out of it the only way there is: the staircase into milestone 1's
+    /// North-South Crawlway.
+    private static let fetchTheTorch = toTheTorchRoom + ["down"]
+
+    /// Charge the panel, pocket both tools, open the gates.
+    private static let openTheSluiceGates =
+        ["north", "north", "push yellow button", "take screwdriver", "take wrench"]
+        + ["south", "south", "turn bolt with wrench", "drop wrench"]
+
+    /// Reservoir South to the northern Mirror Room, over the drained bed and
+    /// up through Atlantis. The mirror network's only road on foot.
+    private static let acrossTheReservoirBed = [
+        "north", "north", "north", "up", "north",
+    ]
+
+    /// From the Dam to the northern Mirror Room: drain the reservoir, cross
+    /// its bed, climb out through Atlantis.
+    private static let damToTheMirrors =
+        fetchTheWrench + ["turn bolt with wrench", "drop wrench", "south", "northwest"]
+        + acrossTheReservoirBed
+
+    /// The house-to-mirror road, with the garlic and the matchbook picked up on
+    /// the way, because half of what milestone 3 does needs one or the other.
+    ///
+    /// Seed 11 throughout, recorded: the troll falls to the first blow.
+    private static let toTheMirrors =
+        intoTheKitchen + ["open sack", "take garlic"]
+        + downTheTrapDoor
+        + ["east", "attack troll with sword", "drop sword"]
+        + crossroadsToTheDam
+        + ["north", "take matchbook", "south"]
+        + damToTheMirrors
+
+    /// On through the mirror to the Temple, which in this game is not below the
+    /// Torch Room at all but above the Grail Room.
+    private static let toTheTemple = toTheMirrors + ["rub mirror", "north", "north", "up"]
+
+    /// And down to the gate of Hades with the ceremony's three pieces in hand.
+    private static let toTheGateOfHades =
+        toTheTemple
+        + [
+            "take bell", "east", "take book", "take candles",
+            "west", "west", "east", "south", "down",
+        ]
+
+    /// The whole road to the head of the shaft with the ivory torch in hand —
+    /// the light the bottom of the shaft needs, since the crack past the Timber
+    /// Room takes nothing carried and only the basket can bring one down.
+    private static let toTheShaftWithTheTorch =
+        fetchTheTorch + ["east"] + crossroadsToTheDam + openTheSluiceGates
+        + ["south", "northwest"] + acrossTheReservoirBed + mirrorsToTheShaft
+
+    /// From the northern Mirror Room to the Shaft Room at the head of the coal
+    /// mine's chain.
+    private static let mirrorsToTheShaft = ["west", "west", "north", "northeast"]
+
+    /// The thread through the seven-room coal maze, from the Wooden Tunnel to
+    /// the Timber Room. There is no trick to it but knowing it, which is the
+    /// puzzle.
+    private static let coalMazeToTheLadderBottom = [
+        "north", "northeast", "north", "northeast", "northwest", "down", "down",
+    ]
+
+    /// And on south into the Timber Room, at the head of the crack.
+    private static let throughTheCoalMaze = coalMazeToTheLadderBottom + ["south"]
+
     /// From the top of the dam: charge the panel, pick up the wrench, come
     /// back. Ends where it started.
     private static let fetchTheWrench = [
@@ -221,9 +316,9 @@ struct DungeonTests {
         expectInOrder(
             transcript,
             [
-                "Your score is 10 of a possible 116",
+                "Your score is 10 of a possible 265",
                 "Cellar",
-                "Your score is 35 of a possible 116",
+                "Your score is 35 of a possible 265",
             ])
     }
 
@@ -297,7 +392,7 @@ struct DungeonTests {
                 "Gallery",
                 "The vandals left through the north,",
                 "Taken.",
-                "Your score is 39 of a possible 116",
+                "Your score is 39 of a possible 265",
             ])
         #expect(!transcript.contains("nasty-looking troll"))
     }
@@ -351,7 +446,7 @@ struct DungeonTests {
                 "Forest",
                 "You have been killed once.",
                 // Thirty-five points earned, ten paid back to the troll.
-                "Your score is 25 of a possible 116",
+                "Your score is 25 of a possible 265",
             ])
     }
 
@@ -409,7 +504,7 @@ struct DungeonTests {
     @Test func theCeilingTotalsTheAwardTableExactly() throws {
         let (definition, _) = try Bootstrap.build(Dungeon())
 
-        #expect(definition.maxScore == 116)
+        #expect(definition.maxScore == 265)
         #expect(definition.warnings.isEmpty, "\(definition.warnings)")
     }
 
@@ -427,7 +522,7 @@ struct DungeonTests {
                 "Taken.",
                 "The egg is now open, but the clumsiness of your attempt has",
                 "the mainspring seems sprung",
-                "Your score is 5 of a possible 116",
+                "Your score is 5 of a possible 265",
             ])
     }
 
@@ -470,13 +565,13 @@ struct DungeonTests {
                 "Up a Tree",
                 "Kitchen",
                 "Living Room",
-                "Your score is 20 of a possible 116",
+                "Your score is 20 of a possible 265",
                 "Cellar",
                 "Gallery",
                 "Studio",
                 "Kitchen",
                 "Living Room",
-                "Your score is 56 of a possible 116",
+                "Your score is 56 of a possible 265",
             ])
     }
 
@@ -592,7 +687,7 @@ struct DungeonTests {
             transcript,
             [
                 "East-West Passage",
-                "Your score is 40 of a possible 116",
+                "Your score is 40 of a possible 265",
                 // North and down out of the passage are the same stair, and
                 // they reach a room Zork I does not have.
                 "Deep Ravine",
@@ -652,7 +747,7 @@ struct DungeonTests {
                 "Taken.",
                 // Five for the passage, twelve for the bar — and twelve is the
                 // mainframe's find value, where Zork I pays ten.
-                "Your score is 52 of a possible 116",
+                "Your score is 52 of a possible 265",
             ])
     }
 
@@ -905,16 +1000,16 @@ struct DungeonTests {
         expectInOrder(
             transcript,
             [
-                "Your score is 56 of a possible 116",
+                "Your score is 56 of a possible 265",
                 "The troll takes a fatal blow",
                 "Loud Room",
                 "The acoustics of the room change subtly.",
                 "You put the platinum bar in the trophy case.",
-                "Your score is 83 of a possible 116",
+                "Your score is 83 of a possible 265",
                 "The sluice gates open and water pours through the dam.",
                 "Lying half buried in the mud is an old trunk",
                 "You put the trunk of jewels in the trophy case.",
-                "Your score is 106 of a possible 116",
+                "Your score is 106 of a possible 265",
             ])
     }
 
@@ -975,5 +1070,579 @@ struct DungeonTests {
             seed: 11)
 
         expectEveryNounAnswered(transcript, "the reservoir and the stream")
+    }
+
+    // MARK: - Milestone 3: the temple, Hades, the mirrors and the coal mine
+
+    /// **The Temple hangs off the Grail Room, not the Torch Room.** Zork I
+    /// folds the whole quarter into one shaft — Torch Room down to Temple down
+    /// to Altar down to Hades. In the mainframe `TEMP1`'s only door is
+    /// `MGRAI`'s staircase, the Torch Room drops to a milestone-1 crawlway
+    /// instead, and the Altar is a dead end. Which is why this milestone builds
+    /// the Grail Room at all: without it the temple, the bell, the book and the
+    /// candles are unreachable, and so is the whole exorcism.
+    @Test func theTempleHangsOffTheGrailRoomAndNotTheTorchRoom() async throws {
+        let transcript = try await play(
+            Dungeon(), Self.toTheTemple + ["east", "west", "west", "down", "south"], seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "Grail Room",
+                "This is a small round chamber",
+                "Temple",
+                "This is the west end of a large temple",
+                "Altar",
+                "This is the east end of a large temple",
+                "Temple",
+                "Grail Room",
+                "You can't go that way.",
+                "You can't go that way.",
+            ])
+    }
+
+    /// **The Torch Room drops into the North-South Crawlway** — a milestone-1
+    /// room — and the drop is one way, because the rope hangs out of reach
+    /// above and the crawlway's own hole is unclimbable. Zork I runs the Torch
+    /// Room down into its Temple.
+    @Test func theTorchRoomDropsIntoAMilestoneOneCrawlway() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheTorchRoom + ["up", "down", "up"],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "The rope drops over the side and comes within ten feet of the floor.",
+                "Torch Room",
+                "An ivory torch, burning, is here.",
+                "You cannot reach the rope.",
+                "North-South Crawlway",
+                "Not even a human fly could get up it.",
+            ])
+    }
+
+    /// **The Rocky Crawl and the Deep Ravine both run west into each other.**
+    /// Not a transcription slip: `CRAW1` west is `RAVI1` and `RAVI1` west is
+    /// `CRAW1`, and the mainframe's map has several of these.
+    @Test func theRockyCrawlAndTheDeepRavineBothRunWest() async throws {
+        let transcript = try await play(
+            Dungeon(), Self.pastTheTroll + ["north", "down", "west", "west"], seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "Deep Ravine",
+                "Rocky Crawl",
+                "This is a crawlway with a ceiling three feet above the floor",
+                "Deep Ravine",
+            ])
+    }
+
+    /// **The gold coffin is three to find and seven to case**, where the
+    /// trilogy pays ten and fifteen — and it will not go through the crawl it
+    /// sits beside. The mainframe's `COFFIN-CURE` shuts every narrow way out of
+    /// this quarter while it is in your hands, which is why the staircase up to
+    /// the glacier is the way it leaves.
+    @Test func theCoffinWillNotFitThroughTheCrawlItSitsBeside() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.pastTheTroll
+                + ["north", "down", "west", "northwest", "take coffin", "east", "up"],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "Egyptian Room",
+                "The solid-gold coffin used for the burial of Ramses II is here.",
+                "Taken.",
+                "The passage is too narrow to accommodate coffins.",
+                "Glacier Room",
+            ])
+
+        let (definition, _) = try Bootstrap.build(Dungeon())
+        let coffin = try #require(
+            definition.items.values.first { $0.name == "gold coffin" })
+        #expect(coffin.customTraits["takeValue"] == .int(3))
+        #expect(coffin.customTraits["depositValue"] == .int(7))
+    }
+
+    /// **The coffin also shuts the narrow ways off the reservoir's south
+    /// shore.** Milestone 2 declared them plain because the Egyptian Room the
+    /// coffin starts in had not been built and the gate was vacuously open. It
+    /// is not any more.
+    @Test func theCoffinShutsTheReservoirShoresNarrowWays() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.pastTheTroll
+                + [
+                    "north", "down", "west", "northwest", "take coffin",
+                    "up", "north", "east", "south", "up",
+                ],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "Glacier Room",
+                "Stream View",
+                "Reservoir South",
+                "The coffin will not fit through this passage.",
+                "The stairs are too steep for you with your burden.",
+            ])
+    }
+
+    /// **Throwing the burning torch at the glacier opens the Ruby Room** — and
+    /// costs you the torch, which the flood carries off to Stream View, black
+    /// and out.
+    @Test func theTorchThrownAtTheGlacierOpensTheRubyRoomAndIsQuenched() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.fetchTheTorch
+                + [
+                    "east", "north", "down", "west", "northwest", "up",
+                    "west", "throw torch at glacier", "look",
+                    "west", "take ruby", "south", "north",
+                ],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "A mass of ice fills the western half of the room.",
+                "quenched, and black now",
+                "broad passage now opens westward",
+                "Ruby Room",
+                "There is a ruby here.",
+                "Taken.",
+                "Stream View",
+                "ivory torch",
+            ])
+    }
+
+    /// Holding a flame against the ice instead is the source's own wrong idea:
+    /// it drowns you, which is the reason the torch has to be thrown.
+    @Test func meltingTheGlacierByHandDrownsYou() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.fetchTheTorch
+                + ["east", "north", "down", "west", "northwest", "up"]
+                + ["melt glacier with torch"],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "Glacier Room",
+                "Part of the glacier melts, drowning you under a torrent of water.",
+            ])
+    }
+
+    /// **The exorcism, and the thirty points behind the gate.** Ring the bell,
+    /// relight the candles it made you drop, read the marked prayer. The Land of
+    /// the Living Dead carries a room value of 30 in the mainframe and holds
+    /// **no crystal skull** — that treasure, and the sceptre the trilogy puts in
+    /// the coffin, are both Zork I's inventions.
+    @Test func theExorcismOpensTheGateAndPaysThirty() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheGateOfHades
+                + [
+                    "east", "ring bell", "take candles", "light match",
+                    "burn candles with match", "read book", "east", "score",
+                ],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "The way through the gate is barred by evil spirits",
+                "Some invisible force prevents you from passing through the gate.",
+                "The bell suddenly becomes red hot and falls to the ground.",
+                "In your confusion, the candles drop to the ground (and they are out).",
+                "One of the matches starts to burn.",
+                "The candles are lighted.",
+                "The spirits cower at your unearthly power.",
+                "Begone, fiends!",
+                "Land of the Living Dead",
+                "Passages exit to the east and to the west.",
+            ])
+        #expect(!transcript.contains("crystal skull"))
+    }
+
+    /// The ceremony has a clock on it — six turns after the bell in the source,
+    /// three after the candles. Let either lapse and the wraiths come back.
+    @Test func theCeremonyLapsesIfItStalls() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheGateOfHades
+                + ["ring bell", "wait", "wait", "wait", "wait", "wait", "wait", "east"],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "The bell suddenly becomes red hot",
+                "The tension of this ceremony is broken",
+                "Some invisible force prevents you from passing through the gate.",
+            ])
+    }
+
+    /// The red-hot bell is a **reach** problem, not a per-verb one. The source
+    /// answers take, ring and everything else with one sentence; one
+    /// ``Item/reach(otherwise:)`` rule says it once and every verb the engine
+    /// gates on reach inherits it.
+    @Test func theRedHotBellIsOutOfReachRatherThanRefusedVerbByVerb() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheGateOfHades + ["ring bell", "take bell", "ring bell", "examine bell"],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "The bell suddenly becomes red hot",
+                "The bell is too hot to reach.",
+                "The bell is too hot to reach.",
+                "The bell glows a dull, angry red",
+            ])
+    }
+
+    /// **The southern Mirror Room is the lit one**, where Zork I lights the
+    /// northern; and rubbing a mirror trades the two rooms' floors along with
+    /// you, which is how anything too wide for a crawlway crosses the map.
+    @Test func theSouthernMirrorRoomIsLitAndRubbingTradesTheFloors() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheMirrors + ["drop garlic", "rub mirror", "turn off lamp", "look"],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "Mirror Room",
+                "There is a rumble from deep within the earth and the room shakes.",
+                "Mirror Room",
+                "There is a clove of garlic here.",
+            ])
+        #expect(!transcript.contains("pitch black"))
+    }
+
+    /// One blow breaks both mirrors, because they are two faces of one passage,
+    /// and nothing in the game mends them. The wreckage shows on every entry —
+    /// the rooms are ``alwaysDescribed`` — rather than only on a deliberate
+    /// `look`.
+    @Test func breakingTheMirrorKillsThePassageForGood() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheMirrors + ["attack mirror", "rub mirror", "north", "south", "attack mirror"],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "You have broken the mirror.",
+                "Unfortunately, the mirror has been destroyed by your recklessness.",
+                "Haven't you done enough already?",
+            ])
+    }
+
+    /// **The Winding Passage has one exit and the sound of another.** Zork I
+    /// gives it a north passage; the mainframe gives it a wall with the round
+    /// room's machinery behind it — a real declared exit that always refuses,
+    /// because the refusal is half the room.
+    @Test func theWindingPassageHearsTheRoundRoomAndCannotReachIt() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheMirrors + ["rub mirror", "west", "examine whirring", "north", "east"],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "Winding Passage",
+                "The only way out of it appears to be east",
+                "behind a wall with no door in it",
+                "You hear the whir from the round room but can find no entrance.",
+                "Mirror Room",
+            ])
+    }
+
+    /// **Praying at the Altar puts you in the forest with your hands still
+    /// full.** The mainframe's `PRAYER`, and the only way a gold coffin leaves
+    /// the dungeon without a climb.
+    @Test func prayingAtTheAltarLandsYouInTheForest() async throws {
+        let transcript = try await play(
+            Dungeon(), Self.toTheTemple + ["pray", "east", "pray"], seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "Temple",
+                "Nothing in particular answers.",
+                "Altar",
+                "the temple dissolves around you",
+                "Forest",
+            ])
+    }
+
+    /// **Without the garlic the bat carries you off** into the coal maze, and
+    /// the maze is where he leaves you. Holding it, he hangs in the corner
+    /// holding his nose instead — which is what makes the jade takeable.
+    @Test func theBatCarriesYouOffWithoutTheGarlic() async throws {
+        let carried = try await play(
+            Dungeon(),
+            Self.toTheMirrors + ["drop garlic", "west", "west", "north", "northwest", "west"],
+            seed: 11)
+
+        expectInOrder(
+            carried,
+            [
+                "Squeaky Room",
+                "A deranged giant vampire bat (a reject from WUMPUS) swoops down",
+                "Ladder Bottom",
+            ])
+        #expect(!carried.contains("Bat Room"))
+
+        let held = try await play(
+            Dungeon(),
+            Self.toTheMirrors + ["west", "west", "north", "northwest", "west", "take jade"],
+            seed: 11)
+
+        expectInOrder(
+            held,
+            [
+                "Bat Room",
+                "You are in a small room which has a door only to the east.",
+                "obviously deranged and holding his nose",
+                "There is an exquisite jade figurine here.",
+                "Taken.",
+            ])
+    }
+
+    /// **The Gas Room is a dead end off the Wooden Tunnel**, not a door into the
+    /// maze as it is in Zork I — and a struck match in it is the last thing you
+    /// do.
+    @Test func theGasRoomIsADeadEndAndAFlameInItIsFatal() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheMirrors + Self.mirrorsToTheShaft
+                + ["north", "west", "down", "take bracelet", "east", "light match"],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "Wooden Tunnel",
+                "Smelly Room",
+                "Gas Room",
+                "short climb up some stairs",
+                "A sapphire-encrusted bracelet lies here.",
+                "Taken.",
+                "You can't go that way.",
+                "adventurers are stupid enough to light a flame",
+                "** BOOOOOOOOOOOM **",
+            ])
+    }
+
+    /// **The coal maze is seven rooms with one name and one description.** Zork
+    /// I cut it to four. Nothing tells them apart but the thread through them.
+    @Test func theCoalMazeIsSevenRoomsUnderOneName() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheMirrors + Self.mirrorsToTheShaft + Self.throughTheCoalMaze,
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "Coal Mine", "Coal Mine", "Coal Mine", "Coal Mine",
+                "Ladder Top", "Ladder Bottom", "Timber Room",
+            ])
+
+        let (definition, _) = try Bootstrap.build(Dungeon())
+        #expect(definition.locations.values.filter { $0.name == "Coal Mine" }.count == 7)
+    }
+
+    /// **The crack takes nothing carried in the hands**, either way round — a
+    /// pair of conditional exits, as in the source, rather than a rule. Which is
+    /// why the basket on the chain and not your arms is what gets the coal, the
+    /// light and the screwdriver to the bottom of the shaft.
+    @Test func theCrackAdmitsNothingCarried() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheShaftWithTheTorch + ["put torch in basket", "lower basket"]
+                + Self.throughTheCoalMaze
+                + ["southwest", "drop all", "southwest", "northeast"],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "Timber Room",
+                "You cannot fit through this passage with that load.",
+                "brass lantern: Dropped.",
+                "Lower Shaft",
+                "Timber Room",
+            ])
+    }
+
+    /// **`LIGHT-SHAFT`: ten points, once, for standing at the bottom of the
+    /// shaft with light.** An event award and not a room value — a room value
+    /// would pay out to anybody who stumbled in in the dark, which is the
+    /// opposite of the puzzle. The light has to arrive in the basket, because
+    /// the crack takes nothing carried.
+    @Test func theBasketCarriesTheLightDownAndTheShaftPaysTen() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheShaftWithTheTorch
+                + ["put torch in basket", "lower basket", "raise basket", "lower basket"]
+                + Self.throughTheCoalMaze
+                + ["southwest", "score", "drop all", "southwest", "score"],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "The basket is lowered to the bottom of the shaft.",
+                "The basket is raised to the top of the shaft.",
+                "The basket is lowered to the bottom of the shaft.",
+                "Timber Room",
+                "Your score is 54 of a possible 265",
+                "Lower Shaft",
+                "In the basket is an ivory torch.",
+                "Your score is 64 of a possible 265",
+            ])
+    }
+
+    /// **Coal shut in the machine and its switch thrown becomes a diamond** —
+    /// ten to find and **six** to case, where the trilogy pays ten. The switch
+    /// takes the screwdriver and nothing else, and an open lid does nothing at
+    /// all.
+    @Test func theMachineTurnsCoalIntoADiamond() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheShaftWithTheTorch
+                + Self.coalMazeToTheLadderBottom
+                + [
+                    "northeast", "take coal", "south", "up", "up", "east", "east", "south",
+                    "put coal in basket", "put screwdriver in basket",
+                    "put torch in basket", "lower basket",
+                ]
+                + Self.throughTheCoalMaze
+                + [
+                    "southwest", "drop all", "southwest", "take coal", "take screwdriver",
+                    "take torch", "east",
+                    "turn switch", "open machine", "turn switch with screwdriver",
+                    "put coal in machine", "close machine",
+                    "turn switch with screwdriver", "open machine", "take diamond",
+                ],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "Machine Room",
+                "which is closed.",
+                "It's not clear how to turn it on with your bare hands.",
+                "Opened.",
+                "The machine doesn't seem to want to do anything.",
+                "The machine comes to life (figuratively)",
+                "huge diamond",
+                "Taken.",
+            ])
+    }
+
+    /// The prayer at the Altar is not a curiosity, it is the **route**: it puts
+    /// you above ground with your hands still full, which is how the temple
+    /// quarter's treasures reach the trophy case at all — the trap door bars
+    /// itself and the Studio chimney takes the lamp and one other thing.
+    ///
+    /// Two of milestone 3's eight treasures, found and cased, proving both
+    /// halves of their mainframe values: the crystal trident (4+11) and the
+    /// grail (2+5), which the trilogy does not carry at all.
+    @Test func theAltarPrayerCarriesTreasureUpToTheTrophyCase() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheMirrors
+                + ["east", "down", "take trident", "up", "north"]
+                + ["rub mirror", "north", "north", "take grail", "up", "east"]
+                + ["score", "pray", "south", "north", "east", "west", "west"]
+                + ["open case", "put trident in case", "put grail in case", "score"],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "On the shore lies Poseidon's own crystal trident.",
+                "On the pedestal is a grail.",
+                "Your score is 46 of a possible 265",
+                "the temple dissolves around you",
+                "Forest",
+                "Living Room",
+                "Your score is 62 of a possible 265",
+            ])
+    }
+
+    // MARK: - Milestone 3: every printed noun answers
+
+    @Test func everyNounTheDomeAndTheEgyptianRoomPrintAnswers() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.intoTheCellarWithTheRope
+                + ["east", "attack troll with sword"]
+                + [
+                    "north", "down", "west", "examine rock",
+                    "east", "examine railing", "examine dome",
+                    "tie rope to railing", "down",
+                    "examine pedestal", "examine doorway", "examine torch",
+                    "down", "east", "north", "down", "west",
+                    "northwest", "examine coffin", "examine staircase", "examine doors",
+                    "up", "examine glacier",
+                ],
+            seed: 11)
+
+        expectEveryNounAnswered(transcript, "the dome, the Torch Room and the Egyptian Room")
+    }
+
+    @Test func everyNounTheTempleAndHadesPrintAnswers() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheMirrors + ["rub mirror", "north", "north"]
+                + [
+                    "examine pedestal", "examine stairs", "examine grail",
+                    "up", "examine inscription", "examine granite wall", "examine pillars",
+                    "examine bell",
+                    "east", "examine altar", "examine book", "examine candles",
+                    "west", "west", "east", "south", "down",
+                    "examine gate", "examine spirits", "examine bodies",
+                ],
+            seed: 11)
+
+        expectEveryNounAnswered(transcript, "the Grail Room, the Temple and the gate of Hades")
+    }
+
+    @Test func everyNounTheMirrorsAndTheMinePrintAnswers() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheMirrors
+                + [
+                    "examine mirror", "examine ceiling",
+                    "west", "examine corridor",
+                    "west", "examine granite wall", "examine slide",
+                    "north", "examine entrances",
+                    "northwest", "examine sounds",
+                    "west", "examine bat", "examine jade",
+                    "east", "south", "northeast", "examine chain", "examine basket",
+                    "north", "examine beams",
+                    "west", "examine odor",
+                    "down", "examine gas", "examine bracelet",
+                    "up", "east", "northeast", "examine coal",
+                ],
+            seed: 11)
+
+        expectEveryNounAnswered(transcript, "the mirror network and the coal mine")
     }
 }

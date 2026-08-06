@@ -35,10 +35,18 @@ struct Dungeon: Game, GameMain {
     /// value (5), the platinum bar (12+10) and the trunk of jewels (15+8). A
     /// perfect playthrough of the two together scores **106**.
     ///
+    /// Milestone 3 adds 149, all of it walkable too: the Land of the Living
+    /// Dead's room value (30), the `LIGHT-SHAFT` award (10), and eight
+    /// treasures — the ivory torch (14+6), the gold coffin (3+7), the grail
+    /// (2+5), the ruby (15+8), the crystal trident (4+11), the jade figurine
+    /// (5+5), the sapphire bracelet (5+3) and the huge diamond (10+6). A
+    /// perfect playthrough of the three together scores **255**; the ten still
+    /// missing are milestone 1's canary and bauble, which wait on the thief.
+    ///
     /// Why the ceiling moves at all, and what may be declared ahead of its
     /// route: `docs/games/dungeon.md`, "The ceiling ratchets while the game is
     /// being built", and the matching `FIDELITY.md` entry.
-    let maxScore = 116
+    let maxScore = 265
 
     let intro = Prose.intro
 
@@ -53,6 +61,9 @@ struct Dungeon: Game, GameMain {
         text.alreadyHave = "You already have that!"
         text.didntUnderstand = "That sentence isn't one I recognize."
         text.nothingToTakeHere = "There's nothing here you can take."
+        // The basket carrying the only light down the shaft darkens a room the
+        // way turning a lamp off does, so the two say the same sentence.
+        text.nowDark = Prose.itIsNowPitchBlack
         return text
     }
 
@@ -61,6 +72,9 @@ struct Dungeon: Game, GameMain {
     let cellar = DungeonCellar()
     let crossroads = DungeonRoundRoom()
     let dam = DungeonDam()
+    let templeQuarter = DungeonTemple()
+    let mirrors = DungeonMirror()
+    let mine = DungeonCoalMine()
 
     /// The grue: this game's prose, the plugin's stock warn-then-kill schedule.
     let dangerousDark = DangerousDark(
@@ -73,15 +87,17 @@ struct Dungeon: Game, GameMain {
     /// Treasure values are declared on the items instead, as
     /// `.takeValue`/`.depositValue`, and summed from the world.
     ///
-    /// `LIGHT-SHAFT` belongs in this table and is not in it yet — it is an
-    /// `awardOnce` register worth 10, and the coal-mine milestone adds it with
-    /// the 10 points it puts on ``maxScore``. Why an event award and not a room
-    /// value: `docs/games/dungeon.md`, "The ceiling ratchets".
+    /// `LIGHT-SHAFT` lands here with the coal mine. It is an event award and
+    /// not a room value, because a room value would pay out to anybody who
+    /// stumbled into the Lower Shaft in the dark, which is the opposite of the
+    /// puzzle: `docs/games/dungeon.md`, "The ceiling ratchets".
     let scoring = Scoring(
         awards: [
             "kitchen": 10,
             "cellar": 25,
             "eastWestPassage": 5,
+            "landOfTheLivingDead": 30,
+            "lightShaft": 10,
         ])
 
     let melee = MeleeCombat()
@@ -95,12 +111,21 @@ struct Dungeon: Game, GameMain {
     /// How many times the player has died.
     @Global var deaths = 0
 
+    /// Whether the Lower Shaft has paid its ten points yet. `awardOnce` is
+    /// idempotent, but it reads its claimed-register set through a JSON box,
+    /// and the rule that calls it runs every turn the player stands down
+    /// there — so a plain `Bool` guards it.
+    @Global var lightShaftPaid = false
+
     var content: GameContents {
         aboveGround
         house
         cellar
         crossroads
         dam
+        templeQuarter
+        mirrors
+        mine
         dangerousDark
         scoring
         melee
@@ -154,6 +179,30 @@ struct Dungeon: Game, GameMain {
         [
             aboveGround.egg, house.canary, house.bauble, cellar.painting,
             crossroads.platinumBar, dam.trunk,
+            templeQuarter.ivoryTorch, templeQuarter.coffin, templeQuarter.grail,
+            templeQuarter.ruby, mirrors.crystalTrident,
+            mine.jade, mine.sapphireBracelet, mine.diamond,
+        ]
+    }
+
+    /// Every passage out of the Round Room this game has built, and where each
+    /// of them goes once the machinery under the floor has been stopped.
+    ///
+    /// The source has nine. Eight of them are built, and they reach four
+    /// different bundles — which is why the carousel lives here rather than in
+    /// ``DungeonRoundRoom``: the map loops over this list, the draw rolls
+    /// against its length, and the `before(.go)` rule guards on it. The ninth,
+    /// southwest into the maze, is the last seam left in the room.
+    private var carouselExits: [(Direction, Location)] {
+        [
+            (.west, crossroads.eastWestPassage),
+            (.northwest, crossroads.deepCanyon),
+            (.northeast, crossroads.nsPassage),
+            (.north, templeQuarter.engravingsCave),
+            (.south, templeQuarter.engravingsCave),
+            (.east, templeQuarter.grailRoom),
+            (.southeast, mirrors.windingPassage),
+            (.out, mirrors.coldPassage),
         ]
     }
 
@@ -165,6 +214,143 @@ struct Dungeon: Game, GameMain {
         scoring.visit(house.kitchen, register: "kitchen")
         scoring.visit(house.cellar, register: "cellar")
         scoring.visit(crossroads.eastWestPassage, register: "eastWestPassage")
+        scoring.visit(templeQuarter.landOfTheLivingDead, register: "landOfTheLivingDead")
+
+        // The carousel. One draw per attempt, taken at stage 3 so the exit
+        // lookup that follows reads a settled answer — the mainframe's
+        // `CAROUSEL-OUT`. Guarded to the built passages, so the one direction
+        // whose far side is a later milestone's (southwest, into the maze) gets
+        // the plain "You can't go that way" of the seam convention rather than
+        // being told the room turned under it and then refused anyway.
+        crossroads.roundRoom.before(.go) {
+            guard crossroads.carouselSpinning, let heading = command.direction else { return }
+            let exits = carouselExits
+            guard exits.contains(where: { $0.0 == heading }) else { return }
+            crossroads.carouselTwist = random(0...(exits.count - 1))
+            say(Prose.roundRoomNoBearings)
+        }
+
+        // `LIGHT-SHAFT`: ten points, once, for standing at the bottom of the
+        // shaft with light. The source pays it from `NO-OBJS`, which runs on
+        // every action taken in the room rather than on arrival — because the
+        // usual way to earn it is to arrive in the dark and then raise the
+        // basket you sent down ahead of you with the torch in it.
+        mine.lowerShaft.afterEachTurn {
+            guard !lightShaftPaid, player.location.isLit else { return }
+            lightShaftPaid = true
+            scoring.awardOnce("lightShaft")
+        }
+
+        // The rope over the dome's railing. The rope is a ``DungeonHouse``
+        // item and the railing a ``DungeonTemple`` fixture, so the host owns
+        // the knot.
+        house.rope.before(.tie) {
+            guard command.directObject == house.rope else { return }
+            try require(
+                player.location == templeQuarter.domeRoom
+                    && (command.indirectObject == nil
+                        || command.indirectObject == templeQuarter.railing),
+                else: Prose.ropeNeedsRailing)
+            try require(!templeQuarter.ropeTiedToRailing, else: Prose.ropeCarriesNothing)
+            templeQuarter.ropeTiedToRailing = true
+            try reply(Prose.ropeTiedToRailing)
+        }
+        house.rope.before(.untie) {
+            guard templeQuarter.ropeTiedToRailing else { return }
+            templeQuarter.ropeTiedToRailing = false
+            try reply(Prose.ropeUntiedFromRailing)
+        }
+        house.rope.before(.take) {
+            guard templeQuarter.ropeTiedToRailing else { return }
+            templeQuarter.ropeTiedToRailing = false
+            say(Prose.ropeUntiedFromRailing)
+        }
+        templeQuarter.railing.before(.tie) {
+            try require(
+                command.indirectObject == house.rope || command.directObject == house.rope,
+                else: Prose.ropeCarriesNothing)
+        }
+
+        // Praying at the altar. The mainframe answers a prayer said in the
+        // Altar and nowhere else, and the answer is the forest above ground —
+        // a ``DungeonAboveGround`` room, so the host owns it. It is also the
+        // one way the gold coffin leaves the dungeon without a climb. Anywhere
+        // else the stub's own line stands; ``DungeonSystems`` owns that.
+        templeQuarter.altar.before(.pray) {
+            player.location = aboveGround.forestDeep
+            say(Prose.prayerAnswered)
+            describeSurroundings()
+            try reply("")
+        }
+
+        // Lighting the candles. They need a live flame named, and the two the
+        // game has are a struck match — which lights them — and the ivory
+        // torch, which does not: it vaporises them.
+        templeQuarter.candles.before(.burn, .turnOn) {
+            guard command.directObject == templeQuarter.candles else { return }
+            try require(!templeQuarter.candlesBurnedOut, else: Prose.candlesSpent)
+            let flame = command.indirectObject
+            if flame == templeQuarter.ivoryTorch, !templeQuarter.torchBurnedOut {
+                try require(
+                    !templeQuarter.candles.isLit, else: Prose.candlesAlreadyLitNearTorch)
+                templeQuarter.candles.vanish()
+                try reply(Prose.candlesVaporised)
+            }
+            guard !templeQuarter.candles.isLit else { try reply(Prose.candlesAlreadyLit) }
+            let match = dam.matchbook
+            try require(
+                flame == nil ? match.isLit : flame == match && match.isLit,
+                else: Prose.candlesNeedFlame)
+            templeQuarter.lightCandles()
+            try reply(Prose.candlesLit)
+        }
+
+        // The glacier. Throwing the burning torch at it brings the ice down and
+        // the flood carries the torch away to Stream View — a ``DungeonDam``
+        // room, which is why this one rule is not in the temple bundle with the
+        // rest of the glacier.
+        templeQuarter.glacier.before(.throwAt) {
+            guard command.directObject == templeQuarter.ivoryTorch else { return }
+            try require(!templeQuarter.torchBurnedOut, else: Prose.glacierUnmoved)
+            templeQuarter.glacierMelted = true
+            templeQuarter.torchBurnedOut = true
+            templeQuarter.ivoryTorch.isLit = false
+            templeQuarter.ivoryTorch.move(to: dam.streamView)
+            try reply(Prose.glacierMeltsAwayTheTorch)
+        }
+
+        // The bat. It reads the garlic, which is a ``DungeonHouse`` item, and
+        // drops you anywhere in the coal maze — the source's `BAT-DROPS`, all
+        // seven mine rooms and both ends of the ladder.
+        mine.batRoom.onEnter {
+            guard !player.inventory.contains(house.garlic) else {
+                mine.bat.reveal()
+                return
+            }
+            // No `describeSurroundings()` here: `onEnter` runs *before* the
+            // arrival description, so moving the player is enough — the engine
+            // then describes wherever the bat put them, in full, once.
+            let drops = mine.batDrops
+            say(Prose.batGrabsYou)
+            player.location = drops[random(0...(drops.count - 1))]
+        }
+
+        // The machine's switch, thrown with the screwdriver — a ``DungeonDam``
+        // item. Coal shut in the machine becomes a diamond; anything else
+        // becomes slag, and an open lid does nothing at all.
+        mine.machineSwitch.before(.turnWith) {
+            try require(command.indirectObject == dam.screwdriver, else: Prose.switchWrongTool)
+            try require(!mine.machine.isOpen, else: Prose.machineDoesNothing)
+            let load = mine.machine.contents
+            guard !load.isEmpty else { try reply(Prose.machineRuns) }
+            for item in load { item.vanish() }
+            if load.contains(mine.coal) {
+                mine.diamond.move(inside: mine.machine)
+            } else {
+                mine.slag.move(inside: mine.machine)
+            }
+            try reply(Prose.machineRuns)
+        }
 
         // The chimney. The mainframe lets you up it with the lamp and at most
         // one other thing, and refuses the climb empty-handed outright. The
@@ -281,13 +467,86 @@ struct Dungeon: Game, GameMain {
         dam.damRoom.south(crossroads.deepCanyon)
         crossroads.dampCave.east(dam.damRoom)
         dam.damRoom.east(crossroads.dampCave)
-        crossroads.deepCanyon.northwest(dam.reservoirSouth)
-        dam.reservoirSouth.up(crossroads.deepCanyon)
 
-        // The Deep Ravine's staircase down onto the reservoir's south shore,
-        // and the stone steps back up to it.
-        crossroads.deepRavine.down(dam.reservoirSouth)
-        dam.reservoirSouth.south(crossroads.deepRavine)
+        // The four narrow ways in and out of the reservoir's south shore, each
+        // of them shut while the gold coffin is in your hands. The source's
+        // `COFFIN-CURE`, and milestone 2 declared them plain because the
+        // Egyptian Room the coffin starts in had not been built yet — so the
+        // gate was vacuously open. It is not any more.
+        crossroads.deepCanyon.northwest(
+            dam.reservoirSouth, when: { templeQuarter.coffinIsStowed },
+            otherwise: Prose.coffinTooHeavyForPassage)
+        dam.reservoirSouth.up(
+            crossroads.deepCanyon, when: { templeQuarter.coffinIsStowed },
+            otherwise: Prose.coffinTooHeavyForStairs)
+        crossroads.deepRavine.down(
+            dam.reservoirSouth, when: { templeQuarter.coffinIsStowed },
+            otherwise: Prose.coffinTooHeavyForStairs)
+        dam.reservoirSouth.south(
+            crossroads.deepRavine, when: { templeQuarter.coffinIsStowed },
+            otherwise: Prose.coffinTooWideForRavine)
+
+        // The Round Room's carousel. Eight of the source's nine passages are
+        // built; the ninth, southwest into the maze, is a seam. Each is a
+        // *dynamic* exit rather than a plain one, because while the machinery
+        // turns the direction you take has nothing to do with where you come
+        // out. Travelling through the exit rather than assigning
+        // `player.location` is what keeps the East-West Passage's five points
+        // payable: they are an `onEnter` award, and only `enter()` runs those.
+        let exits = carouselExits
+        for (heading, destination) in exits {
+            crossroads.roundRoom.exit(
+                heading,
+                toward: {
+                    // A read, not a roll: a dynamic exit's closure may be asked
+                    // more than once in a turn, and `FOLLOW` asks all eight.
+                    crossroads.carouselSpinning
+                        ? exits[crossroads.carouselTwist % exits.count].1 : destination
+                })
+        }
+
+        // The Deep Ravine's west crawl, which milestone 2 left as a seam: it
+        // is the way into the temple quarter, and it runs **west from both
+        // ends** — the mainframe's own doubling, not a transcription slip.
+        crossroads.deepRavine.west(templeQuarter.rockyCrawl)
+        templeQuarter.rockyCrawl.west(crossroads.deepRavine)
+
+        // The Torch Room's staircase down into the North-South Crawlway. One
+        // way only: that crawlway's own `up` is already blocked, so the drop
+        // out of the dome is a drop out of the whole quarter.
+        templeQuarter.torchRoom.down(cellar.crawlway)
+
+        // The Grail Room's two passages, and the Engravings Cave's one. All
+        // three cross a bundle, and two of them are Round Room passages the
+        // carousel above has already claimed.
+        templeQuarter.grailRoom.west(crossroads.roundRoom)
+        templeQuarter.grailRoom.east(mirrors.narrowCrawlway)
+        mirrors.narrowCrawlway.north(templeQuarter.grailRoom)
+        templeQuarter.engravingsCave.north(crossroads.roundRoom)
+
+        // Stream View's path north to the Glacier Room, milestone 2's other
+        // seam — and the way the gold coffin leaves the Egyptian Room, since
+        // every other passage out of that quarter is too narrow for it.
+        templeQuarter.glacierRoom.north(dam.streamView)
+        dam.streamView.north(templeQuarter.glacierRoom)
+
+        // The southern Cave's dark, forbidding staircase down to the gate of
+        // Hades, and the climb back.
+        mirrors.caveSouth.down(templeQuarter.entranceToHades)
+        templeQuarter.entranceToHades.up(mirrors.caveSouth)
+
+        // Reservoir North's tunnel to the Atlantis Room — milestone 2's third
+        // seam, and the only way into the mirror network on foot.
+        mirrors.atlantisRoom.southeast(dam.reservoirNorth)
+        dam.reservoirNorth.north(mirrors.atlantisRoom)
+
+        // The Slide Room. Its chute drops one-way into the Cellar — the
+        // source's slide becomes a rope-climb down the coal chute once a timber
+        // has been tied at the top, and those five rooms are a later
+        // milestone's — and its small opening north is the mine.
+        mirrors.slideRoom.down(house.cellar)
+        mirrors.slideRoom.north(mine.mineEntrance)
+        mine.mineEntrance.south(mirrors.slideRoom)
 
         // The clockwork canary rides sealed inside the egg — one bundle's item
         // inside another's, so the host places it. Its broken twin waits

@@ -148,6 +148,12 @@ Two consequences worth stating.
   M2 adds 50 — the East-West Passage's room value, the platinum bar and the trunk
   of jewels — and every point of it is walkable, so the ceiling is 116 and a
   perfect playthrough of the two together scores 106.
+  M3 adds 149, all of it walkable too: the Land of the Living Dead's room value
+  (30), the `LIGHT-SHAFT` award (10), and eight treasures — the ivory torch, the
+  gold coffin, the grail, the ruby, the crystal trident, the jade figurine, the
+  sapphire bracelet and the huge diamond. The ceiling is 265 and a perfect
+  playthrough of the three together scores 255; the ten still missing are still
+  M1's canary and bauble.
 - **A milestone may also decline to declare content that sits in one of its own
   rooms**, where the *thing* is here and the *mechanism that reveals it* is not.
   The dented steel box and the Stradivarius inside it stand in the Round Room from
@@ -159,8 +165,8 @@ Two consequences worth stating.
 - **`LIGHT-SHAFT` is documented before it is declared.** It is an `awardOnce`
   register worth 10, not a room `VALUE` (as a room value it would pay out to
   anyone who arrived in the Lower Shaft in the dark, which is the opposite of the
-  puzzle). The reasoning lives as a doc comment on `Dungeon.scoring` from M1; the
-  entry itself lands with the coal mine, along with the 10 points it adds to the
+  puzzle). The reasoning lived as a doc comment on `Dungeon.scoring` from M1; the
+  entry landed with the coal mine at M3, along with the 10 points it adds to the
   ceiling.
 
 ## Map
@@ -225,6 +231,16 @@ one.** `DungeonCellar` owns `chasm`, so the Chasm room's own scenery had to be
 `chasmEdge` — and the way that turned up was `examine chasm` answering "You can't
 see any such thing" in a room whose description had just named one. Grep the
 existing bundles for a property name before adding it.
+
+A fifth, learned at M3: **a mechanism outgrows its bundle.** M2 put the Round
+Room's carousel inside `DungeonRoundRoom` because all three of its built passages
+led to rooms that bundle owned. M3 built five more, reaching three other bundles,
+and there is no way for a `GameContent` struct to name a `Location` another one
+declares — a stored property cannot be initialized from a sibling. So the
+carousel's exit list, its draw and its `before(.go)` guard moved to the host,
+which is where the seam convention says cross-bundle wiring belongs. A milestone
+still adds files and moves nothing *between* region files; what may move is a
+mechanism that has stopped being regional.
 
 Two independent third-party maps were used to cross-check the extraction. Both are
 other people's work and **neither is committed to this repository**; they are

@@ -206,20 +206,10 @@ struct DungeonRoundRoom: GameContent {
         eastWestPassage.north(deepRavine)
         eastWestPassage.down(deepRavine)
 
-        // The Round Room. Nine passages in the source; this milestone has built
-        // the three that reach rooms it also builds, and the other six —
-        // north and south to the Engravings Cave, east to the Grail Room,
-        // southeast to the Winding Passage, southwest into the maze, and `out`
-        // to the Cold Passage — are left undeclared, per the seam convention.
-        //
-        // Each is a *dynamic* exit rather than a plain one, because while the
-        // carousel turns the direction you take has nothing to do with where
-        // you end up. Travelling through the exit rather than assigning
-        // `player.location` is what keeps the East-West Passage's five points
-        // payable: they are an `onEnter` award, and only `enter()` runs those.
-        for (heading, destination) in carouselExits {
-            roundRoom.exit(heading, toward: { carouselSpinning ? carouselDestination : destination })
-        }
+        // The Round Room's own nine passages are **not** declared here. Eight of
+        // them are built as of milestone 3 and they reach four different
+        // bundles, so the host owns the whole carousel — its exits, its draw
+        // and the list both read. See ``Dungeon``.
 
         // North-South Passage.
         nsPassage.north(chasmRoom)
@@ -259,41 +249,9 @@ struct DungeonRoundRoom: GameContent {
         dampEarth.starts(in: dampCave)
     }
 
-    /// The passages out of the Round Room this milestone has built, and where
-    /// each of them goes once the machinery has been stopped. The mainframe has
-    /// nine; the other six reach rooms later milestones build, and **this list
-    /// is the only place to add them** — the map loops over it, the `go` rule
-    /// guards on it, and the spin draws from it.
-    private var carouselExits: [(Direction, Location)] {
-        [(.west, eastWestPassage), (.northwest, deepCanyon), (.northeast, nsPassage)]
-    }
-
-    /// The destination the current draw picked. A read, not a roll — the
-    /// dynamic-exit closure may be asked more than once in a turn.
-    private var carouselDestination: Location {
-        let exits = carouselExits
-        return exits[carouselTwist % exits.count].1
-    }
-
     // MARK: - Rules
 
     var rules: Rules {
-        // The carousel. One draw per attempt, taken here at stage 3 so the
-        // exit lookup that follows reads a settled answer.
-        //
-        // Guarded to the passages this milestone has built, so that a
-        // direction whose far side is a later milestone's gets the plain "You
-        // can't go that way" of the seam convention rather than being told the
-        // room turned under it and then refused anyway.
-        roundRoom.before(.go) {
-            let exits = carouselExits
-            guard carouselSpinning, let heading = command.direction,
-                exits.contains(where: { $0.0 == heading })
-            else { return }
-            carouselTwist = random(0...(exits.count - 1))
-            say(Prose.roundRoomNoBearings)
-        }
-
         // The room's description carries the state of the machinery, so it is
         // a rule rather than a constant.
         roundRoom.describe {

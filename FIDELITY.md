@@ -1493,3 +1493,146 @@ does not build the far side of:
 **Also landed here.** The bottle in the Kitchen can at last be filled: the five
 water rooms carry the mainframe's `RGWATER`, and milestone 1 had none of them,
 which is why its `fill` rule was an unconditional refusal.
+
+### Milestone 3 — the temple, Hades, the mirror rooms and the coal mine
+
+42 rooms in three region bundles. The temple quarter: the Rocky Crawl, the Dome
+Room, the Torch Room, the Grail Room, the Temple and its Altar, the Egyptian
+Room, the Glacier Room and the Ruby Room behind it, the Engravings Cave, the
+Entrance to Hades and the Land of the Living Dead. The mirror network: two Mirror
+Rooms, two Caves, the Steep and Narrow Crawlways, the Cold and Winding Passages,
+the Atlantis Room and the Slide Room. The coal mine: the Mine Entrance, the
+Squeaky and Bat Rooms, the Shaft Room, the Wooden Tunnel, the Smelly and Gas
+Rooms, seven Coal Mine rooms, both ends of the ladder, a Dead End, the Timber
+Room, the Lower Shaft and the Machine Room. Forked from `Sources/Zork1/`'s
+`Regions/Temple.swift`, `Regions/Mirror.swift` and `Regions/CoalMine.swift` and
+re-topologized. Every room came out with the number of exits
+`docs/games/dungeon-atlas.md` records for it, which is the checksum on reading
+the tables out of `dung.355` (#156).
+
+**Where this departs from `Sources/Zork1/`, and why.**
+
+- **The Temple hangs off the Grail Room, not the Torch Room.** Zork I folds the
+  whole quarter into one vertical shaft — Torch Room down to Temple down to
+  Altar down to Hades. In the mainframe `TEMP1`'s only door is `MGRAI`'s
+  staircase, the Torch Room drops instead into milestone 1's North-South
+  Crawlway, and the Altar is a dead end with no hole in its floor.
+- **The Temple is the west end of the building and the Altar the east**, with
+  the inscription on the south wall and the granite on the north. Zork I runs
+  the building north-south and re-letters every wall.
+- **The Egyptian Room's staircase climbs to a Glacier Room**, and over the ice
+  is the way the gold coffin leaves that quarter. Zork I gives the Egyptian Room
+  one staircase west and no glacier at all.
+- **There is no crystal skull and no sceptre.** Both are the trilogy's
+  inventions: the mainframe's Land of the Living Dead holds a pile of bodies and
+  pays a **room value of 30**, and its gold coffin is empty.
+- **The Rocky Crawl and the Deep Ravine both run west into each other.** Not a
+  transcription slip — `CRAW1` west is `RAVI1` and `RAVI1` west is `CRAW1`.
+- **The southern Mirror Room is the lit one** (`RLIGHTBIT` on `MIRR2`), where
+  Zork I lights the northern; and the mirror is worked with `RUB`, which the
+  engine folds onto the same intent as `touch`.
+- **The Winding Passage has one exit and the sound of another.** Zork I gives it
+  a north passage; the mainframe gives it a wall with the Round Room's machinery
+  behind it, declared as a refusing exit because the refusal is half the room.
+- **The Cold Passage crosses a path running north**, not south; the **Atlantis
+  Room's tunnel runs southeast**; the two Caves are different rooms, one dropping
+  to Atlantis and one to the gate of Hades.
+- **The coal maze is seven rooms**, not four, and the Gas Room is not one of its
+  doors: the mine is entered from a **Wooden Tunnel** Zork I never built, and the
+  Gas Room is a dead end off it. The bat drops you into any of the seven or
+  either end of the ladder (`BAT-DROPS`).
+- **The room at the bottom of the shaft is the Lower Shaft**, not the Drafty
+  Room, and its narrow ways out are east and northeast. Reaching it **lit** is
+  the mainframe's `LIGHT-SHAFT` award: ten points, once, an *event* award and not
+  a room `VALUE`, because a room value would pay out to anybody who stumbled in
+  in the dark.
+- **The crack past the Timber Room is a pair of conditional exits**, as in the
+  source (`EMPTY-HANDED`), rather than a `before(.go)` rule: the refusal is the
+  same either way round.
+- Values are the mainframe's, and four are not Zork I's: the gold coffin is
+  **3 to find and 7 to case** where the trilogy pays 10 and 15, the sapphire
+  bracelet **5 and 3** where it pays 5 and 5, the huge diamond **10 and 6** where
+  it pays 10 and 10, and the grail (**2 and 5**) and the ruby (**15 and 8**) have
+  no trilogy counterpart at all. The ivory torch (14+6) and the crystal trident
+  (4+11) are the same in both.
+
+**Adapted rather than reproduced, line by line.** `TSHAF`, `ICE`, `JADE`,
+`COFFI`, `ENGRA`, `TBASK` and `DIAMO` are in the comparison's `identical`
+bucket, so those lines are the trilogy's verbatim, as are the Dome Room, the two
+Mirror Rooms, the Slide Room, the Ladder Top, the Dead End, the coal-maze line
+and the gate of Hades — all rooms the trilogy copied whole or prints from a
+routine with a matching trilogy counterpart. `TEMP1`, `TEMP2`, `EGYPT`, `ATLAN`,
+`BOOM`, `CAVE1`, `ENTRA` and `PASS4` are `substantial` **and** differ because the
+room differs, so each keeps the trilogy's voice with its facts corrected.
+
+**The `minor` bucket is not safe on exits either**, which is new to this
+milestone. `CAVE4`, `PASS3`, `SMELL` and `SQUEE` are all bucketed `minor` — the
+two lines are a handful of characters apart — and all four of those characters
+are compass points the mainframe does not have. The mechanics contract says the
+table wins over the description, so all four are adapted rather than taken
+verbatim. The bucket measures string distance; it does not measure whether the
+room is the same room.
+
+**Written fresh:** the Rocky Crawl, the Grail Room, the Glacier Room and the
+Ruby Room (no trilogy counterpart at all), the Steep and Narrow Crawlways, the
+Wooden Tunnel, and the two gas-explosion endings.
+
+**Mechanics simplified or deferred.**
+
+- **The slide is the plain drop into the Cellar.** The source's `SLIDE-EXIT`
+  turns the chute into a rope-climb down `SLID1`–`SLID3` to a Slide Ledge and a
+  Sooty Room once a broken timber has been tied at the top; those five rooms and
+  the red crystal sphere in them are a later milestone's, so this one declares
+  the plain drop and records the seam.
+- **The mainframe's death is not adopted.** `rooms.394` sends a corpse to the
+  Entrance to Hades to be prayed back at the Altar. Milestone 1 already shipped
+  the forest resurrection and its tests pin it; converting is its own change.
+- **The mirror swap moves loose floor items only**, where the source swaps the
+  two rooms' whole object lists. Swapping fixtures would move the mirrors
+  themselves out of their rooms.
+- **The bell is one object with a flag**, where the source swaps `BELL` for a
+  separate red-hot `HBELL`. Its refusal is an ``Item/reach(otherwise:)`` rule, so
+  take, ring and every other verb the engine gates on reach answer with the
+  source's one sentence; the listing line still reads "brass bell" while it
+  glows, because nothing renames an item at runtime.
+- **The candles burn in the source's three stages** — twenty turns, then ten,
+  then five — and start burning when they are first picked up, which is the
+  source's own `TAKE` branch. Without that they would be a second everlasting
+  lamp.
+- **The matchbook is the match**, as in the source, where `MATCH` is one object
+  with a count on it: striking one lights the book in your hand for two turns.
+  Milestone 2 left it a readable object because nothing yet needed a flame.
+- **The exorcism's clock is the source's**: six turns after the bell, three after
+  the candles, twenty before the bell cools. `EXORCISE` is the source's own hint
+  verb and never performs the ceremony.
+
+**Also landed here.** Four rooms are ``alwaysDescribed`` — the Dome Room, the
+Torch Room, the Glacier Room, the Entrance to Hades, the two Mirror Rooms, the
+Bat Room and the Machine Room — because in each of them the state of the puzzle
+appears only in the long description, and a brief re-entry (after UNDO, or after
+walking back in) would print a bare room name over a barred gate, an unmelted
+glacier or an open lid. That is the engine feature #149 landed for.
+
+**The carousel moved to the host.** Milestone 2 declared the Round Room's three
+built passages inside ``DungeonRoundRoom``. As of this milestone **eight** of the
+source's nine are built and they reach four different bundles, so the exit list,
+the draw and the `before(.go)` guard all live in ``Dungeon`` instead. Nothing
+else moved; the ninth passage, southwest into the maze, is the last seam left in
+the room.
+
+**Declared but not yet walkable: nothing.** `maxScore` goes 116 → **265**, and a
+perfect playthrough of milestones 1 to 3 together scores **255** — the ten still
+missing are milestone 1's canary and bauble, which wait on the thief.
+
+**Seams left for later milestones**, each an exit the source has and this
+milestone does not build the far side of:
+
+- the Round Room's last passage, southwest into the maze;
+- the Torch Room's door west into the Tiny Room;
+- the Egyptian Room's door south to Volcano View;
+- the Ruby Room's passage west into the Lava Room;
+- the Engravings Cave's southeast passage to the Riddle Room;
+- the Land of the Living Dead's east passage to the Tomb of the Unknown
+  Implementer;
+- the Slide Room's chute, which becomes a rope-climb down the coal chute once a
+  timber is tied at the top.
