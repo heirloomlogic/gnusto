@@ -118,6 +118,7 @@ struct DungeonAboveGround: GameContent {
         synonyms("pamphlet", "booklet", "mail")
         description(Prose.leaflet)
         trait(.weight, 2)
+        trait(.burnable, true)
     }
 
     /// Mainframe-only: the trilogy dropped the welcome mat. Its one trick —

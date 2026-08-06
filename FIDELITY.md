@@ -1921,3 +1921,147 @@ the four `SCOL` tables imply.
 
 **Seams left for later milestones: none.** Every exit these twenty rooms declare
 reaches a room that exists.
+
+### Milestone 6 — the volcano, the balloon, the Library and the Dusty Room
+
+10 rooms in one region bundle, and the only part of the map you get to by
+flying. The Volcano Bottom and the Lava Room over it; four levels of open air in
+the shaft — `VAIR1` to `VAIR4`; the Narrow Ledge with the Library behind it; the
+Wide Ledge with the Dusty Room behind that; and Volcano View on the far wall,
+which is reached on foot and reaches nothing but the room it is reached from.
+Every room came out with the number of exits `docs/games/dungeon-atlas.md`
+records for it.
+
+**The Ruby Room is not one of them.** The issue that commissioned this milestone
+names the Ruby Room as content to build. Milestone 3 built it, and the ruby in
+it has counted toward `maxScore` since then. What milestone 6 owed that room was
+its **west passage**, which is one host-wired edge.
+
+**Where this departs from `Sources/Zork1/`, and why.** Zork I has none of these
+rooms either, so the comparison that matters is with Zork II, which took all of
+them.
+
+- **The whole quarter is dark but the Dusty Room.** `dung.355`'s `ROOM` macro
+  defaults a room's flags to `RLANDBIT` alone, and `SAFE` is the only room here
+  that adds `RLIGHTBIT`. So a shaft with daylight visibly coming down it is
+  pitch black to stand in. That is the source, and it is the same reading that
+  made the Frigid River dark at milestone 4.
+- **The four air rooms carry no land bit at all.** They are `RAIRBIT` rooms, and
+  the source refuses to let anybody step out of a vehicle in one: *"You realize,
+  just in time, that disembarking here would probably be fatal."* Refused, not
+  permitted and then punished.
+- **The Lava Room's second exit is west, not east.** The comparison document
+  files `LAVA` as `minor`, which would ordinarily mean taking the trilogy's line
+  verbatim; the trilogy's line says the exits are east and south, because the
+  room it reached east of there was the Glacier Room. The mainframe reaches the
+  Ruby Room, west. The room decides.
+- **The Ruby Room's passage runs west from both ends.** `RUBYR` west to `LAVA`,
+  `LAVA` west to `RUBYR` — the mainframe's own doubling, the same one the Deep
+  Ravine's crawl has, and not a transcription slip.
+- **Volcano View hangs off the Egyptian Room**, south, through a door that
+  room's description has named since milestone 3. It is the one ledge nothing
+  can land on: `DOWN` and `CROSS` are both declared in its exit table and both
+  refuse.
+- **The balloon rises only while the receptacle is open *and* alight.** Shutting
+  the lid over a live fire is the only way to come down and keep the balloon: a
+  balloon whose fire has gone out sinks too, and does not survive the floor. The
+  #133 spike had the fire and the sinking and not the lid.
+- **The rim is fifteen feet across.** A balloon that climbs past `VAIR4` tears
+  itself open on it and the wreck lands at the bottom. Zork II flies it out of
+  the volcano and kills the pilot in the Flathead Mountains instead; the
+  mainframe is the authority on what a puzzle does, so the rim is what is built.
+- **The brick, the wire coil and the hole are one puzzle spread over three
+  milestones.** The brick landed inert in the Attic at milestone 1 and the wire
+  on the bank at Stream View at milestone 2, and both entries said so. This is
+  the milestone that gives them something to do: brick in the hole, wire in the
+  brick, a match to the wire, and two turns to be somewhere else.
+- **The blast has an aftermath, and it is on a clock.** Five turns later the
+  Dusty Room comes down — on you, if you are still in it — and eight turns after
+  that the Wide Ledge follows. That leaves exactly four moves between the
+  explosion and the room sealing itself: south, take the crown, take the card,
+  north. The card in the box says as much before you light anything.
+- Values are the mainframe's: the priceless zorkmid 10+12, Lord Dimwit's crown
+  15+10, the Flathead stamp 4+10. No room in the volcano carries an `RVAL`.
+
+**Adapted rather than reproduced, line by line.** Ten of this milestone's
+entries are in the comparison's `identical` bucket — `VAIR1`, `VAIR2`, `LEDG3`,
+`HOOK1`, `HOOK2`, `GNOME`, `CARD`, `DBALL`, `STAMP` and `BRICK` — and `VLBOT`
+and `LIBRA` are `minor`, so the Volcano Core, the level of the small ledge,
+Volcano View, both hooks, the gnome, the card, the wrecked balloon, the Volcano
+Bottom and the Library are the trilogy's lines verbatim.
+
+Three entries depart from that, each for a reason the comparison document cannot
+see. `LAVA` is `minor` and adapted anyway, for the exit above. `VAIR4` is
+`substantial` and adapted to put back the one fact the trilogy dropped — the rim
+is fifteen feet across, which is why rising past it wrecks the balloon. And
+**`VAIR3` is filed with no trilogy counterpart and has one**: Zork II declares
+`VAIR-3`, *Volcano by Viewing Ledge*, whose line differs from the mainframe's by
+two words. The atlas misses the pairing because the display names differ and the
+room declares no exits, so neither the name matcher nor the graph matcher can
+reach it. It is taken here as the `minor` entry it would have been. The
+generated documents are not edited by hand.
+
+**`LEDG4` and `SAFE` are in no bucket at all, because both sources generate them
+from code.** `dung.355` gives each an empty description and a room routine, and
+the trilogy does the same; the text here is the trilogy's routine's, which is
+MIT-licensed like any other trilogy line.
+
+Written fresh: the shaft's scenery, the blue label that drops out of the bag,
+the gnome's own description, the zorkmid's face and the stamp's, and everything
+the explosion says. **No 1981 MDL text is reproduced anywhere** — including the
+coin and the stamp, which in the source are figures drawn in 1981 typography.
+Reading either reports what the figure says and does not redraw it. The blue
+label goes the same way the robot's instruction sheet went at milestone 5, and
+for the same reason: what it says is the three words the balloon answers to, and
+that is structure.
+
+**The stranding the issue warned about is real, and it is kept.** Untie a
+still-burning balloon on a ledge and it leaves without you — the #133 spike
+reproduced that, and this milestone reproduces it too, because the source
+answers it rather than preventing it. Ten turns later a volcano gnome walks out
+of the ledge wall and sells the way down for any treasure at all, and the door
+he opens never shuts again. He waits indefinitely: the mainframe arms his
+five-turn watch on the first word said to him and not before, so a stranded
+player who leaves a gnome alone is not stranded. Two losses are still final, and
+both are the source's: offer him the brick and he leaves for good, and light the
+burner with nobody aboard and the rim takes the balloon. Neither kills the
+player; both cost whatever is left of the volcano's 61 points.
+
+**Where this game is narrower than its source.** The mainframe seals *any* room
+the brick goes off in, empties it of everything takeable, and — in the Living
+Room — empties the trophy case with it. This game gives the aftermath to the one
+room the source's own clock names, the Dusty Room, and to the ledge it stood on.
+Anywhere else the blast is fatal if you are standing in it and says "There is an
+explosion nearby" if you are not, and the room stays open. Sealing an arbitrary
+room needs a per-room flag the engine has no place for, and the only room the
+puzzle ever seals is the Dusty Room.
+
+**Also landed here.** `Sources/Gnusto/Engine/RoomDescriber.swift` now filters
+`scenery` out of the *"In the X is a Y."* and *"On the X is a Y."* listings, the
+way it already filtered it out of the room's own. Without it the balloon's cloth
+bag, receptacle and braided wire — three fittings the basket's own description
+already names — each got a line of its own in every room description. No other
+game in the repo puts scenery inside a container or on a surface, and the whole
+suite is unchanged by it. `ContainerTests` pins the new rule against a fixture
+of its own rather than against this game's transcripts.
+
+**Four listing lines this milestone could not use.** The nested lister has no
+presence channel: an item inside a container gets *"In the wicker basket is a
+blue label."* and nothing else, where an item on the floor gets its `firstSight`
+until it is touched. The crown, the card, the Flathead stamp and the blue label
+each start inside something and never sit loose in a room untouched, so their
+source lines — two of them `identical` entries — would never have printed, and
+they are not declared. Worth its own engine issue rather than four dead
+constants.
+
+**Declared but not yet walkable: nothing.** `maxScore` goes 499 → **560**, and a
+perfect playthrough of milestones 1 to 6 together scores **550** — the ten still
+missing are still milestone 1's canary and bauble, which wait on the thief.
+
+**Not built, deliberately.** `FCHMP` — "Moby lossage" — is still not built;
+milestone 4 recorded it and nothing here changes that. The trilogy's *Wizard of
+Frobozz* wand, which its `I-GNOME` checks for before the gnome will show himself,
+is Zork II content and does not exist in the mainframe.
+
+**Seams left for later milestones: none.** Every exit these ten rooms declare
+reaches a room that exists.

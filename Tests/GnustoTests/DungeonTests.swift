@@ -362,9 +362,9 @@ struct DungeonTests {
         expectInOrder(
             transcript,
             [
-                "Your score is 10 of a possible 499",
+                "Your score is 10 of a possible 560",
                 "Cellar",
-                "Your score is 35 of a possible 499",
+                "Your score is 35 of a possible 560",
             ])
     }
 
@@ -438,7 +438,7 @@ struct DungeonTests {
                 "Gallery",
                 "The vandals left through the north,",
                 "Taken.",
-                "Your score is 39 of a possible 499",
+                "Your score is 39 of a possible 560",
             ])
         #expect(!transcript.contains("nasty-looking troll"))
     }
@@ -492,7 +492,7 @@ struct DungeonTests {
                 "Forest",
                 "You have been killed once.",
                 // Thirty-five points earned, ten paid back to the troll.
-                "Your score is 25 of a possible 499",
+                "Your score is 25 of a possible 560",
             ])
     }
 
@@ -550,7 +550,7 @@ struct DungeonTests {
     @Test func theCeilingTotalsTheAwardTableExactly() throws {
         let (definition, _) = try Bootstrap.build(Dungeon())
 
-        #expect(definition.maxScore == 499)
+        #expect(definition.maxScore == 560)
         #expect(definition.warnings.isEmpty, "\(definition.warnings)")
     }
 
@@ -568,7 +568,7 @@ struct DungeonTests {
                 "Taken.",
                 "The egg is now open, but the clumsiness of your attempt has",
                 "the mainspring seems sprung",
-                "Your score is 5 of a possible 499",
+                "Your score is 5 of a possible 560",
             ])
     }
 
@@ -611,13 +611,13 @@ struct DungeonTests {
                 "Up a Tree",
                 "Kitchen",
                 "Living Room",
-                "Your score is 20 of a possible 499",
+                "Your score is 20 of a possible 560",
                 "Cellar",
                 "Gallery",
                 "Studio",
                 "Kitchen",
                 "Living Room",
-                "Your score is 56 of a possible 499",
+                "Your score is 56 of a possible 560",
             ])
     }
 
@@ -733,7 +733,7 @@ struct DungeonTests {
             transcript,
             [
                 "East-West Passage",
-                "Your score is 40 of a possible 499",
+                "Your score is 40 of a possible 560",
                 // North and down out of the passage are the same stair, and
                 // they reach a room Zork I does not have.
                 "Deep Ravine",
@@ -793,7 +793,7 @@ struct DungeonTests {
                 "Taken.",
                 // Five for the passage, twelve for the bar — and twelve is the
                 // mainframe's find value, where Zork I pays ten.
-                "Your score is 52 of a possible 499",
+                "Your score is 52 of a possible 560",
             ])
     }
 
@@ -1046,16 +1046,16 @@ struct DungeonTests {
         expectInOrder(
             transcript,
             [
-                "Your score is 56 of a possible 499",
+                "Your score is 56 of a possible 560",
                 "The troll takes a fatal blow",
                 "Loud Room",
                 "The acoustics of the room change subtly.",
                 "You put the platinum bar in the trophy case.",
-                "Your score is 83 of a possible 499",
+                "Your score is 83 of a possible 560",
                 "The sluice gates open and water pours through the dam.",
                 "Lying half buried in the mud is an old trunk",
                 "You put the trunk of jewels in the trophy case.",
-                "Your score is 106 of a possible 499",
+                "Your score is 106 of a possible 560",
             ])
     }
 
@@ -1556,10 +1556,10 @@ struct DungeonTests {
                 "The basket is raised to the top of the shaft.",
                 "The basket is lowered to the bottom of the shaft.",
                 "Timber Room",
-                "Your score is 54 of a possible 499",
+                "Your score is 54 of a possible 560",
                 "Lower Shaft",
                 "In the basket is an ivory torch.",
-                "Your score is 64 of a possible 499",
+                "Your score is 64 of a possible 560",
             ])
     }
 
@@ -1624,11 +1624,11 @@ struct DungeonTests {
             [
                 "On the shore lies Poseidon's own crystal trident.",
                 "On the pedestal is a grail.",
-                "Your score is 46 of a possible 499",
+                "Your score is 46 of a possible 560",
                 "the temple dissolves around you",
                 "Forest",
                 "Living Room",
-                "Your score is 62 of a possible 499",
+                "Your score is 62 of a possible 560",
             ])
     }
 
@@ -1915,9 +1915,9 @@ struct DungeonTests {
         expectInOrder(
             transcript,
             [
-                "Your score is 35 of a possible 499",
-                "Your score is 60 of a possible 499",
-                "Your score is 70 of a possible 499",
+                "Your score is 35 of a possible 560",
+                "Your score is 60 of a possible 560",
+                "Your score is 70 of a possible 560",
             ])
     }
 
@@ -2089,7 +2089,7 @@ struct DungeonTests {
                 "Sandy Beach",
                 "You seem to be digging a hole here.",
                 "You can see a small statue here in the sand.",
-                "Your score is 50 of a possible 499",
+                "Your score is 50 of a possible 560",
                 "The hole collapses, smothering you.",
             ])
     }
@@ -2114,7 +2114,7 @@ struct DungeonTests {
                 "End of Rainbow",
                 "the rainbow appears to become solid",
                 "At the end of the rainbow is a pot of gold.",
-                "Your score is 50 of a possible 499",
+                "Your score is 50 of a possible 560",
                 "Rainbow Room",
                 "and fifty feet above the river, do you",
             ])
@@ -2307,8 +2307,8 @@ struct DungeonTests {
             [
                 "This is a former broom closet.",
                 "There is a pearl necklace here with hundreds of large pearls.",
-                "Your score is 40 of a possible 499",
-                "Your score is 49 of a possible 499",
+                "Your score is 40 of a possible 560",
+                "Your score is 49 of a possible 560",
             ])
     }
 
@@ -2350,7 +2350,7 @@ struct DungeonTests {
 
         expectInOrder(
             transcript,
-            ["Your score is 40 of a possible 499", "Your score is 50 of a possible 499"])
+            ["Your score is 40 of a possible 560", "Your score is 50 of a possible 560"])
     }
 
     /// Two rooms carry the well's etchings, and the ring of letters is legible
@@ -2464,7 +2464,7 @@ struct DungeonTests {
                 "goes up at once in a column of steam",
                 "There is a tin of rare spices here.",
                 "Taken.",
-                "Your score is 55 of a possible 499",
+                "Your score is 55 of a possible 560",
             ])
     }
 
@@ -2544,7 +2544,7 @@ struct DungeonTests {
                 "a steel cage falls from the ceiling",
                 "You are trapped inside a solid steel cage.",
                 "the robot stands exactly where you",
-                "Your score is 56 of a possible 499",
+                "Your score is 56 of a possible 560",
                 "with a scream of tearing steel",
                 "There is a mangled steel cage here.",
             ])
@@ -2634,7 +2634,7 @@ struct DungeonTests {
                 "Safety Depository",
                 "This is the Vault of the Bank of Zork, in which there are no doors.",
                 "On the floor sit 200 neatly stacked zorkmid bills.",
-                "Your score is 45 of a possible 499",
+                "Your score is 45 of a possible 560",
             ])
     }
 
@@ -2686,7 +2686,7 @@ struct DungeonTests {
                 "An alarm rings briefly and an invisible force prevents your leaving.",
                 "The wall gives like water",
                 "Bank Entrance",
-                "Your score is 55 of a possible 499",
+                "Your score is 55 of a possible 560",
             ])
     }
 
@@ -2761,6 +2761,468 @@ struct DungeonTests {
                 "Round Room",
                 "the machinery that turned it has",
                 "There is a dented steel box here.",
+            ])
+    }
+
+    // MARK: - Milestone 6: the roads in
+
+    /// The house with the two things the volcano wants out of it: the brick in
+    /// the Attic, which is the safe's charge, and the newspaper on the living
+    /// room floor, which is the balloon's fuel.
+    private static let houseWithTheBrickAndThePaper =
+        intoTheKitchen + [
+            "west", "take lamp", "take sword", "turn on lamp",
+            "east", "up", "take rope", "take brick", "down", "west",
+            "take newspaper", "push rug", "open trap door", "down",
+        ]
+
+    /// Past the troll, out to the Dam Lobby for the matchbook — the only flame
+    /// in the game that can be carried to the volcano — and back to the Rocky
+    /// Crawl. Seed 11: the troll falls to the first blow.
+    private static let fetchTheMatchbook =
+        ["east", "attack troll with sword", "drop sword"]
+        + crossroadsToTheDam
+        + ["north", "take matchbook", "south"]
+        + ["east", "south", "west", "north", "south", "west"]
+
+    /// Down the rope for the torch, out of the Torch Room the only way there
+    /// is, and round to the face of the glacier.
+    private static let toTheGlacier =
+        houseWithTheBrickAndThePaper + fetchTheMatchbook
+        + ["east", "tie rope to railing", "down", "take torch", "down"]
+        + torchRoomToTheGlacier
+
+    /// Out of the North-South Crawlway the torch drops you into, back round the
+    /// crossroads and up the Egyptian Room's staircase to the face of the ice.
+    private static let torchRoomToTheGlacier = [
+        "east", "north", "down", "west", "northwest", "up",
+    ]
+
+    /// And through it, which is the same four commands whichever errand took
+    /// you to the Glacier Room.
+    private static let throughTheGlacier = [
+        "throw torch at glacier", "west", "west", "south",
+    ]
+
+    /// Through it, and down the two rooms milestone 3 left hanging: the Ruby
+    /// Room's west passage and the Lava Room's south one.
+    private static let toTheVolcano = toTheGlacier + throughTheGlacier
+
+    /// The same road with the wire coil picked up off the bank at Stream View,
+    /// which is what the brick wants in it.
+    private static let toTheVolcanoWithTheWire =
+        toTheGlacier + ["north", "take wire", "north"] + throughTheGlacier
+
+    /// Fuel in the pan, a match to it, and the four turns that carry the basket
+    /// from the floor to the level of the Narrow Ledge. The drift clock runs on
+    /// threes, and `look` costs a turn like anything else.
+    private static let liftOff = [
+        "board basket", "put newspaper in receptacle",
+        "burn match", "burn newspaper with match",
+        "look", "wait", "wait", "wait", "wait",
+    ]
+
+    private static let toTheNarrowLedge = toTheVolcano + liftOff + ["west"]
+
+    /// Six turns further up the shaft is the Wide Ledge, and one level above
+    /// that is the rim.
+    /// Moor the basket, walk into the Dusty Room, load the hole and light the
+    /// wire, then get out on the ledge and wait for the blast.
+    private static let lightTheCharge = [
+        "tie braided wire to hook", "get out", "south",
+        "put brick in hole", "put wire in brick", "burn match",
+        "burn wire with match", "north", "wait",
+    ]
+
+    private static let toTheWideLedge =
+        toTheVolcanoWithTheWire + liftOff
+        + ["wait", "wait", "wait", "wait", "wait", "wait", "east"]
+
+    // MARK: - Milestone 6: the two doors into the volcano
+
+    /// **The Ruby Room opens west, and it opens west from both ends.** Milestone
+    /// 3 built the room and left the passage as a seam; the mainframe runs it
+    /// west out of `RUBYR` *and* west out of `LAVA`, the same doubling the Deep
+    /// Ravine's crawl has.
+    @Test func theRubyRoomOpensWestOnTheLavaRoomAndTheVolcanoFloor() async throws {
+        let transcript = try await play(
+            Dungeon(), Self.toTheVolcano + ["north", "west", "west", "south"], seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "Ruby Room",
+                "Lava Room",
+                "walls are formed by an old lava flow",
+                "Volcano Bottom",
+                "The only exit is to the north.",
+                "There is a large and extremely heavy wicker basket here.",
+                "Lava Room",
+                "Ruby Room",
+                "Lava Room",
+                "Volcano Bottom",
+            ])
+    }
+
+    /// **Volcano View is reached on foot, south out of the Egyptian Room** — a
+    /// door that room's description has named since milestone 3. It is the one
+    /// ledge no balloon can land on, and the source says so twice: `DOWN` and
+    /// `CROSS` are both declared, and both refuse.
+    @Test func theEgyptianRoomOpensSouthOnVolcanoView() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.pastTheTroll
+                + ["north", "down", "west", "northwest", "south", "down", "cross", "east"],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "Egyptian Room",
+                "Volcano View",
+                "this ledge is intermediate in elevation between those on the other side.",
+                "I wouldn't try that.",
+                "It is impossible to cross this distance.",
+                "Egyptian Room",
+            ])
+    }
+
+    // MARK: - Milestone 6: the balloon
+
+    /// **The balloon is a fuse and a fire, and nothing else.** Fuel in the
+    /// receptacle, a match to it, and it goes up a level every three turns —
+    /// the mainframe's `BINT`.
+    @Test func theBalloonRisesThreeTurnsAtATimeOnAFireInThePan() async throws {
+        let transcript = try await play(Dungeon(), Self.toTheVolcano + Self.liftOff, seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "The newspaper burns inside the receptacle.",
+                "The cloth bag inflates as it fills with hot air.",
+                "The balloon rises slowly from the ground.",
+                "Volcano Core",
+                "The balloon ascends.",
+                "Volcano Near Small Ledge",
+                "There is a small ledge on the west side.",
+            ])
+    }
+
+    /// **Closing the lid is how you come down.** The source rises only while
+    /// the receptacle is *open* and alight; shut it over a live fire and the
+    /// basket sinks and lands intact, which is the difference between a landing
+    /// and a crash.
+    @Test func closingTheReceptacleBringsTheBalloonDownIntact() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheVolcano + Self.liftOff
+                + ["close receptacle", "wait", "wait", "wait", "wait", "wait", "wait"],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "Volcano Near Small Ledge",
+                "The balloon descends.",
+                "Volcano Core",
+                "The balloon has landed.",
+                "Volcano Bottom",
+            ])
+    }
+
+    /// **A balloon is not steered.** Only the two levels with a ledge beside
+    /// them answer a compass bearing at all, and the four air rooms will not let
+    /// you step over the side.
+    @Test func theBalloonCannotBeSteeredAndCannotBeLeftInMidAir() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheVolcano + Self.liftOff + ["north", "get out", "up", "land"],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "You can't control the balloon this way.",
+                "You realize, just in time, that disembarking here would probably be",
+                "You can't control the balloon this way.",
+                "Narrow Ledge",
+            ])
+    }
+
+    /// **The Narrow Ledge and the Library**, and the priceless zorkmid on the
+    /// floor of the first: ten to find and twelve to case, the mainframe's own
+    /// values.
+    @Test func theNarrowLedgeCarriesTheZorkmidAndTheLibraryBehindIt() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheNarrowLedge
+                + ["tie braided wire to hook", "look", "get out", "take coin"]
+                + ["read coin", "score", "south", "north"],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "Narrow Ledge",
+                "There is a small hook attached to the rock here.",
+                "On the floor is an engraved gold zorkmid",
+                "The balloon is fastened to the hook.",
+                "The basket is anchored to a small hook by the braided wire.",
+                "Taken.",
+                "IN FROBS WE TRUST",
+                "of a possible 560",
+                "Library",
+                "gnawed to pieces by unfriendly gnomes",
+                "Narrow Ledge",
+            ])
+    }
+
+    /// **The Flathead stamp is inside the purple book, and reading the book is
+    /// what shakes it out.** Four to find and ten to case; the other three books
+    /// are in a tongue nobody here reads.
+    @Test func thePurpleBookGivesUpTheFlatheadStamp() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheNarrowLedge
+                + ["tie braided wire to hook", "get out", "south"]
+                + ["read blue book", "read green book", "read white book"]
+                + ["read purple book", "take stamp", "read stamp", "score"],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "Worn and battered in one corner of the room is a blue book.",
+                "This book is written in a tongue with which I am unfamiliar.",
+                "The pages fall apart at a place somebody kept",
+                "Taken.",
+                "OUR EXCESSIVE LEADER",
+                "of a possible 560",
+            ])
+    }
+
+    /// **Untying a still-burning balloon strands you on the ledge.** The #133
+    /// spike reproduced this seven turns from the fixture's start and left the
+    /// choice to this milestone; the choice is to keep it, because the source's
+    /// own answer to it walks out of the wall ten turns later.
+    @Test func untyingAStillBurningBalloonLeavesWithoutYou() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheNarrowLedge
+                + ["get out", "look", "wait", "wait", "look"],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "You get out of the wicker basket.",
+                "You watch as the balloon slowly floats away.",
+                "Narrow Ledge",
+            ])
+        #expect(!transcript.contains("wicker basket here.\n\nThe basket is anchored"))
+    }
+
+    /// **The gnome is the source's own anti-softlock**, and he sells the way
+    /// down for any treasure at all. The door he opens is one-way and never
+    /// shuts again — the mainframe's `GNOME-DOOR`.
+    @Test func theGnomeSellsTheWayDownForATreasure() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheNarrowLedge
+                + ["get out", "take coin", "look"]
+                + Array(repeating: "wait", count: 11)
+                + ["give coin to gnome", "west", "look"],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "A volcano gnome seems to walk straight out of the wall",
+                "little time to waste on trespassers",
+                "Thank you very much for the priceless zorkmid.",
+                "a door appears",
+                "Volcano Bottom",
+            ])
+    }
+
+    /// **And he waits indefinitely until you speak to him.** The mainframe arms
+    /// his five-turn watch on the first word said to him and not before, which
+    /// is what makes ignoring a gnome the safe thing to do with one.
+    @Test func theGnomeOnlyStartsCountingOnceYouSpeakToHim() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheNarrowLedge
+                + ["get out", "take coin", "look"]
+                + Array(repeating: "wait", count: 11)
+                + ["greet gnome"]
+                + Array(repeating: "wait", count: 5)
+                + ["look"],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "A volcano gnome seems to walk straight out of the wall",
+                "The gnome appears increasingly nervous.",
+                "I'm late for an appointment!",
+            ])
+    }
+
+    // MARK: - Milestone 6: the Wide Ledge and the box
+
+    /// **The Wide Ledge and the Dusty Room.** Both print from a room routine in
+    /// both sources, which is why neither appears in the prose comparison at
+    /// all; the box's front is what the Dusty Room's second paragraph reports.
+    @Test func theWideLedgeOpensSouthOnTheDustyRoomAndItsBox() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheWideLedge
+                + ["tie braided wire to hook", "get out", "south", "examine box", "open box"],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "Wide Ledge",
+                "precipitous drop to the bottom.",
+                "There is a small door to the south.",
+                "Dusty Room",
+                "an oblong hole has been chipped out of the front of it",
+                "A steel box set into the stone",
+                "The box is rusted and will not open.",
+            ])
+        // Closed, so the crown does not list through the door.
+        #expect(!transcript.contains("In the rusty box is a gaudy crown."))
+    }
+
+    /// **The brick, the wire and the hole are one puzzle across three
+    /// milestones.** The brick landed inert in the Attic at milestone 1 and the
+    /// wire on the bank at Stream View at milestone 2; this is the milestone
+    /// that gives them something to do. The crown is fifteen and ten.
+    @Test func theBrickAndTheWireBlowTheBoxOpen() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheWideLedge + Self.lightTheCharge + ["south", "take crown", "score"],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "You put the brick in the oblong hole.",
+                "You put the wire coil in the brick.",
+                "The wire starts to burn.",
+                "Wide Ledge",
+                "There is an explosion nearby.",
+                "Dusty Room",
+                "whose door has been blown off",
+                "In the rusty box is a gaudy crown.",
+                "of a possible 560",
+            ])
+    }
+
+    /// **And the card in the box was right about the rock strata.** Five turns
+    /// after the blast the Dusty Room comes down, and eight turns after that the
+    /// ledge it stood on follows it.
+    @Test func theDustyRoomComesDownAndTakesTheWideLedgeWithIt() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheWideLedge + Self.lightTheCharge
+                + ["south", "take crown", "take card", "north", "read card", "look"]
+                + ["board basket", "untie braided wire", "launch", "close receptacle"]
+                + Array(repeating: "wait", count: 8),
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "There is an explosion nearby.",
+                "You may recall that recent explosion.",
+                "Detonation of explosives in this room is strictly prohibited!",
+                "The way to the south is blocked by rubble.",
+                "The balloon leaves the ledge.",
+                "The ledge collapses. (That was a narrow escape!)",
+            ])
+    }
+
+    /// **Burning the brick in your own hands is the joke the source tells
+    /// once.** It works wherever you are standing.
+    @Test func burningTheBrickInYourHandsBlowsYouToSmithereens() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.houseWithTheBrickAndThePaper + Self.fetchTheMatchbook
+                + ["burn match", "burn brick with match"],
+            seed: 11)
+
+        #expect(transcript.contains("blow you to smithereens"))
+    }
+
+    /// **The rim is fifteen feet across and the bag is a great deal wider.**
+    /// The mainframe tears the balloon on it and drops the wreck on the floor;
+    /// Zork II flies it out of the volcano and into the Flathead Mountains, and
+    /// the mainframe is the authority on what a puzzle does.
+    @Test func theBalloonTearsItselfOpenOnTheRim() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheVolcano + Self.liftOff + Array(repeating: "wait", count: 12),
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "Volcano Near Wide Ledge",
+                "the cloth goes over the rock with a sound like",
+                "you feel relieved of your burdens",
+            ])
+    }
+
+    // MARK: - Milestone 6: every printed noun answers
+
+    @Test func everyNounTheVolcanoFloorAndTheShaftPrint() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheVolcano
+                + ["north", "examine lava", "examine walls", "south"]
+                + ["examine volcano", "examine cone", "examine basket", "examine cloth bag"]
+                + ["examine receptacle", "examine braided wire"]
+                + Self.liftOff
+                + ["west", "tie braided wire to hook", "get out", "examine label"]
+                + ["examine hook", "examine ledge", "examine coin", "south"]
+                + ["examine shelves", "examine purple book", "examine white book"],
+            seed: 11)
+
+        expectEveryNounAnswered(transcript, "the volcano floor, the shaft and the Library")
+    }
+
+    @Test func everyNounTheWideLedgeAndTheDustyRoomPrint() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheWideLedge
+                + ["tie braided wire to hook", "get out", "examine ledge", "examine hook"]
+                + ["south", "examine box", "examine hole", "examine dust", "look in hole"]
+                + ["put brick in hole", "examine brick"],
+            seed: 11)
+
+        expectEveryNounAnswered(transcript, "the Wide Ledge and the Dusty Room")
+    }
+
+    /// With milestone 6 in, the volcano joins the graph at both ends: the Ruby
+    /// Room's west passage on foot, and Volcano View south of the Egyptian Room.
+    @Test func milestoneSixJoinsTheVolcanoToTheGraph() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheVolcano + ["north", "west", "south", "east", "south", "east"],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "Volcano Bottom",
+                "Lava Room",
+                "Ruby Room",
+                "Glacier Room",
+                "Egyptian Room",
+                "Volcano View",
+                "Egyptian Room",
             ])
     }
 }

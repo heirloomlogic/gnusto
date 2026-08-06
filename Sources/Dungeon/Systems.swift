@@ -8,6 +8,32 @@ extension TraitKey<Bool> {
     /// bundles set it and a fourth reads it, so it is declared here with the
     /// rest of the game-wide vocabulary.
     public static let openFlame = Self("openFlame", default: false)
+
+    /// An item that will take a flame and go on burning — the source's
+    /// `BURNBIT`, which its parser uses to decide what `BURN` may even be said
+    /// about. Only the balloon's receptacle reads it so far, and what it reads
+    /// it for is which of the things a player might drop in the pan will lift
+    /// a balloon and which will simply sit there being gold.
+    public static let burnable = Self("burnable", default: false)
+}
+
+extension Player {
+    /// The lit flame in your hands, if there is one — the flame you named, or
+    /// the first one you have. The mainframe's `BURN` syntax demands a
+    /// `FLAMEBIT` object in hand, and this game has three: the matchbook, the
+    /// pair of candles and the ivory torch.
+    ///
+    /// Declared beside the trait it reads, the way ``burdenWeight(of:)`` is
+    /// declared beside ``TraitKey/weight``: three region bundles were asking
+    /// this question in their own words before there was one place to ask it.
+    ///
+    /// - Parameter named: the flame the sentence named, if it named one.
+    /// - Returns: the flame, or `nil` when there isn't one.
+    func heldFlame(named: Item? = nil) -> Item? {
+        let lit = inventory.filter { $0[default: .openFlame] && $0.isLit }
+        guard let named else { return lit.first }
+        return lit.contains(named) ? named : nil
+    }
 }
 
 /// The mainframe's verb vocabulary that the engine does not already carry.

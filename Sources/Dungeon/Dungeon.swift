@@ -60,10 +60,18 @@ struct Dungeon: Game, GameMain {
     /// the five together scores **489**; the ten still missing are, still,
     /// milestone 1's canary and bauble.
     ///
+    /// Milestone 6 adds 61, and all of it is walkable: three treasures — the
+    /// priceless zorkmid (10+12) on the Narrow Ledge, Lord Dimwit's crown
+    /// (15+10) in the box the brick opens, and the Flathead stamp (4+10)
+    /// pressed inside the Library's purple book. Not one room in the volcano
+    /// carries an `RVAL`, so the whole of it is object values. A perfect
+    /// playthrough of the six together scores **550**; the ten still missing
+    /// are, still, milestone 1's canary and bauble.
+    ///
     /// Why the ceiling moves at all, and what may be declared ahead of its
     /// route: `docs/games/dungeon.md`, "The ceiling ratchets while the game is
     /// being built", and the matching `FIDELITY.md` entry.
-    let maxScore = 499
+    let maxScore = 560
 
     let intro = Prose.intro
 
@@ -101,6 +109,7 @@ struct Dungeon: Game, GameMain {
     let riddle = DungeonRiddle()
     let alice = DungeonAlice()
     let bank = DungeonBank()
+    let volcano = DungeonVolcano()
 
     /// The grue: this game's prose, the plugin's stock warn-then-kill schedule.
     let dangerousDark = DangerousDark(
@@ -165,6 +174,7 @@ struct Dungeon: Game, GameMain {
         riddle
         alice
         bank
+        volcano
         dangerousDark
         scoring
         melee
@@ -227,6 +237,7 @@ struct Dungeon: Game, GameMain {
             alice.sphere, alice.spices,
             crossroads.violin,
             bank.bills, bank.portrait,
+            volcano.zorkmid, volcano.crown, volcano.stamp,
         ]
     }
 
@@ -267,6 +278,8 @@ struct Dungeon: Game, GameMain {
         graniteRules
         bucketRules
         buttonRules
+        balloonRules
+        blastRules
     }
 
     /// Milestones 1 to 3, and everything that belongs to no one milestone.
@@ -527,6 +540,10 @@ struct Dungeon: Game, GameMain {
         // the table is the host's. Moving the boat rather than the player is
         // what carries the hull's cargo along — the same move `land` makes.
         world.before(.launch) {
+            // `LAUNC` is a pseudo-direction out of either volcano ledge as well
+            // as a word for the boat, so the vehicle decides which table gets
+            // read. Milestone 6.
+            if player.vehicle == volcano.balloon { try volcano.launchBalloon() }
             try require(player.vehicle == river.magicBoat, else: Prose.launchNotAboard)
             let here = player.location
             try require(here != river.endOfRainbow, else: Prose.launchRocksTooSharp)
@@ -543,6 +560,7 @@ struct Dungeon: Game, GameMain {
         // mooring puts you on it, a stretch with two makes you say which, and
         // River-2 — rocks one side and the White Cliffs the other — has none.
         world.before(.land) {
+            if player.vehicle == volcano.balloon { try volcano.landBalloon() }
             try require(player.vehicle == river.magicBoat, else: Prose.landNoBoat)
             let here = player.location
             let banks = moorings.filter { $0.water == here }.map(\.shore)
@@ -729,7 +747,64 @@ struct Dungeon: Game, GameMain {
         }
     }
 
+    /// Milestone 6 — the balloon's fire and the gnome's fee
+    ///
+    /// Both are volcano mechanisms and both are here, because each has exactly
+    /// one clause that names another bundle: the brick answers `burn` with an
+    /// obituary wherever it is standing, and the gnome refuses it. Everything
+    /// after that clause is ``DungeonVolcano``'s and is delegated to it, so the
+    /// host never writes the bundle's state or names its fuses.
+    @RuleBuilder private var balloonRules: Rules {
+        world.before(.burn) {
+            guard let fuel = command.directObject else { return }
+            if fuel == house.brick {
+                try require(
+                    player.heldFlame(named: command.indirectObject) != nil,
+                    else: Prose.nothingToBurnWith)
+                house.brick.vanish()
+                try die(Prose.brickBoom)
+            }
+            guard volcano.receptacle.holds(fuel) else { return }
+            try volcano.lightTheBurner(fuel)
+        }
+
+        volcano.gnome.before(.give, .throwAt) {
+            guard let offered = command.directObject else {
+                try reply(Prose.gnomeIsNervous)
+            }
+            guard offered != house.brick else { try volcano.gnomeRefusesTheCharge(offered) }
+            try volcano.offerTheGnome(offered)
+        }
+    }
+
+    /// Milestone 6 — the brick, the wire and what they do to a room
+    @RuleBuilder private var blastRules: Rules {
+        // The wire coil is milestone 2's and the brick milestone 1's, so the
+        // host holds the match; what the blast reaches is the volcano's.
+        dam.wireCoil.before(.burn) {
+            try require(
+                player.heldFlame(named: command.indirectObject) != nil,
+                else: Prose.nothingToBurnWith)
+            startFuse("brickBlast")
+            try reply(Prose.wireStartsToBurn)
+        }
+    }
+
     var timers: [TimedEvent] {
+        // The wire burns for two turns, and then the clay in the brick turns
+        // out to have been more than clay. Milestone 6; the brick and the wire
+        // belong to two other bundles, so the fuse is the host's.
+        fuse("brickBlast", after: 2) {
+            let wire = dam.wireCoil
+            guard house.brick.holds(wire) else {
+                if wire.isReachable { say(Prose.wireBurnsToNothing) }
+                wire.vanish()
+                return
+            }
+            wire.vanish()
+            try volcano.detonate(house.brick)
+        }
+
         // The troll swings back. He is the only thing in this milestone that
         // will kill you other than the dark.
         melee.aggression(
@@ -745,6 +820,7 @@ struct Dungeon: Game, GameMain {
         mazeMap
         riverMap
         milestoneFiveMap
+        milestoneSixMap
     }
 
     /// Milestones 1 to 3, and the placements that belong to no one milestone.
@@ -945,5 +1021,21 @@ struct Dungeon: Game, GameMain {
         aboveGround.skeletonKeys.starts(in: maze.maze5)
 
         player.starts(in: aboveGround.westOfHouse)
+    }
+
+    /// Milestone 6 — the two doors into the volcano
+    @MapBuilder private var milestoneSixMap: WorldMap {
+        // The Ruby Room's west passage, which milestone 3 left as a seam. It
+        // runs **west from both ends** — the mainframe's own doubling, the same
+        // one the Deep Ravine's crawl has, and not a transcription slip.
+        templeQuarter.rubyRoom.west(volcano.lavaRoom)
+        volcano.lavaRoom.west(templeQuarter.rubyRoom)
+
+        // And the Egyptian Room's south door, which milestone 3 left with the
+        // room's description still naming it. Volcano View is on the far wall
+        // of the shaft: you can see both flyable ledges from it and reach
+        // neither, which is the whole of what that room is for.
+        templeQuarter.egyptianRoom.south(volcano.volcanoView)
+        volcano.volcanoView.east(templeQuarter.egyptianRoom)
     }
 }

@@ -273,3 +273,65 @@ struct RugGame: Game {
         }
     }
 }
+
+/// A container and a surface that each hold one ordinary item and one fixed
+/// fitting, for the room-listing rule that `scenery` means "don't list me"
+/// wherever the thing is standing — not only when it is standing on the floor.
+///
+/// The balloon in `Sources/Dungeon/` is what wanted this: its cloth bag, its
+/// receptacle and its braided wire are all named by the basket's own
+/// description, and each of them was getting a line of its own underneath it.
+struct FittedBasketGame: Game {
+    let title = "Fitted Basket"
+    let intro = ""
+
+    let shed = Location {
+        name("Shed")
+        description("A shed with a bench in it.")
+    }
+
+    let basket = Item {
+        name("wicker basket")
+        container
+    }
+
+    /// Part of the basket, and named by its description rather than by a line
+    /// of its own.
+    let handle = Item {
+        name("basket handle")
+        synonyms("handle")
+        description("Woven into the rim, and not coming out of it.")
+        scenery
+    }
+
+    let apple = Item {
+        name("red apple")
+    }
+
+    let bench = Item {
+        name("workbench")
+        surface
+    }
+
+    /// The same case one level up: a fitting screwed to the bench.
+    let vise = Item {
+        name("iron vise")
+        synonyms("vise")
+        description("Bolted through the bench top.")
+        scenery
+    }
+
+    let hammer = Item {
+        name("claw hammer")
+    }
+
+    var map: WorldMap {
+        player.starts(in: shed)
+        basket.starts(in: shed)
+        handle.starts(inside: basket)
+        apple.starts(inside: basket)
+        bench.starts(in: shed)
+        vise.starts(on: bench)
+        hammer.starts(on: bench)
+    }
+}

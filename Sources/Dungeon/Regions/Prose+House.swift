@@ -210,8 +210,9 @@ extension Prose {
         A rickety table, pushed against the wall and thick with dust.
         """
 
-    /// Written fresh — the brick is mainframe-only. What it is *for* is a
-    /// later milestone's business; it is a lump of clay until then.
+    /// Verbatim; `BRICK` is an `identical` entry, so the trilogy carries this
+    /// line word for word. (Milestone 1 filed it as written fresh, on the
+    /// assumption that the brick was mainframe-only. It is not.)
     static let brickInPlace = """
         There is a square brick here which feels like clay.
         """

@@ -314,6 +314,36 @@ struct ContainerTests {
 
     // MARK: - open / close
 
+    /// `scenery` means "don't list me" wherever the thing is standing. A
+    /// fitting inside a container or on a surface is suppressed for the same
+    /// reason one on the floor is: the game has already described it, in the
+    /// sentence that mentions the thing holding it.
+    @Test func roomDescriptionSkipsSceneryInsideAContainerAndOnASurface() async throws {
+        let transcript = try await play(FittedBasketGame(), ["look"])
+        let look = turnOutput(of: "look", in: transcript)
+
+        #expect(look.contains("In the wicker basket is a red apple."))
+        #expect(look.contains("On the workbench is a claw hammer."))
+        #expect(!look.contains("handle"))
+        #expect(!look.contains("vise"))
+    }
+
+    /// And it narrows the *listing* and nothing else: both fittings are still
+    /// there to be named, examined and searched for, which is the whole
+    /// difference between `scenery` and `hidden`.
+    @Test func sceneryInsideAContainerIsStillThereToBeNamed() async throws {
+        let transcript = try await play(
+            FittedBasketGame(), ["examine handle", "examine vise", "look in basket"])
+
+        expectInOrder(
+            transcript,
+            [
+                "Woven into the rim",
+                "Bolted through the bench top.",
+                "handle",
+            ])
+    }
+
     @Test func openRevealsContentsOrJustOpens() async throws {
         let transcript = try await play(
             PantryGame(),
