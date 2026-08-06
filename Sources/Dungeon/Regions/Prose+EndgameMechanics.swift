@@ -3,9 +3,8 @@
 ///
 /// `Prose+Endgame.swift` holds the rooms and the objects; this holds what
 /// happens to them. The split is the same one `Prose+Systems.swift` makes
-/// against `Prose.swift`, and it exists here for a second reason: hazard #174
-/// wants small declaration bodies, and one four-hundred-line `extension Prose`
-/// is not one of those.
+/// against `Prose.swift`: one four-hundred-line `extension Prose` is a wall of
+/// string constants, and two subjects read as two.
 ///
 /// **Case 3 throughout — written fresh.** The whole region is mainframe-only:
 /// no room and no object of it appears in any bucket of

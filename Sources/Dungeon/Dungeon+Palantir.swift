@@ -23,8 +23,7 @@ import Gnusto
 ///
 /// Its own file rather than more of `Dungeon.swift`, for `Dungeon+Thief.swift`'s
 /// reason exactly: the host is eleven hundred lines before this arrives, and
-/// hazard #174 says a seventeenth bundle is the wrong moment to make one
-/// declaration body longer.
+/// that is long enough without a seventeenth region's worth on the end of it.
 extension Dungeon {
     // MARK: - Map
 

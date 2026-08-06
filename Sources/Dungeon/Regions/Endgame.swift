@@ -20,10 +20,9 @@ import GnustoActors
 /// 5. **The prison**, four corridors round a slot that eight cells take turns
 ///    in, and the bronze door of the fourth one.
 ///
-/// **The whole region is one bundle.** Hazard #174's budget is over the entire
-/// declaration surface rather than over the largest body (`FIDELITY.md`,
-/// milestone 8), so three bundles would have cost three `GameContent`
-/// conformances for nothing. What lowers the peak is small bodies, and every
+/// **The whole region is one bundle.** Splitting it three ways would have cost
+/// three `GameContent` conformances to buy nothing a reader wants: the five
+/// stages below are one place in the fiction and share the box's state. Every
 /// `map` and `rules` member below is a sub-builder in an extension.
 ///
 /// **The mirror box is the Royal Puzzle's architecture, lifted.** One
@@ -101,15 +100,28 @@ struct DungeonEndgame: GameContent {
     let hallwayG = hallway()
     let hallwayD = hallway()
 
-    /// The ten narrow rooms flanking the hallway, east and west of each of its
-    /// five rooms. Reached only by squeezing past the end of the box, which is
-    /// a `before(.go)` rule and not an exit — so `MRDE`, `MRDW`, `MRGE` and
-    /// `MRGW` come out with the nought exits the atlas records for them, and
-    /// the other six with four apiece.
+    /// The six narrow rooms a player can stand in, east and west of the first
+    /// three hallway rooms. Reached only by squeezing past the end of the box,
+    /// which is a `before(.go)` rule and not an exit.
+    ///
+    /// `alwaysDescribed` because the box is in the description and the box
+    /// moves: the room has to say where it is standing every time, not only the
+    /// first time.
     private static func narrowRoom() -> Location {
         Location {
             name("Narrow Room")
             alwaysDescribed
+        }
+    }
+
+    /// The four flanking `MRG` and `MRD`. The Guardians kill on arrival, so
+    /// nothing here is ever described, entered from, or walked out of — they
+    /// exist so the atlas's nought-exit rooms exist and the box has somewhere to
+    /// be seen from. No `alwaysDescribed`: a flag with nothing to print is a
+    /// bootstrap warning, and rightly.
+    private static func neverSeenNarrowRoom() -> Location {
+        Location {
+            name("Narrow Room")
         }
     }
 
@@ -119,10 +131,10 @@ struct DungeonEndgame: GameContent {
     let narrowBWest = narrowRoom()
     let narrowCEast = narrowRoom()
     let narrowCWest = narrowRoom()
-    let narrowGEast = narrowRoom()
-    let narrowGWest = narrowRoom()
-    let narrowDEast = narrowRoom()
-    let narrowDWest = narrowRoom()
+    let narrowGEast = neverSeenNarrowRoom()
+    let narrowGWest = neverSeenNarrowRoom()
+    let narrowDEast = neverSeenNarrowRoom()
+    let narrowDWest = neverSeenNarrowRoom()
 
     /// `INMIR`. Fifteen points, and one `Location` for the inside of the box
     /// wherever the box is standing — the Royal Puzzle's answer to the same
@@ -311,8 +323,8 @@ struct DungeonEndgame: GameContent {
     /// through in the box — so **one** object, in the hallway room a player can
     /// stand in and look north from.
     ///
-    /// The count is not fastidiousness. This bundle is the eighteenth and it
-    /// spent hazard #174's whole remaining budget; see `FIDELITY.md`.
+    /// The count is not fastidiousness: an object in a room whose description
+    /// never prints is a noun the player can name and nothing can answer.
     let guardians = Item {
         name("Guardians of Zork")
         adjectives("enormous", "stone")
@@ -331,9 +343,9 @@ struct DungeonEndgame: GameContent {
     ///
     /// **Nine, not eleven.** The Guardians' own hallway room gets none — its
     /// `onEnter` kills you before any description prints — and neither does
-    /// `MRD`, which is only ever passed through inside the box. That is worth saying rather than leaving to be
-    /// noticed, because hazard #174's budget is over the whole declaration
-    /// surface and this bundle spends every object it declares.
+    /// `MRD`, which is only ever passed through inside the box. Worth saying
+    /// rather than leaving to be noticed: both were once put down to issue
+    /// #174's budget, and neither ever needed that excuse.
     private static func boxFromOutside() -> Item {
         Item {
             name("mirror box")
@@ -522,6 +534,45 @@ struct DungeonEndgame: GameContent {
         scenery
     }
 
+    /// `NUMBERS`. The eight numerals around the dial's face, one object each.
+    ///
+    /// This engine hands a rule the *item* a noun resolved to and never the word
+    /// the player typed, so a number the player can name has to be a thing that
+    /// exists. Milestone 9 could not afford eight of them and the dial stepped
+    /// instead, which cost the source's own `set dial to four`; issue #174 is
+    /// fixed and they are back. Each answers its word and its digit, so `set dial
+    /// to 4` works as well as `set dial to four`.
+    ///
+    /// - Parameter number: which numeral, from one to eight.
+    /// - Returns: one numeral on the dial's face.
+    private static func numeral(_ number: Int) -> Item {
+        Item {
+            // ``DungeonEndgame/numberWord(_:)`` is the one place the eight words
+            // are spelled, so `read dial` and `set dial to …` cannot disagree.
+            name(numberWord(number))
+            synonyms("\(number)")
+            description(Prose.sundialNumeral)
+            scenery
+        }
+    }
+
+    let numeralOne = numeral(1)
+    let numeralTwo = numeral(2)
+    let numeralThree = numeral(3)
+    let numeralFour = numeral(4)
+    let numeralFive = numeral(5)
+    let numeralSix = numeral(6)
+    let numeralSeven = numeral(7)
+    let numeralEight = numeral(8)
+
+    /// The numerals in dial order, so a resolved noun becomes a setting.
+    var numerals: [Item] {
+        [
+            numeralOne, numeralTwo, numeralThree, numeralFour,
+            numeralFive, numeralSix, numeralSeven, numeralEight,
+        ]
+    }
+
     /// `DBUTT`. Turns the carousel and brings the selected cell into the slot.
     let parapetButton = Item {
         name("large button")
@@ -577,24 +628,21 @@ struct DungeonEndgame: GameContent {
     /// out of the dark crypt. Death is final from here on.
     @Global var pastTheCrypt = false
 
-    /// How many of the three questions have been answered right, and which one
-    /// is being asked. `-1` is "not asking".
+    /// Which of the three questions is being asked, which is also how many have
+    /// been answered right — they only ever move together. `-1` is "not asking".
     @Global var quizAsked = -1
 
-    /// How many right answers so far, and how many wrong ones at this question.
-    @Global var quizRight = 0
+    /// How many wrong answers at this question. Five ends the examination, and
+    /// a right answer puts it back to nothing.
     @Global var quizWrong = 0
 
     /// The three questions this run drew, in order. Empty until the first
     /// knock.
     @Global var quizPaper = QuizPaper()
 
-    /// How many turns since the question was last put. He asks again every
-    /// second one.
-    @Global var quizPatience = 0
-
-    /// Set when five wrong answers end the quiz for good.
-    @Global var quizLost = false
+    /// Whether a turn has passed since the question was last put. He asks again
+    /// every second one, so one bit is the whole of his patience.
+    @Global var quizWaitedATurn = false
 
     /// Whether the wooden door has been won.
     @Global var quizWon = false

@@ -10,8 +10,8 @@ import Gnusto
 /// exactly as `CP`'s nine are not. What is declared below is every row the
 /// atlas records as **plain**, **door** or **conditional (`MIRROR-OPEN`)**.
 ///
-/// Split into five sub-builders for hazard #174's reason, stated on
-/// ``DungeonEndgame``.
+/// Split into five sub-builders because thirty-two rooms' worth of exits do not
+/// read as one list. See ``DungeonEndgame``.
 extension DungeonEndgame {
     @MapBuilder var map: WorldMap {
         tombMap
@@ -149,11 +149,13 @@ extension DungeonEndgame {
         greatPit.starts(in: parapet)
         sundial.starts(in: parapet)
         parapetButton.starts(in: parapet)
+        for numeral in numerals { numeral.starts(in: parapet) }
 
         hoard.starts(in: treasury)
     }
 
-    /// The box as it is seen from each of the eleven rooms it can be seen from.
+    /// The box as it is seen from each of the nine rooms it can be seen from —
+    /// every hallway and narrow room a living player can stand in.
     var boxesSeenFromOutside: [(Item, Location)] {
         [
             (boxSeenFromA, hallwayA), (boxSeenFromB, hallwayB),

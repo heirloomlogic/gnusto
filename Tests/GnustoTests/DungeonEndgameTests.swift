@@ -421,6 +421,54 @@ struct DungeonEndgameTests {
         #expect(transcript.contains("You have died"))
     }
 
+    /// `set dial to four` is the source's own spelling, and it went missing for a
+    /// milestone: naming a number needs one object per number, and issue #174's
+    /// stack budget could not afford eight more. The budget is a real number now
+    /// and they are back — by word, by digit, and refusing anything that is not a
+    /// number at all rather than rounding it to one.
+    @Test func theDialTakesANumberByNameAndByDigit() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.pastTheCrypt + Self.throughTheBox + Self.theQuiz + [
+                "north", "north", "west", "north",
+                // One room short of the parapet: the numerals are on the dial's
+                // face, so `four` is a thing there and nowhere else in the game.
+                "examine four",
+                "north",
+                "set dial to four", "read dial",
+                "set dial to 7", "read dial",
+                "set dial to sword",
+                "examine four",
+            ],
+            seed: Self.seed)
+
+        expectInOrder(
+            transcript,
+            [
+                "You can't see any such thing",
+                "comes to rest at four",
+                "The pointer stands at four.",
+                "comes to rest at seven",
+                "The pointer stands at seven.",
+                "The dial takes a number from one to eight, and nothing else.",
+                "A numeral cut into the stone",
+            ])
+    }
+
+    /// `knock` is the game's own default answer now, not this bundle's
+    /// interception of every knock anywhere. The line a player sees is the same;
+    /// what changed is that a door somewhere else can answer for itself, which a
+    /// `world.before` rule made impossible for good.
+    @Test func knockingAnywhereElseGetsTheGamesOwnAnswer() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            ["knock on door", "knock on mailbox"],
+            seed: Self.seed)
+
+        #expect(occurrences(of: "You knock, and nobody answers.", in: transcript) == 2)
+        #expect(!transcript.contains("Nobody answers."))
+    }
+
     // MARK: - The route, in pieces
 
     /// The mirror box, from the Top of Stairs to the Dungeon Entrance.

@@ -2289,6 +2289,14 @@ entry below.
   seventeenth: the limit is real, it is hit by *adding a bundle* rather than by
   writing one badly, and the error names nothing.
 
+> **Resolved.** Issue #174 is fixed: `Bootstrap.build` runs on a 16 MB thread the
+> engine sizes rather than on whatever stack it was called from, and
+> `GNUSTO_STACK_REPORT=1` prints what a boot used. The measurements this note and
+> the two below were guessing at are now readable — a cooperative thread gives
+> **512 KB**, and Dungeon's bootstrap peak is **355 KB** in debug and 90 KB in
+> release. The record above stays as written: it is what was known at the time,
+> and the diagnosis it reached was half right in a way worth keeping.
+
 **Prose.** Every line is written fresh. `CP`, `CPANT` and `CPOUT` appear in no
 bucket of `docs/games/dungeon-prose-comparison.md`, and neither do any of the
 region's objects, so the whole region is case 3 of the prose rule. There is more
@@ -2568,6 +2576,10 @@ worth doing because it lowers the peak rather than because it raises the roof.
 The eighteenth bundle should assume it has very little room and count entities,
 not lines.
 
+> **Resolved**, as milestone 7's note above records. The eighteenth bundle's
+> reading of the limit — a budget over the whole declaration surface — was the
+> right one; what it could not do was measure it.
+
 #### The thief
 
 His prowl went 107 → **108**, and it gained exactly one of the wing's seven
@@ -2774,6 +2786,16 @@ added without an engine fix for #174, and this milestone's own findings from
 reason: each attempt to land them put the suite back over the edge. They are
 listed in the pull request rather than in the code, which is not where anybody
 wants them.
+
+> **Resolved, and one correction to the record.** Issue #174 is fixed — the
+> bootstrap runs on a 16 MB thread the engine owns — and the eight numerals are
+> back, so `set dial to four` is the source's spelling again. But the margin was
+> never as thin as this note believed: measured on the current toolchain, Dungeon
+> uses **355 KB of the 512 KB** a cooperative thread gives, and the full suite
+> passes repeatedly with the numerals restored *and* the fix disabled. The
+> likeliest explanation is that the compiler moved between then and now. Which is
+> the sharpest form of the lesson: a cliff nobody can measure is indistinguishable
+> from one that has already moved, and eleven declarations were paid to it.
 
 #### The thief
 

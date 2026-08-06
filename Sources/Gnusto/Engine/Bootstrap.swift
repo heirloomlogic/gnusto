@@ -16,7 +16,35 @@ public struct BootstrapError: Error, CustomStringConvertible {
 /// `Game` instance: Mirror discovery, map and rules registration, and
 /// validation.
 enum Bootstrap {
+    /// Boots `game` on a stack this package sizes.
+    ///
+    /// The signature is the one every caller already uses; what changed is where the
+    /// work happens. ``buildCore(_:)`` reads every declaration the game and its
+    /// bundles make, and how much stack that costs scales with the whole declaration
+    /// surface — 355 KB for Dungeon in a debug build, against the 512 KB a Swift
+    /// Testing cooperative thread has. See ``DeepStack`` for what issue #174 cost
+    /// before this hop existed.
+    ///
+    /// - Parameter game: the game to build.
+    /// - Throws: `BootstrapError` if the game definition is invalid, rethrown on the
+    ///   calling thread exactly as it was raised on the worker.
+    /// - Returns: the immutable definition and the initial world state.
     static func build(_ game: some Game) throws -> (GameDefinition, WorldState) {
+        let outcome = try DeepStack.run(measuringStack: StackReport.isEnabled()) {
+            try buildCore(game)
+        }
+        if let line = StackReport.line(for: outcome.reading, game: "\(type(of: game))") {
+            writeToStandardError(line)
+        }
+        return outcome.value
+    }
+
+    /// The bootstrap proper, on whatever stack it is called on: Mirror discovery,
+    /// map and rules registration, and validation.
+    ///
+    /// Separate from ``build(_:)`` so a probe can measure it without the hop
+    /// measuring itself. Everything else should call ``build(_:)``.
+    static func buildCore(_ game: some Game) throws -> (GameDefinition, WorldState) {
         var diagnostics: [String] = []
         var registry = Registry()
         var locations: [EntityID: LocationDefinition] = [:]

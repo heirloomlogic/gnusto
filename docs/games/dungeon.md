@@ -318,18 +318,27 @@ the whole game answers (`diagnose`, `dig`, `pray`), and words that cross two
 bundles (`launch` and `land`, whose moorings include the dam's; `temple` and
 `treasure`, which join two).
 
-An eighth, learned at M5: **a declaration body has a size limit, and the limit
-is the stack.** Adding twenty rooms made every `DungeonTests` test
-— milestone 1's included — die with a bus error and no message. Nothing was
-wrong with the game: `swift run Dungeon` was fine. `Bootstrap.build` reads the
-host's `map` and `rules` and every content bundle's in one call chain, and the
-depth of that chain grows with the size of the largest single declaration body,
-while a shipped game boots on the main thread's 8 MB and a Swift Testing test
-body runs on a cooperative thread with far less. Splitting the host's `rules`
-into eight `@RuleBuilder` properties and its `map` into four `@MapBuilder` ones
-fixed it, and each region bundle's own `rules` is split the same way. So keep a
-single `map` or `rules` body to a few dozen statements and group the rest behind
-named sub-builders. The failure it prevents names nothing and points nowhere.
+An eighth, learned at M5 and **retracted here**: for four milestones this said a
+declaration body had a size limit, and that the limit was the stack. The first
+half was wrong and the second half was right.
+
+What was true: from M5 on, adding rooms killed every `DungeonTests` test at once
+with a bus error and no message, while `swift run Dungeon` was fine, because a
+shipped game boots on the main thread's 8 MB and a Swift Testing body boots on a
+cooperative thread with **512 KB**. What was false: that the depth tracked the
+largest single body. M8 halved ten bodies and still died; what settled it was
+deleting four scenery objects. M9 repeated the result. The budget was over the
+whole declaration surface, and the splitting worked by lowering the peak rather
+than by raising the roof.
+
+**Issue #174 is fixed and there is no limit to keep to.** `Bootstrap.build` now
+runs on a thread the engine sizes — 16 MB against a measured Dungeon peak of
+355 KB — so a body is as long as it reads well at. The existing sub-builders
+stay because they are easier to read, not because anything requires them, and
+`GNUSTO_STACK_REPORT=1` prints what a boot actually used if you ever want to
+know. What remains true is the lesson underneath: **a failure that names nothing
+costs more than the thing it is failing about**, and four milestones of deleting
+content to appease an unmeasured cliff is what that costs.
 
 A fifth, learned at M3: **a mechanism outgrows its bundle.** M2 put the Round
 Room's carousel inside `DungeonRoundRoom` because all three of its built passages
@@ -948,17 +957,13 @@ would make the box quietly unsolvable.
 ### What is left
 
 Nothing of the map, and nothing of the score. The rest is engine work the game
-has been filing as it went, and one item of it is now blocking:
+has been filing as it went, and nothing of it is blocking any more:
 
-- **#174, the bootstrap stack budget, which is now blocking.** The eighteenth
-  bundle does not sit under the limit — it sits on it. The same commit passed
-  four consecutive full runs and later failed three, with nothing changed
-  between them, while `main` passed throughout. Eleven declarations were
-  surrendered to buy a working margin, one of them a real piece of the source
-  (`set dial to four`), and a dozen sound `/simplify` findings could not be
-  applied because each attempt put the suite back over. A nineteenth region
-  cannot be added at all until this is fixed. `FIDELITY.md` records the
-  measurements.
+- **#174, the bootstrap stack budget, is fixed.** `Bootstrap.build` runs on a
+  16 MB thread the engine owns rather than on whatever stack it was called from,
+  and `GNUSTO_STACK_REPORT=1` prints what a boot used. Dungeon uses 355 KB of it
+  in a debug build, so the nineteenth region has room and so does the twentieth.
+  `set dial to four` is back, and the eight numerals it needs with it.
 - **The atlas pairs nothing against Zork III** (#184), which leaves the prose
   provenance of three regions — the Bank of Zork, the Royal Puzzle and the
   Endgame — resting on an absence that may only mean nobody looked.

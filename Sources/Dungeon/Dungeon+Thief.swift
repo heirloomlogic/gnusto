@@ -192,9 +192,8 @@ extension Dungeon {
         }
     }
 
-    /// The second half of the same list, split for hazard #174's reason: peak
-    /// bootstrap stack depth scales with the largest single declaration body,
-    /// and milestone 8's seventeenth bundle put the suite over the edge again.
+    /// The second half of the same list. Split when hazard #174 was thought to
+    /// be a limit on body size; kept because it reads better in two.
     @RuleBuilder private var moreThiefRules: Rules {
         // The fight. He carries two hits, like the troll, and dies to the same
         // two blades. When he falls, everything in his bag falls with him —
