@@ -2170,3 +2170,156 @@ libraries that cannot see each other, so a thief battered into unconsciousness b
 the first went on picking pockets under the second, on the same turn he was lying
 on the floor. `Actor.isUnconscious` is now engine state that both consult.
 Nothing in the mainframe changes. The dungeon stops contradicting itself.
+### Milestone 7 — the Royal Puzzle
+
+3 rooms in one region bundle, and one of them is sixty-four squares. The Small
+Square Room hangs off the Treasure Room's east passage — the one seam milestone
+4 left open — with the thief's note nailed up beside a hole in its floor. Down
+the hole is the Room in a Puzzle. South of the anteroom, and also behind the
+puzzle's steel door, is the Side Room. Each room came out with the number of
+exits `docs/games/dungeon-atlas.md` records for it.
+
+**The source calls it the Chinese Puzzle**, and signs it: `act3.199:700` reads
+*"CHINESE PUZZLE SECTION (COURTESY OF WILL WENG)"*, and the gold card's own face
+names Weng as the approving authority. Weng edited the *New York Times* crossword
+from 1969 to 1977. The name "Royal Puzzle" is the trilogy's.
+
+**The claim in the issue that is not true.** The issue says *"the card under a
+block is confiscated if spent opening the second exit, so there is exactly one
+correct order."* The confiscation is real — `CPSLT-OBJECT` calls
+`<REMOVE-OBJECT <PRSO>>` unconditionally before it decides what to print
+(`act3.199:896`), and nothing in the source ever puts `GCARD` back. But it is
+**not an ordering problem**. It is an exclusive choice, and what is unique is the
+correct *exit*, not the correct order:
+
+- the **ceiling opening** at cell 10 costs nothing — push the good ladder into
+  cell 11, stand under the hole, go up, and you keep everything you carry;
+- the **steel door** at cell 52 costs the card, and the card is the only thing in
+  the region worth points.
+
+No sequence of moves opens the door and banks the card, so there is no order that
+rescues it. The door is a bail-out, never a step on a winning line. What *is* a
+hard one-way state change is `CPBLOCK` (`act3.199:802`): push any wall into the
+square under the opening and the ceiling exit is destroyed for the rest of the
+game — the flag is never cleared anywhere in the source — at which point the
+door, and the forfeiture of the card, is the only way out. Both are pinned by
+transcript tests.
+
+**Where this departs from `Sources/Zork1/`, and why.** Zork I has none of this.
+Zork III does, and that is a documented gap rather than a decision — see the last
+entry below.
+
+- **The grid is 8×8, and every value of it is the source's.** `CPUVEC`
+  (`dung.355:3120-3184`) is 64 cells, row-major, one-based, with north = −8 and
+  east = +1 (`CPEXITS`, `:3200`). The entire border is fixed marble, which is why
+  the source's push routine needs no bounds check anywhere; the playable interior
+  is the 6×6 inside it. `theGridIsTheSourcesGrid` checks every landmark the
+  source names by number, because an off-by-one here would leave a puzzle that
+  still played and could not be solved.
+- **The transcription is corroborated from a second place in the source.**
+  `CP-ROOM` hardcodes the entry cell's geometry in prose — marble north and west,
+  sandstone east and south (`act3.199:829`) — and that agrees with the vector.
+  `theEntryCellsProseAgreesWithTheVector` is that cross-check.
+- **Diagonals are legal, which is why `CP` has nine exits and not four.** A
+  diagonal step is refused only when *both* squares flanking it are walls: you
+  may not cut a corner (`act3.199:735-740`). The shortest solution uses diagonals
+  throughout.
+- **Walls are addressed by compass side, not by material.** `CPNWL`, `CPSWL`,
+  `CPEWL`, `CPWWL` (`dung.355:1377-1403`). There is no sandstone-wall object and
+  no marble-wall object anywhere in the source, because which one you are shoving
+  depends on where you stand. So `push north wall` is the source's phrasing, and
+  issue #151's decorative-noun problem cannot arise here — the direction carries
+  the whole meaning.
+- **The room stops describing itself in prose after the first push.** `CPPUSH`:
+  once a wall has moved, every look is a 3×3 diagram with `MM`, `SS`, `??` and
+  blank (`CPWHERE`, `act3.199:837`). The diagram's *structure* is reproduced; its
+  legend, like every other line here, is written fresh.
+- **Two ladders, and one of them is a decoy.** `-2` reaches the ceiling and `-3`
+  never does. The source goes further and will not acknowledge a ladder on the
+  wrong side of you: the good one counts only to your east and the bad one only
+  to your west (`CPLADDER-OBJECT`, `act3.199:770`). Both draw as `SS`.
+- **`CPSOLVE` is dead.** The flag is set when you climb out and is read nowhere
+  in any file; it scores nothing, so nothing here scores it either. `up` and
+  `climb ladder` both leave by the ceiling and print the same line, but they are
+  two code paths and not one: `up` falls through to the conditional exit, while
+  `climb` has to move the player itself and therefore describe the arrival
+  itself, because a rule has no way to ask for the `go` it would have performed
+  and assigning `player.location` fires no `onEnter`. Worth an engine issue.
+- **The gold card is worth 25 and no room here is worth anything.** `GCARD` is
+  `OFVAL 10 OTVAL 15`, declared inside a `<PUT <OBJECT …> ,OROOM <GET-ROOM
+  "CP">>` wrapper at `dung.355:6324` rather than at top level. `CP`, `CPANT` and
+  `CPOUT` carry no `RVAL` between them.
+
+**Mechanics simplified or deferred.**
+
+- **Object containment is room-granular, and the source's is square-granular.**
+  `CPOBJS` is a 64-slot vector swapped into the room's contents on every step
+  (`CPGOTO`, `act3.199:809`), so anything dropped stays in the square it was
+  dropped in. Gnusto has one contents list per room. The card is therefore held
+  offstage until the player first stands in its square, and a `reach` rule
+  (issue #150) is what makes `take card` answer *"the card is squares away from
+  you"* rather than succeeding from across the grid. The consequence not
+  modelled: **an item dropped inside the puzzle can be picked up from any
+  square**, where the source would make you walk back for it.
+- **`ODESCO` on the gold card is dead text and is not reproduced.** *"Nestled
+  inside the niche is an engraved gold card"* prints only for an object inside a
+  container, and the card is never in one. There is **no niche** in the mainframe
+  puzzle; the tell is a floor line at cell 37. The niche is Zork III's.
+- **The rope is not modelled.** Tying a rope in the anteroom and climbing down
+  drops the anchor in after you (`act3.199:1212`). The rope is a `DungeonHouse`
+  item and this is a one-room-bundle milestone; the hole is a plain one-way exit
+  instead, which is what the source's own outcome amounts to.
+- **`push north wall` is not a verb row, and cannot be.** A verb pattern must end
+  with its direction slot, so `["push", .direction, "wall"]` is a compile-time
+  error from the `#verb` macro. The source's phrasing is bought back the other
+  way: the four compass walls are real items, so the wordier sentence resolves to
+  the core `.push` intent with a wall as its object, and that item's rule
+  performs the shove. Both spellings end in one helper.
+- **The sixteenth bundle hit the declaration-body stack limit again.** This is
+  the failure `docs/games/dungeon.md` records as its eighth seam lesson and
+  issue #174 files: peak bootstrap stack depth scales with the largest single
+  declaration body, and a Swift Testing body runs on a cooperative thread with
+  far less stack than `main`. Adding this region made the **whole suite** die
+  with signal 11 and no message, while `swift run Dungeon` and any single test
+  ran fine — the giveaway both times. The remedy is the same one milestone 5
+  used: this bundle's `map` is two `@MapBuilder` properties and its `rules` are
+  six `@RuleBuilder` ones, and the longest closure in it — the room description
+  that *is* the grid — sits in a sub-builder of its own with its first paragraph
+  factored out to a function. Worth saying plainly for whoever adds the
+  seventeenth: the limit is real, it is hit by *adding a bundle* rather than by
+  writing one badly, and the error names nothing.
+
+**Prose.** Every line is written fresh. `CP`, `CPANT` and `CPOUT` appear in no
+bucket of `docs/games/dungeon-prose-comparison.md`, and neither do any of the
+region's objects, so the whole region is case 3 of the prose rule. There is more
+text here to not reproduce than in earlier milestones: the source's puzzle is
+wordy by mainframe standards, and the card carries a full framed security pass,
+the note a signed letter from the thief, the diagram a legend. What crosses over
+is the fact each string carries.
+
+**A gap in the atlas, filed rather than fixed.** The prose-comparison document
+says the Royal Puzzle is *"content the trilogy never carried over"*. Zork III
+carried it over — it is that game's centrepiece. The generated atlas names Zork
+I/II/III in its provenance line and `bin/atlas/build_atlas.py:43` loads all
+three, yet **the string `Zork III` appears nowhere in the generated document**:
+every trilogy cell in 196 rooms and 253 objects reads `Zork I`, `Zork II` or `—`.
+So "no counterpart found" here may mean "no counterpart was looked for", and the
+same doubt covers the Endgame and the Dungeon Master. It cannot be settled from
+the repository, because the ZIL sources are deliberately not vendored. Nothing in
+this milestone turns on it: writing fresh is what the committed policy directs
+today. The atlas is generated and is not edited by hand, so the fix belongs in
+the builder.
+
+**Declared but not yet walkable: nothing.** `maxScore` goes 560 → **585**. The
+thief landed between milestone 6 and this one and closed the last gap, so the
+sentence every milestone since the first has had to carry — *the ten still
+missing are milestone 1's canary and bauble* — retires here. A perfect
+playthrough of everything built scores **585 of 585**.
+
+**Not built, deliberately.** `FCHMP` — "Moby lossage" — is still not built. All
+nine of `CP`'s exits resolve to it under a flag that is permanently false, which
+is the source's idiom for *"the room function owns every direction"* rather than
+a destination anybody reaches.
+
+**Seams left for later milestones: none.** Every exit these three rooms declare
+reaches a room that exists.

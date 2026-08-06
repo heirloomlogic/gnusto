@@ -362,9 +362,9 @@ struct DungeonTests {
         expectInOrder(
             transcript,
             [
-                "Your score is 10 of a possible 560",
+                "Your score is 10 of a possible 585",
                 "Cellar",
-                "Your score is 35 of a possible 560",
+                "Your score is 35 of a possible 585",
             ])
     }
 
@@ -438,7 +438,7 @@ struct DungeonTests {
                 "Gallery",
                 "The vandals left through the north,",
                 "Taken.",
-                "Your score is 39 of a possible 560",
+                "Your score is 39 of a possible 585",
             ])
         #expect(!transcript.contains("nasty-looking troll"))
     }
@@ -492,7 +492,7 @@ struct DungeonTests {
                 "Forest",
                 "You have been killed once.",
                 // Thirty-five points earned, ten paid back to the troll.
-                "Your score is 25 of a possible 560",
+                "Your score is 25 of a possible 585",
             ])
     }
 
@@ -550,7 +550,7 @@ struct DungeonTests {
     @Test func theCeilingTotalsTheAwardTableExactly() throws {
         let (definition, _) = try Bootstrap.build(Dungeon())
 
-        #expect(definition.maxScore == 560)
+        #expect(definition.maxScore == 585)
         #expect(definition.warnings.isEmpty, "\(definition.warnings)")
     }
 
@@ -576,7 +576,7 @@ struct DungeonTests {
                 "The lid is sprung and will not sit true again.",  // the wreck's own text
                 "the mainspring seems sprung",
                 "You are carrying a broken jewel-encrusted egg",
-                "Your score is 5 of a possible 560",
+                "Your score is 5 of a possible 585",
             ])
 
         // The jewel-encrusted egg is gone from the game rather than merely
@@ -639,13 +639,13 @@ struct DungeonTests {
                 "Up a Tree",
                 "Kitchen",
                 "Living Room",
-                "Your score is 20 of a possible 560",
+                "Your score is 20 of a possible 585",
                 "Cellar",
                 "Gallery",
                 "Studio",
                 "Kitchen",
                 "Living Room",
-                "Your score is 56 of a possible 560",
+                "Your score is 56 of a possible 585",
             ])
     }
 
@@ -761,7 +761,7 @@ struct DungeonTests {
             transcript,
             [
                 "East-West Passage",
-                "Your score is 40 of a possible 560",
+                "Your score is 40 of a possible 585",
                 // North and down out of the passage are the same stair, and
                 // they reach a room Zork I does not have.
                 "Deep Ravine",
@@ -821,7 +821,7 @@ struct DungeonTests {
                 "Taken.",
                 // Five for the passage, twelve for the bar — and twelve is the
                 // mainframe's find value, where Zork I pays ten.
-                "Your score is 52 of a possible 560",
+                "Your score is 52 of a possible 585",
             ])
     }
 
@@ -1078,16 +1078,16 @@ struct DungeonTests {
         expectInOrder(
             transcript,
             [
-                "Your score is 56 of a possible 560",
+                "Your score is 56 of a possible 585",
                 "The troll takes a fatal blow",
                 "Loud Room",
                 "The acoustics of the room change subtly.",
                 "You put the platinum bar in the trophy case.",
-                "Your score is 83 of a possible 560",
+                "Your score is 83 of a possible 585",
                 "The sluice gates open and water pours through the dam.",
                 "Lying half buried in the mud is an old trunk",
                 "You put the trunk of jewels in the trophy case.",
-                "Your score is 106 of a possible 560",
+                "Your score is 106 of a possible 585",
             ])
     }
 
@@ -1588,10 +1588,10 @@ struct DungeonTests {
                 "The basket is raised to the top of the shaft.",
                 "The basket is lowered to the bottom of the shaft.",
                 "Timber Room",
-                "Your score is 54 of a possible 560",
+                "Your score is 54 of a possible 585",
                 "Lower Shaft",
                 "In the basket is an ivory torch.",
-                "Your score is 64 of a possible 560",
+                "Your score is 64 of a possible 585",
             ])
     }
 
@@ -1656,11 +1656,11 @@ struct DungeonTests {
             [
                 "On the shore lies Poseidon's own crystal trident.",
                 "On the pedestal is a grail.",
-                "Your score is 46 of a possible 560",
+                "Your score is 46 of a possible 585",
                 "the temple dissolves around you",
                 "Forest",
                 "Living Room",
-                "Your score is 62 of a possible 560",
+                "Your score is 62 of a possible 585",
             ])
     }
 
@@ -1947,9 +1947,9 @@ struct DungeonTests {
         expectInOrder(
             transcript,
             [
-                "Your score is 35 of a possible 560",
-                "Your score is 60 of a possible 560",
-                "Your score is 70 of a possible 560",
+                "Your score is 35 of a possible 585",
+                "Your score is 60 of a possible 585",
+                "Your score is 70 of a possible 585",
             ])
     }
 
@@ -2125,7 +2125,7 @@ struct DungeonTests {
                 "Sandy Beach",
                 "You seem to be digging a hole here.",
                 "You can see a small statue here in the sand.",
-                "Your score is 50 of a possible 560",
+                "Your score is 50 of a possible 585",
                 "The hole collapses, smothering you.",
             ])
     }
@@ -2150,7 +2150,7 @@ struct DungeonTests {
                 "End of Rainbow",
                 "the rainbow appears to become solid",
                 "At the end of the rainbow is a pot of gold.",
-                "Your score is 50 of a possible 560",
+                "Your score is 50 of a possible 585",
                 "Rainbow Room",
                 "and fifty feet above the river, do you",
             ])
@@ -2342,8 +2342,8 @@ struct DungeonTests {
             [
                 "This is a former broom closet.",
                 "There is a pearl necklace here with hundreds of large pearls.",
-                "Your score is 40 of a possible 560",
-                "Your score is 49 of a possible 560",
+                "Your score is 40 of a possible 585",
+                "Your score is 49 of a possible 585",
             ])
     }
 
@@ -2385,7 +2385,7 @@ struct DungeonTests {
 
         expectInOrder(
             transcript,
-            ["Your score is 40 of a possible 560", "Your score is 50 of a possible 560"])
+            ["Your score is 40 of a possible 585", "Your score is 50 of a possible 585"])
     }
 
     /// Two rooms carry the well's etchings, and the ring of letters is legible
@@ -2499,7 +2499,7 @@ struct DungeonTests {
                 "goes up at once in a column of steam",
                 "There is a tin of rare spices here.",
                 "Taken.",
-                "Your score is 55 of a possible 560",
+                "Your score is 55 of a possible 585",
             ])
     }
 
@@ -2579,7 +2579,7 @@ struct DungeonTests {
                 "a steel cage falls from the ceiling",
                 "You are trapped inside a solid steel cage.",
                 "the robot stands exactly where you",
-                "Your score is 56 of a possible 560",
+                "Your score is 56 of a possible 585",
                 "with a scream of tearing steel",
                 "There is a mangled steel cage here.",
             ])
@@ -2669,7 +2669,7 @@ struct DungeonTests {
                 "Safety Depository",
                 "This is the Vault of the Bank of Zork, in which there are no doors.",
                 "On the floor sit 200 neatly stacked zorkmid bills.",
-                "Your score is 45 of a possible 560",
+                "Your score is 45 of a possible 585",
             ])
     }
 
@@ -2721,7 +2721,7 @@ struct DungeonTests {
                 "An alarm rings briefly and an invisible force prevents your leaving.",
                 "The wall gives like water",
                 "Bank Entrance",
-                "Your score is 55 of a possible 560",
+                "Your score is 55 of a possible 585",
             ])
     }
 
@@ -3005,7 +3005,7 @@ struct DungeonTests {
                 "The basket is anchored to a small hook by the braided wire.",
                 "Taken.",
                 "IN FROBS WE TRUST",
-                "of a possible 560",
+                "of a possible 585",
                 "Library",
                 "gnawed to pieces by unfriendly gnomes",
                 "Narrow Ledge",
@@ -3032,7 +3032,7 @@ struct DungeonTests {
                 "The pages fall apart at a place somebody kept",
                 "Taken.",
                 "OUR EXCESSIVE LEADER",
-                "of a possible 560",
+                "of a possible 585",
             ])
     }
 
@@ -3151,7 +3151,7 @@ struct DungeonTests {
                 "Dusty Room",
                 "whose door has been blown off",
                 "In the rusty box is a gaudy crown.",
-                "of a possible 560",
+                "of a possible 585",
             ])
     }
 
@@ -3413,11 +3413,11 @@ struct DungeonTests {
                 "The thief is taken aback by your unexpected generosity",
                 "The thief takes a fatal blow",
                 "reappear: the jewel-encrusted egg",
-                "Your score is 106 of a possible 560",
+                "Your score is 106 of a possible 585",
                 "a beautiful brass bauble drops from its mouth",
                 "You put the golden clockwork canary in the trophy case.",
                 "You put the beautiful brass bauble in the trophy case.",
-                "Your score is 110 of a possible 560",
+                "Your score is 110 of a possible 585",
             ])
     }
 
@@ -3460,10 +3460,16 @@ struct DungeonTests {
     /// Read off the declarations rather than through a transcript, because
     /// `Location` resolves its `EntityID` only inside a live turn; comparing the
     /// values themselves needs no frame.
-    @Test func theThiefProwlsAHundredAndFiveRoomsAndNoRoomTwice() throws {
+    /// Milestone 7 took it from 105 to **107**: the Small Square Room and the
+    /// Side Room, both plain two-way passages off his own lair. The third room
+    /// of that region, the Room in a Puzzle, is deliberately not among them —
+    /// the drop in is one-way and both ways out are earned, so a teleporting
+    /// thief put on that floor is sealed in with the gold card. Same reasoning
+    /// as the Small Room and the Vault.
+    @Test func theThiefProwlsAHundredAndSevenRoomsAndNoRoomTwice() throws {
         let prowl = Dungeon().thiefProwl
 
-        #expect(prowl.count == 105)
+        #expect(prowl.count == 107)
         for (index, room) in prowl.enumerated() {
             #expect(!prowl[..<index].contains(room), "room \(index) is in the set twice")
         }
@@ -3484,8 +3490,9 @@ struct DungeonTests {
             .filter { $0.customTraits["takeValue"] != nil || $0.customTraits["depositValue"] != nil }
             .compactMap(\.name)
             .sorted()
-        // 28: the twenty-five of milestones 1 to 5 and milestone 6's three.
-        #expect(valued.count == 28, "scored but not coveted: \(valued)")
+        // 29: the twenty-five of milestones 1 to 5, milestone 6's three, and
+        // milestone 7's gold card.
+        #expect(valued.count == 29, "scored but not coveted: \(valued)")
         for volcanic in ["priceless zorkmid", "gaudy crown", "stamp"] {
             #expect(valued.contains { $0.contains(volcanic) }, "\(volcanic) is not scored")
         }
@@ -3515,5 +3522,453 @@ struct DungeonTests {
             seed: 55)
 
         expectEveryNounAnswered(transcript, "the thief and his hoard")
+    }
+
+    // MARK: - Milestone 7: the road in
+
+    /// Down the trap door, past the troll, through the maze to the cyclops,
+    /// past him with his father's name, up into the Treasure Room and east
+    /// through the passage milestone 4 left as a seam.
+    ///
+    /// Straight through, without stopping: the Treasure Room is the thief's,
+    /// and he kills a visitor who loiters. Every test below that only passes
+    /// *through* uses this; the two that come back the other way use
+    /// ``toTheRoyalPuzzlePastTheThief`` and pay for the privilege.
+    private static let toTheRoyalPuzzle =
+        toMazeFive + mazeFiveToTheCyclops + ["odysseus", "up", "east"]
+
+    /// The same road with the thief cut down on the way through, for the tests
+    /// that need to stand in his room twice. Four blows at seed 55 is his own
+    /// suite's recipe, recorded there because the fight can go either way.
+    private static let toTheRoyalPuzzlePastTheThief =
+        toMazeFive + mazeFiveToTheCyclops + ["odysseus", "up"]
+        + Array(repeating: "attack thief with sword", count: 4)
+        + ["east"]
+
+    /// And down the hole, which is one-way.
+    private static let intoThePuzzle = toTheRoyalPuzzle + ["down"]
+
+    /// The shortest line that uncovers the gold card, from the moment the
+    /// player lands in the puzzle. Found by exhaustive breadth-first search over
+    /// the real grid, so it is not merely *a* route but the shortest one.
+    private static let toTheGoldCard = [
+        "push south", "east", "southeast", "east", "push south",
+    ]
+
+    /// The two spliced: standing on the card's square with it uncovered.
+    private static let toTheCardSquare = intoThePuzzle + toTheGoldCard
+
+    /// And the shortest line from the card's square to standing under the
+    /// ceiling opening with the good ladder beside it — the win. Thirty-seven
+    /// moves, and it uses diagonals throughout, which is why the source gives
+    /// `CP` nine exits and not four.
+    private static let cardSquareToTheWayOut = [
+        "north", "north", "north", "push east", "southwest", "southwest",
+        "northwest", "northwest", "push east", "south", "southeast", "southeast",
+        "push south", "east", "northeast", "north", "north", "push west",
+        "northwest", "push south", "push south", "push south", "push east",
+        "south", "south", "push west", "push north", "northeast", "push west",
+        "push west", "southeast", "push west", "push west", "push north",
+        "push north", "push north", "northwest",
+    ]
+
+    // MARK: - Milestone 7: the grid is the source's grid
+
+    /// The transcription of `CPUVEC` (`dung.355:3120-3184`) is the one thing in
+    /// this region that cannot be checked by reading the prose, because an
+    /// off-by-one would leave a puzzle that still played and simply could not be
+    /// solved. Every landmark the source names by number is checked here.
+    ///
+    /// The shipped types are `RoyalPuzzleGrid` / `RoyalPuzzleCell` rather than
+    /// the spike fixture's bare `PuzzleGrid` / `PuzzleCell`
+    /// (`Support/RoyalPuzzleGames.swift`), which still lives in this same test
+    /// target — the prefix is what keeps an unqualified lookup unambiguous.
+    @Test func theGridIsTheSourcesGrid() throws {
+        let grid = RoyalPuzzleGrid()
+        let (width, height) = (RoyalPuzzleGrid.width, RoyalPuzzleGrid.height)
+
+        // The source is 1-based and this array is 0-based.
+        #expect(grid.cells.count == width * height)
+        #expect(grid.cell(at: RoyalPuzzleGrid.entrySquare) == .floor)  // cell 10
+        #expect(grid.cell(at: RoyalPuzzleGrid.ladderSquare) == .sandstone)  // cell 11
+        #expect(grid.cell(at: 21) == .goodLadder)  // cell 22
+        #expect(grid.cell(at: 33) == .badLadder)  // cell 34
+        #expect(grid.cell(at: RoyalPuzzleGrid.cardSquare) == .sandstone)  // cell 37
+        #expect(grid.cell(at: RoyalPuzzleGrid.doorSquare) == .floor)  // cell 52
+
+        // The whole border is fixed marble, which is why the source's push code
+        // needs no bounds check anywhere.
+        for index in grid.cells.indices {
+            let (row, column) = (index / width, index % width)
+            if row == 0 || row == height - 1 || column == 0 || column == width - 1 {
+                #expect(grid.cell(at: index) == .marble, "border cell \(index + 1)")
+            }
+        }
+    }
+
+    /// An independent check on the same transcription, from a different part of
+    /// the source: `CP-ROOM` hardcodes the entry cell's geometry in prose
+    /// (`act3.199:829`), and it has to agree with the vector.
+    @Test func theEntryCellsProseAgreesWithTheVector() throws {
+        let grid = RoyalPuzzleGrid()
+        let square = RoyalPuzzleGrid.entrySquare
+
+        #expect(grid.cell(at: grid.neighbour(of: square, .north)!) == .marble)
+        #expect(grid.cell(at: grid.neighbour(of: square, .west)!) == .marble)
+        #expect(grid.cell(at: grid.neighbour(of: square, .east)!) == .sandstone)
+        #expect(grid.cell(at: grid.neighbour(of: square, .south)!) == .sandstone)
+    }
+
+    // MARK: - Milestone 7: the seam, and the way down
+
+    /// **The Treasure Room's east passage is the Royal Puzzle's antechamber.**
+    /// Milestone 4 built the room with its description already naming the
+    /// passage and left the far side as its one open seam.
+    @Test func theTreasureRoomOpensEastOnTheAntechamber() async throws {
+        let transcript = try await play(
+            Dungeon(), Self.toTheRoyalPuzzlePastTheThief + ["west", "east"], seed: 55)
+
+        // Fragments chosen to sit inside one wrapped line: the prose is
+        // hand-wrapped and nothing in the engine re-wraps it, so an assertion
+        // spanning a line break never matches.
+        expectInOrder(
+            transcript,
+            [
+                "passage to the east",
+                "Small Square Room",
+                "There is a piece of paper on the ground here.",
+                "Treasure Room",
+                "Small Square Room",
+            ])
+    }
+
+    /// The thief's note is the one warning the region gives, and it is the
+    /// truth. Mainframe-only content, so the letter is this project's own.
+    @Test func theThiefsNoteWarnsYouCannotGetOut() async throws {
+        let transcript = try await play(
+            Dungeon(), Self.toTheRoyalPuzzle + ["read note"], seed: 11)
+
+        #expect(transcript.contains("will not be able to get out again"))
+        #expect(transcript.contains("The Thief"))
+    }
+
+    /// The anteroom's hole is a one-way drop, and the room below is one
+    /// `Location` standing for sixty-four squares.
+    @Test func theDropIntoThePuzzleLandsUnderTheCeilingOpening() async throws {
+        let transcript = try await play(
+            Dungeon(), Self.intoThePuzzle + ["north", "east"], seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "You lower yourself through the hole",
+                "Room in a Puzzle",
+                "walled to the north and west in marble",
+                "In the ceiling above you is a large circular opening.",
+                // Marble north, sandstone east: the only move from the entry
+                // square is a push, which is why the puzzle opens with one.
+                "There is a wall there.",
+                "There is a wall there.",
+            ])
+    }
+
+    // MARK: - Milestone 7: the diagram, and pushing
+
+    /// **The room stops describing itself in prose after the first push.** The
+    /// source's `CPPUSH` flag: once a wall has moved, every look is a 3×3
+    /// diagram of the squares around you.
+    @Test func theFirstPushTurnsTheRoomIntoADiagram() async throws {
+        let transcript = try await play(
+            Dungeon(), Self.intoThePuzzle + ["push east", "look"], seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "walled to the north and west in marble",
+                "The wall slides forward and you follow it.",
+                "The architecture here is getting complicated",
+                "SS  = sandstone wall",
+                "West  |   .. SS|  East",
+            ])
+        // The legend is printed once, not on every look.
+        #expect(transcript.components(separatedBy: "getting complicated").count == 2)
+    }
+
+    /// Both spellings of the push reach the same code, and neither is the core
+    /// `push <object>`. `push north wall` is the source's own phrasing and is
+    /// bought back through the compass-wall items, because a verb pattern must
+    /// end with its direction slot.
+    @Test func aWallIsPushedByDirectionInEitherSpelling() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheRoyalPuzzle
+                + ["down", "push", "push north", "push north wall", "push marble wall"],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "Push which way? North, south, east or west.",
+                "The wall does not budge.",
+                "The wall does not budge.",
+                "In here a wall is pushed by direction",
+            ])
+    }
+
+    /// The ladder is square-local, so both what it looks like and whether you
+    /// can climb it are questions about where you are standing. From the entry
+    /// square there is no ladder at all, and `climb` says so rather than
+    /// describing rungs that are four squares away.
+    @Test func theLadderIsOnlyThereWhenYouAreBesideIt() async throws {
+        let transcript = try await play(
+            Dungeon(), Self.intoThePuzzle + ["examine ladder", "climb ladder"], seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "There is no ladder here.",
+                "There is no ladder here.",
+            ])
+    }
+
+    /// A compass wall is the only thing in the region that names a direction,
+    /// so it is the only thing that can say what is actually on that side.
+    @Test func eachCompassWallReportsItsOwnSquare() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheRoyalPuzzle
+                + ["down", "examine north wall", "examine east wall"],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "The wall to the north is marble",
+                "The wall to the east is sandstone",
+            ])
+    }
+
+    /// **Diagonals are legal, and that is why `CP` has nine exits.** What they
+    /// cannot do is cut the corner between two walls.
+    @Test func aDiagonalIsRefusedOnlyBetweenTwoWalls() async throws {
+        let transcript = try await play(
+            Dungeon(), Self.intoThePuzzle + ["southeast"], seed: 11)
+
+        // From the entry square both flanking squares are walls.
+        #expect(transcript.contains("cannot squeeze between them"))
+    }
+
+    // MARK: - Milestone 7: the gold card
+
+    /// The card lies under a movable block, and the floor of its square is the
+    /// only hint the source gives that anything is there.
+    @Test func theGoldCardIsUnderTheBlockAndPaysTwentyFive() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheCardSquare
+                + ["score", "take card", "score", "read card"],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "The middle of the floor here is noticeably depressed.",
+                "There is a solid gold engraved card here.",
+                "Your score is 60 of a possible 585",
+                "Your score is 70 of a possible 585",
+                "Door Pass",
+            ])
+    }
+
+    /// Containment is room-granular and the puzzle is one room, so the card has
+    /// to be told what a square means. Issue #150's `reach` rule.
+    @Test func theCardCannotBeReachedFromAnotherSquare() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheCardSquare
+                + ["north", "look", "take card"],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "A solid gold card lies in one of the other squares of the puzzle.",
+                "The card is squares away from you, across the sand.",
+            ])
+    }
+
+    // MARK: - Milestone 7: the two ways out
+
+    /// **The whole puzzle solved, and the card carried out of it.** Forty-five
+    /// commands, every one of them found by exhaustive search over the real
+    /// grid — so this test is also the proof that the region is winnable.
+    @Test func theWholePuzzleIsSolvedAndTheCardCarriedOut() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheCardSquare + ["take card"]
+                + Self.cardSquareToTheWayOut + ["up", "score", "inventory"],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "There is a solid gold engraved card here.",
+                "There is a ladder here, firmly attached to the east wall.",
+                "With the ladder under you, you get a hand over the lip",
+                "Small Square Room",
+                "Your score is 70 of a possible 585",
+                "a gold card",
+            ])
+    }
+
+    /// The other way out costs the card, and there is no order that rescues it:
+    /// the slit removes whatever it is given before it decides what to say.
+    ///
+    /// The sword rather than the lamp, deliberately. The slit really does eat
+    /// the lamp, and the Side Room behind the door is dark — so feeding it your
+    /// light source works exactly as it should and leaves you unable to read the
+    /// room you just paid a treasure to open.
+    @Test func theSteelDoorCostsTheCardAndTheSlitKeepsEverything() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheCardSquare
+                + ["take card", "push south", "push west", "south"]
+                + ["put sword in slit", "put card in slit", "west", "north", "inventory"],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "GARBAGE IN, GARBAGE OUT",
+                "CARD CONFISCATED",
+                "Side Room",
+                "Small Square Room",
+            ])
+        // Both went into the wall and neither came back.
+        #expect(!transcript.contains("You are carrying a brass lantern, an elvish sword, and a gold card"))
+    }
+
+    /// **The entrance can be destroyed, and the source never gives it back.**
+    /// Push any wall into the square under the opening and `CPBLOCK` latches:
+    /// the ceiling exit is gone for the rest of the game, and the steel door —
+    /// which costs the card — is the only way left.
+    @Test func aWallPushedUnderTheOpeningSealsTheEntranceForGood() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheRoyalPuzzle
+                + ["down", "push east", "south", "southwest", "push north", "up"],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "The wall grinds into the square below the opening",
+                "way you came in is now a ceiling like any other.",
+                "There is no way up from here.",
+            ])
+    }
+
+    /// And the anteroom above says so, permanently, from the other side.
+    @Test func theSealedEntranceIsVisibleFromTheRoomAbove() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheCardSquare + ["take card"]
+                + ["north", "north", "northwest", "push west", "south"]
+                + ["southeast", "southeast", "push south", "push west", "south"]
+                + ["put card in slit", "west", "north", "examine hole", "down"],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "way you came in is now a ceiling like any other.",
+                "CARD CONFISCATED",
+                "Side Room",
+                "A face of smooth sandstone has",
+                "a foot below the lip a face of",
+                "The way down is blocked by sandstone.",
+            ])
+    }
+
+    /// The Side Room is reachable from the anteroom without the puzzle at all,
+    /// and its steel door is shut until the slit has been fed.
+    @Test func theSideRoomIsReachedFromAboveAndItsDoorStartsShut() async throws {
+        let transcript = try await play(
+            Dungeon(), Self.toTheRoyalPuzzle + ["south", "east", "north"], seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "Side Room",
+                "a steel door to the east",
+                "The steel door bars the way.",
+                "Small Square Room",
+            ])
+    }
+
+    // MARK: - Milestone 7: every printed noun answers
+
+    @Test func everyNounTheRoyalPuzzlePrints() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheRoyalPuzzle
+                + ["examine hole", "examine note", "read note", "south"]
+                + ["examine steel door", "north", "down"]
+                + ["examine opening", "examine ceiling", "examine sand"]
+                + ["examine marble wall", "examine sandstone wall", "examine ladder"]
+                + ["examine north wall", "examine south wall", "examine east wall"]
+                + ["examine west wall"]
+                + Self.toTheGoldCard
+                + ["examine card", "take card", "push south", "push west", "south"]
+                + ["examine slit", "examine door"],
+            seed: 11)
+
+        expectEveryNounAnswered(transcript, "the Royal Puzzle")
+    }
+
+    /// **The thief can walk into the antechamber, and the gold card is his kind
+    /// of thing.** Both rooms above the puzzle are on his prowl and the card is
+    /// on the shared `treasureRoster`, so nothing here is special-cased — this
+    /// pins that the two systems meet. He is woken by the first treasure lifted
+    /// off the dungeon floor, which the chalice in his own lair provides on the
+    /// way past.
+    /// Read off the declarations, like the prowl-count test above and for the
+    /// same reason: `Location` resolves its `EntityID` only inside a live turn,
+    /// so the comparison has to be between values from **one** `Dungeon()`.
+    /// Two calls to the initialiser are two different worlds.
+    @Test func theThiefWalksIntoTheAntechamberAndWantsTheCard() throws {
+        let game = Dungeon()
+        let prowl = game.thiefProwl
+
+        #expect(prowl.contains(game.royalPuzzle.anteroom))
+        #expect(prowl.contains(game.royalPuzzle.sideRoom))
+        #expect(!prowl.contains(game.royalPuzzle.puzzle))
+
+        // And the card is on the roster both he and the trophy case read, so
+        // wanting it needs no rule of its own.
+        let (definition, _) = try Bootstrap.build(game)
+        let card = definition.items.values.first { $0.name == "gold card" }
+        #expect(card?.customTraits["takeValue"] != nil, "the card has to be worth stealing")
+    }
+
+    /// With milestone 7 in, the Royal Puzzle joins the graph at the one place
+    /// the source joins it: east out of the Treasure Room.
+    @Test func milestoneSevenJoinsTheRoyalPuzzleToTheGraph() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheRoyalPuzzlePastTheThief + ["south", "north", "west", "east", "down"],
+            seed: 55)
+
+        expectInOrder(
+            transcript,
+            [
+                "Treasure Room",
+                "Small Square Room",
+                "Side Room",
+                "Small Square Room",
+                "Treasure Room",
+                "Small Square Room",
+                "Room in a Puzzle",
+            ])
     }
 }

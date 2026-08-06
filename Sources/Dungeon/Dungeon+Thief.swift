@@ -37,6 +37,15 @@ extension Dungeon {
     /// - **The shrunken world.** The Posts Room, the Pool Room, the Low Room,
     ///   the Machine Room, the Dingy Closet and the Cage are reached only by
     ///   eating your way down to the size of the tea table.
+    /// - **The Royal Puzzle itself**, for the Small Room's reason exactly. The
+    ///   drop into `CP` is one-way — the sand runs shut — and both ways out are
+    ///   earned: a sliding-block problem, or a steel door that eats the only
+    ///   treasure in the region. A teleporting thief dropped onto that floor is
+    ///   sealed in with it. The two rooms *above* it are a different matter and
+    ///   are in the set: the Small Square Room is a plain two-way passage east
+    ///   of his own lair, and the Side Room a plain two-way passage south of
+    ///   that, so he can walk to both and out of both — and the gold card, once
+    ///   you have carried it up, is exactly the kind of thing he takes.
     ///
     /// Above ground is not an exclusion so much as a boundary: he is the
     /// dungeon's, and the mainframe never lets him out of it.
@@ -102,6 +111,7 @@ extension Dungeon {
             maze.maze13, maze.maze14, maze.maze15, maze.deadEnd1, maze.deadEnd2,
             maze.deadEnd3, maze.deadEnd4, maze.gratingRoom, maze.cyclopsRoom,
             maze.strangePassage, maze.treasureRoom,
+            royalPuzzle.anteroom, royalPuzzle.sideRoom,
             riddle.riddleRoom, riddle.pearlRoom,
             alice.circularRoom, alice.topOfWell, alice.teaRoom,
             bank.bankEntrance, bank.westTellersRoom, bank.eastTellersRoom,
