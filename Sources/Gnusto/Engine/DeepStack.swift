@@ -54,7 +54,7 @@ enum DeepStack {
                 finished.signal()
                 return
             }
-            let measured = StackProbe.measure { Result(catching: work) }
+            let measured = StackProbe.measure(within: stackSize) { Result(catching: work) }
             outcome.result = measured.value
             outcome.reading = measured.reading
             finished.signal()
@@ -62,10 +62,14 @@ enum DeepStack {
         worker.name = "gnusto.bootstrap"
         // Both of these are read when the thread starts and ignored if set after.
         worker.stackSize = stackSize
-        // `DispatchSemaphore.wait()` donates no priority, and a `Mutex` the caller
-        // holds boosts its holder but cannot boost across to this thread — so the
-        // worker takes the caller's band rather than the default.
+        #if canImport(Darwin)
+        // `DispatchSemaphore.wait()` donates no priority, and the `os_unfair_lock`
+        // behind a `Mutex` boosts its holder but cannot boost across to this thread
+        // — so the worker takes the caller's band rather than the default. Darwin
+        // only: `qualityOfService` is not part of swift-corelibs-foundation's
+        // `Thread`, and the inversion it guards against is a Darwin lock's.
         worker.qualityOfService = Thread.current.qualityOfService
+        #endif
         worker.start()
         finished.wait()
 

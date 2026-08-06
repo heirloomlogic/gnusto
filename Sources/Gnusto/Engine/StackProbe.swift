@@ -1,9 +1,3 @@
-#if canImport(Darwin)
-import Darwin
-#elseif canImport(Glibc)
-import Glibc
-#endif
-
 /// How deep one piece of work drove the stack, measured rather than guessed.
 ///
 /// A thread's stack below the current frame is memory the thread already owns and
@@ -13,15 +7,15 @@ import Glibc
 /// milestones unable to answer, and paid eleven declarations to guess at — into a
 /// number.
 ///
-/// Nothing on the play path calls this. ``DeepStack/run(measuringStack:_:)`` leaves
-/// it off unless asked, because every rung dirties a page that the reservation would
-/// otherwise never cost.
+/// Nothing on the play path calls this. ``DeepStack/run(stackSize:measuringStack:_:)``
+/// leaves it off unless asked, because every rung dirties a page that the
+/// reservation would otherwise never cost.
 enum StackProbe {
     /// One measurement of one thread's stack.
     struct Reading: Sendable {
         /// How far below the probe's own frame the deepest overwritten rung sat.
-        /// Resolution is ``rungSpacing``: the true peak lies between this figure and
-        /// one rung deeper. Zero means the work stayed above the first rung.
+        /// Resolution is ``rungSpacing``, and so is the smallest figure reportable:
+        /// the true peak lies between this and one rung shallower.
         let highWater: Int
 
         /// How far the ladder reached. A ``highWater`` equal to this is a floor
@@ -40,58 +34,54 @@ enum StackProbe {
     /// being taken.
     static let ladderDepth = 4 << 20
 
-    /// Clearance left above the mapping's guard page. Sixteen pages on every page
-    /// size this package runs on, and nothing is painted or measured inside it.
-    private static let guardBand = 64 << 10
-
     /// Arbitrary, and unlikely to arrive by accident in eight aligned bytes.
     private static let sentinel: UInt64 = 0x5354_4143_4B_5F_4750
 
-    /// The lowest address of the calling thread's own stack, or nil if the OS will
-    /// not say.
+    /// Clearance left alone at the bottom of the stack, so nothing is ever written
+    /// near the guard page.
     ///
-    /// Asked of the thread rather than inferred from the address of a local: the
-    /// mapping ends in a guard page, and arithmetic that guesses where walks into it.
-    private static func lowestAddress() -> UInt? {
-        #if canImport(Darwin)
-        // Darwin reports the *high* address, the stack growing down from it.
-        let high = UInt(bitPattern: pthread_get_stackaddr_np(pthread_self()))
-        return high - UInt(pthread_get_stacksize_np(pthread_self()))
-        #elseif canImport(Glibc)
-        var attributes = pthread_attr_t()
-        guard pthread_getattr_np(pthread_self(), &attributes) == 0 else { return nil }
-        defer { pthread_attr_destroy(&attributes) }
-        var low: UnsafeMutableRawPointer?
-        var size = 0
-        // Glibc reports the *low* address, which is the one wanted here.
-        guard pthread_attr_getstack(&attributes, &low, &size) == 0 else { return nil }
-        return UInt(bitPattern: low)
-        #else
-        return nil
-        #endif
+    /// A sixteenth of the budget, and never less than 64 KB. That is orders of
+    /// magnitude more than the few kilobytes of thread-entry frames sitting between
+    /// the mapping's top and this probe's anchor, which is the only slack the
+    /// arithmetic in ``measure(within:_:)`` has to absorb.
+    ///
+    /// - Parameter stackSize: the worker's whole stack.
+    /// - Returns: how much of the bottom to leave untouched.
+    private static func margin(of stackSize: Int) -> Int {
+        max(64 << 10, stackSize / 16)
     }
 
-    /// Runs `work` and reports how far down the stack it went.
+    /// Runs `work` on the current thread and reports how far down the stack it went.
     ///
-    /// - Parameter work: the work to measure. Its frames are what the reading counts.
-    /// - Returns: what `work` returned, and how deep it drove the stack — or a nil
-    ///   reading when the OS would not name the thread's bounds, since a made-up
-    ///   number would be worse than none.
-    static func measure<Value>(_ work: () -> Value) -> (value: Value, reading: Reading?) {
+    /// **Sound only on a thread ``DeepStack`` created**, which is the only place it
+    /// is called from. That is what lets the bounds be arithmetic rather than a
+    /// question for the OS: the caller sized the stack itself, and this frame sits a
+    /// few kilobytes below the thread's first, so everything from here down to
+    /// `stackSize` less ``margin(of:)`` is certainly inside the thread's own
+    /// mapping. On an arbitrary thread the same arithmetic would be a guess, and a
+    /// wrong guess walks into the guard page.
+    ///
+    /// - Parameters:
+    ///   - stackSize: the worker's whole stack, as it was requested of the thread.
+    ///   - work: the work to measure. Its frames are what the reading counts.
+    /// - Returns: what `work` returned, and how deep it drove the stack — with a nil
+    ///   reading when the stack is too small to ladder at all.
+    static func measure<Value>(
+        within stackSize: Int,
+        _ work: () -> Value
+    ) -> (value: Value, reading: Reading?) {
         var anchor: UInt64 = 0
         let top = withUnsafeMutablePointer(to: &anchor) { UInt(bitPattern: $0) }
 
-        // A rung's width of clearance below this frame, and the guard band above the
-        // guard page. Nothing is measured in either, and nothing is written to them.
+        // A rung's width of clearance below this frame; nothing is measured in it.
         let ceiling = (top - UInt(rungSpacing)) & ~UInt(7)
-        guard let low = lowestAddress(), ceiling > low + UInt(guardBand) else {
-            return (work(), nil)
-        }
-        let floor = max(low + UInt(guardBand), ceiling - UInt(min(ladderDepth, Int(ceiling))))
+        let reach = min(ladderDepth, stackSize - margin(of: stackSize))
+        guard reach > rungSpacing, ceiling > UInt(reach) else { return (work(), nil) }
+        let floor = ceiling - UInt(reach)
 
-        let rungs = Int((ceiling - floor) / UInt(rungSpacing)) + 1
-        for rung in 0..<rungs {
-            Self.rung(rung, below: ceiling)?.storeBytes(of: sentinel, as: UInt64.self)
+        let rungs = reach / rungSpacing + 1
+        for index in 0..<rungs {
+            rung(index, below: ceiling)?.storeBytes(of: sentinel, as: UInt64.self)
         }
 
         let value = work()
@@ -100,12 +90,14 @@ enum StackProbe {
         // holding a large uninitialized buffer can step over a rung without writing
         // it, and stopping at the first survivor would believe that gap.
         let deepest =
-            (0..<rungs).last { Self.rung($0, below: ceiling)?.loadUnaligned(as: UInt64.self) != sentinel } ?? 0
+            (0..<rungs).last {
+                rung($0, below: ceiling)?.loadUnaligned(as: UInt64.self) != sentinel
+            } ?? 0
 
         return (
             value,
             Reading(
-                highWater: deepest == 0 ? 0 : Int(top - (ceiling - UInt(deepest * rungSpacing))),
+                highWater: deepest * rungSpacing + Int(top - ceiling),
                 laddered: Int(top - floor))
         )
     }
