@@ -329,14 +329,10 @@ struct DungeonHouse: GameContent {
         kitchen.down(blocked: Prose.chimneyDownRefusal)
         attic.down(kitchen)
 
-        // The gothic door west. It opens onto the Strange Passage the fleeing
-        // cyclops smashes through — a later milestone — and until then the
-        // mainframe's own answer is that the door is nailed shut, which is the
-        // seam convention: a `blocked:` exit carrying the source's refusal
-        // (`docs/games/dungeon.md`, "Seams between milestones"). The milestone
-        // that builds the far side replaces this line with the conditional
-        // exit; nothing else here has to move.
-        livingRoom.west(blocked: Prose.woodenDoorNailedShut)
+        // The gothic door west opens onto the Strange Passage, which milestone
+        // 4 built — so its exit is the host's conditional one now, not the
+        // `blocked:` seam milestone 1 declared here. The door itself, and the
+        // lettering on it, stay.
 
         livingRoom.down(cellar, via: trapDoor)
         cellar.up(livingRoom, via: trapDoor)
@@ -407,6 +403,8 @@ struct DungeonHouse: GameContent {
             try reply(Prose.brokenCanaryWinds)
         }
 
+        // Nailed shut until the cyclops comes through the wall beside it, and
+        // then permanently a hole rather than a door.
         woodenDoor.before(.open) {
             try refuse(Prose.woodenDoorNailedShut)
         }

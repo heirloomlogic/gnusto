@@ -321,9 +321,12 @@ struct DungeonAboveGround: GameContent {
 
     /// The mainframe has exactly one Clearing, and everything in the wood
     /// eventually arrives at it. Its own north and east exits come back here.
+    /// Always described, because what the ground here says about the grating
+    /// is the only report of it from this side, and a brief re-entry would
+    /// print a bare room name over an open hole.
     let clearing = Location {
         name("Clearing")
-        description(Prose.clearing)
+        alwaysDescribed
     }
 
     let leaves = Item {
@@ -340,7 +343,6 @@ struct DungeonAboveGround: GameContent {
         name("iron grating")
         adjectives("iron", "metal")
         synonyms("grate", "grating")
-        description(Prose.grating)
         container
         openable
         scenery
@@ -353,6 +355,8 @@ struct DungeonAboveGround: GameContent {
         name("set of skeleton keys")
         adjectives("skeleton")
         synonyms("keys", "key")
+        firstSight(Prose.skeletonKeysInPlace)
+        description(Prose.skeletonKeys)
         trait(.weight, 10)
     }
 
@@ -549,6 +553,15 @@ struct DungeonAboveGround: GameContent {
     // MARK: - Rules
 
     var rules: Rules {
+        // The source's own `CLEARING` routine: one line for a grating that has
+        // been uncovered, another once it is open, and nothing at all while the
+        // leaves are still over it.
+        clearing.describe {
+            guard grating.isRevealed else { return Prose.clearing }
+            let underfoot = grating.isOpen ? Prose.gratingOpenInClearing : Prose.gratingInClearing
+            return "\(Prose.clearing)\n\n\(underfoot)"
+        }
+
         frontDoor.before(.open) {
             try refuse(Prose.frontDoorRefusal)
         }
@@ -567,12 +580,9 @@ struct DungeonAboveGround: GameContent {
             try reply(Prose.leavesMoveEmbellishment)
         }
 
-        // The grating is locked from both sides and there is no key above
-        // ground, so this is what `open grating` says until the maze milestone
-        // puts the keys in the player's reach.
-        grating.before(.open) {
-            try refuse(Prose.gratingLocked)
-        }
+        // The grating's lock, its opening and its light are the host's as of
+        // milestone 4: the keys lie in the maze and the room below it belongs
+        // to another bundle.
 
         // `climb tree` reaches the same perch `up` does.
         greatTree.before(.climb) {

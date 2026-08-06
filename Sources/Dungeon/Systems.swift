@@ -18,6 +18,14 @@ extension TraitKey<Bool> {
 /// What remains here is vocabulary that is genuinely this game's, and it grows
 /// one milestone at a time rather than all at once: a verb declared before the
 /// mechanism that needs it is a word the player can type and get nothing from.
+///
+/// **A verb lives with the region that answers it.** Milestone 2 flagged this
+/// file as "becoming the verb dumping ground"; milestone 4 settles it, because
+/// `GameContent` carries `verbs` and `actions` of its own exactly as `Clock` and
+/// `MeleeCombat` do. So ``DungeonRiver`` owns the boat's words and
+/// ``DungeonMaze`` owns the cyclops's, and what stays here is what belongs to no
+/// one region: the words that cross two bundles, and the ones the whole game
+/// answers.
 extension Intent {
     /// Wind a mechanism. The clockwork canary is the only one above ground;
     /// the mirror box and the Endgame add their own.
@@ -57,6 +65,26 @@ extension Intent {
     /// because a basket at the bottom is raised and one at the top is lowered.
     #verb("raise", ["raise", .directObject])
     #verb("lower", ["lower", .directObject])
+
+    /// Put air into something, and let it back out. One thing in the game
+    /// takes either, and the destinations of `launch` and `land` cross from
+    /// ``DungeonRiver`` into ``DungeonDam``, so all four stay here.
+    #verb(
+        "inflate",
+        ["inflate", .directObject],
+        ["inflate", .directObject, "with", .indirectObject])
+    #verb("deflate", ["deflate", .directObject])
+
+    /// Put a vessel on the water, and take it off again. The mainframe spells
+    /// these as pseudo-directions in its exit tables; in this engine they are
+    /// verbs, and the host owns their tables because one shore is the dam's.
+    #verb("launch", ["launch"], ["launch", .directObject])
+    #verb("land", ["land"])
+
+    /// The two words that use the granite wall the Temple and the Treasure
+    /// Room share. Each takes you to the other room and nowhere else.
+    #verb("temple", ["temple"])
+    #verb("treasure", ["treasure"])
 }
 
 /// The game-wide verb layer: the vocabulary above, plus a courteous default in
@@ -68,7 +96,11 @@ extension Intent {
 /// behavior, so re-voicing one is a single line that warns about nothing.
 struct DungeonSystems: GameContent {
     var verbs: [SyntaxRule] {
-        [.wind, .diagnose, .echo, .turnWith, .plug, .ring, .melt, .exorcise, .raise, .lower]
+        [
+            .wind, .diagnose, .echo, .turnWith, .plug, .ring, .melt, .exorcise,
+            .raise, .lower, .inflate, .deflate, .launch, .land, .temple,
+            .treasure,
+        ]
     }
 
     var actions: [IntentAction] {
@@ -81,6 +113,13 @@ struct DungeonSystems: GameContent {
         action(.exorcise) { try reply(Prose.verbExorciseNothing) }
         action(.raise) { try reply(Prose.verbRaiseNothing) }
         action(.lower) { try reply(Prose.verbLowerNothing) }
+        action(.inflate) { try reply(Prose.verbInflateNothing) }
+        action(.deflate) { try reply(Prose.verbDeflateNothing) }
+        // Both magic words fall through to the same shrug; the host answers
+        // them in the two rooms that share the granite wall.
+        action(.temple) { try reply(Prose.graniteWordInert) }
+        action(.treasure) { try reply(Prose.graniteWordInert) }
+        action(.swim) { try reply(Prose.noSwimming) }
         action(.squeeze) { try reply(Prose.verbSqueezeNothing) }
         action(.give) { try reply(Prose.verbGiveNoTaker) }
         action(.dig) { try reply(Prose.verbDigFutile) }
