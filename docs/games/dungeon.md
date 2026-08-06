@@ -193,6 +193,13 @@ Two consequences worth stating.
   between M6 and M7 and closed M1's canary-and-bauble gap, a perfect playthrough
   of everything built scores 585 of 585. This is the first milestone with no
   gap of its own to name and none inherited.
+  M8 adds 31, all of it walkable and all of it object values: the blue crystal
+  sphere (10+5), the red one (10+5) and the Don Woods stamp (0+1). The ceiling
+  is 616, which is `SCORE-MAX` — the whole of the main dungeon.
+  M9 adds the last 100, all of it walkable and, for the first time in the
+  series, all of it *room* value: the Crypt (5), the Top of Stairs (10), the
+  Inside Mirror (15), the Dungeon Entrance (15), the Narrow Corridor (20) and
+  the Treasury of Zork (35). The ceiling is 716 and the ratchet stops there.
 - **A milestone may also decline to declare content that sits in one of its own
   rooms**, where the *thing* is here and the *mechanism that reveals it* is not.
   The dented steel box and the Stradivarius inside it stand in the Round Room from
@@ -878,3 +885,80 @@ twenty-three points, to buy thirty-one. Done at the end, with everything cased
 and the hands empty, it costs nothing. The rope is what makes it possible: stage
 4 ties it to the Dome Room's railing and never unties it, so the drop into the
 Torch Room stays open for the rest of the game.
+
+## The game is finished at 716
+
+Milestone 9 is the Endgame — the 31 rooms `dung.355` flags `RENDGAME`, plus the
+Tomb of the Unknown Implementer that is their front door — and it takes the
+ceiling 616 → **716**, which is `SCORE-MAX` plus `EG-SCORE-MAX`. Every room,
+exit, treasure and award the atlas records is now declared, and a perfect run
+scores 716 of 716 on a pinned script.
+
+**All hundred of the endgame's points are room value.** Not one endgame object
+carries an `OFVAL` or an `OTVAL`, so the treasure roster does not move: the Crypt
+(5), the Top of Stairs (10), the Inside Mirror (15), the Dungeon Entrance (15),
+the Narrow Corridor (20) and the Treasury of Zork (35).
+
+**The gate is arithmetic.** `SCORE-BLESS` (`rooms.394:794`) arms the endgame's
+herald at `SCORE-MAX`, with the ten a death costs handed back for each death,
+and that is the whole of the concession. Until the herald has been, every verb
+on the Crypt's marble door falls through to `HEAD-FUNCTION` and kills you.
+Milestone 8 is what made milestone 9 possible.
+
+### The 716-point walkthrough, which is what #189 asked for
+
+`Tests/GnustoTests/DungeonWalkthroughTests.swift`, seed 2, **815 turns**, ending
+*"Your score is 716 of a possible 716"*. It is milestone 8's 616-point route with
+an appendix and nothing else changed, and the appendix is assembled from the
+four segments `DungeonEndgameTests` keeps rather than written out a second time:
+the crypt, which carries the herald's fifteen turns and the walk to the Tomb
+with it, then the mirror box, the examination and the prison.
+
+**Why the endgame is an appendix needs no argument, unlike milestone 8's.**
+`SCORE-BLESS` will not arm the herald below the full 616, so there is nowhere
+else it could go.
+
+### The mirror-box question, answered
+
+It is the Royal-Puzzle answer, lifted rather than re-derived, and the reason is
+in the source, not in the convenience: `dung.355` owns both regions'
+directions by the same trick. `FCHMP` in the Royal Puzzle and **`FROBOZZ` in the
+endgame** are both `CEXIT`s on a flag nothing ever sets — the mainframe's idiom
+for "the room function owns this direction". So both regions want the same shape:
+
+- **One `Location` for the inside of the box**, wherever the box is standing,
+  because there is no destination to compute — every move inside stays in it.
+- **The box's bearing, berth, pole and glass in one `@Global` struct**, decoded
+  once per rule body, `RoyalPuzzleGrid`'s reason exactly.
+- **Movement as a `location.before(.go)` rule at stage 3**, ahead of the exit
+  lookup, so the exit table never has to change and a refused step can say which
+  part of the box is in the way where a conditional exit's `otherwise:` is one
+  fixed string.
+- **`alwaysDescribed`** (#149), because the description *is* the state of the
+  box; and **`describeSurroundings(withRoomName:)`**, because turning the box
+  forty-five degrees is not arriving somewhere.
+
+What the mirror box needs that the Royal Puzzle does not is a *bearing*: the
+Royal Puzzle's grid is fixed and the player moves over it, where here the room
+itself turns and the player stands still. That is `MirrorBox.face(at:)`, and it
+is the one piece of the region that is unit-tested as a value rather than through
+a transcript — an off-by-forty-five-degrees there would be invisible in prose and
+would make the box quietly unsolvable.
+
+### What is left
+
+Nothing of the map, and nothing of the score. The rest is engine work the game
+has been filing as it went, and one item of it is now blocking:
+
+- **#174, the bootstrap stack budget, which is now blocking.** The eighteenth
+  bundle does not sit under the limit — it sits on it. The same commit passed
+  four consecutive full runs and later failed three, with nothing changed
+  between them, while `main` passed throughout. Eleven declarations were
+  surrendered to buy a working margin, one of them a real piece of the source
+  (`set dial to four`), and a dozen sound `/simplify` findings could not be
+  applied because each attempt put the suite back over. A nineteenth region
+  cannot be added at all until this is fixed. `FIDELITY.md` records the
+  measurements.
+- **The atlas pairs nothing against Zork III** (#184), which leaves the prose
+  provenance of three regions — the Bank of Zork, the Royal Puzzle and the
+  Endgame — resting on an absence that may only mean nobody looked.

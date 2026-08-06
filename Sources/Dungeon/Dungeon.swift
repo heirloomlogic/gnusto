@@ -98,10 +98,19 @@ struct Dungeon: Game, GameMain {
     /// reconstruction stalled at 585 could never enter the endgame, however
     /// completely the endgame was built.
     ///
+    /// Milestone 9 adds the last 100, and every point of it is a room value:
+    /// the Crypt (5), the Top of Stairs (10), the Inside Mirror (15), the
+    /// Dungeon Entrance (15), the Narrow Corridor (20) and the Treasury of Zork
+    /// (35). Not one endgame object carries an `OFVAL` or an `OTVAL`, so the
+    /// treasure roster does not move at all — the whole hundred goes into the
+    /// `Scoring` award table. `716` is `SCORE-MAX` plus `EG-SCORE-MAX`, the two
+    /// maxima the mainframe reports separately and this game reports as one:
+    /// `docs/games/dungeon-atlas.md`, "What `Sources/Dungeon/` uses".
+    ///
     /// Why the ceiling moves at all, and what may be declared ahead of its
     /// route: `docs/games/dungeon.md`, "The ceiling ratchets while the game is
     /// being built", and the matching `FIDELITY.md` entry.
-    let maxScore = 616
+    let maxScore = 716
 
     let intro = Prose.intro
 
@@ -143,6 +152,7 @@ struct Dungeon: Game, GameMain {
     let thief = DungeonThief()
     let royalPuzzle = DungeonRoyalPuzzle()
     let palantirWing = DungeonPalantir()
+    let endgame = DungeonEndgame()
 
     /// The grue: this game's prose, the plugin's stock warn-then-kill schedule.
     let dangerousDark = DangerousDark(
@@ -169,6 +179,14 @@ struct Dungeon: Game, GameMain {
             "treasureRoom": 25,
             "strangePassage": 10,
             "topOfWell": 10,
+            // The endgame's hundred, which is `EG-SCORE-MAX` entire: every
+            // point of it is a room value and no endgame object carries one.
+            "crypt": 5,
+            "topOfStairs": 10,
+            "insideMirror": 15,
+            "dungeonEntrance": 15,
+            "narrowCorridor": 20,
+            "treasuryOfZork": 35,
         ])
 
     let melee = MeleeCombat()
@@ -197,6 +215,13 @@ struct Dungeon: Game, GameMain {
     /// wrapper, and a wrapper is the JSON box these two exist to avoid.
     @Global var topOfWellPaid = false
 
+    /// And the same guard again for two of the endgame's six room values. Both
+    /// of those rooms can be arrived at by a rule assigning `player.location`,
+    /// which fires no `onEnter`, so neither can be a `scoring.visit`. See
+    /// `Dungeon+Endgame.swift`.
+    @Global var insideMirrorPaid = false
+    @Global var dungeonEntrancePaid = false
+
     var content: GameContents {
         aboveGround
         house
@@ -215,6 +240,7 @@ struct Dungeon: Game, GameMain {
         thief
         royalPuzzle
         palantirWing
+        endgame
         dangerousDark
         scoring
         melee
@@ -236,6 +262,9 @@ struct Dungeon: Game, GameMain {
     /// everything in your hands, and put you back among the trees. The third
     /// is final and falls through to the engine's banner.
     func onDeath() -> DeathOutcome {
+        // Death in the endgame is final, whatever the death count. There is
+        // nowhere above ground to be put back to and nothing left to forfeit.
+        guard !endgame.pastTheCrypt else { return .fallThrough }
         deaths += 1
         guard deaths < 3 else { return .fallThrough }
         scoring.penalize(10)
@@ -329,6 +358,7 @@ struct Dungeon: Game, GameMain {
         blastRules
         thiefRules
         palantirRules
+        endgameRules
     }
 
     /// Milestones 1 to 3, and everything that belongs to no one milestone.
@@ -901,6 +931,7 @@ struct Dungeon: Game, GameMain {
 
         thiefTimers
         palantirTimers
+        endgameTimers
     }
 
     var map: WorldMap {
@@ -911,6 +942,7 @@ struct Dungeon: Game, GameMain {
         milestoneSixMap
         milestoneSevenMap
         milestoneEightMap
+        milestoneNineMap
     }
 
     /// Milestones 1 to 3, and the placements that belong to no one milestone.

@@ -56,9 +56,9 @@ struct DungeonWalkthroughTests {
         expectInOrder(
             transcript,
             [
-                "Your score is 81 of a possible 616",
+                "Your score is 81 of a possible 716",
                 // Stage 3: the stamp is cased, and it is worth exactly one.
-                "Your score is 111 of a possible 616",
+                "Your score is 111 of a possible 716",
                 // Stage 15 — the palantir wing.
                 "Tiny Room",
                 "There is a faint noise from the far side of the door",
@@ -70,11 +70,60 @@ struct DungeonWalkthroughTests {
                 "Slide Ledge",
                 "Sooty Room",
                 "There is a beautiful red crystal sphere here.",
-                "Your score is 616 of a possible 616",
+                "Your score is 616 of a possible 716",
             ])
 
         // And the grip never failed: the descent was walked, not sightseen.
         #expect(!transcript.contains("Your grip goes"))
+    }
+
+    /// Milestone 9's acceptance test, and the one #189 asked for: the same run
+    /// carried through the endgame to **716 of 716**, which is `SCORE-MAX` plus
+    /// `EG-SCORE-MAX` — everything the game can pay.
+    ///
+    /// It is ``route`` with an appendix and nothing else changed. The appendix
+    /// is assembled from the four segments `DungeonEndgameTests` keeps, because
+    /// each of them is separately a test's subject there and a route written out
+    /// twice is a route that drifts: the fifteen turns the herald takes and the
+    /// walk to the Tomb, the crypt, the mirror box, the examination, the prison.
+    ///
+    /// **Why the endgame is an appendix rather than an insertion** needs no
+    /// argument here, unlike milestone 8's: `SCORE-BLESS` will not arm the
+    /// herald below the full 616, so there is nowhere else it could go.
+    @Test func theWholeGameThroughTheEndgameScoresSevenHundredAndSixteen() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            DungeonEndgameTests.pastTheCrypt
+                + DungeonEndgameTests.throughTheBox
+                + DungeonEndgameTests.theQuiz
+                + DungeonEndgameTests.thePrison,
+            seed: Self.seed)
+
+        expectInOrder(
+            transcript,
+            [
+                "Your score is 616 of a possible 716",
+                "You are one of the chosen of Zork",
+                "Tomb of the Unknown Implementer",
+                "The door must weigh a ton",
+                "You have passed",
+                "Top of Stairs",
+                "The button clicks",
+                "Inside Mirror",
+                "The box slides smoothly",
+                "Dungeon Entrance",
+                "You may pass.",
+                "Narrow Corridor",
+                "Parapet",
+                "the whole cell begins to move",
+                "Treasury of Zork",
+                "You are Master of the Dungeon.",
+                "Your score is 716 of a possible 716",
+            ])
+
+        // Nothing in the endgame was survived by accident: no death, and so no
+        // resurrection covering one up.
+        #expect(!transcript.contains("*** You have died ***"))
     }
 
     /// The whole script, stage by stage. Comments are the route's own.
