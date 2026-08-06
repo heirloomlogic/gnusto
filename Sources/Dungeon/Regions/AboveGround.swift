@@ -266,6 +266,20 @@ struct DungeonAboveGround: GameContent {
         openable
     }
 
+    /// What is left of the egg once brute fingers have been at it — the
+    /// atlas's `BEGG`, which the mainframe swaps in for `EGG` the moment the
+    /// clasp gives. It carries no `OFVAL` and no `OTVAL`, so a player who
+    /// forces the egg forfeits the shell's ten points along with the bird's:
+    /// there is nothing here the trophy case will pay for. Starts offstage
+    /// with the ruined canary already inside it.
+    let brokenEgg = Item {
+        name("broken jewel-encrusted egg")
+        adjectives("broken", "ruined", "jewel", "encrusted", "jeweled", "birds")
+        description(Prose.brokenEgg)
+        firstSight(Prose.brokenEggHere)
+        container
+    }
+
     /// The songbird that answers a wound canary is never quite present. The
     /// mainframe answers for it anyway, in every forest room, rather than
     /// letting "You can't see any such thing" stand against a bird the game

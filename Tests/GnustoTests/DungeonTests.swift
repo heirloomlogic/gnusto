@@ -554,22 +554,50 @@ struct DungeonTests {
         #expect(definition.warnings.isEmpty, "\(definition.warnings)")
     }
 
-    /// Forcing the egg by hand wrecks the bird inside, as in the mainframe —
-    /// which is why the canary's points wait on the thief, and why the bauble
-    /// he makes possible does too.
+    /// Forcing the egg by hand wrecks *both* objects, as in the mainframe: the
+    /// atlas carries `BEGG` alongside `BCANA`, and the shell that comes back to
+    /// your hand is a different, worthless one. Which is why the canary's
+    /// points wait on the thief, why the bauble he makes possible does too, and
+    /// why the egg's own ten now go with them.
     @Test func forcingTheEggWrecksTheCanaryAndForfeitsItsPoints() async throws {
         let transcript = try await play(
             Dungeon(),
-            ["north", "north", "up", "take egg", "open egg", "examine canary", "score"])
+            [
+                "north", "north", "up", "take egg", "open egg",
+                "examine egg", "examine canary", "inventory", "score",
+            ])
 
         expectInOrder(
             transcript,
             [
                 "Taken.",
                 "The egg is now open, but the clumsiness of your attempt has",
+                "Inside, among the sprung gold inlay, lies a broken clockwork canary.",
+                "The lid is sprung and will not sit true again.",  // the wreck's own text
                 "the mainspring seems sprung",
+                "You are carrying a broken jewel-encrusted egg",
                 "Your score is 5 of a possible 560",
             ])
+
+        // The jewel-encrusted egg is gone from the game rather than merely
+        // opened, so nothing answers to its description any more.
+        #expect(!transcript.contains("hinged and closed"))
+    }
+
+    /// The forfeit stated in points. Force the egg, carry the wreck home, and
+    /// the trophy case will not take it — so the run tops out fifteen short of
+    /// where the same route would have stood had the thief done the opening:
+    /// the shell's five for the case, the canary's six and two, and the
+    /// bauble's one and one.
+    @Test func aForcedEggCannotBeCased() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            ["north", "north", "up", "take egg", "open egg", "down"]
+                + ["east", "southwest", "open window", "west", "west"]
+                + ["open case", "put egg in case", "score"])
+
+        // The case takes the wreck — nothing refuses it — and pays nothing.
+        #expect(turnOutput(of: "score", in: transcript).contains("Your score is 15"))
     }
 
     /// The ruined bird only grinds; a canary is not wound anywhere but among

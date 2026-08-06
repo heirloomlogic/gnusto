@@ -31,6 +31,13 @@
 /// behavior that would branch on one. A combat plugin composes death from
 /// the pieces the actor does have — `dropAll()`, `vanish()`, a custom
 /// trait, a corpse `Item` of the game's own voice.
+///
+/// ``isUnconscious`` is the one condition that *is* stored, and for a reason
+/// that isn't about the engine at all: two independent plugins have to agree
+/// on it. A villain knocked senseless by `GnustoMeleeCombat` must stop
+/// stealing under `GnustoActors`, and neither library can see the other. The
+/// engine still branches on nothing — it holds the flag, and the plugins read
+/// it.
 public struct Actor: Sendable, Equatable {
     let token: RefToken
     let traits: [ItemTrait]
@@ -108,6 +115,33 @@ public struct Actor: Sendable, Equatable {
     public var description: String {
         get { asItem.description }
         nonmutating set { asItem.description = newValue }
+    }
+
+    /// True while the actor is out cold — set by whatever knocked them down
+    /// and cleared when they come round.
+    ///
+    /// The engine reads it nowhere. It exists so that two plugins with no
+    /// knowledge of each other can agree on one fact about a person: a villain
+    /// `GnustoMeleeCombat` has just battered into unconsciousness stops taking
+    /// his own turn under `GnustoActors` — no roaming, no picking pockets —
+    /// until he wakes. A game that knocks an actor down by its own means
+    /// should set and clear it too; anything consulting the flag will then
+    /// behave.
+    public var isUnconscious: Bool {
+        get {
+            let (frame, id) = asItem.resolved
+            return frame.with { $0.state.unconsciousActors.contains(id) }
+        }
+        nonmutating set {
+            let (frame, id) = asItem.resolved
+            frame.with { scratch in
+                if newValue {
+                    scratch.state.unconsciousActors.insert(id)
+                } else {
+                    scratch.state.unconsciousActors.remove(id)
+                }
+            }
+        }
     }
 
     /// True if a `hidden` actor has been revealed. Always true for an actor

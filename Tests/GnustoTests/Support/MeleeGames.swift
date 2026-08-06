@@ -1,4 +1,5 @@
 import Gnusto
+import GnustoActors
 import GnustoMeleeCombat
 
 /// Fixture for `GnustoMeleeCombat`: one arena, a sparring dummy villain
@@ -146,5 +147,115 @@ struct GatedArenaGame: Game {
                 miss: ["The heckler jabs and misses."],
                 wound: ["The heckler cuffs you."],
                 playerDeath: "The heckler flattens you."))
+    }
+}
+
+/// Fixture for the seam between `GnustoMeleeCombat` and `GnustoActors`: one
+/// cutpurse run through both plugins, the pair that could not see each other
+/// until `Actor.isUnconscious` gave them something to agree on. He steals with
+/// certainty (`chancePerTurn: 100`) so a turn with no theft line in it means
+/// the guard held and not that a roll went the other way, and there are four
+/// baubles so he never runs out of things to lift. His counter-attack is gated
+/// on `truce`, which lets a test shut the gate and prove he still wakes up.
+struct CutpurseGame: Game {
+    let title = "Cutpurse"
+    let intro = "A vault, a bully, and four things worth taking."
+
+    let vault = Location {
+        name("Vault")
+        description("Brick, and one lamp.")
+    }
+
+    let cutpurse = Actor {
+        name("scarred cutpurse")
+        adjectives("scarred")
+        description("Broad hands, no manners.")
+    }
+
+    let cudgel = Item {
+        name("ash cudgel")
+        adjectives("ash")
+        trait(.weapon, true)
+    }
+
+    let chalice = Item {
+        name("silver chalice")
+        adjectives("silver")
+    }
+
+    let pearl = Item {
+        name("black pearl")
+        adjectives("black")
+    }
+
+    let comb = Item {
+        name("ivory comb")
+        adjectives("ivory")
+    }
+
+    let seal = Item {
+        name("wax seal")
+        adjectives("wax")
+    }
+
+    @Global var truce = false
+
+    let melee = MeleeCombat()
+    let behaviors = ActorBehaviors()
+
+    var content: GameContents {
+        melee
+    }
+
+    var map: WorldMap {
+        player.starts(in: vault)
+        cutpurse.starts(in: vault)
+        cudgel.startsHeld
+        chalice.startsHeld
+        pearl.startsHeld
+        comb.startsHeld
+        seal.startsHeld
+    }
+
+    var verbs: [SyntaxRule] {
+        SyntaxRule("parley", intent: Intent("parley"))
+        SyntaxRule("check", intent: Intent("check"))
+    }
+
+    var rules: Rules {
+        melee.villain(
+            cutpurse, key: "cutpurse", strength: 4,
+            weapons: [cudgel],
+            prose: MeleeCombat.VillainProse(
+                miss: ["The cudgel whistles past his ear."],
+                wound: ["He takes it across the shoulder."],
+                knockout: "The cutpurse folds up and lies still.",
+                death: "The cutpurse goes down and stays down."))
+        // Shuts the counter-attack gate, so a test can prove that coming round
+        // is not gated along with it.
+        world.before(Intent("parley")) {
+            truce = true
+            try reply("You call a truce.")
+        }
+        world.before(Intent("check")) {
+            try reply("Out cold: \(cutpurse.isUnconscious).")
+        }
+    }
+
+    var timers: [TimedEvent] {
+        melee.aggression(
+            of: cutpurse, key: "cutpurse", daemonName: "melee.cutpurse",
+            playerStrength: 20,
+            while: { !truce },
+            prose: MeleeCombat.AggressionProse(
+                miss: ["He jabs and misses."],
+                wound: ["He catches you a glancing one."],
+                playerDeath: "He finishes what he started."))
+        behaviors.steals(
+            cutpurse,
+            daemonName: "melee.cutpurse.steals",
+            candidates: [chalice, pearl, comb, seal],
+            chancePerTurn: 100,
+            announcement: { "He lifts the \($0) clean out of your hand." })
     }
 }

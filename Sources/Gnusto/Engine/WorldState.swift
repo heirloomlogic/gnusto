@@ -52,6 +52,9 @@ struct WorldState: Sendable, Codable {
     var lockedItems: Set<EntityID> = []
     /// Hidden items that have been revealed and are now perceivable normally.
     var revealedItems: Set<EntityID> = []
+    /// Actors who are out cold. The engine branches on nothing here — see
+    /// `Actor.isUnconscious` for why one condition is stored anyway.
+    var unconsciousActors: Set<EntityID> = []
     /// What "it" currently refers to: the last direct object the player
     /// named (naming binds, even when the action then refuses).
     var pronounIt: EntityID?
@@ -100,6 +103,7 @@ struct WorldState: Sendable, Codable {
         case openItems
         case lockedItems
         case revealedItems
+        case unconsciousActors
         case pronounIt
         case pronounThem
         case playerVehicle
@@ -251,6 +255,7 @@ extension WorldState {
         guard openItems.allSatisfy({ items[$0]?.isOpenable == true }) else { return false }
         guard lockedItems.allSatisfy({ items[$0]?.isLockable == true }) else { return false }
         guard revealedItems.allSatisfy(isItem) else { return false }
+        guard unconsciousActors.allSatisfy({ items[$0]?.isActor == true }) else { return false }
         guard visited.allSatisfy(isLocation) else { return false }
         guard touched.allSatisfy(isEntity) else { return false }
         guard descriptionOverrides.keys.allSatisfy(isEntity) else { return false }

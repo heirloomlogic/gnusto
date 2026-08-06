@@ -52,6 +52,22 @@ struct WanderGame: Game {
         wanderer.starts(in: armory)
     }
 
+    var verbs: [SyntaxRule] {
+        SyntaxRule("swoon", intent: Intent("swoon"))
+        SyntaxRule("rouse", intent: Intent("rouse"))
+    }
+
+    var rules: Rules {
+        world.before(Intent("swoon")) {
+            wanderer.isUnconscious = true
+            try reply("He folds up on the spot.")
+        }
+        world.before(Intent("rouse")) {
+            wanderer.isUnconscious = false
+            try reply("He picks himself up.")
+        }
+    }
+
     var timers: [TimedEvent] {
         behaviors.roams(
             wanderer,
@@ -182,6 +198,8 @@ struct PickpocketGame: Game {
         SyntaxRule("accuse", intent: Intent("accuse"))
         SyntaxRule("whistle", intent: Intent("whistle"))
         SyntaxRule("douse", intent: Intent("douse"))
+        SyntaxRule("swoon", intent: Intent("swoon"))
+        SyntaxRule("rouse", intent: Intent("rouse"))
     }
 
     var timers: [TimedEvent] {
@@ -210,6 +228,17 @@ struct PickpocketGame: Game {
         world.before(Intent("douse")) {
             plaza.isLit = false
             try reply("The sun goes out over the plaza.")
+        }
+        // Puts the thief out, and brings him round, without a combat plugin in
+        // the game at all — `isUnconscious` is the engine's, so `steals` reads
+        // it whatever set it.
+        world.before(Intent("swoon")) {
+            thief.isUnconscious = true
+            try reply("The thief drops where he stands.")
+        }
+        world.before(Intent("rouse")) {
+            thief.isUnconscious = false
+            try reply("The thief blinks and sits up.")
         }
     }
 }

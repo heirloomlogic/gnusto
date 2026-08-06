@@ -2132,3 +2132,41 @@ it, at **560**. What moves is the walkable total. Milestone 1's canary (6 and 2)
 and bauble (1 and 1) were the ten points every milestone since has had to
 describe as still waiting; the route to them is him. A perfect playthrough of
 everything built goes 550 to **560 of 560**.
+
+### The broken egg (#178)
+
+Milestone 1 built the egg's ruin as a swapped bird inside a surviving shell. The
+mainframe swaps the shell too, and `docs/games/dungeon-atlas.md` has both halves:
+`EGG` and `GCANA` leave the game together, `BEGG` arrives with `BCANA` already
+inside it, and neither of the survivors carries an `OFVAL` or an `OTVAL`. That is
+now what `Sources/Dungeon/` does.
+
+**This entry records a gap closed rather than a departure taken.** The mainframe
+behaviour is now reproduced. What is adapted is the prose around it.
+
+- **`BEGG`'s examine text is written fresh.** The intact egg's description is
+  Zork I verbatim and is entirely about the clasp and the hinge, neither of which
+  survives being forced, so carrying it across would have described an object
+  that is no longer there. Its room line — *"There is a somewhat ruined egg
+  here."* — is the trilogy's, and `identical` under
+  `docs/games/dungeon-prose-comparison.md`, so it is taken as it stands.
+- **The line that names what the wreck holds is this game's.** Forcing the egg
+  now ends the turn rather than falling through to the built-in open, because
+  the object the built-in would have opened has left play — so the rule has to
+  do the revealing itself.
+
+**`maxScore` does not move**, and a perfect run still scores 560. Both survivors
+are worth nothing, exactly as the mainframe has them. What changes is the price
+of forcing it: twenty points rather than ten, the shell's ten joining the
+canary's eight and the bauble's two. A player who forces the egg cannot complete
+the trophy case at all — which is the mainframe's intent, and which milestone 8's
+716-point walkthrough has to route around by going through the thief.
+
+### A knocked-out villain takes no turn (#179)
+
+An engine note rather than a mainframe one, filed here because both games it
+touches are in this file. `GnustoMeleeCombat` and `GnustoActors` are independent
+libraries that cannot see each other, so a thief battered into unconsciousness by
+the first went on picking pockets under the second, on the same turn he was lying
+on the floor. `Actor.isUnconscious` is now engine state that both consult.
+Nothing in the mainframe changes. The dungeon stops contradicting itself.
