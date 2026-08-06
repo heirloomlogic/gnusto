@@ -12,7 +12,7 @@ which one does `Sources/Dungeon/` use?**
 > source are permissively licensed — see `THIRD_PARTY_NOTICES` at the repo root
 > for the two separate grants and their limits.
 >
-> Generated against Gnusto `3855be2`.
+> Generated against Gnusto `de1fdbc`.
 
 ## How to read this
 

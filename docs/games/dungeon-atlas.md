@@ -11,7 +11,7 @@ source, not from a walkthrough or a memory.
 > source are permissively licensed — see `THIRD_PARTY_NOTICES` at the repo root
 > for the two separate grants and their limits.
 >
-> Generated against Gnusto `3855be2`.
+> Generated against Gnusto `de1fdbc`.
 
 ## Scoring
 
@@ -71,7 +71,14 @@ The reasoning:
 
 ## Rooms
 
-### Main dungeon (156 rooms)
+Shelved for reading, not because the source has regions. The endgame is the 31
+rooms flagged `RENDGAME` — the mirror box among them, corridors and all, since
+it is part of the endgame and not a shelf of its own. The Bank of Zork and the
+Royal Puzzle have no flag, so they are the `BK…` and `CP…` ids, which name
+their rooms and nothing else. Everything the source left unmarked is the main
+dungeon.
+
+### Main dungeon (153 rooms)
 
 | id | name | RVAL | exits | trilogy | in `Sources/Zork1/` |
 |---|---|---:|---:|---|---|
@@ -104,9 +111,6 @@ The reasoning:
 | `CLMID` | Rocky Ledge |  | 2 | Zork I | `Sources/Zork1/AboveGround.swift` |
 | `CLTOP` | Canyon View |  | 3 | Zork I | `Sources/Zork1/AboveGround.swift` |
 | `CMACH` | Machine Room |  | 2 | Zork II | `Sources/Zork1/Regions/CoalMine.swift` |
-| `CP` | Room in a Puzzle |  | 9 | — | — |
-| `CPANT` | Small Square Room |  | 3 | — | — |
-| `CPOUT` | Side Room |  | 2 | — | — |
 | `CRAW1` | Rocky Crawl |  | 3 | — | — |
 | `CRAW2` | Steep Crawlway |  | 2 | — | — |
 | `CRAW3` | Narrow Crawlway |  | 3 | — | — |
@@ -246,6 +250,14 @@ The reasoning:
 | `BKVE` | Viewing Room |  | 1 | Zork II | — |
 | `BKVW` | Viewing Room |  | 1 | Zork II | — |
 
+### Royal Puzzle (3 rooms)
+
+| id | name | RVAL | exits | trilogy | in `Sources/Zork1/` |
+|---|---|---:|---:|---|---|
+| `CP` | Room in a Puzzle |  | 9 | — | — |
+| `CPANT` | Small Square Room |  | 3 | — | — |
+| `CPOUT` | Side Room |  | 2 | — | — |
+
 ### Endgame (31 rooms)
 
 | id | name | RVAL | exits | trilogy | in `Sources/Zork1/` |
@@ -309,7 +321,7 @@ reached the public without a located licence grant, so this generator steps
 over those strings without reading them and records only that the way is
 shut.
 
-### Main dungeon (473 exits)
+### Main dungeon (459 exits)
 
 | room | direction | destination | kind |
 |---|---|---|---|
@@ -395,20 +407,6 @@ shut.
 | `CLTOP` | WEST | `FORE5` | plain |
 | `CMACH` | WEST | `MAGNE` | plain |
 | `CMACH` | SOUTH | `CAGER` | plain |
-| `CP` | NORTH | `FCHMP` | conditional (`FROBOZZ`), one-way |
-| `CP` | SOUTH | `FCHMP` | conditional (`FROBOZZ`), one-way |
-| `CP` | EAST | `FCHMP` | conditional (`FROBOZZ`), one-way |
-| `CP` | WEST | `FCHMP` | conditional (`FROBOZZ`), one-way |
-| `CP` | NE | `FCHMP` | conditional (`FROBOZZ`), one-way |
-| `CP` | NW | `FCHMP` | conditional (`FROBOZZ`), one-way |
-| `CP` | SE | `FCHMP` | conditional (`FROBOZZ`), one-way |
-| `CP` | UP | `FCHMP` | conditional (`FROBOZZ`), one-way |
-| `CP` | SW | `FCHMP` | conditional (`FROBOZZ`), one-way |
-| `CPANT` | SOUTH | `CPOUT` | plain |
-| `CPANT` | WEST | `TREAS` | plain |
-| `CPANT` | DOWN | `FCHMP` | conditional (`FROBOZZ`), one-way |
-| `CPOUT` | NORTH | `CPANT` | plain |
-| `CPOUT` | EAST | `CP` | conditional (`CPOUT`), one-way |
 | `CRAW1` | WEST | `RAVI1` | plain |
 | `CRAW1` | EAST | `DOME` | plain |
 | `CRAW1` | NW | `EGYPT` | conditional (`EGYPT-FLAG`) |
@@ -807,6 +805,25 @@ shut.
 | `BKTW` | WEST | `BKBOX` | plain |
 | `BKVE` | SOUTH | `BKENT` | plain, one-way |
 | `BKVW` | SOUTH | `BKENT` | plain, one-way |
+
+### Royal Puzzle (14 exits)
+
+| room | direction | destination | kind |
+|---|---|---|---|
+| `CP` | NORTH | `FCHMP` | conditional (`FROBOZZ`), one-way |
+| `CP` | SOUTH | `FCHMP` | conditional (`FROBOZZ`), one-way |
+| `CP` | EAST | `FCHMP` | conditional (`FROBOZZ`), one-way |
+| `CP` | WEST | `FCHMP` | conditional (`FROBOZZ`), one-way |
+| `CP` | NE | `FCHMP` | conditional (`FROBOZZ`), one-way |
+| `CP` | NW | `FCHMP` | conditional (`FROBOZZ`), one-way |
+| `CP` | SE | `FCHMP` | conditional (`FROBOZZ`), one-way |
+| `CP` | UP | `FCHMP` | conditional (`FROBOZZ`), one-way |
+| `CP` | SW | `FCHMP` | conditional (`FROBOZZ`), one-way |
+| `CPANT` | SOUTH | `CPOUT` | plain |
+| `CPANT` | WEST | `TREAS` | plain |
+| `CPANT` | DOWN | `FCHMP` | conditional (`FROBOZZ`), one-way |
+| `CPOUT` | NORTH | `CPANT` | plain |
+| `CPOUT` | EAST | `CP` | conditional (`CPOUT`), one-way |
 
 ### Endgame (101 exits)
 
