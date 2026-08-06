@@ -52,10 +52,15 @@ GAME_ORDER = list(ZIL_SUBPATHS)
 # Areas the mainframe map divides into, in the order the atlas lists them.
 # Used only to group it readably; not a claim about the original's own
 # structure, which has no region concept.
+#
+# `RENDGAME` is tested first and outranks every prefix here, because it is the
+# source's own declaration where a prefix is only a naming convention read off
+# the ids. So a prefix claims exactly the rooms the flag left, and `regions`
+# refuses an entry that claims nothing.
 MAIN_REGION = "Main dungeon"
 REGION_PREFIXES = [
     ("Bank of Zork", "BK"),
-    ("Mirror box / Royal Puzzle", "MR"),
+    ("Royal Puzzle", "CP"),
 ]
 ENDGAME_REGION = "Endgame"
 REGION_ORDER = [MAIN_REGION, *(label for label, _ in REGION_PREFIXES), ENDGAME_REGION]
@@ -693,12 +698,56 @@ def zork1_swift_index() -> dict[str, str]:
 
 
 def region_of(room: MdlRoom) -> str:
+    """Which shelf a room is listed under. The flag beats the prefix."""
     if "RENDGAME" in room.flags:
         return ENDGAME_REGION
     for label, prefix in REGION_PREFIXES:
         if room.id.startswith(prefix):
             return label
     return MAIN_REGION
+
+
+def prefix_claim(label: str, prefix: str, rooms: list[MdlRoom]) -> tuple[list[str], list[str]]:
+    """Room ids this prefix matches, and the subset an earlier rule claimed first.
+
+    Both, because either alone reads as an assertion: the shadowed list says
+    what a prefix lost, and it only means anything against what it matched.
+    """
+    matched = sorted((r for r in rooms if r.id.startswith(prefix)), key=lambda r: r.id)
+    return [r.id for r in matched], [r.id for r in matched if region_of(r) != label]
+
+
+def regions(rooms: list[MdlRoom]) -> dict[str, list[MdlRoom]]:
+    """Rooms grouped by region, in id order — one grouping, read by the Rooms
+    tables, the Exits tables under them, and `--audit`.
+
+    A prefix that claims no room is a hard stop, for the reason `EXIT_KINDS` is
+    one: `REGION_PREFIXES` reads as a statement about the map, so an entry that
+    can never fire is a heading the document silently does not have. #164 was
+    exactly that — a *Mirror box / Royal Puzzle* entry on the `MR` prefix,
+    tested after `RENDGAME`, which all seventeen `MR…` rooms carry. It looked
+    like configuration and was decoration.
+    """
+    by_region: dict[str, list[MdlRoom]] = defaultdict(list)
+    for r in sorted(rooms, key=lambda x: x.id):
+        by_region[region_of(r)].append(r)
+
+    dead = []
+    for label, prefix in REGION_PREFIXES:
+        if by_region.get(label):
+            continue
+        _, taken = prefix_claim(label, prefix, rooms)
+        why = (f"{len(taken)} room(s) an earlier rule claimed first ({', '.join(taken)})"
+               if taken else "no room id at all")
+        dead.append(f"region `{label}` claims no room: prefix `{prefix}` matches {why}")
+    if dead:
+        raise SystemExit(
+            "\n".join(dead)
+            + "\nDrop the entry or key it on a prefix the earlier rules leave "
+            "alone. Publishing it would put a heading in REGION_ORDER that no "
+            "room can ever be listed under."
+        )
+    return dict(by_region)
 
 
 # ---------------------------------------------------------------------- exits
@@ -801,6 +850,17 @@ def md_escape(text: str) -> str:
     return (text or "").replace("|", "\\|").replace("\n", " ").strip()
 
 
+def prose_list(items) -> str:
+    """`a`, `a and b`, `a, b and c` — for a sentence naming a config list.
+
+    A sentence that types out what a table already holds is the same defect as
+    a table entry no rule reaches: it reads as a claim and drifts out of step
+    silently. Cheaper to derive it.
+    """
+    names = list(items)
+    return " and ".join(filter(None, [", ".join(names[:-1]), *names[-1:]]))
+
+
 def para(text: str, indent: str = "") -> str:
     """Wrap a paragraph to the width the hand-written prose here is written at.
 
@@ -898,6 +958,7 @@ def audit(
     exits: Exits,
     shared: Globals,
     scenery: SharedScenery,
+    by_region: dict[str, list],
 ) -> int:
     """Print every pairing and every placement so a human can check them. Writes
     nothing.
@@ -915,6 +976,24 @@ def audit(
     def line(eid: str, name: str, z: ZilEntity, note: str = "") -> None:
         print(f"  {eid:8s} {name[:34]:36s} -> {z.id:24s} {z.desc[:30]:32s} "
               f"{z.game}{note}")
+
+    # Which shelf every room is listed under, and — for a prefix — how many of
+    # the ids it matches an earlier rule claimed first. A prefix whose whole
+    # match is shadowed is a region that can never be published; `regions`
+    # refuses to get this far with one.
+    rules = {MAIN_REGION: "everything no other rule claims",
+             ENDGAME_REGION: "flag `RENDGAME`, tested first"}
+    for label, prefix in REGION_PREFIXES:
+        matched, taken = prefix_claim(label, prefix, rooms)
+        tail = f": {', '.join(taken)}" if taken else ""
+        rules[label] = (f"id prefix `{prefix}`; {len(taken)} of the {len(matched)} "
+                        f"ids it matches claimed first{tail}")
+    print(f"\n=== REGIONS ({len(rooms)} rooms over {len(REGION_ORDER)} shelves) ===")
+    for label in REGION_ORDER:
+        group = by_region.get(label, [])
+        print(f"\n--- {label} ({len(group)} rooms) — {rules[label]} ---")
+        for r in group:
+            print(f"  {r.id:8s} {r.name[:60]}")
 
     for label, entities, by_name, by_graph in (
         ("ROOMS", rooms, m.rooms_by_name, m.rooms_by_graph),
@@ -1040,8 +1119,11 @@ def main(argv: list[str] | None = None) -> int:
     exits = exit_tally(rooms)
     shared = global_presence(rooms, objects)
     scenery = shared_scenery(rooms, matching, shared, zil)
+    by_region = regions(rooms)
     if args.audit:
-        return audit(rooms, objects, matching, placed, unresolved, exits, shared, scenery)
+        return audit(
+            rooms, objects, matching, placed, unresolved, exits, shared, scenery, by_region
+        )
 
     zil_for = matching.of
     swift = zork1_swift_index()
@@ -1149,13 +1231,25 @@ def main(argv: list[str] | None = None) -> int:
         "",
     ]
 
-    # rooms grouped by region, in id order — one ordering, read by both the
-    # Rooms tables and the Exits tables below them
-    by_region: dict[str, list[MdlRoom]] = defaultdict(list)
-    for r in sorted(rooms, key=lambda x: x.id):
-        by_region[region_of(r)].append(r)
-
-    lines += ["## Rooms", ""]
+    # Named from REGION_PREFIXES rather than typed out: a sentence that repeats
+    # what the table holds is the same defect as a table entry no rule reaches.
+    flagless = prose_list(f"the {label}" for label, _ in REGION_PREFIXES)
+    lines += [
+        "## Rooms",
+        "",
+        para(
+            "Shelved for reading, not because the source has regions. The endgame is"
+            f" the {len(by_region[ENDGAME_REGION])} rooms flagged `RENDGAME` — the"
+            " mirror box among them, corridors and all, since it is part of the"
+            " endgame and not a shelf of its own. "
+            + flagless[0].upper() + flagless[1:]
+            + " have no flag, so they are the "
+            + prose_list(f"`{prefix}…`" for _, prefix in REGION_PREFIXES)
+            + " ids, which name their rooms and nothing else. Everything the source"
+            " left unmarked is the main dungeon."
+        ),
+        "",
+    ]
     for region in REGION_ORDER:
         group = by_region.get(region, [])
         if not group:
