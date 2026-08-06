@@ -487,7 +487,12 @@ struct DungeonHouse: GameContent {
         }
         bottle.before(.fill) {
             guard !bottle.holds(water) else { try reply(Prose.bottleAlreadyFull) }
-            try reply(Prose.noWaterSource)
+            // The mainframe marks its watery rooms with the `RGWATER` global.
+            // There were none of them until the dam milestone, which is why
+            // this line used to be an unconditional refusal.
+            try require(player.location[default: .waterSource], else: Prose.noWaterSource)
+            water.move(inside: bottle)
+            try reply(Prose.bottleFilled)
         }
     }
 

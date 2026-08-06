@@ -39,6 +39,14 @@ extension Prose {
 
     static let verbMagicWordInert = "A hollow voice says nothing at all."
 
+    static let verbEcho = "The word bounces off the walls and comes back unchanged."
+
+    static let verbTurnWithNothing = "You cannot turn that with that."
+
+    static let verbPlugNothing = "That is not leaking."
+
+    static let verbSqueezeNothing = "Squeezing it accomplishes nothing."
+
     // MARK: - Liquids
 
     static let waterSlipsAway = "The water slips through your fingers."
@@ -56,6 +64,8 @@ extension Prose {
     static let bottleEmptied = "The water spills out and is quickly gone."
 
     static let noWaterSource = "There is no water here to fill it from."
+
+    static let bottleFilled = "The bottle is now full of water."
 
     // MARK: - Burden
 

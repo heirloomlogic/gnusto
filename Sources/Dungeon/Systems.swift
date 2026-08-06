@@ -18,6 +18,18 @@ extension Intent {
     /// deaths, since the troll is the only thing swinging at you so far.
     /// Handled in ``Dungeon`` — it reads the host's death counter.
     #verb("diagnose", ["diagnose"])
+
+    /// Say a word to a room that is listening. Only the Loud Room is, and only
+    /// this one word settles it.
+    #verb("echo", ["echo"])
+
+    /// Turn a thing with a tool. The engine's `turn` takes no instrument, and
+    /// the dam's great bolt is the whole reason the wrench exists.
+    #verb("turnWith", ["turn", .directObject, "with", .indirectObject])
+
+    /// Stop something up. The mainframe's verb for the dam's leak, and the
+    /// only thing in the game it works on.
+    #verb("plug", ["plug", .directObject], ["plug", .directObject, "with", .indirectObject])
 }
 
 /// The game-wide verb layer: the vocabulary above, plus a courteous default in
@@ -29,11 +41,15 @@ extension Intent {
 /// behavior, so re-voicing one is a single line that warns about nothing.
 struct DungeonSystems: GameContent {
     var verbs: [SyntaxRule] {
-        [.wind, .diagnose]
+        [.wind, .diagnose, .echo, .turnWith, .plug]
     }
 
     var actions: [IntentAction] {
         action(.wind) { try reply(Prose.verbWindNothing) }
+        action(.echo) { try reply(Prose.verbEcho) }
+        action(.turnWith) { try reply(Prose.verbTurnWithNothing) }
+        action(.plug) { try reply(Prose.verbPlugNothing) }
+        action(.squeeze) { try reply(Prose.verbSqueezeNothing) }
         action(.give) { try reply(Prose.verbGiveNoTaker) }
         action(.dig) { try reply(Prose.verbDigFutile) }
         action(.wave) { try reply(Prose.verbWave) }

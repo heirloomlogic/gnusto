@@ -1369,7 +1369,8 @@ does not build the far side of:
 
 - the Clearing's grating, down into the Grating Room (the maze);
 - Canyon Bottom's path north to the End of Rainbow (the river and the rainbow);
-- the Troll Room's north passage to the East-West Passage and south into the maze;
+- the Troll Room's north passage to the East-West Passage (**closed by milestone
+  2**) and south into the maze;
 - the Gallery's west door into the Bank of Zork's entrance hall;
 - the Living Room's nailed west door onto the Strange Passage (the cyclops opens
   it). The door and its lettering are declared here; the exit is not.
@@ -1377,3 +1378,118 @@ does not build the far side of:
 **Deferred, and deliberately.** The score-rank ladder (meaningless under a
 ratcheting ceiling); the thief; the brick's fuse (the brick starts in the Attic, so
 the object lands here inert); burning the leaves and the paper.
+
+### Milestone 2 — the underground crossroads and Flood Control Dam #3
+
+17 rooms: the East-West Passage, the Round Room, the North-South Passage, the Deep
+Ravine, the Chasm, Deep Canyon, the Loud Room and the Damp Cave; then the Dam, its
+Lobby, the Maintenance Room, the Dam Base, Reservoir South, the reservoir itself,
+Reservoir North, Stream View and the Stream. Forked from `Sources/Zork1/`'s
+`Regions/RoundRoom.swift` and `Regions/Dam.swift` and re-topologized. Every room
+came out with the number of exits `docs/games/dungeon-atlas.md` records for it,
+which is the checksum on reading the tables out of `dung.355` (#156).
+
+**Where this departs from `Sources/Zork1/`, and why.**
+
+- **The Round Room is a carousel.** It has **nine** passages, machinery turning
+  under the floor, and while that machinery runs, the passage you take has nothing
+  to do with where you come out. Zork I's Round Room is a three-way junction with
+  cave-ins. `CAROUSEL-FLIP` starts clear and the only thing that clears it is the
+  triangular button in the Machine Room, so in this milestone the room always
+  spins. The three passages built here are declared with ``Location/exit(_:toward:)``
+  — the dynamic exit — so the East-West Passage's five points, which are an
+  `onEnter` award, still get paid; the draw is taken once per attempt in a
+  `before(.go)` rule, as `CAROUSEL-OUT` does.
+- **The Deep Ravine is a room Zork I does not have**, and it is the junction that
+  ties the East-West Passage, the Chasm and Reservoir South together. Without it
+  the dam is reachable only through the carousel.
+- **The Loud Room hangs off the North-South Passage** and climbs to the Damp Cave,
+  where Zork I hangs it off the Round Room and climbs to Deep Canyon.
+- **The Loud Room's acoustics have nothing to do with the dam.** `ECHO-ROOM`
+  (`act1.254`) never reads `LOW-TIDE`, which is consulted in exactly four places:
+  the Dam room's description, the bolt, and the three reservoir descriptions. So
+  the room roars from the first moment until somebody says `echo` in it. Zork I is
+  the version that couples the two, and this game does not carry its `waterMoving`.
+- **The Damp Cave runs south and east**, east being the top of the dam, and narrows
+  to the west. Zork I mirrors it.
+- **There is no exit between the Dam and Reservoir South.** Zork I invented that
+  one. The shore is reached from Deep Canyon (down its northwest passage) or from
+  the Deep Ravine's staircase.
+- **The sluice gates move the water instantly.** `BOLT-FUNCTION` re-bits the
+  reservoir in the same breath that prints the message; Zork I's eight-turn drain
+  and refill are the trilogy's addition, and neither the fuses nor the
+  refill-drowning they make possible exist here. Nobody can be standing on the
+  reservoir bed when the gates close, because the bolt is on top of the dam.
+- **The leak can be plugged.** `plug leak with putty`, the putty squeezed out of
+  the tube — the mainframe's `LEAK-FUNCTION` and its `PLUG` verb, both of which
+  Zork I dropped. The blue button jams once the water has run at all, so plugging
+  it keeps the room rather than postponing the loss of it.
+- **Reservoir South has six exits** where Zork I gives it four, and **Stream View's
+  path runs north and east** rather than following the stream west to east.
+- Values are the mainframe's, and neither is Zork I's: the platinum bar is
+  **12 to find and 10 to case** where the trilogy pays 10 and 5, and the trunk of
+  jewels **15 and 8** where it pays 15 and 5. The East-West Passage's `RVAL` of 5
+  is the same in both.
+
+**Adapted rather than reproduced, line by line.** `PASS1` and `PASS5` are in the
+comparison's `identical` bucket and `INSTR` in its `minor` one, so those three
+rooms are the trilogy verbatim. `LOBBY` is bucketed `substantial`, but the check
+that bucket asks for comes out clean — both rooms have the same three ways out —
+so its wording stands too. `CAVE3`, `CHAS1`, `DOCK`, `MAINT` and `STREA` are
+`substantial` **and** differ because the exits or the fixtures differ, so each
+keeps the trilogy's voice with its facts corrected. `CAROU`, `DAM`, `RAVI1`,
+`CANY1`, `ECHO` and the three reservoir rooms print from routines in the source
+and so have no line to compare; where a trilogy counterpart exists it is the
+skeleton, and the rest is written fresh. The guidebook and the matchbook are the
+trilogy's verbatim: the mainframe's variants (3.7 cubic feet of concrete, 37
+billion cubic feet of reservoir, the Central Bureaucracy's grant, MIT Tech and
+Mr. TAA) are 1981 text with no located grant, and the joke is the same joke.
+
+**Mechanics simplified or deferred.**
+
+- **The flood ladder walks straight.** The source raises `WATER-LEVEL` every turn
+  and indexes the nine-rung ladder at `level/2`, which never prints "up to your
+  ankles" and prints "over your head" twice before drowning you on turn fifteen.
+  This game walks one rung a turn from the ankles and drowns on the tenth. The
+  ladder's words are the trilogy's, which carries the same nine.
+- **The matchbook's five matches** are not modelled; it is a readable object.
+  Lighting things is the coal mine's milestone.
+- **The wire coil at Stream View is inert**, exactly as the brick in the Attic is.
+  The explosion they make together belongs to a later milestone.
+- **The screwdriver and the hand pump are inert** for the same reason: the machine
+  switch and the boat are later.
+- The mainframe's Loud Room takes over the input loop outright and drops you into
+  the Ancient Chasm if you break out of it. Here it is an ordinary `before` rule
+  that echoes the last word of anything but movement, looking and `echo`.
+
+**Declared but not yet walkable: nothing.** `maxScore` goes 66 → **116**, and a
+perfect playthrough of milestones 1 and 2 together scores **106** — the ten still
+missing are milestone 1's canary and bauble, which wait on the thief.
+
+**Content in a milestone-2 room that milestone 2 does not declare.** The dented
+steel box and the Stradivarius inside it stand in the Round Room and are invisible
+until the triangular button in the Machine Room stops the carousel — a room a later
+milestone builds. Declaring them here would add twenty unpayable points and an
+unreachable object. See `docs/games/dungeon.md`, "The ceiling ratchets".
+
+**Seams left for later milestones**, each an exit the source has and this milestone
+does not build the far side of:
+
+- five of the Round Room's nine passages — north and south to the Engravings Cave,
+  east to the Grail Room, southeast to the Winding Passage, southwest into the
+  maze — and its `out` to the Cold Passage. While the carousel turns, each of them
+  answers "You can't go that way" rather than being told the room turned and then
+  refused anyway;
+- the Deep Ravine's west crawl to the Rocky Crawl;
+- the Loud Room's east door onto the Ancient Chasm;
+- Reservoir North's tunnel north to the Atlantis Room;
+- Stream View's path north to the Glacier Room;
+- the Dam Base's launch onto the Frigid River, and the `launch` and `cross` exits
+  the reservoir and the stream have for a boat that does not exist yet;
+- Deep Canyon's northwest passage and the Deep Ravine's staircase are both gated in
+  the source on carrying the gold coffin, which starts in the Egyptian Room. Until
+  that room is built the gate is vacuously open, so the plain exit is declared.
+
+**Also landed here.** The bottle in the Kitchen can at last be filled: the five
+water rooms carry the mainframe's `RGWATER`, and milestone 1 had none of them,
+which is why its `fill` rule was an unconditional refusal.
