@@ -267,6 +267,7 @@ struct DungeonHouse: GameContent {
         firstSight(Prose.newspaperInPlace)
         description(Prose.newspaper)
         trait(.weight, 2)
+        trait(.burnable, true)
     }
 
     // MARK: - Attic
@@ -308,6 +309,7 @@ struct DungeonHouse: GameContent {
         container
         startsOpen
         trait(.weight, 9)
+        trait(.burnable, true)
     }
 
     // MARK: - Cellar

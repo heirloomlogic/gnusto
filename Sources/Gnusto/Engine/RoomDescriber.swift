@@ -100,9 +100,12 @@ enum RoomDescriber {
             }
 
             // One level of "On the X is a Y." for surfaces in the room.
+            // `scenery` means "don't list me" wherever the thing is standing,
+            // so it is filtered here exactly as it is filtered above — a fixed
+            // fitting on a table is no more a room's news than one on a floor.
             if item.isSurface {
                 let onTop = (index.onSurface[itemID] ?? [])
-                    .filter { Visibility.isPerceivable($0, definition: definition, state: state) }
+                    .filter { isListable($0, definition: definition, state: state) }
                 for topID in onTop {
                     frame.say(
                         frame.definition.text.itemOnSurface(
@@ -116,7 +119,7 @@ enum RoomDescriber {
             // room description.
             if item.isContainer, contentsVisible(itemID, definition: definition, state: state) {
                 let inside = (index.inContainer[itemID] ?? [])
-                    .filter { Visibility.isPerceivable($0, definition: definition, state: state) }
+                    .filter { isListable($0, definition: definition, state: state) }
                 for insideID in inside {
                     frame.say(
                         frame.definition.text.itemInContainer(
@@ -137,6 +140,22 @@ enum RoomDescriber {
                 frame.say(frame.definition.text.actorHere(frame.indefiniteName(of: actorID)))
             }
         }
+    }
+
+    /// Whether a nested item earns a line of its own in a room description:
+    /// perceivable, and not `scenery`. A fixed fitting inside a container or
+    /// on a surface is suppressed for the same reason one on the floor is —
+    /// the game has already described it, in the sentence that mentions the
+    /// thing holding it.
+    private static func isListable(
+        _ id: EntityID,
+        definition: GameDefinition,
+        state: WorldState
+    ) -> Bool {
+        // Scenery first: it is one dictionary lookup, where perceivability is
+        // that plus the hidden-and-unrevealed test.
+        guard definition.items[id]?.isScenery != true else { return false }
+        return Visibility.isPerceivable(id, definition: definition, state: state)
     }
 
     /// Whether a container's direct contents are perceivable in a room

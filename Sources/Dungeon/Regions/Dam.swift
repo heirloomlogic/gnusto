@@ -179,6 +179,7 @@ struct DungeonDam: GameContent {
         synonyms("book", "guidebooks")
         firstSight(Prose.guidebookInPlace)
         description(Prose.guidebook)
+        trait(.burnable, true)
     }
 
     /// The matchbook, and — as in the mainframe, where `MATCH` is one object
@@ -194,6 +195,7 @@ struct DungeonDam: GameContent {
         lightSource
         trait(.openFlame, true)
         trait(.weight, 2)
+        trait(.burnable, true)
     }
 
     let receptionDesk = Item {
@@ -345,6 +347,7 @@ struct DungeonDam: GameContent {
         firstSight(Prose.wireCoilInPlace)
         description(Prose.wireCoil)
         trait(.weight, 1)
+        trait(.burnable, true)
     }
 
     // MARK: - Water scenery

@@ -178,6 +178,12 @@ Two consequences worth stating.
   Stradivarius. The ceiling is 499 and a perfect playthrough of the five
   together scores 489; the ten still missing are, still, M1's canary and
   bauble.
+  M6 adds 61, all of it walkable, and all of it object values: no room in the
+  volcano carries an `RVAL`. Three treasures — the priceless zorkmid (10+12) on
+  the Narrow Ledge, Lord Dimwit's crown (15+10) in the box the brick opens, and
+  the Flathead stamp (4+10) pressed inside the Library's purple book. The
+  ceiling is 560 and a perfect playthrough of the six together scores 550; the
+  ten still missing are, still, M1's canary and bauble.
 - **A milestone may also decline to declare content that sits in one of its own
   rooms**, where the *thing* is here and the *mechanism that reveals it* is not.
   The dented steel box and the Stradivarius inside it stand in the Round Room from
@@ -343,7 +349,7 @@ or engine change?*
 |---|---|
 | **Royal Puzzle** | The room's geometry mutates. The player pushes sandstone walls through a grid; marble walls do not move. **Answered — in-game rule, and it costs the engine nothing. See below.** |
 | **Bank of Zork** | Non-Euclidean. Which room the curtain of light delivers you to depends on hidden state. **Answered — see below — and built at M5.** |
-| **Balloon** | A vehicle that rises and falls a volcano shaft on a timer, with a receptacle you feed to keep it aloft. Vehicles exist (`player.vehicle`); the vertical daemon does not. **Answered — see below.** |
+| **Balloon** | A vehicle that rises and falls a volcano shaft on a timer, with a receptacle you feed to keep it aloft. Vehicles exist (`player.vehicle`); the vertical daemon does not. **Answered — see below — and built at M6.** |
 | **Robot, and the mirror box** | Commanding an actor (`robot, push button`) and riding a vehicle you steer from inside. Load-bearing for the Endgame. **Half answered — the actor imperative shipped as an engine change (#130) and the robot was built at M5; the mirror box is still sized. See below.** |
 
 ### The actor-imperative question, answered
@@ -584,6 +590,22 @@ Two notes for M6, both found by playing the fixture rather than by reading it:
   `FIDELITY.md`.
 
 All four spikes are answered. M1 is unblocked.
+
+**Built at M6, and one thing the spike had not read far enough to find.** The
+fixture rose while a fire burned and sank while it did not, which is most of the
+mainframe's rule and not all of it. `dung.355` and the Zork II ZIL agree that the
+balloon rises only while the receptacle is **open** *and* alight. Shutting the
+lid over a live fire is the only way to come down and keep the balloon; a balloon
+whose fire has gone out sinks too, and does not survive the floor. That
+asymmetry is the puzzle, and it costs one `isOpen` read in the drift fuse.
+
+The stranding is kept, because the source keeps it and because the source also
+answers it: a gnome walks out of the ledge wall ten turns after the basket
+leaves without you, and any treasure at all buys a chimney down to the floor. He
+waits indefinitely — the mainframe arms his five-turn watch on the first word
+said to him and not before — so a stranded player who says nothing to a gnome is
+not stranded at all. `FIDELITY.md`'s milestone-6 entry records the two ways to
+lose the volcano anyway.
 
 ## Relationship to `Sources/Zork1/`
 
