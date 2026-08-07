@@ -85,4 +85,59 @@ struct DangerousDarkTests {
         #expect(!looks[3].contains("D."))
         expectInOrder(looks[4], ["D.", "*** You have died ***"])
     }
+
+    @Test func suspendingTheDarkSilencesIt() async throws {
+        // Straight into the warded room and stay there. The Shrine is as dark
+        // as the Cave — `dark` is declared on both — so anything that speaks
+        // here is the grue speaking through a shut gate.
+        let transcript = try await play(
+            WardedDarkGame(),
+            ["east", "look", "look", "look", "look", "look", "quit"])
+        #expect(transcript.contains("It is pitch black."))
+        #expect(!transcript.contains("something in it is breathing"))
+        #expect(!transcript.contains("*** You have died ***"))
+    }
+
+    @Test func resumingAfterASuspensionStillWarnsFirst() async throws {
+        // The regression. Take the warning in the Cave, cross into the Shrine
+        // for three turns, then come back to the dark that bites.
+        //
+        // A suspension that merely *froze* the counter would leave it at 1, so
+        // the returning turn would be dark turn 2 — a dice turn at lethality
+        // 100 — and the player would die without a second warning. The count
+        // resets while the gate is shut, so the warning turn is a guarantee
+        // across a suspension, which is what the plugin's own doc promises.
+        let transcript = try await play(
+            WardedDarkGame(),
+            ["north", "north", "look", "look", "south", "quit"])
+        expectInOrder(
+            turnOutput(of: "north", in: transcript),
+            ["It is pitch black.", "something in it is breathing"])
+        // Back in the Cave, and it is dark turn 1 again: the warning, not the
+        // dice.
+        let back = turnOutput(of: "south", in: transcript)
+        #expect(back.contains("something in it is breathing"))
+        #expect(!back.contains("finds you before you find it"))
+        #expect(!transcript.contains("*** You have died ***"))
+        // Exactly two warnings, so the three Shrine turns in between said
+        // nothing: two dark stretches, each of which began at the beginning.
+        let warnings =
+            transcript.components(
+                separatedBy: "something in it is breathing"
+            ).count - 1
+        #expect(warnings == 2)
+    }
+
+    @Test func aSuspendedCountStartsCleanFromTheLight() async throws {
+        // Suspended, then released in the *light*: nothing was counting and
+        // nothing resumes. The next descent is an ordinary first dark turn.
+        let transcript = try await play(
+            WardedDarkGame(),
+            ["east", "look", "west", "look", "north", "quit"])
+        #expect(!turnOutput(of: "west", in: transcript).contains("breathing"))
+        expectInOrder(
+            turnOutput(of: "north", in: transcript),
+            ["It is pitch black.", "something in it is breathing"])
+        #expect(!transcript.contains("*** You have died ***"))
+    }
 }

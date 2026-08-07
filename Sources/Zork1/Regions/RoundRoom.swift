@@ -152,8 +152,7 @@ struct ZorkRoundRoom: GameContent {
             guard waterMoving else { return }
             let bounces = [dampCave, roundRoom, deepCanyon]
             say(Prose.loudRoomEjects)
-            player.location = bounces[random(0...(bounces.count - 1))]
-            describeSurroundings()
+            arrive(at: bounces[random(0...(bounces.count - 1))])
             try reply("")
         }
 

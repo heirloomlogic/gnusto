@@ -221,4 +221,39 @@ struct ActorBehaviorTests {
         #expect(!turnOutput(of: "east", in: transcript).contains("pads in"))
         #expect(turnOutput(of: "resume", in: transcript).contains("The hound pads in after you."))
     }
+
+    @Test func aFollowerWillNotWalkIntoARoomOffHisWhitelist() async throws {
+        // Down the corridor he comes; into the cell he does not. The cell is
+        // the whole point of the whitelist — a room the player can stand in
+        // and still be within earshot.
+        let transcript = try await play(GaolerGame(), ["east", "north", "quit"])
+        #expect(turnOutput(of: "east", in: transcript).contains("The gaoler comes in behind you."))
+
+        let intoTheCell = turnOutput(of: "north", in: transcript)
+        #expect(intoTheCell.contains("Four walls"))
+        #expect(!intoTheCell.contains("comes in behind you"))
+        // Actors are always listed where they are perceivable, so his absence
+        // from the cell's listing is the assertion that he stayed put.
+        #expect(!intoTheCell.contains("gaoler"))
+    }
+
+    @Test func heComesBackTheMomentYouStepBackOntoTheWhitelist() async throws {
+        // And the whitelist gates the *destination*, not him: he is left in
+        // the corridor, so returning to it needs no arrival at all, and
+        // walking on to the guardroom gets one.
+        let transcript = try await play(
+            GaolerGame(), ["east", "north", "south", "west", "quit"])
+        #expect(!turnOutput(of: "south", in: transcript).contains("comes in behind you"))
+        #expect(turnOutput(of: "west", in: transcript).contains("The gaoler comes in behind you."))
+    }
+
+    @Test func aShutGateHoldsTheFollowerStill() async throws {
+        // The `while:` gate, evaluated ahead of everything else: told to wait,
+        // he waits, even for a destination squarely on his whitelist.
+        let transcript = try await play(
+            GaolerGame(), ["halt", "east", "heel", "quit"])
+        #expect(!turnOutput(of: "east", in: transcript).contains("comes in behind you"))
+        // Released, and the daemon's next tick is the end of that same turn.
+        #expect(turnOutput(of: "heel", in: transcript).contains("The gaoler comes in behind you."))
+    }
 }

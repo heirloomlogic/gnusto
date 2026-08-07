@@ -152,6 +152,7 @@ A game type that also conforms to ``GameMain`` is a complete `@main` executable 
 - ``enterable``
 - ``Player/vehicle``
 - ``describeSurroundings(withRoomName:)``
+- ``arrive(at:withRoomName:)``
 
 ### Time, Light, and Death
 

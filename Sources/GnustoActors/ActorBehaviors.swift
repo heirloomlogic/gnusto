@@ -112,21 +112,39 @@ public struct ActorBehaviors: GamePlugin {
     /// player (`starts(in:)` the player's start room) to avoid a spurious
     /// arrival on turn one.
     ///
+    /// `rooms:` and `while:` are the two ways to scope a follower, and they
+    /// scope different things. `rooms:` is a whitelist of *destinations* — a
+    /// gaoler who walks the corridors and will not set foot in a cell follows
+    /// you along the one and lets you go into the other, which is what makes
+    /// "somewhere he will not go" a place you can stand. `while:` is an extra
+    /// gate evaluated first, exactly as ``roams(_:daemonName:rooms:chancePerTurn:while:arrival:departure:)``'s
+    /// is, for the companion who has been told to wait. Either left out is
+    /// always open, so a caller that passes neither behaves exactly as before.
+    ///
     /// - Parameters:
     ///   - actor: the companion NPC.
     ///   - daemonName: the daemon's global timer name.
+    ///   - rooms: the destinations he will walk into; `nil` for anywhere.
+    ///   - gate: extra gate checked first — a false gate is a quiet turn.
     ///   - arrivals: lines printed when the companion catches up, if lit —
     ///     cycled by the turn counter; empty for a silent companion.
     /// - Returns: the following daemon, for the host's `timers` block.
     public func follows(
         _ actor: Actor,
         daemonName: String,
+        rooms: [Location]? = nil,
+        while gate: @escaping @Sendable () -> Bool = { true },
         arrivals: [String] = []
     ) -> TimedEvent {
         daemon(daemonName, autostart: true) {
+            // The host's gate first: a false gate is a quiet turn.
+            guard gate() else { return }
             guard let here = actor.location else { return }  // idle while offstage
             guard !actor.isUnconscious else { return }
             let dest = player.location
+            // The whitelist is on the destination: where he *will* walk, not
+            // where he happens to be standing.
+            guard rooms?.contains(dest) ?? true else { return }
             guard here != dest else { return }  // already together
             actor.move(to: dest)
             if !arrivals.isEmpty, dest.isLit {

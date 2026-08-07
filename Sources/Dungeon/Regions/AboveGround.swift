@@ -717,8 +717,7 @@ struct DungeonAboveGround: GameContent {
 
         // `climb tree` reaches the same perch `up` does.
         greatTree.before(.climb) {
-            player.location = upATree
-            describeSurroundings()
+            arrive(at: upATree)
             try reply("")
         }
 

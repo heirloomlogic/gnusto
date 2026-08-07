@@ -190,8 +190,7 @@ extension Dungeon {
         if dropped == house.rope {
             stopFuse("slideGrip")
             say(Prose.ropeReleased)
-            player.location = house.cellar
-            describeSurroundings()
+            arrive(at: house.cellar)
             try reply("")
         }
         try require(dropped.isHeld, else: Prose.nothingToLoseDownTheChute)
@@ -248,8 +247,7 @@ extension Dungeon {
         fuse("slideGrip", after: DungeonPalantir.shortestGrip) {
             guard chute.contains(player.location) else { return }
             say(Prose.gripFails)
-            player.location = house.cellar
-            describeSurroundings()
+            arrive(at: house.cellar)
         }
     }
 }

@@ -117,7 +117,8 @@ Rule phases by scope, all filed in `Engine/Bootstrap.swift`:
 | world | `before`, `after` |
 
 In any rule body: `say`, `refuse`, `reply`, `require(_:else:)`, `end(won:)`, `die`,
-`describeSurroundings`, `proceed`. `refuse`/`reply`/`end`/`die` are `throws -> Never`.
+`describeSurroundings`, `arrive(at:)`, `proceed`. `refuse`/`reply`/`end`/`die` are
+`throws -> Never`.
 
 ## Gotchas that cost real time
 
@@ -137,6 +138,11 @@ In any rule body: `say`, `refuse`, `reply`, `require(_:else:)`, `end(won:)`, `di
   problem: `describeSurroundings()` is always a full LOOK, so a rule that moves
   the player *within* one room reprints the heading — pass
   `describeSurroundings(withRoomName: false)`.
+- **A rule that moves the player between rooms wants `arrive(at:)`**, which is
+  the `player.location = ` + `describeSurroundings()` pair written once. It does
+  *not* end the turn, so it is as legal in a daemon or an `after` rule as in a
+  `before` one, and the caller says how the turn finishes. Like every move that
+  is not a `go`, it fires no `onEnter` and carries no boarded vehicle.
 - **`onEnter` runs *after* the player has moved.** It cannot block entry. To block a
   move, use `sourceRoom.before(.go)` + `guard command.direction` + `refuse`, or a
   conditional exit `exit(_:to:when:otherwise:)` whose `when:` closure is evaluated in

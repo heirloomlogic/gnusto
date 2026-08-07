@@ -148,6 +148,18 @@ puzzle.before(.go) {
 
 Between them: the trait decides *what* a description contains, the argument decides whether it opens by announcing where the player is.
 
+A rule that moves the player *between* rooms wants both halves at once, and ``arrive(at:withRoomName:)`` is the pair written once:
+
+```swift
+mirror.before(.touch) {
+    say("The room spins, and settles the other way round.")
+    arrive(at: mirrorRoomSouth)
+    try reply("")
+}
+```
+
+It does not end the turn — so it is as legal in an `after` rule or a daemon as in a `before` one — and, like any move that is not a `go`, it fires no `onEnter` on the destination. A rule that teleports into a room which kills, scores or announces on arrival has to say so itself.
+
 ## Live room-listing lines with `presence`
 
 `describe` supplies the *examine* text. The other line the engine prints about an entity is its paragraph in the room description — the ``firstSight(_:)`` trait, shown until the player touches an item and shown on every look for an actor. ``Item/presence(_:)`` (or ``Actor/presence(_:)``) is its live form, and it follows exactly the same rules as `describe`:

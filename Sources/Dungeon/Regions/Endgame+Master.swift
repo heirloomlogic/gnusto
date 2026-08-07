@@ -302,7 +302,7 @@ extension DungeonEndgame {
             bronzeDoor.isOpen = false
         }
         say(Prose.cellRidesOut)
-        try arrive(at: landing)
+        try arriveInTheHallway(at: landing)
     }
 
     /// Whether whoever is working the parapet's instruments is standing on it.

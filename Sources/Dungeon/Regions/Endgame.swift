@@ -655,6 +655,12 @@ struct DungeonEndgame: GameContent {
     /// Whether the Dungeon Master has been told to stay put.
     @Global var masterStaying = false
 
+    /// The plugin the Dungeon Master's following daemon is built from. A
+    /// `GamePlugin` owns no state and registers nothing, so a bundle may hold
+    /// its own rather than reach for the host's — `Dungeon` has one too, for
+    /// the thief.
+    let actors = ActorBehaviors()
+
     /// How brightly the sword was glowing when it was last reported: 0 not at
     /// all, 1 faintly, 2 fiercely. A warning that repeats every turn stops
     /// being a warning, so the daemon speaks only when this changes.

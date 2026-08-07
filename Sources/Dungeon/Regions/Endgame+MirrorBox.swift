@@ -193,6 +193,15 @@ struct MirrorBox: Codable, Sendable, GlobalValue {
 extension DungeonEndgame {
     /// The five hallway rooms, south to north, indexed the way ``MirrorBox``
     /// indexes them.
+    ///
+    /// Computed rather than stored, and it has to be: a stored property's
+    /// initializer runs before `self` exists, so no property of this bundle can
+    /// be built out of its own rooms. (The same limitation decides how
+    /// `DangerousDark` takes its gate.) The allocation is five elements on rule
+    /// *registration* and on the box wing's own moves — never on a per-turn
+    /// path. The one that was per-turn was ``masterRoams``, read by an
+    /// autostart daemon on every turn of the whole game; that daemon is now
+    /// `ActorBehaviors.follows`, which takes the list once as an argument.
     var channelRooms: [Location] {
         [hallwayA, hallwayB, hallwayC, hallwayG, hallwayD]
     }
