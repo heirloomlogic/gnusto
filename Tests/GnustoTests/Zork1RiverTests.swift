@@ -243,6 +243,74 @@ struct Zork1RiverTests {
         #expect(turnOutput(of: "look", in: transcript).contains("magic boat"))
     }
 
+    // MARK: - The tan label
+    //
+    // `IBOAT-FUNCTION` prints *two* lines on a successful inflate — the boat's,
+    // then the label's — and `Sources/Zork1/Zork1.swift` carries the note on why
+    // the second one can come round again (#203).
+
+    /// The pump hands you the boat *and* tells you what came folded inside it,
+    /// and the label reads as the Frobozz Magic Boat Company's own fine print —
+    /// which is `read label` answering at all, where before #203 it could not.
+    /// Until then it is nowhere, riding the boat that is itself nowhere.
+    @Test func inflatingTheBoatTheFirstTimeRevealsTheTanLabel() async throws {
+        let transcript = try await play(
+            Zork1(),
+            Self.toPumpAtDamBase + ["read label", "inflate plastic with pump", "read tan label"],
+            seed: 39)
+
+        #expect(turnOutput(of: "read label", in: transcript).contains("can't see any such thing"))
+        expectInOrder(
+            transcript,
+            [
+                "The boat inflates and appears seaworthy.",
+                "A tan label is lying inside the boat.",
+                "FROBOZZ MAGIC BOAT COMPANY",
+                "Hello, Sailor!",
+                "76",  // the warranty's milliseconds
+            ])
+    }
+
+    /// The announcement is gated on the label having been handled, not on the
+    /// boat having been pumped before: deflate and pump again without ever
+    /// touching the label and you are told about it a second time, because the
+    /// original reads that flag and never sets it. Take it once — the flag the
+    /// line itself never set — and the pump goes quiet. Through all of it the
+    /// label rides the deflate out of play inside the boat and comes back.
+    @Test func theLabelIsAnnouncedUntilThePlayerHandlesIt() async throws {
+        let transcript = try await play(
+            Zork1(),
+            Self.toInflatedBoat + [
+                "deflate boat", "inflate plastic with pump",  // untouched: announced again
+                "take label",
+                "deflate boat", "inflate plastic with pump",  // handled: silent
+                "inventory",
+            ],
+            seed: 39)
+
+        #expect(occurrences(of: "A tan label is lying inside the boat.", in: transcript) == 2)
+        #expect(turnOutput(of: "inventory", in: transcript).contains("tan label"))
+    }
+
+    /// A blade holes the hull and `puncture()` tips the cargo onto the bank, so
+    /// the label ends up underfoot — listed with the engine's stock line, which
+    /// is verbatim what the original's `FDESC`-less object gets, and still the
+    /// same readable object.
+    @Test func aPuncturedBoatTipsTheLabelOntoTheBank() async throws {
+        let transcript = try await play(
+            Zork1(),
+            Self.toInflatedBoat + ["enter boat", "look", "read label"],
+            seed: 39)
+
+        expectInOrder(
+            transcript,
+            [
+                "punctured the boat",
+                "There is a tan label here.",
+                "FROBOZZ MAGIC BOAT COMPANY",
+            ])
+    }
+
     /// The mirror of ``deflatingABoatYouAreHoldingIsRefused``: the pile must be
     /// spread on the ground before the pump will do anything with it.
     @Test func inflatingAPileYouAreHoldingIsRefused() async throws {

@@ -384,7 +384,10 @@ struct Zork1: Game, GameMain {
         // the pile must be lying on the ground before anything else is asked,
         // then only the pump will do it. Naming no tool is the breath case
         // (`V-BREATHE` performs INFLATE with `LUNGS`); naming the wrong one gets
-        // the jest. Inflating trades the pile for the seaworthy boat.
+        // the jest. Inflating trades the pile for the seaworthy boat — and names
+        // the tan label folded inside it, until the player has handled the label
+        // (the ZIL's `<NOT <FSET? ,BOAT-LABEL ,TOUCHBIT>>`, which that branch
+        // reads but never sets, so a deflate-and-pump cycle says it again).
         river.pileOfPlastic.before(.inflate) {
             try require(river.pileOfPlastic.isIn(player.location), else: Prose.inflateNotOnGround)
             guard let tool = command.indirectObject else {
@@ -393,7 +396,11 @@ struct Zork1: Game, GameMain {
             try require(
                 tool == dam.handPump, else: Prose.inflateWithWrongThing(tool.indefiniteName))
             river.pileOfPlastic.replace(with: river.magicBoat)
-            try reply(Prose.boatInflates)
+            say(Prose.boatInflates)
+            if !river.tanLabel.isTouched {
+                say(Prose.tanLabelInBoat)
+            }
+            try reply("")
         }
 
         // Patching the punctured boat. The tube of Frobozz Magic Gunk (a

@@ -772,6 +772,11 @@ tables and item data were verified against `1dungeon.zil` / `1actions.zil`
   (Frigid River, White Cliffs Beach, Sandy Cave, Aragain Falls, On the Rainbow, End of
   Rainbow, magic boat, red buoy, pile of plastic) were always used as-is; the descriptive
   bodies now carry the original Zork I text too.
+- **The tan label ships** *(closed by #203, which the claim above predated)*. `BOAT-LABEL`
+  (`1dungeon.zil:941`) and the second line `IBOAT-FUNCTION` prints on a successful inflate
+  (`1actions.zil:2820`) are both here. **The one departure is typographic:** the original's
+  fine print is a single hard-wrapped block, and this reflows it, so each instruction and
+  each line of the closing warning stands as its own paragraph.
 
 ### Map topology
 
