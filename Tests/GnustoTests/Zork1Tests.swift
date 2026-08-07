@@ -54,7 +54,11 @@ struct Zork1Tests {
                 "take lantern", "turn on lantern",
                 "push rug", "open trap door", "down",
                 "south", "east", "take painting", "north", "up",
-            ])
+            ],
+            // Seed 1, recorded: the thief never crosses your path. Taking the
+            // painting summons him, and the lantern is as much his to take — one
+            // theft and these lit rooms go pitch black. 20 seeds in 5,000.
+            seed: 1)
 
         expectInOrder(
             transcript,

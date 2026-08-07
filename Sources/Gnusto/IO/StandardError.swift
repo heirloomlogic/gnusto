@@ -11,6 +11,6 @@ import Foundation
 /// as concurrency-unsafe on Linux — it is a `var` there.
 ///
 /// - Parameter line: the line to write, without its newline.
-func writeToStandardError(_ line: String) {
+public func writeToStandardError(_ line: String) {
     FileHandle.standardError.write(Data("\(line)\n".utf8))
 }
