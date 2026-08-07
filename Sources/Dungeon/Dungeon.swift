@@ -465,10 +465,20 @@ struct Dungeon: Game, GameMain {
         mainframeRules
     }
 
-    /// The second half of the same list, split for hazard #174's reason: peak
-    /// bootstrap stack depth scales with the largest single declaration body,
-    /// and milestone 8's seventeenth bundle put the suite over the edge again.
-    /// This was the longest body left in the game.
+    /// The second half of the same list, and the canonical note on why this
+    /// game is full of sub-builders.
+    ///
+    /// From M5 to M9 the whole test suite died with an unattributed `signal 10`
+    /// whenever Dungeon grew, and the diagnosis of the day was that peak
+    /// bootstrap stack depth tracked the largest single declaration body. It did
+    /// not: M8 halved ten bodies and still died, and what settled it was deleting
+    /// four scenery objects. The budget was over the whole declaration surface,
+    /// and splitting worked by lowering the peak rather than raising the roof.
+    ///
+    /// **Issue #174 is fixed** — `Bootstrap.build` runs on a 16 MB thread the
+    /// engine sizes, against a measured Dungeon peak of 355 KB — so none of these
+    /// splits is required any more. They stay because a hundred-line rule list
+    /// reads worse than two fifty-line ones, which was always the better reason.
     @RuleBuilder private var mainframeRules: Rules {
         // Lighting the candles. They need a live flame named, and the two the
         // game has are a struck match — which lights them — and the ivory
@@ -509,8 +519,8 @@ struct Dungeon: Game, GameMain {
         undergroundRules
     }
 
-    /// And the third slice of the same list. Split for hazard #174's reason,
-    /// stated on ``Dungeon/mainframeRules``.
+    /// And the third slice of the same list, for the reason
+    /// ``Dungeon/mainframeRules`` states.
     @RuleBuilder private var undergroundRules: Rules {
         // The bat. It reads the garlic, which is a ``DungeonHouse`` item, and
         // drops you anywhere in the coal maze — the source's `BAT-DROPS`, all
@@ -1059,9 +1069,8 @@ struct Dungeon: Game, GameMain {
         dam.reservoirNorth.north(mirrors.atlantisRoom)
     }
 
-    /// The second half of the same list, split for hazard #174's reason: peak
-    /// bootstrap stack depth scales with the largest single declaration body,
-    /// and milestone 8's seventeenth bundle put the suite over the edge again.
+    /// The second half of the same list, for the reason
+    /// ``Dungeon/mainframeRules`` states.
     @MapBuilder private var moreCoreMap: WorldMap {
         // The Slide Room's small opening north is the mine. Its chute down is
         // milestone 8's — `SLIDE-EXIT`, which reads the rope — and lives in

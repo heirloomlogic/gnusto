@@ -75,10 +75,6 @@ struct MirrorBox: Codable, Sendable, GlobalValue {
     /// `WOOD-OPEN`, which pushing the pine end grants for five.
     var pineOpen = false
 
-    /// `MRSWPUSH`. The red button is a push-button in the literal sense: it
-    /// stays in only while the beam is broken.
-    var buttonHeld = false
-
     init() {}
 
     /// A stale save has to degrade rather than trap, for the reason
@@ -93,7 +89,6 @@ struct MirrorBox: Codable, Sendable, GlobalValue {
         farMirrorIntact = (try? box.decode(Bool.self, forKey: .farMirrorIntact)) ?? true
         mirrorOpen = (try? box.decode(Bool.self, forKey: .mirrorOpen)) ?? false
         pineOpen = (try? box.decode(Bool.self, forKey: .pineOpen)) ?? false
-        buttonHeld = (try? box.decode(Bool.self, forKey: .buttonHeld)) ?? false
     }
 
     // MARK: - Bearings
@@ -215,6 +210,19 @@ extension DungeonEndgame {
     /// own hallway room and the four narrow rooms in their reach.
     var guardedRooms: [Location] {
         [hallwayG, narrowGEast, narrowGWest, narrowDEast, narrowDWest]
+    }
+
+    /// The narrow rooms a player can actually be standing in, which is the first
+    /// three berths' worth.
+    ///
+    /// Filtered against ``guardedRooms``, which is where "the Guardians can reach
+    /// this" is actually recorded — not against the berth number, which only
+    /// happens to agree with it today. A `describe` or a `before(.go)` on a room
+    /// that kills on arrival can never run; eight such rules were declared until
+    /// `/simplify` counted them.
+    var standableFlankingRooms: [(east: Location, west: Location)] {
+        let guarded = guardedRooms
+        return flankingRooms.filter { !guarded.contains($0.east) }
     }
 
     /// The room one step north of a berth — the next hallway room, or, north of

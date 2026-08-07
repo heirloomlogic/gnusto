@@ -43,19 +43,17 @@ extension GameMain where Self: Game {
             // painted over. Printing here keeps it on the primary screen, and
             // out of the play transcript (stderr, like the fatal path below).
             if let complaint = seed.complaint {
-                FileHandle.standardError.write(Data("\(complaint)\n".utf8))
+                writeToStandardError(complaint)
             }
             if let report = world.definition.warningReport {
-                FileHandle.standardError.write(Data("\(report)\n".utf8))
+                writeToStandardError(report)
             }
             await Self.run(
                 world: world,
                 io: await defaultIOHandler(world: world, environment: environment),
                 transcriptURL: transcriptURL(world: world, environment: environment))
         } catch {
-            // `FileHandle.standardError`, not the libc `stderr` global, which
-            // Swift 6 rejects as concurrency-unsafe on Linux (it's a `var`).
-            FileHandle.standardError.write(Data("\(error)\n".utf8))
+            writeToStandardError("\(error)")
             exit(1)
         }
     }

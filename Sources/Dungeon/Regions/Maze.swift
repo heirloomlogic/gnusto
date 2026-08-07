@@ -368,9 +368,8 @@ struct DungeonMaze: GameContent {
 
     // MARK: - Map
 
-    /// Split into exits and placements for hazard #174's reason: peak bootstrap
-    /// stack depth scales with the largest single declaration body, and
-    /// milestone 8's seventeenth bundle put the suite over the edge again.
+    /// Split into exits and placements: they are two different subjects, and the
+    /// maze has a great deal of both.
     var map: WorldMap {
         mazeExits
         mazePlacements

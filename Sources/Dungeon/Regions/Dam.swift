@@ -602,9 +602,8 @@ struct DungeonDam: GameContent {
         }
     }
 
-    /// The second half of the same list, split for hazard #174's reason: peak
-    /// bootstrap stack depth scales with the largest single declaration body,
-    /// and milestone 8's seventeenth bundle put the suite over the edge again.
+    /// The second half of the same list. Split when hazard #174 was thought to
+    /// be a limit on body size; kept because it reads better in two.
     @RuleBuilder private var moreDamRules: Rules {
         // Blue springs the leak. Once only: after that it is jammed, whether
         // the water is still rising or the room has already been given up for

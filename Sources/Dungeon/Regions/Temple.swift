@@ -581,9 +581,8 @@ struct DungeonTemple: GameContent {
         }
     }
 
-    /// The second half of the same list, split for hazard #174's reason: peak
-    /// bootstrap stack depth scales with the largest single declaration body,
-    /// and milestone 8's seventeenth bundle put the suite over the edge again.
+    /// The second half of the same list. Split when hazard #174 was thought to
+    /// be a limit on body size; kept because it reads better in two.
     @RuleBuilder private var moreTempleRules: Rules {
         // The bell, red hot from the gate, is a *reach* problem rather than a
         // per-verb one: the mainframe refuses take, ring and everything else

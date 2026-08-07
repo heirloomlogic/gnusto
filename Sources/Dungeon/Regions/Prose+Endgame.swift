@@ -459,6 +459,13 @@ extension Prose {
         around the face of it.
         """
 
+    /// One numeral, examined. All eight share it: there is nothing to say about
+    /// the four that is not equally true of the seven.
+    static let sundialNumeral = """
+        A numeral cut into the stone of the dial's face, worn shallow and still
+        legible.
+        """
+
     /// The number arrives as a word, "four" rather than "4".
     static func sundialReading(_ number: String) -> String {
         "The pointer stands at \(number)."

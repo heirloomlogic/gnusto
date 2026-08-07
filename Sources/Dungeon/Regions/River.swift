@@ -551,9 +551,8 @@ struct DungeonRiver: GameContent {
         tanLabel.starts(inside: magicBoat)
     }
 
-    /// The second half of the same list, split for hazard #174's reason: peak
-    /// bootstrap stack depth scales with the largest single declaration body,
-    /// and milestone 8's seventeenth bundle put the suite over the edge again.
+    /// The second half of the same list. Split when hazard #174 was thought to
+    /// be a limit on body size; kept because it reads better in two.
     @MapBuilder private var riverPlacements: WorldMap {
         buoy.starts(in: river4)
         emerald.starts(inside: buoy)
@@ -650,9 +649,8 @@ struct DungeonRiver: GameContent {
         puncturedBoat.before(.inflate) { try reply(Prose.boatWillNotInflate) }
     }
 
-    /// The second half of the same list, split for hazard #174's reason: peak
-    /// bootstrap stack depth scales with the largest single declaration body,
-    /// and milestone 8's seventeenth bundle put the suite over the edge again.
+    /// The second half of the same list. Split when hazard #174 was thought to
+    /// be a limit on body size; kept because it reads better in two.
     @RuleBuilder private var moreRiverRules: Rules {
         // The buoy gives itself away once, and only while it is in your hands
         // on the stretch it floats on — the source's `RIVR4-ROOM`.

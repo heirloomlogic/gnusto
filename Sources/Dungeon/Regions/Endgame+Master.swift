@@ -72,18 +72,10 @@ extension DungeonEndgame {
     @RuleBuilder var quizRules: Rules {
         woodenDoor.describe { woodenDoor.isOpen ? Prose.woodenDoorOpen : Prose.woodenDoorClosed }
 
-        // Every other door in the game, so `knock` is never a bare stub line in
-        // a room that has one.
-        world.before(.knock) {
-            // A bare `knock` in the Dungeon Entrance means this door, because
-            // it is the only one there. A `knock` at anything else, anywhere,
-            // means nothing — including a `knock` at the wrong noun while
-            // standing in front of the right door.
-            let named = command.directObject
-            guard named == woodenDoor || (named == nil && player.location == dungeonEntrance)
-            else { try reply(Prose.knockNoAnswer) }
-            try knockAtTheWoodenDoor()
-        }
+        // The one door in the game that answers. Everything else in the game
+        // gets the bundle's `action(.knock)`, which is the game's default rather
+        // than an interception — see ``DungeonEndgame/actions``.
+        woodenDoor.before(.knock) { try knockAtTheWoodenDoor() }
 
         // The door does not open to hands. It opens to three right answers —
         // and once it has opened it stays open, because `quizWon` and
@@ -106,7 +98,7 @@ extension DungeonEndgame {
     /// - Throws: always.
     func knockAtTheWoodenDoor() throws -> Never {
         try require(!quizWon, else: Prose.quizAlreadyWon)
-        try require(!quizLost, else: Prose.quizIsOver)
+        try require(!quizIsLost, else: Prose.quizIsOver)
         guard quizAsked < 0 else { try reply(Prose.quizQuestion(currentQuestion)) }
 
         // Three drawn from eight without replacement, which is what makes a
@@ -118,13 +110,17 @@ extension DungeonEndgame {
         }
         quizPaper = QuizPaper(questions: drawn)
         quizAsked = 0
-        quizRight = 0
         quizWrong = 0
-        quizPatience = 0
+        quizWaitedATurn = false
         startDaemon("endgame.quiz")
         say(Prose.quizBegins)
         try reply(Prose.quizQuestion(currentQuestion))
     }
+
+    /// Whether five wrong answers have ended the examination for good. Not a
+    /// flag of its own: a right answer is the only thing that puts `quizWrong`
+    /// back, and after the fifth wrong one nothing can.
+    var quizIsLost: Bool { quizWrong >= Self.quizWrongAnswersAllowed }
 
     /// Which of the eight is on the table, or `-1` when none is.
     var currentQuestion: Int {
@@ -142,8 +138,7 @@ extension DungeonEndgame {
         guard asked >= 0 else { try reply(Prose.quizNobodyAsked) }
         guard given == asked else {
             quizWrong += 1
-            guard quizWrong < Self.quizWrongAnswersAllowed else {
-                quizLost = true
+            guard !quizIsLost else {
                 quizAsked = -1
                 stopDaemon("endgame.quiz")
                 try reply(Prose.quizFailedForGood)
@@ -151,13 +146,12 @@ extension DungeonEndgame {
             try reply(Prose.quizWrongAnswer)
         }
 
-        quizRight += 1
         quizWrong = 0
         quizAsked += 1
-        guard quizRight >= Self.quizQuestionsAsked else {
+        guard quizAsked >= Self.quizQuestionsAsked else {
             // The clock starts again on the new question, or he would put it a
             // second time in the same breath he first put it in.
-            quizPatience = 0
+            quizWaitedATurn = false
             say(Prose.quizRightAnswer)
             try reply(Prose.quizQuestion(currentQuestion))
         }
@@ -199,7 +193,8 @@ extension DungeonEndgame {
         sundial.describe { Prose.sundialReading(Self.numberWord(dialSetting)) }
         bronzeDoor.describe { bronzeDoor.isOpen ? Prose.bronzeDoorOpen : Prose.bronzeDoorClosed }
 
-        sundial.before(.setTo, .turn, .push, .pull, .turnOn) { try turnTheDial() }
+        sundial.before(.setTo) { try setTheDial() }
+        sundial.before(.turn, .push, .pull, .turnOn) { try turnTheDial() }
         parapetButton.before(.push, .turnOn) { try pressTheParapetButton() }
 
         // A slot with nothing in it is a hole in the floor, not a room.
@@ -233,25 +228,45 @@ extension DungeonEndgame {
             max(1, min(8, number)) - 1]
     }
 
-    /// Advancing the dial one number, from the player's own hands or from an
-    /// order.
+    /// `set dial to four`, the source's own spelling, from the player's own
+    /// hands or from an order.
     ///
-    /// **The source's `set dial to four` is not reproduced**, and the reason is
-    /// hazard #174 rather than taste: naming a number needs one object per
-    /// number, because this engine hands a rule the *item* a noun resolved to
-    /// and never the word the player typed, and eight more objects is more than
-    /// the eighteenth bundle has. The dial steps instead. The puzzle is
-    /// unchanged — choose a cell, dock it, be inside it when it leaves — and
-    /// only the spelling of one command moves. `FIDELITY.md` records it.
+    /// The number is an object, because this engine hands a rule the *item* a
+    /// noun resolved to and never the word the player typed. `set dial to
+    /// sword` reaches here too — the parser resolved a noun, just not one on
+    /// the face — so an unusable one is refused rather than silently rounded.
+    ///
+    /// - Throws: always.
+    func setTheDial() throws -> Never {
+        try require(atTheParapet, else: Prose.masterIsNotAtTheParapet)
+        guard let named = command.indirectObject,
+            let setting = numerals.firstIndex(of: named).map({ $0 + 1 })
+        else {
+            try refuse(Prose.sundialNeedsANumber)
+        }
+        try settleDial(on: setting)
+    }
+
+    /// Advancing the dial one number, for `turn dial` and its spellings — which
+    /// name no number, so there is only one thing they can mean.
     ///
     /// - Throws: always.
     func turnTheDial() throws -> Never {
         try require(atTheParapet, else: Prose.masterIsNotAtTheParapet)
-        let next = dialSetting % Self.cellCount + 1
-        dialSetting = next
+        try settleDial(on: dialSetting % Self.cellCount + 1)
+    }
+
+    /// Where both ways of moving the dial end: the pointer comes to rest, and
+    /// whose hand did it decides the sentence — the whole prison turns on the
+    /// Dungeon Master doing it from a room the player is not standing in.
+    ///
+    /// - Parameter setting: the number the pointer lands on.
+    /// - Throws: always.
+    func settleDial(on setting: Int) throws -> Never {
+        dialSetting = setting
         try reply(
             Prose.sundialSet(
-                Self.numberWord(next), byHand: command.actor != dungeonMaster))
+                Self.numberWord(setting), byHand: command.actor != dungeonMaster))
     }
 
     /// The button that turns the carousel. Pressed with the player inside the

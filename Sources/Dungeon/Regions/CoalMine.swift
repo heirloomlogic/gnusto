@@ -508,9 +508,8 @@ struct DungeonCoalMine: GameContent {
         machineRoom.northwest(lowerShaft)
     }
 
-    /// The second half of the same list, split for hazard #174's reason: peak
-    /// bootstrap stack depth scales with the largest single declaration body,
-    /// and milestone 8's seventeenth bundle put the suite over the edge again.
+    /// The second half of the same list. Split when hazard #174 was thought to
+    /// be a limit on body size; kept because it reads better in two.
     @MapBuilder private var minePlacements: WorldMap {
         mineEntrances.starts(in: mineEntrance)
         squeakySounds.starts(in: squeakyRoom)

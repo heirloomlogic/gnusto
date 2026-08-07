@@ -278,8 +278,8 @@ struct DungeonPalantir: GameContent {
     /// needs a second rope object because its `ROPEBIT` rooms have no way to
     /// name the coil tied at the top; this engine does, because the coil is in
     /// your hands the whole way down and a held item is always in scope. See
-    /// `FIDELITY.md`, and hazard #174 — a seventeenth bundle leaves no room for
-    /// four objects that say what one already says.
+    /// `FIDELITY.md`. Four objects saying what one already says would be four
+    /// objects too many whatever the budget.
     let slideLedgeOpening = Item {
         name("low opening")
         adjectives("low", "narrow")
