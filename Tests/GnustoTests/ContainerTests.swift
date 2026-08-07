@@ -440,6 +440,10 @@ struct ContainerTests {
     /// One level, as before. A room description walks the things standing in
     /// the room and what they hold — not what *those* things hold — so a line
     /// declared two levels down still has nowhere to print.
+    ///
+    /// This is the behaviour; `BootstrapTests`'
+    /// `aListingLineBelowTheDescribersReachWarns` is the warning that reports
+    /// it, and it reads the thimble out of this same fixture.
     @Test func onlyOneLevelOfNestingIsListed() async throws {
         let transcript = try await play(
             NestedListingGame(), ["look", "look in sack"])

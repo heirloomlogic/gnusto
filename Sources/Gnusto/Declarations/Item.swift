@@ -557,6 +557,10 @@ public struct Item: Sendable, Equatable {
     /// on the same entity, or a second `presence` rule for it, is a fatal
     /// bootstrap diagnostic.
     ///
+    /// One level is as deep as the room listing goes, so this rule on an item
+    /// the map buries two levels down has nowhere to print. The bootstrap warns
+    /// about that rather than letting a live-looking rule stay silent.
+    ///
     /// - Parameter body: the closure recomputing the line on each read.
     /// - Returns: the assembled presence rule.
     public func presence(_ body: @escaping @Sendable () -> String) -> Rule {

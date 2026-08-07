@@ -76,6 +76,8 @@ let cupboard = Item {
 
 Whatever a room can see inside a container it lists, one level down, as *"In the glass jar is a green pickle."* — unless the pickle has a line of its own. ``firstSight(_:)`` and ``Item/presence(_:)`` are consulted here exactly as they are for something lying on the floor, so a thing that starts nested announces itself in its own words; see <doc:WritingRules>. A ``scenery`` fitting is listed neither way, which is how the fixed parts of a container stay out of a paragraph its description has already covered.
 
+One level is where the listing stops. A room description walks what stands in the room and what those things hold, and no further — a deeper walk would read as a manifest rather than a scene — so a jar inside a crate keeps its pickle out of the room's paragraph entirely. Nothing is out of reach; `look in jar` still answers. But a line declared down there can never print, and because a line that never prints reads exactly like a line that does, the bootstrap warns for one: *item "pickle" declares firstSight(…) but the map places it 2 levels below the room…*. Move the thing up a level, or let the container's own description carry the sentence.
+
 That is the *room's* rule, and it stops there. `open jar` and `look in jar` **do** name a fitting: they enumerate what is inside a thing, where a room description composes prose about it, and a player who has asked what is in the jar is owed the whole answer — a jar holding nothing but fittings reports them rather than calling itself empty. The two disagree by design; ``scenery`` says why.
 
 ```swift

@@ -44,8 +44,6 @@ extension Prose {
 
     static let lunch = "A hot pepper sandwich, and a generous one."
 
-    static let lunchInPlace = "A hot pepper sandwich is here."
-
     /// Verbatim Zork I — the listing line.
     static let bottleOnTable = """
         A bottle is sitting on the table.

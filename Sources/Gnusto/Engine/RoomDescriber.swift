@@ -113,7 +113,9 @@ enum RoomDescriber {
         // What a thing standing in the room holds — and one level only. The
         // walk covers the room's own things and their contents, never what
         // *those* contents hold, so a listing line declared two levels down
-        // has nowhere to print.
+        // has nowhere to print. Deliberate — a recursive listing reads as a
+        // manifest — and `Bootstrap` warns for a line declared below the
+        // boundary, so the silence is reported rather than discovered.
         func listContents(
             _ ids: [EntityID]?,
             of holder: EntityID,
