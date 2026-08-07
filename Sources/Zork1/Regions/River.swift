@@ -132,6 +132,18 @@ struct ZorkRiver: GameContent {
         trait(.weight, 20)
     }
 
+    /// The Frobozz Magic Boat Company's fine print, folded into the boat and so
+    /// out of play until the pump puts the boat in play. The original gives it
+    /// no `FDESC`, so once it is out on the bank the stock listing line — "There
+    /// is a tan label here." — is exactly what it gets.
+    let tanLabel = Item {
+        name("tan label")
+        adjectives("tan", "fine")
+        synonyms("label", "fineprint", "print")
+        description(Prose.tanLabel)
+        trait(.weight, 2)
+    }
+
     /// The red buoy afloat in River-4, an open-and-shut container. Inside is the
     /// emerald.
     let buoy = Item {
@@ -273,7 +285,9 @@ struct ZorkRiver: GameContent {
 
         // Entities. (The boat pile starts at Dam Base and the pot of gold at the
         // End of Rainbow — both host-placed, since those rooms belong to other
-        // bundles. The magic and punctured boats begin .nowhere.)
+        // bundles. The magic and punctured boats begin .nowhere, and the label
+        // rides inside the magic boat, so it begins offstage with it.)
+        tanLabel.starts(inside: magicBoat)
         buoy.starts(in: river4)
         emerald.starts(inside: buoy)
         shovel.starts(in: sandyBeach)

@@ -139,6 +139,40 @@ extension Prose {
 
     static let boatAlreadyFirm = "Inflating it further would probably burst it."
 
+    /// The second line the original prints on a successful inflate.
+    static let tanLabelInBoat = "A tan label is lying inside the boat."
+
+    /// `BOAT-LABEL`'s `TEXT`. The original's breaks that carry meaning — one per
+    /// instruction, and each line of the closing warning — become paragraph
+    /// breaks; the ones that are only its column width fold back into their
+    /// sentences. Not `<br>`: that marker is a hard break in the full-screen
+    /// renderer but a blank line in every plain channel, so a form built from it
+    /// would read differently to a play-tester than to a player.
+    static let tanLabel = """
+        !!!!FROBOZZ MAGIC BOAT COMPANY!!!!
+
+        Hello, Sailor!
+
+        Instructions for use:
+
+        To get into a body of water, say "Launch".
+
+        To get to shore, say "Land" or the direction in which you want to
+        maneuver the boat.
+
+        Warranty:
+
+        This boat is guaranteed against all defects for a period of 76
+        milliseconds from date of purchase or until first used, whichever
+        comes first.
+
+        Warning:
+
+        This boat is made of thin plastic.
+
+        Good Luck!
+        """
+
     static let boatDeflates = "The boat deflates."
 
     static let fixNeedsGunk = """
