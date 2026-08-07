@@ -580,8 +580,7 @@ struct DungeonAlice: GameContent {
             }
             shrunk = true
             say(Prose.eatMeShrinks)
-            player.location = postsRoom
-            describeSurroundings()
+            arrive(at: postsRoom)
             try reply("")
         }
 
@@ -592,8 +591,7 @@ struct DungeonAlice: GameContent {
             try require(player.location == postsRoom, else: Prose.orangeCakeNoRoom)
             shrunk = false
             say(Prose.orangeCakeGrows)
-            player.location = teaRoom
-            describeSurroundings()
+            arrive(at: teaRoom)
             try reply("")
         }
 
@@ -765,8 +763,7 @@ struct DungeonAlice: GameContent {
             stopFuse("cageGas")
             steelCage.replace(with: mangledCage)
             say(Prose.robotLiftsTheCage)
-            player.location = dingyCloset
-            describeSurroundings()
+            arrive(at: dingyCloset)
             try reply("")
         }
 

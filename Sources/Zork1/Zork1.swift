@@ -319,8 +319,7 @@ struct Zork1: Game, GameMain {
         // along (they stay in hand), the coffin included.
         temple.altar.before(.pray) {
             say(Prose.prayerAnswered)
-            player.location = aboveGround.forestWest
-            describeSurroundings()
+            arrive(at: aboveGround.forestWest)
             try reply("")
         }
 
@@ -352,8 +351,7 @@ struct Zork1: Game, GameMain {
                 coalMine.mineEntrance,
             ]
             say(Prose.batGrabsYou)
-            player.location = drops[random(0...(drops.count - 1))]
-            describeSurroundings()
+            arrive(at: drops[random(0...(drops.count - 1))])
             try reply("")
         }
 

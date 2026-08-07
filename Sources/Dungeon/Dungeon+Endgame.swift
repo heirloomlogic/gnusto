@@ -10,6 +10,8 @@ import GnustoScoring
 /// - **The herald**, armed by a score test and nothing else. `SCORE-BLESS`
 ///   (`rooms.394:794`) arms it at `SCORE-MAX`, and the ten a death costs is
 ///   forgiven — so the test is the score *plus* ten for every death behind you.
+/// - **The marble door's two outward turns**: shutting it arms the crypt's fuse
+///   and suspends the grue, and opening it undoes both.
 /// - **The transition out of the dark crypt**, which empties your hands and
 ///   puts back a refilled ``DungeonHouse/lantern`` and the ``DungeonHouse/sword``.
 /// - **The six room values.** Four of the six rooms can be arrived at by a rule
@@ -37,7 +39,42 @@ extension Dungeon {
     /// The way it is paid for, and the way it ends. The way *in* is a daemon
     /// rather than a rule: see ``Dungeon/endgameTimers``.
     @RuleBuilder var endgameRules: Rules {
+        cryptDoorRules
         endgameScoringRules
+    }
+
+    /// The two turns of the marble door that reach outside the bundle: the
+    /// crypt's fuse is the host's timer, and the grue is the host's plugin.
+    /// Everything else the door does is ``DungeonEndgame/cryptRules``.
+    @RuleBuilder private var cryptDoorRules: Rules {
+        // Shut the door on yourself and the endgame starts counting.
+        //
+        // **And the grue goes out with the light.** This is the one room in the
+        // game whose solution is to stand in the dark on purpose, and the
+        // plugin's schedule would start rolling dice on the third dark turn —
+        // against a three-turn fuse that re-arms if the room is lit when it
+        // fires, so a player who shut the door with the lamp still burning
+        // could be eaten while doing exactly the right thing. There are no
+        // grues in the Crypt. They come straight back if the door is opened
+        // again on this side of the transition, so the main dungeon's dark is
+        // as dangerous as it ever was.
+        //
+        // `suspended` rather than `stopDaemon("grue")`, which is what this was
+        // and what the plugin now documents against: stopping the daemon
+        // *freezes* the dark-turn count, so a player who reached the Tomb two
+        // turns into the dark would walk back out of the Crypt onto a dice turn
+        // having never been warned. Suspending resets it, so the warning turn
+        // survives the round trip.
+        endgame.cryptDoor.after(.close) {
+            guard player.location == endgame.crypt else { return }
+            dangerousDark.suspended = true
+            startFuse("endgame.crypt")
+        }
+        endgame.cryptDoor.after(.open) {
+            guard !endgame.pastTheCrypt else { return }
+            stopFuse("endgame.crypt")
+            dangerousDark.suspended = false
+        }
     }
 
     /// The six room values. Two are ordinary first-visit awards; four are not,
@@ -175,7 +212,6 @@ extension Dungeon {
         scoring.awardOnce("topOfStairs")
 
         say(Prose.cryptTransition)
-        player.location = endgame.topOfStairs
-        describeSurroundings()
+        arrive(at: endgame.topOfStairs)
     }
 }

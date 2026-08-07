@@ -156,7 +156,8 @@ var timers: [TimedEvent] {
 ```
 
 Rules and daemons that change what the player sees can call
-``describeSurroundings(withRoomName:)`` for the classic follow-up LOOK.
+``describeSurroundings(withRoomName:)`` for the classic follow-up LOOK, or
+``arrive(at:withRoomName:)`` to move the player and look in one step.
 
 The **Lighthouse** example (`Sources/Lighthouse/`) wires exactly this: a
 keeper declared as an ``Actor`` and set roaming two rooms by `GnustoActors`,
@@ -294,8 +295,7 @@ in the direct-object slot, so the actor's own rules run first:
 teague.before(.follow) {
     guard player.location == kitchen, teague.isIn(carriageHouse) else { return }
     say("(after Teague, out through the yard door)")
-    player.location = backYard
-    describeSurroundings()
+    arrive(at: backYard)
     try reply("He is across the grass and inside before you are through the door.")
 }
 ```
@@ -372,3 +372,4 @@ a rule on the vehicle itself never sees it — a gate that has to hold
 - ``enterable``
 - ``Player/vehicle``
 - ``describeSurroundings(withRoomName:)``
+- ``arrive(at:withRoomName:)``

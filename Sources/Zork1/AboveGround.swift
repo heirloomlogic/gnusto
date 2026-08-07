@@ -347,8 +347,7 @@ struct ZorkAboveGround: GameContent {
         // now reaches the perch, where before only `up` did (FIDELITY.md). The
         // tree is scenery in `forestPath` only, so this fires just from below.
         tree.before(.climb) {
-            player.location = upATree
-            describeSurroundings()
+            arrive(at: upATree)
             try reply("")
         }
     }

@@ -762,8 +762,7 @@ extension DungeonRoyalPuzzle {
         ladder.before(.climb) {
             guard grid.canClimbOut else { try refuse(Prose.puzzleHeadOnTheCeiling) }
             say(Prose.puzzleClimbOut)
-            player.location = anteroom
-            describeSurroundings()
+            arrive(at: anteroom)
             try reply("")
         }
     }

@@ -78,6 +78,60 @@ struct FickleDarkGame: Game {
     }
 }
 
+/// A dark with a warded room in it: the Shrine suspends the grue for as long
+/// as the player stands there, and the Cave switches it back on. This is the
+/// shape of Dungeon's Crypt — the one room whose solution is to stand in the
+/// dark on purpose — and the fixture the warning-turn guarantee is pinned
+/// against across a suspension.
+///
+/// No grace and lethality 100, so the schedule is exactly two beats: warn on
+/// dark turn 1, die on dark turn 2. A resumed count that killed instead of
+/// warning would therefore be unmissable.
+struct WardedDarkGame: Game {
+    let title = "Warded Dark"
+    let intro = "The cave mouth gapes, and something older keeps the shrine."
+
+    let camp = Location {
+        name("Camp")
+        description("A ring of stones around dead coals.")
+    }
+
+    let cave = Location {
+        name("Cave")
+        description("A low limestone chamber.")
+        dark
+    }
+
+    let shrine = Location {
+        name("Shrine")
+        description("Whatever is warded out of here stays out.")
+        dark
+    }
+
+    /// Stock prose, like ``NightfallGame``'s — the knobs are the schedule, not
+    /// the words.
+    let dangerousDark = DangerousDark(graceTurns: 0, lethality: 100)
+
+    var content: GameContents {
+        dangerousDark
+    }
+
+    var rules: Rules {
+        shrine.onEnter { dangerousDark.suspended = true }
+        cave.onEnter { dangerousDark.suspended = false }
+    }
+
+    var map: WorldMap {
+        camp.north(cave)
+        camp.east(shrine)
+        cave.south(camp)
+        cave.north(shrine)
+        shrine.west(camp)
+        shrine.south(cave)
+        player.starts(in: camp)
+    }
+}
+
 /// Custom prose and a three-turn grace period.
 struct PatientDarkGame: Game {
     let title = "Patient Dark"

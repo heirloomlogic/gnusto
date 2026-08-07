@@ -461,8 +461,7 @@ struct DungeonBank: GameContent {
     {
         let destination = pairs.first { $0.wall == wall }?.to ?? bankEntrance
         say(Prose.wallGivesWay)
-        player.location = destination
-        describeSurroundings()
+        arrive(at: destination)
         try reply("")
     }
 

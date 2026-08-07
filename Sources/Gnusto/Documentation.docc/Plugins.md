@@ -156,7 +156,7 @@ example that wires the first four:
 
 | Product | Shape | Owns | The host passes |
 | --- | --- | --- | --- |
-| `GnustoDangerousDark` | `GameContent` | one dark-turn counter, the grue daemon | prose + grace period at init |
+| `GnustoDangerousDark` | `GameContent` | one dark-turn counter, the grue daemon | prose + grace period at init; `suspended` to make the dark harmless for a stretch (never `stopDaemon("grue")`, which freezes the count) |
 | `GnustoScoring` | `GameContent` | award-once registers | the award table to `init(awards:)`, treasures + the trophy case to `treasures(_:into:)` |
 | `GnustoActors` | `GamePlugin` | nothing — position *is* the actor's placement | actors, room sets, candidates to `roams`/`steals`/`reaction` |
 | `GnustoMeleeCombat` | `GameContent` | the combat ledger (health/stun by key) | villains, weapons, prose to `villain`/`aggression` |

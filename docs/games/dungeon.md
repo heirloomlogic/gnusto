@@ -546,12 +546,22 @@ Two things it deliberately does not do, both documented on the symbol:
 `BankOfZorkGame` in `Tests/GnustoTests/Support/NonEuclideanGames.swift` is the
 fixture, under the atlas's own room names, carrying both routes side by side.
 
-**What this leaves.** Every teleport site in the repo still hand-rolls the move,
-and still loses the destination's `onEnter` rules doing it. Extracting `enter()`
-as an author-facing move — and converting `Sources/Zork1/`, `Sources/Fulminate/`
-and the two DocC articles that teach the idiom — is a larger change than this
-spike, and it changes behavior in two shipped games, so it is filed on its own
-rather than folded into this one.
+**What this leaves.** Every teleport site in the repo hand-rolls the move, and
+still loses the destination's `onEnter` rules doing it. That is two changes, not
+one, and only the first of them has landed.
+
+The **spelling** is extracted: ``arrive(at:withRoomName:)`` is the
+`player.location =` / `describeSurroundings()` pair written once, and the
+nineteen sites that had it longhand — across `Sources/Zork1/`,
+`Sources/Dungeon/` and `Sources/Fulminate/` — now call it, as do the DocC
+articles that teach the idiom. It changes no behaviour by construction: it is
+the same two lines, so it fires no `onEnter` and carries no vehicle either, and
+it says so on the symbol.
+
+The **semantics** are not. Extracting `enter()` as an author-facing move — one
+that runs the destination's `onEnter` rules and carries a boarded vehicle, the
+way a real `go` does — is the larger half, it changes behaviour in two shipped
+games, and it is filed as #201.
 
 ### The balloon question, answered
 

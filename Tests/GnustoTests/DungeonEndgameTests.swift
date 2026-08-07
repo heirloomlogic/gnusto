@@ -267,6 +267,36 @@ struct DungeonEndgameTests {
             ])
     }
 
+    /// The grue goes out with the light and comes back with the door.
+    ///
+    /// The Crypt is the one room in the game whose solution is to stand in the
+    /// dark on purpose, so shutting the door suspends `DangerousDark` — and
+    /// changing your mind has to hand the dark back, or the player has bought
+    /// permanent safety with a door they can open. Reopening it re-arms the
+    /// three-turn fuse's cancellation *and* the grue; lingering in the dark
+    /// Crypt on this side of the transition kills you as any dark room would.
+    ///
+    /// Suspending is `DangerousDark/suspended`, not `stopDaemon("grue")`:
+    /// stopping freezes the dark-turn count, so a player who shut the door
+    /// already deep in the dark would come back out onto a dice turn with no
+    /// warning. `DangerousDarkTests` pins that invariant directly.
+    @Test func reopeningTheCryptHandsTheDarkBack() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.intoTheEndgame + [
+                "open crypt", "north", "turn off lamp", "close crypt",
+                "open crypt",
+            ] + Array(repeating: "wait", count: 8),
+            seed: Self.seed)
+
+        // The door shut and opened again, and no transition: the fuse was
+        // cancelled, so the Crypt never took him anywhere.
+        #expect(!transcript.contains("You have passed"))
+        #expect(!transcript.contains("Top of Stairs"))
+        // And the dark is dangerous again.
+        #expect(transcript.contains("slavering fangs of a lurking grue"))
+    }
+
     // MARK: - The mirror box
 
     /// The whole northward run: break the beam, press the button, step through

@@ -115,6 +115,43 @@ public func describeSurroundings(withRoomName: Bool = true) {
         mode: .look, withRoomName: withRoomName, frame: Ctx.current)
 }
 
+/// Puts the player somewhere else and describes where they have got to — the
+/// teleport and the look, which is what every rule that moves the player
+/// without a `go` has to do:
+///
+/// ```swift
+/// mirror.before(.touch) {
+///     say("The room spins, and settles the other way round.")
+///     arrive(at: mirrorRoomSouth)
+///     try reply("")
+/// }
+/// ```
+///
+/// It does **not** end the turn, so it is legal in an `after` rule or a daemon
+/// as well as a `before` one, and the caller says how the turn finishes:
+/// `try reply("")` for a rule whose whole answer is the new room, `try
+/// reply(_:)` with a line to trail one after it, or plain `return` from a
+/// daemon.
+///
+/// Assigning ``Player/location`` is what this does, so — as with any move that
+/// is not a `go` — the destination's `onEnter` rules **do not run**. A rule that
+/// teleports into a room which kills, scores or announces on arrival has to say
+/// so itself.
+///
+/// Pass `withRoomName: false` when the player has moved *within* one room
+/// rather than between two: see ``describeSurroundings(withRoomName:)``, whose
+/// note on reprinting the heading applies here unchanged.
+///
+/// - Parameters:
+///   - room: where the player ends up.
+///   - withRoomName: whether to open with the room's name. Defaults to true.
+public func arrive(at room: Location, withRoomName: Bool = true) {
+    // `player` is a member of `Game`/`GameContent`/`GamePlugin` rather than a
+    // free binding, so a free function spells it out. Same value, same setter.
+    Player().location = room
+    describeSurroundings(withRoomName: withRoomName)
+}
+
 /// Runs the stage-4 default action (a game/plugin override if one is
 /// registered for this intent, else the built-in) immediately, then returns
 /// so the calling rule can embellish the result — print something more, read

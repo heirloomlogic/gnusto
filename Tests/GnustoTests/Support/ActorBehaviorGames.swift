@@ -319,3 +319,73 @@ struct FollowGame: Game {
         }
     }
 }
+
+/// A follower with both gates on, which is the Dungeon Master's shape: a gaoler
+/// who walks the corridors at your heel, will not set foot in a cell, and holds
+/// still when told to. The cell is the point — somewhere he will not go is
+/// somewhere you can stand and still be heard.
+struct GaolerGame: Game {
+    let title = "Gaoler"
+    let intro = "He walks where you walk, up to a point."
+
+    let guardroom = Location {
+        name("Guardroom")
+        description("A stool, a ledger, and a ring of keys.")
+    }
+
+    let corridor = Location {
+        name("Corridor")
+        description("Stone, and a drain down the middle of it.")
+    }
+
+    let cell = Location {
+        name("Cell")
+        description("Four walls and a shelf of a bed.")
+    }
+
+    let gaoler = Actor {
+        name("stone-faced gaoler")
+        adjectives("stone-faced")
+        description("He has done this a long time.")
+    }
+
+    /// Whether he has been told to wait — the `while:` gate.
+    @Global var gaolerStaying = false
+
+    let behaviors = ActorBehaviors()
+
+    var map: WorldMap {
+        guardroom.east(corridor)
+        corridor.west(guardroom)
+        corridor.north(cell)
+        cell.south(corridor)
+
+        player.starts(in: guardroom)
+        gaoler.starts(in: guardroom)  // co-located: no spurious turn-one arrival
+    }
+
+    var verbs: [SyntaxRule] {
+        SyntaxRule("halt", intent: Intent("halt"))
+        SyntaxRule("heel", intent: Intent("heel"))
+    }
+
+    var timers: [TimedEvent] {
+        behaviors.follows(
+            gaoler,
+            daemonName: "gaoler.follow",
+            rooms: [guardroom, corridor],
+            while: { !gaolerStaying },
+            arrivals: ["The gaoler comes in behind you."])
+    }
+
+    var rules: Rules {
+        world.before(Intent("halt")) {
+            gaolerStaying = true
+            try reply("\"Wait here,\" you say. He waits.")
+        }
+        world.before(Intent("heel")) {
+            gaolerStaying = false
+            try reply("\"With me,\" you say.")
+        }
+    }
+}

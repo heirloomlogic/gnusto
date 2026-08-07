@@ -23,12 +23,29 @@ import Gnusto
 /// to be eaten. The warning is always safe, so a revived player (UNDO) still
 /// gets the warning beat before the dice can turn on them again.
 ///
+/// To make the dark harmless for a stretch — a room whose solution is to stand
+/// in it on purpose, a scene that should not be interrupted — set
+/// ``suspended``. **Do not stop the daemon by name.** `stopDaemon("grue")`
+/// freezes the counter at whatever it had reached, so resuming can land the
+/// player straight on a dice turn and cost them the warning; suspending resets
+/// the count for exactly that reason.
+///
 /// The daemon is named `"grue"`. Timer names are global, but two instances
 /// of `DangerousDark` in one game already collide on their shared `@Global`
 /// namespace before the timer name matters — one lethal dark per game.
 public struct DangerousDark: GameContent {
     /// Consecutive turns the player has ended in darkness.
     @Global var darkTurns = 0
+
+    /// Set while the dark is harmless: the grue idles, draws no randomness,
+    /// and — because the count resets on every suspended turn — resuming
+    /// always begins again at the warning.
+    ///
+    /// ```swift
+    /// cryptDoor.after(.close) { dangerousDark.suspended = true }
+    /// cryptDoor.after(.open) { dangerousDark.suspended = false }
+    /// ```
+    @Global public var suspended = false
 
     let warning: String
     let death: String
@@ -57,11 +74,11 @@ public struct DangerousDark: GameContent {
     /// The grue daemon: each dark turn ticks the counter. The warning prints on
     /// the first dark turn; dark turns 2…`graceTurns + 1` are a silent grace;
     /// from dark turn `graceTurns + 2` on, each turn rolls `chance(lethality)`
-    /// to be eaten. Stepping back into the light resets the count. Guards before
-    /// the draw, so a lit turn burns no randomness.
+    /// to be eaten. Stepping back into the light — or ``suspended`` — resets the
+    /// count. Guards before the draw, so a lit turn burns no randomness.
     public var timers: [TimedEvent] {
         daemon("grue", autostart: true) {
-            guard !player.location.isLit else {
+            guard !suspended, !player.location.isLit else {
                 darkTurns = 0
                 return
             }

@@ -1316,8 +1316,7 @@ struct Fulminate: Game, GameMain {
                     it down, and walks you out of the wreckage with two fingers and no argument. Then he posts \
                     himself where the door used to be, with you on the other side of him.
                     """)
-                player.location = backYard
-                describeSurroundings()
+                arrive(at: backYard)
                 return
             }
             say(
@@ -1806,8 +1805,7 @@ struct Fulminate: Game, GameMain {
         teague.before(.follow) {
             guard player.location == kitchen, teague.isIn(carriageHouse) else { return }
             say("(after Teague, out through the yard door)")
-            player.location = backYard
-            describeSurroundings()
+            arrive(at: backYard)
             try reply("Teague is across the grass and into the carriage house before you are off the step.")
         }
 

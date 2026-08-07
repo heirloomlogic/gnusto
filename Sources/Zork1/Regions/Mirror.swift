@@ -181,16 +181,14 @@ struct ZorkMirror: GameContent {
             guard !mirrorBroken else { return }
             swapMirrorFloors()
             say(Prose.mirrorRumble)
-            player.location = mirrorRoomSouth
-            describeSurroundings()
+            arrive(at: mirrorRoomSouth)
             try reply("")
         }
         mirrorSouth.before(.touch) {
             guard !mirrorBroken else { return }
             swapMirrorFloors()
             say(Prose.mirrorRumble)
-            player.location = mirrorRoomNorth
-            describeSurroundings()
+            arrive(at: mirrorRoomNorth)
             try reply("")
         }
 

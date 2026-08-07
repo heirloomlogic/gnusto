@@ -18,16 +18,17 @@ extension Prose {
         There is no opening in the side facing you.
         """
 
+    /// One state, one line. There were two of these — one for looking at the
+    /// box from a room it is not standing beside, one for trying to step into
+    /// it from the same place — and they said the same thing in different
+    /// words. The state is `angleOnTheBox(_:) == nil`, and every verb that
+    /// meets it meets it for the same reason.
     static let boxNotBesideIt = """
-        The box is not within reach from here.
+        The box is somewhere else along the hallway, out of reach from here.
         """
 
     static let swordStopsGlowing = """
         The blue light goes out of the sword.
-        """
-
-    static let boxIsNotInSight = """
-        The box is somewhere else along the hallway, out of sight from here.
         """
 
     /// The word for whichever part of the box is turned toward you. `nil` is a

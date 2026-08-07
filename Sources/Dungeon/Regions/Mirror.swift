@@ -337,8 +337,7 @@ struct DungeonMirror: GameContent {
         for item in northLoose { item.move(to: mirrorRoomSouth) }
         for item in southLoose { item.move(to: mirrorRoomNorth) }
         say(Prose.mirrorRumble)
-        player.location = destination
-        describeSurroundings()
+        arrive(at: destination)
         try reply("")
     }
 

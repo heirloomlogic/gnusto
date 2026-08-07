@@ -83,16 +83,23 @@ extension DungeonEndgame {
             say(Prose.quizQuestion(currentQuestion))
         }
 
-        // He follows you from the Narrow Corridor onward, and into no cell.
-        daemon("endgame.master", autostart: true) {
-            guard !masterStaying, dungeonMaster.location != nil else { return }
-            let here = player.location
-            guard masterRoams.contains(where: { $0 == here }), !dungeonMaster.isIn(here) else {
-                return
-            }
-            dungeonMaster.move(to: here)
-            say(Prose.masterArrives)
-        }
+        // He follows you from the Narrow Corridor onward, and into no cell —
+        // which is the whole of why the solve is possible, since you can be
+        // somewhere he will not go and still be heard.
+        //
+        // `ActorBehaviors.follows` with both of its gates: `while:` is TELL HIM
+        // TO STAY, and `rooms:` is the corridors and the parapet — every room
+        // in the prison except a cell, which is what he will not walk into.
+        // This was the same daemon written out longhand, minus the plugin's
+        // `isUnconscious` and `isLit` guards — neither of which changes
+        // anything here (nothing in the endgame knocks him down, and every
+        // prison room is lit), and both of which are right.
+        actors.follows(
+            dungeonMaster,
+            daemonName: "endgame.master",
+            rooms: masterRoams,
+            while: { !masterStaying },
+            arrivals: [Prose.masterArrives])
     }
 
     @RuleBuilder var rules: Rules {
@@ -168,27 +175,10 @@ extension DungeonEndgame {
             try reply(Prose.cryptDoorOpens)
         }
 
-        // Shut the door on yourself and the endgame starts counting.
-        //
-        // **And the grue goes out with the light.** This is the one room in the
-        // game whose solution is to stand in the dark on purpose, and the
-        // plugin's schedule would start rolling dice on the third dark turn —
-        // against a three-turn fuse that re-arms if the room is lit when it
-        // fires, so a player who shut the door with the lamp still burning
-        // could be eaten while doing exactly the right thing. There are no
-        // grues in the Crypt. It comes straight back on if the door is opened
-        // again on this side of the transition, so the main dungeon's dark is
-        // as dangerous as it ever was.
-        cryptDoor.after(.close) {
-            guard player.location == crypt else { return }
-            stopDaemon("grue")
-            startFuse("endgame.crypt")
-        }
-        cryptDoor.after(.open) {
-            guard !pastTheCrypt else { return }
-            stopFuse("endgame.crypt")
-            startDaemon("grue")
-        }
+        // Shutting the door on yourself starts the endgame counting, and puts
+        // the grue out with the light. Both live in `Dungeon+Endgame.swift`:
+        // the fuse and the plugin are the host's, not this bundle's.
+        // See ``Dungeon/endgameRules``.
     }
 
     /// The beam that crosses the Small Room, and the button three rooms away
@@ -286,10 +276,19 @@ extension DungeonEndgame {
 
         // What the box looks like from wherever you are standing next to it —
         // or the plain answer that it is not in this stretch of hallway at all.
+        //
+        // Two rules for one state, because one cannot do both jobs. The
+        // `reach` rule is the general answer: it runs at stage 0, ahead of
+        // every `before` rule, and covers every verb that has to *touch* the
+        // box — PUSH, TAKE, OPEN — which the `describe` special case never
+        // did. But EXAMINE is `reach: .notNeeded` in `CoreVerbs`, and rightly:
+        // you can look at things you cannot lay a hand on. So the description
+        // keeps its own guard, and both refuse in the same words.
         for (seen, _) in boxesSeenFromOutside {
+            seen.reach(otherwise: Prose.boxNotBesideIt) { angleOnTheBox(box) != nil }
             seen.describe {
                 let state = box
-                guard let side = angleOnTheBox(state) else { return Prose.boxIsNotInSight }
+                guard let side = angleOnTheBox(state) else { return Prose.boxNotBesideIt }
                 return Prose.boxFromOutside(
                     face: state.face(at: side), open: state.isOpenToward(side))
             }
@@ -313,20 +312,41 @@ extension DungeonEndgame {
         // The two rooms at the ends of the hallway that are not part of it. The
         // atlas files `MREYE`'s three northward rows and `FDOOR`'s three
         // southward ones as `FROBOZZ` too, so the box owns them the same way.
+        //
+        // Deliberately *not* `walkTheHallway(from: -1)` and `(from: berthCount)`,
+        // which is what these two would otherwise be: the hallway rule owns `in`
+        // and both directions of travel, and neither is true here. From the
+        // Small Room only north is the box's business — south is the declared
+        // stairs, and would aim at berth −2.
         smallRoom.before(.go) {
-            guard let heading = MirrorBox.angle(of: command.direction ?? .down),
-                [0, 45, 315].contains(heading)
-            else { return }
-            try walkTowardTheBox(into: 0, heading: 180, diagonal: heading != 0)
+            guard let step = hallwayStep(command.direction), step.northward else { return }
+            try walkTowardTheBox(into: 0, northward: true, diagonal: step.diagonal)
         }
 
         dungeonEntrance.before(.go) {
-            guard let heading = MirrorBox.angle(of: command.direction ?? .up),
-                [180, 135, 225].contains(heading)
-            else { return }
+            guard let step = hallwayStep(command.direction), !step.northward else { return }
             try walkTowardTheBox(
-                into: MirrorBox.berthCount - 1, heading: 0, diagonal: heading != 180)
+                into: MirrorBox.berthCount - 1, northward: false, diagonal: step.diagonal)
         }
+    }
+
+    /// Which way along the hallway a direction takes the walker, and whether it
+    /// was taken on a diagonal — the one classification all three walking rules
+    /// share.
+    ///
+    /// North and south run along the hallway; the four diagonals are those same
+    /// two journeys taken past the end of whatever is standing in the way, which
+    /// is the only thing the diagonal changes. Nothing else is a direction the
+    /// box owns at all.
+    ///
+    /// - Parameter direction: the direction the player typed, if any.
+    /// - Returns: the way and the manner of the step, or `nil` for a direction
+    ///   the hallway does not own.
+    func hallwayStep(_ direction: Direction?) -> (northward: Bool, diagonal: Bool)? {
+        guard let direction, let heading = MirrorBox.angle(of: direction) else { return nil }
+        if [0, 45, 315].contains(heading) { return (northward: true, diagonal: heading != 0) }
+        if [180, 135, 225].contains(heading) { return (northward: false, diagonal: heading != 180) }
+        return nil
     }
 
     /// One step taken in a hallway room. North and south may be blocked by the
@@ -336,21 +356,12 @@ extension DungeonEndgame {
     /// - Throws: whenever the box owns the direction. Returns for the
     ///   directions the declared exit table handles.
     func walkTheHallway(from index: Int) throws {
-        guard let direction = command.direction else { return }
-        if direction == .in { try stepIntoTheBox() }
-        guard let heading = MirrorBox.angle(of: direction) else { return }
-
-        // North and south run along the hallway; the four diagonals are those
-        // same two journeys taken past the end of whatever is standing in the
-        // way. Nothing else in this room is a direction at all.
-        let northward = [0, 45, 315].contains(heading)
-        let southward = [180, 135, 225].contains(heading)
-        guard northward || southward else { return }
-
+        if command.direction == .in { try stepIntoTheBox() }
+        guard let step = hallwayStep(command.direction) else { return }
         try walkTowardTheBox(
-            into: northward ? index + 1 : index - 1,
-            heading: northward ? 180 : 0,
-            diagonal: heading % 90 != 0)
+            into: step.northward ? index + 1 : index - 1,
+            northward: step.northward,
+            diagonal: step.diagonal)
     }
 
     /// The move into the next room along the hallway, which the box may be
@@ -358,11 +369,15 @@ extension DungeonEndgame {
     ///
     /// - Parameters:
     ///   - target: the berth being walked into.
-    ///   - heading: the angle of the box's face the walker would meet.
+    ///   - northward: which way along the hallway the step goes. The face of
+    ///     the box the walker would meet follows from it and nothing else — a
+    ///     walker heading north meets the box's south face, and the other way
+    ///     about — so it is derived here rather than passed in.
     ///   - diagonal: whether the step was taken on a diagonal, which is what
     ///     squeezes a walker past an end-on box rather than stopping them.
     /// - Throws: when the box is in the way, or when the Guardians are.
-    func walkTowardTheBox(into target: Int, heading: Int, diagonal: Bool = false) throws {
+    func walkTowardTheBox(into target: Int, northward: Bool, diagonal: Bool = false) throws {
+        let heading = northward ? 180 : 0
         let state = box
         let inTheHallway = (0..<MirrorBox.berthCount).contains(target)
         guard state.berth == target, inTheHallway else {
@@ -372,7 +387,7 @@ extension DungeonEndgame {
             // refusing. Off either end of the run — south of the first room,
             // north of the last — there *are* declared exits, and they own it.
             guard inTheHallway else { return }
-            try arrive(at: channelRooms[target])
+            try arriveInTheHallway(at: channelRooms[target])
         }
 
         // Mirror #1 standing open is a doorway rather than a wall, whichever
@@ -397,7 +412,7 @@ extension DungeonEndgame {
         let east = command.direction == .northeast || command.direction == .southeast
         let flanks = flankingRooms[target]
         say(Prose.boxSlipsPast)
-        try arrive(at: east ? flanks.east : flanks.west)
+        try arriveInTheHallway(at: east ? flanks.east : flanks.west)
     }
 
     /// Stepping out of a narrow room, which is only ever done toward the box.
@@ -425,19 +440,19 @@ extension DungeonEndgame {
         let state = box
         guard let side = angleOnTheBox(state) else { try refuse(Prose.boxNotBesideIt) }
         guard state.isOpenToward(side) else { try refuse(Prose.boxNoWayIn) }
-        try arrive(at: insideMirror)
+        try arriveInTheHallway(at: insideMirror)
     }
 
-    /// Moves the player and describes where they have got to. Assigning
-    /// `player.location` fires no `onEnter`, so the Guardians' rooms are
-    /// checked here as well as there.
+    /// The engine's `arrive(at:)` with the Guardians in front of it, and the
+    /// turn ended behind it. Every walk in this wing is a rule rather than an
+    /// exit, and a rule that moves the player fires no `onEnter` — so the room
+    /// that kills on arrival has to be checked here as well as there.
     ///
     /// - Parameter room: where they end up.
-    /// - Throws: always.
-    func arrive(at room: Location) throws -> Never {
+    /// - Throws: always — the death, or the reply that ends the turn.
+    func arriveInTheHallway(at room: Location) throws -> Never {
         if guardedRooms.contains(where: { $0 == room }) { try die(Prose.guardiansKill) }
-        player.location = room
-        describeSurroundings()
+        arrive(at: room)
         try reply("")
     }
 }
