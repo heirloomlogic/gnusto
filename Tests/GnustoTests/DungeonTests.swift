@@ -600,6 +600,23 @@ struct DungeonTests {
         #expect(turnOutput(of: "score", in: transcript).contains("Your score is 15"))
     }
 
+    /// The wreck takes the egg's *place*, not the player's. Force the egg while
+    /// it is down in the brown sack and the ruined one is still in the sack —
+    /// the case the hand-rolled swap could not reach, because a game could read
+    /// `isHeld` and nothing else, so anything not in your hands fell on the
+    /// floor (#182).
+    @Test func aForcedEggIsWreckedWhereItSits() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            ["north", "north", "up", "take egg", "down"]
+                + ["east", "southwest", "open window", "west"]
+                + ["take sack", "put egg in sack", "open egg", "look in sack", "look"])
+
+        #expect(turnOutput(of: "look in sack", in: transcript).contains("broken jewel-encrusted egg"))
+        // And not on the kitchen floor, which is where it used to land.
+        #expect(!turnOutput(of: "look", in: transcript).contains("somewhat ruined egg"))
+    }
+
     /// The ruined bird only grinds; a canary is not wound anywhere but among
     /// the trees.
     @Test func theRuinedCanaryOnlyGrinds() async throws {

@@ -763,8 +763,7 @@ struct DungeonAlice: GameContent {
                 try refuse(Prose.robotIsNotHere)
             }
             stopFuse("cageGas")
-            steelCage.vanish()
-            mangledCage.move(to: dingyCloset)
+            steelCage.replace(with: mangledCage)
             say(Prose.robotLiftsTheCage)
             player.location = dingyCloset
             describeSurroundings()

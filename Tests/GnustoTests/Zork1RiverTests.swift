@@ -161,6 +161,24 @@ struct Zork1RiverTests {
             ])
     }
 
+    /// Deflating a boat you are *holding* leaves the plastic in your hands,
+    /// where the hand-rolled swap used to drop it on the floor (#182).
+    ///
+    /// This pins the placement, not the permission. Unlike Dungeon's, and unlike
+    /// `Zork1`'s own *inflate*, this rule has no "must be on the ground" guard —
+    /// `Prose.deflateNotOnGround` is declared in `Prose+River.swift` and called
+    /// from nowhere. Whether that guard was dropped by accident is a separate
+    /// question from where the pile lands once the rule runs.
+    @Test func deflatingABoatYouAreHoldingLeavesThePlasticInYourHands() async throws {
+        let transcript = try await play(
+            Zork1(),
+            Self.toInflatedBoat + ["take boat", "deflate boat", "inventory"],
+            seed: 39)
+
+        #expect(turnOutput(of: "deflate boat", in: transcript).contains("boat deflates"))
+        #expect(turnOutput(of: "inventory", in: transcript).contains("pile of plastic"))
+    }
+
     /// Sit still on the river and the current does the steering — right over
     /// Aragain Falls. Drifting off the last stretch is fatal, though as a first
     /// death it is survivable: Zork sets the drowned adventurer back in the forest.
