@@ -376,8 +376,7 @@ struct Zork1: Game, GameMain {
                 }
                 try reply(Prose.machineWhirsToNoEffect)
             }
-            coalMine.coal.vanish()
-            coalMine.diamond.move(inside: coalMine.machine)
+            coalMine.coal.replace(with: coalMine.diamond)
             try reply(Prose.machineMakesDiamond)
         }
 
@@ -388,8 +387,7 @@ struct Zork1: Game, GameMain {
         river.pileOfPlastic.before(.inflate) {
             try require(command.indirectObject == dam.handPump, else: Prose.inflateNeedsPump)
             try require(!player.inventory.contains(river.pileOfPlastic), else: Prose.inflateNotOnGround)
-            river.pileOfPlastic.vanish()
-            river.magicBoat.move(to: player.location)
+            river.pileOfPlastic.replace(with: river.magicBoat)
             try reply(Prose.boatInflates)
         }
 
@@ -402,8 +400,7 @@ struct Zork1: Game, GameMain {
         river.puncturedBoat.before(.fix) {
             try require(command.indirectObject == dam.tube, else: Prose.fixNeedsGunk)
             dam.tube.vanish()
-            river.puncturedBoat.vanish()
-            river.magicBoat.move(to: player.location)
+            river.puncturedBoat.replace(with: river.magicBoat)
             try reply(Prose.boatPatched)
         }
 
@@ -616,8 +613,7 @@ struct Zork1: Game, GameMain {
         // the host owns this cross-bundle rule.
         aboveGround.egg.before(.open) {
             guard !aboveGround.egg.isOpen, aboveGround.egg.holds(house.canary) else { return }
-            house.canary.vanish()
-            house.brokenCanary.move(inside: aboveGround.egg)
+            house.canary.replace(with: house.brokenCanary)
             house.canaryRuined = true
             say(Prose.eggForcedRuinsCanary)
             // Falls through to the built-in open, which reports the egg opened.

@@ -602,13 +602,11 @@ struct Dungeon: Game, GameMain {
         // onto a bird that is no longer in it.
         aboveGround.egg.before(.open) {
             guard !aboveGround.egg.isOpen, aboveGround.egg.holds(house.canary) else { return }
-            if aboveGround.egg.isHeld {
-                aboveGround.brokenEgg.moveToPlayer()
-            } else {
-                aboveGround.brokenEgg.move(to: player.location)
-            }
+            // The bird needs its own `vanish()`: `replace` swaps the shell for
+            // the ruined one without carrying contents across, so nothing else
+            // takes the canary out of play.
             house.canary.vanish()
-            aboveGround.egg.vanish()
+            aboveGround.egg.replace(with: aboveGround.brokenEgg)
             say(Prose.eggForcedRuinsCanary)
             // The built-in open is not reached: the egg it would have opened
             // has left the game, so the reveal is this rule's to print.
@@ -646,8 +644,7 @@ struct Dungeon: Game, GameMain {
                 try reply(Prose.inflateNeedsPump)
             }
             try require(tool == dam.handPump, else: Prose.inflateWithWrongThing(tool.indefiniteName))
-            river.pileOfPlastic.vanish()
-            river.magicBoat.move(to: here)
+            river.pileOfPlastic.replace(with: river.magicBoat)
             try reply(Prose.boatInflates)
         }
 
@@ -656,8 +653,7 @@ struct Dungeon: Game, GameMain {
         river.puncturedBoat.before(.plug) {
             try require(command.indirectObject == dam.putty, else: Prose.boatNeedsPutty)
             dam.putty.vanish()
-            river.puncturedBoat.vanish()
-            river.pileOfPlastic.move(to: player.location)
+            river.puncturedBoat.replace(with: river.pileOfPlastic)
             try reply(Prose.boatPatched)
         }
 

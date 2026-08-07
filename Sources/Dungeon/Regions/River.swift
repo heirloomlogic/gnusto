@@ -633,8 +633,7 @@ struct DungeonRiver: GameContent {
         magicBoat.before(.deflate) {
             try require(player.vehicle != magicBoat, else: Prose.deflateWhileAboard)
             try require(!magicBoat.isHeld, else: Prose.deflateNotOnGround)
-            magicBoat.vanish()
-            pileOfPlastic.move(to: player.location)
+            magicBoat.replace(with: pileOfPlastic)
             try reply(Prose.boatDeflates)
         }
 
@@ -733,8 +732,7 @@ struct DungeonRiver: GameContent {
         for cargo in magicBoat.contents {
             cargo.move(to: here)
         }
-        magicBoat.vanish()
-        puncturedBoat.move(to: here)
+        magicBoat.replace(with: puncturedBoat)
     }
 
     /// The mainframe grades digging by what you are holding: the shovel works,

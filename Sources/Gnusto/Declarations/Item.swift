@@ -402,6 +402,40 @@ public struct Item: Sendable, Equatable {
         }
     }
 
+    /// Puts `other` exactly where this item is — the same room, hands,
+    /// container or surface — and takes this one out of play. One thing
+    /// becoming another: the boat for the punctured boat, the coal for the
+    /// diamond, the gnome for the hole he left.
+    ///
+    /// Prefer it over `vanish()` plus a `move`, which cannot do the same job: a
+    /// rule has no way to read an item's placement, so a hand-rolled swap has
+    /// only `player.location` to aim at and drops the replacement on the floor
+    /// when the original was sitting in a sack.
+    ///
+    /// `other` inherits the placement and nothing else. It does not inherit
+    /// worn state, so replacing something you are wearing leaves you holding
+    /// the replacement rather than wearing it. Contents do not come across
+    /// either: whatever was inside this item leaves play with it, so a caller
+    /// meaning to salvage cargo moves it out first.
+    ///
+    /// Like `vanish()`, and unlike ``Item/move(to:)``, this does not carry a
+    /// boarded player — a vehicle swapped out from under its passenger leaves
+    /// them standing where they were.
+    ///
+    /// Replacing an item with itself does nothing.
+    ///
+    /// - Parameter other: the item to put in this one's place.
+    public func replace(with other: Item) {
+        let (frame, id) = resolved
+        let otherID = other.id
+        guard otherID != id else { return }
+        // Read the placement before `vanish()` overwrites it, and let `vanish()`
+        // stay the one definition of leaving play.
+        let placement = frame.with { $0.state.placements[id] ?? .nowhere }
+        vanish()
+        frame.with { $0.state.place(otherID, placement) }
+    }
+
     // MARK: - Map factories
 
     /// The item starts the game in a location.

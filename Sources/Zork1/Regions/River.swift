@@ -332,8 +332,7 @@ struct ZorkRiver: GameContent {
         // it. Trades the boat back for the pile of plastic.
         magicBoat.before(.deflate) {
             guard player.vehicle != magicBoat else { try reply(Prose.deflateWhileAboard) }
-            magicBoat.vanish()
-            pileOfPlastic.move(to: player.location)
+            magicBoat.replace(with: pileOfPlastic)
             try reply(Prose.boatDeflates)
         }
 
@@ -445,7 +444,6 @@ struct ZorkRiver: GameContent {
         for cargo in magicBoat.contents {
             cargo.move(to: player.location)
         }
-        magicBoat.vanish()
-        puncturedBoat.move(to: player.location)
+        magicBoat.replace(with: puncturedBoat)
     }
 }

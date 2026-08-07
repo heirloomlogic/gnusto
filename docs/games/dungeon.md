@@ -634,8 +634,17 @@ lose the volcano anyway.
 
 ## Relationship to `Sources/Zork1/`
 
-`Zork1` is **frozen**. Its pinned seed-32 350-point walkthrough must keep passing
-untouched; it is the canary for every change made here.
+`Zork1`'s **content** is frozen: its map, its prose, its values and its puzzle
+set are done, and nothing built here may reopen them. Its pinned seed-32
+350-point walkthrough must keep passing untouched; it is the canary for every
+change made here.
+
+That freeze is on the game, not the code. The demos exist to exercise the engine,
+so when the engine grows a primitive that retires something a demo was
+hand-rolling, `Zork1` adopts it like any other game, and the walkthrough is the
+instrument that proves the adoption safe. Where the new primitive answers an edge
+differently from the code it replaces, that edge gets a test of its own rather
+than passing unremarked. `Item.replace(with:)` (#182) is the worked example.
 
 Dungeon is a separate executable target that **forks** Zork1's region bundles as a
 starting point and diverges. The line:
