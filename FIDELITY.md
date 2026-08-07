@@ -815,6 +815,12 @@ tables and item data were verified against `1dungeon.zil` / `1actions.zil`
   dam's tube (host-wired, tube↔boat spanning two bundles), spending the tube and trading the
   punctured boat back for the seaworthy one. Since a puncture afloat is always fatal, the
   wreck is only ever patched ashore.
+- **The boat's two valves grade their refusals as the original does** *(closed by #197 — the
+  deflate ground check had been dropped and inflate asked its questions out of order)*. Both
+  gate on the boat lying directly in the room (`<NOT <IN? … ,HERE>>`), and inflate asks that
+  before it looks at the tool. **One syntactic addition:** the original's only INFLATE syntax
+  is `INFLAT OBJECT WITH OBJECT`, its lung-power line reached through `BLOW IN` / `BREATHE`;
+  this port also accepts a bare `inflate <thing>` and answers it with that same line.
 - **Digging the Sandy Cave**: three digs with the shovel bare the scarab, a fourth collapses
   the hole and buries the player — the original's `BEACH-DIG` counter, used as-is. Bare
   hands do nothing.

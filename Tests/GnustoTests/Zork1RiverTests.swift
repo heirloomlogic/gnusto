@@ -33,10 +33,13 @@ struct Zork1RiverTests {
     ]
 
     /// Drain the reservoir, walk the bare bed to Reservoir North for the hand
-    /// pump, return to the Dam Base, and inflate the pile of plastic into a boat.
-    /// Ends on the (dark) Dam Base holding the pump, the sword, and the lit
-    /// lantern, the boat sitting inflated on the bank.
-    static let toInflatedBoat: [String] =
+    /// pump, and return to the Dam Base — one command short of inflating.
+    /// Ends on the (dark) Dam Base holding the pump, the wrench, the sword and
+    /// the lit lantern, the pile of plastic still spread on the bank.
+    ///
+    /// Split out of ``toInflatedBoat`` so the inflate rule's own refusals can be
+    /// driven while the pile still exists.
+    static let toPumpAtDamBase: [String] =
         toChargedDam + [
             "turn bolt with wrench",  // gates open, the drain begins
             "west",  // Reservoir South
@@ -46,7 +49,13 @@ struct Zork1RiverTests {
             "take pump",
             "south", "south",  // back across the bed → Reservoir South
             "southeast", "east", "down",  // Deep Canyon → Dam → Dam Base
-            "inflate plastic with pump",
+        ]
+
+    /// As ``toPumpAtDamBase``, then inflate the pile of plastic into a boat.
+    /// Ends with the boat sitting inflated on the bank.
+    static let toInflatedBoat: [String] =
+        toPumpAtDamBase + [
+            "inflate plastic with pump"
         ]
 
     /// As ``toInflatedBoat``, but set the sword down (so it can't hole the boat),
@@ -161,22 +170,131 @@ struct Zork1RiverTests {
             ])
     }
 
-    /// Deflating a boat you are *holding* leaves the plastic in your hands,
-    /// where the hand-rolled swap used to drop it on the floor (#182).
-    ///
-    /// This pins the placement, not the permission. Unlike Dungeon's, and unlike
-    /// `Zork1`'s own *inflate*, this rule has no "must be on the ground" guard —
-    /// `Prose.deflateNotOnGround` is declared in `Prose+River.swift` and called
-    /// from nowhere. Whether that guard was dropped by accident is a separate
-    /// question from where the pile lands once the rule runs.
-    @Test func deflatingABoatYouAreHoldingLeavesThePlasticInYourHands() async throws {
+    // MARK: - The boat's two valves
+    //
+    // `1actions.zil` gates both of them on the boat lying *directly in the room*
+    // — `<NOT <IN? ,INFLATED-BOAT ,HERE>>` for DEFLATE (line 2803) and
+    // `<NOT <IN? ,INFLATABLE-BOAT ,HERE>>` for INFLATE (line 2820) — and checks
+    // that ground condition before it looks at anything else. The cases below
+    // pin both orders (#197).
+
+    /// You cannot let the air out of a boat you are carrying. The original
+    /// checks `<IN? ,INFLATED-BOAT ,HERE>`, so holding it fails the test and
+    /// `Prose.deflateNotOnGround` answers — the constant that sat declared and
+    /// uncalled until #197.
+    @Test func deflatingABoatYouAreHoldingIsRefused() async throws {
         let transcript = try await play(
             Zork1(),
             Self.toInflatedBoat + ["take boat", "deflate boat", "inventory"],
             seed: 39)
 
-        #expect(turnOutput(of: "deflate boat", in: transcript).contains("boat deflates"))
-        #expect(turnOutput(of: "inventory", in: transcript).contains("pile of plastic"))
+        #expect(
+            turnOutput(of: "deflate boat", in: transcript)
+                .contains("must be on the ground to be deflated"))
+        // The refusal is total: still a boat, and no pile of plastic anywhere.
+        let inventory = turnOutput(of: "inventory", in: transcript)
+        #expect(inventory.contains("magic boat"))
+        #expect(!inventory.contains("pile of plastic"))
+    }
+
+    /// Set it down first and the valve opens, trading the boat for the pile of
+    /// plastic where it lay.
+    @Test func deflatingTheBoatOnTheGroundTradesItForThePile() async throws {
+        let transcript = try await play(
+            Zork1(),
+            Self.toInflatedBoat + ["deflate boat", "look", "inventory"],
+            seed: 39)
+
+        #expect(turnOutput(of: "deflate boat", in: transcript).contains("The boat deflates."))
+        #expect(turnOutput(of: "look", in: transcript).contains("pile of plastic"))
+        #expect(!turnOutput(of: "inventory", in: transcript).contains("pile of plastic"))
+    }
+
+    /// Sitting in the boat is the *first* thing the original rules out, ahead of
+    /// the ground check — and the one refusal this rule has always had, which
+    /// nothing pinned until now.
+    @Test func deflatingWhileAboardIsRefused() async throws {
+        let transcript = try await play(
+            Zork1(),
+            Self.toInflatedBoat + ["drop sword", "enter boat", "deflate boat"],
+            seed: 39)
+
+        #expect(
+            turnOutput(of: "deflate boat", in: transcript)
+                .contains("can't deflate the boat while you're in it"))
+    }
+
+    /// The two valves compose: what you deflate you can pump back up, because
+    /// both now agree on where the thing has to be lying. The asymmetry #197
+    /// named — deflate permitting a held boat that inflate would then refuse to
+    /// re-inflate — has no unmatched pair left to produce.
+    @Test func deflatingThenReInflatingRestoresTheBoat() async throws {
+        let transcript = try await play(
+            Zork1(),
+            Self.toInflatedBoat + ["deflate boat", "inflate plastic with pump", "look"],
+            seed: 39)
+
+        expectInOrder(
+            transcript,
+            [
+                "The boat deflates.",
+                "The boat inflates and appears seaworthy.",
+            ])
+        #expect(turnOutput(of: "look", in: transcript).contains("magic boat"))
+    }
+
+    /// The mirror of ``deflatingABoatYouAreHoldingIsRefused``: the pile must be
+    /// spread on the ground before the pump will do anything with it.
+    @Test func inflatingAPileYouAreHoldingIsRefused() async throws {
+        let transcript = try await play(
+            Zork1(),
+            Self.toPumpAtDamBase + ["take plastic", "inflate plastic with pump"],
+            seed: 39)
+
+        #expect(
+            turnOutput(of: "inflate plastic with pump", in: transcript)
+                .contains("must be on the ground to be inflated"))
+    }
+
+    /// Offering something that is not the pump gets the original's jest rather
+    /// than the lung-power line, which the ZIL reserves for breath (`V-BREATHE`
+    /// performs INFLATE with `LUNGS`).
+    @Test func inflatingWithTheWrongToolIsRefused() async throws {
+        let transcript = try await play(
+            Zork1(),
+            Self.toPumpAtDamBase + ["inflate plastic with sword"],
+            seed: 39)
+
+        #expect(
+            turnOutput(of: "inflate plastic with sword", in: transcript)
+                .contains("Surely you jest!"))
+    }
+
+    /// Naming no tool at all is the breath case, and keeps the lung-power line.
+    @Test func inflatingWithNothingComplainsOfLungPower() async throws {
+        let transcript = try await play(
+            Zork1(),
+            Self.toPumpAtDamBase + ["inflate plastic"],
+            seed: 39)
+
+        #expect(
+            turnOutput(of: "inflate plastic", in: transcript)
+                .contains("don't have enough lung power"))
+    }
+
+    /// The ordering, pinned. `IBOAT-FUNCTION` asks "is it on the ground?" before
+    /// it asks what you are holding, so a held pile plus a wrong tool answers
+    /// with the ground line. Reverse the two guards and this says
+    /// "Surely you jest!" instead.
+    @Test func theGroundGuardOutranksTheWrongTool() async throws {
+        let transcript = try await play(
+            Zork1(),
+            Self.toPumpAtDamBase + ["take plastic", "inflate plastic with wrench"],
+            seed: 39)
+
+        let refusal = turnOutput(of: "inflate plastic with wrench", in: transcript)
+        #expect(refusal.contains("must be on the ground to be inflated"))
+        #expect(!refusal.contains("Surely you jest!"))
     }
 
     /// Sit still on the river and the current does the steering — right over
