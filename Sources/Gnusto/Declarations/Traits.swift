@@ -131,6 +131,17 @@ public let plural = ItemTrait(kind: .plural)
 /// The paragraph used to mention the item in a room description until the
 /// player has touched it (ZIL's FDESC).
 ///
+/// It stands in for whichever stock listing sentence the item would otherwise
+/// have earned, wherever the room lists it: on the floor, on a surface, or one
+/// level down inside a container. So a thing that starts folded inside another
+/// thing announces itself in its own words rather than through
+/// *"In the boat is a tan label."*
+///
+/// The *room listing* is the whole of its scope. OPEN, SEARCH and INVENTORY
+/// enumerate contents into one sentence — "Opening the box reveals a violin." —
+/// where a room description composes paragraphs, so those name the thing rather
+/// than describing it and this line does not reach them.
+///
 /// On an ``Actor`` the same trait is the *standing presence line* (ZIL's
 /// LDESC role): printed on every look, never worn off by handling — people
 /// aren't props.
@@ -172,8 +183,10 @@ public let alwaysDescribed = LocationTrait(kind: .alwaysDescribed)
 /// The item can be worn.
 public let wearable = ItemTrait(kind: .wearable)
 
-/// The item is part of the scenery: it cannot be taken, and it is never
-/// listed in room descriptions (its `firstSight` text, if any, still appears).
+/// The item is part of the scenery: it cannot be taken, and it never earns a
+/// stock listing sentence — on the floor, on a surface, or inside a container
+/// alike. Its `firstSight` text, if any, still appears; `scenery` withholds the
+/// engine's line, never the author's.
 public let scenery = ItemTrait(kind: .scenery)
 
 /// Other items can be put on this item.

@@ -176,6 +176,18 @@ var rules: Rules {
 
 `presence` and a static `firstSight(…)` on the same entity — or two `presence` rules for it — is the same fatal ``BootstrapError``. A `presence` rule on a location is a diagnostic too: rooms have descriptions, not presence lines.
 
+The line is consulted wherever the room *lists* the thing, not only when it is lying on the floor — so an item that starts inside a container or on a surface gets its own paragraph in place of the stock *"In the chest is a tan label."*, and a rule can say which:
+
+```swift
+tanLabel.presence {
+    boat.holds(tanLabel)
+        ? "A tan label is lying inside the boat."
+        : "There is a tan label here."
+}
+```
+
+One level, which is as far as the listing itself goes: a room describes the things standing in it and what those hold, not what *their* contents hold.
+
 This is the rule to reach for when somebody moves. A person on a schedule ends up described in terms of the room they left, and no amount of careful static wording fixes that.
 
 ## Live reach with `reach`

@@ -514,9 +514,10 @@ extension Prose {
     /// Written fresh. The source's label is 1981 typography; what it tells the
     /// player is the three words the balloon answers to, and that is structure.
     ///
-    /// No listing line: the label only ever appears inside the basket, and the
-    /// nested lister has no presence channel — it says "In the wicker basket is
-    /// a blue label." and there is nowhere to hang another sentence.
+    /// No listing line yet. There is somewhere to hang one now — #176 gave a
+    /// nested item the same channel a loose one has — but the source's own
+    /// text for this label is not in the repo, so declaring it is the
+    /// follow-up's work rather than a guess made here.
     static let blueLabel = """
         A small blue label, printed on one side.
         """
