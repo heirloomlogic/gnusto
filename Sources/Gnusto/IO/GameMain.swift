@@ -120,10 +120,15 @@ extension GameMain where Self: Game {
 /// transcript a tester records by hand becomes a reproducer someone else can
 /// replay.
 ///
+/// It is also what the suite's own `cachedWorld` falls back to for a `play`
+/// call that pins no seed, which is what makes `GNUSTO_SEED=7 swift test`
+/// reproducible and a sweep across seeds able to find tests that only pass by
+/// luck. See <doc:TestingYourGame>.
+///
 /// A bad value is reported rather than ignored. The variable exists for
 /// reproducibility, so silently handing back a random stream after a typo
 /// would defeat the one thing it is for.
-enum SeedRequest: Equatable {
+public enum SeedRequest: Equatable, Sendable {
     /// `GNUSTO_SEED` was unset, empty, or whitespace: seed randomly, as ever.
     case unset
 
@@ -136,7 +141,9 @@ enum SeedRequest: Equatable {
 
     /// Reads `GNUSTO_SEED`, tolerating the stray whitespace a shell wrapper or
     /// a copied-and-pasted value tends to bring with it.
-    init(environment: [String: String]) {
+    ///
+    /// - Parameter environment: the environment to read `GNUSTO_SEED` from.
+    public init(environment: [String: String]) {
         let value = environment["GNUSTO_SEED", default: ""]
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
@@ -147,14 +154,14 @@ enum SeedRequest: Equatable {
     }
 
     /// The seed to hand `GameWorld`, or `nil` to let it pick one at random.
-    var value: UInt64? {
+    public var value: UInt64? {
         guard case .pinned(let seed) = self else { return nil }
         return seed
     }
 
     /// What to tell the operator on standard error, or `nil` when there is
     /// nothing to say.
-    var complaint: String? {
+    public var complaint: String? {
         guard case .invalid(let value) = self else { return nil }
         return """
             Ignoring GNUSTO_SEED=\(value): expected a whole number from 0 to \

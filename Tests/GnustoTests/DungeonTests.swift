@@ -405,7 +405,11 @@ struct DungeonTests {
                 "up",
                 "drop sword", "drop lamp", "drop painting", "up",
                 "take lamp", "take painting", "up",
-            ])
+            ],
+            // Seed 11, recorded: the thief never crosses your path. Lifting the
+            // painting summons him, and a theft leaves the hands this test is
+            // counting one lighter — 19 seeds in 5,000 failed that way unpinned.
+            seed: 11)
 
         expectInOrder(
             transcript,
@@ -648,7 +652,11 @@ struct DungeonTests {
                 "south", "south", "take painting", "south", "up",
                 "west", "put painting in case",
                 "score",
-            ])
+            ],
+            // Seed 11, recorded: the thief never crosses your path. The painting
+            // is carried the length of the dungeon here, so a theft costs the
+            // deposit and the score lands short — 19 seeds in 5,000 unpinned.
+            seed: 11)
 
         expectInOrder(
             transcript,

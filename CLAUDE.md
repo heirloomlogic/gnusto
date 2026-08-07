@@ -52,6 +52,13 @@ a hand-played session replays as a test. `GNUSTO_TRANSCRIPT` records it,
 `GNUSTO_SAVE_DIR` keeps scripted saves out of your real slots, and a line starting `//`
 or `#` is a tester comment that never reaches the parser. See `docs/playtesting.md`.
 
+`GNUSTO_SEED` also seeds the **suite**: it supplies the seed for every `play(_:_:)` call
+that passed none of its own, and leaves the calls that did pin one alone. That is what
+makes a sweep possible — `for s in $(seq 0 99); do GNUSTO_SEED=$s swift test; done` finds
+an unpinned test that only passes when the dice are kind. A sweep is a band, not a proof;
+for one suspect route, a throwaway scratch test over thousands of seeds is far more
+sensitive. See `TestingYourGame.md`, "Sweep for tests that pass by luck".
+
 ## Reading order for a new task
 
 - **Any game work** — `Sources/Lighthouse/` is the feature tour and the shortest complete read.

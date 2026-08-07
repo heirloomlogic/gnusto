@@ -5,13 +5,16 @@ import Gnusto
 /// transcript — every line the game printed, with the player's input
 /// interleaved as `> command` the way a player would see it.
 ///
-/// Pass `seed` to pin the game's random stream for reproducible runs;
-/// omit it for a fresh stream each run.
+/// Pass `seed` to pin the game's random stream for reproducible runs. Omit it
+/// for a fresh stream each run — unless `GNUSTO_SEED` is set, which pins every
+/// call that passed no seed of its own, so a whole suite run replays and a
+/// sweep across seeds can find a test that only passes when the dice are kind.
 ///
 /// - Parameters:
 ///   - game: the game to boot.
 ///   - commands: the commands to feed it, in order.
-///   - seed: pins the random stream when set; a fresh stream when nil.
+///   - seed: pins the random stream when set; `GNUSTO_SEED` or a fresh stream
+///     when nil.
 ///   - saveDirectory: where bare `save`/`restore` names resolve; pass an
 ///     isolated temp directory when a test exercises named saves, so it
 ///     never touches the real per-user saves directory. Nil uses the engine

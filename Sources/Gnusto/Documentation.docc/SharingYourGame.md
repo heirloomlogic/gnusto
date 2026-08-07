@@ -60,7 +60,7 @@ Five variables configure a running game and a sixth reports on one. All are opti
 | Variable | Effect |
 |---|---|
 | `GNUSTO_PLAIN` | Forces the plain ``ConsoleIOHandler`` even in a terminal. A flag, not a setting: *any* value counts, including an empty one. |
-| `GNUSTO_SEED` | Pins the random stream to a whole number, so the whole session replays identically. |
+| `GNUSTO_SEED` | Pins the random stream to a whole number, so the whole session replays identically. Also seeds the test suite's unpinned `play(_:_:)` calls — see <doc:TestingYourGame#Sweep-for-tests-that-pass-by-luck>. |
 | `GNUSTO_TRANSCRIPT` | Records the session from launch. `1`, `on`, `true` or `yes` writes a timestamped file; anything else is a slot name, or a path if it contains a `/`. |
 | `GNUSTO_TRANSCRIPT_DIR` | Where slot-named transcripts go. Defaults to `<app support>/Gnusto/Transcripts/<game>`. Read whenever a transcript file is resolved, so it also applies to a `script` typed mid-session — not only at launch. |
 | `GNUSTO_SAVE_DIR` | Where saves go. Defaults to `<app support>/Gnusto/Saves/<game>`. Point it somewhere disposable to keep a scripted run out of your real save slots. |
