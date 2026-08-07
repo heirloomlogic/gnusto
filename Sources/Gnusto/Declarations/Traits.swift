@@ -187,6 +187,14 @@ public let wearable = ItemTrait(kind: .wearable)
 /// stock listing sentence — on the floor, on a surface, or inside a container
 /// alike. Its `firstSight` text, if any, still appears; `scenery` withholds the
 /// engine's line, never the author's.
+///
+/// It withholds a *room description's* line, and only that. OPEN and SEARCH
+/// still name a fitting: *"Opening the tin toolbox reveals a steel awl and a
+/// bent clasp."* A room volunteers prose the container's own description has
+/// already covered, where `look in toolbox` answers a question the player
+/// asked — and a list that leaves things out is the worse answer, the more so
+/// when the fitting is a puzzle (Dungeon's balloon receptacle is `scenery`, and
+/// is where the newspaper burns). The two are meant to differ.
 public let scenery = ItemTrait(kind: .scenery)
 
 /// Other items can be put on this item.

@@ -331,6 +331,14 @@ struct ContainerTests {
     /// And it narrows the *listing* and nothing else: both fittings are still
     /// there to be named, examined and searched for, which is the whole
     /// difference between `scenery` and `hidden`.
+    ///
+    /// The last line is the boundary the rule above stops at, pinned rather than
+    /// left to be inferred. A room description *composes prose*; SEARCH
+    /// *enumerates contents*; the two are allowed to disagree about a fitting.
+    /// `look` withholds the handle because the basket's own description has
+    /// already covered it, and `look in basket` names it because the player has
+    /// asked what is in there — where a list that leaves things out is the worse
+    /// answer.
     @Test func sceneryInsideAContainerIsStillThereToBeNamed() async throws {
         let transcript = try await play(
             FittedBasketGame(), ["examine handle", "examine vise", "look in basket"])
@@ -340,8 +348,41 @@ struct ContainerTests {
             [
                 "Woven into the rim",
                 "Bolted through the bench top.",
-                "handle",
+                "In the wicker basket are a red apple and a basket handle.",
             ])
+    }
+
+    /// OPEN's reveal line is the same query as SEARCH's report, and answers the
+    /// same way. Opening the toolbox names the clasp riveted inside its lid,
+    /// which the room listing would have withheld.
+    @Test func openingAContainerRevealsItsFittings() async throws {
+        let transcript = try await play(
+            FittedBasketGame(), ["open toolbox", "look"])
+
+        #expect(
+            turnOutput(of: "open toolbox", in: transcript)
+                .contains("Opening the tin toolbox reveals a steel awl and a bent clasp."))
+        // And the room, now that the toolbox is open, still lists only the awl.
+        let look = turnOutput(of: "look", in: transcript)
+        #expect(look.contains("In the tin toolbox is a steel awl."))
+        #expect(!look.contains("clasp"))
+    }
+
+    /// The edge the decision creates, and the reason it is the right way round:
+    /// a container whose contents are *all* fittings must not be reported empty.
+    /// The room says nothing about the wick — the sconce's description covers
+    /// it — but SEARCH answering "The brass sconce is empty." would be a lie
+    /// about a thing the player can see and examine.
+    @Test func searchingAContainerOfOnlyFittingsDoesNotCallItEmpty() async throws {
+        let transcript = try await play(
+            FittedBasketGame(), ["look", "look in sconce"])
+
+        // "charred", not "wick" — the wicker basket is standing in the same room.
+        #expect(!turnOutput(of: "look", in: transcript).contains("charred"))
+
+        let searched = turnOutput(of: "look in sconce", in: transcript)
+        #expect(searched.contains("In the brass sconce is a charred wick."))
+        #expect(!searched.contains("empty"))
     }
 
     // MARK: - The nested listing channel

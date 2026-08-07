@@ -281,13 +281,19 @@ struct RugGame: Game {
 /// The balloon in `Sources/Dungeon/` is what wanted this: its cloth bag, its
 /// receptacle and its braided wire are all named by the basket's own
 /// description, and each of them was getting a line of its own underneath it.
+///
+/// The toolbox and the sconce carry the *other* half of the same question —
+/// where the room-listing rule stops. OPEN and SEARCH enumerate what is in a
+/// thing and name its fittings, which the room describer does not; the sconce
+/// is the case that decides it, since a container holding nothing but fittings
+/// must not answer "empty".
 struct FittedBasketGame: Game {
     let title = "Fitted Basket"
     let intro = ""
 
     let shed = Location {
         name("Shed")
-        description("A shed with a bench in it.")
+        description("A shed with a bench in it, and a sconce bolted beside the door.")
     }
 
     let basket = Item {
@@ -325,6 +331,44 @@ struct FittedBasketGame: Game {
         name("claw hammer")
     }
 
+    /// Openable, and starts closed — so the same question can be put to OPEN's
+    /// reveal line as to SEARCH's report.
+    let toolbox = Item {
+        name("tin toolbox")
+        synonyms("toolbox")
+        container
+        openable
+    }
+
+    /// A fitting one lid deeper: riveted inside the toolbox.
+    let clasp = Item {
+        name("bent clasp")
+        synonyms("clasp")
+        description("Riveted through the lid, and going nowhere.")
+        scenery
+    }
+
+    let awl = Item {
+        name("steel awl")
+    }
+
+    /// A container whose only contents are fixed, for the edge SEARCH has to
+    /// answer honestly.
+    let sconce = Item {
+        name("brass sconce")
+        synonyms("sconce")
+        description("Bolted to the wall, with a wick still in it.")
+        container
+        scenery
+    }
+
+    let wick = Item {
+        name("charred wick")
+        synonyms("wick")
+        description("Burnt to a stub.")
+        scenery
+    }
+
     var map: WorldMap {
         player.starts(in: shed)
         basket.starts(in: shed)
@@ -333,6 +377,11 @@ struct FittedBasketGame: Game {
         bench.starts(in: shed)
         vise.starts(on: bench)
         hammer.starts(on: bench)
+        toolbox.starts(in: shed)
+        clasp.starts(inside: toolbox)
+        awl.starts(inside: toolbox)
+        sconce.starts(in: shed)
+        wick.starts(inside: sconce)
     }
 }
 

@@ -238,6 +238,13 @@ enum DefaultActions {
     /// Names of the perceivable items directly inside `container`, sorted for
     /// stable listings — the one query behind both `open`'s reveal line and
     /// `lookIn`'s contents report.
+    ///
+    /// Perceivability is the whole filter, deliberately: a `scenery` fitting is
+    /// named here even though `RoomDescriber` withholds its listing sentence.
+    /// These two verbs enumerate what is inside a thing where a room composes
+    /// prose about it, and that is the boundary `scenery` stops at — a container
+    /// of nothing but fittings reports them rather than answering "empty". See
+    /// ``scenery``, and `RoomDescriber.sayListing` for the other side.
     private static func perceivableContents(
         of container: EntityID, in scratch: inout Scratch, frame: TurnFrame
     ) -> [String] {
