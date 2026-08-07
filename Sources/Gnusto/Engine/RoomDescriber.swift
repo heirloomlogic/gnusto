@@ -91,40 +91,54 @@ enum RoomDescriber {
             }
         let roomItems = present.filter { definition.items[$0]?.isActor != true }
 
+        // The one line any listed thing earns, wherever it is standing: its
+        // presence paragraph until the player touches it, else the stock
+        // sentence, else nothing. `scenery` is what withholds the *stock*
+        // sentence and only that — a fixed fitting is no more a room's news
+        // inside a container than on a floor, but a fitting the author gave a
+        // line of its own still gets it. `stock` is lazy, so the templates and
+        // their string building are skipped whenever a presence line wins.
+        func sayListing(of id: EntityID, stock: () -> String) {
+            if !touched.contains(id), let presence = frame.presenceText(of: id) {
+                frame.say(presence)
+            } else if definition.items[id]?.isScenery != true {
+                frame.say(stock())
+            }
+        }
+
+        // What a thing standing in the room holds — and one level only. The
+        // walk covers the room's own things and their contents, never what
+        // *those* contents hold, so a listing line declared two levels down
+        // has nowhere to print.
+        func listContents(
+            _ ids: [EntityID]?,
+            of holder: EntityID,
+            as line: (_ item: String, _ holder: String) -> String
+        ) {
+            for id in ids ?? []
+            where Visibility.isPerceivable(id, definition: definition, state: state) {
+                sayListing(of: id) {
+                    line(frame.indefiniteName(of: id), frame.definiteName(of: holder))
+                }
+            }
+        }
+
         for itemID in roomItems {
             guard let item = definition.items[itemID] else { continue }
-            if !touched.contains(itemID), let firstSight = frame.presenceText(of: itemID) {
-                frame.say(firstSight)
-            } else if !item.isScenery {
-                frame.say(frame.definition.text.itemHere(frame.indefiniteName(of: itemID)))
-            }
+            sayListing(of: itemID) { definition.text.itemHere(frame.indefiniteName(of: itemID)) }
 
-            // One level of "On the X is a Y." for surfaces in the room.
-            // `scenery` means "don't list me" wherever the thing is standing,
-            // so it is filtered here exactly as it is filtered above — a fixed
-            // fitting on a table is no more a room's news than one on a floor.
+            // "On the X is a Y." for a surface standing in the room.
             if item.isSurface {
-                let onTop = (index.onSurface[itemID] ?? [])
-                    .filter { isListable($0, definition: definition, state: state) }
-                for topID in onTop {
-                    frame.say(
-                        frame.definition.text.itemOnSurface(
-                            frame.indefiniteName(of: topID), frame.definiteName(of: itemID)))
-                }
+                listContents(index.onSurface[itemID], of: itemID, as: definition.text.itemOnSurface)
             }
 
-            // "In the X is a Y." for containers whose contents are visible —
-            // open containers and closed transparent ones. Closed opaque
-            // containers stay silent, so their contents never leak into the
-            // room description.
+            // "In the X is a Y." for a container whose contents are visible —
+            // an open one, or a closed transparent one. A closed opaque
+            // container stays silent, so its contents never leak into the room
+            // description.
             if item.isContainer, contentsVisible(itemID, definition: definition, state: state) {
-                let inside = (index.inContainer[itemID] ?? [])
-                    .filter { isListable($0, definition: definition, state: state) }
-                for insideID in inside {
-                    frame.say(
-                        frame.definition.text.itemInContainer(
-                            frame.indefiniteName(of: insideID), frame.definiteName(of: itemID)))
-                }
+                listContents(
+                    index.inContainer[itemID], of: itemID, as: definition.text.itemInContainer)
             }
         }
 
@@ -140,22 +154,6 @@ enum RoomDescriber {
                 frame.say(frame.definition.text.actorHere(frame.indefiniteName(of: actorID)))
             }
         }
-    }
-
-    /// Whether a nested item earns a line of its own in a room description:
-    /// perceivable, and not `scenery`. A fixed fitting inside a container or
-    /// on a surface is suppressed for the same reason one on the floor is —
-    /// the game has already described it, in the sentence that mentions the
-    /// thing holding it.
-    private static func isListable(
-        _ id: EntityID,
-        definition: GameDefinition,
-        state: WorldState
-    ) -> Bool {
-        // Scenery first: it is one dictionary lookup, where perceivability is
-        // that plus the hidden-and-unrevealed test.
-        guard definition.items[id]?.isScenery != true else { return false }
-        return Visibility.isPerceivable(id, definition: definition, state: state)
     }
 
     /// Whether a container's direct contents are perceivable in a room

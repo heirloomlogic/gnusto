@@ -2056,14 +2056,32 @@ game in the repo puts scenery inside a container or on a surface, and the whole
 suite is unchanged by it. `ContainerTests` pins the new rule against a fixture
 of its own rather than against this game's transcripts.
 
-**Four listing lines this milestone could not use.** The nested lister has no
-presence channel: an item inside a container gets *"In the wicker basket is a
-blue label."* and nothing else, where an item on the floor gets its `firstSight`
-until it is touched. The crown, the card, the Flathead stamp and the blue label
+**Four listing lines this milestone could not use.** The nested lister had no
+presence channel: an item inside a container got *"In the wicker basket is a
+blue label."* and nothing else, where an item on the floor got its `firstSight`
+until it was touched. The crown, the card, the Flathead stamp and the blue label
 each start inside something and never sit loose in a room untouched, so their
 source lines — two of them `identical` entries — would never have printed, and
-they are not declared. Worth its own engine issue rather than four dead
+they were not declared. Filed as its own engine issue rather than four dead
 constants.
+
+> **Since settled — #176.** `presence { }` / `firstSight(…)` is now consulted
+> wherever an item is listed, one level down included, so the channel exists.
+> The four lines above are still undeclared, because their source text is not in
+> this repo; that is the follow-up's work, not this record's. What the widening
+> *did* bring back is ten lines the game had already written and could not
+> print: the sack and the bottle on the kitchen table, the knife on the attic
+> table, the Stradivarius in the steel box, the emerald in the buoy, the four
+> cakes on the tea table, and the tan label folded inside the boat. Every one is
+> the source's own sentence, and every one had been losing to the stock
+> *"On the X is a Y."*
+>
+> Two of them now read *less* like a nested thing than the stock line did, and
+> deliberately so: the mainframe's own `FDESC` for the violin is "There is a
+> Stradivarius here.", which under the opened steel box says *here* rather than
+> *in the box*. The author's declared line wins over the engine's template —
+> that is what the channel is for — and where a line wants to name its container
+> the game can say so, as the boat label does.
 
 **Declared but not yet walkable: nothing.** `maxScore` goes 499 → **560**, and a
 perfect playthrough of milestones 1 to 6 together scores **550** — the ten still

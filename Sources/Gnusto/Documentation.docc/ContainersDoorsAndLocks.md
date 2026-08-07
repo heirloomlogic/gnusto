@@ -74,6 +74,8 @@ let cupboard = Item {
 
 ``transparent`` splits the difference: the contents are *visible* even while the item is closed — a glass jar, a display case — but still not *reachable* until it's opened. (The same trait lets light through a shut container; see <doc:DarknessTimeAndDeath>.)
 
+Whatever a room can see inside a container it lists, one level down, as *"In the glass jar is a green pickle."* — unless the pickle has a line of its own. ``firstSight(_:)`` and ``Item/presence(_:)`` are consulted here exactly as they are for something lying on the floor, so a thing that starts nested announces itself in its own words; see <doc:WritingRules>. A ``scenery`` fitting is listed neither way, which is how the fixed parts of a container stay out of a paragraph its description has already covered.
+
 ```swift
 let jar = Item {
     name("glass jar")

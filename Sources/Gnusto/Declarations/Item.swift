@@ -549,10 +549,13 @@ public struct Item: Sendable, Equatable {
     /// bench.presence { blastHappened ? Prose.benchBurnt : Prose.benchWhole }
     /// ```
     ///
-    /// On an item this is the paragraph shown until the player touches it; on
-    /// an ``Actor`` it is the presence line shown on every look. Declared in a
-    /// `rules` block. A static `firstSight(…)` trait on the same entity, or a
-    /// second `presence` rule for it, is a fatal bootstrap diagnostic.
+    /// On an item this is the paragraph shown until the player touches it — in
+    /// place of whichever stock listing sentence the room would otherwise have
+    /// printed, including *"In the X is a Y."* for something one level down
+    /// inside a container. On an ``Actor`` it is the presence line shown on
+    /// every look. Declared in a `rules` block. A static `firstSight(…)` trait
+    /// on the same entity, or a second `presence` rule for it, is a fatal
+    /// bootstrap diagnostic.
     ///
     /// - Parameter body: the closure recomputing the line on each read.
     /// - Returns: the assembled presence rule.

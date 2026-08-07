@@ -335,3 +335,137 @@ struct FittedBasketGame: Game {
         hammer.starts(on: bench)
     }
 }
+
+/// A fixture for the listing channel a nested item has: an item the room
+/// describes as another item's contents earns the same paragraph an item on the
+/// floor does, rather than only the stock *"In the X is a Y."*
+///
+/// The boat label in `Sources/Dungeon/` is what wanted this. Its `presence`
+/// rule had a branch for the label lying in the boat it came in, and that
+/// branch could not run: the describer asked for a presence line only for the
+/// things standing in the room, so a line declared for the nested position read
+/// as live and silently never printed.
+struct NestedListingGame: Game {
+    let title = "Nested Listing"
+    let intro = ""
+
+    let workshop = Location {
+        name("Workshop")
+        description("A workshop with a bench along one wall.")
+    }
+
+    /// A container with no `openable`: always open.
+    let crate = Item {
+        name("packing crate")
+        container
+    }
+
+    /// The plain case — a first-sight line, worn off by handling exactly as it
+    /// is for an item on the floor.
+    let scroll = Item {
+        name("yellowed scroll")
+        firstSight("A yellowed scroll lies curled in the crate.")
+        description("Brittle, and covered in a hand you cannot read.")
+    }
+
+    /// Nested `scenery` *with* a line. `scenery` suppresses the stock listing
+    /// sentence, never the author's own.
+    let plaque = Item {
+        name("brass plaque")
+        synonyms("plaque")
+        firstSight("A brass plaque is screwed to the inside of the lid.")
+        description("FROBOZZ PACKING CO.")
+        scenery
+    }
+
+    /// Nested `scenery` without one: silent, as it was before the channel
+    /// existed.
+    let nail = Item {
+        name("bent nail")
+        synonyms("nail")
+        description("Hammered flat against the slats.")
+        scenery
+    }
+
+    let bench = Item {
+        name("workbench")
+        surface
+    }
+
+    /// The same channel one level up, on a surface.
+    let lantern = Item {
+        name("dented lantern")
+        firstSight("A dented lantern stands at the end of the bench.")
+    }
+
+    /// Opaque, openable, starts closed. Its contents stay out of the room
+    /// listing however good their line is.
+    let strongbox = Item {
+        name("iron strongbox")
+        container
+        openable
+    }
+
+    let ledger = Item {
+        name("leather ledger")
+        firstSight("A leather ledger lies open in the strongbox.")
+    }
+
+    /// Two levels down: inside a sack that is itself on the bench. The
+    /// describer walks one level, so this is not listed at all — the line is
+    /// declared here to pin that, not because it prints.
+    let sack = Item {
+        name("canvas sack")
+        container
+    }
+
+    let thimble = Item {
+        name("silver thimble")
+        firstSight("A silver thimble winks from the bottom of the sack.")
+    }
+
+    /// The boat label in miniature: one rule, two branches, and the item
+    /// crosses between them without the player ever touching it.
+    let tag = Item {
+        name("paper tag")
+        description("A tag on a string.")
+    }
+
+    let lever = Item {
+        name("iron lever")
+        scenery
+    }
+
+    var map: WorldMap {
+        player.starts(in: workshop)
+
+        crate.starts(in: workshop)
+        scroll.starts(inside: crate)
+        plaque.starts(inside: crate)
+        nail.starts(inside: crate)
+        tag.starts(inside: crate)
+
+        bench.starts(in: workshop)
+        lantern.starts(on: bench)
+        sack.starts(on: bench)
+        thimble.starts(inside: sack)
+
+        strongbox.starts(in: workshop)
+        ledger.starts(inside: strongbox)
+
+        lever.starts(in: workshop)
+    }
+
+    var rules: Rules {
+        tag.presence {
+            crate.holds(tag)
+                ? "A paper tag is lying inside the crate."
+                : "There is a paper tag here."
+        }
+
+        lever.before(.pull) {
+            tag.move(to: workshop)
+            try reply("The crate tips, and the tag slides out onto the floor.")
+        }
+    }
+}

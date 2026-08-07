@@ -149,7 +149,13 @@ final class TurnFrame: Sendable {
     ///
     /// Called outside `with { … }` for the same reason as `describedText`.
     func presenceText(of id: EntityID) -> String? {
-        if let dynamic = definition.rules.itemPresence[id] {
+        // Asked of every listed thing, its nested contents included, so the
+        // empty-table skip is worth the line: most games declare no `presence`
+        // rule at all, and hashing the key costs the same either way. Same
+        // shape as `Visibility.reachRuleAllows`.
+        if !definition.rules.itemPresence.isEmpty,
+            let dynamic = definition.rules.itemPresence[id]
+        {
             return dynamic()
         }
         return definition.items[id]?.firstSight

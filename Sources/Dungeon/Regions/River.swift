@@ -639,7 +639,9 @@ struct DungeonRiver: GameContent {
 
         // The label lists differently once the boat it came in has been
         // punctured out from under it. A `presence` rule rather than a static
-        // `firstSight`, because that line has to stop being true.
+        // `firstSight`, because that line has to stop being true — and both
+        // branches reach the room description, the first through the nested
+        // listing channel (#176) while the label is still folded in the boat.
         tanLabel.presence {
             magicBoat.holds(tanLabel) ? Prose.tanLabelInBoat : Prose.tanLabelOnGround
         }

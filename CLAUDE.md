@@ -125,7 +125,11 @@ In any rule body: `say`, `refuse`, `reply`, `require(_:else:)`, `end(won:)`, `di
 - **Two description channels, not one.** `description(…)` / `describe { }` is the
   *examine* text. `firstSight(…)` / `presence { }` is the *room-listing* paragraph.
   On an item the listing line prints until the player touches it; on an actor it
-  prints on every look, forever.
+  prints on every look, forever. The listing line covers every place the room
+  lists the thing — on the floor, on a surface, or one level down inside a
+  container — so a nested item says its own sentence instead of the stock "In the
+  X is a Y." Only one level, though: a room lists what stands in it and what
+  those hold, never what *their* contents hold.
 - **A static trait and its rule are mutually exclusive** — `description(…)` plus
   `describe { }`, or `firstSight(…)` plus `presence { }`, on one entity is a fatal
   `BootstrapError`. So is declaring the rule twice. Precedence for descriptions:

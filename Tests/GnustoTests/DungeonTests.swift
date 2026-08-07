@@ -193,9 +193,13 @@ struct DungeonTests {
     /// road to the water.
     private static let castOff = ["inflate plastic with pump", "board boat", "launch"]
 
+    /// As far as the boat itself: the Dam Base, with the pump in hand and the
+    /// plastic still folded.
+    private static let toTheBeachedBoat =
+        pastTheTroll + ["drop sword"] + crossroadsToTheDam + damToTheBoat
+
     /// The whole road to the Dam Base with the boat inflated and boarded.
-    private static let afloatOnTheRiver =
-        pastTheTroll + ["drop sword"] + crossroadsToTheDam + damToTheBoat + castOff
+    private static let afloatOnTheRiver = toTheBeachedBoat + castOff
 
     /// From the Dam Base back to the Troll Room, which is the road out once the
     /// trap door has barred itself: up the dam, east and south to the Loud
@@ -2793,18 +2797,22 @@ struct DungeonTests {
         expectEveryNounAnswered(transcript, "the Bank of Zork")
     }
 
+    /// Round the well, up to the Machine Room for the triangular button, and
+    /// back down to a Round Room whose floor has stopped turning — which is
+    /// what stops hiding the dented steel box.
+    private static let toTheStoppedRoundRoom =
+        toTheTeaRoom
+        + ["northwest", "north", "push triangular button", "west", "southeast"]
+        + ["west", "board bucket", "empty bucket", "get out", "west", "west", "down"]
+        + ["north"]
+
     /// With milestone 5 in, the Bank and everything above the well join the
     /// graph — the Bank off the Gallery, the well off the Engravings Cave — and
     /// the Round Room stops being a lottery for anybody who has reached the
     /// Machine Room.
     @Test func milestoneFiveJoinsTheBankAndTheWellToTheGraph() async throws {
         let transcript = try await play(
-            Dungeon(),
-            Self.toTheTeaRoom
-                + ["northwest", "north", "push triangular button", "west", "southeast"]
-                + ["west", "board bucket", "empty bucket", "get out", "west", "west", "down"]
-                + ["north", "look"],
-            seed: 10)
+            Dungeon(), Self.toTheStoppedRoundRoom + ["look"], seed: 10)
 
         expectInOrder(
             transcript,
@@ -2822,6 +2830,105 @@ struct DungeonTests {
                 "the machinery that turned it has",
                 "There is a dented steel box here.",
             ])
+    }
+
+    // MARK: - The listing lines a nested thing earns
+
+    // Ten of these lines were written for the position the object starts in —
+    // on a table, inside a boat — and none of them could print: the describer
+    // asked for a presence line only for the things standing on the floor, and
+    // listed everything one level down through the stock *"On the X is a Y."*
+    // instead. #176 widened the channel; these pin what it now carries, since
+    // no other test in the suite reads a line that was dead when it was
+    // written.
+
+    /// The kitchen table and the attic table. Both lines are the source's own,
+    /// and both used to lose to *"On the kitchen table is a bottle."*
+    @Test func theHousesTableTopsPrintTheSourcesOwnLines() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.intoTheKitchen + ["west", "take lamp", "turn on lamp", "east", "up"])
+
+        expectInOrder(
+            transcript,
+            [
+                "Kitchen",
+                "A bottle is sitting on the table.",
+                "On the table is an elongated brown sack, smelling of hot peppers.",
+                "Attic",
+                "On a table is a nasty-looking knife.",
+            ])
+        #expect(!transcript.contains("On the kitchen table is"))
+        #expect(!transcript.contains("On the attic table is"))
+    }
+
+    /// The mad tea party. Four cakes on one oblong table, four lines, none of
+    /// them the stock one.
+    @Test func theTeaTablePrintsEachCakesOwnLine() async throws {
+        let transcript = try await play(Dungeon(), Self.toTheTeaRoom, seed: 10)
+
+        expectInOrder(
+            transcript,
+            [
+                "Tea Room",
+                "There is a piece of cake with blue (ecch) icing here.",
+                "There is a piece of cake here with the words 'Eat-Me' on it.",
+                "There is a piece of cake with orange icing here.",
+                "There is a piece of cake with red icing here.",
+            ])
+        #expect(!transcript.contains("On the large oblong table is"))
+    }
+
+    /// The label the boat comes folded around — the object #176 was filed
+    /// about. Its `presence` rule has always had two branches; until the
+    /// channel widened, only the out-on-the-bank one could ever run.
+    @Test func theBoatPrintsTheLabelFoldedInsideIt() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheBeachedBoat + ["inflate plastic with pump", "look"],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "The boat inflates and appears seaworthy.",
+                "There is a magic boat here.",
+                "A tan label is lying inside the boat.",
+            ])
+        #expect(!transcript.contains("In the magic boat is a tan label"))
+    }
+
+    /// And the same for something the player opens rather than inflates: the
+    /// violin's line waits inside the steel box until the box does.
+    @Test func theOpenedSteelBoxPrintsTheViolinsOwnLine() async throws {
+        let transcript = try await play(
+            Dungeon(), Self.toTheStoppedRoundRoom + ["open box", "look"], seed: 10)
+
+        expectInOrder(
+            transcript,
+            [
+                "Opening the dented steel box reveals a fancy violin.",
+                "There is a dented steel box here.",
+                "There is a Stradivarius here.",
+            ])
+        #expect(!transcript.contains("In the dented steel box is"))
+    }
+
+    /// The buoy is the same shape, three bends down the Frigid River.
+    @Test func theOpenedBuoyPrintsTheEmeraldsOwnLine() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.afloatOnTheRiver + ["down", "down", "down", "open buoy", "look"],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "Opening the red buoy reveals a large emerald.",
+                "There is a red buoy here (probably a warning).",
+                "There is a large emerald here.",
+            ])
+        #expect(!transcript.contains("In the red buoy is"))
     }
 
     // MARK: - Milestone 6: the roads in

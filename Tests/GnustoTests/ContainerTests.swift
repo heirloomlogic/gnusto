@@ -344,6 +344,89 @@ struct ContainerTests {
             ])
     }
 
+    // MARK: - The nested listing channel
+
+    /// A nested item's `firstSight` is its listing line, the way a loose item's
+    /// is — and it wears off on handling the same way, falling back to the
+    /// stock *"In the X is a Y."* once the player has had it in their hands.
+    @Test func nestedItemPrintsItsFirstSightUntilItIsTouched() async throws {
+        let transcript = try await play(
+            NestedListingGame(),
+            ["look", "take scroll", "put scroll in crate", "look"])
+
+        expectInOrder(
+            transcript,
+            [
+                "A yellowed scroll lies curled in the crate.",
+                "Taken.",
+                "In the packing crate is a yellowed scroll.",
+            ])
+    }
+
+    /// The same channel for an item resting on a surface — and for a nested
+    /// fitting, which is the case `scenery` decides. `scenery` has always meant
+    /// "no *stock* listing sentence"; it never meant "no line at all", so a
+    /// fitting the author gave a line of its own prints it inside a container
+    /// exactly as one on the floor does.
+    @Test func aSurfacesContentsAndItsFittingsUseTheSameChannel() async throws {
+        let look = turnOutput(of: "look", in: try await play(NestedListingGame(), ["look"]))
+
+        #expect(look.contains("A dented lantern stands at the end of the bench."))
+        #expect(!look.contains("On the workbench is a dented lantern."))
+
+        #expect(look.contains("A brass plaque is screwed to the inside of the lid."))
+        #expect(!look.contains("In the packing crate is a brass plaque."))
+        // And the fitting with nothing to say is as silent as it ever was.
+        #expect(!look.contains("nail"))
+    }
+
+    /// A line declared for a nested item does not leak out of a closed opaque
+    /// container: the listing channel runs after the visibility gate, not
+    /// around it.
+    @Test func aClosedOpaqueContainerStillWithholdsItsContentsLine() async throws {
+        let transcript = try await play(
+            NestedListingGame(), ["look", "open strongbox", "look"])
+
+        #expect(!turnOutput(of: "look", in: transcript).contains("ledger"))
+        expectInOrder(
+            transcript,
+            [
+                "Opening the iron strongbox reveals a leather ledger.",
+                "A leather ledger lies open in the strongbox.",
+            ])
+    }
+
+    /// One level, as before. A room description walks the things standing in
+    /// the room and what they hold — not what *those* things hold — so a line
+    /// declared two levels down still has nowhere to print.
+    @Test func onlyOneLevelOfNestingIsListed() async throws {
+        let transcript = try await play(
+            NestedListingGame(), ["look", "look in sack"])
+
+        #expect(!turnOutput(of: "look", in: transcript).contains("thimble"))
+        // Still perfectly reachable — this is a listing rule, not a scope one.
+        #expect(
+            turnOutput(of: "look in sack", in: transcript)
+                .contains("In the canvas sack is a silver thimble."))
+    }
+
+    /// The Dungeon boat label's shape: one `presence` rule, two branches, and
+    /// an item that crosses between them without the player touching it. Both
+    /// branches print, which is the whole point — the nested one used to be
+    /// unreachable.
+    @Test func aLivePresenceRuleFollowsANestedItemOutOfItsContainer() async throws {
+        let transcript = try await play(
+            NestedListingGame(), ["look", "pull lever", "look"])
+
+        expectInOrder(
+            transcript,
+            [
+                "A paper tag is lying inside the crate.",
+                "The crate tips, and the tag slides out onto the floor.",
+                "There is a paper tag here.",
+            ])
+    }
+
     @Test func openRevealsContentsOrJustOpens() async throws {
         let transcript = try await play(
             PantryGame(),
