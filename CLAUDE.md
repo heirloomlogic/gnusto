@@ -184,7 +184,9 @@ In any rule body: `say`, `refuse`, `reply`, `require(_:else:)`, `end(won:)`, `di
   anything that isn't a `container`. An item you want searchable must be declared
   `container`. `cantSeeAnySuchThing` is reserved for a noun that isn't in scope at
   all, so "You can't see any such thing" in answer to `search <a thing the room just
-  described>` is a **bug**, not stock behavior.
+  described>` is a **bug**, not stock behavior. SEARCH and OPEN also **name a
+  `scenery` fitting the room listing withholds** — deliberately; see the
+  `scenery` doc comment for why the two disagree.
 - **Containment is room-granular; `reach { }` is the escape hatch.** A thing in one
   square of a floor the player walks around inside is "in the room" from every
   square. `item.reach(otherwise: "…") { … }` narrows that once, for every verb that

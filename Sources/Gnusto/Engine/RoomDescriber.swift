@@ -98,6 +98,10 @@ enum RoomDescriber {
         // inside a container than on a floor, but a fitting the author gave a
         // line of its own still gets it. `stock` is lazy, so the templates and
         // their string building are skipped whenever a presence line wins.
+        //
+        // It is *this* sentence `scenery` withholds, not every mention. OPEN and
+        // SEARCH ask what is inside a thing rather than composing prose about
+        // it, and name its fittings — see `DefaultActions.perceivableContents`.
         func sayListing(of id: EntityID, stock: () -> String) {
             if !touched.contains(id), let presence = frame.presenceText(of: id) {
                 frame.say(presence)

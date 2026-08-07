@@ -76,6 +76,8 @@ let cupboard = Item {
 
 Whatever a room can see inside a container it lists, one level down, as *"In the glass jar is a green pickle."* — unless the pickle has a line of its own. ``firstSight(_:)`` and ``Item/presence(_:)`` are consulted here exactly as they are for something lying on the floor, so a thing that starts nested announces itself in its own words; see <doc:WritingRules>. A ``scenery`` fitting is listed neither way, which is how the fixed parts of a container stay out of a paragraph its description has already covered.
 
+That is the *room's* rule, and it stops there. `open jar` and `look in jar` **do** name a fitting: they enumerate what is inside a thing, where a room description composes prose about it, and a player who has asked what is in the jar is owed the whole answer — a jar holding nothing but fittings reports them rather than calling itself empty. The two disagree by design; ``scenery`` says why.
+
 ```swift
 let jar = Item {
     name("glass jar")
