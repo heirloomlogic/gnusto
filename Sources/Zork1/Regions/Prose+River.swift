@@ -130,6 +130,13 @@ extension Prose {
 
     static let inflateNotOnGround = "The boat must be on the ground to be inflated."
 
+    /// Offered anything that isn't the hand pump. The original's `D ,PRSI`
+    /// prints the bare noun; the engine renders the phrase and supplies the
+    /// article.
+    static func inflateWithWrongThing(_ thing: String) -> String {
+        "With \(thing)? Surely you jest!"
+    }
+
     static let boatAlreadyFirm = "Inflating it further would probably burst it."
 
     static let boatDeflates = "The boat deflates."

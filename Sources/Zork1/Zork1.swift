@@ -380,11 +380,18 @@ struct Zork1: Game, GameMain {
 
         // Inflating the boat. The pile of plastic is a ``ZorkRiver`` item, the
         // hand pump a ``ZorkDam`` one, so the host bridges them — like the match
-        // and the machine. The pile must be laid out on the ground, and only the
-        // pump will do it; inflating trades the pile for the seaworthy boat.
+        // and the machine. `IBOAT-FUNCTION` grades the refusal in this order:
+        // the pile must be lying on the ground before anything else is asked,
+        // then only the pump will do it. Naming no tool is the breath case
+        // (`V-BREATHE` performs INFLATE with `LUNGS`); naming the wrong one gets
+        // the jest. Inflating trades the pile for the seaworthy boat.
         river.pileOfPlastic.before(.inflate) {
-            try require(command.indirectObject == dam.handPump, else: Prose.inflateNeedsPump)
-            try require(!player.inventory.contains(river.pileOfPlastic), else: Prose.inflateNotOnGround)
+            try require(river.pileOfPlastic.isIn(player.location), else: Prose.inflateNotOnGround)
+            guard let tool = command.indirectObject else {
+                try reply(Prose.inflateNeedsPump)
+            }
+            try require(
+                tool == dam.handPump, else: Prose.inflateWithWrongThing(tool.indefiniteName))
             river.pileOfPlastic.replace(with: river.magicBoat)
             try reply(Prose.boatInflates)
         }

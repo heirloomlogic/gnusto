@@ -328,10 +328,14 @@ struct ZorkRiver: GameContent {
             try reply(Prose.boatPuncturedOnLand)
         }
 
-        // Letting the air out. Only on dry land, and not while you're sitting in
-        // it. Trades the boat back for the pile of plastic.
+        // Letting the air out. Not while you're sitting in it, and only while it
+        // lies on the ground — `1actions.zil` asks those two in that order, the
+        // second as `<NOT <IN? ,INFLATED-BOAT ,HERE>>`, so a boat in your hands
+        // (or stowed in something) fails it. Trades the boat back for the pile
+        // of plastic where it lay.
         magicBoat.before(.deflate) {
-            guard player.vehicle != magicBoat else { try reply(Prose.deflateWhileAboard) }
+            try require(player.vehicle != magicBoat, else: Prose.deflateWhileAboard)
+            try require(magicBoat.isIn(player.location), else: Prose.deflateNotOnGround)
             magicBoat.replace(with: pileOfPlastic)
             try reply(Prose.boatDeflates)
         }
