@@ -2083,6 +2083,26 @@ constants.
 > that is what the channel is for — and where a line wants to name its container
 > the game can say so, as the boat label does.
 
+> **An eleventh line, withdrawn — #205.** The widening reaches one level down;
+> it does not reach two. `FOOD` starts in `SBAG` and `SBAG` starts on the
+> kitchen table, which puts the hot pepper sandwich a level below anything a
+> room description walks. Its listing line —
+>
+> > A hot pepper sandwich is here.
+>
+> was declared here at milestone 1 and printed on no turn of any playthrough.
+> It is now withdrawn from `Sources/Dungeon/Regions/Prose+House.swift` rather
+> than kept as a constant nothing reads. The placement is the source's and
+> stands; the line is the thing that had nowhere to go. `Sources/Zork1/`
+> declares no listing line for its own lunch and so never had the problem,
+> which is why this is a Dungeon entry and not a shared one.
+>
+> The reconstruction did not notice for seven milestones, which is the whole
+> argument of #205: the bootstrap now warns when an item declares a listing
+> line the map buries out of reach, so the next one is caught at build time
+> rather than by hand-reading a transcript for a sentence that isn't there.
+> The sandwich was the only such line in the corpus.
+
 **Declared but not yet walkable: nothing.** `maxScore` goes 499 → **560**, and a
 perfect playthrough of milestones 1 to 6 together scores **550** — the ten still
 missing are still milestone 1's canary and bauble, which wait on the thief.

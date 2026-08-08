@@ -137,6 +137,11 @@ public let plural = ItemTrait(kind: .plural)
 /// thing announces itself in its own words rather than through
 /// *"In the boat is a tan label."*
 ///
+/// One level is where that stops. A room description lists what stands in the
+/// room and what those things hold, and goes no deeper, so this trait on
+/// something the map buries two levels down has nowhere to print — the
+/// bootstrap warns rather than leaving the line to read as live.
+///
 /// The *room listing* is the whole of its scope. OPEN, SEARCH and INVENTORY
 /// enumerate contents into one sentence — "Opening the box reveals a violin." —
 /// where a room description composes paragraphs, so those name the thing rather

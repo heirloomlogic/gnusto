@@ -384,3 +384,110 @@ struct EmptyStateRoomGame: Game {
         player.starts(in: landing)
     }
 }
+
+/// The edge matrix for the buried-listing-line warning. A room description
+/// lists what stands in it and what those things hold, and goes no deeper — so
+/// a listing line declared below that reads as live and can never print. Every
+/// item here declares a channel; only the ones the map buries should be named.
+///
+/// The realistic case is pinned by `NestedListingGame` in `ContainerGames`;
+/// this fixture exists for the boundaries around it.
+struct BuriedListingGame: Game {
+    let title = "Buried Listing"
+    let intro = ""
+
+    let vault = Location {
+        name("Vault")
+        description("Shelves of boxes inside boxes.")
+    }
+
+    let shelf = Item {
+        name("iron shelf")
+        surface
+    }
+
+    /// Depth 1 — the deepest the describer reaches, so this one is fine and is
+    /// the control the warning must leave alone.
+    let ledger = Item {
+        name("brass ledger")
+        firstSight("A brass ledger lies open on the shelf.")
+    }
+
+    let hamper = Item {
+        name("wicker hamper")
+        container
+    }
+
+    /// Depth 2 by the rule channel rather than the trait: both are listing
+    /// lines and both are equally unprintable down here.
+    let napkin = Item {
+        name("linen napkin")
+        description("Folded into a swan.")
+    }
+
+    let casket = Item {
+        name("cedar casket")
+        container
+    }
+
+    /// Depth 3, to prove the count is the walk's and not a two-or-more flag.
+    let locket = Item {
+        name("silver locket")
+        firstSight("A silver locket glints in the casket.")
+    }
+
+    /// Depth 2 with nothing to print. Silent before this warning existed and
+    /// silent after it: there is no line to strand.
+    let pin = Item {
+        name("bone pin")
+    }
+
+    /// Offstage, and so is its holder. Nothing here says where the crate will
+    /// stand when it comes into play, so the map cannot be wrong about it yet.
+    let crate = Item {
+        name("packing crate")
+        container
+    }
+
+    let stub = Item {
+        name("paper stub")
+        firstSight("A paper stub is wedged into the crate.")
+    }
+
+    let porter = Actor {
+        name("night porter")
+        description("He minds the vault, and the vault minds him.")
+    }
+
+    /// In a pocket, not in the room. What an actor carries is never listed at
+    /// all, at any depth — but it can be given away or dropped, and then the
+    /// line works, so this is not the map's mistake either.
+    let receipt = Item {
+        name("crumpled receipt")
+        firstSight("A crumpled receipt lies where someone dropped it.")
+    }
+
+    var map: WorldMap {
+        player.starts(in: vault)
+
+        shelf.starts(in: vault)
+        ledger.starts(on: shelf)
+
+        hamper.starts(on: shelf)
+        napkin.starts(inside: hamper)
+        casket.starts(inside: hamper)
+        locket.starts(inside: casket)
+        pin.starts(inside: hamper)
+
+        stub.starts(inside: crate)
+
+        porter.starts(in: vault)
+        receipt.starts(heldBy: porter)
+    }
+
+    var rules: Rules {
+        napkin.presence {
+            "A linen napkin is folded in the hamper."
+        }
+    }
+}

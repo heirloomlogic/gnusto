@@ -101,11 +101,15 @@ struct DungeonHouse: GameContent {
         description(Prose.garlic)
     }
 
+    /// No listing line. The source has one — *"A hot pepper sandwich is
+    /// here."* — but the sandwich starts in the sack, and the sack starts on
+    /// the table, which is one level further down than a room description
+    /// reaches. See `FIDELITY.md`, and #205 for the bootstrap warning that
+    /// found it.
     let lunch = Item {
         name("lunch")
         adjectives("hot", "pepper")
         synonyms("sandwich", "dinner", "food")
-        firstSight(Prose.lunchInPlace)
         description(Prose.lunch)
     }
 

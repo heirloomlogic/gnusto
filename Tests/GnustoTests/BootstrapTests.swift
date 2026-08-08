@@ -71,6 +71,51 @@ struct BootstrapTests {
         #expect(!report.contains("landing"))
     }
 
+    /// A room description lists what stands in it and what those things hold,
+    /// and goes no deeper. `NestedListingGame` declares a line below that on
+    /// purpose — the thimble, inside a sack that is itself on the bench — and
+    /// pins in `ContainerTests` that it never prints. This is the sentence that
+    /// says so at bootstrap, instead of leaving the author to notice the
+    /// silence in a transcript.
+    @Test func aListingLineBelowTheDescribersReachWarns() throws {
+        let (definition, _) = try Bootstrap.build(NestedListingGame())
+        let report = try #require(definition.warningReport)
+
+        #expect(report.contains("\"thimble\" declares firstSight(…)"))
+        #expect(report.contains("2 levels below the room"))
+        #expect(report.contains("inside \"sack\", on \"bench\""))
+
+        // Everything else in that fixture is one level down or standing in the
+        // room, where the channel works — and the warning must not chill it.
+        #expect(definition.warnings.count == 1, "\(definition.warnings)")
+    }
+
+    /// The boundaries around it: the rule channel warns as the trait does, the
+    /// count is the walk's own, and an item with no static room position is
+    /// nobody's mistake yet.
+    @Test func theBuriedListingWarningCountsLevelsAndSparesTheUnplaced() throws {
+        let (definition, _) = try Bootstrap.build(BuriedListingGame())
+        let report = try #require(definition.warningReport)
+
+        // `presence { … }` is a listing line exactly as `firstSight(…)` is.
+        #expect(report.contains("\"napkin\" declares a presence { … } rule"))
+        #expect(report.contains("2 levels below the room"))
+        #expect(report.contains("inside \"hamper\", on \"shelf\""))
+
+        // Three deep, so the chain is walked rather than flagged at two.
+        #expect(report.contains("\"locket\" declares firstSight(…)"))
+        #expect(report.contains("3 levels below the room"))
+        #expect(report.contains("inside \"casket\", inside \"hamper\", on \"shelf\""))
+
+        // Those two and nothing else: the ledger is one level down and prints,
+        // the pin has no line to strand, and the stub and the receipt have no
+        // static room position to be wrong about.
+        #expect(definition.warnings.count == 2, "\(definition.warnings)")
+        for spared in ["\"ledger\"", "\"pin\"", "\"stub\"", "\"receipt\""] {
+            #expect(!report.contains(spared))
+        }
+    }
+
     @Test func warningReportIsNilForACleanGame() throws {
         let (definition, _) = try Bootstrap.build(MiniGame())
         #expect(definition.warnings.isEmpty)

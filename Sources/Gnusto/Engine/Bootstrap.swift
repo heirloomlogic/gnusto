@@ -863,6 +863,53 @@ enum Bootstrap {
                     + "trait and no describe { … } rule; the flag has nothing to print.")
         }
 
+        // A room description lists what stands in the room and what those
+        // things hold, and goes no deeper — one level, deliberately, because a
+        // recursive listing reads as a manifest rather than a scene. So a
+        // `firstSight(…)` or `presence { … }` on something the map buries below
+        // that boundary compiles, reads as live, and can never print a word.
+        // Warned about for the same reason as `alwaysDescribed` above: the
+        // silence is indistinguishable from the line working.
+        //
+        // Only a chain that reaches a room is judged. An item that starts
+        // offstage or in somebody's hands has no static room position for the
+        // map to be wrong about, and play may well put it where the line works.
+        func holderChain(of id: EntityID) -> [HolderLink]? {
+            var chain: [HolderLink] = []
+            var visited: Set<EntityID> = []
+            var current = id
+            // A placement cycle roots in no room, and the walk has to say so
+            // rather than circle — the visited set is how `Visibility` and
+            // `WorldState.isPossession` guard their own placement walks.
+            while visited.insert(current).inserted {
+                let link: HolderLink
+                switch state.placements[current] {
+                case .room: return chain
+                case .on(let holder): link = ("on", holder)
+                case .inside(let holder): link = ("inside", holder)
+                case .heldBy, .nowhere, nil: return nil
+                }
+                chain.append(link)
+                current = link.holder
+            }
+            return nil
+        }
+
+        for (id, item) in items.sorted(by: { $0.key < $1.key }) {
+            let channel: String? =
+                if item.firstSight != nil {
+                    "firstSight(…)"
+                } else if table.itemPresence[id] != nil {
+                    "a presence { … } rule"
+                } else {
+                    nil
+                }
+            guard let channel, let chain = holderChain(of: id), chain.count > 1 else { continue }
+            definition.warnings.append(
+                Self.buriedListingLine(
+                    id, isActor: item.isActor, declaring: channel, under: chain))
+        }
+
         // `maxScore` is read before any rule can run, so on its own it is the
         // author's arithmetic and nothing verifies it. Content conforming to
         // `ScoreDeclaring` knows its own award table; where one exists, the two
@@ -916,6 +963,26 @@ enum Bootstrap {
         "the game stores \"\(label)\" (\(type)), a content bundle it never lists in its "
             + "content block; nothing it declares — rooms, items, globals, rules, verbs, "
             + "timers — is registered. Add \(label) to `var content`."
+    }
+
+    /// One step of a placement chain: how a thing sits in its holder, and
+    /// which thing that is.
+    fileprivate typealias HolderLink = (preposition: String, holder: EntityID)
+
+    /// The warning for a listing line declared below the room describer's
+    /// reach. `chain` runs from the item's own holder outward to the thing
+    /// standing in the room, so its length is how far down the item sits.
+    private static func buriedListingLine(
+        _ id: EntityID,
+        isActor: Bool,
+        declaring channel: String,
+        under chain: [HolderLink]
+    ) -> String {
+        let path = chain.map { "\($0.preposition) \"\($0.holder)\"" }.joined(separator: ", ")
+        return "\(isActor ? "actor" : "item") \"\(id)\" declares \(channel) but the map "
+            + "places it \(chain.count) levels below the room — \(path); a room description "
+            + "lists what stands in the room and what those things hold, and goes no "
+            + "deeper, so the line has nowhere to print."
     }
 
     /// The diagnostic for a declaration that claims the reserved `"player"`
