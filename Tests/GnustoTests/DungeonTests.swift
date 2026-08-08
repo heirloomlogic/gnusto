@@ -3731,10 +3731,10 @@ struct DungeonTests {
     /// off-by-one would leave a puzzle that still played and simply could not be
     /// solved. Every landmark the source names by number is checked here.
     ///
-    /// The shipped types are `RoyalPuzzleGrid` / `RoyalPuzzleCell` rather than
-    /// the spike fixture's bare `PuzzleGrid` / `PuzzleCell`
-    /// (`Support/RoyalPuzzleGames.swift`), which still lives in this same test
-    /// target — the prefix is what keeps an unqualified lookup unambiguous.
+    /// The types are `RoyalPuzzleGrid` / `RoyalPuzzleCell`. The prefix dates
+    /// from the spike, whose own `PuzzleGrid` / `PuzzleCell` shared this test
+    /// target until #183 retired it; it is kept because the grid is one region's
+    /// content and not a general sliding-block type.
     @Test func theGridIsTheSourcesGrid() throws {
         let grid = RoyalPuzzleGrid()
         let (width, height) = (RoyalPuzzleGrid.width, RoyalPuzzleGrid.height)

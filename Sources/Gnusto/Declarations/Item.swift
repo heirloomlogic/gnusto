@@ -582,7 +582,7 @@ public struct Item: Sendable, Equatable {
     ///
     /// ```swift
     /// card.reach(otherwise: "The card is squares away from you, across the sand.") {
-    ///     grid.playerSquare == PuzzleGrid.cardSquare
+    ///     grid.playerSquare == grid.cardSquare
     /// }
     /// ```
     ///
