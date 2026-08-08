@@ -448,6 +448,11 @@ public struct Item: Sendable, Equatable {
 
     /// The item starts the game on a surface.
     ///
+    /// A holder that is not declared a `surface` is a fatal bootstrap
+    /// diagnostic, and so is a chain of placements that closes a loop — two
+    /// things placed in each other are in no room, so neither can ever be
+    /// listed, reached, taken or seen.
+    ///
     /// - Parameter item: the surface the item begins on.
     /// - Returns: the map entry declaring the start.
     public func starts(on item: Item) -> MapEntry {
@@ -455,6 +460,10 @@ public struct Item: Sendable, Equatable {
     }
 
     /// The item starts the game inside a container.
+    ///
+    /// A holder that is not declared a `container` is a fatal bootstrap
+    /// diagnostic, and so is a chain of placements that closes a loop —
+    /// including an item placed inside itself.
     ///
     /// - Parameter item: the container the item begins in.
     /// - Returns: the map entry declaring the start.
