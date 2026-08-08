@@ -491,3 +491,109 @@ struct BuriedListingGame: Game {
         }
     }
 }
+
+/// Two containers placed inside each other. Both placements resolve — each
+/// holder is a declared `container`, which is the only thing the placement
+/// branch checks — so before this diagnostic existed the game booted with the
+/// sack and the box rooted in no room at all: never listed, never reachable,
+/// never takeable, and nothing anywhere saying so.
+struct PlacementCycleGame: Game {
+    let title = "Placement Cycle"
+    let intro = ""
+
+    let hall = Location {
+        name("Hall")
+        description("A hall.")
+    }
+
+    let sack = Item {
+        name("burlap sack")
+        container
+    }
+
+    let box = Item {
+        name("wooden box")
+        container
+    }
+
+    var map: WorldMap {
+        player.starts(in: hall)
+        sack.starts(inside: box)
+        box.starts(inside: sack)
+    }
+}
+
+/// The edge matrix for the placement-cycle diagnostic: two loops that must each
+/// be named exactly once, and four placements that must not be mistaken for
+/// one.
+///
+/// The plain case is `PlacementCycleGame`; this fixture exists for the
+/// boundaries around it.
+struct TangledPlacementGame: Game {
+    let title = "Tangled Placement"
+    let intro = ""
+
+    let hall = Location {
+        name("Hall")
+        description("A hall.")
+    }
+
+    // A loop of three, closed with both link kinds, so the walk is proved to
+    // follow `on` and `inside` alike rather than one of them.
+    let basket = Item {
+        name("wicker basket")
+        container
+    }
+    let trolley = Item {
+        name("brass trolley")
+        surface
+    }
+    let crate = Item {
+        name("packing crate")
+        container
+    }
+
+    /// Hangs off the loop without being part of it. Equally lost, but the loop
+    /// is the mistake and one sentence about it is the whole story.
+    let apple = Item {
+        name("green apple")
+    }
+
+    /// A loop of one. `starts(inside:)` takes any item, this one included.
+    let barrel = Item {
+        name("oak barrel")
+        container
+    }
+
+    // The controls: ordinary nesting, offstage, and held. None is a cycle and
+    // none may be named.
+    let chest = Item {
+        name("cedar chest")
+        container
+    }
+    let coin = Item {
+        name("gold coin")
+    }
+    let ghost = Item {
+        name("faint ghost")
+    }
+    let key = Item {
+        name("iron key")
+    }
+
+    var map: WorldMap {
+        player.starts(in: hall)
+
+        basket.starts(on: trolley)
+        trolley.starts(inside: crate)
+        crate.starts(inside: basket)
+        apple.starts(inside: crate)
+
+        barrel.starts(inside: barrel)
+
+        chest.starts(in: hall)
+        coin.starts(inside: chest)
+        key.startsHeld
+        // The ghost declares no placement at all.
+    }
+}

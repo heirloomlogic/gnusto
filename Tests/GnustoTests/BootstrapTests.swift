@@ -116,6 +116,77 @@ struct BootstrapTests {
         }
     }
 
+    /// Every neighbouring placement mistake is already fatal — on a non-surface,
+    /// inside a non-container, heldBy a non-actor. A cycle is the same class of
+    /// mistake with the worst failure mode of the lot: both items resolve, the
+    /// game boots, and neither is in any room. And unlike a listing line buried
+    /// too deep, there is no runtime rescue — play cannot move what was never
+    /// anywhere.
+    @Test func aPlacementCycleIsFatal() {
+        #expect {
+            try Bootstrap.build(PlacementCycleGame())
+        } throws: { error in
+            guard let bootstrapError = error as? BootstrapError else { return false }
+            let text = bootstrapError.description
+            return text.contains("closes a placement cycle")
+                && text.contains("\"box\" inside \"sack\", \"sack\" inside \"box\"")
+                && bootstrapError.diagnostics.count == 1
+        }
+    }
+
+    /// The whole loop is spelled out, link by link, the way the buried-listing
+    /// warning spells out a holder chain — so the author sees which declarations
+    /// close it rather than which item happened to be walked first.
+    @Test func aPlacementCycleNamesEveryLinkInTheLoop() {
+        #expect {
+            try Bootstrap.build(TangledPlacementGame())
+        } throws: { error in
+            guard let bootstrapError = error as? BootstrapError else { return false }
+            // Both link kinds, and anchored on the lowest ID in the loop so the
+            // sentence reads the same on every build.
+            return bootstrapError.description.contains(
+                "\"basket\" on \"trolley\", \"trolley\" inside \"crate\", "
+                    + "\"crate\" inside \"basket\"")
+        }
+    }
+
+    @Test func anItemPlacedInsideItselfIsAPlacementCycle() {
+        #expect {
+            try Bootstrap.build(TangledPlacementGame())
+        } throws: { error in
+            guard let bootstrapError = error as? BootstrapError else { return false }
+            return bootstrapError.description.contains("\"barrel\" inside \"barrel\"")
+        }
+    }
+
+    /// Walking from every item finds the same loop once per member, and again
+    /// from everything hanging off it. The report is one sentence per loop.
+    @Test func aLoopIsReportedOnceHoweverManyThingsReachIt() {
+        #expect {
+            try Bootstrap.build(TangledPlacementGame())
+        } throws: { error in
+            guard let bootstrapError = error as? BootstrapError else { return false }
+            // The three-item loop and the barrel — not three plus one, and not a
+            // fifth for the apple, which merely sits in a crate that is lost.
+            return bootstrapError.diagnostics.count == 2
+                && !bootstrapError.description.contains("\"apple\"")
+        }
+    }
+
+    /// The check must not chill ordinary nesting. A chain that reaches a room,
+    /// one that reaches nobody, and one that reaches the player all terminate.
+    @Test func legitimatePlacementsAreNotMistakenForCycles() {
+        #expect {
+            try Bootstrap.build(TangledPlacementGame())
+        } throws: { error in
+            guard let bootstrapError = error as? BootstrapError else { return false }
+            let text = bootstrapError.description
+            return ["\"chest\"", "\"coin\"", "\"ghost\"", "\"key\""].allSatisfy {
+                !text.contains($0)
+            }
+        }
+    }
+
     @Test func warningReportIsNilForACleanGame() throws {
         let (definition, _) = try Bootstrap.build(MiniGame())
         #expect(definition.warnings.isEmpty)

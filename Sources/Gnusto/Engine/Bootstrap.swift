@@ -385,6 +385,60 @@ enum Bootstrap {
             }
         }
 
+        // Two items can be placed inside each other. Both placements resolve —
+        // each holder passes the surface/container check above, which is all
+        // that branch looks at — and nothing asks where the *holder* sits. So
+        // the game boots with neither item in any room: neither can be listed,
+        // reached, taken or seen, and nothing anywhere says so.
+        //
+        // Fatal, like every neighbouring placement mistake, and for a stronger
+        // reason than any of them: a cycle is unreachable by construction, and
+        // no rule can undo a placement that was never valid.
+
+        /// The loop that `id`'s placement chain closes, as `(thing, how it sits
+        /// in the next one)` pairs — or `nil` when the chain roots, which every
+        /// legal placement does. `.nowhere` is not seeded until below, so an
+        /// item that declares no placement at all reads `nil` here and roots
+        /// the same way.
+        ///
+        /// Rotated onto the loop's lowest ID, so one tangle is one value
+        /// however the walk came to it. Every member finds the same loop, and
+        /// so does everything hanging off one, and that is what lets the caller
+        /// report it once.
+        func placementLoop(from id: EntityID) -> [(id: EntityID, link: HolderLink)]? {
+            var chain: [(id: EntityID, link: HolderLink)] = []
+            var current = id
+            while true {
+                if let start = chain.firstIndex(where: { $0.id == current }) {
+                    let loop = chain[start...]
+                    guard let anchor = loop.indices.min(by: { loop[$0].id < loop[$1].id })
+                    else { return nil }
+                    return Array(loop[anchor...] + loop[..<anchor])
+                }
+                let link: HolderLink
+                switch placements[current] {
+                case .on(let holder): link = ("on", holder)
+                case .inside(let holder): link = ("inside", holder)
+                // Unreachable today — `starts(heldBy:)` takes an Actor, and an
+                // Actor can only start in a room — but `Placement.heldBy`
+                // reserves itself for NPC inventories, and walking it is free.
+                case .heldBy(let holder): link = ("held by", holder)
+                case .room, .nowhere, nil: return nil
+                }
+                chain.append((current, link))
+                current = link.holder
+            }
+        }
+
+        var loopsReported: Set<EntityID> = []
+        for id in placements.keys.sorted() {
+            guard let loop = placementLoop(from: id),
+                let anchor = loop.first,
+                loopsReported.insert(anchor.id).inserted
+            else { continue }
+            diagnostics.append(Self.placementCycle(loop))
+        }
+
         if playerStart == nil {
             diagnostics.append("the map block never declares player.starts(in:).")
         }
@@ -878,9 +932,11 @@ enum Bootstrap {
             var chain: [HolderLink] = []
             var visited: Set<EntityID> = []
             var current = id
-            // A placement cycle roots in no room, and the walk has to say so
-            // rather than circle — the visited set is how `Visibility` and
-            // `WorldState.isPossession` guard their own placement walks.
+            // No chain reaching here can circle — a placement cycle is a fatal
+            // diagnostic in the map phase above, so the build has already
+            // thrown. The visited set stays as the cheap guard against that
+            // check regressing, and is how `Visibility` and
+            // `WorldState.isPossession` protect their own placement walks.
             while visited.insert(current).inserted {
                 let link: HolderLink
                 switch state.placements[current] {
@@ -983,6 +1039,21 @@ enum Bootstrap {
             + "places it \(chain.count) levels below the room — \(path); a room description "
             + "lists what stands in the room and what those things hold, and goes no "
             + "deeper, so the line has nowhere to print."
+    }
+
+    /// The diagnostic for a set of placements that close a loop, naming every
+    /// link in it the way ``buriedListingLine(_:isActor:declaring:under:)``
+    /// names a holder chain — so the author sees which declarations close the
+    /// loop rather than which item the walk happened to reach first.
+    private static func placementCycle(_ loop: [(id: EntityID, link: HolderLink)]) -> String {
+        let path =
+            loop
+            .map { "\"\($0.id)\" \($0.link.preposition) \"\($0.link.holder)\"" }
+            .joined(separator: ", ")
+        return "the map closes a placement cycle: \(path); nothing in a cycle is in any "
+            + "room, so none of it can ever be listed, reached, taken or seen, and no rule "
+            + "can undo a placement that was never valid. Place "
+            + (loop.count == 1 ? "it" : "one of them") + " in a room."
     }
 
     /// The diagnostic for a declaration that claims the reserved `"player"`
