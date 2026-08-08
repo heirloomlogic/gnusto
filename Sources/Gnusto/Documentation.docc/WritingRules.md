@@ -197,7 +197,7 @@ The third text-free phase. ``Item/reach(otherwise:_:)`` answers "can the player 
 ```swift
 var rules: Rules {
     card.reach(otherwise: "The card is squares away from you, across the sand.") {
-        grid.playerSquare == PuzzleGrid.cardSquare
+        grid.playerSquare == grid.cardSquare
     }
 }
 ```

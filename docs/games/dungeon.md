@@ -412,10 +412,14 @@ the Endgame.
 
 ### The Royal-Puzzle question, answered
 
-**In-game rule. Nothing in `Sources/Gnusto/` has to change.** The spike is
-`RoyalPuzzleGame` in `Tests/GnustoTests/Support/RoyalPuzzleGames.swift`, and
-`RoyalPuzzleTests` walks a nineteen-move solution end to end, plus both of the
-orders that lose the treasure.
+**In-game rule. Nothing in `Sources/Gnusto/` has to change.** The spike was a
+4×4 fixture that walked a nineteen-move solution end to end plus both of the
+orders that lose the treasure. M7 shipped the real 8×8 region built the way it
+answered — `Sources/Dungeon/Regions/RoyalPuzzle.swift`, pinned by `DungeonTests`
+— and the fixture was retired once it had become a second implementation of a
+region that exists (#183). What is recorded below is the answer; the three
+engine findings it produced are pinned where each belongs, named as they come
+up.
 
 The shape this charter predicted was half right, and the half that is wrong is
 the load-bearing half.
@@ -456,9 +460,9 @@ Three sharp edges came out of it. None blocks M7; each is filed.
    `PUSH THE SANDSTONE WALL NORTH` has no single expression. Literal words are
    allowed, so `["push", "sandstone", "wall", .direction]` buys the sentence
    back — but a literal is matched, not resolved, so `Command.directObject`
-   stays nil and the rule cannot tell which wall was named. In the fixture,
-   `push marble wall west` pushes the sandstone. Pinned by
-   `theNounInALiteralRowIsDecorative`.
+   stays nil and the rule cannot tell which wall was named: naming one wall
+   moves the other. Pinned by `theNounInALiteralRowIsDecorative` and its
+   neighbours in `PatternGrammarTests`, against `WorkshopGame`.
 2. **A room whose description carries state loses it on every rewind**
    (#149). UNDO,
    RESTORE and walking back in all re-describe with `mode: .entry`
@@ -468,12 +472,15 @@ Three sharp edges came out of it. None blocks M7; each is filed.
    `describeSurroundings()` is the only public entry point and is always
    verbose, which is the opposite problem: stepping between squares reprints
    the room's *name* every time. Two modes, neither of them the one a sub-room
-   grid wants. Pinned by `aRewindRedescribesBrieflyAndDropsTheGeometry`.
+   grid wants. Both halves landed: `alwaysDescribed` is pinned by
+   `AlwaysDescribedTests`, and `describeSurroundings(withRoomName:)` by
+   `ArriveTests` and `PluginSeamTests`.
 3. **Containment is room-granular** (#150). The brass card is "in the room" from the
    moment its block is pushed off it, so it lists from every square and is
    reachable from every square. Both had to be faked by hand against the
    player's index — a `presence { }` line worded to stay true from anywhere,
-   and a `before(.take)` rule for the reach.
+   and a `before(.take)` rule for the reach. `Item/reach(otherwise:_:)` replaced
+   the second one; it is pinned by `ReachTests`.
 
 Two things worth carrying into M7 unchanged. Nothing in the engine rolls a turn
 back — `commit` writes the scratch state unconditionally
@@ -484,16 +491,16 @@ refuses. And a struct `@Global` is touched once per rule body, not field by
 field, because each read decodes and each write encodes; that one is general
 enough that it now lives in `CustomStateAndTraits.md` rather than here.
 
-`PuzzleGrid` owns the two operations — `step(_:)` and `push(_:)`, each returning
+The grid type owns the two operations — `step(_:)` and `push(_:)`, each returning
 an outcome the rule maps onto prose — so the puzzle's invariants are stated once,
-on the type, and the type is liftable into `Sources/Dungeon/` when M7 starts.
-Its landmark squares are Royal-Puzzle content sitting on an otherwise generic
-sliding-block grid; if the mirror box or the Endgame want the same mechanism,
-that is the seam to split on.
+on the type. M7 lifted that shape into `RoyalPuzzleGrid`. Its landmark squares
+are Royal-Puzzle content sitting on an otherwise generic sliding-block grid; if
+the mirror box or the Endgame want the same mechanism, that is the seam to split
+on.
 
 The grid itself survives UNDO, SAVE and RESTORE with no special handling.
-`PuzzleGrid` decodes leniently anyway, because a `.data` global that fails to
-decode is a `fatalError` rather than a fall back to its default
+`RoyalPuzzleGrid` decodes leniently anyway, because a `.data` global that fails
+to decode is a `fatalError` rather than a fall back to its default
 (`Declarations/Global.swift:44-50`) and save validation cannot tell one `.data`
 payload from another (`Engine/WorldState.swift:264-271`).
 
