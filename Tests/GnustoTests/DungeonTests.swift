@@ -3846,15 +3846,19 @@ struct DungeonTests {
         #expect(transcript.components(separatedBy: "getting complicated").count == 2)
     }
 
-    /// Both spellings of the push reach the same code, and neither is the core
-    /// `push <object>`. `push north wall` is the source's own phrasing and is
-    /// bought back through the compass-wall items, because a verb pattern must
+    /// Every spelling of the push reaches the same code. Three of them are rows
+    /// on `.pushWall` — the bare direction, the literal noun, and the object
+    /// slot #151 added — and `push north wall` is the core `push <object>`,
+    /// bought back through the compass-wall items because a verb pattern must
     /// end with its direction slot.
-    @Test func aWallIsPushedByDirectionInEitherSpelling() async throws {
+    @Test func aWallIsPushedByDirectionInEverySpelling() async throws {
         let transcript = try await play(
             Dungeon(),
             Self.toTheRoyalPuzzle
-                + ["down", "push", "push north", "push north wall", "push marble wall"],
+                + [
+                    "down", "push", "push north", "push wall north", "push north wall",
+                    "push marble wall",
+                ],
             seed: 11)
 
         expectInOrder(
@@ -3863,7 +3867,45 @@ struct DungeonTests {
                 "Push which way? North, south, east or west.",
                 "The wall does not budge.",
                 "The wall does not budge.",
+                "The wall does not budge.",
                 "In here a wall is pushed by direction",
+            ])
+    }
+
+    /// The object-slot row is what buys the wordier phrasings. Both of these
+    /// used to die as "You can't see any such thing", because `north` and `west`
+    /// are nouns of nothing — the literal row matches text and cannot reach an
+    /// adjective the pattern never spelled out. Issue #151.
+    @Test func namingTheWallByItsMaterialNowPushesIt() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheRoyalPuzzle
+                + ["down", "push marble wall up", "push sandstone wall south"],
+            seed: 11)
+
+        #expect(!transcript.contains("You can't see any such thing"))
+        expectInOrder(
+            transcript,
+            [
+                "Push which way? North, south, east or west.",
+                "The wall slides",
+            ])
+    }
+
+    /// The row binds any noun, so the rule has to say which nouns it meant. A
+    /// thing that is not a wall gets the syntax rather than a shove — and, since
+    /// it never reaches the grid, nothing has moved when it says so.
+    @Test func pushingSomethingThatIsNotAWallInADirectionTeachesTheSyntax() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheRoyalPuzzle + ["down", "push sand north", "push north"],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "Only a wall can be pushed in here.",
+                "The wall does not budge.",
             ])
     }
 

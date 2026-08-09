@@ -362,6 +362,26 @@ struct StandardParser {
                         indirectStart = cursor
                     }
                     cursor = tokens.count
+                } else if rule.elements[index + 1] == .direction {
+                    // `push <object> <direction>`. A direction slot takes one
+                    // token and ends its pattern, so the noun phrase is
+                    // everything up to the last token — no literal needed to
+                    // split on. Validation guarantees this arrangement is the
+                    // only one that reaches here. Issue #151.
+                    guard tokens.count - cursor >= 2,
+                        vocabulary.directions[tokens[tokens.count - 1]] != nil
+                    else {
+                        return missingHalfOfANounAndADirection(
+                            verbPhrase: verbPhrase, tokens: tokens, cursor: cursor,
+                            scope: scope, distant: distant)
+                    }
+                    directPhrase = Array(tokens[cursor..<(tokens.count - 1)])
+                    directStart = cursor
+                    // The direction token is deliberately left for the
+                    // `.direction` case below: consuming it here would land on
+                    // the empty-direction branch, which succeeds with nothing
+                    // filled in.
+                    cursor = tokens.count - 1
                 } else {
                     // Mid-pattern: the next literal word closes it. (Bootstrap
                     // validation guarantees a literal follows.)
@@ -441,6 +461,42 @@ struct StandardParser {
                 topic: topicWords,
                 verbPhrase: verbPhrase,
                 rawInput: rawInput))
+    }
+
+    /// What a `<verb> <object> <direction>` row does when the line does not end
+    /// in a direction, so the two slots cannot both be filled. Which half the
+    /// player left off decides the answer:
+    ///
+    /// - nothing left at all: the same "What do you want to push?" that core's
+    ///   `push <object>` asks, so the shape displaces nothing.
+    /// - one token, and it is a direction (`push north`): decline silently, so
+    ///   a bare `["push", .direction]` row for the same verb still wins. That
+    ///   is what lets the two shapes share an intent.
+    /// - a phrase that names something here (`push the sandstone wall`): ask
+    ///   which way, and the answer appends, because a direction slot ends its
+    ///   pattern.
+    /// - anything else: decline, and let the next rule or the scope error talk.
+    private func missingHalfOfANounAndADirection(
+        verbPhrase: String, tokens: [String], cursor: Int,
+        scope: Scope, distant: Set<EntityID>
+    ) -> FitOutcome {
+        guard cursor < tokens.count else {
+            // The answer `missingSlotOutcome` gives a final object slot; the
+            // direction half cannot be asked for until there is a noun to name.
+            return .nearMiss(.missingObject(verb: verbPhrase, prefix: tokens))
+        }
+        if tokens.count - cursor == 1, vocabulary.directions[tokens[cursor]] != nil {
+            return .mismatch
+        }
+        guard
+            case .success(let id) = resolve(
+                Array(tokens[cursor...]), in: scope, alsoConsidering: distant)
+        else {
+            return .mismatch
+        }
+        return .nearMiss(
+            .missingDirection(
+                verb: verbPhrase, objectName: definiteName(of: id), prefix: tokens))
     }
 
     /// The near-miss for a pattern whose final object slot got no tokens:

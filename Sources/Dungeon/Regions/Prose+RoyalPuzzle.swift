@@ -240,6 +240,15 @@ extension Prose {
         In here a wall is pushed by direction: push north, or push north wall.
         """
 
+    /// For `push sand north` — a direction the room understands, aimed at
+    /// something that is not a side. Written fresh: the phrasing does not
+    /// parse in the source at all, so there is no line to reproduce. It names
+    /// the noun as the problem rather than reusing the syntax lesson above,
+    /// which would answer a question the player did not ask.
+    static let puzzlePushOnlyWalls = """
+        Only a wall can be pushed in here.
+        """
+
     static let puzzleOnlyAPassage = """
         There is only a passage in that direction.
         """

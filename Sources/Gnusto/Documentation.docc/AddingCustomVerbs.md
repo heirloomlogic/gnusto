@@ -82,12 +82,30 @@ A pattern reads the way it's typed. Some shapes, from the standard table and bey
 | `#verb("barter", ["barter", .directObject, "for", .indirectObject])` | `barter coin for rope` | direct + indirect objects |
 | `#verb("peek", ["look", "under", .directObject])` | `look under rug` | a direct object |
 | `#verb("ask", ["ask", .directObject, "about", .topic])` | `ask monk about the bell` | a direct object + a ``Command/topic`` |
+| `#verb("shove", ["push", .directObject, .direction])` | `push the sandstone wall north` | a direct object + a direction |
 
-The rules: a pattern starts with at least one literal word (the verb); it can hold at most one direct-object and one indirect-object slot, direct first, with a literal word between them; a direction slot ends its pattern and never mixes with object slots; a topic slot also ends its pattern, and never mixes with a second object or a direction.
+The rules: a pattern starts with at least one literal word (the verb); it can hold at most one direct-object and one indirect-object slot, direct first, with a literal word between them; a direction slot ends its pattern, and the only object slot it may share one with is a direct object standing immediately before it; a topic slot also ends its pattern, and never mixes with a second object or a direction.
 
-A direction slot is barred from sharing a pattern with an *object* slot, not with a literal word — so `["tunnel", "shaft", .direction]` is legal, and `tunnel shaft down` arrives with its ``Command/direction`` set. That is how a verb takes a noun *and* a direction at all, and it costs one row per spelling: the word is matched, never resolved, so ``Command/directObject`` stays nil and the rule cannot tell which shaft the player named. Adjectives, synonyms and disambiguation all stop at the pattern.
+### A noun and a direction
 
-And a direction slot with nothing left to fill it still *succeeds*, with a nil direction — that is the branch that lets bare `go` ask "Which way?". So a row like `["push", .direction]` means bare `push` reaches your intent instead of the built-in's "What do you want to push?", and your rule has to answer it.
+`["push", .directObject, .direction]` is the shape for a verb that needs both. It works because a direction slot takes exactly one token and ends its pattern, so the split is fixed: the noun phrase is everything up to the last token. That phrase resolves like any other, so adjectives, synonyms, pronouns and disambiguation all reach it — `push the sandstone wall north` and `push it north` both arrive with ``Command/directObject`` set.
+
+Leave the direction off and the row asks for it: `push the sandstone wall` answers *"Which way do you want to push the sandstone wall?"*, and the next line completes the command. Leave the noun off too and the bare verb asks for the noun, exactly as `push <object>` does — this shape displaces nothing.
+
+Its narrower sibling is a **literal word** beside the direction slot, `["tunnel", "shaft", .direction]`. That still works, and stays the right choice where the direction is the whole of the meaning and the noun is decoration. But the word is matched, never resolved: ``Command/directObject`` stays nil, the rule cannot tell which shaft was named, and adjectives, synonyms and disambiguation all stop at the pattern. It also costs one row per spelling.
+
+The two coexist on one intent, most specific first, which is how a game buys a fixed phrasing and a general one at once:
+
+```swift
+extension Intent {
+    #verb("shove",
+          ["push", .direction],                 // push north
+          ["push", "wall", .direction],         // push wall north — no object bound
+          ["push", .directObject, .direction])  // push the sandstone wall north
+}
+```
+
+And a direction slot with nothing left to fill it still *succeeds*, with a nil direction — that is the branch that lets bare `go` ask "Which way?". So a row like `["push", .direction]` means bare `push` reaches your intent instead of the built-in's "What do you want to push?", and your rule has to answer it. The `<object> <direction>` shape never does this: it asks for whichever half is missing, and where the line is a bare direction it stands aside so a `["push", .direction]` row for the same verb can take it.
 
 A **topic** is the odd one out, and deliberately so. The object slots resolve against what the player can see, and refuse anything else — which is right for things and wrong for subjects. A topic instead takes the rest of the line as typed, normalized but never looked up, so `ask the monk about zeppelins` reaches the monk's rules and lets him shrug rather than dying in the parser as "You can't see any such thing." It arrives as a ``Topic`` on ``Command/topic``, with the words already lowercased, stripped of punctuation and filler; ``Topic/normalize(_:)`` puts an author's own keyword through the same mill so the two can be compared. The line exactly as typed is still on ``Command/rawInput``.
 

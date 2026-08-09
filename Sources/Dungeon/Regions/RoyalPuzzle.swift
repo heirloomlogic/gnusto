@@ -7,25 +7,39 @@ extension Intent {
     /// `CPEWL`, `CPWWL` (`dung.355:1377-1403`) — and not by what they are made
     /// of, so `push north wall` is its phrasing rather than an invention.
     ///
-    /// That is also why issue #151 does not bite this region. The literal noun
-    /// in a direction row is decorative — `Command.directObject` stays nil — but
-    /// here the direction *is* the whole of the meaning, so there is nothing for
-    /// the decoration to get wrong.
+    /// The three rows are the three shapes a direction slot can carry a noun
+    /// in, and this region wants all of them.
     ///
-    /// **`push north wall` is not one of these rows, and cannot be.** A verb
-    /// pattern must *end* with its direction slot, so `["push", .direction,
+    /// Row one is the bare direction, which is the whole of the meaning here:
+    /// the mainframe pushes a *side*, so `push north` is complete.
+    ///
+    /// Row two is the **literal** noun. It is matched, never resolved, so
+    /// `Command.directObject` stays nil — which costs nothing when the direction
+    /// already says everything, and is why issue #151 never bit this region. It
+    /// stays because it is the most specific row, so `push wall north` still
+    /// takes it rather than asking which of the six walls named `wall` was
+    /// meant.
+    ///
+    /// Row three is the **object slot** #151 added. It buys the spellings the
+    /// other two cannot reach — `push sandstone wall north`, `push marble wall
+    /// west` — which used to die as "You can't see any such thing", because
+    /// `west` is not one of the marble wall's nouns.
+    ///
+    /// **`push north wall` is still not one of these rows, and cannot be.** A
+    /// verb pattern must *end* with its direction slot, so `["push", .direction,
     /// "wall"]` is a compile-time error from the macro. The source's own
     /// phrasing is bought back the other way instead: the four compass walls are
     /// real items, so `push north wall` resolves to the core `.push` intent with
-    /// `northWall` as its object, and that item's rule performs the shove. Both
-    /// spellings end up in ``DungeonRoyalPuzzle/shove(_:)``.
+    /// `northWall` as its object, and that item's rule performs the shove. Every
+    /// spelling ends up in ``DungeonRoyalPuzzle/shove(_:)``.
     ///
     /// The Swift name cannot be `push`: `Intent.push` is already a core
     /// constant.
     #verb(
         "pushWall",
         ["push", .direction],
-        ["push", "wall", .direction])
+        ["push", "wall", .direction],
+        ["push", .directObject, .direction])
 }
 
 /// What stands in one square of the puzzle floor.
@@ -429,8 +443,10 @@ struct DungeonRoyalPuzzle: GameContent {
     let eastWall = compassWall(.east)
     let westWall = compassWall(.west)
 
-    /// The two materials, so that the diagram's own legend answers. Neither is
-    /// pushable by name — the source pushes a *side*, not a substance.
+    /// The two materials, so that the diagram's own legend answers. Neither
+    /// names a side, so neither can be pushed on its own — `push marble wall`
+    /// gets the syntax back. Given a direction, though, the direction is the
+    /// whole of the instruction, and `push marble wall north` shoves north.
     let marbleWall = Item {
         name("marble wall")
         synonyms("marble")
@@ -667,6 +683,13 @@ extension DungeonRoyalPuzzle {
     @RuleBuilder fileprivate var pushRules: Rules {
         puzzle.before(.pushWall) {
             guard let direction = command.direction else { try refuse(Prose.puzzlePushWhichWay) }
+            // The object-slot row binds whatever noun was typed, but the source
+            // pushes a *side*, so the direction stays the whole of the
+            // instruction and the noun only has to be a wall. Anything else
+            // named with a direction gets the syntax rather than a shove.
+            if let named = command.directObject, !pushableWalls.contains(named) {
+                try refuse(Prose.puzzlePushOnlyWalls)
+            }
             try shove(direction)
         }
 
@@ -689,7 +712,7 @@ extension DungeonRoyalPuzzle {
         // The materials are not a side, so there is nothing for them to push.
         // They teach the syntax instead. Stated on the walls rather than on the
         // room, so `push card` still gets the stock answer.
-        for wall in [marbleWall, sandstoneWall, ladder] {
+        for wall in materialWalls + [ladder] {
             wall.before(.push) { try refuse(Prose.puzzlePushNeedsADirection) }
         }
     }
@@ -775,6 +798,18 @@ extension DungeonRoyalPuzzle {
     /// `before(.push)` rules and the grid agree by construction.
     fileprivate var wallsBySide: [(Item, Direction)] {
         [(northWall, .north), (southWall, .south), (eastWall, .east), (westWall, .west)]
+    }
+
+    /// The two substances. They name no side of their own, so they teach the
+    /// syntax on a bare `push` and lean on the direction the player typed when
+    /// there is one.
+    fileprivate var materialWalls: [Item] { [marbleWall, sandstoneWall] }
+
+    /// Every noun `push <something> <direction>` will accept. Derived from the
+    /// two rosters the rules already use, so a wall added to the region cannot
+    /// be pushable by one spelling and not the other.
+    fileprivate var pushableWalls: [Item] {
+        wallsBySide.map(\.0) + materialWalls
     }
 
     /// One shove, from either spelling of the verb.
