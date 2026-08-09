@@ -137,9 +137,18 @@ public struct SyntaxRule: Sendable {
         if objectSlots.first == .indirectObject {
             problems.append("\(pattern) puts the <second object> slot before <object>.")
         }
+        // A direction slot takes exactly one token and ends its pattern, so an
+        // <object> slot sitting *immediately* before one splits at a fixed
+        // place: the noun phrase is everything up to the last token. That is
+        // the only object-and-direction shape the parser can place, and it is
+        // how a verb takes a noun and a direction at once. Issue #151.
+        let objectSlotClosedByDirection =
+            elements.last == .direction && elements.dropLast().last == .directObject
         if elements.contains(.direction) {
-            if !objectSlots.isEmpty {
-                problems.append("\(pattern) combines a direction slot with an object slot.")
+            if !objectSlots.isEmpty, !objectSlotClosedByDirection {
+                problems.append(
+                    "\(pattern) may put an <object> slot beside a direction slot "
+                        + "only immediately before it.")
             }
             if elements.last != .direction {
                 problems.append("\(pattern) must end with its direction slot.")
@@ -168,6 +177,9 @@ public struct SyntaxRule: Sendable {
         for (index, element) in elements.enumerated()
         where element == .directObject || element == .indirectObject {
             guard index < elements.count - 1 else { continue }
+            // The trailing direction slot closes an <object> slot by itself —
+            // see above. Everything else needs a literal word to split on.
+            if objectSlotClosedByDirection, index == elements.count - 2 { continue }
             guard case .word = elements[index + 1] else {
                 problems.append(
                     "\(pattern) needs a literal word between an object slot "

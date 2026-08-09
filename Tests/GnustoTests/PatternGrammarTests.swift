@@ -15,6 +15,7 @@ struct PatternGrammarTests {
 
     static let scope = Scope(visibleItems: [
         EntityID("lamp"), EntityID("rug"), EntityID("gnome"), EntityID("crate"),
+        EntityID("ironCrate"),
     ])
 
     @Test func twoObjectsAroundAPreposition() throws {
@@ -138,6 +139,142 @@ struct PatternGrammarTests {
         let examined = try parser.parse("examine \(noun)", scope: Self.scope).get()
         #expect(examined.directObject == EntityID("crate"))
         #expect(parser.parse(input, scope: Self.scope) == .failure(.notInScope))
+    }
+
+    // MARK: - A noun and a direction
+
+    /// The shape #151 bought: `.directObject` immediately before a trailing
+    /// direction slot. The direction takes exactly one token and ends the
+    /// pattern, so the noun phrase is everything before the last token — and it
+    /// resolves like any other, which is the whole difference from the literal
+    /// row above.
+    @Test func anObjectSlotMaySitBeforeATrailingDirection() throws {
+        let parser = try Self.makeParser()
+        let parsed = try parser.parse("shift wooden crate north", scope: Self.scope).get()
+        #expect(parsed.intent == Intent("shift"))
+        #expect(parsed.directObject == EntityID("crate"))
+        #expect(parsed.direction == .north)
+    }
+
+    /// The counterpart to `adjectivesAndSynonymsStopAtThePattern`, on the same
+    /// two words. `box` is a synonym and `wooden` an adjective, and both now
+    /// reach a rule that can tell which crate was named — where the literal row
+    /// answers "You can't see any such thing" to the identical sentence.
+    @Test(arguments: ["shift box north", "shift wooden crate north"])
+    func adjectivesAndSynonymsReachAnObjectSlotBesideADirection(_ input: String) throws {
+        let parser = try Self.makeParser()
+        let parsed = try parser.parse(input, scope: Self.scope).get()
+        #expect(parsed.directObject == EntityID("crate"))
+        #expect(parsed.direction == .north)
+    }
+
+    /// Pronouns reach it too — the phrase is handed to the same `resolve` every
+    /// other object slot uses, so `it` is whatever was last named.
+    @Test func aPronounFillsTheObjectSlotBesideADirection() throws {
+        let parser = try Self.makeParser()
+        var scope = Self.scope
+        scope.pronounIt = EntityID("crate")
+        let parsed = try parser.parse("shift it north", scope: scope).get()
+        #expect(parsed.directObject == EntityID("crate"))
+        #expect(parsed.direction == .north)
+    }
+
+    /// Disambiguation reaches it too, and the answer is spliced *ahead* of the
+    /// noun rather than appended — so the direction on the end of the line
+    /// survives the round trip.
+    @Test func anAmbiguousNounBesideADirectionAsksWhichOne() throws {
+        let parser = try Self.makeParser()
+        let result = parser.parse("shift crate north", scope: Self.scope)
+        guard case .failure(.ambiguous(let names, let prefix, let suffix)) = result else {
+            Issue.record("expected an ambiguity, got \(result)")
+            return
+        }
+        #expect(names.contains("the wooden crate"))
+        #expect(names.contains("the iron crate"))
+        #expect(prefix == ["shift"])
+        #expect(suffix == ["crate", "north"])
+    }
+
+    @Test func theAmbiguityIsAnsweredOnTheNextLine() async throws {
+        let transcript = try await play(WorkshopGame(), ["shift crate north", "iron"])
+        // The two names come out of a set, so only their presence is pinned.
+        #expect(transcript.contains("Which do you mean:"))
+        #expect(transcript.contains("the wooden crate"))
+        #expect(transcript.contains("You shove the iron crate north."))
+    }
+
+    /// A noun with the direction left off. The phrase resolves, so the row asks
+    /// for the half that is missing instead of quietly declining — and because
+    /// a direction slot ends its pattern, the answer appends. However many
+    /// words the noun took: what decides is that the line does not end in a
+    /// direction, not how much is left over.
+    @Test(arguments: [["shift", "box"], ["shift", "wooden", "crate"]])
+    func anObjectWithNoDirectionAsksWhichWay(_ tokens: [String]) throws {
+        let parser = try Self.makeParser()
+        let result = parser.parse(tokens.joined(separator: " "), scope: Self.scope)
+        #expect(
+            result
+                == .failure(
+                    .missingDirection(
+                        verb: "shift", objectName: "the wooden crate", prefix: tokens)))
+        guard case .failure(let error) = result else { return }
+        #expect(
+            error.playerMessage(GameText())
+                == "Which way do you want to shift the wooden crate?")
+    }
+
+    @Test func theDirectionQuestionIsAnsweredOnTheNextLine() async throws {
+        let transcript = try await play(WorkshopGame(), ["shift box", "north"])
+        expectInOrder(
+            transcript,
+            [
+                "Which way do you want to shift the wooden crate?",
+                "You shove the wooden crate north.",
+            ])
+    }
+
+    /// A noun that isn't here fails on the noun, exactly as it would without a
+    /// direction on the end. No "Which way?" for something that isn't there.
+    @Test func anObjectThatIsNotHereFailsOnTheObject() throws {
+        let parser = try Self.makeParser()
+        #expect(parser.parse("shift anvil north", scope: Self.scope) == .failure(.unknownWord("anvil")))
+    }
+
+    /// Unlike a bare direction row, the new shape displaces nothing: the verb
+    /// alone still asks for its object, which is what core `push <object>`
+    /// already does. Issue #151's second complaint, answered by construction.
+    @Test func theBareVerbStillAsksForItsObject() throws {
+        let parser = try Self.makeParser()
+        #expect(
+            parser.parse("shift", scope: Self.scope)
+                == .failure(.missingObject(verb: "shift", prefix: ["shift"])))
+    }
+
+    /// One token left and it *is* a direction — `shift north` — leaves the row
+    /// with no noun to bind. It declines rather than matching with a nil
+    /// object, which is what lets a bare-direction row for the same verb win
+    /// instead. `Dungeon`'s Royal Puzzle carries all three shapes on one intent
+    /// on the strength of this.
+    @Test func aBareDirectionDoesNotSatisfyTheObjectSlot() throws {
+        let parser = try Self.makeParser()
+        #expect(parser.parse("shift north", scope: Self.scope) == .failure(.unmatchedSyntax))
+    }
+
+    /// An order carries the question back to the person it was aimed at, the
+    /// same round trip the other three question cases get.
+    @Test func theDirectionQuestionSurvivesAnOrder() throws {
+        let parser = try Self.makeParser()
+        let scope = Scope(
+            visibleItems: Self.scope.visibleItems,
+            visibleActors: [EntityID("gnome")],
+            orderTakers: [EntityID("gnome"): Self.scope.visibleItems])
+        let result = parser.parse("gnome, shift box", scope: scope)
+        #expect(
+            result
+                == .failure(
+                    .missingDirection(
+                        verb: "shift", objectName: "the wooden crate",
+                        prefix: ["gnome", ",", "shift", "box"])))
     }
 
     /// A custom row may share a **verb word** with a core intent as long as it

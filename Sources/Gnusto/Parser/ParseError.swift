@@ -17,6 +17,10 @@ enum ParseError: Error, Equatable {
     /// Carries the object when the row had one, so the question can read
     /// "What do you want to ask the butler about?"
     case missingTopic(verb: String, objectName: String?, preposition: String, prefix: [String])
+    /// A row of the shape `<verb> <object> <direction>` whose noun resolved and
+    /// whose direction was left off: "push the sandstone wall". The direction
+    /// slot ends its pattern, so the answer appends like any other.
+    case missingDirection(verb: String, objectName: String, prefix: [String])
     case ambiguous(names: [String], prefix: [String], suffix: [String])
     /// "all"/"them" in the indirect slot — only the direct slot is multiple.
     case multipleNotAllowed
@@ -43,6 +47,8 @@ enum ParseError: Error, Equatable {
             text.missingIndirect(verb, objectName, preposition)
         case .missingTopic(let verb, let objectName, let preposition, _):
             text.missingTopic(verb, objectName, preposition)
+        case .missingDirection(let verb, let objectName, _):
+            text.missingDirection(verb, objectName)
         case .ambiguous(let names, _, _):
             text.ambiguous(names)
         case .multipleNotAllowed:
@@ -62,6 +68,8 @@ enum ParseError: Error, Equatable {
         case .missingIndirect(_, _, _, let prefix):
             (prefix, [])
         case .missingTopic(_, _, _, let prefix):
+            (prefix, [])
+        case .missingDirection(_, _, let prefix):
             (prefix, [])
         case .ambiguous(_, let prefix, let suffix):
             (prefix, suffix)
@@ -93,6 +101,8 @@ enum ParseError: Error, Equatable {
             return .missingTopic(
                 verb: verb, objectName: objectName, preposition: preposition,
                 prefix: anchor + prefix)
+        case .missingDirection(let verb, let objectName, let prefix):
+            return .missingDirection(verb: verb, objectName: objectName, prefix: anchor + prefix)
         case .ambiguous(let names, let prefix, let suffix):
             return .ambiguous(names: names, prefix: anchor + prefix, suffix: suffix)
         default:

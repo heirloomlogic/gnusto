@@ -4,15 +4,21 @@ import Gnusto
 /// couldn't express — two objects around a preposition, a particle on either
 /// side of the object, and multi-word verb literals.
 ///
-/// It also carries the **direction slot**, whose rules are peculiar enough to
-/// have their own issue (#151). A direction slot may not share a pattern with
-/// an object slot — `BadPatternsGame` pins that refusal — but it may share one
-/// with a literal word, which is the only way to write mainframe Zork's
-/// `PUSH THE SANDSTONE WALL NORTH`. What the workaround does not buy is the
-/// binding: a literal is matched, never resolved, so the rule never learns
-/// which noun the player typed. The `push` rows below are here for exactly
-/// that, and the verb word is deliberately a **core** one, so what the
-/// direction row displaces is visible.
+/// It also carries the **direction slot**, in both of the shapes that can hold
+/// a noun beside one.
+///
+/// The `push` rows are the **literal** shape: a word standing where the noun
+/// goes. It matches text and never resolves it, so `Command.directObject` stays
+/// nil and the rule never learns which thing was named — adjectives, synonyms
+/// and disambiguation all stop at the pattern. The verb word is deliberately a
+/// **core** one, so what a bare direction row displaces is visible too.
+///
+/// The `shift` row is the **object-slot** shape #151 added: `.directObject`
+/// immediately before a trailing `.direction`. The direction slot takes exactly
+/// one token and ends the pattern, so the noun phrase is everything before the
+/// last token and resolves like any other. That is what makes
+/// `shift iron crate north` — an adjective the pattern never spelled out —
+/// reach the rule with the crate bound.
 struct WorkshopGame: Game {
     let title = "Workshop"
     let intro = "A cluttered workshop."
@@ -53,12 +59,22 @@ struct WorkshopGame: Game {
         description("A crate of rough boards, heavy enough to need a shoulder.")
     }
 
+    /// A second crate, so a bare `crate` is ambiguous. The object-slot shape
+    /// asks which one even with a direction on the end of the line; the literal
+    /// shape cannot, because it never resolves anything to be ambiguous about.
+    let ironCrate = Item {
+        name("iron crate")
+        adjectives("iron")
+        description("A crate banded in iron, and heavier for it.")
+    }
+
     var map: WorldMap {
         player.starts(in: workshop)
         lamp.starts(in: workshop)
         rug.starts(in: workshop)
         gnome.starts(in: workshop)
         crate.starts(in: workshop)
+        ironCrate.starts(in: workshop)
     }
 
     var verbs: [SyntaxRule] {
@@ -74,6 +90,10 @@ struct WorkshopGame: Game {
         // overrides nothing, silently.
         SyntaxRule("push", .direction, intent: Intent("shove"))
         SyntaxRule("push", "crate", .direction, intent: Intent("shove"))
+
+        // The object-slot shape, on its own verb word so the rows above keep
+        // pinning what the literal shape does and does not buy.
+        SyntaxRule("shift", .directObject, .direction, intent: Intent("shift"))
     }
 
     var rules: Rules {
@@ -94,6 +114,15 @@ struct WorkshopGame: Game {
                 try reply("Push it which way? North, south, east or west.")
             }
             try reply("You put your shoulder to whatever lies \(direction.rawValue).")
+        }
+
+        // The object-slot shape's counterpart: the rule can name what it was
+        // handed, which is the whole of what #151 bought.
+        world.before(Intent("shift")) {
+            guard let target = command.directObject, let direction = command.direction else {
+                return
+            }
+            try reply("You shove \(target.definiteName) \(direction.rawValue).")
         }
     }
 }
@@ -118,7 +147,13 @@ struct BadPatternsGame: Game {
         SyntaxRule(.directObject, "please", intent: Intent("bad1"))
         // Two object slots with nothing between them.
         SyntaxRule("give", .directObject, .indirectObject, intent: Intent("bad2"))
-        // A direction combined with an object slot.
-        SyntaxRule("throw", .directObject, .direction, intent: Intent("bad3"))
+        // A direction beside a *second* object slot. `<object> <direction>` is
+        // the one object-and-direction shape that is legal, because a direction
+        // slot takes one token and ends the pattern, so the split is fixed.
+        // Nothing widens that to the indirect slot.
+        SyntaxRule("throw", .directObject, "at", .indirectObject, .direction, intent: Intent("bad3"))
+        // The legal shape's object slot has to be the one *adjacent* to the
+        // direction, not merely somewhere ahead of it.
+        SyntaxRule("hurl", .directObject, "at", .direction, intent: Intent("bad4"))
     }
 }

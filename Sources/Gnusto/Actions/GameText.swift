@@ -511,6 +511,12 @@ public struct GameText: Sendable {
         return "What do you want to \($0)\(object)\(about)?"
     }
 
+    /// A verb that takes a noun and a direction, given only the noun —
+    /// answerable on the next line, because the direction ends the pattern.
+    public var missingDirection: @Sendable (_ verb: String, _ objectName: String) -> String = {
+        "Which way do you want to \($0) \($1)?"
+    }
+
     /// A noun phrase matching several things — answerable on the next line.
     public var ambiguous: @Sendable (_ names: [String]) -> String = {
         "Which do you mean: \($0.joined(separator: " or "))?"

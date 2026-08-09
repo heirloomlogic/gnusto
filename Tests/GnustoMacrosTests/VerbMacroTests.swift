@@ -244,4 +244,40 @@ final class VerbMacroTests: XCTestCase {
             message: "verb pattern \"push <direction> hard\" must end with its "
                 + "direction slot.")
     }
+
+    /// The one object-and-direction shape that is legal: the direction slot
+    /// takes a single token and ends the pattern, so `<object> <direction>`
+    /// splits at a fixed place. Issue #151.
+    func testAcceptsAnObjectSlotBeforeATrailingDirection() {
+        assertMacroExpansion(
+            inIntentExtension(#"#verb("shift", ["shift", .directObject, .direction])"#),
+            expandedSource: inIntentExtension(
+                #"""
+                public static let shift = Intent(
+                    "shift",
+                    syntax: [
+                        SyntaxRule("shift", .directObject, .direction, intent: Intent("shift"))
+                    ]
+                )
+                """#),
+            macros: macros)
+    }
+
+    func testRejectsASecondObjectSlotBesideADirection() {
+        expectDiagnostic(
+            source: inIntentExtension(
+                #"#verb("lob", ["lob", .directObject, "at", .indirectObject, .direction])"#),
+            message: "verb pattern \"lob <object> at <second object> <direction>\" may put "
+                + "an <object> slot beside a direction slot only immediately before it.")
+    }
+
+    /// Adjacency is the rule, not mere precedence: a literal word between the
+    /// object and the direction puts the split back where the parser cannot
+    /// place it.
+    func testRejectsAnObjectSlotSeparatedFromTheDirection() {
+        expectDiagnostic(
+            source: inIntentExtension(#"#verb("hurl", ["hurl", .directObject, "at", .direction])"#),
+            message: "verb pattern \"hurl <object> at <direction>\" may put "
+                + "an <object> slot beside a direction slot only immediately before it.")
+    }
 }
