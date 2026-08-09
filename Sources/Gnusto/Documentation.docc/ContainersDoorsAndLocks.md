@@ -135,7 +135,7 @@ Containment is room-granular. A thing lying in one square of a floor the player 
 
 ```swift
 card.reach(otherwise: "The card is squares away from you, across the sand.") {
-    grid.playerSquare == PuzzleGrid.cardSquare
+    grid.playerSquare == grid.cardSquare
 }
 ```
 
