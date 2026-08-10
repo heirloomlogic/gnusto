@@ -141,10 +141,20 @@ struct ScopeLab: Game {
         [spanner, mug, nut, pearl, bead, baton, clinker, barrow]
     }
 
+    /// What `locate` reports on. Deliberately not ``probes``: having a room is
+    /// not a scope question, so this list adds the three things scope has no
+    /// answer for — the flask three links up a chain that runs through a pair
+    /// of hands, the truncheon in a room the player is not standing in, and
+    /// the barrow in one they have never been to.
+    private var placed: [Item] {
+        [spanner, mug, nut, bead, baton, flask, truncheon, clinker, barrow]
+    }
+
     var verbs: [SyntaxRule] {
         SyntaxRule("probe", intent: Intent("probe"))
         SyntaxRule("reach", intent: Intent("reach"))
         SyntaxRule("owns", intent: Intent("owns"))
+        SyntaxRule("locate", intent: Intent("locate"))
         SyntaxRule("banish", intent: Intent("banish"))
     }
 
@@ -194,6 +204,23 @@ struct ScopeLab: Game {
             try reply(
                 ([baton, flask, holster, spanner, mug].map { row(warden, $0) }
                     + [row(sentry, truncheon)])
+                    .joined(separator: "\n"))
+        }
+
+        // Which room, rather than whether anybody can see or touch it. The
+        // walk goes up through hands, surfaces and containers alike, so a
+        // shut crate, a dark cellar and somebody else's holster all still
+        // answer with a room.
+        world.before(Intent("locate")) {
+            func row(_ named: String, _ room: Location?) -> String {
+                "\(named): \(room?.name ?? "nowhere")"
+            }
+            try reply(
+                (placed.map { row($0.name, $0.location) }
+                    + [
+                        row(warden.name, warden.location),
+                        row("me", player.item.location),
+                    ])
                     .joined(separator: "\n"))
         }
 

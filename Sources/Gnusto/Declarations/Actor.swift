@@ -195,12 +195,17 @@ public struct Actor: Sendable, Equatable {
     /// To leave something behind in the actor's room as they go, reach for
     /// ``replace(with:)`` rather than reading this and then calling
     /// ``vanish()`` — the placement is gone by the time `vanish()` returns.
+    ///
+    /// This is ``Item/location``, which walks up a containment chain to the
+    /// room at the top of it. ``starts(in:)`` and ``move(to:)`` are the only
+    /// placements an actor is given, so for every ordinary actor that walk is
+    /// a single step. A game that has tucked one *inside* something — the
+    /// familiar in the pocket — gets the enclosing room rather than nil, which
+    /// is deliberately not the answer `Visibility.standing` gives: an actor who
+    /// is in no room of his own reaches only his own hands, however well the
+    /// pocket carrying him knows where it is.
     public var location: Location? {
-        let (frame, id) = asItem.resolved
-        guard case .room(let roomID)? = frame.with({ $0.state.placements[id] }) else {
-            return nil
-        }
-        return frame.definition.registry.locations[roomID]
+        asItem.location
     }
 
     /// True if the actor is in the location.

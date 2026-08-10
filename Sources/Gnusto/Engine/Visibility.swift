@@ -52,6 +52,11 @@ enum Visibility {
     /// all — held, contained, or `vanish()`ed — who reaches only their own
     /// hands. The player's item is placed `.nowhere`, so they are the one
     /// entity whose room is tracked separately.
+    ///
+    /// Not `WorldState.room(of:)`, which walks the chain the whole way up and
+    /// so answers the enclosing room for a contained observer. The two part
+    /// company on exactly that case, and this is the one to ask about reach:
+    /// being carried through a room is not standing in it.
     static func standing(_ observer: EntityID, in state: WorldState) -> EntityID? {
         if observer == .player { return state.playerLocation }
         if case .room(let here)? = state.placements[observer] { return here }

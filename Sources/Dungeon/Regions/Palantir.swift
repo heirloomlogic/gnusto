@@ -113,13 +113,6 @@ struct DungeonPalantir: GameContent {
     /// the ledge, which is the safe step off it.
     var chuteRooms: [Location] { [slideOne, slideTwo, slideThree] }
 
-    /// The six rooms the source marks `RSACREDBIT` — everything in the wing
-    /// but the Tiny Room, which is the one the thief is allowed into and so the
-    /// one already in his prowl. The host's scrying search adds exactly these.
-    var sacredRooms: [Location] {
-        chuteRooms + [drearyRoom, slideLedge, sootyRoom]
-    }
-
     // MARK: - State
 
     /// Whether the welcome mat is lying under the oak door. The door's own

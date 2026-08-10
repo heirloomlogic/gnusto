@@ -53,6 +53,21 @@ box.after(.open) {
 }
 ```
 
+### Which room is it in?
+
+Those three all read *downward*, from a holder to what it holds. ``Item/location`` reads the other way: it walks up the containment chain and answers the room at the top, or `nil` while the item is offstage.
+
+```swift
+daemon("bloodhound") {
+    guard let scent = quarry.location, scent != player.location else { return }
+    say("The hound strains toward the \(scent.name).")
+}
+```
+
+The walk is what makes it worth having. A coin inside a sack on a table in the Hall answers the Hall, and so does the sack, and so does the table — where ``Item/isIn(_:)`` tests one link and would answer `false` for the coin. Something in the player's hands answers wherever the player is standing; something in an actor's hands answers wherever *they* are, which is the distinction ``Player/location`` cannot make on an item's behalf. It costs the depth of the nesting, so it is the thing to reach for rather than scanning a hand-written list of rooms for the one that ``Location/contains(_:)`` says yes to.
+
+It is not a scope question. An item locked in a closed box still answers the box's room, and so does one in the dark — for what the player can see or touch, ask ``Item/isVisible`` or ``Item/isReachable``. ``Actor/location`` is the same accessor; an actor is only ever in a room or nowhere, so for them the walk is a single step.
+
 ## Opening and closing
 
 A bare ``container`` is *always open* — its contents are reachable at all times. Add ``openable`` to give it a lid the player must work: an openable item **starts closed** unless it also declares ``startsOpen``. The parser handles `open sack` and `close sack`; a closed container hides and blocks its contents.
@@ -264,5 +279,6 @@ The **Lighthouse** example (`Sources/Lighthouse/`) puts all of this in one small
 - <doc:AnatomyOfAGame>
 - <doc:DarknessTimeAndDeath>
 - ``ItemTrait``
+- ``Item/location``
 - ``Item/lockedBy(_:)``
 - ``Location/exit(_:to:via:)``

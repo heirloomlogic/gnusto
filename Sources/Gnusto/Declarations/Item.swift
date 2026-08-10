@@ -307,6 +307,30 @@ public struct Item: Sendable, Equatable {
         location.contains(self)
     }
 
+    /// The room the item is ultimately in, or nil while it is offstage.
+    ///
+    /// The answer walks up the containment chain rather than reading one link,
+    /// so it is the room in every case: an item lying on the floor answers the
+    /// room it lies in, and a coin inside a sack on a table in the Hall answers
+    /// the Hall too. Something in the player's hands answers wherever the player
+    /// is standing, and something in an actor's hands answers wherever *they*
+    /// are — which is the distinction ``Player/location`` cannot make on an
+    /// item's behalf.
+    ///
+    /// `nil` means no room is at the top of that chain: the item has been
+    /// ``vanish()``ed, or it is shut inside a container that has, or the hands
+    /// carrying it belong to somebody who has left play.
+    ///
+    /// Note that this is not a scope or visibility question. An item locked in
+    /// a closed box still answers the box's room, and so does one in the dark.
+    /// For what the player can see or touch, ask ``isVisible`` or
+    /// ``isReachable``; for direct containment only, ask ``isIn(_:)``.
+    public var location: Location? {
+        let (frame, id) = resolved
+        guard let roomID = frame.with({ $0.state.room(of: id) }) else { return nil }
+        return frame.definition.registry.locations[roomID]
+    }
+
     /// Moves the item directly to a location, bypassing the usual actions.
     ///
     /// Moving the vehicle the player has boarded moves its passenger — the
@@ -407,10 +431,11 @@ public struct Item: Sendable, Equatable {
     /// becoming another: the boat for the punctured boat, the coal for the
     /// diamond, the gnome for the hole he left.
     ///
-    /// Prefer it over `vanish()` plus a `move`, which cannot do the same job: a
-    /// rule has no way to read an item's placement, so a hand-rolled swap has
-    /// only `player.location` to aim at and drops the replacement on the floor
-    /// when the original was sitting in a sack.
+    /// Prefer it over `vanish()` plus a `move`, which cannot do the same job.
+    /// ``location`` answers the *room* an item is in, which is all a `move(to:)`
+    /// can aim at — so a hand-rolled swap drops the replacement on the floor
+    /// when the original was sitting in a sack. The placement itself is what
+    /// carries across here, hands and containers included.
     ///
     /// `other` inherits the placement and nothing else. It does not inherit
     /// worn state, so replacing something you are wearing leaves you holding
