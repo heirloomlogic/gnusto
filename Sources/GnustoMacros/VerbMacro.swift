@@ -89,6 +89,29 @@ public struct VerbMacro: DeclarationMacro {
             case .topic: "<topic>"
             }
         }
+
+        /// `SyntaxElement.tokenWidth`, mirrored: how many tokens the element
+        /// consumes, or nil where it takes as many as the sentence gives it.
+        var tokenWidth: Int? {
+            switch self {
+            case .word, .direction: 1
+            case .directObject, .indirectObject, .topic: nil
+            }
+        }
+    }
+
+    /// `SyntaxRule.fixedSuffixWidth(after:)`, mirrored: the tokens the pattern
+    /// still requires after `index`, or nil if something behind it is
+    /// variable-width and there is nothing to count back from.
+    private static func fixedSuffixWidth(
+        of elements: [Element], after index: Int
+    ) -> Int? {
+        var total = 0
+        for element in elements[(index + 1)...] {
+            guard let width = element.tokenWidth else { return nil }
+            total += width
+        }
+        return total
     }
 
     // MARK: - Argument parsing
@@ -175,39 +198,31 @@ public struct VerbMacro: DeclarationMacro {
             elements.filter { $0 == element }.count
         }
 
-        let objectSlots = elements.filter { $0 == .directObject || $0 == .indirectObject }
         if count(of: .directObject) > 1 {
             problems.append("\(pattern) has more than one <object> slot.")
         }
         if count(of: .indirectObject) > 1 {
             problems.append("\(pattern) has more than one <second object> slot.")
         }
-        if objectSlots.first == .indirectObject {
+        if elements.first(where: { $0 == .directObject || $0 == .indirectObject })
+            == .indirectObject
+        {
             problems.append("\(pattern) puts the <second object> slot before <object>.")
         }
-        // A direction slot takes exactly one token and ends its pattern, so an
-        // <object> slot sitting *immediately* before one splits at a fixed
-        // place: the noun phrase is everything up to the last token. That is
-        // the only object-and-direction shape the parser can place, and it is
-        // how a verb takes a noun and a direction at once. Issue #151.
-        let objectSlotClosedByDirection =
-            elements.last == .direction && elements.dropLast().last == .directObject
-        if elements.contains(.direction) {
-            if !objectSlots.isEmpty, !objectSlotClosedByDirection {
-                problems.append(
-                    "\(pattern) may put an <object> slot beside a direction slot "
-                        + "only immediately before it.")
-            }
-            if elements.last != .direction {
-                problems.append("\(pattern) must end with its direction slot.")
-            }
-            if count(of: .direction) > 1 {
-                problems.append("\(pattern) has more than one direction slot.")
-            }
+        // The parser fills a single direction, so a second slot would overwrite
+        // the first and the rule would never learn there had been two. Where a
+        // direction *sits* is not this rule's business: it is one token wide,
+        // so an object slot ahead of it counts back past it like anything else.
+        if count(of: .direction) > 1 {
+            problems.append("\(pattern) has more than one direction slot.")
         }
-        // A topic swallows the rest of the line without a scope check to fall
-        // back on, so it may only end a pattern: a mid-pattern topic would
-        // mis-split on the first occurrence of whatever closed it, silently.
+        // A topic is the one variable-width slot the parser does not measure:
+        // `fit` hands it every remaining token rather than asking what the
+        // suffix behind it weighs, because a topic is never resolved and so has
+        // no scope check to fall back on when a split goes wrong. These rules
+        // hold it to the shape that spelling can place. Teaching `fit` to
+        // measure a topic the way it measures an object slot would retire the
+        // first and last of them; #215 deliberately left that alone.
         if elements.contains(.topic) {
             if elements.last != .topic {
                 problems.append("\(pattern) must end with its topic slot.")
@@ -222,18 +237,23 @@ public struct VerbMacro: DeclarationMacro {
                 problems.append("\(pattern) combines a topic slot with a direction slot.")
             }
         }
-        for (index, element) in elements.enumerated()
-        where element == .directObject || element == .indirectObject {
-            guard index < elements.count - 1 else { continue }
-            // The trailing direction slot closes an <object> slot by itself —
-            // see above. Everything else needs a literal word to split on.
-            if objectSlotClosedByDirection, index == elements.count - 2 { continue }
-            guard case .word = elements[index + 1] else {
-                problems.append(
-                    "\(pattern) needs a literal word between an object slot "
-                        + "and whatever follows it.")
-                continue
+        // Where an object slot ends is either arithmetic or a search. It is
+        // arithmetic when everything behind it has a fixed width — the phrase
+        // stops that many tokens from the end — and a search when it does not,
+        // and then a literal word has to be the thing searched for.
+        let unclosedSlot = elements.enumerated().contains { index, element in
+            guard element == .directObject || element == .indirectObject,
+                fixedSuffixWidth(of: elements, after: index) == nil
+            else {
+                return false
             }
+            if case .word = elements[index + 1] { return false }
+            return true
+        }
+        if unclosedSlot {
+            problems.append(
+                "\(pattern) needs a literal word between an object slot "
+                    + "and whatever follows it.")
         }
         return problems
     }

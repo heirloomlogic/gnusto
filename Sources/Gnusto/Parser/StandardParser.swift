@@ -293,6 +293,44 @@ struct StandardParser {
         /// An object slot waiting for the next literal word to close it.
         var openSlot: SyntaxElement?
 
+        /// A slot's phrase and where it began, recorded together — a clarifying
+        /// answer is spliced back in at that index.
+        func record(_ phrase: [String], for slot: SyntaxElement, from start: Int) {
+            if slot == .directObject {
+                directPhrase = phrase
+                directStart = start
+            } else {
+                indirectPhrase = phrase
+                indirectStart = start
+            }
+        }
+
+        /// What the row says when an object slot cannot be placed — either
+        /// nothing is left for it, or the fixed-width suffix it measures itself
+        /// against is not on the line. The arithmetic generalizes; what to
+        /// *say* does not, so each shape keeps the answer it had.
+        func shortOfTheSlot(
+            _ slot: SyntaxElement, suffix: ArraySlice<SyntaxElement>
+        ) -> FitOutcome {
+            guard let next = suffix.first else {
+                return missingSlotOutcome(
+                    slot, verbPhrase: verbPhrase, tokens: tokens, directPhrase: directPhrase,
+                    preposition: preposition, lastLiteral: lastLiteral, scope: scope,
+                    distant: distant)
+            }
+            if next == .direction, suffix.count == 1 {
+                return missingHalfOfANounAndADirection(
+                    verbPhrase: verbPhrase, tokens: tokens, cursor: cursor, scope: scope,
+                    distant: distant)
+            }
+            if case .word(let word) = next {
+                return missingTheWordThatClosesTheSlot(
+                    slot, word: word, verbPhrase: verbPhrase, tokens: tokens, cursor: cursor,
+                    scope: scope, distant: distant)
+            }
+            return .mismatch
+        }
+
         for (index, element) in rule.elements.enumerated().dropFirst(leadingWords.count) {
             switch element {
             case .word(let word):
@@ -303,35 +341,15 @@ struct StandardParser {
                         let split = tokens[cursor...].firstIndex(of: word),
                         split > cursor
                     else {
-                        // "hang cloak" — an object phrase with the preposition
-                        // missing. If the phrase resolves, ask for the rest;
-                        // the answer belongs after the never-typed preposition.
-                        if slot == .directObject, cursor < tokens.count,
-                            case .success(let id) = resolve(
-                                Array(tokens[cursor...]), in: scope,
-                                alsoConsidering: distant)
-                        {
-                            return .nearMiss(
-                                .missingIndirect(
-                                    verb: verbPhrase,
-                                    objectName: definiteName(of: id),
-                                    preposition: word,
-                                    prefix: tokens + [word]))
-                        }
-                        return .mismatch
+                        return missingTheWordThatClosesTheSlot(
+                            slot, word: word, verbPhrase: verbPhrase, tokens: tokens,
+                            cursor: cursor, scope: scope, distant: distant)
                     }
-                    let phrase = Array(tokens[cursor..<split])
-                    if slot == .directObject {
-                        directPhrase = phrase
-                        directStart = cursor
-                        // The word sealing the direct object ahead of a second
-                        // object is the command's preposition.
-                        if rule.elements.contains(.indirectObject) {
-                            preposition = word
-                        }
-                    } else {
-                        indirectPhrase = phrase
-                        indirectStart = cursor
+                    record(Array(tokens[cursor..<split]), for: slot, from: cursor)
+                    // The word sealing the direct object ahead of a second
+                    // object is the command's preposition.
+                    if slot == .directObject, rule.elements.contains(.indirectObject) {
+                        preposition = word
                     }
                     cursor = split + 1
                     openSlot = nil
@@ -345,48 +363,35 @@ struct StandardParser {
                 }
 
             case .directObject, .indirectObject:
-                if index == rule.elements.count - 1 {
-                    // A slot ending the pattern takes everything left.
-                    guard cursor < tokens.count else {
-                        return missingSlotOutcome(
-                            element, verbPhrase: verbPhrase, tokens: tokens,
-                            directPhrase: directPhrase, preposition: preposition,
-                            lastLiteral: lastLiteral, scope: scope, distant: distant)
-                    }
-                    let phrase = Array(tokens[cursor...])
-                    if element == .directObject {
-                        directPhrase = phrase
-                        directStart = cursor
-                    } else {
-                        indirectPhrase = phrase
-                        indirectStart = cursor
-                    }
-                    cursor = tokens.count
-                } else if rule.elements[index + 1] == .direction {
-                    // `push <object> <direction>`. A direction slot takes one
-                    // token and ends its pattern, so the noun phrase is
-                    // everything up to the last token — no literal needed to
-                    // split on. Validation guarantees this arrangement is the
-                    // only one that reaches here. Issue #151.
-                    guard tokens.count - cursor >= 2,
-                        vocabulary.directions[tokens[tokens.count - 1]] != nil
-                    else {
-                        return missingHalfOfANounAndADirection(
-                            verbPhrase: verbPhrase, tokens: tokens, cursor: cursor,
-                            scope: scope, distant: distant)
-                    }
-                    directPhrase = Array(tokens[cursor..<(tokens.count - 1)])
-                    directStart = cursor
-                    // The direction token is deliberately left for the
-                    // `.direction` case below: consuming it here would land on
-                    // the empty-direction branch, which succeeds with nothing
-                    // filled in.
-                    cursor = tokens.count - 1
-                } else {
+                // Where the phrase ends is arithmetic whenever the rest of the
+                // pattern has a fixed width: it stops that many tokens from the
+                // end of the line. Width 0 is the slot that ends the pattern
+                // and takes everything left; width 1 is the trailing direction
+                // `push <object> <direction>` needs; a particle or a run of
+                // them is any other number. Only a variable-width slot behind
+                // this one leaves nothing to count back from, and then a
+                // literal word has to close it. Issue #215.
+                guard let suffixWidth = rule.fixedSuffixWidth(after: index) else {
                     // Mid-pattern: the next literal word closes it. (Bootstrap
                     // validation guarantees a literal follows.)
                     openSlot = element
+                    continue
                 }
+                let suffix = rule.elements[(index + 1)...]
+                let split = tokens.count - suffixWidth
+                // Measuring against a suffix means checking the suffix is
+                // really there. The cases below would make the same
+                // comparisons walking on, but by then the split has happened
+                // and the row can only decline — where a row that finds out
+                // now still knows which half the player left off.
+                guard split > cursor, fixedSuffix(suffix, standsAt: split, in: tokens) else {
+                    return shortOfTheSlot(element, suffix: suffix)
+                }
+                record(Array(tokens[cursor..<split]), for: element, from: cursor)
+                // The suffix is deliberately left to the cases below: consuming
+                // a direction here would land on the empty-direction branch,
+                // which succeeds with nothing filled in.
+                cursor = split
 
             case .direction:
                 guard cursor < tokens.count else {
@@ -463,6 +468,60 @@ struct StandardParser {
                 rawInput: rawInput))
     }
 
+    /// Whether a fixed-width run of pattern elements is on the line at `start`
+    /// — a literal where the literal goes, a direction word where the direction
+    /// goes. The same comparisons the element cases make as the loop walks on,
+    /// made early, so that an object slot measuring itself against a suffix
+    /// knows the suffix is there before it splits.
+    ///
+    /// - Parameters:
+    ///   - suffix: the elements behind an object slot. Every one of them has a
+    ///     fixed ``SyntaxElement/tokenWidth``; a variable one answers false,
+    ///     since nothing about it can be checked in advance.
+    ///   - start: where the suffix would begin.
+    ///   - tokens: the line as typed.
+    /// - Returns: whether the line really says what the suffix requires.
+    private func fixedSuffix(
+        _ suffix: ArraySlice<SyntaxElement>, standsAt start: Int, in tokens: [String]
+    ) -> Bool {
+        for (offset, element) in suffix.enumerated() {
+            let position = start + offset
+            guard position < tokens.count else { return false }
+            switch element {
+            case .word(let word):
+                guard tokens[position] == word else { return false }
+            case .direction:
+                guard vocabulary.directions[tokens[position]] != nil else { return false }
+            case .directObject, .indirectObject, .topic:
+                return false
+            }
+        }
+        return true
+    }
+
+    /// What a row does when the literal word that marks the end of an object
+    /// slot is not on the line — `hang cloak`, or `wind lamp` where the row is
+    /// `wind <object> up`. If the phrase names something here, ask for the
+    /// rest; the answer belongs after the word the player never typed.
+    /// Anything else declines and lets the next rule talk.
+    private func missingTheWordThatClosesTheSlot(
+        _ slot: SyntaxElement, word: String, verbPhrase: String, tokens: [String],
+        cursor: Int, scope: Scope, distant: Set<EntityID>
+    ) -> FitOutcome {
+        guard slot == .directObject, cursor < tokens.count,
+            case .success(let id) = resolve(
+                Array(tokens[cursor...]), in: scope, alsoConsidering: distant)
+        else {
+            return .mismatch
+        }
+        return .nearMiss(
+            .missingIndirect(
+                verb: verbPhrase,
+                objectName: definiteName(of: id),
+                preposition: word,
+                prefix: tokens + [word]))
+    }
+
     /// What a `<verb> <object> <direction>` row does when the line does not end
     /// in a direction, so the two slots cannot both be filled. Which half the
     /// player left off decides the answer:
@@ -473,9 +532,13 @@ struct StandardParser {
     ///   a bare `["push", .direction]` row for the same verb still wins. That
     ///   is what lets the two shapes share an intent.
     /// - a phrase that names something here (`push the sandstone wall`): ask
-    ///   which way, and the answer appends, because a direction slot ends its
-    ///   pattern.
+    ///   which way, and the answer appends, because the direction is the last
+    ///   thing this pattern wants.
     /// - anything else: decline, and let the next rule or the scope error talk.
+    ///
+    /// Only reached where the direction genuinely ends the pattern. A row that
+    /// puts something behind it has more missing than one question can name, so
+    /// `fit`'s `shortOfTheSlot` declines that shape instead.
     private func missingHalfOfANounAndADirection(
         verbPhrase: String, tokens: [String], cursor: Int,
         scope: Scope, distant: Set<EntityID>

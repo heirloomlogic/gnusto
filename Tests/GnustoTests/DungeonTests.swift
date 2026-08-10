@@ -3849,8 +3849,8 @@ struct DungeonTests {
     /// Every spelling of the push reaches the same code. Three of them are rows
     /// on `.pushWall` — the bare direction, the literal noun, and the object
     /// slot #151 added — and `push north wall` is the core `push <object>`,
-    /// bought back through the compass-wall items because a verb pattern must
-    /// end with its direction slot.
+    /// bought back through the compass-wall items rather than declared as a
+    /// fourth row.
     @Test func aWallIsPushedByDirectionInEverySpelling() async throws {
         let transcript = try await play(
             Dungeon(),
