@@ -715,9 +715,11 @@ struct DungeonAboveGround: GameContent {
         // milestone 4: the keys lie in the maze and the room below it belongs
         // to another bundle.
 
-        // `climb tree` reaches the same perch `up` does.
+        // `climb tree` reaches the same perch `up` does, and `enter(_:)` is what
+        // makes that true of the arrival as well as the destination: the exit
+        // describes the perch as an entry, so the rule has to too.
         greatTree.before(.climb) {
-            arrive(at: upATree)
+            try enter(upATree)
             try reply("")
         }
 

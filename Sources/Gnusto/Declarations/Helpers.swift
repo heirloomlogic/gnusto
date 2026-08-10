@@ -134,9 +134,13 @@ public func describeSurroundings(withRoomName: Bool = true) {
 /// daemon.
 ///
 /// Assigning ``Player/location`` is what this does, so — as with any move that
-/// is not a `go` — the destination's `onEnter` rules **do not run**. A rule that
-/// teleports into a room which kills, scores or announces on arrival has to say
-/// so itself.
+/// is not a `go` — the destination's `onEnter` rules **do not run**, and a
+/// boarded vehicle stays where it was. A rule that teleports into a room which
+/// kills, scores or announces on arrival has to say so itself.
+///
+/// That is a choice rather than a limitation: ``enter(_:)`` is the move that
+/// *does* run them. Reach for this one when you mean a teleport with no side
+/// effects, and for that one when you mean the player walked in.
 ///
 /// Pass `withRoomName: false` when the player has moved *within* one room
 /// rather than between two: see ``describeSurroundings(withRoomName:)``, whose
@@ -150,6 +154,50 @@ public func arrive(at room: Location, withRoomName: Bool = true) {
     // free binding, so a free function spells it out. Same value, same setter.
     Player().location = room
     describeSurroundings(withRoomName: withRoomName)
+}
+
+/// Walks the player into `room` — everything a `go` through an exit does once
+/// the exit itself has passed:
+///
+/// ```swift
+/// stairs.before(.climb) {
+///     say("You haul yourself up.")
+///     try enter(belfry)
+///     try reply("")
+/// }
+/// ```
+///
+/// Three things separate it from ``arrive(at:withRoomName:)``:
+///
+/// - the destination's `onEnter` rules **run**, before the room is described,
+/// - a boarded vehicle comes along, and its cargo with it,
+/// - the room is described as an **entry** rather than as a LOOK, so a room
+///   already visited is described briefly. A room whose description *is* its
+///   state wants `alwaysDescribed`, exactly as it does for a walked arrival.
+///
+/// Like `arrive(at:)` it does **not** end the turn, so it is as legal in an
+/// `after` rule or a daemon as in a `before` one, and the caller says how the
+/// turn finishes.
+///
+/// It `throws` because the rules it runs may: an `onEnter` that ``die(_:)``s or
+/// ``refuse(_:)``s ends the turn from inside the move, and the room is then
+/// never described. The move itself has already committed by then — the same
+/// order a real `go` uses — so a refusing `onEnter` leaves the player standing
+/// in the room that refused them.
+///
+/// One sharp edge, since the rules are yours: an `onEnter` rule that calls
+/// `enter(_:)` back into its own room recurses until the stack gives out. Move
+/// the player *out* of a room from its rules, never into it.
+///
+/// - Parameter room: where the player walks in.
+/// - Throws: whatever the destination's `onEnter` rules throw — a `die`, a
+///   `refuse` or a `reply` ends the turn from inside the move.
+public func enter(_ room: Location) throws {
+    // `resolved` binds the frame and the id together, because resolving an id
+    // takes the frame lock and so can't happen inside one of `enter`'s own
+    // mutations.
+    let (frame, id) = room.resolved
+    try DefaultActions.enter(id, frame: frame)
 }
 
 /// Runs the stage-4 default action (a game/plugin override if one is

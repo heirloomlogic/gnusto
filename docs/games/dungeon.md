@@ -213,12 +213,15 @@ Two consequences worth stating.
 - **A room value is an *arrival* award, and arriving is not the only way to be
   somewhere.** `scoring.visit` hangs off `onEnter`, and `onEnter` is dispatched
   from exactly one place — the engine's `enter()`. A player carried into a room by
-  a vehicle never passes through it, and neither does one moved by a rule. M5's
+  a vehicle never passes through it, and neither did one moved by a rule. M5's
   Top of Well is the first room in the game where the *usual* way in is a vehicle:
   you ride the bucket up the well. Its ten points are therefore paid from an
   `afterEachTurn` rule guarded by a `Bool`, the way `LIGHT-SHAFT` already is. The
   rule of thumb: if a room can be reached by anything but walking, its value is an
-  each-turn award and not a visit.
+  each-turn award and not a visit. (Half of that has since changed — a *rule* can
+  now walk the player in with `enter(_:)`, and the endgame's two awards were
+  converted back to `scoring.visit` when it could. A vehicle still cannot, so the
+  Top of Well's `Bool` stands. See "What this left, and how it was settled".)
 - **`LIGHT-SHAFT` is documented before it is declared.** It is an `awardOnce`
   register worth 10, not a room `VALUE` (as a room value it would pay out to
   anyone who arrived in the Lower Shaft in the dark, which is the opposite of the
@@ -556,22 +559,58 @@ Two things it deliberately does not do, both documented on the symbol:
 `BankOfZorkGame` in `Tests/GnustoTests/Support/NonEuclideanGames.swift` is the
 fixture, under the atlas's own room names, carrying both routes side by side.
 
-**What this leaves.** Every teleport site in the repo hand-rolls the move, and
-still loses the destination's `onEnter` rules doing it. That is two changes, not
-one, and only the first of them has landed.
+**What this left, and how it was settled.** Every teleport site in the repo
+hand-rolled the move, and lost the destination's `onEnter` rules doing it. That
+was two changes rather than one, and they landed separately.
 
-The **spelling** is extracted: ``arrive(at:withRoomName:)`` is the
+The **spelling** came first: ``arrive(at:withRoomName:)`` is the
 `player.location =` / `describeSurroundings()` pair written once, and the
 nineteen sites that had it longhand — across `Sources/Zork1/`,
 `Sources/Dungeon/` and `Sources/Fulminate/` — now call it, as do the DocC
-articles that teach the idiom. It changes no behaviour by construction: it is
+articles that teach the idiom. It changed no behaviour by construction: it is
 the same two lines, so it fires no `onEnter` and carries no vehicle either, and
 it says so on the symbol.
 
-The **semantics** are not. Extracting `enter()` as an author-facing move — one
-that runs the destination's `onEnter` rules and carries a boarded vehicle, the
-way a real `go` does — is the larger half, it changes behaviour in two shipped
-games, and it is filed as #201.
+The **semantics** followed as #201, and the answer was a *second* verb rather
+than a change to the first. ``enter(_:)`` walks the player in — it runs the
+destination's `onEnter` rules, carries a boarded vehicle and its cargo, and
+describes the room as an entry — and `arrive(at:)` stays exactly what it was, the
+deliberate teleport with no side effects. Two moves with the distinction
+documented beat one that silently changed what twenty call sites did, and it is
+what let Zork 1's frozen prose stay untouched: all fourteen of its and
+Fulminate's sites are still `arrive(at:)`.
+
+The endgame then stopped standing in for the engine. Both workarounds this
+document used to describe are gone:
+
+- `enterTheHallway(at:)` (`Regions/Endgame+Rules.swift`) no longer re-checks the
+  Guardians' rooms in front of the move. It calls `enter(_:)`, and the death comes
+  from the `onEnter` rule that already declared it — one statement of "these rooms
+  kill", not two.
+- The Inside Mirror's fifteen and the Dungeon Entrance's fifteen are ordinary
+  `scoring.visit` awards now, and the two `Bool`s that gated them
+  (`insideMirrorPaid`, `dungeonEntrancePaid`) are deleted. Every route into either
+  room — the mirror, the box's pine end, the walk north out of the hallway — goes
+  through `onEnter`, so one rule covers all of them.
+
+Two of the six endgame room values still pay themselves, and both are choices
+rather than leftovers. The **Top of Stairs** is banked by
+`crossIntoTheEndgame()`, because the crypt's transition is the game putting you
+somewhere rather than you walking there — `arrive(at:)` is the honest verb for it
+and nothing at the top of the stairs answers an arrival. The **Treasury** stays an
+`afterEachTurn` so the room describes itself before the game ends on the last
+paragraph.
+
+The main dungeon's other two guards, `lightShaftPaid` and `topOfWellPaid`, are
+untouched and are not the same thing: they exist to keep a per-turn rule out of
+`awardOnce`'s JSON-boxed register set, and the Lower Shaft's award additionally
+waits on `player.location.isLit`, which is not a question an `onEnter` rule can
+answer.
+
+So the general rule this document used to state under "The ceiling ratchets" — *a
+room reached by anything but walking never passes through `onEnter`* — now has a
+second clause: unless the rule that moved the player used `enter(_:)`, which is
+what walking means.
 
 ### The balloon question, answered
 

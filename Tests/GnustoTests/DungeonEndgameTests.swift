@@ -342,7 +342,12 @@ struct DungeonEndgameTests {
         // The box is standing in `MRD` now, end-on, so a diagonal out of the
         // Dungeon Entrance squeezes past it — into the narrow room beside it,
         // which is inside the Guardians' reach.
-        #expect(transcript.contains("*** You have died ***"))
+        //
+        // The statue's own line ahead of the banner: the death is raised by the
+        // room's `onEnter` rule, reached through `enter(_:)`, rather than by a
+        // check standing in front of the move — and the transcript must not be
+        // able to tell which.
+        expectInOrder(transcript, ["the nearer statue moves", "*** You have died ***"])
         // And death past the crypt is final: no ten-point toll, no forest.
         #expect(!transcript.contains("you find yourself standing among the trees"))
     }

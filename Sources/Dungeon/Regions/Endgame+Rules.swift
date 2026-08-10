@@ -387,7 +387,7 @@ extension DungeonEndgame {
             // refusing. Off either end of the run — south of the first room,
             // north of the last — there *are* declared exits, and they own it.
             guard inTheHallway else { return }
-            try arriveInTheHallway(at: channelRooms[target])
+            try enterTheHallway(at: channelRooms[target])
         }
 
         // Mirror #1 standing open is a doorway rather than a wall, whichever
@@ -412,7 +412,7 @@ extension DungeonEndgame {
         let east = command.direction == .northeast || command.direction == .southeast
         let flanks = flankingRooms[target]
         say(Prose.boxSlipsPast)
-        try arriveInTheHallway(at: east ? flanks.east : flanks.west)
+        try enterTheHallway(at: east ? flanks.east : flanks.west)
     }
 
     /// Stepping out of a narrow room, which is only ever done toward the box.
@@ -440,19 +440,19 @@ extension DungeonEndgame {
         let state = box
         guard let side = angleOnTheBox(state) else { try refuse(Prose.boxNotBesideIt) }
         guard state.isOpenToward(side) else { try refuse(Prose.boxNoWayIn) }
-        try arriveInTheHallway(at: insideMirror)
+        try enterTheHallway(at: insideMirror)
     }
 
-    /// The engine's `arrive(at:)` with the Guardians in front of it, and the
-    /// turn ended behind it. Every walk in this wing is a rule rather than an
-    /// exit, and a rule that moves the player fires no `onEnter` — so the room
-    /// that kills on arrival has to be checked here as well as there.
+    /// The engine's `enter(_:)` with the turn ended behind it. Every walk in
+    /// this wing is a rule rather than an exit, and `enter(_:)` is the move that
+    /// runs the destination's `onEnter` rules anyway — so the Guardians' rooms
+    /// kill from the one place that declares they do, and this only has to walk.
     ///
     /// - Parameter room: where they end up.
-    /// - Throws: always — the death, or the reply that ends the turn.
-    func arriveInTheHallway(at room: Location) throws -> Never {
-        if guardedRooms.contains(where: { $0 == room }) { try die(Prose.guardiansKill) }
-        arrive(at: room)
+    /// - Throws: always — the death an `onEnter` rule raises, or the reply that
+    ///   ends the turn.
+    func enterTheHallway(at room: Location) throws -> Never {
+        try enter(room)
         try reply("")
     }
 }

@@ -76,3 +76,201 @@ struct BlinkGame: Game {
         lamp.starts(in: vault)
     }
 }
+
+/// Fixture for the `enter(_:)` turn helper — the move that walks the player in
+/// rather than putting them there. Both helpers are wired to the *same* vault so
+/// one transcript can show the difference: `step` enters it and `blink` arrives
+/// at it.
+///
+/// The rest of the rooms are each one consequence of running the destination's
+/// `onEnter` rules: a ledge whose description is its state, a pit that kills, a
+/// sill that refuses, and a cave with no light in it.
+struct StepGame: Game {
+    let title = "Step"
+    let intro = "A porch, and five ways to be somewhere else."
+
+    let porch = Location {
+        name("Porch")
+        description("Two boards and a bootscraper.")
+    }
+
+    /// The room that announces on arrival, which is the whole difference between
+    /// the two moves.
+    let vault = Location {
+        name("Vault")
+        description("Cold, and quite empty.")
+    }
+
+    /// Its description is its state, so every entry has to print it — the
+    /// property every conversion in `Sources/Dungeon/`'s endgame leans on.
+    let ledge = Location {
+        name("Ledge")
+        description("A shelf of rock, with a long way down on one side of it.")
+        alwaysDescribed
+    }
+
+    let pit = Location {
+        name("Pit")
+        description("Rather deeper than it looked.")
+    }
+
+    let sill = Location {
+        name("Sill")
+        description("A stone lip, and a draught over it.")
+    }
+
+    let cave = Location {
+        name("Cave")
+        description("Dry sand, and a smell of bats.")
+        dark
+    }
+
+    let lamp = Item { name("brass lamp") }
+
+    /// Counts the vault's `onEnter` firings, so a test can prove it runs on
+    /// *every* entry rather than only the first.
+    @Global var bells = 0
+
+    var verbs: [SyntaxRule] {
+        SyntaxRule("step", intent: Intent("step"))
+        SyntaxRule("blink", intent: Intent("blink"))
+        SyntaxRule("back", intent: Intent("back"))
+        // Two spellings of one intent, so a test can enter the ledge twice
+        // without repeating a command — `turnOutput(of:in:)` matches the first
+        // occurrence.
+        SyntaxRule("shelve", intent: Intent("shelve"))
+        SyntaxRule("perch", intent: Intent("shelve"))
+        SyntaxRule("plunge", intent: Intent("plunge"))
+        SyntaxRule("balk", intent: Intent("balk"))
+        SyntaxRule("delve", intent: Intent("delve"))
+        SyntaxRule("summon", intent: Intent("summon"))
+        SyntaxRule("tally", intent: Intent("tally"))
+    }
+
+    var timers: [TimedEvent] {
+        // `enter` from a fuse, where `reply` would be a programmer error and
+        // nothing needs to end the turn.
+        fuse("recall", after: 2) {
+            say("The floor tilts, and you are somewhere else.")
+            try enter(vault)
+        }
+    }
+
+    var rules: Rules {
+        world.before(Intent("step")) {
+            try enter(vault)
+            try reply("")
+        }
+
+        world.before(Intent("blink")) {
+            arrive(at: vault)
+            try reply("")
+        }
+
+        world.before(Intent("back")) {
+            arrive(at: porch)
+            try reply("")
+        }
+
+        world.before(Intent("shelve")) {
+            try enter(ledge)
+            try reply("")
+        }
+
+        world.before(Intent("plunge")) {
+            try enter(pit)
+            try reply("")
+        }
+
+        world.before(Intent("balk")) {
+            try enter(sill)
+            try reply("")
+        }
+
+        world.before(Intent("delve")) {
+            try enter(cave)
+            try reply("")
+        }
+
+        world.before(Intent("summon")) {
+            startFuse("recall")
+            try reply("Something takes hold of you.")
+        }
+
+        world.before(Intent("tally")) {
+            try reply("Bells: \(bells).")
+        }
+
+        vault.onEnter {
+            bells += 1
+            say("A bell rings somewhere below.")
+        }
+
+        pit.onEnter { try die("The floor was a courtesy.") }
+
+        sill.onEnter { try refuse("The draught pushes you back.") }
+    }
+
+    var map: WorldMap {
+        porch.north(vault)
+        vault.south(porch)
+        player.starts(in: porch)
+        lamp.starts(in: vault)
+    }
+}
+
+/// Fixture for the half of `enter(_:)` that `arrive(at:)` cannot do: carrying a
+/// boarded vehicle, and its cargo with it. `ferry` enters the island and `drift`
+/// arrives at it, so one transcript shows the raft coming along and being left
+/// behind.
+struct FerryGame: Game {
+    let title = "Ferry"
+    let intro = "A slip, an island, and one raft between them."
+
+    let slip = Location {
+        name("Slip")
+        description("A concrete ramp into the water.")
+    }
+
+    let island = Location {
+        name("Island")
+        description("Sand enough for two gulls.")
+    }
+
+    let raft = Item {
+        name("red raft")
+        adjectives("red")
+        enterable
+        container
+    }
+
+    let pebble = Item {
+        name("smooth pebble")
+        adjectives("smooth")
+    }
+
+    var verbs: [SyntaxRule] {
+        SyntaxRule("ferry", intent: Intent("ferry"))
+        SyntaxRule("drift", intent: Intent("drift"))
+    }
+
+    var rules: Rules {
+        world.before(Intent("ferry")) {
+            try enter(island)
+            try reply("")
+        }
+
+        world.before(Intent("drift")) {
+            arrive(at: island)
+            try reply("")
+        }
+    }
+
+    var map: WorldMap {
+        slip.north(island)
+        island.south(slip)
+        player.starts(in: slip)
+        raft.starts(in: slip)
+        pebble.starts(inside: raft)
+    }
+}

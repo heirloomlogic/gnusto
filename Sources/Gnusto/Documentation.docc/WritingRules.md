@@ -158,7 +158,30 @@ mirror.before(.touch) {
 }
 ```
 
-It does not end the turn — so it is as legal in an `after` rule or a daemon as in a `before` one — and, like any move that is not a `go`, it fires no `onEnter` on the destination. A rule that teleports into a room which kills, scores or announces on arrival has to say so itself.
+It does not end the turn — so it is as legal in an `after` rule or a daemon as in a `before` one — and it fires no `onEnter` on the destination, because it is a teleport rather than a walk.
+
+### Teleporting or walking in: `arrive(at:)` and `enter(_:)`
+
+Which is usually what you want. Sometimes it isn't, and then ``enter(_:)`` is the other move — everything a `go` through an exit does once the exit itself has passed:
+
+```swift
+stairs.before(.climb) {
+    say("You haul yourself up.")
+    try enter(belfry)
+    try reply("")
+}
+```
+
+|  | ``arrive(at:withRoomName:)`` | ``enter(_:)`` |
+|---|---|---|
+| the destination's `onEnter` rules | don't run | **run**, before the room is described |
+| a boarded vehicle | stays where it was | **comes along**, cargo and all |
+| the description | a full LOOK, every time | an **entry** — brief on a revisit |
+| ends the turn | no | no |
+
+So `enter(_:)` `throws`: an `onEnter` rule that ``die(_:)``s or ``refuse(_:)``s ends the turn from inside the move, and the room is then never described.
+
+Reach for `arrive(at:)` when the game is *putting* the player somewhere — a trapdoor, a spell, a scripted transition — and for `enter(_:)` when the fiction is that they walked. The choice is worth making rather than defaulting: a room that scores, announces or kills on arrival gets that from its `onEnter` rules, so a teleport into it has to repeat the room's own logic, and the two can drift apart.
 
 ## Live room-listing lines with `presence`
 

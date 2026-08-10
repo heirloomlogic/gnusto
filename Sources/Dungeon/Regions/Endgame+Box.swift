@@ -173,7 +173,7 @@ extension DungeonEndgame {
         guard let landing = roomOutside(state.berth, at: opening) else {
             try refuse(Prose.boxNoWayOut)
         }
-        try arriveInTheHallway(at: landing)
+        try enterTheHallway(at: landing)
     }
 
     /// The room on a given side of a berth, or `nil` for a side of the hallway
