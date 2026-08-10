@@ -63,7 +63,7 @@ struct DialRoomGame: Game {
             notch += 1
             say("The dial clicks round one notch.")
             describeSurroundings(withRoomName: false)
-            try reply("")
+            try handled()
         }
     }
 }

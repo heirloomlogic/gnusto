@@ -182,14 +182,14 @@ struct ZorkMirror: GameContent {
             swapMirrorFloors()
             say(Prose.mirrorRumble)
             arrive(at: mirrorRoomSouth)
-            try reply("")
+            try handled()
         }
         mirrorSouth.before(.touch) {
             guard !mirrorBroken else { return }
             swapMirrorFloors()
             say(Prose.mirrorRumble)
             arrive(at: mirrorRoomNorth)
-            try reply("")
+            try handled()
         }
 
         // Smashing either mirror breaks both (they are two faces of one

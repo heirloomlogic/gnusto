@@ -554,7 +554,7 @@ struct DungeonAlice: GameContent {
         bucket.move(to: room)
         say(line)
         if player.location == room { describeSurroundings() }
-        try reply("")
+        try handled()
     }
 
     // MARK: - The Tea Room
@@ -581,7 +581,7 @@ struct DungeonAlice: GameContent {
             shrunk = true
             say(Prose.eatMeShrinks)
             arrive(at: postsRoom)
-            try reply("")
+            try handled()
         }
 
         // And the one that undoes it. Only under the table, where the roof is
@@ -592,7 +592,7 @@ struct DungeonAlice: GameContent {
             shrunk = false
             say(Prose.orangeCakeGrows)
             arrive(at: teaRoom)
-            try reply("")
+            try handled()
         }
 
         // The blue one is a mistake, and the source's own adjective for it says
@@ -768,7 +768,7 @@ struct DungeonAlice: GameContent {
             steelCage.replace(with: mangledCage)
             say(Prose.robotLiftsTheCage)
             arrive(at: dingyCloset)
-            try reply("")
+            try handled()
         }
 
         cageBars.before(.take, .push, .pull, .open, .attack, .raise) {

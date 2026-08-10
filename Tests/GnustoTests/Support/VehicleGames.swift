@@ -133,7 +133,7 @@ struct HarborGame: Game {
             boat.move(to: boathouse)
             say("The current does the actual work.")
             describeSurroundings()
-            try reply("")
+            try handled()
         }
     }
 }

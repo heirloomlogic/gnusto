@@ -786,7 +786,7 @@ extension DungeonRoyalPuzzle {
             guard grid.canClimbOut else { try refuse(Prose.puzzleHeadOnTheCeiling) }
             say(Prose.puzzleClimbOut)
             try enter(anteroom)
-            try reply("")
+            try handled()
         }
     }
 }
@@ -865,7 +865,7 @@ extension DungeonRoyalPuzzle {
         // Still in the same room: the heading would claim an arrival that never
         // happened.
         describeSurroundings(withRoomName: false)
-        try reply("")
+        try handled()
     }
 
     /// The refusals for going `up`, and the line that goes with succeeding.

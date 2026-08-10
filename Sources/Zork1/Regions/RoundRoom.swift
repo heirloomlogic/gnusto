@@ -153,7 +153,7 @@ struct ZorkRoundRoom: GameContent {
             let bounces = [dampCave, roundRoom, deepCanyon]
             say(Prose.loudRoomEjects)
             arrive(at: bounces[random(0...(bounces.count - 1))])
-            try reply("")
+            try handled()
         }
 
         // On still water the acoustics are the original's read-loop: your

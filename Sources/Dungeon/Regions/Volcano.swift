@@ -862,7 +862,7 @@ extension DungeonVolcano {
             else: Prose.nothingToBurnWith)
         say(Prose.fuelCatches(fuel.name))
         startFuse("burnerBurnsOut", after: fuel[default: .weight] * 20)
-        guard !bagInflated else { try reply("") }
+        guard !bagInflated else { try handled() }
         bagInflated = true
         startFuse("balloonDrifts")
         guard !labelDropped else { try reply(Prose.bagInflates) }
@@ -897,7 +897,7 @@ extension DungeonVolcano {
         balloon.move(to: room)
         startFuse("balloonDrifts")
         describeSurroundings()
-        try reply("")
+        try handled()
     }
 
     /// One tick of `BINT`. Rise while the pan is open and alight, sink

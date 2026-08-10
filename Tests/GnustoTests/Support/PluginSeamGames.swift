@@ -33,7 +33,7 @@ struct BrawlPlugin: GamePlugin {
             player.location = destination
             say("The floor tilts and deposits you elsewhere.")
             describeSurroundings(withRoomName: withRoomName)
-            try reply("")
+            try handled()
         }
     }
 }

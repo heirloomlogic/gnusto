@@ -320,7 +320,7 @@ struct Zork1: Game, GameMain {
         temple.altar.before(.pray) {
             say(Prose.prayerAnswered)
             arrive(at: aboveGround.forestWest)
-            try reply("")
+            try handled()
         }
 
         // Striking a match. The matchbook is a ``ZorkDam`` item (the Dam Lobby),
@@ -352,7 +352,7 @@ struct Zork1: Game, GameMain {
             ]
             say(Prose.batGrabsYou)
             arrive(at: drops[random(0...(drops.count - 1))])
-            try reply("")
+            try handled()
         }
 
         // The machine that makes a diamond. Throw its switch with the screwdriver
@@ -400,7 +400,7 @@ struct Zork1: Game, GameMain {
             if !river.tanLabel.isTouched {
                 say(Prose.tanLabelInBoat)
             }
-            try reply("")
+            try handled()
         }
 
         // Patching the punctured boat. The tube of Frobozz Magic Gunk (a
@@ -443,7 +443,7 @@ struct Zork1: Game, GameMain {
             say(Prose.boatLaunches)
             describeSurroundings()
             river.armCurrent(delay)
-            try reply("")  // handled — don't fall through to the stage-4 default
+            try handled()  // handled — don't fall through to the stage-4 default
         }
 
         // Waving the sceptre wakes the rainbow. The sceptre is a ``ZorkTemple``
@@ -467,7 +467,7 @@ struct Zork1: Game, GameMain {
             if here == aboveGround.endOfRainbow {
                 say(Prose.potAppears)
             }
-            try reply("")
+            try handled()
         }
 
         // The grating over the Grating Room. The grating and its skeleton key

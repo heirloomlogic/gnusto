@@ -186,7 +186,7 @@ extension Dungeon {
             stopFuse("slideGrip")
             say(Prose.ropeReleased)
             arrive(at: house.cellar)
-            try reply("")
+            try handled()
         }
         try require(dropped.isHeld, else: Prose.nothingToLoseDownTheChute)
         let gone = GameText.sentenceCase(dropped.definiteName)

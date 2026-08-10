@@ -279,7 +279,7 @@ public struct MeleeCombat: GameContent {
             say(prose.death)
             onDefeat()
             actor.vanish()
-            try reply("")
+            try handled()
         }
     }
 
