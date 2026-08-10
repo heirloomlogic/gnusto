@@ -172,8 +172,6 @@ struct TopicSlotTests {
         } throws: { error in
             guard let bootstrapError = error as? BootstrapError else { return false }
             let text = bootstrapError.diagnostics.joined(separator: "\n")
-            // `contains`, not a count: the direction row trips the existing
-            // "must end with its direction slot" check as well as the new one.
             return text.contains("must end with its topic slot")
                 && text.contains("has more than one topic slot")
                 && text.contains("combines a topic slot with a <second object> slot")

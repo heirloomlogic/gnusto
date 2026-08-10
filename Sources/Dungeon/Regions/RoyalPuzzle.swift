@@ -25,11 +25,12 @@ extension Intent {
     /// west` — which used to die as "You can't see any such thing", because
     /// `west` is not one of the marble wall's nouns.
     ///
-    /// **`push north wall` is still not one of these rows, and cannot be.** A
-    /// verb pattern must *end* with its direction slot, so `["push", .direction,
-    /// "wall"]` is a compile-time error from the macro. The source's own
-    /// phrasing is bought back the other way instead: the four compass walls are
-    /// real items, so `push north wall` resolves to the core `.push` intent with
+    /// **`push north wall` is still not one of these rows.** #215 made
+    /// `["push", .direction, "wall"]` a legal pattern — a direction is one token
+    /// wide wherever it sits — but the source's own phrasing was already bought
+    /// back the other way, and a fourth row would only duplicate it: the four
+    /// compass walls are real items, so `push north wall` resolves to the core
+    /// `.push` intent with
     /// `northWall` as its object, and that item's rule performs the shove. Every
     /// spelling ends up in ``DungeonRoyalPuzzle/shove(_:)``.
     ///

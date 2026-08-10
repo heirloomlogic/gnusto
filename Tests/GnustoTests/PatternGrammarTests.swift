@@ -15,7 +15,7 @@ struct PatternGrammarTests {
 
     static let scope = Scope(visibleItems: [
         EntityID("lamp"), EntityID("rug"), EntityID("gnome"), EntityID("crate"),
-        EntityID("ironCrate"),
+        EntityID("ironCrate"), EntityID("onSwitch"),
     ])
 
     @Test func twoObjectsAroundAPreposition() throws {
@@ -82,7 +82,7 @@ struct PatternGrammarTests {
 
     /// Adding any `["verb", .direction]` row makes the **bare** verb parse
     /// instead of asking, because the empty-direction branch returns success
-    /// with a nil direction (`StandardParser.swift:304-311`). So a game that
+    /// with a nil direction (`StandardParser.fit`'s `.direction` case). So a game that
     /// buys `push north` gives up core `push`'s "What do you want to push?"
     /// game-wide, and its own rule has to answer in the gap. Issue #151.
     @Test func aDirectionRowMakesTheBareVerbParseInsteadOfAsking() async throws {
@@ -284,6 +284,98 @@ struct PatternGrammarTests {
     @Test func sharingACoreVerbWordButNotItsShapeIsSilent() throws {
         let (definition, _) = try Bootstrap.build(WorkshopGame())
         #expect(definition.warnings.isEmpty, "\(definition.warningReport ?? "no report")")
+    }
+
+    // MARK: - A slot's token width
+
+    /// A trailing literal is at the *end* of the line, so that is where the
+    /// noun phrase stops. Searching forward for the first `on` instead hands
+    /// the pattern the switch's own adjective and leaves a noun with no slot
+    /// to sit in, and the row misses a sentence it can place. Issue #215.
+    @Test func aTrailingLiteralSplitsFromTheEndNotTheFirstOccurrence() throws {
+        let parser = try Self.makeParser()
+        let parsed = try parser.parse("turn the on switch on", scope: Self.scope).get()
+        #expect(parsed.intent == Intent("turnOn"))
+        #expect(parsed.directObject == EntityID("onSwitch"))
+    }
+
+    @Test func theSwitchIsTurnedOnEndToEnd() async throws {
+        let transcript = try await play(WorkshopGame(), ["turn the on switch on"])
+        #expect(transcript.contains("The switch clicks over."))
+    }
+
+    /// What a trailing-literal row does with a line that stops short of the
+    /// particle, unchanged by the move to counting back: the phrase resolves,
+    /// so the row asks for the rest and the answer belongs after the word the
+    /// player never typed. Both lengths, because they take different routes —
+    /// `wind lamp` leaves the slot nothing at all, while `wind brass lamp`
+    /// leaves it a phrase and a suffix that isn't there.
+    @Test(arguments: [["wind", "lamp"], ["wind", "brass", "lamp"]])
+    func aTrailingLiteralRowStillAsksForTheParticle(_ tokens: [String]) throws {
+        let parser = try Self.makeParser()
+        #expect(
+            parser.parse(tokens.joined(separator: " "), scope: Self.scope)
+                == .failure(
+                    .missingIndirect(
+                        verb: "wind", objectName: "the brass lamp", preposition: "up",
+                        prefix: tokens + ["up"])))
+    }
+
+    /// A direction slot no longer has to end its pattern: what places the noun
+    /// is the *width* of everything behind it, and a literal word is one token
+    /// like the direction is.
+    @Test func aLiteralMayFollowTheDirectionSlot() throws {
+        let parser = try Self.makeParser()
+        let parsed = try parser.parse("wedge the wooden crate north hard", scope: Self.scope).get()
+        #expect(parsed.intent == Intent("wedge"))
+        #expect(parsed.directObject == EntityID("crate"))
+        #expect(parsed.direction == .north)
+    }
+
+    /// Nor does the object slot have to stand *immediately* before the
+    /// direction. A literal between them adds one to the width and nothing
+    /// else.
+    @Test func aLiteralMaySitBetweenTheObjectSlotAndTheDirection() throws {
+        let parser = try Self.makeParser()
+        let parsed = try parser.parse("hurl the wooden crate at north", scope: Self.scope).get()
+        #expect(parsed.intent == Intent("hurl"))
+        #expect(parsed.directObject == EntityID("crate"))
+        #expect(parsed.direction == .north)
+    }
+
+    /// And the slot a direction closes need not be the *direct* object. The
+    /// first slot is closed by its literal, the second by the width behind it.
+    @Test func aDirectionMayCloseTheSecondObjectSlot() throws {
+        let parser = try Self.makeParser()
+        let parsed = try parser.parse("lob box at gnome north", scope: Self.scope).get()
+        #expect(parsed.intent == Intent("lob"))
+        #expect(parsed.directObject == EntityID("crate"))
+        #expect(parsed.indirectObject == EntityID("gnome"))
+        #expect(parsed.direction == .north)
+    }
+
+    @Test func theWiderShapesReachTheirRules() async throws {
+        let transcript = try await play(
+            WorkshopGame(),
+            ["wedge box north hard", "hurl box at south", "lob box at gnome east"])
+        expectInOrder(
+            transcript,
+            [
+                "You wedge the wooden crate north, hard.",
+                "You hurl the wooden crate off south.",
+                "You lob the wooden crate at the garden gnome, who ducks east.",
+            ])
+    }
+
+    /// The shape width cannot place, and the reason the `openSlot` search
+    /// survives: a variable-width slot behind this one leaves nothing to count
+    /// back from, so a literal has to close it — and `put the coin in the box`
+    /// still splits on the first `in`.
+    @Test func aVariableWidthSuffixStillNeedsALiteralToCloseTheSlot() throws {
+        let parser = try Self.makeParser()
+        let parsed = try parser.parse("give the brass lamp to gnome", scope: Self.scope).get()
+        #expect(parsed.directObject == EntityID("lamp"))
+        #expect(parsed.indirectObject == EntityID("gnome"))
     }
 
     @Test func malformedPatternsAreFatalTogether() {

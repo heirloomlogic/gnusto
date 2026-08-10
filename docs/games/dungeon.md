@@ -455,13 +455,16 @@ the bootstrap raises nothing.
 Three sharp edges came out of it. None blocks M7; each is filed.
 
 1. **The wordier phrasings cost a row each, and the noun in them is
-   decorative** (#151). A direction slot may not share a pattern with an *object* slot
-   (`Sources/Gnusto/Actions/SyntaxRule.swift:140-150`), so
-   `PUSH THE SANDSTONE WALL NORTH` has no single expression. Literal words are
-   allowed, so `["push", "sandstone", "wall", .direction]` buys the sentence
-   back — but a literal is matched, not resolved, so `Command.directObject`
-   stays nil and the rule cannot tell which wall was named: naming one wall
-   moves the other. Pinned by `theNounInALiteralRowIsDecorative` and its
+   decorative** (#151). As M7 found it, a direction slot could not share a
+   pattern with an *object* slot, so `PUSH THE SANDSTONE WALL NORTH` had no
+   single expression. Literal words were allowed, so
+   `["push", "sandstone", "wall", .direction]` bought the sentence back — but a
+   literal is matched, not resolved, so `Command.directObject` stayed nil and
+   the rule could not tell which wall was named: naming one wall moved the
+   other. #151 added `["push", .directObject, .direction]`, and #215 replaced
+   the shape rule with a slot's **token width**, so an object slot may now sit
+   anywhere a fixed-width suffix can be counted back past. The literal shape and
+   what it costs are still pinned by `theNounInALiteralRowIsDecorative` and its
    neighbours in `PatternGrammarTests`, against `WorkshopGame`.
 2. **A room whose description carries state loses it on every rewind**
    (#149). UNDO,

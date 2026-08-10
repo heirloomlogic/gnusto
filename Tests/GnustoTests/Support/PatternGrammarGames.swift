@@ -41,6 +41,15 @@ struct WorkshopGame: Game {
         description("A rug of tight geometric weave.")
     }
 
+    /// A thing whose own name carries the particle that `turn <object> on`
+    /// ends with. Splitting on the *first* `on` hands the pattern the switch's
+    /// adjective and loses the noun; counting back from the end takes the
+    /// literal that is actually there. Issue #215.
+    let onSwitch = Item {
+        name("on switch")
+        description("A brass toggle, engraved ON.")
+    }
+
     let gnome = Item {
         name("garden gnome")
         adjectives("garden")
@@ -72,6 +81,7 @@ struct WorkshopGame: Game {
         player.starts(in: workshop)
         lamp.starts(in: workshop)
         rug.starts(in: workshop)
+        onSwitch.starts(in: workshop)
         gnome.starts(in: workshop)
         crate.starts(in: workshop)
         ironCrate.starts(in: workshop)
@@ -82,6 +92,11 @@ struct WorkshopGame: Game {
         SyntaxRule("turn", .directObject, "on", intent: Intent("turnOn"))
         SyntaxRule("turn", "on", .directObject, intent: Intent("turnOn"))
         SyntaxRule("look", "under", .directObject, intent: Intent("lookUnder"))
+
+        // A trailing-literal row on a verb word nothing else answers to, so
+        // what it does with a line that stops short of the particle is
+        // visible instead of being covered by a shorter core row.
+        SyntaxRule("wind", .directObject, "up", intent: Intent("wind"))
 
         // The direction slot. Row one is the shape a sliding-block room wants;
         // row two is a wordier spelling bought back. The Swift-side intent is
@@ -94,6 +109,14 @@ struct WorkshopGame: Game {
         // The object-slot shape, on its own verb word so the rows above keep
         // pinning what the literal shape does and does not buy.
         SyntaxRule("shift", .directObject, .direction, intent: Intent("shift"))
+
+        // The shapes a slot's *token width* can place that the rule about a
+        // trailing direction could not. Each one's noun phrase ends a fixed
+        // number of tokens from the end of the line — two here rather than the
+        // one `shift` counts back. Issue #215.
+        SyntaxRule("wedge", .directObject, .direction, "hard", intent: Intent("wedge"))
+        SyntaxRule("hurl", .directObject, "at", .direction, intent: Intent("hurl"))
+        SyntaxRule("lob", .directObject, "at", .indirectObject, .direction, intent: Intent("lob"))
     }
 
     var rules: Rules {
@@ -103,8 +126,14 @@ struct WorkshopGame: Game {
         lamp.before(Intent("turnOn")) {
             try reply("The lamp hums to life.")
         }
+        onSwitch.before(Intent("turnOn")) {
+            try reply("The switch clicks over.")
+        }
         rug.before(Intent("lookUnder")) {
             try reply("Only dust under there.")
+        }
+        world.before(Intent("wind")) {
+            try reply("Nothing here has a key to wind.")
         }
 
         // The bare `push` row parses with a nil direction rather than asking,
@@ -123,6 +152,33 @@ struct WorkshopGame: Game {
                 return
             }
             try reply("You shove \(target.definiteName) \(direction.rawValue).")
+        }
+
+        // The wider shapes, each naming both of the slots it was handed, so a
+        // split that lands one token off is visible in the prose.
+        world.before(Intent("wedge")) {
+            guard let target = command.directObject, let direction = command.direction else {
+                return
+            }
+            try reply("You wedge \(target.definiteName) \(direction.rawValue), hard.")
+        }
+        world.before(Intent("hurl")) {
+            guard let target = command.directObject, let direction = command.direction else {
+                return
+            }
+            try reply("You hurl \(target.definiteName) off \(direction.rawValue).")
+        }
+        world.before(Intent("lob")) {
+            guard
+                let target = command.directObject,
+                let recipient = command.indirectObject,
+                let direction = command.direction
+            else {
+                return
+            }
+            try reply(
+                "You lob \(target.definiteName) at \(recipient.definiteName), "
+                    + "who ducks \(direction.rawValue).")
         }
     }
 }
@@ -145,15 +201,12 @@ struct BadPatternsGame: Game {
     var verbs: [SyntaxRule] {
         // Starts with a slot instead of a verb word.
         SyntaxRule(.directObject, "please", intent: Intent("bad1"))
-        // Two object slots with nothing between them.
+        // Two object slots with nothing between them: the first has a suffix
+        // that is not fixed-width and no literal word to close it on.
         SyntaxRule("give", .directObject, .indirectObject, intent: Intent("bad2"))
-        // A direction beside a *second* object slot. `<object> <direction>` is
-        // the one object-and-direction shape that is legal, because a direction
-        // slot takes one token and ends the pattern, so the split is fixed.
-        // Nothing widens that to the indirect slot.
-        SyntaxRule("throw", .directObject, "at", .indirectObject, .direction, intent: Intent("bad3"))
-        // The legal shape's object slot has to be the one *adjacent* to the
-        // direction, not merely somewhere ahead of it.
-        SyntaxRule("hurl", .directObject, "at", .direction, intent: Intent("bad4"))
+        // Two direction slots. Width has nothing to say about this one — the
+        // parser fills a single `direction`, so the second would overwrite the
+        // first and the rule would never learn there had been two.
+        SyntaxRule("cross", .direction, "then", .direction, intent: Intent("bad3"))
     }
 }

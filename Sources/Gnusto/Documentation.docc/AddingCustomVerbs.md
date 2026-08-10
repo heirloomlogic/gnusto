@@ -84,11 +84,13 @@ A pattern reads the way it's typed. Some shapes, from the standard table and bey
 | `#verb("ask", ["ask", .directObject, "about", .topic])` | `ask monk about the bell` | a direct object + a ``Command/topic`` |
 | `#verb("shove", ["push", .directObject, .direction])` | `push the sandstone wall north` | a direct object + a direction |
 
-The rules: a pattern starts with at least one literal word (the verb); it can hold at most one direct-object and one indirect-object slot, direct first, with a literal word between them; a direction slot ends its pattern, and the only object slot it may share one with is a direct object standing immediately before it; a topic slot also ends its pattern, and never mixes with a second object or a direction.
+The rules follow from one question: **where does a noun phrase end?** A literal word and a direction slot take exactly one token each; the object and topic slots take as many as the sentence gives them. So an object slot can end wherever everything behind it has a fixed width — the phrase stops that many tokens from the end of the line — and where it doesn't, a literal word has to close it. That, plus: a pattern starts with at least one literal word (the verb); at most one direct-object and one indirect-object slot, direct first; at most one direction slot, since a second would overwrite the first; and a topic slot ends its pattern and never mixes with a second object or a direction.
 
 ### A noun and a direction
 
-`["push", .directObject, .direction]` is the shape for a verb that needs both. It works because a direction slot takes exactly one token and ends its pattern, so the split is fixed: the noun phrase is everything up to the last token. That phrase resolves like any other, so adjectives, synonyms, pronouns and disambiguation all reach it — `push the sandstone wall north` and `push it north` both arrive with ``Command/directObject`` set.
+`["push", .directObject, .direction]` is the shape for a verb that needs both. It works because a direction slot takes exactly one token, so the split is fixed: the noun phrase is everything up to the last token. That phrase resolves like any other, so adjectives, synonyms, pronouns and disambiguation all reach it — `push the sandstone wall north` and `push it north` both arrive with ``Command/directObject`` set.
+
+The direction need not be the last thing in the pattern, and the noun need not stand immediately before it. `["hurl", .directObject, "at", .direction]` and `["wedge", .directObject, .direction, "hard"]` are two tokens of fixed width behind the noun instead of one, and split the same way.
 
 Leave the direction off and the row asks for it: `push the sandstone wall` answers *"Which way do you want to push the sandstone wall?"*, and the next line completes the command. Leave the noun off too and the bare verb asks for the noun, exactly as `push <object>` does — this shape displaces nothing.
 

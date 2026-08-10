@@ -213,7 +213,7 @@ final class VerbMacroTests: XCTestCase {
         expectDiagnostic(
             source: inIntentExtension(#"#verb("dig", ["dig", .direction, "about", .topic])"#),
             message: "verb pattern \"dig <direction> about <topic>\" "
-                + "must end with its direction slot.")
+                + "combines a topic slot with a direction slot.")
     }
 
     func testRejectsAPatternStartingWithASlot() {
@@ -238,16 +238,17 @@ final class VerbMacroTests: XCTestCase {
                 + "<second object> slot before <object>.")
     }
 
-    func testRejectsADirectionSlotMidPattern() {
+    /// The parser fills a single direction, so a second slot would overwrite
+    /// the first — the one thing about a direction that width cannot decide.
+    func testRejectsTwoDirectionSlots() {
         expectDiagnostic(
-            source: inIntentExtension(#"#verb("push", ["push", .direction, "hard"])"#),
-            message: "verb pattern \"push <direction> hard\" must end with its "
-                + "direction slot.")
+            source: inIntentExtension(#"#verb("cross", ["cross", .direction, "then", .direction])"#),
+            message: "verb pattern \"cross <direction> then <direction>\" has more than "
+                + "one direction slot.")
     }
 
-    /// The one object-and-direction shape that is legal: the direction slot
-    /// takes a single token and ends the pattern, so `<object> <direction>`
-    /// splits at a fixed place. Issue #151.
+    /// The object-and-direction shape #151 bought: the direction slot takes a
+    /// single token, so `<object> <direction>` splits at a fixed place.
     func testAcceptsAnObjectSlotBeforeATrailingDirection() {
         assertMacroExpansion(
             inIntentExtension(#"#verb("shift", ["shift", .directObject, .direction])"#),
@@ -263,21 +264,57 @@ final class VerbMacroTests: XCTestCase {
             macros: macros)
     }
 
-    func testRejectsASecondObjectSlotBesideADirection() {
-        expectDiagnostic(
-            source: inIntentExtension(
-                #"#verb("lob", ["lob", .directObject, "at", .indirectObject, .direction])"#),
-            message: "verb pattern \"lob <object> at <second object> <direction>\" may put "
-                + "an <object> slot beside a direction slot only immediately before it.")
+    /// A direction need not *end* its pattern. It is one token wide, so a
+    /// literal behind it just adds one to what the noun phrase counts back
+    /// past. Issue #215.
+    func testAcceptsALiteralAfterTheDirectionSlot() {
+        assertMacroExpansion(
+            inIntentExtension(#"#verb("wedge", ["wedge", .directObject, .direction, "hard"])"#),
+            expandedSource: inIntentExtension(
+                #"""
+                public static let wedge = Intent(
+                    "wedge",
+                    syntax: [
+                        SyntaxRule("wedge", .directObject, .direction, "hard", intent: Intent("wedge"))
+                    ]
+                )
+                """#),
+            macros: macros)
     }
 
-    /// Adjacency is the rule, not mere precedence: a literal word between the
-    /// object and the direction puts the split back where the parser cannot
-    /// place it.
-    func testRejectsAnObjectSlotSeparatedFromTheDirection() {
-        expectDiagnostic(
-            source: inIntentExtension(#"#verb("hurl", ["hurl", .directObject, "at", .direction])"#),
-            message: "verb pattern \"hurl <object> at <direction>\" may put "
-                + "an <object> slot beside a direction slot only immediately before it.")
+    /// Nor does the object slot have to stand *immediately* before the
+    /// direction: a literal between them is another token of fixed width and
+    /// nothing more. Issue #215.
+    func testAcceptsAnObjectSlotSeparatedFromTheDirection() {
+        assertMacroExpansion(
+            inIntentExtension(#"#verb("hurl", ["hurl", .directObject, "at", .direction])"#),
+            expandedSource: inIntentExtension(
+                #"""
+                public static let hurl = Intent(
+                    "hurl",
+                    syntax: [
+                        SyntaxRule("hurl", .directObject, "at", .direction, intent: Intent("hurl"))
+                    ]
+                )
+                """#),
+            macros: macros)
+    }
+
+    /// And the slot a direction closes need not be the direct object. Issue
+    /// #215.
+    func testAcceptsASecondObjectSlotBesideADirection() {
+        assertMacroExpansion(
+            inIntentExtension(
+                #"#verb("lob", ["lob", .directObject, "at", .indirectObject, .direction])"#),
+            expandedSource: inIntentExtension(
+                #"""
+                public static let lob = Intent(
+                    "lob",
+                    syntax: [
+                        SyntaxRule("lob", .directObject, "at", .indirectObject, .direction, intent: Intent("lob"))
+                    ]
+                )
+                """#),
+            macros: macros)
     }
 }
