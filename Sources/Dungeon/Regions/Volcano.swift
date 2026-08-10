@@ -831,8 +831,7 @@ extension DungeonVolcano {
         let worth = offered[default: .takeValue] + offered[default: .depositValue]
         offered.vanish()
         guard worth > 0 else { try reply(Prose.gnomeCrunches(named)) }
-        gnome.vanish()
-        gnomeChimney.move(to: player.location)
+        gnome.replace(with: gnomeChimney)
         stopFuse("gnomeLeaves")
         try reply(Prose.gnomePaid(named))
     }
@@ -843,8 +842,7 @@ extension DungeonVolcano {
     /// - Parameter charge: the brick, which he hands straight back.
     /// - Throws: always.
     func gnomeRefusesTheCharge(_ charge: Item) throws -> Never {
-        charge.move(to: player.location)
-        gnome.vanish()
+        gnome.replace(with: charge)
         gnomeDismissed = true
         stopFuse("gnomeArrives")
         stopFuse("gnomeLeaves")

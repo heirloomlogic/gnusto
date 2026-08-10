@@ -175,7 +175,26 @@ public struct Actor: Sendable, Equatable {
         asItem.isReachable(from: other)
     }
 
-    /// The room the actor is in, or nil while offstage.
+    /// The room the actor is in — the read-back for ``starts(in:)``, and the
+    /// answer ``move(to:)`` and ``vanish()`` rewrite. `nil` means offstage,
+    /// which is the state a summoning gate keys on.
+    ///
+    /// ```swift
+    /// daemon("houndFetches") {
+    ///     guard let here = hound.location, here != player.location else { return }
+    ///     hound.move(to: player.location)
+    ///     say("The hound trots back in from the \(here.name).")
+    /// }
+    /// ```
+    ///
+    /// This is not ``Player/location``. The two coincide whenever the actor
+    /// is being handed something, and diverge the moment one of them walks —
+    /// a companion who fetches, a thief who leaves loot in a room you are not
+    /// standing in.
+    ///
+    /// To leave something behind in the actor's room as they go, reach for
+    /// ``replace(with:)`` rather than reading this and then calling
+    /// ``vanish()`` — the placement is gone by the time `vanish()` returns.
     public var location: Location? {
         let (frame, id) = asItem.resolved
         guard case .room(let roomID)? = frame.with({ $0.state.placements[id] }) else {
@@ -204,6 +223,21 @@ public struct Actor: Sendable, Equatable {
     /// classic "the troll's axe clatters to the floor" death.
     public func vanish() {
         asItem.vanish()
+    }
+
+    /// Puts `other` in the room the actor is standing in and takes the actor
+    /// out of play — ``Item/replace(with:)``, and the gnome for the hole he
+    /// left. One call, so a rule never has to read ``location`` before
+    /// ``vanish()`` empties it.
+    ///
+    /// The mover mirror is otherwise partial on purpose: an actor's placement
+    /// is only ever a room or nowhere, which is why there is no
+    /// `move(inside:)` here. This one belongs anyway, because it never places
+    /// the *actor* — it places `other` where the actor stood.
+    ///
+    /// - Parameter other: the item to leave in the actor's place.
+    public func replace(with other: Item) {
+        asItem.replace(with: other)
     }
 
     /// True if the actor is carrying the item.

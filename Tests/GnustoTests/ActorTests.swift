@@ -159,6 +159,51 @@ struct ActorTests {
             ["Troll carries: battle axe. Axe check: true. Located: Corridor."])
     }
 
+    @Test func anActorsLocationIsHisOwnAndNotThePlayers() async throws {
+        // The accessor reports where the *actor* stands. `march` moves the
+        // keeper a room at a time while the player never leaves the hall, so
+        // a reading taken from `player.location` would answer "Hall" twice.
+        let transcript = try await play(
+            GuardpostGame(),
+            ["headcount", "march", "headcount", "quit"])
+        expectInOrder(
+            transcript,
+            [
+                "Keeper: Cell. You: Hall.",
+                "Footsteps recede.",
+                "Keeper: Corridor. You: Hall.",
+            ])
+    }
+
+    @Test func anOffstageActorHasNoLocation() async throws {
+        // `vanish()` is the one way the accessor answers nil, and it is what
+        // a summon gate keys on — see `Dungeon+Thief`.
+        let transcript = try await play(
+            GuardpostGame(),
+            ["audit", "banish", "audit", "quit"])
+        expectInOrder(
+            transcript,
+            [
+                "Located: Corridor.",
+                "The troll is elsewhere now.",
+                "Located: nowhere.",
+            ])
+    }
+
+    @Test func replacingAnActorLeavesTheThingWhereHeStood() async throws {
+        // The cairn starts in the hall with the player; the troll is a room
+        // north. A swap aimed at `player.location` would leave the stones at
+        // the player's feet, so where they land is the whole assertion.
+        let transcript = try await play(
+            GuardpostGame(),
+            ["supplant", "look", "north", "quit"])
+        let hall = turnOutput(of: "look", in: transcript)
+        #expect(!hall.contains("cairn"))
+        let corridor = turnOutput(of: "north", in: transcript)
+        #expect(corridor.contains("stone cairn"))
+        #expect(!corridor.contains("troll"))
+    }
+
     @Test func aTorchInAnActorsHandLightsTheRoom() async throws {
         let transcript = try await play(
             GuardpostGame(),

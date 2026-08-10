@@ -7,6 +7,8 @@ extension Intent {
     #verb("banish")
     #verb("march")
     #verb("audit")
+    #verb("headcount")
+    #verb("supplant")
 }
 
 /// A content bundle owning its own room and its own actor, to prove actors
@@ -106,6 +108,14 @@ struct GuardpostGame: Game {
         description("Notched from use.")
     }
 
+    /// Starts in the hall with the player, and is swapped in for the troll a
+    /// room away — so where it lands says which room the swap aimed at.
+    let cairn = Item {
+        name("stone cairn")
+        adjectives("stone")
+        description("Stacked, and recently.")
+    }
+
     let torch = Item {
         name("burning torch")
         adjectives("burning")
@@ -128,6 +138,7 @@ struct GuardpostGame: Game {
         cell.west(corridor)
 
         player.starts(in: hall)
+        cairn.starts(in: hall)
         mule.starts(in: hall)
         troll.starts(in: corridor)
         sentry.starts(in: corridor)
@@ -140,7 +151,7 @@ struct GuardpostGame: Game {
     }
 
     var verbs: [SyntaxRule] {
-        [.sense, .disarm, .banish, .march, .audit]
+        [.sense, .disarm, .banish, .march, .audit, .headcount, .supplant]
     }
 
     var rules: Rules {
@@ -169,6 +180,17 @@ struct GuardpostGame: Game {
                 "Troll carries: \(carried.isEmpty ? "nothing" : carried). "
                     + "Axe check: \(troll.holds(axe)). "
                     + "Located: \(troll.location?.name ?? "nowhere").")
+        }
+        world.before(.supplant) {
+            troll.replace(with: cairn)
+            try reply("Where the troll stood, stones.")
+        }
+        // Reads both rooms in one breath, so a test can watch them diverge:
+        // `march` moves the keeper and leaves the player standing.
+        world.before(.headcount) {
+            try reply(
+                "Keeper: \(keeper.location?.name ?? "nowhere"). "
+                    + "You: \(player.location.name).")
         }
     }
 }
