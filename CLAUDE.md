@@ -155,7 +155,20 @@ In any rule body: `say`, `refuse`, `reply`, `require(_:else:)`, `end(won:)`, `di
   `before` one, and the caller says how the turn finishes. Use `arrive` when the
   game is *putting* the player somewhere and `enter` when the fiction is that
   they walked; `enter` back into the room a rule is already running for
-  recurses.
+  re-enters the engine, and traps.
+- **A live-text closure must never ask for its own text.** `describe { }` and
+  `presence { }` are called *from inside* the call producing the text, so
+  `describeSurroundings()`, `arrive(at:)` **or a plain read of the entity's own
+  `description`** all land back on the closure. That last one is the easy
+  mistake — `chest.describe { "\(chest.description) It is scratched." }` is not
+  a way to augment the declared text, it is infinite recursion, and the two
+  are mutually exclusive anyway so there is no declared text to read. Same
+  family as `onEnter` calling `enter` on its own room. All of it used to die in
+  an unattributed `signal 10` naming no game and no room; the engine now counts
+  the nesting at the two seams where it calls author code and traps by name
+  (`TurnFrame.nested(_:within:_:)`, caps on `Reentry`). There are two caps
+  because a describer level costs twenty times a walk level; both are bracketed
+  by measurement at each end — read `Reentry.cap` before moving either.
 - **`onEnter` runs *after* the player has moved.** It cannot block entry. To block a
   move, use `sourceRoom.before(.go)` + `guard command.direction` + `refuse`, or a
   conditional exit `exit(_:to:when:otherwise:)` whose `when:` closure is evaluated in
