@@ -34,6 +34,17 @@ let devPlugins: [Target.PluginUsage] = isDevBuild
     ? [.plugin(name: "Persnoop", package: "Persnicket")]
     : []
 
+// Swift Testing builds exit tests — `#expect(processExitsWith:)`, the only way
+// to assert on a `fatalError`'s message — on some platforms and not others, and
+// the API is simply absent where it doesn't. Rather than repeat an OS list at
+// every trap test, the platform policy is stated once, here, and the code says
+// `#if GNUSTO_EXIT_TESTS`. Listing platforms in rather than out means a new one
+// loses the trap tests until someone adds it, which is the safe direction: a
+// silently skipped test beats a platform that cannot compile the suite.
+let exitTests: [SwiftSetting] = [
+    .define("GNUSTO_EXIT_TESTS", .when(platforms: [.macOS, .linux, .windows]))
+]
+
 let package = Package(
     name: "Gnusto",
     platforms: [
@@ -183,6 +194,7 @@ let package = Package(
         .target(
             name: "GnustoTestSupport",
             dependencies: ["Gnusto"],
+            swiftSettings: exitTests,
             plugins: devPlugins
         ),
         .testTarget(
@@ -201,6 +213,7 @@ let package = Package(
                 "CloakOfDarkness", "Lighthouse", "Zork1", "Dungeon", "Gramarye",
                 "Fulminate", "KindlyDeep",
             ],
+            swiftSettings: exitTests,
             plugins: devPlugins
         ),
     ]

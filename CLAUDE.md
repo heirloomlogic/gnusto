@@ -251,6 +251,10 @@ whole transcript as a string, then `#expect(...contains(...))`. Helpers in
 `cachedWorld`. For bootstrap diagnostics, call `Bootstrap.build(BadGame())` directly
 and inspect `BootstrapError.diagnostics`.
 
+A `fatalError` trap is asserted with `expectTrap`, over a Swift Testing exit test —
+a child process per call, so read its doc comment for when that is worth spending.
+`TestingYourGame.md` teaches it.
+
 Assertions are dense substring checks lifted from the prose, so **the game suites are
 heavily prose-coupled**: changing a line usually means updating a test. Before
 rewriting copy, grep the fragment. Fixture games live in `Tests/GnustoTests/Support/`.

@@ -271,3 +271,39 @@ struct EarlyProceedSkipsSiblingInSamePhaseGame: Game {
         }
     }
 }
+
+/// `proceed()`'s two misuses, one verb each: taking the wrench calls `proceed()`
+/// twice in a turn, and examining it calls `proceed()` from an `after` rule,
+/// where the stage-4 default has already run on its own.
+///
+/// **This game cannot be played.** Both verbs trap — see `IntentActionTests`,
+/// which runs each in a child process and reads the message.
+struct ProceedMisuseGame: Game {
+    let title = "Proceed Misuse"
+    let intro = "A workshop."
+
+    let workshop = Location {
+        name("Workshop")
+        description("A cluttered workshop.")
+    }
+
+    let wrench = Item {
+        name("iron wrench")
+        adjectives("iron")
+    }
+
+    var map: WorldMap {
+        player.starts(in: workshop)
+        wrench.starts(in: workshop)
+    }
+
+    var rules: Rules {
+        world.before(.take) {
+            try proceed()
+            try proceed()
+        }
+        world.after(.examine) {
+            try proceed()
+        }
+    }
+}

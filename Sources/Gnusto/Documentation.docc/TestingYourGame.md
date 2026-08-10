@@ -93,6 +93,23 @@ for seed in UInt64(0)..<5000 {
 
 Pin the seeds that sweep turns up, and say in a comment what the seed *buys* — "seed 11: the troll falls to the first blow" — so the next person to re-pin knows what they are re-pinning for.
 
+## Assert a trap
+
+Some mistakes are the author's, not the player's, and the engine answers those by crashing with a message that names the mistake — `startFuse` handed a daemon's name, a `describe { }` closure that calls the describer already running it. A `fatalError` cannot be caught, so the only way to assert on one is to run it in a child process and read what it printed. Swift Testing's exit tests do the running; ``expectTrap(_:says:sourceLocation:)`` does the reading.
+
+```swift
+@Test func namingTheWrongTimerSaysWhichHelperToUse() async throws {
+    let result = await #expect(processExitsWith: .failure, observing: [\.standardErrorContent]) {
+        _ = try await play(MyGame(), ["prime the bomb"])
+    }
+    expectTrap(result, says: "names a daemon", "use startDaemon(_:)")
+}
+```
+
+The `#expect` has to stay at the call site — its body is compiled into a C function, so it captures nothing unless you name the value and its type in the capture list (`{ [n = n as Int] in … }`), and a helper taking the closure as an argument cannot be written at all.
+
+Each of these costs a child process, some 60 ms. That is worth spending where the *message* is what an author will read to find their mistake, and not worth it for an ordinary precondition — prefer an in-process assertion there. Exit tests are unavailable on iOS, watchOS, tvOS, visionOS and WASI, so a test using one wants a `#if` around it if your game's tests run on those.
+
 ## What the helpers are made of
 
 `play` is three lines over public API — ``GameWorld/init(game:seed:)``, ``ScriptedIOHandler``, and ``REPL`` — so when a test needs something the helpers don't cover (inspecting ``GameWorld`` state mid-session, a custom ``IOHandler``), drop down and compose the pieces directly.

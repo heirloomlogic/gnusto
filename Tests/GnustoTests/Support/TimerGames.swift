@@ -133,3 +133,102 @@ struct BadTimersGame: Game {
         fuse("zero", after: 0) {}
     }
 }
+
+/// The seven ways a rule body can name a timer wrongly, and what the engine
+/// must say about each.
+///
+/// Six are kind mismatches — a fuse helper handed a daemon's name, or the
+/// reverse — and the seventh is a name no `timers` block declares. All seven
+/// trap, and the message's job is to hand the author the helper they meant:
+/// `startFuse` on a daemon has to say `startDaemon(_:)`, or the author reads a
+/// complaint and still doesn't know the fix. `Codable` because
+/// `TimerTests` feeds these cases into an exit test, whose body can only
+/// capture values it can encode.
+enum TimerMisuse: String, CaseIterable, Codable, Sendable {
+    case startFuseOnADaemon
+    case stopFuseOnADaemon
+    case fuseRemainingOnADaemon
+    case startDaemonOnAFuse
+    case stopDaemonOnAFuse
+    case isDaemonActiveOnAFuse
+    case anUndeclaredName
+
+    /// The misuse and the two things the trap has to say about it, on one line
+    /// each: the call the message quotes back so the author can find the line,
+    /// and the fix it names. Together rather than in three parallel switches,
+    /// because a call paired with the wrong advice is the failure this is
+    /// guarding against, and here that pairing is one line to read.
+    var spec: (namesTheCall: String, saysUse: String, commit: @Sendable () -> Void) {
+        switch self {
+        case .startFuseOnADaemon:
+            (#"startFuse("drip") names a daemon"#, "use startDaemon(_:)", { startFuse("drip") })
+        case .stopFuseOnADaemon:
+            (#"stopFuse("drip") names a daemon"#, "use stopDaemon(_:)", { stopFuse("drip") })
+        case .fuseRemainingOnADaemon:
+            (
+                #"fuseRemaining("drip") names a daemon"#, "use isDaemonActive(_:)",
+                { _ = fuseRemaining("drip") }
+            )
+        case .startDaemonOnAFuse:
+            (#"startDaemon("bomb") names a fuse"#, "use startFuse(_:after:)", { startDaemon("bomb") })
+        case .stopDaemonOnAFuse:
+            (#"stopDaemon("bomb") names a fuse"#, "use stopFuse(_:)", { stopDaemon("bomb") })
+        case .isDaemonActiveOnAFuse:
+            (
+                #"isDaemonActive("bomb") names a fuse"#, "use fuseRemaining(_:)",
+                { _ = isDaemonActive("bomb") }
+            )
+        case .anUndeclaredName:
+            (
+                #"startFuse("nonesuch")"#, "no timer with that name is declared",
+                { startFuse("nonesuch") }
+            )
+        }
+    }
+
+    /// The one-word verb ``TimerMisuseGame`` answers by committing this misuse.
+    /// Derived, so two cases cannot collide on one verb and quietly declare the
+    /// same intent twice.
+    var command: String { rawValue.lowercased() }
+}
+
+/// One fuse, one daemon, and a verb per way of confusing them.
+///
+/// **This game cannot be played to the end of a turn**: every verb it answers
+/// traps. `TimerTests` runs it once per ``TimerMisuse`` in a child process.
+struct TimerMisuseGame: Game {
+    let title = "Timer Misuse"
+    let intro = "A workshop where every lever is the wrong one."
+
+    let workshop = Location {
+        name("Workshop")
+        description("Gears everywhere.")
+    }
+
+    var map: WorldMap {
+        player.starts(in: workshop)
+    }
+
+    var verbs: [SyntaxRule] {
+        for misuse in TimerMisuse.allCases {
+            // `.word(_:)` rather than the string literal `SyntaxRule("verb", …)`
+            // takes: the literal form needs a compile-time string, and this one
+            // comes from the case.
+            SyntaxRule(.word(misuse.command), intent: Intent(misuse.command))
+        }
+    }
+
+    var rules: Rules {
+        for misuse in TimerMisuse.allCases {
+            // Bound out here rather than reached through `spec` in the body: the
+            // property builds both strings to hand back the third field.
+            let commit = misuse.spec.commit
+            world.before(Intent(misuse.command)) { commit() }
+        }
+    }
+
+    var timers: [TimedEvent] {
+        fuse("bomb", after: 3) {}
+        daemon("drip") {}
+    }
+}
