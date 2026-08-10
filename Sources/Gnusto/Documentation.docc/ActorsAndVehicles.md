@@ -63,6 +63,35 @@ engine adds is perception and manners:
 
 `starts(in:)` is the only placement an actor accepts.
 
+To read that placement back, ask ``Actor/location``. It is the room the
+actor stands in, or `nil` while they are offstage:
+
+```swift
+fuse("thiefReturns", after: 12) {
+    guard thief.location == nil else { return }   // still out there
+    thief.move(to: treasureRoom)
+}
+```
+
+Reach for it rather than substituting ``Player/location`` for an actor's
+room. The two agree in the common case — you are handing somebody
+something, so you are standing where they are — and part company the
+moment either of you walks, which is when `player.location` starts
+answering the wrong room quietly. ``Actor/isIn(_:)`` asks the same
+question of one specific room when that is all you need.
+
+For the commonest reason to want it — somebody leaves, and something
+stays behind where they stood — don't read the room at all. Use
+``Actor/replace(with:)``, which does the swap in one call:
+
+```swift
+gnome.replace(with: chimney)      // he goes; the hole he left stays
+```
+
+``Actor/vanish()`` clears the placement, so the read-then-move spelling
+has to happen in that order and quietly aims at the wrong room if it
+doesn't. `replace(with:)` has no order to get wrong.
+
 The player is an actor too — the engine synthesizes ``Player/item`` for
 them, so `X ME` has something to answer with and a game has somewhere to
 hang the answer. It differs from the cast in two ways: it is in no room
@@ -367,6 +396,9 @@ a rule on the vehicle itself never sees it — a gate that has to hold
 ## Topics
 
 - ``Actor``
+- ``Actor/location``
+- ``Actor/isIn(_:)``
+- ``Actor/replace(with:)``
 - ``takesOrders``
 - ``Command/actor``
 - ``enterable``

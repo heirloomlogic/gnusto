@@ -680,9 +680,13 @@ struct DungeonAlice: GameContent {
             guard let heading = command.direction else {
                 try refuse(Prose.robotNeedsADirection)
             }
+            // Ask him where he is once and match the table on it, the shape
+            // `masterStep` uses for the dungeon master's identical walk. An
+            // offstage robot matches no row and lands on the same refusal.
+            let there = robot.location
             guard
                 let route = routes.first(where: {
-                    $0.direction == heading && robot.isIn($0.from)
+                    $0.direction == heading && $0.from == there
                 })
             else {
                 try refuse(Prose.robotCannotGoThatWay)
