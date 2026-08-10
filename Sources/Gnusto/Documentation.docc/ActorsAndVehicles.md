@@ -80,6 +80,13 @@ moment either of you walks, which is when `player.location` starts
 answering the wrong room quietly. ``Actor/isIn(_:)`` asks the same
 question of one specific room when that is all you need.
 
+``Item/location`` answers it for a thing rather than a person, and is
+the same accessor underneath — the difference is that a thing can be
+nested, so that one walks up through hands, surfaces and containers to
+find the room, while an actor is only ever standing in one. That is what
+to ask when you want the room a dropped treasure ended up in; see
+<doc:ContainersDoorsAndLocks>.
+
 For the commonest reason to want it — somebody leaves, and something
 stays behind where they stood — don't read the room at all. Use
 ``Actor/replace(with:)``, which does the swap in one call:

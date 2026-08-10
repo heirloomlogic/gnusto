@@ -28,6 +28,10 @@ struct ItemScopeTests {
         try await turn("owns", after: commands)
     }
 
+    private static func locate(after commands: [String] = []) async throws -> String {
+        try await turn("locate", after: commands)
+    }
+
     /// Every containment shape, from the lit workshop, in one turn. The rows
     /// that no hand-rolled predicate ever got right are the mug (a `surface` is
     /// not a `container`, so it is never `isOpen`) and the bead (`holds(_:)`
@@ -129,5 +133,64 @@ struct ItemScopeTests {
     @Test func possessionSurvivesGoingNowhere() async throws {
         #expect(
             try await Self.owns(after: ["banish"]).contains("sentry owns truncheon: yes"))
+    }
+
+    // MARK: - Which room it is in
+
+    /// ``Item/location`` walks up to the room at the top of the chain, whatever
+    /// the chain is made of. Every row here is a link the one-level answers
+    /// stop at: the mug is on a surface, the nut is shut in a crate, the bead
+    /// is two containers down, and the flask is inside a holster inside
+    /// somebody else's hands.
+    @Test(
+        arguments: [
+            "spanner: Workshop",  // in the player's own hands
+            "tin mug: Workshop",  // on a surface
+            "walnut: Workshop",  // shut in a crate nobody has opened
+            "bead: Workshop",  // two containers down
+            "baton: Workshop",  // in the warden's hands
+            "flask: Workshop",  // in a holster in the warden's hands
+            "warden: Workshop",  // the actor himself, one step
+            "me: Workshop",  // the player's own item
+        ])
+    func locationWalksUpToTheRoom(row: String) async throws {
+        #expect(try await Self.locate().contains(row))
+    }
+
+    /// Having a room is not the same question as being seen or touched. The
+    /// clinker is in the pitch-dark cellar and the barrow in a room the player
+    /// has never entered — neither is visible or reachable, and both answer
+    /// with a room. The truncheon adds the case ``Player/location`` cannot
+    /// stand in for: it is in the cellar because the sentry is, not because
+    /// the player is anywhere near it.
+    @Test(
+        arguments: [
+            "clinker: Cellar",
+            "barrow: Yard",
+            "truncheon: Cellar",
+        ])
+    func aRoomIsAnsweredWhereverTheItemIsUnseen(row: String) async throws {
+        #expect(try await Self.locate().contains(row))
+    }
+
+    /// Nothing at the top of the chain, and the walk says so rather than
+    /// guessing. Banishing the sentry takes the truncheon in his hands out of
+    /// any room with him, though the item itself was never touched — which is
+    /// the same walk `possessionSurvivesGoingNowhere` reads the other way.
+    @Test func anItemHasNoRoomOnceItsChainRunsOffstage() async throws {
+        let rows = try await Self.locate(after: ["banish"])
+        #expect(rows.contains("truncheon: nowhere"))
+        // The sentry's own accessor agrees, and the rest of the world has not
+        // moved with him.
+        #expect(rows.contains("clinker: Cellar"))
+    }
+
+    /// The held row follows the player and the room's rows do not — the
+    /// distinction a `player.location` substitute cannot make.
+    @Test func aHeldItemsRoomFollowsThePlayer() async throws {
+        let rows = try await Self.locate(after: ["down"])
+        #expect(rows.contains("spanner: Cellar"))
+        #expect(rows.contains("me: Cellar"))
+        #expect(rows.contains("tin mug: Workshop"))
     }
 }

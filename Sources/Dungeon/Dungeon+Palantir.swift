@@ -149,14 +149,9 @@ extension Dungeon {
             (palantirWing.redSphere, alice.sphere),
             (alice.sphere, palantirWing.blueSphere),
         ]
-        // Bound once here rather than read inside `scry`, which is
-        // ``Dungeon/thiefRules``' idiom for the treasure roster and for the
-        // same reason: the set never changes and rebuilding a hundred-odd
-        // rooms per sentence buys nothing.
-        let searchable = scryableRooms
         for (sphere, next) in cycle {
-            sphere.before(.lookIn) { try scry(next, in: searchable) }
-            sphere.before(.lookThrough) { try scry(next, in: searchable) }
+            sphere.before(.lookIn) { try scry(next) }
+            sphere.before(.lookThrough) { try scry(next) }
         }
     }
 
@@ -203,35 +198,27 @@ extension Dungeon {
     /// own, for a sphere with no room, a dark room, a thief's pocket or a
     /// closed container.
     ///
-    /// - Parameters:
-    ///   - target: the next sphere on the cycle.
-    ///   - rooms: where to look for it. See ``Dungeon/scryableRooms``.
+    /// The source asks an object which room it is in and gets an answer, and so
+    /// does this: ``Item/location`` in place of the search over a named room set
+    /// this used to run, which was O(rooms) and silently showed darkness for any
+    /// room nobody had remembered to list.
+    ///
+    /// The second half of the guard is what keeps the failure line honest. A
+    /// sphere shut in the trophy case or riding in the thief's pocket has a room
+    /// — the walk finds it — but the source shows neither, so the sphere has to
+    /// be lying loose in that room or in the player's own hands.
+    ///
+    /// - Parameter target: the next sphere on the cycle.
     /// - Throws: always — a `TurnInterrupt`, since both paths reply.
-    private func scry(_ target: Item, in rooms: [Location]) throws -> Never {
-        let room =
-            target.isHeld ? player.location : rooms.first(where: { $0.contains(target) })
-        guard let room, room.isLit else { try reply(Prose.sphereShowsDarkness) }
+    private func scry(_ target: Item) throws -> Never {
+        guard let room = target.location, room.isLit,
+            target.isHeld || target.isIn(room)
+        else { try reply(Prose.sphereShowsDarkness) }
         // The target sphere is listed with everything else, because seeing it
         // is the whole point of looking: a scry that hid the thing it was aimed
         // at would say "there is nothing in it" of a room with a palantir
         // sitting in the middle of it.
         try reply(Prose.sphereShows(room.name, remoteView(of: room)))
-    }
-
-    /// Where a palantir can be found by another palantir.
-    ///
-    /// The source asks an object which room it is in and gets an answer; this
-    /// engine has no such accessor, so the lookup is a search over a named set.
-    /// The thief's prowl is every walkable room the built dungeon has, including
-    /// the one room of this wing he is allowed into; to it this adds the six the
-    /// source keeps him out of, the Dingy Closet where the white sphere starts
-    /// (his prowl excludes the shrunken world), the Cage, and the Living Room,
-    /// where the trophy case stands. A sphere anywhere else reads as darkness —
-    /// the source's own answer for a sphere with no room, and what a sphere shut
-    /// in the case gives too, since `contains` is direct containment.
-    private var scryableRooms: [Location] {
-        thiefProwl + palantirWing.sacredRooms
-            + [alice.dingyCloset, alice.cage, house.livingRoom]
     }
 
     // MARK: - Timers

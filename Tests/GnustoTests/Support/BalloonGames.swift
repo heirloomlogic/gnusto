@@ -159,7 +159,7 @@ struct VolcanoGame: Game {
             // Asked before the move, so somebody watching from the ledge sees
             // the balloon leave rather than not-arrive.
             let watched = aboard || balloon.isVisible
-            guard let level = shaft.firstIndex(where: { balloon.isIn($0) }) else {
+            guard let here = balloon.location, let level = shaft.firstIndex(of: here) else {
                 // Resting on the ledge. A lit burner takes it back up — but not
                 // with a passenger's weight in the basket, which is the whole
                 // reason the hook is there.

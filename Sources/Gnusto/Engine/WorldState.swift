@@ -186,6 +186,46 @@ extension WorldState {
         }
         return false
     }
+
+    /// The room `id` is ultimately standing in — the same walk UP as
+    /// `isPossession(_:of:)`, run to the top instead of looking for somebody on
+    /// the way. A coin inside a sack on a table in the Hall answers Hall, so it
+    /// costs the depth of the nesting rather than the size of the world, where
+    /// the alternative every caller reached for was a scan of a hand-written
+    /// room list. Cycle-guarded on the same grounds: a corrupt save can present
+    /// a cycle this walk must survive rather than trust.
+    ///
+    /// `nil` once the chain runs offstage — the item itself is `.nowhere`, or
+    /// the container it sits in is, or the hands holding it are. Backs
+    /// ``Item/location`` and, through it, ``Actor/location``.
+    ///
+    /// Not `Visibility.standing(_:in:)`, which reads one link and answers nil
+    /// for a held or contained observer. That one is about reach, and being
+    /// carried through a room is not standing in it; this one is about where
+    /// a thing physically ends up.
+    ///
+    /// - Parameter id: the entity to trace upward.
+    /// - Returns: the enclosing room, or nil when nothing in the chain is in one.
+    func room(of id: EntityID) -> EntityID? {
+        var current = id
+        var visited: Set<EntityID> = []
+        while visited.insert(current).inserted {
+            // The player is placed `.nowhere` and their room tracked
+            // separately, so they are the one link the placement map cannot
+            // answer for. Checked first, which covers both the player's own
+            // item and anything in their hands.
+            if current == .player { return playerLocation }
+            switch placements[current] {
+            case .room(let room):
+                return room
+            case .heldBy(let parent), .on(let parent), .inside(let parent):
+                current = parent
+            case .nowhere, nil:
+                return nil
+            }
+        }
+        return nil
+    }
 }
 
 extension WorldState {

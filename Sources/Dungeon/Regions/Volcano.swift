@@ -506,8 +506,7 @@ struct DungeonVolcano: GameContent {
     /// landing has finished with it — which is why nothing here stores a
     /// "wrecked" flag.
     var balloonPlace: Location? {
-        shaft.first { balloon.isIn($0) }
-            ?? ledgeLandings.first { balloon.isIn($0.ledge) }?.ledge
+        balloon.location
     }
 
     var verbs: [SyntaxRule] { [.cross] }
@@ -876,18 +875,18 @@ extension DungeonVolcano {
     /// ledge. Host-called, because `launch` is a word the boat answers too.
     func launchBalloon() throws -> Never {
         try require(!balloonTied, else: Prose.launchTied)
-        guard let landing = ledgeLandings.first(where: { balloon.isIn($0.ledge) }) else {
-            try reply(Prose.launchNowhereFromHere)
-        }
+        guard let place = balloonPlace,
+            let landing = ledgeLandings.first(where: { $0.ledge == place })
+        else { try reply(Prose.launchNowhereFromHere) }
         say(Prose.balloonLeavesTheLedge)
         try moveBalloon(to: landing.air)
     }
 
     /// `LAND`, the same table read the other way.
     func landBalloon() throws -> Never {
-        guard let landing = ledgeLandings.first(where: { balloon.isIn($0.air) }) else {
-            try reply(Prose.landNoLedge)
-        }
+        guard let place = balloonPlace,
+            let landing = ledgeLandings.first(where: { $0.air == place })
+        else { try reply(Prose.landNoLedge) }
         try require(landing.ledge != wideLedge || !wideLedgeWrecked, else: Prose.ledgeIsGone)
         try moveBalloon(to: landing.ledge)
     }
