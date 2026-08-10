@@ -241,7 +241,7 @@ var map: WorldMap {
 }
 ```
 
-Travel takes the same path as any other passable exit, so the destination's ``Location/onEnter(perform:)`` rules run and a boarded vehicle rides along. That is the difference between this and assigning ``Player/location`` from a rule, where neither happens. In exchange, a closure is opaque to the bootstrap: the destination isn't validated at launch, and a room reachable *only* this way isn't in the reachable-room set, so `FOLLOW` won't name somebody standing there.
+Travel takes the same path as any other passable exit, so the destination's ``Location/onEnter(perform:)`` rules run and a boarded vehicle rides along. That is the difference between this and assigning ``Player/location`` from a rule, where neither happens — ``enter(_:)`` is the rule-side move that behaves like the exit. In exchange, a closure is opaque to the bootstrap: the destination isn't validated at launch, and a room reachable *only* this way isn't in the reachable-room set, so `FOLLOW` won't name somebody standing there.
 
 ## Hidden items
 

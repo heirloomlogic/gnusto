@@ -193,7 +193,11 @@ var timers: [TimedEvent] {
 
 Rules and daemons that change what the player sees can call
 ``describeSurroundings(withRoomName:)`` for the classic follow-up LOOK, or
-``arrive(at:withRoomName:)`` to move the player and look in one step.
+``arrive(at:withRoomName:)`` to move the player and look in one step. Where the
+player is aboard something, the move you want is usually ``enter(_:)`` instead:
+`arrive(at:)` moves the player alone and leaves the vehicle at the dock, and
+`enter(_:)` takes the hull and its cargo along the way a `go` does. See
+<doc:WritingRules>.
 
 The **Lighthouse** example (`Sources/Lighthouse/`) wires exactly this: a
 keeper declared as an ``Actor`` and set roaming two rooms by `GnustoActors`,
@@ -412,3 +416,4 @@ a rule on the vehicle itself never sees it — a gate that has to hold
 - ``Player/vehicle``
 - ``describeSurroundings(withRoomName:)``
 - ``arrive(at:withRoomName:)``
+- ``enter(_:)``

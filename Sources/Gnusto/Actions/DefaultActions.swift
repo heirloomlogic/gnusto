@@ -499,7 +499,11 @@ enum DefaultActions {
     ///
     /// `aside` lands ahead of the onEnter rules and the room description,
     /// which is where a "(after the …)" note belongs.
-    private static func enter(
+    ///
+    /// The one place the engine moves the player *as a walk*, so the
+    /// author-facing ``enter(_:)`` delegates here rather than restating it —
+    /// which is what keeps "walking in" one behaviour with two spellings.
+    static func enter(
         _ destination: EntityID, frame: TurnFrame, announcing aside: String? = nil
     ) throws {
         if let aside { frame.say(aside) }

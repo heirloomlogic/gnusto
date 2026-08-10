@@ -117,8 +117,8 @@ Rule phases by scope, all filed in `Engine/Bootstrap.swift`:
 | world | `before`, `after` |
 
 In any rule body: `say`, `refuse`, `reply`, `require(_:else:)`, `end(won:)`, `die`,
-`describeSurroundings`, `arrive(at:)`, `proceed`. `refuse`/`reply`/`end`/`die` are
-`throws -> Never`.
+`describeSurroundings`, `arrive(at:)`, `enter(_:)`, `proceed`.
+`refuse`/`reply`/`end`/`die` are `throws -> Never`.
 
 ## Gotchas that cost real time
 
@@ -144,11 +144,18 @@ In any rule body: `say`, `refuse`, `reply`, `require(_:else:)`, `end(won:)`, `di
   problem: `describeSurroundings()` is always a full LOOK, so a rule that moves
   the player *within* one room reprints the heading — pass
   `describeSurroundings(withRoomName: false)`.
-- **A rule that moves the player between rooms wants `arrive(at:)`**, which is
-  the `player.location = ` + `describeSurroundings()` pair written once. It does
-  *not* end the turn, so it is as legal in a daemon or an `after` rule as in a
-  `before` one, and the caller says how the turn finishes. Like every move that
-  is not a `go`, it fires no `onEnter` and carries no boarded vehicle.
+- **A rule that moves the player between rooms picks one of two moves.**
+  `arrive(at:)` is the `player.location = ` + `describeSurroundings()` pair
+  written once: a teleport, so it fires no `onEnter`, carries no boarded vehicle,
+  and describes as a full LOOK every time. `try enter(_:)` is the walk — it runs
+  the destination's `onEnter` rules, brings a boarded vehicle and its cargo, and
+  describes as an *entry* (brief on a revisit, so a room whose description is its
+  state wants `alwaysDescribed`). It `throws` because those rules may. Neither
+  ends the turn, so both are as legal in a daemon or an `after` rule as in a
+  `before` one, and the caller says how the turn finishes. Use `arrive` when the
+  game is *putting* the player somewhere and `enter` when the fiction is that
+  they walked; `enter` back into the room a rule is already running for
+  recurses.
 - **`onEnter` runs *after* the player has moved.** It cannot block entry. To block a
   move, use `sourceRoom.before(.go)` + `guard command.direction` + `refuse`, or a
   conditional exit `exit(_:to:when:otherwise:)` whose `when:` closure is evaluated in

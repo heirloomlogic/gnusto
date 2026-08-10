@@ -77,33 +77,27 @@ extension Dungeon {
         }
     }
 
-    /// The six room values. Two are ordinary first-visit awards; four are not,
-    /// and the reason is the one `docs/games/dungeon.md` states under "The
-    /// ceiling ratchets": a room reached by anything but walking never passes
-    /// through `onEnter`.
+    /// The six room values. Four are ordinary first-visit awards; the Top of
+    /// Stairs and the Treasury are not, and each says why where it stands.
     @RuleBuilder private var endgameScoringRules: Rules {
         scoring.visit(endgame.crypt, register: "crypt")
         scoring.visit(endgame.narrowCorridor, register: "narrowCorridor")
 
-        // The Inside Mirror is reached by stepping through a mirror that is a
-        // rule rather than an exit, and the Dungeon Entrance either by walking
-        // north out of the hallway or by stepping out of the box — one exit and
-        // one rule, so the `Bool` has to cover both.
-        //
-        // The Top of Stairs needs neither, and that is worth saying because the
-        // symmetry invites one: the crypt's transition is the only way to first
-        // arrive there — `MRANT` is reachable from nowhere else — and it banks
-        // the award itself before it moves the player.
-        endgame.insideMirror.afterEachTurn {
-            guard !insideMirrorPaid else { return }
-            insideMirrorPaid = true
-            scoring.awardOnce("insideMirror")
-        }
-        endgame.dungeonEntrance.afterEachTurn {
-            guard !dungeonEntrancePaid else { return }
-            dungeonEntrancePaid = true
-            scoring.awardOnce("dungeonEntrance")
-        }
+        // Both of these are reached by a rule as well as by an exit — the Inside
+        // Mirror only by stepping through the mirror, the Dungeon Entrance by
+        // stepping out of the box as well as by walking north out of the
+        // hallway. Every one of those rules walks the player in with
+        // `enter(_:)`, so `onEnter` fires on every route into both and a plain
+        // first-visit award is all either needs. Two `Bool`s and two
+        // `afterEachTurn` rules stood in for that until #201 gave the engine a
+        // teleport that runs the destination's rules.
+        scoring.visit(endgame.insideMirror, register: "insideMirror")
+        scoring.visit(endgame.dungeonEntrance, register: "dungeonEntrance")
+
+        // The Top of Stairs is not here, and that is the choice rather than an
+        // omission: the crypt's transition is the only way to first arrive
+        // there, and it is the game putting you somewhere rather than you
+        // walking in — so it banks its own ten. See ``crossIntoTheEndgame()``.
 
         // And the end of it. An `afterEachTurn` rather than an `onEnter` so the
         // room describes itself first and the game ends on the last paragraph
@@ -212,6 +206,10 @@ extension Dungeon {
         scoring.awardOnce("topOfStairs")
 
         say(Prose.cryptTransition)
+        // `arrive(at:)` rather than `enter(_:)`, now that the two are different
+        // moves: this is the game putting you somewhere, not you walking there.
+        // Nothing at the top of the stairs answers an arrival, which is why the
+        // award above is banked here instead.
         arrive(at: endgame.topOfStairs)
     }
 }

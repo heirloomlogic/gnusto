@@ -779,14 +779,13 @@ extension DungeonRoyalPuzzle {
         }
 
         // The other spelling of "leave by the ladder". The `up` exit does the
-        // travelling for the other one; a rule has no way to ask for the `go` it
-        // would have performed, so this moves the player itself — and therefore
-        // has to describe the arrival itself too, because assigning
-        // `player.location` fires no `onEnter`.
+        // travelling for that one; `enter(_:)` is how a rule asks for the same
+        // walk, so the two spellings now arrive the same way instead of one of
+        // them teleporting.
         ladder.before(.climb) {
             guard grid.canClimbOut else { try refuse(Prose.puzzleHeadOnTheCeiling) }
             say(Prose.puzzleClimbOut)
-            arrive(at: anteroom)
+            try enter(anteroom)
             try reply("")
         }
     }

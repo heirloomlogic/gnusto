@@ -215,13 +215,6 @@ struct Dungeon: Game, GameMain {
     /// wrapper, and a wrapper is the JSON box these two exist to avoid.
     @Global var topOfWellPaid = false
 
-    /// And the same guard again for two of the endgame's six room values. Both
-    /// of those rooms can be arrived at by a rule assigning `player.location`,
-    /// which fires no `onEnter`, so neither can be a `scoring.visit`. See
-    /// `Dungeon+Endgame.swift`.
-    @Global var insideMirrorPaid = false
-    @Global var dungeonEntrancePaid = false
-
     var content: GameContents {
         aboveGround
         house

@@ -2291,9 +2291,11 @@ entry below.
   in any file; it scores nothing, so nothing here scores it either. `up` and
   `climb ladder` both leave by the ceiling and print the same line, but they are
   two code paths and not one: `up` falls through to the conditional exit, while
-  `climb` has to move the player itself and therefore describe the arrival
-  itself, because a rule has no way to ask for the `go` it would have performed
-  and assigning `player.location` fires no `onEnter`. Worth an engine issue.
+  `climb` moves the player itself. That used to mean the two described the
+  arrival differently, because a rule had no way to ask for the `go` it would
+  have performed — the engine issue it was worth turned out to be #201, and
+  `enter(_:)` is the answer. `climb` calls it, so both paths now describe the
+  Small Square Room as an entry.
 - **The gold card is worth 25 and no room here is worth anything.** `GCARD` is
   `OFVAL 10 OTVAL 15`, declared inside a `<PUT <OBJECT …> ,OROOM <GET-ROOM
   "CP">>` wrapper at `dung.355:6324` rather than at top level. `CP`, `CPANT` and
@@ -2777,8 +2779,8 @@ does not move and stays at thirty-two.
 |---|---:|---|
 | Crypt (`CRYPT`) | 5 | `scoring.visit` |
 | Top of Stairs (`TSTRS`) | 10 | `awardOnce`, inside the transition |
-| Inside Mirror (`INMIR`) | 15 | `afterEachTurn`, `Bool`-guarded |
-| Dungeon Entrance (`FDOOR`) | 15 | `afterEachTurn`, `Bool`-guarded |
+| Inside Mirror (`INMIR`) | 15 | `scoring.visit` |
+| Dungeon Entrance (`FDOOR`) | 15 | `scoring.visit` |
 | Narrow Corridor (`BDOOR`) | 20 | `scoring.visit` |
 | Treasury of Zork (`NIRVA`) | 35 | `afterEachTurn`, and it ends the game |
 
@@ -2793,6 +2795,16 @@ room reached by anything but walking never passes through `onEnter`*. The mirror
 box's rooms are all reached by a rule assigning `player.location`, so `INMIR`
 cannot be a visit — and neither can `FDOOR`, which is walked into from the
 hallway *and* stepped into out of the pine end.
+
+**Two of the six, since #201, and the table above is the corrected one.** The
+sentence that made it three was a fact about the engine rather than about this
+game, and the engine changed: `enter(_:)` is a rule-driven move that *does* run
+the destination's `onEnter` rules, and every rule that walks a player around the
+mirror box now uses it. So `INMIR` and `FDOOR` are ordinary `scoring.visit`
+awards, and the two `Bool`s that stood in for them are gone. `TSTRS` and `NIRVA`
+still pay themselves, and both by choice: the crypt's transition is a teleport
+rather than a walk, and the Treasury's award has to land after the room has
+described itself.
 
 The total is checked against the table at bootstrap and there is no warning on
 stderr. `theEndgamesHundredIsAllRoomValue` holds each of the six.
