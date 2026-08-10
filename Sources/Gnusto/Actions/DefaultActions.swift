@@ -506,19 +506,24 @@ enum DefaultActions {
     static func enter(
         _ destination: EntityID, frame: TurnFrame, announcing aside: String? = nil
     ) throws {
-        if let aside { frame.say(aside) }
-        frame.with { scratch in
-            let vehicle = Visibility.boardedVehicle(
-                definition: frame.definition, state: scratch.state)
-            scratch.state.playerLocation = destination
-            if let vehicle {
-                scratch.state.place(vehicle, .room(destination))
+        // The onEnter rules run from in here, so one of them calling `enter(_:)`
+        // back on its own room recurses. Guarded rather than left to overflow
+        // the stack: see `TurnFrame.nested(_:within:_:)`, issue #223.
+        try frame.nested(.walk, within: destination) {
+            if let aside { frame.say(aside) }
+            frame.with { scratch in
+                let vehicle = Visibility.boardedVehicle(
+                    definition: frame.definition, state: scratch.state)
+                scratch.state.playerLocation = destination
+                if let vehicle {
+                    scratch.state.place(vehicle, .room(destination))
+                }
             }
+            for rule in frame.definition.rules.locationOnEnter[destination] ?? [] {
+                try rule.body()
+            }
+            RoomDescriber.describeCurrentLocation(mode: .entry, frame: frame)
         }
-        for rule in frame.definition.rules.locationOnEnter[destination] ?? [] {
-            try rule.body()
-        }
-        RoomDescriber.describeCurrentLocation(mode: .entry, frame: frame)
     }
 
     /// Goes after somebody who has left the room.

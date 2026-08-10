@@ -115,11 +115,12 @@ var rules: Rules {
 
 Like any rule, `describe` is declared in the `rules` block, and the closure reads live state through your declarations — including the entity's own (here, `lantern.isLit`).
 
-Three things are worth knowing:
+Four things are worth knowing:
 
 - **`describe` and a static `description(…)` are mutually exclusive.** Declaring both on the same entity — or two `describe` rules for it — is a fatal ``BootstrapError`` caught at startup, not a silent last-writer-wins. Pick one per entity.
 - **A runtime assignment still wins.** Setting ``Item/description`` (or ``Location/description``) directly in a rule overrides the `describe` closure from then on — useful for a one-way change like a lever that reveals a passage.
 - **Keep the closure pure.** It runs on every look and examine; read state, return a string, and don't mutate the world from inside it.
+- **Never ask for the text from inside it.** The engine calls this closure *from within* the call that is producing the text, so anything in the body that describes calls back into the machinery calling it, and it recurses. Three ways in: ``describeSurroundings(withRoomName:)``, ``arrive(at:)``, and — the easy one — reading the entity's own ``Item/description``. `chest.describe { "\(chest.description) It is scratched." }` looks like appending to the declared text, but `describe` and `description(…)` are mutually exclusive, so there is no declared text to read and the getter simply calls this closure again. To share a base string, put it in a `let` and interpolate that. The engine counts the nesting and traps with a message naming the entity rather than dying in a stack overflow — but the trap is a diagnostic, not a feature.
 
 ## When the room's description *is* the state
 
@@ -197,7 +198,7 @@ var rules: Rules {
 }
 ```
 
-`presence` and a static `firstSight(…)` on the same entity — or two `presence` rules for it — is the same fatal ``BootstrapError``. A `presence` rule on a location is a diagnostic too: rooms have descriptions, not presence lines.
+`presence` and a static `firstSight(…)` on the same entity — or two `presence` rules for it — is the same fatal ``BootstrapError``. A `presence` rule on a location is a diagnostic too: rooms have descriptions, not presence lines. The caveat about never asking for a look from inside the closure applies here unchanged, and for the same reason: the room describer is what calls it.
 
 The line is consulted wherever the room *lists* the thing, not only when it is lying on the floor — so an item that starts inside a container or on a surface gets its own paragraph in place of the stock *"In the chest is a tan label."*, and a rule can say which:
 

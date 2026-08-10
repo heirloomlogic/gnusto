@@ -186,8 +186,11 @@ public func arrive(at room: Location, withRoomName: Bool = true) {
 /// in the room that refused them.
 ///
 /// One sharp edge, since the rules are yours: an `onEnter` rule that calls
-/// `enter(_:)` back into its own room recurses until the stack gives out. Move
-/// the player *out* of a room from its rules, never into it.
+/// `enter(_:)` back into its own room re-enters the move that is running it. The
+/// engine counts that nesting and traps a few levels down with a message naming
+/// the room, rather than letting the stack give out unattributed — but the trap
+/// is a diagnostic, not a feature. Move the player *out* of a room from its
+/// rules, never into it.
 ///
 /// - Parameter room: where the player walks in.
 /// - Throws: whatever the destination's `onEnter` rules throw — a `die`, a
