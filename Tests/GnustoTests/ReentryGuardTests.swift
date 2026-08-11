@@ -18,21 +18,20 @@ import Testing
 /// placed on those. ``DefaultActions/enter(_:frame:announcing:)`` is the second
 /// seam, for an `onEnter` rule that enters its own room.
 ///
-/// ## Why the crash itself is not exercised here
+/// ## How the crash itself is exercised
 ///
 /// The guard traps, because it cannot do anything else:
 /// `describeSurroundings()` is a non-throwing `public func` and the rule tables it
 /// reaches are `[EntityID: @Sendable () -> String]`, so a catchable `TurnInterrupt`
 /// out of a `describe` closure is not expressible without making a public API
-/// throwing at 63 call sites. A `fatalError` cannot be caught in-process and the
-/// suite has no exit-code harness — the same position `IntentActionTests` records
-/// for `proceed()`'s misuse traps.
+/// throwing at 63 call sites.
 ///
 /// So the *decision* is split from the *trap*: ``Reentry/diagnostic(depth:entity:)``
-/// is a pure function returning the message or nil, and it is asserted directly
-/// below — both thresholds, both wordings and the named entity all covered
-/// in-process. Only the `fatalError` it feeds is taken on trust, which is the shape
-/// `StackReport.line(for:game:)` and `BootstrapStackTests` already use.
+/// is a pure function returning the message or nil, and both thresholds, both
+/// wordings and the named entity are asserted against it directly below, in
+/// process. The `fatalError` it feeds is then run for real, in a child process, by
+/// the two exit tests at the end — because a cap is worth nothing if the stack gets
+/// there first, and only a real run can tell you it doesn't. Issue #227.
 struct ReentryGuardTests {
     // MARK: - The diagnostic's threshold and wording
 
@@ -68,25 +67,17 @@ struct ReentryGuardTests {
         #expect(!walk.contains("describeSurroundings()"))
     }
 
-    /// The depths at which each seam exhausts the 512 KB a Swift Testing
-    /// cooperative thread gives, measured in a debug build on macOS arm64. A cap
-    /// at or above these never fires — which is what the issue's proposed 32 did
-    /// on the describer, and how these came to be measured at all.
-    static let cliffs: [Reentry: Int] = [.liveText: 10, .walk: 216]
-
     /// The deepest nesting any game in the suite was observed to reach, from
     /// instrumenting every `nested` call across all 1,479 tests.
     static let deepestObserved = 2
 
-    @Test("every cap fires above real content and below the stack")
-    func capsAreBracketedByMeasurement() throws {
+    @Test("every cap fires above real content")
+    func capsClearRealContent() {
+        // The floor half of the bracket. The ceiling half — that each cap is
+        // still under the depth at which the stack gives out — is not assertable
+        // between constants, and is the two exit tests at the end.
         for seam in [Reentry.liveText, .walk] {
-            let cliff = try #require(Self.cliffs[seam])
-            // Both bounds, because either alone permits a useless number: a cap
-            // over the cliff never fires, and a cap under real content condemns
-            // games that were doing nothing wrong.
             #expect(seam.cap > Self.deepestObserved)
-            #expect(seam.cap < cliff)
         }
         // And the two are genuinely different numbers — a walk level costs a
         // twentieth of a describer level, so one cap for both would ration the
@@ -153,6 +144,52 @@ struct ReentryGuardTests {
         #expect(transcript.contains("Sump"))
         #expect(transcript.contains("Level ground, and a smell of standing water."))
     }
+
+    // MARK: - The trap, run for real
+
+    // The platform policy for exit tests is in `Package.swift`.
+    #if GNUSTO_EXIT_TESTS
+
+    /// Each cap has to sit under the depth at which the stack runs out, and that
+    /// is not a fact two constants can state. ``Reentry/cap``'s table records
+    /// where the ceiling was when it was hand-measured — but a measurement
+    /// written down is a comment, and the thing it measures moves. Fatten a
+    /// describer level and the real ceiling drops; the cap stays where it is, the
+    /// guard never fires, and #223's crash comes back as an unattributed
+    /// `signal 10`.
+    ///
+    /// So these run the runaway for real, in a child process, on the same
+    /// cooperative thread the caps are sized against, and read what it printed
+    /// on the way out. Asserting the *depth* in the message is what makes them
+    /// about the margin rather than the wording: `cap + 1` levels means the cap
+    /// ended the recursion, where silence would mean the stack did.
+    @Test("the live-text cap fires before the stack does")
+    func liveTextCapFiresBeforeTheStackDoes() async throws {
+        let result = await #expect(
+            processExitsWith: .failure, observing: [\.standardErrorContent]
+        ) {
+            _ = try await play(LoopCellGame(), ["look"])
+        }
+        // Two needles, both of which only a live run can show: the entity name
+        // proves `displayName(of:)` is threaded through `nested`, and the depth
+        // proves the cap ended the recursion. The message's *shape* sentence is
+        // asserted in process by `diagnosticNamesTheEntityAndTheShape` above —
+        // re-asserting it here would break this test for a wording edit that has
+        // nothing to do with the margin.
+        expectTrap(result, says: "Cell", "\(Reentry.liveText.cap + 1) levels deep")
+    }
+
+    @Test("the walk cap fires before the stack does")
+    func walkCapFiresBeforeTheStackDoes() async throws {
+        let result = await #expect(
+            processExitsWith: .failure, observing: [\.standardErrorContent]
+        ) {
+            _ = try await play(KnotGame(), ["north"])
+        }
+        expectTrap(result, says: "Knot", "\(Reentry.walk.cap + 1) levels deep")
+    }
+
+    #endif
 
     // MARK: - Support
 

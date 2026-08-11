@@ -148,4 +148,40 @@ struct TimerTests {
         #expect(state.activeFuses == ["dawn": 2])
         #expect(definition.timers.count == 3)
     }
+
+    // MARK: - Naming a timer wrongly
+
+    // The platform policy for exit tests is in `Package.swift`.
+    #if GNUSTO_EXIT_TESTS
+
+    /// The seven timer traps, run for real. Bootstrap catches a bad *declaration*
+    /// (`duplicateNamesAndZeroCountsReportTogether` above); these are the ones
+    /// only a live rule body can commit — a fuse helper handed a daemon's name,
+    /// or a name no `timers` block declares.
+    ///
+    /// What is under test is the *advice*, not the complaint. Each message
+    /// quotes the offending call and then names the helper the author meant,
+    /// and the second half is what turns a crash into a fix. Asserting it
+    /// caught one that had lost its advice: `fuseRemaining` on a daemon used to
+    /// say only "names a daemon", leaving the author to guess
+    /// `isDaemonActive(_:)`.
+    ///
+    /// A child process apiece — see ``expectTrap(_:says:sourceLocation:)`` for
+    /// when that is worth spending. Issue #227.
+    @Test("every timer misuse names the helper the author meant", arguments: TimerMisuse.allCases)
+    func timerMisuseNamesTheRightHelper(_ misuse: TimerMisuse) async throws {
+        let result = await #expect(
+            processExitsWith: .failure, observing: [\.standardErrorContent]
+        ) {
+            // Explicit capture, spelled with its type: an exit test's body runs
+            // in a fresh process, so it takes only values it can encode across,
+            // and the macro has to see what type to decode on the far side.
+            [misuse = misuse as TimerMisuse] in
+            _ = try await play(TimerMisuseGame(), [misuse.command])
+        }
+        let spec = misuse.spec
+        expectTrap(result, says: spec.namesTheCall, spec.saysUse)
+    }
+
+    #endif
 }

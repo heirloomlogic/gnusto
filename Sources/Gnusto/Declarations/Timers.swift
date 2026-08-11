@@ -69,11 +69,7 @@ public func daemon(
 ///   - name: the fuse to start.
 ///   - turns: overrides the declared count for this run.
 public func startFuse(_ name: String, after turns: Int? = nil) {
-    let (frame, event) = declaredTimer(name, in: "startFuse")
-    guard case .fuse(let declared) = event.kind else {
-        fatalError(
-            "Gnusto: startFuse(\"\(name)\") names a daemon; use startDaemon(_:).")
-    }
+    let (frame, declared) = declaredFuse(name, in: "startFuse", else: "startDaemon(_:)")
     let count = turns ?? declared
     frame.with { $0.state.activeFuses[name] = count }
 }
@@ -82,10 +78,7 @@ public func startFuse(_ name: String, after turns: Int? = nil) {
 ///
 /// - Parameter name: the fuse to stop.
 public func stopFuse(_ name: String) {
-    let (frame, event) = declaredTimer(name, in: "stopFuse")
-    guard case .fuse = event.kind else {
-        fatalError("Gnusto: stopFuse(\"\(name)\") names a daemon; use stopDaemon(_:).")
-    }
+    let (frame, _) = declaredFuse(name, in: "stopFuse", else: "stopDaemon(_:)")
     frame.with { $0.state.activeFuses[name] = nil }
 }
 
@@ -95,10 +88,7 @@ public func stopFuse(_ name: String) {
 /// - Parameter name: the fuse to query.
 /// - Returns: end-of-turn ticks remaining, or `nil` when not running.
 public func fuseRemaining(_ name: String) -> Int? {
-    let (frame, event) = declaredTimer(name, in: "fuseRemaining")
-    guard case .fuse = event.kind else {
-        fatalError("Gnusto: fuseRemaining(\"\(name)\") names a daemon.")
-    }
+    let (frame, _) = declaredFuse(name, in: "fuseRemaining", else: "isDaemonActive(_:)")
     return frame.with { $0.state.activeFuses[name] }
 }
 
@@ -106,10 +96,7 @@ public func fuseRemaining(_ name: String) -> Int? {
 ///
 /// - Parameter name: the daemon to start.
 public func startDaemon(_ name: String) {
-    let (frame, event) = declaredTimer(name, in: "startDaemon")
-    guard case .daemon = event.kind else {
-        fatalError("Gnusto: startDaemon(\"\(name)\") names a fuse; use startFuse(_:after:).")
-    }
+    let frame = declaredDaemon(name, in: "startDaemon", else: "startFuse(_:after:)")
     frame.with { _ = $0.state.activeDaemons.insert(name) }
 }
 
@@ -117,10 +104,7 @@ public func startDaemon(_ name: String) {
 ///
 /// - Parameter name: the daemon to stop.
 public func stopDaemon(_ name: String) {
-    let (frame, event) = declaredTimer(name, in: "stopDaemon")
-    guard case .daemon = event.kind else {
-        fatalError("Gnusto: stopDaemon(\"\(name)\") names a fuse; use stopFuse(_:).")
-    }
+    let frame = declaredDaemon(name, in: "stopDaemon", else: "stopFuse(_:)")
     frame.with { _ = $0.state.activeDaemons.remove(name) }
 }
 
@@ -129,11 +113,45 @@ public func stopDaemon(_ name: String) {
 /// - Parameter name: the daemon to query.
 /// - Returns: `true` while the daemon is active.
 public func isDaemonActive(_ name: String) -> Bool {
-    let (frame, event) = declaredTimer(name, in: "isDaemonActive")
-    guard case .daemon = event.kind else {
-        fatalError("Gnusto: isDaemonActive(\"\(name)\") names a fuse; use fuseRemaining(_:).")
-    }
+    let frame = declaredDaemon(name, in: "isDaemonActive", else: "fuseRemaining(_:)")
     return frame.with { $0.state.activeDaemons.contains(name) }
+}
+
+/// Resolves a fuse helper's name against the declared table, trapping if it
+/// names a daemon or nothing at all, and handing back the declared count.
+///
+/// - Parameters:
+///   - name: the timer name the rule body passed.
+///   - function: the helper doing the asking, quoted back in the trap.
+///   - advice: the helper the author meant, named in the trap. Required, not
+///     optional, because the half of the message that says what to do instead
+///     is the half that does the work — one of these six once said only
+///     "names a daemon" and left the author to guess. See `TimerTests`.
+/// - Returns: the live frame and the fuse's declared count.
+private func declaredFuse(
+    _ name: String, in function: String, else advice: String
+) -> (TurnFrame, Int) {
+    let (frame, event) = declaredTimer(name, in: function)
+    guard case .fuse(let declared) = event.kind else {
+        fatalError("Gnusto: \(function)(\"\(name)\") names a daemon; use \(advice).")
+    }
+    return (frame, declared)
+}
+
+/// The daemon half of ``declaredFuse(_:in:else:)``. A daemon has no count, so
+/// this hands back the frame alone.
+///
+/// - Parameters:
+///   - name: the timer name the rule body passed.
+///   - function: the helper doing the asking, quoted back in the trap.
+///   - advice: the helper the author meant, named in the trap.
+/// - Returns: the live frame.
+private func declaredDaemon(_ name: String, in function: String, else advice: String) -> TurnFrame {
+    let (frame, event) = declaredTimer(name, in: function)
+    guard case .daemon = event.kind else {
+        fatalError("Gnusto: \(function)(\"\(name)\") names a fuse; use \(advice).")
+    }
+    return frame
 }
 
 /// Resolves a helper's timer name against the declared table, trapping on an

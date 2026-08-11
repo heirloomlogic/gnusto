@@ -80,6 +80,12 @@ enum Reentry: Sendable {
     /// ``liveText`` past 9 restores the original crash under `swift test`;
     /// whoever wants more headroom should find and cut that per-level cost
     /// first, then re-measure and move this.
+    ///
+    /// The "overflows at" column is the *recorded* ceiling; the *enforced* one
+    /// is `ReentryGuardTests.liveTextCapFiresBeforeTheStackDoes` and its walk
+    /// twin, which run each runaway for real in a child process and fail if the
+    /// stack arrives before the cap. Move a number here and they are what tells
+    /// you whether the margin survived.
     var cap: Int {
         switch self {
         case .liveText: 8
@@ -91,8 +97,10 @@ enum Reentry: Sendable {
     /// to complain about.
     ///
     /// Split out from the trap so the threshold and the wording can be asserted
-    /// in-process: a `fatalError` cannot be caught, and the suite has no
-    /// exit-code harness. Same shape as ``StackReport/line(for:game:)``.
+    /// in-process, a `fatalError` being uncatchable. Same shape as
+    /// ``StackReport/line(for:game:)``. That the trap it feeds is actually
+    /// reached — and reached before the stack runs out — is asserted separately,
+    /// by running the runaway in a child process; see `ReentryGuardTests`.
     ///
     /// - Parameters:
     ///   - depth: the nesting level just entered.

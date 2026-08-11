@@ -41,4 +41,28 @@ struct ProxyFrameTests {
             ["drop widget", "take widget", "take widget", "examine widget"])
         #expect(transcript.contains("blunders=2"))
     }
+
+    // The platform policy for exit tests is in `Package.swift`.
+    #if GNUSTO_EXIT_TESTS
+
+    /// Every proxy read above goes through the turn frame. Ask for one where
+    /// there is no turn — from `main`, from a `map` block, from a `Task` an
+    /// author spawned — and there is no state to read and no sensible value to
+    /// invent, so it traps. What makes the trap useful is that it says which
+    /// properties are turn-only, since the author is holding a `Game` value
+    /// that looks perfectly alive. Issue #227.
+    @Test("reading live state with no turn running traps, and names the turn-only properties")
+    func readingStateOutsideATurnTraps() async throws {
+        let result = await #expect(
+            processExitsWith: .failure, observing: [\.standardErrorContent]
+        ) {
+            _ = MiniGame().player.score
+        }
+        expectTrap(
+            result,
+            says: "live world state was accessed outside a game turn",
+            "only available inside rule bodies")
+    }
+
+    #endif
 }

@@ -127,14 +127,42 @@ struct IntentActionTests {
     }
 
     // MARK: - `proceed()` misuse traps
-    //
-    // `proceed()`'s misuse paths (calling it twice, or from an `after`/
-    // each-turn rule) are documented `fatalError` traps, consistent with
-    // `Ctx.current`'s own misuse style (see TurnFrame.swift). The suite has
-    // no precondition-testing/exit-code harness (no `#expect(exitsWith:)` or
-    // equivalent elsewhere in GnustoTests), so per the task brief these traps
-    // are documented here rather than exercised: a second `proceed()` call in
-    // the same turn, or a `proceed()` call from an `after`/each-turn rule,
-    // crashes the process with a message naming the misuse — never a
-    // player-facing failure.
+
+    // The platform policy for exit tests is in `Package.swift`.
+    #if GNUSTO_EXIT_TESTS
+
+    /// `proceed()`'s two misuse paths are `fatalError` traps, in the style
+    /// `Ctx.current` sets (see TurnFrame.swift): a wiring mistake the author
+    /// has to fix, never a player-facing condition. Both were described in a
+    /// comment here until issue #227, because the suite had no way to observe
+    /// a process that dies on purpose. It has one now, so what the author
+    /// reads is asserted rather than asserted *about* — each message has to
+    /// name the misuse, since naming it is the entire job.
+    @Test("calling proceed() twice in one turn traps, and says so")
+    func proceedTwiceTraps() async throws {
+        let result = await #expect(
+            processExitsWith: .failure, observing: [\.standardErrorContent]
+        ) {
+            _ = try await play(ProceedMisuseGame(), ["take wrench"])
+        }
+        expectTrap(
+            result,
+            says: "proceed() was called twice in the same turn",
+            "stage-4 default action already ran")
+    }
+
+    @Test("calling proceed() from an after rule traps, and says where it belongs")
+    func proceedFromAnAfterRuleTraps() async throws {
+        let result = await #expect(
+            processExitsWith: .failure, observing: [\.standardErrorContent]
+        ) {
+            _ = try await play(ProceedMisuseGame(), ["examine wrench"])
+        }
+        expectTrap(
+            result,
+            says: "proceed() was called outside a `before` rule",
+            "not from an `after` or each-turn rule")
+    }
+
+    #endif
 }

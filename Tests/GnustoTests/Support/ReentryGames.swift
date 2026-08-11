@@ -81,3 +81,61 @@ struct SlideGame: Game {
         player.starts(in: mouth)
     }
 }
+
+/// Issue #223's crash, kept alive on purpose: a live `describe { }` that calls
+/// the describer already running it.
+///
+/// **This game cannot be played.** Looking at the cell recurses until
+/// ``Reentry/liveText``'s cap stops it, so the only legal way to run it is inside
+/// an exit test — see `ReentryGuardTests`, which runs it in a child process to
+/// prove the cap arrives before the 512 KB does.
+struct LoopCellGame: Game {
+    let title = "Loop"
+    let intro = "A cell that describes itself by looking around."
+
+    let cell = Location { name("Cell") }
+
+    var rules: Rules {
+        // `describeSurroundings()` is a full LOOK, which asks the cell for its
+        // description, which is this closure. Nothing breaks the cycle but the cap.
+        cell.describe {
+            describeSurroundings()
+            return "Bare walls."
+        }
+    }
+
+    var map: WorldMap {
+        player.starts(in: cell)
+    }
+}
+
+/// The walk seam's version of ``LoopCellGame``: a room whose `onEnter` walks the
+/// player into the room they are already entering.
+///
+/// The legitimate shape is ``SlideGame``, where each room passes the player *on*.
+/// This one passes them back, so the chain never shortens and only
+/// ``Reentry/walk``'s cap ends it. Unplayable for the same reason, and run the
+/// same way.
+struct KnotGame: Game {
+    let title = "Knot"
+    let intro = "A room you cannot finish arriving at."
+
+    let approach = Location {
+        name("Approach")
+        description("A passage sloping down to the north.")
+    }
+
+    let knot = Location {
+        name("Knot")
+        description("You are still getting here.")
+    }
+
+    var rules: Rules {
+        knot.onEnter { try enter(knot) }
+    }
+
+    var map: WorldMap {
+        approach.north(knot)
+        player.starts(in: approach)
+    }
+}
