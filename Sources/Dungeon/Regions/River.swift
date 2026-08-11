@@ -363,6 +363,14 @@ struct DungeonRiver: GameContent {
     let cliffsAtNorthBeach = cliffScenery("narrow", synonyms("cliff", "cliffs", "beach", "strip", "path", "base"))
     let cliffsAtSouthBeach = cliffScenery("rocky", synonyms("cliff", "cliffs", "beach", "strip", "path", "shore"))
 
+    // The two White Cliffs beaches are `.waterSource` rooms whose only scenery
+    // was the cliffs, so the river a bottle fills from had no noun in them at
+    // all: `fill bottle` worked and `x water` did not. Repaired by inspection
+    // rather than from a transcript — no charter entered either room in the
+    // 2026-08-11 round. (#233)
+    let riverAtNorthBeach = riverScenery("cold", synonyms("water", "river"))
+    let riverAtSouthBeach = riverScenery("cold", synonyms("water", "river"))
+
     let rainbowAtFalls = rainbowScenery(synonyms("rainbow", "stairs", "bannister"))
     let rainbowAtRainbowRoom = rainbowScenery(synonyms("rainbow", "view", "falls", "waterfall"))
     let rainbowAtEndOfRainbow = rainbowScenery(
@@ -570,6 +578,8 @@ struct DungeonRiver: GameContent {
         riverAtFive.starts(in: river5)
         cliffsAtNorthBeach.starts(in: whiteCliffsNorth)
         cliffsAtSouthBeach.starts(in: whiteCliffsSouth)
+        riverAtNorthBeach.starts(in: whiteCliffsNorth)
+        riverAtSouthBeach.starts(in: whiteCliffsSouth)
         riverAtSandyBeach.starts(in: sandyBeach)
         riverAtShore.starts(in: shore)
         fallsAtFalls.starts(in: aragainFalls)
@@ -592,6 +602,20 @@ struct DungeonRiver: GameContent {
     }
 
     @RuleBuilder private var riverRules: Rules {
+        // Every room in this region is `.waterSource`, so the bottle fills in
+        // all of them — while `drink water` fell through to ``DungeonSystems``'
+        // stage-4 default and denied the river the player was standing in.
+        // ``DungeonDam`` does the same for its seven. The bottle's own line,
+        // because it is the same water; nothing is emptied, because a river is
+        // not a bottle. (#233)
+        for water in [
+            riverAtOne, riverAtTwo, riverAtThree, riverAtFour, riverAtFive,
+            riverAtNorthBeach, riverAtSouthBeach, riverAtSandyBeach,
+            riverAtShore, riverAtRockyShore, fallsAtFalls, canyonAtEndOfRainbow,
+        ] {
+            water.before(.drink) { try reply(Prose.drinkWater) }
+        }
+
         // Aragain Falls reports the rainbow's state, and only ever from here —
         // unless you have climbed into the barrel, in which case the falls are
         // exactly what you cannot see. The source answers `look` from the

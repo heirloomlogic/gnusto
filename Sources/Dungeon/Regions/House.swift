@@ -184,12 +184,16 @@ struct DungeonHouse: GameContent {
         lanternDiesIn = Self.lanternDiesAt
     }
 
+    /// No `description(…)`: past the crypt this blade is doing something, and
+    /// the one command a player would use to check the warning said nothing
+    /// about it. ``Dungeon/swordGlowRules`` composes ``Prose/sword`` with the
+    /// glow — host-wired, because the glow is ``DungeonEndgame``'s — and a
+    /// static trait and its rule are mutually exclusive.
     let sword = Item {
         name("elvish sword")
         adjectives("elvish")
         synonyms("sword", "blade", "orcrist", "glamdring")
         firstSight(Prose.swordOnHooks)
-        description(Prose.sword)
         trait(.weapon, true)
         trait(.weaponStrength, 3)
         trait(.weight, 30)
@@ -511,8 +515,12 @@ struct DungeonHouse: GameContent {
             stopFuse("lanternDies")
         }
 
-        // Liquids. Water lives in the bottle and slips through loose fingers;
-        // this milestone has no water source to refill from.
+        // Liquids. Water lives in the bottle and slips through loose fingers.
+        // Refilling needs a `.waterSource` room, of which the game now has
+        // twenty — the dam and the reservoir brought the first seven and the
+        // river the rest, and each of those rooms answers `drink` for its own
+        // water. These four rules are about the bottled water only, which is
+        // why their refusals may still name the room.
         water.before(.take) {
             try refuse(Prose.waterSlipsAway)
         }

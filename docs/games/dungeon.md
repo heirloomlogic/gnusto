@@ -1093,3 +1093,99 @@ afterwards, so the Slide Room described a rope tied off at the head of the slide
 while the player carried the timber it was tied to down the chute. Applying the
 game's own stated rule consistently is not a new puzzle, and the 716-point
 walkthrough scores exactly what it scored before.
+
+### The second pass: a line that is true of the *turn* it prints in
+
+The first pass took the sites where a sentence was untrue of the **room**. Six
+boxes of the same issue were untrue of the **moment**, and each is one of the
+rules above applied at a seam the first pass did not reach.
+
+6. **A daemon reports the state it is watching, not the player's grip on it.**
+   The sword's warning against the Guardians read `sword.isHeld ? strength : 0`,
+   so putting the blade down one berth from them announced that the danger had
+   passed, and picking it up announced that it had come back. It asks whether
+   the sword is *perceivable* now — rule 2, applied to a daemon instead of a
+   fuse — and a blade the player has walked away from goes **quiet** rather than
+   saying its light went out. Nobody is there to see it either way, so the
+   recorded strength goes back to nothing without printing and the next sight of
+   it warns again.
+
+   The other half of that box is the other channel: `x sword` never mentioned
+   the glow at all, which is the one command a player would use to check the
+   warning. That is a `describe { }` on a `DungeonHouse` item reading
+   `DungeonEndgame` state, so it is the host's — rule 4 — and the static
+   `description(…)` had to come off the declaration, since a trait and its rule
+   are mutually exclusive.
+
+7. **A rule that repeats a line restarts the clock that repeats it.** Knocking
+   at the wooden door with a question outstanding put the question again, and
+   the examination daemon — whose patience was already half spent — then put it
+   a *second* time on the same turn, prefaced by "The voice waits". The
+   right-answer path already cleared `quizWaitedATurn` and said why in a
+   comment; the re-knock path was the same case with the fix missing.
+
+8. **A paragraph that names an exit yields to the exit table.** That is the
+   mechanics contract's rule, and here it had to be applied where *both*
+   original sources carry the same mistake: `dung.355` prints "To the west,
+   there is a place to land on a wide ledge" and files `VAIR4 EAST -> LEDG4`,
+   and Zork II inherited the paragraph without the table. `FIDELITY.md` records
+   it, because the departure is from the original's own sentence rather than
+   from one source in favour of the other.
+
+9. **A stock engine line about an actor is a placeholder, not an answer.**
+   `greet troll` reached `GameText.greets` — "The troll nods, and says
+   nothing." — which the engine's own doc comment calls a placeholder an actor's
+   rules are expected to answer over. All four of the game's actors reached it.
+   The gnome and the Dungeon Master already answered for themselves; the troll,
+   the cyclops, the thief and the robot now do too, in two states each where the
+   source has two. Not a re-voiced `text.greets`: one line for four different
+   creatures is the defect in rule 10, one register up.
+
+10. **A game-wide default is a sentence printed in all 196 rooms, so it may not
+    be a claim about any one of them.** `DungeonSystems.actions` is the
+    last-resort answer for a verb nothing else claimed, and "There is nothing
+    here to drink." printed in the twenty rooms this game flags
+    `.waterSource` — where the bottle fills in the same frame, because
+    `bottle.before(.fill)` already reads the predicate. The repair is the one
+    `.swim` already had and `.dive` was left out of: make the refusal a claim
+    about the **thing named**, which is true everywhere, and let the things that
+    *are* drinkable answer for themselves at stage 3.
+
+    It goes in the `action(…)` body and **not** in a `world.before`, because a
+    world rule runs at stage 1 and would pre-empt the bottle's own fill — the
+    ordering `bucketRules` already documents. Where a room really does own the
+    answer, the room takes it: `smellyRoom.before(.smell)` and
+    `gasRoom.before(.smell)` reclaim the two rooms in the game whose
+    descriptions are *about* a smell.
+
+### What the second pass changed, and what it did not
+
+The mechanics contract is untouched again, and both walkthroughs score exactly
+what they scored before. Three repairs are worth naming because they are the
+ones closest to it:
+
+- **The sword warns about a blade you can see, not only one in your hand.** That
+  is wider than `I-SWORD`, which the source disables outright when the sword
+  leaves your inventory. It is a better warning system and it is a departure;
+  `FIDELITY.md` carries it.
+- **The four actors answer a greeting hostilely, where both sources have them
+  bow.** `V-HELLO` gives every villain "The troll bows his head to you in
+  greeting", and this game does not. The reason is a *second* divergence, not a
+  fidelity argument: the source's troll strikes first only at `PROB 33` and
+  otherwise stands blocking, exactly as its listing line says, so its bow is not
+  incongruous — but `MeleeCombat.aggression` rolls every turn with no
+  strike-first probability, and an unprovoked player standing in the Troll Room
+  dies in 40 runs out of 41 inside eight turns. The hostile lines are true of the
+  troll this game ships. `FIDELITY.md` records both, and says to revisit these
+  four lines if the aggression is ever brought back to the source's.
+- **The Gas Room's stairs and the Smelly Room's staircase are two items.** One
+  staircase seen from its two ends, which is rule 3 rather than a map change:
+  `smellyRoom.down(gasRoom)` is exactly what it was.
+
+Two things were deliberately left. `count leaves` still answers the engine's
+"You lose count." — the mainframe makes the count a hint toward the grating, and
+the number cannot be confirmed from `dungeon-prose-comparison.md`, so inventing a
+different one would be worse than not answering. And `water.before(.drink)`'s
+refusal is still reachable in the Circular Room with the water in the bucket,
+where it is false; whether you may drink the counterweight that just lifted you
+is a puzzle question rather than a prose one.

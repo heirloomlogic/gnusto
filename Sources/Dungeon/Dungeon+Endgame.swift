@@ -18,7 +18,8 @@ import GnustoScoring
 ///   rather than by an exit, and a rule that assigns `player.location` fires no
 ///   `onEnter` — so those four are paid the way `LIGHT-SHAFT` and the Top of
 ///   Well already are.
-/// - **The sword's glow**, re-armed against the Guardians.
+/// - **The sword's glow**, re-armed against the Guardians, and what examining
+///   the blade says about it.
 /// - **The thief's daemons**, switched off for good.
 ///
 /// Its own file rather than more of `Dungeon.swift`, which is eleven hundred
@@ -41,6 +42,27 @@ extension Dungeon {
     @RuleBuilder var endgameRules: Rules {
         cryptDoorRules
         endgameScoringRules
+        swordGlowRules
+    }
+
+    /// What the blade says about itself when it is examined. Host-wired for
+    /// `maze.gratingRoom.describe`'s reason: the sword is a ``DungeonHouse``
+    /// item and the danger it is reading is ``DungeonEndgame``'s, so neither
+    /// bundle can write this rule.
+    ///
+    /// It reads ``swordGlowStrength`` live rather than
+    /// ``DungeonEndgame/swordGlow``, which is the *last announced* value.
+    /// Examining is a question about now; the record is a record of what has
+    /// already been said, and is a tick behind whenever the two could differ —
+    /// a rule that walks the box or the player is over before the daemon runs.
+    @RuleBuilder private var swordGlowRules: Rules {
+        house.sword.describe {
+            switch swordGlowStrength {
+            case 2: "\(Prose.sword)\n\n\(Prose.swordExaminedBright)"
+            case 1: "\(Prose.sword)\n\n\(Prose.swordExaminedFaint)"
+            default: Prose.sword
+            }
+        }
     }
 
     /// The two turns of the marble door that reach outside the bundle: the
@@ -148,7 +170,22 @@ extension Dungeon {
         // and the only one there is. Started by the transition, because before
         // it there is nothing for the sword to warn about.
         daemon("endgame.swordGlow") {
-            let glow = house.sword.isHeld ? swordGlowStrength : 0
+            // The danger, not your grip on it. This read `sword.isHeld` and
+            // took an unheld sword for a sword in no danger, so putting it
+            // down one room from the Guardians announced that the light had
+            // gone out — a sentence about the blade, on a turn when only the
+            // player's hands had moved. A blade lying on the floor of the room
+            // you are standing in is a blade you can watch, which is
+            // ``DungeonHouse/timers``' question about the lantern.
+            guard house.sword.isVisible else {
+                // And a blade three rooms behind you says nothing at all. Its
+                // light did not go out; there is nobody there to see it. The
+                // record goes back to nothing without printing, so the next
+                // sight of the sword reports what it is doing then.
+                endgame.swordGlow = 0
+                return
+            }
+            let glow = swordGlowStrength
             // Only on a change. A blade that reports the same thing every turn
             // for twenty turns is furniture, not a warning.
             guard glow != endgame.swordGlow else { return }

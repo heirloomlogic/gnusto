@@ -19,7 +19,11 @@
 ///   bucket. The same trap M3 and M4 both walked into.
 /// - `VAIR4` is `substantial`, and the trilogy's version drops the one fact the
 ///   puzzle turns on: the rim is fifteen feet across, which is why a balloon
-///   that rises past this level tears itself open on it. Adapted to put it back.
+///   that rises past this level tears itself open on it. Adapted to put it back
+///   — and adapted a second time to say the wide ledge is **east**, which is
+///   where the exit table puts it and where both sources' paragraphs do not.
+///   That departure is from the prose of both sources at once, so it is filed
+///   in `FIDELITY.md` rather than only here.
 /// - `VAIR3` is filed with **no trilogy counterpart**, and it has one:
 ///   `historicalsource-zork2/2dungeon.zil` declares `VAIR-3`, *Volcano by
 ///   Viewing Ledge*, whose line differs from the mainframe's by two words. The
@@ -92,11 +96,22 @@ extension Prose {
         to be a viewing ledge, too thin to land on.
         """
 
-    /// Adapted. `VAIR4` is `substantial`, and the fifteen feet are the fact the
-    /// rim's danger rests on.
+    /// Adapted twice over. `VAIR4` is `substantial`, and the fifteen feet are
+    /// the fact the rim's danger rests on.
+    ///
+    /// And **the ledge is east, where both sources' paragraphs say west.** This
+    /// is not the trilogy rewriting a room the mainframe kept: `dung.355` says
+    /// west in the prose and files `VAIR4 EAST -> LEDG4` *and* `VAIR4 LAND ->
+    /// LEDG4` in the exit table, so the original contradicts itself and Zork II
+    /// copied the paragraph without the table. The table wins, as it does for
+    /// `LAVA` — and here nothing else could: `LEDG4 WEST` is the gnome's
+    /// chimney down to the volcano floor, so a west-facing landing would put
+    /// the ledge on both sides of itself, and
+    /// ``DungeonVolcano/ledgeLandings`` reads the bearing three ways. Its
+    /// sibling `VAIR2` says west and *is* wired west, and is untouched.
     static let volcanoNearWideLedge = """
         You are near the rim of the volcano, which is only about fifteen feet
-        across. Above you it is open to the sky. To the west, there is a place
+        across. Above you it is open to the sky. To the east, there is a place
         to land on a wide ledge.
         """
 

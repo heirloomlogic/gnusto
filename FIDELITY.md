@@ -1969,6 +1969,18 @@ them.
 - **The Ruby Room's passage runs west from both ends.** `RUBYR` west to `LAVA`,
   `LAVA` west to `RUBYR` — the mainframe's own doubling, the same one the Deep
   Ravine's crawl has, and not a transcription slip.
+- **The Wide Ledge is east of `VAIR4`, and both sources' paragraphs say west.**
+  This one is not the trilogy rewriting a room the mainframe kept. `dung.355`
+  prints *"To the west, there is a place to land on a wide ledge"* and files
+  `VAIR4 EAST -> LEDG4` and `VAIR4 LAND -> LEDG4` in its own exit table, so the
+  original contradicts itself, and Zork II inherited the paragraph without the
+  table. The table wins — the mechanics contract's rule, and the only reading
+  the map supports, since `LEDG4 WEST` is already the gnome's chimney down to
+  the volcano floor and `DungeonVolcano.ledgeLandings` reads the bearing three
+  ways. Recorded here rather than only in the prose file because the departure
+  is from the *prose of both sources at once* rather than from one of them.
+  `VAIR2`, whose paragraph says west and whose ledge is west, is untouched.
+  (#233, second pass.)
 - **Volcano View hangs off the Egyptian Room**, south, through a door that
   room's description has named since milestone 3. It is the one ledge nothing
   can land on: `DOWN` and `CROSS` are both declared in its exit table and both
@@ -2003,8 +2015,10 @@ Bottom and the Library are the trilogy's lines verbatim.
 
 Three entries depart from that, each for a reason the comparison document cannot
 see. `LAVA` is `minor` and adapted anyway, for the exit above. `VAIR4` is
-`substantial` and adapted to put back the one fact the trilogy dropped — the rim
-is fifteen feet across, which is why rising past it wrecks the balloon. And
+`substantial` and adapted **twice**: to put back the one fact the trilogy dropped
+— the rim is fifteen feet across, which is why rising past it wrecks the balloon
+— and to send the aviator east rather than west, for the exit-table reason
+recorded above. And
 **`VAIR3` is filed with no trilogy counterpart and has one**: Zork II declares
 `VAIR-3`, *Volcano by Viewing Ledge*, whose line differs from the mainframe's by
 two words. The atlas misses the pairing because the display names differ and the
@@ -2954,3 +2968,68 @@ so there is nothing for the exclusion list to exclude. The Tomb is the one room
 this milestone adds that he could otherwise reach, and it is not in the set:
 `LLD2` is not in it either, because the Land of the Living Dead is sacred ground,
 so the Tomb sits behind a room he can never stand in.
+
+#### The sword's warning, and four greetings
+
+Two deliberate departures landed with the second pass over #233. Both replace a
+line the sources agree on, which is why they are here rather than only in a doc
+comment.
+
+**The sword warns about a blade you can see, not only one in your hand.**
+`I-SWORD` (`1actions.zil:3853`, and the MDL's `act1.254:1996` before it) gates
+the demon on `<IN? ,SWORD ,ADVENTURER>` and **disables it outright** when the
+sword is not held, so the original never reports a change in the danger on a turn
+that only changed your grip. This game's daemon did something worse than either:
+it read an unheld sword as a sword in no danger, so setting the blade down one
+berth from the Guardians printed "The blue light goes out of the sword" and
+picking it up printed the warning again. It now gates on `isVisible`, which is
+one room wider than the source and is `DungeonHouse.timers`' rule for the
+lantern: a blade lying on the floor of the room you are standing in is a blade
+you can watch. A blade you have walked away from goes quiet rather than
+announcing anything, because nobody is there to see it. Examining the sword also
+reports the glow, which `SWORD-FCN` (`1actions.zil:2437`) does too — except that
+the source replaces the description with it and this game appends, because the
+mainframe's blade has a description worth keeping.
+
+**Four actors answer a greeting hostilely, where both sources have them bow.**
+`V-HELLO` (`gverbs.zil:726`) answers a greeting to any `ACTORBIT` object with
+*"The troll bows his head to you in greeting"*, and the MDL's `HELLO` is the same
+routine; only the troll and the thief get second lines, for when they are down
+(`1actions.zil:764`, `:1955`). Gnusto's own placeholder — "The troll nods, and
+says nothing." — is the same courtesy in a flatter voice, and the play-test round
+filed it as a line asserted from a creature mid-swing. So the troll, the cyclops,
+the thief and the robot each answer as what they are, in the source's two states
+where the source has two. The thief keeps his courtesy, because his courtesy is
+the point of him; the robot does not nod, because it is a machine.
+
+**This is a departure from a line both sources share, and the reason for it is a
+second divergence rather than a fidelity argument.** The first draft of this note
+claimed the source's own troll is perpetually mid-swing, so its bow was already
+odd. That is false. `I-FIGHT` (`1actions.zil:3810`) has a villain strike only
+when `FIGHTBIT` is already set — the player has engaged — or when the villain's
+own `F-FIRST?` branch says so, and the troll's is `<PROB 33>` (`:701`), the
+thief's `<PROB 20>` (`:2063`). An unprovoked source troll therefore spends two
+turns in three standing and blocking, which is exactly what its listing line
+says it does, and the bow is not incongruous there.
+
+It is incongruous *here*, because **this game's troll is far more aggressive than
+the source's**: `MeleeCombat.aggression` autostarts and rolls every turn the
+player shares the room, with no strike-first probability and no engaged/unengaged
+distinction, so an unprovoked player standing in the Troll Room dies in 40 runs
+out of 41 inside eight turns. That divergence is the melee plugin's and predates
+this section; `Sources/Zork1/` makes the same call. It is recorded here because
+the greeting rests on it: the hostile answers are true of the troll this game
+actually ships, and would be wrong for the troll `dung.355` describes. **If the
+aggression is ever brought back to `PROB 33`, revisit these four lines.** Filed
+as #237, which carries the measurements and the cost of the re-pin.
+
+#### Where the sources actually are
+
+Several notes above say a question "cannot be settled from the repository,
+because the ZIL sources are deliberately not vendored." That remains true of the
+repository and has been read as meaning the text is unavailable, which it is not:
+the checkouts `bin/atlas/build_atlas.py` reads live outside the tree, and both
+departures in this section were settled by reading them. **Check for them before
+writing that a source line cannot be confirmed.** They are not vendored, they are
+not in the build, and nothing in `Sources/` may quote them beyond what the
+committed policy already licenses — but "not vendored" is not "not readable".

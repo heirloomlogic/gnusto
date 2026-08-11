@@ -353,6 +353,82 @@ struct DungeonEndgameTests {
         #expect(!transcript.contains("Beyond it is the hallway"))
     }
 
+    /// **The blade reports the danger, not your grip on it.** Putting the sword
+    /// down one berth from the Guardians printed "The blue light goes out of the
+    /// sword", and picking it straight back up printed the warning again — two
+    /// sentences about a danger that had not moved, on turns when only the
+    /// player's hands had. The daemon now asks whether the sword is
+    /// *perceivable*, which is `DungeonHouse/timers`' question about the
+    /// lantern. (#233)
+    @Test func theSwordReportsTheDangerAndNotYourGripOnIt() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.pastTheCrypt + Self.throughTheBoxToMRD
+                // *blade*, not *sword*: the 616-point route this is built on
+                // already spends "take sword", and `turnOutput` matches the
+                // first occurrence of a command.
+                + ["drop blade", "take blade"] + Self.outOfTheBox,
+            seed: Self.seed)
+
+        // The controls, at both ends of the ride: the danger really was
+        // reported on the way in, and really is reported on the way out.
+        expectInOrder(
+            transcript,
+            [
+                "The sword has come up to a fierce blue light.",
+                "The sword shows a faint blue edge.",
+                "The blue light goes out of the sword.",
+            ])
+
+        // And nothing at all from the two turns that only changed hands.
+        let dropped = turnOutput(of: "drop blade", in: transcript)
+        #expect(dropped.contains("Dropped."))
+        #expect(!dropped.contains("blue"))
+        let taken = turnOutput(of: "take blade", in: transcript)
+        #expect(taken.contains("Taken."))
+        #expect(!taken.contains("blue"))
+    }
+
+    /// **A sword you have walked away from says nothing.** Its light did not go
+    /// out; you left the room it is lighting. The record goes back to nothing
+    /// silently, so the next sight of the blade warns again. (#233)
+    @Test func aSwordLeftBehindGoesQuietRatherThanGoingOut() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.pastTheCrypt + Self.throughTheBoxToMRD
+                + Self.outOfTheBox.dropLast() + ["drop blade", "out"],
+            seed: Self.seed)
+
+        // The control: it was glowing, and it was still glowing when it was put
+        // down inside the box.
+        #expect(transcript.contains("The sword shows a faint blue edge."))
+        #expect(!turnOutput(of: "drop blade", in: transcript).contains("blue"))
+        // And stepping out of the box, leaving it behind, is not the light
+        // going out.
+        #expect(!turnOutput(of: "out", in: transcript).contains("The blue light goes out"))
+    }
+
+    /// **`x sword` is the one command a player would use to check the warning,
+    /// and it said nothing about it.** `SWORD-FCN` answers EXAMINE with the glow
+    /// in the source too; the blade here keeps its own description and gains a
+    /// clause. Cross-bundle, so the rule is the host's. (#233)
+    @Test func theSwordsDescriptionCarriesWhatItIsDoing() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.pastTheCrypt + ["x blade"] + Self.throughTheBoxToMRD
+                + ["examine blade"],
+            seed: Self.seed)
+
+        // At the top of the stairs it is a sword and nothing more.
+        let quiet = turnOutput(of: "x blade", in: transcript)
+        #expect(quiet.contains("A long elvish blade"))
+        #expect(!quiet.contains("blue"))
+        // One berth past the Guardians it is a sword that is doing something.
+        let glowing = turnOutput(of: "examine blade", in: transcript)
+        #expect(glowing.contains("A long elvish blade"))
+        #expect(glowing.contains("A faint blue edge runs the length of it."))
+    }
+
     /// Walking into the Guardians' reach on foot is fatal, and death in the
     /// endgame is final however many resurrections were left over.
     @Test func walkingIntoTheGuardiansKillsYouForGood() async throws {
@@ -417,6 +493,36 @@ struct DungeonEndgameTests {
                 "Narrow Corridor",
                 "Your score is 681 of a possible 716",
             ])
+    }
+
+    /// **He waits a turn before he repeats himself, and a knock restarts the
+    /// wait.** Knocking with a question outstanding puts the question again —
+    /// and the daemon, whose patience was already half spent, then put it a
+    /// *second* time on the same turn, prefaced by "The voice waits". The
+    /// right-answer path guards against exactly this and says so in a comment;
+    /// the re-knock path was the same case with the fix missing. (#233)
+    @Test func aSecondKnockRestartsTheVoicesPatience() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.pastTheCrypt + Self.throughTheBox + [
+                // *oaken*, not a second "knock on door": `turnOutput` matches
+                // the first occurrence of a command.
+                "knock on door", "knock on oaken door", "examine oaken door", "listen",
+            ],
+            seed: Self.seed)
+
+        // He answers the knock with the question he is still waiting on, once,
+        // and does not also complain that you have kept him waiting.
+        let reknock = turnOutput(of: "knock on oaken door", in: transcript)
+        #expect(occurrences(of: "Beside the Temple", in: reknock) == 1)
+        #expect(!reknock.contains("The voice waits, and then puts the question again."))
+
+        // The control, both ways: the clock restarted rather than stopping. The
+        // repeat lands one turn later, and the turn after that is quiet again.
+        #expect(
+            turnOutput(of: "examine oaken door", in: transcript)
+                .contains("The voice waits, and then puts the question again."))
+        #expect(!turnOutput(of: "listen", in: transcript).contains("The voice waits"))
     }
 
     /// Five wrong answers to one question ends the examination for good, and
@@ -531,11 +637,21 @@ struct DungeonEndgameTests {
     // MARK: - The route, in pieces
 
     /// The mirror box, from the Top of Stairs to the Dungeon Entrance.
-    static let throughTheBox: [String] = [
+    static let throughTheBox: [String] = throughTheBoxToMRD + outOfTheBox
+
+    /// The first half of that ride, stopping with the box at `MRD` — one berth
+    /// past the Guardians, so the blade is at its faint rung and a test has a
+    /// frame where a dropped sword would be wrong about something.
+    static let throughTheBoxToMRD: [String] = [
         "down", "north", "drop lamp", "south", "push red button",
         "north", "north", "in",
         "raise pole", "push red panel", "push red panel", "lower pole",
         "push mahogany", "push mahogany", "push mahogany",
+    ]
+
+    /// And the second: turn the box back end-on the other way, open the pine
+    /// end and step out of it.
+    static let outOfTheBox: [String] = [
         "raise pole", "push red panel", "push red panel", "push red panel",
         "push red panel", "lower pole", "push pine", "north",
     ]

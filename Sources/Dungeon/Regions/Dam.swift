@@ -534,6 +534,20 @@ struct DungeonDam: GameContent {
     }
 
     @RuleBuilder private var damRules: Rules {
+        // The water in the seven rooms this region flags ``TraitKey/waterSource``,
+        // drunk from where it lies. `drink water` used to fall through to
+        // ``DungeonSystems``' stage-4 default and answer "There is nothing here
+        // to drink." standing on top of the dam — while `fill bottle` succeeded
+        // in the same frame, because `bottle.before(.fill)` already reads the
+        // trait. The bottle's own line, because it is the same water; nothing
+        // is emptied, because a reservoir is not a bottle. (#233)
+        for pool in [
+            damView, damFromBelow, reservoirWater, reservoirFromSouth,
+            reservoirFromNorth, streamWater, streamChannel,
+        ] {
+            pool.before(.drink) { try reply(Prose.drinkWater) }
+        }
+
         // The four rooms whose description is the state of the water.
         damRoom.describe {
             var paragraphs = [

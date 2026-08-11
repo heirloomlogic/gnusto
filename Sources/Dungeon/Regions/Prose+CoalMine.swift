@@ -150,6 +150,38 @@ extension Prose {
         than to smell of.
         """
 
+    /// Written fresh. The room's own description points at these, and the odor
+    /// is what comes up them rather than what they are — which is why the two
+    /// are separate items now.
+    static let smellyRoomStairs = """
+        Narrow steps cut into the rock, dropping away into the dark. Whatever
+        is down there is what you can smell.
+        """
+
+    /// Written fresh. From below, the same staircase is simply the way out.
+    static let gasRoomStairs = """
+        A short flight of steps back up to the room above, and the only way out
+        of this one.
+        """
+
+    /// Written fresh, both of them. ``DungeonSystems`` answers `smell`
+    /// game-wide, and its one line told the player, in the two rooms in the
+    /// game whose descriptions are *about* a smell, that there was nothing to
+    /// smell — a contradiction two lines apart. (#233)
+    ///
+    /// The flame is deliberately not mentioned below. What the Gas Room does to
+    /// an open flame is the puzzle; a `smell` that warned about it would make
+    /// the room easier, which is a mechanics change and not a prose repair.
+    static let smellyRoomSmelled = """
+        It comes up the staircase in slow waves — sweetish, and wrong, and not
+        the smell of a coal mine.
+        """
+
+    static let gasRoomSmelled = """
+        Coal gas, and a great deal of it. Every breath is thicker than the one
+        before it.
+        """
+
     /// Adapted. `BOOM` is `substantial` because the trilogy gave the Gas Room
     /// a second exit east into its own coal maze. The mainframe's has one way
     /// out, and it is back up the stairs.

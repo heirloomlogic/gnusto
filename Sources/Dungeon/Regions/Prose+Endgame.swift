@@ -372,12 +372,33 @@ extension Prose {
         You strike the statue. The statue attends to you, briefly.
         """
 
+    /// The two rungs of the warning, as the daemon announces them. Neither says
+    /// "in your hand" any more: the daemon reports a sword the player can
+    /// *see*, which includes one lying on the floor of the room they are
+    /// standing in. See ``Dungeon/endgameTimers``.
     static let swordGlowsBrightly = """
-        The sword in your hand has come up to a fierce blue light.
+        The sword has come up to a fierce blue light.
         """
 
     static let swordGlowsFaintly = """
-        The sword in your hand shows a faint blue edge.
+        The sword shows a faint blue edge.
+        """
+
+    /// And the same two rungs in the examine channel, which is a description
+    /// rather than an event and so is not the same sentence. Appended to
+    /// ``Prose/sword`` by ``Dungeon/swordGlowRules``, because the blade is
+    /// ``DungeonHouse``'s and the glow is this region's.
+    ///
+    /// Written fresh, but the channel is the source's: `SWORD-FCN`
+    /// (`1actions.zil:2437`) answers EXAMINE with the glow too. It *replaces*
+    /// the description with it; this appends, because the mainframe's blade has
+    /// a description worth keeping.
+    static let swordExaminedBright = """
+        It is burning with a fierce blue light.
+        """
+
+    static let swordExaminedFaint = """
+        A faint blue edge runs the length of it.
         """
 
     // MARK: - The Dungeon Entrance and the Narrow Corridor

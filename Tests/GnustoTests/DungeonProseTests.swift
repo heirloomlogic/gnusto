@@ -57,6 +57,30 @@ struct DungeonProseTests {
         + ["turn bolt with wrench", "drop wrench", "south", "northwest"]
         + ["north", "north", "north", "up", "north"]
 
+    /// Out through the mirror network to the Shaft Room, up the Wooden Tunnel
+    /// and west into the Smelly Room — the Gas Room is one flight below it.
+    /// Seed 11.
+    private static let toTheSmellyRoom =
+        toTheMirrors + ["west", "west", "north", "northeast", "north", "west"]
+
+    /// Into the maze as far as Maze-5, then on to the Cyclops Room. Seed 11.
+    private static let toTheCyclops =
+        pastTheTroll + ["south", "south", "east", "up"]
+        + ["southwest", "east", "south", "northeast"]
+
+    /// The same, with the peppers and the bottle, and the giant asleep on the
+    /// drugged water at the end of it — the one way to have a cyclops who is
+    /// both subdued and still standing in the room. Seed 11.
+    private static let toTheSleepingCyclops =
+        intoTheKitchen + ["take bottle", "open sack", "take lunch"]
+        + downTheTrapDoor + ["east", "attack troll with sword"]
+        + ["south", "south", "east", "up", "southwest", "east", "south", "northeast"]
+        + ["give water to cyclops", "give lunch to cyclops", "give water to cyclops"]
+
+    /// Through the wall the shout opens, and up into the thief's Treasure Room.
+    /// Arriving is what puts him into play. Seed 11.
+    private static let toTheHoard = toTheCyclops + ["odysseus", "up"]
+
     /// The road to the tea party, and on to the three buttons. Seed 10
     /// throughout, as in `DungeonTests`: the carousel is a lottery until the
     /// triangular button stops it, and this is the draw that lands.
@@ -270,5 +294,340 @@ struct DungeonProseTests {
         let inViewingRoom = turnOutput(of: "examine curtain", in: transcript)
         #expect(inViewingRoom.contains("hanging across one side of the room"))
         #expect(!inViewingRoom.contains("where the north wall ought to be"))
+    }
+
+    // MARK: - A listing sentence standing in for an examine text
+
+    /// **"On the ground is a pile of leaves." is the trilogy's `LDESC`** — the
+    /// room-listing sentence, and the only thing that tells a player there is
+    /// anything here to push — and it was declared as the *examine* text. So
+    /// the Clearing listed nothing, and `x leaves` answered a question nobody
+    /// asked. `scenery` is kept, so the pile is still unliftable: `scenery`
+    /// withholds the engine's stock sentence and never the author's. (#233)
+    @Test func theClearingListsItsLeavesAndExamineAnswersAboutThem() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            ["south", "east", "east", "x leaves", "take leaves", "push leaves", "look"],
+            seed: 11)
+
+        #expect(transcript.contains("Clearing"))
+        // The listing line prints, and goes on printing: nothing in this game
+        // touches the leaves, and they are still lying there after the push.
+        #expect(transcript.contains("On the ground is a pile of leaves."))
+        #expect(
+            turnOutput(of: "look", in: transcript)
+                .contains("On the ground is a pile of leaves."))
+        // Examining answers about the pile instead of repeating where it is.
+        let examined = turnOutput(of: "x leaves", in: transcript)
+        #expect(examined.contains("Dead leaves, drifted deep"))
+        #expect(!examined.contains("On the ground is a pile of leaves."))
+        // And the grating puzzle is exactly where it was, pile included.
+        #expect(
+            turnOutput(of: "push leaves", in: transcript)
+                .contains("a grating is revealed"))
+        #expect(!turnOutput(of: "take leaves", in: transcript).contains("Taken."))
+    }
+
+    /// **The rusty knife called itself "older than anything else you are
+    /// carrying"** — false against the elvish sword, and the game stages
+    /// exactly that frame: taking the knife with the sword in hand is what
+    /// fires the blue pulse. It is false against the coffin, the trident and
+    /// the egg too, so the line stopped comparing rather than branching on one
+    /// of them. (#233)
+    @Test func theRustyKnifeMakesNoClaimAboutWhatElseYouCarry() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.pastTheTroll + ["south", "south", "east", "up"]
+                + ["take knife", "x knife", "examine sword"],
+            seed: 11)
+
+        // The control: the pairing the game really does have is a mechanic.
+        #expect(transcript.contains("your sword gives a single pulse of"))
+        let knife = turnOutput(of: "x knife", in: transcript)
+        #expect(knife.contains("old past guessing"))
+        #expect(!knife.contains("older than anything else you are carrying"))
+        // And the sword is still the older thing, and still says so.
+        #expect(
+            turnOutput(of: "examine sword", in: transcript)
+                .contains("old enough to have opinions"))
+    }
+
+    // MARK: - A game-wide refusal that is false in the room it prints in
+
+    /// **`fill bottle` succeeded on top of the dam in the same frame that
+    /// `drink water` answered "There is nothing here to drink."** The bottle
+    /// reads `.waterSource` and the three game-wide defaults did not. Twenty
+    /// rooms carry the trait now; there were seven when the round found this.
+    /// (#233)
+    @Test func theWaterRoomsAnswerTheVerbsThatAreAboutWater() async throws {
+        let transcript = try await play(
+            Dungeon(), Self.toTheDam + ["drink water", "fill lamp", "dive"], seed: 11)
+
+        #expect(transcript.contains("Flood Control Dam #3"))
+        let drank = turnOutput(of: "drink water", in: transcript)
+        #expect(drank.contains("It really hit the spot"))
+        #expect(!drank.contains("nothing here to drink"))
+        // The refusals that are left are about the thing named, not the room —
+        // which is what lets one line stand in all 196 of them.
+        let filled = turnOutput(of: "fill lamp", in: transcript)
+        #expect(filled.contains("not something you could fill"))
+        #expect(!filled.contains("no water here to fill it from"))
+        let dived = turnOutput(of: "dive", in: transcript)
+        #expect(dived.contains("end the expedition rather than advance it"))
+        #expect(!dived.contains("nothing here to dive into"))
+    }
+
+    /// The control, above ground and dry: all three still refuse, and each is
+    /// now a claim its own room cannot make false.
+    @Test func aDryRoomStillRefusesTheVerbsThatAreAboutWater() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            ["drink mailbox", "fill mailbox", "pour mailbox", "dive", "swim"],
+            seed: 11)
+
+        #expect(
+            turnOutput(of: "drink mailbox", in: transcript)
+                .contains("not something you could drink"))
+        #expect(
+            turnOutput(of: "fill mailbox", in: transcript)
+                .contains("not something you could fill"))
+        #expect(
+            turnOutput(of: "pour mailbox", in: transcript)
+                .contains("not something you could pour"))
+        // `.dive` is `.swim`'s twin and was the one left on the engine's stub.
+        // Both are claims about the player now, so both hold here too.
+        #expect(
+            turnOutput(of: "dive", in: transcript)
+                .contains("end the expedition rather than advance it"))
+        #expect(
+            turnOutput(of: "swim", in: transcript)
+                .contains("brief and unrewarding career"))
+    }
+
+    /// **And the mechanic the whole shape of that fix was chosen to protect.**
+    /// `bottle.before(.fill)` is an *item* rule, so it runs at stage 3 and the
+    /// stage-4 action table cannot reach past it — which is why the branch went
+    /// into `DungeonSystems.actions` and not into a `world.before`, where it
+    /// would have answered first and broken the fill the walkthrough needs.
+    @Test func theBottleStillFillsAndStillReportsADryRoom() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            // The bottle starts full, so it has to be emptied before a fill
+            // means anything.
+            Self.intoTheKitchen + ["take bottle", "open bottle", "pour water"]
+                + Self.downTheTrapDoor + ["east", "attack troll with sword"]
+                + Self.crossroadsToTheDam
+                + ["fill bottle", "north", "pour water", "fill bottle"],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "Flood Control Dam #3",
+                "The bottle is now full of water.",
+                "Dam Lobby",
+                "There is no water here to fill it from.",
+            ])
+    }
+
+    /// **The two rooms in the game named for what they smell of answered
+    /// `smell` with "You smell nothing out of the ordinary."** — a
+    /// contradiction two lines from the room's own description. The game-wide
+    /// default belongs to `DungeonSystems`, so the two rooms take it back at
+    /// stage 2 rather than the one line being rewritten for the whole map.
+    /// (#233)
+    @Test func theTwoRoomsNamedForTheirSmellAnswerSmell() async throws {
+        let transcript = try await play(
+            Dungeon(), Self.toTheSmellyRoom + ["smell", "down", "sniff"], seed: 11)
+
+        expectInOrder(transcript, ["Smelly Room", "Gas Room"])
+        let upstairs = turnOutput(of: "smell", in: transcript)
+        #expect(upstairs.contains("comes up the staircase in slow waves"))
+        #expect(!upstairs.contains("nothing out of the ordinary"))
+        let downstairs = turnOutput(of: "sniff", in: transcript)
+        #expect(downstairs.contains("Coal gas, and a great deal of it"))
+        #expect(!downstairs.contains("nothing out of the ordinary"))
+    }
+
+    /// The control, one room away: somewhere with nothing to smell still says
+    /// so — and says it in the game's own voice, which the old line did not.
+    /// `Prose.verbSmell` was the engine's stub character for character, so the
+    /// row installing it re-voiced nothing while the survey counted it done.
+    @Test func aRoomWithNothingToSmellAnswersInTheGamesOwnVoice() async throws {
+        let transcript = try await play(
+            Dungeon(), Self.toTheSmellyRoom.dropLast() + ["smell"], seed: 11)
+
+        #expect(transcript.contains("Wooden Tunnel"))
+        let here = turnOutput(of: "smell", in: transcript)
+        #expect(here.contains("Nothing here smells of anything in particular"))
+        #expect(!here.contains("nothing out of the ordinary"))
+    }
+
+    /// **`x stairs` in the Gas Room — a noun the room's own description prints
+    /// — answered with the coal gas's description**, because `coalGas` carried
+    /// the synonym. One staircase, two ends, two items: the Rocky Ledge's
+    /// repair applied again, and the noun goes to whichever item is about the
+    /// right place. (#233)
+    @Test func theStaircaseAnswersFromBothOfItsEnds() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheSmellyRoom
+                + ["x staircase", "x odor", "down", "examine stairs", "x gas"],
+            seed: 11)
+
+        let above = turnOutput(of: "x staircase", in: transcript)
+        #expect(above.contains("Narrow steps cut into the rock"))
+        #expect(!above.contains("a coal mine ought to know better"))
+        // The odor keeps its own noun and its own line.
+        #expect(
+            turnOutput(of: "x odor", in: transcript)
+                .contains("a coal mine ought to know better"))
+
+        let below = turnOutput(of: "examine stairs", in: transcript)
+        #expect(below.contains("back up to the room above"))
+        #expect(!below.contains("thick enough to lean on"))
+        // And so does the gas.
+        #expect(turnOutput(of: "x gas", in: transcript).contains("thick enough to lean on"))
+        expectEveryNounAnswered(transcript, "the Smelly Room and the Gas Room")
+    }
+
+    // MARK: - A stock engine line asserted from somebody who would not say it
+
+    /// **The troll answers for himself.** `greet troll` reached
+    /// `GameText.greets` — "The troll nods, and says nothing." — which the
+    /// engine documents as a placeholder an actor's own rules are expected to
+    /// answer over, and he had none. Both sources do better than the
+    /// placeholder and neither does what this game does: `V-HELLO` has every
+    /// villain *bow*, and the round (#233) filed the courtesy itself as the
+    /// defect, on a creature whose melee daemon swings every turn you stand in
+    /// the room with him. (#233)
+    @Test func theTrollAnswersAGreetingInHisOwnWords() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.intoTheKitchen + Self.downTheTrapDoor + ["east", "greet troll"],
+            seed: 11)
+
+        #expect(transcript.contains("Troll Room"))
+        let greeting = turnOutput(of: "greet troll", in: transcript)
+        #expect(greeting.contains("The troll says something in his own tongue"))
+        #expect(!greeting.contains("nods, and says nothing"))
+    }
+
+    /// And the second state, which is why this is a rule rather than a re-voiced
+    /// `GameText` key: a troll battered unconscious cannot answer anybody.
+    /// `TROLL-FUNCTION` gates its own `HELLO` branch the same way. Seed 0: the
+    /// first blow knocks him down instead of killing him.
+    @Test func aTrollOnTheFloorCannotHearAGreeting() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.intoTheKitchen + Self.downTheTrapDoor
+                + ["east", "attack troll with sword", "hello troll"],
+            seed: 0)
+
+        expectInOrder(
+            transcript,
+            [
+                "The troll is battered into unconsciousness.",
+                "The troll is face down in the dirt",
+            ])
+        #expect(!transcript.contains("says something in his own tongue"))
+    }
+
+    /// The cyclops had the same gap, and no `HELLO` branch in the source at all
+    /// — he falls straight to the villain bow. A giant waiting for you to be
+    /// lunch does not exchange greetings.
+    @Test func theCyclopsAnswersAGreetingInHisOwnWords() async throws {
+        let transcript = try await play(
+            Dungeon(), Self.toTheCyclops + ["greet cyclops"], seed: 11)
+
+        #expect(transcript.contains("Cyclops Room"))
+        let greeting = turnOutput(of: "greet cyclops", in: transcript)
+        #expect(greeting.contains("the way a man looks at a small meal"))
+        #expect(!greeting.contains("nods, and says nothing"))
+    }
+
+    /// His second state: the drugged water leaves him asleep and still in the
+    /// room, which is the only frame where a subdued cyclops can be greeted at
+    /// all — the shout sends him through the wall and out of scope.
+    @Test func theSleepingCyclopsIsLeftAsleep() async throws {
+        let transcript = try await play(
+            Dungeon(), Self.toTheSleepingCyclops + ["hello cyclops"], seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "falls fast asleep",
+                "The cyclops sleeps on.",
+            ])
+        #expect(!transcript.contains("the way a man looks at a small meal"))
+    }
+
+    /// The thief is the one villain in the game whose courtesy is the point of
+    /// him, so his answer keeps it — and keeps the stiletto where his own
+    /// description says it is pointing. What it does not keep is the engine's
+    /// flat placeholder.
+    @Test func theThiefAnswersAGreetingInHisOwnWords() async throws {
+        let transcript = try await play(
+            Dungeon(), Self.toTheHoard + ["greet thief"], seed: 11)
+
+        #expect(transcript.contains("Treasure Room"))
+        let greeting = turnOutput(of: "greet thief", in: transcript)
+        #expect(greeting.contains("inclines his head a fraction"))
+        #expect(!greeting.contains("nods, and says nothing"))
+    }
+
+    /// And the robot, which is the one of the four that is not hostile and still
+    /// should not be nodding: it is a machine, and the engine's placeholder had
+    /// it nod. It takes orders and it does not converse.
+    @Test func theRobotDoesNotNod() async throws {
+        let transcript = try await play(
+            Dungeon(), Self.toTheButtons.dropLast() + ["greet robot"], seed: 10)
+
+        #expect(transcript.contains("Low Room"))
+        let greeting = turnOutput(of: "greet robot", in: transcript)
+        #expect(greeting.contains("It was not built to be talked to"))
+        #expect(!greeting.contains("nods, and says nothing"))
+    }
+
+    // MARK: - A paragraph that names an exit the table does not have
+
+    /// **The wide ledge is east of the shaft, and the paragraph sent the
+    /// aviator west.** Inherited rather than introduced: `dung.355` says west in
+    /// the prose and files `VAIR4 EAST -> LEDG4` in the exit table, and Zork II
+    /// copied the paragraph without the table. The mechanics contract's rule is
+    /// that where a description names its exits, the description yields. (#233)
+    @Test func theShaftNamesTheSideTheWideLedgeIsActuallyOn() async throws {
+        let transcript = try await play(
+            Dungeon(), DungeonTests.toTheWideLedge, seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "Volcano Near Wide Ledge",
+                // Short of the full sentence: the transcript hard-wraps at
+                // seventy columns and "to land on a wide ledge" is on the next
+                // line. *east* and *west* are the same width, so the negative
+                // below wraps identically and really would fire.
+                "To the east, there is a place",
+                // The control the negative needs: east is the direction that
+                // works, so the corrected line is the true one.
+                "Wide Ledge",
+            ])
+        #expect(!transcript.contains("To the west, there is a place"))
+    }
+
+    /// And the control one level down, which is why this is a correction and not
+    /// a sweep: `VAIR2` is `identical`, its paragraph says west, and west is
+    /// where its ledge is. That one is untouched.
+    @Test func theShaftStillNamesTheNarrowLedgeToTheWest() async throws {
+        let transcript = try await play(
+            Dungeon(), DungeonTests.toTheNarrowLedge, seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "There is a small ledge on the west side.",
+                "Narrow Ledge",
+            ])
     }
 }
