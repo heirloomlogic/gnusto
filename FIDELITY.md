@@ -3020,7 +3020,8 @@ out of 41 inside eight turns. That divergence is the melee plugin's and predates
 this section; `Sources/Zork1/` makes the same call. It is recorded here because
 the greeting rests on it: the hostile answers are true of the troll this game
 actually ships, and would be wrong for the troll `dung.355` describes. **If the
-aggression is ever brought back to `PROB 33`, revisit these four lines.**
+aggression is ever brought back to `PROB 33`, revisit these four lines.** Filed
+as #237, which carries the measurements and the cost of the re-pin.
 
 #### Where the sources actually are
 
