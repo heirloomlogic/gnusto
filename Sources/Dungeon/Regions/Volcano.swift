@@ -171,6 +171,12 @@ struct DungeonVolcano: GameContent {
     }
 
     /// `BLABE`. Drops into the basket the first time the bag fills.
+    ///
+    /// The one of this region's four listing lines that is a rule rather than a
+    /// trait, because the basket is the one holder here that can stop existing:
+    /// ``wreckTheBalloon()`` tips the cargo onto the volcano floor, and a label
+    /// in the ash is not a label in a basket. Its sibling the tan label carries
+    /// the same rule for the same reason.
     let blueLabel = Item {
         name("blue label")
         adjectives("blue", "small")
@@ -228,10 +234,17 @@ struct DungeonVolcano: GameContent {
     }
 
     /// `CROWN`. Fifteen and ten, behind a steel door and a stick of clay.
+    ///
+    /// A static listing line rather than a `presence { }` rule: the box is
+    /// `scenery` and imbedded in the wall, the thief's prowl stops at the
+    /// volcano floor, and the only way the crown leaves the box is a hand — so
+    /// there is no frame in which it lies loose and untouched, and a second
+    /// line for one would be a constant nothing reads.
     let crown = Item {
         name("gaudy crown")
         adjectives("gaudy", "excessive")
         synonyms("crown", "diadem")
+        firstSight(Prose.crownInBox)
         description(Prose.crown)
         wearable
         trait(.weight, 10)
@@ -249,6 +262,7 @@ struct DungeonVolcano: GameContent {
         name("stamp")
         adjectives("flathead")
         synonyms("stamp")
+        firstSight(Prose.stampInBook)
         description(Prose.stamp)
         trait(.weight, 1)
         trait(.takeValue, 4)
@@ -314,6 +328,7 @@ struct DungeonVolcano: GameContent {
         name("card")
         adjectives("plain")
         synonyms("card", "note", "writing")
+        firstSight(Prose.cardInBox)
         description(Prose.card)
         trait(.weight, 1)
         trait(.burnable, true)
@@ -580,6 +595,10 @@ struct DungeonVolcano: GameContent {
 
         rustyBox.starts(in: dustyRoom)
         oblongHole.starts(in: dustyRoom)
+        // Order here buys nothing: `ContainmentIndex` sorts a container's
+        // contents by id, so the box always lists the card before the crown
+        // whichever way round these two lines go. Their listing lines are
+        // written for that order.
         crown.starts(inside: rustyBox)
         card.starts(inside: rustyBox)
 
@@ -746,6 +765,13 @@ extension DungeonVolcano {
             balloonTied = false
             startFuse("balloonDrifts")
             try reply(Prose.wireFallsOff)
+        }
+
+        // The label reads one way in the basket and another in the ash the rim
+        // leaves it in. See the declaration for why this one is a rule and the
+        // region's other three listing lines are traits.
+        blueLabel.presence {
+            balloon.holds(blueLabel) ? Prose.blueLabelInBasket : Prose.blueLabelOnGround
         }
     }
 

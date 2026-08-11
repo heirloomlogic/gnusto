@@ -2067,8 +2067,8 @@ constants.
 
 > **Since settled — #176.** `presence { }` / `firstSight(…)` is now consulted
 > wherever an item is listed, one level down included, so the channel exists.
-> The four lines above are still undeclared, because their source text is not in
-> this repo; that is the follow-up's work, not this record's. What the widening
+> The four lines above are declared as of #207 — see the entry below this one.
+> That was the follow-up's work, not this record's. What the widening
 > *did* bring back is ten lines the game had already written and could not
 > print: the sack and the bottle on the kitchen table, the knife on the attic
 > table, the Stradivarius in the steel box, the emerald in the buoy, the four
@@ -2102,6 +2102,41 @@ constants.
 > line the map buries out of reach, so the next one is caught at build time
 > rather than by hand-reading a transcript for a sentence that isn't there.
 > The sandwich was the only such line in the corpus.
+
+> **The four, now declared — #207.** `dung.355` has all four, in the field
+> `mdl_reader` already reads for every other object's listing line:
+>
+> | id | field | source line |
+> |---|---|---|
+> | `CROWN` | `ODESCO` | The excessively gaudy crown of Lord Dimwit Flathead is here. |
+> | `CARD` | `ODESC1` | There is a card with writing on it here. |
+> | `STAMP` | `ODESC1` | There is a Flathead stamp here. |
+> | `BLABE` | `ODESC1` | There is a blue label here. |
+>
+> `CARD`, `STAMP` and `BLABE` are `identical` entries, so the trilogy carries
+> them across unchanged and either source yields the same sentence. `CROWN`
+> declares two fields: `ODESCO`, above, is the untouched-initial one, which is
+> what `firstSight` means; `ODESC1` "Lord Dimwit's crown is here." is the
+> after-touch line, and this engine has no channel for one — the stock sentence
+> takes over there. It is not reproduced.
+>
+> **Three of the four are adapted, and the fourth is adapted in one branch of
+> two.** Every one of these lines is written for an object lying loose on a
+> floor, and not one of these four is ever on one: the crown and the card are in
+> the safe until a hand takes them out, and the stamp is in the purple book. So
+> the line names its holder — "Inside the box is the excessively gaudy crown of
+> Lord Dimwit Flathead." — which is the license this game has and `Sources/Zork1/`
+> does not. The Stradivarius went the other way at #176 and the record above
+> stands; the difference is that the violin's *here* is at least true of the room
+> it prints in, and a crown that is only ever in a box has no such frame.
+>
+> **Only the blue label carries a `presence { }` rule**, because only its holder
+> can be destroyed: the rim tears the bag and `wreckTheBalloon` tips the basket's
+> cargo onto the volcano floor, where the label lies loose and untouched and the
+> source's own sentence is exactly right. The other three get a static
+> `firstSight` — the safe is `scenery` and imbedded, the thief's prowl reaches
+> `VLBOT` but no ledge above it, and neither treasure leaves its container except
+> by hand. A second constant for any of them would be the sandwich again.
 
 **Declared but not yet walkable: nothing.** `maxScore` goes 499 → **560**, and a
 perfect playthrough of milestones 1 to 6 together scores **550** — the ten still

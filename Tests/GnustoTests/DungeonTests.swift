@@ -3168,6 +3168,43 @@ struct DungeonTests {
             ])
     }
 
+    /// **And once the book is open the stamp lists in its own words**, which is
+    /// the third of #207's four lines. *Loose* among the pages rather than
+    /// pressed between them, because `purpleBookOpens` has just said it slid out
+    /// of them: the two sentences describe one stamp and have to agree.
+    ///
+    /// The book travels — it is takable, and 10 units of it — but the stamp
+    /// travels inside it, and the lister prints a container's contents directly
+    /// under the container's own line. So *its pages* has an antecedent wherever
+    /// the book is set down.
+    @Test func theFlatheadStampListsInsideThePurpleBook() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheNarrowLedge
+                + ["tie braided wire to hook", "get out", "south"]
+                + ["read purple book", "look", "take purple book", "north"]
+                + ["drop purple book", "look", "read stamp"],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "The pages fall apart at a place somebody kept",
+                "Lying in the dust, and covered with mold, is a purple book.",
+                "A Flathead stamp rests loose among its pages.",
+                // Carried out of the Library and set down on the ledge: still in
+                // the book, so still the same sentence, and still directly under
+                // the book's own — which by now is the stock line, the book
+                // having been handled.
+                "Narrow Ledge",
+                "There is a purple book here.",
+                "A Flathead stamp rests loose among its pages.",
+                // Never taken, and still readable where it lies.
+                "OUR EXCESSIVE LEADER",
+            ])
+        #expect(!transcript.contains("In the purple book is"))
+    }
+
     /// **Untying a still-burning balloon strands you on the ledge.** The #133
     /// spike reproduced this seven turns from the fixture's start and left the
     /// choice to this milestone; the choice is to keep it, because the source's
@@ -3282,9 +3319,57 @@ struct DungeonTests {
                 "There is an explosion nearby.",
                 "Dusty Room",
                 "whose door has been blown off",
-                "In the rusty box is a gaudy crown.",
+                "Inside it sits the excessively gaudy crown of Lord Dimwit Flathead.",
                 "of a possible 716",
             ])
+    }
+
+    /// **The crown and the card say their own sentences inside the box** — the
+    /// two of milestone 6's four listing lines that live in the Dusty Room, and
+    /// the reason #207 existed. Until they were declared both treasures
+    /// announced themselves with the engine's stock *"In the rusty box is a
+    /// gaudy crown."*, which is the one line in the room written by nobody.
+    ///
+    /// Both are `firstSight` rather than a `presence` rule: the box is `scenery`
+    /// and imbedded in the wall, the thief's prowl does not reach this room, and
+    /// the only way either leaves the box is a hand, which touches it. There is
+    /// no second frame for a second line to be true in.
+    @Test func theCrownAndTheCardListInTheirOwnWordsInsideTheBox() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheWideLedge + Self.lightTheCharge + ["south", "take crown", "look"],
+            seed: 11)
+
+        // The whole paragraph in one piece, because the order is the point and
+        // the two lines are written for it: `ContainmentIndex` sorts a
+        // container's contents by id, so the card comes first and the crown
+        // closes the paragraph, and the crown's *inside it* leans on the box
+        // having just been named. `expectInOrder` would pass on a transcript
+        // that printed the two the other way round, because the room is
+        // described twice in this route and it matches the first of each.
+        #expect(
+            transcript.contains(
+                """
+                On the far wall is a rusty box, whose door has been blown off.
+
+                A card with writing on it lies in the bottom of the box.
+
+                Inside it sits the excessively gaudy crown of Lord Dimwit Flathead.
+                """))
+
+        // And the card keeps its own line after the crown has gone, which is why
+        // neither sentence leans on the other. The room is described twice in
+        // this route — walking in, and the `look` after `take crown` — so the
+        // card's line lands twice and the crown's only once. Counted rather than
+        // read off a single turn: the route has an earlier `look` in it, and
+        // `turnOutput` would hand back that one.
+        #expect(
+            occurrences(of: "A card with writing on it lies in the bottom of the box.", in: transcript)
+                == 2)
+        #expect(occurrences(of: "Inside it sits the excessively gaudy crown", in: transcript) == 1)
+
+        // The stock nested lister lost to both of them.
+        #expect(!transcript.contains("In the rusty box is"))
     }
 
     /// **And the card in the box was right about the rock strata.** Five turns
@@ -3340,6 +3425,43 @@ struct DungeonTests {
                 "the cloth goes over the rock with a sound like",
                 "you feel relieved of your burdens",
             ])
+    }
+
+    /// **The blue label is the fourth of #207's lines, and the only one of the
+    /// four that needs two.** Its holder is the one container in the region that
+    /// can be destroyed: `wreckTheBalloon` spills the basket's takable cargo
+    /// onto the volcano floor, and a label lying in the ash is not "inside the
+    /// basket". So it carries a `presence` rule, exactly as its sibling the tan
+    /// label does for the punctured boat.
+    ///
+    /// Both branches are read from one spot on the floor: light the burner from
+    /// outside the basket, watch the label drop into it, then let the empty
+    /// balloon fly up and tear itself open on the rim and come back down.
+    @Test func theBlueLabelListsInTheBasketAndThenOnTheFloor() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheVolcano
+                + ["put newspaper in receptacle", "burn match", "burn newspaper with match"]
+                + ["look"]
+                + Array(repeating: "wait", count: 20)
+                + ["look"],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "Volcano Bottom",
+                "The cloth bag inflates",
+                "A blue label is lying inside the basket.",
+                // Up the shaft without a pilot, and onto the rim — watched from
+                // the floor, so it is the onlooker's line rather than the
+                // pilot's.
+                "You watch the balloon strike the rim and come apart",
+                "There is a blue label here.",
+                "There is a balloon here, broken into pieces.",
+            ])
+        // The basket line stopped being true the moment the basket did.
+        #expect(!transcript.contains("In the wicker basket is"))
     }
 
     // MARK: - Milestone 6: every printed noun answers
