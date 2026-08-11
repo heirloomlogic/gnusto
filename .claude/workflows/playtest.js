@@ -34,6 +34,8 @@ if (!game || !/^[A-Za-z][A-Za-z0-9]*$/.test(game)) {
   throw new Error('playtest needs args like {game: "Fulminate", packagePath: ".", docPath: "docs/games/fulminate.md"}')
 }
 
+const EFFORTS = ['low', 'medium', 'high', 'xhigh', 'max']
+
 const pkg = ARGS.packagePath || '.'
 if (/(^|\/)\.\.(\/|$)/.test(pkg) || pkg.startsWith('-')) {
   throw new Error(`unsafe packagePath ${JSON.stringify(pkg)}`)
@@ -51,6 +53,20 @@ const ledger = new Set(ARGS.ledgerKeys || [])
 // to judge, which is the safe default.
 const routedIssues = (ARGS.routedIssues || []).filter((i) => i && i.number)
 const turnBudget = clamp(ARGS.turns, 20, 250, 60)
+// The operator's coverage plan, in their own words, handed to every agent that
+// judges prose. A game whose map is bigger than a round can walk cannot have its
+// split decided by six testers who all start at the front door and spend the
+// budget on the way in; the split has to be decided before dispatch and stated,
+// or the report describes wherever the charters happened to wash up. Free text
+// rather than a region schema because what a split needs to say differs per game
+// — a route prefix here, an hour there — and a schema would only be guessed at.
+const focus = typeof ARGS.focus === 'string' ? ARGS.focus.trim() : ''
+// Reasoning effort for the verifiers, which are the round's largest fan-out: one
+// per fresh finding, so they set its cost. Left inheriting by default. Turning it
+// down is a budget call and belongs to the operator, not to the file: a verifier
+// that refutes real defects yields a thin round that reads as a clean one, and
+// that failure is silent.
+const verifyEffort = EFFORTS.includes(ARGS.verifyEffort) ? ARGS.verifyEffort : undefined
 const maxRounds = clamp(ARGS.rounds, 1, 6, 1)
 const dryTarget = clamp(ARGS.dryRounds, 1, 3, 2)
 const seed = clamp(ARGS.seed, 0, Number.MAX_SAFE_INTEGER, 0)
@@ -137,7 +153,13 @@ ${docPath ? `- \`${docPath}\` — the design doc: the mechanics contract, the ma
   \`doc-drift\` finding.
 
 ${replayHowTo(label)}
+${focus ? `
+**The operator's coverage plan for this round**, decided before dispatch. Find your own
+charter in it and treat that row as your assignment; the rest is context for reading
+somebody else's finding.
 
+${focus}
+` : ''}
 ${routedIssues.length ? `**Owned elsewhere this round.** These issues are open and own a defect class. A
 symptom that belongs to one of them is routed, not reported:
 
@@ -965,7 +987,7 @@ Then, only if it survives all four: is the fix a judgement call with more than o
 reasonable answer? Answer needs-human rather than confirmed-defect. That is not a
 hedge; it routes the finding to a person instead of to an agent that will pick a design
 by coin flip.`,
-        { label: `verify:${f.category}`, phase: 'Triage', schema: VERDICT_SCHEMA }
+        { label: `verify:${f.category}`, phase: 'Triage', schema: VERDICT_SCHEMA, effort: verifyEffort }
       )
         .then((v) => ({ finding: f, verdict: v }))
         // Catch here rather than letting parallel() turn a throw into a bare
@@ -1225,7 +1247,11 @@ Leave nothing out and open no findings: a word the game printed is somebody
 else's K8 finding and it still counts here. If the glob matches no files, report
 zero and say so in \`note\` — that is a real answer and it means the round wrote
 no transcripts.`,
-  { label: 'census', phase: 'Gate', schema: CENSUS_SCHEMA, effort: 'low' })
+  // Haiku, hardcoded: the census runs one grep, sorts it and counts. That is a
+  // fact about the role rather than about any one round, and unlike the verifiers
+  // there is no judgement here to degrade — the number is either the grep's or it
+  // is wrong, and the critic checks it against the transcripts either way.
+  { label: 'census', phase: 'Gate', schema: CENSUS_SCHEMA, effort: 'low', model: 'haiku' })
 
 const criticThunk = async () => {
   const census = await censusPromise

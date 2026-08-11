@@ -106,6 +106,8 @@ whoever remembered the rule.
 | `seed` | `0` | Pins the stream via `GNUSTO_SEED`. Record it; a finding without a seed isn't reproducible. |
 | `turns` | `60` | Engine turns per charter. Token cost, not CPU cost, is the real budget. |
 | `charters` | all applicable | Comma-separated subset, e.g. `"tourist,clock-watcher"`. |
+| `focus` | none | The coverage split, in your words, handed to every agent that judges prose. Free text: say which charter takes which region, and how it gets there. See below. |
+| `verifyEffort` | inherit | Reasoning effort for the verifiers — the round's largest fan-out, and so its cost. Turn it down to buy a bigger round; read the warning below first. |
 | `fix` | `"none"` | `none` files everything, in the round's one issue. `game` also fixes findings owned by the game's own files. `all` fixes engine findings too. No setting touches the harness's own files. |
 | `rounds` / `dryRounds` | `1` / `2` | Loop until N consecutive rounds surface nothing new. |
 | `packagePath` | `"."` | Drive another checkout — a worktree at an older commit, for calibration. |
@@ -128,6 +130,28 @@ sibling agents are still reading, changes the run underneath itself.
 Every finding the round files carries a `notFixedReason`, and the workflow logs the
 breakdown whether or not anything was fixable — including the round where nothing was.
 `references/report-shape.md` defines the reasons.
+
+**`focus` is how a game bigger than one round gets a split instead of an accident.** Six
+charters all start where the player starts. On a nine-room game that costs nothing; on a
+196-room one they spend the budget walking in, and the coverage grid then reports
+wherever they happened to wash up. Name the regions, hand each charter one, and say **how
+it gets there** — a game whose far side is two hundred correct commands from the front
+door needs a route prefix, and the pinned seed the route was proven under, or the prefix
+lands somewhere else. It reaches the verifiers too, who have to replay the same
+reproducers.
+
+Free text, not a region schema, because what a split has to say differs per game: a
+route prefix in one, an hour of the evening in another. `docs/games/dungeon-playtest-2026-08-11.md`
+is the worked example — eight regions over six charters, each with the walkthrough stage
+that reaches it.
+
+**`verifyEffort` is the cost dial, and it is sharp.** The verifiers are one agent per
+fresh finding, so on a round that finds sixty they are most of the bill. But they are
+also the layer whose failure is invisible: a fixer misled by a bad finding damages prose
+that was right, which is loud, while a refuter that rejects *good* findings produces a
+thin round that reads as a clean one. Turn it down to afford more charters or more turns,
+and say in the report's header that you did. The census is on Haiku permanently and needs
+no flag — it runs one `grep` and counts, and there is no judgement in it to lose.
 
 ## What lives where
 
