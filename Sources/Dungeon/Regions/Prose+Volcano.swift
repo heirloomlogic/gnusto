@@ -32,8 +32,18 @@
 /// and the trilogy does the same. Their text here is the trilogy's routine's,
 /// which is MIT-licensed like any other trilogy line.
 ///
-/// Everything else — the shaft's scenery, the blue label, the gnome's bargain,
-/// the explosion and its aftermath — is written fresh.
+/// Everything else — the shaft's scenery, what the blue label *says*, the
+/// gnome's bargain, the explosion and its aftermath — is written fresh.
+///
+/// The four **listing lines** this region owed since milestone 6 are here now
+/// (#207): the crown's, the card's, the stamp's and the label's. Each is built
+/// from its `dung.355` line, and each is adapted to put the thing in the
+/// container it is nested in — by name, or by a pronoun the line above it
+/// supplies. The mainframe writes a listing line for an object lying loose on a
+/// floor, and none of these four is ever on one, except the label after the
+/// balloon comes apart — which is the one of the four that keeps the source's
+/// sentence untouched. Adapting is the license `FIDELITY.md` grants this game
+/// and not `Zork1`.
 extension Prose {
     // MARK: - The floor of the volcano
 
@@ -218,6 +228,18 @@ extension Prose {
         Lord Dimwit Flathead and the legend OUR EXCESSIVE LEADER.
         """
 
+    /// Adapted from `ODESC1` "There is a Flathead stamp here.", an `identical`
+    /// entry. *Loose* because ``purpleBookOpens`` has just said the stamp slid
+    /// out of the pages — one stamp, and the two sentences have to agree about
+    /// it. *Its* rather than *the purple book's* because the lister prints a
+    /// container's contents directly under the container's own line, and the
+    /// book's is "Lying in the dust, and covered with mold, is a purple book.",
+    /// which this would otherwise follow with two more words of *lying* and
+    /// *purple book*.
+    static let stampInBook = """
+        A Flathead stamp rests loose among its pages.
+        """
+
     static let purpleBookOpens = """
         The pages fall apart at a place somebody kept, and a stamp slides out of
         them into your hand's reach.
@@ -305,10 +327,36 @@ extension Prose {
         who wanted whatever is inside it. The attempt was a pathetic failure.
         """
 
+    /// Adapted from `ODESCO`, which is the field the mainframe prints while the
+    /// crown is untouched — "The excessively gaudy crown of Lord Dimwit Flathead
+    /// is here." *Here* is written for a crown lying on a floor, and this one is
+    /// never on one: it sits in the box until a hand takes it out. So the
+    /// sentence places it and keeps the joke, which is the whole of the line.
+    ///
+    /// *Inside it* rather than *inside the box*, because by the time this line
+    /// prints the box has been named twice already — once by the room's own
+    /// second paragraph and once by the card's line, which `ContainmentIndex`
+    /// sorts ahead of this one. Three sentences running that end in *box* is
+    /// what the first draft read like.
+    ///
+    /// The other field, `ODESC1` "Lord Dimwit's crown is here.", is the
+    /// after-touch line, and this engine has no channel for one — after the
+    /// touch the stock sentence takes over. It is not reproduced.
+    static let crownInBox = """
+        Inside it sits the excessively gaudy crown of Lord Dimwit Flathead.
+        """
+
     static let crown = """
         A crown of gold over gold, set with every stone its maker could be
         persuaded to part with, and heavy enough to have given its owner a
         permanent stoop.
+        """
+
+    /// Adapted from `ODESC1` "There is a card with writing on it here.", an
+    /// `identical` entry, for the same reason as the crown's: the card is in the
+    /// box or it is in a hand, and never on the floor of this room.
+    static let cardInBox = """
+        A card with writing on it lies in the bottom of the box.
         """
 
     static let card = """
@@ -511,13 +559,20 @@ extension Prose {
         You have landed, but the balloon did not survive.
         """
 
+    /// Adapted, and deliberately the tan label's sentence with one word changed:
+    /// the two are the same joke by the same fictional company, and the source
+    /// gives them the same `ODESC1` shape. The label drops from the bag the
+    /// first time it fills, so the basket is where it is read.
+    static let blueLabelInBasket = "A blue label is lying inside the basket."
+
+    /// Verbatim `ODESC1`, an `identical` entry — and the frame it was written
+    /// for. The rim tears the bag open and `wreckTheBalloon` tips the basket's
+    /// cargo onto the volcano floor, which is the one way this label ends up
+    /// lying loose in a room with nobody having touched it.
+    static let blueLabelOnGround = "There is a blue label here."
+
     /// Written fresh. The source's label is 1981 typography; what it tells the
     /// player is the three words the balloon answers to, and that is structure.
-    ///
-    /// No listing line yet. There is somewhere to hang one now — #176 gave a
-    /// nested item the same channel a loose one has — but the source's own
-    /// text for this label is not in the repo, so declaring it is the
-    /// follow-up's work rather than a guess made here.
     static let blueLabel = """
         A small blue label, printed on one side.
         """
