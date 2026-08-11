@@ -87,9 +87,13 @@ struct DungeonVolcano: GameContent {
 
     // MARK: - The ledges
 
+    /// Always described, and with no static description, for the reason
+    /// ``wideLedge`` is: the gnome's fee opens a second way off this ledge, and
+    /// a brief re-entry would print a bare room name over a doorway that was
+    /// not there before. See ``ledgeRules``.
     let narrowLedge = Location {
         name("Narrow Ledge")
-        description(Prose.narrowLedge)
+        alwaysDescribed
         dark
     }
 
@@ -776,6 +780,16 @@ extension DungeonVolcano {
     }
 
     @RuleBuilder fileprivate var ledgeRules: Rules {
+        // The gnome's chimney is `scenery`, so the room listing never mentions
+        // it: the room's own paragraph is the only place a second way off this
+        // ledge can be reported, and it counted one exit however many there
+        // were.
+        narrowLedge.describe {
+            gnomeDoorOpen
+                ? "\(Prose.narrowLedge)\n\(Prose.narrowLedgeChimneyOpen)"
+                : Prose.narrowLedge
+        }
+
         wideLedge.describe {
             let south = dustyRoomWrecked ? Prose.wideLedgeRubble : Prose.wideLedgeDoor
             return "\(Prose.wideLedge)\n\(south)"

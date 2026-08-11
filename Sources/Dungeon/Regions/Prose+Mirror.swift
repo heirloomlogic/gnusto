@@ -108,13 +108,40 @@ extension Prose {
         — carries through the rock.
         """
 
+    /// The same passage with the machinery stopped. Written fresh: the source
+    /// has one line here because its carousel never stops from this side of the
+    /// wall, and this game's does. ``Prose/roundRoomStilled`` states the reason
+    /// for the whole pair — a room that went on whirring after the triangular
+    /// button "would be telling the player their own solution had not worked" —
+    /// and the room next door was making the claim in three places.
+    static let windingPassageStilled = """
+        This is a winding passage. The only way out of it appears to be east.
+        The rock to the north is quiet now; whatever was turning behind it has
+        stopped.
+        """
+
     static let windingPassageWhirring = """
         Machinery, by the sound of it, and a good deal of it, turning
         somewhere north of here behind a wall with no door in it.
         """
 
+    /// Written fresh, for the same reason as ``windingPassageStilled``. The
+    /// noun stays in the vocabulary once the sound has gone: the player who
+    /// asked about a whirring is owed the news that it stopped.
+    static let windingPassageWhirringStopped = """
+        Silence, out of a wall that had a great deal of machinery turning
+        behind it. Whatever was north of here has been stilled.
+        """
+
     static let noEntranceToTheRoundRoom = """
         You hear the whir from the round room but can find no entrance.
+        """
+
+    /// Written fresh. The refusal is the third place the passage reported the
+    /// machinery, and the only one that is an exit rather than a description.
+    static let noEntranceToTheRoundRoomStilled = """
+        The round room lies somewhere north of here, and there is no way into
+        it from this side.
         """
 
     // MARK: - The Atlantis Room

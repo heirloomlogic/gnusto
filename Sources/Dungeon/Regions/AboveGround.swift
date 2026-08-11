@@ -292,12 +292,14 @@ struct DungeonAboveGround: GameContent {
         scenery
     }
 
-    /// The tree seen from the perch. Same tree, other end.
+    /// The tree seen from the perch. Same tree, other end — and its own line,
+    /// because ``Prose/greatTree`` offers the branches as a way up and points
+    /// at an egg that up here is listed beside the player.
     let treeFromAbove = Item {
         name("large tree")
         adjectives("large", "gnarled")
         synonyms("tree", "trees", "branches", "branch")
-        description(Prose.greatTree)
+        description(Prose.greatTreeFromAbove)
         scenery
     }
 
@@ -468,10 +470,14 @@ struct DungeonAboveGround: GameContent {
         scenery
     }
 
+    /// No *passage* here, unlike its two siblings' catch-alls: the Rocky Ledge
+    /// puts a passage directly below the player and the distant view is about
+    /// the miles beyond, so the one noun that is not far away gets
+    /// ``rockyLedgePassage`` instead.
     let distantViewAtLedge = Item {
         name("view")
         adjectives("distant")
-        synonyms("falls", "passage", "river", "water", "aragain", "flow")
+        synonyms("falls", "river", "water", "aragain", "flow")
         description(Prose.distantView)
         scenery
     }
@@ -481,6 +487,17 @@ struct DungeonAboveGround: GameContent {
         adjectives("lesser")
         synonyms("falls", "runoff", "river", "water", "aragain", "flow")
         description(Prose.canyonStream)
+        scenery
+    }
+
+    /// The passage the Rocky Ledge places directly below the player, which the
+    /// falls go into and nobody follows. Its own item because the three views
+    /// above answer for what is miles off, and this is not.
+    let rockyLedgePassage = Item {
+        name("passage")
+        adjectives("impassable")
+        synonyms("passage", "passageway")
+        description(Prose.rockyLedgePassage)
         scenery
     }
 
@@ -670,6 +687,7 @@ struct DungeonAboveGround: GameContent {
 
         distantViewAtTop.starts(in: canyonView)
         distantViewAtLedge.starts(in: rockyLedge)
+        rockyLedgePassage.starts(in: rockyLedge)
         distantViewAtBottom.starts(in: canyonBottom)
         cliffAtTop.starts(in: canyonView)
         cliffAtLedge.starts(in: rockyLedge)

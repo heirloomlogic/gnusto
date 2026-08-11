@@ -668,9 +668,14 @@ struct DungeonDam: GameContent {
     // MARK: - Timers
 
     var timers: [TimedEvent] {
-        // A struck match lasts two turns.
+        // A struck match lasts two turns. The flame goes out wherever the book
+        // has got to; the line about it is only said where the player could
+        // watch it happen, read before the change for the same reason the
+        // lantern's last rung reads it before (``DungeonHouse/timers``).
         fuse("matchBurnsOut", after: 2) {
+            let watched = matchbook.isVisible
             matchbook.isLit = false
+            guard watched else { return }
             say(Prose.matchBurnsOut)
         }
 

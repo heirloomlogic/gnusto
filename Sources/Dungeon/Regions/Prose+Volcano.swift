@@ -120,6 +120,16 @@ extension Prose {
         exit to the south.
         """
 
+    /// Written fresh, and printed only once the gnome has been paid. The line
+    /// above is verbatim and true of this room's exit table as it stands — but
+    /// the fee opens a chimney west out of the ledge, and `GNOME-DOOR` is
+    /// one-way and permanent, so from then on the room had one exit in its
+    /// paragraph and two in its map.
+    static let narrowLedgeChimneyOpen = """
+        A narrow chimney has been opened in the west wall, sloping down out of
+        sight.
+        """
+
     static let narrowLedgeRock = """
         A shelf of old rock, wide enough to stand on and not much wider, with
         the shaft on one hand and a doorway on the other.
@@ -214,10 +224,16 @@ extension Prose {
         This book is written in a tongue with which I am unfamiliar.
         """
 
+    /// Adapted. The line used to say each book survived the gnomes "by being on
+    /// a shelf too high for them", which the room's own listing lines
+    /// contradict three times over: the green one sits in the centre of the
+    /// floor, the blue one in a corner, the purple one in the dust. One examine
+    /// text answers for all four wherever they lie, so it says *that* they came
+    /// through rather than how.
     static func bookExamined(_ colour: String) -> String {
         """
-        A \(colour) book, thick and unlabelled, that survived the gnomes by
-        being on a shelf too high for them.
+        A \(colour) book, thick and unlabelled, and whole: whatever the gnomes
+        did to the shelving, they left the reading alone.
         """
     }
 

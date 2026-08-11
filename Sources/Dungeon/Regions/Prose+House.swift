@@ -29,8 +29,19 @@ extension Prose {
         to be worth the try.
         """
 
+    /// The shut half of a two-state window. Verbatim, and it is a claim about
+    /// `isOpen` rather than about the window: the player who opened it and
+    /// climbed through has already disproved it, which is what the 2026-08-11
+    /// round caught it doing. See ``kitchenWindowOpen``.
     static let kitchenWindow = """
         The window is slightly ajar, but not enough to allow entry.
+        """
+
+    /// Written fresh; the source has one description for `WINDO` and never
+    /// needed the other, because it does not answer `x window` from the kitchen
+    /// side.
+    static let kitchenWindowOpen = """
+        The window stands open, wide enough to climb through.
         """
 
     static let chimneyDownRefusal = "Only Santa Claus climbs down chimneys."

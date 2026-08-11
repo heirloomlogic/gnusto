@@ -347,6 +347,7 @@ struct Dungeon: Game, GameMain {
         graniteRules
         bucketRules
         buttonRules
+        whirringRules
         balloonRules
         blastRules
         thiefRules
@@ -369,10 +370,11 @@ struct Dungeon: Game, GameMain {
 
         // The carousel. One draw per attempt, taken at stage 3 so the exit
         // lookup that follows reads a settled answer — the mainframe's
-        // `CAROUSEL-OUT`. Guarded to the built passages, so the one direction
-        // whose far side is a later milestone's (southwest, into the maze) gets
-        // the plain "You can't go that way" of the seam convention rather than
-        // being told the room turned under it and then refused anyway.
+        // `CAROUSEL-OUT`. Guarded to `carouselExits`, so a direction the
+        // carousel does not serve is refused with the plain "You can't go that
+        // way" rather than being told the room turned under it and then refused
+        // anyway. All nine of the source's passages have been built since
+        // milestone 4 closed the southwest one into the maze.
         crossroads.roundRoom.before(.go) {
             guard crossroads.carouselSpinning, let heading = command.direction else { return }
             let exits = carouselExits
@@ -861,6 +863,37 @@ struct Dungeon: Game, GameMain {
         }
     }
 
+    /// Milestone 5 — what the Winding Passage says about the Round Room
+    ///
+    /// The passage is a ``DungeonMirror`` room reporting a ``DungeonRoundRoom``
+    /// fact in three places, so the host supplies all three, the way
+    /// ``palantirRules`` supplies the Slide Room's rope paragraph. The Round
+    /// Room itself was given a `describe { }` for exactly this reason —
+    /// ``Prose/roundRoomStilled`` says a room that went on whirring "would be
+    /// telling the player their own solution had not worked" — and the room
+    /// next door never got the same treatment.
+    @RuleBuilder private var whirringRules: Rules {
+        mirrors.windingPassage.describe {
+            crossroads.carouselSpinning ? Prose.windingPassage : Prose.windingPassageStilled
+        }
+
+        mirrors.whirring.describe {
+            crossroads.carouselSpinning
+                ? Prose.windingPassageWhirring
+                : Prose.windingPassageWhirringStopped
+        }
+
+        // The third place: the north wall's refusal. A `blocked:` exit carries
+        // one constant, so the stilled half has to be a rule — and it is a
+        // `before(.go)` rather than a conditional exit because there is nothing
+        // through the wall either way, only two different true things to say
+        // about it.
+        mirrors.windingPassage.before(.go) {
+            guard command.direction == .north, !crossroads.carouselSpinning else { return }
+            try refuse(Prose.noEntranceToTheRoundRoomStilled)
+        }
+    }
+
     /// Milestone 6 — the balloon's fire and the gnome's fee
     ///
     /// Both are volcano mechanisms and both are here, because each has exactly
@@ -1003,9 +1036,9 @@ struct Dungeon: Game, GameMain {
             crossroads.deepRavine, when: { templeQuarter.coffinIsStowed },
             otherwise: Prose.coffinTooWideForRavine)
 
-        // The Round Room's carousel. Eight of the source's nine passages are
-        // built; the ninth, southwest into the maze, is a seam. Each is a
-        // *dynamic* exit rather than a plain one, because while the machinery
+        // The Round Room's carousel. All nine of the source's passages are
+        // built — the ninth, southwest into the maze, since milestone 4. Each
+        // is a *dynamic* exit rather than a plain one, because while the machinery
         // turns the direction you take has nothing to do with where you come
         // out. Travelling through the exit rather than assigning
         // `player.location` is what keeps the East-West Passage's five points

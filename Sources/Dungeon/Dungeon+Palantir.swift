@@ -128,6 +128,20 @@ extension Dungeon {
             try reply(Prose.chuteUnrigged)
         }
 
+        // Lifting the anchor unties the knot. `rigTheChute()` refuses to tie
+        // the rope to something in your hands because "a rope tied to something
+        // you are carrying holds nothing at all"; nothing re-checked it
+        // afterwards, so the Slide Room went on describing a rope tied off at
+        // the head of the slide while the player carried the timber it was tied
+        // to down the chute.
+        for anchor in [mine.brokenTimber, templeQuarter.coffin] {
+            anchor.after(.take) {
+                guard command.directObject == anchor, chuteAnchor == anchor else { return }
+                palantirWing.chuteRopeRigged = false
+                say(Prose.chuteKnotComesUndone)
+            }
+        }
+
         // The rope is what is holding you up, and letting go of it is a
         // decision rather than an accident.
         let chute = palantirWing.chuteRooms
@@ -174,7 +188,14 @@ extension Dungeon {
         // only then round to the chute.
         try require(!templeQuarter.ropeTiedToRailing, else: Prose.ropeAlreadyTied)
         palantirWing.chuteRopeRigged = true
+        palantirWing.chuteAnchorIsTheCoffin = anchor == templeQuarter.coffin
         try reply(Prose.chuteRigged)
+    }
+
+    /// The thing the chute's rope is tied to, while it is tied to anything.
+    var chuteAnchor: Item? {
+        guard palantirWing.chuteRopeRigged else { return nil }
+        return palantirWing.chuteAnchorIsTheCoffin ? templeQuarter.coffin : mine.brokenTimber
     }
 
     /// Letting go of something in the chute. The rope is the one thing you can

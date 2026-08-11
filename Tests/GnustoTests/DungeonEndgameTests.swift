@@ -329,6 +329,30 @@ struct DungeonEndgameTests {
         expectEveryNounAnswered(transcript, "the mirror box and the hallway")
     }
 
+    /// **The pine end names the room it opens on.** The line used to say
+    /// "Beyond it is the hallway" whatever the box was standing across, which is
+    /// only true when the box has been turned square to the channel. At the
+    /// opening bearing the pine end faces east, into a narrow room — the frame
+    /// the 2026-08-11 round (#233) caught it printing in, one turn before
+    /// stepping east into the room it had just called a hallway.
+    @Test func thePineEndNamesWhatIsBeyondIt() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.pastTheCrypt
+                + ["down", "north", "drop lamp", "south", "push red button"]
+                + ["north", "north", "in", "push pine", "east"],
+            seed: Self.seed)
+
+        expectInOrder(
+            transcript,
+            [
+                "Inside Mirror",
+                "The pine wall swings out on its hinges. Beyond it is the Narrow Room.",
+                "Narrow Room",
+            ])
+        #expect(!transcript.contains("Beyond it is the hallway"))
+    }
+
     /// Walking into the Guardians' reach on foot is fatal, and death in the
     /// endgame is final however many resurrections were left over.
     @Test func walkingIntoTheGuardiansKillsYouForGood() async throws {

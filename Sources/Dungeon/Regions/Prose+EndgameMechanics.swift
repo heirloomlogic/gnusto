@@ -152,9 +152,26 @@ extension Prose {
             : "The box swings round to the left and settles."
     }
 
-    static let boxPineSwingsOpen = """
-        The pine wall swings out on its hinges. Beyond it is the hallway.
-        """
+    /// The pine end coming open, naming what is actually on the far side of it.
+    ///
+    /// It used to say "the hallway" whatever the box was standing across: at
+    /// the opening bearing the pine end faces *east*, into a narrow room, which
+    /// is where the 2026-08-11 round caught it. The mahogany end points along
+    /// the channel and the pine end opposite it, so which room the pine end
+    /// faces is a question about ``MirrorBox/bearing``, not a constant.
+    ///
+    /// - Parameter room: the name of the room the pine end faces, or `nil` when
+    ///   the box sits at a diagonal and it faces a corner rather than a room.
+    /// - Returns: the line.
+    static func boxPineSwingsOpen(onto room: String?) -> String {
+        guard let room else {
+            return """
+                The pine wall swings out on its hinges. Beyond it is the corner
+                where two walls meet, and no way past them.
+                """
+        }
+        return "The pine wall swings out on its hinges. Beyond it is the \(room)."
+    }
 
     static let boxPineSwingsShut = """
         The pine wall swings to and the wooden bar drops across it.

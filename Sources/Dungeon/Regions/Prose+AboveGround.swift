@@ -207,6 +207,15 @@ extension Prose {
         is tucked into a nest high up among the leaves.
         """
 
+    /// Written fresh. The line above is the view from the ground: it offers the
+    /// branches as a way up and points at the egg, which from the perch the
+    /// room has already listed beside the player. Same tree, other end.
+    static let greatTreeFromAbove = """
+        The trunk is broad enough up here to lean against, its bark cracked
+        into plates. Below is the forest floor; above, branches too thin to
+        take you.
+        """
+
     /// Verbatim Zork I — the perch is the same perch in both games.
     static let upATree = """
         You are about 10 feet above the ground nestled among some large
@@ -398,6 +407,15 @@ extension Prose {
         Miles of it, and all of it too far off to make out more than the shape:
         white cliff, falling water, the colours of a rainbow standing in the
         spray, and beyond them the country going on and on.
+        """
+
+    /// Written fresh. ``distantView`` answers for everything the canyon shows
+    /// that is miles off; the Rocky Ledge's passage is not one of those — the
+    /// room puts it directly below the player and says the main flow goes into
+    /// it — so it stopped being one of that item's synonyms.
+    static let rockyLedgePassage = """
+        It takes the main flow of the falls a little below you, and the rock
+        closes over the water at once. There is no following it.
         """
 
     static let canyonStream = """

@@ -187,11 +187,14 @@ struct DungeonBank: GameContent {
     /// description calls the curtain a wall. It does **not** carry *north*:
     /// the four inner rooms have a northern wall of their own, and the curtain
     /// follows the player into them.
+    ///
+    /// Described by a rule rather than a constant, for the same reason: the
+    /// curtain moves, and the sentence is about where it is standing. See
+    /// ``rules``.
     let curtain = Item {
         name("shimmering curtain of light")
         adjectives("shimmering")
         synonyms("curtain", "light", "wall")
-        description(Prose.curtainOfLight)
         scenery
     }
 
@@ -396,6 +399,15 @@ struct DungeonBank: GameContent {
         // The lettering the Depository's description promises. `examine` gives
         // you the cube; `read` gives you what is cut into it.
         stoneCube.before(.read) { try reply(Prose.stoneCubeLettering) }
+
+        // The curtain hangs where the Depository's north wall ought to be, and
+        // then follows the player into four rooms that have north walls of
+        // their own — walls this bundle maps one by one. So which room it is
+        // standing in is the fact its own description is a claim about.
+        curtain.describe {
+            player.location == safetyDepository
+                ? Prose.curtainOfLight : Prose.curtainInInnerRoom
+        }
 
         // The curtain, which is the source's `SCOL-ACTIVE`: it does not stay in
         // the Depository. Walk into it and you arrive in whichever room the
