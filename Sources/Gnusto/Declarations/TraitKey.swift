@@ -38,6 +38,74 @@ public struct TraitKey<Value: GlobalValue>: Sendable {
         self.name = name
         self.defaultValue = `default`
     }
+
+    /// What an `entity[key]` read yields, given whatever the entity holds under
+    /// this key: the value, or nil when there is nothing there or it was stored
+    /// as something else.
+    ///
+    /// - Parameter stored: what the entity holds under ``name``, or nil.
+    /// - Returns: the stored value, or nil.
+    func value(for stored: StateValue?) -> Value? {
+        guard let stored else { return nil }
+        return Value(stateValue: stored)
+    }
+
+    /// What an `entity[default: key]` read yields, given the same.
+    ///
+    /// All four subscripts below funnel through this pair. They were
+    /// byte-identical apart from one noun, and the copy that made them two had
+    /// quietly grown a wrong sentence: a value stored under a *different type*
+    /// fell into the same branch as an absent one and was reported as "has no
+    /// trait", sending an author to look for a declaration that was there all
+    /// along.
+    ///
+    /// - Parameters:
+    ///   - stored: what the entity holds under ``name``, or nil for nothing.
+    ///   - holder: what the entity is, for the trap.
+    /// - Returns: the stored value, or this key's default.
+    func value(for stored: StateValue?, of holder: TraitHolder) -> Value {
+        if let value = value(for: stored) { return value }
+        guard let defaultValue else { fatalError(diagnostic(for: stored, of: holder)) }
+        return defaultValue
+    }
+
+    /// The complaint for a read this key has no default to answer.
+    ///
+    /// Split out from the trap so both branches can be asserted in process, a
+    /// `fatalError` being uncatchable — the shape
+    /// ``Reentry/diagnostic(depth:entity:)`` uses. Only reached when
+    /// ``defaultValue`` is nil, so the advice is the same either way; what
+    /// changes is which mistake it is answering.
+    ///
+    /// - Parameters:
+    ///   - stored: what the entity holds under ``name``, or nil for nothing.
+    ///   - holder: what the entity is.
+    /// - Returns: the message to trap with.
+    func diagnostic(for stored: StateValue?, of holder: TraitHolder) -> String {
+        let noun = holder.rawValue
+        let complaint =
+            if let stored {
+                #"\#(noun) trait "\#(name)" \#(stored.cannotBeRead(as: Value.self)),"#
+            } else {
+                #"\#(noun) has no trait "\#(name)","#
+            }
+        return """
+            Gnusto: \(complaint) and its TraitKey carries no default. Declare the \
+            key with `TraitKey(_:default:)`, or read it with \(noun)[key], which \
+            returns nil.
+            """
+    }
+}
+
+/// What a custom trait is hanging on, for the one sentence that has to name it.
+///
+/// A closed enum rather than a `String` the two callers pass: the noun lands in
+/// the complaint *and* in a code-shaped piece of advice (`item[key]`), so a
+/// caller free to write "Item" or "thing" is a caller free to print advice that
+/// does not compile.
+enum TraitHolder: String {
+    case item
+    case location
 }
 
 // MARK: - Trait factory
@@ -79,8 +147,7 @@ extension Item {
     /// - Returns: the stored value, or `nil` when absent or a type mismatch.
     public subscript<V>(key: TraitKey<V>) -> V? {
         let (frame, id) = resolved
-        guard let stored = frame.customTrait(key.name, of: id) else { return nil }
-        return V(stateValue: stored)
+        return key.value(for: frame.customTrait(key.name, of: id))
     }
 
     /// Reads a custom trait declared with a defaulted `TraitKey`, falling
@@ -93,19 +160,7 @@ extension Item {
     /// - Returns: the stored value, or the key's default when absent.
     public subscript<V>(default key: TraitKey<V>) -> V {
         let (frame, id) = resolved
-        guard let stored = frame.customTrait(key.name, of: id), let value = V(stateValue: stored)
-        else {
-            guard let fallback = key.defaultValue else {
-                fatalError(
-                    """
-                    Gnusto: item has no trait \"\(key.name)\" and its TraitKey \
-                    carries no default. Use item[key] (returns nil), or declare \
-                    the key with `TraitKey(_:default:)`.
-                    """)
-            }
-            return fallback
-        }
-        return value
+        return key.value(for: frame.customTrait(key.name, of: id), of: .item)
     }
 }
 
@@ -120,8 +175,7 @@ extension Location {
     /// - Returns: the stored value, or `nil` when absent or a type mismatch.
     public subscript<V>(key: TraitKey<V>) -> V? {
         let (frame, id) = resolved
-        guard let stored = frame.customTrait(key.name, of: id) else { return nil }
-        return V(stateValue: stored)
+        return key.value(for: frame.customTrait(key.name, of: id))
     }
 
     /// Reads a custom trait declared with a defaulted `TraitKey`, falling
@@ -134,18 +188,6 @@ extension Location {
     /// - Returns: the stored value, or the key's default when absent.
     public subscript<V>(default key: TraitKey<V>) -> V {
         let (frame, id) = resolved
-        guard let stored = frame.customTrait(key.name, of: id), let value = V(stateValue: stored)
-        else {
-            guard let fallback = key.defaultValue else {
-                fatalError(
-                    """
-                    Gnusto: location has no trait \"\(key.name)\" and its \
-                    TraitKey carries no default. Use location[key] (returns \
-                    nil), or declare the key with `TraitKey(_:default:)`.
-                    """)
-            }
-            return fallback
-        }
-        return value
+        return key.value(for: frame.customTrait(key.name, of: id), of: .location)
     }
 }

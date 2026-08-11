@@ -75,6 +75,14 @@ extension GlobalValue {
     /// case: JSON-encode into the type-erased ``StateValue/data(typeName:bytes:)``
     /// case. A bare `struct Wallet: Codable, Sendable, GlobalValue {}` picks
     /// this up; the scalar conformances below override it with their own case.
+    ///
+    /// No exit test, deliberately: the half of the message that carries the
+    /// diagnosis is `\(error)`, the encoder's own words rather than ours, so
+    /// there is nothing here a test could pin that `JSONEncoder` does not
+    /// already say better. Note this *is* reachable by ordinary code — the
+    /// default non-conforming-float strategy is `.throw`, so a `Double` global
+    /// that reaches infinity arrives here — which is why the decline rests on
+    /// the message rather than on the path being exotic. #229.
     public var stateValue: StateValue {
         let bytes: Data
         do {

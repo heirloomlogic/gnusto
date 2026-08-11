@@ -43,11 +43,11 @@ public struct Global<Value: GlobalValue>: Sendable, AnyGlobal {
                 return defaultValue
             }
             guard let value = Value(stateValue: stored) else {
+                // The clause is shared with `TraitKey`'s, which asks the same
+                // question of the same storage — one sentence in one place
+                // rather than two that promise to stay in step.
                 fatalError(
-                    """
-                    Gnusto: @Global \"\(id)\" holds a \(stored) which cannot \
-                    be read as \(Value.self).
-                    """)
+                    "Gnusto: @Global \"\(id)\" \(stored.cannotBeRead(as: Value.self)).")
             }
             return value
         }

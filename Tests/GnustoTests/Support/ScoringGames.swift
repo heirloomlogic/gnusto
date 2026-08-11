@@ -180,3 +180,47 @@ struct DeclaredScoreGame: Game {
         }
     }
 }
+
+/// A register the award table does not list, in the shape the mistake actually
+/// takes: a typo.
+///
+/// ``Scoring/awards`` is the one place a register's points are written, and the
+/// bootstrap checks `maxScore` against it — so a register misspelled at the call
+/// site is not a zero-point award, it is a hole in the arithmetic the ceiling was
+/// derived from. Trapping is the right answer; saying *where the table is* is what
+/// turns the trap into a fix.
+///
+/// **This game cannot be played.** Meditating traps.
+struct MisspelledRegisterGame: Game {
+    let title = "Misspelled"
+    let intro = "A cell, and one worthwhile thought in it."
+    let maxScore = 5
+
+    let cell = Location {
+        name("Cell")
+        description("Whitewashed, and quiet enough to think in.")
+    }
+
+    let scoring = Scoring(awards: ["insight": 5])
+
+    var content: GameContents {
+        scoring
+    }
+
+    var verbs: [SyntaxRule] {
+        SyntaxRule("meditate", intent: Intent("meditate"))
+    }
+
+    var rules: Rules {
+        world.before(Intent("meditate")) {
+            // The table says "insight". This says something close enough to
+            // read past and different enough to miss.
+            scoring.awardOnce("insght")
+            try reply("You feel briefly enlightened.")
+        }
+    }
+
+    var map: WorldMap {
+        player.starts(in: cell)
+    }
+}

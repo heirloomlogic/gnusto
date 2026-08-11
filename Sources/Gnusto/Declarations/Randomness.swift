@@ -31,13 +31,28 @@ public func random(_ range: ClosedRange<Int>) -> Int {
 
 /// One of the options, uniformly: `say(oneOf("Thud.", "Clang."))`.
 ///
-/// - Parameter options: the choices to draw from.
+/// The first choice is its own parameter rather than the head of one variadic,
+/// which is what makes `oneOf()` a compile error instead of a crash at the one
+/// moment the line was supposed to speak. Every call that passes options at all
+/// reads the same.
+///
+/// - Parameters:
+///   - first: the first choice.
+///   - rest: any further choices.
 /// - Returns: one option, chosen uniformly.
-public func oneOf(_ options: String...) -> String {
-    oneOf(options)
+public func oneOf(_ first: String, _ rest: String...) -> String {
+    // Indexed rather than `oneOf([first] + rest)`, which would allocate twice
+    // more to say the same thing. The range is the array overload's exactly —
+    // `rest.count + 1` options — so a seeded replay draws the same value here
+    // as it did when this took one variadic. For the same reason there is no
+    // `rest.isEmpty` short-circuit: skipping the draw would desynchronize the
+    // stream for every line after it.
+    let index = random(0...rest.count)
+    return index == 0 ? first : rest[index - 1]
 }
 
-/// One of the options, uniformly, from an array.
+/// One of the options, uniformly, from an array. Traps on an empty array — the
+/// case the variadic form above cannot express.
 ///
 /// - Parameter options: the choices to draw from.
 /// - Returns: one option, chosen uniformly.
