@@ -178,6 +178,10 @@ final class TurnFrame: Sendable {
         return id
     }
 
+    /// No exit test, deliberately: this is a registry invariant, not an
+    /// authoring mistake. Every id reaching it came from the registry that would
+    /// have to have lost it, so no fixture arranges the failure without first
+    /// breaking the bootstrap — and an author never reads this message. #229.
     func location(for id: EntityID) -> Location {
         guard let location = definition.registry.locations[id] else {
             fatalError("Gnusto: no location named \"\(id)\" exists in this game.")
@@ -364,6 +368,22 @@ enum Ctx {
     @TaskLocal static var frame: TurnFrame?
 
     /// The live frame, or a clear diagnostic about why there isn't one.
+    ///
+    /// Two ways to arrive with no frame to hand, and they want different
+    /// sentences: there was never one bound, or there was and it has since been
+    /// retired. The second names a `Task` specifically, because a `Task` is the
+    /// only thing that reaches it. ``frame`` is a `@TaskLocal`, so an
+    /// unstructured `Task { }` copies the binding at creation and still holds a
+    /// turn the parent has long since committed; `Task.detached` and a dispatch
+    /// queue inherit nothing and land on the first guard instead.
+    ///
+    /// An escaping closure stashed in one turn and called in the next reaches
+    /// **neither** — every proxy re-reads `Ctx.current` at use time, so the
+    /// closure resolves against the turn that calls it, reads live state, and
+    /// quietly reports the wrong turn's world. That is a real mistake the engine
+    /// cannot see, and naming it here would only send an author looking for it
+    /// in the one case where it isn't what happened. `StashGame` pins the
+    /// behavior down instead.
     static var current: TurnFrame {
         guard let frame else {
             fatalError(
@@ -377,10 +397,10 @@ enum Ctx {
         guard frame.isAlive else {
             fatalError(
                 """
-                Gnusto: a rule closure outlived its turn. World state was \
-                accessed after the turn committed — typically from a Task or \
-                escaping closure spawned inside a rule body. Rule bodies must \
-                do all their work synchronously.
+                Gnusto: a Task spawned inside a rule body outlived its turn — \
+                it read world state after the turn committed. An unstructured \
+                `Task { }` carries the turn it was created in, and that turn is \
+                over. Rule bodies must do all their work synchronously.
                 """)
         }
         return frame

@@ -367,11 +367,7 @@ public struct Item: Sendable, Equatable {
     /// - Parameter container: the container to move the item into.
     public func move(inside container: Item) {
         let (frame, id) = resolved
-        let containerID = container.id
-        guard frame.definition.items[containerID]?.isContainer == true else {
-            fatalError(
-                "Gnusto: move(inside:) target \"\(containerID)\" is not a container.")
-        }
+        let containerID = container.holding(.container, in: frame)
         frame.with { $0.state.place(id, .inside(containerID)) }
     }
 
@@ -381,12 +377,31 @@ public struct Item: Sendable, Equatable {
     /// - Parameter surface: the surface to move the item onto.
     public func move(onto surface: Item) {
         let (frame, id) = resolved
-        let surfaceID = surface.id
-        guard frame.definition.items[surfaceID]?.isSurface == true else {
-            fatalError(
-                "Gnusto: move(onto:) target \"\(surfaceID)\" is not a surface.")
-        }
+        let surfaceID = surface.holding(.surface, in: frame)
         frame.with { $0.state.place(id, .on(surfaceID)) }
+    }
+
+    /// Resolves this item as a placement target, trapping unless it carries the
+    /// trait the placement needs, and handing back its id.
+    ///
+    /// The trap used to say only what was wrong — "is not a container" — and
+    /// left an author holding a declaration they had no reason to suspect. The
+    /// half that says what to do instead is the half that does the work, so it
+    /// is not a parameter: ``HolderTrait`` writes the whole sentence, and a
+    /// caller has nothing to omit. Same lesson as ``declaredFuse(_:in:else:)``,
+    /// taken one step further.
+    ///
+    /// - Parameters:
+    ///   - holder: the trait the placement requires.
+    ///   - frame: the live frame, passed rather than re-read — the caller is
+    ///     holding it, and resolving an id takes the frame lock.
+    /// - Returns: this item's id.
+    fileprivate func holding(_ holder: HolderTrait, in frame: TurnFrame) -> EntityID {
+        let id = frame.id(for: token, describing: "Item")
+        guard let definition = frame.definition.items[id], holder.isCarried(by: definition) else {
+            fatalError(holder.diagnostic(for: id))
+        }
+        return id
     }
 
     /// Moves the item into an entity's inventory, bypassing the usual actions.
@@ -642,5 +657,80 @@ public struct Item: Sendable, Equatable {
         Rule(
             scope: .item(token), phase: .reach, intents: [], body: {},
             reachRule: Reach.Rule(allows: body, refusal: refusal))
+    }
+}
+
+/// The trait a placement target has to carry, and the whole sentence the trap
+/// says about it.
+///
+/// ``Item/move(inside:)`` and ``Item/move(onto:)`` free-handed one sentence at
+/// two sites, and neither said what to do about it. Handing the helper a noun
+/// and an advice string would only move the free-handing to the call site,
+/// where the two can still contradict each other — so every part of the message
+/// derives from the case instead, and there is no argument left to get wrong.
+///
+/// It is deliberately not the general answer. `Placement` carries a third case,
+/// `.heldBy`, whose requirement is checked in `Bootstrap` and not here, and the
+/// preposition table is stated again there; a version of this beside
+/// ``Placement`` could serve all three. That is a wider change than the traps
+/// this was written for.
+private enum HolderTrait: String {
+    case container
+    case surface
+
+    /// Whether the target carries the trait.
+    func isCarried(by definition: ItemDefinition) -> Bool {
+        switch self {
+        case .container: definition.isContainer
+        case .surface: definition.isSurface
+        }
+    }
+
+    /// The helper that places something this way, quoted back in the trap. Not
+    /// `#function` at the call site: these name each *other* in the advice
+    /// below, and only one of the two is the one being called.
+    var function: String {
+        switch self {
+        case .container: "move(inside:)"
+        case .surface: "move(onto:)"
+        }
+    }
+
+    /// How a thing sits in relation to it — "inside" a container, "on" a
+    /// surface.
+    var preposition: String {
+        switch self {
+        case .container: "inside"
+        case .surface: "on"
+        }
+    }
+
+    /// The other way to place a thing, which is half the advice: an author who
+    /// reached for the wrong one of these usually wanted the other.
+    var sibling: HolderTrait {
+        switch self {
+        case .container: .surface
+        case .surface: .container
+        }
+    }
+
+    /// The trait behind its indefinite article, through the same helper the
+    /// game's own prose uses.
+    var article: String { GameText.indefinite(rawValue) }
+
+    /// What to do instead — the half that turns the trap into a fix.
+    var advice: String {
+        "declare it `\(rawValue)`, or `\(sibling.function)` for \(sibling.article)"
+    }
+
+    /// The whole complaint, for a target that does not carry the trait.
+    ///
+    /// - Parameter id: the target that was handed in.
+    /// - Returns: the message to trap with.
+    func diagnostic(for id: EntityID) -> String {
+        """
+        Gnusto: \(function) target "\(id)" is not \(article). To put something \
+        \(preposition) it, \(advice).
+        """
     }
 }

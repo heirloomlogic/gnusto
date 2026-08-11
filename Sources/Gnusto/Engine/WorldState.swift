@@ -327,6 +327,36 @@ extension WorldState {
 }
 
 extension StateValue {
+    /// What the boxed value is, in the words the author declared it in.
+    ///
+    /// The half of a type-mismatch complaint that says what they *did* store,
+    /// against the type they asked to read it as. The synthesized `description`
+    /// would answer `int(5)`, which names the box rather than the declaration.
+    var declaredTypeName: String {
+        switch self {
+        case .bool: "Bool"
+        case .int: "Int"
+        case .double: "Double"
+        case .string: "String"
+        // The type-erased case already carries `String(reflecting:)` of
+        // whatever was boxed, which is the name the author wrote.
+        case .data(let typeName, _): typeName
+        }
+    }
+
+    /// The clause a trap uses for a value read as the wrong type.
+    ///
+    /// Two traps say this — `@Global`'s and ``TraitKey``'s — and one sentence
+    /// written twice is how the timer traps lost half of theirs. Pure, so both
+    /// wordings are pinned by the in-process tests over ``TraitKey`` rather than
+    /// by a child process apiece.
+    ///
+    /// - Parameter wanted: the type the caller asked to read it as.
+    /// - Returns: the clause, with no leading capital and no trailing stop.
+    func cannotBeRead(as wanted: Any.Type) -> String {
+        "is stored as \(declaredTypeName), which cannot be read as \(wanted)"
+    }
+
     /// Whether two boxed values share the same case, ignoring their payloads —
     /// the check a restored global needs so a rule reading it back through
     /// `@Global` never unboxes the wrong scalar. `.data` matches `.data`

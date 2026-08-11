@@ -76,4 +76,63 @@ struct CustomStateTests {
         let transcript = try await play(TraitProbeGame(), ["examine sign"])
         #expect(transcript.contains("missing=nil wrongType=nil"))
     }
+
+    // MARK: - What `[default:]` says when it cannot answer
+
+    // The optional subscript above returns nil for both mistakes, which is the
+    // right answer when the caller asked for an optional. `[default:]` cannot,
+    // so it traps — and the two mistakes want different sentences. Asserted
+    // against the pure diagnostic in process; a `fatalError` is uncatchable, and
+    // this is the case ``expectTrap`` says not to spend a child process on.
+    // Issue #229.
+
+    /// One funnel, two nouns — and the advice half names the subscript to read
+    /// instead, so a location's complaint that said `item[key]` would be advice
+    /// that does not compile.
+    @Test(arguments: [TraitHolder.item, .location])
+    func aDefaultedReadOfAnAbsentTraitSaysTheTraitIsMissing(_ holder: TraitHolder) {
+        let noun = holder.rawValue
+        let message = TraitKey<Int>("price").diagnostic(for: nil, of: holder)
+
+        #expect(message.hasPrefix("Gnusto: "))
+        #expect(message.contains(#"\#(noun) has no trait "price""#))
+        // The advice half, which is what turns the trap into a fix.
+        #expect(message.contains("TraitKey(_:default:)"))
+        #expect(message.contains("\(noun)[key]"))
+    }
+
+    @Test func aDefaultedReadOfTheWrongTypeSaysWhatIsStoredThere() {
+        let message = TraitKey<Int>("price").diagnostic(for: .string("cheap"), of: .item)
+
+        // The bug this extraction fixed: a value stored under another type used
+        // to fall into the branch above and be reported as absent, sending an
+        // author hunting for a declaration that was there all along.
+        #expect(!message.contains("has no trait"))
+        #expect(message.contains("is stored as String"))
+        #expect(message.contains("cannot be read as Int"))
+        #expect(message.contains("TraitKey(_:default:)"))
+    }
+
+    @Test func aKeyWithADefaultNeverReachesTheDiagnostic() {
+        // Both mistakes are answered by the default when there is one — absent,
+        // and stored as something else.
+        let key = TraitKey<Int>("price", default: 7)
+
+        #expect(key.value(for: nil, of: .item) == 7)
+        #expect(key.value(for: .string("cheap"), of: .item) == 7)
+        #expect(key.value(for: .int(3), of: .item) == 3)
+    }
+
+    @Test func aBoxedValueNamesTheTypeItWasDeclaredAs() {
+        // What the two complaints above are built from. `.data` carries the
+        // author's own type name; the scalars name their Swift type rather than
+        // the case they are boxed in.
+        #expect(StateValue.int(5).declaredTypeName == "Int")
+        #expect(StateValue.string("x").declaredTypeName == "String")
+        #expect(StateValue.bool(true).declaredTypeName == "Bool")
+        #expect(StateValue.double(1.5).declaredTypeName == "Double")
+        #expect(
+            StateValue.data(typeName: "MyGame.Purse", bytes: Data()).declaredTypeName
+                == "MyGame.Purse")
+    }
 }

@@ -218,4 +218,32 @@ struct MaxScoreCheckTests {
         // cannot pay for. See `Dungeon.maxScore`.
         #expect(scoreWarnings(try Bootstrap.build(Dungeon()).0.warnings) == [])
     }
+
+    // MARK: - Awarding a register the table does not list
+
+    // The platform policy for exit tests is in `Package.swift`.
+    #if GNUSTO_EXIT_TESTS
+
+    /// `everyDemoGameCanPayItsOwnMaximum` above rests on the award table being
+    /// the whole account of what a game can score. A register misspelled at the
+    /// call site punches a hole in that, and the check cannot see it — the
+    /// bootstrap reads the table, not the rule bodies — so the trap is the only
+    /// thing standing between a typo and a ceiling nothing can reach.
+    ///
+    /// What is under test is the *advice*. "Not in the award table" tells an
+    /// author their register is wrong; naming `Scoring(awards:)` tells them
+    /// where the table they must add it to lives, and says in the same breath
+    /// why the engine cannot simply award zero. Same argument as `TimerTests`,
+    /// and a child process apiece for the same reason. Issue #229.
+    @Test("awarding an unlisted register traps, and names the table to add it to")
+    func awardingAnUnlistedRegisterTraps() async throws {
+        let result = await #expect(
+            processExitsWith: .failure, observing: [\.standardErrorContent]
+        ) {
+            _ = try await play(MisspelledRegisterGame(), ["meditate"])
+        }
+        expectTrap(result, says: "is not in the award table", "Scoring(awards:)")
+    }
+
+    #endif
 }

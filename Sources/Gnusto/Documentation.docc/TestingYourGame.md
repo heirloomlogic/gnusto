@@ -108,7 +108,9 @@ Some mistakes are the author's, not the player's, and the engine answers those b
 
 The `#expect` has to stay at the call site — its body is compiled into a C function, so it captures nothing unless you name the value and its type in the capture list (`{ [n = n as Int] in … }`), and a helper taking the closure as an argument cannot be written at all.
 
-Each of these costs a child process, some 60 ms. That is worth spending where the *message* is what an author will read to find their mistake, and not worth it for an ordinary precondition — prefer an in-process assertion there. Exit tests are unavailable on iOS, watchOS, tvOS, visionOS and WASI, so a test using one wants a `#if` around it if your game's tests run on those.
+Each of these costs a child process, some 60 ms. That is worth spending where the *message* is what an author will read to find their mistake, and not worth it for an ordinary precondition — split that message into a pure function and assert it in process instead. Best of all is a trap you can delete: where several share a sentence, fold them into one helper that takes the missing half as a required argument, and where one guards an argument nobody could sensibly mean, change the signature so the compiler refuses it. ``expectTrap(_:says:sourceLocation:)`` carries the full rule, since it is where the person deciding is standing.
+
+Exit tests are unavailable on iOS, watchOS, tvOS, visionOS and WASI, so a test using one wants a `#if` around it if your game's tests run on those.
 
 ## What the helpers are made of
 

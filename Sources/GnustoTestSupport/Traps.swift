@@ -26,12 +26,28 @@ import Testing
 /// **a different message** means the trap fired with the wrong wording.
 ///
 /// **What it costs, and when to spend it.** Each call is a child process — some
-/// 60 ms, against 1 ms for an in-process assertion. Spend it where the trap's
-/// *wording* is what an author will read to find their mistake, or where a
-/// *margin* only a real run can measure is at stake; for an ordinary
-/// precondition, split the message into a pure function and assert that
-/// in-process instead. This is the decision point, so the rule lives here and
-/// `TestingYourGame.md` points at it.
+/// 60 ms, against 1 ms for an in-process assertion. This is the decision point,
+/// so the rule lives here and `TestingYourGame.md` points at it. A trap wants
+/// one of three shapes, in the order they are worth reaching for; only the last
+/// of them is this function:
+///
+/// 1. **Make the bad message unrepresentable, and write no test at all.** Where
+///    a group of traps shares a sentence, fold them into one helper that derives
+///    the whole of it — or at least takes the missing half as a *required*
+///    argument — so the next call site cannot omit or contradict it. Where a
+///    trap guards an argument no caller could sensibly mean, change the
+///    signature so the compiler refuses it. `HolderTrait` and
+///    `declaredFuse(_:in:else:)` are the first; `oneOf(_:_:)` is the second.
+/// 2. **A pure function, asserted in process**, for an ordinary precondition, or
+///    one whose message has branches worth checking apiece. Split the message
+///    out and test it at a millisecond — the shape `Reentry.diagnostic(depth:entity:)`
+///    and `TraitKey.diagnostic(for:of:)` use.
+/// 3. **An exit test** — this function — where the trap's *wording* is what an
+///    author will read to find their mistake and no pure function can stand in
+///    for the run, or where a *margin* only a real run can measure is at stake.
+///    An entity built inside a rule body; `command` read on the opening look; a
+///    scoring register the award table does not list; a cap that has to fire
+///    before the stack does.
 ///
 /// - Parameters:
 ///   - result: the exit test's result — the value `#expect(processExitsWith:)`

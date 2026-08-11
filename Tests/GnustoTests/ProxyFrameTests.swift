@@ -42,6 +42,36 @@ struct ProxyFrameTests {
         #expect(transcript.contains("blunders=2"))
     }
 
+    // MARK: - What outliving a turn looks like from in process
+
+    /// The mechanism the "outlived its turn" trap below rests on: a retired
+    /// frame is dead, and says so. Asserted here at a millisecond so the child
+    /// process is spent on the wording alone.
+    @Test func retiringAFrameKillsIt() throws {
+        let (definition, state) = try Bootstrap.buildCore(MiniGame())
+        let frame = TurnFrame(definition: definition, state: state)
+        #expect(frame.isAlive)
+
+        let scratch = frame.retire()
+        #expect(!frame.isAlive)
+        #expect(!scratch.isLive)
+    }
+
+    /// What the trap must *not* condemn, and the reason it names a `Task` rather
+    /// than the escaping closure it used to also blame.
+    ///
+    /// A closure stashed in one turn and called in the next resolves against the
+    /// turn that *calls* it: `Ctx.frame` is a `@TaskLocal` and proxies re-read it
+    /// at use time, so the closure reads live state and reports the second turn's
+    /// tally, not the first's. Wrong, and invisible to the engine — which is why
+    /// the exit test below needs a `Task` to reach the guard at all.
+    @Test("a closure stashed in one turn and called in the next reads the calling turn")
+    func staleClosuresReadTheCallingTurn() async throws {
+        defer { StashGame.stashed = nil }
+        let transcript = try await play(StashGame(), ["pull rope", "examine rope"])
+        #expect(transcript.contains("the stashed closure reads tally=2"))
+    }
+
     // The platform policy for exit tests is in `Package.swift`.
     #if GNUSTO_EXIT_TESTS
 
@@ -62,6 +92,84 @@ struct ProxyFrameTests {
             result,
             says: "live world state was accessed outside a game turn",
             "only available inside rule bodies")
+    }
+
+    /// The second of `Ctx.current`'s two guards, and the harder of the pair to
+    /// diagnose: the frame is *there*, it is just dead. An author who hands a
+    /// rule's work to a `Task` gets a stack trace pointing into their own
+    /// closure with nothing in it to say the turn ended two lines above, so this
+    /// trap's wording is the whole of the diagnosis. Issue #229.
+    ///
+    /// The `Task` is what makes the guard reachable at all — see
+    /// ``AfterthoughtGame``, which spells out why every other way of arriving
+    /// late lands somewhere else.
+    @Test("state read from a task that outlived its turn traps, and says so")
+    func readingStateAfterTheTurnCommittedTraps() async throws {
+        let result = await #expect(
+            processExitsWith: .failure, observing: [\.standardErrorContent]
+        ) {
+            _ = try await play(AfterthoughtGame(), ["push lever"])
+            // `play` has returned, so `GameWorld.commit(_:)` has retired the
+            // frame. Only now is the escaped task let go, which is what makes
+            // the trap a certainty rather than a race — the thing #229 was
+            // waiting for.
+            AfterthoughtGame.latch.continuation.finish()
+            guard let afterwards = AfterthoughtGame.afterwards else {
+                // A fixture that spawned no task would exit 0, which already
+                // fails the expectation — but it fails it as "no result", which
+                // reads like a harness problem. Trapping here says which.
+                fatalError("Gnusto test: the fixture spawned no task; nothing ran.")
+            }
+            await afterwards.value
+        }
+        // Needles the sibling above cannot match. Both messages contain "rule
+        // body", so a needle either could satisfy would let a regression that
+        // swapped the two guards pass.
+        expectTrap(result, says: "outlived its turn", "do all their work synchronously")
+    }
+
+    /// The engine's most consequential authoring rule — entities must be stored
+    /// properties, because the bootstrap finds them by reflection — has no
+    /// compile-time enforcement, so the trap is the whole of the teaching. An
+    /// inline `Item` is valid Swift, fully formed, and every property on it
+    /// compiles; only the registry knows it isn't real. Issue #229.
+    @Test("an entity built inside a rule body traps, and says where entities must live")
+    func inlineEntitiesTrap() async throws {
+        let result = await #expect(
+            processExitsWith: .failure, observing: [\.standardErrorContent]
+        ) {
+            _ = try await play(InlineEntityGame(), ["examine ledger"])
+        }
+        // The advice half is the half that does the work: "not part of the
+        // running game" alone leaves an author staring at a value that plainly
+        // exists.
+        expectTrap(
+            result,
+            says: "not part of the running game",
+            "stored properties of your Game type")
+    }
+
+    /// `command` is turn-only, and nothing at the call site says so — a
+    /// describer reading it works for every LOOK the player types and dies on
+    /// the opening look, which no command produced. The trap names the
+    /// condition; a bare "unexpectedly found nil" would send the author hunting
+    /// through their describer instead. Issue #229.
+    @Test("reading command where no command ran traps, and says when it is available")
+    func readingCommandWithNoCommandTraps() async throws {
+        let result = await #expect(
+            processExitsWith: .failure, observing: [\.standardErrorContent]
+        ) {
+            // No commands at all: the trap is reached by `GameWorld.begin()`
+            // describing the starting room, which is the case an author cannot
+            // reach by testing their describer against LOOK.
+            _ = try await play(OpeningCommandGame(), [])
+        }
+        // "only available inside rule bodies" is shared with the sibling guard
+        // above, so the needles have to include the half that isn't.
+        expectTrap(
+            result,
+            says: "`command` is only available",
+            "performing a player command")
     }
 
     #endif

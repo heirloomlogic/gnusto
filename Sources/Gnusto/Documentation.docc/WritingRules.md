@@ -99,6 +99,33 @@ bar.beforeEachTurn {
 
 For state the engine doesn't already track — a wallet, an item's price, a creature's HP — reach for a ``Global`` or a custom trait. See <doc:CustomStateAndTraits>.
 
+### Do all of it before the rule returns
+
+These identifiers do not hold state; they look it up in the turn that is running when you *read* them. So a rule body has to finish its work before it returns, and the two ways of deferring it fail differently.
+
+A `Task` spawned inside a rule body keeps the turn it was created in. Read the world from it after the turn commits and the engine traps, saying so:
+
+```swift
+lever.before(.push) {
+    Task { say("Later.") }        // traps: the turn is over by the time this runs
+}
+```
+
+An escaping closure stashed now and called from a *later* turn is the quieter mistake, and the engine cannot see it at all. It resolves against the turn that calls it, so it reads live state and reports it as though it were the state of the turn it was written in:
+
+```swift
+rope.before(.pull) {
+    tally = 1
+    Self.stashed = { say("tally is \(tally)") }   // no trap
+}
+rope.before(.examine) {
+    tally = 2
+    Self.stashed?()                               // says 2, not 1
+}
+```
+
+If a rule needs something to happen later, that is what a fuse or a daemon is for — see <doc:TheTurnPipeline>.
+
 ## Live descriptions with `describe`
 
 A `description(…)` trait is fixed text. When what the player should read depends on the world — a lantern that reads differently lit or dark, a trapdoor open or shut — attach a ``Item/describe(_:)`` (or ``Location/describe(_:)``) rule instead. It takes a closure that the engine calls *every time the entity is described*, so it always reflects the current state:
