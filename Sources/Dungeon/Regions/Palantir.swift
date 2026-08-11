@@ -133,6 +133,12 @@ struct DungeonPalantir: GameContent {
     /// by the Slide Room's `down`.
     @Global var chuteRopeRigged = false
 
+    /// Which of the two anchors took the knot. There are only two — the broken
+    /// timber and the gold coffin — so one flag says which, and it is read only
+    /// while ``chuteRopeRigged``. A `Bool` rather than the anchor's `EntityID`
+    /// because `GlobalValue` covers the scalars.
+    @Global var chuteAnchorIsTheCoffin = false
+
     // MARK: - The oak door and its fittings
 
     /// `PDOOR`. No static description: whether the mat is under it is a fact

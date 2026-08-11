@@ -81,9 +81,15 @@ struct DungeonMirror: GameContent {
         dark
     }
 
+    /// Always described, and with no static description: its paragraph reports
+    /// the Round Room's machinery, which the triangular button stops, and a
+    /// brief re-entry would print a bare room name over the news. The text
+    /// comes from ``Dungeon/whirringRules``, because the state it reads is
+    /// ``DungeonRoundRoom``'s — the same division as the Slide Room's rope
+    /// paragraph below.
     let windingPassage = Location {
         name("Winding Passage")
-        description(Prose.windingPassage)
+        alwaysDescribed
         dark
     }
 
@@ -182,11 +188,12 @@ struct DungeonMirror: GameContent {
         scenery
     }
 
+    /// Described by ``Dungeon/whirringRules``, for the reason ``windingPassage``
+    /// gives: the sound is the Round Room's, and it can stop.
     let whirring = Item {
         name("whirring")
         adjectives("faint")
         synonyms("whir", "sound", "machinery", "rock", "wall")
-        description(Prose.windingPassageWhirring)
         scenery
     }
 

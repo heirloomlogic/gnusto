@@ -149,7 +149,11 @@ extension DungeonEndgame {
         state.pineOpen = true
         box = state
         startFuse("endgame.pine")
-        try reply(Prose.boxPineSwingsOpen)
+        // Which room is beyond the pine end is a question about the bearing:
+        // at the opening one it faces east, into a narrow room, not along the
+        // hallway.
+        let beyond = roomOutside(state.berth, at: state.angle(of: .pine))
+        try reply(Prose.boxPineSwingsOpen(onto: beyond?.name))
     }
 
     /// Stepping out. Either opening will do it, and which room you land in is

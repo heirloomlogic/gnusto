@@ -101,9 +101,21 @@ extension Prose {
               Frobozz Magic Vault Company
         """
 
+    /// The curtain from the Safety Depository, where it stands in place of the
+    /// room's north wall. The room's own north refusal uses this line too, and
+    /// only fires there.
     static let curtainOfLight = """
         A sheet of white light hanging where the north wall ought to be. It is
         cold, and silent, and you cannot see through it in either direction.
+        """
+
+    /// The same curtain from one of the four inner rooms it follows the player
+    /// into. Those four have north walls of their own — walls the player walks
+    /// through, and which ``BankInnerRoom`` maps one by one — so the line above
+    /// is false in every one of them.
+    static let curtainInInnerRoom = """
+        A sheet of white light hanging across one side of the room. It is cold,
+        and silent, and you cannot see through it in either direction.
         """
 
     static let curtainCarriesYou = """

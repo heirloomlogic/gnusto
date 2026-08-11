@@ -277,6 +277,15 @@ extension Prose {
         The rope comes free, and what was a way down is a hole again.
         """
 
+    /// Written fresh. ``chuteAnchorNotOnTheGround`` already refuses to tie the
+    /// rope to something in your hands, on the grounds that a rope tied to what
+    /// you are carrying holds nothing; picking the anchor back up is the same
+    /// fact arriving from the other side, so it gets the same answer.
+    static let chuteKnotComesUndone = """
+        The rope goes slack as the weight comes off it, and the knot slips free
+        of the chute.
+        """
+
     static let ropeSuspendsYou = """
         And what do you imagine is holding you up?
         """

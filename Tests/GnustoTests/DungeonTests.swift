@@ -3249,6 +3249,55 @@ struct DungeonTests {
             ])
     }
 
+    /// **And the ledge counts the door he opened.** His chimney is `scenery`, so
+    /// the room listing never mentions it and the room's own paragraph is the
+    /// only place a second way off the ledge can be reported — and it went on
+    /// saying "There is an exit to the south" with two, which is what the
+    /// 2026-08-11 round (#233) caught.
+    @Test func theNarrowLedgeCountsTheDoorTheGnomeOpened() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheNarrowLedge
+                + ["get out", "take coin", "look"]
+                + Array(repeating: "wait", count: 11)
+                + ["give coin to gnome", "look"],
+            seed: 11)
+
+        let halves = transcript.components(
+            separatedBy: "Thank you very much for the priceless zorkmid.")
+        #expect(halves.count == 2)
+        // Before the fee: one exit, and no chimney in the paragraph.
+        #expect(halves[0].contains("exit to the south."))
+        #expect(!halves[0].contains("A narrow chimney has been opened"))
+        // After it: the same line, plus the way he opened.
+        #expect(halves[1].contains("exit to the south."))
+        #expect(halves[1].contains("A narrow chimney has been opened in the west wall"))
+    }
+
+    /// **Each book's examine text used to say it survived the gnomes "by being
+    /// on a shelf too high for them"**, which the room's own listing lines
+    /// contradict three times over — the green one sits in the centre of the
+    /// floor, the blue one in a corner, the purple one in the dust. One line
+    /// answers for all four wherever they lie.
+    @Test func theBooksDoNotClaimAShelfTheRoomHasThemOffOf() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheNarrowLedge + ["get out", "south"]
+                + ["x purple book", "x green book", "x white book"],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                // The room lists three of the four off any shelf at all.
+                "Worn and battered in one corner of the room is a blue book.",
+                "A handsome book, bound in green leather, sits in the center of the room.",
+                "Lying in the dust, and covered with mold, is a purple book.",
+                "A purple book, thick and unlabelled, and whole: whatever the gnomes",
+            ])
+        #expect(!transcript.contains("too high for them"))
+    }
+
     /// **And he waits indefinitely until you speak to him.** The mainframe arms
     /// his five-turn watch on the first word said to him and not before, which
     /// is what makes ignoring a gnome the safe thing to do with one.
@@ -4646,6 +4695,33 @@ struct DungeonTests {
                 "You let go, and the chute has you.",
                 "Cellar",
             ])
+    }
+
+    /// **Lifting the anchor unties the knot.** `rigTheChute()` refuses to tie
+    /// the rope to something in your hands, on the grounds that a rope tied to
+    /// what you are carrying holds nothing; nothing re-checked it afterwards,
+    /// so the 2026-08-11 round (#233) found the Slide Room still calling the
+    /// rope "tied off at the head of the slide" while the player carried the
+    /// timber it was tied to away.
+    @Test func liftingTheChutesAnchorUntiesTheRope() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheChuteWithTheTimber
+                + ["drop timber", "tie rope to timber", "look", "take timber", "look"],
+            seed: 11)
+
+        expectInOrder(
+            transcript,
+            [
+                "The rope is tied fast",
+                "A rope is tied off at the head of the slide",
+                "The rope goes slack as the weight comes off it",
+            ])
+        // And the room stops saying it: the paragraph appears once, before the
+        // timber comes back up off the floor.
+        #expect(
+            transcript.components(separatedBy: "A rope is tied off at the head of the slide")
+                .count == 2)
     }
 
     // MARK: - Milestone 8: the three palantirs, which do not combine
