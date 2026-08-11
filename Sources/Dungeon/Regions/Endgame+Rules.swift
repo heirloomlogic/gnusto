@@ -453,6 +453,6 @@ extension DungeonEndgame {
     ///   ends the turn.
     func enterTheHallway(at room: Location) throws -> Never {
         try enter(room)
-        try reply("")
+        try handled()
     }
 }

@@ -416,7 +416,7 @@ struct DungeonBank: GameContent {
                 player.location = safetyDepository
             }
             describeSurroundings()
-            try reply("")
+            try handled()
         }
 
         // The four inner rooms say whether the curtain is standing in them,
@@ -462,7 +462,7 @@ struct DungeonBank: GameContent {
         let destination = pairs.first { $0.wall == wall }?.to ?? bankEntrance
         say(Prose.wallGivesWay)
         arrive(at: destination)
-        try reply("")
+        try handled()
     }
 
     /// The room a ``BankInnerRoom`` names.

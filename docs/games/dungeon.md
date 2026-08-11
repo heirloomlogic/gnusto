@@ -530,7 +530,7 @@ no work.
 
 **The gap was the destination, and hand-rolling it costs more than it looks.**
 Zork 1 already moves the player from a rule — `player.location =` /
-`describeSurroundings()` / `reply("")`, at `Sources/Zork1/Regions/Mirror.swift:184`
+`describeSurroundings()` / `handled()`, at `Sources/Zork1/Regions/Mirror.swift:184`
 and `Regions/RoundRoom.swift:155`. But `locationOnEnter` is dispatched from
 exactly one place, `enter()`, so a hand-rolled teleport silently skips the
 destination's `onEnter` rules and leaves a boarded vehicle behind. At the Bank

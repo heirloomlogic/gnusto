@@ -720,7 +720,7 @@ struct DungeonAboveGround: GameContent {
         // describes the perch as an entry, so the rule has to too.
         greatTree.before(.climb) {
             try enter(upATree)
-            try reply("")
+            try handled()
         }
 
         // Everywhere else in the wood, the trees refuse the climb in the

@@ -338,7 +338,7 @@ struct DungeonMirror: GameContent {
         for item in southLoose { item.move(to: mirrorRoomNorth) }
         say(Prose.mirrorRumble)
         arrive(at: destination)
-        try reply("")
+        try handled()
     }
 
     /// Break the mirror if it is whole, or shrug off a blow against glass

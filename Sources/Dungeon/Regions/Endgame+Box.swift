@@ -117,7 +117,7 @@ extension DungeonEndgame {
         if slammed { say(Prose.boxPineSlamsShut) }
         say(Prose.boxTurns(clockwise: clockwise))
         describeSurroundings(withRoomName: false)
-        try reply("")
+        try handled()
     }
 
     /// Shoving the mahogany end, which slides the box one room along the
@@ -135,7 +135,7 @@ extension DungeonEndgame {
         box = state
         say(Prose.boxSlides)
         describeSurroundings(withRoomName: false)
-        try reply("")
+        try handled()
     }
 
     /// Swinging the pine end open, which is how you get out when the mirror is

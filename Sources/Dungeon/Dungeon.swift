@@ -452,7 +452,7 @@ struct Dungeon: Game, GameMain {
             player.location = aboveGround.forestDeep
             say(Prose.prayerAnswered)
             describeSurroundings()
-            try reply("")
+            try handled()
         }
 
         mainframeRules
@@ -667,7 +667,7 @@ struct Dungeon: Game, GameMain {
             river.magicBoat.move(to: water)
             say(Prose.boatLaunches)
             describeSurroundings()
-            try reply("")
+            try handled()
         }
 
         // Landing: the same table read the other way. A stretch with one
@@ -683,7 +683,7 @@ struct Dungeon: Game, GameMain {
             }
             river.magicBoat.move(to: bank)
             describeSurroundings()
-            try reply("")
+            try handled()
         }
     }
 
@@ -808,7 +808,7 @@ struct Dungeon: Game, GameMain {
                 player.location = there
                 say(Prose.graniteWallCarriesYou)
                 describeSurroundings()
-                try reply("")
+                try handled()
             }
         }
     }

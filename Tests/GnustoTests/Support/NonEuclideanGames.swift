@@ -157,7 +157,7 @@ struct BankOfZorkGame: Game {
             say("You step into the light, and the light steps into you.")
             player.location = lastViewingRoom == .west ? smallRoom : vault
             describeSurroundings()
-            try reply("")
+            try handled()
         }
 
         // The way back out of two rooms that have no exits at all.
@@ -171,6 +171,6 @@ struct BankOfZorkGame: Game {
         say("The wall gives like water, and closes behind you.")
         player.location = depository
         describeSurroundings()
-        try reply("")
+        try handled()
     }
 }

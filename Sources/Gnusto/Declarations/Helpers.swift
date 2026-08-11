@@ -1,4 +1,4 @@
-/// Thrown by `refuse`, `reply`, `end`, and `die` to redirect the turn;
+/// Thrown by `refuse`, `reply`, `handled`, `end`, and `die` to redirect the turn;
 /// caught by the engine, never seen by author code.
 enum TurnInterrupt: Error {
     case refused(message: String)
@@ -58,13 +58,22 @@ public func require(_ condition: Bool, else message: String) throws {
 /// game code reads correctly: `refuse` for "no, you can't", `reply` for
 /// "here's what happens instead".
 ///
-/// `reply("")` ends the turn without adding a line — for bodies that have
+/// Use ``handled()`` to end the turn without adding a line after a body has
 /// already said everything with `say(_:)`.
 ///
 /// - Parameter message: the response shown to the player.
 /// - Throws: the turn interrupt the engine catches to redirect the turn.
 public func reply(_ message: String) throws -> Never {
     throw TurnInterrupt.replied(message: message)
+}
+
+/// Fully handles the current action without adding a line, skipping the
+/// default behavior and any remaining rules. Use it after a body has already
+/// said everything with `say(_:)`.
+///
+/// - Throws: the turn interrupt the engine catches to redirect the turn.
+public func handled() throws -> Never {
+    throw TurnInterrupt.replied(message: "")
 }
 
 /// Ends the game. The engine prints the final score after the turn's output.
@@ -104,7 +113,7 @@ public func die(_ message: String) throws -> Never {
 /// puzzle.before(.go) {
 ///     // …walk one square of the grid…
 ///     describeSurroundings(withRoomName: false)
-///     try reply("")
+///     try handled()
 /// }
 /// ```
 ///
@@ -123,13 +132,13 @@ public func describeSurroundings(withRoomName: Bool = true) {
 /// mirror.before(.touch) {
 ///     say("The room spins, and settles the other way round.")
 ///     arrive(at: mirrorRoomSouth)
-///     try reply("")
+///     try handled()
 /// }
 /// ```
 ///
 /// It does **not** end the turn, so it is legal in an `after` rule or a daemon
 /// as well as a `before` one, and the caller says how the turn finishes:
-/// `try reply("")` for a rule whose whole answer is the new room, `try
+/// `try handled()` for a rule whose whole answer is the new room, `try
 /// reply(_:)` with a line to trail one after it, or plain `return` from a
 /// daemon.
 ///
@@ -163,7 +172,7 @@ public func arrive(at room: Location, withRoomName: Bool = true) {
 /// stairs.before(.climb) {
 ///     say("You haul yourself up.")
 ///     try enter(belfry)
-///     try reply("")
+///     try handled()
 /// }
 /// ```
 ///

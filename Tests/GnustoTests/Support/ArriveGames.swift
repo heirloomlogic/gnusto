@@ -50,13 +50,13 @@ struct BlinkGame: Game {
     var rules: Rules {
         world.before(Intent("blink")) {
             arrive(at: vault)
-            try reply("")
+            try handled()
         }
 
         // A step taken *within* the ledge: everything but the heading.
         ledge.before(Intent("edge")) {
             arrive(at: ledge, withRoomName: false)
-            try reply("")
+            try handled()
         }
 
         world.before(Intent("summon")) {
@@ -159,37 +159,37 @@ struct StepGame: Game {
     var rules: Rules {
         world.before(Intent("step")) {
             try enter(vault)
-            try reply("")
+            try handled()
         }
 
         world.before(Intent("blink")) {
             arrive(at: vault)
-            try reply("")
+            try handled()
         }
 
         world.before(Intent("back")) {
             arrive(at: porch)
-            try reply("")
+            try handled()
         }
 
         world.before(Intent("shelve")) {
             try enter(ledge)
-            try reply("")
+            try handled()
         }
 
         world.before(Intent("plunge")) {
             try enter(pit)
-            try reply("")
+            try handled()
         }
 
         world.before(Intent("balk")) {
             try enter(sill)
-            try reply("")
+            try handled()
         }
 
         world.before(Intent("delve")) {
             try enter(cave)
-            try reply("")
+            try handled()
         }
 
         world.before(Intent("summon")) {
@@ -257,12 +257,12 @@ struct FerryGame: Game {
     var rules: Rules {
         world.before(Intent("ferry")) {
             try enter(island)
-            try reply("")
+            try handled()
         }
 
         world.before(Intent("drift")) {
             arrive(at: island)
-            try reply("")
+            try handled()
         }
     }
 

@@ -116,9 +116,9 @@ Rule phases by scope, all filed in `Engine/Bootstrap.swift`:
 | location | `before`, `after`, `beforeEachTurn`, `afterEachTurn`, `onEnter`, `describe` |
 | world | `before`, `after` |
 
-In any rule body: `say`, `refuse`, `reply`, `require(_:else:)`, `end(won:)`, `die`,
+In any rule body: `say`, `refuse`, `reply`, `handled`, `require(_:else:)`, `end(won:)`, `die`,
 `describeSurroundings`, `arrive(at:)`, `enter(_:)`, `proceed`.
-`refuse`/`reply`/`end`/`die` are `throws -> Never`.
+`refuse`/`reply`/`handled`/`end`/`die` are `throws -> Never`.
 
 ## Gotchas that cost real time
 

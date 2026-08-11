@@ -348,7 +348,7 @@ struct ZorkAboveGround: GameContent {
         // tree is scenery in `forestPath` only, so this fires just from below.
         tree.before(.climb) {
             arrive(at: upATree)
-            try reply("")
+            try handled()
         }
     }
 }

@@ -143,7 +143,7 @@ The other half of the same problem is a rule that moves the player *within* one 
 puzzle.before(.go) {
     // …walk one square of the grid…
     describeSurroundings(withRoomName: false)
-    try reply("")
+    try handled()
 }
 ```
 
@@ -155,7 +155,7 @@ A rule that moves the player *between* rooms wants both halves at once, and ``ar
 mirror.before(.touch) {
     say("The room spins, and settles the other way round.")
     arrive(at: mirrorRoomSouth)
-    try reply("")
+    try handled()
 }
 ```
 
@@ -169,7 +169,7 @@ Which is usually what you want. Sometimes it isn't, and then ``enter(_:)`` is th
 stairs.before(.climb) {
     say("You haul yourself up.")
     try enter(belfry)
-    try reply("")
+    try handled()
 }
 ```
 
@@ -230,14 +230,15 @@ It runs at **stage 0**, ahead of every `before` rule — which is the point, sin
 
 ## Produce output and control the turn
 
-Four free functions are available in any rule body:
+Five free functions are available in any rule body:
 
 - ``say(_:)`` — add a line to the turn's output and keep going. The default action still runs.
 - ``refuse(_:)`` — print a complaint and abort the action (and remaining rules).
 - ``reply(_:)`` — print a response *in place of* the default action. Same mechanics as `refuse`, different intent: use it when your rule is the behavior, not a veto.
+- ``handled()`` — finish an action without adding a line, after the rule has already produced its whole response with ``say(_:)``.
 - ``end(won:)`` — end the game; the engine prints the final score afterward.
 
-`say` returns normally; the other three return `Never` and read well after a `guard … else`.
+`say` returns normally; the other four return `Never` and read well after a `guard … else`.
 
 ## Compose rules across regions
 
