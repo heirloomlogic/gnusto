@@ -151,7 +151,14 @@ extension DungeonEndgame {
         parapetButton.starts(in: parapet)
         for numeral in numerals { numeral.starts(in: parapet) }
 
+        southCorridorWalls.starts(in: southCorridor)
+        northCorridorWalls.starts(in: northCorridor)
+        eastCorridorWalls.starts(in: eastCorridor)
+        westCorridorWalls.starts(in: westCorridor)
+
         hoard.starts(in: treasury)
+        treasuryMap.starts(in: treasury)
+        treasuryDesk.starts(in: treasury)
     }
 
     /// The box as it is seen from each of the nine rooms it can be seen from —

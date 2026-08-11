@@ -12,15 +12,15 @@ which one does `Sources/Dungeon/` use?**
 > source are permissively licensed — see `THIRD_PARTY_NOTICES` at the repo root
 > for the two separate grants and their limits.
 >
-> Generated against Gnusto `de1fdbc`.
+> Generated against Gnusto `3d0b1fa`.
 
 ## How to read this
 
-- **Identical (54)** — the trilogy carried the mainframe line
+- **Identical (55)** — the trilogy carried the mainframe line
   across unchanged. Listed as ids only; there is nothing to decide.
 - **Minor (27)** — same sentence, changed punctuation or a
   reworded clause (≥85% similar). Skim.
-- **Substantial (62)** — genuinely different writing, or text
+- **Substantial (65)** — genuinely different writing, or text
   the trilogy rewrote because the puzzle around it changed. **This is the section
   that decides the policy.**
 
@@ -30,7 +30,7 @@ listed in `dungeon-atlas.md`. Which entities those are — how the two sources g
 paired up, by display name and, where the name says nothing, by position in the
 map — is also settled there, under Coverage.
 
-## Substantial differences (62)
+## Substantial differences (65)
 
 ### `ADVER` — leaflet (object)
 
@@ -472,6 +472,16 @@ map — is also settled there, under Coverage.
 
 > You are at the base of Flood Control Dam #3, which looms above you and to the north. The river Frigid is flowing by here. Along the river are the White Cliffs which seem to form giant walls stretching from north to south along the shores of the river as it winds its way downstream.
 
+### `ECORR` — East Corridor (room)
+
+**Mainframe (MDL 1981-07-22):**
+
+> This is a corridor with polished marble walls.  The corridor widens into larger areas as it turns west at its northern and southern ends.
+
+**Zork III (ZIL):**
+
+> This is a hall with polished marble walls. It widens slightly as it turns west at its northern and southern ends.
+
 ### `EGYPT` — Egyptian Room (room)
 
 **Mainframe (MDL 1981-07-22):**
@@ -572,6 +582,16 @@ map — is also settled there, under Coverage.
 
 > You are facing the north side of a white house. There is no door here, and all the windows are boarded up. To the north a narrow path winds through the trees.
 
+### `NIRVA` — Treasury of Zork (room)
+
+**Mainframe (MDL 1981-07-22):**
+
+> This is a room of large size, richly appointed and decorated in a style that bespeaks exquisite taste.  To judge from its contents, it is the ultimate storehouse of the treasures of Zork.      There are chests here containing precious jewels, mountains of zorkmids, rare paintings, ancient statuary, and beguiling curios.      In one corner of the room is a bookcase boasting such volumes as 'The History of the Great Underground Empire,' 'The Lives of the Twelve Flatheads,' 'The Wisdom of the Implementors,' and other informative and inspiring works.      On one wall is a completely annotated map of the Great Underground Empire, showing points of interest, various troves of treasure, and indicating the locations of several superior scenic views.      On a desk at the far end of the room may be found stock certificates representing a controlling interest in FrobozzCo International, the multinational conglomerate and parent company of the Frobozz Magic Boat Co., etc.
+
+**Zork III (ZIL):**
+
+> This is a large room, richly appointed in a style that bespeaks exquisite taste. To judge from its contents, it is the ultimate storehouse of the wealth of the Great Underground Empire.\| \| There are chests containing precious jewels, mountains of zorkmids, rare paintings, ancient statuary, and beguiling curios.\| \| On one wall is an annotated map of the Empire, showing the locations of various troves of treasure, and of many superior scenic views.\| \| On a desk at the far end of the room are stock certificates representing a controlling interest in FrobozzCo International, the multinational conglomerate and parent company of the Frobozz Magic Boat Co., etc.\|
+
 ### `PASS4` — Winding Passage (room)
 
 **Mainframe (MDL 1981-07-22):**
@@ -652,6 +672,16 @@ map — is also settled there, under Coverage.
 
 > You are near the rim of the volcano. Above you it is open to the sky. To the west, there is a place to land on a wide ledge.
 
+### `WCORR` — West Corridor (room)
+
+**Mainframe (MDL 1981-07-22):**
+
+> This is a corridor with polished marble walls.  The corridor widens into larger areas as it turns east at its northern and southern ends.
+
+**Zork III (ZIL):**
+
+> This is a hall with polished marble walls. It widens slightly as it turns east at its northern and southern ends.
+
 ## Minor differences (27)
 
 | id | name | mainframe | trilogy |
@@ -684,11 +714,11 @@ map — is also settled there, under Coverage.
 | `TREAS` | Treasure Room | This is a large room, whose north wall is solid granite.  A number of discarded bags, whi… | This is a large room, whose east wall is solid granite. A number of discarded bags, which… (Zork I) |
 | `VLBOT` | Volcano Bottom | You are at the bottom of a large dormant volcano.  High above you light may be seen enter… | You are at the bottom of a large dormant volcano. High above you light enters from the co… (Zork II) |
 
-## Identical (54)
+## Identical (55)
 
 The trilogy kept these lines verbatim, so either source yields the same game.
 
-> `BEGG`, `BKEXE`, `BKVAU`, `BLABE`, `BRICK`, `BUCKE`, `BUOY`, `BWELL`, `CARD`, `CHALI`, `COFFI`, `DBALL`, `DIAMO`, `ENGRA`, `FOOD`, `GNOME`, `HBELL`, `HOOK1`, `HOOK2`, `IBOAT`, `ICE`, `IRBOX`, `JADE`, `LEDG3`, `MAZ10`, `MAZ11`, `MAZ12`, `MAZ13`, `MAZ14`, `MAZ15`, `MAZE2`, `MAZE3`, `MAZE4`, `MAZE6`, `MAZE7`, `MAZE8`, `MAZE9`, `MPEAR`, `PASS1`, `PASS5`, `PEARL`, `RBTLB`, `RIVR2`, `ROBOT`, `STAMP`, `STRAD`, `TBASK`, `TROLL`, `TSHAF`, `TUBE`, `TWELL`, `VAIR1`, `VAIR2`, `ZGNOM`
+> `BEGG`, `BKEXE`, `BKVAU`, `BLABE`, `BRICK`, `BUCKE`, `BUOY`, `BWELL`, `CARD`, `CHALI`, `COFFI`, `DBALL`, `DIAMO`, `ENGRA`, `FOOD`, `GNOME`, `HBELL`, `HOOK1`, `HOOK2`, `IBOAT`, `ICE`, `IRBOX`, `JADE`, `LEDG3`, `MASTE`, `MAZ10`, `MAZ11`, `MAZ12`, `MAZ13`, `MAZ14`, `MAZ15`, `MAZE2`, `MAZE3`, `MAZE4`, `MAZE6`, `MAZE7`, `MAZE8`, `MAZE9`, `MPEAR`, `PASS1`, `PASS5`, `PEARL`, `RBTLB`, `RIVR2`, `ROBOT`, `STAMP`, `STRAD`, `TBASK`, `TROLL`, `TSHAF`, `TUBE`, `TWELL`, `VAIR1`, `VAIR2`, `ZGNOM`
 
 ## The adopted policy — Infocom voice, mainframe world
 

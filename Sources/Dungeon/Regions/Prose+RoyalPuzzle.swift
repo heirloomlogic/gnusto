@@ -20,12 +20,16 @@
 /// that the note warns you cannot get out, that the legend explains two rock
 /// types — and the sentences are written here.
 ///
-/// One caveat worth carrying, because a later contributor should be able to
-/// reopen it rather than rediscover it: the atlas pairs nothing at all against
-/// Zork III — the string never appears in the generated document — and Zork III
-/// is where the trilogy put its Royal Puzzle. So "no counterpart" may mean "no
-/// counterpart was looked for". Writing fresh is correct either way, and is what
-/// the committed policy directs today. See `FIDELITY.md`, milestone 7.
+/// That caveat used to be carried here as an open question — the atlas paired
+/// nothing at all against Zork III, and Zork III is where the trilogy put its
+/// Royal Puzzle, so "no counterpart" might only have meant "no counterpart was
+/// looked for". #184 settled it. The generator was reading a stale second
+/// generation of that checkout and could pair nothing; it now pairs `CP`,
+/// `CPANT`, `CPOUT` and the ladder. The region's prose is unchanged, and for a
+/// better reason than before: Zork III describes those rooms from a room
+/// function, so there is still no trilogy line to weigh against the mainframe's.
+/// Case 3 holds, checked rather than merely unrefuted. See `FIDELITY.md`,
+/// milestone 7.
 ///
 /// The room's own description is assembled rather than stored, because it *is*
 /// the state of the grid. ``puzzleDiagram(_:)`` builds the 3×3 the source

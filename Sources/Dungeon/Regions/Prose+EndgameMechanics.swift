@@ -6,11 +6,11 @@
 /// against `Prose.swift`: one four-hundred-line `extension Prose` is a wall of
 /// string constants, and two subjects read as two.
 ///
-/// **Case 3 throughout — written fresh.** The whole region is mainframe-only:
-/// no room and no object of it appears in any bucket of
-/// `docs/games/dungeon-prose-comparison.md`. The three-way rule is stated on
-/// ``Prose``; the caveat about Zork III is stated in `Prose+Endgame.swift` and
-/// in `FIDELITY.md`, and is not repeated here.
+/// **Written fresh, all of it.** Every line in this file is case 3 of the
+/// three-way rule: these are refusals and reports, and the trilogy has no
+/// counterpart to any of them. The rule itself is stated on ``Prose``, and which
+/// of the region's *rooms and objects* now pair with Zork III — four of them do,
+/// since #184 — is settled in `Prose+Endgame.swift` and not repeated here.
 extension Prose {
     // MARK: - The box, from outside
 
@@ -361,5 +361,16 @@ extension Prose {
         Every treasure the dungeon ever held, and a good many it did not: coin
         and plate and stone heaped up the walls and going back further than the
         light reaches.
+        """
+
+    static let treasuryMap = """
+        The Great Underground Empire drawn whole, in a hand that had all the
+        time it needed. Every trove is on it. So is every place worth standing
+        to look at something, which is the part somebody cared about.
+        """
+
+    static let treasuryDesk = """
+        A writing desk with a controlling interest in FrobozzCo International
+        squared up on it, the boat company and all the rest of it underneath.
         """
 }

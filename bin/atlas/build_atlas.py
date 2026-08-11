@@ -12,7 +12,9 @@ the 1981 MDL is the one body of source `THIRD_PARTY_NOTICES` records as having
 reached the public without a clear licence grant, which is why the adopted prose
 policy reproduces none of its text. Fetch them yourself and point the generator
 at them with --sources or GNUSTO_ZORK_SOURCES; the default is .context/reference/,
-which is gitignored.
+which is gitignored. The MDL is github.com/heasm66/mdlzork and the trilogy is
+github.com/historicalsource's zork1, zork2 and zork3, checked out under those
+names — `Sources.complaint` prints the layout in full when one is missing.
 """
 
 from __future__ import annotations
@@ -37,17 +39,28 @@ DOCS = ROOT / "docs" / "games"
 DEFAULT_SOURCES = ROOT / ".context" / "reference"
 
 MDL_SUBPATH = Path("mdlzork/mdlzork_810722/original_source/dung.355")
-ZIL_SUBPATHS = {
-    "Zork I": Path("historicalsource-zork1"),
-    "Zork II": Path("historicalsource-zork2"),
-    "Zork III": Path("historicalsource-zork3"),
+
+# Each game's checkout, and the master file naming what that game is built from.
+# The master matters: a checkout can hold more than one generation of the source,
+# and only the master says which one shipped. See `Sources.zil_files`.
+#
+# One table rather than two keyed the same way, so a game cannot be added to the
+# directories and forgotten in the masters.
+ZIL_SOURCES = {
+    "Zork I": (Path("historicalsource-zork1"), "zork1.zil"),
+    "Zork II": (Path("historicalsource-zork2"), "zork2.zil"),
+    "Zork III": (Path("historicalsource-zork3"), "zork3.zil"),
 }
+
+# How a master file names one of its own parts: `<INSERT-FILE "3DUNGEON" T>`.
+# The name is the file's stem, upper-cased and without its extension.
+_INSERT_FILE = re.compile(r'<INSERT-FILE\s+"([^"]+)"')
 
 # Where a trilogy room can be paired in more than one game — which only graph
 # matching can produce, since a name shared by two games is ambiguous by
 # construction — the earliest game wins. Zork I first: it is the game
 # `Sources/Zork1/` is built from, so its row is the one a reader can check.
-GAME_ORDER = list(ZIL_SUBPATHS)
+GAME_ORDER = list(ZIL_SOURCES)
 
 # Areas the mainframe map divides into, in the order the atlas lists them.
 # Used only to group it readably; not a claim about the original's own
@@ -115,7 +128,10 @@ class Sources:
         return self.root / MDL_SUBPATH
 
     def zil(self, game: str) -> Path:
-        return self.root / ZIL_SUBPATHS[game]
+        return self.root / ZIL_SOURCES[game][0]
+
+    def master(self, game: str) -> Path:
+        return self.zil(game) / ZIL_SOURCES[game][1]
 
     def mdl_code(self) -> list[Path]:
         """The MDL game code — every source file beside `dung.355`.
@@ -130,7 +146,18 @@ class Sources:
         )
 
     def missing(self) -> list[Path]:
-        absent = [self.zil(g) for g in GAME_ORDER if not self.zil(g).is_dir()]
+        absent: list[Path] = []
+        for game in GAME_ORDER:
+            if not self.zil(game).is_dir():
+                absent.append(self.zil(game))
+            elif not self.master(game).is_file():
+                absent.append(self.master(game))
+            else:
+                # The master is the only thing that knows the rest of the list,
+                # so a part it names and the checkout lacks is missing source in
+                # exactly the sense this method reports — same fault, same
+                # remedy, one channel.
+                absent += self._resolve(game)[1]
         if not self.mdl.is_file():
             return [self.mdl] + absent
         # `dung.355` alone is not enough. Without its siblings every object the
@@ -147,17 +174,59 @@ class Sources:
             "missing Zork sources:\n"
             + "\n".join(f"    {p}" for p in self.missing())
             + f"\n\nExpected all of:\n{wanted}\n\n"
-            "The first is github.com/historicalsource/mdlzork; the rest are that\n"
-            "org's zork1/zork2/zork3. Point --sources or GNUSTO_ZORK_SOURCES at\n"
-            "them. They are not vendored — see this file's docstring and\n"
-            "THIRD_PARTY_NOTICES for why."
+            "The first is github.com/heasm66/mdlzork; the rest are\n"
+            "github.com/historicalsource's zork1/zork2/zork3. Point --sources or\n"
+            "GNUSTO_ZORK_SOURCES at them. They are not vendored — see this file's\n"
+            "docstring and THIRD_PARTY_NOTICES for why."
         )
+
+    def zil_files(self, game: str) -> list[Path]:
+        """The files a game is built from, in the order its own master names them.
+
+        Reading the directory instead — every `*.zil` in it — is wrong, and wrong
+        in a way that hides. The `zork3` checkout carries two complete generations
+        of the game: the one `zork3.zil` names, and an older `dungeon.zil` /
+        `shadow.zil` / `tm.zil` set no master mentions. Globbing loads both, so
+        every Zork III room and object is declared twice under the same `DESC`,
+        `pair_by_name` throws out all of them as ambiguous, and the game pairs
+        with nothing at all — see the guard in `unpaired_games`.
+
+        So the master is the authority, exactly as the source is everywhere else
+        in this generator. `<INSERT-FILE "3DUNGEON" T>` names `3dungeon.zil`; the
+        case is the master's convention, not the filesystem's, so it is matched
+        case-insensitively.
+        """
+        files, unresolved = self._resolve(game)
+        if unresolved:
+            # `missing` reports these first and `main` stops there, so this is a
+            # backstop for a caller that skipped the precondition rather than a
+            # path a run takes. It raises rather than returning short because a
+            # short read is the whole failure this function exists to prevent.
+            raise SystemExit(
+                f"{self.master(game)} names files the checkout lacks: "
+                f"{', '.join(str(p) for p in unresolved)}"
+            )
+        return files
+
+    def _resolve(self, game: str) -> tuple[list[Path], list[Path]]:
+        """Split what the master names into what is there and what is not."""
+        tree = self.zil(game)
+        on_disk = {f.name.lower(): f for f in tree.glob("*.zil")}
+        files: list[Path] = []
+        unresolved: list[Path] = []
+        for name in _INSERT_FILE.findall(read(self.master(game))):
+            stem = f"{name.lower()}.zil"
+            if found := on_disk.get(stem):
+                files.append(found)
+            else:
+                unresolved.append(tree / stem)
+        return files, unresolved
 
     def load_zil(self) -> list[ZilEntity]:
         return [
             entity
             for game in GAME_ORDER
-            for f in sorted(self.zil(game).glob("*.zil"))
+            for f in self.zil_files(game)
             for entity in parse_zil(read(f), game)
         ]
 
@@ -682,6 +751,25 @@ def cross_reference(rooms: list, objects: list, zil: list[ZilEntity]) -> Matchin
     return m
 
 
+def unpaired_games(matching: Matching) -> list[str]:
+    """Games the generator loaded and then matched against nothing whatsoever.
+
+    A source that contributes not one pair is never a fact about the trilogy; it
+    is a fact about this program. Zork III read as *"no counterpart exists"* for
+    196 rooms and 253 objects for as long as nobody grepped for it (#184), and
+    that answer reached `FIDELITY.md` as though it had been established. A
+    document that says nothing would have been read as broken; a document that
+    quietly said the wrong thing was not.
+
+    So a zero here is fatal, on the same reasoning as `Sources.missing` — a
+    degraded run is worse than none. It is a floor, not a proof: a game can pair
+    badly and still pass this. It only catches the failure that is total, which
+    is the failure that hides.
+    """
+    paired = {z.game for z in (*matching.rooms.values(), *matching.objects.values())}
+    return [game for game in GAME_ORDER if game not in paired]
+
+
 def zork1_swift_index() -> dict[str, str]:
     """Map a lowercased room/item name to the Sources/Zork1 file declaring it.
 
@@ -1120,10 +1208,28 @@ def main(argv: list[str] | None = None) -> int:
     shared = global_presence(rooms, objects)
     scenery = shared_scenery(rooms, matching, shared, zil)
     by_region = regions(rooms)
+
+    # Loud, and ahead of the writes. Under --audit the listing still prints
+    # first: that is the tool you reach for to find out *why* a game paired with
+    # nothing, so refusing to show it would be the wrong kind of strict.
+    barren = unpaired_games(matching)
     if args.audit:
-        return audit(
+        listed = audit(
             rooms, objects, matching, placed, unresolved, exits, shared, scenery, by_region
         )
+        if not barren:
+            return listed
+
+    if barren:
+        print(
+            f"\n{', '.join(barren)} loaded but matched nothing — not one room and "
+            "not one object.\nThat is a fault in this generator or in the checkout, "
+            "never a fact about the\ntrilogy, and writing it into a committed "
+            "document says the counterpart does not\nexist. Nothing written. See "
+            "`unpaired_games`.",
+            file=sys.stderr,
+        )
+        return 1
 
     zil_for = matching.of
     swift = zork1_swift_index()
@@ -1541,9 +1647,13 @@ def main(argv: list[str] | None = None) -> int:
         f" which {len(matching.contradicted)} disagree.",
         "",
         "What is still unmatched is mostly content the trilogy never carried over — the",
-        "Bank of Zork, the Royal Puzzle, the Endgame. The rest is rooms the trilogy",
-        "renamed, which the name cannot catch and the graph reaches only where enough of",
-        "the map around them survived. So these are still floors, but much higher ones.",
+        "Bank of Zork above all. It is a shorter list than it looks, and it was longer",
+        "still until #184: the Royal Puzzle and the Endgame went into Zork III, and this",
+        "generator was loading that game's sources and pairing nothing against them, so",
+        "both regions read here as having no counterpart at all. The rest is rooms the",
+        "trilogy renamed, which the name cannot catch and the graph reaches only where",
+        "enough of the map around them survived. So these are still floors, but much",
+        "higher ones.",
         "",
         para(
             f"The object rows include the {shared.total} globals, since a"

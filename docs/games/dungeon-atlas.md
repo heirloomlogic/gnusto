@@ -11,7 +11,7 @@ source, not from a walkthrough or a memory.
 > source are permissively licensed — see `THIRD_PARTY_NOTICES` at the repo root
 > for the two separate grants and their limits.
 >
-> Generated against Gnusto `de1fdbc`.
+> Generated against Gnusto `3d0b1fa`.
 
 ## Scoring
 
@@ -254,7 +254,7 @@ dungeon.
 
 | id | name | RVAL | exits | trilogy | in `Sources/Zork1/` |
 |---|---|---:|---:|---|---|
-| `CP` | Room in a Puzzle |  | 9 | — | — |
+| `CP` | Room in a Puzzle |  | 9 | Zork III | — |
 | `CPANT` | Small Square Room |  | 3 | — | — |
 | `CPOUT` | Side Room |  | 2 | — | — |
 
@@ -262,12 +262,12 @@ dungeon.
 
 | id | name | RVAL | exits | trilogy | in `Sources/Zork1/` |
 |---|---|---:|---:|---|---|
-| `BDOOR` | Narrow Corridor | 20 | 2 | — | — |
-| `CELL` | Prison Cell |  | 3 | — | — |
+| `BDOOR` | Narrow Corridor | 20 | 2 | Zork III | — |
+| `CELL` | Prison Cell |  | 3 | Zork III | — |
 | `CRYPT` | Crypt | 5 | 2 | Zork II | — |
-| `ECORR` | East Corridor |  | 2 | — | — |
-| `FDOOR` | Dungeon Entrance | 15 | 5 | — | — |
-| `INMIR` | Inside Mirror | 15 | 9 | — | — |
+| `ECORR` | East Corridor |  | 2 | Zork III | — |
+| `FDOOR` | Dungeon Entrance | 15 | 5 | Zork III | — |
+| `INMIR` | Inside Mirror | 15 | 9 | Zork III | — |
 | `MRA` | Hallway |  | 5 | — | — |
 | `MRAE` | Narrow Room |  | 4 | — | — |
 | `MRANT` | Stone Room |  | 3 | — | — |
@@ -286,13 +286,13 @@ dungeon.
 | `MRGE` | Narrow Room |  | 0 | — | — |
 | `MRGW` | Narrow Room |  | 0 | — | — |
 | `NCELL` | Prison Cell |  | 3 | — | — |
-| `NCORR` | North Corridor |  | 5 | — | — |
-| `NIRVA` | Treasury of Zork | 35 | 0 | — | — |
-| `PARAP` | Parapet |  | 2 | — | — |
+| `NCORR` | North Corridor |  | 5 | Zork III | — |
+| `NIRVA` | Treasury of Zork | 35 | 0 | Zork III | — |
+| `PARAP` | Parapet |  | 2 | Zork III | — |
 | `PCELL` | Prison Cell |  | 1 | — | — |
-| `SCORR` | South Corridor |  | 4 | — | — |
+| `SCORR` | South Corridor |  | 4 | Zork III | — |
 | `TSTRS` | Top of Stairs | 10 | 3 | — | — |
-| `WCORR` | West Corridor |  | 2 | — | — |
+| `WCORR` | West Corridor |  | 2 | Zork III | — |
 
 ## Exits
 
@@ -947,7 +947,7 @@ those are, and Placement for the 20 entries that are neither a place nor a bit.
 | `#####` | cretin |  |  |  | every room | — | — |
 | `*BUN*` |  |  |  |  | by code | — | — |
 | `ADVER` | leaflet | 2 |  |  | in `MAILB` | Zork I | `Sources/Zork1/AboveGround.swift` |
-| `ARROW` | compass arrow |  |  |  | `INMIR` | — | — |
+| `ARROW` | compass arrow |  |  |  | `INMIR` | Zork III | — |
 | `ATABL` | large oblong table |  |  |  | `ALICE` | Zork II | — |
 | `AVIAT` | flyer |  |  |  | every room | — | — |
 | `AXE` | bloody axe | 25 |  |  | in `TROLL` | Zork I | `Sources/Zork1/Cellar.swift` |
@@ -968,7 +968,7 @@ those are, and Placement for the 20 entries that are neither a place nor a bit.
 | `BLBK` | blue book | 10 |  |  | `LIBRA` | Zork II | — |
 | `BLBUT` | blue button |  |  |  | `MAINT` | Zork I | `Sources/Zork1/Regions/Dam.swift` |
 | `BLICE` | piece of cake with blue icing | 4 |  |  | `ALICE` | — | — |
-| `BLWAL` | black panel |  |  |  | `INMIR` | — | — |
+| `BLWAL` | black panel |  |  |  | `INMIR` | Zork III | — |
 | `BODIE` | pile of bodies |  |  |  | `LLD2` | Zork I | — |
 | `BOLT` | bolt |  |  |  | `DAM` | Zork I | — |
 | `BONES` | skeleton |  |  |  | `MAZE5` | Zork I | `Sources/Zork1/Regions/Maze.swift` |
@@ -990,7 +990,7 @@ those are, and Placement for the 20 entries that are neither a place nor a bit.
 | `CCLIF` | cliff |  |  |  | `CLBOT` | — | — |
 | `CDOOR` | cell door |  |  |  | `NCORR` | — | — |
 | `CHALI` | chalice | 10 | 10 | 10 | `TREAS` | Zork I | — |
-| `CHANN` | stone channel |  |  |  | by `CHANBIT` | — | — |
+| `CHANN` | stone channel |  |  |  | by `CHANBIT` | Zork III | — |
 | `COAL` | small pile of coal | 20 |  |  | `DEAD7` | Zork I | `Sources/Zork1/Regions/CoalMine.swift` |
 | `COFFI` | gold coffin | 55 | 3 | 7 | `EGYPT` | Zork I | `Sources/Zork1/Regions/Temple.swift` |
 | `COIN` | priceless zorkmid | 10 | 10 | 12 | `LEDG2` | Zork II | — |
@@ -1000,7 +1000,7 @@ those are, and Placement for the 20 entries that are neither a place nor a bit.
 | `CPDOR` | steel door |  |  |  | `CP` | — | — |
 | `CPDR2` | steel door |  |  |  | `CPOUT` | — | — |
 | `CPEWL` | eastern wall |  |  |  | by `CPWALL` | — | — |
-| `CPLAD` | ladder |  |  |  | by `CPLADDER` | — | — |
+| `CPLAD` | ladder |  |  |  | by `CPLADDER` | Zork III | — |
 | `CPNWL` | northern wall |  |  |  | by `CPWALL` | — | — |
 | `CPSLT` | small slit |  |  |  | `CP` | — | — |
 | `CPSWL` | southern wall |  |  |  | by `CPWALL` | — | — |
@@ -1010,8 +1010,8 @@ those are, and Placement for the 20 entries that are neither a place nor a bit.
 | `DAM` | dam |  |  |  | `DAM` | Zork I | `Sources/Zork1/Regions/Dam.swift` |
 | `DBALL` | broken balloon | 40 |  |  | by code | Zork II | — |
 | `DBOAT` | plastic boat (with hole) | 20 |  |  | by code | — | — |
-| `DBUTT` | large button |  |  |  | `PARAP` | — | — |
-| `DIAL` | sundial |  |  |  | `PARAP` | — | — |
+| `DBUTT` | large button |  |  |  | `PARAP` | Zork III | — |
+| `DIAL` | sundial |  |  |  | `PARAP` | Zork III | — |
 | `DIAMO` | huge diamond |  | 10 | 6 | by code | Zork I | `Sources/Zork1/Regions/CoalMine.swift` |
 | `DOOR` | trap door |  |  |  | `LROOM` | Zork I | `Sources/Zork1/House.swift` |
 | `DSTMP` | Don Woods stamp | 1 |  | 1 | in `BROCH` | — | — |
@@ -1064,18 +1064,18 @@ those are, and Placement for the 20 entries that are neither a place nor a bit.
 | `JADE` | jade figurine | 10 | 5 | 5 | `BATS` | Zork I | `Sources/Zork1/Regions/CoalMine.swift` |
 | `KEYS` | set of skeleton keys | 10 |  |  | `MAZE5` | — | — |
 | `KNIFE` | knife |  |  |  | `ATTIC` | — | — |
-| `LABEL` | tan label | 2 |  |  | in `RBOAT` | Zork I | — |
+| `LABEL` | tan label | 2 |  |  | in `RBOAT` | Zork I | `Sources/Zork1/Regions/River.swift` |
 | `LAMP` | lamp | 15 |  |  | `LROOM` | — | — |
 | `LCASE` | large case |  |  |  | by code | — | — |
 | `LDOOR` | locked door |  |  |  | `PCELL` | — | — |
 | `LEAK` | leak |  |  |  | `MAINT` | Zork I | — |
 | `LEAVE` | pile of leaves | 25 |  |  | `CLEAR` | Zork I | `Sources/Zork1/AboveGround.swift` |
 | `LISTS` | stack of listings | 70 |  |  | `TOMB` | — | — |
-| `LPOLE` | long pole |  |  |  | `INMIR` | — | — |
+| `LPOLE` | long pole |  |  |  | `INMIR` | Zork III | — |
 | `LUNGS` | breath |  |  |  | every room | — | — |
 | `MACHI` | machine |  |  |  | `MACHI` | Zork I | `Sources/Zork1/Regions/CoalMine.swift` |
 | `MAILB` | mailbox |  |  |  | `WHOUS` | — | — |
-| `MASTE` | dungeon master |  |  |  | `BDOOR` | — | — |
+| `MASTE` | dungeon master |  |  |  | `BDOOR` | Zork III | — |
 | `MAT` | welcome mat | 12 |  |  | `WHOUS` | — | — |
 | `MATCH` | matchbook | 2 |  |  | `LOBBY` | Zork I | `Sources/Zork1/Regions/Dam.swift` |
 | `MDOOR` | locked door |  |  |  | `NCELL` | — | — |
@@ -1083,7 +1083,7 @@ those are, and Placement for the 20 entries that are neither a place nor a bit.
 | `MSWIT` | switch |  |  |  | `MACHI` | Zork I | `Sources/Zork1/Regions/CoalMine.swift` |
 | `NEST` | birds nest |  |  |  | `TREE` | — | — |
 | `OAKND` | mahogany wall |  |  |  | `INMIR` | — | — |
-| `ODOOR` | bronze door |  |  |  | `SCORR` | — | — |
+| `ODOOR` | bronze door |  |  |  | `SCORR` | Zork III | — |
 | `ONE` | number one |  |  |  | `PARAP` | — | — |
 | `ORICE` | piece of cake with orange icing | 4 |  |  | `ALICE` | — | — |
 | `OTIMB` | broken timber | 50 |  |  | `TIMBE` | — | — |
@@ -1116,13 +1116,13 @@ those are, and Placement for the 20 entries that are neither a place nor a bit.
 | `QDOOR` | wooden door |  |  |  | `BDOOR` | — | — |
 | `RAILI` | wooden railing |  |  |  | `DOME` | Zork I | — |
 | `RAINB` | rainbow |  |  |  | `FALLS` | Zork I | — |
-| `RBEAM` | red beam of light |  |  |  | `MREYE` | — | — |
+| `RBEAM` | red beam of light |  |  |  | `MREYE` | Zork III | — |
 | `RBOAT` | magic boat | 20 |  |  | by code | Zork I | `Sources/Zork1/Regions/River.swift` |
 | `RBTLB` | green piece of paper | 3 |  |  | `MAGNE` | Zork II | — |
 | `RBUTT` | red button |  |  |  | `MAINT` | Zork I | `Sources/Zork1/Regions/Dam.swift` |
 | `RCAGE` | steel cage |  |  |  | by code | — | — |
 | `RDICE` | piece of cake with red icing | 4 |  |  | `ALICE` | — | — |
-| `RDWAL` | red panel |  |  |  | `INMIR` | — | — |
+| `RDWAL` | red panel |  |  |  | `INMIR` | Zork III | — |
 | `RECEP` | receptacle |  |  |  | in `BALLO` | Zork II | — |
 | `REFL1` | mirror |  |  |  | `MIRR1` | Zork I | `Sources/Zork1/Regions/Mirror.swift` |
 | `REFL2` | mirror |  |  |  | `MIRR2` | — | `Sources/Zork1/Regions/Mirror.swift` |
@@ -1130,7 +1130,7 @@ those are, and Placement for the 20 entries that are neither a place nor a bit.
 | `RNBUT` | round button |  |  |  | `CMACH` | Zork II | — |
 | `ROBOT` | robot |  |  |  | `MAGNE` | Zork II | — |
 | `ROPE` | rope | 10 |  |  | `ATTIC` | Zork I | — |
-| `ROSE` | compass rose |  |  |  | by `ROSEBIT` | — | — |
+| `ROSE` | compass rose |  |  |  | by `ROSEBIT` | Zork III | — |
 | `RSWIT` | red button |  |  |  | `MRANT` | — | `Sources/Zork1/Regions/Dam.swift` |
 | `RUBY` | ruby |  | 15 | 8 | `RUBYR` | Zork II | — |
 | `RUG` | carpet |  |  |  | `LROOM` | Zork I | — |
@@ -1147,7 +1147,7 @@ those are, and Placement for the 20 entries that are neither a place nor a bit.
 | `SIX` | number six |  |  |  | `PARAP` | — | — |
 | `SLIDE` | chute |  |  |  | by `SLIDEBIT` | Zork I | — |
 | `SPHER` | white crystal sphere | 10 | 6 | 6 | `CAGER` | — | — |
-| `SPOLE` | short pole |  |  |  | `INMIR` | — | — |
+| `SPOLE` | short pole |  |  |  | `INMIR` | Zork III | — |
 | `SQBUT` | square button |  |  |  | `CMACH` | Zork II | — |
 | `SROPE` | piece of rope |  |  |  | by `ROPEBIT` | — | — |
 | `SSLOT` | hole |  |  |  | `SAFE` | Zork II | — |
@@ -1158,7 +1158,7 @@ those are, and Placement for the 20 entries that are neither a place nor a bit.
 | `STOVE` | old coal stove |  |  |  | `SPAL` | — | — |
 | `STRAD` | fancy violin | 10 | 10 | 10 | in `IRBOX` | Zork II | — |
 | `SWORD` | sword | 30 |  |  | `LROOM` | Zork I | — |
-| `TBAR` | T-bar |  |  |  | `INMIR` | — | — |
+| `TBAR` | T-bar |  |  |  | `INMIR` | Zork III | — |
 | `TBASK` | basket |  |  |  | `TSHAF` | Zork I | `Sources/Zork1/Regions/CoalMine.swift` |
 | `TCASE` | trophy case |  |  |  | `LROOM` | Zork I | `Sources/Zork1/House.swift` |
 | `TCHST` | group of tool chests |  |  |  | `MAINT` | Zork I | — |
@@ -1181,12 +1181,12 @@ those are, and Placement for the 20 entries that are neither a place nor a bit.
 | `WARNI` | note of warning |  |  |  | `CPANT` | — | — |
 | `WATER` | quantity of water | 4 |  |  | in `BOTTL` | Zork I | `Sources/Zork1/House.swift` |
 | `WCLIF` | white cliffs |  |  |  | `WCLF1` | Zork I | — |
-| `WDBAR` | wooden bar |  |  |  | `INMIR` | — | — |
+| `WDBAR` | wooden bar |  |  |  | `INMIR` | Zork III | — |
 | `WDOOR` | wooden door |  |  |  | `LROOM` | Zork I | — |
 | `WEAST` | eastern wall |  |  |  | by `WALL-ESWBIT` | — | — |
 | `WELL` | well |  |  |  | by `WELLBIT` | Zork II | — |
 | `WHBK` | white book | 10 |  |  | `LIBRA` | Zork II | — |
-| `WHWAL` | white panel |  |  |  | `INMIR` | — | — |
+| `WHWAL` | white panel |  |  |  | `INMIR` | Zork III | — |
 | `WINDO` | window |  |  |  | `EHOUS` | — | — |
 | `WISH` | wish |  |  |  | every room | Zork II | — |
 | `WNORT` | northern wall |  |  |  | by `WALL-NBIT` | — | — |
@@ -1194,7 +1194,7 @@ those are, and Placement for the 20 entries that are neither a place nor a bit.
 | `WSOUT` | southern wall |  |  |  | by `WALL-ESWBIT` | — | — |
 | `WWEST` | western wall |  |  |  | by `WALL-ESWBIT` | — | — |
 | `YBUTT` | yellow button |  |  |  | `MAINT` | Zork I | `Sources/Zork1/Regions/Dam.swift` |
-| `YLWAL` | yellow panel |  |  |  | `INMIR` | — | — |
+| `YLWAL` | yellow panel |  |  |  | `INMIR` | Zork III | — |
 | `ZGNOM` | Gnome of Zurich |  |  |  | by code | Zork II | — |
 
 ## Placement
@@ -1319,15 +1319,15 @@ one.
 The trilogy keeps the same mechanism and states it from the other end: an
 object goes on the `GLOBAL-OBJECTS` shelf to be everywhere or the
 `LOCAL-GLOBALS` shelf to be somewhere, and a ZIL room lists the local ones it
-wants as `(GLOBAL …)`. 6 of the mainframe globals pair with a trilogy object,
-and on which shelf they sit the two sources agree 6 times and differ 0.
+wants as `(GLOBAL …)`. 10 of the mainframe globals pair with a trilogy object,
+and on which shelf they sit the two sources agree 8 times and differ 2.
 
 Room by room is the thinner list and the better check, because it reaches
 presences the shelf reading knows nothing about, by an independent route. Where
 a mainframe room and a global carried into it are *both* paired, the trilogy
-carries the same global into the same room 10 times out of 10 — the white house
+carries the same global into the same room 13 times out of 17 — the white house
 seen from all four sides of it and from the forest, the well from top and
-bottom, the chute in the Slide Room. It contradicts 0. `--audit` prints both
+bottom, the chute in the Slide Room. It contradicts 4. `--audit` prints both
 listings.
 
 ## Coverage
@@ -1339,10 +1339,10 @@ is not part of that sum.
 | | Rooms | Objects |
 |---|---:|---:|
 | Total in the 1981 MDL | 196 | 253 |
-| Matched to a trilogy entity by display name | 85 | 112 |
-| Matched by position — exit graph, or what it starts inside | 32 | 23 |
-| **Matched, either way** | **117** | **135** |
-| No trilogy counterpart found | 79 | 118 |
+| Matched to a trilogy entity by display name | 95 | 128 |
+| Matched by position — exit graph, or what it starts inside | 33 | 24 |
+| **Matched, either way** | **128** | **152** |
+| No trilogy counterpart found | 68 | 101 |
 | Already built in `Sources/Zork1/` | 104 | — |
 
 **Position matching is what closes the mazes.** Fifteen mainframe passages are
@@ -1369,9 +1369,13 @@ pass is also a check on the name matcher, since it reaches pairs the name had
 already settled by an independent route: 16 of them, of which 0 disagree.
 
 What is still unmatched is mostly content the trilogy never carried over — the
-Bank of Zork, the Royal Puzzle, the Endgame. The rest is rooms the trilogy
-renamed, which the name cannot catch and the graph reaches only where enough of
-the map around them survived. So these are still floors, but much higher ones.
+Bank of Zork above all. It is a shorter list than it looks, and it was longer
+still until #184: the Royal Puzzle and the Endgame went into Zork III, and this
+generator was loading that game's sources and pairing nothing against them, so
+both regions read here as having no counterpart at all. The rest is rooms the
+trilogy renamed, which the name cannot catch and the graph reaches only where
+enough of the map around them survived. So these are still floors, but much
+higher ones.
 
 The object rows include the 40 globals, since a `<GOBJECT …>` is an `<OBJECT
 …>` with a bit and the trilogy shelves its own globals as ordinary objects too.
