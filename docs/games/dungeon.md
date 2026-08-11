@@ -1032,6 +1032,9 @@ has been filing as it went, and nothing of it is blocking any more:
   and `GNUSTO_STACK_REPORT=1` prints what a boot used. Dungeon uses 355 KB of it
   in a debug build, so the nineteenth region has room and so does the twentieth.
   `set dial to four` is back, and the eight numerals it needs with it.
-- **The atlas pairs nothing against Zork III** (#184), which leaves the prose
-  provenance of three regions — the Bank of Zork, the Royal Puzzle and the
-  Endgame — resting on an absence that may only mean nobody looked.
+- **#184, the atlas pairing nothing against Zork III, is fixed.** The builder was
+  reading two generations of that checkout at once, so every Zork III entity was
+  ambiguous with its own twin and none could pair. It now loads what each game's
+  master file names: 117 → 128 rooms and 135 → 152 objects. The Royal Puzzle and
+  the Endgame have counterparts after all, and the prose provenance of both rests
+  on a check rather than on an absence. The Bank of Zork genuinely has none.

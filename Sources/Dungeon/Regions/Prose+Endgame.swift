@@ -6,27 +6,29 @@
 /// The three-way rule, and the rule for which file a line goes in, are stated
 /// once on ``Prose``.
 ///
-/// **Every line here is written fresh, and the whole region is case 3 of that
-/// rule.** Not one of the endgame's rooms appears in any bucket of
-/// `docs/games/dungeon-prose-comparison.md`, and neither does the crypt door,
-/// the poled heads, the Coke bottles, the listings, the red beam, the mirror
-/// box, a Guardian, the dungeon master, the sundial, a prison cell or the
-/// Treasury. That document carries only entities present in both sources, so
-/// the absence is its way of saying there is nothing to pair — and the
-/// mainframe's own wording is not available to borrow, because no licence grant
-/// has been located for the 1981 MDL. What crosses over from the source is what
-/// each string has to *mean*: which exits a room has, which state an object is
-/// in, and which of them kills you.
+/// **Nearly every line here is written fresh, under case 3 of that rule**, and
+/// four are not. Which four is a question this file used to get wrong.
 ///
-/// One caveat worth carrying, because a later contributor should be able to
-/// reopen it rather than rediscover it: the atlas pairs nothing at all against
-/// Zork III — the string never appears in the generated document, even though
-/// `bin/atlas/build_atlas.py` loads all three trilogy games — and Zork III is
-/// where the trilogy put its endgame, its mirror box and its Dungeon Master. So
-/// "the trilogy never carried this over" is **unproven** and must not be
-/// asserted anywhere; "no counterpart found" may only mean "no counterpart was
-/// looked for". Writing fresh is correct either way, and is what the committed
-/// policy directs today. See `FIDELITY.md`, the Dungeon section.
+/// The atlas paired nothing whatever against Zork III until #184 — the string
+/// did not appear once in the generated document — so this region read as having
+/// no trilogy counterpart, and said so. It has one: Zork III is where the
+/// trilogy put its endgame, its mirror box and its Dungeon Master. With the
+/// generator fixed, ten of these rooms and fifteen of their objects pair.
+///
+/// Most of them still change nothing. A pair only reaches the prose rule if
+/// **both** sources carry text to set side by side, and for the corridors' twins,
+/// the mirror box, the sundial and the panels only one does — the mainframe keeps
+/// that text in a room function rather than in `dung.355`. Those stay case 3, and
+/// the mainframe's own wording stays unavailable to borrow regardless, because no
+/// licence grant has been located for the 1981 MDL. What crosses over is what each
+/// string has to *mean*: which exits a room has, which state an object is in, and
+/// which of them kills you.
+///
+/// The four that do reach the rule are ``dungeonMasterFirstSight`` (case 1,
+/// verbatim), ``eastCorridor`` and ``westCorridor`` (case 2), and ``treasury``
+/// (case 2). Each says so where it stands. The corridors also cost this file a
+/// correction: all four of them called the walls bare stone, and both sources
+/// call them marble. See `FIDELITY.md`, the Dungeon section.
 extension Prose {
     // MARK: - The Tomb of the Unknown Implementer
 
@@ -403,15 +405,22 @@ extension Prose {
         to the south.
         """
 
-    /// An actor's listing paragraph prints on **every** look, forever — so this
-    /// has to be true of the turn he walks in behind you as well as of the turn
-    /// you first see him.
+    /// `MASTE`. **Case 1 — the trilogy's line, verbatim.** The one string in this
+    /// region where the two sources are `identical`, so there is nothing to
+    /// decide: `dung.355` and Zork III's `DUNGEON-MASTER` write it the same way,
+    /// word for word.
+    ///
+    /// It also happens to be the right shape. An actor's listing paragraph prints
+    /// on **every** look, forever, so it has to be true of the turn he walks in
+    /// behind you as well as of the turn you first see him — and a man leaning on
+    /// his staff is as true the fifth time as the first. The staff is a noun this
+    /// prints, so he answers to it.
     static let dungeonMasterFirstSight = """
-        An old man in a long robe stands here with his hands at his sides. He
-        has the look of somebody who has been waiting a good while and does not
-        mind it.
+        The dungeon master is quietly leaning on his staff here.
         """
 
+    /// The *examine* channel, which stays case 3: ZIL gives `DUNGEON-MASTER` no
+    /// text but the listing line above, so there is no counterpart to weigh.
     static let dungeonMaster = """
         An old man in a robe of no particular colour. He is in no hurry at all,
         and gives every sign of never having been.
@@ -419,25 +428,47 @@ extension Prose {
 
     // MARK: - The prison corridors
 
+    // The four of them are marble, and until #184 all four said bare stone.
+    // Nothing was checked wrongly; the check could not be made. `ECORR` and
+    // `WCORR` carry their text in `dung.355`, which calls the walls polished
+    // marble, and Zork III agrees — but the atlas paired nothing against Zork III,
+    // so that line was never set against these and the rooms went into the world
+    // in a stone the source does not use. `NCORR` and `SCORR` are described from
+    // a room function instead (`act4.231`, `SCORR-ROOM`: *the walls of the
+    // corridor are marble*), which is why they are still case 3 — but they are
+    // the same four walls, and they read as one place.
+
     static let southCorridor = """
-        This is a bare stone corridor running east and west. A passage leads
-        south, and there is a doorway cut in the wall to the north.
+        This is a marble corridor running east and west. A passage leads south,
+        and there is a doorway cut in the wall to the north.
         """
 
     static let northCorridor = """
-        This is a bare stone corridor running east and west. A passage leads
-        north to a parapet, and there is a doorway cut in the wall to the
-        south.
+        This is a marble corridor running east and west. A passage leads north
+        to a parapet, and there is a doorway cut in the wall to the south.
         """
 
+    /// **Case 2 — the trilogy's line, checked against the exit table.** Zork III
+    /// says it widens as it turns west at its northern and southern ends, and the
+    /// mainframe's table agrees: `ECORR`'s only exits are north to `NCORR` and
+    /// south to `SCORR`, and both of those run east–west, so both ends do turn
+    /// west. Nothing to adapt.
     static let eastCorridor = """
-        This is a bare stone corridor running north and south. It joins the
-        corridors at its two ends, and holds nothing at all itself.
+        This is a hall with polished marble walls. It widens slightly as it
+        turns west at its northern and southern ends.
         """
 
+    /// **Case 2**, and `eastCorridor`'s mirror image in both sources — the same
+    /// sentence with the compass reversed, checked the same way.
     static let westCorridor = """
-        This is a bare stone corridor running north and south, the twin of the
-        one across the square from it. Its two ends are the only ways out.
+        This is a hall with polished marble walls. It widens slightly as it
+        turns east at its northern and southern ends.
+        """
+
+    static let prisonMarble = """
+        Polished to a face that gives your own back to you, dimly, and joined so
+        well you cannot find where one slab stops. Whoever cut them was not in a
+        hurry either.
         """
 
     // MARK: - The parapet and the machinery under it
@@ -577,11 +608,24 @@ extension Prose {
         The bronze door swings to behind you and settles into its frame.
         """
 
+    /// **Case 2 — the trilogy's line, adapted.** Both sources furnish this room
+    /// rather than heaping it: chests of jewels, mountains of zorkmids, paintings,
+    /// statuary, curios, an annotated map of the Empire on one wall, and FrobozzCo
+    /// stock certificates on a desk. The version written before #184 had an
+    /// undifferentiated pile, which is a poorer image and is not what either source
+    /// says. Nothing in the trilogy line contradicts the mainframe map — `NIRVA` has
+    /// nought exits in both — so it is taken, with Zork III's paragraph markers
+    /// dropped and the sealed-room beat kept, since that is this game's ending and
+    /// not the trilogy's.
     static let treasury = """
-        This is a large room heaped with treasure. It is all here: everything
-        the dungeon ever held, and everything anybody ever carried out of it,
-        piled up past the height of a man and going back further than the light
-        reaches.
+        This is a large room, richly appointed in a style that bespeaks exquisite
+        taste. To judge from its contents, it is the ultimate storehouse of the
+        wealth of the Great Underground Empire. There are chests containing
+        precious jewels, mountains of zorkmids, rare paintings, ancient statuary
+        and beguiling curios. On one wall is an annotated map of the Empire,
+        showing the locations of various troves of treasure and of many superior
+        scenic views. On a desk at the far end of the room are stock certificates
+        representing a controlling interest in FrobozzCo International.
 
         There is no door in any wall, no passage, no stair, and no opening of
         any kind.

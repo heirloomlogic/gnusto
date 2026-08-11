@@ -582,6 +582,28 @@ struct DungeonEndgame: GameContent {
         scenery
     }
 
+    /// One per corridor, because a scenery item stands in a room and the prison
+    /// is four of them. The nouns are the ones the four descriptions print; the
+    /// text is the same walls seen from anywhere in the square.
+    private static func marbleWalls() -> Item {
+        Item {
+            name("marble walls")
+            adjectives("polished")
+            // "marble" twice over on purpose: the name makes it an adjective,
+            // and the description calls the stuff itself marble, so it has to
+            // be a noun too.
+            synonyms("marble", "wall", "corridor", "hall")
+            description(Prose.prisonMarble)
+            plural
+            scenery
+        }
+    }
+
+    let southCorridorWalls = marbleWalls()
+    let northCorridorWalls = marbleWalls()
+    let eastCorridorWalls = marbleWalls()
+    let westCorridorWalls = marbleWalls()
+
     // MARK: - The Treasury
 
     /// Not *treasure of the ages*, however much the room wants to call it that:
@@ -589,11 +611,40 @@ struct DungeonEndgame: GameContent {
     /// the middle of it would put "the" into the item vocabulary and make the
     /// parser's own noise word untypeable. A fatal bootstrap diagnostic, and a
     /// good one.
+    ///
+    /// It answers for everything the room's first paragraph piles up, which is
+    /// more nouns than it was since the description became the trilogy's.
     let hoard = Item {
-        name("heaped treasure")
-        adjectives("vast", "heaped", "ancient")
-        synonyms("treasure", "treasures", "hoard", "gold", "jewels")
+        name("precious jewels")
+        adjectives("vast", "heaped", "ancient", "rare")
+        synonyms(
+            "treasure", "treasures", "hoard", "gold", "jewel",
+            "chests", "chest", "zorkmids", "paintings", "painting", "statuary",
+            "curios", "wealth"
+        )
         description(Prose.treasuryHoard)
+        plural
+        scenery
+    }
+
+    // The other two things the Treasury's description names. Nobody will ever
+    // type them — the rule that wins the game is an `afterEachTurn`, so the room
+    // describes itself and ends the story on the paragraph after — but a named
+    // thing the parser does not know reads as a bug the one time somebody tries.
+
+    let treasuryMap = Item {
+        name("annotated map")
+        adjectives("great")
+        synonyms("empire")
+        description(Prose.treasuryMap)
+        scenery
+    }
+
+    let treasuryDesk = Item {
+        name("desk")
+        adjectives("far")
+        synonyms("certificates", "certificate", "stock", "frobozzco")
+        description(Prose.treasuryDesk)
         scenery
     }
 
@@ -605,7 +656,7 @@ struct DungeonEndgame: GameContent {
     let dungeonMaster = Actor {
         name("dungeon master")
         adjectives("old", "robed")
-        synonyms("master", "man", "dungeonmaster", "wizard")
+        synonyms("master", "man", "dungeonmaster", "wizard", "staff")
         firstSight(Prose.dungeonMasterFirstSight)
         description(Prose.dungeonMaster)
         // He is the second actor in the game to take an order and the first to

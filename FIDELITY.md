@@ -2369,6 +2369,28 @@ this milestone turns on it: writing fresh is what the committed policy directs
 today. The atlas is generated and is not edited by hand, so the fix belongs in
 the builder.
 
+> **Resolved.** Issue #184 is fixed, and the doubt above was well placed: it was
+> a pairing failure, not a historical one. The `historicalsource/zork3` checkout
+> carries **two** complete generations of the game — the one `zork3.zil` names,
+> and an older set no master file mentions — and the builder globbed `*.zil`, so
+> it read both. Every Zork III room and object was therefore declared twice under
+> the same `DESC`, `pair_by_name` threw all of them out as ambiguous, and with no
+> name pairs to seed it the graph pass had nothing to grow from. Zero of 57 room
+> names and zero of 123 object names survived. The game could not pair with
+> anything, and never had.
+>
+> The builder now loads what each game's own master file names. `CP` pairs with
+> Zork III's `CP`, *Room in a Puzzle*, and `CPANT`, `CPOUT` and the ladder pair
+> too. Across the atlas the recovery is 117 → 128 rooms and 135 → 152 objects.
+>
+> **This milestone's prose is unaffected**, which is worth stating rather than
+> assuming: `CP`, `CPANT` and `CPOUT` are still in no bucket of the
+> prose-comparison document. Zork III describes those rooms from a room function
+> rather than from `3dungeon.zil`, so there is still no trilogy line to set
+> against the mainframe's, and case 3 still holds. What changed is that it is now
+> *checked* rather than merely unrefuted. A source the generator loads and never
+> matches is a hard failure from here on — see `unpaired_games`.
+
 **Declared but not yet walkable: nothing.** `maxScore` goes 560 → **585**. The
 thief landed between milestone 6 and this one and closed the last gap, so the
 sentence every milestone since the first has had to carry — *the ten still
@@ -2669,6 +2691,37 @@ not asserted anywhere in the committed prose. Writing fresh is correct either
 way, because that is what the policy directs for content with no located
 counterpart. The fix belongs in the atlas builder; milestone 7 filed the same
 observation about the Royal Puzzle.
+
+> **Resolved, and it cost this region four lines.** Issue #184 is fixed —
+> milestone 7's note carries the diagnosis. The caveat did bear hardest here: ten
+> of these rooms and fifteen of their objects pair with Zork III once the builder
+> stops reading that checkout's stale second generation. *"Checked rather than
+> assumed"* above was true of the document and false of the world, which is the
+> failure mode worth remembering: the check was run, and the thing it ran against
+> was empty.
+>
+> Most of the pairs still change nothing, because a pair only reaches the prose
+> rule when **both** sources carry text, and Zork III describes the mirror box,
+> the sundial, the panels and the corridors' twins from a room function. Four
+> reach it, and all four are now taken from the trilogy rather than written fresh:
+>
+> - **The Dungeon Master's listing line is `identical` across the two sources**,
+>   so it is theirs verbatim — *"The dungeon master is quietly leaning on his
+>   staff here."* His examine text stays this project's own; ZIL gives him none.
+> - **`ECORR` and `WCORR` are `substantial`**, and Zork III's line was checked
+>   against the mainframe exit table before being taken: it says each corridor
+>   turns west (east) at both ends, and each has exactly the two exits that make
+>   that true.
+> - **`NIRVA` is `substantial`.** Both sources furnish the Treasury — chests,
+>   zorkmids, statuary, an annotated map, FrobozzCo stock certificates on a desk —
+>   where this game had heaped it undifferentiated. The trilogy's furniture is
+>   taken; the sealed-room beat that ends the game stays ours.
+>
+> **And a plain error, found the same way.** All four prison corridors called the
+> walls *bare stone*. `dung.355` calls them polished marble, and `act4.231`'s
+> `SCORR-ROOM` says so for the two the dungeon file does not describe. They are
+> marble now. It was never a decision — it was a line nothing had been in a
+> position to check.
 
 #### Map topology
 
