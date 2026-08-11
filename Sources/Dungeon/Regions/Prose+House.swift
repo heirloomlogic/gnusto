@@ -124,6 +124,9 @@ extension Prose {
         antiquity.
         """
 
+    /// The blade itself, which is all it is for the whole main dungeon. Past
+    /// the crypt ``Dungeon/swordGlowRules`` appends what it is doing — the
+    /// sword has no `description(…)` trait for that reason.
     static let sword = """
         A long elvish blade, plain in the grip and very far from plain in the
         edge. It is old enough to have opinions.

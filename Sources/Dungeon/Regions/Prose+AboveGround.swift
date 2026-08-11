@@ -322,8 +322,19 @@ extension Prose {
         path leads southwest, back toward the house.
         """
 
+    /// Trilogy verbatim, and the **listing** line: a sentence about where the
+    /// pile is, which is the channel `firstSight` publishes. It served as the
+    /// examine text until #233, which is why the Clearing never mentioned the
+    /// leaves the grating is under.
     static let leaves = """
         On the ground is a pile of leaves.
+        """
+
+    /// Written fresh: what the pile is *like*, which is the question `x leaves`
+    /// asks and a listing sentence never answered. It gives nothing away — the
+    /// grating is found by pushing them aside, not by looking at them.
+    static let leavesExamined = """
+        Dead leaves, drifted deep and gone brown, and a great many of them.
         """
 
     static let leavesMoveEmbellishment = "In disturbing the pile of leaves, a grating is revealed."

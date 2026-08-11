@@ -404,11 +404,23 @@ struct DungeonAboveGround: GameContent {
         alwaysDescribed
     }
 
+    /// Two channels, not one. "On the ground is a pile of leaves." is a
+    /// sentence about *where the pile is* — the trilogy's `LDESC`, which is
+    /// this engine's `firstSight` — and it was declared as the examine text
+    /// instead, so the Clearing listed nothing at all and `x leaves` answered a
+    /// question nobody had asked. It is also the only thing that tells a player
+    /// there is something here to push, and the grating is under it. (#233)
+    ///
+    /// `scenery` is kept: it withholds the *engine's* stock listing line and
+    /// never the author's, so the pile still announces itself and still cannot
+    /// be picked up. Nothing in the game marks the leaves touched, so the line
+    /// prints on every look, which is what the source does.
     let leaves = Item {
         name("pile of leaves")
         adjectives("dead")
         synonyms("leaves", "leaf", "pile")
-        description(Prose.leaves)
+        firstSight(Prose.leaves)
+        description(Prose.leavesExamined)
         scenery
     }
 

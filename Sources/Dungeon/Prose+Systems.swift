@@ -27,7 +27,12 @@ extension Prose {
 
     static let verbTouch = "You feel nothing unexpected."
 
-    static let verbSmell = "You smell nothing out of the ordinary."
+    /// Re-voiced. This constant used to be the engine's `GameText.stubs.smell`
+    /// character for character, so the row installing it in ``DungeonSystems``
+    /// re-voiced nothing at all while the survey counted `smell` as done. The
+    /// two rooms in the game whose descriptions are *about* a smell answer for
+    /// themselves in ``DungeonCoalMine``; this is what is left over. (#233)
+    static let verbSmell = "Nothing here smells of anything in particular."
 
     static let verbPray = "Nothing in particular answers."
 
@@ -65,9 +70,35 @@ extension Prose {
 
     static let waterSlipsAway = "The water slips through your fingers."
 
+    /// The two lines the bottle's own rules fall to, where they are true: they
+    /// answer for the *water*, and the water is only ever in the bottle. Not to
+    /// be confused with ``cantDrinkThat`` and ``cantPourThat`` below, which are
+    /// ``DungeonSystems``' game-wide last resort and had to stop being claims
+    /// about the room.
     static let nothingToDrink = "There is nothing here to drink."
 
     static let nothingToPour = "There is nothing here to pour."
+
+    /// The three game-wide refusals, re-voiced as claims about the **thing
+    /// named** rather than about the room. They are ``DungeonSystems``'
+    /// stage-4 answers, printed in all 196 rooms — and "There is nothing here
+    /// to drink." printed in the twenty this game flags ``TraitKey/waterSource``,
+    /// where the bottle fills in the same breath because `bottle.before(.fill)`
+    /// already reads the predicate.
+    ///
+    /// This is ``Prose/noSwimming``'s repair generalised: a sentence about the
+    /// swimmer survives every room, and a sentence about the room does not.
+    /// What *is* drinkable, pourable or fillable claims the command at stage 3,
+    /// ahead of these. (#233)
+    static let cantDrinkThat = "That is not something you could drink."
+
+    static let cantPourThat = "That is not something you could pour."
+
+    /// ``DungeonHouse/bottle`` claims every `fill bottle` at stage 3, held or on
+    /// the table, so the only thing that reaches this line is something that
+    /// does not hold liquid — and telling its owner there is no water here,
+    /// standing on top of the dam, answered the wrong question wrongly.
+    static let cantFillThat = "That is not something you could fill."
 
     static let bottleNeedsToBeOpen = "The bottle is closed."
 

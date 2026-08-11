@@ -156,12 +156,25 @@ extension Prose {
         In the ceiling above you is a large circular opening.
         """
 
-    /// Examined from below, which is the only place it can be examined from.
+    /// Examined from the one square it stands over. The doc comment here used
+    /// to say this was the only place it could be examined from; the item is
+    /// placed in the room, and the room is all sixty-four squares.
+    ///
     /// Not the same sentence as the hole in the anteroom floor: that one is
     /// looked down into and this one is looked up at.
     static let puzzleCeilingOpeningExamined = """
         A circle of darkness in the ceiling, the underside of the hole you came
         down through. It is a long way above your head.
+        """
+
+    /// And from the other sixty-three, where `up` answers ``puzzleNoWayUp`` and
+    /// the ceiling really is solid. One fixed line rather than an interpolated
+    /// distance: nothing in the engine re-wraps prose, and a hand-wrapped
+    /// literal with a number in it comes out ragged in some of its states.
+    static let puzzleCeilingOpeningAcrossTheRoom = """
+        A circle of darkness in the ceiling, away across the room above the
+        square the hole comes down into. Over your own head there is nothing
+        but stone.
         """
 
     static let puzzleFloorDepressed = """

@@ -175,7 +175,25 @@ struct DungeonSystems: GameContent {
         // them in the two rooms that share the granite wall.
         action(.temple) { try reply(Prose.graniteWordInert) }
         action(.treasure) { try reply(Prose.graniteWordInert) }
+        // The five verbs about water, together because they answer one
+        // question. Each line is a claim about the thing named and not about
+        // the room, which is what lets one sentence stand in all 196 of them —
+        // the shape `.swim` already had and `.dive` was left out of. What *is*
+        // drinkable, pourable or fillable claims the command at stage 3, ahead
+        // of this table: the bottle and its water in ``DungeonHouse``, the
+        // bucket's water in `Dungeon.bucketRules`, and each water room's own
+        // scenery in ``DungeonDam`` and ``DungeonRiver``.
+        //
+        // Here rather than in a `world.before` for exactly that reason: an
+        // action runs *last* (`DefaultActions.run`), so nothing can be
+        // pre-empted by it, where a world rule runs first and would answer
+        // ahead of `bottle.before(.fill)` and break the walkthrough. It is the
+        // ordering `Dungeon.bucketRules` already documents.
         action(.swim) { try reply(Prose.noSwimming) }
+        action(.dive) { try reply(Prose.noDiving) }
+        action(.drink) { try reply(Prose.cantDrinkThat) }
+        action(.pour) { try reply(Prose.cantPourThat) }
+        action(.fill) { try reply(Prose.cantFillThat) }
         action(.squeeze) { try reply(Prose.verbSqueezeNothing) }
         action(.give) { try reply(Prose.verbGiveNoTaker) }
         action(.dig) { try reply(Prose.verbDigFutile) }
@@ -186,9 +204,6 @@ struct DungeonSystems: GameContent {
         action(.climb) { try reply(Prose.verbClimbNothing) }
         action(.tie) { try reply(Prose.verbTieNothing) }
         action(.untie) { try reply(Prose.verbUntieNothing) }
-        action(.drink) { try reply(Prose.nothingToDrink) }
-        action(.pour) { try reply(Prose.nothingToPour) }
-        action(.fill) { try reply(Prose.noWaterSource) }
         // One row covers `xyzzy` and `plugh` both — the engine puts them on a
         // single intent, and in the mainframe neither does anything.
         action(.xyzzy) { try reply(Prose.verbMagicWordInert) }

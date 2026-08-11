@@ -87,6 +87,23 @@ struct DungeonCellar: GameContent {
 
     @Global var trollDefeated = false
 
+    // MARK: - Rules
+
+    /// The one thing the troll does that is not a fight. Everything else about
+    /// him is host-wired, because the melee plugin and the blades he is fought
+    /// with are the host's; this needs nothing from another bundle, so it lives
+    /// with him.
+    ///
+    /// Two states, which is the source's own count. `reply` rather than `say`:
+    /// the engine's `.greet` default is a `say`, so a rule that only said would
+    /// print both lines. A *dead* troll needs no branch — the melee plugin
+    /// `vanish()`es him, and the parser answers before any rule runs.
+    @RuleBuilder var rules: Rules {
+        troll.before(.greet) {
+            try reply(troll.isUnconscious ? Prose.trollGreetedOnTheFloor : Prose.trollGreeted)
+        }
+    }
+
     // MARK: - Items
 
     let chasm = Item {

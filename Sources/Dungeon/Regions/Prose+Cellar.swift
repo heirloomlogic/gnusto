@@ -30,6 +30,33 @@ extension Prose {
         The troll fends you off with a menacing gesture.
         """
 
+    /// Written fresh, and a deliberate departure: `gverbs.zil`'s `V-HELLO`
+    /// answers a greeting to *any* villain with "The troll bows his head to you
+    /// in greeting", and both sources carry it. The engine's own placeholder —
+    /// "The troll nods, and says nothing." — is the same courtesy in a flatter
+    /// voice, and the 2026-08-11 round (#233) filed it as a line asserted from a
+    /// creature mid-swing.
+    ///
+    /// The source's troll is *not* perpetually mid-swing — `I-FIGHT` gives him a
+    /// `PROB 33` of striking first and he otherwise stands blocking, which is
+    /// what his listing line says he does. This game's is, because
+    /// `MeleeCombat.aggression` rolls every turn with no strike-first
+    /// probability. So this line is true of the troll this game ships and would
+    /// be wrong for the one `dung.355` describes. `FIDELITY.md` records both,
+    /// and says to revisit these lines if the aggression is ever brought back.
+    static let trollGreeted = """
+        The troll says something in his own tongue and hefts the axe. It was
+        not an introduction.
+        """
+
+    /// The second state, which is the source's own count — `TROLL-FUNCTION`
+    /// gates a `HELLO` branch on `TROLL-FLAG`, the troll being down. He is on
+    /// the floor for the two turns after a knockout, and that is the whole
+    /// window this line has.
+    static let trollGreetedOnTheFloor = """
+        The troll is face down in the dirt and hears nothing at all.
+        """
+
     static let trollMiss1 = "Your sword misses the troll by an inch."
     static let trollMiss2 = "A good slash, but it misses the troll by a mile."
     static let trollWound1 = "The troll is struck on the arm; blood begins to trickle down."

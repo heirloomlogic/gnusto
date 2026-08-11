@@ -35,6 +35,23 @@ extension Prose {
     static let thiefArrives = "A shadowy figure slips into the room."
     static let thiefLeaves = "The shadowy figure melts away into the dark."
 
+    /// Written fresh, for ``Prose/trollGreeted``'s reason: the engine's
+    /// placeholder — "The thief nods, and says nothing." — is a courtesy in a
+    /// flat voice, and this is the one villain in the game whose courtesy is the
+    /// point of him. He is not silent, he is unhurried, and the stiletto never
+    /// stops being aimed the way ``thief`` says it is.
+    static let thiefGreeted = """
+        The thief inclines his head a fraction, without ever once taking the
+        point of the stiletto off you.
+        """
+
+    /// The second state, and the source's own: `ROBBER-FUNCTION` gates a
+    /// `HELLO` branch on his unconscious description being the one in place.
+    static let thiefGreetedOnTheFloor = """
+        The thief, being temporarily unable to hear anything at all, declines
+        to be gracious about it.
+        """
+
     static func thiefSteals(_ name: String) -> String {
         "You suddenly notice that the \(name) vanished."
     }

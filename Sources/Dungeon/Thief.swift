@@ -92,6 +92,22 @@ struct DungeonThief: GameContent {
         trait(.weaponStrength, 1)  // a clumsy thing in anyone's hand but his
     }
 
+    // MARK: - Rules
+
+    /// The one thing he does that is not theft or a knife. Everything else
+    /// about him — his roaming, his stealing, his fight — is
+    /// ``Dungeon/thiefRules``, because the melee plugin and the treasures are
+    /// the host's; this needs nothing outside the bundle.
+    ///
+    /// `reply` because the engine's `.greet` default is a `say`, so a rule that
+    /// only said would print both lines. Two states, which is the source's own
+    /// count; a dead thief has `vanish()`ed and never reaches a rule.
+    @RuleBuilder var rules: Rules {
+        thief.before(.greet) {
+            try reply(thief.isUnconscious ? Prose.thiefGreetedOnTheFloor : Prose.thiefGreeted)
+        }
+    }
+
     // MARK: - Map
 
     var map: WorldMap {

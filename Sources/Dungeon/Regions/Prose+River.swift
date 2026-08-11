@@ -333,6 +333,14 @@ extension Prose {
     /// so this line is filed with the water that provokes it most.
     static let noSwimming = "Swimming would be a brief and unrewarding career."
 
+    /// Written fresh, filed here for ``noSwimming``'s reason, and deliberately
+    /// the same *shape* of sentence: a claim about the diver, not about the
+    /// room. `.dive` is `.swim`'s twin and had no row in ``DungeonSystems`` at
+    /// all, so it answered on the engine's stub — "There's nothing here to dive
+    /// into." — which is a claim about the room, and which the 2026-08-11 round
+    /// caught standing on top of a dam holding back a reservoir. (#233)
+    static let noDiving = "Diving in would end the expedition rather than advance it."
+
     /// Written fresh. River-2 runs between rocks on one side and the White
     /// Cliffs on the other, and has no bank at all.
     static let landNowhereHere = "There is nowhere here to put in."

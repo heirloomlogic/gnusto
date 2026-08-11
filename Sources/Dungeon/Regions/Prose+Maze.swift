@@ -108,9 +108,17 @@ extension Prose {
 
     /// Written fresh. The trilogy's examine text is its listing line over
     /// again, which stops being true the moment the knife is in your hand.
+    ///
+    /// It used to call the knife "older than anything else you are carrying",
+    /// which the elvish sword — "of great antiquity", "old enough to have
+    /// opinions" — makes false in the one frame the game itself stages: taking
+    /// the knife with the sword in hand is what fires ``rustyKnifeBluePulse``.
+    /// The coffin, the trident and the egg make it false too, so the repair is
+    /// to stop comparing rather than to branch on one of them. Age is the
+    /// knife's own property now. (#233)
     static let rustyKnife = """
-        A long knife, pitted with rust and older than anything else you are
-        carrying. It sits badly in the hand.
+        A long knife, pitted with rust and old past guessing. It sits badly in
+        the hand.
         """
 
     /// Trilogy verbatim.
@@ -239,6 +247,20 @@ extension Prose {
 
     /// Trilogy verbatim.
     static let cyclopsStomach = "You can hear his stomach rumbling."
+
+    /// Written fresh, for ``Prose/trollGreeted``'s reason: the source has no
+    /// `HELLO` branch for the cyclops, so he falls to `V-HELLO`'s villain bow,
+    /// and the engine's placeholder is the same courtesy flattened. A giant
+    /// waiting for you to be lunch does not exchange greetings.
+    static let cyclopsGreeted = """
+        The cyclops looks at you the way a man looks at a small meal.
+        """
+
+    /// Asleep at the foot of the stairs, which is the only other state he can
+    /// be greeted in — once he goes through the wall he is gone from the room.
+    static let cyclopsGreetedAsleep = """
+        The cyclops sleeps on. It would be a poor idea to wake him for this.
+        """
 
     /// Trilogy verbatim — the mainframe's `CYCLOMAD`, one line per rising turn.
     static let cyclomad = [

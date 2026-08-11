@@ -361,6 +361,16 @@ extension Prose {
         The robot idles, ticking.
         """
 
+    /// Written fresh, and the only one of the four greetings that is not about
+    /// hostility: the engine's placeholder has the robot *nod*, and a machine
+    /// that nods is a machine pretending to be a person. It takes orders and it
+    /// does not converse, which is the whole of what the green paper says
+    /// about it. One state — it has no second one to be in.
+    static let robotGreeted = """
+        The robot does not answer. It was not built to be talked to; it was
+        built to be told.
+        """
+
     static let robotCannotDoThat = """
         The robot considers the request at some length and does nothing.
         """

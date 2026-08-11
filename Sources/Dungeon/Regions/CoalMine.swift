@@ -263,20 +263,47 @@ struct DungeonCoalMine: GameContent {
         plural
     }
 
+    /// The smell, and only the smell. `staircase` and `stairs` used to be on
+    /// this list, so `x stairs` in the Smelly Room answered with a sentence
+    /// about what is coming *up* them. The staircase is ``smellyRoomStairs``.
     let foulOdor = Item {
         name("foul odor")
         adjectives("foul")
-        synonyms("odour", "odor", "smell", "staircase", "stairs")
+        synonyms("odour", "odor", "smell")
         description(Prose.foulOdor)
         scenery
     }
 
+    /// The gas, and only the gas. `stairs` used to be on this list, so the Gas
+    /// Room answered `x stairs` — a noun its own description prints — with "The
+    /// air here is thick enough to lean on, and it is not air." (#233)
     let coalGas = Item {
         name("coal gas")
         adjectives("coal")
-        synonyms("gas", "air", "stairs")
+        synonyms("gas", "air")
         description(Prose.coalGas)
         scenery
+    }
+
+    /// One staircase, two items, because it reads differently from its two
+    /// ends: from the top it is what the odor comes up, and from the bottom it
+    /// is the only way out. The Rocky Ledge's repair applied again — the noun
+    /// belongs to whichever item is about the right place.
+    let smellyRoomStairs = Item {
+        name("staircase")
+        adjectives("small", "descending")
+        synonyms("stairs", "staircase", "steps", "stair")
+        description(Prose.smellyRoomStairs)
+        scenery
+    }
+
+    let gasRoomStairs = Item {
+        name("stairs")
+        adjectives("short")
+        synonyms("stairs", "staircase", "steps", "stair", "climb")
+        description(Prose.gasRoomStairs)
+        scenery
+        plural
     }
 
     /// The sapphire bracelet: five to find and **three** to case, where the
@@ -522,7 +549,9 @@ struct DungeonCoalMine: GameContent {
 
         woodenBeams.starts(in: woodenTunnel)
         foulOdor.starts(in: smellyRoom)
+        smellyRoomStairs.starts(in: smellyRoom)
         coalGas.starts(in: gasRoom)
+        gasRoomStairs.starts(in: gasRoom)
         sapphireBracelet.starts(in: gasRoom)
 
         coalMineWalls1.starts(in: mine1)
@@ -554,6 +583,21 @@ struct DungeonCoalMine: GameContent {
         // is in the source.
         machineRoom.describe {
             "\(Prose.machineRoom) \(machine.isOpen ? Prose.machineLidOpen : Prose.machineLidClosed)"
+        }
+
+        // The two rooms in the game whose descriptions are *about* a smell.
+        // ``DungeonSystems`` installs one game-wide `.smell` default and it
+        // read "You smell nothing out of the ordinary." in both — telling the
+        // player the room's own paragraph was wrong. A location `before` runs
+        // at stage 2, ahead of the stage-4 action, and the guard keeps
+        // `smell me` and `smell bracelet` on the general answer. (#233)
+        smellyRoom.before(.smell) {
+            guard command.directObject == nil || command.directObject == foulOdor else { return }
+            try reply(Prose.smellyRoomSmelled)
+        }
+        gasRoom.before(.smell) {
+            guard command.directObject == nil || command.directObject == coalGas else { return }
+            try reply(Prose.gasRoomSmelled)
         }
 
         // The coal gas. At the end of any turn spent here with a live flame in

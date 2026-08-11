@@ -99,7 +99,14 @@ extension DungeonEndgame {
     func knockAtTheWoodenDoor() throws -> Never {
         try require(!quizWon, else: Prose.quizAlreadyWon)
         try require(!quizIsLost, else: Prose.quizIsOver)
-        guard quizAsked < 0 else { try reply(Prose.quizQuestion(currentQuestion)) }
+        guard quizAsked < 0 else {
+            // The clock starts again when he repeats the question at your
+            // knock, for the reason ``answerTheQuestion(with:)`` gives below:
+            // otherwise the daemon puts it a second time in the same breath he
+            // first put it in.
+            quizWaitedATurn = false
+            try reply(Prose.quizQuestion(currentQuestion))
+        }
 
         // Three drawn from eight without replacement, which is what makes a
         // second attempt at the door a different examination.

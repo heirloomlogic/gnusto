@@ -698,6 +698,11 @@ struct DungeonAlice: GameContent {
 
         robot.before(.wait) { try reply(Prose.robotIdles) }
 
+        // And a greeting, which reached the engine's placeholder: "The robot
+        // nods, and says nothing." It does not nod. `reply` because the
+        // `.greet` default is a `say`.
+        robot.before(.greet) { try reply(Prose.robotGreeted) }
+
         // The other two buttons. Their effects live in `BUTTONS`, a routine
         // `dung.355` does not carry, so this game declines to invent one: the
         // button is real, it is pressed, and what it spoke to is out of sight.

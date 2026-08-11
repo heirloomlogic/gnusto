@@ -1744,8 +1744,8 @@ struct DungeonTests {
                     "west", "examine bat", "examine jade",
                     "east", "south", "northeast", "examine chain", "examine basket",
                     "north", "examine beams",
-                    "west", "examine odor",
-                    "down", "examine gas", "examine bracelet",
+                    "west", "examine odor", "examine staircase",
+                    "down", "examine gas", "examine stairs", "examine bracelet",
                     "up", "east", "northeast", "examine coal",
                 ],
             seed: 11)
@@ -2989,7 +2989,10 @@ struct DungeonTests {
         "look", "wait", "wait", "wait", "wait",
     ]
 
-    private static let toTheNarrowLedge = toTheVolcano + liftOff + ["west"]
+    /// Not `private`: `DungeonProseTests` asserts that this level's paragraph
+    /// still says *west*, which is the untouched control for the Wide Ledge's
+    /// corrected bearing.
+    static let toTheNarrowLedge = toTheVolcano + liftOff + ["west"]
 
     /// Six turns further up the shaft is the Wide Ledge, and one level above
     /// that is the rim.
@@ -3001,7 +3004,8 @@ struct DungeonTests {
         "burn wire with match", "north", "wait",
     ]
 
-    private static let toTheWideLedge =
+    /// Not `private`, for ``toTheNarrowLedge``'s reason.
+    static let toTheWideLedge =
         toTheVolcanoWithTheWire + liftOff
         + ["wait", "wait", "wait", "wait", "wait", "wait", "east"]
 
@@ -4094,6 +4098,30 @@ struct DungeonTests {
                 "There is no ladder here.",
                 "There is no ladder here.",
             ])
+    }
+
+    /// **And the ceiling opening is only overhead in the square it is over.**
+    /// The room's own paragraph has always got this right — `puzzleDescription`
+    /// names the opening only in the entry square — but the item carried a
+    /// static `description(…)` saying "It is a long way above your head", read
+    /// from every one of the sixty-four, including the sixty-three where `up`
+    /// answers "There is no way up from here." The grid, the climb condition
+    /// and the solution are untouched. (#233)
+    @Test func theCeilingOpeningIsOnlyOverheadInTheSquareItIsOver() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.intoThePuzzle + ["x opening"] + Self.toTheGoldCard
+                + ["up", "examine opening"],
+            seed: 11)
+
+        // The control: standing under it, it really is a long way overhead.
+        let under = turnOutput(of: "x opening", in: transcript)
+        #expect(under.contains("It is a long way above your head"))
+        // Five squares off, where `up` says there is no way up at all.
+        #expect(transcript.contains("There is no way up from here."))
+        let away = turnOutput(of: "examine opening", in: transcript)
+        #expect(away.contains("away across the room above the"))
+        #expect(!away.contains("It is a long way above your head"))
     }
 
     /// A compass wall is the only thing in the region that names a direction,

@@ -565,6 +565,14 @@ struct DungeonMaze: GameContent {
         cyclops.before(.tie) { try reply(Prose.cyclopsTied) }
         cyclops.before(.listen) { try reply(Prose.cyclopsStomach) }
 
+        // And the greeting, which reached the engine's placeholder — "The
+        // cyclops nods, and says nothing." `reply` because the `.greet` default
+        // is a `say`. Two states, because a drugged cyclops is still in the
+        // room; a fled one has `vanish()`ed and the parser answers first.
+        cyclops.before(.greet) {
+            try reply(cyclopsSubdued ? Prose.cyclopsGreetedAsleep : Prose.cyclopsGreeted)
+        }
+
         // The mounting hunger — the source's `CYCLOWRATH` and its interrupt.
         // Signed, because a cyclops who has eaten the peppers is counting down
         // to a drink rather than to a meal, and the source tracks the two with

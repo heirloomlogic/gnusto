@@ -471,11 +471,18 @@ struct DungeonRoyalPuzzle: GameContent {
         scenery
     }
 
+    /// No static description either, for ``ladder``'s reason: whether the
+    /// opening is over your head is a question about the square you are
+    /// standing in. The room's own paragraph has always got this right —
+    /// ``puzzleDescription`` names the opening only in
+    /// `RoyalPuzzleGrid.entrySquare` — and the item's examine text did not, so
+    /// "It is a long way above your head" was read from all sixty-four
+    /// squares, including the sixty-three where `up` answers "There is no way
+    /// up from here." (#233)
     let ceilingOpening = Item {
         name("circular opening")
         adjectives("large")
         synonyms("opening", "ceiling")
-        description(Prose.puzzleCeilingOpeningExamined)
         scenery
     }
 
@@ -595,6 +602,12 @@ extension DungeonRoyalPuzzle {
 
         hole.describe {
             entranceBlocked ? Prose.puzzleHoleBlocked : Prose.puzzleHole
+        }
+
+        ceilingOpening.describe {
+            grid.playerSquare == RoyalPuzzleGrid.entrySquare
+                ? Prose.puzzleCeilingOpeningExamined
+                : Prose.puzzleCeilingOpeningAcrossTheRoom
         }
 
         warningNote.before(.read) { try reply(Prose.warningNoteText) }
