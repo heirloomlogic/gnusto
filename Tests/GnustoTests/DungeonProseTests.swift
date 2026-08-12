@@ -1035,7 +1035,7 @@ struct DungeonProseTests {
         let floor: [(String, [String], [String])] = [
             ("yourself", [ours.yourself], [engine.yourself]),
             ("somebodyElse", [ours.somebodyElse(one)], [engine.somebodyElse(one)]),
-            ("attack", [ours.attack], [engine.attack]),
+            ("attack", [ours.attack(name)], [engine.attack(name)]),
             ("smash", [ours.smash(one), ours.smash(many)], [engine.smash(one), engine.smash(many)]),
             ("burn", [ours.burn(name)], [engine.burn(name)]),
             ("cut", [ours.cut(name)], [engine.cut(name)]),
@@ -1229,8 +1229,8 @@ struct DungeonProseTests {
 
         // Something that is no villain at all: the plugin's `attackFutile`.
         let swing = turnOutput(of: "attack sack", in: transcript)
-        #expect(!swing.contains("Violence isn't the answer"))
-        #expect(swing.contains("You have known strange people"))
+        #expect(!swing.contains("isn't the answer"))
+        #expect(swing.contains("I've known strange people, but fighting a brown sack?"))
 
         // And one that is, swung at with something that is no weapon.
         let withIt = turnOutput(of: "attack troll with sack", in: transcript)

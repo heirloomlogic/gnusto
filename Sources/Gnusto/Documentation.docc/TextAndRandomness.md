@@ -57,7 +57,7 @@ Text a game declares itself (descriptions, rule replies) never goes through `Gam
 The stub verbs' stock replies are grouped on ``GameText/stubs`` rather than sitting flat alongside the rest, since there are about fifty of them:
 
 ```swift
-text.stubs.attack = "The Institute frowns on that sort of thing."
+text.stubs.attack = { "The Institute frowns on assaulting \($0)." }
 text.stubs.smash = { "\($0.sentenceCased) \($0.verb("is", "are")) stouter than your temper." }
 ```
 

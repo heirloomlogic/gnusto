@@ -367,8 +367,23 @@ struct StubVerbTests {
         #expect(turnOutput(of: "attack dummy", in: promoted).contains("The dummy takes it well."))
         #expect(turnOutput(of: "attack rock", in: promoted).contains("You flail at the scenery."))
 
-        let bare = try await play(StubLab(), ["attack rat"])
-        #expect(bare.contains("Attacking things rarely improves them."))
+        // The rod, not the rat: `attack` is a `named` stub, so a person goes
+        // to `somebodyElse` and never reaches the line under test.
+        let bare = try await play(StubLab(), ["attack rod"])
+        #expect(bare.contains("Attacking the brass rod rarely improves matters."))
+    }
+
+    /// `attack` was the last stub that would name a person the way it names a
+    /// chair — it shipped as `plain`, so *attack the rat* answered "Attacking
+    /// things rarely improves them." while *break the rat* one row over had
+    /// deferred to `somebodyElse` all along. Now the whole family agrees.
+    @Test func attackingAPersonRefusesTheWayEveryOtherStubDoes() async throws {
+        let transcript = try await play(StubLab(), ["attack rat", "break rat"])
+        let swing = turnOutput(of: "attack rat", in: transcript)
+        #expect(swing.contains("The grey rat is a person, and would rather you didn't."))
+        #expect(!swing.contains("rarely improves matters"))
+        let smash = turnOutput(of: "break rat", in: transcript)
+        #expect(smash.contains("The grey rat is a person, and would rather you didn't."))
     }
 
     // MARK: - Nouns that are plural

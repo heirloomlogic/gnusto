@@ -9,7 +9,7 @@ A player five minutes into their first room will type `attack the chair`, `smell
 most games implement. All of them are verbs every player tries.
 
 `I don't know the word "attack"` answers the wrong question. It says the
-*program* is unfinished. `Attacking things rarely improves them.` says the
+*program* is unfinished. `Attacking the chair rarely improves matters.` says the
 *world* is — and the player learns something from the second answer and nothing
 from the first.
 
@@ -88,7 +88,7 @@ the ones that clash with your voice and leave the rest:
 ```swift
 var text: GameText {
     var text = GameText()
-    text.stubs.attack = "The Institute frowns on that sort of thing."
+    text.stubs.attack = { "The Institute frowns on assaulting \($0)." }
     text.stubs.pray = "No one is listening. You checked."
     return text
 }
@@ -111,7 +111,9 @@ For behavior that spans every object rather than one, use an `actions` row —
 
 ```swift
 public var actions: [IntentAction] {
-    action(.attack) { try reply(text.attackFutile) }
+    action(.attack) {
+        try reply(text.attackFutile(command.directObject?.indefiniteName ?? "that"))
+    }
 }
 ```
 
