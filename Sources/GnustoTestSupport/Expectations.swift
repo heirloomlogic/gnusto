@@ -62,3 +62,37 @@ public func expectEveryNounAnswered(
         return
     }
 }
+
+/// Records a Swift Testing issue if the transcript contains a disambiguation
+/// question — *"Which do you mean: the narrow chimney or the small door?"*
+///
+/// A sibling of ``expectEveryNounAnswered(_:_:sourceLocation:)`` rather than a
+/// third entry in its list, because the two ask different questions and a game
+/// may want one and not the other. An unanswered noun is always a defect; an
+/// ambiguity is only a defect where the author believes a room holds one of the
+/// thing. Where a room really does hold two, the question is the true answer,
+/// and folding it into the other helper would fail every suite that has one on
+/// purpose.
+///
+/// The reason to call this rather than write `#expect(!transcript.contains(…))`
+/// is the same as the reason above: the failure carries the whole transcript,
+/// so the collision is readable without re-deriving the route by hand.
+///
+/// - Parameters:
+///   - transcript: the transcript to search.
+///   - note: optional context for the failure message, e.g. the rooms walked.
+///   - sourceLocation: the caller's source location, for issue reporting.
+public func expectNoAmbiguity(
+    _ transcript: String,
+    _ note: String = "",
+    sourceLocation: SourceLocation = #_sourceLocation
+) {
+    guard transcript.contains("Which do you mean") else { return }
+    Issue.record(
+        """
+        Two things in one room answered to one noun.\(note.isEmpty ? "" : " \(note)")
+        Transcript:
+        \(transcript)
+        """,
+        sourceLocation: sourceLocation)
+}

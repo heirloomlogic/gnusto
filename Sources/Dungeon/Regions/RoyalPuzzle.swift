@@ -418,6 +418,17 @@ struct DungeonRoyalPuzzle: GameContent {
 
     /// No static description: what the hole looks like changes for good the
     /// moment a wall comes up under it.
+    /// The sand the anteroom names three times, in the room that names it. No
+    /// static text and no `floor`: the state is the room's own, and the floor
+    /// up here is what the hole is cut *in* — the sand is ten feet under it.
+    /// (#233)
+    let anteroomSand = Item {
+        name("sand")
+        adjectives("pale", "smooth")
+        synonyms("sand", "sandstone")
+        scenery
+    }
+
     let hole = Item {
         name("hole")
         synonyms("opening")
@@ -549,6 +560,7 @@ struct DungeonRoyalPuzzle: GameContent {
     @MapBuilder private var puzzlePlacements: WorldMap {
         warningNote.starts(in: anteroom)
         hole.starts(in: anteroom)
+        anteroomSand.starts(in: anteroom)
         sideDoor.starts(in: sideRoom)
 
         slit.starts(in: puzzle)
@@ -602,6 +614,10 @@ extension DungeonRoyalPuzzle {
 
         hole.describe {
             entranceBlocked ? Prose.puzzleHoleBlocked : Prose.puzzleHole
+        }
+
+        anteroomSand.describe {
+            entranceBlocked ? Prose.anteroomSandBlocked : Prose.anteroomSand
         }
 
         ceilingOpening.describe {

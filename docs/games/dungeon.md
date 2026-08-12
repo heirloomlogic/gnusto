@@ -1190,3 +1190,81 @@ different one would be worse than not answering. And `water.before(.drink)`'s
 refusal is still reachable in the Circular Room with the water in the bucket,
 where it is false; whether you may drink the counterweight that just lifted you
 is a puzzle question rather than a prose one.
+
+### The third pass: every noun the prose prints
+
+The first two passes took the sentences that were untrue of the **room** and of
+the **turn**. What was left of #233's largest class is the sentences that were
+never printed at all: thirty-odd nouns this game puts on the page that the parser
+did not know, and eight scenery items answering under nouns that belonged
+somewhere else. They are one piece of work in one direction — trimming a
+catch-all makes a noun unanswerable, which is the other defect wearing a
+different hat.
+
+11. **A printed noun is answered by an item about that noun, and by exactly
+    one.** Rule 3 has two halves and the first pass took only the first. The
+    Wide Ledge's rock claimed `rim`, `drop` and `bottom` against one description
+    of the apron underfoot; trimming that list on its own would have left the rim
+    two hundred feet overhead with nothing to say for itself. So the trim and the
+    new items land in the same commit, or they are a regression. The shape the
+    volcano settled into states the rule concretely: **every level of the shaft
+    gets two items, the rock close enough to touch and the view of everything the
+    paragraph points at that is not.**
+
+    Where a room really does hold two of a thing, it gets two items and the
+    parser is allowed to ask which. Paid on the Wide Ledge, the gnome's chimney
+    and the small door south are two doors — `gnomePaid` is trilogy-verbatim and
+    says "a door appears on the west end of the ledge" — and *"Which do you mean:
+    the narrow chimney or the small door?"* is the true answer. It costs no turn
+    and both resolve by adjective. Deleting a synonym to silence that question
+    would make one of the two sentences unanswerable, which is the defect this
+    pass exists to close.
+
+12. **A factory's noun list is a default, not a decision.** `shaftScenery(_:_:)`
+    gave five rooms one description and eight nouns each, and not one of the
+    forty was a decision anybody made — the factory made the wrong answer cheap.
+    Where a factory takes its nouns as a parameter they are still read one room
+    at a time; `forestStand()` and `pathScenery(_:)` share only the shape and
+    leave the words at the call site for that reason. And the same factory is the
+    right answer to the opposite problem: `path` appears in four above-ground
+    rooms going four different places, and one item cannot be in four rooms.
+
+    **This rule is a warning about noun lists, not an argument against sharing an
+    item.** Where the *text* is genuinely one text — the wall, the ground, the
+    white house from its four sides — one object in many rooms is what the source
+    does, and `dungeon-atlas.md`'s Globals section describes the `GOBJECT` this
+    engine has no answer for. About sixty-five of this game's scenery items owe
+    to that gap; `Bank.swift`'s sixteen walls file the loudest evidence for it,
+    and the factories above are the seam it would plug into. Four of the items
+    this pass adds belong to that count. The other twenty-nine have text written
+    for their own room and would survive the feature intact.
+
+### What the third pass changed, and what it did not
+
+The mechanics contract is untouched a third time — no map, no puzzle, no
+treasure value, no `maxScore` — and both walkthroughs score exactly what they
+scored. Three repairs are worth naming:
+
+- **The Wide Ledge's apron stopped claiming a doorway, and that removed a
+  `describe { }` rather than adding one.** "with a doorway cut into the wall
+  behind it" was a clause inside a constant, so it went on describing a doorway
+  after the blast filled it with rubble. The doorway *is* the state, so the
+  doorway became the item and the apron became a sentence nothing can falsify. A
+  rule-3 split dissolving a rule-1 problem.
+- **Stream View's `path` is the bank you are standing on, not the water beside
+  it.** The room's first sentence puts the player *on a path beside* the stream
+  and `x path` answered with the stream. The round filed it under `bank`, the
+  noun with no answer at all; both are one repair.
+- **The Safety Depository's `wall` and `walls` are two different answers on
+  purpose.** The singular is the curtain of light standing where the north wall
+  ought to be. The plural is the east and west walls the deposit boxes came out
+  of. The round's finding was precisely that the singular answered and the plural
+  did not, so keeping them apart is the fix and not a workaround for it.
+
+A named remainder, so the next round inherits a list rather than rediscovering
+one: `passageway` at Reservoir South and the Timber Room, and `room` in the Lava
+Room, are all sites of words this round's census did not draw and no room being
+edited here prints. The pre-existing multi-way ambiguities on `switch` and `tool`
+in the Maintenance Room, `book` in the Library, `pamphlet` between the leaflet
+and the brochure, and `door` in the Living Room are all older than #233 and none
+is touched.

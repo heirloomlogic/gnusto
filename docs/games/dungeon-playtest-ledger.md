@@ -71,13 +71,13 @@ survive here. They are one class in #233 and should be fixed as one.
 | `Sources/Dungeon/Regions/Prose+Mirror.swift::look round room this is a circula…` | fixed | prose-untrue-of-state |
 | `Sources/Dungeon/Regions/AboveGround.swift::up up a tree you are about 10 feet…` | fixed | prose-untrue-of-frame |
 | `Sources/Dungeon/Regions/Prose+AboveGround.swift::down rocky ledge you are on …` | fixed | prose-untrue-of-frame |
-| `Sources/Dungeon/Regions/AboveGround.swift::east behind house you are behind t…` | confirmed | unanswerable-noun |
-| `Sources/Dungeon/Regions/AboveGround.swift::you are behind the white house a p…` | confirmed | unanswerable-noun |
-| `Sources/Dungeon/Regions/House.swift::x passage you cant see any such thing  w…` | confirmed | unanswerable-noun |
-| `Sources/Dungeon/Regions/House.swift::cellar you are in a dark and damp cellar…` | confirmed | unanswerable-noun |
-| `Sources/Dungeon/Regions/RoundRoom.swift::round room this is a circular stone …` | confirmed | unanswerable-noun |
-| `Sources/Dungeon/Regions/AboveGround.swift::west of house you are standing in …` | confirmed | unanswerable-noun |
-| `Sources/Dungeon/Regions/Prose+AboveGround.swift::founded in antiquity by will…` | confirmed | unanswerable-noun |
+| `Sources/Dungeon/Regions/AboveGround.swift::east behind house you are behind t…` | fixed | unanswerable-noun |
+| `Sources/Dungeon/Regions/AboveGround.swift::you are behind the white house a p…` | fixed | unanswerable-noun |
+| `Sources/Dungeon/Regions/House.swift::x passage you cant see any such thing  w…` | fixed | unanswerable-noun |
+| `Sources/Dungeon/Regions/House.swift::cellar you are in a dark and damp cellar…` | fixed | unanswerable-noun |
+| `Sources/Dungeon/Regions/RoundRoom.swift::round room this is a circular stone …` | fixed | unanswerable-noun |
+| `Sources/Dungeon/Regions/AboveGround.swift::west of house you are standing in …` | fixed | unanswerable-noun |
+| `Sources/Dungeon/Regions/Prose+AboveGround.swift::founded in antiquity by will…` | fixed | unanswerable-noun |
 | `Sources/Dungeon/Regions/AboveGround.swift::east clearing you are in a clearin…` | fixed | mechanic-contradicts-prose |
 | `Sources/Dungeon/Dungeon.swift::north you set off confidently and the room tur…` | fixed | doc-drift |
 | `Sources/Dungeon/Regions/House.swift::drop lamp dropped  east it is pitch blac…` | fixed | prose-untrue-of-frame |
@@ -88,22 +88,22 @@ survive here. They are one class in #233 and should be fixed as one.
 | `Sources/Dungeon/Systems.swift::dam  the sluice gates on the dam are closed be…` | fixed | mechanic-contradicts-prose |
 | `Sources/Dungeon/Systems.swift::swim swimming would be a brief and unrewarding…` | confirmed | prose-untrue-of-frame |
 | `Sources/Dungeon/Prose.swift::greet troll the troll nods and says nothing the …` | fixed | stock-line-not-reskinned |
-| `Sources/Dungeon/Regions/Dam.swift::stream view  a coil of thin shiny wire lie…` | confirmed | unanswerable-noun |
+| `Sources/Dungeon/Regions/Dam.swift::stream view  a coil of thin shiny wire lie…` | fixed | unanswerable-noun |
 | `Sources/Dungeon/Prose+Systems.swift::swim swimming would be a brief and unrew…` | confirmed | register-mismatch |
 | `Sources/Dungeon/Regions/Prose+Volcano.swift::look volcano near wide ledge in …` | fixed | exit-prose-mismatch |
 | `Sources/Dungeon/Regions/Volcano.swift::wide ledge you are on a wide ledge hig…` | confirmed | prose-untrue-of-frame |
-| `Sources/Dungeon/Regions/RoyalPuzzle.swift::this is a small square room and in…` | confirmed | unanswerable-noun |
-| `Sources/Dungeon/Regions/Volcano.swift::x rim a shelf of old rock wide enough …` | confirmed | unanswerable-noun |
+| `Sources/Dungeon/Regions/RoyalPuzzle.swift::this is a small square room and in…` | fixed | unanswerable-noun |
+| `Sources/Dungeon/Regions/Volcano.swift::x rim a shelf of old rock wide enough …` | fixed | unanswerable-noun |
 | `Sources/Dungeon/Regions/RoyalPuzzle.swift::mm ss west mm   east  ss   x openi…` | fixed | mechanic-contradicts-prose |
 | `Sources/Dungeon/Regions/Volcano.swift::give coin to gnome thank you very much…` | fixed | exit-prose-mismatch |
 | `Sources/Dungeon/Regions/Prose+Volcano.swift::this must have been a large libr…` | fixed | prose-untrue-of-state |
 | `Sources/Dungeon/Regions/Prose+House.swift::open window opened  x window the w…` | fixed | mechanic-contradicts-prose |
 | `Sources/Dungeon/Regions/Prose+Bank.swift::vault this is the vault of the bank…` | fixed | prose-untrue-of-frame |
-| `Sources/Dungeon/Regions/Bank.swift::this is a large rectangular room the east…` | confirmed | unanswerable-noun |
+| `Sources/Dungeon/Regions/Bank.swift::this is a large rectangular room the east…` | fixed | unanswerable-noun |
 | `Sources/Dungeon/Regions/Prose+Maze.swift::i you are carrying a jewelencrusted…` | fixed | prose-untrue-of-state |
-| `Sources/Dungeon/Regions/AboveGround.swift::behind house you are behind the wh…` | confirmed | unanswerable-noun |
-| `Sources/Dungeon/Regions/AboveGround.swift::you are standing in an open field …` | confirmed | unanswerable-noun |
-| `Sources/Dungeon/Regions/AboveGround.swift::north of house you are facing the …` | confirmed | unanswerable-noun |
+| `Sources/Dungeon/Regions/AboveGround.swift::behind house you are behind the wh…` | fixed | unanswerable-noun |
+| `Sources/Dungeon/Regions/AboveGround.swift::you are standing in an open field …` | fixed | unanswerable-noun |
+| `Sources/Dungeon/Regions/AboveGround.swift::north of house you are facing the …` | fixed | unanswerable-noun |
 | `Sources/Dungeon/Regions/House.swift::open window opened  enter window you can…` | confirmed | mechanic-contradicts-prose |
 | `Sources/Dungeon/Regions/Endgame+MirrorBox.swift::push pine the pine wall swin…` | confirmed | mechanic-contradicts-prose |
 | `Sources/Dungeon/Regions/Prose+EndgameMechanics.swift::push pine the pine wall…` | fixed | prose-untrue-of-state |
@@ -123,10 +123,11 @@ survive here. They are one class in #233 and should be fixed as one.
 | `Sources/Dungeon/Dungeon.swift::attack troll with sword the troll takes a fata…` | refuted | prose-untrue-of-state |
 | `Sources/Dungeon/Regions/Prose+Endgame.swift::north south corridor  the dungeo…` | refuted | prose-taste |
 
-Counts: 20 confirmed, 13 refuted, 0 routed, 22 fixed, 0 dropped. 55 verifications
+Counts: 6 confirmed, 13 refuted, 0 routed, 36 fixed, 0 dropped. 55 verifications
 over 57 probes; every finding was replayed from a clean start by its own tester and again
 by an adversarial verifier from a different charter. The round itself closed at 42
-confirmed and 0 fixed; the twenty-two that moved are dated in [Amendments](#amendments).
+confirmed and 0 fixed; the thirty-six that have moved since are dated in
+[Amendments](#amendments).
 
 ## Amendments
 
@@ -165,8 +166,38 @@ with a positive control) plus additions to `DungeonTests` and `DungeonEndgameTes
   repairing it: the room paragraph is trilogy-verbatim and asserts nothing about entry.
   An argument is not a repair, so the row stands and a later round is free to test it.
 
-Still open and unticked after both passes: the three volcano synonym lists (rows 89, 91)
-and box 10's fourteen unanswerable nouns, which are one piece of work; the mirror box's
-model of an opening (row 103); `enter window`; and the stub-verb register policy (row 87).
+**2026-08-12 — the remaining fourteen `unanswerable-noun` rows marked `fixed` by the
+third pass.** Box 10 entire, and what was left of box 4: the volcano's catch-all synonym
+lists. The two are one piece of work and this is the reason, stated once — trimming a
+catch-all leaves the noun it used to answer with nothing to answer it, so a trim without
+its new items is not a repair but the same defect from the other side.
 
-Pass every `fixed` and `refuted` key above as `ledgerKeys` on the next round.
+| Class | Rows | What was done |
+|---|---|---|
+| `unanswerable-noun` | `AboveGround.swift` ×5, `Prose+AboveGround.swift` | `field` — the game's opening room — plus `path` in four rooms going four different places, `clearing` twice, `trees` and `forest` at the house sides, `pages` on the brochure. `forestStand()` and `pathScenery(_:_:)` are the two factories; five byte-identical `trees…` declarations became one of them. |
+| `unanswerable-noun` | `House.swift` ×2 | The Kitchen's passage west; the Living Room's doorway east; the Cellar's passageway **and** its crawlway, as two items, because they are two holes in two walls. |
+| `unanswerable-noun` | `RoundRoom.swift` | The eight passages the room's whole description is about — a `describe { }` on `carouselSpinning`, not a constant, because which one goes where is exactly what the machine underfoot is scrambling. The Troll Room's four take a constant: his ways out do not move, he does. |
+| `unanswerable-noun` | `Dam.swift` | Stream View's bank, and `path` off `streamWater` — the room stands you *on a path beside* the stream and the stream was answering for the ground. Plus the Maintenance Room's equipment, wreckage and doorways. |
+| `unanswerable-noun` | `Bank.swift` | The Safety Depository's `walls` and `doorways`. `curtain` keeps singular `wall`; the split is the finding. |
+| `unanswerable-noun` | `RoyalPuzzle.swift` | The anteroom's sand, in the room's own two states. The game's `sand` is in the cell ten feet below, which is this issue's other class seen through a hole. |
+| `unanswerable-noun` | `Volcano.swift::x rim …` | Eight scenery items, not the three the issue names — the issue names a construction and `shaftScenery(_:_:)` has that many instances. Every level of the shaft now carries two items, the rock within reach and the view of what is not. The Wide Ledge's small door became its own item with its own `describe { }`, which removed a state claim from the rock rather than adding one. |
+
+Cover is thirteen new tests in `DungeonProseTests` (every negative paired with its
+control), sixteen extended sweeps and three new ones — Volcano View, the Lower Shaft and
+the volcano's own — plus a `Which do you mean` negative in the four collision-prone
+sweeps, since `expectEveryNounAnswered` matches only unknown words and unseen things and
+an ambiguity passes it silently.
+
+**One row correction while in here.** The paragraph this replaces cited "rows 89, 91" for
+the volcano synonym lists. Row 89 is `swim` and row 91 is Stream View's bank; the volcano
+row is 96.
+
+Still open and unticked after three passes, and six rows: the Kitchen's "slightly ajar"
+(row 70, declined by #235 with an argument); the two `swim` rows (89, 92); the Wide
+Ledge's *room paragraph* (row 94) — this pass repaired that ledge's **examine** channel,
+and flipping 94 would repeat the `swim` mistake of claiming credit for a different
+sentence; `enter window` (row 107); and the mirror box's model of an opening (row 108).
+By box: 2, 11, 12 and 15, all `needs-human` or a hand edit to the harness.
+
+Pass every `fixed` and `refuted` key above as `ledgerKeys` on the next round. The list is
+fourteen keys longer than it was.

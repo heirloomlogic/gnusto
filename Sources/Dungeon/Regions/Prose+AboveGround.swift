@@ -46,6 +46,50 @@ extension Prose {
         is clear that the owners must have been extremely wealthy.
         """
 
+    /// The five lines below are written fresh, for five nouns the four sides of
+    /// the house and the clearing print and nothing answered — *field*, which
+    /// is the game's opening room, and *path*, four times, going four different
+    /// places. (#233)
+    static let openField = """
+        Rough grass, gone to seed and flattened in places, running from the
+        house to the trees.
+        """
+
+    static let pathAtSouth = """
+        A track worn through the grass, going south into the trees.
+        """
+
+    static let pathAtBehind = """
+        A track worn through the grass, going east into the trees toward the
+        clearing.
+        """
+
+    /// The clearing named from Behind House, which is a different place from
+    /// the path that goes to it — this PR's own rule, applied to its own work.
+    /// Answering `x clearing` with a description of a track was the near thing
+    /// speaking for the far one all over again. (#233)
+    static let clearingFromBehindHouse = """
+        Somewhere east past the trees, and nothing of it in sight from here.
+        """
+
+    static let pathAtClearing = """
+        A track worn through the grass, going southwest out of the clearing and
+        back toward the house.
+        """
+
+    static let pathAtCanyonBottom = """
+        A thread of a path, going north along the water and out of sight under
+        the canyon wall.
+        """
+
+    /// Written fresh. The Clearing is the hub of the whole wood and the one
+    /// room in it that is not forest, and `x clearing` — the room's own first
+    /// noun — went unanswered. (#233)
+    static let clearingGround = """
+        A round of open ground with the wood standing close on every side of it,
+        and the sky over it instead of branches.
+        """
+
     static let frontDoor = """
         A heavy oak door, planked over from the inside. It has not opened in a
         long time, and there is evidently no key.

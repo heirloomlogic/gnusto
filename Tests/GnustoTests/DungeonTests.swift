@@ -702,16 +702,23 @@ struct DungeonTests {
             Dungeon(),
             [
                 "examine house", "examine front door", "examine mailbox", "examine mat",
-                "north", "examine house", "examine windows",
+                "examine field",
+                "north", "examine house", "examine windows", "examine forest",
                 "north", "examine trees", "examine tree", "examine songbird",
                 "up", "examine nest", "examine egg", "examine branches",
                 "down", "east", "examine leaves", "push leaves", "examine grating",
-                "examine forest",
+                "examine forest", "examine clearing", "examine path",
                 "south", "examine trees",
-                "north", "examine house", "examine windows",
+                "north", "examine house", "examine windows", "examine path",
+                "examine trees",
+                // Behind House, the fourth side and the one whose path names a
+                // clearing it cannot see.
+                "east", "examine house", "examine window", "examine path",
+                "examine clearing", "examine trees",
             ])
 
         expectEveryNounAnswered(transcript, "the house exterior, the wood, the clearing")
+        expectNoAmbiguity(transcript, "the four house sides and the clearing")
     }
 
     @Test func everyNounTheCanyonPrintsAnswers() async throws {
@@ -721,11 +728,13 @@ struct DungeonTests {
                 "south", "east", "east", "southeast", "examine trees",
                 "southeast", "examine cliff", "examine rainbow", "examine falls",
                 "examine cliffs", "examine dam", "examine river", "examine forest",
-                "down", "examine cliff", "examine falls",
+                "down", "examine cliff", "examine falls", "examine passage",
                 "down", "examine cliff", "examine stream", "examine runoff",
+                "examine path", "examine walls",
             ])
 
         expectEveryNounAnswered(transcript, "the Great Canyon")
+        expectNoAmbiguity(transcript, "the Great Canyon")
     }
 
     /// The house and the rooms below it, by the route that does not go past the
@@ -739,14 +748,16 @@ struct DungeonTests {
                 "open window", "west",
                 "examine table", "examine staircase", "examine chimney",
                 "examine sack", "examine bottle", "examine window",
+                "examine passage",
                 "west", "examine rug", "examine case", "examine sword",
                 "examine mantelpiece", "examine wooden door", "examine newspaper",
+                "examine doorway",
                 "take lamp", "turn on lamp",
                 "east", "up",
                 "examine table", "examine rope", "examine knife", "examine brick",
                 "down", "west",
                 "push rug", "examine trap door", "open trap door", "down",
-                "examine ramp",
+                "examine ramp", "examine passageway", "examine crawlway",
                 "south", "examine chasm",
                 "north", "examine hole",
                 "south", "examine chimney", "examine fireplace", "examine paints",
@@ -768,6 +779,7 @@ struct DungeonTests {
             Self.intoTheCellar
                 + [
                     "east", "examine troll", "examine bloodstains", "examine walls",
+                    "examine passages",
                 ],
             seed: 19)
 
@@ -824,7 +836,9 @@ struct DungeonTests {
         // obligation to answer any of them with the East-West Passage.
         let transcript = try await play(
             Dungeon(),
-            Self.pastTheTroll + ["north", "east", "examine machinery", "west", "west", "west"],
+            Self.pastTheTroll
+                + ["north", "east", "examine machinery", "examine passages"]
+                + ["west", "west", "west"],
             seed: 18)
 
         expectInOrder(
@@ -1150,7 +1164,8 @@ struct DungeonTests {
                     "northeast", "echo", "examine ceiling", "examine bar",
                     "up", "examine earth", "examine crack",
                     // Deep Canyon is reached deterministically off the dam;
-                    // the Round Room's own noun is swept by the carousel test.
+                    // the Round Room's own nouns are swept by the carousel test
+                    // and by `DungeonProseTests`, which needs both its states.
                     "east", "south", "examine canyon",
                 ],
             seed: 18)
@@ -1168,6 +1183,7 @@ struct DungeonTests {
                     "north", "examine desk", "examine doorways",
                     "examine guidebook", "examine matchbook",
                     "north", "examine buttons", "examine labels",
+                    "examine doorways", "examine equipment", "examine wreckage",
                     "examine chests", "examine tube", "examine wrench",
                     "examine screwdriver",
                     "south", "south", "down",
@@ -1186,6 +1202,7 @@ struct DungeonTests {
                     "turn bolt with wrench",
                     "south", "northwest", "examine reservoir", "examine cliff",
                     "west", "examine stream", "examine wire", "examine path",
+                    "examine bank",
                     "east", "north", "examine mud", "examine trunk",
                     "north", "examine tunnel", "examine pump",
                     "south", "up", "examine beach", "examine walls",
@@ -1610,6 +1627,24 @@ struct DungeonTests {
                 "Lower Shaft",
                 "Timber Room",
             ])
+    }
+
+    /// The Lower Shaft names the shaft it is at the bottom of, the chain
+    /// hanging in it and two narrow passages out, and until #233 not one of the
+    /// three answered — `ironChain` carries `chain` and `shaft` and stands a
+    /// hundred feet up in the Shaft Room.
+    @Test func everyNounTheLowerShaftPrints() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheShaftWithTheTorch + ["put torch in basket", "lower basket"]
+                + Self.throughTheCoalMaze
+                + ["southwest", "drop all", "southwest"]
+                + ["examine shaft", "examine chain", "examine passage", "examine basket"],
+            seed: 14)
+
+        #expect(transcript.contains("Lower Shaft"))
+        expectEveryNounAnswered(transcript, "the Lower Shaft")
+        expectNoAmbiguity(transcript, "the Lower Shaft")
     }
 
     /// **`LIGHT-SHAFT`: ten points, once, for standing at the bottom of the
@@ -2804,7 +2839,8 @@ struct DungeonTests {
             Dungeon(),
             Self.toTheBank
                 + ["examine signs", "northwest", "examine counter", "west"]
-                + ["examine cube", "read cube", "examine curtain", "south"]
+                + ["examine cube", "read cube", "examine curtain", "examine walls"]
+                + ["examine boxes", "examine doorways", "south"]
                 + ["examine wreckage", "examine portrait", "north", "walk through curtain"]
                 + ["examine northern wall", "examine eastern wall", "examine curtain"]
                 + ["walk through curtain", "walk through curtain", "examine bills"],
@@ -2989,7 +3025,14 @@ struct DungeonTests {
 
     /// Through it, and down the two rooms milestone 3 left hanging: the Ruby
     /// Room's west passage and the Lava Room's south one.
-    private static let toTheVolcano = toTheGlacier + throughTheGlacier
+    /// Not `private`, for ``toTheNarrowLedge``'s reason: `DungeonProseTests`
+    /// walks the shaft's scenery from the floor up.
+    static let toTheVolcano = toTheGlacier + throughTheGlacier
+
+    /// The third ledge, and the one no balloon reaches: on foot, south out of
+    /// the Egyptian Room. Not `private`, for the same reason. Seed 18.
+    static let toVolcanoView =
+        pastTheTroll + ["north", "down", "west", "northwest", "south", "down"]
 
     /// The same road with the wire coil picked up off the bank at Stream View,
     /// which is what the brick wants in it.
@@ -3014,7 +3057,9 @@ struct DungeonTests {
     /// that is the rim.
     /// Moor the basket, walk into the Dusty Room, load the hole and light the
     /// wire, then get out on the ledge and wait for the blast.
-    private static let lightTheCharge = [
+    /// Not `private`, for ``toTheNarrowLedge``'s reason: `DungeonProseTests`
+    /// asks the small door what it is before and after the room comes down.
+    static let lightTheCharge = [
         "tie braided wire to hook", "get out", "south",
         "put brick in hole", "put wire in brick", "burn match",
         "burn wire with match", "north", "wait",
@@ -3540,15 +3585,40 @@ struct DungeonTests {
             Dungeon(),
             Self.toTheVolcano
                 + ["north", "examine lava", "examine walls", "south"]
-                + ["examine volcano", "examine cone", "examine basket", "examine cloth bag"]
+                + ["examine volcano", "examine cone", "examine ash", "examine floor"]
+                + ["examine exit", "examine basket", "examine cloth bag"]
                 + ["examine receptacle", "examine braided wire"]
                 + Self.liftOff
                 + ["west", "tie braided wire to hook", "get out", "examine label"]
-                + ["examine hook", "examine ledge", "examine coin", "south"]
-                + ["examine shelves", "examine purple book", "examine white book"],
+                + ["examine hook", "examine ledge", "examine coin"]
+                + ["examine rim", "examine floor", "examine shaft", "south"]
+                + ["examine shelves", "examine gnomes", "examine pages"]
+                + ["examine purple book", "examine white book"],
             seed: 18)
 
         expectEveryNounAnswered(transcript, "the volcano floor, the shaft and the Library")
+        // No `expectNoAmbiguity` here, and it is the one sweep that cannot have
+        // one: `x pages` in the Library is answered by four books, which is the
+        // room's own long-standing four-way `book` and not this pass's doing.
+        // The volcano floor's own two items are pinned positively instead, by
+        // `theVolcanoFloorIsNotTheShaftOverhead`.
+    }
+
+    /// Volcano View is reached on foot and by no other road, so it belongs to no
+    /// balloon sweep. It names five things — the ledge underfoot, the pair
+    /// across the shaft, the bottom below and the rim above — and until #233 one
+    /// item answered for four of them and nothing for the fifth.
+    @Test func everyNounVolcanoViewPrints() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toVolcanoView
+                + ["examine ledge", "examine ledges", "examine rim", "examine bottom"]
+                + ["examine volcano", "examine exit", "examine walls"],
+            seed: 18)
+
+        #expect(transcript.contains("Volcano View"))
+        expectEveryNounAnswered(transcript, "Volcano View")
+        expectNoAmbiguity(transcript, "Volcano View")
     }
 
     @Test func everyNounTheWideLedgeAndTheDustyRoomPrint() async throws {
@@ -3556,11 +3626,17 @@ struct DungeonTests {
             Dungeon(),
             Self.toTheWideLedge
                 + ["tie braided wire to hook", "get out", "examine ledge", "examine hook"]
+                + ["examine rim", "examine drop", "examine bottom", "examine volcano"]
+                + ["examine door"]
                 + ["south", "examine box", "examine hole", "examine dust", "look in hole"]
                 + ["put brick in hole", "examine brick"],
             seed: 18)
 
         expectEveryNounAnswered(transcript, "the Wide Ledge and the Dusty Room")
+        // Only one door stands here until the gnome is paid on this ledge, so
+        // the bare noun resolves. `theTwoDoorsOnTheWideLedgeAreTwoDoors` owns
+        // the frame where it does not.
+        expectNoAmbiguity(transcript, "the Wide Ledge, with the gnome unpaid")
     }
 
     /// With milestone 6 in, the volcano joins the graph at both ends: the Ruby
@@ -3877,7 +3953,8 @@ struct DungeonTests {
     /// and he kills a visitor who loiters. Every test below that only passes
     /// *through* uses this; the two that come back the other way use
     /// ``toTheRoyalPuzzlePastTheThief`` and pay for the privilege.
-    private static let toTheRoyalPuzzle =
+    /// Not `private`, for ``toTheNarrowLedge``'s reason.
+    static let toTheRoyalPuzzle =
         toMazeFive + mazeFiveToTheCyclops + ["odysseus", "up", "east"]
 
     /// The same road with the thief cut down on the way through, for the tests
@@ -3899,7 +3976,9 @@ struct DungeonTests {
     ]
 
     /// The two spliced: standing on the card's square with it uncovered.
-    private static let toTheCardSquare = intoThePuzzle + toTheGoldCard
+    /// Not `private`, for ``toTheNarrowLedge``'s reason: `DungeonProseTests`
+    /// asks the anteroom's sand what it is once the hole has been sealed.
+    static let toTheCardSquare = intoThePuzzle + toTheGoldCard
 
     /// And the shortest line from the card's square to standing under the
     /// ceiling opening with the good ladder beside it — the win. Thirty-seven
@@ -4321,7 +4400,7 @@ struct DungeonTests {
         let transcript = try await play(
             Dungeon(),
             Self.toTheRoyalPuzzle
-                + ["examine hole", "examine note", "read note", "south"]
+                + ["examine hole", "examine note", "examine sand", "read note", "south"]
                 + ["examine steel door", "north", "down"]
                 + ["examine opening", "examine ceiling", "examine sand"]
                 + ["examine marble wall", "examine sandstone wall", "examine ladder"]
@@ -4913,7 +4992,7 @@ struct DungeonTests {
                 + [
                     "wait", "wait", "east", "north", "west", "open mailbox",
                     "examine brochure", "examine stamp", "examine mailbox",
-                    "examine leaflet",
+                    "examine leaflet", "read brochure", "examine pages",
                 ])
 
         expectEveryNounAnswered(transcript, "the brochure and the stamp")

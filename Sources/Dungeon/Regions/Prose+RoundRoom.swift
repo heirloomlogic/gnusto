@@ -49,6 +49,21 @@ extension Prose {
         settle on any of them.
         """
 
+    /// The eight passages, in two states. This room's entire description is
+    /// about them and the word went unanswered; and a constant here would be
+    /// the defect the room was already repaired for once, since which of the
+    /// eight goes where is exactly what the machine underfoot is changing.
+    /// (#233)
+    static let roundRoomPassages = """
+        Eight mouths of stone, evenly spaced around the wall, and no way to tell
+        one from another while the floor is turning under them.
+        """
+
+    static let roundRoomPassagesStopped = """
+        Eight mouths of stone, evenly spaced around the wall, and standing still
+        at last long enough to be counted.
+        """
+
     static let roundRoomMachinery = """
         Whatever is turning under the floor is bedded too deep to see and too
         steady to argue with. It sounds enormous, and it sounds patient.

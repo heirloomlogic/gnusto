@@ -147,7 +147,9 @@ struct DungeonAboveGround: GameContent {
     let brochure = Item {
         name("free brochure")
         adjectives("free", "mit", "tech")
-        synonyms("brochure", "prospectus", "pamphlet", "mail")
+        // `pages` because the brochure describes itself as going on "for
+        // several hundred further pages", and nothing answered the word. (#233)
+        synonyms("brochure", "prospectus", "pamphlet", "mail", "pages", "page")
         // A container, and open, because that is how the source affixes the
         // stamp. No `capacity(_:)`: the rule below refuses every insertion
         // outright, and two mechanisms aimed at one behaviour is one too many.
@@ -234,52 +236,82 @@ struct DungeonAboveGround: GameContent {
 
     /// The mainframe answers "tree" in every forest room — with a refusal
     /// where there is nothing worth climbing — so each room gets its own
-    /// scenery stand of trees.
-    let treesDeep = Item {
-        name("trees")
-        adjectives("large", "tall")
-        synonyms("tree", "forest", "woods")
-        description(Prose.forestTrees)
-        scenery
-        plural
+    /// scenery stand of trees. A factory rather than eight copies of one
+    /// declaration: presence is room-granular and an `Item` lives in one place,
+    /// so the wood is paid for a room at a time.
+    private static func forestStand() -> Item {
+        Item {
+            name("trees")
+            adjectives("large", "tall")
+            synonyms("tree", "forest", "woods")
+            description(Prose.forestTrees)
+            scenery
+            plural
+        }
     }
 
-    let treesSouth = Item {
-        name("trees")
-        adjectives("large", "tall")
-        synonyms("tree", "forest", "woods")
-        description(Prose.forestTrees)
-        scenery
-        plural
-    }
-
-    let treesCanyonEdge = Item {
-        name("trees")
-        adjectives("large", "tall")
-        synonyms("tree", "forest", "woods")
-        description(Prose.forestTrees)
-        scenery
-        plural
-    }
-
-    let treesNorth = Item {
-        name("trees")
-        adjectives("large", "tall")
-        synonyms("tree", "forest", "woods")
-        description(Prose.forestTrees)
-        scenery
-        plural
-    }
+    let treesDeep = forestStand()
+    let treesSouth = forestStand()
+    let treesCanyonEdge = forestStand()
+    let treesNorth = forestStand()
 
     /// The Clearing is not a forest room, but its description says a forest
     /// surrounds it on all sides, so the wall of trees answers there too.
-    let treesAroundClearing = Item {
-        name("trees")
-        adjectives("large", "tall")
-        synonyms("tree", "forest", "woods")
-        description(Prose.forestTrees)
+    let treesAroundClearing = forestStand()
+
+    /// Three more stands, for the three house sides whose paragraphs name the
+    /// wood and could not answer for it: *the trees* south and behind, *the
+    /// forest* north. (#233)
+    let treesAtNorthOfHouse = forestStand()
+    let treesAtSouthOfHouse = forestStand()
+    let treesAtBehindHouse = forestStand()
+
+    /// Four paths going four different places, so the text is the parameter and
+    /// the nouns are not: every one of them is a path, and the whole of what
+    /// differs is where it goes. The Clearing's goes home and Canyon Bottom's
+    /// runs north under the wall. (#233)
+    private static func pathScenery(_ text: String) -> Item {
+        Item {
+            name("path")
+            adjectives("beaten", "narrow")
+            synonyms("path", "track", "trail")
+            description(text)
+            scenery
+        }
+    }
+
+    let pathAtSouthOfHouse = pathScenery(Prose.pathAtSouth)
+    let pathAtBehindHouse = pathScenery(Prose.pathAtBehind)
+    let pathAtClearing = pathScenery(Prose.pathAtClearing)
+    let pathAtCanyonBottom = pathScenery(Prose.pathAtCanyonBottom)
+
+    /// The game's opening room names a field and nothing in it answered for
+    /// one. (#233)
+    let openField = Item {
+        name("field")
+        adjectives("open")
+        synonyms("field", "grass", "ground")
+        description(Prose.openField)
         scenery
-        plural
+    }
+
+    /// The clearing named from Behind House, one room short of it. Its own item
+    /// and not a synonym on the path: a track and the place the track goes are
+    /// two things, which is the whole argument of this repair.
+    let clearingFromBehindHouse = Item {
+        name("clearing")
+        description(Prose.clearingFromBehindHouse)
+        scenery
+    }
+
+    /// And the clearing the whole wood is arranged around. No `trees` —
+    /// ``treesAroundClearing`` owns those, and it is the item about them.
+    let clearingGround = Item {
+        name("clearing")
+        adjectives("open")
+        synonyms("clearing", "ground")
+        description(Prose.clearingGround)
+        scenery
     }
 
     /// The one tree worth climbing, and the only one the parser prefers to the
@@ -681,6 +713,17 @@ struct DungeonAboveGround: GameContent {
         treesCanyonEdge.starts(in: forestCanyonEdge)
         treesNorth.starts(in: forestNorth)
         treesAroundClearing.starts(in: clearing)
+        treesAtNorthOfHouse.starts(in: northOfHouse)
+        treesAtSouthOfHouse.starts(in: southOfHouse)
+        treesAtBehindHouse.starts(in: behindHouse)
+
+        openField.starts(in: westOfHouse)
+        clearingGround.starts(in: clearing)
+        pathAtSouthOfHouse.starts(in: southOfHouse)
+        pathAtBehindHouse.starts(in: behindHouse)
+        clearingFromBehindHouse.starts(in: behindHouse)
+        pathAtClearing.starts(in: clearing)
+        pathAtCanyonBottom.starts(in: canyonBottom)
         greatTree.starts(in: forestTree)
         treeFromAbove.starts(in: upATree)
         nest.starts(in: upATree)

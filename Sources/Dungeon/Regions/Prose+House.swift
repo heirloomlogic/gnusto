@@ -16,6 +16,14 @@ extension Prose {
         slightly ajar.
         """
 
+    /// Written fresh. The Kitchen's paragraph names a passage west and the
+    /// round found `x passage` answering "You can't see any such thing" in it.
+    /// (#233)
+    static let kitchenPassage = """
+        A plain way through into the room beyond, with nothing in it worth
+        stopping for.
+        """
+
     static let kitchenTable = """
         A plain wooden table, its surface scarred by a good deal of chopping.
         """
@@ -74,6 +82,14 @@ extension Prose {
         wooden door with strange gothic lettering to the west, which
         appears to be nailed shut, a trophy case, and a large oriental rug
         in the center of the room.
+        """
+
+    /// Written fresh, and the *doorway* east rather than a door: the living
+    /// room's first noun, and the parser did not know it. No `door` on the item
+    /// that carries this — the gothic door and the trap door already make that
+    /// word two ways ambiguous in here. (#233)
+    static let livingRoomDoorway = """
+        An open way through to the kitchen, with no door in it.
         """
 
     static let woodenDoor = """
@@ -244,6 +260,17 @@ extension Prose {
         You are in a dark and damp cellar with a narrow passageway leading
         east, and a crawlway to the south. On the west is the bottom of a
         steep metal ramp which is unclimbable.
+        """
+
+    /// Two holes in two walls, so two lines: the Cellar names a passageway east
+    /// and a crawlway south, and one item answering both would be the defect
+    /// this round is about, one register down. (#233)
+    static let cellarPassage = """
+        A narrow way east, cut square and high enough to walk in.
+        """
+
+    static let cellarCrawlway = """
+        A low hole in the south wall, going somewhere on hands and knees.
         """
 
     static let cellarRamp = """

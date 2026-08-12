@@ -62,6 +62,15 @@ extension Prose {
         that comes down it dies well before it reaches the floor.
         """
 
+    /// Written fresh, and the near half of a pair the shaft owed at every
+    /// level. ``volcanoCone`` is a line about what is overhead, and it used to
+    /// answer `x floor` and `x ash` to a player standing on the floor with the
+    /// ash over their boots. (#233)
+    static let volcanoBottomAsh = """
+        Grey ash, cold and deep enough to walk quietly in, banked up against
+        the wall that rings the place. The one gap in that wall is north.
+        """
+
     /// Adapted. `LAVA` is `minor`, but the trilogy's line sends its second exit
     /// east and the mainframe's goes west.
     static let lavaRoom = """
@@ -125,6 +134,37 @@ extension Prose {
         it.
         """
 
+    /// The four lines below are written fresh, one per level of open air, and
+    /// they are the far half of the pair each level owed. The rock beside the
+    /// basket is ``volcanoWallsFromTheAir``; everything the paragraph *points
+    /// at* — the floor, the rim, the ledge waiting on one wall — is a good deal
+    /// further off than that, and used to answer "close enough to touch". Each
+    /// line says what its own room's paragraph says, from the altitude that
+    /// paragraph is written at. (#233)
+    static let shaftFromCore = """
+        The floor of the volcano lies a hundred feet down, losing its edges in
+        the gloom; the top of the shaft is a bright ring a long way further up.
+        Nothing in either direction is any use to a man in a basket.
+        """
+
+    static let shaftFromNarrowLedgeAir = """
+        Two hundred feet of nothing below the basket, and the rim looming over
+        it. A shelf of rock juts from the west wall at about this height — the
+        one place up here that would take a landing.
+        """
+
+    static let shaftFromViewingLedgeAir = """
+        The rim is very close now and very narrow, and the floor is lost
+        somewhere a long way under you. A thin shelf of rock stands out from the
+        east wall, too slight to set anything down on.
+        """
+
+    static let shaftFromWideLedgeAir = """
+        A broad shelf of rock juts from the east wall, the only thing at this
+        height that would take a basket. Below it the volcano falls away
+        further than the light goes.
+        """
+
     // MARK: - The Narrow Ledge
 
     /// Verbatim; `LEDG2` is `substantial`, and the trilogy's line is true of
@@ -145,9 +185,23 @@ extension Prose {
         sight.
         """
 
+    /// Reworded. It used to end "with the shaft on one hand and a doorway on
+    /// the other" — two nouns nothing in this room answered, and the second of
+    /// them not there at all until the gnome has been paid. The shaft belongs
+    /// to ``narrowLedgeDistance`` now, which is the line about everything this
+    /// ledge is halfway between. (#233)
     static let narrowLedgeRock = """
         A shelf of old rock, wide enough to stand on and not much wider, with
-        the shaft on one hand and a doorway on the other.
+        the volcano dropping away past one edge of it.
+        """
+
+    /// Written fresh. The room's own paragraph puts this ledge "halfway between
+    /// the floor below and the rim above", and both of those nouns used to
+    /// answer with the shelf underfoot. (#233)
+    static let narrowLedgeDistance = """
+        The floor of the volcano is a couple of hundred feet down and the rim
+        about as far again up, the shaft running past this ledge without
+        pausing at it.
         """
 
     static let ledgeNoJumping = "I wouldn't jump from here."
@@ -287,9 +341,25 @@ extension Prose {
         The exit from this room is to the east.
         """
 
-    static let volcanoViewLedges = """
-        Two shelves of rock on the far wall, one a good way below this one and
-        one a good way above it. Neither is anywhere near close enough to reach.
+    /// Retargeted and rewritten as the room's *distant view*, the way Canyon
+    /// View's is. It answered `rim` and `bottom` as well as the far ledges, and
+    /// the rim and the bottom are not the far ledges; now one line covers
+    /// everything across the shaft and everything up or down it, which is what
+    /// the room's paragraph is about, and ``volcanoViewLedge`` covers the one
+    /// thing that is underfoot. (#233)
+    static let volcanoViewDistance = """
+        Two shelves of rock stand out from the far wall, one a good way below
+        this one and one a good way above it. Under them is the floor of the
+        volcano and over them its rim, and none of it is anywhere near close
+        enough to reach.
+        """
+
+    /// Written fresh. The room's paragraph calls the ledge the player is
+    /// standing on "this ledge", and nothing in the room answered for it: the
+    /// only item here was about the two across the shaft. (#233)
+    static let volcanoViewLedge = """
+        A shelf of stone about halfway up the volcano's wall, with the way back
+        east behind you and a long drop in front.
         """
 
     static let volcanoViewNoJumping = "I wouldn't try that."
@@ -313,9 +383,37 @@ extension Prose {
 
     static let wideLedgeNoJumping = "It's a long way down."
 
+    /// Reworded to drop its second clause, "with a doorway cut into the wall
+    /// behind it". That clause was a claim about ``dustyRoomWrecked`` published
+    /// through a channel that cannot branch — it went on describing a doorway
+    /// after the blast filled it with rubble. Splitting the door off as
+    /// ``DungeonVolcano/wideLedgeDoorway`` puts the branch on a one-purpose
+    /// item and leaves this line a constant nothing can falsify. (#233)
     static let wideLedgeRock = """
-        A broad apron of rock, sound underfoot, with a doorway cut into the wall
-        behind it.
+        A broad apron of rock, sound underfoot and wide enough to set a basket
+        down on.
+        """
+
+    /// Written fresh. The room's paragraph puts the rim two hundred feet up and
+    /// a precipitous drop under the edge, and both used to answer with the
+    /// apron the player is standing on. (#233)
+    static let wideLedgeDistance = """
+        Two hundred feet of rock stand between this ledge and the rim. Rather
+        more than that lies the other way, down to a floor the light does not
+        reach.
+        """
+
+    /// The two states of the small door south, written fresh. The room's own
+    /// paragraph has branched on the blast since it was written; the door
+    /// itself had no examine text at all, only a clause inside the description
+    /// of the rock. (#233)
+    static let wideLedgeDoorExamined = """
+        A low door cut square into the south wall, with a dusty room beyond it.
+        """
+
+    static let wideLedgeDoorBlocked = """
+        There is no door there now — only the rubble the blast brought down
+        across it, wedged tight from the floor up.
         """
 
     // MARK: - The Dusty Room

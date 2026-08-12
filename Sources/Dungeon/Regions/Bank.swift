@@ -198,6 +198,30 @@ struct DungeonBank: GameContent {
         scenery
     }
 
+    /// The east and west walls, which is not the north one. ``curtain`` keeps
+    /// singular `wall` — it is the thing standing where that wall ought to be —
+    /// and this takes the plural the room actually prints. `boxes` and not
+    /// `box`: the dented steel box and the mailbox both travel. (#233)
+    let depositoryWalls = Item {
+        name("walls")
+        adjectives("side", "east", "west", "eastern", "western")
+        synonyms("walls", "boxes")
+        description(Prose.depositoryWalls)
+        scenery
+        plural
+    }
+
+    /// And the room's other printed plural: "To the east, west, and south of
+    /// the room are large doorways." No `door` — nothing in this room has one.
+    let depositoryDoorways = Item {
+        name("doorways")
+        adjectives("large")
+        synonyms("doorway", "doorways")
+        description(Prose.depositoryDoorways)
+        scenery
+        plural
+    }
+
     let officeWreckage = Item {
         name("wreckage")
         adjectives("vandalized", "broken")
@@ -324,6 +348,8 @@ struct DungeonBank: GameContent {
 
         stoneCube.starts(in: safetyDepository)
         curtain.starts(in: safetyDepository)
+        depositoryWalls.starts(in: safetyDepository)
+        depositoryDoorways.starts(in: safetyDepository)
 
         officeWreckage.starts(in: chairmansOffice)
         portrait.starts(in: chairmansOffice)
