@@ -38,7 +38,7 @@ struct DungeonTests {
     /// The whole descent with the troll cut down at the end of it, which is what
     /// the milestone-2 tests need before they can get east.
     ///
-    /// Seed 11 throughout, recorded: the troll falls to the first blow, so the
+    /// Seed 18 throughout, recorded: the troll falls to the first blow, so the
     /// fight is one command and the transcript is about the map.
     private static let pastTheTroll =
         intoTheKitchen + downTheTrapDoor + ["east", "attack troll with sword"]
@@ -110,7 +110,7 @@ struct DungeonTests {
     /// The house-to-mirror road, with the garlic and the matchbook picked up on
     /// the way, because half of what milestone 3 does needs one or the other.
     ///
-    /// Seed 11 throughout, recorded: the troll falls to the first blow.
+    /// Seed 18 throughout, recorded: the troll falls to the first blow.
     private static let toTheMirrors =
         intoTheKitchen + ["open sack", "take garlic"]
         + downTheTrapDoor
@@ -173,7 +173,7 @@ struct DungeonTests {
     private static let mazeFiveToTheGrating = ["southwest", "up", "east", "northeast"]
 
     /// The whole descent, past the troll, and into the maze as far as the
-    /// skeleton. Seed 11 throughout: the troll falls to the first blow.
+    /// skeleton. Seed 18 throughout: the troll falls to the first blow.
     private static let toMazeFive = pastTheTroll + trollRoomToMazeFive
 
     /// From the Loud Room out to the west bank of the Frigid River on foot —
@@ -410,10 +410,10 @@ struct DungeonTests {
                 "drop sword", "drop lamp", "drop painting", "up",
                 "take lamp", "take painting", "up",
             ],
-            // Seed 11, recorded: the thief never crosses your path. Lifting the
+            // Seed 18, recorded: the thief never crosses your path. Lifting the
             // painting summons him, and a theft leaves the hands this test is
             // counting one lighter — 19 seeds in 5,000 failed that way unpinned.
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -454,8 +454,10 @@ struct DungeonTests {
     /// The Cellar's passage runs east, not north, and the troll stands at the
     /// end of it holding three of the four ways out of his room.
     @Test func theCellarRunsEastToTheTrollWhoGatesTheCrawlway() async throws {
-        // Seed 39, recorded: the troll's swings all miss, so the transcript is
-        // about the gate rather than about the fight.
+        // Seed 39, recorded: he starts nothing at all on this one, so the
+        // transcript is about the gate rather than about a fight. Before #237 he
+        // swung every turn and the seed was picked for a run of misses; now it is
+        // picked for the two turns in three he spends blocking instead.
         let transcript = try await play(
             Dungeon(),
             Self.intoTheCellar
@@ -480,16 +482,26 @@ struct DungeonTests {
     /// The troll is the only thing in this milestone that swings back. Dying to
     /// him costs ten points and everything in your hands, and puts you back
     /// among the trees — and `diagnose` keeps the tally.
+    ///
+    /// The fight is picked here rather than walked into, which is the #237
+    /// change showing up in a test's shape: he answers a blow every turn, but
+    /// unprovoked he starts one on only a third of them, so a player who walks
+    /// in and reads the room is very unlikely to die and a route that counted on
+    /// it would be pinning a one-in-twenty seed. What is being measured — that
+    /// death costs ten points and your hands — is the same either way.
+    ///
+    /// Seed 4, recorded: four blows and he is still standing; his answer to the
+    /// fourth is the last word.
     @Test func dyingToTheTrollCostsTenPointsAndYourHands() async throws {
-        // Seed 7, recorded: the troll's first swing is the last word.
         let transcript = try await play(
             Dungeon(),
-            ["diagnose"] + Self.intoTheCellar
+            ["diagnose"] + Self.intoTheKitchen + Self.downTheTrapDoor
                 + [
-                    "east",
+                    "east", "attack troll with sword", "attack troll with sword",
+                    "attack troll with sword", "attack troll with sword",
                     "diagnose", "inventory", "score",
                 ],
-            seed: 7)
+            seed: 4)
 
         expectInOrder(
             transcript,
@@ -657,10 +669,10 @@ struct DungeonTests {
                 "west", "put painting in case",
                 "score",
             ],
-            // Seed 11, recorded: the thief never crosses your path. The painting
+            // Seed 18, recorded: the thief never crosses your path. The painting
             // is carried the length of the dungeon here, so a theft costs the
             // deposit and the score lands short — 19 seeds in 5,000 unpinned.
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -748,7 +760,9 @@ struct DungeonTests {
     /// troll's axe lands often enough that a longer walk through his room does
     /// not survive to the end of its list.
     @Test func everyNounTheTrollRoomPrintsAnswers() async throws {
-        // Seed 19, recorded: four turns in his room without a fatal swing.
+        // Seed 19, recorded: he starts nothing in the four turns this walk
+        // spends in his room. Still pinned rather than dropped — a third of
+        // seeds have him open one, and a fight would eat the end of the list.
         let transcript = try await play(
             Dungeon(),
             Self.intoTheCellar
@@ -767,10 +781,12 @@ struct DungeonTests {
     /// the East-West Passage pays its five points, and its stair north and its
     /// stair down are the same stair, reaching a room Zork I does not have.
     @Test func theTrollGuardsTheWayNorthToTheCrossroads() async throws {
-        // Seed 11, recorded: the troll falls to the first blow.
-        // The gate first, on its own short walk and its own seed: he kills too
-        // readily to spend a spare turn in his room. Seed 39, recorded — the
-        // same one milestone 1 uses for his eastward gate.
+        // Seed 18, recorded: the troll falls to the first blow.
+        // The gate first, on its own short walk and its own seed. It used to be
+        // separate because he killed too readily to spend a spare turn in his
+        // room; since #237 it is separate because it is a walk that never draws a
+        // blade, and the seed buys a troll who does not draw one either. Seed 39,
+        // recorded — the same one milestone 1 uses for his eastward gate.
         let gate = try await play(
             Dungeon(), Self.intoTheCellar + ["east", "north"], seed: 39)
 
@@ -784,7 +800,7 @@ struct DungeonTests {
         let transcript = try await play(
             Dungeon(),
             Self.pastTheTroll + ["north", "score", "north", "south", "down"],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -804,12 +820,12 @@ struct DungeonTests {
     /// not one of them going where you asked while it turns. Zork I's Round
     /// Room is an ordinary three-way junction with cave-ins.
     @Test func theRoundRoomIsACarouselAndScramblesEveryPassage() async throws {
-        // Seed 11, recorded. Three attempts west, and the room is under no
+        // Seed 18, recorded. Three attempts west, and the room is under no
         // obligation to answer any of them with the East-West Passage.
         let transcript = try await play(
             Dungeon(),
             Self.pastTheTroll + ["north", "east", "examine machinery", "west", "west", "west"],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -836,7 +852,7 @@ struct DungeonTests {
                 + [
                     "examine bar", "take bar", "echo", "take bar", "score",
                 ],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -862,7 +878,7 @@ struct DungeonTests {
         let transcript = try await play(
             Dungeon(),
             Self.toTheDam + ["west", "south", "northwest"],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -895,7 +911,7 @@ struct DungeonTests {
                     "north", "north", "push yellow button", "south", "south",
                     "turn bolt with wrench", "look",
                 ],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -923,7 +939,7 @@ struct DungeonTests {
                     "up", "east", "turn bolt with wrench",
                     "south", "northwest", "north", "drop sword", "take trunk",
                 ],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -955,7 +971,7 @@ struct DungeonTests {
                     "south", "up", "east", "turn bolt with wrench",
                     "south", "northwest", "look", "north",
                 ],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -982,7 +998,7 @@ struct DungeonTests {
                     "squeeze tube", "plug leak with putty",
                     "examine leak", "push blue button",
                 ],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -1008,7 +1024,7 @@ struct DungeonTests {
                 ]
                 // One rung a turn, and one more turn to go under.
                 + Array(repeating: "wait", count: Prose.floodLadder.count),
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -1030,7 +1046,7 @@ struct DungeonTests {
                 + Self.downTheTrapDoor + ["east", "attack troll with sword"]
                 + Self.crossroadsToTheDam
                 + ["fill bottle", "north", "north", "pour water", "fill bottle"],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -1102,7 +1118,7 @@ struct DungeonTests {
                 + ["south", "northwest", "north", "take trunk"]
                 + ["south", "south", "south", "west"] + Self.outByTheChimney
                 + ["put trunk in case", "score"],
-            seed: 9)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -1137,7 +1153,7 @@ struct DungeonTests {
                     // the Round Room's own noun is swept by the carousel test.
                     "east", "south", "examine canyon",
                 ],
-            seed: 11)
+            seed: 18)
 
         expectEveryNounAnswered(transcript, "the underground crossroads")
     }
@@ -1157,7 +1173,7 @@ struct DungeonTests {
                     "south", "south", "down",
                     "examine dam", "examine river", "examine cliffs",
                 ],
-            seed: 11)
+            seed: 18)
 
         expectEveryNounAnswered(transcript, "Flood Control Dam #3")
     }
@@ -1174,7 +1190,7 @@ struct DungeonTests {
                     "north", "examine tunnel", "examine pump",
                     "south", "up", "examine beach", "examine walls",
                 ],
-            seed: 11)
+            seed: 18)
 
         expectEveryNounAnswered(transcript, "the reservoir and the stream")
     }
@@ -1190,7 +1206,7 @@ struct DungeonTests {
     /// candles are unreachable, and so is the whole exorcism.
     @Test func theTempleHangsOffTheGrailRoomAndNotTheTorchRoom() async throws {
         let transcript = try await play(
-            Dungeon(), Self.toTheTemple + ["east", "west", "west", "down", "south"], seed: 11)
+            Dungeon(), Self.toTheTemple + ["east", "west", "west", "down", "south"], seed: 18)
 
         expectInOrder(
             transcript,
@@ -1216,7 +1232,7 @@ struct DungeonTests {
         let transcript = try await play(
             Dungeon(),
             Self.toTheTorchRoom + ["up", "down", "up"],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -1235,7 +1251,7 @@ struct DungeonTests {
     /// `CRAW1`, and the mainframe's map has several of these.
     @Test func theRockyCrawlAndTheDeepRavineBothRunWest() async throws {
         let transcript = try await play(
-            Dungeon(), Self.pastTheTroll + ["north", "down", "west", "west"], seed: 11)
+            Dungeon(), Self.pastTheTroll + ["north", "down", "west", "west"], seed: 18)
 
         expectInOrder(
             transcript,
@@ -1257,7 +1273,7 @@ struct DungeonTests {
             Dungeon(),
             Self.pastTheTroll
                 + ["north", "down", "west", "northwest", "take coffin", "east", "up"],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -1288,7 +1304,7 @@ struct DungeonTests {
                     "north", "down", "west", "northwest", "take coffin",
                     "up", "north", "east", "south", "up",
                 ],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -1313,7 +1329,7 @@ struct DungeonTests {
                     "west", "throw torch at glacier", "look",
                     "west", "take ruby", "south", "north",
                 ],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -1337,7 +1353,7 @@ struct DungeonTests {
             Self.fetchTheTorch
                 + ["east", "north", "down", "west", "northwest", "up"]
                 + ["melt glacier with torch"],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -1360,7 +1376,7 @@ struct DungeonTests {
                     "east", "ring bell", "take candles", "light match",
                     "burn candles with match", "read book", "east", "score",
                 ],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -1386,7 +1402,7 @@ struct DungeonTests {
             Dungeon(),
             Self.toTheGateOfHades
                 + ["ring bell", "wait", "wait", "wait", "wait", "wait", "wait", "east"],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -1405,7 +1421,7 @@ struct DungeonTests {
         let transcript = try await play(
             Dungeon(),
             Self.toTheGateOfHades + ["ring bell", "take bell", "ring bell", "examine bell"],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -1424,7 +1440,7 @@ struct DungeonTests {
         let transcript = try await play(
             Dungeon(),
             Self.toTheMirrors + ["drop garlic", "rub mirror", "turn off lamp", "look"],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -1445,7 +1461,7 @@ struct DungeonTests {
         let transcript = try await play(
             Dungeon(),
             Self.toTheMirrors + ["attack mirror", "rub mirror", "north", "south", "attack mirror"],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -1464,7 +1480,7 @@ struct DungeonTests {
         let transcript = try await play(
             Dungeon(),
             Self.toTheMirrors + ["rub mirror", "west", "examine whirring", "north", "east"],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -1482,7 +1498,7 @@ struct DungeonTests {
     /// the dungeon without a climb.
     @Test func prayingAtTheAltarLandsYouInTheForest() async throws {
         let transcript = try await play(
-            Dungeon(), Self.toTheTemple + ["pray", "east", "pray"], seed: 11)
+            Dungeon(), Self.toTheTemple + ["pray", "east", "pray"], seed: 18)
 
         expectInOrder(
             transcript,
@@ -1502,7 +1518,7 @@ struct DungeonTests {
         let carried = try await play(
             Dungeon(),
             Self.toTheMirrors + ["drop garlic", "west", "west", "north", "northwest", "west"],
-            seed: 11)
+            seed: 9)
 
         expectInOrder(
             carried,
@@ -1516,7 +1532,7 @@ struct DungeonTests {
         let held = try await play(
             Dungeon(),
             Self.toTheMirrors + ["west", "west", "north", "northwest", "west", "take jade"],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             held,
@@ -1537,7 +1553,7 @@ struct DungeonTests {
             Dungeon(),
             Self.toTheMirrors + Self.mirrorsToTheShaft
                 + ["north", "west", "down", "take bracelet", "east", "light match"],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -1560,7 +1576,7 @@ struct DungeonTests {
         let transcript = try await play(
             Dungeon(),
             Self.toTheMirrors + Self.mirrorsToTheShaft + Self.throughTheCoalMaze,
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -1583,7 +1599,7 @@ struct DungeonTests {
             Self.toTheShaftWithTheTorch + ["put torch in basket", "lower basket"]
                 + Self.throughTheCoalMaze
                 + ["southwest", "drop all", "southwest", "northeast"],
-            seed: 12)
+            seed: 14)
 
         expectInOrder(
             transcript,
@@ -1608,7 +1624,7 @@ struct DungeonTests {
                 + ["put torch in basket", "lower basket", "raise basket", "lower basket"]
                 + Self.throughTheCoalMaze
                 + ["southwest", "score", "drop all", "southwest", "score"],
-            seed: 12)
+            seed: 14)
 
         expectInOrder(
             transcript,
@@ -1646,7 +1662,7 @@ struct DungeonTests {
                     "put coal in machine", "close machine",
                     "turn switch with screwdriver", "open machine", "take diamond",
                 ],
-            seed: 12)
+            seed: 14)
 
         expectInOrder(
             transcript,
@@ -1678,7 +1694,7 @@ struct DungeonTests {
                 + ["rub mirror", "north", "north", "take grail", "up", "east"]
                 + ["score", "pray", "south", "north", "east", "west", "west"]
                 + ["open case", "put trident in case", "put grail in case", "score"],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -1709,7 +1725,7 @@ struct DungeonTests {
                     "northwest", "examine coffin", "examine staircase", "examine doors",
                     "up", "examine glacier",
                 ],
-            seed: 11)
+            seed: 18)
 
         expectEveryNounAnswered(transcript, "the dome, the Torch Room and the Egyptian Room")
     }
@@ -1726,7 +1742,7 @@ struct DungeonTests {
                     "west", "west", "east", "south", "down",
                     "examine gate", "examine spirits", "examine bodies",
                 ],
-            seed: 11)
+            seed: 18)
 
         expectEveryNounAnswered(transcript, "the Grail Room, the Temple and the gate of Hades")
     }
@@ -1748,7 +1764,7 @@ struct DungeonTests {
                     "down", "examine gas", "examine stairs", "examine bracelet",
                     "up", "east", "northeast", "examine coal",
                 ],
-            seed: 11)
+            seed: 18)
 
         expectEveryNounAnswered(transcript, "the mirror network and the coal mine")
     }
@@ -1760,7 +1776,7 @@ struct DungeonTests {
     /// first thing the maze does to you.
     @Test func theMazeIsEnteredSouthAndComesBackWest() async throws {
         let transcript = try await play(
-            Dungeon(), Self.pastTheTroll + ["south", "west"], seed: 11)
+            Dungeon(), Self.pastTheTroll + ["south", "west"], seed: 18)
 
         expectInOrder(
             transcript,
@@ -1779,7 +1795,7 @@ struct DungeonTests {
         let transcript = try await play(
             Dungeon(),
             Self.pastTheTroll + ["south", "south", "north", "east"],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -1794,7 +1810,7 @@ struct DungeonTests {
     /// I's does it to the southeast.
     @Test func theCyclopsIsNortheastOfMazeFifteen() async throws {
         let transcript = try await play(
-            Dungeon(), Self.toMazeFive + Self.mazeFiveToTheCyclops, seed: 11)
+            Dungeon(), Self.toMazeFive + Self.mazeFiveToTheCyclops, seed: 18)
 
         expectInOrder(
             transcript,
@@ -1813,7 +1829,7 @@ struct DungeonTests {
         let transcript = try await play(
             Dungeon(),
             Self.toMazeFive + ["take bag", "take skeleton", "inventory"],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -1832,7 +1848,7 @@ struct DungeonTests {
         let transcript = try await play(
             Dungeon(),
             Self.toMazeFive + ["take knife", "attack skeleton with rusty knife"],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -1852,7 +1868,7 @@ struct DungeonTests {
             Dungeon(),
             Self.toMazeFive + ["take keys"] + Self.mazeFiveToTheGrating
                 + ["open grating", "unlock grating with keys", "open grating", "turn off lamp"],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -1872,7 +1888,7 @@ struct DungeonTests {
             Dungeon(),
             Self.toMazeFive + ["take keys"] + Self.mazeFiveToTheGrating
                 + ["unlock grating with keys", "open grating", "up", "look"],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -1889,7 +1905,7 @@ struct DungeonTests {
             Dungeon(),
             Self.toMazeFive + Self.mazeFiveToTheCyclops
                 + ["north", "odysseus", "look", "north", "east"],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -1914,7 +1930,7 @@ struct DungeonTests {
                 + Self.trollRoomToMazeFive + Self.mazeFiveToTheCyclops
                 + ["give water to cyclops", "give lunch to cyclops", "give water to cyclops"]
                 + ["up", "down", "north"],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -1936,7 +1952,7 @@ struct DungeonTests {
                 + Self.downTheTrapDoor + ["east", "attack troll with sword"]
                 + Self.trollRoomToMazeFive + Self.mazeFiveToTheCyclops
                 + ["give lunch to cyclops", "give water to cyclops", "odysseus", "north"],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -1950,7 +1966,7 @@ struct DungeonTests {
             Dungeon(),
             Self.toMazeFive + Self.mazeFiveToTheCyclops
                 + ["attack cyclops with sword", "wait", "wait", "wait", "wait", "wait", "wait"],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -1971,7 +1987,7 @@ struct DungeonTests {
             Dungeon(),
             Self.toMazeFive + Self.mazeFiveToTheCyclops
                 + ["odysseus", "score", "up", "score", "down", "north", "score"],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -1996,7 +2012,7 @@ struct DungeonTests {
             Dungeon(),
             Self.toMazeFive + Self.mazeFiveToTheCyclops
                 + ["odysseus", "up", "temple", "examine granite wall", "treasure"],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -2025,7 +2041,7 @@ struct DungeonTests {
     /// of these rooms and reaches the water only by boat.
     @Test func theLoudRoomsEastDoorReachesTheRiverOnFoot() async throws {
         let transcript = try await play(
-            Dungeon(), Self.toTheLoudRoom + Self.loudRoomToTheRiver, seed: 11)
+            Dungeon(), Self.toTheLoudRoom + Self.loudRoomToTheRiver, seed: 18)
 
         expectInOrder(
             transcript,
@@ -2046,7 +2062,7 @@ struct DungeonTests {
         let transcript = try await play(
             Dungeon(),
             Self.afloatOnTheRiver + ["down", "down", "east", "launch", "down", "west"],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -2065,7 +2081,7 @@ struct DungeonTests {
         let transcript = try await play(
             Dungeon(),
             Self.afloatOnTheRiver + ["wait", "wait", "wait", "wait", "wait", "wait", "look"],
-            seed: 11)
+            seed: 18)
 
         #expect(!transcript.contains("carries you"))
         expectInOrder(
@@ -2078,7 +2094,7 @@ struct DungeonTests {
     @Test func paddlingOffTheEndOfRiverFiveGoesOverTheFalls() async throws {
         let transcript = try await play(
             Dungeon(), Self.afloatOnTheRiver + ["down", "down", "down", "down", "down"],
-            seed: 11)
+            seed: 18)
 
         #expect(transcript.contains("swept over the lip of Aragain Falls"))
     }
@@ -2096,7 +2112,7 @@ struct DungeonTests {
                     "open tube", "take putty", "plug boat with putty",
                     "drop stick", "inflate plastic with pump", "board boat",
                 ],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -2116,7 +2132,7 @@ struct DungeonTests {
             Dungeon(),
             Self.afloatOnTheRiver
                 + ["down", "down", "east", "south", "west", "get out", "deflate boat", "south"],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -2146,7 +2162,7 @@ struct DungeonTests {
                     "dig sand with shovel", "take statue", "score",
                     "dig sand with shovel",
                 ],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -2171,7 +2187,7 @@ struct DungeonTests {
                 + Self.outByTheChimney
                 + ["east", "east", "east", "southeast", "southeast", "down", "down", "north"]
                 + ["wave stick", "look", "take pot", "score", "west", "wave stick"],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -2192,7 +2208,7 @@ struct DungeonTests {
             Dungeon(),
             Self.afloatOnTheRiver + ["down", "down", "down", "down", "land", "south"]
                 + ["get out", "look", "board barrel", "look", "geronimo"],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -2223,7 +2239,7 @@ struct DungeonTests {
                 + Self.trollRoomToMazeFive + Self.mazeFiveToTheCyclops
                 // Out by the cyclops's north wall, into the Living Room.
                 + ["odysseus", "north", "east"],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -2255,7 +2271,7 @@ struct DungeonTests {
                 + Self.mazeFiveToTheCyclops
                 + ["examine cyclops", "examine staircase", "examine wall", "odysseus", "examine wall"]
                 + ["north", "examine passage", "examine hole"],
-            seed: 11)
+            seed: 18)
 
         expectEveryNounAnswered(transcript, "the maze, the cyclops and the Strange Passage")
     }
@@ -2266,7 +2282,7 @@ struct DungeonTests {
             Self.toTheLoudRoom + ["east", "examine chasm", "examine passages"]
                 + ["east", "examine cave", "examine guano", "examine shovel"]
                 + ["south", "examine river", "examine cave"],
-            seed: 11)
+            seed: 18)
 
         expectEveryNounAnswered(onFoot, "the Ancient Chasm, the Small Cave and Rocky Shore")
     }
@@ -2281,7 +2297,7 @@ struct DungeonTests {
                 + ["down", "examine buoy", "west", "examine river", "examine sand"]
                 + ["south", "examine shore", "south", "examine falls", "examine rainbow"]
                 + ["examine barrel"],
-            seed: 11)
+            seed: 18)
 
         expectEveryNounAnswered(afloat, "the river, its banks and the falls")
     }
@@ -2289,7 +2305,7 @@ struct DungeonTests {
     // MARK: - Milestone 5: the roads in
 
     /// Milestone 5's road: down, past the troll, and out of the Round Room's
-    /// carousel into the Engravings Cave. Seed 10 throughout, recorded, because
+    /// carousel into the Engravings Cave. Seed 41 throughout, recorded, because
     /// the carousel is a lottery until the triangular button stops it and this
     /// is the draw that lands.
     ///
@@ -2319,7 +2335,7 @@ struct DungeonTests {
     /// Bank's neighbours and everything above them.
     @Test func theEngravingsCaveOpensSoutheastOnTheRiddleRoom() async throws {
         let transcript = try await play(
-            Dungeon(), Self.toTheEngravingsCave + ["southeast", "look"], seed: 10)
+            Dungeon(), Self.toTheEngravingsCave + ["southeast", "look"], seed: 41)
 
         expectInOrder(
             transcript,
@@ -2336,7 +2352,7 @@ struct DungeonTests {
             Dungeon(),
             Self.toTheEngravingsCave
                 + ["southeast", "read inscription", "east", "answer well", "east"],
-            seed: 10)
+            seed: 41)
 
         expectInOrder(
             transcript,
@@ -2351,7 +2367,7 @@ struct DungeonTests {
     /// And the word is inert everywhere else, because it is a word in the
     /// game's vocabulary everywhere.
     @Test func theRiddleWordIsInertEverywhereElse() async throws {
-        let transcript = try await play(Dungeon(), ["answer well"], seed: 10)
+        let transcript = try await play(Dungeon(), ["answer well"], seed: 41)
 
         #expect(transcript.contains("Nothing here is waiting on an answer."))
     }
@@ -2364,7 +2380,7 @@ struct DungeonTests {
             Dungeon(),
             Self.toTheEngravingsCave
                 + ["southeast", "answer well", "east", "score", "take necklace", "score"],
-            seed: 10)
+            seed: 41)
 
         expectInOrder(
             transcript,
@@ -2387,7 +2403,7 @@ struct DungeonTests {
             Dungeon(),
             Self.toTheWell
                 + ["board bucket", "pour water in bucket", "empty bucket", "look"],
-            seed: 10)
+            seed: 41)
 
         expectInOrder(
             transcript,
@@ -2410,7 +2426,7 @@ struct DungeonTests {
         let transcript = try await play(
             Dungeon(),
             Self.toTheWell + ["score", "board bucket", "pour water in bucket", "score"],
-            seed: 10)
+            seed: 41)
 
         expectInOrder(
             transcript,
@@ -2426,7 +2442,7 @@ struct DungeonTests {
             Dungeon(),
             Self.toTheWell
                 + ["read etchings", "board bucket", "pour water in bucket", "read etchings"],
-            seed: 10)
+            seed: 41)
 
         expectInOrder(
             transcript,
@@ -2445,7 +2461,7 @@ struct DungeonTests {
                     "take red cake", "take eat-me cake", "read red cake",
                     "eat eat-me cake", "read red cake",
                 ],
-            seed: 10)
+            seed: 41)
 
         expectInOrder(
             transcript,
@@ -2464,7 +2480,7 @@ struct DungeonTests {
         let transcript = try await play(
             Dungeon(),
             Self.toTheTeaRoom + ["take eat-me cake", "eat eat-me cake", "east"],
-            seed: 10)
+            seed: 41)
 
         expectInOrder(
             transcript,
@@ -2485,7 +2501,7 @@ struct DungeonTests {
                     "take eat-me cake", "take orange cake", "eat eat-me cake",
                     "east", "eat orange cake", "west", "eat orange cake",
                 ],
-            seed: 10)
+            seed: 41)
 
         expectInOrder(
             transcript,
@@ -2502,7 +2518,7 @@ struct DungeonTests {
     /// *ecch* — says so before you make it.
     @Test func theBlueCakeIsAMistake() async throws {
         let transcript = try await play(
-            Dungeon(), Self.toTheTeaRoom + ["take blue cake", "eat blue cake"], seed: 10)
+            Dungeon(), Self.toTheTeaRoom + ["take blue cake", "eat blue cake"], seed: 41)
 
         #expect(transcript.contains("chemistry set ever sold"))
     }
@@ -2519,7 +2535,7 @@ struct DungeonTests {
                     "take eat-me cake", "take red cake", "eat eat-me cake", "east",
                     "take tin", "throw red cake in pool", "look", "take tin", "score",
                 ],
-            seed: 10)
+            seed: 41)
 
         expectInOrder(
             transcript,
@@ -2539,7 +2555,7 @@ struct DungeonTests {
             Dungeon(),
             Self.toTheTeaRoom
                 + ["take eat-me cake", "eat eat-me cake", "east", "open flask"],
-            seed: 10)
+            seed: 41)
 
         #expect(transcript.contains("the vapour goes into you"))
     }
@@ -2555,7 +2571,7 @@ struct DungeonTests {
             Dungeon(),
             Self.toTheTeaRoom
                 + ["northwest", "north", "west", "northeast", "west", "southwest", "northwest"],
-            seed: 10)
+            seed: 41)
 
         expectInOrder(
             transcript,
@@ -2570,7 +2586,7 @@ struct DungeonTests {
         let transcript = try await play(
             Dungeon(),
             Self.toTheTeaRoom + ["northwest", "read paper", "robot, up", "robot, north", "north"],
-            seed: 10)
+            seed: 41)
 
         expectInOrder(
             transcript,
@@ -2597,7 +2613,7 @@ struct DungeonTests {
                     "northwest", "robot, north", "north", "robot, south", "south",
                     "take sphere", "score", "robot, lift cage", "look",
                 ],
-            seed: 10)
+            seed: 41)
 
         expectInOrder(
             transcript,
@@ -2625,7 +2641,7 @@ struct DungeonTests {
                     "northwest", "robot, north", "north", "robot, south", "south",
                     "robot, take sphere", "look", "take sphere",
                 ],
-            seed: 10)
+            seed: 41)
 
         expectInOrder(
             transcript,
@@ -2651,7 +2667,7 @@ struct DungeonTests {
                     "northwest", "north", "push triangular button", "push triangular button",
                     "push round button", "push square button",
                 ],
-            seed: 10)
+            seed: 41)
 
         expectInOrder(
             transcript,
@@ -2668,7 +2684,7 @@ struct DungeonTests {
     /// The Gallery's west door, which milestone 1 left undeclared. Nine rooms
     /// hang off it and none of them reached Zork I.
     @Test func theGalleryOpensWestOnTheBankOfZork() async throws {
-        let transcript = try await play(Dungeon(), Self.toTheBank + ["look"], seed: 10)
+        let transcript = try await play(Dungeon(), Self.toTheBank + ["look"], seed: 41)
 
         expectInOrder(
             transcript,
@@ -2687,7 +2703,7 @@ struct DungeonTests {
                     "northwest", "west", "walk through curtain", "walk through curtain",
                     "walk through curtain", "take bills", "score",
                 ],
-            seed: 10)
+            seed: 41)
 
         expectInOrder(
             transcript,
@@ -2713,7 +2729,7 @@ struct DungeonTests {
                     "northeast", "east", "south", "north", "walk through curtain",
                     "walk through south wall", "look",
                 ],
-            seed: 10)
+            seed: 41)
 
         expectInOrder(
             transcript,
@@ -2740,7 +2756,7 @@ struct DungeonTests {
                     "walk through curtain", "walk through curtain", "walk through curtain",
                     "take bills", "walk through east wall", "score",
                 ],
-            seed: 10)
+            seed: 41)
 
         expectInOrder(
             transcript,
@@ -2764,7 +2780,7 @@ struct DungeonTests {
                 + ["east", "examine necklace", "examine shelves"]
                 + ["east", "examine bucket", "examine etchings", "examine well"]
                 + ["board bucket", "pour water in bucket", "get out", "examine crack"],
-            seed: 10)
+            seed: 41)
 
         expectEveryNounAnswered(transcript, "the Riddle Room, the Pearl Room and the well")
     }
@@ -2778,7 +2794,7 @@ struct DungeonTests {
                 + ["north", "examine round button", "examine square button"]
                 + ["examine triangular button", "south", "examine sphere", "examine pedestal"]
                 + ["examine sticker"],
-            seed: 10)
+            seed: 41)
 
         expectEveryNounAnswered(transcript, "the Tea Room, the Low Room and the closet")
     }
@@ -2792,7 +2808,7 @@ struct DungeonTests {
                 + ["examine wreckage", "examine portrait", "north", "walk through curtain"]
                 + ["examine northern wall", "examine eastern wall", "examine curtain"]
                 + ["walk through curtain", "walk through curtain", "examine bills"],
-            seed: 10)
+            seed: 41)
 
         expectEveryNounAnswered(transcript, "the Bank of Zork")
     }
@@ -2812,7 +2828,7 @@ struct DungeonTests {
     /// Machine Room.
     @Test func milestoneFiveJoinsTheBankAndTheWellToTheGraph() async throws {
         let transcript = try await play(
-            Dungeon(), Self.toTheStoppedRoundRoom + ["look"], seed: 10)
+            Dungeon(), Self.toTheStoppedRoundRoom + ["look"], seed: 41)
 
         expectInOrder(
             transcript,
@@ -2865,7 +2881,7 @@ struct DungeonTests {
     /// The mad tea party. Four cakes on one oblong table, four lines, none of
     /// them the stock one.
     @Test func theTeaTablePrintsEachCakesOwnLine() async throws {
-        let transcript = try await play(Dungeon(), Self.toTheTeaRoom, seed: 10)
+        let transcript = try await play(Dungeon(), Self.toTheTeaRoom, seed: 41)
 
         expectInOrder(
             transcript,
@@ -2886,7 +2902,7 @@ struct DungeonTests {
         let transcript = try await play(
             Dungeon(),
             Self.toTheBeachedBoat + ["inflate plastic with pump", "look"],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -2902,7 +2918,7 @@ struct DungeonTests {
     /// violin's line waits inside the steel box until the box does.
     @Test func theOpenedSteelBoxPrintsTheViolinsOwnLine() async throws {
         let transcript = try await play(
-            Dungeon(), Self.toTheStoppedRoundRoom + ["open box", "look"], seed: 10)
+            Dungeon(), Self.toTheStoppedRoundRoom + ["open box", "look"], seed: 41)
 
         expectInOrder(
             transcript,
@@ -2919,7 +2935,7 @@ struct DungeonTests {
         let transcript = try await play(
             Dungeon(),
             Self.afloatOnTheRiver + ["down", "down", "down", "open buoy", "look"],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -2945,7 +2961,7 @@ struct DungeonTests {
 
     /// Past the troll, out to the Dam Lobby for the matchbook — the only flame
     /// in the game that can be carried to the volcano — and back to the Rocky
-    /// Crawl. Seed 11: the troll falls to the first blow.
+    /// Crawl. Seed 18: the troll falls to the first blow.
     private static let fetchTheMatchbook =
         ["east", "attack troll with sword", "drop sword"]
         + crossroadsToTheDam
@@ -3017,7 +3033,7 @@ struct DungeonTests {
     /// Ravine's crawl has.
     @Test func theRubyRoomOpensWestOnTheLavaRoomAndTheVolcanoFloor() async throws {
         let transcript = try await play(
-            Dungeon(), Self.toTheVolcano + ["north", "west", "west", "south"], seed: 11)
+            Dungeon(), Self.toTheVolcano + ["north", "west", "west", "south"], seed: 18)
 
         expectInOrder(
             transcript,
@@ -3044,7 +3060,7 @@ struct DungeonTests {
             Dungeon(),
             Self.pastTheTroll
                 + ["north", "down", "west", "northwest", "south", "down", "cross", "east"],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -3064,7 +3080,7 @@ struct DungeonTests {
     /// receptacle, a match to it, and it goes up a level every three turns —
     /// the mainframe's `BINT`.
     @Test func theBalloonRisesThreeTurnsAtATimeOnAFireInThePan() async throws {
-        let transcript = try await play(Dungeon(), Self.toTheVolcano + Self.liftOff, seed: 11)
+        let transcript = try await play(Dungeon(), Self.toTheVolcano + Self.liftOff, seed: 18)
 
         expectInOrder(
             transcript,
@@ -3088,7 +3104,7 @@ struct DungeonTests {
             Dungeon(),
             Self.toTheVolcano + Self.liftOff
                 + ["close receptacle", "wait", "wait", "wait", "wait", "wait", "wait"],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -3108,7 +3124,7 @@ struct DungeonTests {
         let transcript = try await play(
             Dungeon(),
             Self.toTheVolcano + Self.liftOff + ["north", "get out", "up", "land"],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -3129,7 +3145,7 @@ struct DungeonTests {
             Self.toTheNarrowLedge
                 + ["tie braided wire to hook", "look", "get out", "take coin"]
                 + ["read coin", "score", "south", "north"],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -3158,7 +3174,7 @@ struct DungeonTests {
                 + ["tie braided wire to hook", "get out", "south"]
                 + ["read blue book", "read green book", "read white book"]
                 + ["read purple book", "take stamp", "read stamp", "score"],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -3188,7 +3204,7 @@ struct DungeonTests {
                 + ["tie braided wire to hook", "get out", "south"]
                 + ["read purple book", "look", "take purple book", "north"]
                 + ["drop purple book", "look", "read stamp"],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -3218,7 +3234,7 @@ struct DungeonTests {
             Dungeon(),
             Self.toTheNarrowLedge
                 + ["get out", "look", "wait", "wait", "look"],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -3240,7 +3256,7 @@ struct DungeonTests {
                 + ["get out", "take coin", "look"]
                 + Array(repeating: "wait", count: 11)
                 + ["give coin to gnome", "west", "look"],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -3265,7 +3281,7 @@ struct DungeonTests {
                 + ["get out", "take coin", "look"]
                 + Array(repeating: "wait", count: 11)
                 + ["give coin to gnome", "look"],
-            seed: 11)
+            seed: 18)
 
         let halves = transcript.components(
             separatedBy: "Thank you very much for the priceless zorkmid.")
@@ -3288,7 +3304,7 @@ struct DungeonTests {
             Dungeon(),
             Self.toTheNarrowLedge + ["get out", "south"]
                 + ["x purple book", "x green book", "x white book"],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -3314,7 +3330,7 @@ struct DungeonTests {
                 + ["greet gnome"]
                 + Array(repeating: "wait", count: 5)
                 + ["look"],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -3335,7 +3351,7 @@ struct DungeonTests {
             Dungeon(),
             Self.toTheWideLedge
                 + ["tie braided wire to hook", "get out", "south", "examine box", "open box"],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -3360,7 +3376,7 @@ struct DungeonTests {
         let transcript = try await play(
             Dungeon(),
             Self.toTheWideLedge + Self.lightTheCharge + ["south", "take crown", "score"],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -3391,7 +3407,7 @@ struct DungeonTests {
         let transcript = try await play(
             Dungeon(),
             Self.toTheWideLedge + Self.lightTheCharge + ["south", "take crown", "look"],
-            seed: 11)
+            seed: 18)
 
         // The whole paragraph in one piece, because the order is the point and
         // the two lines are written for it: `ContainmentIndex` sorts a
@@ -3435,7 +3451,7 @@ struct DungeonTests {
                 + ["south", "take crown", "take card", "north", "read card", "look"]
                 + ["board basket", "untie braided wire", "launch", "close receptacle"]
                 + Array(repeating: "wait", count: 8),
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -3456,7 +3472,7 @@ struct DungeonTests {
             Dungeon(),
             Self.houseWithTheBrickAndThePaper + Self.fetchTheMatchbook
                 + ["burn match", "burn brick with match"],
-            seed: 11)
+            seed: 18)
 
         #expect(transcript.contains("blow you to smithereens"))
     }
@@ -3469,7 +3485,7 @@ struct DungeonTests {
         let transcript = try await play(
             Dungeon(),
             Self.toTheVolcano + Self.liftOff + Array(repeating: "wait", count: 12),
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -3498,7 +3514,7 @@ struct DungeonTests {
                 + ["look"]
                 + Array(repeating: "wait", count: 20)
                 + ["look"],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -3530,7 +3546,7 @@ struct DungeonTests {
                 + ["west", "tie braided wire to hook", "get out", "examine label"]
                 + ["examine hook", "examine ledge", "examine coin", "south"]
                 + ["examine shelves", "examine purple book", "examine white book"],
-            seed: 11)
+            seed: 18)
 
         expectEveryNounAnswered(transcript, "the volcano floor, the shaft and the Library")
     }
@@ -3542,7 +3558,7 @@ struct DungeonTests {
                 + ["tie braided wire to hook", "get out", "examine ledge", "examine hook"]
                 + ["south", "examine box", "examine hole", "examine dust", "look in hole"]
                 + ["put brick in hole", "examine brick"],
-            seed: 11)
+            seed: 18)
 
         expectEveryNounAnswered(transcript, "the Wide Ledge and the Dusty Room")
     }
@@ -3553,7 +3569,7 @@ struct DungeonTests {
         let transcript = try await play(
             Dungeon(),
             Self.toTheVolcano + ["north", "west", "south", "east", "south", "east"],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -3591,7 +3607,7 @@ struct DungeonTests {
     /// standing on, and until this milestone the room was a room with a chalice
     /// in it and nothing to take it back from.
     @Test func theHoardIsGuardedByWhoeverFilledIt() async throws {
-        let transcript = try await play(Dungeon(), Self.toTheHoard, seed: 11)
+        let transcript = try await play(Dungeon(), Self.toTheHoard, seed: 18)
 
         expectInOrder(
             transcript,
@@ -3607,7 +3623,7 @@ struct DungeonTests {
     /// bag falls with him — named in the line, because a colon that promises a
     /// list should deliver one.
     ///
-    /// Seed 55, recorded: he pinks your arm and lifts the chalice off the
+    /// Seed 120, recorded: he pinks your arm and lifts the chalice off the
     /// floor on the turn you arrive, takes a gash in the side, misses three
     /// times more, and dies to the fourth blow.
     @Test func theThiefFallsAndTheHoardFallsWithHim() async throws {
@@ -3616,7 +3632,7 @@ struct DungeonTests {
             Self.toTheHoard
                 + Array(repeating: "attack thief with sword", count: 4)
                 + ["look"],
-            seed: 55)
+            seed: 120)
 
         expectInOrder(
             transcript,
@@ -3642,7 +3658,7 @@ struct DungeonTests {
                 // Out by the Strange Passage, in again by the trap door, and
                 // the bolt is exactly where it was.
                 + ["down", "north", "east", "open trap door", "down", "open trap door"],
-            seed: 55)
+            seed: 120)
 
         expectInOrder(
             transcript,
@@ -3693,7 +3709,7 @@ struct DungeonTests {
     /// for the case, and the brass bauble the songbird trades for its song is
     /// one and one more.
     ///
-    /// Seed 2, recorded: the troll falls to the third blow; the thief takes the
+    /// Seed 1, recorded: the troll falls to the third blow; the thief takes the
     /// egg, lifts the chalice off the floor for good measure, and dies to the
     /// first blow you land when you come back. Both come out of the bag when he
     /// does, and the egg is open, because the fuse ran while you were four
@@ -3717,7 +3733,7 @@ struct DungeonTests {
                 + ["east", "east", "north", "north", "wind canary", "take bauble"]
                 + ["west", "east", "west", "west", "put canary in case"]
                 + ["put bauble in case", "score"],
-            seed: 2)
+            seed: 1)
 
         expectInOrder(
             transcript,
@@ -3743,12 +3759,12 @@ struct DungeonTests {
         let transcript = try await play(
             Dungeon(),
             Self.toTheHoard + ["give chalice to thief", "give sword to thief"],
-            seed: 55)
+            seed: 120)
 
         expectInOrder(
             transcript,
             [
-                // Seed 55: he has the chalice in the bag by the time you offer it.
+                // Seed 120: he has the chalice in the bag by the time you offer it.
                 "You suddenly notice that the silver chalice vanished.",
                 "You aren't holding that.",
                 "The thief takes it with a mocking little bow",
@@ -3846,7 +3862,7 @@ struct DungeonTests {
                 + ["examine thief", "examine stiletto"]
                 + Array(repeating: "attack thief with sword", count: 3)
                 + ["examine bags", "examine granite wall", "examine chalice"],
-            seed: 55)
+            seed: 98)
 
         expectEveryNounAnswered(transcript, "the thief and his hoard")
     }
@@ -3865,7 +3881,7 @@ struct DungeonTests {
         toMazeFive + mazeFiveToTheCyclops + ["odysseus", "up", "east"]
 
     /// The same road with the thief cut down on the way through, for the tests
-    /// that need to stand in his room twice. Four blows at seed 55 is his own
+    /// that need to stand in his room twice. Four blows at seed 120 is his own
     /// suite's recipe, recorded there because the fight can go either way.
     private static let toTheRoyalPuzzlePastTheThief =
         toMazeFive + mazeFiveToTheCyclops + ["odysseus", "up"]
@@ -3953,7 +3969,7 @@ struct DungeonTests {
     /// passage and left the far side as its one open seam.
     @Test func theTreasureRoomOpensEastOnTheAntechamber() async throws {
         let transcript = try await play(
-            Dungeon(), Self.toTheRoyalPuzzlePastTheThief + ["west", "east"], seed: 55)
+            Dungeon(), Self.toTheRoyalPuzzlePastTheThief + ["west", "east"], seed: 120)
 
         // Fragments chosen to sit inside one wrapped line: the prose is
         // hand-wrapped and nothing in the engine re-wraps it, so an assertion
@@ -3973,7 +3989,7 @@ struct DungeonTests {
     /// truth. Mainframe-only content, so the letter is this project's own.
     @Test func theThiefsNoteWarnsYouCannotGetOut() async throws {
         let transcript = try await play(
-            Dungeon(), Self.toTheRoyalPuzzle + ["read note"], seed: 11)
+            Dungeon(), Self.toTheRoyalPuzzle + ["read note"], seed: 18)
 
         #expect(transcript.contains("will not be able to get out again"))
         #expect(transcript.contains("The Thief"))
@@ -3983,7 +3999,7 @@ struct DungeonTests {
     /// `Location` standing for sixty-four squares.
     @Test func theDropIntoThePuzzleLandsUnderTheCeilingOpening() async throws {
         let transcript = try await play(
-            Dungeon(), Self.intoThePuzzle + ["north", "east"], seed: 11)
+            Dungeon(), Self.intoThePuzzle + ["north", "east"], seed: 18)
 
         expectInOrder(
             transcript,
@@ -4006,7 +4022,7 @@ struct DungeonTests {
     /// diagram of the squares around you.
     @Test func theFirstPushTurnsTheRoomIntoADiagram() async throws {
         let transcript = try await play(
-            Dungeon(), Self.intoThePuzzle + ["push east", "look"], seed: 11)
+            Dungeon(), Self.intoThePuzzle + ["push east", "look"], seed: 18)
 
         expectInOrder(
             transcript,
@@ -4034,7 +4050,7 @@ struct DungeonTests {
                     "down", "push", "push north", "push wall north", "push north wall",
                     "push marble wall",
                 ],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -4056,7 +4072,7 @@ struct DungeonTests {
             Dungeon(),
             Self.toTheRoyalPuzzle
                 + ["down", "push marble wall up", "push sandstone wall south"],
-            seed: 11)
+            seed: 18)
 
         #expect(!transcript.contains("You can't see any such thing"))
         expectInOrder(
@@ -4074,7 +4090,7 @@ struct DungeonTests {
         let transcript = try await play(
             Dungeon(),
             Self.toTheRoyalPuzzle + ["down", "push sand north", "push north"],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -4090,7 +4106,7 @@ struct DungeonTests {
     /// describing rungs that are four squares away.
     @Test func theLadderIsOnlyThereWhenYouAreBesideIt() async throws {
         let transcript = try await play(
-            Dungeon(), Self.intoThePuzzle + ["examine ladder", "climb ladder"], seed: 11)
+            Dungeon(), Self.intoThePuzzle + ["examine ladder", "climb ladder"], seed: 18)
 
         expectInOrder(
             transcript,
@@ -4112,7 +4128,7 @@ struct DungeonTests {
             Dungeon(),
             Self.intoThePuzzle + ["x opening"] + Self.toTheGoldCard
                 + ["up", "examine opening"],
-            seed: 11)
+            seed: 18)
 
         // The control: standing under it, it really is a long way overhead.
         let under = turnOutput(of: "x opening", in: transcript)
@@ -4131,7 +4147,7 @@ struct DungeonTests {
             Dungeon(),
             Self.toTheRoyalPuzzle
                 + ["down", "examine north wall", "examine east wall"],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -4145,7 +4161,7 @@ struct DungeonTests {
     /// cannot do is cut the corner between two walls.
     @Test func aDiagonalIsRefusedOnlyBetweenTwoWalls() async throws {
         let transcript = try await play(
-            Dungeon(), Self.intoThePuzzle + ["southeast"], seed: 11)
+            Dungeon(), Self.intoThePuzzle + ["southeast"], seed: 18)
 
         // From the entry square both flanking squares are walls.
         #expect(transcript.contains("cannot squeeze between them"))
@@ -4160,7 +4176,7 @@ struct DungeonTests {
             Dungeon(),
             Self.toTheCardSquare
                 + ["score", "take card", "score", "read card"],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -4180,7 +4196,7 @@ struct DungeonTests {
             Dungeon(),
             Self.toTheCardSquare
                 + ["north", "look", "take card"],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -4200,7 +4216,7 @@ struct DungeonTests {
             Dungeon(),
             Self.toTheCardSquare + ["take card"]
                 + Self.cardSquareToTheWayOut + ["up", "score", "inventory"],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -4227,7 +4243,7 @@ struct DungeonTests {
             Self.toTheCardSquare
                 + ["take card", "push south", "push west", "south"]
                 + ["put sword in slit", "put card in slit", "west", "north", "inventory"],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -4250,7 +4266,7 @@ struct DungeonTests {
             Dungeon(),
             Self.toTheRoyalPuzzle
                 + ["down", "push east", "south", "southwest", "push north", "up"],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -4269,7 +4285,7 @@ struct DungeonTests {
                 + ["north", "north", "northwest", "push west", "south"]
                 + ["southeast", "southeast", "push south", "push west", "south"]
                 + ["put card in slit", "west", "north", "examine hole", "down"],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -4287,7 +4303,7 @@ struct DungeonTests {
     /// and its steel door is shut until the slit has been fed.
     @Test func theSideRoomIsReachedFromAboveAndItsDoorStartsShut() async throws {
         let transcript = try await play(
-            Dungeon(), Self.toTheRoyalPuzzle + ["south", "east", "north"], seed: 11)
+            Dungeon(), Self.toTheRoyalPuzzle + ["south", "east", "north"], seed: 18)
 
         expectInOrder(
             transcript,
@@ -4314,7 +4330,7 @@ struct DungeonTests {
                 + Self.toTheGoldCard
                 + ["examine card", "take card", "push south", "push west", "south"]
                 + ["examine slit", "examine door"],
-            seed: 11)
+            seed: 18)
 
         expectEveryNounAnswered(transcript, "the Royal Puzzle")
     }
@@ -4350,7 +4366,7 @@ struct DungeonTests {
         let transcript = try await play(
             Dungeon(),
             Self.toTheRoyalPuzzlePastTheThief + ["south", "north", "west", "east", "down"],
-            seed: 55)
+            seed: 120)
 
         expectInOrder(
             transcript,
@@ -4384,7 +4400,7 @@ struct DungeonTests {
     /// in hand — the two things the oak door's puzzle needs that are not in the
     /// room with it.
     ///
-    /// Seed 11 throughout, recorded: the troll falls to the first blow.
+    /// Seed 18 throughout, recorded: the troll falls to the first blow.
     private static let toTheTinyRoom =
         ["take mat"] + intoTheCellarWithTheRope
         + ["east", "attack troll with sword", "drop sword"]
@@ -4414,7 +4430,7 @@ struct DungeonTests {
     /// the broken timber carried up out of the mine. Those two are what
     /// `SLIDE-EXIT` reads, and there is no other way to the red sphere.
     ///
-    /// Seed 11 throughout, recorded: the troll falls to the first blow.
+    /// Seed 18 throughout, recorded: the troll falls to the first blow.
     private static let toTheChuteWithTheTimber =
         intoTheCellarWithTheRope
         + ["east", "attack troll with sword", "drop sword"]
@@ -4436,7 +4452,7 @@ struct DungeonTests {
     /// This is that milestone, and the seam is the whole of what joins the
     /// palantir wing to the rest of the map on foot.
     @Test func theTorchRoomsWestDoorwayOpensOnTheTinyRoom() async throws {
-        let transcript = try await play(Dungeon(), Self.toTheTinyRoom + ["east"], seed: 11)
+        let transcript = try await play(Dungeon(), Self.toTheTinyRoom + ["east"], seed: 18)
 
         expectInOrder(
             transcript,
@@ -4452,7 +4468,7 @@ struct DungeonTests {
         let transcript = try await play(
             Dungeon(),
             Self.toTheTinyRoom + ["look through window", "north", "enter window"],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -4480,7 +4496,7 @@ struct DungeonTests {
                     "take mat", "take key", "take screwdriver",
                     "look through keyhole", "open lid", "look through keyhole",
                 ],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -4509,7 +4525,7 @@ struct DungeonTests {
             Self.toTheTinyRoom + ["open lid", "put mat under door", "examine door"]
                 + Array(Self.theOakDoorSolve.dropFirst(2))
                 + ["take blue sphere", "score"],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -4539,7 +4555,7 @@ struct DungeonTests {
                     "open lid", "put screwdriver in keyhole", "take screwdriver",
                     "take key", "unlock door with key", "open door",
                 ],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -4563,7 +4579,7 @@ struct DungeonTests {
                     "open lid", "put mat under door", "put screwdriver in keyhole",
                     "take mat", "take key", "take screwdriver", "examine lid",
                 ],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -4588,7 +4604,7 @@ struct DungeonTests {
                     "take screwdriver", "unlock door with lamp",
                     "unlock door with key",
                 ],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -4615,7 +4631,7 @@ struct DungeonTests {
                 + ["tie rope to railing", "down", "west"]
                 + ["open lid", "put mat under door", "put skeleton keys in keyhole"]
                 + ["take mat", "take skeleton keys", "unlock door with skeleton keys"],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -4635,7 +4651,7 @@ struct DungeonTests {
         let transcript = try await play(
             Dungeon(),
             Self.toTheChuteWithTheTimber + ["drop timber", "down"],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(transcript, ["Slide Room", "Cellar"])
         #expect(!transcript.contains("You are hanging on a rope"))
@@ -4650,7 +4666,7 @@ struct DungeonTests {
             Dungeon(),
             Self.toTheChuteWithTheTimber + Self.downTheChuteToTheLedge
                 + ["south", "take red sphere", "north", "up", "up", "up", "score"],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -4674,7 +4690,7 @@ struct DungeonTests {
             Dungeon(),
             Self.toTheChuteWithTheTimber
                 + ["tie rope to timber", "tie rope to lamp", "tie rope"],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -4694,7 +4710,7 @@ struct DungeonTests {
             Self.toTheChuteWithTheTimber
                 + ["drop timber", "tie rope to timber", "down"]
                 + Array(repeating: "listen", count: 8),
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -4713,7 +4729,7 @@ struct DungeonTests {
             Dungeon(),
             Self.toTheChuteWithTheTimber
                 + ["drop timber", "tie rope to timber", "down", "take rope", "drop rope"],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -4736,7 +4752,7 @@ struct DungeonTests {
             Dungeon(),
             Self.toTheChuteWithTheTimber
                 + ["drop timber", "tie rope to timber", "look", "take timber", "look"],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -4764,7 +4780,7 @@ struct DungeonTests {
             Dungeon(),
             Self.toTheTinyRoom + Self.theOakDoorSolve
                 + ["take blue sphere", "look in blue sphere", "score"],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -4786,7 +4802,7 @@ struct DungeonTests {
             Dungeon(),
             Self.toTheChuteWithTheTimber + Self.downTheChuteToTheLedge
                 + ["south", "take red sphere", "look in red sphere"],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -4870,7 +4886,7 @@ struct DungeonTests {
                     "examine table", "examine crack", "examine sphere", "examine window",
                     "examine lid", "examine keyhole", "examine key", "examine glow",
                 ],
-            seed: 11)
+            seed: 18)
 
         expectEveryNounAnswered(transcript, "the Tiny Room and the Dreary Room")
     }
@@ -4885,7 +4901,7 @@ struct DungeonTests {
                     "examine chute", "examine rope", "examine opening",
                     "south", "examine stove", "examine crack", "examine sphere",
                 ],
-            seed: 11)
+            seed: 18)
 
         expectEveryNounAnswered(transcript, "the chute, the ledge and the Sooty Room")
     }
@@ -4912,7 +4928,7 @@ struct DungeonTests {
             Dungeon(),
             Self.toTheChuteWithTheTimber + Self.downTheChuteToTheLedge
                 + ["south", "north", "up", "up", "up"],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,

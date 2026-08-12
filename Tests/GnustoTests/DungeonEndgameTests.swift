@@ -17,7 +17,7 @@ import Testing
 /// door is a score test, so there is no shorter way in. ``intoTheEndgame`` is
 /// that walk, shared.
 struct DungeonEndgameTests {
-    static let seed: UInt64 = 2
+    static let seed: UInt64 = 52
 
     // MARK: - The box, as a value
 
@@ -473,8 +473,8 @@ struct DungeonEndgameTests {
     // MARK: - The Dungeon Master
 
     /// Three questions drawn from eight, and the door opens on the third right
-    /// answer. Seed 2 draws the Altar, "Hello, Sailor!" and the haunted object,
-    /// in that order.
+    /// answer. Seed 52 draws the robber's hideaway, "Hello, Sailor!" and the
+    /// Altar, in that order.
     @Test func threeRightAnswersOpenTheWoodenDoor() async throws {
         let transcript = try await play(
             Dungeon(),
@@ -485,10 +485,10 @@ struct DungeonEndgameTests {
             transcript,
             [
                 "three questions stand",
-                "Beside the Temple",
+                "robber's hideaway",
                 "\"Correct,\" says the voice.",
                 "Hello, Sailor!",
-                "haunted",
+                "Beside the Temple",
                 "You may pass.",
                 "Narrow Corridor",
                 "Your score is 681 of a possible 716",
@@ -514,7 +514,7 @@ struct DungeonEndgameTests {
         // He answers the knock with the question he is still waiting on, once,
         // and does not also complain that you have kept him waiting.
         let reknock = turnOutput(of: "knock on oaken door", in: transcript)
-        #expect(occurrences(of: "Beside the Temple", in: reknock) == 1)
+        #expect(occurrences(of: "robber's hideaway", in: reknock) == 1)
         #expect(!reknock.contains("The voice waits, and then puts the question again."))
 
         // The control, both ways: the clock restarted rather than stopping. The
@@ -531,7 +531,9 @@ struct DungeonEndgameTests {
         let transcript = try await play(
             Dungeon(),
             Self.pastTheCrypt + Self.throughTheBox + [
-                "knock on door", "answer temple", "answer flask", "answer rub",
+                // Five that are all wrong for the question seed 52 puts first,
+                // which is the robber's hideaway and answers to *temple*.
+                "knock on door", "answer forest", "answer flask", "answer rub",
                 "answer skeleton", "answer knife", "knock on door", "open door",
             ],
             seed: Self.seed)
@@ -656,9 +658,13 @@ struct DungeonEndgameTests {
         "push red panel", "lower pole", "push pine", "north",
     ]
 
-    /// Knocking, and seed 2's three answers.
+    /// Knocking, and seed 52's three answers. The voice draws its three from
+    /// eight by rejection sampling (`Endgame+Master.swift`), so both which
+    /// questions are asked and how many draws that costs move with the seed —
+    /// which is why this list is re-derived rather than re-ordered whenever the
+    /// walkthrough's seed does.
     static let theQuiz: [String] = [
-        "knock on door", "answer forest", "answer nowhere", "answer knife",
+        "knock on door", "answer temple", "answer nowhere", "answer forest",
     ]
 
     /// The corridors, the sundial, and the cell that rides out of the slot.

@@ -30,23 +30,24 @@ extension Prose {
         The troll fends you off with a menacing gesture.
         """
 
-    /// Written fresh, and a deliberate departure: `gverbs.zil`'s `V-HELLO`
-    /// answers a greeting to *any* villain with "The troll bows his head to you
-    /// in greeting", and both sources carry it. The engine's own placeholder —
-    /// "The troll nods, and says nothing." — is the same courtesy in a flatter
-    /// voice, and the 2026-08-11 round (#233) filed it as a line asserted from a
-    /// creature mid-swing.
+    /// Written fresh, and *not* a departure — which it briefly was. `V-HELLO`
+    /// (`gverbs.zil:176`) answers a greeting to any villain with a bow, and both
+    /// sources carry it; the engine's placeholder, "The troll nods, and says
+    /// nothing.", is the same courtesy flattened, and the 2026-08-11 round
+    /// (#233) filed the flatness as the defect. #236 replaced it with a hostile
+    /// line, on the argument that a bow reads oddly from a creature that swings
+    /// at you every single turn you stand in the room.
     ///
-    /// The source's troll is *not* perpetually mid-swing — `I-FIGHT` gives him a
-    /// `PROB 33` of striking first and he otherwise stands blocking, which is
-    /// what his listing line says he does. This game's is, because
-    /// `MeleeCombat.aggression` rolls every turn with no strike-first
-    /// probability. So this line is true of the troll this game ships and would
-    /// be wrong for the one `dung.355` describes. `FIDELITY.md` records both,
-    /// and says to revisit these lines if the aggression is ever brought back.
+    /// That argument was about *this game's* troll and not the source's, and
+    /// #237 has since removed it: `I-FIGHT` gives him a `PROB 33` of striking
+    /// first and he spends the other two turns in three doing exactly what his
+    /// listing line says he does, which is block — and so does ours now. A troll
+    /// who blocks can be civil about it, so the courtesy comes back, in this
+    /// game's own words rather than the ZIL's and with the blocking in the same
+    /// breath.
     static let trollGreeted = """
-        The troll says something in his own tongue and hefts the axe. It was
-        not an introduction.
+        The troll inclines his head to you, and goes on blocking every way
+        out of the room.
         """
 
     /// The second state, which is the source's own count — `TROLL-FUNCTION`

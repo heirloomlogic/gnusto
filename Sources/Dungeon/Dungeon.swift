@@ -952,10 +952,15 @@ struct Dungeon: Game, GameMain {
             try volcano.detonate(house.brick)
         }
 
-        // The troll swings back. He is the only thing in this milestone that
-        // will kill you other than the dark.
+        // The troll swings back — but only at someone who has swung at him, or
+        // one turn in three of his own accord: `F-FIRST?` (`1actions.zil:702`,
+        // and `act1.254`'s troll before it) is `<PROB 33>`. The other two turns
+        // he does what his listing line says he does, which is block. He is
+        // still the only thing in this milestone that will kill you other than
+        // the dark.
         melee.aggression(
             of: cellar.troll, key: "troll", daemonName: "melee.troll",
+            strikesFirst: 33,
             prose: MeleeCombat.AggressionProse(
                 miss: [Prose.trollSwipeMiss],
                 wound: [Prose.trollSwipeWound],

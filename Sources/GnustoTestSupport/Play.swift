@@ -84,3 +84,18 @@ public func output(before marker: String, in transcript: String) -> String {
 public func occurrences(of needle: String, in haystack: some StringProtocol) -> Int {
     haystack.ranges(of: needle).count
 }
+
+/// The lines of a transcript slice that mention `needle`, in order.
+///
+/// The shape behind every "did he speak on each of these turns, and in the same
+/// order?" assertion — and behind the alignment tests, which compare two runs'
+/// lists to prove a guard burned no randomness. Those want one definition of
+/// what counts as a line rather than one per test file.
+///
+/// - Parameters:
+///   - needle: the text a line has to contain to count.
+///   - slice: the transcript, or a slice of one.
+/// - Returns: the matching lines, in transcript order.
+public func lines(mentioning needle: String, in slice: String) -> [String] {
+    slice.split(separator: "\n").filter { $0.contains(needle) }.map(String.init)
+}

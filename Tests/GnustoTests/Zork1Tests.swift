@@ -370,9 +370,12 @@ struct Zork1Tests {
     }
 
     @Test func trollBlocksThePassagesUntilDefeated() async throws {
-        // Seed 39, recorded (thief daemons on the clock): the troll's
-        // swings graze once but never land; the sword goes miss, wound,
-        // then the killing blow on the third attack (strength 2).
+        // Seed 39, recorded (thief daemons on the clock): he never opens a
+        // fight of his own here, so the three blows go in uncontested and the
+        // last one lands. Before #237 the seed was picked for a run of swings
+        // that grazed and never landed; now it is picked for the two turns in
+        // three he spends blocking instead — which is what the room's own
+        // listing line has always claimed he does.
         let transcript = try await play(
             Zork1(),
             [
@@ -400,20 +403,25 @@ struct Zork1Tests {
     }
 
     @Test func theTrollCanKillYou() async throws {
-        // Seed 1, recorded: the troll's first swing is the last word — but not
-        // a final one. The kill resurrects you in the forest at a cost of ten
-        // points, and UNDO still rewinds the whole fatal turn to the brink.
+        // The fight is picked rather than walked into, since #237: unprovoked he
+        // starts one on a third of turns, so a death on arrival is a one-in-ten
+        // seed and pinning for it would be testing the rare path. What is being
+        // measured is the same — the kill resurrects you in the forest at a cost
+        // of ten points, and UNDO still rewinds the whole fatal turn to the
+        // brink. Seed 0, recorded: he outlasts four blows and the last word is
+        // his.
         let transcript = try await play(
             Zork1(),
             [
                 "south", "east", "open window", "west", "west",
                 "take sword", "take lantern", "turn on lantern",
                 "push rug", "open trap door", "down",
-                "north",
+                "north", "attack troll", "attack troll", "attack troll",
+                "attack troll",
                 "score",
                 "undo", "south",
             ],
-            seed: 1)
+            seed: 0)
         expectInOrder(
             transcript,
             [
@@ -436,10 +444,11 @@ struct Zork1Tests {
     /// Here the troll's victim was holding the sword and the (lit) lantern;
     /// after the resurrection the sword is waiting at West of House.
     @Test func deathScattersYourBelongings() async throws {
-        // Seed 1, recorded: the troll kills on the first turn in his room. The
-        // belongings now strew at random across the grounds; on this seed the
-        // sword lands on the Forest Path. The lamp is the exception — it always
-        // returns to the Living Room so light survives a death — asserted in
+        // Seed 0, recorded: the troll outlasts four blows and wins. The fight is
+        // picked rather than walked into — see theTrollCanKillYou for why. The
+        // belongings strew at random across the grounds; on this seed the sword
+        // lands on the Forest Path. The lamp is the exception — it always returns
+        // to the Living Room so light survives a death — asserted in
         // theLampAlwaysComesHomeAfterDeath below.
         let transcript = try await play(
             Zork1(),
@@ -447,12 +456,13 @@ struct Zork1Tests {
                 "south", "east", "open window", "west", "west",
                 "take sword", "take lantern", "turn on lantern",
                 "push rug", "open trap door", "down",
-                "north",
+                "north", "attack troll", "attack troll", "attack troll",
+                "attack troll",
                 // Resurrected in the forest, empty-handed. Fetch the sword from
                 // where the death flung it.
                 "north", "take sword",  // → Forest Path
             ],
-            seed: 1)
+            seed: 0)
         expectInOrder(
             transcript,
             [
@@ -468,20 +478,21 @@ struct Zork1Tests {
         // The one exception to the random strew: however the rest of your kit
         // scatters, the lamp always turns up back in the Living Room, so a death
         // in the dark can never strand you without a light (the kept
-        // anti-softlock). Seed 1, the same one-blow troll kill; walk back in
-        // through the window and the lit lamp is waiting on the floor.
+        // anti-softlock). Seed 0, the same lost fight; walk back in through the
+        // window and the lit lamp is waiting on the floor.
         let transcript = try await play(
             Zork1(),
             [
                 "south", "east", "open window", "west", "west",
                 "take sword", "take lantern", "turn on lantern",
                 "push rug", "open trap door", "down",
-                "north",
+                "north", "attack troll", "attack troll", "attack troll",
+                "attack troll",
                 // Resurrected in the forest; return to the Living Room for the lamp.
                 "east", "south", "east", "west", "west",  // → Kitchen → Living Room
                 "take lantern",
             ],
-            seed: 1)
+            seed: 0)
         expectInOrder(
             transcript,
             [
@@ -1021,9 +1032,9 @@ struct Zork1Tests {
                 "open bottle", "pour water",  // empty it out
                 "fill bottle",  // now it fills from the reservoir
             ],
-            // Seed 0: taking the bottle in the kitchen
-            // shifts the RNG stream, so this walkthrough needs its own seed to
-            // still land the three-blow troll kill.
+            // Seed 0: taking the bottle in the kitchen shifts the RNG stream,
+            // so this walkthrough needs its own seed to still land the troll
+            // inside the blows it budgets.
             seed: 0)
         expectInOrder(
             transcript,

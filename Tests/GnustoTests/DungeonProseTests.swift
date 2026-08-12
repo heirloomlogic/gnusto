@@ -36,7 +36,7 @@ struct DungeonProseTests {
         "push rug", "open trap door", "down",
     ]
 
-    /// The descent with the troll cut down at the end of it. Seed 11 throughout,
+    /// The descent with the troll cut down at the end of it. Seed 18 throughout,
     /// as in `DungeonTests`: he falls to the first blow, so the fight is one
     /// command and the transcript is about what it is about.
     private static let pastTheTroll =
@@ -50,7 +50,7 @@ struct DungeonProseTests {
     private static let toTheDam = pastTheTroll + crossroadsToTheDam
 
     /// Drain the reservoir, cross its bed, climb out through Atlantis — the
-    /// northern Mirror Room. Seed 11.
+    /// northern Mirror Room. Seed 18.
     private static let toTheMirrors =
         pastTheTroll + ["drop sword"] + crossroadsToTheDam
         + ["north", "north", "push yellow button", "take wrench", "south", "south"]
@@ -59,18 +59,18 @@ struct DungeonProseTests {
 
     /// Out through the mirror network to the Shaft Room, up the Wooden Tunnel
     /// and west into the Smelly Room — the Gas Room is one flight below it.
-    /// Seed 11.
+    /// Seed 18.
     private static let toTheSmellyRoom =
         toTheMirrors + ["west", "west", "north", "northeast", "north", "west"]
 
-    /// Into the maze as far as Maze-5, then on to the Cyclops Room. Seed 11.
+    /// Into the maze as far as Maze-5, then on to the Cyclops Room. Seed 18.
     private static let toTheCyclops =
         pastTheTroll + ["south", "south", "east", "up"]
         + ["southwest", "east", "south", "northeast"]
 
     /// The same, with the peppers and the bottle, and the giant asleep on the
     /// drugged water at the end of it — the one way to have a cyclops who is
-    /// both subdued and still standing in the room. Seed 11.
+    /// both subdued and still standing in the room. Seed 18.
     private static let toTheSleepingCyclops =
         intoTheKitchen + ["take bottle", "open sack", "take lunch"]
         + downTheTrapDoor + ["east", "attack troll with sword"]
@@ -78,10 +78,10 @@ struct DungeonProseTests {
         + ["give water to cyclops", "give lunch to cyclops", "give water to cyclops"]
 
     /// Through the wall the shout opens, and up into the thief's Treasure Room.
-    /// Arriving is what puts him into play. Seed 11.
+    /// Arriving is what puts him into play. Seed 18.
     private static let toTheHoard = toTheCyclops + ["odysseus", "up"]
 
-    /// The road to the tea party, and on to the three buttons. Seed 10
+    /// The road to the tea party, and on to the three buttons. Seed 41
     /// throughout, as in `DungeonTests`: the carousel is a lottery until the
     /// triangular button stops it, and this is the draw that lands.
     private static let toTheButtons =
@@ -119,7 +119,7 @@ struct DungeonProseTests {
                 // *lantern*, not *lamp*: `turnOutput` matches the first
                 // occurrence, and the route already spent "turn on lamp".
                 + ["west", "turn on lantern"],
-            seed: 11)
+            seed: 18)
 
         #expect(!transcript.contains("The lamp appears a bit dimmer"))
         #expect(!transcript.contains("The lamp is nearly out"))
@@ -135,7 +135,7 @@ struct DungeonProseTests {
             Dungeon(),
             ["south", "east", "open window", "west", "west", "take lamp", "turn on lamp"]
                 + Array(repeating: "wait", count: 360),
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -158,7 +158,7 @@ struct DungeonProseTests {
                 // them.
                 + ["north", "take matchbook", "drop matchbook", "light match", "south"]
                 + ["wait", "wait"],
-            seed: 11)
+            seed: 18)
 
         #expect(transcript.contains("Dam Lobby"))
         #expect(transcript.contains("One of the matches starts to burn."))
@@ -171,7 +171,7 @@ struct DungeonProseTests {
         let transcript = try await play(
             Dungeon(),
             Self.toTheDam + ["north", "take matchbook", "light match", "wait", "wait"],
-            seed: 11)
+            seed: 18)
 
         #expect(transcript.contains("The match has gone out."))
     }
@@ -185,7 +185,7 @@ struct DungeonProseTests {
         let transcript = try await play(
             Dungeon(),
             ["south", "east", "x window", "open window", "west", "examine window"],
-            seed: 11)
+            seed: 18)
 
         #expect(
             turnOutput(of: "x window", in: transcript)
@@ -207,7 +207,7 @@ struct DungeonProseTests {
             Self.toTheButtons + ["push triangular button"]
                 + Self.buttonsBackToTheRoundRoom
                 + ["southeast", "x whirring", "north"],
-            seed: 10)
+            seed: 41)
 
         #expect(transcript.contains("Winding Passage"))
         // The paragraph, the noun and the wall, none of them still whirring.
@@ -226,7 +226,7 @@ struct DungeonProseTests {
         let transcript = try await play(
             Dungeon(),
             Self.toTheMirrors + ["rub mirror", "west", "x whirring", "north"],
-            seed: 11)
+            seed: 18)
 
         #expect(transcript.contains("Winding Passage"))
         #expect(transcript.contains("a faint whirring — the round room"))
@@ -246,7 +246,7 @@ struct DungeonProseTests {
         let transcript = try await play(
             Dungeon(),
             ["north", "north", "up", "x tree", "down", "examine tree"],
-            seed: 11)
+            seed: 18)
 
         let aloft = turnOutput(of: "x tree", in: transcript)
         #expect(aloft.contains("The trunk is broad enough up here to lean against"))
@@ -267,7 +267,7 @@ struct DungeonProseTests {
             Dungeon(),
             ["south", "east", "east", "southeast", "southeast", "down"]
                 + ["x passage", "x falls"],
-            seed: 11)
+            seed: 18)
 
         #expect(transcript.contains("Rocky Ledge"))
         let passage = turnOutput(of: "x passage", in: transcript)
@@ -286,7 +286,7 @@ struct DungeonProseTests {
             Dungeon(),
             Self.intoTheCellar + ["south", "south", "west"]
                 + ["northwest", "west", "x curtain", "walk through curtain", "examine curtain"],
-            seed: 10)
+            seed: 41)
 
         #expect(transcript.contains("Safety Depository"))
         let inDepository = turnOutput(of: "x curtain", in: transcript)
@@ -308,7 +308,7 @@ struct DungeonProseTests {
         let transcript = try await play(
             Dungeon(),
             ["south", "east", "east", "x leaves", "take leaves", "push leaves", "look"],
-            seed: 11)
+            seed: 18)
 
         #expect(transcript.contains("Clearing"))
         // The listing line prints, and goes on printing: nothing in this game
@@ -339,7 +339,7 @@ struct DungeonProseTests {
             Dungeon(),
             Self.pastTheTroll + ["south", "south", "east", "up"]
                 + ["take knife", "x knife", "examine sword"],
-            seed: 11)
+            seed: 18)
 
         // The control: the pairing the game really does have is a mechanic.
         #expect(transcript.contains("your sword gives a single pulse of"))
@@ -361,7 +361,7 @@ struct DungeonProseTests {
     /// (#233)
     @Test func theWaterRoomsAnswerTheVerbsThatAreAboutWater() async throws {
         let transcript = try await play(
-            Dungeon(), Self.toTheDam + ["drink water", "fill lamp", "dive"], seed: 11)
+            Dungeon(), Self.toTheDam + ["drink water", "fill lamp", "dive"], seed: 18)
 
         #expect(transcript.contains("Flood Control Dam #3"))
         let drank = turnOutput(of: "drink water", in: transcript)
@@ -383,7 +383,7 @@ struct DungeonProseTests {
         let transcript = try await play(
             Dungeon(),
             ["drink mailbox", "fill mailbox", "pour mailbox", "dive", "swim"],
-            seed: 11)
+            seed: 18)
 
         #expect(
             turnOutput(of: "drink mailbox", in: transcript)
@@ -418,7 +418,7 @@ struct DungeonProseTests {
                 + Self.downTheTrapDoor + ["east", "attack troll with sword"]
                 + Self.crossroadsToTheDam
                 + ["fill bottle", "north", "pour water", "fill bottle"],
-            seed: 11)
+            seed: 18)
 
         expectInOrder(
             transcript,
@@ -438,7 +438,7 @@ struct DungeonProseTests {
     /// (#233)
     @Test func theTwoRoomsNamedForTheirSmellAnswerSmell() async throws {
         let transcript = try await play(
-            Dungeon(), Self.toTheSmellyRoom + ["smell", "down", "sniff"], seed: 11)
+            Dungeon(), Self.toTheSmellyRoom + ["smell", "down", "sniff"], seed: 18)
 
         expectInOrder(transcript, ["Smelly Room", "Gas Room"])
         let upstairs = turnOutput(of: "smell", in: transcript)
@@ -455,7 +455,7 @@ struct DungeonProseTests {
     /// row installing it re-voiced nothing while the survey counted it done.
     @Test func aRoomWithNothingToSmellAnswersInTheGamesOwnVoice() async throws {
         let transcript = try await play(
-            Dungeon(), Self.toTheSmellyRoom.dropLast() + ["smell"], seed: 11)
+            Dungeon(), Self.toTheSmellyRoom.dropLast() + ["smell"], seed: 18)
 
         #expect(transcript.contains("Wooden Tunnel"))
         let here = turnOutput(of: "smell", in: transcript)
@@ -473,7 +473,7 @@ struct DungeonProseTests {
             Dungeon(),
             Self.toTheSmellyRoom
                 + ["x staircase", "x odor", "down", "examine stairs", "x gas"],
-            seed: 11)
+            seed: 18)
 
         let above = turnOutput(of: "x staircase", in: transcript)
         #expect(above.contains("Narrow steps cut into the rock"))
@@ -496,33 +496,38 @@ struct DungeonProseTests {
     /// **The troll answers for himself.** `greet troll` reached
     /// `GameText.greets` — "The troll nods, and says nothing." — which the
     /// engine documents as a placeholder an actor's own rules are expected to
-    /// answer over, and he had none. Both sources do better than the
-    /// placeholder and neither does what this game does: `V-HELLO` has every
-    /// villain *bow*, and the round (#233) filed the courtesy itself as the
-    /// defect, on a creature whose melee daemon swings every turn you stand in
-    /// the room with him. (#233)
+    /// answer over, and he had none. What replaces it is courteous, because
+    /// `V-HELLO` has every villain *bow* and both sources carry it; what the
+    /// round (#233) actually filed was the flatness, not the courtesy.
+    ///
+    /// #236 read it the other way and answered with hostility, on the ground
+    /// that a bow is incongruous from something that swings at you every turn.
+    /// That was true of this game's troll and not the source's, and #237 made
+    /// the two agree — he blocks now, two turns in three, exactly as his listing
+    /// line always claimed. So the line names the blocking and keeps the bow.
+    /// (#233, #236, #237)
     @Test func theTrollAnswersAGreetingInHisOwnWords() async throws {
         let transcript = try await play(
             Dungeon(),
             Self.intoTheKitchen + Self.downTheTrapDoor + ["east", "greet troll"],
-            seed: 11)
+            seed: 18)
 
         #expect(transcript.contains("Troll Room"))
         let greeting = turnOutput(of: "greet troll", in: transcript)
-        #expect(greeting.contains("The troll says something in his own tongue"))
+        #expect(greeting.contains("The troll inclines his head to you"))
         #expect(!greeting.contains("nods, and says nothing"))
     }
 
     /// And the second state, which is why this is a rule rather than a re-voiced
     /// `GameText` key: a troll battered unconscious cannot answer anybody.
-    /// `TROLL-FUNCTION` gates its own `HELLO` branch the same way. Seed 0: the
+    /// `TROLL-FUNCTION` gates its own `HELLO` branch the same way. Seed 8: the
     /// first blow knocks him down instead of killing him.
     @Test func aTrollOnTheFloorCannotHearAGreeting() async throws {
         let transcript = try await play(
             Dungeon(),
             Self.intoTheKitchen + Self.downTheTrapDoor
                 + ["east", "attack troll with sword", "hello troll"],
-            seed: 0)
+            seed: 8)
 
         expectInOrder(
             transcript,
@@ -530,19 +535,21 @@ struct DungeonProseTests {
                 "The troll is battered into unconsciousness.",
                 "The troll is face down in the dirt",
             ])
-        #expect(!transcript.contains("says something in his own tongue"))
+        #expect(!transcript.contains("The troll inclines his head to you"))
     }
 
     /// The cyclops had the same gap, and no `HELLO` branch in the source at all
-    /// — he falls straight to the villain bow. A giant waiting for you to be
-    /// lunch does not exchange greetings.
+    /// — he falls straight to the villain bow. He has no strike-first branch
+    /// either, so of the four he is the one with least claim to a hostile
+    /// answer: he never starts anything. Courteous and in no hurry, which from
+    /// something waiting to be fed is the worse of the two readings.
     @Test func theCyclopsAnswersAGreetingInHisOwnWords() async throws {
         let transcript = try await play(
-            Dungeon(), Self.toTheCyclops + ["greet cyclops"], seed: 11)
+            Dungeon(), Self.toTheCyclops + ["greet cyclops"], seed: 18)
 
         #expect(transcript.contains("Cyclops Room"))
         let greeting = turnOutput(of: "greet cyclops", in: transcript)
-        #expect(greeting.contains("the way a man looks at a small meal"))
+        #expect(greeting.contains("The cyclops lowers his head to you"))
         #expect(!greeting.contains("nods, and says nothing"))
     }
 
@@ -551,7 +558,7 @@ struct DungeonProseTests {
     /// all — the shout sends him through the wall and out of scope.
     @Test func theSleepingCyclopsIsLeftAsleep() async throws {
         let transcript = try await play(
-            Dungeon(), Self.toTheSleepingCyclops + ["hello cyclops"], seed: 11)
+            Dungeon(), Self.toTheSleepingCyclops + ["hello cyclops"], seed: 18)
 
         expectInOrder(
             transcript,
@@ -559,7 +566,7 @@ struct DungeonProseTests {
                 "falls fast asleep",
                 "The cyclops sleeps on.",
             ])
-        #expect(!transcript.contains("the way a man looks at a small meal"))
+        #expect(!transcript.contains("The cyclops lowers his head to you"))
     }
 
     /// The thief is the one villain in the game whose courtesy is the point of
@@ -568,7 +575,7 @@ struct DungeonProseTests {
     /// flat placeholder.
     @Test func theThiefAnswersAGreetingInHisOwnWords() async throws {
         let transcript = try await play(
-            Dungeon(), Self.toTheHoard + ["greet thief"], seed: 11)
+            Dungeon(), Self.toTheHoard + ["greet thief"], seed: 18)
 
         #expect(transcript.contains("Treasure Room"))
         let greeting = turnOutput(of: "greet thief", in: transcript)
@@ -581,7 +588,7 @@ struct DungeonProseTests {
     /// it nod. It takes orders and it does not converse.
     @Test func theRobotDoesNotNod() async throws {
         let transcript = try await play(
-            Dungeon(), Self.toTheButtons.dropLast() + ["greet robot"], seed: 10)
+            Dungeon(), Self.toTheButtons.dropLast() + ["greet robot"], seed: 41)
 
         #expect(transcript.contains("Low Room"))
         let greeting = turnOutput(of: "greet robot", in: transcript)
@@ -598,7 +605,7 @@ struct DungeonProseTests {
     /// that where a description names its exits, the description yields. (#233)
     @Test func theShaftNamesTheSideTheWideLedgeIsActuallyOn() async throws {
         let transcript = try await play(
-            Dungeon(), DungeonTests.toTheWideLedge, seed: 11)
+            Dungeon(), DungeonTests.toTheWideLedge, seed: 18)
 
         expectInOrder(
             transcript,
@@ -621,7 +628,7 @@ struct DungeonProseTests {
     /// where its ledge is. That one is untouched.
     @Test func theShaftStillNamesTheNarrowLedgeToTheWest() async throws {
         let transcript = try await play(
-            Dungeon(), DungeonTests.toTheNarrowLedge, seed: 11)
+            Dungeon(), DungeonTests.toTheNarrowLedge, seed: 18)
 
         expectInOrder(
             transcript,

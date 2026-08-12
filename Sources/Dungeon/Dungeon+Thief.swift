@@ -299,9 +299,12 @@ extension Dungeon {
 
         // He fights back only where he has something to lose. Everywhere else
         // he is evasive, which is what makes the roaming half of him a nuisance
-        // rather than a death sentence.
+        // rather than a death sentence. Even there he starts one turn in five of
+        // his own accord — `F-FIRST?` (`1actions.zil:2064`) is `<PROB 20>` — and
+        // waits to be swung at the rest of the time.
         melee.aggression(
             of: thief.thief, key: "thief", daemonName: "thief.fights",
+            strikesFirst: 20,
             while: { thief.thief.isIn(maze.treasureRoom) && !thief.thiefAdmiring },
             prose: MeleeCombat.AggressionProse(
                 miss: [Prose.thiefSwipeMiss],
