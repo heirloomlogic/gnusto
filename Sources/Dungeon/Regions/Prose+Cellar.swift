@@ -46,8 +46,8 @@ extension Prose {
     /// game's own words rather than the ZIL's and with the blocking in the same
     /// breath.
     static let trollGreeted = """
-        The troll inclines his head to you with rough courtesy, and goes on
-        blocking every way out of the room.
+        The troll inclines his head to you, and goes on blocking every way
+        out of the room.
         """
 
     /// The second state, which is the source's own count — `TROLL-FUNCTION`

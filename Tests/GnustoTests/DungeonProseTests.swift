@@ -514,7 +514,7 @@ struct DungeonProseTests {
 
         #expect(transcript.contains("Troll Room"))
         let greeting = turnOutput(of: "greet troll", in: transcript)
-        #expect(greeting.contains("inclines his head to you with rough courtesy"))
+        #expect(greeting.contains("The troll inclines his head to you"))
         #expect(!greeting.contains("nods, and says nothing"))
     }
 
@@ -535,7 +535,7 @@ struct DungeonProseTests {
                 "The troll is battered into unconsciousness.",
                 "The troll is face down in the dirt",
             ])
-        #expect(!transcript.contains("inclines his head to you with rough courtesy"))
+        #expect(!transcript.contains("The troll inclines his head to you"))
     }
 
     /// The cyclops had the same gap, and no `HELLO` branch in the source at all
@@ -549,7 +549,7 @@ struct DungeonProseTests {
 
         #expect(transcript.contains("Cyclops Room"))
         let greeting = turnOutput(of: "greet cyclops", in: transcript)
-        #expect(greeting.contains("lowers his head to you with enormous dignity"))
+        #expect(greeting.contains("The cyclops lowers his head to you"))
         #expect(!greeting.contains("nods, and says nothing"))
     }
 
@@ -566,7 +566,7 @@ struct DungeonProseTests {
                 "falls fast asleep",
                 "The cyclops sleeps on.",
             ])
-        #expect(!transcript.contains("lowers his head to you with enormous dignity"))
+        #expect(!transcript.contains("The cyclops lowers his head to you"))
     }
 
     /// The thief is the one villain in the game whose courtesy is the point of

@@ -257,8 +257,7 @@ extension Prose {
     /// the more unsettling reading anyway, from something that is waiting to be
     /// fed.
     static let cyclopsGreeted = """
-        The cyclops lowers his head to you with enormous dignity, and goes back
-        to waiting.
+        The cyclops lowers his head to you, and goes back to waiting.
         """
 
     /// Asleep at the foot of the stairs, which is the only other state he can
