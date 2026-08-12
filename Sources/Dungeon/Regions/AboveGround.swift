@@ -267,26 +267,23 @@ struct DungeonAboveGround: GameContent {
     let treesAtBehindHouse = forestStand()
 
     /// Four paths going four different places, so the text is the parameter and
-    /// only the shape is shared. The Clearing's goes home, Canyon Bottom's runs
-    /// north under the wall, and Behind House's is the one that answers
-    /// *clearing* as well — the clearing east is what that path is for, and the
-    /// only true thing to say about it from here is that you cannot see it yet.
-    /// (#233)
-    private static func pathScenery(_ text: String, _ nouns: ItemTrait) -> Item {
+    /// the nouns are not: every one of them is a path, and the whole of what
+    /// differs is where it goes. The Clearing's goes home and Canyon Bottom's
+    /// runs north under the wall. (#233)
+    private static func pathScenery(_ text: String) -> Item {
         Item {
             name("path")
             adjectives("beaten", "narrow")
-            nouns
+            synonyms("path", "track", "trail")
             description(text)
             scenery
         }
     }
 
-    let pathAtSouthOfHouse = pathScenery(Prose.pathAtSouth, synonyms("path", "track", "trail"))
-    let pathAtBehindHouse = pathScenery(Prose.pathAtBehind, synonyms("path", "track", "trail"))
-    let pathAtClearing = pathScenery(Prose.pathAtClearing, synonyms("path", "track", "trail"))
-    let pathAtCanyonBottom = pathScenery(
-        Prose.pathAtCanyonBottom, synonyms("path", "track", "trail"))
+    let pathAtSouthOfHouse = pathScenery(Prose.pathAtSouth)
+    let pathAtBehindHouse = pathScenery(Prose.pathAtBehind)
+    let pathAtClearing = pathScenery(Prose.pathAtClearing)
+    let pathAtCanyonBottom = pathScenery(Prose.pathAtCanyonBottom)
 
     /// The game's opening room names a field and nothing in it answered for
     /// one. (#233)
@@ -303,7 +300,6 @@ struct DungeonAboveGround: GameContent {
     /// two things, which is the whole argument of this repair.
     let clearingFromBehindHouse = Item {
         name("clearing")
-        synonyms("clearing")
         description(Prose.clearingFromBehindHouse)
         scenery
     }

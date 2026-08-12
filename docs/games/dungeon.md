@@ -1224,10 +1224,20 @@ different hat.
     gave five rooms one description and eight nouns each, and not one of the
     forty was a decision anybody made — the factory made the wrong answer cheap.
     Where a factory takes its nouns as a parameter they are still read one room
-    at a time; `forestStand()` and `pathScenery(_:_:)` share only the shape and
+    at a time; `forestStand()` and `pathScenery(_:)` share only the shape and
     leave the words at the call site for that reason. And the same factory is the
     right answer to the opposite problem: `path` appears in four above-ground
     rooms going four different places, and one item cannot be in four rooms.
+
+    **This rule is a warning about noun lists, not an argument against sharing an
+    item.** Where the *text* is genuinely one text — the wall, the ground, the
+    white house from its four sides — one object in many rooms is what the source
+    does, and `dungeon-atlas.md`'s Globals section describes the `GOBJECT` this
+    engine has no answer for. About sixty-five of this game's scenery items owe
+    to that gap; `Bank.swift`'s sixteen walls file the loudest evidence for it,
+    and the factories above are the seam it would plug into. Four of the items
+    this pass adds belong to that count. The other twenty-nine have text written
+    for their own room and would survive the feature intact.
 
 ### What the third pass changed, and what it did not
 

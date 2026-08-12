@@ -830,10 +830,7 @@ struct DungeonProseTests {
     @Test func volcanoViewAnswersForTheLedgeYouAreOnAndTheOnesAcross() async throws {
         let transcript = try await play(
             Dungeon(),
-            // On foot, south out of the Egyptian Room: the one ledge no balloon
-            // can land on.
-            Self.pastTheTroll + ["north", "down", "west", "northwest", "south", "down"]
-                + ["x ledge", "x ledges", "x rim", "x bottom"],
+            DungeonTests.toVolcanoView + ["x ledge", "x ledges", "x rim", "x bottom"],
             seed: 18)
 
         #expect(transcript.contains("Volcano View"))

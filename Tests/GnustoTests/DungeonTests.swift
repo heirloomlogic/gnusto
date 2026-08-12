@@ -718,7 +718,7 @@ struct DungeonTests {
             ])
 
         expectEveryNounAnswered(transcript, "the house exterior, the wood, the clearing")
-        #expect(!transcript.contains("Which do you mean"))
+        expectNoAmbiguity(transcript, "the four house sides and the clearing")
     }
 
     @Test func everyNounTheCanyonPrintsAnswers() async throws {
@@ -734,7 +734,7 @@ struct DungeonTests {
             ])
 
         expectEveryNounAnswered(transcript, "the Great Canyon")
-        #expect(!transcript.contains("Which do you mean"))
+        expectNoAmbiguity(transcript, "the Great Canyon")
     }
 
     /// The house and the rooms below it, by the route that does not go past the
@@ -1644,7 +1644,7 @@ struct DungeonTests {
 
         #expect(transcript.contains("Lower Shaft"))
         expectEveryNounAnswered(transcript, "the Lower Shaft")
-        #expect(!transcript.contains("Which do you mean"))
+        expectNoAmbiguity(transcript, "the Lower Shaft")
     }
 
     /// **`LIGHT-SHAFT`: ten points, once, for standing at the bottom of the
@@ -3029,6 +3029,11 @@ struct DungeonTests {
     /// walks the shaft's scenery from the floor up.
     static let toTheVolcano = toTheGlacier + throughTheGlacier
 
+    /// The third ledge, and the one no balloon reaches: on foot, south out of
+    /// the Egyptian Room. Not `private`, for the same reason. Seed 18.
+    static let toVolcanoView =
+        pastTheTroll + ["north", "down", "west", "northwest", "south", "down"]
+
     /// The same road with the wire coil picked up off the bank at Stream View,
     /// which is what the brick wants in it.
     private static let toTheVolcanoWithTheWire =
@@ -3592,9 +3597,11 @@ struct DungeonTests {
             seed: 18)
 
         expectEveryNounAnswered(transcript, "the volcano floor, the shaft and the Library")
-        // The Library's four books share every noun on this list, and the
-        // volcano floor's two items share none.
-        #expect(!transcript.contains("Which do you mean: the ash"))
+        // No `expectNoAmbiguity` here, and it is the one sweep that cannot have
+        // one: `x pages` in the Library is answered by four books, which is the
+        // room's own long-standing four-way `book` and not this pass's doing.
+        // The volcano floor's own two items are pinned positively instead, by
+        // `theVolcanoFloorIsNotTheShaftOverhead`.
     }
 
     /// Volcano View is reached on foot and by no other road, so it belongs to no
@@ -3604,14 +3611,14 @@ struct DungeonTests {
     @Test func everyNounVolcanoViewPrints() async throws {
         let transcript = try await play(
             Dungeon(),
-            Self.pastTheTroll
-                + ["north", "down", "west", "northwest", "south", "down"]
+            Self.toVolcanoView
                 + ["examine ledge", "examine ledges", "examine rim", "examine bottom"]
                 + ["examine volcano", "examine exit", "examine walls"],
             seed: 18)
 
         #expect(transcript.contains("Volcano View"))
         expectEveryNounAnswered(transcript, "Volcano View")
+        expectNoAmbiguity(transcript, "Volcano View")
     }
 
     @Test func everyNounTheWideLedgeAndTheDustyRoomPrint() async throws {
@@ -3629,7 +3636,7 @@ struct DungeonTests {
         // Only one door stands here until the gnome is paid on this ledge, so
         // the bare noun resolves. `theTwoDoorsOnTheWideLedgeAreTwoDoors` owns
         // the frame where it does not.
-        #expect(!transcript.contains("Which do you mean"))
+        expectNoAmbiguity(transcript, "the Wide Ledge, with the gnome unpaid")
     }
 
     /// With milestone 6 in, the volcano joins the graph at both ends: the Ruby

@@ -233,9 +233,12 @@ struct DungeonCoalMine: GameContent {
     /// is a hundred feet up in the Shaft Room, so `x shaft` and `x chain` both
     /// went unanswered in the room whose paragraph is about them. (#233)
     let lowerShaftChain = Item {
+        // One chain, so one vocabulary: the whole of the difference between
+        // this and ``ironChain`` is which end of it you are standing at, and
+        // that is the description's business.
         name("iron chain")
-        adjectives("heavy", "iron", "long")
-        synonyms("chain", "shaft", "framework")
+        adjectives("heavy", "iron", "metal")
+        synonyms("chain", "framework", "shaft")
         description(Prose.lowerShaftChain)
         scenery
     }

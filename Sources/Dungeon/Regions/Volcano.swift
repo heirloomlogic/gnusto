@@ -398,26 +398,28 @@ struct DungeonVolcano: GameContent {
         scenery
     }
 
-    let wallsAtCore = shaftScenery(
-        Prose.volcanoWallsFromTheAir,
-        synonyms("volcano", "rock", "walls", "wall", "air"))
+    /// The rock beside the basket, which is the same rock and the same sentence
+    /// at the three levels that have one. No noun parameter: what a hand can
+    /// touch from a basket is the shaft wall and nothing else, at every height.
+    /// `VAIR3` reads it too — its near item used to wear
+    /// ``Prose/volcanoRimFromBelow``, which is a line about the rim overhead.
+    private static func basketRock() -> Item {
+        shaftScenery(
+            Prose.volcanoWallsFromTheAir,
+            synonyms("volcano", "rock", "walls", "wall", "side", "air"))
+    }
+
+    let wallsAtCore = basketRock()
     let viewFromCore = distanceScenery(
         Prose.shaftFromCore,
         synonyms("view", "top", "rim", "bottom", "floor", "cone", "light"))
 
-    let wallsAtNarrowLedgeAir = shaftScenery(
-        Prose.volcanoWallsFromTheAir,
-        synonyms("volcano", "rock", "walls", "wall", "air", "side"))
+    let wallsAtNarrowLedgeAir = basketRock()
     let viewFromNarrowLedgeAir = distanceScenery(
         Prose.shaftFromNarrowLedgeAir,
         synonyms("view", "rim", "top", "floor", "bottom", "ledge", "shelf"))
 
-    // `VAIR3`'s near item wore the far line: `volcanoRimFromBelow` is about the
-    // rim overhead, and `rock`, `walls` and `wall` are the shaft beside the
-    // basket. It joins its two siblings.
-    let wallsAtViewingLedgeAir = shaftScenery(
-        Prose.volcanoWallsFromTheAir,
-        synonyms("volcano", "rock", "walls", "wall", "air"))
+    let wallsAtViewingLedgeAir = basketRock()
     let viewFromViewingLedgeAir = distanceScenery(
         Prose.shaftFromViewingLedgeAir,
         synonyms("view", "rim", "top", "floor", "bottom", "ledge", "shelf"))
