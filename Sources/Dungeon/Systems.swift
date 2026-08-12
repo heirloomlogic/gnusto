@@ -144,12 +144,14 @@ extension Intent {
 }
 
 /// The game-wide verb layer: the vocabulary above, plus a courteous default in
-/// the Infocom register for every verb this game cares about — its own and the
-/// engine's stubs alike.
+/// the Infocom register for each of **this game's own** verbs.
 ///
-/// The `actions` block is longer than `verbs` on purpose. An engine stub needs
-/// no `verbs` entry (the word is already in the vocabulary) and shadows no
-/// behavior, so re-voicing one is a single line that warns about nothing.
+/// The two blocks line up almost one to one, and that is the point. Every verb
+/// here is one this game minted, so it needs a `verbs` entry to exist and an
+/// `actions` row to answer when nothing more specific does. The engine's stub
+/// verbs are **not** here — a stub already has the word and already has a line,
+/// so re-voicing one is an assignment rather than a claim on the verb. That is
+/// ``Prose/stubFloor``, and the reason is in this file's `actions` block. (#233)
 struct DungeonSystems: GameContent {
     var verbs: [SyntaxRule] {
         [
@@ -175,39 +177,17 @@ struct DungeonSystems: GameContent {
         // them in the two rooms that share the granite wall.
         action(.temple) { try reply(Prose.graniteWordInert) }
         action(.treasure) { try reply(Prose.graniteWordInert) }
-        // The five verbs about water, together because they answer one
-        // question. Each line is a claim about the thing named and not about
-        // the room, which is what lets one sentence stand in all 196 of them —
-        // the shape `.swim` already had and `.dive` was left out of. What *is*
-        // drinkable, pourable or fillable claims the command at stage 3, ahead
-        // of this table: the bottle and its water in ``DungeonHouse``, the
-        // bucket's water in `Dungeon.bucketRules`, and each water room's own
-        // scenery in ``DungeonDam`` and ``DungeonRiver``.
-        //
-        // Here rather than in a `world.before` for exactly that reason: an
-        // action runs *last* (`DefaultActions.run`), so nothing can be
-        // pre-empted by it, where a world rule runs first and would answer
-        // ahead of `bottle.before(.fill)` and break the walkthrough. It is the
-        // ordering `Dungeon.bucketRules` already documents.
-        action(.swim) { try reply(Prose.noSwimming) }
-        action(.dive) { try reply(Prose.noDiving) }
-        action(.drink) { try reply(Prose.cantDrinkThat) }
-        action(.pour) { try reply(Prose.cantPourThat) }
-        action(.fill) { try reply(Prose.cantFillThat) }
-        action(.squeeze) { try reply(Prose.verbSqueezeNothing) }
-        action(.give) { try reply(Prose.verbGiveNoTaker) }
-        action(.dig) { try reply(Prose.verbDigFutile) }
-        action(.wave) { try reply(Prose.verbWave) }
-        action(.touch) { try reply(Prose.verbTouch) }
-        action(.smell) { try reply(Prose.verbSmell) }
-        action(.pray) { try reply(Prose.verbPray) }
-        action(.climb) { try reply(Prose.verbClimbNothing) }
-        action(.tie) { try reply(Prose.verbTieNothing) }
-        action(.untie) { try reply(Prose.verbUntieNothing) }
-        // One row covers `xyzzy` and `plugh` both — the engine puts them on a
-        // single intent, and in the mainframe neither does anything.
-        action(.xyzzy) { try reply(Prose.verbMagicWordInert) }
         // `.diagnose` has no default here: the host answers it, because the
         // report reads the host's death counter.
+        //
+        // Nothing else belongs in this block. Every **engine stub** this game
+        // re-voices — the seventeen that used to sit here, and the thirty that
+        // never had a line at all — is now `text.stubs` in ``Dungeon``, which
+        // is ``Prose/stubFloor``. An `action(…)` row on a stub intent claims
+        // the verb outright: `DefaultActions.run` returns from the override
+        // before `requireReach`, so the row silently gave up the engine's reach
+        // guard, the object's name, its number agreement and the
+        // `yourself`/`somebodyElse` guards, none of which this game meant to
+        // trade away for a change of voice. (#233)
     }
 }

@@ -437,10 +437,6 @@ extension Prose {
         The wooden door stands open, and a corridor runs away north beyond it.
         """
 
-    static let knockNoAnswer = """
-        You knock, and nobody answers.
-        """
-
     static let narrowCorridor = """
         This is a narrow corridor running north. The wooden door is behind you
         to the south.

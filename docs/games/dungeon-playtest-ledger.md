@@ -216,5 +216,34 @@ seven engine cases in `DoorTests`.
 **Still open: two boxes and three rows.** Box 12, the stub-verb register, and box 15, the
 harness room census; rows 89, 92 and 94, each for the reason given above.
 
+**2026-08-12 — box 12 closed by the fifth pass, and no row moves.** The stub-verb
+register: the game answered seventeen of the engine's ~47 stub verbs in its own voice and
+thirty in the engine's, and the whole floor is now written, installed as `text.stubs`
+rather than as `action(…)` rows. The six stock lines that take a person as their subject
+went with it, and so did `GnustoMeleeCombat`'s four, which turned out to be the most
+reachable stock lines left in the game.
+
+**Row 92 does not flip, and that is the point worth recording.** It is the only
+`register-mismatch` row in the table and it is the obvious candidate, but its key
+normalizes to the `swim` sentence — the same sentence as row 89 — and this pass does not
+change `noSwimming`. Flipping it would be the mistake this file has now warned about
+twice: claiming credit for a repair to a different sentence. Box 12 is closed on the
+issue's checklist, where it lives; it has no row of its own here, because it came from the
+survey's `reskinnedStubs` field rather than from a charter reading a line in a frame.
+
+| Class | Row(s) | What was done |
+|---|---|---|
+| `register-mismatch` | none — box 12 has no key | **The floor is written, all ~47 of it, and every line is a claim about the thing named or the player rather than about the room.** `listen` asserted quiet — false in the Loud Room; `sit`, `buy` and `curse` reported on surroundings they cannot see. The mechanism moved with the words: `DefaultActions.run` returns from an `action(…)` override *before* `requireReach`, so all seventeen re-skins had silently given up the engine's reach guard, the object's name, its number agreement and the `yourself`/`somebodyElse` guards. `text.stubs` keeps them, and is also what the harness's own survey measures — the rows were invisible to the round that filed this box. |
+| `prose-untrue-of-state` | none — found by this pass | **The Loud Room went on saying "The noise in here is past bearing" after `echo` had settled it.** A static paragraph with a state behind it, which is box 3's mechanism at a site that pass did not reach. It surfaced from the other end: the new `listen` says the listener learns nothing, which contradicts a paragraph calling the din unbearable. The room describes itself with a rule now, as the carousel next door already did. |
+
+Cover is six new tests in `DungeonProseTests`, one of them a sweep that compares every
+line in ``GameText/StubReplies`` against the engine's and derives its own completeness
+from `Mirror`, so a forty-eighth stub arriving with no Dungeon line fails rather than
+passing quietly.
+
+**Still open: one box and three rows.** Box 15, the harness room census — a hand edit to
+`playtest.js` that no `fix` mode can make, with the word census in the same file as the
+worked template. Rows 89, 92 and 94 stand for the reasons given above.
+
 Pass every `fixed` and `refuted` key above as `ledgerKeys` on the next round. The list is
 seventeen keys longer than it was.

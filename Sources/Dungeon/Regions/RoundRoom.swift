@@ -79,9 +79,10 @@ struct DungeonRoundRoom: GameContent {
         dark
     }
 
+    /// Like the carousel above, its description is a rule rather than a
+    /// constant: the last sentence is about the roar, and `echo` stops it.
     let loudRoom = Location {
         name("Loud Room")
-        description(Prose.loudRoom)
         dark
     }
 
@@ -306,6 +307,11 @@ struct DungeonRoundRoom: GameContent {
             carouselSpinning
                 ? "\(Prose.roundRoom)\n\n\(Prose.roundRoomCompass)"
                 : Prose.roundRoomStilled
+        }
+
+        // Same shape, one room along: the roar is state, and `echo` clears it.
+        loudRoom.describe {
+            loudRoomAcousticsFixed ? Prose.loudRoomStilled : Prose.loudRoom
         }
 
         // The machinery under the floor, which milestone 5 gave an off switch.

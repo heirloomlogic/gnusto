@@ -115,6 +115,35 @@ public var actions: [IntentAction] {
 }
 ```
 
+### To change only the words, assign the line
+
+An `actions` row replaces the stub's **whole** default, and the reach guard is
+part of that default: `DefaultActions.run` returns from an override before it
+calls `requireReach`, because a game that claims the verb is saying it will
+decide for itself what "close enough to touch" means. `GnustoMeleeCombat` wants
+exactly that.
+
+A game that only wants a different sentence does not, and gets it anyway. So
+re-voicing is an assignment, not a row:
+
+```swift
+var text: GameText {
+    var text = GameText()
+    text.stubs.climb = "That is not something you could climb."
+    return text
+}
+```
+
+The assignment keeps the reach guard, the object's rendered name, its number
+agreement, and the ``GameText/StubReplies/yourself`` and
+``GameText/StubReplies/somebodyElse`` guards. The row keeps none of them, and
+nothing warns — a row and an assignment look equally reasonable at the call site.
+`Sources/Dungeon/` re-skinned seventeen stubs with rows and had given all four
+away without noticing.
+
+**The rule of thumb:** an `actions` row means *this game has behavior here*. If
+all it has is a sentence, assign the sentence.
+
 ### Use `reply`, not `say`
 
 The stage-4 default *says* its line rather than refusing, so world time passes on

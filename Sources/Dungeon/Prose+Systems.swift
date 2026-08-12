@@ -1,6 +1,11 @@
-/// The systems layer's prose: the game's own front matter, the stage-4 verb
-/// defaults, the liquid lines, and the handful of stock engine messages this
-/// game re-voices.
+/// The systems layer's prose: the game's own front matter, the defaults for the
+/// verbs this game minted, the liquid lines, and the handful of stock engine
+/// messages this game re-voices.
+///
+/// The engine's **stub** verbs are next door in ``Prose/stubFloor``. The split
+/// follows the mechanism: a line here backs an `action(…)` row on a verb this
+/// game owns, and a line there is assigned into `text.stubs` for a verb the
+/// engine already answers. (#233)
 ///
 /// The three-way rule, and the rule for which file a line goes in, are stated
 /// once on ``Prose``.
@@ -19,10 +24,6 @@ extension Prose {
 
     static let verbWindNothing = "You cannot wind that up."
 
-    static let verbGiveNoTaker = "There is nobody here who wants it."
-
-    static let verbDigFutile = "Digging here gets you nothing but dirty hands."
-
     static let verbWave = "You wave. Nothing happens."
 
     static let verbTouch = "You feel nothing unexpected."
@@ -35,12 +36,6 @@ extension Prose {
     static let verbSmell = "Nothing here smells of anything in particular."
 
     static let verbPray = "Nothing in particular answers."
-
-    static let verbClimbNothing = "There is nothing here worth climbing."
-
-    static let verbTieNothing = "You cannot tie that to anything."
-
-    static let verbUntieNothing = "That is not tied to anything."
 
     static let verbMagicWordInert = "A hollow voice says nothing at all."
 
@@ -63,8 +58,6 @@ extension Prose {
     static let verbInflateNothing = "You can't inflate that."
 
     static let verbDeflateNothing = "You can't deflate that."
-
-    static let verbSqueezeNothing = "Squeezing it accomplishes nothing."
 
     /// `V-THROUGH`'s last line, trilogy-verbatim (`gverbs.zil:1438`; the
     /// mainframe's is `act3.199:450`). One verb answers `enter` and `go

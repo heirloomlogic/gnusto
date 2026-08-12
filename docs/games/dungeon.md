@@ -1352,3 +1352,68 @@ what they scored. Three things are worth naming:
 
 Still open on #233 after this pass: box 12, the stub-verb register, and box 15,
 the harness room census.
+
+### The fifth pass: the floor speaks in the game's voice
+
+Box 12, and the last of the prose boxes. The round found the game answering
+seventeen of the engine's stub verbs in its own Infocom voice and thirty in the
+engine's plain modern one, so a narrator the rest of the game had retired took
+over the moment a player tried a verb nothing was behind. It was filed
+`needs-human` — *"how much of the engine's register to keep is policy"* — and
+two things already written down decide it. The [mechanics
+contract](#mechanics-contract) says the game *"does not read as a modern
+pastiche"*, which a stock stub is. And rule 10 says a game-wide default may not
+be a claim about any one room, which several stock stubs are.
+
+That second half is what makes this a correctness box rather than a taste one.
+
+16. **A verb the game does not answer is still the game speaking.** A stub verb
+    has no mechanic behind it, which makes it easy to read as the engine's
+    business rather than the game's. It is not: it is a line printed in this
+    game's window, in this game's voice, on a turn the player chose. So the
+    floor is written, all of it, and every line of it is a claim about **the
+    thing named** or about **the player** — never about the room, because the
+    same sentence prints in all 196 of them. `listen` asserted quiet, `sit`
+    reported the furniture, `buy` reported the shops; none of those three can
+    see where they are standing.
+
+    Two things follow that are easy to miss. The first is that **the mechanism
+    matters as much as the words.** These lines used to be `action(…)` rows, and
+    `DefaultActions.run` returns from an action override *before*
+    `requireReach`, so every verb this game re-voiced had quietly traded away
+    the engine's reach guard, the object's name, its number agreement, and the
+    `yourself`/`somebodyElse` guards. `text.stubs` keeps all of it and costs a
+    line each. An `action(…)` row on a stub intent means *"this game has
+    behavior here"*; if all it has is a sentence, it wants the assignment.
+
+    The second is that **the floor is wherever the verb actually lands.** The
+    single most reachable stock line in the game turned out not to be a stub at
+    all: `GnustoMeleeCombat` claims `.attack` outright, and its four refusals
+    were the plugin's own modern defaults. A plugin that answers a verb owns
+    that verb's register too.
+
+### What the fifth pass changed, and what it did not
+
+The mechanics contract is untouched a fifth time, and both walkthroughs score
+what they scored. Three things are worth naming:
+
+- **A room stopped roaring after it had been quieted.** The Loud Room carried a
+  static paragraph ending *"The noise in here is past bearing"*, and `echo`
+  settles the acoustics without changing a word of it — box 3's mechanism at a
+  site that pass did not reach. It surfaced from the other end: the new `listen`
+  reports that the listener learns nothing, which is a contradiction two lines
+  from a paragraph calling the din unbearable. The repair is the carousel's, one
+  room away — the room describes itself with a rule.
+- **The one line that could not be made true was left alone, deliberately.**
+  `smell` is a plain line the engine cannot hand an object to, so `smell sack`
+  still answers about the surroundings. #236 settled that wording and the two
+  rooms that are *about* a smell take the verb back with rules of their own;
+  rewriting it here would re-open a decision for a channel that still could not
+  name what it was asked about.
+- **`Sources/Zork1/` has the same shape and is not touched.** It re-skins
+  thirteen stubs through the same `action(…)` idiom and constructs
+  `MeleeCombat()` with the same stock text. Its floor should be Zork I's own
+  `gverbs.zil` lines under the verbatim rule, which is a different job from this
+  one; it is filed rather than folded in.
+
+Still open on #233 after this pass: box 15, the harness room census.

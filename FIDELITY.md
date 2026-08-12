@@ -3185,6 +3185,53 @@ games.
   `act3.199:450`, so both sources have it. It replaces the Bank's "It is solid,
   and you are not.", which was true of a wall and strange about a pebble.
 
+#### The stub floor, and five verb replies taken verbatim (#233, fifth pass)
+
+Box 12 gave the game a written answer for every stub verb, and doing it raised a
+question this file had not had to answer before: **the verbatim policy above is
+about room descriptions, and says nothing about verb replies.**
+
+`docs/games/dungeon-prose-comparison.md` — the authority the prose rule names —
+compares *descriptions*, mainframe against trilogy. Nothing in it covers what
+`V-YELL` prints. The precedent was already in the tree and undocumented:
+``Prose/drinkWater`` is `V-EAT`'s "Thank you very much. It really hit the spot."
+(`gverbs.zil:483`), taken as-is since the bottle was written.
+
+**The policy, stated here because it now covers more than one line.** A trilogy
+verb reply is treated exactly as an `identical` description is: taken verbatim
+where the mainframe world does not contradict it, under the same MIT grant
+`THIRD_PARTY_NOTICES` records, and adapted where it does. These are not
+divergences — they are the rule applied to a channel the rule had not yet been
+asked about — but they are listed so a reader who finds a trilogy sentence in
+this game's mouth can tell it was a decision:
+
+- **"Aaaarrrrgggghhhh!"** — `V-YELL`, `gverbs.zil:1616`.
+- **"Wheeeeeeeeee!!!!!"** — one of `V-SKIP`'s four (`WHEEEEE`, `gverbs.zil:1272`);
+  the game picks the entry the table is named for rather than rotating, because a
+  stub with no mechanic behind it does not earn a random draw.
+- **"You are already standing, I think."** — `V-STAND`, `gverbs.zil:1305`.
+- **"Such language in a high-class establishment like this!"** — `V-CURSES`,
+  `gverbs.zil:382`.
+- **"With luck, your wish will come true."** — `V-WISH`, `gverbs.zil:1610`.
+
+Two more are **adapted rather than taken**, both because the original narrates in
+the first person where this game narrates in the second: `V-KISS`'s "I'd sooner
+kiss a pig." becomes *"You would sooner kiss a pig."*, and `V-ATTACK`'s "I've
+known strange people, but fighting a …?" becomes *"You have known strange people,
+but fighting that?"*. `V-SQUEEZE`'s actor branch ("The … does not understand
+this.", `:1287`) and `V-COMMAND`'s ("The … pays no attention.", `:359`) are taken
+with only the engine's own article handling replacing the ZIL's.
+
+**One departure, and it is a mechanism rather than a sentence.** The floor is
+installed as `text.stubs` rather than as the `action(…)` rows this game and
+`Sources/Zork1/` both used. Nothing in either source distinguishes the two — the
+distinction is Gnusto's — but it matters here because an action override returns
+before `requireReach`, so the old rows answered about things the player could not
+touch. `Sources/Zork1/` still uses the rows and still constructs `MeleeCombat()`
+with the plugin's stock text; that is filed rather than fixed here, because its
+floor should be Zork I's own lines under the verbatim rule and this game's is an
+adaptation.
+
 #### Where the sources actually are
 
 Several notes above say a question "cannot be settled from the repository,
