@@ -67,8 +67,8 @@ extension Prose {
     /// answer `x floor` and `x ash` to a player standing on the floor with the
     /// ash over their boots. (#233)
     static let volcanoBottomAsh = """
-        Grey ash, cold and deep enough to walk quietly in, banked against the
-        wall that rings the place. The one gap in it opens north.
+        Grey ash, cold and deep enough to walk quietly in, banked up against
+        the wall that rings the place. The one gap in that wall is north.
         """
 
     /// Adapted. `LAVA` is `minor`, but the trilogy's line sends its second exit

@@ -60,8 +60,16 @@ extension Prose {
         """
 
     static let pathAtBehind = """
-        A track worn through the grass, going east into the trees. Somewhere
-        past them it reaches a clearing you cannot see from here.
+        A track worn through the grass, going east into the trees toward the
+        clearing.
+        """
+
+    /// The clearing named from Behind House, which is a different place from
+    /// the path that goes to it — this PR's own rule, applied to its own work.
+    /// Answering `x clearing` with a description of a track was the near thing
+    /// speaking for the far one all over again. (#233)
+    static let clearingFromBehindHouse = """
+        Somewhere east past the trees, and nothing of it in sight from here.
         """
 
     static let pathAtClearing = """

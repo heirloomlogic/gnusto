@@ -283,8 +283,7 @@ struct DungeonAboveGround: GameContent {
     }
 
     let pathAtSouthOfHouse = pathScenery(Prose.pathAtSouth, synonyms("path", "track", "trail"))
-    let pathAtBehindHouse = pathScenery(
-        Prose.pathAtBehind, synonyms("path", "track", "trail", "clearing"))
+    let pathAtBehindHouse = pathScenery(Prose.pathAtBehind, synonyms("path", "track", "trail"))
     let pathAtClearing = pathScenery(Prose.pathAtClearing, synonyms("path", "track", "trail"))
     let pathAtCanyonBottom = pathScenery(
         Prose.pathAtCanyonBottom, synonyms("path", "track", "trail"))
@@ -296,6 +295,16 @@ struct DungeonAboveGround: GameContent {
         adjectives("open")
         synonyms("field", "grass", "ground")
         description(Prose.openField)
+        scenery
+    }
+
+    /// The clearing named from Behind House, one room short of it. Its own item
+    /// and not a synonym on the path: a track and the place the track goes are
+    /// two things, which is the whole argument of this repair.
+    let clearingFromBehindHouse = Item {
+        name("clearing")
+        synonyms("clearing")
+        description(Prose.clearingFromBehindHouse)
         scenery
     }
 
@@ -716,6 +725,7 @@ struct DungeonAboveGround: GameContent {
         clearingGround.starts(in: clearing)
         pathAtSouthOfHouse.starts(in: southOfHouse)
         pathAtBehindHouse.starts(in: behindHouse)
+        clearingFromBehindHouse.starts(in: behindHouse)
         pathAtClearing.starts(in: clearing)
         pathAtCanyonBottom.starts(in: canyonBottom)
         greatTree.starts(in: forestTree)
