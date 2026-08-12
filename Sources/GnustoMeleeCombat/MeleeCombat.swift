@@ -154,7 +154,7 @@ public struct MeleeCombat: GameContent {
             health = (try? box.decode([String: Int].self, forKey: .health)) ?? [:]
             stunned = (try? box.decode([String: Int].self, forKey: .stunned)) ?? [:]
             engaged = (try? box.decode(Set<String>.self, forKey: .engaged)) ?? []
-            playerHealth = try? box.decode(Int.self, forKey: .playerHealth)
+            playerHealth = (try? box.decodeIfPresent(Int.self, forKey: .playerHealth)) ?? nil
         }
     }
 
@@ -302,9 +302,7 @@ public struct MeleeCombat: GameContent {
             // bare hands, a weapon you aren't holding, a thing that isn't a
             // weapon — all return short of it. Those are the three above, so a
             // refused swing is not a provocation here either.
-            if !ledger.engaged.contains(key) {
-                ledger.engaged.insert(key)
-            }
+            ledger.engaged.insert(key)
 
             var health = ledger.health[key] ?? strength
             if ledger.stunned[key, default: 0] > 0 {
@@ -402,20 +400,19 @@ public struct MeleeCombat: GameContent {
             // Guards before any draw, so quiet turns burn no randomness.
             guard ledgered.health[key] ?? 1 > 0 else { return }
 
-            // Whether the two of them are standing together decides three
-            // separate things below, and it is a pure read, so it is asked once.
-            let together = actor.location.map { $0 == player.location } ?? false
+            // Both of these are read off the snapshot before anything below
+            // writes, so neither can go stale under a later reordering: the
+            // guards further down ask these locals and never the live ledger.
+            let together = actor.location == player.location
+            let wasEngaged = ledgered.engaged.contains(key)
 
-            // `FIGHTBIT`'s clearing rule: `I-FIGHT`'s other branch clears the
-            // bit on every villain who is not in the room, so walking away ends
-            // a fight and walking back asks his strike-first roll again. Ahead
-            // of the host's gate because leaving is the room's business and a
-            // gate that shuts for two turns while he admires a gift must not
-            // read as a truce; ahead of the stun block because a man the player
-            // has walked away from is out of the fight whether he is on his feet
-            // or not. Written only on the transition, so a quiet turn
-            // re-encodes nothing.
-            if !together, ledgered.engaged.contains(key) {
+            // Where `FIGHTBIT` is cleared. Ahead of the host's gate because
+            // leaving is the room's business and a gate that shuts for two turns
+            // while he admires a gift must not read as a truce; ahead of the
+            // stun block because a man the player has walked away from is out of
+            // the fight whether he is on his feet or not. Written only on the
+            // transition, so a quiet turn re-encodes nothing.
+            if !together, wasEngaged {
                 ledger.engaged.remove(key)
             }
             // Coming round happens ahead of the host's gate, because it is not
@@ -447,13 +444,10 @@ public struct MeleeCombat: GameContent {
             // unengaged roll — and only here, behind the gate and behind the
             // same-room guard, so a villain alone in his lair burns no
             // randomness on the hundreds of turns nobody is standing in it.
-            guard
-                ledgered.engaged.contains(key)
-                    || Self.startsAFight(chance: strikesFirst)
-            else { return }
-            // He strikes in the turn he starts it: `F-FIRST?` sets `FIGHTBIT`
-            // and `I-FIGHT` falls straight through to the blow.
-            if !ledgered.engaged.contains(key) {
+            if !wasEngaged {
+                guard Self.startsAFight(chance: strikesFirst) else { return }
+                // He strikes in the turn he starts it: `F-FIRST?` sets
+                // `FIGHTBIT` and `I-FIGHT` falls straight through to the blow.
                 ledger.engaged.insert(key)
             }
 

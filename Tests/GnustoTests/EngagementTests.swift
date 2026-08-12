@@ -87,47 +87,52 @@ struct EngagementTests {
     }
 
     /// The other half of the same reading, and the one that is easy to get
-    /// wrong. `V-ATTACK` (`gverbs.zil:176`) refuses three ways — bare hands, a
-    /// weapon you aren't holding, a thing that isn't a weapon — and every one of
-    /// them returns short of `HERO-BLOW`, so none of them sets the bit. Waving a
-    /// twig at him is not a provocation.
+    /// wrong. `V-ATTACK` (`gverbs.zil:176`) refuses three ways — a thing that
+    /// isn't a weapon, bare hands, a weapon you aren't holding — and every one
+    /// of them returns short of `HERO-BLOW`, where the bit is set. So none of
+    /// the three is a provocation: waving a twig at him is not picking a fight.
     ///
-    /// If someone later moves the engagement write above the weapon resolution,
-    /// this is the test that says so.
-    @Test func aRefusedSwingDoesNotEngageHim() async throws {
+    /// All three, because the argument is about the shape of `V-ATTACK` rather
+    /// than about any one of its branches, and a table makes the fourth one a
+    /// line rather than a test. If someone later moves the engagement write
+    /// above the weapon resolution, this is what says so.
+    @Test(arguments: [
+        ("attack bandit with twig", "The birch twig is no weapon."),
+        ("attack bandit", "You need a weapon."),
+        ("attack bandit with cosh", "You aren't holding the leather cosh."),
+    ])
+    func aRefusedSwingDoesNotEngageHim(swing: String, refusal: String) async throws {
         let transcript = try await play(
-            AmbushGame(),
-            ["attack bandit with twig", "wait", "wait", "wait", "quit"])
-        #expect(transcript.contains("The birch twig is no weapon."))
-        #expect(!transcript.contains("The bandit lunges"))
-        #expect(!transcript.contains("The bandit opens a cut"))
-    }
-
-    /// Bare-handed is the same refusal one door along.
-    @Test func swingingWithNothingInHandDoesNotEngageHimEither() async throws {
-        let transcript = try await play(
-            AmbushGame(),
-            ["attack bandit", "wait", "wait", "wait", "quit"])
-        #expect(transcript.contains("You need a weapon."))
+            AmbushGame(), [swing, "wait", "wait", "wait", "quit"])
+        #expect(transcript.contains(refusal))
         #expect(!transcript.contains("The bandit lunges"))
         #expect(!transcript.contains("The bandit opens a cut"))
     }
 
     // MARK: - A fight, once started, runs
 
-    /// Seed 4, recorded: five turns of standing in it and he answers in every
-    /// one — no quiet turn between the blow that started it and the end of the
-    /// run. At `strikesFirst: 0` the only thing keeping him swinging is the bit.
+    /// Seed 0, recorded: the blow that starts it neither kills him nor knocks
+    /// him down, and he answers it and both waits after it — three turns in the
+    /// room, three swings, no quiet turn among them. At `strikesFirst: 0` the
+    /// only thing keeping him swinging is the bit.
+    ///
+    /// An exact count of his *aggression* lines, and both halves of that matter.
+    /// A per-line check would assert nothing — every line the filter returns
+    /// necessarily mentions him — and counting every line mentioning him would
+    /// count the knockout, which is the player's outcome rather than his answer.
+    /// The seed is chosen so no knockout intervenes, because a stunned villain
+    /// skipping his turn is the design and would make the claim untestable
+    /// rather than false.
     @Test func theFightRunsEveryTurnUntilYouLeave() async throws {
         let transcript = try await play(
             AmbushGame(),
-            ["take cosh", "attack bandit with cosh", "wait", "wait", "wait", "quit"],
-            seed: 4)
-        let after = output(after: "attack bandit with cosh", in: transcript)
-        for turn in banditTurns(in: after) {
-            #expect(turn.contains("The bandit"), "quiet turn in a live fight: \(turn)")
-        }
-        #expect(banditTurns(in: after).count >= 2)
+            ["take cosh", "attack bandit with cosh", "wait", "wait", "quit"],
+            seed: 0)
+        let after = output(after: "> attack bandit with cosh", in: transcript)
+        let swings =
+            lines(mentioning: "The bandit lunges", in: after).count
+            + lines(mentioning: "The bandit opens a cut", in: after).count
+        #expect(swings == 3)
     }
 
     /// `I-FIGHT`'s other branch: the bit is cleared on a villain the player is
@@ -201,7 +206,7 @@ struct EngagementTests {
             ["east", "wait", "wait", "wait", "wait", "wait", "quit"],
             seed: 0)
         #expect(!transcript.contains("The dirk finds nothing"))  // no player blow
-        let turns = skulkerTurns(in: output(after: "> east", in: transcript))
+        let turns = lines(mentioning: "skulker", in: output(after: "> east", in: transcript))
         #expect(turns.count >= 2, "he never started one on this seed")
     }
 
@@ -247,19 +252,7 @@ struct EngagementTests {
             ["east", "wait", "wait", "wait", "quit"],
             seed: seed)
         #expect(
-            skulkerTurns(in: output(after: "> east", in: idleFirst))
-                == skulkerTurns(in: output(after: "> east", in: straightIn)))
-    }
-
-    // MARK: - Helpers
-
-    /// The bandit's lines in a slice, one per turn he spoke in.
-    private func banditTurns(in slice: String) -> [String] {
-        slice.split(separator: "\n").filter { $0.contains("bandit") }.map(String.init)
-    }
-
-    /// The skulker's, likewise.
-    private func skulkerTurns(in slice: String) -> [String] {
-        slice.split(separator: "\n").filter { $0.contains("skulker") }.map(String.init)
+            lines(mentioning: "skulker", in: output(after: "> east", in: idleFirst))
+                == lines(mentioning: "skulker", in: output(after: "> east", in: straightIn)))
     }
 }

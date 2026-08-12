@@ -45,14 +45,9 @@ struct AggressionGateTests {
             GatedArenaGame(),
             ["provoke", "wait", "wait", "wait", "quit"],
             seed: seed)
-        let idled = hecklerLines(in: output(after: "You provoke the heckler.", in: idleFirst))
-        let direct = hecklerLines(in: output(after: "You provoke the heckler.", in: straightIn))
+        let idled = lines(mentioning: "heckler", in: output(after: "You provoke the heckler.", in: idleFirst))
+        let direct = lines(mentioning: "heckler", in: output(after: "You provoke the heckler.", in: straightIn))
         #expect(idled.count >= 2)
         #expect(idled == direct)
-    }
-
-    /// The heckler's aggression lines in a slice of transcript, in order.
-    private func hecklerLines(in slice: String) -> [String] {
-        slice.split(separator: "\n").filter { $0.contains("heckler") }.map(String.init)
     }
 }
