@@ -80,6 +80,13 @@ extension Prose {
         parallel, and about the width of an axe.
         """
 
+    /// Written fresh. The room's first sentence is about them and the troll's
+    /// own line says he blocks all of them, and the word went unanswered. (#233)
+    static let trollRoomPassages = """
+        Four low ways out, one in each wall, and something has been dragged
+        through more than one of them.
+        """
+
     static let axe = """
         A heavy war axe, its edge notched from long use and its head still
         dark with the troll's last argument.

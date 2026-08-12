@@ -143,6 +143,17 @@ struct DungeonCellar: GameContent {
         plural
     }
 
+    /// The room's first noun, and the one the troll's own line is about — he
+    /// "blocks all passages out of the room" — with nothing in the room to
+    /// answer it. (#233)
+    let trollRoomPassages = Item {
+        name("passages")
+        synonyms("passage", "passages", "exits", "exit")
+        description(Prose.trollRoomPassages)
+        scenery
+        plural
+    }
+
     /// The Studio's 69 colors are the joke, so they answer for themselves.
     let paints = Item {
         name("paints")
@@ -197,6 +208,7 @@ struct DungeonCellar: GameContent {
         // gated on a light load — host-wired, since the gate weighs the lamp.
 
         bloodstains.starts(in: trollRoom)
+        trollRoomPassages.starts(in: trollRoom)
         paints.starts(in: studio)
         chasm.starts(in: westOfChasm)
         crawlwayHole.starts(in: crawlway)

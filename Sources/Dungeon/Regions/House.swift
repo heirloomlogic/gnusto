@@ -67,6 +67,16 @@ struct DungeonHouse: GameContent {
         scenery
     }
 
+    /// The way west, which the Kitchen's paragraph names and nothing answered
+    /// for. (#233)
+    let kitchenPassage = Item {
+        name("passage")
+        adjectives("west", "western")
+        synonyms("passage", "passageway")
+        description(Prose.kitchenPassage)
+        scenery
+    }
+
     let kitchenChimney = Item {
         name("chimney")
         adjectives("dark")
@@ -204,6 +214,17 @@ struct DungeonHouse: GameContent {
         adjectives("stone")
         synonyms("mantel", "hooks", "hook", "fireplace")
         description(Prose.mantelpiece)
+        scenery
+    }
+
+    /// The way east, the living room's first noun. No `door`: the gothic door
+    /// and the trap door already answer to that in here, and a third would make
+    /// the parser ask a question with three answers for no gain. (#233)
+    let livingRoomDoorway = Item {
+        name("doorway")
+        adjectives("east", "eastern")
+        synonyms("doorway", "archway")
+        description(Prose.livingRoomDoorway)
         scenery
     }
 
@@ -352,6 +373,25 @@ struct DungeonHouse: GameContent {
         scenery
     }
 
+    /// Two items, because the Cellar's paragraph names two different holes in
+    /// two different walls. One item answering both under one description is
+    /// the defect this round is about at a smaller scale. (#233)
+    let cellarPassage = Item {
+        name("passageway")
+        adjectives("narrow", "east", "eastern")
+        synonyms("passage", "passageway")
+        description(Prose.cellarPassage)
+        scenery
+    }
+
+    let cellarCrawlway = Item {
+        name("crawlway")
+        adjectives("south", "southern")
+        synonyms("crawlway", "crawl")
+        description(Prose.cellarCrawlway)
+        scenery
+    }
+
     // MARK: - Map
 
     var map: WorldMap {
@@ -374,6 +414,7 @@ struct DungeonHouse: GameContent {
 
         window.starts(in: kitchen)
         kitchenStaircase.starts(in: kitchen)
+        kitchenPassage.starts(in: kitchen)
         kitchenChimney.starts(in: kitchen)
         kitchenTable.starts(in: kitchen)
         sack.starts(on: kitchenTable)
@@ -384,6 +425,7 @@ struct DungeonHouse: GameContent {
 
         lantern.starts(in: livingRoom)
         mantelpiece.starts(in: livingRoom)
+        livingRoomDoorway.starts(in: livingRoom)
         sword.starts(in: livingRoom)
         rug.starts(in: livingRoom)
         woodenDoor.starts(in: livingRoom)
@@ -397,6 +439,8 @@ struct DungeonHouse: GameContent {
         brick.starts(in: attic)
 
         cellarRamp.starts(in: cellar)
+        cellarPassage.starts(in: cellar)
+        cellarCrawlway.starts(in: cellar)
 
         // The canary rides sealed inside the egg, which lives in
         // ``DungeonAboveGround`` — so the host places it.

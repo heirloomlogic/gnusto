@@ -169,6 +169,18 @@ struct DungeonRoundRoom: GameContent {
         scenery
     }
 
+    /// And the eight ways out the room is entirely a description of. A rule
+    /// rather than a constant, for the reason the room itself is one: while the
+    /// carousel turns, which passage is which is the thing that will not hold
+    /// still. (#233)
+    let roundRoomPassages = Item {
+        name("passages")
+        adjectives("stone")
+        synonyms("passage", "passages", "exits", "exit")
+        scenery
+        plural
+    }
+
     let eastWestStairway = Item {
         name("stairway")
         adjectives("narrow")
@@ -275,6 +287,7 @@ struct DungeonRoundRoom: GameContent {
         steelBox.starts(in: roundRoom)
         violin.starts(inside: steelBox)
         machinery.starts(in: roundRoom)
+        roundRoomPassages.starts(in: roundRoom)
         eastWestStairway.starts(in: eastWestPassage)
         passageFork.starts(in: nsPassage)
         ravine.starts(in: deepRavine)
@@ -298,6 +311,10 @@ struct DungeonRoundRoom: GameContent {
         // The machinery under the floor, which milestone 5 gave an off switch.
         machinery.describe {
             carouselSpinning ? Prose.roundRoomMachinery : Prose.roundRoomMachineryStopped
+        }
+
+        roundRoomPassages.describe {
+            carouselSpinning ? Prose.roundRoomPassages : Prose.roundRoomPassagesStopped
         }
 
         // The Loud Room's read-loop: your voice booms and the walls fling the

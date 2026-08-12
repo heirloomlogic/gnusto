@@ -748,14 +748,16 @@ struct DungeonTests {
                 "open window", "west",
                 "examine table", "examine staircase", "examine chimney",
                 "examine sack", "examine bottle", "examine window",
+                "examine passage",
                 "west", "examine rug", "examine case", "examine sword",
                 "examine mantelpiece", "examine wooden door", "examine newspaper",
+                "examine doorway",
                 "take lamp", "turn on lamp",
                 "east", "up",
                 "examine table", "examine rope", "examine knife", "examine brick",
                 "down", "west",
                 "push rug", "examine trap door", "open trap door", "down",
-                "examine ramp",
+                "examine ramp", "examine passageway", "examine crawlway",
                 "south", "examine chasm",
                 "north", "examine hole",
                 "south", "examine chimney", "examine fireplace", "examine paints",
@@ -777,6 +779,7 @@ struct DungeonTests {
             Self.intoTheCellar
                 + [
                     "east", "examine troll", "examine bloodstains", "examine walls",
+                    "examine passages",
                 ],
             seed: 19)
 
@@ -833,7 +836,9 @@ struct DungeonTests {
         // obligation to answer any of them with the East-West Passage.
         let transcript = try await play(
             Dungeon(),
-            Self.pastTheTroll + ["north", "east", "examine machinery", "west", "west", "west"],
+            Self.pastTheTroll
+                + ["north", "east", "examine machinery", "examine passages"]
+                + ["west", "west", "west"],
             seed: 18)
 
         expectInOrder(
@@ -1159,7 +1164,8 @@ struct DungeonTests {
                     "northeast", "echo", "examine ceiling", "examine bar",
                     "up", "examine earth", "examine crack",
                     // Deep Canyon is reached deterministically off the dam;
-                    // the Round Room's own noun is swept by the carousel test.
+                    // the Round Room's own nouns are swept by the carousel test
+                    // and by `DungeonProseTests`, which needs both its states.
                     "east", "south", "examine canyon",
                 ],
             seed: 18)

@@ -638,6 +638,38 @@ struct DungeonProseTests {
             ])
     }
 
+    // MARK: - A noun the prose prints with nothing to answer it
+
+    /// **The Round Room's description is entirely about its passages, and the
+    /// parser did not know the word.** Which makes the fix a rule and not a
+    /// constant: while the carousel turns, which of the eight goes where is
+    /// exactly the thing that will not hold still, and this room was already
+    /// repaired once for saying otherwise. (#233)
+    @Test func theRoundRoomsPassagesStopBeingALotteryWhenTheFloorDoes() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheButtons + ["push triangular button"]
+                + Self.buttonsBackToTheRoundRoom + ["x passages"],
+            seed: 41)
+
+        #expect(transcript.contains("Round Room"))
+        let stopped = turnOutput(of: "x passages", in: transcript)
+        #expect(stopped.contains("standing still\nat last long enough to be counted"))
+        #expect(!stopped.contains("no way to tell"))
+    }
+
+    /// The control, with the machinery still under the floor: the same eight
+    /// mouths of stone, and no telling them apart.
+    @Test func theRoundRoomsPassagesAreALotteryWhileTheFloorTurns() async throws {
+        let transcript = try await play(
+            Dungeon(), Self.pastTheTroll + ["north", "east", "x passages"], seed: 18)
+
+        #expect(transcript.contains("Round Room"))
+        let turning = turnOutput(of: "x passages", in: transcript)
+        #expect(turning.contains("no way to tell"))
+        #expect(!turning.contains("long enough to be counted"))
+    }
+
     // MARK: - A synonym list answering about somewhere else
 
     /// **The volcano's floor answered with a description of its sky.**
