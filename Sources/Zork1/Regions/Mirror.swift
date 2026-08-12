@@ -177,14 +177,17 @@ struct ZorkMirror: GameContent {
         // lie on the two rooms' floors, as the original does (fixtures, the
         // mirrors themselves, stay put). Deterministic, no draw. A shattered
         // mirror is dead glass: the touch falls through to the plain reply.
-        mirrorNorth.before(.touch) {
+        // `.board` as well as `.touch`, so `go through mirror` and `enter
+        // mirror` are the same move the hand is: the engine's `.board` walks
+        // doorways now, and this passage is not a declared exit for it to find.
+        mirrorNorth.before(.touch, .board) {
             guard !mirrorBroken else { return }
             swapMirrorFloors()
             say(Prose.mirrorRumble)
             arrive(at: mirrorRoomSouth)
             try handled()
         }
-        mirrorSouth.before(.touch) {
+        mirrorSouth.before(.touch, .board) {
             guard !mirrorBroken else { return }
             swapMirrorFloors()
             say(Prose.mirrorRumble)

@@ -101,8 +101,11 @@ public struct GameText: Sendable {
     public var cantPutOnItself = "You can't put something on itself."
     /// Moving where no exit leads.
     public var cantGoThatWay = "You can't go that way."
-    /// Entering something without the `enterable` trait.
-    public var cantEnterThat = "You can't get into that."
+    /// Entering something that is neither a door on the way out of this room nor
+    /// `enterable`.
+    public var cantEnterThat: @Sendable (_ name: String) -> String = {
+        "You can't get into \($0)."
+    }
     /// Entering an enterable the player is carrying.
     public var cantEnterCarried = "You can't get into something you're carrying."
     /// Entering the vehicle the player is already in.

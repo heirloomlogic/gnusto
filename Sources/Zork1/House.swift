@@ -27,7 +27,6 @@ struct ZorkHouse: GameContent {
 
     let kitchen = Location {
         name("Kitchen")
-        description(Prose.kitchen)
     }
 
     let livingRoom = Location {
@@ -54,7 +53,6 @@ struct ZorkHouse: GameContent {
     let window = Item {
         name("kitchen window")
         adjectives("kitchen", "narrow")
-        description(Prose.kitchenWindow)
         openable
         scenery
     }
@@ -265,6 +263,17 @@ struct ZorkHouse: GameContent {
     // MARK: - Rules
 
     var rules: Rules {
+        // The window is the door on the house's east side, so `isOpen` is the
+        // state both its own description and the Kitchen's paragraph are claims
+        // about. Behind House's twin of this is the host's, since that room
+        // belongs to `ZorkAboveGround` and this window does not.
+        kitchen.describe { Prose.kitchen(windowOpen: window.isOpen) }
+        // Empty means "nothing special about the …", which is exactly what
+        // `KITCHEN-WINDOW-F` falls through to once the flag is set: the engine
+        // supplies `text.nothingSpecial` for a `describe` rule that returns "",
+        // so the stock line is not copied here to drift from its template.
+        window.describe { window.isOpen ? "" : Prose.kitchenWindow }
+
         // Not `require`: that helper is hardwired to `refuse` (see
         // `Sources/Gnusto/Declarations/Helpers.swift`), but "already moved"
         // needs to fully own the turn's response (`reply`), not just block

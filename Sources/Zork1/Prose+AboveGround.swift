@@ -21,11 +21,20 @@ extension Prose {
         here, and all the windows are boarded.
         """
 
-    static let behindHouse = """
-        You are behind the white house. A path leads into the forest to
-        the east. In one corner of the house there is a small window which
-        is slightly ajar.
+    /// `EAST-HOUSE` (`1actions.zil:22-28`) ends this paragraph with a branch on
+    /// the window's `OPENBIT`, and only the shut half had been reproduced — so
+    /// the room called the window ajar while it stood open in front of the
+    /// reader. Verbatim is a claim about a line, and this line has two halves.
+    ///
+    /// - Parameter windowOpen: whether the window stands open.
+    /// - Returns: the paragraph.
+    static func behindHouse(windowOpen: Bool) -> String {
         """
+        You are behind the white house. A path leads into the forest to
+        the east. In one corner of the house there is a small window
+        which is \(windowOpen ? "open." : "slightly ajar.")
+        """
+    }
 
     static let whiteHouse = """
         The house is a beautiful colonial house which is painted white. It

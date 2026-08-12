@@ -5,14 +5,30 @@
 extension Prose {
     // MARK: - House: interior
 
-    static let kitchen = """
-        You are in the kitchen of the white house. A table seems to have
-        been used recently for the preparation of food. A passage leads to
-        the west and a dark staircase can be seen leading upward. A dark
-        chimney leads down and to the east is a small window which is
-        slightly ajar.
+    /// `KITCHEN-FCN` (`1actions.zil:389-397`) ends this paragraph with a branch
+    /// on the window's `OPENBIT`, and only the shut half had been reproduced —
+    /// so the room called the window ajar to a player who had climbed through
+    /// it. One function rather than two constants, because the source branches
+    /// one clause and not the paragraph.
+    ///
+    /// - Parameter windowOpen: whether the window stands open.
+    /// - Returns: the paragraph.
+    static func kitchen(windowOpen: Bool) -> String {
         """
+        You are in the kitchen of the white house. A table seems to have been
+        used recently for the preparation of food. A passage leads to the west
+        and a dark staircase can be seen leading upward. A dark chimney leads
+        down and to the east is a small window which is \
+        \(windowOpen ? "open." : "slightly ajar.")
+        """
+    }
 
+    /// `KITCHEN-WINDOW-F` (`1actions.zil:246-266`) prints this only while
+    /// `KITCHEN-WINDOW-FLAG` is clear — that is, until the player has opened or
+    /// closed the window — and falls through to `V-EXAMINE`'s stock line
+    /// afterwards. The flag is approximated here by the window's own open
+    /// state, which is the state the sentence is a claim about: a window you
+    /// have opened and climbed through is not one that will not admit you.
     static let kitchenWindow = """
         The window is slightly ajar, but not enough to allow entry.
         """

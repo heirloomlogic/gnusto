@@ -201,6 +201,73 @@ struct DungeonProseTests {
         #expect(!fromInside.contains("not enough to allow entry"))
     }
 
+    /// Behind House ends its paragraph on the window, as `EAST-HOUSE` does in
+    /// both sources, and the game had only the shut half of that sentence. (#233)
+    @Test func behindHouseSaysWhetherTheWindowIsOpen() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            ["south", "east", "look", "open window", "l"],
+            seed: 18)
+
+        let shut = turnOutput(of: "look", in: transcript)
+        #expect(shut.contains("small window"))
+        #expect(shut.contains("which is slightly ajar"))
+        #expect(!shut.contains("which is open"))
+        let open = turnOutput(of: "l", in: transcript)
+        #expect(open.contains("which is open"))
+        #expect(!open.contains("slightly ajar"))
+    }
+
+    /// And the Kitchen's, which is the frame the round caught: standing inside,
+    /// having climbed through, being told the window is not open enough to
+    /// climb through. (#233)
+    @Test func theKitchenSaysWhetherTheWindowIsOpen() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.intoTheKitchen + ["look", "close window", "l"],
+            seed: 18)
+
+        let open = turnOutput(of: "look", in: transcript)
+        #expect(open.contains("a small window"))
+        #expect(open.contains("which is open"))
+        #expect(!open.contains("slightly ajar"))
+        let shut = turnOutput(of: "l", in: transcript)
+        #expect(shut.contains("which is slightly ajar"))
+        #expect(!shut.contains("which is open"))
+    }
+
+    // MARK: - A way through that answers as one
+
+    /// The front entrance of the whole game. `enter window` answered the
+    /// engine's "You can't get into that." one turn after the window's own
+    /// examine text promised a gap wide enough to climb through, because
+    /// `.board` knew about vehicles and not about doors. (#233)
+    @Test func theKitchenWindowIsAWayThroughInEverySpelling() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            [
+                "south", "east", "enter window", "west", "open window",
+                "enter window", "go through window", "climb through window",
+            ],
+            seed: 18)
+
+        // Shut, the window answers the sentence the direction answers.
+        let refused = turnOutput(of: "enter window", in: transcript)
+        #expect(refused.contains("The kitchen window is closed."))
+        #expect(!refused.contains("You can't get into"))
+        #expect(turnOutput(of: "west", in: transcript).contains("The kitchen window is closed."))
+
+        // Open, every spelling of the walk is the walk.
+        expectInOrder(
+            transcript,
+            [
+                "> open window", "Opened.",
+                "> enter window", "Kitchen",
+                "> go through window", "Behind House",
+                "> climb through window", "Kitchen",
+            ])
+    }
+
     /// The Winding Passage reports the Round Room's machinery in three places —
     /// its own paragraph, the whirring's examine text, and the refusal on the
     /// north wall — and all three were constants. The triangular button stops

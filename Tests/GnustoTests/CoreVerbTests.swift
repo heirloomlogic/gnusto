@@ -70,6 +70,8 @@ struct CoreVerbTests {
         "greet rat", "hello rat", "hi rat", "greet",
         // board
         "enter boat", "board boat", "get in boat", "get into boat",
+        "go through boat", "walk through boat", "step through boat",
+        "climb through boat", "walk in boat",
         // disembark
         "exit", "exit boat", "disembark", "get out", "get out of boat",
         // wait / look / inventory

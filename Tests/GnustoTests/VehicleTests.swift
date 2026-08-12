@@ -55,7 +55,17 @@ struct VehicleTests {
         let transcript = try await play(
             HarborGame(),
             ["enter pebble", "quit"])
-        expectInOrder(transcript, ["You can't get into that."])
+        expectInOrder(transcript, ["You can't get into the smooth pebble."])
+    }
+
+    /// `V-THROUGH` boards a vehicle as readily as it walks a doorway, so the
+    /// through-spellings reach a boat that is nobody's door.
+    @Test func goingThroughAVehicleBoardsIt() async throws {
+        let transcript = try await play(
+            HarborGame(),
+            ["go through boat", "get out of boat", "walk through boat", "quit"])
+        let boardings = transcript.components(separatedBy: "You are now in the red boat.")
+        #expect(boardings.count == 3)
     }
 
     @Test func aCarriedEnterableRefuses() async throws {

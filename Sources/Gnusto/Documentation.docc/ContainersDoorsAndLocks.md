@@ -221,6 +221,12 @@ var map: WorldMap {
 
 Because a door is an ordinary item, everything above composes: give the door a ``Item/lockedBy(_:)`` entry and the player must unlock it before it will open; declare it ``hidden`` (below) and the exit stays secret until the door is revealed.
 
+A door is also a way through **by name**, not only by direction. `enter trap door`, `go through trap door`, `walk through trap door` and `climb through trap door` all take the exit the door gates, from either side — the engine finds the door on the current room's exits and makes the same move `go` would, so a shut door refuses in the same words, a locked one reads as shut, and an unrevealed one is not there at all. Nothing to declare: it follows from naming the door on the exit.
+
+That is one verb with two jobs, which is the classic parser's own shape: the same word boards a vehicle (see <doc:ActorsAndVehicles>). The door wins where an item is somehow both — a door is referenced by an exit rather than placed in a room, so boarding one by name was never possible anyway — and a `before(.board)` rule on the item pre-empts either.
+
+One difference from `go`, since `.board` takes a noun and `go` doesn't: a ``Item/reach(otherwise:_:)`` rule on the door refuses `enter door` at stage 0, ahead of everything, where `go west` through the same door never consults it.
+
 When a passage is gated by something that *isn't* an item — a drawbridge lowered by a lever elsewhere — reach for ``Location/exit(_:to:when:otherwise:)`` instead. Its condition is evaluated at the moment the player tries to move, and the `otherwise` message is the refusal shown while it's false. The condition is ordinary Swift, so it reads whatever state you track — here a ``Global``:
 
 ```swift

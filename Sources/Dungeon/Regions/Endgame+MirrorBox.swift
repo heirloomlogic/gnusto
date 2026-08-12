@@ -29,6 +29,13 @@ enum BoxFace: Equatable {
     case mirror
     /// `MR2`, which only ever has to survive.
     case farMirror
+
+    /// Whether this face, standing open, is a way **in**. Only the mirror is:
+    /// `MIRIN` (`3actions.zil:994-1003`, `act4.231:425-429`) knows nothing about
+    /// the wooden end, which swings *out* and shuts as you step through it —
+    /// where `MIROUT` lets you out through either. The asymmetry is the
+    /// source's, and it lives here so it is stated once. (#233)
+    var admitsEntry: Bool { self == .mirror }
 }
 
 /// The mirror box: its bearing, its berth, its pole and its glass.
@@ -145,10 +152,28 @@ struct MirrorBox: Codable, Sendable, GlobalValue {
     /// hallway, which is what makes it narrow enough to squeeze past.
     var isEndOn: Bool { bearing % 180 == 0 }
 
-    /// Whether the mirror the red button opens is standing open **and** facing
-    /// the side the player is on.
-    func isOpenToward(_ angle: Int) -> Bool {
-        mirrorOpen && face(at: angle) == .mirror
+    /// The part of the box standing open toward `angle`, or `nil` where the side
+    /// facing that way is shut, is not a thing that opens, or is a corner.
+    ///
+    /// **One query rather than two predicates**, because the difference between
+    /// "there is a gap here" and "you may come in through it" belongs to the
+    /// *face* and not to the caller: every description asks the first
+    /// (`openFace(at:) != nil`) and every step asks the second
+    /// (`openFace(at:)?.admitsEntry`). Two same-shaped `Bool`s one word apart in
+    /// name is how the descriptions came to ask the entry question in the first
+    /// place, which is the defect the 2026-08-11 round found. (#233)
+    func openFace(at angle: Int) -> BoxFace? {
+        switch face(at: angle) {
+        case .mirror: mirrorOpen ? .mirror : nil
+        case .pine: pineOpen ? .pine : nil
+        default: nil
+        }
+    }
+
+    /// Whether the glass on the side facing `angle` is unbroken. Either mirror
+    /// can be the broken one, so which flag answers is a question about the face.
+    func glassIsIntact(at angle: Int) -> Bool {
+        face(at: angle) == .farMirror ? farMirrorIntact : mirrorIntact
     }
 
     /// Whether the box may be pushed one room along the channel: the mahogany

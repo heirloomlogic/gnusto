@@ -68,6 +68,68 @@ struct LockedDoorGame: Game {
     }
 }
 
+/// A window between a garden and a kitchen, carrying two directions from either
+/// side — the shape `Sources/Dungeon`'s own front door has, and the reason the
+/// door lookup walks `Direction.allCases` rather than the exits dictionary.
+struct WindowGame: Game {
+    let title = "Window"
+    let intro = ""
+
+    let garden = Location {
+        name("Garden")
+        description("A walled garden.")
+    }
+
+    let kitchen = Location {
+        name("Kitchen")
+        description("A tidy kitchen.")
+    }
+
+    let window = Item {
+        name("small window")
+        synonyms("window")
+        openable
+    }
+
+    var map: WorldMap {
+        player.starts(in: garden)
+        garden.west(kitchen, via: window)
+        garden.in(kitchen, via: window)
+        kitchen.east(garden, via: window)
+        kitchen.out(garden, via: window)
+    }
+}
+
+/// A sedan chair that is both a vehicle and the door on the way west — the one
+/// item shape `.board`'s two jobs can disagree about, and the reason the
+/// enterable is tested first.
+struct SedanChairGame: Game {
+    let title = "SedanChair"
+    let intro = ""
+
+    let portico = Location {
+        name("Portico")
+        description("A pillared portico.")
+    }
+
+    let terrace = Location {
+        name("Terrace")
+        description("A sunlit terrace.")
+    }
+
+    let chair = Item {
+        name("sedan chair")
+        adjectives("sedan")
+        enterable
+        openable
+    }
+
+    var map: WorldMap {
+        player.starts(in: portico)
+        portico.west(terrace, via: chair)
+    }
+}
+
 /// A clearing whose west exit to the forest is gated by a `@Global` flag. While
 /// the grating is locked the way is barred; flipping the flag opens it. Proves
 /// the condition closure evaluates live at `go` time.

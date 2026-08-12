@@ -62,12 +62,20 @@ extension DungeonEndgame {
             }
         }
 
+        // Five turns of an open pine end. Reported to anybody who can see it
+        // shut, which is the mirror fuse's own rule above: a player who stepped
+        // out and walked one room down the hallway was told nothing, and then
+        // found a wall where the doorway had been. Stepping out *through* the
+        // pine end shuts it there and then and stops this clock, so what is
+        // left for it to answer is the end left open behind you.
         fuse("endgame.pine", after: 5) {
             var state = box
             guard state.pineOpen else { return }
             state.pineOpen = false
             box = state
-            if player.location == insideMirror { say(Prose.boxPineSwingsShut) }
+            if player.location == insideMirror || angleOnTheBox(state) != nil {
+                say(Prose.boxPineSwingsShut)
+            }
         }
 
         // He asks again every second turn until he is answered, which is the
@@ -244,12 +252,14 @@ extension DungeonEndgame {
                     return Prose.mirrorHallway
                 }
                 let northward = state.berth == index + 1
+                let side = northward ? 180 : 0
                 return """
                     \(Prose.mirrorHallway)
 
                     \(Prose.boxInTheHallway(
                         northward: northward,
-                        face: state.face(at: northward ? 180 : 0),
+                        face: state.face(at: side),
+                        open: state.openFace(at: side) != nil,
                         intact: state.mirrorIntact && state.farMirrorIntact))
                     """
             }
@@ -268,7 +278,7 @@ extension DungeonEndgame {
 
                         \(Prose.boxBesideYou(
                             face: state.face(at: side),
-                            open: state.isOpenToward(side)))
+                            open: state.openFace(at: side) != nil))
                         """
                 }
             }
@@ -277,7 +287,7 @@ extension DungeonEndgame {
         // What the box looks like from wherever you are standing next to it —
         // or the plain answer that it is not in this stretch of hallway at all.
         //
-        // Two rules for one state, because one cannot do both jobs. The
+        // Three rules for one state, because one cannot do all three jobs. The
         // `reach` rule is the general answer: it runs at stage 0, ahead of
         // every `before` rule, and covers every verb that has to *touch* the
         // box — PUSH, TAKE, OPEN — which the `describe` special case never
@@ -286,11 +296,16 @@ extension DungeonEndgame {
         // keeps its own guard, and both refuse in the same words.
         for (seen, _) in boxesSeenFromOutside {
             seen.reach(otherwise: Prose.boxNotBesideIt) { angleOnTheBox(box) != nil }
+            // `enter box` is the `in` direction under another name, and the
+            // source spells it that way too: `MRC`'s ENTER row *is* the box.
+            // Without this the box answers the game-wide "neither doorway nor
+            // vehicle" line while its mirror stands open beside you.
+            seen.before(.board) { try stepIntoTheBox() }
             seen.describe {
                 let state = box
                 guard let side = angleOnTheBox(state) else { return Prose.boxNotBesideIt }
                 return Prose.boxFromOutside(
-                    face: state.face(at: side), open: state.isOpenToward(side))
+                    face: state.face(at: side), open: state.openFace(at: side) != nil)
             }
         }
 
@@ -392,16 +407,16 @@ extension DungeonEndgame {
 
         // Mirror #1 standing open is a doorway rather than a wall, whichever
         // way you were going.
-        if state.isOpenToward(heading) { try stepIntoTheBox() }
+        if state.openFace(at: heading)?.admitsEntry == true { try stepIntoTheBox() }
 
         guard diagonal, state.isEndOn else {
             switch state.face(at: heading) {
             case .mahogany, .pine:
                 try refuse(Prose.boxWoodenWall)
-            case .mirror:
-                try refuse(state.mirrorIntact ? Prose.boxMirrorWall : Prose.boxBrokenMirrorWall)
-            case .farMirror:
-                try refuse(state.farMirrorIntact ? Prose.boxMirrorWall : Prose.boxBrokenMirrorWall)
+            case .mirror, .farMirror:
+                try refuse(
+                    state.glassIsIntact(at: heading)
+                        ? Prose.boxMirrorWall : Prose.boxBrokenMirrorWall)
             case .none:
                 try refuse(Prose.boxMirrorWall)
             }
@@ -426,20 +441,24 @@ extension DungeonEndgame {
         guard let direction = command.direction else { return }
         let inward: Direction = side == 90 ? .west : .east
         guard direction == inward || direction == .in else { return }
-        let state = box
-        guard state.berth == index, state.isOpenToward(side) else {
-            try refuse(Prose.boxNoWayIn)
-        }
+        // No guards of its own: `angleOnTheBox` yields this room's `side` when
+        // the box is in `index` and `nil` when it is anywhere else, so
+        // `stepIntoTheBox` already answers both cases in the same words.
         try stepIntoTheBox()
     }
 
-    /// Through the open mirror and into the box.
+    /// Through the open mirror and into the box, or `MIRIN`'s refusal for the
+    /// side the player is looking at.
     ///
     /// - Throws: always — either the arrival or the refusal.
     func stepIntoTheBox() throws -> Never {
         let state = box
         guard let side = angleOnTheBox(state) else { try refuse(Prose.boxNotBesideIt) }
-        guard state.isOpenToward(side) else { try refuse(Prose.boxNoWayIn) }
+        guard state.openFace(at: side)?.admitsEntry == true else {
+            try refuse(
+                Prose.boxNoWayIn(
+                    face: state.face(at: side), glassIntact: state.glassIsIntact(at: side)))
+        }
         try enterTheHallway(at: insideMirror)
     }
 

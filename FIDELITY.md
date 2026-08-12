@@ -6,7 +6,7 @@ own mechanics — so a later pass has a checklist instead of a memory. Each
 entry below is grouped by the task that introduced it.
 
 **Two games are ledgered here, and they do not follow the same prose rule.**
-Everything from *Task 8* down to *Fidelity pass — the long tail* is Zork 1, which
+Everything from *Task 8* down to *The kitchen window* is Zork 1, which
 reproduces its source verbatim and says so in every section. Everything from
 *Dungeon* onward is an adaptation instead, and that section states its own rule
 before any region entry. Read it before writing a line of Dungeon prose; carrying
@@ -1327,6 +1327,38 @@ unlocked them:
 Deliberately still deferred (documented, low value): the cyclops's eyeing/gasping room-look
 variants; the mirror's "seven years' bad luck" as narration rather than a mechanic; held items
 riding along through the mirror (as the original).
+
+## The kitchen window (`Sources/Zork1/`, carried by an engine change)
+
+Three closures rather than divergences, all of them `V-THROUGH`'s
+(`gverbs.zil:1404`) and `KITCHEN-WINDOW-F`'s (`1actions.zil:246-266`). They
+arrived with Dungeon's #233 fourth pass, because the same source lines were
+frozen the same way in both games and repairing one and not the other is how a
+fixed defect comes back.
+
+- **`enter window` / `go through window` walk you through it.** The source routes
+  `ENTER OBJECT`, `CLIMB WITH OBJECT` and `WALK IN/WITH/ON OBJECT` to one routine
+  that walks a door and boards a vehicle, and this engine's `.board` now does the
+  same for any door on an exit of the room you are standing in. Nothing is
+  declared per game; the window was already the door on the exit. Previously
+  `west` walked you in and `enter window` answered "You can't get into that."
+- **Both room paragraphs branch on the window again.** `EAST-HOUSE`
+  (`1actions.zil:22-28`) and `KITCHEN-FCN` (`:389-397`) end on *"…a small window
+  which is open."* or *"…slightly ajar."*, and only the shut half had been
+  reproduced — so Behind House and the Kitchen both called the window ajar while
+  it stood open. Verbatim is a claim about a line, and a branched line has two
+  halves.
+- **`x window`'s "not enough to allow entry" stops at the point the source stops
+  it.** `KITCHEN-WINDOW-F` prints that only while `KITCHEN-WINDOW-FLAG` is clear
+  — until the player has opened or closed the window — and falls through to
+  `V-EXAMINE`'s stock line afterwards. The flag is **approximated by the window's
+  open state**, which differs from the source only in that closing the window
+  again restores the "slightly ajar" answer where the source would keep the stock
+  one. The state the sentence is a claim about is the open one, so this is the
+  closer reading of the two.
+- **`GameText.cantEnterThat` carries `V-THROUGH`'s last line here**: "You hit
+  your head against the … as you attempt this feat." The stock text takes the
+  thing's name for that reason.
 
 ## Dungeon (`Sources/Dungeon/`)
 
@@ -2912,6 +2944,23 @@ observation about the Royal Puzzle.
   "There is a wall there." after the mirror message, which reads as two refusals
   for one move. One refusal here, and it says which part of the box is in the
   way.
+- **The mirror is the way in and the pine end is a way out, which is the
+  source's asymmetry and not a defect.** `MIRIN` (`act4.231:425-429`, and Zork
+  III's `3actions.zil:994-1003`, which carries the routine verbatim) admits you
+  through mirror #1 alone; `MIROUT` lets you out through either opening. What
+  reconciles them is the pine end shutting behind you as you go — *"As you leave,
+  the door swings shut."* — and that line was **missing here until #233's fourth
+  pass**, which is what let a player stand outside a box with a wooden end swung
+  wide that would not admit them. Reproduced now, with `MIRIN`'s three refusals
+  in place of one denial about the whole box: a mirror blocks your way, the panel
+  is closed, or the structure blocks your way. `MirrorBox.openFace(at:)` names
+  the part standing open and `BoxFace.admitsEntry` says whether it is a way in —
+  one query and one fact about the face, since the descriptions ask the first and
+  the steps ask the second. Only the mirror admits entry, and that is stated
+  where the citation is.
+- **`enter box` is the `in` direction under another name**, as `MRC`'s `ENTER`
+  row is the box. It goes through the same `stepIntoTheBox()`, so it refuses for
+  the same reasons.
 - **One pole, not `LPOLE` and `SPOLE`.** `POLEUP` is the state, and a `describe`
   rule reads it.
 - **One compass instrument, not `ARROW` and `ROSE`**, because the arrow is the
@@ -3110,6 +3159,31 @@ melee tables than the strike-first branch was of `F-FIRST?`, and #237 put it
 explicitly out of scope. It is the next thing to look at if the Troll Room is
 still thought too cruel; the two-turns-in-three of blocking is now faithful, and
 the arithmetic of the blows is not.
+
+#### The white house's window, and a verb that was missing (#233, fourth pass)
+
+Closures rather than divergences, and the pair of them cost the engine a verb it
+did not have. Both are also entries in the Zork 1 half of this ledger, under *The
+kitchen window*, because the same source lines were frozen the same way in both
+games.
+
+- **`enter window` walks you through it**, as `KITCHEN-WINDOW-F`
+  (`1actions.zil:246-266`) does and as the mainframe's map data spells it
+  (`"ENTER" ,KITCHEN-WINDOW` on Behind House, `"EXIT" ,KITCHEN-WINDOW` on the
+  Kitchen). The repair is the engine's: a door on an exit of the room you are
+  standing in is now a way through under `enter`, `go through`, `walk through`,
+  `step through` and `climb through`, refusing in the same words `go` refuses in.
+  The Bank of Zork's private `walkThrough` verb is gone with it — Zork II keeps
+  its walls and curtain inside `V-THROUGH`, which is where they are now.
+- **Behind House and the Kitchen branch their last clause on the window again**,
+  which both sources do and this game had frozen shut. `Prose.behindHouse` and
+  `Prose.kitchen` keep the shut half; their `…OpenWindow` twins carry the other.
+  Behind House's rule is the host's, since the room and the window belong to
+  different bundles.
+- **`GameText.cantEnterThat` is `V-THROUGH`'s own last line** — "You hit your head
+  against the … as you attempt this feat.", `gverbs.zil:1438` and
+  `act3.199:450`, so both sources have it. It replaces the Bank's "It is solid,
+  and you are not.", which was true of a wall and strange about a pebble.
 
 #### Where the sources actually are
 

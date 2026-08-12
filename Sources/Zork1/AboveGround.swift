@@ -22,9 +22,10 @@ struct ZorkAboveGround: GameContent {
         description(Prose.southOfHouse)
     }
 
+    /// The paragraph is the host's rule rather than a constant: its last word is
+    /// a claim about ``ZorkHouse/window``, which is another bundle's.
     let behindHouse = Location {
         name("Behind House")
-        description(Prose.behindHouse)
     }
 
     // Examinable from all four house-side rooms. A single `Item` only ever

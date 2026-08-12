@@ -290,6 +290,9 @@ extension DefaultActions {
             reach: .notNeeded
         ) { try greet($0, frame: $1) },
 
+        // One verb for a doorway and a vehicle, which is `V-THROUGH`'s own
+        // shape: the trilogy routes ENTER, CLIMB WITH and WALK IN/WITH/ON to
+        // one routine that walks you through a door and boards a boat.
         // Bare "in"/"out" stay directions: the parser's bare-direction check
         // runs before any verb row.
         .handled(
@@ -299,6 +302,11 @@ extension DefaultActions {
                 ["board", .directObject],
                 ["get", "in", .directObject],
                 ["get", "into", .directObject],
+                ["go", "through", .directObject],
+                ["walk", "through", .directObject],
+                ["step", "through", .directObject],
+                ["climb", "through", .directObject],
+                ["walk", "in", .directObject],
             ],
             reach: .directObject
         ) { try board($0, frame: $1) },

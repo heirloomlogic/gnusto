@@ -49,6 +49,9 @@ struct Zork1: Game, GameMain {
         text.didntUnderstand = "That sentence isn't one I recognize."
         // "take all" with nothing to take (gmain.zil).
         text.nothingToTakeHere = "There's nothing here you can take."
+        // ENTER / GO THROUGH something that is neither doorway nor vehicle
+        // (gverbs.zil V-THROUGH's last clause).
+        text.cantEnterThat = { "You hit your head against \($0) as you attempt this feat." }
         return text
     }
 
@@ -241,6 +244,13 @@ struct Zork1: Game, GameMain {
         // The treasures the slice can score, and where they pay out.
         // Cross-bundle wiring is the host's job, same as the exits below.
         scoring.treasures(treasureRoster, into: house.trophyCase)
+
+        // Behind House ends its paragraph on the state of the kitchen window,
+        // as `EAST-HOUSE` does. The room is `ZorkAboveGround`'s and the window
+        // is `ZorkHouse`'s, so the sentence that reads both is the host's.
+        aboveGround.behindHouse.describe {
+            Prose.behindHouse(windowOpen: house.window.isOpen)
+        }
 
         // Event scoring: the original pays for reaching the kitchen (first
         // way into the house), for descending into the cellar, and for

@@ -84,7 +84,10 @@ public struct Intent: Hashable, Sendable {
     public static let follow = Intent("follow")
     /// Say hello to somebody ("greet", "hello", "hi").
     public static let greet = Intent("greet")
-    /// Get into an `enterable` item ("enter", "board", "get in").
+    /// Go through a door on the way out of this room, or get into an
+    /// `enterable` item ("enter", "board", "get in", "go through", "walk
+    /// through", "step through", "climb through", "walk in"). The door is
+    /// tested first.
     public static let board = Intent("board")
     /// Get out of the boarded item ("exit", "disembark", "get out").
     public static let disembark = Intent("disembark")

@@ -132,6 +132,9 @@ struct Dungeon: Game, GameMain {
         // engine's stock ones re-voiced rather than a rule of their own.
         text.unlockedMessage = Prose.gratingUnlocked
         text.locked = { _ in Prose.gratingLocked }
+        // `enter`/`go through` on a thing that is neither doorway nor vehicle.
+        // The Bank's walls and the curtain answer for themselves at stage 2.
+        text.cantEnterThat = Prose.cantEnterThat
         return text
     }
 
@@ -358,6 +361,15 @@ struct Dungeon: Game, GameMain {
     /// Milestones 1 to 3, and everything that belongs to no one milestone.
     @RuleBuilder private var coreRules: Rules {
         scoring.treasures(treasureRoster, into: house.trophyCase)
+
+        // Behind House ends its paragraph on the state of the kitchen window,
+        // as `EAST-HOUSE` does in both sources. The room is
+        // ``DungeonAboveGround``'s and the window is ``DungeonHouse``'s, so the
+        // sentence that reads both is the host's. The Kitchen's twin of this
+        // rule stays in ``DungeonHouse``, where both halves are local. (#233)
+        aboveGround.behindHouse.describe {
+            Prose.behindHouse(windowOpen: house.window.isOpen)
+        }
 
         // The mainframe's room values, as event awards: getting into the
         // kitchen, and getting below the house.

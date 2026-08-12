@@ -58,9 +58,10 @@ struct DungeonAboveGround: GameContent {
         description(Prose.southOfHouse)
     }
 
+    /// The paragraph is the host's rule, not a constant: its last word is a
+    /// claim about ``DungeonHouse/window``, which is another bundle's.
     let behindHouse = Location {
         name("Behind House")
-        description(Prose.behindHouse)
     }
 
     // A single `Item` occupies one place, so "the house is examinable from

@@ -132,12 +132,6 @@ struct BankOfZorkGame: Game {
         smallRoomWall.starts(in: smallRoom)
     }
 
-    var verbs: [SyntaxRule] {
-        SyntaxRule("walk", "through", .directObject, intent: Self.walkThrough)
-    }
-
-    static let walkThrough = Intent("walkThrough")
-
     // MARK: - Rules
 
     var rules: Rules {
@@ -153,7 +147,7 @@ struct BankOfZorkGame: Game {
         // Route B — the hand-rolled teleport, the idiom shipped at
         // `Sources/Zork1/Regions/Mirror.swift:184`. Same destination as the
         // north exit, reached without the engine's `enter()`.
-        curtain.before(Self.walkThrough) {
+        curtain.before(.board) {
             say("You step into the light, and the light steps into you.")
             player.location = lastViewingRoom == .west ? smallRoom : vault
             describeSurroundings()
@@ -161,8 +155,8 @@ struct BankOfZorkGame: Game {
         }
 
         // The way back out of two rooms that have no exits at all.
-        vaultWall.before(Self.walkThrough) { try leaveThroughWall() }
-        smallRoomWall.before(Self.walkThrough) { try leaveThroughWall() }
+        vaultWall.before(.board) { try leaveThroughWall() }
+        smallRoomWall.before(.board) { try leaveThroughWall() }
     }
 
     /// Puts the player back in the Depository from a room with no declared

@@ -1,16 +1,5 @@
 import Gnusto
 
-extension Intent {
-    /// Go through something that is not a door — a wall, or a curtain of light.
-    /// The Bank is the only building in the game where it works, so the verb
-    /// lives with it.
-    #verb(
-        "walkThrough",
-        ["walk", "through", .directObject],
-        ["go", "through", .directObject],
-        ["step", "through", .directObject])
-}
-
 /// The Bank of Zork: nine rooms west of the Gallery, and the one building in
 /// the game whose floor plan is a lie.
 ///
@@ -293,18 +282,6 @@ struct DungeonBank: GameContent {
     let vaultEastWall = Self.bankWall("east")
     let vaultWestWall = Self.bankWall("west")
 
-    // MARK: - Verbs
-
-    var verbs: [SyntaxRule] { [.walkThrough] }
-
-    /// The word answers everywhere, because it is in the game's vocabulary
-    /// everywhere — and what it says everywhere is region-neutral. The Bank's
-    /// own walls answer it in ``rules``; a default that talked about *walls*
-    /// would be this region telling the whole game what a rainbow is.
-    var actions: [IntentAction] {
-        action(.walkThrough) { try reply(Prose.nothingToWalkThrough) }
-    }
-
     // MARK: - Map
 
     var map: WorldMap {
@@ -441,7 +418,7 @@ struct DungeonBank: GameContent {
         // way back as well, and going back through it is a walk into the
         // Depository *heading south*, which is the one bearing no doorway can
         // give you and the only one that opens the Vault.
-        curtain.before(.walkThrough, .board, .touch) {
+        curtain.before(.board, .touch) {
             if player.location == safetyDepository {
                 let inner = room(for: curtainLeadsTo)
                 curtain.move(to: inner)
@@ -466,10 +443,12 @@ struct DungeonBank: GameContent {
         // And the walls. `SCOL-WALLS` names four of the sixteen; the other
         // twelve are the way out of the building. The pairing table is read
         // once here rather than rebuilt inside each of the sixteen closures.
+        // `.board` is `V-THROUGH`, which is where the source keeps this: the
+        // Zork II routine that walks a doorway carries `SCOL-GO` inside it.
         let pairs = scolWalls
         for (_, walls) in wallsByRoom {
             for wall in walls {
-                wall.before(.walkThrough) { try walkThrough(wall, pairedBy: pairs) }
+                wall.before(.board) { try walkThrough(wall, pairedBy: pairs) }
             }
         }
     }

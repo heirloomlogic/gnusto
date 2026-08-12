@@ -12,7 +12,9 @@ extension DungeonEndgame {
             let state = box
             var paragraphs = [Prose.insideMirror]
             paragraphs.append(Prose.boxCompassReading(MirrorBox.name(of: state.bearing)))
-            if state.mirrorOpen { paragraphs.append(Prose.boxMirrorStandsOpen) }
+            if state.mirrorOpen {
+                paragraphs.append(Prose.boxMirrorStandsOpen(onto: mirrorOpensOnto(state)))
+            }
             if state.pineOpen { paragraphs.append(Prose.boxPineStandsOpen) }
             return paragraphs.joined(separator: "\n\n")
         }
@@ -31,11 +33,16 @@ extension DungeonEndgame {
         mirrorOne.describe {
             let state = box
             if !state.mirrorIntact { return Prose.mirrorPanelBroken }
-            return state.mirrorOpen ? Prose.mirrorPanelOpen : Prose.mirrorPanelIntact
+            guard state.mirrorOpen else { return Prose.mirrorPanelIntact }
+            return Prose.mirrorPanelOpen(onto: mirrorOpensOnto(state))
         }
         mirrorTwo.describe {
             box.farMirrorIntact ? Prose.mirrorPanelIntact : Prose.mirrorPanelBroken
         }
+
+        // The pine end's own text is a claim about whether it stands open, so it
+        // is a rule for the same reason the mirror's is. (#233)
+        pineEnd.describe { box.pineOpen ? Prose.pineEndOpen : Prose.pineEnd }
 
         for (item, colour) in panelsByColour {
             item.describe { Prose.colouredPanel(colour) }
@@ -156,28 +163,55 @@ extension DungeonEndgame {
         try reply(Prose.boxPineSwingsOpen(onto: beyond?.name))
     }
 
-    /// Stepping out. Either opening will do it, and which room you land in is
-    /// the compass direction that opening faces.
+    /// Stepping out. Either opening will do it — `MIROUT` recognises both, where
+    /// `MIRIN` recognises only the mirror — and which room you land in is the
+    /// compass direction that opening faces.
+    ///
+    /// **The pine end shuts behind you as you go**, which is the source's own
+    /// line (`3actions.zil:955-959`) and the half this game was missing. Without
+    /// it the wooden end stayed swung open in a hallway nobody could re-enter
+    /// through, which is the contradiction the 2026-08-11 round filed: an
+    /// opening you had just walked through, refusing to be one. (#233)
     ///
     /// - Throws: always — the box owns every direction from inside it.
     func leaveTheBox() throws -> Never {
         let state = box
         guard let direction = command.direction else { try refuse(Prose.boxNoWayOut) }
 
-        var opening: Int?
-        if state.mirrorOpen { opening = state.angle(of: .mirror) }
-        if state.pineOpen { opening = state.angle(of: .pine) }
-        guard let opening else { try refuse(Prose.boxNoWayOut) }
+        // Both ends can stand open at once, so the direction chooses between
+        // them: a bare `out` takes the mirror, which is also the way back in,
+        // and a named direction takes the opening facing that way. Choosing by
+        // declaration order instead made an open mirror unreachable whenever
+        // the pine end was open too.
+        let unqualified = direction == .out || direction == .in
+        let asked = MirrorBox.angle(of: direction)
+        guard
+            let opening = [state.angle(of: .mirror), state.angle(of: .pine)].first(where: {
+                state.openFace(at: $0) != nil && (unqualified || asked == $0)
+            })
+        else { try refuse(Prose.boxNoWayOut) }
 
-        if direction != .out, direction != .in {
-            guard MirrorBox.angle(of: direction) == opening else {
-                try refuse(Prose.boxNoWayOut)
-            }
-        }
         guard let landing = roomOutside(state.berth, at: opening) else {
             try refuse(Prose.boxNoWayOut)
         }
+        if state.face(at: opening) == .pine {
+            var next = state
+            next.pineOpen = false
+            box = next
+            stopFuse("endgame.pine")
+            say(Prose.boxPineSwingsShutBehindYou)
+        }
         try enterTheHallway(at: landing)
+    }
+
+    /// The name of the room the openable mirror faces, for the two lines that
+    /// say what shows through it. `nil` on a diagonal, where it opens on a
+    /// corner.
+    ///
+    /// - Parameter state: the box as it stands.
+    /// - Returns: the room's name, or `nil`.
+    func mirrorOpensOnto(_ state: MirrorBox) -> String? {
+        roomOutside(state.berth, at: state.angle(of: .mirror))?.name
     }
 
     /// The room on a given side of a berth, or `nil` for a side of the hallway

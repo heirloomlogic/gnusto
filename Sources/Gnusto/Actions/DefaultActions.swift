@@ -627,18 +627,32 @@ enum DefaultActions {
         frame.say(definition.text.greets(target.definiteName))
     }
 
+    /// ENTER, BOARD and GO THROUGH: one verb over a doorway and a vehicle, in
+    /// `V-THROUGH`'s order — the door first.
+    ///
+    /// The order is only observable for an item that is somehow both, and there
+    /// the door has to win: a door is *referenced* by an exit rather than placed
+    /// in a room, so the vehicle path's "is it here" test refuses it anyway.
+    /// Boarding such a thing by name was never possible; walking through it is.
+    /// `DoorTests` pins that with an item that is both.
     static func board(_ command: Command, frame: TurnFrame) throws {
         let item = try requireDirectObject(command)
         let id = item.id
-        guard frame.definition.items[id]?.isEnterable == true else {
-            try refuse(frame.definition.text.cantEnterThat)
+        let here = frame.with { $0.state.playerLocation }
+        // A door names a direction rather than a destination, so going through
+        // it is the same walk `go` makes — `travel` owns the shut, hidden and
+        // locked answers, and there is one of each.
+        if let direction = doorDirection(to: id, from: here, frame: frame) {
+            return try travel(direction, from: here, frame: frame)
         }
-        let (currentVehicle, placement, here) = frame.with {
-            scratch -> (EntityID?, Placement?, EntityID) in
+        guard frame.definition.items[id]?.isEnterable == true else {
+            try refuse(frame.definition.text.cantEnterThat(item.definiteName))
+        }
+        let (currentVehicle, placement) = frame.with {
+            scratch -> (EntityID?, Placement?) in
             (
                 Visibility.boardedVehicle(definition: frame.definition, state: scratch.state),
-                scratch.state.placements[id],
-                scratch.state.playerLocation
+                scratch.state.placements[id]
             )
         }
         if currentVehicle == id {
@@ -658,6 +672,24 @@ enum DefaultActions {
             scratch.state.touched.insert(id)
         }
         frame.say(frame.definition.text.boarded(item.definiteName))
+    }
+
+    /// The direction out of `here` whose exit is gated by `door`, or `nil` if
+    /// none is.
+    ///
+    /// `Direction.allCases` rather than the room's exit dictionary, because a
+    /// door may carry more than one direction — Dungeon's kitchen window is on
+    /// both `west` and `in` — and a dictionary would pick a different one on a
+    /// different run. Both go the same place; which one the transcript records
+    /// should not be a coin toss.
+    private static func doorDirection(
+        to door: EntityID, from here: EntityID, frame: TurnFrame
+    ) -> Direction? {
+        guard let exits = frame.definition.exits[here] else { return nil }
+        return Direction.allCases.first { direction in
+            if case .door(_, let doorID) = exits[direction] { return doorID == door }
+            return false
+        }
     }
 
     static func disembark(_ command: Command, frame: TurnFrame) throws {

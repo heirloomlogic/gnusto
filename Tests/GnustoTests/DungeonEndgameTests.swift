@@ -338,9 +338,7 @@ struct DungeonEndgameTests {
     @Test func thePineEndNamesWhatIsBeyondIt() async throws {
         let transcript = try await play(
             Dungeon(),
-            Self.pastTheCrypt
-                + ["down", "north", "drop lamp", "south", "push red button"]
-                + ["north", "north", "in", "push pine", "east"],
+            Self.pastTheCrypt + Self.toTheOpenMirror + ["in", "push pine", "east"],
             seed: Self.seed)
 
         expectInOrder(
@@ -351,6 +349,112 @@ struct DungeonEndgameTests {
                 "Narrow Room",
             ])
         #expect(!transcript.contains("Beyond it is the hallway"))
+    }
+
+    /// **The two halves of one doorway agreed all along about the mirror, and
+    /// only about the mirror.** `MIRIN` lets you in through the mirror alone;
+    /// `MIROUT` lets you out through either end. Nothing pinned that, so a
+    /// contributor reading the disagreement as a bug could have "fixed" it by
+    /// making the pine end an entrance, which the source is against. (#233)
+    @Test func onlyTheMirrorIsAWayIntoTheBox() {
+        var box = MirrorBox()
+        box.mirrorOpen = true
+        box.pineOpen = true
+
+        // At the opening bearing the mirror faces south and the pine end east.
+        // Both are gaps, and every sentence about the box says so; only one of
+        // them is a way in, and every step asks that of the face rather than of
+        // the angle.
+        #expect(box.openFace(at: 180) == .mirror)
+        #expect(box.openFace(at: 90) == .pine)
+        #expect(box.openFace(at: 270) == nil)
+        #expect(box.openFace(at: 180)?.admitsEntry == true)
+        #expect(box.openFace(at: 90)?.admitsEntry == false)
+
+        box.mirrorOpen = false
+        #expect(box.openFace(at: 180) == nil)
+        #expect(box.openFace(at: 90) == .pine)
+
+        // And the glass that decides a refusal is the glass on that face.
+        box.mirrorIntact = false
+        #expect(!box.glassIsIntact(at: 180))
+        #expect(box.glassIsIntact(at: 0))
+    }
+
+    /// **The pine end shuts behind you as you step out of it.** It did not, so
+    /// the wooden end stayed swung open in a hallway that would not let anybody
+    /// back in — "There is no opening in the side facing you.", said to the
+    /// player who had walked through that face the turn before. The source has
+    /// the missing line, and the refusal it leaves behind is a claim about the
+    /// side actually in the way. (#233)
+    @Test func thePineEndShutsBehindYouAndTheRefusalSaysWhatIsInTheWay() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.pastTheCrypt + Self.toTheOpenMirror + ["in", "push pine", "x pine wall", "east"]
+                + ["x box", "in"],
+            seed: Self.seed)
+
+        expectInOrder(
+            transcript,
+            [
+                "The pine wall swings out on its hinges.",
+                "As you leave, the door swings shut.",
+                "Narrow Room",
+            ])
+
+        // `turnOutput` is no use this deep in: the route is the 716-point
+        // walkthrough, so every short command has been typed before. The
+        // closing line is unique, and the two sides of it are the two frames.
+        let halves = transcript.components(separatedBy: "As you leave, the door swings shut.")
+        let inside = halves[0]
+        let outside = halves[1]
+
+        // Inside, with it open, the wall says so — the control.
+        #expect(inside.contains("stands swung open on its hinges, and there is a way through"))
+
+        // Outside, it is a wall again, it says which wall, and the box no longer
+        // offers a doorway it will not honour.
+        #expect(outside.contains("a wall of pale pine"))
+        #expect(!outside.contains("swung open"))
+        #expect(outside.contains("The structure blocks your way."))
+        #expect(!transcript.contains("There is no opening in the side facing you"))
+    }
+
+    /// **With both ends open, you leave by the door you asked for.** The two
+    /// tests were written as separate `if`s rather than a choice, so the pine end
+    /// shadowed the mirror: `south` out of a box whose mirror stood open to the
+    /// south answered "The walls of the box are shut on every side of you."
+    /// (#233)
+    @Test func anOpenPineEndDoesNotBlockTheOpenMirror() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.pastTheCrypt + Self.toTheOpenMirror + ["in", "push pine", "south", "look"],
+            seed: Self.seed)
+
+        // Everything after the pine end opens, for the reason the test above
+        // gives: this route has typed every short command already.
+        let afterOpening = transcript.components(
+            separatedBy: "The pine wall swings out on its hinges.")[1]
+        #expect(!afterOpening.contains("The walls of the box are shut on every side of you."))
+        // Back out where the mirror let you in, and the hallway now reports the
+        // opening it never used to mention at all.
+        #expect(afterOpening.contains("Hallway"))
+        #expect(afterOpening.contains("The mirror on this side is swung open."))
+    }
+
+    /// And the box answers the verb by its name, not just by the direction: with
+    /// the mirror open beside you, `enter box` is the way in. Left alone it fell
+    /// to the game-wide answer for a thing that is neither doorway nor vehicle,
+    /// which is a strange thing to say about a box you are about to walk into.
+    @Test func theBoxCanBeEnteredByName() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.pastTheCrypt + Self.toTheOpenMirror + ["enter box"],
+            seed: Self.seed)
+
+        let arrival = transcript.components(separatedBy: "> enter box")[1]
+        #expect(arrival.contains("Inside Mirror"))
+        #expect(!arrival.contains("as you attempt this feat"))
     }
 
     /// **The blade reports the danger, not your grip on it.** Putting the sword
@@ -641,15 +745,23 @@ struct DungeonEndgameTests {
     /// The mirror box, from the Top of Stairs to the Dungeon Entrance.
     static let throughTheBox: [String] = throughTheBoxToMRD + outOfTheBox
 
+    /// Down to the Stone Room, the lamp left where it breaks the beam, the red
+    /// button pushed, and up the hallway to the room the open mirror faces. The
+    /// head of ``throughTheBoxToMRD``, named because five tests stand here.
+    static let toTheOpenMirror: [String] = [
+        "down", "north", "drop lamp", "south", "push red button",
+        "north", "north",
+    ]
+
     /// The first half of that ride, stopping with the box at `MRD` — one berth
     /// past the Guardians, so the blade is at its faint rung and a test has a
     /// frame where a dropped sword would be wrong about something.
-    static let throughTheBoxToMRD: [String] = [
-        "down", "north", "drop lamp", "south", "push red button",
-        "north", "north", "in",
-        "raise pole", "push red panel", "push red panel", "lower pole",
-        "push mahogany", "push mahogany", "push mahogany",
-    ]
+    static let throughTheBoxToMRD: [String] =
+        toTheOpenMirror + [
+            "in",
+            "raise pole", "push red panel", "push red panel", "lower pole",
+            "push mahogany", "push mahogany", "push mahogany",
+        ]
 
     /// And the second: turn the box back end-on the other way, open the pine
     /// end and step out of it.

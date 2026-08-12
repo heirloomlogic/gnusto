@@ -31,14 +31,25 @@ extension Prose {
         and all the windows are barred. A path leads south into the trees.
         """
 
-    /// Adapted. The trilogy's path east "into the forest" runs into a forest
-    /// room; the mainframe's runs into the Clearing, so the sentence names what
-    /// is actually there. The window clause is the trilogy's, unchanged.
-    static let behindHouse = """
+    /// Adapted, and branched as the source branches it. The trilogy's path east
+    /// "into the forest" runs into a forest room; the mainframe's runs into the
+    /// Clearing, so the sentence names what is actually there. The window clause
+    /// is the trilogy's, unchanged.
+    ///
+    /// `EAST-HOUSE` branches its last word on the window in both sources
+    /// (`1actions.zil:22-28`, `act1.254:24-33`) and this game had only the shut
+    /// half, so the room went on saying "ajar" about a window standing open in
+    /// front of the reader. (#233)
+    ///
+    /// - Parameter windowOpen: whether the window stands open.
+    /// - Returns: the paragraph.
+    static func behindHouse(windowOpen: Bool) -> String {
+        """
         You are behind the white house. A path leads east through the trees
         toward a clearing. In one corner of the house there is a small window
-        which is slightly ajar.
+        which is \(windowOpen ? "open." : "slightly ajar.")
         """
+    }
 
     /// Verbatim Zork I.
     static let whiteHouse = """
