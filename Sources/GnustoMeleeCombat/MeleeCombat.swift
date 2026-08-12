@@ -115,18 +115,47 @@ public struct MeleeCombat: GameContent {
         }
     }
 
-    /// The plugin-owned combat ledger: villain health and stun counters
-    /// keyed by registration key, plus the player's own hits. Health seeds
-    /// lazily from each villain's declared strength.
+    /// The plugin-owned combat ledger: villain health, stun counters and who is
+    /// currently in a fight, keyed by registration key, plus the player's own
+    /// hits. Health seeds lazily from each villain's declared strength.
     ///
     /// `stunned` is the countdown, and a villain has an entry in it for exactly
     /// as long as he is unconscious — counting down to zero and resting there
     /// for the last of those turns. ``Actor/isUnconscious`` is the same fact
     /// where other plugins can see it; ``stun(_:key:turnsLeft:)`` writes both.
+    ///
+    /// `engaged` is the source's `FIGHTBIT`: a villain is in it from the blow
+    /// that starts the fight — the player's, or his own — until the two of them
+    /// are no longer standing in one room. It is the whole of the difference
+    /// between a villain who blocks and a villain who kills you for reading the
+    /// room; see
+    /// ``aggression(of:key:daemonName:strikesFirst:playerStrength:while:prose:)``.
     struct Ledger: Codable, Sendable, GlobalValue {
         var health: [String: Int] = [:]
         var stunned: [String: Int] = [:]
+        var engaged: Set<String> = []
         var playerHealth: Int?
+
+        init() {}
+
+        /// A stale save has to degrade rather than trap, the way
+        /// `RoyalPuzzleGrid` does: `Global`'s getter `fatalError`s when a stored
+        /// value fails to decode instead of falling back to the declared
+        /// default, and save validation only checks that a `.data` case is a
+        /// `.data` case — it cannot tell one payload from another. Swift's
+        /// synthesized decoder ignores a property's default and demands every
+        /// key, so a save written before `engaged` existed would otherwise crash
+        /// the game on the first turn a villain's daemon ticked. Every field
+        /// decodes leniently and keeps its default instead: a restored fight
+        /// starts unengaged, which is one strike-first roll's worth of mercy and
+        /// nothing worse.
+        init(from decoder: any Decoder) throws {
+            let box = try decoder.container(keyedBy: CodingKeys.self)
+            health = (try? box.decode([String: Int].self, forKey: .health)) ?? [:]
+            stunned = (try? box.decode([String: Int].self, forKey: .stunned)) ?? [:]
+            engaged = (try? box.decode(Set<String>.self, forKey: .engaged)) ?? []
+            playerHealth = try? box.decode(Int.self, forKey: .playerHealth)
+        }
     }
 
     @Global var ledger = Ledger()
@@ -191,6 +220,26 @@ public struct MeleeCombat: GameContent {
         }
     }
 
+    /// Whether an unengaged villain picks this turn to start something — the
+    /// source's `F-FIRST?` branch, as a probability out of a hundred.
+    ///
+    /// A hundred and nought are not questions, so neither draws: a villain who
+    /// always starts one and a villain who never does both leave the random
+    /// stream exactly where they found it, and their standing in the room
+    /// shifts nothing downstream of them. That is the opposite call from
+    /// ``oneOf(_:)``, which draws even for a single option — deliberately, and
+    /// the two do not want reconciling. `oneOf`'s option count is a list an
+    /// author edits, and the stream must not notice the edit; this is a
+    /// constant of the villain, declared once at his call site.
+    ///
+    /// - Parameter percent: the odds he starts a fight, out of a hundred.
+    /// - Returns: whether he starts one this turn.
+    static func startsAFight(chance percent: Int) -> Bool {
+        if percent >= 100 { return true }
+        if percent <= 0 { return false }
+        return chance(percent)
+    }
+
     /// Registers a villain: attacks against `actor` resolve a weapon, roll
     /// the outcome table, and track his health under `key`. At zero health
     /// the death line prints, `onDefeat` runs (unbar the door, drop the
@@ -203,7 +252,7 @@ public struct MeleeCombat: GameContent {
     ///
     /// A knockout also sets ``Actor/isUnconscious`` — see ``stun(_:key:turnsLeft:)``.
     /// It is cleared again by the villain's own
-    /// ``aggression(of:key:daemonName:playerStrength:while:prose:)`` daemon, so
+    /// ``aggression(of:key:daemonName:strikesFirst:playerStrength:while:prose:)`` daemon, so
     /// a villain registered here without one stays down for good once knocked
     /// out, exactly as his stun counter already did.
     ///
@@ -242,6 +291,19 @@ public struct MeleeCombat: GameContent {
                 weaponUsed = best
             } else {
                 try refuse(text.noWeapon)
+            }
+
+            // `FIGHTBIT`, set where the source sets it. `HERO-BLOW`
+            // (`1actions.zil:3484`) does it on the way in, before the blow is
+            // resolved and before it knows whether the blow lands — so a swing
+            // that misses engages him just as thoroughly as one that draws
+            // blood. But it is `V-ATTACK` (`gverbs.zil:176`) that decides
+            // whether `HERO-BLOW` is reached at all, and its three refusals —
+            // bare hands, a weapon you aren't holding, a thing that isn't a
+            // weapon — all return short of it. Those are the three above, so a
+            // refused swing is not a provocation here either.
+            if !ledger.engaged.contains(key) {
+                ledger.engaged.insert(key)
             }
 
             var health = ledger.health[key] ?? strength
@@ -283,23 +345,43 @@ public struct MeleeCombat: GameContent {
         }
     }
 
-    /// The villain's own turn: while he is alive, conscious, and in the
-    /// player's room, each end-of-turn tick rolls once — miss ≤ 50, wound
-    /// ≤ 85, an outright kill above. `playerStrength` hits end the player;
-    /// wounds don't heal this phase. A stunned villain spends his turn
+    /// The villain's own turn: while he is alive, conscious, in the player's
+    /// room, and *in a fight*, each end-of-turn tick rolls once — miss ≤ 50,
+    /// wound ≤ 85, an outright kill above. `playerStrength` hits end the
+    /// player; wounds don't heal this phase. A stunned villain spends his turn
     /// coming to instead (no roll).
+    ///
+    /// *In a fight* is the source's `FIGHTBIT`. `I-FIGHT` (`1actions.zil:3810`)
+    /// has a villain strike only once the player has engaged him or once his own
+    /// `F-FIRST?` branch says he starts one, and `strikesFirst` is that branch,
+    /// out of a hundred: the troll's is 33 (`1actions.zil:702`), the thief's 20
+    /// (`:2064`), and the cyclops, who has no such branch at all, is 0. A fight
+    /// either of them starts persists — both branches set `FIGHTBIT` — and he
+    /// strikes in the turn he starts it rather than telegraphing it. `I-FIGHT`
+    /// clears the bit on the villain the player is no longer standing with, so
+    /// walking out ends a fight and walking back in asks the question again.
+    /// Neither 0 nor 100 draws; see ``startsAFight(chance:)``.
     ///
     /// `while:` is an extra gate evaluated before the same-room guard and
     /// before any draw — so a villain whose combat is scoped (the thief only
     /// fights in his lair) burns no randomness on the turns his gate is
     /// closed, keeping every seeded draw sequence intact. It does *not* gate
     /// coming round, which happens first: a man knocked out where his gate is
-    /// shut still wakes up.
+    /// shut still wakes up. Nor does it gate *disengaging*, which is the room's
+    /// business rather than the host's — the source agrees, skipping the
+    /// engrossed thief's turn without clearing his `FIGHTBIT` — so a man
+    /// admiring a gift you handed him is still in the fight when he looks up.
+    /// Gates are assumed pure: they are asked once per turn and their answer is
+    /// not otherwise observed.
     ///
     /// - Parameters:
     ///   - actor: the villain who fights back each turn.
-    ///   - key: ledger key sharing this villain's health and stun with `villain`.
+    ///   - key: ledger key sharing this villain's health, stun and engagement
+    ///     with `villain`.
     ///   - daemonName: global timer name for the counter-attack daemon.
+    ///   - strikesFirst: the odds out of a hundred that he starts a fight on a
+    ///     turn the player hasn't. 100 fights on sight; 0 never starts one and
+    ///     only ever answers a blow.
     ///   - playerStrength: hits the player survives before a wound turns fatal.
     ///   - gate: extra gate checked first — a false gate is a quiet, draw-free turn.
     ///   - prose: per-outcome counter-attack lines (miss, wound, playerDeath).
@@ -308,6 +390,7 @@ public struct MeleeCombat: GameContent {
         of actor: Actor,
         key: String,
         daemonName: String,
+        strikesFirst: Int = 100,
         playerStrength: Int = 2,
         while gate: @escaping @Sendable () -> Bool = { true },
         prose: AggressionProse
@@ -318,6 +401,23 @@ public struct MeleeCombat: GameContent {
             let ledgered = ledger
             // Guards before any draw, so quiet turns burn no randomness.
             guard ledgered.health[key] ?? 1 > 0 else { return }
+
+            // Whether the two of them are standing together decides three
+            // separate things below, and it is a pure read, so it is asked once.
+            let together = actor.location.map { $0 == player.location } ?? false
+
+            // `FIGHTBIT`'s clearing rule: `I-FIGHT`'s other branch clears the
+            // bit on every villain who is not in the room, so walking away ends
+            // a fight and walking back asks his strike-first roll again. Ahead
+            // of the host's gate because leaving is the room's business and a
+            // gate that shuts for two turns while he admires a gift must not
+            // read as a truce; ahead of the stun block because a man the player
+            // has walked away from is out of the fight whether he is on his feet
+            // or not. Written only on the transition, so a quiet turn
+            // re-encodes nothing.
+            if !together, ledgered.engaged.contains(key) {
+                ledger.engaged.remove(key)
+            }
             // Coming round happens ahead of the host's gate, because it is not
             // an aggressive act: a villain knocked out somewhere his gate is
             // shut — the thief anywhere but his own lair — would otherwise
@@ -338,7 +438,24 @@ public struct MeleeCombat: GameContent {
             }
             // The host's gate: a false gate is a quiet turn, no draw.
             guard gate() else { return }
-            guard let here = actor.location, player.location == here else { return }
+            guard together else { return }
+
+            // The source's `<OR <FSET? .O ,FIGHTBIT> <APPLY … ,F-FIRST?>>`, and
+            // its short circuit is the point: an engaged villain asks nothing
+            // and draws nothing, so a fight already in progress reads the stream
+            // exactly as it did before this parameter existed. Only the
+            // unengaged roll — and only here, behind the gate and behind the
+            // same-room guard, so a villain alone in his lair burns no
+            // randomness on the hundreds of turns nobody is standing in it.
+            guard
+                ledgered.engaged.contains(key)
+                    || Self.startsAFight(chance: strikesFirst)
+            else { return }
+            // He strikes in the turn he starts it: `F-FIRST?` sets `FIGHTBIT`
+            // and `I-FIGHT` falls straight through to the blow.
+            if !ledgered.engaged.contains(key) {
+                ledger.engaged.insert(key)
+            }
 
             let roll = random(1...100)
             switch roll {
