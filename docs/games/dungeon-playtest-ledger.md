@@ -216,5 +216,58 @@ seven engine cases in `DoorTests`.
 **Still open: two boxes and three rows.** Box 12, the stub-verb register, and box 15, the
 harness room census; rows 89, 92 and 94, each for the reason given above.
 
+**2026-08-12 — box 12 closed by the fifth pass, and no row moves.** The stub-verb
+register: the game answered seventeen of the engine's ~47 stub verbs in its own voice and
+thirty in the engine's, and the whole floor is now written, installed as `text.stubs`
+rather than as `action(…)` rows. The six stock lines that take a person as their subject
+went with it, and so did `GnustoMeleeCombat`'s four, which turned out to be the most
+reachable stock lines left in the game.
+
+**Row 92 does not flip, and that is the point worth recording.** It is the only
+`register-mismatch` row in the table and it is the obvious candidate, but its key
+normalizes to the `swim` sentence — the same sentence as row 89 — and this pass does not
+change `noSwimming`. Flipping it would be the mistake this file has now warned about
+twice: claiming credit for a repair to a different sentence. Box 12 is closed on the
+issue's checklist, where it lives; it has no row of its own here, because it came from the
+survey's `reskinnedStubs` field rather than from a charter reading a line in a frame.
+
+| Class | Row(s) | What was done |
+|---|---|---|
+| `register-mismatch` | none — box 12 has no key | **The floor is written, all ~47 of it, and every line is a claim about the thing named or the player rather than about the room.** `listen` asserted quiet — false in the Loud Room; `sit`, `buy` and `curse` reported on surroundings they cannot see. The mechanism moved with the words: `DefaultActions.run` returns from an `action(…)` override *before* `requireReach`, so all seventeen re-skins had silently given up the engine's reach guard, the object's name, its number agreement and the `yourself`/`somebodyElse` guards. `text.stubs` keeps them, and is also what the harness's own survey measures — the rows were invisible to the round that filed this box. |
+| `prose-untrue-of-state` | none — found by this pass | **The Loud Room went on saying "The noise in here is past bearing" after `echo` had settled it.** A static paragraph with a state behind it, which is box 3's mechanism at a site that pass did not reach. It surfaced from the other end: the new `listen` says the listener learns nothing, which contradicts a paragraph calling the din unbearable. The room describes itself with a rule now, as the carousel next door already did. |
+
+Cover is six new tests in `DungeonProseTests`, one of them a sweep that compares every
+line in ``GameText/StubReplies`` against the engine's and derives its own completeness
+from `Mirror`, so a forty-eighth stub arriving with no Dungeon line fails rather than
+passing quietly.
+
+**2026-08-12 — box 15 closed, and #233 with it.** The harness room census. No row moves
+and none could: the preamble already records that this box came from the completeness
+critic rather than from a charter, so it has no key here.
+
+The round's own number was 112 of 195 rooms against a real 155, because `roomsVisited` is
+a tester self-report field that was reconciled against the survey roster and never against
+the 184 transcripts. `playtest.js` now derives it, in the shape the word census established
+in the same file: a hardcoded `grep` on Haiku, started early and awaited late so it costs
+no wall clock, with **the self-report kept beside the count rather than replaced by it** —
+`coverage.rooms` reports the union, both sides, and the gap between them.
+
+Three things the repair had to get right, each of which would have made the new number
+wrong in its own way. A tester's comment is echoed into the transcript verbatim, so
+`> // walk to Studio` had to be dropped or it would score a visit to the one room the last
+round singled out as never entered. The critic's own probes write transcripts too — that
+is exactly what took the last figure from 155 to 156 — so its label is excluded rather
+than raced against. And a room entered **dark** prints no heading at all, which is why the
+merge is a union: the grep cannot see those and a tester can.
+
+The roster matcher was fixed while in there. It fell back to a character-substring test,
+so on a 195-room roster `Maze 1` resolved silently to `Maze 14` — unique, and wrong. It
+compares word lists now, and a name that is still ambiguous is reported unrecognized
+rather than guessed at.
+
+**Still open: nothing on #233. Three rows stand.** Rows 89, 92 and 94, each for the reason
+given above — all three name a sentence no pass has changed, and the ledger's rule is that
+a row belongs to the sentence in its key rather than to the box it was filed under.
+
 Pass every `fixed` and `refuted` key above as `ledgerKeys` on the next round. The list is
 seventeen keys longer than it was.

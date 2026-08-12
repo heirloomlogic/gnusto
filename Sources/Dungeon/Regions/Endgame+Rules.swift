@@ -30,21 +30,6 @@ extension DungeonEndgame {
         ]
     }
 
-    /// `knock` as this game answers it, everywhere but at the wooden door.
-    ///
-    /// An `action`, not a `world.before` rule: a world rule pre-empts every other
-    /// rule in the game, so knocking would have been this bundle's business
-    /// forever and no later door could ever have answered its own. Stage 4 is
-    /// where a verb's default belongs, and it leaves the door rule in
-    /// ``DungeonEndgame/quizRules`` free to override it. The engine's own stub
-    /// line is "Nobody answers.", which is true but says nothing about knocking.
-    ///
-    /// `reply`, not `say`: stage 4 uses `say`, so a rule that only said would
-    /// print both lines.
-    @ActionBuilder var actions: [IntentAction] {
-        action(.knock) { try reply(Prose.knockNoAnswer) }
-    }
-
     /// The two clocks the box runs on, and the two daemons the Dungeon Master
     /// and his examination run on. The endgame's other three timers are the
     /// host's, because each of them touches an item or a counter in another

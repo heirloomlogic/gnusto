@@ -196,6 +196,15 @@ In any rule body: `say`, `refuse`, `reply`, `handled`, `require(_:else:)`, `end(
   the warning off `coreTable`, so `action(.dig)` or a rule on `.attack` costs you
   nothing. Promote a stub with `reply`/`refuse` — stage 4 uses `say`, so a rule that
   only `say`s prints *both* lines.
+- **To change a stub's words, assign the line; a row buys the whole default.**
+  `DefaultActions.run` returns from an `actionOverrides` hit *before*
+  `requireReach`, so `action(.squeeze) { try reply(…) }` silently gives up the
+  reach guard, the object's rendered name, its number agreement and the
+  `yourself`/`somebodyElse` guards. `text.stubs.squeeze = …` keeps all four and
+  is what the play-test survey measures. A row means *this game has behavior
+  here*; if all it has is a sentence, assign the sentence. A plugin that claims a
+  verb owns its register too — `GnustoMeleeCombat` answers `.attack`, so
+  `MeleeCombat(text:)` is where that verb's voice lives, not `text.stubs.attack`.
 - **UNDO, RESTART, SAVE and RESTORE can't be overridden at all.** `GameWorld.run`
   answers them before the pipeline, so no rule sees them and `action(.save)` never
   runs. That's `DefaultActions.engineIntents`, and declaring one now warns rather

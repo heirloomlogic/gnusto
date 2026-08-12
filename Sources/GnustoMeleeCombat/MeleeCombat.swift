@@ -48,8 +48,14 @@ public struct MeleeCombat: GameContent {
     /// The system's own voice — refusals that belong to the mechanics, not
     /// to any one villain. Override lines at init to re-skin.
     public struct CombatText: Sendable {
-        /// Attacking something no villain rule claimed.
-        public var attackFutile = "Violence isn't the answer to this one."
+        /// Attacking something no villain rule claimed. Handed the target's
+        /// **indefinite** name — "a rubber raft", not "the rubber raft" —
+        /// because a refusal aimed at a whole category of thing is the joke
+        /// `V-ATTACK` makes with `A ,PRSO`, and a line naming the category
+        /// generalizes where a definite one just repeats the command back.
+        public var attackFutile: @Sendable (_ name: String) -> String = {
+            "Attacking \($0) isn't the answer."
+        }
         /// Attacking bare-handed with no registered weapon in hand.
         public var noWeapon = "Bare hands won't do it. You need a weapon."
         /// Naming a weapon that isn't one ("attack troll with feather").
@@ -187,7 +193,12 @@ public struct MeleeCombat: GameContent {
     /// The stage-4 default for a target no villain rule claimed.
     public var actions: [IntentAction] {
         action(.attack) {
-            try reply(text.attackFutile)
+            // Every row that reaches this action carries a direct object —
+            // the spliced ones and melee's own alike — so the parser cannot
+            // arrive here without one. `?? "that"` is the same sort of safety
+            // net `StubVerb.named`'s `didntUnderstand` branch is, not a
+            // player-facing path.
+            try reply(text.attackFutile(command.directObject?.indefiniteName ?? "that"))
         }
     }
 

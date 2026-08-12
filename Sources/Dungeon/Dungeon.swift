@@ -135,6 +135,23 @@ struct Dungeon: Game, GameMain {
         // `enter`/`go through` on a thing that is neither doorway nor vehicle.
         // The Bank's walls and the curtain answer for themselves at stage 2.
         text.cantEnterThat = Prose.cantEnterThat
+
+        // The six stock lines that take a person as their subject. The engine's
+        // doc comment says a game re-skinning one usually wants the family, and
+        // this game had none of them: #236 gave all four actors their own
+        // greetings as rules, and every verb that falls *past* a rule still
+        // reached a modern narrator. `V-COMMAND` (`gverbs.zil:359`) is the
+        // source for the order refusal. (#233)
+        text.cantTakeActor = { "\(GameText.sentenceCase($0)) has other plans." }
+        text.cantSearchActor = { "\(GameText.sentenceCase($0)) would not stand for it." }
+        text.notTakingOrders = { "\(GameText.sentenceCase($0)) pays no attention." }
+        text.doesNotKnowHow = {
+            "\($0.sentenceCased) \($0.verb("has", "have")) no idea how to do that."
+        }
+        text.greets = { "\(GameText.sentenceCase($0)) says nothing in reply." }
+
+        // The stub floor — every verb the parser knows and no mechanic answers.
+        text.stubs = Prose.stubFloor
         return text
     }
 
@@ -192,7 +209,13 @@ struct Dungeon: Game, GameMain {
             "treasuryOfZork": 35,
         ])
 
-    let melee = MeleeCombat()
+    /// The melee plugin claims `.attack` outright, so its four system-voice
+    /// lines — not ``Prose/stubFloor``'s `attack` — are what a player who
+    /// swings at the scenery actually reads. They were the plugin's stock
+    /// modern ones, which is box 12's complaint at the one verb the box did not
+    /// think to look at. All four are `V-ATTACK` (`gverbs.zil:176`), turned into
+    /// the second person this game narrates in. (#233)
+    let melee = MeleeCombat(text: Prose.combatText)
 
     /// Roaming and theft, for the one actor who does both. Logic only — the
     /// plugin owns no entities, so it is a stored property and not `content`.

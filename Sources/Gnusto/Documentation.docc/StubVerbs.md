@@ -9,7 +9,7 @@ A player five minutes into their first room will type `attack the chair`, `smell
 most games implement. All of them are verbs every player tries.
 
 `I don't know the word "attack"` answers the wrong question. It says the
-*program* is unfinished. `Attacking things rarely improves them.` says the
+*program* is unfinished. `Attacking the chair rarely improves matters.` says the
 *world* is — and the player learns something from the second answer and nothing
 from the first.
 
@@ -88,7 +88,7 @@ the ones that clash with your voice and leave the rest:
 ```swift
 var text: GameText {
     var text = GameText()
-    text.stubs.attack = "The Institute frowns on that sort of thing."
+    text.stubs.attack = { "The Institute frowns on assaulting \($0)." }
     text.stubs.pray = "No one is listening. You checked."
     return text
 }
@@ -111,9 +111,40 @@ For behavior that spans every object rather than one, use an `actions` row —
 
 ```swift
 public var actions: [IntentAction] {
-    action(.attack) { try reply(text.attackFutile) }
+    action(.attack) {
+        try reply(text.attackFutile(command.directObject?.indefiniteName ?? "that"))
+    }
 }
 ```
+
+### To change only the words, assign the line
+
+An `actions` row replaces the stub's **whole** default, and the reach guard is
+part of that default: `DefaultActions.run` returns from an override before it
+calls `requireReach`, because a game that claims the verb is saying it will
+decide for itself what "close enough to touch" means. `GnustoMeleeCombat` wants
+exactly that.
+
+A game that only wants a different sentence does not, and gets it anyway. So
+re-voicing is an assignment, not a row:
+
+```swift
+var text: GameText {
+    var text = GameText()
+    text.stubs.climb = "That is not something you could climb."
+    return text
+}
+```
+
+The assignment keeps the reach guard, the object's rendered name, its number
+agreement, and the ``GameText/StubReplies/yourself`` and
+``GameText/StubReplies/somebodyElse`` guards. The row keeps none of them, and
+nothing warns — a row and an assignment look equally reasonable at the call site.
+`Sources/Dungeon/` re-skinned seventeen stubs with rows and had given all four
+away without noticing.
+
+**The rule of thumb:** an `actions` row means *this game has behavior here*. If
+all it has is a sentence, assign the sentence.
 
 ### Use `reply`, not `say`
 

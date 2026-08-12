@@ -160,6 +160,23 @@ extension Prose {
         difficult to hear yourself think.
         """
 
+    /// The same room once `echo` has settled it. ``Prose/loudRoom`` above is
+    /// three sentences and the third is a claim about a state that changes, so
+    /// the room describes itself with a rule — the shape ``Prose/roundRoom``
+    /// and ``Prose/roundRoomStilled`` already had next door, and for the same
+    /// reason its doc comment gives: a room that went on roaring would be
+    /// telling the player their own solution had not worked.
+    ///
+    /// Found while writing the stub floor, because "You listen, and learn
+    /// nothing you did not already know." is false in a room whose paragraph
+    /// says the noise is past bearing. (#233)
+    static let loudRoomStilled = """
+        This is a large room with a ceiling which cannot be detected from
+        the ground. There is a narrow passage from east to west and a stone
+        stairway leading upward. The room is quiet now, and your own footsteps
+        are the loudest thing in it.
+        """
+
     static let loudRoomCeiling = """
         You cannot find the ceiling at all. Whatever is up there is what keeps
         throwing your own voice back down at you.

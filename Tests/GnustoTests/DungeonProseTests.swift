@@ -42,10 +42,15 @@ struct DungeonProseTests {
     private static let pastTheTroll =
         intoTheKitchen + downTheTrapDoor + ["east", "attack troll with sword"]
 
-    /// Troll Room to the dam, the carousel-free road.
-    private static let crossroadsToTheDam = [
-        "north", "down", "east", "east", "northeast", "up", "east",
+    /// Troll Room to the North-South Passage and northeast into the din.
+    private static let crossroadsToTheLoudRoom = [
+        "north", "down", "east", "east", "northeast",
     ]
+
+    /// Troll Room to the dam, the carousel-free road.
+    private static let crossroadsToTheDam = crossroadsToTheLoudRoom + ["up", "east"]
+
+    private static let toTheLoudRoom = pastTheTroll + crossroadsToTheLoudRoom
 
     private static let toTheDam = pastTheTroll + crossroadsToTheDam
 
@@ -994,5 +999,257 @@ struct DungeonProseTests {
         #expect(
             turnOutput(of: "x west door", in: transcript)
                 .contains("A chimney of rock, barely wide enough for one"))
+    }
+
+    // MARK: - The floor speaks in the game's voice (#233, box 12)
+
+    /// **The sweep, and the only assertion here that cannot go stale.** Every
+    /// other test in this section names one verb; a forty-eighth stub arriving
+    /// in the engine tomorrow would slip past all of them. This one asserts no
+    /// line the engine ships is still what *Dungeon* answers, and derives its
+    /// own completeness from ``GameText/StubReplies`` rather than trusting the
+    /// list below to have kept up.
+    ///
+    /// Deriving rather than restating is the whole point of the box: the round
+    /// that filed it counted `smell` as re-skinned because a human had said so,
+    /// while the constant behind it was the engine's line character for
+    /// character.
+    ///
+    /// The comparisons are written out rather than reflected because a dynamic
+    /// cast to a function type is not reliable in Swift — an earlier draft of
+    /// this test read the closures out of a `Mirror` and trapped. `Mirror` is
+    /// still what proves the list is *whole*: the label check below fails the
+    /// moment a stub is added, so the next person is told to come here.
+    @Test func noEngineStubLineSurvivesInDungeon() {
+        let ours = Dungeon().text.stubs
+        let engine = GameText.StubReplies()
+
+        // Two samples, because a plural one catches a template that hard-codes
+        // its agreement — "The rails is not food." is the defect the engine's
+        // own `Noun` exists to prevent.
+        let name = "the brass lantern"
+        let one = GameText.Noun(name)
+        let many = GameText.Noun("the rails", plural: true)
+
+        /// Every stub the engine ships, paired with what each side answers.
+        let floor: [(String, [String], [String])] = [
+            ("yourself", [ours.yourself], [engine.yourself]),
+            ("somebodyElse", [ours.somebodyElse(one)], [engine.somebodyElse(one)]),
+            ("attack", [ours.attack(name)], [engine.attack(name)]),
+            ("smash", [ours.smash(one), ours.smash(many)], [engine.smash(one), engine.smash(many)]),
+            ("burn", [ours.burn(name)], [engine.burn(name)]),
+            ("cut", [ours.cut(name)], [engine.cut(name)]),
+            ("dig", [ours.dig], [engine.dig]),
+            ("pull", [ours.pull(one), ours.pull(many)], [engine.pull(one), engine.pull(many)]),
+            ("turn", [ours.turn(one), ours.turn(many)], [engine.turn(one), engine.turn(many)]),
+            ("squeeze", [ours.squeeze(name)], [engine.squeeze(name)]),
+            ("shake", [ours.shake(name)], [engine.shake(name)]),
+            ("knock", [ours.knock], [engine.knock]),
+            ("throwAt", [ours.throwAt], [engine.throwAt]),
+            ("touch", [ours.touch], [engine.touch]),
+            ("smell", [ours.smell], [engine.smell]),
+            ("listen", [ours.listen], [engine.listen]),
+            ("taste", [ours.taste], [engine.taste]),
+            ("eat", [ours.eat(one), ours.eat(many)], [engine.eat(one), engine.eat(many)]),
+            ("drink", [ours.drink], [engine.drink]),
+            ("sleep", [ours.sleep], [engine.sleep]),
+            ("wake", [ours.wake], [engine.wake]),
+            ("kiss", [ours.kiss], [engine.kiss]),
+            (
+                "give", [ours.give(name, one), ours.give(name, many)],
+                [engine.give(name, one), engine.give(name, many)]
+            ),
+            ("yell", [ours.yell], [engine.yell]),
+            ("wave", [ours.wave], [engine.wave]),
+            ("point", [ours.point], [engine.point]),
+            ("climb", [ours.climb], [engine.climb]),
+            ("jump", [ours.jump], [engine.jump]),
+            ("swim", [ours.swim], [engine.swim]),
+            ("dive", [ours.dive], [engine.dive]),
+            ("stand", [ours.stand], [engine.stand]),
+            ("sit", [ours.sit], [engine.sit]),
+            ("lie", [ours.lie], [engine.lie]),
+            ("kneel", [ours.kneel], [engine.kneel]),
+            ("fill", [ours.fill(name)], [engine.fill(name)]),
+            ("pour", [ours.pour(name)], [engine.pour(name)]),
+            ("empty", [ours.empty(name)], [engine.empty(name)]),
+            ("tie", [ours.tie(name)], [engine.tie(name)]),
+            ("untie", [ours.untie(one), ours.untie(many)], [engine.untie(one), engine.untie(many)]),
+            ("pray", [ours.pray], [engine.pray]),
+            ("sing", [ours.sing], [engine.sing]),
+            ("curse", [ours.curse], [engine.curse]),
+            ("xyzzy", [ours.xyzzy], [engine.xyzzy]),
+            ("count", [ours.count], [engine.count]),
+            ("think", [ours.think], [engine.think]),
+            ("wish", [ours.wish], [engine.wish]),
+            ("buy", [ours.buy], [engine.buy]),
+            ("sell", [ours.sell], [engine.sell]),
+            ("blow", [ours.blow(name)], [engine.blow(name)]),
+        ]
+
+        // The completeness half: `Mirror` names every property the engine
+        // actually ships, so a stub added tomorrow with no row above fails
+        // here rather than being silently skipped.
+        let shipped = Set(Mirror(reflecting: engine).children.compactMap(\.label))
+        #expect(shipped == Set(floor.map(\.0)))
+        #expect(shipped.count == 49)
+
+        for (label, ourLines, engineLines) in floor {
+            for (ourLine, engineLine) in zip(ourLines, engineLines) {
+                #expect(
+                    ourLine != engineLine,
+                    "`\(label)` still answers in the engine's voice: \"\(engineLine)\"")
+            }
+        }
+    }
+
+    /// **The Loud Room went on saying "The noise in here is past bearing" after
+    /// `echo` had settled it** — a static description with a state behind it,
+    /// which is box 3's mechanism at a site that pass did not reach.
+    ///
+    /// It surfaced from the other end: the stub floor's new `listen` reports
+    /// that the listener learns nothing, and next to a paragraph claiming the
+    /// din is unbearable that is a contradiction two lines apart. The repair is
+    /// the one the carousel next door already has — the room describes itself
+    /// with a rule. (#233)
+    @Test func theLoudRoomStopsRoaringOnceTheEchoSettlesIt() async throws {
+        let transcript = try await play(
+            Dungeon(), Self.toTheLoudRoom + ["echo", "look", "listen"], seed: 18)
+
+        // Roaring on arrival, which is where the platinum bar's lock comes from.
+        #expect(transcript.contains("The noise in here is past bearing"))
+
+        let after = turnOutput(of: "look", in: transcript)
+        #expect(!after.contains("past bearing"))
+        #expect(after.contains("The room is quiet now"))
+
+        // And only then does the floor's line become true here.
+        let heard = turnOutput(of: "listen", in: transcript)
+        #expect(heard.contains("learn nothing you did not already know"))
+        #expect(!heard.contains("nothing out of the ordinary"))
+    }
+
+    /// The control: while the room still roars it answers `listen` with the
+    /// roar, not with the floor — the read-loop rule claims the verb at stage 2
+    /// and this pass must not have quietly taken it away.
+    @Test func theRoaringLoudRoomStillFlingsListenBack() async throws {
+        let transcript = try await play(
+            Dungeon(), Self.toTheLoudRoom + ["listen"], seed: 18)
+
+        let here = turnOutput(of: "listen", in: transcript)
+        #expect(here.contains("cause your words to echo"))
+        #expect(!here.contains("nothing out of the ordinary"))
+        #expect(!here.contains("learn nothing you did not already know"))
+    }
+
+    /// And a room with nothing to hear and no rule of its own: the floor
+    /// answers, and reports on the listener rather than on the room.
+    @Test func aQuietRoomAnswersListenInTheGamesVoice() async throws {
+        let transcript = try await play(
+            Dungeon(), Self.toTheLoudRoom.dropLast() + ["listen"], seed: 18)
+
+        #expect(transcript.contains("North-South Passage"))
+        let here = turnOutput(of: "listen", in: transcript)
+        #expect(here.contains("learn nothing you did not already know"))
+        #expect(!here.contains("nothing out of the ordinary"))
+    }
+
+    /// **`give sword to troll` answered "There is nobody here who wants it."**
+    /// — standing in front of somebody who very much wanted it. The old line
+    /// was a claim about the room installed as a game-wide default, which is
+    /// the same defect one register up; the engine's own template names the
+    /// recipient, and an `action(…)` row is the reason this game could not.
+    /// (#233)
+    @Test func offeringSomethingToSomebodyStandingThereNamesThem() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.intoTheKitchen + Self.downTheTrapDoor + ["east", "give sword to troll"],
+            seed: 18)
+
+        #expect(transcript.contains("Troll Room"))
+        let offer = turnOutput(of: "give sword to troll", in: transcript)
+        #expect(!offer.contains("nobody here"))
+        #expect(offer.contains("troll"))
+    }
+
+    /// **The six stock lines that take a person as their subject were all still
+    /// the engine's**, under four actors the game had already given voices to.
+    /// #236 wrote their *greetings* as rules; this is the floor underneath,
+    /// which every verb that has to reach a person falls through.
+    ///
+    /// `V-COMMAND` (`gverbs.zil:359`) is the source for the order refusal and
+    /// `V-SQUEEZE` (`:1287`) for the reach one. (#233)
+    @Test func theStockLinesAboutAPersonAnswerInTheGamesVoice() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.intoTheKitchen + Self.downTheTrapDoor
+                + ["east", "take troll", "search troll", "troll, go north", "squeeze troll"],
+            seed: 18)
+
+        #expect(transcript.contains("Troll Room"))
+        #expect(!transcript.contains("would take exception to that"))
+        #expect(!transcript.contains("would have something to say about that"))
+        #expect(!transcript.contains("no intention of taking orders"))
+        #expect(!transcript.contains("would rather you didn't"))
+        // The source's own answer to ordering a creature about.
+        #expect(turnOutput(of: "troll, go north", in: transcript).contains("pays no attention"))
+        // And its answer to laying hands on one.
+        #expect(
+            turnOutput(of: "squeeze troll", in: transcript).contains("does not understand this"))
+    }
+
+    /// The floor a player actually meets: four of the thirty verbs that had no
+    /// Dungeon line at all, answered in a room where each is plainly idle.
+    /// Positive controls for the sweep above, which only proves the lines
+    /// *differ* from the engine's — not that they read as this game.
+    @Test func theIdleVerbsAnswerInTheGamesVoice() async throws {
+        let transcript = try await play(
+            Dungeon(), Self.intoTheKitchen + ["jump", "sing", "wish", "swear"], seed: 18)
+
+        #expect(turnOutput(of: "jump", in: transcript).contains("Wheeeeeeeeee!!!!!"))
+        #expect(turnOutput(of: "sing", in: transcript).contains("unmoved by your singing"))
+        #expect(turnOutput(of: "wish", in: transcript).contains("your wish will come true"))
+        #expect(
+            turnOutput(of: "swear", in: transcript)
+                .contains("Such language in a high-class establishment"))
+    }
+
+    /// **`.attack` is the one verb in the floor the box did not think to look
+    /// at**, because it is not the engine that answers it: `GnustoMeleeCombat`
+    /// claims the intent for the whole game, and shipped its four refusals in
+    /// the plain modern voice this pass is removing everywhere else. Swinging
+    /// at the scenery was the most reachable stock line left in the game.
+    /// (#233)
+    @Test func swingingAtTheSceneryIsRefusedInTheGamesVoice() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.intoTheKitchen + ["take sack"] + Self.downTheTrapDoor
+                + ["east", "attack sack", "attack troll with sack"],
+            seed: 18)
+
+        // Something that is no villain at all: the plugin's `attackFutile`.
+        let swing = turnOutput(of: "attack sack", in: transcript)
+        #expect(!swing.contains("isn't the answer"))
+        #expect(swing.contains("I've known strange people, but fighting a brown sack?"))
+
+        // And one that is, swung at with something that is no weapon.
+        let withIt = turnOutput(of: "attack troll with sack", in: transcript)
+        #expect(!withIt.contains("is no weapon"))
+        #expect(withIt.contains("would be suicidal"))
+    }
+
+    /// A stub the engine guards and this game had stopped guarding. Moving the
+    /// floor off `action(…)` rows and onto `text.stubs` gives the reach check
+    /// back: `DefaultActions.run` returns from an action override *before*
+    /// `requireReach`, so every verb Dungeon claimed was answering about things
+    /// the player could not touch.
+    @Test func theFloorRefusesWhatThePlayerCannotReach() async throws {
+        let transcript = try await play(
+            Dungeon(), Self.intoTheKitchen + ["west", "east", "squeeze window"], seed: 18)
+
+        // The kitchen window is a door on the exit behind us, not a thing in
+        // the living room — so the answer is about reach, not about squeezing.
+        let squeeze = turnOutput(of: "squeeze window", in: transcript)
+        #expect(!squeeze.contains("accomplishes nothing"))
     }
 }

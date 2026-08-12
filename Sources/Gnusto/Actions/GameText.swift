@@ -657,8 +657,12 @@ extension GameText {
 
         // MARK: Violence and force
 
-        /// Attacking something with no combat behind it.
-        public var attack = "Attacking things rarely improves them."
+        /// Attacking something with no combat behind it. Names the object,
+        /// because the refusal is about the thing swung at and a line that
+        /// only says "things" reads as a house rule rather than an answer.
+        public var attack: @Sendable (_ name: String) -> String = {
+            "Attacking \($0) rarely improves matters."
+        }
         /// Breaking, smashing or destroying something.
         public var smash: @Sendable (_ noun: Noun) -> String = {
             "\($0.sentenceCased) \($0.verb("is", "are")) sturdier than that."
