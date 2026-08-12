@@ -453,6 +453,44 @@ const CENSUS_SCHEMA = {
   },
 }
 
+/// The room census — the word census's twin, and filed beside it on purpose.
+///
+/// The 2026-08-11 Dungeon round reported 112 of 195 rooms visited and named 83
+/// as never entered. Derived from the transcripts instead: 155 entered and 40
+/// never — 43 of the 83, over half that list, appear as room headings in dozens
+/// of transcripts. The completeness critic caught it by hand. The error is
+/// one-directional, so nothing was over-claimed as covered, but a next-round
+/// planner handed that list spends its budget re-walking walked rooms.
+///
+/// The cause is the same one the word census was built to fix: the number was
+/// asked of the testers rather than counted. `coverage.roomsVisited` is a
+/// self-report field, and the workflow reconciled it against the survey roster
+/// — which catches a tester who writes "Landing" for "Upstairs Landing" and
+/// cannot catch a tester who simply does not mention a room they walked
+/// through.
+const ROOM_CENSUS_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['headings'],
+  properties: {
+    headings: {
+      type: 'array',
+      description:
+        'One row per roster room whose heading printed at least once, with how many times. Rooms that never printed are simply absent — do not pad the list with zeroes.',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['room', 'count'],
+        properties: {
+          room: { type: 'string', description: 'The roster room name, copied exactly as it was given to you.' },
+          count: { type: 'integer' },
+        },
+      },
+    },
+    note: { type: 'string', description: 'Only if the count needs one — an empty glob, an unreadable transcript.' },
+  },
+}
+
 const CRITIC_SCHEMA = {
   type: 'object',
   additionalProperties: false,
@@ -1209,16 +1247,39 @@ Files the fixers say they touched: ${touched.join(', ')}`,
 // printed "13 of 9 rooms visited", which is the exact shape of a number that
 // makes a reader stop trusting the report.
 const loose = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '')
-const visited = new Set()
+
+// Partial matching is a *fallback*, and it matches whole words rather than raw
+// substrings. On a nine-room roster "Landing" ⊂ "Upstairs Landing" is the only
+// candidate and the match is a kindness; on Dungeon's 195 a character-substring
+// test is a hazard twice over. "Maze 4" and "Maze 14" both contain "maze1"'s
+// neighbours, so an ambiguous name gets guessed at — and worse, "Maze 1"
+// *uniquely* substring-matches "Maze 14", so being unambiguous is not enough on
+// its own. Comparing word lists rejects both: `1` is not `14`.
+//
+// A name that is still ambiguous after that is reported as unrecognized rather
+// than guessed at, which is the honest answer and the one the critic can act on.
+const words = (s) => String(s || '').toLowerCase().split(/[^a-z0-9]+/).filter(Boolean)
+const wordSubset = (a, b) => a.length <= b.length && a.every((w) => b.includes(w))
+
+function rosterMatch(name) {
+  const exact = survey.rooms.find((r) => loose(r) === loose(name))
+  if (exact) return exact
+  const given = words(name)
+  if (!given.length) return null
+  const partial = survey.rooms.filter((r) => {
+    const room = words(r)
+    return wordSubset(given, room) || wordSubset(room, given)
+  })
+  return partial.length === 1 ? partial[0] : null
+}
+
+const selfReported = new Set()
 const unrecognized = new Set()
 for (const name of coverage.flatMap((c) => c.roomsVisited || [])) {
-  const match =
-    survey.rooms.find((r) => loose(r) === loose(name)) ||
-    survey.rooms.find((r) => loose(r).includes(loose(name)) || loose(name).includes(loose(r)))
-  if (match) visited.add(match)
+  const match = rosterMatch(name)
+  if (match) selfReported.add(match)
   else unrecognized.add(name)
 }
-const neverVisited = survey.rooms.filter((r) => !visited.has(r))
 const turnsSpent = coverage.reduce((n, c) => n + (c.turnsSpent || 0), 0)
 const reportedWordTotal = [...unknownWords.values()].reduce((a, b) => a + b, 0)
 
@@ -1253,10 +1314,101 @@ no transcripts.`,
   // is wrong, and the critic checks it against the transcripts either way.
   { label: 'census', phase: 'Gate', schema: CENSUS_SCHEMA, effort: 'low', model: 'haiku' })
 
+// The room census, same shape and started in the same breath. `roomsVisited` is
+// a tester self-report field and was never crossed against the transcripts,
+// which is how the 2026-08-11 round published "112 of 195" against a real 155.
+//
+// The engine prints a room's name alone on a line on entry
+// (`RoomDescriber.swift:58-69`; a brief re-entry still prints it), directly
+// under the `> command` that caused it. It is counted **against the roster**
+// rather than by recognising headings on sight: "is this line a room name?" is a
+// judgement, and this agent is a counter. `grep -Fx` against the survey's own
+// room list is not — it is the same shape of job as the word census's one grep.
+//
+// Excluding lines that begin with "> " is what keeps a tester's own comment out
+// of the count: they are echoed into the transcript verbatim
+// (`TranscriptRecorder.swift:141`), so `> // walk to Studio` would otherwise
+// score a visit to a room nobody went to.
+//
+// Three limits, stated here rather than left for a reader to discover:
+//   - A room entered **dark** prints no heading at all (`RoomDescriber.swift:47`
+//     returns before the name is said), so it cannot be counted. The union with
+//     self-report below is what covers that case.
+//   - "Entered" is not "covered". 21 Dungeon rooms were entered only inside a
+//     replayed route prefix and no tester ever typed a command in them; the
+//     round's rule is **count them blank**. Distinguishing the two needs the
+//     route files, not a grep, so it stays the critic's job and the prompt says so.
+//   - The critic's own probes write transcripts too, and its Studio probe is
+//     exactly what took the last round's figure from 155 to 156. Its label is
+//     excluded from the glob below rather than raced against.
+const roomCensusPromise = agent(
+  `${groundMin(labelFor('room-census'))}
+
+You are the room census. You count; you do not judge, file or explain.
+
+Write this room roster to \`/tmp/${game}-rooms.txt\`, one name per line, exactly
+as given:
+
+${survey.rooms.join('\n')}
+
+Then, from \`${pkg}\`, run exactly this and read the output:
+
+    grep -rhv '^> ' .context/playtest/${game}-*/*/transcript.txt | grep -Fx -f /tmp/${game}-rooms.txt | sort | uniq -c | sort -rn
+
+The engine prints a room's name alone on a line every time the player enters it,
+so that count is the number of entries. Dropping lines that start with "> " is
+what keeps a tester's own typing out of it — a comment like
+\`> // walk to Studio\` is echoed into the transcript and must not score a visit.
+
+Two adjustments to make by hand afterwards:
+
+- **Exclude the \`${game}-critic\` and \`${game}-census\` directories** if the glob
+  picked them up — those are the round auditing itself, not playing it. Say in
+  \`note\` if you had to.
+- A room entered in a vehicle prints as \`Frigid River, in the magic boat\`, which
+  \`-Fx\` will not match. Run the same grep again without \`-Fx\`, as
+  \`grep -rhoF -f /tmp/${game}-rooms.txt\` over the lines that contain \`, in the \`,
+  and add those counts in.
+
+Report one row per roster room that printed at least once, with its count. Leave
+out rooms that never printed rather than reporting them as zero. If the glob
+matches no files, report an empty list and say so in \`note\` — that is a real
+answer and it means the round wrote no transcripts.`,
+  // Haiku for the same reason as the word census: one sweep of text files and a
+  // count, with no judgement in it to lose.
+  { label: 'room-census', phase: 'Gate', schema: ROOM_CENSUS_SCHEMA, effort: 'low', model: 'haiku' })
+
+// Census is the authority, self-report is kept beside it — the word census's
+// rule applied to rooms. A union rather than a replacement, because the two miss
+// different things: the grep cannot see a room entered in the dark, and a tester
+// cannot be relied on to name a room they walked through. Derived once, off the
+// promise, so the critic prompt and the returned coverage cannot disagree.
+const roomTallyPromise = roomCensusPromise.then((roomCensus) => {
+  const censusRooms = new Set()
+  const unmatchedHeadings = new Set()
+  for (const row of (roomCensus && roomCensus.headings) || []) {
+    const match = rosterMatch(row.room)
+    if (match) censusRooms.add(match)
+    else unmatchedHeadings.add(row.room)
+  }
+  const visited = new Set([...selfReported, ...censusRooms])
+  return {
+    censusRooms,
+    unmatchedHeadings,
+    visited,
+    neverVisited: survey.rooms.filter((r) => !visited.has(r)),
+    missedBySelfReport: [...censusRooms].filter((r) => !selfReported.has(r)),
+  }
+})
+
 const criticThunk = async () => {
   const census = await censusPromise
   const unknownWordTotal = Math.max(reportedWordTotal, (census && census.totalOccurrences) || 0)
   const unknownWordDistinct = Math.max(unknownWords.size, ((census && census.words) || []).length)
+
+  const { censusRooms, unmatchedHeadings, visited, neverVisited, missedBySelfReport } =
+    await roomTallyPromise
+
   return agent(
   `${groundMin(labelFor('critic'))}
 
@@ -1264,11 +1416,22 @@ You are the completeness critic. You do not look for defects; you look for what 
 round MISSED. Silent truncation reads as "covered everything" when it wasn't, and your
 whole job is to stop that.
 
-Arithmetic computed from the survey's denominator — judge it, and **check it**. These are
-the testers' self-reports reconciled against the survey roster, so they can still be
-wrong or flattering; the transcripts under \`${pkg}/.context/playtest/\` are the ground
-truth and they win over anything below.
-- Rooms: ${visited.size} of ${survey.rooms.length} visited. Never visited: ${neverVisited.join(', ') || 'none'}.${unrecognized.size ? ` Testers also named ${unrecognized.size} place(s) not on the survey roster (${[...unrecognized].join(', ')}) — reconcile these.` : ''}
+Arithmetic computed from the survey's denominator — judge it, and **check it**. The room
+and unknown-word counts are now *derived from the transcripts*, with the testers'
+self-reports kept beside them; everything else is still self-report reconciled against the
+roster and can be wrong or flattering. The transcripts under
+\`${pkg}/.context/playtest/\` are the ground truth and they win over anything below.
+- Rooms: ${visited.size} of ${survey.rooms.length} entered. Never entered: ${neverVisited.join(', ') || 'none'}.${unrecognized.size ? ` Testers also named ${unrecognized.size} place(s) not on the survey roster (${[...unrecognized].join(', ')}) — reconcile these.` : ''}
+- **Entered is not covered, and the report must not conflate them.** The count above is
+  every room whose heading printed, which includes rooms that only flashed past inside a
+  replayed prefix from \`.context/playtest/routes/\` while the harness typed somebody
+  else's walkthrough. A room nobody typed their own command in is blank, however many
+  times its name printed. Only the transcripts can tell the two apart — do that, and give
+  the grid \`X\` for a room a charter worked in and \`.\` for one it only passed through.
+- Room census cross-check: the testers self-reported ${selfReported.size} room(s); the
+  transcripts show ${censusRooms.size}.${missedBySelfReport.length ? ` ${missedBySelfReport.length} room(s) were entered but named by no tester (${missedBySelfReport.slice(0, 12).join(', ')}${missedBySelfReport.length > 12 ? `, +${missedBySelfReport.length - 12} more` : ''}).` : ''} A gap between the two is a reporting defect,
+  not a coverage one, and is worth a line — the 2026-08-11 Dungeon round published
+  "112 of 195" against a real 155 because this number was asked rather than counted.${unmatchedHeadings.size ? `\n- ${unmatchedHeadings.size} heading(s) in the transcripts match no roster room (${[...unmatchedHeadings].slice(0, 12).join(', ')}) — either the roster is short or these are not headings. Say which.` : ''}
 - Turns spent by testers: ${turnsSpent} of ~${turnBudget * playRoster.length} budgeted. This EXCLUDES the verifiers' own probes, which are usually a large share of the round, so treat it as a floor and count the true total from the transcripts.
 - There is deliberately no "cells probed" count: free-text cell labels are not comparable between charters, so any total would be a number that means nothing. Build the real cross-product yourself from the transcripts, against the ${survey.rooms.length}-room roster and the timers above.
 - Charters run: ${playRoster.map((c) => c.key).join(', ')}. NOT run: ${skipped.map((c) => c.key).join(', ') || 'none'}.
@@ -1312,6 +1475,7 @@ const censusWords = (census && census.words) || []
 const selfReportedWords = [...unknownWords.entries()]
   .map(([word, count]) => ({ word, count }))
   .sort((a, b) => b.count - a.count)
+const roomTally = await roomTallyPromise
 
 return {
   game,
@@ -1332,5 +1496,20 @@ return {
   fixes: fixes.map((f) => ({ file: f.file, ...(f.result || {}), findings: f.group.map((g) => g.claim) })),
   gate,
   critic,
-  coverage: { rooms: { visited: visited.size, total: survey.rooms.length, neverVisited }, turnsSpent, perCharter: coverage },
+  coverage: {
+    // Same rule as `unknownWords` above: the census is the authority and the
+    // self-report is kept beside it, so a reader can see the two disagree
+    // rather than having to trust the one that survived.
+    rooms: {
+      visited: roomTally.visited.size,
+      total: survey.rooms.length,
+      neverVisited: roomTally.neverVisited,
+      fromTranscripts: roomTally.censusRooms.size,
+      selfReported: selfReported.size,
+      enteredButUnreported: roomTally.missedBySelfReport,
+      headingsOffRoster: [...roomTally.unmatchedHeadings],
+    },
+    turnsSpent,
+    perCharter: coverage,
+  },
 }

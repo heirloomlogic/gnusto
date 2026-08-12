@@ -68,7 +68,19 @@ Four things, none of them optional:
 
 - **Which charters found nothing, and why.** "Not run — budget" and "run, found
   nothing in its own class" are very different results and must not look the same.
-- **Rooms visited, as a count and a list, with the never-visited ones named.**
+- **Rooms entered, as a count and a list, with the never-entered ones named.** The
+  count comes from `coverage.rooms`, which is **derived from the transcripts** and
+  not from what the testers said — `visited` is the union, `fromTranscripts` and
+  `selfReported` are the two sides, and `enteredButUnreported` is the gap. A gap is
+  a *reporting* defect rather than a coverage one and is worth its own sentence; the
+  2026-08-11 Dungeon round published "112 of 195" against a real 155 because this
+  number used to be asked rather than counted.
+- **Entered is not covered, and the two must not be one number.** A room the harness
+  only walked through while replaying a committed route from
+  `.context/playtest/routes/` is reach, not coverage — 21 of Dungeon's were exactly
+  that, and the rule is **count them blank**. The grid is where the distinction
+  lives: `X` for a room a charter typed its own commands in, `.` for one it only
+  passed through, `-` for never reached.
 - **The state cross-product as an actual grid** — hours × rooms, or events × rooms.
   Ticks and blanks.
 - **Findings dropped, and why** — unverified for budget, or not reproducible. A

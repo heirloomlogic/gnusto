@@ -150,8 +150,19 @@ fresh finding, so on a round that finds sixty they are most of the bill. But the
 also the layer whose failure is invisible: a fixer misled by a bad finding damages prose
 that was right, which is loud, while a refuter that rejects *good* findings produces a
 thin round that reads as a clean one. Turn it down to afford more charters or more turns,
-and say in the report's header that you did. The census is on Haiku permanently and needs
-no flag — it runs one `grep` and counts, and there is no judgement in it to lose.
+and say in the report's header that you did. **Both censuses** — unknown words and rooms
+— are on Haiku permanently and need no flag: each runs one `grep` and counts, and there
+is no judgement in either to lose.
+
+**Anything the report states as a number is counted, not asked.** Both censuses exist
+because the same mistake happened twice: the 2026-07-31 round self-reported 2 unknown-word
+replies against transcripts holding 261, and the 2026-08-11 round self-reported 112 of 195
+rooms against a real 155. Neither was a tester lying — a field description is read
+seventy-nine different ways by seventy-nine agents, and a derived number does not depend
+on that. The pattern to copy when adding the third: a hardcoded command, a strict schema
+with a `note` for the empty case, started early and awaited late so it overlaps the gate,
+and **the self-report kept beside the count rather than replaced by it**, so a reader can
+see the two disagree.
 
 ## What lives where
 

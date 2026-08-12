@@ -241,9 +241,33 @@ line in ``GameText/StubReplies`` against the engine's and derives its own comple
 from `Mirror`, so a forty-eighth stub arriving with no Dungeon line fails rather than
 passing quietly.
 
-**Still open: one box and three rows.** Box 15, the harness room census — a hand edit to
-`playtest.js` that no `fix` mode can make, with the word census in the same file as the
-worked template. Rows 89, 92 and 94 stand for the reasons given above.
+**2026-08-12 — box 15 closed, and #233 with it.** The harness room census. No row moves
+and none could: the preamble already records that this box came from the completeness
+critic rather than from a charter, so it has no key here.
+
+The round's own number was 112 of 195 rooms against a real 155, because `roomsVisited` is
+a tester self-report field that was reconciled against the survey roster and never against
+the 184 transcripts. `playtest.js` now derives it, in the shape the word census established
+in the same file: a hardcoded `grep` on Haiku, started early and awaited late so it costs
+no wall clock, with **the self-report kept beside the count rather than replaced by it** —
+`coverage.rooms` reports the union, both sides, and the gap between them.
+
+Three things the repair had to get right, each of which would have made the new number
+wrong in its own way. A tester's comment is echoed into the transcript verbatim, so
+`> // walk to Studio` had to be dropped or it would score a visit to the one room the last
+round singled out as never entered. The critic's own probes write transcripts too — that
+is exactly what took the last figure from 155 to 156 — so its label is excluded rather
+than raced against. And a room entered **dark** prints no heading at all, which is why the
+merge is a union: the grep cannot see those and a tester can.
+
+The roster matcher was fixed while in there. It fell back to a character-substring test,
+so on a 195-room roster `Maze 1` resolved silently to `Maze 14` — unique, and wrong. It
+compares word lists now, and a name that is still ambiguous is reported unrecognized
+rather than guessed at.
+
+**Still open: nothing on #233. Three rows stand.** Rows 89, 92 and 94, each for the reason
+given above — all three name a sentence no pass has changed, and the ledger's rule is that
+a row belongs to the sentence in its key rather than to the box it was filed under.
 
 Pass every `fixed` and `refuted` key above as `ledgerKeys` on the next round. The list is
 seventeen keys longer than it was.

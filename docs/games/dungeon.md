@@ -1416,4 +1416,6 @@ what they scored. Three things are worth naming:
   `gverbs.zil` lines under the verbatim rule, which is a different job from this
   one; it is filed rather than folded in.
 
-Still open on #233 after this pass: box 15, the harness room census.
+Box 15, the harness room census, closed in the same branch — it is a change to
+`.claude/workflows/playtest.js` rather than to this game, so it has no rule here.
+With it, **#233 is closed**: fifteen boxes over five passes.
