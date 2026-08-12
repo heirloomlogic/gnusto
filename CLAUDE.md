@@ -209,6 +209,13 @@ In any rule body: `say`, `refuse`, `reply`, `handled`, `require(_:else:)`, `end(
   described>` is a **bug**, not stock behavior. SEARCH and OPEN also **name a
   `scenery` fitting the room listing withholds** — deliberately; see the
   `scenery` doc comment for why the two disagree.
+- **`enter X` / `go through X` is one intent, `.board`, and it does two jobs**:
+  a **door** on an exit of the room the player is standing in takes that exit
+  (`travel` answers, so a shut door refuses in the same words `go` does), an
+  `enterable` is a vehicle and admits them, anything else gets `cantEnterThat`.
+  So a door is a way through by name as well as by direction, and a game does
+  **not** want its own `#verb` for "go through" — two files in this repo had
+  independently minted one before the engine had the word.
 - **Containment is room-granular; `reach { }` is the escape hatch.** A thing in one
   square of a floor the player walks around inside is "in the room" from every
   square. `item.reach(otherwise: "…") { … }` narrows that once, for every verb that

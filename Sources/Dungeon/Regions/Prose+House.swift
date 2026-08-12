@@ -6,15 +6,33 @@
 extension Prose {
     // MARK: - Kitchen
 
-    /// Verbatim Zork I. Every fact in it holds: west to the living room, the
-    /// stair up to the attic, the chimney down (refused), the window east.
-    static let kitchen = """
-        You are in the kitchen of the white house. A table seems to have
-        been used recently for the preparation of food. A passage leads to
-        the west and a dark staircase can be seen leading upward. A dark
-        chimney leads down and to the east is a small window which is
-        slightly ajar.
+    /// Verbatim Zork I, and branched as the source branches it. Every fact in it
+    /// holds: west to the living room, the stair up to the attic, the chimney
+    /// down (refused), the window east.
+    ///
+    /// **"Verbatim" is a claim about a line, and this line has two halves.**
+    /// `KITCHEN-FCN` (`1actions.zil:389-397`) ends the paragraph off
+    /// `KITCHEN-WINDOW`'s `OPENBIT` — "open." or "slightly ajar." — and the
+    /// mainframe's `KITCHEN` (`act1.254:57-63`) does the same. The game had only
+    /// the shut half, so the room went on calling the window ajar to a player
+    /// standing in it who had climbed through the window to get there. The
+    /// 2026-08-11 round filed that and #235 declined it on the grounds that a
+    /// verbatim paragraph asserts nothing; the paragraph asserts this. One
+    /// function rather than two constants, because the source branches one
+    /// clause and not the paragraph. (#233)
+    ///
+    /// - Parameter windowOpen: whether the window stands open.
+    /// - Returns: the paragraph. The hand wrap is the output's, so the clause
+    ///   that varies stays on one printed line.
+    static func kitchen(windowOpen: Bool) -> String {
         """
+        You are in the kitchen of the white house. A table seems to have been
+        used recently for the preparation of food. A passage leads to the west
+        and a dark staircase can be seen leading upward. A dark chimney leads
+        down and to the east is a small window which is \
+        \(windowOpen ? "open." : "slightly ajar.")
+        """
+    }
 
     /// Written fresh. The Kitchen's paragraph names a passage west and the
     /// round found `x passage` answering "You can't see any such thing" in it.

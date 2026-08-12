@@ -321,7 +321,11 @@ struct DungeonMirror: GameContent {
         ] {
             room.describe { mirrorRoomDescription() }
             glass.describe { mirrorBroken ? Prose.mirrorBroken : Prose.mirror }
-            glass.before(.touch) { try stepThroughMirror(to: far) }
+            // `.board` as well as `.touch`: `go through mirror` is the same
+            // move in the player's words, and since the engine taught `.board`
+            // about doorways a mirror that answered only `touch` would send it
+            // to the game-wide "neither doorway nor vehicle" line.
+            glass.before(.touch, .board) { try stepThroughMirror(to: far) }
             glass.before(.attack, .throwAt) { try breakMirror() }
             glass.before(.take) { try reply(Prose.mirrorTakeRefused) }
         }

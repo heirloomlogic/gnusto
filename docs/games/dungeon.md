@@ -1268,3 +1268,87 @@ edited here prints. The pre-existing multi-way ambiguities on `switch` and `tool
 in the Maintenance Room, `book` in the Library, `pamphlet` between the leaflet
 and the brochure, and `door` in the Living Room are all older than #233 and none
 is touched.
+
+### The fourth pass: a way through answers as one
+
+The three passes above were about sentences. This one is about the two places
+where the *mechanics* and the sentence disagreed in the same direction — a way
+through that the game itself opened, and then would not admit was a way through.
+Both were filed `needs-human` because more than one repair looked reasonable
+from outside, and in both cases the source had already chosen.
+
+13. **A way out is a way in, or the game says which side is shut.** The mirror
+    box let you step out through the pine end and refused to let you back in
+    through it, with *"There is no opening in the side facing you."* — a claim
+    about the whole box, printed to somebody who had walked through that face the
+    turn before. The reading that the two halves disagreed was right; the
+    conclusion that the pine end should become an entrance was wrong.
+    `MIRIN` recognises only the mirror and `MIROUT` recognises both, in the same
+    source file, and what reconciles them is one line this game did not have:
+    **the pine end shuts behind you as you leave**. With it, the state the round
+    found is not reachable, and the refusal that is left names the side actually
+    in the way — a mirror, the panel behind a broken one, or the structure —
+    which is `MIRIN`'s own three answers rather than one denial about the box.
+
+    The general form: **a refusal about a whole object is a claim you have to be
+    able to defend from every side of it.** One about the side facing the player
+    is cheaper to keep true.
+
+14. **A door on the room's exits is a way through, whatever verb names it — and
+    a game minting that verb privately is a missing engine word.** `enter window`
+    at the white house, the front entrance of the game, answered the engine's
+    "You can't get into that." one turn after the window's own examine text
+    promised a gap wide enough to climb through, because `.board` knew about
+    vehicles and nothing about doors. `V-THROUGH` is one routine over both
+    (`gverbs.zil:1404`), and the mainframe spells the same thing as map data,
+    `"ENTER" ,KITCHEN-WINDOW` on Behind House. The repair is the engine's, not
+    this game's: a door on an exit of the room you are standing in now takes that
+    exit under `enter`, `go through`, `walk through`, `step through` and `climb
+    through`, and refuses in the same words `go` refuses in.
+
+    The Bank's private `#verb("walkThrough")` was the tell, and it is gone: two
+    files in this repository had independently invented the same word, one of
+    them a test fixture. Its walls and its curtain of light hook `.board` now,
+    which is where Zork II keeps them — inside `V-THROUGH` itself.
+
+15. **A paragraph the source branched is branched here too.** Behind House and
+    the Kitchen both end on the window — *"…a small window which is open."* /
+    *"…slightly ajar."* — in `EAST-HOUSE` and `KITCHEN-FCN`, in both sources.
+    This game had frozen the shut half, so the room called the window ajar to a
+    player who had climbed through it. #235 declined that finding with an
+    argument: the paragraph is trilogy-verbatim, so it asserts nothing. The
+    argument was about the wrong thing. **"Verbatim" is a claim about a line, and
+    a branched line has two halves; reproducing one of them is not reproducing
+    the line.** `Sources/Zork1/` had the same two paragraphs frozen the same way
+    and is repaired in the same commit, because a defect fixed on one side of a
+    shared source and left on the other comes back as a regression.
+
+### What the fourth pass changed, and what it did not
+
+The mechanics contract is untouched a fourth time, and both walkthroughs score
+what they scored. Three things are worth naming:
+
+- **The box's model of an opening is unchanged, and now tested.** Only the
+  mirror admits entry, because that is `MIRIN`. It is one query rather than two
+  predicates: `MirrorBox.openFace(at:)` names the part standing open — both ends
+  are gaps you can see through — and `BoxFace.admitsEntry` says which of them is
+  a way in, carrying the citation. Two same-shaped `Bool`s a word apart in name
+  is how the descriptions came to ask the *entry* question in the first place,
+  which is the defect itself; a value test pins the rest, so the next reader who
+  finds the asymmetry surprising finds the reason with it rather than an accident
+  to tidy.
+- **A second bug fell out of the first.** `leaveTheBox()` tested its two
+  openings with two `if`s rather than a choice, so an open pine end shadowed an
+  open mirror: `south`, out of a box whose mirror stood open to the south,
+  answered "The walls of the box are shut on every side of you." The direction
+  chooses now.
+- **The engine change reached three games and one fixture, and cost one stock
+  line its shape.** `GameText/cantEnterThat` takes the thing's name now, which is
+  what lets this game and `Zork1` answer with `V-THROUGH`'s own
+  "You hit your head against the … as you attempt this feat." — a line both
+  sources share. The Bank's "It is solid, and you are not." went with the private
+  verb it belonged to: it was true of walls and would have been odd about a
+  pebble.
+
+Still open on #233 after this pass: box 12, the stub-verb register, and box 15,
+the harness room census.

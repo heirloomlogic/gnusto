@@ -129,6 +129,100 @@ struct DoorTests {
             ])
     }
 
+    // MARK: - Going through a door by name
+
+    @Test func enteringADoorWalksThroughIt() async throws {
+        let transcript = try await play(
+            WindowGame(), ["open window", "enter window", "enter window"])
+        expectInOrder(
+            transcript,
+            [
+                "> open window", "Opened.",
+                "> enter window", "Kitchen",
+                "> enter window", "Garden",
+            ])
+    }
+
+    /// Every spelling `V-THROUGH`'s syntax rows carry, one play each so no
+    /// spelling can ride the previous one's move.
+    @Test(
+        arguments: [
+            "enter window", "board window", "get in window", "get into window",
+            "go through window", "walk through window", "step through window",
+            "climb through window", "walk in window",
+        ])
+    func everySpellingWalksThroughTheDoor(_ command: String) async throws {
+        let transcript = try await play(WindowGame(), ["open window", command])
+        #expect(turnOutput(of: command, in: transcript).contains("Kitchen"))
+    }
+
+    /// A shut door answers the sentence `go` answers, because it is `travel` that
+    /// answers in both cases.
+    @Test func aShutDoorRefusesTheWayGoRefuses() async throws {
+        let transcript = try await play(
+            WindowGame(), ["enter window", "west", "go through window"])
+        expectInOrder(
+            transcript,
+            [
+                "> enter window", "The small window is closed.",
+                "> west", "The small window is closed.",
+                "> go through window", "The small window is closed.",
+            ])
+        #expect(!transcript.contains("Kitchen"))
+    }
+
+    /// A door carrying two directions from one room goes the same way whichever
+    /// of them the lookup finds first. `WindowGame`'s window is on `west` and
+    /// `in`; the answer is `west`'s because the lookup walks `Direction.allCases`
+    /// rather than the exits dictionary, whose order is nobody's decision.
+    /// Repeating the play would not test this — Swift's hash seed is per process
+    /// — so the assertion is on the compass order itself.
+    @Test func aDoorOnTwoDirectionsGoesOneWay() async throws {
+        let transcript = try await play(
+            WindowGame(), ["open window", "enter window", "go through window"])
+        #expect(turnOutput(of: "enter window", in: transcript).contains("Kitchen"))
+        #expect(turnOutput(of: "go through window", in: transcript).contains("Garden"))
+    }
+
+    /// An item that is both a vehicle and a door is walked through, not boarded
+    /// — the door is tested first. The order is only observable here, and here
+    /// the door has to win: a door is referenced by an exit rather than placed
+    /// in a room, so the vehicle path's "is it here" test refuses it anyway.
+    /// Boarding this chair by name was never possible; walking through it is.
+    @Test func anEnterableDoorIsWalkedThroughRatherThanBoarded() async throws {
+        let transcript = try await play(
+            SedanChairGame(), ["open chair", "enter chair"])
+        let entered = turnOutput(of: "enter chair", in: transcript)
+        #expect(entered.contains("Terrace"))
+        #expect(!entered.contains("You can't reach"))
+        #expect(!entered.contains("You are now in"))
+    }
+
+    @Test func anUnrevealedDoorIsNoWayThrough() async throws {
+        let transcript = try await play(
+            HiddenDoorGame(),
+            ["enter bookcase door", "push switch", "go through bookcase door"])
+        expectInOrder(
+            transcript,
+            [
+                "> enter bookcase door", "You can't see any such thing.",
+                "> push switch", "A bookcase swings aside",
+                "> go through bookcase door", "The bookcase door is closed.",
+            ])
+        #expect(!transcript.contains("Secret Passage"))
+    }
+
+    /// `climb through X` is the doorway; `climb X` is still the stub verb. Two
+    /// rows one token apart, so the parser's preference for the longer match is
+    /// what keeps them separate.
+    @Test func climbingThroughIsNotClimbing() async throws {
+        let transcript = try await play(
+            WindowGame(), ["open window", "climb window", "climb through window"])
+        let climbed = turnOutput(of: "climb window", in: transcript)
+        #expect(!climbed.contains("Kitchen"))
+        #expect(turnOutput(of: "climb through window", in: transcript).contains("Kitchen"))
+    }
+
     // MARK: - Bootstrap diagnostics
 
     @Test func badDoorReportsBothProblems() {
@@ -143,6 +237,8 @@ struct DoorTests {
     }
 
     @Test func validDoorGamesBoot() throws {
+        _ = try Bootstrap.build(WindowGame())
+        _ = try Bootstrap.build(SedanChairGame())
         _ = try Bootstrap.build(TrapDoorGame())
         _ = try Bootstrap.build(LockedDoorGame())
         _ = try Bootstrap.build(GratingGame())

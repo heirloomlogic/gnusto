@@ -361,8 +361,8 @@ let boat = Item {
 }
 ```
 
-`enter`/`board`/`get in` and `exit`/`disembark`/`get out` move the player
-in and out (bare `in`/`out` remain directions). While boarded:
+`enter`/`board`/`get in`/`go through` and `exit`/`disembark`/`get out` move
+the player in and out (bare `in`/`out` remain directions). While boarded:
 
 - `go` moves the vehicle — and everything in it — along with the player,
   through the same exits walking uses. Terrain limits are ordinary rules:
@@ -386,6 +386,13 @@ in and out (bare `in`/`out` remain directions). While boarded:
 
 ``Player/vehicle`` is read-only — board and disembark are actions, so a
 `boat.before(.board)` rule can gate them.
+
+`.board` is one intent doing two jobs, in this order: a **door** on an exit of
+the room you are standing in is a way through and takes that exit (see
+<doc:ContainersDoorsAndLocks>), an **`enterable`** is a vehicle and admits you,
+and anything else is neither — ``GameText/cantEnterThat``. So the verb that
+boards the boat also walks you through the kitchen window, which is what the
+classic games do with it.
 
 For currents and other rule-driven travel, `Item/move(to:)` on the
 boarded vehicle carries the passenger; follow with

@@ -185,12 +185,6 @@ extension Prose {
         The wall gives like water, and closes behind you.
         """
 
-    /// Said anywhere the word is used on something that will not admit you —
-    /// which is everywhere in the game but four rooms of one bank.
-    static let nothingToWalkThrough = """
-        It is solid, and you are not.
-        """
-
     // MARK: - The takings
 
     /// Adapted from the trilogy's `ODESCO`, which puts the bills on the floor

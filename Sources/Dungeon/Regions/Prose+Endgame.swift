@@ -282,9 +282,19 @@ extension Prose {
         There is no opening in it.
         """
 
+    /// The shut half. "There is no opening in it." is a claim about
+    /// ``MirrorBox/pineOpen``, and this was a static trait — so the wall the
+    /// player had just swung open described itself as solid, which is the class
+    /// #235 repaired seven other sites of. See ``pineEndOpen``. (#233)
     static let pineEnd = """
         The end wall of the box, panelled in pine, pale and full of knots.
         There is no opening in it.
+        """
+
+    /// The open half of ``pineEnd``.
+    static let pineEndOpen = """
+        The end wall of the box, panelled in pine, pale and full of knots. It
+        stands swung open on its hinges, and there is a way through.
         """
 
     static let mirrorPanelIntact = """
@@ -297,10 +307,20 @@ extension Prose {
         nothing you would care to recognise.
         """
 
-    static let mirrorPanelOpen = """
-        The mirror stands open on its hinge, and the hallway is on the other
-        side of it.
+    /// The mirror standing open, naming the room on the other side of it rather
+    /// than always "the hallway" — the box faces a narrow room whenever it
+    /// stands square to the channel. Same repair as
+    /// ``boxPineSwingsOpen(onto:)``. (#233)
+    ///
+    /// - Parameter room: the name of the room beyond it, or `nil` for a
+    ///   diagonal.
+    /// - Returns: the description.
+    static func mirrorPanelOpen(onto room: String?) -> String {
         """
+        The mirror stands open on its hinge, and the \(beyond(room)) is on the \
+        other side of it.
+        """
+    }
 
     /// The colour arrives as a bare word, so the sentence supplies its own
     /// article.

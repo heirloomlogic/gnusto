@@ -66,6 +66,16 @@ extension Prose {
 
     static let verbSqueezeNothing = "Squeezing it accomplishes nothing."
 
+    /// `V-THROUGH`'s last line, trilogy-verbatim (`gverbs.zil:1438`; the
+    /// mainframe's is `act3.199:450`). One verb answers `enter` and `go
+    /// through` both, so its refusal has to be true of a thing that is no
+    /// vehicle *and* no doorway — which is what this is, and what the Bank's
+    /// old "It is solid, and you are not." was not, since it went with a
+    /// private `walkThrough` verb that only ever met walls. (#233)
+    static func cantEnterThat(_ thing: String) -> String {
+        "You hit your head against \(thing) as you attempt this feat."
+    }
+
     // MARK: - Liquids
 
     static let waterSlipsAway = "The water slips through your fingers."

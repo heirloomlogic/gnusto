@@ -67,7 +67,7 @@ survive here. They are one class in #233 and should be fixed as one.
 
 | Key (abbreviated) | Verdict | Category |
 |---|---|---|
-| `Sources/Dungeon/Regions/Prose+House.swift::open window opened  west kitchen y…` | confirmed | prose-untrue-of-state |
+| `Sources/Dungeon/Regions/Prose+House.swift::open window opened  west kitchen y…` | fixed | prose-untrue-of-state |
 | `Sources/Dungeon/Regions/Prose+Mirror.swift::look round room this is a circula…` | fixed | prose-untrue-of-state |
 | `Sources/Dungeon/Regions/AboveGround.swift::up up a tree you are about 10 feet…` | fixed | prose-untrue-of-frame |
 | `Sources/Dungeon/Regions/Prose+AboveGround.swift::down rocky ledge you are on …` | fixed | prose-untrue-of-frame |
@@ -104,8 +104,8 @@ survive here. They are one class in #233 and should be fixed as one.
 | `Sources/Dungeon/Regions/AboveGround.swift::behind house you are behind the wh…` | fixed | unanswerable-noun |
 | `Sources/Dungeon/Regions/AboveGround.swift::you are standing in an open field …` | fixed | unanswerable-noun |
 | `Sources/Dungeon/Regions/AboveGround.swift::north of house you are facing the …` | fixed | unanswerable-noun |
-| `Sources/Dungeon/Regions/House.swift::open window opened  enter window you can…` | confirmed | mechanic-contradicts-prose |
-| `Sources/Dungeon/Regions/Endgame+MirrorBox.swift::push pine the pine wall swin…` | confirmed | mechanic-contradicts-prose |
+| `Sources/Dungeon/Regions/House.swift::open window opened  enter window you can…` | fixed | mechanic-contradicts-prose |
+| `Sources/Dungeon/Regions/Endgame+MirrorBox.swift::push pine the pine wall swin…` | fixed | mechanic-contradicts-prose |
 | `Sources/Dungeon/Regions/Prose+EndgameMechanics.swift::push pine the pine wall…` | fixed | prose-untrue-of-state |
 | `Sources/Dungeon/Dungeon+Endgame.swift::drop sword dropped the blue light goes…` | fixed | prose-untrue-of-state |
 | `Sources/Dungeon/Regions/Endgame+Master.swift::knock on door beside the temple…` | fixed | repeat-behavior |
@@ -123,10 +123,10 @@ survive here. They are one class in #233 and should be fixed as one.
 | `Sources/Dungeon/Dungeon.swift::attack troll with sword the troll takes a fata…` | refuted | prose-untrue-of-state |
 | `Sources/Dungeon/Regions/Prose+Endgame.swift::north south corridor  the dungeo…` | refuted | prose-taste |
 
-Counts: 6 confirmed, 13 refuted, 0 routed, 36 fixed, 0 dropped. 55 verifications
+Counts: 3 confirmed, 13 refuted, 0 routed, 39 fixed, 0 dropped. 55 verifications
 over 57 probes; every finding was replayed from a clean start by its own tester and again
 by an adversarial verifier from a different charter. The round itself closed at 42
-confirmed and 0 fixed; the thirty-six that have moved since are dated in
+confirmed and 0 fixed; the thirty-nine that have moved since are dated in
 [Amendments](#amendments).
 
 ## Amendments
@@ -199,5 +199,22 @@ and flipping 94 would repeat the `swim` mistake of claiming credit for a differe
 sentence; `enter window` (row 107); and the mirror box's model of an opening (row 108).
 By box: 2, 11, 12 and 15, all `needs-human` or a hand edit to the harness.
 
+**2026-08-12 — three rows marked `fixed` by the fourth pass.** Boxes 2 and 11, and with
+them row 70, which the paragraph above lists as declined rather than repaired. All three
+were `needs-human`, and in all three the source had already made the call.
+
+| Class | Row | What was done |
+|---|---|---|
+| `mechanic-contradicts-prose` | `Endgame+MirrorBox.swift::push pine…` (108) | **The pine end shuts behind you as you step out of it**, which is `MIROUT`'s own line and the half this game did not have. The box's model of an opening is *unchanged* — `MIRIN` admits you through the mirror alone, and `BoxFace.admitsEntry` now says so once instead of two same-shaped predicates saying it twice — because the disagreement the round found was that missing line, not the asymmetry. What was left after it is a refusal that named the side actually in the way: `MIRIN`'s three answers in place of one denial about the whole box. Two things fell out: `leaveTheBox()` tested its openings with two `if`s rather than a choice, so an open pine end shadowed an open mirror; and the pine end's examine text was a static "There is no opening in it." while it stood open. |
+| `mechanic-contradicts-prose` | `House.swift::…enter window you can…` (107) | **The cause was the engine's, not the game's.** `enter` reached `.board`, which knew about vehicles and not about doors, so the game's front entrance answered "You can't get into that." one turn after its own examine text promised a gap wide enough to climb through. `.board` is `V-THROUGH` now — a door on an exit of this room is a way through, under five spellings, refusing in the same words `go` refuses in. Two private `walkThrough` verbs went with it, one of them in a test fixture. |
+| `prose-untrue-of-state` | `Prose+House.swift::…west kitchen y…` (70) | **The Kitchen's "slightly ajar", and Behind House's with it.** #235 declined this on the grounds that the paragraph is trilogy-verbatim and so asserts nothing. Both sources *branch* that paragraph's last word on the window's `OPENBIT`; the game had frozen the shut half. Verbatim is a claim about a line, and a branched line has two halves. `Sources/Zork1/` had both paragraphs frozen the same way and is repaired in the same commit. |
+
+Cover is three new tests in `DungeonProseTests`, four in `DungeonEndgameTests` — one of
+them a value test on the box's model of an opening, which nothing pinned before — two in `Zork1Tests` and
+seven engine cases in `DoorTests`.
+
+**Still open: two boxes and three rows.** Box 12, the stub-verb register, and box 15, the
+harness room census; rows 89, 92 and 94, each for the reason given above.
+
 Pass every `fixed` and `refuted` key above as `ledgerKeys` on the next round. The list is
-fourteen keys longer than it was.
+seventeen keys longer than it was.

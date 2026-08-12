@@ -22,7 +22,6 @@ struct DungeonHouse: GameContent {
 
     let kitchen = Location {
         name("Kitchen")
-        description(Prose.kitchen)
     }
 
     let livingRoom = Location {
@@ -461,6 +460,12 @@ struct DungeonHouse: GameContent {
         window.describe {
             window.isOpen ? Prose.kitchenWindowOpen : Prose.kitchenWindow
         }
+
+        // And the room's own paragraph says the same thing about the same
+        // state, because the source's does — see ``Prose/kitchen``. The
+        // matching rule for Behind House is the host's, since that room is
+        // ``DungeonAboveGround``'s and this window is not.
+        kitchen.describe { Prose.kitchen(windowOpen: window.isOpen) }
 
         rug.before(.push) {
             guard !trapDoor.isRevealed else { try reply(Prose.rugAlreadyMoved) }

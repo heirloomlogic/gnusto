@@ -40,6 +40,53 @@ struct Zork1Tests {
             ])
     }
 
+    /// `KITCHEN-WINDOW-F` answers `WALK BOARD THROUGH` by walking you east or
+    /// west depending on which side you are standing on
+    /// (`1actions.zil:246-266`), and until the engine learned that a door is a
+    /// way through, `enter window` at this house answered "You can't get into
+    /// that." while `west` walked you in. (#233)
+    @Test func theWindowIsAWayThroughAndNotJustADirection() async throws {
+        let transcript = try await play(
+            Zork1(),
+            [
+                "south", "east", "enter window", "open window",
+                "enter window", "go through window",
+            ])
+
+        // Shut, the window says what the direction says.
+        #expect(
+            turnOutput(of: "enter window", in: transcript)
+                .contains("The kitchen window is closed."))
+        expectInOrder(
+            transcript,
+            [
+                "> open window", "Opened.",
+                "> enter window", "Kitchen",
+                "> go through window", "Behind House",
+            ])
+    }
+
+    /// Both rooms end their paragraph on the window, as both `EAST-HOUSE` and
+    /// `KITCHEN-FCN` do, and the reproduction had frozen the shut half of each.
+    /// (#233)
+    @Test func theHouseSaysWhetherTheWindowIsOpen() async throws {
+        let transcript = try await play(
+            Zork1(),
+            ["south", "east", "look", "open window", "l", "west", "x window"])
+
+        let outsideShut = turnOutput(of: "look", in: transcript)
+        #expect(outsideShut.contains("which is slightly ajar"))
+        let outsideOpen = turnOutput(of: "l", in: transcript)
+        #expect(outsideOpen.contains("which is open"))
+        #expect(!outsideOpen.contains("ajar"))
+
+        // And inside, the frame the window's own examine text was false in.
+        let inside = turnOutput(of: "west", in: transcript)
+        #expect(inside.contains("which is open"))
+        #expect(!inside.contains("slightly ajar"))
+        #expect(!turnOutput(of: "x window", in: transcript).contains("not enough to allow entry"))
+    }
+
     /// The Phase-5 dark-cellar soft-lock is closed: with the brass lantern
     /// lit, the trap door's slam is an inconvenience, not a prison. The full
     /// loop — Cellar → East of Chasm → Gallery (painting) → Studio → up the

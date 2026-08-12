@@ -382,7 +382,6 @@ struct DungeonEndgame: GameContent {
         name("pine wall")
         adjectives("pine", "pale")
         synonyms("pine", "wall", "end", "door")
-        description(Prose.pineEnd)
         scenery
     }
 
