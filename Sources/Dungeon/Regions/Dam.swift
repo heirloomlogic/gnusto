@@ -271,6 +271,27 @@ struct DungeonDam: GameContent {
         plural
     }
 
+    /// The equipment the room is missing and the wreckage the wrench lies in.
+    /// One item: what is *gone* is one sentence, and it is not the sentence
+    /// ``toolChests`` tells about what is still here. (#233)
+    let maintenanceWreckage = Item {
+        name("wreckage")
+        synonyms("wreckage", "equipment", "junk", "debris")
+        description(Prose.maintenanceWreckage)
+        scenery
+    }
+
+    /// The room's own two ways out. No `door`/`doors` — ``privateDoorways``
+    /// owns those in the Lobby and there is no reason to widen the word here.
+    let maintenanceDoorways = Item {
+        name("doorways")
+        adjectives("open")
+        synonyms("doorway", "doorways")
+        description(Prose.maintenanceDoorways)
+        scenery
+        plural
+    }
+
     let leak = Item {
         name("leak")
         synonyms("drip", "pipe", "hole")
@@ -382,11 +403,23 @@ struct DungeonDam: GameContent {
         scenery
     }
 
+    /// No `path`: Stream View stands the player *on a path beside* the stream,
+    /// so that noun is the ground and belongs to ``streamViewBank``. (#233)
     let streamWater = Item {
         name("stream")
         adjectives("gently", "flowing")
-        synonyms("water", "cleft", "brook", "path")
+        synonyms("water", "cleft", "brook")
         description(Prose.streamWater)
+        scenery
+    }
+
+    /// Which is also where the wire is lying — "A coil of thin shiny wire lies
+    /// on the bank." — and the word went unanswered.
+    let streamViewBank = Item {
+        name("bank")
+        adjectives("wet", "stone")
+        synonyms("bank", "banks", "path", "shore")
+        description(Prose.streamViewBank)
         scenery
     }
 
@@ -504,6 +537,8 @@ struct DungeonDam: GameContent {
         buttonPanel.starts(in: maintenanceRoom)
         buttonLabels.starts(in: maintenanceRoom)
         toolChests.starts(in: maintenanceRoom)
+        maintenanceWreckage.starts(in: maintenanceRoom)
+        maintenanceDoorways.starts(in: maintenanceRoom)
         leak.starts(in: maintenanceRoom)
         wrench.starts(in: maintenanceRoom)
         screwdriver.starts(in: maintenanceRoom)
@@ -518,6 +553,7 @@ struct DungeonDam: GameContent {
         reservoirFromSouth.starts(in: reservoirSouth)
         reservoirFromNorth.starts(in: reservoirNorth)
         streamWater.starts(in: streamView)
+        streamViewBank.starts(in: streamView)
         streamChannel.starts(in: stream)
         damView.starts(in: damRoom)
         damFromBelow.starts(in: damBase)

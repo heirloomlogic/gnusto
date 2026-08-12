@@ -87,6 +87,21 @@ extension Prose {
         a side. Engraved on the side of the cube is some lettering.
         """
 
+    /// Written fresh, and the plural half of a split the round found: `x wall`
+    /// answers with the curtain hanging where the north wall ought to be, and
+    /// `x walls` — the two the deposit boxes came out of, which is what the
+    /// room's own second sentence is about — answered nothing at all. Two
+    /// different questions, and now two different answers. (#233)
+    static let depositoryWalls = """
+        Bare from floor to ceiling on both sides, with the fixings for a great
+        many deposit boxes still in them and not one box left.
+        """
+
+    static let depositoryDoorways = """
+        Three ways out of the room, all of them wide enough to carry something
+        heavy through, and only the north side without one.
+        """
+
     static let stoneCube = """
         A cube of grey stone ten feet on a side, standing in the middle of the
         floor with no visible way into it. The lettering is cut deep.

@@ -1183,6 +1183,7 @@ struct DungeonTests {
                     "north", "examine desk", "examine doorways",
                     "examine guidebook", "examine matchbook",
                     "north", "examine buttons", "examine labels",
+                    "examine doorways", "examine equipment", "examine wreckage",
                     "examine chests", "examine tube", "examine wrench",
                     "examine screwdriver",
                     "south", "south", "down",
@@ -1201,6 +1202,7 @@ struct DungeonTests {
                     "turn bolt with wrench",
                     "south", "northwest", "examine reservoir", "examine cliff",
                     "west", "examine stream", "examine wire", "examine path",
+                    "examine bank",
                     "east", "north", "examine mud", "examine trunk",
                     "north", "examine tunnel", "examine pump",
                     "south", "up", "examine beach", "examine walls",
@@ -1625,6 +1627,24 @@ struct DungeonTests {
                 "Lower Shaft",
                 "Timber Room",
             ])
+    }
+
+    /// The Lower Shaft names the shaft it is at the bottom of, the chain
+    /// hanging in it and two narrow passages out, and until #233 not one of the
+    /// three answered — `ironChain` carries `chain` and `shaft` and stands a
+    /// hundred feet up in the Shaft Room.
+    @Test func everyNounTheLowerShaftPrints() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheShaftWithTheTorch + ["put torch in basket", "lower basket"]
+                + Self.throughTheCoalMaze
+                + ["southwest", "drop all", "southwest"]
+                + ["examine shaft", "examine chain", "examine passage", "examine basket"],
+            seed: 14)
+
+        #expect(transcript.contains("Lower Shaft"))
+        expectEveryNounAnswered(transcript, "the Lower Shaft")
+        #expect(!transcript.contains("Which do you mean"))
     }
 
     /// **`LIGHT-SHAFT`: ten points, once, for standing at the bottom of the
@@ -2819,7 +2839,8 @@ struct DungeonTests {
             Dungeon(),
             Self.toTheBank
                 + ["examine signs", "northwest", "examine counter", "west"]
-                + ["examine cube", "read cube", "examine curtain", "south"]
+                + ["examine cube", "read cube", "examine curtain", "examine walls"]
+                + ["examine boxes", "examine doorways", "south"]
                 + ["examine wreckage", "examine portrait", "north", "walk through curtain"]
                 + ["examine northern wall", "examine eastern wall", "examine curtain"]
                 + ["walk through curtain", "walk through curtain", "examine bills"],
@@ -3925,7 +3946,8 @@ struct DungeonTests {
     /// and he kills a visitor who loiters. Every test below that only passes
     /// *through* uses this; the two that come back the other way use
     /// ``toTheRoyalPuzzlePastTheThief`` and pay for the privilege.
-    private static let toTheRoyalPuzzle =
+    /// Not `private`, for ``toTheNarrowLedge``'s reason.
+    static let toTheRoyalPuzzle =
         toMazeFive + mazeFiveToTheCyclops + ["odysseus", "up", "east"]
 
     /// The same road with the thief cut down on the way through, for the tests
@@ -3947,7 +3969,9 @@ struct DungeonTests {
     ]
 
     /// The two spliced: standing on the card's square with it uncovered.
-    private static let toTheCardSquare = intoThePuzzle + toTheGoldCard
+    /// Not `private`, for ``toTheNarrowLedge``'s reason: `DungeonProseTests`
+    /// asks the anteroom's sand what it is once the hole has been sealed.
+    static let toTheCardSquare = intoThePuzzle + toTheGoldCard
 
     /// And the shortest line from the card's square to standing under the
     /// ceiling opening with the good ladder beside it — the win. Thirty-seven
@@ -4369,7 +4393,7 @@ struct DungeonTests {
         let transcript = try await play(
             Dungeon(),
             Self.toTheRoyalPuzzle
-                + ["examine hole", "examine note", "read note", "south"]
+                + ["examine hole", "examine note", "examine sand", "read note", "south"]
                 + ["examine steel door", "north", "down"]
                 + ["examine opening", "examine ceiling", "examine sand"]
                 + ["examine marble wall", "examine sandstone wall", "examine ladder"]

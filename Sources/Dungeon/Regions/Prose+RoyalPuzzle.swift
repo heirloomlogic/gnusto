@@ -55,6 +55,21 @@ extension Prose {
         nowhere. There are exits west and south.
         """
 
+    /// The sand ten feet under the anteroom's floor, in the two states the
+    /// room's own paragraph has always had. The word is printed three times in
+    /// here and nothing in the room answered it — the game's `sand` stands in
+    /// the cell *below*, which is exactly the far-thing-near-thing split this
+    /// round is about, seen through a hole. (#233)
+    static let anteroomSand = """
+        Pale sand, ten feet down through the hole and not much to be made out
+        from up here.
+        """
+
+    static let anteroomSandBlocked = """
+        A face of smooth sandstone, come up flush under the lip of the hole.
+        Whatever sand was down there is behind it now.
+        """
+
     static let puzzleHole = """
         A hole cut through the floor, wide enough for a man and rough at the
         edges. Sand has drifted to the lip of it.

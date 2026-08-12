@@ -99,6 +99,11 @@ struct DungeonProseTests {
         "west", "west", "down", "north",
     ]
 
+    /// Into the Bank on the crawlway road and through to the Safety
+    /// Depository, the room whose `wall` and `walls` are two answers. Seed 41.
+    private static let toTheDepository =
+        intoTheCellar + ["south", "south", "west", "northwest", "west"]
+
     // MARK: - A fuse says its line without asking where the player is standing
 
     /// The lantern's three rungs fire against a clock, not against the player's
@@ -668,6 +673,86 @@ struct DungeonProseTests {
         let turning = turnOutput(of: "x passages", in: transcript)
         #expect(turning.contains("no way to tell"))
         #expect(!turning.contains("long enough to be counted"))
+    }
+
+    /// **Stream View stands you on a path beside the stream, and `x path`
+    /// answered with the stream.** The round filed this one under the noun it
+    /// could not answer at all — `bank`, which is where the wire is lying — and
+    /// the two are one repair: the ground gets an item, and the water gives up
+    /// a synonym that was never about it. (#233)
+    @Test func theStreamViewPathIsTheBankNotTheWater() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            // Stream View is west of Reservoir South and wants no wrench: the
+            // reservoir has to be drained to cross it, not to stand beside it.
+            Self.toTheDam + ["south", "northwest", "west"]
+                + ["x path", "x bank", "x stream"],
+            seed: 18)
+
+        #expect(transcript.contains("Stream View"))
+        for ground in ["x path", "x bank"] {
+            let answer = turnOutput(of: ground, in: transcript)
+            #expect(answer.contains("A strip of wet stone between the water and the wall"))
+            #expect(!answer.contains("going quietly about its business"))
+        }
+        // The control: the water is still the water.
+        #expect(
+            turnOutput(of: "x stream", in: transcript)
+                .contains("going quietly about its business"))
+    }
+
+    /// **The Safety Depository's `wall` answered and its `walls` did not**, and
+    /// the two are different questions. The singular is the curtain of light
+    /// standing where the north wall ought to be; the plural is the east and
+    /// west walls the deposit boxes came out of, which is what the room's own
+    /// second sentence is about. Keeping both is the fix. (#233)
+    @Test func theDepositorysSideWallsAreNotItsMissingNorthOne() async throws {
+        let transcript = try await play(
+            Dungeon(), Self.toTheDepository + ["x walls", "x boxes", "x wall"], seed: 41)
+
+        #expect(transcript.contains("Safety Depository"))
+        for plural in ["x walls", "x boxes"] {
+            let answer = turnOutput(of: plural, in: transcript)
+            #expect(answer.contains("Bare from floor to ceiling on both sides"))
+            #expect(!answer.contains("north wall ought to be"))
+        }
+        // The control: the singular still finds the curtain, which is the whole
+        // reason the plural could not have it.
+        let singular = turnOutput(of: "x wall", in: transcript)
+        #expect(singular.contains("north wall ought to be"))
+        #expect(!singular.contains("Bare from floor to ceiling"))
+    }
+
+    /// **The Small Square Room names sand three times and could not answer for
+    /// it.** The game's `sand` stands in the cell *below* the hole, which is the
+    /// far-thing-near-thing split this round is about seen through ten feet of
+    /// floor. The new item takes the room's own two states, because its
+    /// paragraph has branched on them from the day it was written. (#233)
+    @Test func theAnteroomsSandChangesWhenTheHoleIsBlocked() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            DungeonTests.toTheCardSquare + ["take card"]
+                + ["north", "north", "northwest", "push west", "south"]
+                + ["southeast", "southeast", "push south", "push west", "south"]
+                + ["put card in slit", "west", "north", "examine sand"],
+            seed: 18)
+
+        #expect(transcript.contains("Small Square Room"))
+        let blocked = turnOutput(of: "examine sand", in: transcript)
+        #expect(blocked.contains("A face of smooth sandstone, come up flush"))
+        #expect(!blocked.contains("ten feet down through the hole"))
+    }
+
+    /// The control, on the way in: with the hole still open the sand is ten feet
+    /// down and there is not much to be made of it from up there.
+    @Test func theAnteroomsSandIsTenFeetDownWhileTheHoleIsOpen() async throws {
+        let transcript = try await play(
+            Dungeon(), DungeonTests.toTheRoyalPuzzle + ["examine sand"], seed: 18)
+
+        #expect(transcript.contains("Small Square Room"))
+        let open = turnOutput(of: "examine sand", in: transcript)
+        #expect(open.contains("ten feet down through the hole"))
+        #expect(!open.contains("come up flush"))
     }
 
     // MARK: - A synonym list answering about somewhere else

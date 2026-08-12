@@ -229,6 +229,26 @@ struct DungeonCoalMine: GameContent {
         scenery
     }
 
+    /// The same chain from the other end, and the shaft around it. ``ironChain``
+    /// is a hundred feet up in the Shaft Room, so `x shaft` and `x chain` both
+    /// went unanswered in the room whose paragraph is about them. (#233)
+    let lowerShaftChain = Item {
+        name("iron chain")
+        adjectives("heavy", "iron", "long")
+        synonyms("chain", "shaft", "framework")
+        description(Prose.lowerShaftChain)
+        scenery
+    }
+
+    let lowerShaftPassages = Item {
+        name("passages")
+        adjectives("narrow")
+        synonyms("passage", "passages", "passageway")
+        description(Prose.lowerShaftPassages)
+        scenery
+        plural
+    }
+
     /// The basket on the chain: an open, transparent container the shaft's
     /// mechanism swings between the Shaft Room and the Lower Shaft.
     let basket = Item {
@@ -546,6 +566,8 @@ struct DungeonCoalMine: GameContent {
         ironChain.starts(in: shaftRoom)
         basket.starts(in: shaftRoom)
         basketFarEnd.starts(in: lowerShaft)
+        lowerShaftChain.starts(in: lowerShaft)
+        lowerShaftPassages.starts(in: lowerShaft)
 
         woodenBeams.starts(in: woodenTunnel)
         foulOdor.starts(in: smellyRoom)

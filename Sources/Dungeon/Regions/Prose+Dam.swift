@@ -185,6 +185,22 @@ extension Prose {
         south.
         """
 
+    /// The two lines below are written fresh. The Maintenance Room's paragraph
+    /// names the *equipment* that is gone and the wrench lies among the
+    /// *wreckage*, and neither word was in the vocabulary; and the room's own
+    /// two doorways were answerable only in the Lobby next door. Not synonyms
+    /// on ``toolChests``: that line is about the chests, which are the thing
+    /// still here. (#233)
+    static let maintenanceWreckage = """
+        Bent metal, cut cable ends and a good deal of broken glass, swept into
+        the corners by whoever was in the hurry.
+        """
+
+    static let maintenanceDoorways = """
+        Two ways out of a room nobody has maintained in a long while, one west
+        and one south.
+        """
+
     static let toolChests = """
         The chests are empty, and bolted to the wall besides — which together
         suggest that whoever ransacked this room was thorough and in no hurry.
@@ -416,6 +432,16 @@ extension Prose {
     static let streamChannel = """
         The walls twist away downstream and there is a strip of beach on one
         side, wide enough to stand a boat on if you had one.
+        """
+
+    /// Written fresh, and it takes `path` off ``streamWater``. Stream View's
+    /// first sentence stands the player *on a path beside* the stream, so
+    /// `x path` answering "The runoff from the reservoir, going quietly about
+    /// its business" was the water answering for the ground. The bank is where
+    /// the wire is lying, which is the other half of the same finding. (#233)
+    static let streamViewBank = """
+        A strip of wet stone between the water and the wall, wide enough to walk
+        and to leave things on.
         """
 
     static let wireCoilInPlace = "A coil of thin shiny wire lies on the bank."

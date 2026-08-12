@@ -292,6 +292,20 @@ extension Prose {
         In the shaft can be seen a heavy iron chain.
         """
 
+    /// Written fresh. The Lower Shaft names the shaft it is at the bottom of,
+    /// the chain hanging in it and two passages out, and none of the three
+    /// answered: ``ironChain`` carries `chain` and `shaft` and stands in the
+    /// Shaft Room, a hundred feet up. One chain, two ends, two items — the
+    /// staircase's repair applied again. (#233)
+    static let lowerShaftChain = """
+        The chain comes down the middle of the shaft out of a dark that swallows
+        its far end, with the basket somewhere up there on it.
+        """
+
+    static let lowerShaftPassages = """
+        Two ways out of the bottom of the shaft, and neither of them wide.
+        """
+
     // MARK: - The Machine Room
 
     /// Adapted. The trilogy's Machine Room has its sole exit north; the
