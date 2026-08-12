@@ -2989,7 +2989,9 @@ struct DungeonTests {
 
     /// Through it, and down the two rooms milestone 3 left hanging: the Ruby
     /// Room's west passage and the Lava Room's south one.
-    private static let toTheVolcano = toTheGlacier + throughTheGlacier
+    /// Not `private`, for ``toTheNarrowLedge``'s reason: `DungeonProseTests`
+    /// walks the shaft's scenery from the floor up.
+    static let toTheVolcano = toTheGlacier + throughTheGlacier
 
     /// The same road with the wire coil picked up off the bank at Stream View,
     /// which is what the brick wants in it.
@@ -3014,7 +3016,9 @@ struct DungeonTests {
     /// that is the rim.
     /// Moor the basket, walk into the Dusty Room, load the hole and light the
     /// wire, then get out on the ledge and wait for the blast.
-    private static let lightTheCharge = [
+    /// Not `private`, for ``toTheNarrowLedge``'s reason: `DungeonProseTests`
+    /// asks the small door what it is before and after the room comes down.
+    static let lightTheCharge = [
         "tie braided wire to hook", "get out", "south",
         "put brick in hole", "put wire in brick", "burn match",
         "burn wire with match", "north", "wait",
@@ -3540,15 +3544,38 @@ struct DungeonTests {
             Dungeon(),
             Self.toTheVolcano
                 + ["north", "examine lava", "examine walls", "south"]
-                + ["examine volcano", "examine cone", "examine basket", "examine cloth bag"]
+                + ["examine volcano", "examine cone", "examine ash", "examine floor"]
+                + ["examine exit", "examine basket", "examine cloth bag"]
                 + ["examine receptacle", "examine braided wire"]
                 + Self.liftOff
                 + ["west", "tie braided wire to hook", "get out", "examine label"]
-                + ["examine hook", "examine ledge", "examine coin", "south"]
-                + ["examine shelves", "examine purple book", "examine white book"],
+                + ["examine hook", "examine ledge", "examine coin"]
+                + ["examine rim", "examine floor", "examine shaft", "south"]
+                + ["examine shelves", "examine gnomes", "examine pages"]
+                + ["examine purple book", "examine white book"],
             seed: 18)
 
         expectEveryNounAnswered(transcript, "the volcano floor, the shaft and the Library")
+        // The Library's four books share every noun on this list, and the
+        // volcano floor's two items share none.
+        #expect(!transcript.contains("Which do you mean: the ash"))
+    }
+
+    /// Volcano View is reached on foot and by no other road, so it belongs to no
+    /// balloon sweep. It names five things — the ledge underfoot, the pair
+    /// across the shaft, the bottom below and the rim above — and until #233 one
+    /// item answered for four of them and nothing for the fifth.
+    @Test func everyNounVolcanoViewPrints() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.pastTheTroll
+                + ["north", "down", "west", "northwest", "south", "down"]
+                + ["examine ledge", "examine ledges", "examine rim", "examine bottom"]
+                + ["examine volcano", "examine exit", "examine walls"],
+            seed: 18)
+
+        #expect(transcript.contains("Volcano View"))
+        expectEveryNounAnswered(transcript, "Volcano View")
     }
 
     @Test func everyNounTheWideLedgeAndTheDustyRoomPrint() async throws {
@@ -3556,11 +3583,17 @@ struct DungeonTests {
             Dungeon(),
             Self.toTheWideLedge
                 + ["tie braided wire to hook", "get out", "examine ledge", "examine hook"]
+                + ["examine rim", "examine drop", "examine bottom", "examine volcano"]
+                + ["examine door"]
                 + ["south", "examine box", "examine hole", "examine dust", "look in hole"]
                 + ["put brick in hole", "examine brick"],
             seed: 18)
 
         expectEveryNounAnswered(transcript, "the Wide Ledge and the Dusty Room")
+        // Only one door stands here until the gnome is paid on this ledge, so
+        // the bare noun resolves. `theTwoDoorsOnTheWideLedgeAreTwoDoors` owns
+        // the frame where it does not.
+        #expect(!transcript.contains("Which do you mean"))
     }
 
     /// With milestone 6 in, the volcano joins the graph at both ends: the Ruby

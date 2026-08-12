@@ -637,4 +637,181 @@ struct DungeonProseTests {
                 "Narrow Ledge",
             ])
     }
+
+    // MARK: - A synonym list answering about somewhere else
+
+    /// **The volcano's floor answered with a description of its sky.**
+    /// `coneAtBottom` is a line about the shaft "a long way overhead", and it
+    /// carried `floor`, `ash`, `walls` and `bottom` — so a player standing in
+    /// the ash, on the floor, at the bottom, got told about the daylight four
+    /// hundred feet up. The inverse of the defect the round filed, in the same
+    /// factory. (#233)
+    @Test func theVolcanoFloorIsNotTheShaftOverhead() async throws {
+        let transcript = try await play(
+            Dungeon(), DungeonTests.toTheVolcano + ["x floor", "x ash", "x cone"], seed: 18)
+
+        #expect(transcript.contains("Volcano Bottom"))
+        for near in ["x floor", "x ash"] {
+            let answer = turnOutput(of: near, in: transcript)
+            #expect(answer.contains("Grey ash, cold and deep enough"))
+            #expect(!answer.contains("opens a long way overhead"))
+        }
+        // The control: the cone really is overhead, and still says so.
+        #expect(turnOutput(of: "x cone", in: transcript).contains("opens a long way overhead"))
+    }
+
+    /// **From the basket, everything the paragraph pointed at answered "close
+    /// enough to touch".** `VAIR2` names the rim looming above, the floor two
+    /// hundred feet below and a ledge on the west side, and all three were
+    /// synonyms on the bare rock beside the basket. One test for the pattern;
+    /// the other three levels are the sweeps' job. (#233)
+    @Test func theRockBesideTheBasketIsNotTheRimAboveIt() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            // Three commands and no more: the balloon ascends every third turn
+            // and a fourth would be answered from the level above.
+            DungeonTests.toTheNarrowLedge.dropLast() + ["x rim", "x ledge", "x walls"],
+            seed: 18)
+
+        #expect(transcript.contains("Volcano Near Small Ledge"))
+        for far in ["x rim", "x ledge"] {
+            let answer = turnOutput(of: far, in: transcript)
+            #expect(answer.contains("Two hundred feet of nothing below the basket"))
+            #expect(!answer.contains("close enough to touch"))
+        }
+        // The control: the rock really is close enough to touch.
+        #expect(turnOutput(of: "x walls", in: transcript).contains("close enough to touch"))
+    }
+
+    /// **The Narrow Ledge is "halfway between the floor below and the rim
+    /// above", and both of those answered with the shelf underfoot.** The
+    /// ledger's `x rim a shelf of old rock wide enough …` row, which is the one
+    /// site of this class the round actually typed. (#233)
+    @Test func theNarrowLedgeAnswersForTheFloorBelowAndTheRimAbove() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            // Out of the basket first, or the balloon carries the questioner
+            // back into the air two turns later.
+            DungeonTests.toTheNarrowLedge + ["get out", "x rim", "x floor", "x ledge"],
+            seed: 18)
+
+        #expect(transcript.contains("Narrow Ledge"))
+        for far in ["x rim", "x floor"] {
+            let answer = turnOutput(of: far, in: transcript)
+            #expect(answer.contains("a couple of hundred feet down"))
+            #expect(!answer.contains("A shelf of old rock"))
+        }
+        // The control: the ledge itself is still the shelf you are standing on.
+        #expect(turnOutput(of: "x ledge", in: transcript).contains("A shelf of old rock"))
+    }
+
+    /// **Volcano View had one scenery item, and it was about the wrong ledges.**
+    /// The room names the two shelves across the shaft, the bottom below, the
+    /// rim above and "this ledge" underfoot; `volcanoViewLedges` answered for
+    /// the first four and nothing answered for the fifth. This one needs the
+    /// pair in both directions, because the near thing had no item at all. (#233)
+    @Test func volcanoViewAnswersForTheLedgeYouAreOnAndTheOnesAcross() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            // On foot, south out of the Egyptian Room: the one ledge no balloon
+            // can land on.
+            Self.pastTheTroll + ["north", "down", "west", "northwest", "south", "down"]
+                + ["x ledge", "x ledges", "x rim", "x bottom"],
+            seed: 18)
+
+        #expect(transcript.contains("Volcano View"))
+        // Near: the shelf under your boots, which nothing used to answer for.
+        let here = turnOutput(of: "x ledge", in: transcript)
+        #expect(here.contains("A shelf of stone about halfway up"))
+        #expect(!here.contains("Two shelves of rock stand out"))
+        // Far: the pair across the shaft, and the rim and floor beyond them.
+        for far in ["x ledges", "x rim", "x bottom"] {
+            let answer = turnOutput(of: far, in: transcript)
+            #expect(answer.contains("Two shelves of rock stand out"))
+            #expect(!answer.contains("A shelf of stone about halfway up"))
+        }
+    }
+
+    /// **The Wide Ledge's rim is two hundred feet up and its drop goes further
+    /// than that down, and both answered with the apron underfoot.** The issue's
+    /// named site: `synonyms("ledge", "rock", "volcano", "rim", "drop",
+    /// "bottom", "door")` against one description of the rock. (#233)
+    @Test func theWideLedgesRimAndDropAreNotTheRockUnderfoot() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            DungeonTests.toTheWideLedge + ["get out", "x rim", "x drop", "x bottom", "x ledge"],
+            seed: 18)
+
+        #expect(transcript.contains("Wide Ledge"))
+        for far in ["x rim", "x drop", "x bottom"] {
+            let answer = turnOutput(of: far, in: transcript)
+            #expect(answer.contains("Two hundred feet of rock stand between"))
+            #expect(!answer.contains("A broad apron of rock"))
+        }
+        // The control: the apron is still the apron — and no longer claims a
+        // doorway it cannot check.
+        let near = turnOutput(of: "x ledge", in: transcript)
+        #expect(near.contains("A broad apron of rock"))
+        #expect(!near.contains("doorway cut into the wall"))
+    }
+
+    /// **The small door went on being a door after the blast buried it.** It was
+    /// a clause inside the description of the rock underfoot, which is a
+    /// constant, while the room's own paragraph next to it branched on
+    /// `dustyRoomWrecked` from the day it was written. Rule 3 dissolving a rule
+    /// 1 problem: the doorway is the state, so the doorway became the item. (#233)
+    @Test func theSmallDoorBecomesRubbleWhenTheRoomComesDown() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            DungeonTests.toTheWideLedge + ["x door"] + DungeonTests.lightTheCharge
+                // Five turns after the blast the Dusty Room comes down, and the
+                // ledge follows it eight after that. Ask in the window between.
+                + ["south", "take crown", "take card", "north", "read card", "look"]
+                + ["examine door"],
+            seed: 18)
+
+        let before = turnOutput(of: "x door", in: transcript)
+        #expect(before.contains("A low door cut square into the south wall"))
+        #expect(!before.contains("only the rubble the blast brought down"))
+
+        let after = turnOutput(of: "examine door", in: transcript)
+        #expect(after.contains("only the rubble the blast brought down"))
+        #expect(!after.contains("A low door cut square into the south wall"))
+        // The control the two halves hang on: the room's paragraph agrees, and
+        // always did.
+        expectInOrder(
+            transcript,
+            ["There is a small door to the south.", "The way to the south is blocked by rubble."])
+    }
+
+    /// **Paid on the Wide Ledge, the gnome's door and the small door are two
+    /// doors, and the parser is allowed to ask which.** Not a defect to be
+    /// tidied away by deleting a synonym: ``Prose/gnomePaid(_:)`` is
+    /// trilogy-verbatim and hands the player the word *door* for the chimney,
+    /// and the room's own paragraph hands them the word for the one south. The
+    /// question costs no turn, and both are resolvable by adjective. (#233)
+    @Test func theTwoDoorsOnTheWideLedgeAreTwoDoors() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            // Moor at the Narrow Ledge for the zorkmid, then carry it up: the
+            // gnome comes to whichever ledge you are standing on, and the
+            // Wide Ledge is the only one with a door of its own.
+            DungeonTests.toTheNarrowLedge
+                + ["tie braided wire to hook", "get out", "take coin", "board basket"]
+                + ["untie braided wire"] + Array(repeating: "wait", count: 8)
+                + ["east", "get out"] + Array(repeating: "wait", count: 16)
+                + ["give coin to gnome", "x door", "x south door", "x west door"],
+            seed: 18)
+
+        #expect(transcript.contains("a door appears"))
+        // The bare noun asks, because there really are two.
+        #expect(turnOutput(of: "x door", in: transcript).contains("Which do you mean"))
+        // And both halves of the question answer for themselves.
+        #expect(
+            turnOutput(of: "x south door", in: transcript)
+                .contains("A low door cut square into the south wall"))
+        #expect(
+            turnOutput(of: "x west door", in: transcript)
+                .contains("A chimney of rock, barely wide enough for one"))
+    }
 }
