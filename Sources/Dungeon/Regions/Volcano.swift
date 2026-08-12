@@ -280,7 +280,12 @@ struct DungeonVolcano: GameContent {
         Item {
             name("\(colour) book")
             adjectives(colour)
-            synonyms("book", "books", "cover")
+            // `pages` because two of this region's lines print the word — the
+            // stamp rests "loose among its pages" and the purple book's fall
+            // apart at a place somebody kept. In the factory rather than on the
+            // purple book alone: `book` is already four ways ambiguous in this
+            // room, and a fifth word for the same four objects changes nothing.
+            synonyms("book", "books", "cover", "pages", "page")
             firstSight(listing)
             description(Prose.bookExamined(colour))
             container
@@ -365,21 +370,66 @@ struct DungeonVolcano: GameContent {
         }
     }
 
+    /// The far half of the pair, and the shape of the whole quarter: **every
+    /// level of the shaft gets two scenery items, the rock close enough to
+    /// touch and the view of everything the paragraph points at that is not.**
+    /// One factory handing five rooms one description and eight nouns each made
+    /// the wrong answer cheap — `x rim` two hundred feet under the rim answered
+    /// "close enough to touch", and `x floor` on the floor answered with the
+    /// sky. (#233)
+    private static func distanceScenery(_ text: String, _ nouns: ItemTrait) -> Item {
+        Item {
+            name("view")
+            adjectives("distant", "far")
+            nouns
+            description(text)
+            scenery
+        }
+    }
+
     let coneAtBottom = shaftScenery(
         Prose.volcanoCone,
-        synonyms("volcano", "cone", "light", "shaft", "walls", "wall", "ash", "floor", "bottom"))
+        synonyms("volcano", "cone", "light", "daylight", "shaft"))
+    let volcanoBottomAsh = Item {
+        name("ash")
+        adjectives("grey", "gray", "deep")
+        synonyms("ash", "floor", "ground", "bottom", "walls", "wall", "exit")
+        description(Prose.volcanoBottomAsh)
+        scenery
+    }
+
     let wallsAtCore = shaftScenery(
         Prose.volcanoWallsFromTheAir,
-        synonyms("volcano", "top", "rock", "walls", "wall", "air"))
+        synonyms("volcano", "rock", "walls", "wall", "air"))
+    let viewFromCore = distanceScenery(
+        Prose.shaftFromCore,
+        synonyms("view", "top", "rim", "bottom", "floor", "cone", "light"))
+
     let wallsAtNarrowLedgeAir = shaftScenery(
         Prose.volcanoWallsFromTheAir,
-        synonyms("volcano", "rim", "ledge", "floor", "rock", "walls", "wall", "side"))
+        synonyms("volcano", "rock", "walls", "wall", "air", "side"))
+    let viewFromNarrowLedgeAir = distanceScenery(
+        Prose.shaftFromNarrowLedgeAir,
+        synonyms("view", "rim", "top", "floor", "bottom", "ledge", "shelf"))
+
+    // `VAIR3`'s near item wore the far line: `volcanoRimFromBelow` is about the
+    // rim overhead, and `rock`, `walls` and `wall` are the shaft beside the
+    // basket. It joins its two siblings.
     let wallsAtViewingLedgeAir = shaftScenery(
+        Prose.volcanoWallsFromTheAir,
+        synonyms("volcano", "rock", "walls", "wall", "air"))
+    let viewFromViewingLedgeAir = distanceScenery(
+        Prose.shaftFromViewingLedgeAir,
+        synonyms("view", "rim", "top", "floor", "bottom", "ledge", "shelf"))
+
+    // `VAIR4` is where the split inverts. At a rim fifteen feet across the rim
+    // and the sky are the near things, and the ledge is the one across the gap.
+    let rimAtWideLedgeAir = shaftScenery(
         Prose.volcanoRimFromBelow,
-        synonyms("volcano", "rim", "ledge", "floor", "rock", "walls", "wall"))
-    let wallsAtWideLedgeAir = shaftScenery(
-        Prose.volcanoRimFromBelow,
-        synonyms("volcano", "rim", "sky", "ledge", "place", "rock", "walls", "wall"))
+        synonyms("volcano", "rim", "top", "sky", "mouth", "rock", "walls", "wall"))
+    let viewFromWideLedgeAir = distanceScenery(
+        Prose.shaftFromWideLedgeAir,
+        synonyms("view", "ledge", "place", "shelf", "floor", "bottom"))
 
     let lavaFlow = Item {
         name("old lava flow")
@@ -392,34 +442,58 @@ struct DungeonVolcano: GameContent {
     let narrowLedgeRock = Item {
         name("narrow ledge")
         adjectives("narrow")
-        synonyms("ledge", "rock", "shelf", "volcano", "floor", "rim", "exit")
+        synonyms("ledge", "rock", "shelf", "volcano", "exit")
         description(Prose.narrowLedgeRock)
         scenery
     }
+    let narrowLedgeView = distanceScenery(
+        Prose.narrowLedgeDistance,
+        synonyms("view", "floor", "bottom", "rim", "top", "shaft"))
 
     let libraryShelves = Item {
         name("gnawed shelves")
         adjectives("gnawed", "royal")
-        synonyms("shelves", "shelf", "library", "splinters", "pieces", "exit")
+        synonyms("shelves", "shelf", "library", "splinters", "pieces", "gnomes", "exit")
         description(Prose.libraryShelves)
         scenery
         plural
     }
 
-    let volcanoViewLedges = Item {
-        name("far ledges")
-        adjectives("far", "distant")
-        synonyms("ledges", "ledge", "volcano", "rim", "bottom", "wall", "walls", "exit")
-        description(Prose.volcanoViewLedges)
+    let volcanoViewDistance = distanceScenery(
+        Prose.volcanoViewDistance,
+        synonyms("view", "ledges", "shelves", "rim", "top", "bottom", "floor", "volcano"))
+    /// The ledge the player is standing on, which the room's paragraph calls
+    /// "this ledge" and which nothing here answered for. No `ledges` — the pair
+    /// across the shaft keeps the plural.
+    let volcanoViewLedge = Item {
+        name("ledge")
+        adjectives("stone")
+        synonyms("ledge", "rock", "shelf", "wall", "walls", "exit")
+        description(Prose.volcanoViewLedge)
         scenery
-        plural
     }
 
     let wideLedgeRock = Item {
         name("wide ledge")
-        adjectives("wide")
-        synonyms("ledge", "rock", "volcano", "rim", "drop", "bottom", "door")
+        adjectives("wide", "broad")
+        synonyms("ledge", "rock", "shelf", "apron", "volcano")
         description(Prose.wideLedgeRock)
+        scenery
+    }
+    let wideLedgeView = distanceScenery(
+        Prose.wideLedgeDistance,
+        synonyms("view", "rim", "top", "drop", "bottom", "floor", "shaft"))
+
+    /// The small door south, which used to be a clause inside the description
+    /// of the rock underfoot — so it went on being a doorway after the blast
+    /// filled it with rubble. Its own item, and its own `describe { }`: the
+    /// room's paragraph has always branched on this and the examine channel
+    /// never did. `south`/`southern` tell it from the gnome's west door in the
+    /// one frame where both stand on this ledge.
+    let wideLedgeDoorway = Item {
+        name("small door")
+        adjectives("small", "low", "south", "southern")
+        synonyms("door", "doorway", "opening", "rubble")
         scenery
     }
 
@@ -433,9 +507,16 @@ struct DungeonVolcano: GameContent {
 
     /// The chimney the gnome's fee opens. Offstage until it exists, and then in
     /// whichever ledge he was paid on.
+    ///
+    /// It keeps `door` and `doorway` even though ``wideLedgeDoorway`` also
+    /// carries them: ``Prose/gnomePaid(_:)`` is trilogy-verbatim and says "a
+    /// door appears on the west end of the ledge", so that is the word the
+    /// player has just been handed. Paid on the Wide Ledge there really are two
+    /// doors, and asking which is the true answer — it costs no turn, and
+    /// `west`/`south` resolve it. (#233)
     let gnomeChimney = Item {
         name("narrow chimney")
-        adjectives("narrow", "sloping")
+        adjectives("narrow", "sloping", "west", "western")
         synonyms("chimney", "door", "doorway")
         description(Prose.gnomeChimney)
         scenery
@@ -607,15 +688,24 @@ struct DungeonVolcano: GameContent {
         card.starts(inside: rustyBox)
 
         coneAtBottom.starts(in: volcanoBottom)
+        volcanoBottomAsh.starts(in: volcanoBottom)
         lavaFlow.starts(in: lavaRoom)
         wallsAtCore.starts(in: volcanoCore)
+        viewFromCore.starts(in: volcanoCore)
         wallsAtNarrowLedgeAir.starts(in: volcanoNearNarrowLedge)
+        viewFromNarrowLedgeAir.starts(in: volcanoNearNarrowLedge)
         wallsAtViewingLedgeAir.starts(in: volcanoNearViewingLedge)
-        wallsAtWideLedgeAir.starts(in: volcanoNearWideLedge)
+        viewFromViewingLedgeAir.starts(in: volcanoNearViewingLedge)
+        rimAtWideLedgeAir.starts(in: volcanoNearWideLedge)
+        viewFromWideLedgeAir.starts(in: volcanoNearWideLedge)
         narrowLedgeRock.starts(in: narrowLedge)
+        narrowLedgeView.starts(in: narrowLedge)
         libraryShelves.starts(in: library)
-        volcanoViewLedges.starts(in: volcanoView)
+        volcanoViewDistance.starts(in: volcanoView)
+        volcanoViewLedge.starts(in: volcanoView)
         wideLedgeRock.starts(in: wideLedge)
+        wideLedgeView.starts(in: wideLedge)
+        wideLedgeDoorway.starts(in: wideLedge)
         dustyRoomDust.starts(in: dustyRoom)
     }
 
@@ -793,6 +883,13 @@ extension DungeonVolcano {
         wideLedge.describe {
             let south = dustyRoomWrecked ? Prose.wideLedgeRubble : Prose.wideLedgeDoor
             return "\(Prose.wideLedge)\n\(south)"
+        }
+
+        // The examine channel, saying what the room's paragraph directly above
+        // has always said. The rock underfoot used to carry this clause and
+        // could not branch on it.
+        wideLedgeDoorway.describe {
+            dustyRoomWrecked ? Prose.wideLedgeDoorBlocked : Prose.wideLedgeDoorExamined
         }
 
         dustyRoom.describe {
