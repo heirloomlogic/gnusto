@@ -3,8 +3,8 @@
 /// scope, it costs a turn, and its default behavior is one line of prose.
 ///
 /// `I don't know the word "attack"` tells the player the program is
-/// unfinished. `Attacking things rarely improves them.` tells them the world
-/// is. Stub verbs exist so a game gets the second answer for free, and so a
+/// unfinished. `Attacking the chair rarely improves matters.` tells them the
+/// world is. Stub verbs exist so a game gets the second answer for free, and so a
 /// game that wants real behavior only has to add a rule — never teach the
 /// parser a new word.
 ///
@@ -277,7 +277,12 @@ extension DefaultActions {
         // Melee, so it wants arm's length. Nothing is lost by saying so: the
         // ranged case has its own intent one row down. The weapon slot goes
         // unchecked — a stub doesn't check that you're holding it either.
-        .plain(
+        //
+        // `named`, not `plain`: every row here carries a direct object, and
+        // swinging at a person deserves `somebodyElse` rather than a line
+        // that puts the cook on the same footing as a chair — the guard
+        // `smash` and `cut` have always had.
+        .named(
             .attack,
             [
                 ["attack", .directObject],
@@ -289,7 +294,7 @@ extension DefaultActions {
                 ["fight", .directObject],
             ],
             reach: .directObject
-        ) { $0.stubs.attack },
+        ) { $0.stubs.attack($1) },
 
         .numbered(
             .smash,

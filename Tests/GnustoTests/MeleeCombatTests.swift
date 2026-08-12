@@ -45,7 +45,7 @@ struct MeleeCombatTests {
             [
                 "The goose feather is no weapon.",
                 "Bare hands won't do it. You need a weapon.",
-                "Violence isn't the answer to this one.",
+                "Attacking a dull sword isn't the answer.",
             ])
     }
 

@@ -35,13 +35,30 @@ import GnustoMeleeCombat
 /// under the rule `FIDELITY.md` states for `identical`/`minor` lines — the same
 /// licence ``Prose/drinkWater`` already sits under.
 extension Prose {
-    /// `V-ATTACK`'s first branch (`gverbs.zil:176`), second person.
+    /// `V-ATTACK`'s first branch (`gverbs.zil:176`). Trilogy verbatim.
+    ///
+    /// The narrator is appraising *the player* — it is you who is strange for
+    /// swinging at a rubber raft — so the first person is the line, not a
+    /// house style to be converted away from. Second person turns the joke
+    /// inside out: "You have known strange people" makes the player a
+    /// connoisseur of strangers rather than the specimen, and points the
+    /// remark at nobody. The narrator already says "I" elsewhere in this game
+    /// — `stubs.stand`'s "You are already standing, I think.", the volcano's
+    /// "I wouldn't jump from here." — and those are verbatim too.
+    ///
+    /// Takes the object's name because the source does (`A ,PRSO`): "fighting
+    /// that?" is the same sentence with the joke's subject deleted. The two
+    /// callers choose the article between them — ``combatText`` hands it the
+    /// indefinite name, as `A` does, and the stub floor gets whatever
+    /// `StubVerb.named` hands every stub.
     ///
     /// Named rather than inlined because it is the one line in this file with
     /// two homes: the stub floor sets it so the game owns `.attack` whatever
     /// claims the verb, and ``combatText`` sets it where a player can actually
     /// reach it.
-    static let attackFutile = "You have known strange people, but fighting that?"
+    static let attackFutile: @Sendable (_ name: String) -> String = {
+        "I've known strange people, but fighting \($0)?"
+    }
 
     /// ``GnustoMeleeCombat``'s four system-voice refusals, in this game's.
     ///
