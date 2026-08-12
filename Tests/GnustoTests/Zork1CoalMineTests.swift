@@ -124,7 +124,7 @@ struct Zork1CoalMineTests {
     }
 
     /// Without the garlic, stepping into the Bat Room gets you seized and carried
-    /// off to a random corner of the mine — here, the Mine Entrance (seed 2).
+    /// off to a random corner of the mine — here, the Mine Entrance (seed 10).
     @Test func withoutGarlicTheBatCarriesYouOff() async throws {
         // The no-garlic prelude: everything but the clove.
         let noGarlic: [String] = [
@@ -142,9 +142,9 @@ struct Zork1CoalMineTests {
                 "west",  // Squeaky Room
                 "north",  // Bat Room — no garlic
             ],
-            seed: 2)
+            seed: 10)
         // The bat seizes you on entry, so the Bat Room never gets to describe
-        // itself — the grab-and-lift replaces the room, and seed 2 drops you at
+        // itself — the grab-and-lift replaces the room, and seed 10 drops you at
         // the Mine Entrance.
         expectInOrder(
             transcript,

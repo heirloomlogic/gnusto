@@ -14,11 +14,17 @@ import Testing
 /// the thief's roaming and stealing, and the thief's death in his lair. The
 /// thief is lethal — his stiletto can end the run on the turn you enter the
 /// Treasure Room — so a winning seed is *found by brute-force scan*, not chosen.
-/// Seed 32 is the lowest that survives both combats cleanly and lets the thief's
+/// Seed 0 is the lowest that survives both combats cleanly and lets the thief's
 /// egg-opening service finish (the canary emerges intact). Once the thief falls,
 /// **no randomness remains** — every source (troll, thief roam/steal/fight, the
 /// coal-mine bat) is dead or guarded — so all of Phase B plays out identically
-/// regardless of seed. A scan of seeds 0–599 finds 47 that win this exact route.
+/// regardless of seed. A scan of seeds 0–599 finds 235 that win this exact
+/// route.
+///
+/// It was seed 32, on a route only 47 of those 600 won, until #237 gave the
+/// troll and the thief the source's strike-first probabilities. That moved every
+/// draw — hence the re-pin — and it also made the run four times easier to win,
+/// which is the change doing exactly what it was asked to do.
 ///
 /// **The strategy.** *Phase A* descends, kills the troll, threads the maze,
 /// routs the cyclops (which opens the Strange Passage shortcut home), arms the
@@ -35,7 +41,7 @@ import Testing
 /// carrying the original Zork I text; see `THIRD_PARTY_NOTICES`.
 struct Zork1WalkthroughTests {
     /// The pinned seed (see the type doc): the lowest that wins this route.
-    static let seed: UInt64 = 32
+    static let seed: UInt64 = 0
 
     @Test func theFullThreeHundredFiftyPointWalkthrough() async throws {
         let transcript = try await play(Zork1(), Walkthrough.commands, seed: Self.seed)
@@ -112,7 +118,8 @@ private enum Walkthrough {
         "move rug", "open trap door", "down",  // Cellar (+25)
     ]
 
-    /// North to the Troll Room; cut the troll down (seed 32: two blows land it).
+    /// North to the Troll Room; cut the troll down (seed 0: the first blow puts
+    /// him on the floor and the next finishes him).
     static let descendAndTroll: [String] = [
         "north",  // Troll Room
         "attack troll", "attack troll", "attack troll",
@@ -141,8 +148,9 @@ private enum Walkthrough {
         "score",
     ]
 
-    /// Back up into the lair; the thief is re-summoned. Cut him down (seed 32
-    /// lands it in one) — his satchel bursts, scattering the whole hoard: the
+    /// Back up into the lair; the thief is re-summoned. Cut him down (seed 0
+    /// lands it inside the three blows this budgets) — his satchel bursts,
+    /// scattering the whole hoard: the
     /// opened egg and its intact canary, the silver chalice, and his stiletto.
     static let returnAndKill: [String] = [
         "up",  // Treasure Room — thief re-summoned

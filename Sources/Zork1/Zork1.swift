@@ -740,8 +740,13 @@ struct Zork1: Game, GameMain {
             say(Prose.matchBurnsOut)
         }
 
+        // He swings back at someone who has swung at him, and otherwise starts
+        // one turn in three of his own accord — `F-FIRST?` (`1actions.zil:702`)
+        // is `<PROB 33>`. The rest of the time he blocks, which is what his
+        // listing line has always said he does.
         melee.aggression(
             of: cellar.troll, key: "troll", daemonName: "melee.troll",
+            strikesFirst: 33,
             prose: MeleeCombat.AggressionProse(
                 miss: [Prose.trollSwipeMiss],
                 wound: [Prose.trollSwipeWound],
@@ -777,9 +782,12 @@ struct Zork1: Game, GameMain {
 
         // He fights back only in his lair — the `while:` gate closes everywhere
         // else, keeping him evasive on the prowl and burning no randomness on
-        // the turns he isn't defending the hoard.
+        // the turns he isn't defending the hoard. Even there he waits to be
+        // swung at four times in five: `F-FIRST?` (`1actions.zil:2064`) is
+        // `<PROB 20>`.
         melee.aggression(
             of: thief.thief, key: "thief", daemonName: "thiefFights",
+            strikesFirst: 20,
             while: { thief.thief.isIn(maze.treasureRoom) },
             prose: MeleeCombat.AggressionProse(
                 miss: [Prose.thiefSwipeMiss],

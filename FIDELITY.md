@@ -1261,6 +1261,15 @@ went against the first draft:
   the man admiring a gift you handed him — without clearing his bit. Ours clears
   engagement above the `while:` gate, on the room test alone, for the same reason.
 
+**Zork 1 paid a much smaller toll**, because its routes already budget three
+blows a villain where Dungeon's budget one: seven issues across four tests,
+against Dungeon's 175. Its walkthrough moved from seed 32 to seed 0 and got
+markedly easier to win in the process — 235 of seeds 0–599 now carry that exact
+route, where 47 did before. Its own measurement, same method, seeds 0–40:
+deaths within one turn 14/41 → 7/41, two turns 27/41 → 11/41, three turns
+34/41 → 18/41, eight turns 41/41 → 35/41. Three tests that died to an
+unprovoked troll now pick the fight they lose, for the reason Dungeon's did.
+
 **The re-pin toll.** The strike-first roll is a new draw on the turns an unengaged
 villain shares the player's room, and the troll gates the underground in both games, so
 the stream moves for nearly every route below the trap door. 175 Dungeon tests went red.
