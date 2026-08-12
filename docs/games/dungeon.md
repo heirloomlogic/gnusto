@@ -1168,16 +1168,17 @@ ones closest to it:
   is wider than `I-SWORD`, which the source disables outright when the sword
   leaves your inventory. It is a better warning system and it is a departure;
   `FIDELITY.md` carries it.
-- **The four actors answer a greeting hostilely, where both sources have them
-  bow.** `V-HELLO` gives every villain "The troll bows his head to you in
-  greeting", and this game does not. The reason is a *second* divergence, not a
-  fidelity argument: the source's troll strikes first only at `PROB 33` and
-  otherwise stands blocking, exactly as its listing line says, so its bow is not
-  incongruous — but `MeleeCombat.aggression` rolls every turn with no
-  strike-first probability, and an unprovoked player standing in the Troll Room
-  dies in 40 runs out of 41 inside eight turns. The hostile lines are true of the
-  troll this game ships. `FIDELITY.md` records both, and says to revisit these
-  four lines if the aggression is ever brought back to the source's.
+- **Two of the four actors answer a greeting hostilely; the troll and the
+  cyclops do not.** `V-HELLO` gives every villain a bow, and #236 replaced it for
+  all four, on the ground that a bow reads oddly from something that swings at
+  you every turn. #237 removed the ground: the troll now has the source's
+  `PROB 33` of striking first and spends the other two turns in three blocking,
+  exactly as his listing line says, and the cyclops — who has no strike-first
+  branch in the source at all — never starts anything. Both are courteous again,
+  in this game's own words. The thief keeps his courtesy because his courtesy is
+  the point of him, and the robot still does not nod because it is a machine;
+  neither of those rested on the aggression. `FIDELITY.md` carries the whole
+  history.
 - **The Gas Room's stairs and the Smelly Room's staircase are two items.** One
   staircase seen from its two ends, which is rule 3 rather than a map change:
   `smellyRoom.down(gasRoom)` is exactly what it was.

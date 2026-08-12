@@ -1238,6 +1238,57 @@ the dark, and its troll/thief kills survive the new tables. Anti-softlock guards
 explicit decision: the grue's first-turn warning, the lamp sparing (scatter), and the bell's
 auto-cool.
 
+## Villains that block rather than swing (#237)
+
+`I-FIGHT` (`1actions.zil:3810`) has a villain strike only when `FIGHTBIT` is already
+set — the player has engaged him — or when his own `F-FIRST?` branch fires: `<PROB 33>`
+for the troll (`:702`), `<PROB 20>` for the thief (`:2064`), and no branch at all for
+the cyclops, who never starts one. `MeleeCombat.aggression` had none of this and rolled
+every turn the player shared a room with a conscious villain. Both Dungeon and Zork 1
+made the call, and both were far more lethal than the games they reconstruct.
+
+The plugin now carries all three halves: a `strikesFirst` probability, an `engaged` set
+in the combat ledger, and `FIGHTBIT`'s clearing rule — the bit drops when the two of
+them stop sharing a room, so walking out ends a fight and walking back in asks the
+question again. Two placements were read off the source rather than guessed, and both
+went against the first draft:
+
+- **A refused swing does not engage.** `HERO-BLOW` sets the bit before it resolves the
+  blow, so a miss engages as thoroughly as a wound — but `V-ATTACK` (`gverbs.zil:176`)
+  refuses three ways before it ever reaches `HERO-BLOW`, and those three are almost
+  exactly the plugin's own. So waving something that isn't a weapon is not a provocation.
+- **A shut host gate does not disengage.** `I-FIGHT` skips the engrossed thief's turn —
+  the man admiring a gift you handed him — without clearing his bit. Ours clears
+  engagement above the `while:` gate, on the room test alone, for the same reason.
+
+**The re-pin toll.** The strike-first roll is a new draw on the turns an unengaged
+villain shares the player's room, and the troll gates the underground in both games, so
+the stream moves for nearly every route below the trap door. 175 Dungeon tests went red.
+The default `strikesFirst: 100` skips the draw entirely, which is what kept the plugin's
+own fixtures and every non-Zork suite untouched.
+
+Dungeon's constants moved as follows, each re-derived by brute-force scan against the
+routes that use it, not renumbered: **11 → 18** (the descent, 150 uses; still "the troll
+falls to the first blow"), **10 → 41** (the carousel), **12 → 14** (the shaft), **55 →
+120** (the thief's lair), and the walkthrough's **2 → 52**, which `DungeonEndgameTests`
+shares. Four tests kept pins of their own. The endgame quiz draws its three questions
+from eight by rejection sampling, so both the questions and the draws they cost moved:
+its answers were re-derived to *temple, nowhere, forest*.
+
+Three claims changed rather than moved, and the comments say so instead of quietly
+renumbering. Two seeds that used to buy "the troll's swings all miss" now buy a troll who
+never swings at all. And `dyingToTheTrollCostsTenPointsAndYourHands` now picks the fight
+it dies in: an unprovoked death was a one-in-twenty event after this change, and pinning a
+seed for it would have been testing the rare path rather than the behaviour.
+
+**One thing that looked free and is not.** A swing at something already dead is
+`cantSeeAnySuchThing`, a `freeReply` that costs no turn and no draw — so budgeting a
+spare blow per fight looked like a way to widen the walkthrough's acceptance set from one
+seed in four hundred to eight, at no cost to the stream. It is not free in *transcript*
+terms: `DungeonEndgameTests` builds its route from the walkthrough's, and three of the
+tests riding it scan the whole transcript for exactly that line. The spares were reverted
+and the narrow seed kept.
+
 ## Fidelity pass — the long tail (post-Phase 10)
 
 A follow-up pass closing the last small divergences a player would actually hit. Each is
@@ -3012,16 +3063,44 @@ thief's `<PROB 20>` (`:2063`). An unprovoked source troll therefore spends two
 turns in three standing and blocking, which is exactly what its listing line
 says it does, and the bow is not incongruous there.
 
-It is incongruous *here*, because **this game's troll is far more aggressive than
-the source's**: `MeleeCombat.aggression` autostarts and rolls every turn the
-player shares the room, with no strike-first probability and no engaged/unengaged
-distinction, so an unprovoked player standing in the Troll Room dies in 40 runs
-out of 41 inside eight turns. That divergence is the melee plugin's and predates
-this section; `Sources/Zork1/` makes the same call. It is recorded here because
-the greeting rests on it: the hostile answers are true of the troll this game
-actually ships, and would be wrong for the troll `dung.355` describes. **If the
-aggression is ever brought back to `PROB 33`, revisit these four lines.** Filed
-as #237, which carries the measurements and the cost of the re-pin.
+It *was* incongruous here, because this game's troll used to be far more
+aggressive than the source's: `MeleeCombat.aggression` autostarted and rolled
+every turn the player shared the room, with no strike-first probability and no
+engaged/unengaged distinction, so an unprovoked player standing in the Troll Room
+died in 40 runs out of 41 inside eight turns. That was filed as #237, which asked
+that these four lines be revisited if the aggression were ever brought back to
+`PROB 33`.
+
+**#237 has landed, and two of the four lines are back to the source's
+courtesy.** The troll and the cyclops bow again — in this game's own words rather
+than the ZIL's, since Dungeon adapts — because the argument for their hostility
+was about our troll rather than the source's and no longer describes either. The
+thief keeps his courtesy and the robot keeps its refusal to nod: neither rested
+on the aggression. `Prose+Cellar.swift` and `Prose+Maze.swift` carry the history
+above the lines themselves.
+
+**What the fix bought, measured the way the issue measured it** — sword and lamp,
+into the Troll Room, then wait, over seeds 0–40:
+
+| turns waited | before | after |
+|---|---|---|
+| 1 | 16/41 | 4/41 |
+| 2 | 23/41 | 10/41 |
+| 3 | 32/41 | 17/41 |
+| 4 | 37/41 | 28/41 |
+| 8 | 40/41 | 33/41 |
+
+Reading the room is no longer very nearly fatal, which was the complaint. Loitering
+in it still is, and that is worth being plain about: **the strike-first
+probability was only half of what made the room lethal.** Once his roll fires he
+is engaged, and `FIGHTBIT` is cleared only by the two of them ceasing to share a
+room — so a player who stands there long enough gets a fight eventually and then
+faces our outcome table, which is 50 miss / 35 wound / 15 outright kill against a
+`playerStrength` of 2. That table is a much harsher simplification of the source's
+melee tables than the strike-first branch was of `F-FIRST?`, and #237 put it
+explicitly out of scope. It is the next thing to look at if the Troll Room is
+still thought too cruel; the two-turns-in-three of blocking is now faithful, and
+the arithmetic of the blows is not.
 
 #### Where the sources actually are
 

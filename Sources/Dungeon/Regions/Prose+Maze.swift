@@ -248,12 +248,17 @@ extension Prose {
     /// Trilogy verbatim.
     static let cyclopsStomach = "You can hear his stomach rumbling."
 
-    /// Written fresh, for ``Prose/trollGreeted``'s reason: the source has no
-    /// `HELLO` branch for the cyclops, so he falls to `V-HELLO`'s villain bow,
-    /// and the engine's placeholder is the same courtesy flattened. A giant
-    /// waiting for you to be lunch does not exchange greetings.
+    /// Written fresh, for ``Prose/trollGreeted``'s reason and with its history:
+    /// the source has no `HELLO` branch for the cyclops, so he falls to
+    /// `V-HELLO`'s villain bow, and the engine's placeholder is that courtesy
+    /// flattened. #236 answered the flatness with hostility; #237 took away the
+    /// argument for it, since he has no strike-first branch at all and never
+    /// starts anything. So he is courteous, and unhurried about it — which is
+    /// the more unsettling reading anyway, from something that is waiting to be
+    /// fed.
     static let cyclopsGreeted = """
-        The cyclops looks at you the way a man looks at a small meal.
+        The cyclops lowers his head to you with enormous dignity, and goes back
+        to waiting.
         """
 
     /// Asleep at the foot of the stairs, which is the only other state he can

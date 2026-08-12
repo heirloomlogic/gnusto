@@ -16,12 +16,18 @@ import Testing
 /// (`SCORE-BLESS`, `rooms.394:794`) tests the score and nothing else. This is
 /// the test that makes the claim.
 ///
-/// **The seed.** Seed 2, and it matters only until the thief falls in stage 2.
+/// **The seed.** Seed 52, and it matters only until the thief falls in stage 2.
 /// The route takes the egg and nothing else above ground, so he stays offstage
 /// — drawing nothing from the seeded stream — until the Treasure Room summons
 /// him. After his death the only randomness left is the Round Room's carousel,
 /// which stage 9 gambles four times before it is spat out at the Engravings
 /// Cave.
+///
+/// It was seed 2 until #237 gave the troll and the thief a strike-first
+/// probability, which moved every draw in the game. 52 was found the way the
+/// original was — by brute-force scan — and it is the *only* seed below 400 this
+/// route wins on, which is a narrower margin than it sounds and is discussed at
+/// stage 2.
 ///
 /// **The shape of it.** Stages 1 to 14 are the 585-point route milestone 7
 /// left, with three commands added: `send for brochure` on turn one, the
@@ -46,7 +52,7 @@ import Testing
 /// is the committed one.
 struct DungeonWalkthroughTests {
     /// The pinned seed. See the type doc.
-    static let seed: UInt64 = 2
+    static let seed: UInt64 = 52
 
     @Test func theWholeMainDungeonScoresSixHundredAndSixteen() async throws {
         let transcript = try await play(Dungeon(), Self.route, seed: Self.seed)
@@ -135,7 +141,19 @@ struct DungeonWalkthroughTests {
         "take sword", "turn on lamp", "open case", "push rug",
         "open trap door", "down",
 
-        // Stage 2: the troll, the maze, the cyclops, the thief and the egg
+        // Stage 2: the troll, the maze, the cyclops, the thief and the egg.
+        //
+        // The fights budget exactly the blows they need and no spares, which
+        // costs this route a seed hunt it could otherwise have skipped. A swing
+        // at something already dead is `cantSeeAnySuchThing`, a `freeReply` that
+        // burns no turn and no draw, so spares looked free — and in stream terms
+        // they are. They are not free in *transcript* terms: this route is what
+        // `DungeonEndgameTests.intoTheEndgame` is built from, and three of the
+        // tests riding it are `expectEveryNounAnswered` tests, which scan the
+        // whole transcript for that very line. A spare swing there is
+        // indistinguishable from a noun the game failed to answer, which is the
+        // one thing those tests exist to catch. Measured over seeds 0–399: with
+        // spares eight of them win, without them one does. The one is this one.
         "east", "attack troll with sword", "attack troll with sword",
         "south", "south", "east", "up", "take keys", "southwest",
         "east", "south", "northeast", "odysseus", "up",
