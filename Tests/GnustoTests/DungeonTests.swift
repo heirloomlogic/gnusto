@@ -702,16 +702,23 @@ struct DungeonTests {
             Dungeon(),
             [
                 "examine house", "examine front door", "examine mailbox", "examine mat",
-                "north", "examine house", "examine windows",
+                "examine field",
+                "north", "examine house", "examine windows", "examine forest",
                 "north", "examine trees", "examine tree", "examine songbird",
                 "up", "examine nest", "examine egg", "examine branches",
                 "down", "east", "examine leaves", "push leaves", "examine grating",
-                "examine forest",
+                "examine forest", "examine clearing", "examine path",
                 "south", "examine trees",
-                "north", "examine house", "examine windows",
+                "north", "examine house", "examine windows", "examine path",
+                "examine trees",
+                // Behind House, the fourth side and the one whose path names a
+                // clearing it cannot see.
+                "east", "examine house", "examine window", "examine path",
+                "examine clearing", "examine trees",
             ])
 
         expectEveryNounAnswered(transcript, "the house exterior, the wood, the clearing")
+        #expect(!transcript.contains("Which do you mean"))
     }
 
     @Test func everyNounTheCanyonPrintsAnswers() async throws {
@@ -721,11 +728,13 @@ struct DungeonTests {
                 "south", "east", "east", "southeast", "examine trees",
                 "southeast", "examine cliff", "examine rainbow", "examine falls",
                 "examine cliffs", "examine dam", "examine river", "examine forest",
-                "down", "examine cliff", "examine falls",
+                "down", "examine cliff", "examine falls", "examine passage",
                 "down", "examine cliff", "examine stream", "examine runoff",
+                "examine path", "examine walls",
             ])
 
         expectEveryNounAnswered(transcript, "the Great Canyon")
+        #expect(!transcript.contains("Which do you mean"))
     }
 
     /// The house and the rooms below it, by the route that does not go past the
@@ -4946,7 +4955,7 @@ struct DungeonTests {
                 + [
                     "wait", "wait", "east", "north", "west", "open mailbox",
                     "examine brochure", "examine stamp", "examine mailbox",
-                    "examine leaflet",
+                    "examine leaflet", "read brochure", "examine pages",
                 ])
 
         expectEveryNounAnswered(transcript, "the brochure and the stamp")
