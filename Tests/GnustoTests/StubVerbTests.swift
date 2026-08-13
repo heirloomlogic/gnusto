@@ -484,4 +484,93 @@ struct StubVerbTests {
         #expect(turnOutput(of: "touch rat", in: transcript).contains("would rather you didn't"))
         #expect(turnOutput(of: "touch rod", in: transcript).contains("Fiddling with the brass rod"))
     }
+
+    // MARK: - The twelve that learned to name
+
+    /// The twelve stubs that carried a `.directObject` slot for a year with no
+    /// way to name what filled it: they shipped as `plain`, which hands the
+    /// line nothing at all. Moving them to `optionallyNamed` gives a game the
+    /// name, and hands the engine's own wording an argument it ignores.
+    ///
+    /// Every probe below is a turn whose output must not move, and they are
+    /// grouped by the three roads `optionallyNamed` splits and `plain` did
+    /// not: an object, a person, and the player. `plain` answered all three
+    /// with one line because it never looked; `optionallyNamed` looks, and
+    /// takes a different branch for each. That the sentence comes out the same
+    /// is what makes this a refactor.
+    static let theTwelveThatLearnedToName: [(String, String)] = [
+        // An object to name.
+        ("dig bench", "You have nothing to dig with."),
+        ("knock on bench", "Nobody answers."),
+        ("throw rod at rat", "Throwing things about achieves nothing."),
+        ("taste rod", "You'd rather not."),
+        ("drink flask", "There's nothing here worth drinking."),
+        ("kiss rod", "That would be presumptuous."),
+        ("point at rod", "Pointing at things accomplishes little."),
+        ("jump over bench", "You jump on the spot. Nothing is achieved."),
+        ("sit on bench", "There's nothing comfortable to sit on."),
+        ("count rod", "You lose count."),
+        ("buy rod", "Nothing here is for sale."),
+        ("sell rod", "Nobody here is buying."),
+
+        // A person. None of the twelve takes the `somebodyElse` guard, so all
+        // twelve keep answering about the rat exactly as they answer about the
+        // rod — `kiss` most of all, since kissing somebody is what the verb is
+        // for.
+        ("dig rat", "You have nothing to dig with."),
+        ("knock on rat", "Nobody answers."),
+        ("throw rat at rod", "Throwing things about achieves nothing."),
+        ("taste rat", "You'd rather not."),
+        ("drink rat", "There's nothing here worth drinking."),
+        ("kiss rat", "That would be presumptuous."),
+        ("point at rat", "Pointing at things accomplishes little."),
+        ("jump over rat", "You jump on the spot. Nothing is achieved."),
+        ("sit on rat", "There's nothing comfortable to sit on."),
+        ("count rat", "You lose count."),
+        ("buy rat", "Nothing here is for sale."),
+        ("sell rat", "Nobody here is buying."),
+
+        // The player, who has no name that renders — "You'd rather not taste
+        // yourself." — and so takes the line's nameless half rather than
+        // `stubs.yourself`.
+        ("dig me", "You have nothing to dig with."),
+        ("knock on me", "Nobody answers."),
+        ("throw me at rod", "Throwing things about achieves nothing."),
+        ("taste me", "You'd rather not."),
+        ("drink me", "There's nothing here worth drinking."),
+        ("kiss me", "That would be presumptuous."),
+        ("point at me", "Pointing at things accomplishes little."),
+        ("jump over me", "You jump on the spot. Nothing is achieved."),
+        ("sit on me", "There's nothing comfortable to sit on."),
+        ("count me", "You lose count."),
+        ("buy me", "Nothing here is for sale."),
+        ("sell me", "Nobody here is buying."),
+
+        // The rows that name nothing because they have no slot to name from.
+        ("dig", "You have nothing to dig with."),
+        ("jump", "You jump on the spot. Nothing is achieved."),
+        ("sit", "There's nothing comfortable to sit on."),
+        ("sit down", "There's nothing comfortable to sit on."),
+    ]
+
+    @Test(arguments: StubVerbTests.theTwelveThatLearnedToName)
+    func theEngineDefaultIsUnchangedForEveryRewiredStub(
+        _ command: String, _ expected: String
+    ) async throws {
+        let turn = turnOutput(of: command, in: try await play(StubLab(), [command]))
+        #expect(turn.contains(expected), "\(command): \(turn)")
+    }
+
+    /// Ties the probe list to the twelve, so a thirteenth stub promoted later
+    /// can't ship with no characterization behind it.
+    @Test func everyRewiredStubIsProbedOnAllThreeRoads() {
+        let rewired: Set<Intent> = [
+            .dig, .knock, .throwAt, .taste, .drink, .kiss,
+            .point, .jump, .sit, .count, .buy, .sell,
+        ]
+        #expect(rewired.count == 12)
+        // Twelve verbs times an object, a person and the player, plus the four
+        // rows that carry no object slot at all.
+        #expect(Self.theTwelveThatLearnedToName.count == 12 * 3 + 4)
+    }
 }
