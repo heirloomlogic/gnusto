@@ -180,10 +180,15 @@ extension Prose {
         // MARK: Liquids and containers
 
         // These two ignore the name the engine offers them, where the rest of
-        // the floor takes it. `drink` is a plain line and cannot be given one,
-        // and #236 wrote the three as a family that reads alike; naming the
-        // object in two of the three would break the set for no gain, and the
-        // `String` these are handed carries no number to agree with.
+        // the floor takes it. #236 wrote them and `drink` as a family that reads
+        // alike, and naming the object in two of the three would break the set
+        // for no gain.
+        //
+        // The other half of that reasoning is gone: this used to add that "the
+        // `String` these are handed carries no number to agree with", which was
+        // true and was the second widening #245 closed. All three are handed a
+        // `GameText.Noun` now, so a line here that wants agreement can simply
+        // ask for it.
         stubs.fill = .init(Prose.cantFillThat)
         stubs.pour = .init(Prose.cantPourThat)
         stubs.empty = .naming { "\($0.sentenceCased) has nothing in it to empty." }

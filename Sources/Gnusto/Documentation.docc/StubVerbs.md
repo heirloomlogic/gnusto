@@ -80,14 +80,21 @@ checks for the player and answers ``GameText/StubReplies/yourself`` instead.
 Stubs whose lines name nothing keep their own answer, because it already reads
 correctly: `taste me` still says *"You'd rather not."*
 
-Six of them are handed an **optional** name — `smell`, `listen`, `touch`,
-`wave`, `wake` and `climb` — because some of their rows carry no object at all
-(`smell` and `smell the troll` are one intent), so one sentence has to read both
-ways. The player takes the nameless half rather than the `yourself` deferral,
-which is the same answer by a different road: `smell me` still says *"You smell
-nothing out of the ordinary."* Five of the six also skip the `somebodyElse`
-guard, since they act at a distance and read fine about a person; `touch` keeps
-it, because laying hands on somebody is not the same as listening to them.
+Eighteen of them are handed an **optional** name, and either of two things puts
+a verb there. Some have rows that carry no object at all — `smell` and `smell the
+troll` are one intent — so one sentence has to read both ways. The rest fill the
+slot on every row but read perfectly well with the name left out: `knock`,
+`taste`, `kiss`, `count`, `buy` and `sell` are about the player as much as the
+thing, so the name is offered rather than required.
+
+The player takes the nameless half rather than the `yourself` deferral, which is
+the same answer by a different road: `smell me` still says *"You smell nothing
+out of the ordinary."* Seventeen of the eighteen also skip the `somebodyElse`
+guard, and that follows from the shape rather than being a convenience — a line
+with a nameless half is a line that can be said about anybody. `touch` is the
+one that keeps it, because laying hands on somebody is not the same as listening
+to them; `kiss` is the one that shows why the call is per verb, since kissing
+somebody is what the verb is *for*.
 
 ## Re-skinning a line
 
@@ -97,7 +104,7 @@ the ones that clash with your voice and leave the rest:
 ```swift
 var text: GameText {
     var text = GameText()
-    text.stubs.attack = { "The Institute frowns on assaulting \($0)." }
+    text.stubs.attack = .naming { "The Institute frowns on assaulting \($0)." }
     text.stubs.pray = "No one is listening. You checked."
     return text
 }
@@ -135,19 +142,34 @@ decide for itself what "close enough to touch" means. `GnustoMeleeCombat` wants
 exactly that.
 
 A game that only wants a different sentence does not, and gets it anyway. So
-re-voicing is an assignment, not a row:
+re-voicing is an assignment, not a row — and the assignment is a sentence:
 
 ```swift
 var text: GameText {
     var text = GameText()
-    text.stubs.climb = { _ in "That is not something you could climb." }
+    text.stubs.climb = "That is not something you could climb."
     return text
 }
 ```
 
+A line that *does* want to name what the player pointed at says so, in the same
+slot:
+
+```swift
+text.stubs.climb = .naming(orBare: "There's nothing here worth climbing.") {
+    "You can't climb onto \($0)."
+}
+```
+
+Both halves, because a line that owns a nameless half has two things to say and
+writing only one leaves the engine's narrator answering the other. See
+``GameText/Line``.
+
 The assignment keeps the reach guard, the object's rendered name, its number
 agreement, and the ``GameText/StubReplies/yourself`` and
-``GameText/StubReplies/somebodyElse`` guards. The row keeps none of them, and
+``GameText/StubReplies/somebodyElse`` guards — and, since wanting the name is
+now something an assignment can do, it has stopped being a reason to reach for a
+row at all. The row keeps none of them, and
 nothing warns — a row and an assignment look equally reasonable at the call site.
 `Sources/Dungeon/` re-skinned seventeen stubs with rows and had given all four
 away without noticing.

@@ -202,9 +202,13 @@ In any rule body: `say`, `refuse`, `reply`, `handled`, `require(_:else:)`, `end(
   reach guard, the object's rendered name, its number agreement and the
   `yourself`/`somebodyElse` guards. `text.stubs.squeeze = …` keeps all four and
   is what the play-test survey measures. A row means *this game has behavior
-  here*; if all it has is a sentence, assign the sentence. A plugin that claims a
-  verb owns its register too — `GnustoMeleeCombat` answers `.attack`, so
-  `MeleeCombat(text:)` is where that verb's voice lives, not `text.stubs.attack`.
+  here*; if all it has is a sentence, assign the sentence. The line takes either
+  spelling — `text.stubs.sit = "…"` or
+  `text.stubs.sit = .naming(orBare: "…") { "You can't sit on \($0)." }` — so
+  wanting the object's name has stopped being a reason to reach for a row. A
+  plugin that claims a verb owns its register too — `GnustoMeleeCombat` answers
+  `.attack`, so `MeleeCombat(text:)` is where that verb's voice lives, not
+  `text.stubs.attack`.
 - **UNDO, RESTART, SAVE and RESTORE can't be overridden at all.** `GameWorld.run`
   answers them before the pipeline, so no rule sees them and `action(.save)` never
   runs. That's `DefaultActions.engineIntents`, and declaring one now warns rather

@@ -12,7 +12,9 @@
 /// ```
 ///
 /// Fixed lines are plain strings; lines built around names are `@Sendable`
-/// closures taking those names.
+/// closures taking those names. The stub-verb lines on ``StubReplies`` are a
+/// third thing — a ``Line``, which is either — because which of the two a stub
+/// wants is the game's business and not the engine's.
 ///
 /// A closure receives a *rendered noun phrase* — "the troll", "a troll",
 /// "Mrs. Vane" — not a bare name. The article belongs to the engine, which
@@ -628,16 +630,23 @@ extension GameText {
     /// it; a rule or an `actions` row replaces it with behavior. Both are
     /// expected, and neither warns.
     ///
-    /// Lines that name the object are closures, as elsewhere in ``GameText``,
-    /// and only where the name earns its keep: "The chair is sturdier than
-    /// that." says something "That's sturdier than that." can't.
+    /// A line with an object to name is a ``GameText/Line``, which takes a bare
+    /// string as readily as a naming closure — so whether a stub says what the
+    /// player was pointing at is the game's call rather than a shape the engine
+    /// picked. `Line<Noun>` where every row carries an object, `Line<Noun?>`
+    /// where the line owns a nameless half as well. Only a verb with no object
+    /// slot on any row is a plain `String`; there is nothing for a closure to be
+    /// handed, and a slot that offers one invites prose that can never print.
     ///
-    /// Seven of them take a ``GameText/Noun`` rather than a `String`, and they
-    /// are exactly the seven whose verb agrees with the object. A template that
-    /// hard-codes the agreement makes a game's honest plural noun ungrammatical
-    /// — "The rails is not food." — and the game's only escape would be to
-    /// rename the thing, which is a mine lying about itself to make a stub line
-    /// scan. See the `plural` trait.
+    /// A `Line` is handed a ``GameText/Noun`` and never a bare name, so a line
+    /// whose verb agrees with the object can conjugate for itself. A template
+    /// that hard-codes the agreement makes a game's honest plural noun
+    /// ungrammatical — "The rails is not food." — and the game's only escape
+    /// would be to rename the thing, which is a mine lying about itself to make
+    /// a stub line scan. See the `plural` trait. Interpolating a `Noun` prints
+    /// its phrase, so a line with no verb to agree pays nothing for this.
+    ///
+    /// ``give`` is the one line about *two* objects, and stays a closure.
     public struct StubReplies: Sendable {
         /// The classic replies. Build one and mutate the lines you want to
         /// change; ``GameText`` already holds a default instance.

@@ -125,8 +125,10 @@ extension Prose {
         // `V-SHAKE`'s un-takeable branch (`gverbs.zil:1217`).
         stubs.shake = "You can't take it; thus, you can't shake it!"
         // `V-KNOCK`'s door branch (`gverbs.zil:767`). The other branch names the
-        // thing knocked on and this line cannot, but a stub floor is what
-        // answers after every door in the game has had its say.
+        // thing knocked on, which this line could since #245 and still doesn't:
+        // reproducing it is a fidelity call against the source's two branches,
+        // not a side effect of the engine growing the ability. A stub floor is
+        // in any case what answers after every door in the game has had its say.
         stubs.knock = "Nobody's home."
         // Invented: Zork I's `THROW AT` requires an actor (`gsyntax.zil:486`),
         // and `V-THROW` drops the object rather than refusing, so there is no

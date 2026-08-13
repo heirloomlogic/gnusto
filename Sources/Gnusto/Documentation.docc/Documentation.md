@@ -187,6 +187,7 @@ A game type that also conforms to ``GameMain`` is a complete `@main` executable 
 
 - <doc:TextAndRandomness>
 - ``GameText``
+- ``GameText/Line``
 - ``GameText/StubReplies``
 - ``random(_:)``
 - ``chance(_:)``
