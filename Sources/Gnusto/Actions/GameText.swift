@@ -36,7 +36,7 @@ public struct GameText: Sendable {
     /// their sentence nothing until a verb turns up. The handful that carry one
     /// take this instead, so "The rails is not food." — a game's real noun made
     /// ungrammatical by a template's assumption — cannot be written.
-    public struct Noun: Sendable {
+    public struct Noun: Sendable, CustomStringConvertible {
         /// The rendered phrase, article and all: "the rails", "Mrs. Vane".
         public let phrase: String
         /// Whether the phrase is grammatically plural.
@@ -51,6 +51,13 @@ public struct GameText: Sendable {
             self.phrase = phrase
             self.isPlural = plural
         }
+
+        /// The phrase, so that a line with no verb to agree with interpolates
+        /// the noun and says nothing about number: `"You can't burn \($0)."` is
+        /// the same sentence it was when these lines were handed a `String`. A
+        /// line that *does* carry a verb reaches for ``verb(_:_:)`` instead,
+        /// and one that opens on the noun reaches for ``sentenceCased``.
+        public var description: String { phrase }
 
         /// The phrase with its first letter capitalized, for a line that opens
         /// on it. See ``GameText/sentenceCase(_:)``.
@@ -701,20 +708,15 @@ extension GameText {
 
         // MARK: Senses
 
-        /// Touching, feeling or rubbing something. `nil` when there is no name
-        /// to give — see ``StubVerb/optionallyNamed(_:_:reach:guardsActors:_:)``,
-        /// which these six lines and no others are driven by.
-        public var touch: @Sendable (_ name: String?) -> String = { _ in
-            "You feel nothing out of the ordinary."
-        }
-        /// Smelling the room or something in it. `nil` for the bare `smell`.
-        public var smell: @Sendable (_ name: String?) -> String = { _ in
-            "You smell nothing out of the ordinary."
-        }
-        /// Listening to the room or something in it. `nil` for the bare `listen`.
-        public var listen: @Sendable (_ name: String?) -> String = { _ in
-            "You hear nothing out of the ordinary."
-        }
+        /// Touching, feeling or rubbing something. The one sense verb that
+        /// still defers about a person: laying hands on somebody is not the
+        /// same as listening to them.
+        public var touch: Line<Noun?> = "You feel nothing out of the ordinary."
+        /// Smelling the room or something in it. The bare `smell` names nothing.
+        public var smell: Line<Noun?> = "You smell nothing out of the ordinary."
+        /// Listening to the room or something in it. The bare `listen` names
+        /// nothing.
+        public var listen: Line<Noun?> = "You hear nothing out of the ordinary."
         /// Tasting or licking something.
         public var taste = "You'd rather not."
 
@@ -728,11 +730,9 @@ extension GameText {
         public var drink = "There's nothing here worth drinking."
         /// Going to sleep.
         public var sleep = "You're not sleepy."
-        /// Waking, or waking somebody who isn't asleep. `nil` for the bare
-        /// `wake` and `wake up`.
-        public var wake: @Sendable (_ name: String?) -> String = { _ in
-            "There's no sleeping to be interrupted."
-        }
+        /// Waking, or waking somebody who isn't asleep. The bare `wake` and
+        /// `wake up` name nothing.
+        public var wake: Line<Noun?> = "There's no sleeping to be interrupted."
 
         // MARK: Social
 
@@ -745,19 +745,16 @@ extension GameText {
         }
         /// Yelling, shouting or screaming.
         public var yell = "You shout. Nothing shouts back."
-        /// Waving, with or without something in hand. `nil` for the bare `wave`.
-        public var wave: @Sendable (_ name: String?) -> String = { _ in
-            "You wave. Nothing comes of it."
-        }
+        /// Waving, with or without something in hand. The bare `wave` names
+        /// nothing.
+        public var wave: Line<Noun?> = "You wave. Nothing comes of it."
         /// Pointing at something.
         public var point = "Pointing at things accomplishes little."
 
         // MARK: Motion
 
-        /// Climbing something unclimbable. `nil` for the bare `climb`.
-        public var climb: @Sendable (_ name: String?) -> String = { _ in
-            "You can't climb that."
-        }
+        /// Climbing something unclimbable. The bare `climb` names nothing.
+        public var climb: Line<Noun?> = "You can't climb that."
         /// Jumping, on the spot or over something.
         public var jump = "You jump on the spot. Nothing is achieved."
         /// Swimming with no water to swim in.

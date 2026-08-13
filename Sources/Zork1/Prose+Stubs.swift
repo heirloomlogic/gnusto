@@ -140,18 +140,20 @@ extension Prose {
         // (`gverbs.zil:1165`) hands `HACK-HACK` the stem "Fiddling with the ",
         // which finishes with one of `HO-HUM`'s three (`:2031`). This takes the
         // third; the draw is recorded.
-        stubs.touch = {
-            $0.map { "Fiddling with \($0) has no effect." } ?? "Touching it accomplishes nothing in particular."
+        stubs.touch = .naming(orBare: "Touching it accomplishes nothing in particular.") {
+            "Fiddling with \($0) has no effect."
         }
         // `V-SMELL` (`gverbs.zil:1279`), whose whole joke is that it names the
         // thing. #242 widened this line so it could. Zork I has no objectless
         // `smell`, so the bare form is this game's own sentence, kept from the
         // line that stood here before.
-        stubs.smell = { $0.map { "It smells like \($0)." } ?? "You smell nothing you could put a name to." }
+        stubs.smell = .naming(orBare: "You smell nothing you could put a name to.") {
+            "It smells like \($0)."
+        }
         // `V-LISTEN` (`gverbs.zil:853`). Same shape, same widening; the source's
         // `LISTEN` also always takes an object (`gsyntax.zil:291`).
-        stubs.listen = {
-            $0.map { "\(GameText.sentenceCase($0)) makes no sound." } ?? "You hear nothing you didn't hear before."
+        stubs.listen = .naming(orBare: "You hear nothing you didn't hear before.") {
+            "\($0.sentenceCased) makes no sound."
         }
         // Invented: no `TASTE` or `LICK` anywhere in `gsyntax.zil`.
         stubs.taste = "I wouldn't put that in my mouth."
@@ -168,7 +170,9 @@ extension Prose {
         // `V-ALARM`'s non-actor branch (`gverbs.zil:168`), which `wake` routes to
         // (`gsyntax.zil:527`). Bare `wake` and `wake up` parse too, so the line
         // has to be true with and without something named.
-        stubs.wake = { $0.map { "\(GameText.sentenceCase($0)) isn't sleeping." } ?? "Nothing here is asleep." }
+        stubs.wake = .naming(orBare: "Nothing here is asleep.") {
+            "\($0.sentenceCased) isn't sleeping."
+        }
 
         // MARK: Social
 
@@ -185,7 +189,9 @@ extension Prose {
         // `V-WAVE` (`gverbs.zil:1595`) hands `HACK-HACK` the stem "Waving the ",
         // finished by one of `HO-HUM`'s three; this takes the third, as `touch`
         // does. Zork I has no objectless `WAVE`, so that half is invented.
-        stubs.wave = { $0.map { "Waving \($0) has no effect." } ?? "Waving your hands about has no effect." }
+        stubs.wave = .naming(orBare: "Waving your hands about has no effect.") {
+            "Waving \($0) has no effect."
+        }
         // Invented: no `POINT` in `gsyntax.zil`.
         stubs.point = "Nobody is looking."
 
@@ -194,9 +200,8 @@ extension Prose {
         // `V-CLIMB-ON` (`gverbs.zil:298`). The bare `climb` is this game's own
         // sentence, kept from the line that stood here before; the source's
         // objectless climb walks an exit instead of answering.
-        stubs.climb = {
-            $0.map { "You can't climb onto \($0)." }
-                ?? "There's nothing here worth climbing. Try up or down."
+        stubs.climb = .naming(orBare: "There's nothing here worth climbing. Try up or down.") {
+            "You can't climb onto \($0)."
         }
         // `V-LEAP` sends an objectless jump to `V-SKIP` (`gverbs.zil:820`), which
         // draws one of four (`WHEEEEE`, `:1272`). This is the entry the table is

@@ -128,13 +128,13 @@ extension Prose {
 
         // MARK: Senses
 
-        stubs.touch = { _ in Prose.verbTouch }
-        stubs.smell = { _ in Prose.verbSmell }
+        stubs.touch = .init(Prose.verbTouch)
+        stubs.smell = .init(Prose.verbSmell)
         // Was "You hear nothing out of the ordinary." — a claim about the room,
         // printed in the Loud Room, whose whole puzzle is that it is too loud to
         // hear in. `loudRoom.before(.listen)` in ``DungeonRoundRoom`` answers
         // there; this is what is left over, and it reports on the listener.
-        stubs.listen = { _ in "You listen, and learn nothing you did not already know." }
+        stubs.listen = "You listen, and learn nothing you did not already know."
         stubs.taste = "You would regret it."
 
         // MARK: Body
@@ -146,7 +146,7 @@ extension Prose {
         stubs.sleep = "You have not come all this way to sleep."
         // Bare `wake` and `wake up` parse too, so the line has to be true with
         // and without something named.
-        stubs.wake = { _ in "There is no one asleep to be woken." }
+        stubs.wake = "There is no one asleep to be woken."
 
         // MARK: Social
 
@@ -160,12 +160,12 @@ extension Prose {
         }
         // `V-YELL` (`gverbs.zil:1616`). Trilogy verbatim.
         stubs.yell = "Aaaarrrrgggghhhh!"
-        stubs.wave = { _ in Prose.verbWave }
+        stubs.wave = .init(Prose.verbWave)
         stubs.point = "You point. The gesture is wasted."
 
         // MARK: Motion
 
-        stubs.climb = { _ in "That is not something you could climb." }
+        stubs.climb = "That is not something you could climb."
         // `V-SKIP` picks one of four (`WHEEEEE`, `gverbs.zil:1272`); this is the
         // one the table is named for. Trilogy verbatim.
         stubs.jump = "Wheeeeeeeeee!!!!!"

@@ -152,26 +152,26 @@ public func expectNoEngineStubLineSurvives(
         ("shake", [ours.shake(name)], [engine.shake(name)]),
         ("knock", [ours.knock], [engine.knock]),
         ("throwAt", [ours.throwAt], [engine.throwAt]),
-        ("touch", [ours.touch(name), ours.touch(nil)], [engine.touch(name), engine.touch(nil)]),
-        ("smell", [ours.smell(name), ours.smell(nil)], [engine.smell(name), engine.smell(nil)]),
+        ("touch", [ours.touch(one), ours.touch(nil)], [engine.touch(one), engine.touch(nil)]),
+        ("smell", [ours.smell(one), ours.smell(nil)], [engine.smell(one), engine.smell(nil)]),
         (
-            "listen", [ours.listen(name), ours.listen(nil)],
-            [engine.listen(name), engine.listen(nil)]
+            "listen", [ours.listen(one), ours.listen(nil)],
+            [engine.listen(one), engine.listen(nil)]
         ),
         ("taste", [ours.taste], [engine.taste]),
         ("eat", [ours.eat(one), ours.eat(many)], [engine.eat(one), engine.eat(many)]),
         ("drink", [ours.drink], [engine.drink]),
         ("sleep", [ours.sleep], [engine.sleep]),
-        ("wake", [ours.wake(name), ours.wake(nil)], [engine.wake(name), engine.wake(nil)]),
+        ("wake", [ours.wake(one), ours.wake(nil)], [engine.wake(one), engine.wake(nil)]),
         ("kiss", [ours.kiss], [engine.kiss]),
         (
             "give", [ours.give(name, one), ours.give(name, many)],
             [engine.give(name, one), engine.give(name, many)]
         ),
         ("yell", [ours.yell], [engine.yell]),
-        ("wave", [ours.wave(name), ours.wave(nil)], [engine.wave(name), engine.wave(nil)]),
+        ("wave", [ours.wave(one), ours.wave(nil)], [engine.wave(one), engine.wave(nil)]),
         ("point", [ours.point], [engine.point]),
-        ("climb", [ours.climb(name), ours.climb(nil)], [engine.climb(name), engine.climb(nil)]),
+        ("climb", [ours.climb(one), ours.climb(nil)], [engine.climb(one), engine.climb(nil)]),
         ("jump", [ours.jump], [engine.jump]),
         ("swim", [ours.swim], [engine.swim]),
         ("dive", [ours.dive], [engine.dive]),

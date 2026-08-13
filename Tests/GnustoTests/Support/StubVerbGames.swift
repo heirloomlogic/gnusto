@@ -195,9 +195,15 @@ struct NamingStubGame: Game {
 
     var text: GameText {
         var text = GameText()
-        text.stubs.smell = { $0.map { "It smells like \($0)." } ?? "You smell only the room." }
-        text.stubs.listen = { $0.map { "\(GameText.sentenceCase($0)) makes no sound." } ?? "You hear only the room." }
-        text.stubs.touch = { $0.map { "Fiddling with \($0) has no effect." } ?? "You feel only the room." }
+        text.stubs.smell = .naming(orBare: "You smell only the room.") {
+            "It smells like \($0)."
+        }
+        text.stubs.listen = .naming(orBare: "You hear only the room.") {
+            "\($0.sentenceCased) makes no sound."
+        }
+        text.stubs.touch = .naming(orBare: "You feel only the room.") {
+            "Fiddling with \($0) has no effect."
+        }
         return text
     }
 

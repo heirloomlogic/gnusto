@@ -132,7 +132,7 @@ extension StubVerb {
         _ patterns: [[SyntaxElement]],
         reach: Reach,
         guardsActors: Bool = false,
-        _ line: @escaping @Sendable (GameText, String?) -> String
+        _ line: @escaping @Sendable (GameText, GameText.Noun?) -> String
     ) -> StubVerb {
         .init(intent, patterns, reach) { text, command in
             guard let object = command.directObject, !object.isPlayer else {
@@ -141,7 +141,7 @@ extension StubVerb {
             guard !guardsActors || !object.isActor else {
                 return text.stubs.somebodyElse(object.definiteNoun)
             }
-            return line(text, object.definiteName)
+            return line(text, object.definiteNoun)
         }
     }
 

@@ -163,9 +163,10 @@ struct Fulminate: Game, GameMain {
         // spends its evening contradicting them. The ones below are true of the
         // house at large; the frames where they still would not be — flat on
         // your back in the yard, the parlour full of armchairs — are rules.
-        text.stubs.listen = { _ in "The house is doing what a house does, which tonight is not much of anything." }
-        text.stubs.smell = { _ in "The stove, and the dust a house like this keeps between the wars." }
-        text.stubs.climb = { _ in "You go up in this house by going up. It is that kind of house." }
+        text.stubs.listen =
+            "The house is doing what a house does, which tonight is not much of anything."
+        text.stubs.smell = "The stove, and the dust a house like this keeps between the wars."
+        text.stubs.climb = "You go up in this house by going up. It is that kind of house."
         text.stubs.stand = "You are on your feet, and have been since the streetcar."
         text.stubs.sit = "You did not come out on a Tuesday to sit down."
         // A house of witnesses, so the sister lines to the two already
