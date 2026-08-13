@@ -29,31 +29,49 @@ struct StubVerb: Sendable {
     /// Which of this verb's object slots the player has to be able to *touch*.
     let reach: Reach
 
+    /// Whether the line is offered the direct object's name — false only for
+    /// `plain`, which discards the command.
+    ///
+    /// Stored so `everyStubWithAnObjectSlotCanNameIt` can assert the invariant
+    /// twelve verbs quietly broke for a year: a row with a `.directObject` slot
+    /// whose line has nowhere to put the name. That defect is invisible from
+    /// either side on its own — the rows look right, the line looks right — and
+    /// it is what #245 was filed about.
+    let namesObject: Bool
+
     /// Patterns in, rows out — spelled the way `#verb` spells them, and the
     /// reason no row below has to repeat `intent:`.
     private init(
         _ intent: Intent,
         _ patterns: [[SyntaxElement]],
         _ reach: Reach,
+        namesObject: Bool,
         line: @escaping @Sendable (GameText, Command) -> String
     ) {
         self.intent = intent
         self.rows = patterns.map { SyntaxRule($0, intent: intent) }
         self.line = line
         self.reach = reach
+        self.namesObject = namesObject
     }
 }
 
 extension StubVerb {
-    /// A stub whose reply never names an object — either because no row has an
-    /// object slot, or because naming it wouldn't improve the line.
+    /// A stub with **no object slot on any row**, so there is nothing for its
+    /// reply to name. `sing`, `pray`, `swim`. It discards the command entirely.
+    ///
+    /// Not for a verb that has an object and whose engine wording ignores it —
+    /// that is `optionallyNamed`, and the difference is the whole of #245. A
+    /// `plain` verb with a `.directObject` row is a game that can never say what
+    /// the player was pointing at, and `everyStubWithAnObjectSlotCanNameIt`
+    /// fails rather than letting one be written.
     static func plain(
         _ intent: Intent,
         _ patterns: [[SyntaxElement]],
         reach: Reach,
         _ line: @escaping @Sendable (GameText) -> String
     ) -> StubVerb {
-        .init(intent, patterns, reach) { text, _ in line(text) }
+        .init(intent, patterns, reach, namesObject: false) { text, _ in line(text) }
     }
 
     /// A stub whose reply **cannot be written without the name**: "You have no
@@ -95,7 +113,7 @@ extension StubVerb {
         reach: Reach,
         _ line: @escaping @Sendable (GameText, GameText.Noun) -> String
     ) -> StubVerb {
-        .init(intent, patterns, reach) { text, command in
+        .init(intent, patterns, reach, namesObject: true) { text, command in
             guard let object = command.directObject else { return text.didntUnderstand }
             guard !object.isPlayer else { return text.stubs.yourself }
             guard !object.isActor else { return text.stubs.somebodyElse(object.definiteNoun) }
@@ -137,7 +155,7 @@ extension StubVerb {
         guardsActors: Bool = false,
         _ line: @escaping @Sendable (GameText, GameText.Noun?) -> String
     ) -> StubVerb {
-        .init(intent, patterns, reach) { text, command in
+        .init(intent, patterns, reach, namesObject: true) { text, command in
             guard let object = command.directObject, !object.isPlayer else {
                 return line(text, nil)
             }
@@ -156,7 +174,7 @@ extension StubVerb {
         reach: Reach,
         _ line: @escaping @Sendable (GameText, Command) -> String
     ) -> StubVerb {
-        .init(intent, patterns, reach, line: line)
+        .init(intent, patterns, reach, namesObject: true, line: line)
     }
 }
 
@@ -369,7 +387,7 @@ extension DefaultActions {
 
         // `dig <object> with <second object>` is what lets a game gate digging
         // on the right tool with a one-line item rule.
-        .plain(
+        .optionallyNamed(
             .dig,
             [
                 ["dig"],
@@ -377,7 +395,7 @@ extension DefaultActions {
                 ["dig", .directObject, "with", .indirectObject],
             ],
             reach: .directObject
-        ) { $0.stubs.dig },
+        ) { $0.stubs.dig($1) },
 
         .named(
             .pull,
@@ -403,22 +421,30 @@ extension DefaultActions {
 
         .named(.shake, [["shake", .directObject]], reach: .directObject) { $0.stubs.shake($1) },
 
-        .plain(
+        .optionallyNamed(
             .knock,
             [
                 ["knock", .directObject],
                 ["knock", "on", .directObject],
             ],
             reach: .directObject
-        ) { $0.stubs.knock },
+        ) { $0.stubs.knock($1) },
 
         // The projectile has to be in hand; the target emphatically does not.
         // This is the row shape a single `Bool` couldn't have described.
-        .plain(
+        //
+        // The line is offered the **projectile**, not the target, even though
+        // the target is the more interesting noun. The reach column already
+        // elected the direct object, deliberately and against the intuitive
+        // reading — reaching the target is the one thing throwing exists to
+        // avoid — so a one-name line about the other slot would put the line and
+        // the guard permanently out of step. A game that wants "The troll ducks"
+        // wants both slots, which is `custom`, where `give` already is.
+        .optionallyNamed(
             .throwAt,
             [["throw", .directObject, "at", .indirectObject]],
             reach: .directObject
-        ) { $0.stubs.throwAt },
+        ) { $0.stubs.throwAt($1) },
 
         // MARK: Senses
 
@@ -428,7 +454,8 @@ extension DefaultActions {
         // witness, one turn after `cantSearchActor` has refused to let the
         // player put a hand on her. `smell` and `listen` below need no such
         // guard — both cross a room and lay a hand on nobody — and neither do
-        // `taste` and `knock`, which say nothing a person could object to.
+        // `taste` and `knock`, which say nothing a person could object to. It
+        // is the only one of the eighteen that takes it.
         .optionallyNamed(
             .touch,
             [
@@ -462,20 +489,20 @@ extension DefaultActions {
             reach: .notNeeded
         ) { $0.stubs.listen($1) },
 
-        .plain(
+        .optionallyNamed(
             .taste,
             [
                 ["taste", .directObject],
                 ["lick", .directObject],
             ],
             reach: .directObject
-        ) { $0.stubs.taste },
+        ) { $0.stubs.taste($1) },
 
         // MARK: Body
 
         .named(.eat, [["eat", .directObject]], reach: .directObject) { $0.stubs.eat($1) },
 
-        .plain(.drink, [["drink", .directObject]], reach: .directObject) { $0.stubs.drink },
+        .optionallyNamed(.drink, [["drink", .directObject]], reach: .directObject) { $0.stubs.drink($1) },
 
         .plain(.sleep, [["sleep"]], reach: .notNeeded) { $0.stubs.sleep },
 
@@ -497,14 +524,20 @@ extension DefaultActions {
 
         // MARK: Social
 
-        .plain(
+        // **No actor guard, and this is the verb that proves the guard must stay
+        // per verb.** Every other stub that reaches its object defers about a
+        // person, so `kiss` looks like an oversight — but kissing somebody is
+        // what the verb is *for*, and a `somebodyElse` deferral here would
+        // refuse its only interesting input while `kiss the doorknob` sailed
+        // through. Leave it.
+        .optionallyNamed(
             .kiss,
             [
                 ["kiss", .directObject],
                 ["hug", .directObject],
             ],
             reach: .directObject
-        ) { $0.stubs.kiss },
+        ) { $0.stubs.kiss($1) },
 
         // The one stub that needs both slots: handing something over is contact
         // with the gift *and* with whoever is taking it.
@@ -543,7 +576,7 @@ extension DefaultActions {
             reach: .directObject
         ) { $0.stubs.wave($1) },
 
-        .plain(.point, [["point", "at", .directObject]], reach: .notNeeded) { $0.stubs.point },
+        .optionallyNamed(.point, [["point", "at", .directObject]], reach: .notNeeded) { $0.stubs.point($1) },
 
         // MARK: Motion
 
@@ -559,14 +592,14 @@ extension DefaultActions {
             reach: .directObject
         ) { $0.stubs.climb($1) },
 
-        .plain(
+        .optionallyNamed(
             .jump,
             [
                 ["jump"],
                 ["jump", "over", .directObject],
             ],
             reach: .directObject
-        ) { $0.stubs.jump },
+        ) { $0.stubs.jump($1) },
 
         .plain(.swim, [["swim"]], reach: .notNeeded) { $0.stubs.swim },
 
@@ -581,7 +614,7 @@ extension DefaultActions {
             reach: .notNeeded
         ) { $0.stubs.stand },
 
-        .plain(
+        .optionallyNamed(
             .sit,
             [
                 ["sit"],
@@ -589,7 +622,7 @@ extension DefaultActions {
                 ["sit", "on", .directObject],
             ],
             reach: .directObject
-        ) { $0.stubs.sit },
+        ) { $0.stubs.sit($1) },
 
         // Bare `lie` earns its row for the same reason `sit down` does: `lie
         // down` puts "lie" in the vocabulary, so without it the word the engine
@@ -675,7 +708,7 @@ extension DefaultActions {
         ) { $0.stubs.xyzzy },
 
         // Counting coins behind glass is exactly what a display case is for.
-        .plain(.count, [["count", .directObject]], reach: .notNeeded) { $0.stubs.count },
+        .optionallyNamed(.count, [["count", .directObject]], reach: .notNeeded) { $0.stubs.count($1) },
 
         // Bare `think` only. `think about <topic>` would match "think about"
         // with an empty topic and rob the parser of its "What do you want to
@@ -687,9 +720,9 @@ extension DefaultActions {
         // MARK: Commerce
 
         // Asking after the price of something in a window is ordinary shopping.
-        .plain(.buy, [["buy", .directObject]], reach: .notNeeded) { $0.stubs.buy },
+        .optionallyNamed(.buy, [["buy", .directObject]], reach: .notNeeded) { $0.stubs.buy($1) },
 
-        .plain(.sell, [["sell", .directObject]], reach: .notNeeded) { $0.stubs.sell },
+        .optionallyNamed(.sell, [["sell", .directObject]], reach: .notNeeded) { $0.stubs.sell($1) },
 
         // MARK: Fixtures
 

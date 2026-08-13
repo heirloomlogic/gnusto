@@ -164,7 +164,7 @@ extension Prose {
         stubs.eat = .naming { "I don't think that \($0.phrase) would agree with you." }
         // `V-EAT`'s no-water branch (`gverbs.zil:504`). The bottle's own rules in
         // ``ZorkHouse`` claim `drink` wherever there is water to drink.
-        stubs.drink = Prose.nothingToDrink
+        stubs.drink = .init(Prose.nothingToDrink)
         // Invented: no `SLEEP` in `gsyntax.zil`.
         stubs.sleep = "This is no place for a nap!"
         // `V-ALARM`'s non-actor branch (`gverbs.zil:168`), which `wake` routes to

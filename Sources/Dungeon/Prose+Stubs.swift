@@ -142,7 +142,7 @@ extension Prose {
         stubs.eat = .naming {
             "\($0.sentenceCased) \($0.verb("is", "are")) not something you could eat."
         }
-        stubs.drink = Prose.cantDrinkThat
+        stubs.drink = .init(Prose.cantDrinkThat)
         stubs.sleep = "You have not come all this way to sleep."
         // Bare `wake` and `wake up` parse too, so the line has to be true with
         // and without something named.

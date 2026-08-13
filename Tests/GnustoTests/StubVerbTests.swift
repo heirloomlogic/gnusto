@@ -561,6 +561,26 @@ struct StubVerbTests {
         #expect(turn.contains(expected), "\(command): \(turn)")
     }
 
+    /// The gap #245 was filed about, made unrepresentable.
+    ///
+    /// Twelve stubs carried a `.directObject` slot and a `plain` line for a
+    /// year. Nothing caught it, because neither half looks wrong on its own —
+    /// the rows are the rows the source has, and the line is a sentence
+    /// somebody wrote on purpose. Only the two together are the defect, and
+    /// only a game trying to name the object ever found out.
+    ///
+    /// So the pair is asserted rather than inspected. A thirteenth stub that
+    /// grows an object slot without a line to put it in fails here, one build
+    /// after somebody writes it, instead of one game later.
+    @Test func everyStubWithAnObjectSlotCanNameIt() {
+        for stub in DefaultActions.stubs
+        where stub.rows.contains(where: { $0.elements.contains(.directObject) }) {
+            #expect(
+                stub.namesObject,
+                "`\(stub.intent.raw)` takes a direct object its line can't name")
+        }
+    }
+
     /// Ties the probe list to the twelve, so a thirteenth stub promoted later
     /// can't ship with no characterization behind it.
     @Test func everyRewiredStubIsProbedOnAllThreeRoads() {

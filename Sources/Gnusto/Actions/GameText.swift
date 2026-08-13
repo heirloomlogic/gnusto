@@ -682,8 +682,8 @@ extension GameText {
         public var cut: Line<Noun> = .naming {
             "You have nothing to cut \($0) with."
         }
-        /// Digging, with or without a tool.
-        public var dig = "You have nothing to dig with."
+        /// Digging, with or without a tool. The bare `dig` names nothing.
+        public var dig: Line<Noun?> = "You have nothing to dig with."
         /// Pulling or dragging something.
         public var pull: Line<Noun> = .naming {
             "\($0.sentenceCased) \($0.verb("doesn't", "don't")) budge."
@@ -702,9 +702,10 @@ extension GameText {
             "You shake \($0). Nothing rattles loose."
         }
         /// Knocking on something.
-        public var knock = "Nobody answers."
-        /// Throwing something at something else.
-        public var throwAt = "Throwing things about achieves nothing."
+        public var knock: Line<Noun?> = "Nobody answers."
+        /// Throwing something at something else. Names the *projectile*; see
+        /// the row for why it is not the target.
+        public var throwAt: Line<Noun?> = "Throwing things about achieves nothing."
 
         // MARK: Senses
 
@@ -718,7 +719,7 @@ extension GameText {
         /// nothing.
         public var listen: Line<Noun?> = "You hear nothing out of the ordinary."
         /// Tasting or licking something.
-        public var taste = "You'd rather not."
+        public var taste: Line<Noun?> = "You'd rather not."
 
         // MARK: Body
 
@@ -727,7 +728,7 @@ extension GameText {
             "\($0.sentenceCased) \($0.verb("is", "are")) not food."
         }
         /// Drinking something undrinkable.
-        public var drink = "There's nothing here worth drinking."
+        public var drink: Line<Noun?> = "There's nothing here worth drinking."
         /// Going to sleep.
         public var sleep = "You're not sleepy."
         /// Waking, or waking somebody who isn't asleep. The bare `wake` and
@@ -736,8 +737,10 @@ extension GameText {
 
         // MARK: Social
 
-        /// Kissing or hugging somebody.
-        public var kiss = "That would be presumptuous."
+        /// Kissing or hugging somebody — who is named, unlike everywhere else
+        /// a stub reaches a person, because kissing somebody is what the verb
+        /// is for.
+        public var kiss: Line<Noun?> = "That would be presumptuous."
         /// Handing something to somebody who doesn't want it. Names both, since
         /// every row carries both slots.
         public var give: @Sendable (_ gift: Noun, _ recipient: Noun) -> String = {
@@ -749,22 +752,24 @@ extension GameText {
         /// nothing.
         public var wave: Line<Noun?> = "You wave. Nothing comes of it."
         /// Pointing at something.
-        public var point = "Pointing at things accomplishes little."
+        public var point: Line<Noun?> = "Pointing at things accomplishes little."
 
         // MARK: Motion
 
         /// Climbing something unclimbable. The bare `climb` names nothing.
         public var climb: Line<Noun?> = "You can't climb that."
-        /// Jumping, on the spot or over something.
-        public var jump = "You jump on the spot. Nothing is achieved."
+        /// Jumping, on the spot or over something. The bare `jump` names
+        /// nothing.
+        public var jump: Line<Noun?> = "You jump on the spot. Nothing is achieved."
         /// Swimming with no water to swim in.
         public var swim = "There's nothing here to swim in."
         /// Diving with nothing to dive into.
         public var dive = "There's nothing here to dive into."
         /// Standing when already upright.
         public var stand = "You're already standing."
-        /// Sitting with nowhere to sit.
-        public var sit = "There's nothing comfortable to sit on."
+        /// Sitting with nowhere to sit. The bare `sit` and `sit down` name
+        /// nothing.
+        public var sit: Line<Noun?> = "There's nothing comfortable to sit on."
         /// Lying down.
         public var lie = "The floor doesn't look inviting."
         /// Kneeling.
@@ -804,7 +809,7 @@ extension GameText {
         /// The magic words, `xyzzy` and `plugh`, where they mean nothing.
         public var xyzzy = "Nothing happens."
         /// Counting something.
-        public var count = "You lose count."
+        public var count: Line<Noun?> = "You lose count."
         /// Thinking.
         public var think = "You think. Nothing occurs to you."
         /// Wishing.
@@ -813,9 +818,9 @@ extension GameText {
         // MARK: Commerce
 
         /// Buying where nothing is sold.
-        public var buy = "Nothing here is for sale."
+        public var buy: Line<Noun?> = "Nothing here is for sale."
         /// Selling where nobody buys.
-        public var sell = "Nobody here is buying."
+        public var sell: Line<Noun?> = "Nobody here is buying."
 
         // MARK: Fixtures
 
