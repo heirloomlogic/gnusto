@@ -1,0 +1,105 @@
+import Gnusto
+import GnustoTestSupport
+import Testing
+
+@testable import Zork1
+
+/// Zork 1's prose, where prose is the subject rather than the mechanic behind
+/// it. Today that is the stub-verb floor (#242).
+@Suite("Zork 1 prose")
+struct Zork1ProseTests {
+    // MARK: - The floor speaks in Zork I's voice (#242)
+
+    /// **The sweep, and the only assertion here that cannot go stale.** Every
+    /// other test below names one verb; a forty-eighth stub arriving in the
+    /// engine tomorrow would slip past all of them. The shared helper derives
+    /// its own completeness from ``GameText/StubReplies``, so it fails the
+    /// moment one is added rather than letting the new line go unvoiced.
+    @Test func noEngineStubLineSurvivesInZork1() {
+        expectNoEngineStubLineSurvives(in: Zork1().text.stubs, game: "Zork 1")
+    }
+
+    /// The lines a player is most likely to try on purpose, taken verbatim from
+    /// `gverbs.zil` and reaching the player through the real pipeline rather
+    /// than through the table above — which proves the floor is *installed*, not
+    /// merely written.
+    @Test func theFamousRepliesAreTheSourcesOwn() async throws {
+        let transcript = try await play(
+            Zork1(), ["yell", "curse", "wish", "stand", "jump", "kiss mailbox", "swim"])
+        expectInOrder(
+            transcript,
+            [
+                // `V-YELL` (gverbs.zil:1616)
+                "Aaaarrrrgggghhhh!",
+                // `V-CURSES` (gverbs.zil:382)
+                "Such language in a high-class establishment like this!",
+                // `V-WISH` (gverbs.zil:1613)
+                "With luck, your wish will come true.",
+                // `V-STAND` (gverbs.zil:1309) — first person, and it stays
+                "You are already standing, I think.",
+                // `V-SKIP`'s `WHEEEEE` (gverbs.zil:1272)
+                "Wheeeeeeeeee!!!!!",
+                // `V-KISS` (gverbs.zil:763) — likewise first person
+                "I'd sooner kiss a pig.",
+                // `V-SWIM` (gverbs.zil:1345)
+                "Go jump in a lake!",
+            ])
+    }
+
+    /// The naming half of #242: four of the source's lines are jokes *about the
+    /// thing named*, and no `action(…)` row could tell one object from another.
+    @Test func theSensesNameWhatTheyAreAimedAt() async throws {
+        let transcript = try await play(
+            Zork1(), ["smell mailbox", "listen to mailbox", "touch mailbox", "wake mailbox"])
+        expectInOrder(
+            transcript,
+            [
+                // `V-SMELL` (gverbs.zil:1279)
+                "It smells like the small mailbox.",
+                // `V-LISTEN` (gverbs.zil:853)
+                "The small mailbox makes no sound.",
+                // `V-RUB` via `HACK-HACK` (gverbs.zil:1165, :2029)
+                "Fiddling with the small mailbox has no effect.",
+                // `V-ALARM` (gverbs.zil:168)
+                "The small mailbox isn't sleeping.",
+            ])
+    }
+
+    /// And the other half of the same widening: the bare rows, which the source
+    /// has no verb for at all, keep a sentence of this game's own.
+    @Test func theNamelessRowsStillAnswer() async throws {
+        let transcript = try await play(Zork1(), ["smell", "listen", "wave", "wake"])
+        expectInOrder(
+            transcript,
+            [
+                "You smell nothing you could put a name to.",
+                "You hear nothing you didn't hear before.",
+                "Waving your hands about has no effect.",
+                "Nothing here is asleep.",
+            ])
+    }
+
+    /// What the floor buys back. An `action(…)` row returns from
+    /// `DefaultActions.run` *before* `requireReach`, so every stub this game
+    /// re-skinned had quietly given up the reach guard; assigning the line keeps
+    /// it. The bottle is shut, so the water inside is visible and nameable but
+    /// out of reach — and `squeeze` must now refuse for reach rather than
+    /// shrugging its stock line.
+    @Test func theFloorKeepsTheReachGuardTheRowsGaveAway() async throws {
+        let transcript = try await play(
+            Zork1(),
+            ["north", "east", "open window", "enter house", "west", "take bottle", "squeeze water"])
+        #expect(turnOutput(of: "squeeze water", in: transcript).contains("can't reach"))
+        #expect(!turnOutput(of: "squeeze water", in: transcript).contains("singularly useless"))
+    }
+
+    /// The melee plugin claims `.attack` for the whole game, so its refusals —
+    /// not the floor's `attack` — are what a player who swings at the scenery
+    /// reads. They were the plugin's stock modern lines until #242.
+    @Test func swingingAtTheSceneryGetsVAttacksOwnWords() async throws {
+        let transcript = try await play(Zork1(), ["attack mailbox"])
+        // `V-ATTACK`'s first branch (gverbs.zil:178), indefinite as the
+        // source's `A ,PRSO` is.
+        expectInOrder(transcript, ["I've known strange people, but fighting a small mailbox?"])
+    }
+}

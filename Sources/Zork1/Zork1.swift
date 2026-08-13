@@ -52,6 +52,8 @@ struct Zork1: Game, GameMain {
         // ENTER / GO THROUGH something that is neither doorway nor vehicle
         // (gverbs.zil V-THROUGH's last clause).
         text.cantEnterThat = { "You hit your head against \($0) as you attempt this feat." }
+        // The stub floor — every verb the parser knows and no mechanic answers.
+        text.stubs = Prose.stubFloor
         return text
     }
 
@@ -85,7 +87,11 @@ struct Zork1: Game, GameMain {
             "draftyRoom": 13,
             "treasureRoom": 25,
         ])
-    let melee = MeleeCombat()
+    /// The melee plugin claims `.attack` outright, so its four system-voice
+    /// lines — not ``Prose/stubFloor``'s `attack` — are what a player who swings
+    /// at the scenery actually reads. They were the plugin's stock modern ones.
+    /// All four are `V-ATTACK` (`gverbs.zil:176-193`). (#242)
+    let melee = MeleeCombat(text: Prose.combatText)
     let actors = ActorBehaviors()
 
     /// The custom verb vocabulary (dig, wave, ring, xyzzy, drink/fill/pour …)

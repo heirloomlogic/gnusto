@@ -121,27 +121,32 @@ extension StubVerb {
     /// ``GameText/StubReplies/yourself``, here the line already owns a nameless
     /// half and that half is the better answer.
     ///
-    /// No actor guard, deliberately, where `named` has one. These verbs act at a
-    /// distance and read perfectly well *about* a person: "The troll makes no
-    /// sound." is `V-LISTEN`'s own answer, not an indignity of the kind
-    /// "Mrs. Kettle is not food." would be. `touch` is the one that does have to
-    /// keep the guard, and stays `custom` for it.
+    /// **No actor guard by default**, where `named` always has one. These verbs
+    /// act at a distance and read perfectly well *about* a person: "The troll
+    /// makes no sound." is `V-LISTEN`'s own answer, not an indignity of the kind
+    /// "Mrs. Kettle is not food." would be. `touch` is the one that has to keep
+    /// it — laying hands on somebody is not the same as listening to them — and
+    /// passes `guardsActors: true` rather than writing this body out again.
     static func optionallyNamed(
         _ intent: Intent,
         _ patterns: [[SyntaxElement]],
         reach: Reach,
+        guardsActors: Bool = false,
         _ line: @escaping @Sendable (GameText, String?) -> String
     ) -> StubVerb {
         .init(intent, patterns, reach) { text, command in
             guard let object = command.directObject, !object.isPlayer else {
                 return line(text, nil)
             }
+            guard !guardsActors || !object.isActor else {
+                return text.stubs.somebodyElse(object.definiteNoun)
+            }
             return line(text, object.definiteName)
         }
     }
 
     /// The escape hatch, for a reply that needs more of the ``Command`` than the
-    /// direct object's name. `give` and `touch` want it today.
+    /// direct object's name. `give` wants it today, for its second slot.
     static func custom(
         _ intent: Intent,
         _ patterns: [[SyntaxElement]],
@@ -414,30 +419,23 @@ extension DefaultActions {
 
         // MARK: Senses
 
-        // `custom` rather than `plain`, for the one guard `named` gets for
-        // free: "You feel nothing out of the ordinary." is a fine answer about
-        // a wall and a claim about a completed act of contact on a witness, one
-        // turn after `cantSearchActor` has refused to let the player put a hand
-        // on her. `smell` and `listen` below need no such guard — both cross a
-        // room and lay a hand on nobody — and neither do `taste` and `knock`,
-        // which say nothing a person could object to.
-        .custom(
+        // The one sense verb that guards actors, for the reason `named` guards
+        // them everywhere: "You feel nothing out of the ordinary." is a fine
+        // answer about a wall and a claim about a completed act of contact on a
+        // witness, one turn after `cantSearchActor` has refused to let the
+        // player put a hand on her. `smell` and `listen` below need no such
+        // guard — both cross a room and lay a hand on nobody — and neither do
+        // `taste` and `knock`, which say nothing a person could object to.
+        .optionallyNamed(
             .touch,
             [
                 ["touch", .directObject],
                 ["feel", .directObject],
                 ["rub", .directObject],
             ],
-            reach: .directObject
-        ) { text, command in
-            guard let object = command.directObject, !object.isPlayer else {
-                return text.stubs.touch(nil)
-            }
-            // Laying hands on somebody is not the same as looking at them, so
-            // this is the one sense verb that keeps the actor guard.
-            guard !object.isActor else { return text.stubs.somebodyElse(object.definiteNoun) }
-            return text.stubs.touch(object.definiteName)
-        },
+            reach: .directObject,
+            guardsActors: true
+        ) { $0.stubs.touch($1) },
 
         // A smell crosses a room, and so does a sound. These two are the reason
         // the guard is per verb.

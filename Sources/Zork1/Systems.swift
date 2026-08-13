@@ -14,9 +14,8 @@ import Gnusto
 /// The generic half of this list used to live here too — `dig`, `give`, `tie`,
 /// `touch`, `smell`, `climb`, `pray`, `xyzzy` and the rest. Those are engine
 /// stub verbs now, so every game gets them; what remains below is the vocabulary
-/// that is actually *Zork's*. Zork keeps its own voice for the shared ones by
-/// overriding their stage-4 defaults in ``ZorkSystems``, which is why the
-/// `actions` block is longer than this list.
+/// that is actually *Zork's*. Zork keeps its own voice for the shared ones in
+/// ``Prose/stubFloor``, which is `text.stubs` rather than a row apiece.
 extension Intent {
     /// Wind a mechanism (the clockwork canary, later).
     #verb("wind", ["wind", .directObject])
@@ -75,16 +74,16 @@ extension Intent {
 }
 
 /// The game-wide verb layer: it teaches the parser Zork's own verbs and gives
-/// every verb Zork cares about — its own and the engine's stubs alike — a
-/// courteous default in the original's voice. Item- and room-scoped rules
-/// elsewhere (the bottle's `fill`/`drink`/`pour`, the shovel's `dig`) run first
-/// and take over when a verb actually does something; anything they don't claim
-/// falls through to these defaults.
+/// each of them a courteous default in the original's voice. Item- and
+/// room-scoped rules elsewhere (the canary's `wind`, the boat's `inflate`) run
+/// first and take over when a verb actually does something; anything they don't
+/// claim falls through to these defaults.
 ///
-/// The `actions` block is longer than `verbs` on purpose. A row for an engine
-/// stub intent needs no `verbs` entry — the engine already put the word in the
-/// vocabulary — so overriding one is a single line and, because a stub shadows
-/// no behavior, it warns about nothing.
+/// The `verbs` and `actions` blocks now list the same intents, which is the
+/// point. A row here is a claim that **this game owns the verb** — a word the
+/// engine had never heard until the line above taught it. The engine's own stub
+/// verbs are not that, and re-skinning one with a row costs the whole default
+/// it was standing on; their words live in ``Prose/stubFloor`` instead. (#242)
 struct ZorkSystems: GameContent {
     var verbs: [SyntaxRule] {
         [
@@ -94,12 +93,6 @@ struct ZorkSystems: GameContent {
     }
 
     var actions: [IntentAction] {
-        action(.give) { try reply(Prose.verbGiveNoTaker) }
-        action(.tie) { try reply(Prose.verbTieNothing) }
-        action(.untie) { try reply(Prose.verbUntieNothing) }
-        action(.dig) { try reply(Prose.verbDigFutile) }
-        action(.wave) { try reply(Prose.verbWave) }
-        action(.touch) { try reply(Prose.verbTouch) }
         action(.wind) { try reply(Prose.verbWindNothing) }
         action(.inflate) { try reply(Prose.verbInflateNothing) }
         action(.deflate) { try reply(Prose.verbDeflateNothing) }
@@ -107,22 +100,23 @@ struct ZorkSystems: GameContent {
         action(.raise) { try reply(Prose.verbRaiseNothing) }
         action(.lower) { try reply(Prose.verbLowerNothing) }
         action(.turnWith) { try reply(Prose.verbTurnWithNothing) }
-        action(.pray) { try reply(Prose.verbPray) }
         action(.ring) { try reply(Prose.verbRingNothing) }
         action(.echo) { try reply(Prose.verbEcho) }
         action(.odysseus) { try reply(Prose.verbMagicWordInert) }
-        // One row covers `xyzzy` and `plugh` both: the engine puts them on a
-        // single intent.
-        action(.xyzzy) { try reply(Prose.verbMagicWordInert) }
         action(.hello) { try reply(Prose.verbHello) }
-        action(.smell) { try reply(Prose.verbSmell) }
-        action(.drink) { try reply(Prose.nothingToDrink) }
-        action(.fill) { try reply(Prose.noWaterSource) }
-        action(.pour) { try reply(Prose.nothingToPour) }
-        action(.climb) { try reply(Prose.verbClimbNothing) }
         action(.fix) { try reply(Prose.verbFixNothing) }
         // `.diagnose` has no stage-4 default here — the host answers it, since
         // the report reads the host's death counter (see ``Zork1.actions``).
+        //
+        // Nothing else belongs in this block. Every **engine stub** this game
+        // re-voices — the thirteen that used to sit here, and the thirty-four
+        // that never had a line at all — is now `text.stubs` in ``Zork1``, which
+        // is ``Prose/stubFloor``. An `action(…)` row on a stub intent claims the
+        // verb outright: `DefaultActions.run` returns from the override before
+        // `requireReach`, so the row silently gave up the engine's reach guard,
+        // the object's name, its number agreement and the
+        // `yourself`/`somebodyElse` guards, none of which this game meant to
+        // trade away for a change of voice. (#242)
     }
 }
 

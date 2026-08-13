@@ -701,10 +701,9 @@ extension GameText {
 
         // MARK: Senses
 
-        /// Touching, feeling or rubbing something.
-        ///
-        /// One of the six lines handed an **optional** name: see ``wave`` for
-        /// what the `nil` means and why these six differ from ``burn``.
+        /// Touching, feeling or rubbing something. `nil` when there is no name
+        /// to give — see ``StubVerb/optionallyNamed(_:_:reach:guardsActors:_:)``,
+        /// which these six lines and no others are driven by.
         public var touch: @Sendable (_ name: String?) -> String = { _ in
             "You feel nothing out of the ordinary."
         }
@@ -746,24 +745,7 @@ extension GameText {
         }
         /// Yelling, shouting or screaming.
         public var yell = "You shout. Nothing shouts back."
-        /// Waving, with or without something in hand.
-        ///
-        /// This and ``touch``, ``smell``, ``listen``, ``wake`` and ``climb`` are
-        /// handed an **optional** name, where ``burn`` and its neighbors are
-        /// handed a plain one. Two things make the difference, and both are
-        /// properties of the verb rather than of the line:
-        ///
-        /// - Some of their rows carry no direct object at all. `wave` and `wave
-        ///   the sceptre` are one intent, so a line for this verb has to read
-        ///   both with a name and without one.
-        /// - The player is unnameable — "You wave yourself. " is not a
-        ///   sentence — so `wave me` is handed `nil` too, and gets the line's
-        ///   nameless half rather than the ``yourself`` deferral a
-        ///   name-carrying stub uses. These verbs read fine *about* a person
-        ///   otherwise, which is why they take no ``somebodyElse`` guard:
-        ///   "The troll makes no sound." is an answer, not an indignity.
-        ///   ``touch`` is the exception and keeps the guard, because laying
-        ///   hands on somebody is not the same as looking at them.
+        /// Waving, with or without something in hand. `nil` for the bare `wave`.
         public var wave: @Sendable (_ name: String?) -> String = { _ in
             "You wave. Nothing comes of it."
         }

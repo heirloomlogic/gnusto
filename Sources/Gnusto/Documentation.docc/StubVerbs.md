@@ -78,7 +78,16 @@ The player is an entity, and it is called "yourself" — so a stub line that nam
 its object would read *"The yourself is not food."* Every name-carrying stub
 checks for the player and answers ``GameText/StubReplies/yourself`` instead.
 Stubs whose lines name nothing keep their own answer, because it already reads
-correctly: `smell me` still says *"You smell nothing out of the ordinary."*
+correctly: `taste me` still says *"You'd rather not."*
+
+Six of them are handed an **optional** name — `smell`, `listen`, `touch`,
+`wave`, `wake` and `climb` — because some of their rows carry no object at all
+(`smell` and `smell the troll` are one intent), so one sentence has to read both
+ways. The player takes the nameless half rather than the `yourself` deferral,
+which is the same answer by a different road: `smell me` still says *"You smell
+nothing out of the ordinary."* Five of the six also skip the `somebodyElse`
+guard, since they act at a distance and read fine about a person; `touch` keeps
+it, because laying hands on somebody is not the same as listening to them.
 
 ## Re-skinning a line
 
