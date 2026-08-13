@@ -217,6 +217,14 @@ final class TurnFrame: Sendable {
         GameText.Noun(definiteName(of: id), plural: isPlural(id))
     }
 
+    /// The entity behind its *indefinite* article and its number, for a line
+    /// whose joke is the generality — `V-ATTACK`'s "but fighting a rubber
+    /// raft?" reads as an appraisal of raft-fighting where the definite article
+    /// just repeats the command back.
+    func indefiniteNoun(of id: EntityID) -> GameText.Noun {
+        GameText.Noun(indefiniteName(of: id), plural: isPlural(id))
+    }
+
     /// Whether the entity's name is a proper name. Locations are never
     /// articled by the engine, so only items carry the trait.
     func isProperName(_ id: EntityID) -> Bool {

@@ -12,7 +12,9 @@
 /// ```
 ///
 /// Fixed lines are plain strings; lines built around names are `@Sendable`
-/// closures taking those names.
+/// closures taking those names. The stub-verb lines on ``StubReplies`` are a
+/// third thing — a ``Line``, which is either — because which of the two a stub
+/// wants is the game's business and not the engine's.
 ///
 /// A closure receives a *rendered noun phrase* — "the troll", "a troll",
 /// "Mrs. Vane" — not a bare name. The article belongs to the engine, which
@@ -36,7 +38,7 @@ public struct GameText: Sendable {
     /// their sentence nothing until a verb turns up. The handful that carry one
     /// take this instead, so "The rails is not food." — a game's real noun made
     /// ungrammatical by a template's assumption — cannot be written.
-    public struct Noun: Sendable {
+    public struct Noun: Sendable, CustomStringConvertible {
         /// The rendered phrase, article and all: "the rails", "Mrs. Vane".
         public let phrase: String
         /// Whether the phrase is grammatically plural.
@@ -51,6 +53,13 @@ public struct GameText: Sendable {
             self.phrase = phrase
             self.isPlural = plural
         }
+
+        /// The phrase, so that a line with no verb to agree with interpolates
+        /// the noun and says nothing about number: `"You can't burn \($0)."` is
+        /// the same sentence it was when these lines were handed a `String`. A
+        /// line that *does* carry a verb reaches for ``verb(_:_:)`` instead,
+        /// and one that opens on the noun reaches for ``sentenceCased``.
+        public var description: String { phrase }
 
         /// The phrase with its first letter capitalized, for a line that opens
         /// on it. See ``GameText/sentenceCase(_:)``.
@@ -621,16 +630,23 @@ extension GameText {
     /// it; a rule or an `actions` row replaces it with behavior. Both are
     /// expected, and neither warns.
     ///
-    /// Lines that name the object are closures, as elsewhere in ``GameText``,
-    /// and only where the name earns its keep: "The chair is sturdier than
-    /// that." says something "That's sturdier than that." can't.
+    /// A line with an object to name is a ``GameText/Line``, which takes a bare
+    /// string as readily as a naming closure — so whether a stub says what the
+    /// player was pointing at is the game's call rather than a shape the engine
+    /// picked. `Line<Noun>` where every row carries an object, `Line<Noun?>`
+    /// where the line owns a nameless half as well. Only a verb with no object
+    /// slot on any row is a plain `String`; there is nothing for a closure to be
+    /// handed, and a slot that offers one invites prose that can never print.
     ///
-    /// Seven of them take a ``GameText/Noun`` rather than a `String`, and they
-    /// are exactly the seven whose verb agrees with the object. A template that
-    /// hard-codes the agreement makes a game's honest plural noun ungrammatical
-    /// — "The rails is not food." — and the game's only escape would be to
-    /// rename the thing, which is a mine lying about itself to make a stub line
-    /// scan. See the `plural` trait.
+    /// A `Line` is handed a ``GameText/Noun`` and never a bare name, so a line
+    /// whose verb agrees with the object can conjugate for itself. A template
+    /// that hard-codes the agreement makes a game's honest plural noun
+    /// ungrammatical — "The rails is not food." — and the game's only escape
+    /// would be to rename the thing, which is a mine lying about itself to make
+    /// a stub line scan. See the `plural` trait. Interpolating a `Noun` prints
+    /// its phrase, so a line with no verb to agree pays nothing for this.
+    ///
+    /// ``give`` is the one line about *two* objects, and stays a closure.
     public struct StubReplies: Sendable {
         /// The classic replies. Build one and mutate the lines you want to
         /// change; ``GameText`` already holds a default instance.
@@ -651,7 +667,7 @@ extension GameText {
         /// It is deliberately close in shape to ``GameText/cantTakeActor`` and
         /// ``GameText/cantSearchActor``, which have always refused this way: a
         /// game that re-skins one usually wants all three in the same voice.
-        public var somebodyElse: @Sendable (_ person: Noun) -> String = {
+        public var somebodyElse: Line<Noun> = .naming {
             "\($0.sentenceCased) \($0.verb("is", "are")) a person, and would rather you didn't."
         }
 
@@ -660,114 +676,109 @@ extension GameText {
         /// Attacking something with no combat behind it. Names the object,
         /// because the refusal is about the thing swung at and a line that
         /// only says "things" reads as a house rule rather than an answer.
-        public var attack: @Sendable (_ name: String) -> String = {
+        public var attack: Line<Noun> = .naming {
             "Attacking \($0) rarely improves matters."
         }
         /// Breaking, smashing or destroying something.
-        public var smash: @Sendable (_ noun: Noun) -> String = {
+        public var smash: Line<Noun> = .naming {
             "\($0.sentenceCased) \($0.verb("is", "are")) sturdier than that."
         }
         /// Setting fire to something.
-        public var burn: @Sendable (_ name: String) -> String = {
+        public var burn: Line<Noun> = .naming {
             "You have no way to set fire to \($0)."
         }
         /// Cutting or slicing something.
-        public var cut: @Sendable (_ name: String) -> String = {
+        public var cut: Line<Noun> = .naming {
             "You have nothing to cut \($0) with."
         }
-        /// Digging, with or without a tool.
-        public var dig = "You have nothing to dig with."
+        /// Digging, with or without a tool. The bare `dig` names nothing.
+        public var dig: Line<Noun?> = "You have nothing to dig with."
         /// Pulling or dragging something.
-        public var pull: @Sendable (_ noun: Noun) -> String = {
+        public var pull: Line<Noun> = .naming {
             "\($0.sentenceCased) \($0.verb("doesn't", "don't")) budge."
         }
         /// Turning something that doesn't turn. Names the object so the reply
         /// doesn't read as a failed `turn on`.
-        public var turn: @Sendable (_ noun: Noun) -> String = {
+        public var turn: Line<Noun> = .naming {
             "\($0.sentenceCased) \($0.verb("doesn't", "don't")) turn."
         }
         /// Squeezing something.
-        public var squeeze: @Sendable (_ name: String) -> String = {
+        public var squeeze: Line<Noun> = .naming {
             "Squeezing \($0) changes nothing."
         }
         /// Shaking something.
-        public var shake: @Sendable (_ name: String) -> String = {
+        public var shake: Line<Noun> = .naming {
             "You shake \($0). Nothing rattles loose."
         }
         /// Knocking on something.
-        public var knock = "Nobody answers."
-        /// Throwing something at something else.
-        public var throwAt = "Throwing things about achieves nothing."
+        public var knock: Line<Noun?> = "Nobody answers."
+        /// Throwing something at something else. Offered the *projectile's*
+        /// name; see the row for why not the target's.
+        public var throwAt: Line<Noun?> = "Throwing things about achieves nothing."
 
         // MARK: Senses
 
-        /// Touching, feeling or rubbing something. `nil` when there is no name
-        /// to give — see ``StubVerb/optionallyNamed(_:_:reach:guardsActors:_:)``,
-        /// which these six lines and no others are driven by.
-        public var touch: @Sendable (_ name: String?) -> String = { _ in
-            "You feel nothing out of the ordinary."
-        }
-        /// Smelling the room or something in it. `nil` for the bare `smell`.
-        public var smell: @Sendable (_ name: String?) -> String = { _ in
-            "You smell nothing out of the ordinary."
-        }
-        /// Listening to the room or something in it. `nil` for the bare `listen`.
-        public var listen: @Sendable (_ name: String?) -> String = { _ in
-            "You hear nothing out of the ordinary."
-        }
+        /// Touching, feeling or rubbing something. The one sense verb that
+        /// still defers about a person: laying hands on somebody is not the
+        /// same as listening to them.
+        public var touch: Line<Noun?> = "You feel nothing out of the ordinary."
+        /// Smelling the room or something in it. The bare `smell` names nothing.
+        public var smell: Line<Noun?> = "You smell nothing out of the ordinary."
+        /// Listening to the room or something in it. The bare `listen` names
+        /// nothing.
+        public var listen: Line<Noun?> = "You hear nothing out of the ordinary."
         /// Tasting or licking something.
-        public var taste = "You'd rather not."
+        public var taste: Line<Noun?> = "You'd rather not."
 
         // MARK: Body
 
         /// Eating something inedible.
-        public var eat: @Sendable (_ noun: Noun) -> String = {
+        public var eat: Line<Noun> = .naming {
             "\($0.sentenceCased) \($0.verb("is", "are")) not food."
         }
         /// Drinking something undrinkable.
-        public var drink = "There's nothing here worth drinking."
+        public var drink: Line<Noun?> = "There's nothing here worth drinking."
         /// Going to sleep.
         public var sleep = "You're not sleepy."
-        /// Waking, or waking somebody who isn't asleep. `nil` for the bare
-        /// `wake` and `wake up`.
-        public var wake: @Sendable (_ name: String?) -> String = { _ in
-            "There's no sleeping to be interrupted."
-        }
+        /// Waking, or waking somebody who isn't asleep. The bare `wake` and
+        /// `wake up` name nothing.
+        public var wake: Line<Noun?> = "There's no sleeping to be interrupted."
 
         // MARK: Social
 
-        /// Kissing or hugging somebody.
-        public var kiss = "That would be presumptuous."
+        /// Kissing or hugging somebody. Offered their name, unlike everywhere
+        /// else a stub reaches a person, because kissing somebody is what the
+        /// verb is for; the engine's own wording declines it.
+        public var kiss: Line<Noun?> = "That would be presumptuous."
         /// Handing something to somebody who doesn't want it. Names both, since
         /// every row carries both slots.
-        public var give: @Sendable (_ name: String, _ recipient: Noun) -> String = {
+        public var give: @Sendable (_ gift: Noun, _ recipient: Noun) -> String = {
             "\($1.sentenceCased) \($1.verb("doesn't", "don't")) want \($0)."
         }
         /// Yelling, shouting or screaming.
         public var yell = "You shout. Nothing shouts back."
-        /// Waving, with or without something in hand. `nil` for the bare `wave`.
-        public var wave: @Sendable (_ name: String?) -> String = { _ in
-            "You wave. Nothing comes of it."
-        }
+        /// Waving, with or without something in hand. The bare `wave` names
+        /// nothing.
+        public var wave: Line<Noun?> = "You wave. Nothing comes of it."
         /// Pointing at something.
-        public var point = "Pointing at things accomplishes little."
+        public var point: Line<Noun?> = "Pointing at things accomplishes little."
 
         // MARK: Motion
 
-        /// Climbing something unclimbable. `nil` for the bare `climb`.
-        public var climb: @Sendable (_ name: String?) -> String = { _ in
-            "You can't climb that."
-        }
-        /// Jumping, on the spot or over something.
-        public var jump = "You jump on the spot. Nothing is achieved."
+        /// Climbing something unclimbable. The bare `climb` names nothing.
+        public var climb: Line<Noun?> = "You can't climb that."
+        /// Jumping, on the spot or over something. The bare `jump` names
+        /// nothing.
+        public var jump: Line<Noun?> = "You jump on the spot. Nothing is achieved."
         /// Swimming with no water to swim in.
         public var swim = "There's nothing here to swim in."
         /// Diving with nothing to dive into.
         public var dive = "There's nothing here to dive into."
         /// Standing when already upright.
         public var stand = "You're already standing."
-        /// Sitting with nowhere to sit.
-        public var sit = "There's nothing comfortable to sit on."
+        /// Sitting with nowhere to sit. The bare `sit` and `sit down` name
+        /// nothing.
+        public var sit: Line<Noun?> = "There's nothing comfortable to sit on."
         /// Lying down.
         public var lie = "The floor doesn't look inviting."
         /// Kneeling.
@@ -776,23 +787,23 @@ extension GameText {
         // MARK: Liquids and containers
 
         /// Filling something with nothing to fill it from.
-        public var fill: @Sendable (_ name: String) -> String = {
+        public var fill: Line<Noun> = .naming {
             "There's nothing here to fill \($0) from."
         }
         /// Pouring something that holds nothing.
-        public var pour: @Sendable (_ name: String) -> String = {
+        public var pour: Line<Noun> = .naming {
             "There's nothing in \($0) to pour."
         }
         /// Emptying something that holds nothing.
-        public var empty: @Sendable (_ name: String) -> String = {
+        public var empty: Line<Noun> = .naming {
             "There's nothing in \($0) to empty out."
         }
         /// Tying something with nothing to tie it to.
-        public var tie: @Sendable (_ name: String) -> String = {
+        public var tie: Line<Noun> = .naming {
             "There's nothing here to tie \($0) to."
         }
         /// Untying something that isn't tied.
-        public var untie: @Sendable (_ noun: Noun) -> String = {
+        public var untie: Line<Noun> = .naming {
             "\($0.sentenceCased) \($0.verb("isn't", "aren't")) tied to anything."
         }
 
@@ -807,7 +818,7 @@ extension GameText {
         /// The magic words, `xyzzy` and `plugh`, where they mean nothing.
         public var xyzzy = "Nothing happens."
         /// Counting something.
-        public var count = "You lose count."
+        public var count: Line<Noun?> = "You lose count."
         /// Thinking.
         public var think = "You think. Nothing occurs to you."
         /// Wishing.
@@ -816,14 +827,14 @@ extension GameText {
         // MARK: Commerce
 
         /// Buying where nothing is sold.
-        public var buy = "Nothing here is for sale."
+        public var buy: Line<Noun?> = "Nothing here is for sale."
         /// Selling where nobody buys.
-        public var sell = "Nobody here is buying."
+        public var sell: Line<Noun?> = "Nobody here is buying."
 
         // MARK: Fixtures
 
         /// Blowing on something. Distinct from `blow out`, which is `turnOff`.
-        public var blow: @Sendable (_ name: String) -> String = {
+        public var blow: Line<Noun> = .naming {
             "Blowing on \($0) has no effect."
         }
     }

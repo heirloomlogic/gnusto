@@ -56,7 +56,7 @@ extension Prose {
     /// two homes: the stub floor sets it so the game owns `.attack` whatever
     /// claims the verb, and ``combatText`` sets it where a player can actually
     /// reach it.
-    static let attackFutile: @Sendable (_ name: String) -> String = {
+    static let attackFutile = GameText.Line<GameText.Noun>.naming {
         "I've known strange people, but fighting \($0)?"
     }
 
@@ -70,9 +70,9 @@ extension Prose {
     static var combatText: MeleeCombat.CombatText {
         var text = MeleeCombat.CombatText()
         text.attackFutile = attackFutile
-        text.noWeapon = { _ in "Trying that with your bare hands would be suicidal." }
-        text.notAWeapon = { "Attacking anything with \($0) would be suicidal." }
-        text.weaponNotHeld = { "You aren't even holding \($0)." }
+        text.noWeapon = "Trying that with your bare hands would be suicidal."
+        text.notAWeapon = .naming { "Attacking anything with \($0) would be suicidal." }
+        text.weaponNotHeld = .naming { "You aren't even holding \($0)." }
         return text
     }
 
@@ -85,7 +85,7 @@ extension Prose {
         // `V-SQUEEZE`'s actor branch (`gverbs.zil:1287`) — the source's answer
         // to laying hands on somebody, and the floor under every stub that has
         // to reach its object.
-        stubs.somebodyElse = {
+        stubs.somebodyElse = .naming {
             "\($0.sentenceCased) \($0.verb("does", "do")) not understand this."
         }
 
@@ -97,24 +97,24 @@ extension Prose {
         // which says this in the frame it is reachable in. If the plugin ever
         // stops claiming the verb, the floor is already the game's.
         stubs.attack = Prose.attackFutile
-        stubs.smash = {
+        stubs.smash = .naming {
             "\($0.sentenceCased) \($0.verb("is", "are")) made of sterner stuff."
         }
-        stubs.burn = { "You have nothing to set \($0) alight with." }
-        stubs.cut = { "You have nothing that would cut \($0)." }
+        stubs.burn = .naming { "You have nothing to set \($0) alight with." }
+        stubs.cut = .naming { "You have nothing that would cut \($0)." }
         // `V-DIG` (`gverbs.zil:405`) answers for the tool, not the ground. The
         // one place in the game where digging is the puzzle is the sand, and
         // `sand.before(.dig)` in ``DungeonRiver`` claims it long before this.
         stubs.dig = "Digging with your bare hands is silly."
-        stubs.pull = {
+        stubs.pull = .naming {
             "\($0.sentenceCased) \($0.verb("doesn't", "don't")) give an inch."
         }
         // `V-TURN` (`gverbs.zil:1505`) is "This has no effect." — kept, with the
         // thing named, so the reply does not read as a failed `turn on`.
-        stubs.turn = { "Turning \($0.phrase) has no effect." }
+        stubs.turn = .naming { "Turning \($0) has no effect." }
         // `V-SQUEEZE`'s other branch: "How singularly useless."
-        stubs.squeeze = { "Squeezing \($0) is singularly useless." }
-        stubs.shake = { "You shake \($0). Nothing comes loose." }
+        stubs.squeeze = .naming { "Squeezing \($0) is singularly useless." }
+        stubs.shake = .naming { "You shake \($0). Nothing comes loose." }
         // `V-KNOCK` (`gverbs.zil:766`) answers "Nobody's home." at a door and
         // asks why you are knocking on anything else; one line covers both.
         // Lived in the endgame's prose file while it was that bundle's
@@ -128,25 +128,25 @@ extension Prose {
 
         // MARK: Senses
 
-        stubs.touch = { _ in Prose.verbTouch }
-        stubs.smell = { _ in Prose.verbSmell }
+        stubs.touch = .init(Prose.verbTouch)
+        stubs.smell = .init(Prose.verbSmell)
         // Was "You hear nothing out of the ordinary." — a claim about the room,
         // printed in the Loud Room, whose whole puzzle is that it is too loud to
         // hear in. `loudRoom.before(.listen)` in ``DungeonRoundRoom`` answers
         // there; this is what is left over, and it reports on the listener.
-        stubs.listen = { _ in "You listen, and learn nothing you did not already know." }
+        stubs.listen = "You listen, and learn nothing you did not already know."
         stubs.taste = "You would regret it."
 
         // MARK: Body
 
-        stubs.eat = {
+        stubs.eat = .naming {
             "\($0.sentenceCased) \($0.verb("is", "are")) not something you could eat."
         }
-        stubs.drink = Prose.cantDrinkThat
+        stubs.drink = .init(Prose.cantDrinkThat)
         stubs.sleep = "You have not come all this way to sleep."
         // Bare `wake` and `wake up` parse too, so the line has to be true with
         // and without something named.
-        stubs.wake = { _ in "There is no one asleep to be woken." }
+        stubs.wake = "There is no one asleep to be woken."
 
         // MARK: Social
 
@@ -160,12 +160,12 @@ extension Prose {
         }
         // `V-YELL` (`gverbs.zil:1616`). Trilogy verbatim.
         stubs.yell = "Aaaarrrrgggghhhh!"
-        stubs.wave = { _ in Prose.verbWave }
+        stubs.wave = .init(Prose.verbWave)
         stubs.point = "You point. The gesture is wasted."
 
         // MARK: Motion
 
-        stubs.climb = { _ in "That is not something you could climb." }
+        stubs.climb = "That is not something you could climb."
         // `V-SKIP` picks one of four (`WHEEEEE`, `gverbs.zil:1272`); this is the
         // one the table is named for. Trilogy verbatim.
         stubs.jump = "Wheeeeeeeeee!!!!!"
@@ -180,15 +180,20 @@ extension Prose {
         // MARK: Liquids and containers
 
         // These two ignore the name the engine offers them, where the rest of
-        // the floor takes it. `drink` is a plain line and cannot be given one,
-        // and #236 wrote the three as a family that reads alike; naming the
-        // object in two of the three would break the set for no gain, and the
-        // `String` these are handed carries no number to agree with.
-        stubs.fill = { _ in Prose.cantFillThat }
-        stubs.pour = { _ in Prose.cantPourThat }
-        stubs.empty = { "\(GameText.sentenceCase($0)) has nothing in it to empty." }
-        stubs.tie = { "You cannot tie \($0) to anything." }
-        stubs.untie = {
+        // the floor takes it. #236 wrote them and `drink` as a family that reads
+        // alike, and naming the object in two of the three would break the set
+        // for no gain.
+        //
+        // The other half of that reasoning is gone: this used to add that "the
+        // `String` these are handed carries no number to agree with", which was
+        // true and was the second widening #245 closed. All three are handed a
+        // `GameText.Noun` now, so a line here that wants agreement can simply
+        // ask for it.
+        stubs.fill = .init(Prose.cantFillThat)
+        stubs.pour = .init(Prose.cantPourThat)
+        stubs.empty = .naming { "\($0.sentenceCased) has nothing in it to empty." }
+        stubs.tie = .naming { "You cannot tie \($0) to anything." }
+        stubs.untie = .naming {
             "\($0.sentenceCased) \($0.verb("is", "are")) not tied to anything."
         }
 
@@ -216,7 +221,7 @@ extension Prose {
 
         // MARK: Fixtures
 
-        stubs.blow = { "Blowing on \($0) achieves nothing." }
+        stubs.blow = .naming { "Blowing on \($0) achieves nothing." }
 
         return stubs
     }

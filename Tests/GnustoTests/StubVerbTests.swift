@@ -445,16 +445,18 @@ struct StubVerbTests {
         #expect(!turn.contains("I didn't understand"), "\(command): \(turn)")
     }
 
-    /// But a stub whose line names nothing already reads fine about the player,
-    /// and keeps its own answer rather than the generic deferral.
-    @Test func namelessStubsKeepTheirOwnLineAboutYourself() async throws {
+    /// But a stub whose line owns a nameless half takes that half instead, and
+    /// keeps its own answer rather than the generic deferral. `taste` is here
+    /// rather than above because since #245 it is one of these too — the line
+    /// no longer names nothing, it declines to.
+    @Test func aStubWithANamelessHalfUsesItForYourself() async throws {
         let transcript = try await play(StubLab(), ["smell me", "listen to me", "taste me"])
         #expect(turnOutput(of: "smell me", in: transcript).contains("nothing out of the ordinary"))
         #expect(turnOutput(of: "listen to me", in: transcript).contains("You hear nothing"))
         #expect(turnOutput(of: "taste me", in: transcript).contains("You'd rather not."))
     }
 
-    // MARK: - The six lines that may name their object
+    // MARK: - The eighteen lines that may name their object
 
     /// `smell`, `listen`, `touch`, `wave`, `wake` and `climb` are handed an
     /// **optional** name, because some of their rows carry no object at all.
@@ -483,5 +485,241 @@ struct StubVerbTests {
         // somebody is not the same as listening to them.
         #expect(turnOutput(of: "touch rat", in: transcript).contains("would rather you didn't"))
         #expect(turnOutput(of: "touch rod", in: transcript).contains("Fiddling with the brass rod"))
+    }
+
+    // MARK: - The twelve that learned to name
+
+    /// The twelve stubs that carried a `.directObject` slot for a year with no
+    /// way to name what filled it: they shipped as `plain`, which hands the
+    /// line nothing at all. Moving them to `optionallyNamed` gives a game the
+    /// name, and hands the engine's own wording an argument it ignores.
+    ///
+    /// Every probe below is a turn whose output must not move, and they are
+    /// grouped by the three roads `optionallyNamed` splits and `plain` did
+    /// not: an object, a person, and the player. `plain` answered all three
+    /// with one line because it never looked; `optionallyNamed` looks, and
+    /// takes a different branch for each. That the sentence comes out the same
+    /// is what makes this a refactor.
+    static let theTwelveThatLearnedToName: [(String, String)] = [
+        // An object to name.
+        ("dig bench", "You have nothing to dig with."),
+        ("knock on bench", "Nobody answers."),
+        ("throw rod at rat", "Throwing things about achieves nothing."),
+        ("taste rod", "You'd rather not."),
+        ("drink flask", "There's nothing here worth drinking."),
+        ("kiss rod", "That would be presumptuous."),
+        ("point at rod", "Pointing at things accomplishes little."),
+        ("jump over bench", "You jump on the spot. Nothing is achieved."),
+        ("sit on bench", "There's nothing comfortable to sit on."),
+        ("count rod", "You lose count."),
+        ("buy rod", "Nothing here is for sale."),
+        ("sell rod", "Nobody here is buying."),
+
+        // A person. None of the twelve takes the `somebodyElse` guard, so all
+        // twelve keep answering about the rat exactly as they answer about the
+        // rod — `kiss` most of all, since kissing somebody is what the verb is
+        // for.
+        ("dig rat", "You have nothing to dig with."),
+        ("knock on rat", "Nobody answers."),
+        ("throw rat at rod", "Throwing things about achieves nothing."),
+        ("taste rat", "You'd rather not."),
+        ("drink rat", "There's nothing here worth drinking."),
+        ("kiss rat", "That would be presumptuous."),
+        ("point at rat", "Pointing at things accomplishes little."),
+        ("jump over rat", "You jump on the spot. Nothing is achieved."),
+        ("sit on rat", "There's nothing comfortable to sit on."),
+        ("count rat", "You lose count."),
+        ("buy rat", "Nothing here is for sale."),
+        ("sell rat", "Nobody here is buying."),
+
+        // The player, who has no name that renders — "You'd rather not taste
+        // yourself." — and so takes the line's nameless half rather than
+        // `stubs.yourself`.
+        ("dig me", "You have nothing to dig with."),
+        ("knock on me", "Nobody answers."),
+        ("throw me at rod", "Throwing things about achieves nothing."),
+        ("taste me", "You'd rather not."),
+        ("drink me", "There's nothing here worth drinking."),
+        ("kiss me", "That would be presumptuous."),
+        ("point at me", "Pointing at things accomplishes little."),
+        ("jump over me", "You jump on the spot. Nothing is achieved."),
+        ("sit on me", "There's nothing comfortable to sit on."),
+        ("count me", "You lose count."),
+        ("buy me", "Nothing here is for sale."),
+        ("sell me", "Nobody here is buying."),
+
+        // The rows that name nothing because they have no slot to name from.
+        ("dig", "You have nothing to dig with."),
+        ("jump", "You jump on the spot. Nothing is achieved."),
+        ("sit", "There's nothing comfortable to sit on."),
+        ("sit down", "There's nothing comfortable to sit on."),
+    ]
+
+    @Test(arguments: StubVerbTests.theTwelveThatLearnedToName)
+    func theEngineDefaultIsUnchangedForEveryRewiredStub(
+        _ command: String, _ expected: String
+    ) async throws {
+        let turn = turnOutput(of: command, in: try await play(StubLab(), [command]))
+        #expect(turn.contains(expected), "\(command): \(turn)")
+    }
+
+    /// The gap #245 was filed about, asserted rather than left to be noticed.
+    ///
+    /// Twelve stubs carried a `.directObject` slot and a `plain` line for a
+    /// year. Nothing caught it, because neither half looks wrong on its own —
+    /// the rows are the rows the source has, and the line is a sentence
+    /// somebody wrote on purpose. Only the two together are the defect, and
+    /// only a game trying to name the object ever found out.
+    ///
+    /// So the pair is asserted rather than inspected. A thirteenth stub that
+    /// grows an object slot without a line to put it in fails here, one build
+    /// after somebody writes it, instead of one game later. A test rather than
+    /// the type system: `.plain(.foo, [["foo", .directObject]])` still compiles,
+    /// and closing that structurally would cost more than it saves.
+    @Test func everyStubWithAnObjectSlotCanNameIt() {
+        for stub in DefaultActions.stubs
+        where stub.rows.contains(where: { $0.elements.contains(.directObject) }) {
+            #expect(
+                stub.namesObject,
+                "`\(stub.intent.raw)` takes a direct object its line can't name")
+        }
+    }
+
+    /// The API claim: one property, either spelling. `kiss` is assigned a bare
+    /// string literal and `count` a naming closure, in the same `text` block —
+    /// which before ``GameText/Line`` was not a choice a game had, because the
+    /// engine's own wording for each verb had already made it.
+    ///
+    /// That ``NamingStubGame``'s `text` block compiles is most of the test.
+    /// This is the rest of it.
+    @Test func aStubLineTakesABareStringOrANamingClosure() async throws {
+        let transcript = try await play(
+            NamingStubGame(), ["kiss rat", "count rod", "count me"])
+        #expect(turnOutput(of: "kiss rat", in: transcript).contains("You keep your hands to yourself."))
+        #expect(turnOutput(of: "count rod", in: transcript).contains("You lose count of the brass rod."))
+        // The naming closure's other half, which `.naming(orBare:_:)` made the
+        // game write rather than letting it fall back to the engine's words.
+        #expect(turnOutput(of: "count me", in: transcript).contains("You lose your place."))
+    }
+
+    /// What twelve games could not do until #245: say what the player was
+    /// pointing at. One probe per verb, each asserting the rendered noun the
+    /// line was handed.
+    static let namingProbes = [
+        ("dig bench", "You dig at the long bench."),
+        ("knock on bench", "You knock at the long bench."),
+        // The projectile, not the target — see the row's comment for why.
+        ("throw rod at rat", "You throw the brass rod."),
+        ("taste rod", "You taste the brass rod."),
+        ("drink flask", "You drink the glass flask."),
+        ("kiss rod", "You kiss the brass rod."),
+        ("point at rod", "You point at the brass rod."),
+        ("jump over bench", "You jump over the long bench."),
+        ("sit on bench", "You sit on the long bench."),
+        ("count rod", "You count the brass rod."),
+        ("buy rod", "You buy the brass rod."),
+        ("sell rod", "You sell the brass rod."),
+    ]
+
+    @Test(arguments: StubVerbTests.namingProbes)
+    func eachNewlyNameableStubNamesItsObject(
+        _ command: String, _ expected: String
+    ) async throws {
+        let turn = turnOutput(of: command, in: try await play(EveryNameableStubGame(), [command]))
+        #expect(turn.contains(expected), "\(command): \(turn)")
+    }
+
+    /// The six #242 widened, in the same fixture, so the promise of eighteen is
+    /// kept rather than asserted at twelve. `touch rod` rather than `touch rat`:
+    /// `touch` is the one of the eighteen that guards actors, which
+    /// `theRewiredStubsNameAPersonWhereTheGuardedOnesDefer` covers.
+    @Test func theOlderNameableStubsStillNameTheirObject() async throws {
+        let transcript = try await play(
+            EveryNameableStubGame(),
+            ["smell rod", "listen to rod", "touch rod", "wake rat", "wave rod", "climb bench"])
+        #expect(turnOutput(of: "smell rod", in: transcript).contains("You smell the brass rod."))
+        #expect(
+            turnOutput(of: "listen to rod", in: transcript).contains("You listen to the brass rod."))
+        #expect(turnOutput(of: "touch rod", in: transcript).contains("You feel the brass rod."))
+        #expect(turnOutput(of: "wake rat", in: transcript).contains("You wake the grey rat."))
+        #expect(turnOutput(of: "wave rod", in: transcript).contains("You wave the brass rod."))
+        #expect(turnOutput(of: "climb bench", in: transcript).contains("You climb the long bench."))
+    }
+
+    /// The other half of every one of those lines. Four of the twelve have rows
+    /// with no object slot at all, so their nameless half is not a courtesy —
+    /// it is the only thing those rows can print.
+    @Test func theRewiredStubsStillReadWithNoObjectToName() async throws {
+        let transcript = try await play(
+            EveryNameableStubGame(), ["dig", "jump", "sit", "sit down"])
+        #expect(turnOutput(of: "dig", in: transcript).contains("You dig at nothing in particular."))
+        #expect(turnOutput(of: "jump", in: transcript).contains("You jump over nothing in particular."))
+        #expect(turnOutput(of: "sit", in: transcript).contains("You sit on nothing in particular."))
+        #expect(
+            turnOutput(of: "sit down", in: transcript).contains("You sit on nothing in particular."))
+    }
+
+    /// The guard, which is per verb and not per shape. Seventeen of the
+    /// eighteen name a person as readily as a chair; `touch` is the one that
+    /// defers, and `eat` next door shows what deferring looks like.
+    @Test func theRewiredStubsNameAPersonWhereTheGuardedOnesDefer() async throws {
+        let transcript = try await play(
+            EveryNameableStubGame(),
+            ["kiss rat", "sell rat", "knock on rat", "eat rat", "touch rat"])
+        #expect(turnOutput(of: "kiss rat", in: transcript).contains("You kiss the grey rat."))
+        #expect(turnOutput(of: "sell rat", in: transcript).contains("You sell the grey rat."))
+        #expect(turnOutput(of: "knock on rat", in: transcript).contains("You knock at the grey rat."))
+        #expect(turnOutput(of: "eat rat", in: transcript).contains("would rather you didn't"))
+        #expect(turnOutput(of: "touch rat", in: transcript).contains("would rather you didn't"))
+    }
+
+    /// The player, who is called "yourself" and so has no name that renders in
+    /// a line about a thing. All twelve take their own nameless half rather
+    /// than ``GameText/StubReplies/yourself``, which is what `optionallyNamed`
+    /// is for.
+    @Test func theRewiredStubsTakeTheirNamelessHalfForThePlayer() async throws {
+        let commands = ["kiss me", "taste me", "count me", "sell me", "dig me"]
+        let transcript = try await play(EveryNameableStubGame(), commands)
+        for command in commands {
+            let turn = turnOutput(of: command, in: transcript)
+            #expect(turn.contains("nothing in particular"), "\(command): \(turn)")
+            #expect(!turn.contains("Best leave yourself out of it."), "\(command): \(turn)")
+        }
+    }
+
+    /// The sweep every stub floor is measured by, measured itself.
+    ///
+    /// `engineVoicedStubLines` reflects over ``GameText/StubReplies`` rather
+    /// than listing it, which is what lets a forty-eighth stub be compared the
+    /// day it lands — and is also how such a sweep goes quietly vacuous. A
+    /// reflection loop that matches nothing reports nothing and passes.
+    ///
+    /// So it is asked the one question with a knowable answer: handed the
+    /// engine's own lines, it must find *every* one of them still in the
+    /// engine's voice. A line whose shape it cannot render drops out of the
+    /// result and fails here, rather than shipping unchecked in every game
+    /// with a floor.
+    @Test func theStubSweepSeesEveryLineAGameHasNotVoiced() {
+        let engine = GameText.StubReplies()
+        let shipped = Mirror(reflecting: engine).children.compactMap(\.label)
+        #expect(shipped.count == 49)
+        #expect(Set(engineVoicedStubLines(in: engine)) == Set(shipped))
+    }
+
+    /// Ties the two probe lists to each other, so a thirteenth stub promoted
+    /// later can't ship with only half its cover.
+    ///
+    /// Every command that names an object in ``namingProbes`` is also pinned
+    /// against the engine's own wording in ``theTwelveThatLearnedToName``, and
+    /// each of those verbs is asked all three roads — an object, a person, the
+    /// player. Adding a naming probe without its three characterization rows,
+    /// or the reverse, fails here rather than passing quietly.
+    @Test func everyRewiredStubIsProbedOnAllThreeRoads() {
+        let named = Self.namingProbes.map(\.0)
+        let pinned = Self.theTwelveThatLearnedToName.map(\.0)
+        #expect(Array(pinned.prefix(named.count)) == named)
+        // Each of those verbs three times over, plus the rows carrying no object
+        // slot at all.
+        #expect(pinned.count == named.count * 3 + 4)
     }
 }

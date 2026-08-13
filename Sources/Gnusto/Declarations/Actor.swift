@@ -110,6 +110,12 @@ public struct Actor: Sendable, Equatable {
         asItem.definiteNoun
     }
 
+    /// The indefinite name paired with its number, for a line that generalizes
+    /// rather than points.
+    public var indefiniteNoun: GameText.Noun {
+        asItem.indefiniteNoun
+    }
+
     /// The actor's examine text. Assigning replaces it for the rest of the
     /// game.
     public var description: String {

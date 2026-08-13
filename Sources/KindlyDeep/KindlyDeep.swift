@@ -112,9 +112,9 @@ struct KindlyDeep: Game, GameMain {
         // about the room. Those are promoted per entity in `rules`, which
         // outranks anything here; these are the floor underneath, for the rooms
         // where the stock line is merely in the wrong century.
-        text.stubs.listen = { _ in "Rock, doing what rock does, at the volume it does it." }
-        text.stubs.smell = { _ in "Coal, damp, and the particular flat cold of air that has stopped moving." }
-        text.stubs.climb = { _ in "There is nothing here worth going up, and one thing worth going out." }
+        text.stubs.listen = "Rock, doing what rock does, at the volume it does it."
+        text.stubs.smell = "Coal, damp, and the particular flat cold of air that has stopped moving."
+        text.stubs.climb = "There is nothing here worth going up, and one thing worth going out."
         text.stubs.dig = "You are four hundred feet into a hole somebody else dug. Enough."
         text.stubs.jump = "A man who jumps about in low workings finds out where the roof is."
         text.stubs.sing =

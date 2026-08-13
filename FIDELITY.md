@@ -1443,6 +1443,14 @@ verbatim rule could not be met without widening them; they now take an optional
 name (`StubVerb.optionallyNamed`). Behavior-preserving for every other game: the
 engine defaults keep their wording and ignore the name.
 
+**Since #245** the same shape covers every stub line with an object to name —
+eighteen, not six — behind a `GameText.Line` that takes a bare string as readily
+as a naming closure, so widening one stopped being an API break. That makes one
+shortfall recorded above reachable: `V-KNOCK`'s non-door branch names the thing
+knocked on, and `Prose+Stubs.swift` said in a comment that the line could not.
+It can; reproducing it is a separate fidelity call against `gverbs.zil:767`, and
+this game's `knock` is unchanged until that call is made.
+
 ### Tests
 
 `Tests/GnustoTests/Zork1ProseTests.swift`. The sweep,

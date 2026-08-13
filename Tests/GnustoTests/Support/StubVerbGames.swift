@@ -169,11 +169,16 @@ struct ReskinnedStubGame: Game {
     }
 }
 
-/// Names its objects in the six stub lines that are handed an optional name, so
-/// one transcript covers the whole contract of ``StubVerb/optionallyNamed``:
-/// the named half, the nameless half a bare row falls back to, the player
-/// falling back to that same half rather than to `yourself`, and `touch` still
-/// deferring to `somebodyElse` where its sister verbs name the person.
+/// Names its objects in the stub lines that are handed an optional name, so one
+/// transcript covers the whole contract of ``StubVerb/optionallyNamed``: the
+/// named half, the nameless half a bare row falls back to, the player falling
+/// back to that same half rather than to `yourself`, and `touch` still deferring
+/// to `somebodyElse` where its sister verbs name the person.
+///
+/// It also carries **both spellings of a stub line in one `text` block** —
+/// `kiss` as a bare string literal, `count` as a naming closure — which before
+/// ``GameText/Line`` was not a choice a game had, because the engine's own
+/// wording for each verb had already made it.
 struct NamingStubGame: Game {
     let title = "Naming"
     let intro = "A room whose stub lines say what they are looking at."
@@ -195,15 +200,138 @@ struct NamingStubGame: Game {
 
     var text: GameText {
         var text = GameText()
-        text.stubs.smell = { $0.map { "It smells like \($0)." } ?? "You smell only the room." }
-        text.stubs.listen = { $0.map { "\(GameText.sentenceCase($0)) makes no sound." } ?? "You hear only the room." }
-        text.stubs.touch = { $0.map { "Fiddling with \($0) has no effect." } ?? "You feel only the room." }
+        text.stubs.smell = .naming(orBare: "You smell only the room.") {
+            "It smells like \($0)."
+        }
+        text.stubs.listen = .naming(orBare: "You hear only the room.") {
+            "\($0.sentenceCased) makes no sound."
+        }
+        text.stubs.touch = .naming(orBare: "You feel only the room.") {
+            "Fiddling with \($0) has no effect."
+        }
+        text.stubs.kiss = "You keep your hands to yourself."
+        text.stubs.count = .naming(orBare: "You lose your place.") {
+            "You lose count of \($0)."
+        }
         return text
     }
 
     var map: WorldMap {
         player.starts(in: room)
         rod.starts(in: room)
+        rat.starts(in: room)
+    }
+}
+
+/// Names its object in **all eighteen** lines that are offered one, so a single
+/// game can be asked what each of them says about a thing, about a person, and
+/// about nothing at all.
+///
+/// Kept apart from ``NamingStubGame`` rather than folded into it: that one is
+/// the readable worked example of the contract, and eighteen synthetic lines
+/// would bury it. These are deliberately uniform — "You <verb> the X." —
+/// because what is under test is which noun arrives where, not the prose.
+///
+/// The room is ``StubLab``'s, re-declared rather than shared: `StubLab` exists
+/// to show what a game gets for *free* and so may never declare a `text`.
+struct EveryNameableStubGame: Game {
+    let title = "Every Nameable"
+    let intro = "A room whose idle verbs all say what they are aimed at."
+
+    let room = Location {
+        name("Room")
+        description("A plain room with a bench along one wall.")
+    }
+
+    let rod = Item {
+        name("brass rod")
+        adjectives("brass")
+    }
+
+    let flask = Item {
+        name("glass flask")
+        adjectives("glass")
+        container
+    }
+
+    let bench = Item {
+        name("long bench")
+        adjectives("long")
+        scenery
+        surface
+    }
+
+    let rat = Actor {
+        name("grey rat")
+        adjectives("grey")
+    }
+
+    var text: GameText {
+        var text = GameText()
+        // The six #242 widened…
+        text.stubs.touch = .naming(orBare: "You feel nothing in particular.") {
+            "You feel \($0)."
+        }
+        text.stubs.smell = .naming(orBare: "You smell nothing in particular.") {
+            "You smell \($0)."
+        }
+        text.stubs.listen = .naming(orBare: "You listen to nothing in particular.") {
+            "You listen to \($0)."
+        }
+        text.stubs.wake = .naming(orBare: "You wake nothing in particular.") {
+            "You wake \($0)."
+        }
+        text.stubs.wave = .naming(orBare: "You wave nothing in particular.") {
+            "You wave \($0)."
+        }
+        text.stubs.climb = .naming(orBare: "You climb nothing in particular.") {
+            "You climb \($0)."
+        }
+        // …and the twelve #245 did.
+        text.stubs.dig = .naming(orBare: "You dig at nothing in particular.") {
+            "You dig at \($0)."
+        }
+        text.stubs.knock = .naming(orBare: "You knock at nothing in particular.") {
+            "You knock at \($0)."
+        }
+        text.stubs.throwAt = .naming(orBare: "You throw nothing in particular.") {
+            "You throw \($0)."
+        }
+        text.stubs.taste = .naming(orBare: "You taste nothing in particular.") {
+            "You taste \($0)."
+        }
+        text.stubs.drink = .naming(orBare: "You drink nothing in particular.") {
+            "You drink \($0)."
+        }
+        text.stubs.kiss = .naming(orBare: "You kiss nothing in particular.") {
+            "You kiss \($0)."
+        }
+        text.stubs.point = .naming(orBare: "You point at nothing in particular.") {
+            "You point at \($0)."
+        }
+        text.stubs.jump = .naming(orBare: "You jump over nothing in particular.") {
+            "You jump over \($0)."
+        }
+        text.stubs.sit = .naming(orBare: "You sit on nothing in particular.") {
+            "You sit on \($0)."
+        }
+        text.stubs.count = .naming(orBare: "You count nothing in particular.") {
+            "You count \($0)."
+        }
+        text.stubs.buy = .naming(orBare: "You buy nothing in particular.") {
+            "You buy \($0)."
+        }
+        text.stubs.sell = .naming(orBare: "You sell nothing in particular.") {
+            "You sell \($0)."
+        }
+        return text
+    }
+
+    var map: WorldMap {
+        player.starts(in: room)
+        rod.starts(in: room)
+        flask.starts(in: room)
+        bench.starts(in: room)
         rat.starts(in: room)
     }
 }

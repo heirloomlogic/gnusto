@@ -57,13 +57,16 @@ Text a game declares itself (descriptions, rule replies) never goes through `Gam
 The stub verbs' stock replies are grouped on ``GameText/stubs`` rather than sitting flat alongside the rest, since there are about fifty of them:
 
 ```swift
-text.stubs.attack = { "The Institute frowns on assaulting \($0)." }
-text.stubs.smash = { "\($0.sentenceCased) \($0.verb("is", "are")) stouter than your temper." }
+text.stubs.pray = "No one is listening. You checked."
+text.stubs.attack = .naming { "The Institute frowns on assaulting \($0)." }
+text.stubs.smash = .naming { "\($0.sentenceCased) \($0.verb("is", "are")) stouter than your temper." }
 ```
 
 Overriding one re-skins the line; replacing the *behavior* is a rule or an `actions` row. See <doc:StubVerbs>.
 
-Seven stub lines take a ``GameText/Noun`` rather than a `String`, and they are the seven whose verb agrees with the object: `eat`, `smash`, `pull`, `turn`, `untie`, `give` and `somebodyElse`. A `Noun` is the rendered phrase plus its number, and ``GameText/Noun/verb(_:_:)`` picks the form that agrees — so a game may call a thing `rails` and get "The rails are not food." The number comes from the `plural` trait, declared for the same reason `properName` is: no engine should guess it, and no game should have to rename a thing to suit a stock line.
+Those three are the same type. A stub line with an object to name is a ``GameText/Line``, which takes a bare string as readily as a naming closure, so whether a line names the thing it is about is the game's call and not the engine's. Only a verb with no object slot on any row — `sing`, `pray`, `swim` — is a plain `String`, because there is nothing for a closure to be handed.
+
+A `Line` is handed a ``GameText/Noun``, never a bare name: the rendered phrase plus its number, so ``GameText/Noun/verb(_:_:)`` can pick the form that agrees and a game may call a thing `rails` and get "The rails are not food." Interpolating one prints its phrase, so a line with no verb to agree pays nothing for the facility. The number comes from the `plural` trait, declared for the same reason `properName` is: no engine should guess it, and no game should have to rename a thing to suit a stock line.
 
 ## Randomness that replays
 

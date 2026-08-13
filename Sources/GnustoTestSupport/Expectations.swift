@@ -98,8 +98,8 @@ public func expectNoAmbiguity(
         sourceLocation: sourceLocation)
 }
 
-/// Records a Swift Testing issue for every stub-verb line a game still answers
-/// in the engine's voice.
+/// Every stub-verb line a game still answers in the engine's voice, by property
+/// name.
 ///
 /// A game that gives itself a **stub floor** — `text.stubs`, rather than an
 /// `action(…)` row per verb — is claiming all ~47 of them, and the claim is easy
@@ -109,15 +109,74 @@ public func expectNoAmbiguity(
 /// catches that; it does not catch a *forty-eighth* stub arriving in the engine
 /// tomorrow, which would slip past every named assertion at once.
 ///
-/// So this derives its own completeness from ``GameText/StubReplies`` rather
-/// than from the table below: `Mirror` names every property the engine actually
-/// ships, and the label check fails the moment one is added — sending the next
-/// person here rather than letting the new line go unvoiced in every game.
+/// So this reads the properties off ``GameText/StubReplies`` with `Mirror`
+/// rather than listing them: every line the engine actually ships is compared,
+/// and one added tomorrow is compared the day it lands. A property whose type
+/// this cannot render is reported as its own issue rather than skipped, which is
+/// what keeps "reflected" from quietly meaning "unchecked".
 ///
-/// The comparisons themselves are written out rather than reflected because a
-/// dynamic cast to a function type is not reliable in Swift; an earlier draft
-/// read the closures out of the `Mirror` and trapped. `Mirror` proves the list
-/// is whole, and nothing else.
+/// It is split out from ``expectNoEngineStubLineSurvives(in:game:sourceLocation:)``
+/// so the sweep can be tested for being *alive*: a reflection loop that matches
+/// nothing passes silently, where one asserted to see all forty-nine lines
+/// cannot.
+///
+/// - Parameter ours: the game's `text.stubs`.
+/// - Returns: the property names still identical to the engine's wording.
+public func engineVoicedStubLines(in ours: GameText.StubReplies) -> [String] {
+    let engine = GameText.StubReplies()
+
+    // A plural noun catches a template that hard-codes its agreement — "The
+    // rails is not food." is the defect ``GameText/Noun`` exists to prevent —
+    // and `nil` catches a game that re-voices a line's naming half and leaves
+    // its bare half in the engine's words.
+    let one = GameText.Noun("the brass lantern")
+    let many = GameText.Noun("the rails", plural: true)
+
+    /// Every sentence one line can print, or `nil` for a shape not known here.
+    func samples(of line: Any) -> [String]? {
+        switch line {
+        case let fixed as String: [fixed]
+        case let line as GameText.Line<GameText.Noun>: [line(one), line(many)]
+        case let line as GameText.Line<GameText.Noun?>: [line(one), line(many), line(nil)]
+        default: nil
+        }
+    }
+
+    // Zipped rather than keyed by label: both sides are the same concrete type,
+    // so `Mirror` walks them in the same declaration order, and a dictionary
+    // would only add a lookup that can't miss and a trap that can't fire.
+    var voiced: [String] = []
+    for (mine, theirs) in zip(
+        Mirror(reflecting: ours).children, Mirror(reflecting: engine).children)
+    {
+        // `give` is the one line about *two* objects, so it is not a `Line` and
+        // reflection cannot reach it: a dynamic cast to a function type is not
+        // reliable in Swift, and an earlier draft of this sweep trapped doing
+        // it. It is compared by hand below, and the label check in
+        // `theStubSweepSeesEveryLineAGameHasNotVoiced` is what proves the
+        // hand-written case has not been forgotten.
+        guard let label = mine.label, label != "give" else { continue }
+        guard let ourSamples = samples(of: mine.value),
+            let engineSamples = samples(of: theirs.value)
+        else {
+            Issue.record(
+                """
+                `GameText.StubReplies.\(label)` has a shape this sweep can't \
+                render. Teach `samples(of:)` about it, or the line ships \
+                unchecked in every game with a floor.
+                """)
+            continue
+        }
+        if zip(ourSamples, engineSamples).contains(where: { $0 == $1 }) {
+            voiced.append(label)
+        }
+    }
+    if ours.give(one, many) == engine.give(one, many) { voiced.append("give") }
+    return voiced
+}
+
+/// Records a Swift Testing issue for every stub-verb line a game still answers
+/// in the engine's voice.
 ///
 /// - Parameters:
 ///   - ours: the game's `text.stubs`.
@@ -128,90 +187,9 @@ public func expectNoEngineStubLineSurvives(
     game: String,
     sourceLocation: SourceLocation = #_sourceLocation
 ) {
-    let engine = GameText.StubReplies()
-
-    // Two samples, because a plural one catches a template that hard-codes its
-    // agreement — "The rails is not food." is the defect the engine's own
-    // `Noun` exists to prevent. And both halves of the six lines handed an
-    // optional name, since a game may re-voice one half and leave the other.
-    let name = "the brass lantern"
-    let one = GameText.Noun(name)
-    let many = GameText.Noun("the rails", plural: true)
-
-    let floor: [(String, [String], [String])] = [
-        ("yourself", [ours.yourself], [engine.yourself]),
-        ("somebodyElse", [ours.somebodyElse(one)], [engine.somebodyElse(one)]),
-        ("attack", [ours.attack(name)], [engine.attack(name)]),
-        ("smash", [ours.smash(one), ours.smash(many)], [engine.smash(one), engine.smash(many)]),
-        ("burn", [ours.burn(name)], [engine.burn(name)]),
-        ("cut", [ours.cut(name)], [engine.cut(name)]),
-        ("dig", [ours.dig], [engine.dig]),
-        ("pull", [ours.pull(one), ours.pull(many)], [engine.pull(one), engine.pull(many)]),
-        ("turn", [ours.turn(one), ours.turn(many)], [engine.turn(one), engine.turn(many)]),
-        ("squeeze", [ours.squeeze(name)], [engine.squeeze(name)]),
-        ("shake", [ours.shake(name)], [engine.shake(name)]),
-        ("knock", [ours.knock], [engine.knock]),
-        ("throwAt", [ours.throwAt], [engine.throwAt]),
-        ("touch", [ours.touch(name), ours.touch(nil)], [engine.touch(name), engine.touch(nil)]),
-        ("smell", [ours.smell(name), ours.smell(nil)], [engine.smell(name), engine.smell(nil)]),
-        (
-            "listen", [ours.listen(name), ours.listen(nil)],
-            [engine.listen(name), engine.listen(nil)]
-        ),
-        ("taste", [ours.taste], [engine.taste]),
-        ("eat", [ours.eat(one), ours.eat(many)], [engine.eat(one), engine.eat(many)]),
-        ("drink", [ours.drink], [engine.drink]),
-        ("sleep", [ours.sleep], [engine.sleep]),
-        ("wake", [ours.wake(name), ours.wake(nil)], [engine.wake(name), engine.wake(nil)]),
-        ("kiss", [ours.kiss], [engine.kiss]),
-        (
-            "give", [ours.give(name, one), ours.give(name, many)],
-            [engine.give(name, one), engine.give(name, many)]
-        ),
-        ("yell", [ours.yell], [engine.yell]),
-        ("wave", [ours.wave(name), ours.wave(nil)], [engine.wave(name), engine.wave(nil)]),
-        ("point", [ours.point], [engine.point]),
-        ("climb", [ours.climb(name), ours.climb(nil)], [engine.climb(name), engine.climb(nil)]),
-        ("jump", [ours.jump], [engine.jump]),
-        ("swim", [ours.swim], [engine.swim]),
-        ("dive", [ours.dive], [engine.dive]),
-        ("stand", [ours.stand], [engine.stand]),
-        ("sit", [ours.sit], [engine.sit]),
-        ("lie", [ours.lie], [engine.lie]),
-        ("kneel", [ours.kneel], [engine.kneel]),
-        ("fill", [ours.fill(name)], [engine.fill(name)]),
-        ("pour", [ours.pour(name)], [engine.pour(name)]),
-        ("empty", [ours.empty(name)], [engine.empty(name)]),
-        ("tie", [ours.tie(name)], [engine.tie(name)]),
-        ("untie", [ours.untie(one), ours.untie(many)], [engine.untie(one), engine.untie(many)]),
-        ("pray", [ours.pray], [engine.pray]),
-        ("sing", [ours.sing], [engine.sing]),
-        ("curse", [ours.curse], [engine.curse]),
-        ("xyzzy", [ours.xyzzy], [engine.xyzzy]),
-        ("count", [ours.count], [engine.count]),
-        ("think", [ours.think], [engine.think]),
-        ("wish", [ours.wish], [engine.wish]),
-        ("buy", [ours.buy], [engine.buy]),
-        ("sell", [ours.sell], [engine.sell]),
-        ("blow", [ours.blow(name)], [engine.blow(name)]),
-    ]
-
-    let shipped = Set(Mirror(reflecting: engine).children.compactMap(\.label))
-    #expect(
-        shipped == Set(floor.map(\.0)),
-        """
-        `GameText.StubReplies` has changed shape. Add the new stub to the table \
-        in `expectNoEngineStubLineSurvives`, then give every game with a floor a \
-        line for it.
-        """,
-        sourceLocation: sourceLocation)
-
-    for (label, ourLines, engineLines) in floor {
-        for (ourLine, engineLine) in zip(ourLines, engineLines) {
-            #expect(
-                ourLine != engineLine,
-                "\(game): `\(label)` still answers in the engine's voice: \"\(engineLine)\"",
-                sourceLocation: sourceLocation)
-        }
+    for label in engineVoicedStubLines(in: ours) {
+        Issue.record(
+            "\(game): `\(label)` still answers in the engine's voice.",
+            sourceLocation: sourceLocation)
     }
 }
