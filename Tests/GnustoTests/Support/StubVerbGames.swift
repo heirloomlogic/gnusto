@@ -169,6 +169,45 @@ struct ReskinnedStubGame: Game {
     }
 }
 
+/// Names its objects in the six stub lines that are handed an optional name, so
+/// one transcript covers the whole contract of ``StubVerb/optionallyNamed``:
+/// the named half, the nameless half a bare row falls back to, the player
+/// falling back to that same half rather than to `yourself`, and `touch` still
+/// deferring to `somebodyElse` where its sister verbs name the person.
+struct NamingStubGame: Game {
+    let title = "Naming"
+    let intro = "A room whose stub lines say what they are looking at."
+
+    let room = Location {
+        name("Room")
+        description("A plain room.")
+    }
+
+    let rod = Item {
+        name("brass rod")
+        adjectives("brass")
+    }
+
+    let rat = Actor {
+        name("grey rat")
+        adjectives("grey")
+    }
+
+    var text: GameText {
+        var text = GameText()
+        text.stubs.smell = { $0.map { "It smells like \($0)." } ?? "You smell only the room." }
+        text.stubs.listen = { $0.map { "\(GameText.sentenceCase($0)) makes no sound." } ?? "You hear only the room." }
+        text.stubs.touch = { $0.map { "Fiddling with \($0) has no effect." } ?? "You feel only the room." }
+        return text
+    }
+
+    var map: WorldMap {
+        player.starts(in: room)
+        rod.starts(in: room)
+        rat.starts(in: room)
+    }
+}
+
 /// Promotes one stub with an `actions` row and another with an item rule, so a
 /// single transcript shows both layers beating the engine's line — and shows the
 /// rule beating the row.

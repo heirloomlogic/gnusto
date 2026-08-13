@@ -702,11 +702,20 @@ extension GameText {
         // MARK: Senses
 
         /// Touching, feeling or rubbing something.
-        public var touch = "You feel nothing out of the ordinary."
-        /// Smelling the room or something in it.
-        public var smell = "You smell nothing out of the ordinary."
-        /// Listening to the room or something in it.
-        public var listen = "You hear nothing out of the ordinary."
+        ///
+        /// One of the six lines handed an **optional** name: see ``wave`` for
+        /// what the `nil` means and why these six differ from ``burn``.
+        public var touch: @Sendable (_ name: String?) -> String = { _ in
+            "You feel nothing out of the ordinary."
+        }
+        /// Smelling the room or something in it. `nil` for the bare `smell`.
+        public var smell: @Sendable (_ name: String?) -> String = { _ in
+            "You smell nothing out of the ordinary."
+        }
+        /// Listening to the room or something in it. `nil` for the bare `listen`.
+        public var listen: @Sendable (_ name: String?) -> String = { _ in
+            "You hear nothing out of the ordinary."
+        }
         /// Tasting or licking something.
         public var taste = "You'd rather not."
 
@@ -720,8 +729,11 @@ extension GameText {
         public var drink = "There's nothing here worth drinking."
         /// Going to sleep.
         public var sleep = "You're not sleepy."
-        /// Waking, or waking somebody who isn't asleep.
-        public var wake = "There's no sleeping to be interrupted."
+        /// Waking, or waking somebody who isn't asleep. `nil` for the bare
+        /// `wake` and `wake up`.
+        public var wake: @Sendable (_ name: String?) -> String = { _ in
+            "There's no sleeping to be interrupted."
+        }
 
         // MARK: Social
 
@@ -735,14 +747,35 @@ extension GameText {
         /// Yelling, shouting or screaming.
         public var yell = "You shout. Nothing shouts back."
         /// Waving, with or without something in hand.
-        public var wave = "You wave. Nothing comes of it."
+        ///
+        /// This and ``touch``, ``smell``, ``listen``, ``wake`` and ``climb`` are
+        /// handed an **optional** name, where ``burn`` and its neighbors are
+        /// handed a plain one. Two things make the difference, and both are
+        /// properties of the verb rather than of the line:
+        ///
+        /// - Some of their rows carry no direct object at all. `wave` and `wave
+        ///   the sceptre` are one intent, so a line for this verb has to read
+        ///   both with a name and without one.
+        /// - The player is unnameable — "You wave yourself. " is not a
+        ///   sentence — so `wave me` is handed `nil` too, and gets the line's
+        ///   nameless half rather than the ``yourself`` deferral a
+        ///   name-carrying stub uses. These verbs read fine *about* a person
+        ///   otherwise, which is why they take no ``somebodyElse`` guard:
+        ///   "The troll makes no sound." is an answer, not an indignity.
+        ///   ``touch`` is the exception and keeps the guard, because laying
+        ///   hands on somebody is not the same as looking at them.
+        public var wave: @Sendable (_ name: String?) -> String = { _ in
+            "You wave. Nothing comes of it."
+        }
         /// Pointing at something.
         public var point = "Pointing at things accomplishes little."
 
         // MARK: Motion
 
-        /// Climbing something unclimbable.
-        public var climb = "You can't climb that."
+        /// Climbing something unclimbable. `nil` for the bare `climb`.
+        public var climb: @Sendable (_ name: String?) -> String = { _ in
+            "You can't climb that."
+        }
         /// Jumping, on the spot or over something.
         public var jump = "You jump on the spot. Nothing is achieved."
         /// Swimming with no water to swim in.

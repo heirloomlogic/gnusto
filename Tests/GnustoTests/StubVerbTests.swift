@@ -453,4 +453,35 @@ struct StubVerbTests {
         #expect(turnOutput(of: "listen to me", in: transcript).contains("You hear nothing"))
         #expect(turnOutput(of: "taste me", in: transcript).contains("You'd rather not."))
     }
+
+    // MARK: - The six lines that may name their object
+
+    /// `smell`, `listen`, `touch`, `wave`, `wake` and `climb` are handed an
+    /// **optional** name, because some of their rows carry no object at all.
+    /// The whole contract in one transcript.
+    @Test func anOptionallyNamedStubNamesWhatItCanAndNothingItCannot() async throws {
+        let transcript = try await play(
+            NamingStubGame(),
+            ["smell rod", "smell", "smell me", "listen to rat", "touch rat", "touch rod"])
+
+        // The named half: the line gets the object it was given.
+        #expect(turnOutput(of: "smell rod", in: transcript).contains("It smells like the brass rod."))
+
+        // The nameless half, which a bare row falls back to…
+        #expect(turnOutput(of: "smell", in: transcript).contains("You smell only the room."))
+
+        // …and so does the player, who has no name that renders: "It smells
+        // like yourself." is why, and it is why these six defer here rather
+        // than to `stubs.yourself` the way a name-carrying stub does.
+        #expect(turnOutput(of: "smell me", in: transcript).contains("You smell only the room."))
+
+        // No `somebodyElse` guard: these verbs act at a distance and read fine
+        // about a person, which is what `V-LISTEN` itself does.
+        #expect(turnOutput(of: "listen to rat", in: transcript).contains("The grey rat makes no sound."))
+
+        // `touch` is the exception, and keeps the guard — laying hands on
+        // somebody is not the same as listening to them.
+        #expect(turnOutput(of: "touch rat", in: transcript).contains("would rather you didn't"))
+        #expect(turnOutput(of: "touch rod", in: transcript).contains("Fiddling with the brass rod"))
+    }
 }

@@ -64,8 +64,10 @@ extension StubVerb {
     ///
     /// The player is the one object these lines can't name: it is called
     /// "yourself", so "The yourself is not food." That is why `named` checks for
-    /// it and `plain` doesn't — a nameless line like "You smell nothing out of
-    /// the ordinary." answers `smell me` perfectly well.
+    /// it and `plain` doesn't — a nameless line has nowhere to put the name and
+    /// so answers `eat me` perfectly well whoever "me" is. `optionallyNamed`
+    /// takes the third road: it hands the line `nil` and lets the line's own
+    /// nameless half answer.
     ///
     /// Everybody *else* is the second object they can't name, for the sister
     /// reason: these lines are about objects, and "Mrs. Kettle is not food."
@@ -106,6 +108,35 @@ extension StubVerb {
             guard !object.isPlayer else { return text.stubs.yourself }
             guard !object.isActor else { return text.stubs.somebodyElse(object.definiteNoun) }
             return line(text, object.definiteNoun)
+        }
+    }
+
+    /// A stub whose rows **don't all carry a direct object**, so its line has to
+    /// read with a name and without one: `smell` and `smell the troll` are a
+    /// single intent, and one sentence has to answer both. The nameless rows
+    /// hand the line `nil`.
+    ///
+    /// So does the player, for the reason `named` states — "It smells like
+    /// yourself." is not a sentence — but where `named` defers to
+    /// ``GameText/StubReplies/yourself``, here the line already owns a nameless
+    /// half and that half is the better answer.
+    ///
+    /// No actor guard, deliberately, where `named` has one. These verbs act at a
+    /// distance and read perfectly well *about* a person: "The troll makes no
+    /// sound." is `V-LISTEN`'s own answer, not an indignity of the kind
+    /// "Mrs. Kettle is not food." would be. `touch` is the one that does have to
+    /// keep the guard, and stays `custom` for it.
+    static func optionallyNamed(
+        _ intent: Intent,
+        _ patterns: [[SyntaxElement]],
+        reach: Reach,
+        _ line: @escaping @Sendable (GameText, String?) -> String
+    ) -> StubVerb {
+        .init(intent, patterns, reach) { text, command in
+            guard let object = command.directObject, !object.isPlayer else {
+                return line(text, nil)
+            }
+            return line(text, object.definiteName)
         }
     }
 
@@ -399,14 +430,18 @@ extension DefaultActions {
             ],
             reach: .directObject
         ) { text, command in
-            guard let object = command.directObject, object.isActor, !object.isPlayer
-            else { return text.stubs.touch }
-            return text.stubs.somebodyElse(object.definiteNoun)
+            guard let object = command.directObject, !object.isPlayer else {
+                return text.stubs.touch(nil)
+            }
+            // Laying hands on somebody is not the same as looking at them, so
+            // this is the one sense verb that keeps the actor guard.
+            guard !object.isActor else { return text.stubs.somebodyElse(object.definiteNoun) }
+            return text.stubs.touch(object.definiteName)
         },
 
         // A smell crosses a room, and so does a sound. These two are the reason
         // the guard is per verb.
-        .plain(
+        .optionallyNamed(
             .smell,
             [
                 ["smell"],
@@ -415,16 +450,16 @@ extension DefaultActions {
                 ["sniff", .directObject],
             ],
             reach: .notNeeded
-        ) { $0.stubs.smell },
+        ) { $0.stubs.smell($1) },
 
-        .plain(
+        .optionallyNamed(
             .listen,
             [
                 ["listen"],
                 ["listen", "to", .directObject],
             ],
             reach: .notNeeded
-        ) { $0.stubs.listen },
+        ) { $0.stubs.listen($1) },
 
         .plain(
             .taste,
@@ -448,7 +483,7 @@ extension DefaultActions {
         // lexicon, and answers "You can't see any such thing" about a troll
         // standing in plain view.
         // No reach: a shout wakes somebody through glass.
-        .plain(
+        .optionallyNamed(
             .wake,
             [
                 ["wake"],
@@ -457,7 +492,7 @@ extension DefaultActions {
                 ["wake", "up", .directObject],
             ],
             reach: .notNeeded
-        ) { $0.stubs.wake },
+        ) { $0.stubs.wake($1) },
 
         // MARK: Social
 
@@ -498,20 +533,20 @@ extension DefaultActions {
         ) { $0.stubs.yell },
 
         // Waving a thing means waving a thing you've got hold of.
-        .plain(
+        .optionallyNamed(
             .wave,
             [
                 ["wave"],
                 ["wave", .directObject],
             ],
             reach: .directObject
-        ) { $0.stubs.wave },
+        ) { $0.stubs.wave($1) },
 
         .plain(.point, [["point", "at", .directObject]], reach: .notNeeded) { $0.stubs.point },
 
         // MARK: Motion
 
-        .plain(
+        .optionallyNamed(
             .climb,
             [
                 ["climb"],
@@ -521,7 +556,7 @@ extension DefaultActions {
                 ["climb", "on", .directObject],
             ],
             reach: .directObject
-        ) { $0.stubs.climb },
+        ) { $0.stubs.climb($1) },
 
         .plain(
             .jump,

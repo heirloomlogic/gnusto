@@ -131,7 +131,7 @@ re-voicing is an assignment, not a row:
 ```swift
 var text: GameText {
     var text = GameText()
-    text.stubs.climb = "That is not something you could climb."
+    text.stubs.climb = { _ in "That is not something you could climb." }
     return text
 }
 ```
