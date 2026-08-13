@@ -1005,113 +1005,18 @@ struct DungeonProseTests {
 
     /// **The sweep, and the only assertion here that cannot go stale.** Every
     /// other test in this section names one verb; a forty-eighth stub arriving
-    /// in the engine tomorrow would slip past all of them. This one asserts no
-    /// line the engine ships is still what *Dungeon* answers, and derives its
-    /// own completeness from ``GameText/StubReplies`` rather than trusting the
-    /// list below to have kept up.
+    /// in the engine tomorrow would slip past all of them. The shared helper
+    /// derives its own completeness from ``GameText/StubReplies`` rather than
+    /// from a list here that would have to be kept up.
     ///
     /// Deriving rather than restating is the whole point of the box: the round
     /// that filed it counted `smell` as re-skinned because a human had said so,
     /// while the constant behind it was the engine's line character for
     /// character.
-    ///
-    /// The comparisons are written out rather than reflected because a dynamic
-    /// cast to a function type is not reliable in Swift — an earlier draft of
-    /// this test read the closures out of a `Mirror` and trapped. `Mirror` is
-    /// still what proves the list is *whole*: the label check below fails the
-    /// moment a stub is added, so the next person is told to come here.
     @Test func noEngineStubLineSurvivesInDungeon() {
-        let ours = Dungeon().text.stubs
-        let engine = GameText.StubReplies()
-
-        // Two samples, because a plural one catches a template that hard-codes
-        // its agreement — "The rails is not food." is the defect the engine's
-        // own `Noun` exists to prevent.
-        let name = "the brass lantern"
-        let one = GameText.Noun(name)
-        let many = GameText.Noun("the rails", plural: true)
-
-        /// Every stub the engine ships, paired with what each side answers.
-        let floor: [(String, [String], [String])] = [
-            ("yourself", [ours.yourself], [engine.yourself]),
-            ("somebodyElse", [ours.somebodyElse(one)], [engine.somebodyElse(one)]),
-            ("attack", [ours.attack(name)], [engine.attack(name)]),
-            ("smash", [ours.smash(one), ours.smash(many)], [engine.smash(one), engine.smash(many)]),
-            ("burn", [ours.burn(name)], [engine.burn(name)]),
-            ("cut", [ours.cut(name)], [engine.cut(name)]),
-            ("dig", [ours.dig], [engine.dig]),
-            ("pull", [ours.pull(one), ours.pull(many)], [engine.pull(one), engine.pull(many)]),
-            ("turn", [ours.turn(one), ours.turn(many)], [engine.turn(one), engine.turn(many)]),
-            ("squeeze", [ours.squeeze(name)], [engine.squeeze(name)]),
-            ("shake", [ours.shake(name)], [engine.shake(name)]),
-            ("knock", [ours.knock], [engine.knock]),
-            ("throwAt", [ours.throwAt], [engine.throwAt]),
-            ("touch", [ours.touch], [engine.touch]),
-            ("smell", [ours.smell], [engine.smell]),
-            ("listen", [ours.listen], [engine.listen]),
-            ("taste", [ours.taste], [engine.taste]),
-            ("eat", [ours.eat(one), ours.eat(many)], [engine.eat(one), engine.eat(many)]),
-            ("drink", [ours.drink], [engine.drink]),
-            ("sleep", [ours.sleep], [engine.sleep]),
-            ("wake", [ours.wake], [engine.wake]),
-            ("kiss", [ours.kiss], [engine.kiss]),
-            (
-                "give", [ours.give(name, one), ours.give(name, many)],
-                [engine.give(name, one), engine.give(name, many)]
-            ),
-            ("yell", [ours.yell], [engine.yell]),
-            ("wave", [ours.wave], [engine.wave]),
-            ("point", [ours.point], [engine.point]),
-            ("climb", [ours.climb], [engine.climb]),
-            ("jump", [ours.jump], [engine.jump]),
-            ("swim", [ours.swim], [engine.swim]),
-            ("dive", [ours.dive], [engine.dive]),
-            ("stand", [ours.stand], [engine.stand]),
-            ("sit", [ours.sit], [engine.sit]),
-            ("lie", [ours.lie], [engine.lie]),
-            ("kneel", [ours.kneel], [engine.kneel]),
-            ("fill", [ours.fill(name)], [engine.fill(name)]),
-            ("pour", [ours.pour(name)], [engine.pour(name)]),
-            ("empty", [ours.empty(name)], [engine.empty(name)]),
-            ("tie", [ours.tie(name)], [engine.tie(name)]),
-            ("untie", [ours.untie(one), ours.untie(many)], [engine.untie(one), engine.untie(many)]),
-            ("pray", [ours.pray], [engine.pray]),
-            ("sing", [ours.sing], [engine.sing]),
-            ("curse", [ours.curse], [engine.curse]),
-            ("xyzzy", [ours.xyzzy], [engine.xyzzy]),
-            ("count", [ours.count], [engine.count]),
-            ("think", [ours.think], [engine.think]),
-            ("wish", [ours.wish], [engine.wish]),
-            ("buy", [ours.buy], [engine.buy]),
-            ("sell", [ours.sell], [engine.sell]),
-            ("blow", [ours.blow(name)], [engine.blow(name)]),
-        ]
-
-        // The completeness half: `Mirror` names every property the engine
-        // actually ships, so a stub added tomorrow with no row above fails
-        // here rather than being silently skipped.
-        let shipped = Set(Mirror(reflecting: engine).children.compactMap(\.label))
-        #expect(shipped == Set(floor.map(\.0)))
-        #expect(shipped.count == 49)
-
-        for (label, ourLines, engineLines) in floor {
-            for (ourLine, engineLine) in zip(ourLines, engineLines) {
-                #expect(
-                    ourLine != engineLine,
-                    "`\(label)` still answers in the engine's voice: \"\(engineLine)\"")
-            }
-        }
+        expectNoEngineStubLineSurvives(in: Dungeon().text.stubs, game: "Dungeon")
     }
 
-    /// **The Loud Room went on saying "The noise in here is past bearing" after
-    /// `echo` had settled it** — a static description with a state behind it,
-    /// which is box 3's mechanism at a site that pass did not reach.
-    ///
-    /// It surfaced from the other end: the stub floor's new `listen` reports
-    /// that the listener learns nothing, and next to a paragraph claiming the
-    /// din is unbearable that is a contradiction two lines apart. The repair is
-    /// the one the carousel next door already has — the room describes itself
-    /// with a rule. (#233)
     @Test func theLoudRoomStopsRoaringOnceTheEchoSettlesIt() async throws {
         let transcript = try await play(
             Dungeon(), Self.toTheLoudRoom + ["echo", "look", "listen"], seed: 18)

@@ -701,12 +701,20 @@ extension GameText {
 
         // MARK: Senses
 
-        /// Touching, feeling or rubbing something.
-        public var touch = "You feel nothing out of the ordinary."
-        /// Smelling the room or something in it.
-        public var smell = "You smell nothing out of the ordinary."
-        /// Listening to the room or something in it.
-        public var listen = "You hear nothing out of the ordinary."
+        /// Touching, feeling or rubbing something. `nil` when there is no name
+        /// to give — see ``StubVerb/optionallyNamed(_:_:reach:guardsActors:_:)``,
+        /// which these six lines and no others are driven by.
+        public var touch: @Sendable (_ name: String?) -> String = { _ in
+            "You feel nothing out of the ordinary."
+        }
+        /// Smelling the room or something in it. `nil` for the bare `smell`.
+        public var smell: @Sendable (_ name: String?) -> String = { _ in
+            "You smell nothing out of the ordinary."
+        }
+        /// Listening to the room or something in it. `nil` for the bare `listen`.
+        public var listen: @Sendable (_ name: String?) -> String = { _ in
+            "You hear nothing out of the ordinary."
+        }
         /// Tasting or licking something.
         public var taste = "You'd rather not."
 
@@ -720,8 +728,11 @@ extension GameText {
         public var drink = "There's nothing here worth drinking."
         /// Going to sleep.
         public var sleep = "You're not sleepy."
-        /// Waking, or waking somebody who isn't asleep.
-        public var wake = "There's no sleeping to be interrupted."
+        /// Waking, or waking somebody who isn't asleep. `nil` for the bare
+        /// `wake` and `wake up`.
+        public var wake: @Sendable (_ name: String?) -> String = { _ in
+            "There's no sleeping to be interrupted."
+        }
 
         // MARK: Social
 
@@ -734,15 +745,19 @@ extension GameText {
         }
         /// Yelling, shouting or screaming.
         public var yell = "You shout. Nothing shouts back."
-        /// Waving, with or without something in hand.
-        public var wave = "You wave. Nothing comes of it."
+        /// Waving, with or without something in hand. `nil` for the bare `wave`.
+        public var wave: @Sendable (_ name: String?) -> String = { _ in
+            "You wave. Nothing comes of it."
+        }
         /// Pointing at something.
         public var point = "Pointing at things accomplishes little."
 
         // MARK: Motion
 
-        /// Climbing something unclimbable.
-        public var climb = "You can't climb that."
+        /// Climbing something unclimbable. `nil` for the bare `climb`.
+        public var climb: @Sendable (_ name: String?) -> String = { _ in
+            "You can't climb that."
+        }
         /// Jumping, on the spot or over something.
         public var jump = "You jump on the spot. Nothing is achieved."
         /// Swimming with no water to swim in.

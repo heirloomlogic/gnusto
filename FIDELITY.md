@@ -1360,6 +1360,99 @@ fixed defect comes back.
   your head against the … as you attempt this feat." The stock text takes the
   thing's name for that reason.
 
+## The stub floor (`Sources/Zork1/Prose+Stubs.swift`, #242)
+
+The other side of the defect Dungeon's fifth pass repaired, and filed at the time
+for the reason the kitchen window states: a defect repaired on one side of a
+shared source and left on the other comes back. Thirteen of the engine's 47 stub
+verbs answered here in Zork I's voice and **thirty-four in Gnusto's**, in the
+repository's flagship verbatim reproduction; `MeleeCombat()` was constructed bare,
+so `attackFutile` — the most reachable stock line in the game — was the plugin's.
+
+The floor is now `text.stubs`, not `action(…)` rows. That is the same mechanism
+change Dungeon made and for the same reason: `DefaultActions.run` returns from an
+action override *before* `requireReach`, so all thirteen rows had silently given
+up the reach guard, the object's rendered name, its number agreement and the
+`yourself`/`somebodyElse` guards.
+
+**Twenty-seven lines are `gverbs.zil`'s as written**, each cited at its
+assignment: `V-SQUEEZE`, `V-ATTACK`, `V-MUNG`, `V-BURN`, `V-CUT`, `V-MOVE`,
+`V-TURN`, `V-SHAKE`, `V-KNOCK`, `V-EAT`, `V-KISS`, `V-GIVE`, `V-YELL`, `V-SWIM`,
+`V-STAND`, `V-FILL`, `V-POUR-ON`, `V-TIE`, `V-UNTIE`, `V-PRAY`, `V-CURSES`,
+`V-ADVENT`, `V-COUNT`, `V-WISH`, `V-BLAST`, `V-SMELL`, `V-LISTEN`. **The
+narrator's first person is kept** — "I'd sooner kiss a pig.", "I've known strange
+people, but fighting a X?", "I don't think that the X would agree with you."
+Dungeon converted these to the second person because an adaptation may; this game
+may not, and `Prose.drinkWater` has kept the source's "I" since Task 8.
+
+### Departures — the source has a line, and it renders differently
+
+- **`V-SKIP` and `HACK-HACK` draw, and a `GameText` line cannot.** `jump` is one
+  of four (`WHEEEEE`, `gverbs.zil:1272`) and `touch`/`wave` one of three
+  (`HO-HUM`, `:2031`). A stock line has no turn frame and so no access to the
+  seeded stream, and the only two ways to reach it — a rule or an `action(…)` row
+  — are the mechanism this floor exists to stop using. Each takes one entry:
+  `jump` the one its table is named for, `touch` and `wave` the third of three.
+- **`dig` loses its instrument.** `V-DIG` (`:416`) answers about the tool and
+  defaults it to `HANDS`; the engine hands the line no instrument, so the hands
+  are written into the sentence.
+- **`knock` loses its second branch.** `V-KNOCK` (`:765`) asks "Why knock on a
+  X?" of anything that is not a door; the floor keeps the door branch, which is
+  what is left after every door in the game has had its say.
+- **`give` answers with the actor branch throughout.** `V-GIVE` (`:714`) has a
+  non-actor branch and the engine's line cannot tell the two apart, so a mailbox
+  refuses politely where the source would say "You can't give a X to a Y!"
+- **`MeleeCombat.notAWeapon` names one of two.** `V-ATTACK:188` names both target
+  and weapon; the plugin hands the line only the weapon, so the target is "it".
+  `noWeapon` was widened by this change and does name its target.
+- **`bare climb`, `smell`, `listen`, `wave` and `wake` have no source verb.**
+  Zork I's `SMELL`, `LISTEN` and `WAVE` always take an object
+  (`gsyntax.zil:439`, `:291`, `:544`), and the objectless rows the engine parses
+  have nothing to reproduce. `smell` and `climb` keep the sentences this game
+  gave both halves before the split, so nothing a player had already read changed.
+
+### Inventions — Zork I has no such verb at all
+
+Twelve of the engine's stubs appear nowhere in `gsyntax.zil`, so these lines are
+**written, not reproduced**, and are recorded separately for that reason. They are
+in the register — terse, dry, exclamatory, rude to the player where the source is
+rude — but no ZIL routine stands behind them and none is cited at its assignment.
+
+`sing`, `buy`, `sell`, `think`, `point`, `kneel`, `lie`, `sit`, `sleep`, `taste`,
+`dive`, `empty` — plus `yourself`, for which no ZIL routine ever had to render the
+player's name, and `throwAt`, whose `THROW AT` requires an actor
+(`gsyntax.zil:486`) and drops the object rather than refusing.
+
+### An older claim, corrected
+
+`Sources/Zork1/Prose+Systems.swift` opened with *"These are the authentic Zork I
+texts, reused under license"* while most of the verb constants beneath it were
+modern inventions — `verbSmell` was "You smell nothing you could put a name to."
+where `V-SMELL` is "It smells like a X.", and `verbDigFutile`, `verbTouch`,
+`verbWave`, `verbGiveNoTaker`, `verbTieNothing` and `verbClimbNothing` were
+likewise this repository's own. Provenance is now stated per constant rather than
+per file: a reproduced line cites its ZIL routine and an invented one says
+nothing, because it has nothing to cite.
+
+### An engine change carried by this one
+
+Six stub lines — `smell`, `listen`, `touch`, `wave`, `wake`, `climb` — and
+`MeleeCombat.noWeapon` shipped as plain `String`s, so no game could say what they
+were about. Four of the source's answers are jokes *about the thing named*, so the
+verbatim rule could not be met without widening them; they now take an optional
+name (`StubVerb.optionallyNamed`). Behavior-preserving for every other game: the
+engine defaults keep their wording and ignore the name.
+
+### Tests
+
+`Tests/GnustoTests/Zork1ProseTests.swift`. The sweep,
+`noEngineStubLineSurvivesInZork1`, is the twin of Dungeon's and derives its
+completeness from `Mirror` over `GameText.StubReplies`, so a forty-eighth stub
+cannot arrive unvoiced. The rest reach the player through the real pipeline —
+including `theFloorKeepsTheReachGuardTheRowsGaveAway`, which is what the mechanism
+change bought back. The seed-0 350-point walkthrough is unmoved: no stub verb
+appears in its route.
+
 ## Dungeon (`Sources/Dungeon/`)
 
 ### The prose rule, stated before any region entry
@@ -3227,10 +3320,10 @@ installed as `text.stubs` rather than as the `action(…)` rows this game and
 `Sources/Zork1/` both used. Nothing in either source distinguishes the two — the
 distinction is Gnusto's — but it matters here because an action override returns
 before `requireReach`, so the old rows answered about things the player could not
-touch. `Sources/Zork1/` still uses the rows and still constructs `MeleeCombat()`
-with the plugin's stock text; that is filed rather than fixed here, because its
-floor should be Zork I's own lines under the verbatim rule and this game's is an
-adaptation.
+touch. `Sources/Zork1/` used the rows and constructed `MeleeCombat()` with the
+plugin's stock text; that was filed rather than fixed here, because its floor
+should be Zork I's own lines under the verbatim rule and this game's is an
+adaptation. It was fixed by #242 — see *The stub floor* under the Zork 1 half.
 
 #### Where the sources actually are
 

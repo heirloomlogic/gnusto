@@ -47,23 +47,25 @@ struct Zork1SystemsTests {
     // MARK: - The verb pack
 
     @Test func customVerbsParseAndAnswer() async throws {
-        // The pack teaches the parser these words; until a region gives them
-        // real mechanics, each answers with its polite stage-4 default rather
-        // than "I didn't understand that."
+        // The pack teaches the parser words the engine has never heard; until a
+        // region gives them real mechanics, each answers with its polite
+        // stage-4 default rather than "I didn't understand that."
+        //
+        // Only Zork's *own* verbs are here. The engine's stub verbs used to be
+        // re-skinned in this same block and were tested alongside them; they are
+        // `text.stubs` now, and `Zork1ProseTests` covers them. (#242)
         let transcript = try await play(
             Zork1(),
-            ["xyzzy", "plugh", "pray", "wave", "echo", "smell", "hello", "dig"])
+            ["wind mailbox", "inflate mailbox", "launch mailbox", "echo", "hello", "fix mailbox"])
         expectInOrder(
             transcript,
             [
-                "A hollow voice says",
-                "A hollow voice says",
-                "your prayers may be answered",
-                "You wave it about",
+                "isn't something you can wind",
+                "How can you inflate that?",
+                "That's pretty weird.",
                 "Your voice comes back to you",
-                "You smell nothing you could put a name to",
                 "Nobody here returns your greeting",
-                "You scrabble at the ground",
+                "doesn't need fixing",
             ])
     }
 
@@ -187,8 +189,12 @@ struct Zork1SystemsTests {
     @Test func climbingNothingClimbableIsPolitelyRefused() async throws {
         // Away from a climbable, the verb still parses — no parse error — and
         // answers with its stage-4 default rather than "I didn't understand."
-        let transcript = try await play(Zork1(), ["climb mailbox"])
-        expectInOrder(transcript, ["nothing here worth climbing"])
+        // Since #242 the default is `V-CLIMB-ON`'s own line, which names the
+        // thing; bare `climb` keeps the sentence this game used to give both.
+        let transcript = try await play(Zork1(), ["climb mailbox", "climb"])
+        expectInOrder(
+            transcript,
+            ["You can't climb onto the small mailbox.", "nothing here worth climbing"])
     }
 
     // MARK: - Diagnose

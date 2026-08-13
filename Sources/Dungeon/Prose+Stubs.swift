@@ -70,7 +70,7 @@ extension Prose {
     static var combatText: MeleeCombat.CombatText {
         var text = MeleeCombat.CombatText()
         text.attackFutile = attackFutile
-        text.noWeapon = "Trying that with your bare hands would be suicidal."
+        text.noWeapon = { _ in "Trying that with your bare hands would be suicidal." }
         text.notAWeapon = { "Attacking anything with \($0) would be suicidal." }
         text.weaponNotHeld = { "You aren't even holding \($0)." }
         return text
@@ -128,13 +128,13 @@ extension Prose {
 
         // MARK: Senses
 
-        stubs.touch = Prose.verbTouch
-        stubs.smell = Prose.verbSmell
+        stubs.touch = { _ in Prose.verbTouch }
+        stubs.smell = { _ in Prose.verbSmell }
         // Was "You hear nothing out of the ordinary." — a claim about the room,
         // printed in the Loud Room, whose whole puzzle is that it is too loud to
         // hear in. `loudRoom.before(.listen)` in ``DungeonRoundRoom`` answers
         // there; this is what is left over, and it reports on the listener.
-        stubs.listen = "You listen, and learn nothing you did not already know."
+        stubs.listen = { _ in "You listen, and learn nothing you did not already know." }
         stubs.taste = "You would regret it."
 
         // MARK: Body
@@ -146,7 +146,7 @@ extension Prose {
         stubs.sleep = "You have not come all this way to sleep."
         // Bare `wake` and `wake up` parse too, so the line has to be true with
         // and without something named.
-        stubs.wake = "There is no one asleep to be woken."
+        stubs.wake = { _ in "There is no one asleep to be woken." }
 
         // MARK: Social
 
@@ -160,12 +160,12 @@ extension Prose {
         }
         // `V-YELL` (`gverbs.zil:1616`). Trilogy verbatim.
         stubs.yell = "Aaaarrrrgggghhhh!"
-        stubs.wave = Prose.verbWave
+        stubs.wave = { _ in Prose.verbWave }
         stubs.point = "You point. The gesture is wasted."
 
         // MARK: Motion
 
-        stubs.climb = "That is not something you could climb."
+        stubs.climb = { _ in "That is not something you could climb." }
         // `V-SKIP` picks one of four (`WHEEEEE`, `gverbs.zil:1272`); this is the
         // one the table is named for. Trilogy verbatim.
         stubs.jump = "Wheeeeeeeeee!!!!!"

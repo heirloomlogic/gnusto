@@ -56,8 +56,12 @@ public struct MeleeCombat: GameContent {
         public var attackFutile: @Sendable (_ name: String) -> String = {
             "Attacking \($0) isn't the answer."
         }
-        /// Attacking bare-handed with no registered weapon in hand.
-        public var noWeapon = "Bare hands won't do it. You need a weapon."
+        /// Attacking bare-handed with no registered weapon in hand. Named, like
+        /// the other three, because the source branch this stands in for
+        /// (`V-ATTACK`, `gverbs.zil:180`) names the thing being swung at.
+        public var noWeapon: @Sendable (_ name: String) -> String = { _ in
+            "Bare hands won't do it. You need a weapon."
+        }
         /// Naming a weapon that isn't one ("attack troll with feather").
         public var notAWeapon: @Sendable (_ name: String) -> String = {
             "\(GameText.sentenceCase($0)) is no weapon."
@@ -301,7 +305,7 @@ public struct MeleeCombat: GameContent {
             {
                 weaponUsed = best
             } else {
-                try refuse(text.noWeapon)
+                try refuse(text.noWeapon(actor.definiteName))
             }
 
             // `FIGHTBIT`, set where the source sets it. `HERO-BLOW`
