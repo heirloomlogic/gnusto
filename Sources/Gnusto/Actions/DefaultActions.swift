@@ -168,7 +168,7 @@ enum DefaultActions {
             scratch.state.place(id, .on(surfaceID))
             scratch.state.touched.insert(id)
         }
-        frame.say(frame.definition.text.putItemOn(item.definiteName, surface.definiteName))
+        frame.say(frame.definition.text.putItemOn(item.definiteNoun, surface.definiteNoun))
     }
 
     static func putIn(_ command: Command, frame: TurnFrame) throws {
@@ -212,7 +212,7 @@ enum DefaultActions {
             scratch.state.place(id, .inside(containerID))
             scratch.state.touched.insert(id)
         }
-        frame.say(frame.definition.text.putItemIn(item.definiteName, container.definiteName))
+        frame.say(frame.definition.text.putItemIn(item.definiteNoun, container.definiteNoun))
     }
 
     /// True if `candidate` is `target` itself, or sits somewhere inside
@@ -247,10 +247,10 @@ enum DefaultActions {
     /// ``scenery``, and `RoomDescriber.sayListing` for the other side.
     private static func perceivableContents(
         of container: EntityID, in scratch: inout Scratch, frame: TurnFrame
-    ) -> [String] {
+    ) -> [GameText.Noun] {
         (scratch.state.containment().inContainer[container] ?? [])
             .filter { Visibility.isPerceivable($0, definition: frame.definition, state: scratch.state) }
-            .map { frame.indefiniteName(of: $0) }
+            .map { frame.indefiniteNoun(of: $0) }
     }
 
     static func open(_ command: Command, frame: TurnFrame) throws {
@@ -268,14 +268,14 @@ enum DefaultActions {
         if item.isOpen {
             try refuse(frame.definition.text.alreadyOpen)
         }
-        let contents = frame.with { scratch -> [String] in
+        let contents = frame.with { scratch -> [GameText.Noun] in
             scratch.state.openItems.insert(id)
             return perceivableContents(of: id, in: &scratch, frame: frame)
         }
         if contents.isEmpty {
             frame.say(frame.definition.text.opened)
         } else {
-            frame.say(frame.definition.text.openingReveals(item.definiteName, contents))
+            frame.say(frame.definition.text.openingReveals(item.definiteNoun, contents))
         }
     }
 
@@ -362,7 +362,7 @@ enum DefaultActions {
         if contents.isEmpty {
             frame.say(frame.definition.text.emptyContainer(item.definiteNoun))
         } else {
-            frame.say(frame.definition.text.inTheContainer(item.definiteName, contents))
+            frame.say(frame.definition.text.inTheContainer(item.definiteNoun, contents))
         }
     }
 
@@ -747,7 +747,7 @@ enum DefaultActions {
             (scratch.state.containment().held[.player] ?? [])
                 .map { id in
                     (
-                        name: frame.indefiniteName(of: id),
+                        noun: frame.indefiniteNoun(of: id),
                         isWorn: scratch.state.wornItems.contains(id)
                     )
                 }

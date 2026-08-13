@@ -183,8 +183,9 @@ extension Prose {
         // `V-GIVE`'s actor branch (`gverbs.zil:717`). The engine names the
         // recipient, which the `action(…)` row that stood here could not — so
         // this stops being false in front of the cyclops, who wants a great deal.
-        stubs.give = { _, recipient in
-            "\(recipient.sentenceCased) \(recipient.verb("refuses", "refuse")) it politely."
+        stubs.give = .naming {
+            "\($0.recipient.sentenceCased) "
+                + "\($0.recipient.verb("refuses", "refuse")) it politely."
         }
         // `V-YELL` (`gverbs.zil:1616`).
         stubs.yell = "Aaaarrrrgggghhhh!"

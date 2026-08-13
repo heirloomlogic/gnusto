@@ -68,7 +68,15 @@ Those three are the same type, and it is the same type the lines above use. Only
 
 A `Line` is handed a ``GameText/Noun``, never a bare name: the rendered phrase plus its number, so ``GameText/Noun/verb(_:_:)`` can pick the form that agrees and a game may call a thing `rails` and get "The rails are not food." Interpolating one prints its phrase, so a line with no verb to agree pays nothing for the facility. The number comes from the `plural` trait, declared for the same reason `properName` is: no engine should guess it, and no game should have to rename a thing to suit a stock line.
 
-The lines that are *not* `Line`s are the ones whose subject is not a thing in the world: a word the player typed (``GameText/unknownWord``), a list (``GameText/ambiguous``), a number (``GameText/scoreLine``), nothing at all (``GameText/pitchBlack``), or two things at once (``GameText/putItemIn``). The first four stay closures on purpose — `Line` is `ExpressibleByStringLiteral`, and a `Line` for `unknownWord` would let a game write `text.unknownWord = "Eh?"` and silently drop the word the line is *about*.
+A line about **two** things is a `Line` too, over a role struct that names them — ``GameText/Placement`` (a thing and what holds it), ``GameText/Gift``, ``GameText/Aboard``:
+
+```swift
+text.putItemIn = .naming { "You tuck \($0.item) into \($0.holder)." }
+```
+
+The roles are a type rather than a pair because `\($0.holder)` answers the question an author actually asks — which one is the container? — and `\($1)` does not. Both halves are nouns, which matters more here than for a one-object line: a two-object sentence has two things its verb might agree with, and it is rarely the one named first. ``GameText/itemOnSurface`` reads "On the table are the rails."
+
+The lines that are *not* `Line`s are the ones whose subject is not a thing in the world: a word the player typed (``GameText/unknownWord``), a list (``GameText/ambiguous``), a number (``GameText/scoreLine``), or nothing at all (``GameText/pitchBlack``). They stay closures on purpose — `Line` is `ExpressibleByStringLiteral`, and a `Line` for `unknownWord` would let a game write `text.unknownWord = "Eh?"` and silently drop the word the line is *about*.
 
 ## Randomness that replays
 

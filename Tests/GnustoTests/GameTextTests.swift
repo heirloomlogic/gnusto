@@ -71,10 +71,9 @@ struct GameTextShapeTests {
         "missingIndirect", "missingTopic", "missingDirection", "ambiguous",
         // A list, a number, a title, or nothing at all.
         "inventorySentence", "scoreLine", "banner", "pitchBlack",
-        // A line about *two* things. `Line` is about one; the shape that covers
-        // two is being settled against all seven at once.
-        "locationInVehicle", "putItemIn", "putItemOn", "itemOnSurface",
-        "itemInContainer", "openingReveals", "inTheContainer",
+        // A name and a *list*, which is a third thing again: the list is what
+        // the verb agrees with, and `Line` has no shape for it.
+        "openingReveals", "inTheContainer",
         // Not a line — the stub floor, swept separately.
         "stubs",
     ]
@@ -90,6 +89,9 @@ struct GameTextShapeTests {
                 child.value is String
                 || child.value is GameText.Line<GameText.Noun>
                 || child.value is GameText.Line<GameText.Noun?>
+                || child.value is GameText.Line<GameText.Placement>
+                || child.value is GameText.Line<GameText.Gift>
+                || child.value is GameText.Line<GameText.Aboard>
             #expect(
                 known || Self.notLines.contains(label),
                 """
@@ -144,9 +146,9 @@ struct PluralAgreementTests {
         #expect(transcript.contains("There are some metal bins here."))
         // `actorHere` — "Some stable hands are here."
         #expect(transcript.contains("Some stable hands are here."))
-        // `itemInContainer` — "In the wicker hamper are some lead weights."
-        // The verb belongs to the *contents*, which the sentence names second.
-        #expect(transcript.contains("In the wicker hamper is some lead weights."))
+        // `itemInContainer` — the verb belongs to the *contents*, which the
+        // sentence names second.
+        #expect(transcript.contains("In the wicker hamper are some lead weights."))
         // `locked` — "The iron gates are locked."
         #expect(transcript.contains("The iron gates are locked."))
         // `closedContainer`, off the travel path — "The iron gates are closed."

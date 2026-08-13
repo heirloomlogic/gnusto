@@ -143,3 +143,177 @@ extension GameText.Line where Object == GameText.Noun? {
         .init { $0.map(line) ?? bare }
     }
 }
+
+// MARK: - Lines about two things
+
+extension GameText {
+    /// A thing and what holds it: what the player put down, and the box, the
+    /// table or the hamper it went into.
+    ///
+    /// A ``Line`` is about *one* object, and a sentence about two needs some way
+    /// to say which is which. The roles are a type rather than a pair, because
+    /// the pair spelling — a tuple, `$0` and `$1` — leaves the API unable to
+    /// answer the only question an author actually asks at the call site: which
+    /// one is the container? `\($0.holder)` answers it; `\($1)` does not.
+    ///
+    /// One struct serves all four placement lines rather than one apiece,
+    /// because their roles really are the same two. That is also what lets
+    /// `RoomDescriber` keep handing ``GameText/itemOnSurface`` and
+    /// ``GameText/itemInContainer`` to one helper as a value.
+    public struct Placement: Sendable {
+        /// What was placed, or what is being listed.
+        public let item: Noun
+        /// What holds it — the container, or the surface it rests on.
+        public let holder: Noun
+
+        /// Creates a placement.
+        ///
+        /// - Parameters:
+        ///   - item: what was placed.
+        ///   - holder: what holds it.
+        public init(item: Noun, holder: Noun) {
+            self.item = item
+            self.holder = holder
+        }
+    }
+
+    /// Something offered, and whoever is being offered it.
+    public struct Gift: Sendable {
+        /// What is being handed over.
+        public let gift: Noun
+        /// Who is being handed it.
+        public let recipient: Noun
+
+        /// Creates a gift.
+        ///
+        /// - Parameters:
+        ///   - gift: what is being handed over.
+        ///   - recipient: who is being handed it.
+        public init(gift: Noun, recipient: Noun) {
+            self.gift = gift
+            self.recipient = recipient
+        }
+    }
+
+    /// A place, and the thing the player is riding through it.
+    ///
+    /// The odd one out, and the asymmetry is the point: ``place`` is a plain
+    /// `String` and deliberately not a ``Noun``. A `Noun`'s whole promise is
+    /// that it knows its own number, and a location has none to know — the
+    /// engine never articles a location, `Location` carries no `plural` trait,
+    /// and `TurnFrame.isPlural(_:)` answers for items only. Wrapping a room
+    /// title in a `Noun` would hand every game a ``Noun/verb(_:_:)`` that
+    /// silently answers "is" for a room called The Rails: the very defect
+    /// `Noun` exists to make unwritable, running backwards. A title is a title;
+    /// the thing beside it is a noun.
+    public struct Aboard: Sendable {
+        /// The location's own name, unarticled.
+        public let place: String
+        /// What the player is aboard.
+        public let vehicle: Noun
+
+        /// Creates a place-and-vehicle pair.
+        ///
+        /// - Parameters:
+        ///   - place: the location's own name.
+        ///   - vehicle: what the player is aboard.
+        public init(place: String, vehicle: Noun) {
+            self.place = place
+            self.vehicle = vehicle
+        }
+    }
+}
+
+extension GameText.Line where Object == GameText.Placement {
+    /// A line about a thing and what holds it, naming both.
+    ///
+    /// ```swift
+    /// text.putItemIn = .naming { "You tuck \($0.item) into \($0.holder)." }
+    /// ```
+    ///
+    /// Both arrive as ``GameText/Noun`` for the reason one does — and for a
+    /// second reason a one-object line never has. A sentence about two things
+    /// has two things its verb might agree with, and it is rarely the one the
+    /// sentence names first: ``GameText/itemOnSurface`` reads "On the table are
+    /// the rails", where the verb agrees with the rails and the template names
+    /// the table. While these were a pair of strings there was no way to write
+    /// that sentence at all.
+    ///
+    /// - Parameter line: builds the sentence from the two rendered nouns.
+    /// - Returns: the line.
+    public static func naming(
+        _ line: @escaping @Sendable (GameText.Placement) -> String
+    ) -> Self {
+        .init(line)
+    }
+
+    /// Renders the line for a thing and its holder.
+    ///
+    /// The engine calls this; a game assigns the line and never calls it. It
+    /// takes the two separately, rather than leaving callers to build a
+    /// ``GameText/Placement``, so that a call site reads the way it read when
+    /// these lines were two-argument closures.
+    ///
+    /// - Parameters:
+    ///   - item: what was placed, or what is being listed.
+    ///   - holder: what holds it.
+    /// - Returns: the sentence to print.
+    public func callAsFunction(_ item: GameText.Noun, _ holder: GameText.Noun) -> String {
+        self(.init(item: item, holder: holder))
+    }
+}
+
+extension GameText.Line where Object == GameText.Gift {
+    /// A line about something offered and whoever is being offered it.
+    ///
+    /// ```swift
+    /// stubs.give = .naming {
+    ///     "\($0.recipient.sentenceCased) \($0.recipient.verb("doesn't", "don't")) want \($0.gift)."
+    /// }
+    /// ```
+    ///
+    /// - Parameter line: builds the sentence from the gift and the recipient.
+    /// - Returns: the line.
+    public static func naming(
+        _ line: @escaping @Sendable (GameText.Gift) -> String
+    ) -> Self {
+        .init(line)
+    }
+
+    /// Renders the line. See ``GameText/Line/callAsFunction(_:_:)-(Noun,Noun)``
+    /// for why it takes the two separately.
+    ///
+    /// - Parameters:
+    ///   - gift: what is being handed over.
+    ///   - recipient: who is being handed it.
+    /// - Returns: the sentence to print.
+    public func callAsFunction(_ gift: GameText.Noun, _ recipient: GameText.Noun) -> String {
+        self(.init(gift: gift, recipient: recipient))
+    }
+}
+
+extension GameText.Line where Object == GameText.Aboard {
+    /// A line about where the player is and what they are riding.
+    ///
+    /// ```swift
+    /// text.locationInVehicle = .naming { "\($0.place), aboard \($0.vehicle)" }
+    /// ```
+    ///
+    /// - Parameter line: builds the sentence from the place and the vehicle.
+    /// - Returns: the line.
+    public static func naming(
+        _ line: @escaping @Sendable (GameText.Aboard) -> String
+    ) -> Self {
+        .init(line)
+    }
+
+    /// Renders the line.
+    ///
+    /// - Parameters:
+    ///   - place: the location's own name, unarticled.
+    ///   - vehicle: what the player is aboard.
+    /// - Returns: the sentence to print.
+    public func callAsFunction(_ place: String, _ vehicle: GameText.Noun) -> String {
+        self(.init(place: place, vehicle: vehicle))
+    }
+}
