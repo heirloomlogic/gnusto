@@ -85,7 +85,8 @@ struct Fulminate: Game, GameMain {
     /// themselves, which hid it; the patrolman doesn't, and printed "the
     /// patrolman looks at it and looks away."
     let talk = Conversation(
-        noInterest: { "\(GameText.sentenceCase($0)) looks at it and looks away." }
+        text: .init(
+            noInterest: .naming { "\($0.sentenceCased) looks at it and looks away." })
     )
 
     /// Whether the carriage house has gone up. Rooms and props read this to
@@ -139,13 +140,15 @@ struct Fulminate: Game, GameMain {
     /// line doesn't, and the cast happens to be the reason for four of them.
     var text: GameText {
         var text = GameText()
-        text.greets = { "\($0) looks at you and does not answer." }
-        text.notTakingOrders = { "\($0) hears you out and goes on doing exactly what \($0) was doing." }
+        text.greets = .naming { "\($0) looks at you and does not answer." }
+        text.notTakingOrders = .naming {
+            "\($0) hears you out and goes on doing exactly what \($0) was doing."
+        }
         // X ME is the first thing a player types, and this player has a past.
         text.selfDescription =
             "The same man who took statements in this hall in 1948, four years older."
         // A house of suspects is a house somebody will try to search, or grab.
-        text.cantSearchActor = { "You are not putting a hand on \($0) tonight." }
+        text.cantSearchActor = .naming { "You are not putting a hand on \($0) tonight." }
         // Three of them answer to "man" and three to "woman", so this line
         // gets read more often than you would think. The Oxford comma is the
         // house style, not an article workaround.

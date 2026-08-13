@@ -1,3 +1,5 @@
+import Gnusto
+
 /// The systems layer's prose: the game's own front matter, the defaults for the
 /// verbs this game minted, the liquid lines, and the handful of stock engine
 /// messages this game re-voices.
@@ -65,7 +67,7 @@ extension Prose {
     /// vehicle *and* no doorway — which is what this is, and what the Bank's
     /// old "It is solid, and you are not." was not, since it went with a
     /// private `walkThrough` verb that only ever met walls. (#233)
-    static func cantEnterThat(_ thing: String) -> String {
+    static func cantEnterThat(_ thing: GameText.Noun) -> String {
         "You hit your head against \(thing) as you attempt this feat."
     }
 

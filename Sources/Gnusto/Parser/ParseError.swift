@@ -28,7 +28,7 @@ enum ParseError: Error, Equatable {
     /// `butler, take the letter` — addressing a person with anything other
     /// than a greeting. The engine has no way for one character to act on
     /// another's word, so this is a refusal rather than a question.
-    case notTakingOrders(String)
+    case notTakingOrders(GameText.Noun)
 
     func playerMessage(_ text: GameText) -> String {
         switch self {

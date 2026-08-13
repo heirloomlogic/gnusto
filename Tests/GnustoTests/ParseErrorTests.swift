@@ -96,7 +96,7 @@ struct ParseErrorTests {
         .noReferent("it"),
         .unmatchedSyntax,
         .multipleNotAllowed,
-        .notTakingOrders("the butler"),
+        .notTakingOrders(GameText.Noun("the butler")),
     ]
 
     // MARK: - The answer context

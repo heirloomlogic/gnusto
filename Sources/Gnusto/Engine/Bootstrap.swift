@@ -553,6 +553,7 @@ enum Bootstrap {
             vocabulary.itemLexicons[id] = lexicon
             vocabulary.displayNames[id] = item.name ?? id.raw
             if item.isProperName { vocabulary.properNames.insert(id) }
+            if item.isPlural { vocabulary.plurals.insert(id) }
         }
 
         // Game- and bundle-declared filler words join the built-in articles.

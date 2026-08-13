@@ -90,46 +90,71 @@ public struct Conversation: GameContent {
 
     @Global var heard = Heard()
 
-    /// What an actor with no matching row and no fallback says.
-    private let nothingToSayLine: @Sendable (String) -> String
-    /// The refusal for trying to talk to something inanimate.
-    private let cantTalkToLine: String
-    /// The refusal for addressing yourself.
-    private let cantTalkToSelfLine: String
-    /// What an actor says about a thing shown to them that no row covers.
-    private let noInterestLine: @Sendable (String) -> String
-    /// What an actor with no authored greeting does when a conversation opens.
-    private let nothingToTalkAboutLine: @Sendable (String) -> String
+    /// This layer's stock lines, gathered into one value the way
+    /// `MeleeCombat.CombatText` gathers combat's — a plugin that claims a verb
+    /// owns that verb's voice, so the lines live with the plugin rather than on
+    /// ``GameText``.
+    ///
+    /// Each line about a person takes a ``GameText/Noun`` rather than a bare
+    /// name: three of the five carry a verb that has to agree with whoever they
+    /// name, and a game with a plural cast — the stable hands, the twins —
+    /// otherwise gets "the twins waits for you to come to the point" with no
+    /// way to fix it but to re-voice a line it was happy with.
+    public struct Text: Sendable {
+        /// What an actor with no matching row and no fallback says.
+        public var nothingToSay: GameText.Line<GameText.Noun>
+        /// The refusal for trying to talk to something inanimate.
+        public var cantTalkTo: String
+        /// The refusal for addressing yourself.
+        public var cantTalkToSelf: String
+        /// What an actor says about a thing shown to them that no row covers.
+        public var noInterest: GameText.Line<GameText.Noun>
+        /// What an actor with no authored greeting does when a conversation
+        /// opens.
+        public var nothingToTalkAbout: GameText.Line<GameText.Noun>
+
+        /// Creates the line table, defaulting every line a game doesn't care
+        /// about — so re-skinning one is `.init(noInterest: …)` and says
+        /// nothing about the other four.
+        ///
+        /// - Parameters:
+        ///   - nothingToSay: what an actor with no matching row and no fallback
+        ///     says, given their rendered name ("the butler", "Mrs. Vane").
+        ///   - cantTalkTo: the refusal for addressing something inanimate.
+        ///   - cantTalkToSelf: the refusal for addressing yourself.
+        ///   - noInterest: what an actor says about a thing shown to them that
+        ///     no `shows(_:to:)` row covers, given their rendered name.
+        ///   - nothingToTalkAbout: what an actor with no `greeting(of:)` row
+        ///     does when the player opens a conversation, given their name.
+        public init(
+            nothingToSay: GameText.Line<GameText.Noun> = .naming {
+                "\($0.sentenceCased) has nothing to say about that."
+            },
+            cantTalkTo: String = "You can only talk to something animate.",
+            cantTalkToSelf: String = "You keep your own counsel.",
+            noInterest: GameText.Line<GameText.Noun> = .naming {
+                "\($0.sentenceCased) shows no interest."
+            },
+            nothingToTalkAbout: GameText.Line<GameText.Noun> = .naming {
+                "\($0.sentenceCased) waits for you to come to the point."
+            }
+        ) {
+            self.nothingToSay = nothingToSay
+            self.cantTalkTo = cantTalkTo
+            self.cantTalkToSelf = cantTalkToSelf
+            self.noInterest = noInterest
+            self.nothingToTalkAbout = nothingToTalkAbout
+        }
+    }
+
+    /// This layer's lines.
+    private let text: Text
 
     /// Creates a conversation layer.
     ///
-    /// - Parameters:
-    ///   - nothingToSay: what an actor with no matching row and no fallback
-    ///     says, given their rendered name ("the butler", "Mrs. Vane").
-    ///   - cantTalkTo: the refusal for addressing something inanimate.
-    ///   - cantTalkToSelf: the refusal for addressing yourself.
-    ///   - noInterest: what an actor says about a thing shown to them that no
-    ///     `shows(_:to:)` row covers, given their rendered name.
-    ///   - nothingToTalkAbout: what an actor with no `greeting(of:)` row does
-    ///     when the player opens a conversation, given their rendered name.
-    public init(
-        nothingToSay: @escaping @Sendable (_ name: String) -> String = {
-            "\(GameText.sentenceCase($0)) has nothing to say about that."
-        },
-        cantTalkTo: String = "You can only talk to something animate.",
-        cantTalkToSelf: String = "You keep your own counsel.",
-        noInterest: @escaping @Sendable (_ name: String) -> String = {
-            "\(GameText.sentenceCase($0)) shows no interest."
-        },
-        nothingToTalkAbout: @escaping @Sendable (_ name: String) -> String = {
-            "\(GameText.sentenceCase($0)) waits for you to come to the point."
-        }
-    ) {
-        self.nothingToSayLine = nothingToSay
-        self.cantTalkToLine = cantTalkTo
-        self.cantTalkToSelfLine = cantTalkToSelf
-        self.noInterestLine = noInterest
-        self.nothingToTalkAboutLine = nothingToTalkAbout
+    /// - Parameter text: the stock lines, if the game re-voices any of them.
+    public init(text: Text = Text()) {
+        self.text = text
     }
 
     // MARK: - Knowledge
@@ -465,12 +490,12 @@ public struct Conversation: GameContent {
         action(.talk) {
             guard let addressee = command.directObject else { return }
             try requireSomebodyElse(addressee)
-            try reply(nothingToTalkAboutLine(addressee.definiteName))
+            try reply(text.nothingToTalkAbout(addressee.definiteNoun))
         }
         action(.show) {
             guard let addressee = command.indirectObject else { return }
             try requireSomebodyElse(addressee)
-            try reply(noInterestLine(addressee.definiteName))
+            try reply(text.noInterest(addressee.definiteNoun))
         }
     }
 
@@ -479,7 +504,7 @@ public struct Conversation: GameContent {
     private func shrug() throws {
         guard let addressee = command.directObject else { return }
         try requireSomebodyElse(addressee)
-        try reply(nothingToSayLine(addressee.definiteName))
+        try reply(text.nothingToSay(addressee.definiteNoun))
     }
 
     /// Refuses anything that can't hold up its end of a conversation. The
@@ -489,7 +514,7 @@ public struct Conversation: GameContent {
     /// - Parameter addressee: the entity the command named.
     /// - Throws: the refusal, when the addressee is the player or inanimate.
     private func requireSomebodyElse(_ addressee: Item) throws {
-        try require(!addressee.isPlayer, else: cantTalkToSelfLine)
-        try require(addressee.isActor, else: cantTalkToLine)
+        try require(!addressee.isPlayer, else: text.cantTalkToSelf)
+        try require(addressee.isActor, else: text.cantTalkTo)
     }
 }

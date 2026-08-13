@@ -11,22 +11,42 @@
 /// }
 /// ```
 ///
-/// Fixed lines are plain strings; lines built around names are `@Sendable`
-/// closures taking those names. The stub-verb lines on ``StubReplies`` are a
-/// third thing — a ``Line``, which is either — because which of the two a stub
-/// wants is the game's business and not the engine's.
+/// Every line has one of four shapes, and which one it has is a rule rather
+/// than an accident of what the engine's own wording happened to need:
 ///
-/// A closure receives a *rendered noun phrase* — "the troll", "a troll",
-/// "Mrs. Vane" — not a bare name. The article belongs to the engine, which
-/// knows which entities carry the `properName` trait; a template that wrote
-/// its own would say "the Mrs. Vane". Use ``sentenceCase(_:)`` where a line
-/// opens on the phrase, since "the troll" has to be capitalized and
-/// "Mrs. Vane" must not be.
+/// - **A fixed sentence is a `String`.** Nothing in it is about a particular
+///   thing, so there is nothing to hand it.
+/// - **A line about one thing is a ``Line``,** either `Line<Noun>` where every
+///   parser row behind it carries an object or `Line<Noun?>` where the verb
+///   also answers bare. A game writes it as a plain string literal or as
+///   ``Line/naming(_:)``, and which of the two is the game's business.
+/// - **A line about *two* things is a closure taking both** — ``putItemIn``,
+///   ``itemOnSurface``, ``locationInVehicle``. `Line` is about one object, and
+///   the shape that covers two is being settled against all of them at once
+///   rather than against whichever one came up first.
+/// - **A line about something that is not a thing in the world stays a raw
+///   closure.** A word the player typed (``unknownWord``, ``noReferent``,
+///   ``missingObject``), a list (``ambiguous``, ``inventorySentence``), a
+///   number (``scoreLine``), or nothing at all (``pitchBlack``). These are
+///   deliberately *not* ``Line``s: `Line` is `ExpressibleByStringLiteral`, so
+///   making ``unknownWord`` one would let a game write `text.unknownWord =
+///   "Eh?"` and silently drop the word that is the whole content of the line.
 ///
-/// A line whose *grammar* depends on the noun — anything with a verb agreeing
-/// with it — takes a ``Noun`` instead of a `String`, for the same reason the
-/// article is the engine's: only the engine knows which entities carry
-/// `plural`. See ``StubReplies``.
+/// The object arrives as a ``Noun`` — a *rendered noun phrase* ("the troll",
+/// "a troll", "Mrs. Vane") that also knows its number — and never as a bare
+/// name. Both halves of that are the engine's to know and not the template's:
+/// the article comes from the `properName` trait, so a line that writes its own
+/// says "the Mrs. Vane", and the number comes from `plural`, so a line that
+/// hard-codes its verb says "The rails is locked." Open on
+/// ``Noun/sentenceCased`` rather than capitalizing by hand, and reach for
+/// ``Noun/verb(_:_:)`` wherever a verb has to agree.
+///
+/// The parser's own lines are the one place a name arrives as a `String`:
+/// ``ambiguous`` and the `missing…` family are written before any entity is
+/// resolved, from ``Vocabulary`` rather than from the turn frame. None of them
+/// carries a verb that agrees with the noun, so none of them has a number to
+/// get wrong. ``notTakingOrders`` did, and the vocabulary carries the plural
+/// set for its sake.
 public struct GameText: Sendable {
     /// Creates the default table: the engine's classic voice.
     public init() {}
@@ -38,7 +58,7 @@ public struct GameText: Sendable {
     /// their sentence nothing until a verb turns up. The handful that carry one
     /// take this instead, so "The rails is not food." — a game's real noun made
     /// ungrammatical by a template's assumption — cannot be written.
-    public struct Noun: Sendable, CustomStringConvertible {
+    public struct Noun: Sendable, Equatable, CustomStringConvertible {
         /// The rendered phrase, article and all: "the rails", "Mrs. Vane".
         public let phrase: String
         /// Whether the phrase is grammatically plural.
@@ -91,8 +111,8 @@ public struct GameText: Sendable {
     /// Taking something that isn't takable (scenery).
     public var cantTake = "You can't take that."
     /// Taking a person.
-    public var cantTakeActor: @Sendable (_ name: String) -> String = {
-        "\(GameText.sentenceCase($0)) would take exception to that."
+    public var cantTakeActor: Line<Noun> = .naming {
+        "\($0.sentenceCased) would take exception to that."
     }
     /// Dropping (or otherwise handling) something not carried.
     public var notCarrying = "You aren't carrying that."
@@ -112,31 +132,31 @@ public struct GameText: Sendable {
     public var cantGoThatWay = "You can't go that way."
     /// Entering something that is neither a door on the way out of this room nor
     /// `enterable`.
-    public var cantEnterThat: @Sendable (_ name: String) -> String = {
+    public var cantEnterThat: Line<Noun> = .naming {
         "You can't get into \($0)."
     }
     /// Entering an enterable the player is carrying.
     public var cantEnterCarried = "You can't get into something you're carrying."
     /// Entering the vehicle the player is already in.
-    public var alreadyInVehicle: @Sendable (_ name: String) -> String = {
+    public var alreadyInVehicle: Line<Noun> = .naming {
         "You're already in \($0)."
     }
     /// Entering a second enterable without leaving the first.
-    public var mustExitFirst: @Sendable (_ name: String) -> String = {
+    public var mustExitFirst: Line<Noun> = .naming {
         "You'll have to get out of \($0) first."
     }
     /// A successful board.
-    public var boarded: @Sendable (_ name: String) -> String = {
+    public var boarded: Line<Noun> = .naming {
         "You are now in \($0)."
     }
     /// A successful disembark.
-    public var disembarked: @Sendable (_ name: String) -> String = {
+    public var disembarked: Line<Noun> = .naming {
         "You get out of \($0)."
     }
     /// Disembarking while on foot.
     public var notInVehicle = "You aren't in anything."
     /// Disembarking from something other than the boarded vehicle.
-    public var notInThat: @Sendable (_ name: String) -> String = {
+    public var notInThat: Line<Noun> = .naming {
         "You aren't in \($0)."
     }
     /// The room title while the player is in a vehicle.
@@ -144,7 +164,7 @@ public struct GameText: Sendable {
         "\($0), in \($1)"
     }
     /// Taking (or otherwise relocating) the vehicle the player is inside.
-    public var notWhileInside: @Sendable (_ name: String) -> String = {
+    public var notWhileInside: Line<Noun> = .naming {
         "Not while you're in \($0)."
     }
     /// A bare `go` with no direction.
@@ -166,33 +186,33 @@ public struct GameText: Sendable {
     // MARK: - Following
 
     /// The aside printed as the player sets off after somebody.
-    public var following: @Sendable (_ name: String) -> String = {
+    public var following: Line<Noun> = .naming {
         "(after \($0))"
     }
     /// Following somebody who is standing right here.
-    public var alreadyFollowing: @Sendable (_ name: String) -> String = {
-        "\(GameText.sentenceCase($0)) is right here."
+    public var alreadyFollowing: Line<Noun> = .naming {
+        "\($0.sentenceCased) is right here."
     }
     /// Following something that isn't a person.
-    public var cantFollowThat: @Sendable (_ name: String) -> String = {
-        "\(GameText.sentenceCase($0)) isn't going anywhere."
+    public var cantFollowThat: Line<Noun> = .naming {
+        "\($0.sentenceCased) isn't going anywhere."
     }
     /// Following somebody who has gone somewhere no exit from here leads. The
     /// search is one exit deep, so this is also the answer for a quarry who is
     /// two rooms away — see `DefaultActions.follow`.
-    public var lostThem: @Sendable (_ name: String) -> String = {
+    public var lostThem: Line<Noun> = .naming {
         "You have no idea which way \($0) went."
     }
 
     // MARK: - Greeting
 
     /// Saying hello to somebody who has nothing of their own to say.
-    public var greets: @Sendable (_ name: String) -> String = {
-        "\(GameText.sentenceCase($0)) nods, and says nothing."
+    public var greets: Line<Noun> = .naming {
+        "\($0.sentenceCased) nods, and says nothing."
     }
     /// Greeting something that isn't a person.
-    public var cantGreetThat: @Sendable (_ name: String) -> String = {
-        "\(GameText.sentenceCase($0)) is unlikely to answer."
+    public var cantGreetThat: Line<Noun> = .naming {
+        "\($0.sentenceCased) is unlikely to answer."
     }
     /// A bare hello with nobody about.
     public var nobodyToGreet = "There's nobody here to greet."
@@ -239,12 +259,12 @@ public struct GameText: Sendable {
     // MARK: - Light
 
     /// A successful `turn on` of a light source.
-    public var nowOn: @Sendable (_ name: String) -> String = {
-        "\(GameText.sentenceCase($0)) is now on."
+    public var nowOn: Line<Noun> = .naming {
+        "\($0.sentenceCased) is now on."
     }
     /// A successful `turn off`.
-    public var nowOff: @Sendable (_ name: String) -> String = {
-        "\(GameText.sentenceCase($0)) is now off."
+    public var nowOff: Line<Noun> = .naming {
+        "\($0.sentenceCased) is now off."
     }
     /// Turning on something already lit.
     public var alreadyOn = "It's already on."
@@ -298,35 +318,35 @@ public struct GameText: Sendable {
     /// guard failed — you can see it, you just can't touch it (e.g. through a
     /// shut glass jar). Distinct from `cantSeeAnySuchThing`, which is for a
     /// noun that isn't in scope at all.
-    public var cantReach: @Sendable (_ name: String) -> String = {
+    public var cantReach: Line<Noun> = .naming {
         "You can't reach \($0)."
     }
 
     /// Refusal for putting a container into something it (transitively)
     /// contains — the ancestor-chain cycle case, distinct from putting an item
     /// directly into itself.
-    public var cantPutInsideOwnContents: @Sendable (_ name: String) -> String = {
+    public var cantPutInsideOwnContents: Line<Noun> = .naming {
         "You can't put \($0) inside something it contains."
     }
 
     /// The `putOn` counterpart to `cantPutInsideOwnContents`.
-    public var cantPutOntoOwnContents: @Sendable (_ name: String) -> String = {
+    public var cantPutOntoOwnContents: Line<Noun> = .naming {
         "You can't put \($0) onto something it contains."
     }
 
     /// Opening something that is locked.
-    public var locked: @Sendable (_ name: String) -> String = {
-        "\(GameText.sentenceCase($0)) is locked."
+    public var locked: Line<Noun> = .naming {
+        "\($0.sentenceCased) is locked."
     }
 
     /// Reaching into (or moving through) something that is closed.
-    public var closedContainer: @Sendable (_ name: String) -> String = {
-        "\(GameText.sentenceCase($0)) is closed."
+    public var closedContainer: Line<Noun> = .naming {
+        "\($0.sentenceCased) is closed."
     }
 
     /// Looking into a container with nothing in it.
-    public var emptyContainer: @Sendable (_ name: String) -> String = {
-        "\(GameText.sentenceCase($0)) is empty."
+    public var emptyContainer: Line<Noun> = .naming {
+        "\($0.sentenceCased) is empty."
     }
 
     /// Searching something that has no inside to search: the noun resolved and
@@ -335,19 +355,19 @@ public struct GameText: Sendable {
     /// scope — the player can see this perfectly well, and SEARCH GRASS
     /// answering "You can't see any such thing" about grass the game will
     /// happily describe is the defect this line exists to retire.
-    public var nothingToSearch: @Sendable (_ name: String) -> String = {
+    public var nothingToSearch: Line<Noun> = .naming {
         "You find nothing of interest in \($0)."
     }
 
     /// Searching a person. Distinct from ``nothingToSearch`` because "you find
     /// nothing of interest in the cook" claims you frisked her and came up
     /// empty, which is a good deal more than happened.
-    public var cantSearchActor: @Sendable (_ name: String) -> String = {
-        "\(GameText.sentenceCase($0)) would have something to say about that."
+    public var cantSearchActor: Line<Noun> = .naming {
+        "\($0.sentenceCased) would have something to say about that."
     }
 
     /// Locking or unlocking with a key that isn't in hand.
-    public var keyNotHeld: @Sendable (_ name: String) -> String = {
+    public var keyNotHeld: Line<Noun> = .naming {
         "You aren't holding \($0)."
     }
 
@@ -369,17 +389,17 @@ public struct GameText: Sendable {
     }
 
     /// The aside printed when handling a worn item removes it first.
-    public var firstTakingOff: @Sendable (_ name: String) -> String = {
+    public var firstTakingOff: Line<Noun> = .naming {
         "(first taking off \($0))"
     }
 
     /// A successful `wear`.
-    public var putOn: @Sendable (_ name: String) -> String = {
+    public var putOn: Line<Noun> = .naming {
         "You put on \($0)."
     }
 
     /// A successful `doff`.
-    public var takeOff: @Sendable (_ name: String) -> String = {
+    public var takeOff: Line<Noun> = .naming {
         "You take off \($0)."
     }
 
@@ -389,18 +409,18 @@ public struct GameText: Sendable {
     }
 
     /// Examining something with no description of its own.
-    public var nothingSpecial: @Sendable (_ name: String) -> String = {
+    public var nothingSpecial: Line<Noun> = .naming {
         "You see nothing special about \($0)."
     }
 
     /// A room description's line for a loose item.
-    public var itemHere: @Sendable (_ name: String) -> String = {
+    public var itemHere: Line<Noun> = .naming {
         "There is \($0) here."
     }
     /// A room description's line for an actor with no `firstSight` presence
     /// line of its own.
-    public var actorHere: @Sendable (_ name: String) -> String = {
-        "\(GameText.sentenceCase($0)) is here."
+    public var actorHere: Line<Noun> = .naming {
+        "\($0.sentenceCased) is here."
     }
 
     /// A room description's line for an item resting on a surface.
@@ -491,8 +511,8 @@ public struct GameText: Sendable {
     /// (see ``takesOrders``), so anybody who hasn't opted in hears you out and
     /// declines. `butler, hello` is the one addressed form that always does
     /// something, and it becomes a GREET.
-    public var notTakingOrders: @Sendable (_ name: String) -> String = {
-        "\(GameText.sentenceCase($0)) has no intention of taking orders from you."
+    public var notTakingOrders: Line<Noun> = .naming {
+        "\($0.sentenceCased) has no intention of taking orders from you."
     }
 
     /// An order to somebody who *does* take them that nothing in the game
@@ -500,7 +520,7 @@ public struct GameText: Sendable {
     /// actions are all written for the player and never run for somebody else,
     /// so an order happens only where a rule makes it happen. Free, for the
     /// same reason `cantDoThat` is: nothing happened.
-    public var doesNotKnowHow: @Sendable (_ person: Noun) -> String = {
+    public var doesNotKnowHow: Line<Noun> = .naming {
         "\($0.sentenceCased) \($0.verb("does", "do")) not know how to do that."
     }
 

@@ -23,15 +23,15 @@ struct Snark: Game {
 }
 ```
 
-Fixed lines are plain strings. Lines built around a name are closures, so the override controls the whole sentence:
+Fixed lines are plain strings. A line built around a name is a ``GameText/Line``, which takes a bare string as readily as a naming closure — so whether a line names the thing it is about is the game's call and not a shape the engine picked:
 
 ```swift
-text.cantReach = { "\($0) is right there, and yet." }
+text.cantReach = .naming { "\($0) is right there, and yet." }
 ```
 
 ## Articles are the engine's job
 
-A closure receives a **rendered noun phrase** — `the brass lantern`, `a brass lantern`, `Mrs. Vane` — not a bare name. The article is chosen before the closure runs, because only the engine knows which entities carry the `properName` trait:
+A naming line receives a ``GameText/Noun`` — a **rendered noun phrase** (`the brass lantern`, `a brass lantern`, `Mrs. Vane`) that also knows its own number — never a bare name. The article is chosen before the closure runs, because only the engine knows which entities carry the `properName` trait:
 
 ```swift
 let constance = Actor {
@@ -42,10 +42,10 @@ let constance = Actor {
 
 With that one word, every stock line reads correctly: `Mrs. Vane is right here.`, `You see nothing special about Mrs. Vane.`, `Mrs. Vane would take exception to that.` Without it they all say `the Mrs. Vane`, and a disambiguation between a person and a prop — which has to article one and not the other in the same sentence — could not be fixed by re-skinning at all.
 
-Where a line *opens* on the phrase, wrap it in ``GameText/sentenceCase(_:)``: `the troll` has to be capitalized and `Mrs. Vane` must be left alone.
+Where a line *opens* on the phrase, reach for ``GameText/Noun/sentenceCased``: `the troll` has to be capitalized and `Mrs. Vane` must be left alone.
 
 ```swift
-text.cantTakeActor = { "\(GameText.sentenceCase($0)) would sooner not." }
+text.cantTakeActor = .naming { "\($0.sentenceCased) would sooner not." }
 ```
 
 The other three helpers are public statics too, for a custom line that builds a phrase of its own: ``GameText/definite(_:proper:)``, ``GameText/indefinite(_:proper:)``, and ``GameText/list(_:)``, which joins already-rendered phrases into an English list. A rule can reach the same forms through ``Item/definiteName`` and ``Item/indefiniteName``.
@@ -64,9 +64,11 @@ text.stubs.smash = .naming { "\($0.sentenceCased) \($0.verb("is", "are")) stoute
 
 Overriding one re-skins the line; replacing the *behavior* is a rule or an `actions` row. See <doc:StubVerbs>.
 
-Those three are the same type. A stub line with an object to name is a ``GameText/Line``, which takes a bare string as readily as a naming closure, so whether a line names the thing it is about is the game's call and not the engine's. Only a verb with no object slot on any row — `sing`, `pray`, `swim` — is a plain `String`, because there is nothing for a closure to be handed.
+Those three are the same type, and it is the same type the lines above use. Only a verb with no object slot on any row — `sing`, `pray`, `swim` — is a plain `String`, because there is nothing for a closure to be handed.
 
 A `Line` is handed a ``GameText/Noun``, never a bare name: the rendered phrase plus its number, so ``GameText/Noun/verb(_:_:)`` can pick the form that agrees and a game may call a thing `rails` and get "The rails are not food." Interpolating one prints its phrase, so a line with no verb to agree pays nothing for the facility. The number comes from the `plural` trait, declared for the same reason `properName` is: no engine should guess it, and no game should have to rename a thing to suit a stock line.
+
+The lines that are *not* `Line`s are the ones whose subject is not a thing in the world: a word the player typed (``GameText/unknownWord``), a list (``GameText/ambiguous``), a number (``GameText/scoreLine``), nothing at all (``GameText/pitchBlack``), or two things at once (``GameText/putItemIn``). The first four stay closures on purpose — `Line` is `ExpressibleByStringLiteral`, and a `Line` for `unknownWord` would let a game write `text.unknownWord = "Eh?"` and silently drop the word the line is *about*.
 
 ## Randomness that replays
 

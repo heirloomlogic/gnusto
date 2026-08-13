@@ -20,6 +20,12 @@ struct Vocabulary: Sendable {
     /// name entities too — "Which do you mean: Mrs. Vane or Dr. Pike?" — and
     /// it has no frame to ask, so the article rule travels with the lexicon.
     var properNames: Set<EntityID> = []
+    /// The items whose display name is grammatically plural, carried for the
+    /// same reason and by the same argument as ``properNames``: the parser
+    /// writes ``GameText/notTakingOrders``, that line's verb has to agree with
+    /// the person it names, and the parser has no frame to ask. The number
+    /// rule travels with the lexicon or it does not travel at all.
+    var plurals: Set<EntityID> = []
     var verbWords: Set<String> = []
     var directions: [String: Direction] = [:]
     var prepositions: Set<String> = []

@@ -40,7 +40,7 @@ struct Zork1: Game, GameMain {
         // The famous dark-room line (gverbs.zil V-LOOK / the grue clause).
         text.pitchBlack = { "It is pitch black. You are likely to be eaten by a grue." }
         // Examining an ordinary thing (gverbs.zil V-EXAMINE).
-        text.nothingSpecial = { "There's nothing special about \($0)." }
+        text.nothingSpecial = .naming { "There's nothing special about \($0)." }
         // Open/close and possession refusals (gverbs.zil).
         text.alreadyOpen = "It is already open."
         text.alreadyClosed = "It is already closed."
@@ -51,7 +51,9 @@ struct Zork1: Game, GameMain {
         text.nothingToTakeHere = "There's nothing here you can take."
         // ENTER / GO THROUGH something that is neither doorway nor vehicle
         // (gverbs.zil V-THROUGH's last clause).
-        text.cantEnterThat = { "You hit your head against \($0) as you attempt this feat." }
+        text.cantEnterThat = .naming {
+            "You hit your head against \($0) as you attempt this feat."
+        }
         // The stub floor — every verb the parser knows and no mechanic answers.
         text.stubs = Prose.stubFloor
         return text

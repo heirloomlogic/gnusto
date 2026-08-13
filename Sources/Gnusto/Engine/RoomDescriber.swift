@@ -131,7 +131,7 @@ enum RoomDescriber {
 
         for itemID in roomItems {
             guard let item = definition.items[itemID] else { continue }
-            sayListing(of: itemID) { definition.text.itemHere(frame.indefiniteName(of: itemID)) }
+            sayListing(of: itemID) { definition.text.itemHere(frame.indefiniteNoun(of: itemID)) }
 
             // "On the X is a Y." for a surface standing in the room.
             if item.isSurface {
@@ -157,7 +157,7 @@ enum RoomDescriber {
             if let presence = frame.presenceText(of: actorID) {
                 frame.say(presence)
             } else {
-                frame.say(frame.definition.text.actorHere(frame.indefiniteName(of: actorID)))
+                frame.say(frame.definition.text.actorHere(frame.indefiniteNoun(of: actorID)))
             }
         }
     }
