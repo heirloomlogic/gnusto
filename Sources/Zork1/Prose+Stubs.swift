@@ -117,7 +117,7 @@ extension Prose {
         stubs.dig = "Digging with your hands is silly."
         // `pull` routes to `V-MOVE` in the source (`gsyntax.zil:368`), whose
         // immovable branch is `gverbs.zil:918`.
-        stubs.pull = .naming { "You can't move \($0.phrase)." }
+        stubs.pull = .naming { "You can't move \($0)." }
         // `V-TURN` (`gverbs.zil:1506`).
         stubs.turn = "This has no effect."
         // `V-SQUEEZE`'s other branch (`gverbs.zil:1291`).
@@ -163,7 +163,7 @@ extension Prose {
         // MARK: Body
 
         // `V-EAT`'s last branch (`gverbs.zil:515`).
-        stubs.eat = .naming { "I don't think that \($0.phrase) would agree with you." }
+        stubs.eat = .naming { "I don't think that \($0) would agree with you." }
         // `V-EAT`'s no-water branch (`gverbs.zil:504`). The bottle's own rules in
         // ``ZorkHouse`` claim `drink` wherever there is water to drink.
         stubs.drink = .init(Prose.nothingToDrink)

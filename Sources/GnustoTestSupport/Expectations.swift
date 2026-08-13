@@ -99,7 +99,7 @@ public func expectNoAmbiguity(
 }
 
 /// Every stub-verb line a game still answers in the engine's voice, by property
-/// name and in declaration order.
+/// name.
 ///
 /// A game that gives itself a **stub floor** — `text.stubs`, rather than an
 /// `action(…)` row per verb — is claiming all ~47 of them, and the claim is easy
@@ -142,23 +142,22 @@ public func engineVoicedStubLines(in ours: GameText.StubReplies) -> [String] {
         }
     }
 
-    let engineLines = Dictionary(
-        uniqueKeysWithValues: Mirror(reflecting: engine).children.compactMap { child in
-            child.label.map { ($0, child.value) }
-        })
-
+    // Zipped rather than keyed by label: both sides are the same concrete type,
+    // so `Mirror` walks them in the same declaration order, and a dictionary
+    // would only add a lookup that can't miss and a trap that can't fire.
     var voiced: [String] = []
-    for child in Mirror(reflecting: ours).children {
-        guard let label = child.label, let engineLine = engineLines[label] else { continue }
+    for (mine, theirs) in zip(
+        Mirror(reflecting: ours).children, Mirror(reflecting: engine).children)
+    {
         // `give` is the one line about *two* objects, so it is not a `Line` and
         // reflection cannot reach it: a dynamic cast to a function type is not
         // reliable in Swift, and an earlier draft of this sweep trapped doing
         // it. It is compared by hand below, and the label check in
         // `theStubSweepSeesEveryLineAGameHasNotVoiced` is what proves the
         // hand-written case has not been forgotten.
-        guard label != "give" else { continue }
-        guard let ourSamples = samples(of: child.value),
-            let engineSamples = samples(of: engineLine)
+        guard let label = mine.label, label != "give" else { continue }
+        guard let ourSamples = samples(of: mine.value),
+            let engineSamples = samples(of: theirs.value)
         else {
             Issue.record(
                 """

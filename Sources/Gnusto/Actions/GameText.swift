@@ -712,8 +712,8 @@ extension GameText {
         }
         /// Knocking on something.
         public var knock: Line<Noun?> = "Nobody answers."
-        /// Throwing something at something else. Names the *projectile*; see
-        /// the row for why it is not the target.
+        /// Throwing something at something else. Offered the *projectile's*
+        /// name; see the row for why not the target's.
         public var throwAt: Line<Noun?> = "Throwing things about achieves nothing."
 
         // MARK: Senses
@@ -746,9 +746,9 @@ extension GameText {
 
         // MARK: Social
 
-        /// Kissing or hugging somebody — who is named, unlike everywhere else
-        /// a stub reaches a person, because kissing somebody is what the verb
-        /// is for.
+        /// Kissing or hugging somebody. Offered their name, unlike everywhere
+        /// else a stub reaches a person, because kissing somebody is what the
+        /// verb is for; the engine's own wording declines it.
         public var kiss: Line<Noun?> = "That would be presumptuous."
         /// Handing something to somebody who doesn't want it. Names both, since
         /// every row carries both slots.

@@ -111,7 +111,7 @@ extension Prose {
         }
         // `V-TURN` (`gverbs.zil:1505`) is "This has no effect." — kept, with the
         // thing named, so the reply does not read as a failed `turn on`.
-        stubs.turn = .naming { "Turning \($0.phrase) has no effect." }
+        stubs.turn = .naming { "Turning \($0) has no effect." }
         // `V-SQUEEZE`'s other branch: "How singularly useless."
         stubs.squeeze = .naming { "Squeezing \($0) is singularly useless." }
         stubs.shake = .naming { "You shake \($0). Nothing comes loose." }

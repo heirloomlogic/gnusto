@@ -128,7 +128,8 @@ For behavior that spans every object rather than one, use an `actions` row —
 ```swift
 public var actions: [IntentAction] {
     action(.attack) {
-        try reply(text.attackFutile(command.directObject?.indefiniteName ?? "that"))
+        try reply(
+            text.attackFutile(command.directObject?.indefiniteNoun ?? GameText.Noun("that")))
     }
 }
 ```

@@ -169,11 +169,16 @@ struct ReskinnedStubGame: Game {
     }
 }
 
-/// Names its objects in the six stub lines that are handed an optional name, so
-/// one transcript covers the whole contract of ``StubVerb/optionallyNamed``:
-/// the named half, the nameless half a bare row falls back to, the player
-/// falling back to that same half rather than to `yourself`, and `touch` still
-/// deferring to `somebodyElse` where its sister verbs name the person.
+/// Names its objects in the stub lines that are handed an optional name, so one
+/// transcript covers the whole contract of ``StubVerb/optionallyNamed``: the
+/// named half, the nameless half a bare row falls back to, the player falling
+/// back to that same half rather than to `yourself`, and `touch` still deferring
+/// to `somebodyElse` where its sister verbs name the person.
+///
+/// It also carries **both spellings of a stub line in one `text` block** —
+/// `kiss` as a bare string literal, `count` as a naming closure — which before
+/// ``GameText/Line`` was not a choice a game had, because the engine's own
+/// wording for each verb had already made it.
 struct NamingStubGame: Game {
     let title = "Naming"
     let intro = "A room whose stub lines say what they are looking at."
@@ -204,6 +209,10 @@ struct NamingStubGame: Game {
         text.stubs.touch = .naming(orBare: "You feel only the room.") {
             "Fiddling with \($0) has no effect."
         }
+        text.stubs.kiss = "You keep your hands to yourself."
+        text.stubs.count = .naming(orBare: "You lose your place.") {
+            "You lose count of \($0)."
+        }
         return text
     }
 
@@ -219,9 +228,12 @@ struct NamingStubGame: Game {
 /// about nothing at all.
 ///
 /// Kept apart from ``NamingStubGame`` rather than folded into it: that one is
-/// the readable six-verb worked example of the contract, and eighteen synthetic
-/// lines would bury it. These are deliberately uniform — "You <verb> the X." —
+/// the readable worked example of the contract, and eighteen synthetic lines
+/// would bury it. These are deliberately uniform — "You <verb> the X." —
 /// because what is under test is which noun arrives where, not the prose.
+///
+/// The room is ``StubLab``'s, re-declared rather than shared: `StubLab` exists
+/// to show what a game gets for *free* and so may never declare a `text`.
 struct EveryNameableStubGame: Game {
     let title = "Every Nameable"
     let intro = "A room whose idle verbs all say what they are aimed at."
@@ -269,7 +281,7 @@ struct EveryNameableStubGame: Game {
         text.stubs.wake = .naming(orBare: "You wake nothing in particular.") {
             "You wake \($0)."
         }
-        text.stubs.wave = .naming(orBare: "You wave at nothing in particular.") {
+        text.stubs.wave = .naming(orBare: "You wave nothing in particular.") {
             "You wave \($0)."
         }
         text.stubs.climb = .naming(orBare: "You climb nothing in particular.") {
@@ -320,48 +332,6 @@ struct EveryNameableStubGame: Game {
         rod.starts(in: room)
         flask.starts(in: room)
         bench.starts(in: room)
-        rat.starts(in: room)
-    }
-}
-
-/// The whole API claim of #245 in one `text` block: two stub lines, one written
-/// as a bare string literal and one as a naming closure, assigned to properties
-/// of the same type.
-///
-/// Before ``GameText/Line``, which spelling a line took was the engine's to
-/// decide and a game's to live with. That this file compiles is the test; the
-/// transcript below only confirms both spellings still print.
-struct EitherSpellingStubGame: Game {
-    let title = "Either Spelling"
-    let intro = "A room where one idle verb names things and one does not."
-
-    let room = Location {
-        name("Room")
-        description("A plain room.")
-    }
-
-    let rod = Item {
-        name("brass rod")
-        adjectives("brass")
-    }
-
-    let rat = Actor {
-        name("grey rat")
-        adjectives("grey")
-    }
-
-    var text: GameText {
-        var text = GameText()
-        text.stubs.kiss = "You keep your hands to yourself."
-        text.stubs.count = .naming(orBare: "You lose your place.") {
-            "You lose count of \($0)."
-        }
-        return text
-    }
-
-    var map: WorldMap {
-        player.starts(in: room)
-        rod.starts(in: room)
         rat.starts(in: room)
     }
 }

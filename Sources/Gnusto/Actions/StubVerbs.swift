@@ -45,7 +45,7 @@ struct StubVerb: Sendable {
         _ intent: Intent,
         _ patterns: [[SyntaxElement]],
         _ reach: Reach,
-        namesObject: Bool,
+        namesObject: Bool = true,
         line: @escaping @Sendable (GameText, Command) -> String
     ) {
         self.intent = intent
@@ -102,18 +102,17 @@ extension StubVerb {
     /// than a convenience.
     ///
     /// The line is handed a ``GameText/Noun`` rather than a rendered string, so
-    /// that one whose verb agrees with the object can conjugate for itself:
-    /// "The rails is not food." is what a template gets for assuming the
-    /// singular, and the game's only way out would be to rename its rails.
-    /// Interpolating the noun prints its phrase, so a line with no verb to
-    /// agree pays nothing for the facility.
+    /// that one whose verb agrees with the object can conjugate for itself; see
+    /// ``GameText/Noun`` for what a template that assumes the singular does to a
+    /// game's honest plural. Interpolating the noun prints its phrase, so a line
+    /// with no verb to agree pays nothing for the facility.
     static func named(
         _ intent: Intent,
         _ patterns: [[SyntaxElement]],
         reach: Reach,
         _ line: @escaping @Sendable (GameText, GameText.Noun) -> String
     ) -> StubVerb {
-        .init(intent, patterns, reach, namesObject: true) { text, command in
+        .init(intent, patterns, reach) { text, command in
             guard let object = command.directObject else { return text.didntUnderstand }
             guard !object.isPlayer else { return text.stubs.yourself }
             guard !object.isActor else { return text.stubs.somebodyElse(object.definiteNoun) }
@@ -148,6 +147,13 @@ extension StubVerb {
     /// input. `touch` is the one that has to keep it — laying hands on somebody
     /// is not the same as listening to them — and passes `guardsActors: true`
     /// rather than writing this body out again.
+    ///
+    /// Read that as a claim about the **engine's** wording, which is what the
+    /// guard is here to keep honest. `taste` and `drink` reach their object, so
+    /// a game that voices their naming half is writing about contact with a
+    /// person and may well want the guard, or a rule, of its own. The engine
+    /// declines because "You'd rather not." says nothing anybody could object
+    /// to, not because the verb is harmless.
     static func optionallyNamed(
         _ intent: Intent,
         _ patterns: [[SyntaxElement]],
@@ -155,7 +161,7 @@ extension StubVerb {
         guardsActors: Bool = false,
         _ line: @escaping @Sendable (GameText, GameText.Noun?) -> String
     ) -> StubVerb {
-        .init(intent, patterns, reach, namesObject: true) { text, command in
+        .init(intent, patterns, reach) { text, command in
             guard let object = command.directObject, !object.isPlayer else {
                 return line(text, nil)
             }
@@ -168,13 +174,20 @@ extension StubVerb {
 
     /// The escape hatch, for a reply that needs more of the ``Command`` than the
     /// direct object's name. `give` wants it today, for its second slot.
+    ///
+    /// `namesObject` is a parameter here and nowhere else: the other four
+    /// factories build the line and so know the answer, where this one is handed
+    /// a closure it cannot inspect. Assuming `true` would let a `custom` stub
+    /// that ignores its direct object pass `everyStubWithAnObjectSlotCanNameIt`
+    /// vacuously — the one place the flag could lie.
     static func custom(
         _ intent: Intent,
         _ patterns: [[SyntaxElement]],
         reach: Reach,
+        namesObject: Bool,
         _ line: @escaping @Sendable (GameText, Command) -> String
     ) -> StubVerb {
-        .init(intent, patterns, reach, namesObject: true, line: line)
+        .init(intent, patterns, reach, namesObject: namesObject, line: line)
     }
 }
 
@@ -547,7 +560,8 @@ extension DefaultActions {
                 ["give", .directObject, "to", .indirectObject],
                 ["hand", .directObject, "to", .indirectObject],
             ],
-            reach: .bothObjects
+            reach: .bothObjects,
+            namesObject: true
         ) { text, command in
             guard let item = command.directObject, let recipient = command.indirectObject
             else { return text.didntUnderstand }

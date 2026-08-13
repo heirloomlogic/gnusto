@@ -563,7 +563,7 @@ struct StubVerbTests {
         #expect(turn.contains(expected), "\(command): \(turn)")
     }
 
-    /// The gap #245 was filed about, made unrepresentable.
+    /// The gap #245 was filed about, asserted rather than left to be noticed.
     ///
     /// Twelve stubs carried a `.directObject` slot and a `plain` line for a
     /// year. Nothing caught it, because neither half looks wrong on its own —
@@ -573,7 +573,9 @@ struct StubVerbTests {
     ///
     /// So the pair is asserted rather than inspected. A thirteenth stub that
     /// grows an object slot without a line to put it in fails here, one build
-    /// after somebody writes it, instead of one game later.
+    /// after somebody writes it, instead of one game later. A test rather than
+    /// the type system: `.plain(.foo, [["foo", .directObject]])` still compiles,
+    /// and closing that structurally would cost more than it saves.
     @Test func everyStubWithAnObjectSlotCanNameIt() {
         for stub in DefaultActions.stubs
         where stub.rows.contains(where: { $0.elements.contains(.directObject) }) {
@@ -588,11 +590,11 @@ struct StubVerbTests {
     /// which before ``GameText/Line`` was not a choice a game had, because the
     /// engine's own wording for each verb had already made it.
     ///
-    /// That ``EitherSpellingStubGame`` compiles is most of the test. This is
-    /// the rest of it.
+    /// That ``NamingStubGame``'s `text` block compiles is most of the test.
+    /// This is the rest of it.
     @Test func aStubLineTakesABareStringOrANamingClosure() async throws {
         let transcript = try await play(
-            EitherSpellingStubGame(), ["kiss rat", "count rod", "count me"])
+            NamingStubGame(), ["kiss rat", "count rod", "count me"])
         #expect(turnOutput(of: "kiss rat", in: transcript).contains("You keep your hands to yourself."))
         #expect(turnOutput(of: "count rod", in: transcript).contains("You lose count of the brass rod."))
         // The naming closure's other half, which `.naming(orBare:_:)` made the
@@ -610,7 +612,7 @@ struct StubVerbTests {
         ("throw rod at rat", "You throw the brass rod."),
         ("taste rod", "You taste the brass rod."),
         ("drink flask", "You drink the glass flask."),
-        ("kiss rat", "You kiss the grey rat."),
+        ("kiss rod", "You kiss the brass rod."),
         ("point at rod", "You point at the brass rod."),
         ("jump over bench", "You jump over the long bench."),
         ("sit on bench", "You sit on the long bench."),
@@ -625,6 +627,23 @@ struct StubVerbTests {
     ) async throws {
         let turn = turnOutput(of: command, in: try await play(EveryNameableStubGame(), [command]))
         #expect(turn.contains(expected), "\(command): \(turn)")
+    }
+
+    /// The six #242 widened, in the same fixture, so the promise of eighteen is
+    /// kept rather than asserted at twelve. `touch rod` rather than `touch rat`:
+    /// `touch` is the one of the eighteen that guards actors, which
+    /// `theRewiredStubsNameAPersonWhereTheGuardedOnesDefer` covers.
+    @Test func theOlderNameableStubsStillNameTheirObject() async throws {
+        let transcript = try await play(
+            EveryNameableStubGame(),
+            ["smell rod", "listen to rod", "touch rod", "wake rat", "wave rod", "climb bench"])
+        #expect(turnOutput(of: "smell rod", in: transcript).contains("You smell the brass rod."))
+        #expect(
+            turnOutput(of: "listen to rod", in: transcript).contains("You listen to the brass rod."))
+        #expect(turnOutput(of: "touch rod", in: transcript).contains("You feel the brass rod."))
+        #expect(turnOutput(of: "wake rat", in: transcript).contains("You wake the grey rat."))
+        #expect(turnOutput(of: "wave rod", in: transcript).contains("You wave the brass rod."))
+        #expect(turnOutput(of: "climb bench", in: transcript).contains("You climb the long bench."))
     }
 
     /// The other half of every one of those lines. Four of the twelve have rows
@@ -687,16 +706,20 @@ struct StubVerbTests {
         #expect(Set(engineVoicedStubLines(in: engine)) == Set(shipped))
     }
 
-    /// Ties the probe list to the twelve, so a thirteenth stub promoted later
-    /// can't ship with no characterization behind it.
+    /// Ties the two probe lists to each other, so a thirteenth stub promoted
+    /// later can't ship with only half its cover.
+    ///
+    /// Every command that names an object in ``namingProbes`` is also pinned
+    /// against the engine's own wording in ``theTwelveThatLearnedToName``, and
+    /// each of those verbs is asked all three roads — an object, a person, the
+    /// player. Adding a naming probe without its three characterization rows,
+    /// or the reverse, fails here rather than passing quietly.
     @Test func everyRewiredStubIsProbedOnAllThreeRoads() {
-        let rewired: Set<Intent> = [
-            .dig, .knock, .throwAt, .taste, .drink, .kiss,
-            .point, .jump, .sit, .count, .buy, .sell,
-        ]
-        #expect(rewired.count == 12)
-        // Twelve verbs times an object, a person and the player, plus the four
-        // rows that carry no object slot at all.
-        #expect(Self.theTwelveThatLearnedToName.count == 12 * 3 + 4)
+        let named = Self.namingProbes.map(\.0)
+        let pinned = Self.theTwelveThatLearnedToName.map(\.0)
+        #expect(Array(pinned.prefix(named.count)) == named)
+        // Each of those verbs three times over, plus the rows carrying no object
+        // slot at all.
+        #expect(pinned.count == named.count * 3 + 4)
     }
 }
