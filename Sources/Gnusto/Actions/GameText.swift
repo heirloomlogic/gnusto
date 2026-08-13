@@ -658,7 +658,7 @@ extension GameText {
         /// It is deliberately close in shape to ``GameText/cantTakeActor`` and
         /// ``GameText/cantSearchActor``, which have always refused this way: a
         /// game that re-skins one usually wants all three in the same voice.
-        public var somebodyElse: @Sendable (_ person: Noun) -> String = {
+        public var somebodyElse: Line<Noun> = .naming {
             "\($0.sentenceCased) \($0.verb("is", "are")) a person, and would rather you didn't."
         }
 
@@ -667,38 +667,38 @@ extension GameText {
         /// Attacking something with no combat behind it. Names the object,
         /// because the refusal is about the thing swung at and a line that
         /// only says "things" reads as a house rule rather than an answer.
-        public var attack: @Sendable (_ name: String) -> String = {
+        public var attack: Line<Noun> = .naming {
             "Attacking \($0) rarely improves matters."
         }
         /// Breaking, smashing or destroying something.
-        public var smash: @Sendable (_ noun: Noun) -> String = {
+        public var smash: Line<Noun> = .naming {
             "\($0.sentenceCased) \($0.verb("is", "are")) sturdier than that."
         }
         /// Setting fire to something.
-        public var burn: @Sendable (_ name: String) -> String = {
+        public var burn: Line<Noun> = .naming {
             "You have no way to set fire to \($0)."
         }
         /// Cutting or slicing something.
-        public var cut: @Sendable (_ name: String) -> String = {
+        public var cut: Line<Noun> = .naming {
             "You have nothing to cut \($0) with."
         }
         /// Digging, with or without a tool.
         public var dig = "You have nothing to dig with."
         /// Pulling or dragging something.
-        public var pull: @Sendable (_ noun: Noun) -> String = {
+        public var pull: Line<Noun> = .naming {
             "\($0.sentenceCased) \($0.verb("doesn't", "don't")) budge."
         }
         /// Turning something that doesn't turn. Names the object so the reply
         /// doesn't read as a failed `turn on`.
-        public var turn: @Sendable (_ noun: Noun) -> String = {
+        public var turn: Line<Noun> = .naming {
             "\($0.sentenceCased) \($0.verb("doesn't", "don't")) turn."
         }
         /// Squeezing something.
-        public var squeeze: @Sendable (_ name: String) -> String = {
+        public var squeeze: Line<Noun> = .naming {
             "Squeezing \($0) changes nothing."
         }
         /// Shaking something.
-        public var shake: @Sendable (_ name: String) -> String = {
+        public var shake: Line<Noun> = .naming {
             "You shake \($0). Nothing rattles loose."
         }
         /// Knocking on something.
@@ -723,7 +723,7 @@ extension GameText {
         // MARK: Body
 
         /// Eating something inedible.
-        public var eat: @Sendable (_ noun: Noun) -> String = {
+        public var eat: Line<Noun> = .naming {
             "\($0.sentenceCased) \($0.verb("is", "are")) not food."
         }
         /// Drinking something undrinkable.
@@ -740,7 +740,7 @@ extension GameText {
         public var kiss = "That would be presumptuous."
         /// Handing something to somebody who doesn't want it. Names both, since
         /// every row carries both slots.
-        public var give: @Sendable (_ name: String, _ recipient: Noun) -> String = {
+        public var give: @Sendable (_ gift: Noun, _ recipient: Noun) -> String = {
             "\($1.sentenceCased) \($1.verb("doesn't", "don't")) want \($0)."
         }
         /// Yelling, shouting or screaming.
@@ -773,23 +773,23 @@ extension GameText {
         // MARK: Liquids and containers
 
         /// Filling something with nothing to fill it from.
-        public var fill: @Sendable (_ name: String) -> String = {
+        public var fill: Line<Noun> = .naming {
             "There's nothing here to fill \($0) from."
         }
         /// Pouring something that holds nothing.
-        public var pour: @Sendable (_ name: String) -> String = {
+        public var pour: Line<Noun> = .naming {
             "There's nothing in \($0) to pour."
         }
         /// Emptying something that holds nothing.
-        public var empty: @Sendable (_ name: String) -> String = {
+        public var empty: Line<Noun> = .naming {
             "There's nothing in \($0) to empty out."
         }
         /// Tying something with nothing to tie it to.
-        public var tie: @Sendable (_ name: String) -> String = {
+        public var tie: Line<Noun> = .naming {
             "There's nothing here to tie \($0) to."
         }
         /// Untying something that isn't tied.
-        public var untie: @Sendable (_ noun: Noun) -> String = {
+        public var untie: Line<Noun> = .naming {
             "\($0.sentenceCased) \($0.verb("isn't", "aren't")) tied to anything."
         }
 
@@ -820,7 +820,7 @@ extension GameText {
         // MARK: Fixtures
 
         /// Blowing on something. Distinct from `blow out`, which is `turnOff`.
-        public var blow: @Sendable (_ name: String) -> String = {
+        public var blow: Line<Noun> = .naming {
             "Blowing on \($0) has no effect."
         }
     }

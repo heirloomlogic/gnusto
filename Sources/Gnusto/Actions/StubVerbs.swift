@@ -56,48 +56,40 @@ extension StubVerb {
         .init(intent, patterns, reach) { text, _ in line(text) }
     }
 
-    /// A stub whose every row carries a direct object, so its reply can name
-    /// it. The `didntUnderstand` fallback is unreachable through the parser —
-    /// a row with a `.directObject` slot can't match without filling it — and
-    /// exists so the promise "every row has an object" fails loudly in review
-    /// rather than crashing a player's game.
+    /// A stub whose reply **cannot be written without the name**: "You have no
+    /// way to set fire to the paper." has nowhere to stand if the paper goes
+    /// unmentioned. Its rows therefore all carry a direct object — but that
+    /// alone is not what puts a verb here. `knock`, `taste` and `kiss` fill the
+    /// slot on every row too, and are `optionallyNamed`, because their lines
+    /// read perfectly well with the name left out.
+    ///
+    /// The `didntUnderstand` fallback is unreachable through the parser — a row
+    /// with a `.directObject` slot can't match without filling it — and exists
+    /// so the promise "every row has an object" fails loudly in review rather
+    /// than crashing a player's game.
     ///
     /// The player is the one object these lines can't name: it is called
     /// "yourself", so "The yourself is not food." That is why `named` checks for
-    /// it and `plain` doesn't — a nameless line has nowhere to put the name and
-    /// so answers `eat me` perfectly well whoever "me" is. `optionallyNamed`
-    /// takes the third road: it hands the line `nil` and lets the line's own
-    /// nameless half answer.
+    /// it and `optionallyNamed` needn't — a line that owns a nameless half
+    /// already answers `smell me` perfectly well, and takes that road instead of
+    /// the generic deferral. `plain` never sees an object at all.
     ///
     /// Everybody *else* is the second object they can't name, for the sister
     /// reason: these lines are about objects, and "Mrs. Kettle is not food."
     /// puts a witness on the same footing as a chair. `cantSearchActor` has
     /// refused actor contact by design since the beginning, so before this
     /// guard `search the cook` and `eat the cook` gave opposite rulings one
-    /// line apart.
-    static func named(
-        _ intent: Intent,
-        _ patterns: [[SyntaxElement]],
-        reach: Reach,
-        _ line: @escaping @Sendable (GameText, String) -> String
-    ) -> StubVerb {
-        .init(intent, patterns, reach) { text, command in
-            guard let object = command.directObject else { return text.didntUnderstand }
-            guard !object.isPlayer else { return text.stubs.yourself }
-            guard !object.isActor else { return text.stubs.somebodyElse(object.definiteNoun) }
-            return line(text, object.definiteName)
-        }
-    }
-
-    /// A `named` stub whose line carries a **verb agreeing with the object**, so
-    /// the name alone is not enough to write it: "The rails is not food." is
-    /// what a template gets for assuming the singular, and the game's only way
-    /// out would be to rename its rails. These lines are handed a
-    /// ``GameText/Noun`` and conjugate for themselves.
+    /// line apart. `optionallyNamed` decides this per verb instead, and most of
+    /// it declines — see below for why that is a property of the line rather
+    /// than a convenience.
     ///
-    /// Everything else about it is `named` — the same self and actor guards, for
-    /// the same reasons.
-    static func numbered(
+    /// The line is handed a ``GameText/Noun`` rather than a rendered string, so
+    /// that one whose verb agrees with the object can conjugate for itself:
+    /// "The rails is not food." is what a template gets for assuming the
+    /// singular, and the game's only way out would be to rename its rails.
+    /// Interpolating the noun prints its phrase, so a line with no verb to
+    /// agree pays nothing for the facility.
+    static func named(
         _ intent: Intent,
         _ patterns: [[SyntaxElement]],
         reach: Reach,
@@ -111,22 +103,33 @@ extension StubVerb {
         }
     }
 
-    /// A stub whose rows **don't all carry a direct object**, so its line has to
-    /// read with a name and without one: `smell` and `smell the troll` are a
-    /// single intent, and one sentence has to answer both. The nameless rows
-    /// hand the line `nil`.
+    /// A stub whose line **owns a nameless half**, so it is handed an optional
+    /// noun and has to read with a name and without one. Either of two things
+    /// puts a verb here:
     ///
-    /// So does the player, for the reason `named` states — "It smells like
-    /// yourself." is not a sentence — but where `named` defers to
-    /// ``GameText/StubReplies/yourself``, here the line already owns a nameless
-    /// half and that half is the better answer.
+    /// - **Its rows don't all carry a direct object.** `smell` and `smell the
+    ///   troll` are a single intent, and one sentence answers both; the
+    ///   nameless rows hand the line `nil`.
+    /// - **Its line reads perfectly well with the name left out.** `knock`,
+    ///   `taste`, `kiss`, `count`, `buy` and `sell` fill the slot on every row,
+    ///   and every one of their engine defaults mentions no object. Naming it
+    ///   is something a *game* may want — "You would sooner kiss the pig." —
+    ///   not something the engine's own wording needs, so the name is offered
+    ///   rather than required.
     ///
-    /// **No actor guard by default**, where `named` always has one. These verbs
-    /// act at a distance and read perfectly well *about* a person: "The troll
-    /// makes no sound." is `V-LISTEN`'s own answer, not an indignity of the kind
-    /// "Mrs. Kettle is not food." would be. `touch` is the one that has to keep
-    /// it — laying hands on somebody is not the same as listening to them — and
-    /// passes `guardsActors: true` rather than writing this body out again.
+    /// The player takes the nameless half too, for the reason `named` states —
+    /// "It smells like yourself." is not a sentence — but where `named` defers
+    /// to ``GameText/StubReplies/yourself``, here the line already owns the
+    /// better answer.
+    ///
+    /// **No actor guard by default**, where `named` always has one, and that is
+    /// a consequence rather than a convenience: a line with a nameless half is
+    /// a line that can be said about anybody. "The troll makes no sound." is
+    /// `V-LISTEN`'s own answer, and `kiss the troll` is what kissing is *for*,
+    /// so a `somebodyElse` guard there would refuse the verb's only interesting
+    /// input. `touch` is the one that has to keep it — laying hands on somebody
+    /// is not the same as listening to them — and passes `guardsActors: true`
+    /// rather than writing this body out again.
     static func optionallyNamed(
         _ intent: Intent,
         _ patterns: [[SyntaxElement]],
@@ -332,7 +335,7 @@ extension DefaultActions {
             reach: .directObject
         ) { $0.stubs.attack($1) },
 
-        .numbered(
+        .named(
             .smash,
             [
                 ["break", .directObject],
@@ -376,7 +379,7 @@ extension DefaultActions {
             reach: .directObject
         ) { $0.stubs.dig },
 
-        .numbered(
+        .named(
             .pull,
             [
                 ["pull", .directObject],
@@ -385,7 +388,7 @@ extension DefaultActions {
             reach: .directObject
         ) { $0.stubs.pull($1) },
 
-        .numbered(
+        .named(
             .turn,
             [
                 ["turn", .directObject],
@@ -470,7 +473,7 @@ extension DefaultActions {
 
         // MARK: Body
 
-        .numbered(.eat, [["eat", .directObject]], reach: .directObject) { $0.stubs.eat($1) },
+        .named(.eat, [["eat", .directObject]], reach: .directObject) { $0.stubs.eat($1) },
 
         .plain(.drink, [["drink", .directObject]], reach: .directObject) { $0.stubs.drink },
 
@@ -517,7 +520,7 @@ extension DefaultActions {
             else { return text.didntUnderstand }
             // Either slot can be the player, and neither reads with its name.
             guard !item.isPlayer, !recipient.isPlayer else { return text.stubs.yourself }
-            return text.stubs.give(item.definiteName, recipient.definiteNoun)
+            return text.stubs.give(item.definiteNoun, recipient.definiteNoun)
         },
 
         .plain(
@@ -638,7 +641,7 @@ extension DefaultActions {
             reach: .directObject
         ) { $0.stubs.tie($1) },
 
-        .numbered(
+        .named(
             .untie,
             [
                 ["untie", .directObject],

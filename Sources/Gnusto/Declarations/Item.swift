@@ -83,6 +83,13 @@ public struct Item: Sendable, Equatable {
         return frame.definiteNoun(of: id)
     }
 
+    /// The indefinite name paired with its number, for a line that generalizes
+    /// rather than points — "a rubber raft" plus the fact that it is singular.
+    public var indefiniteNoun: GameText.Noun {
+        let (frame, id) = resolved
+        return frame.indefiniteNoun(of: id)
+    }
+
     /// The item's examine/read text. Assigning replaces it for the rest of
     /// the game.
     public var description: String {

@@ -53,21 +53,21 @@ public struct MeleeCombat: GameContent {
         /// because a refusal aimed at a whole category of thing is the joke
         /// `V-ATTACK` makes with `A ,PRSO`, and a line naming the category
         /// generalizes where a definite one just repeats the command back.
-        public var attackFutile: @Sendable (_ name: String) -> String = {
+        public var attackFutile: GameText.Line<GameText.Noun> = .naming {
             "Attacking \($0) isn't the answer."
         }
-        /// Attacking bare-handed with no registered weapon in hand. Named, like
-        /// the other three, because the source branch this stands in for
-        /// (`V-ATTACK`, `gverbs.zil:180`) names the thing being swung at.
-        public var noWeapon: @Sendable (_ name: String) -> String = { _ in
+        /// Attacking bare-handed with no registered weapon in hand. Offered the
+        /// target's name, like the other three, because the source branch this
+        /// stands in for (`V-ATTACK`, `gverbs.zil:180`) names the thing being
+        /// swung at — the engine's own wording declines it.
+        public var noWeapon: GameText.Line<GameText.Noun> =
             "Bare hands won't do it. You need a weapon."
-        }
         /// Naming a weapon that isn't one ("attack troll with feather").
-        public var notAWeapon: @Sendable (_ name: String) -> String = {
-            "\(GameText.sentenceCase($0)) is no weapon."
+        public var notAWeapon: GameText.Line<GameText.Noun> = .naming {
+            "\($0.sentenceCased) is no weapon."
         }
         /// Naming a real weapon the player isn't holding.
-        public var weaponNotHeld: @Sendable (_ name: String) -> String = {
+        public var weaponNotHeld: GameText.Line<GameText.Noun> = .naming {
             "You aren't holding \($0)."
         }
 
@@ -202,7 +202,8 @@ public struct MeleeCombat: GameContent {
             // arrive here without one. `?? "that"` is the same sort of safety
             // net `StubVerb.named`'s `didntUnderstand` branch is, not a
             // player-facing path.
-            try reply(text.attackFutile(command.directObject?.indefiniteName ?? "that"))
+            try reply(
+                text.attackFutile(command.directObject?.indefiniteNoun ?? GameText.Noun("that")))
         }
     }
 
@@ -294,10 +295,10 @@ public struct MeleeCombat: GameContent {
             let weaponUsed: Item
             if let named = command.indirectObject {
                 guard weapons.contains(named) else {
-                    try refuse(text.notAWeapon(named.definiteName))
+                    try refuse(text.notAWeapon(named.definiteNoun))
                 }
                 guard named.isHeld else {
-                    try refuse(text.weaponNotHeld(named.definiteName))
+                    try refuse(text.weaponNotHeld(named.definiteNoun))
                 }
                 weaponUsed = named
             } else if let best = weapons.filter(\.isHeld)
@@ -305,7 +306,7 @@ public struct MeleeCombat: GameContent {
             {
                 weaponUsed = best
             } else {
-                try refuse(text.noWeapon(actor.definiteName))
+                try refuse(text.noWeapon(actor.definiteNoun))
             }
 
             // `FIGHTBIT`, set where the source sets it. `HERO-BLOW`

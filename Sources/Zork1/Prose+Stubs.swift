@@ -53,7 +53,7 @@ extension Prose {
     /// ``combatText`` sets it where a player can actually reach it. The callers
     /// choose the article between them — ``combatText`` hands it the indefinite
     /// name, as the source's `A ,PRSO` does.
-    static let attackFutile: @Sendable (_ name: String) -> String = {
+    static let attackFutile = GameText.Line<GameText.Noun>.naming {
         "I've known strange people, but fighting \($0)?"
     }
 
@@ -69,12 +69,12 @@ extension Prose {
         text.attackFutile = attackFutile
         // `V-ATTACK:182`, which names its target; #242 widened `noWeapon` so it
         // could.
-        text.noWeapon = { "Trying to attack \($0) with your bare hands is suicidal." }
+        text.noWeapon = .naming { "Trying to attack \($0) with your bare hands is suicidal." }
         // `V-ATTACK:188` is "Trying to attack the X with a Y is suicidal." — the
         // plugin hands this line the *weapon* only, so the target becomes "it".
-        text.notAWeapon = { "Trying to attack it with \($0) is suicidal." }
+        text.notAWeapon = .naming { "Trying to attack it with \($0) is suicidal." }
         // `V-ATTACK:185`.
-        text.weaponNotHeld = { "You aren't even holding \($0)." }
+        text.weaponNotHeld = .naming { "You aren't even holding \($0)." }
         return text
     }
 
@@ -90,7 +90,7 @@ extension Prose {
         // `V-SQUEEZE`'s actor branch (`gverbs.zil:1289`) — the source's answer
         // to laying hands on somebody, and the floor under every stub that has
         // to reach its object.
-        stubs.somebodyElse = {
+        stubs.somebodyElse = .naming {
             "\($0.sentenceCased) \($0.verb("does", "do")) not understand this."
         }
 
@@ -103,12 +103,12 @@ extension Prose {
         stubs.attack = Prose.attackFutile
         // `V-MUNG` (`gverbs.zil:943`), which `break`, `smash` and `destroy` all
         // route to (`gsyntax.zil:163`).
-        stubs.smash = { _ in "Nice try." }
+        stubs.smash = "Nice try."
         // `V-BURN`'s last branch (`gverbs.zil:274`).
-        stubs.burn = { "You can't burn \($0)." }
+        stubs.burn = .naming { "You can't burn \($0)." }
         // `V-CUT`'s last branch (`gverbs.zil:400`). The four dots are the
         // source's.
-        stubs.cut = { "Strange concept, cutting \($0)...." }
+        stubs.cut = .naming { "Strange concept, cutting \($0)...." }
         // `V-DIG` (`gverbs.zil:416`) answers for the *instrument*, defaulting it
         // to `HANDS` when the player names none. The engine's `dig` is handed no
         // instrument, so the hands are written in. The one place digging is the
@@ -117,13 +117,13 @@ extension Prose {
         stubs.dig = "Digging with your hands is silly."
         // `pull` routes to `V-MOVE` in the source (`gsyntax.zil:368`), whose
         // immovable branch is `gverbs.zil:918`.
-        stubs.pull = { "You can't move \($0.phrase)." }
+        stubs.pull = .naming { "You can't move \($0.phrase)." }
         // `V-TURN` (`gverbs.zil:1506`).
-        stubs.turn = { _ in "This has no effect." }
+        stubs.turn = "This has no effect."
         // `V-SQUEEZE`'s other branch (`gverbs.zil:1291`).
-        stubs.squeeze = { _ in "How singularly useless." }
+        stubs.squeeze = "How singularly useless."
         // `V-SHAKE`'s un-takeable branch (`gverbs.zil:1217`).
-        stubs.shake = { _ in "You can't take it; thus, you can't shake it!" }
+        stubs.shake = "You can't take it; thus, you can't shake it!"
         // `V-KNOCK`'s door branch (`gverbs.zil:767`). The other branch names the
         // thing knocked on and this line cannot, but a stub floor is what
         // answers after every door in the game has had its say.
@@ -161,7 +161,7 @@ extension Prose {
         // MARK: Body
 
         // `V-EAT`'s last branch (`gverbs.zil:515`).
-        stubs.eat = { "I don't think that \($0.phrase) would agree with you." }
+        stubs.eat = .naming { "I don't think that \($0.phrase) would agree with you." }
         // `V-EAT`'s no-water branch (`gverbs.zil:504`). The bottle's own rules in
         // ``ZorkHouse`` claim `drink` wherever there is water to drink.
         stubs.drink = Prose.nothingToDrink
@@ -225,16 +225,16 @@ extension Prose {
 
         // `V-FILL`'s no-source branch (`gverbs.zil:673`). The bottle's rules in
         // ``ZorkHouse`` claim `fill` wherever there is water.
-        stubs.fill = { _ in "There's nothing to fill it with." }
+        stubs.fill = "There's nothing to fill it with."
         // `V-POUR-ON`'s last branch (`gverbs.zil:1044`).
-        stubs.pour = { _ in "You can't pour that." }
+        stubs.pour = "You can't pour that."
         // Invented: no `EMPTY` in `gsyntax.zil`.
-        stubs.empty = { "You'd have to put something in \($0) first." }
+        stubs.empty = .naming { "You'd have to put something in \($0) first." }
         // `V-TIE`'s general branch (`gverbs.zil:1469`). The rope in the dome
         // claims `tie` where tying is the puzzle.
-        stubs.tie = { "You can't tie \($0) to that." }
+        stubs.tie = .naming { "You can't tie \($0) to that." }
         // `V-UNTIE` (`gverbs.zil:1512`).
-        stubs.untie = { _ in "This cannot be tied, so it cannot be untied!" }
+        stubs.untie = "This cannot be tied, so it cannot be untied!"
 
         // MARK: Ritual and flavor
 
@@ -267,7 +267,7 @@ extension Prose {
 
         // `V-BLAST` (`gverbs.zil:199`), which `BLOW UP` routes to
         // (`gsyntax.zil:107`).
-        stubs.blow = { _ in "You can't blast anything by using words." }
+        stubs.blow = "You can't blast anything by using words."
 
         return stubs
     }
