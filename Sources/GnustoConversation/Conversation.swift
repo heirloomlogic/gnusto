@@ -128,15 +128,15 @@ public struct Conversation: GameContent {
         ///     does when the player opens a conversation, given their name.
         public init(
             nothingToSay: GameText.Line<GameText.Noun> = .naming {
-                "\($0.sentenceCased) has nothing to say about that."
+                "\($0.sentenceCased) \($0.verb("has", "have")) nothing to say about that."
             },
             cantTalkTo: String = "You can only talk to something animate.",
             cantTalkToSelf: String = "You keep your own counsel.",
             noInterest: GameText.Line<GameText.Noun> = .naming {
-                "\($0.sentenceCased) shows no interest."
+                "\($0.sentenceCased) \($0.verb("shows", "show")) no interest."
             },
             nothingToTalkAbout: GameText.Line<GameText.Noun> = .naming {
-                "\($0.sentenceCased) waits for you to come to the point."
+                "\($0.sentenceCased) \($0.verb("waits", "wait")) for you to come to the point."
             }
         ) {
             self.nothingToSay = nothingToSay

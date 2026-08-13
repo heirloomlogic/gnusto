@@ -142,13 +142,13 @@ struct Dungeon: Game, GameMain {
         // greetings as rules, and every verb that falls *past* a rule still
         // reached a modern narrator. `V-COMMAND` (`gverbs.zil:359`) is the
         // source for the order refusal. (#233)
-        text.cantTakeActor = .naming { "\($0.sentenceCased) has other plans." }
+        text.cantTakeActor = .naming { "\($0.sentenceCased) \($0.verb("has", "have")) other plans." }
         text.cantSearchActor = .naming { "\($0.sentenceCased) would not stand for it." }
-        text.notTakingOrders = .naming { "\($0.sentenceCased) pays no attention." }
+        text.notTakingOrders = .naming { "\($0.sentenceCased) \($0.verb("pays", "pay")) no attention." }
         text.doesNotKnowHow = .naming {
             "\($0.sentenceCased) \($0.verb("has", "have")) no idea how to do that."
         }
-        text.greets = .naming { "\($0.sentenceCased) says nothing in reply." }
+        text.greets = .naming { "\($0.sentenceCased) \($0.verb("says", "say")) nothing in reply." }
 
         // The stub floor — every verb the parser knows and no mechanic answers.
         text.stubs = Prose.stubFloor

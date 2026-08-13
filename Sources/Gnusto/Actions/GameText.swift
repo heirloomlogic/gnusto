@@ -191,11 +191,11 @@ public struct GameText: Sendable {
     }
     /// Following somebody who is standing right here.
     public var alreadyFollowing: Line<Noun> = .naming {
-        "\($0.sentenceCased) is right here."
+        "\($0.sentenceCased) \($0.verb("is", "are")) right here."
     }
     /// Following something that isn't a person.
     public var cantFollowThat: Line<Noun> = .naming {
-        "\($0.sentenceCased) isn't going anywhere."
+        "\($0.sentenceCased) \($0.verb("isn't", "aren't")) going anywhere."
     }
     /// Following somebody who has gone somewhere no exit from here leads. The
     /// search is one exit deep, so this is also the answer for a quarry who is
@@ -208,11 +208,11 @@ public struct GameText: Sendable {
 
     /// Saying hello to somebody who has nothing of their own to say.
     public var greets: Line<Noun> = .naming {
-        "\($0.sentenceCased) nods, and says nothing."
+        "\($0.sentenceCased) \($0.verb("nods", "nod")), and \($0.verb("says", "say")) nothing."
     }
     /// Greeting something that isn't a person.
     public var cantGreetThat: Line<Noun> = .naming {
-        "\($0.sentenceCased) is unlikely to answer."
+        "\($0.sentenceCased) \($0.verb("is", "are")) unlikely to answer."
     }
     /// A bare hello with nobody about.
     public var nobodyToGreet = "There's nobody here to greet."
@@ -260,11 +260,11 @@ public struct GameText: Sendable {
 
     /// A successful `turn on` of a light source.
     public var nowOn: Line<Noun> = .naming {
-        "\($0.sentenceCased) is now on."
+        "\($0.sentenceCased) \($0.verb("is", "are")) now on."
     }
     /// A successful `turn off`.
     public var nowOff: Line<Noun> = .naming {
-        "\($0.sentenceCased) is now off."
+        "\($0.sentenceCased) \($0.verb("is", "are")) now off."
     }
     /// Turning on something already lit.
     public var alreadyOn = "It's already on."
@@ -336,17 +336,17 @@ public struct GameText: Sendable {
 
     /// Opening something that is locked.
     public var locked: Line<Noun> = .naming {
-        "\($0.sentenceCased) is locked."
+        "\($0.sentenceCased) \($0.verb("is", "are")) locked."
     }
 
     /// Reaching into (or moving through) something that is closed.
     public var closedContainer: Line<Noun> = .naming {
-        "\($0.sentenceCased) is closed."
+        "\($0.sentenceCased) \($0.verb("is", "are")) closed."
     }
 
     /// Looking into a container with nothing in it.
     public var emptyContainer: Line<Noun> = .naming {
-        "\($0.sentenceCased) is empty."
+        "\($0.sentenceCased) \($0.verb("is", "are")) empty."
     }
 
     /// Searching something that has no inside to search: the noun resolved and
@@ -415,12 +415,12 @@ public struct GameText: Sendable {
 
     /// A room description's line for a loose item.
     public var itemHere: Line<Noun> = .naming {
-        "There is \($0) here."
+        "There \($0.verb("is", "are")) \($0) here."
     }
     /// A room description's line for an actor with no `firstSight` presence
     /// line of its own.
     public var actorHere: Line<Noun> = .naming {
-        "\($0.sentenceCased) is here."
+        "\($0.sentenceCased) \($0.verb("is", "are")) here."
     }
 
     /// A room description's line for an item resting on a surface.
@@ -512,7 +512,7 @@ public struct GameText: Sendable {
     /// declines. `butler, hello` is the one addressed form that always does
     /// something, and it becomes a GREET.
     public var notTakingOrders: Line<Noun> = .naming {
-        "\($0.sentenceCased) has no intention of taking orders from you."
+        "\($0.sentenceCased) \($0.verb("has", "have")) no intention of taking orders from you."
     }
 
     /// An order to somebody who *does* take them that nothing in the game
