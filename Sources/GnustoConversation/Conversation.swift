@@ -101,50 +101,29 @@ public struct Conversation: GameContent {
     /// otherwise gets "the twins waits for you to come to the point" with no
     /// way to fix it but to re-voice a line it was happy with.
     public struct Text: Sendable {
-        /// What an actor with no matching row and no fallback says.
-        public var nothingToSay: GameText.Line<GameText.Noun>
-        /// The refusal for trying to talk to something inanimate.
-        public var cantTalkTo: String
-        /// The refusal for addressing yourself.
-        public var cantTalkToSelf: String
-        /// What an actor says about a thing shown to them that no row covers.
-        public var noInterest: GameText.Line<GameText.Noun>
-        /// What an actor with no authored greeting does when a conversation
-        /// opens.
-        public var nothingToTalkAbout: GameText.Line<GameText.Noun>
-
-        /// Creates the line table, defaulting every line a game doesn't care
-        /// about — so re-skinning one is `.init(noInterest: …)` and says
-        /// nothing about the other four.
-        ///
-        /// - Parameters:
-        ///   - nothingToSay: what an actor with no matching row and no fallback
-        ///     says, given their rendered name ("the butler", "Mrs. Vane").
-        ///   - cantTalkTo: the refusal for addressing something inanimate.
-        ///   - cantTalkToSelf: the refusal for addressing yourself.
-        ///   - noInterest: what an actor says about a thing shown to them that
-        ///     no `shows(_:to:)` row covers, given their rendered name.
-        ///   - nothingToTalkAbout: what an actor with no `greeting(of:)` row
-        ///     does when the player opens a conversation, given their name.
-        public init(
-            nothingToSay: GameText.Line<GameText.Noun> = .naming {
-                "\($0.sentenceCased) \($0.verb("has", "have")) nothing to say about that."
-            },
-            cantTalkTo: String = "You can only talk to something animate.",
-            cantTalkToSelf: String = "You keep your own counsel.",
-            noInterest: GameText.Line<GameText.Noun> = .naming {
-                "\($0.sentenceCased) \($0.verb("shows", "show")) no interest."
-            },
-            nothingToTalkAbout: GameText.Line<GameText.Noun> = .naming {
-                "\($0.sentenceCased) \($0.verb("waits", "wait")) for you to come to the point."
-            }
-        ) {
-            self.nothingToSay = nothingToSay
-            self.cantTalkTo = cantTalkTo
-            self.cantTalkToSelf = cantTalkToSelf
-            self.noInterest = noInterest
-            self.nothingToTalkAbout = nothingToTalkAbout
+        /// What an actor with no matching row and no fallback says, given their
+        /// rendered name ("the butler", "Mrs. Vane").
+        public var nothingToSay: GameText.Line<GameText.Noun> = .naming {
+            "\($0.sentenceCased) \($0.verb("has", "have")) nothing to say about that."
         }
+        /// The refusal for trying to talk to something inanimate.
+        public var cantTalkTo = "You can only talk to something animate."
+        /// The refusal for addressing yourself.
+        public var cantTalkToSelf = "You keep your own counsel."
+        /// What an actor says about a thing shown to them that no `shows(_:to:)`
+        /// row covers.
+        public var noInterest: GameText.Line<GameText.Noun> = .naming {
+            "\($0.sentenceCased) \($0.verb("shows", "show")) no interest."
+        }
+        /// What an actor with no `greeting(of:)` row does when the player opens
+        /// a conversation.
+        public var nothingToTalkAbout: GameText.Line<GameText.Noun> = .naming {
+            "\($0.sentenceCased) \($0.verb("waits", "wait")) for you to come to the point."
+        }
+
+        /// Creates the table in the engine's own voice; a game re-skins the
+        /// lines it cares about and leaves the rest.
+        public init() {}
     }
 
     /// This layer's lines.

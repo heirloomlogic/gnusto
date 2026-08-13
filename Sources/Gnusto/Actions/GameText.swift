@@ -20,10 +20,10 @@
 ///   parser row behind it carries an object or `Line<Noun?>` where the verb
 ///   also answers bare. A game writes it as a plain string literal or as
 ///   ``Line/naming(_:)``, and which of the two is the game's business.
-/// - **A line about *two* things is a closure taking both** — ``putItemIn``,
-///   ``itemOnSurface``, ``locationInVehicle``. `Line` is about one object, and
-///   the shape that covers two is being settled against all of them at once
-///   rather than against whichever one came up first.
+/// - **A line about *two* things is a `Line` over a role struct** —
+///   ``Holding``, ``Gift``, ``Aboard``. The roles are a type rather than a
+///   pair so that the API can answer the question an author actually asks:
+///   `\($0.holder)` says which one is the container where `\($1)` does not.
 /// - **A line about something that is not a thing in the world stays a raw
 ///   closure.** A word the player typed (``unknownWord``, ``noReferent``,
 ///   ``missingObject``), a list (``ambiguous``, ``inventorySentence``), a
@@ -159,9 +159,10 @@ public struct GameText: Sendable {
     public var notInThat: Line<Noun> = .naming {
         "You aren't in \($0)."
     }
-    /// The room title while the player is in a vehicle.
-    public var locationInVehicle: @Sendable (_ room: String, _ vehicle: String) -> String = {
-        "\($0), in \($1)"
+    /// The room title while the player is in a vehicle. The place is a plain
+    /// `String` and not a ``Noun`` — see ``Aboard``.
+    public var locationInVehicle: Line<Aboard> = .naming {
+        "\($0.place), in \($0.vehicle)"
     }
     /// Taking (or otherwise relocating) the vehicle the player is inside.
     public var notWhileInside: Line<Noun> = .naming {
@@ -372,20 +373,25 @@ public struct GameText: Sendable {
     }
 
     /// A successful `putIn`.
-    public var putItemIn: @Sendable (_ name: String, _ container: String) -> String = {
-        "You put \($0) in \($1)."
+    public var putItemIn: Line<Holding> = .naming {
+        "You put \($0.item) in \($0.holder)."
     }
 
     /// Opening a container with visible contents.
-    public var openingReveals: @Sendable (_ name: String, _ contents: [String]) -> String = {
-        "Opening \($0) reveals \(GameText.list($1))."
+    public var openingReveals: @Sendable (_ name: Noun, _ contents: [Noun]) -> String = {
+        "Opening \($0) reveals \(GameText.list($1.map(\.phrase)))."
     }
 
-    /// "In the X is a Y." / "In the X are a Y and a Z." — verb agreement
-    /// follows the content count.
-    public var inTheContainer: @Sendable (_ name: String, _ contents: [String]) -> String = {
-        let verb = $1.count == 1 ? "is" : "are"
-        return "In \($0) \(verb) \(GameText.list($1))."
+    /// "In the X is a Y." / "In the X are a Y and a Z."
+    ///
+    /// The verb agrees with the *contents*, so it is plural when there are
+    /// several of them **or** when the only one is itself plural. Counting
+    /// alone got the second case wrong — one plural thing in a box printed "In
+    /// the hamper is some scales." — which is why the contents arrive as nouns
+    /// that know their own number rather than as rendered strings.
+    public var inTheContainer: @Sendable (_ name: Noun, _ contents: [Noun]) -> String = {
+        let plural = $1.count != 1 || $1.first?.isPlural == true
+        return "In \($0) \(plural ? "are" : "is") \(GameText.list($1.map(\.phrase)))."
     }
 
     /// The aside printed when handling a worn item removes it first.
@@ -404,8 +410,8 @@ public struct GameText: Sendable {
     }
 
     /// A successful `putOn` (placing onto a surface).
-    public var putItemOn: @Sendable (_ name: String, _ surface: String) -> String = {
-        "You put \($0) on \($1)."
+    public var putItemOn: Line<Holding> = .naming {
+        "You put \($0.item) on \($0.holder)."
     }
 
     /// Examining something with no description of its own.
@@ -424,21 +430,29 @@ public struct GameText: Sendable {
     }
 
     /// A room description's line for an item resting on a surface.
-    public var itemOnSurface: @Sendable (_ name: String, _ surface: String) -> String = {
-        "On \($1) is \($0)."
+    ///
+    /// The verb agrees with the **item**, which the stock wording names second:
+    /// "On the table are the rails." That inversion is why this line deals in
+    /// nouns rather than strings — while it was a pair of `String`s the engine
+    /// said "On the table is the rails." about every plural thing a game left
+    /// on a table, and no re-skinning could fix it without hard-coding the
+    /// other agreement instead.
+    public var itemOnSurface: Line<Holding> = .naming {
+        "On \($0.holder) \($0.item.verb("is", "are")) \($0.item)."
     }
 
     /// A room description's line for an item visible inside a container.
-    public var itemInContainer: @Sendable (_ name: String, _ container: String) -> String = {
-        "In \($1) is \($0)."
+    /// Agrees with the item, for the reason ``itemOnSurface`` gives.
+    public var itemInContainer: Line<Holding> = .naming {
+        "In \($0.holder) \($0.item.verb("is", "are")) \($0.item)."
     }
 
     /// The `inventory` listing, as one sentence ("You are carrying a brass
     /// lantern, an apple, and a velvet cloak (being worn)."). The names arrive
     /// already articled, since only the caller knows which are proper names.
     /// Only called with at least one item; `emptyHanded` covers the rest.
-    public var inventorySentence: @Sendable (_ items: [(name: String, isWorn: Bool)]) -> String = {
-        let phrases = $0.map { $0.name + ($0.isWorn ? " (being worn)" : "") }
+    public var inventorySentence: @Sendable (_ items: [(noun: Noun, isWorn: Bool)]) -> String = {
+        let phrases = $0.map { $0.noun.phrase + ($0.isWorn ? " (being worn)" : "") }
         return "You are carrying \(GameText.list(phrases))."
     }
 
@@ -666,7 +680,7 @@ extension GameText {
     /// a stub line scan. See the `plural` trait. Interpolating a `Noun` prints
     /// its phrase, so a line with no verb to agree pays nothing for this.
     ///
-    /// ``give`` is the one line about *two* objects, and stays a closure.
+    /// ``give`` is the one line about *two* objects, and takes a ``Gift``.
     public struct StubReplies: Sendable {
         /// The classic replies. Build one and mutate the lines you want to
         /// change; ``GameText`` already holds a default instance.
@@ -772,8 +786,9 @@ extension GameText {
         public var kiss: Line<Noun?> = "That would be presumptuous."
         /// Handing something to somebody who doesn't want it. Names both, since
         /// every row carries both slots.
-        public var give: @Sendable (_ gift: Noun, _ recipient: Noun) -> String = {
-            "\($1.sentenceCased) \($1.verb("doesn't", "don't")) want \($0)."
+        public var give: Line<Gift> = .naming {
+            let who = $0.recipient
+            return "\(who.sentenceCased) \(who.verb("doesn't", "don't")) want \($0.gift)."
         }
         /// Yelling, shouting or screaming.
         public var yell = "You shout. Nothing shouts back."

@@ -84,10 +84,17 @@ struct Fulminate: Game, GameMain {
     /// with it. Five of the six actors carry `properName` and capitalise
     /// themselves, which hid it; the patrolman doesn't, and printed "the
     /// patrolman looks at it and looks away."
-    let talk = Conversation(
-        text: .init(
-            noInterest: .naming { "\($0.sentenceCased) looks at it and looks away." })
-    )
+    let talk = Conversation(text: talkText)
+
+    /// The one conversation line this house re-voices. A `static` so the stored
+    /// property above stays a one-liner, and because the bootstrap reflects over
+    /// stored properties only — a static is invisible to it, which is what we
+    /// want for a line table.
+    static var talkText: Conversation.Text {
+        var text = Conversation.Text()
+        text.noInterest = .naming { "\($0.sentenceCased) looks at it and looks away." }
+        return text
+    }
 
     /// Whether the carriage house has gone up. Rooms and props read this to
     /// describe themselves on the right side of the evening.

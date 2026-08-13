@@ -168,7 +168,7 @@ enum DefaultActions {
             scratch.state.place(id, .on(surfaceID))
             scratch.state.touched.insert(id)
         }
-        frame.say(frame.definition.text.putItemOn(item.definiteName, surface.definiteName))
+        frame.say(frame.definition.text.putItemOn(item.definiteNoun, surface.definiteNoun))
     }
 
     static func putIn(_ command: Command, frame: TurnFrame) throws {
@@ -212,7 +212,7 @@ enum DefaultActions {
             scratch.state.place(id, .inside(containerID))
             scratch.state.touched.insert(id)
         }
-        frame.say(frame.definition.text.putItemIn(item.definiteName, container.definiteName))
+        frame.say(frame.definition.text.putItemIn(item.definiteNoun, container.definiteNoun))
     }
 
     /// True if `candidate` is `target` itself, or sits somewhere inside
@@ -247,10 +247,10 @@ enum DefaultActions {
     /// ``scenery``, and `RoomDescriber.sayListing` for the other side.
     private static func perceivableContents(
         of container: EntityID, in scratch: inout Scratch, frame: TurnFrame
-    ) -> [String] {
+    ) -> [GameText.Noun] {
         (scratch.state.containment().inContainer[container] ?? [])
             .filter { Visibility.isPerceivable($0, definition: frame.definition, state: scratch.state) }
-            .map { frame.indefiniteName(of: $0) }
+            .map { frame.indefiniteNoun(of: $0) }
     }
 
     static func open(_ command: Command, frame: TurnFrame) throws {
@@ -268,14 +268,14 @@ enum DefaultActions {
         if item.isOpen {
             try refuse(frame.definition.text.alreadyOpen)
         }
-        let contents = frame.with { scratch -> [String] in
+        let contents = frame.with { scratch -> [GameText.Noun] in
             scratch.state.openItems.insert(id)
             return perceivableContents(of: id, in: &scratch, frame: frame)
         }
         if contents.isEmpty {
             frame.say(frame.definition.text.opened)
         } else {
-            frame.say(frame.definition.text.openingReveals(item.definiteName, contents))
+            frame.say(frame.definition.text.openingReveals(item.definiteNoun, contents))
         }
     }
 
@@ -362,7 +362,7 @@ enum DefaultActions {
         if contents.isEmpty {
             frame.say(frame.definition.text.emptyContainer(item.definiteNoun))
         } else {
-            frame.say(frame.definition.text.inTheContainer(item.definiteName, contents))
+            frame.say(frame.definition.text.inTheContainer(item.definiteNoun, contents))
         }
     }
 
@@ -468,16 +468,21 @@ enum DefaultActions {
             // A hidden door isn't there yet: behave as if the exit doesn't
             // exist until it's revealed. Once revealed, a closed door blocks
             // (its locked state only surfaces when the player tries to OPEN it).
-            let (revealed, isOpen, name) = frame.with {
-                scratch -> (Bool, Bool, GameText.Noun) in
+            let (revealed, isOpen) = frame.with { scratch -> (Bool, Bool) in
                 (
                     Visibility.isPerceivable(doorID, definition: frame.definition, state: scratch.state),
-                    Visibility.isOpen(doorID, definition: frame.definition, state: scratch.state),
-                    frame.definiteNoun(of: doorID)
+                    Visibility.isOpen(doorID, definition: frame.definition, state: scratch.state)
                 )
             }
             guard revealed else { try refuse(frame.definition.text.cantGoThatWay) }
-            guard isOpen else { try refuse(frame.definition.text.closedContainer(name)) }
+            // Rendered here rather than hoisted into the scratch block above:
+            // walking through an open door is the commonest move in the game
+            // and has no use for the name. `frame.definiteNoun(of:)` reads only
+            // the immutable definition, so it needs no lock — unlike the proxy
+            // spelling `item.definiteNoun`, which takes one and would hang.
+            guard isOpen else {
+                try refuse(frame.definition.text.closedContainer(frame.definiteNoun(of: doorID)))
+            }
             try enter(destination, frame: frame, announcing: aside)
         case .conditional(let destination, let condition, let blocked):
             // Evaluate the gate inside the live frame so its closure sees the
@@ -747,7 +752,7 @@ enum DefaultActions {
             (scratch.state.containment().held[.player] ?? [])
                 .map { id in
                     (
-                        name: frame.indefiniteName(of: id),
+                        noun: frame.indefiniteNoun(of: id),
                         isWorn: scratch.state.wornItems.contains(id)
                     )
                 }
