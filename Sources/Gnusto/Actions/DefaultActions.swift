@@ -468,16 +468,21 @@ enum DefaultActions {
             // A hidden door isn't there yet: behave as if the exit doesn't
             // exist until it's revealed. Once revealed, a closed door blocks
             // (its locked state only surfaces when the player tries to OPEN it).
-            let (revealed, isOpen, name) = frame.with {
-                scratch -> (Bool, Bool, GameText.Noun) in
+            let (revealed, isOpen) = frame.with { scratch -> (Bool, Bool) in
                 (
                     Visibility.isPerceivable(doorID, definition: frame.definition, state: scratch.state),
-                    Visibility.isOpen(doorID, definition: frame.definition, state: scratch.state),
-                    frame.definiteNoun(of: doorID)
+                    Visibility.isOpen(doorID, definition: frame.definition, state: scratch.state)
                 )
             }
             guard revealed else { try refuse(frame.definition.text.cantGoThatWay) }
-            guard isOpen else { try refuse(frame.definition.text.closedContainer(name)) }
+            // Rendered here rather than hoisted into the scratch block above:
+            // walking through an open door is the commonest move in the game
+            // and has no use for the name. `frame.definiteNoun(of:)` reads only
+            // the immutable definition, so it needs no lock — unlike the proxy
+            // spelling `item.definiteNoun`, which takes one and would hang.
+            guard isOpen else {
+                try refuse(frame.definition.text.closedContainer(frame.definiteNoun(of: doorID)))
+            }
             try enter(destination, frame: frame, announcing: aside)
         case .conditional(let destination, let condition, let blocked):
             // Evaluate the gate inside the live frame so its closure sees the

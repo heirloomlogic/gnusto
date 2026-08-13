@@ -119,7 +119,7 @@ enum RoomDescriber {
         func listContents(
             _ ids: [EntityID]?,
             of holder: EntityID,
-            as line: GameText.Line<GameText.Placement>
+            as line: GameText.Line<GameText.Holding>
         ) {
             for id in ids ?? []
             where Visibility.isPerceivable(id, definition: definition, state: state) {

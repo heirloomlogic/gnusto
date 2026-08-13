@@ -156,8 +156,8 @@ extension Prose {
         // front of the troll, who wants a great deal. The engine's template
         // names the recipient and an `action(…)` row could not.
         stubs.give = .naming {
-            "\($0.recipient.sentenceCased) "
-                + "\($0.recipient.verb("has", "have")) no use for \($0.gift)."
+            let who = $0.recipient
+            return "\(who.sentenceCased) \(who.verb("has", "have")) no use for \($0.gift)."
         }
         // `V-YELL` (`gverbs.zil:1616`). Trilogy verbatim.
         stubs.yell = "Aaaarrrrgggghhhh!"

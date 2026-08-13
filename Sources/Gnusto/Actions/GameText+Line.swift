@@ -160,21 +160,18 @@ extension GameText {
     /// because their roles really are the same two. That is also what lets
     /// `RoomDescriber` keep handing ``GameText/itemOnSurface`` and
     /// ``GameText/itemInContainer`` to one helper as a value.
-    public struct Placement: Sendable {
+    ///
+    /// A `Line` is `ExpressibleByStringLiteral`, so a two-object line will take
+    /// a fixed sentence — `text.putItemIn = "Done."` — and print it without
+    /// either name. For these four that is a legitimate thing for a game to
+    /// want, and the sentence it prints is still true. It is not legitimate for
+    /// a line whose whole content is the thing it was handed, which is why
+    /// ``GameText/unknownWord`` and its neighbours are not `Line`s at all.
+    public struct Holding: Sendable {
         /// What was placed, or what is being listed.
         public let item: Noun
         /// What holds it — the container, or the surface it rests on.
         public let holder: Noun
-
-        /// Creates a placement.
-        ///
-        /// - Parameters:
-        ///   - item: what was placed.
-        ///   - holder: what holds it.
-        public init(item: Noun, holder: Noun) {
-            self.item = item
-            self.holder = holder
-        }
     }
 
     /// Something offered, and whoever is being offered it.
@@ -183,16 +180,6 @@ extension GameText {
         public let gift: Noun
         /// Who is being handed it.
         public let recipient: Noun
-
-        /// Creates a gift.
-        ///
-        /// - Parameters:
-        ///   - gift: what is being handed over.
-        ///   - recipient: who is being handed it.
-        public init(gift: Noun, recipient: Noun) {
-            self.gift = gift
-            self.recipient = recipient
-        }
     }
 
     /// A place, and the thing the player is riding through it.
@@ -211,20 +198,10 @@ extension GameText {
         public let place: String
         /// What the player is aboard.
         public let vehicle: Noun
-
-        /// Creates a place-and-vehicle pair.
-        ///
-        /// - Parameters:
-        ///   - place: the location's own name.
-        ///   - vehicle: what the player is aboard.
-        public init(place: String, vehicle: Noun) {
-            self.place = place
-            self.vehicle = vehicle
-        }
     }
 }
 
-extension GameText.Line where Object == GameText.Placement {
+extension GameText.Line where Object == GameText.Holding {
     /// A line about a thing and what holds it, naming both.
     ///
     /// ```swift
@@ -242,7 +219,7 @@ extension GameText.Line where Object == GameText.Placement {
     /// - Parameter line: builds the sentence from the two rendered nouns.
     /// - Returns: the line.
     public static func naming(
-        _ line: @escaping @Sendable (GameText.Placement) -> String
+        _ line: @escaping @Sendable (GameText.Holding) -> String
     ) -> Self {
         .init(line)
     }
@@ -251,7 +228,7 @@ extension GameText.Line where Object == GameText.Placement {
     ///
     /// The engine calls this; a game assigns the line and never calls it. It
     /// takes the two separately, rather than leaving callers to build a
-    /// ``GameText/Placement``, so that a call site reads the way it read when
+    /// ``GameText/Holding``, so that a call site reads the way it read when
     /// these lines were two-argument closures.
     ///
     /// - Parameters:

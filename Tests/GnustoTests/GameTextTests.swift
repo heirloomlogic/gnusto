@@ -89,7 +89,7 @@ struct GameTextShapeTests {
                 child.value is String
                 || child.value is GameText.Line<GameText.Noun>
                 || child.value is GameText.Line<GameText.Noun?>
-                || child.value is GameText.Line<GameText.Placement>
+                || child.value is GameText.Line<GameText.Holding>
                 || child.value is GameText.Line<GameText.Gift>
                 || child.value is GameText.Line<GameText.Aboard>
             #expect(
@@ -136,7 +136,7 @@ struct PluralAgreementTests {
             PluralLab(),
             [
                 "open gates", "north", "search bins", "search crates",
-                "turn on lamps", "turn off lamps",
+                "search hamper", "turn on lamps", "turn off lamps",
                 "hello hands", "hello scales",
                 "follow hands", "follow scales",
                 "hands, take scales",
@@ -171,6 +171,11 @@ struct PluralAgreementTests {
         #expect(transcript.contains("The scales aren't going anywhere."))
         // `notTakingOrders` — "The stable hands have no intention …"
         #expect(transcript.contains("The stable hands have no intention of taking orders from you."))
+        // `inTheContainer` — the search path, where the verb used to be chosen
+        // by *counting* the contents. One plural thing is one thing, so it said
+        // "is"; the rule is plural when there are several **or** when the only
+        // one is itself plural.
+        #expect(transcript.contains("In the wicker hamper are some lead weights."))
     }
 
     /// The same lines, aimed at the singular twin of each plural thing. This is

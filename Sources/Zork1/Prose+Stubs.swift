@@ -184,8 +184,7 @@ extension Prose {
         // recipient, which the `action(…)` row that stood here could not — so
         // this stops being false in front of the cyclops, who wants a great deal.
         stubs.give = .naming {
-            "\($0.recipient.sentenceCased) "
-                + "\($0.recipient.verb("refuses", "refuse")) it politely."
+            "\($0.recipient.sentenceCased) \($0.recipient.verb("refuses", "refuse")) it politely."
         }
         // `V-YELL` (`gverbs.zil:1616`).
         stubs.yell = "Aaaarrrrgggghhhh!"

@@ -21,7 +21,7 @@
 ///   also answers bare. A game writes it as a plain string literal or as
 ///   ``Line/naming(_:)``, and which of the two is the game's business.
 /// - **A line about *two* things is a `Line` over a role struct** —
-///   ``Placement``, ``Gift``, ``Aboard``. The roles are a type rather than a
+///   ``Holding``, ``Gift``, ``Aboard``. The roles are a type rather than a
 ///   pair so that the API can answer the question an author actually asks:
 ///   `\($0.holder)` says which one is the container where `\($1)` does not.
 /// - **A line about something that is not a thing in the world stays a raw
@@ -373,7 +373,7 @@ public struct GameText: Sendable {
     }
 
     /// A successful `putIn`.
-    public var putItemIn: Line<Placement> = .naming {
+    public var putItemIn: Line<Holding> = .naming {
         "You put \($0.item) in \($0.holder)."
     }
 
@@ -410,7 +410,7 @@ public struct GameText: Sendable {
     }
 
     /// A successful `putOn` (placing onto a surface).
-    public var putItemOn: Line<Placement> = .naming {
+    public var putItemOn: Line<Holding> = .naming {
         "You put \($0.item) on \($0.holder)."
     }
 
@@ -437,13 +437,13 @@ public struct GameText: Sendable {
     /// said "On the table is the rails." about every plural thing a game left
     /// on a table, and no re-skinning could fix it without hard-coding the
     /// other agreement instead.
-    public var itemOnSurface: Line<Placement> = .naming {
+    public var itemOnSurface: Line<Holding> = .naming {
         "On \($0.holder) \($0.item.verb("is", "are")) \($0.item)."
     }
 
     /// A room description's line for an item visible inside a container.
     /// Agrees with the item, for the reason ``itemOnSurface`` gives.
-    public var itemInContainer: Line<Placement> = .naming {
+    public var itemInContainer: Line<Holding> = .naming {
         "In \($0.holder) \($0.item.verb("is", "are")) \($0.item)."
     }
 
@@ -787,8 +787,8 @@ extension GameText {
         /// Handing something to somebody who doesn't want it. Names both, since
         /// every row carries both slots.
         public var give: Line<Gift> = .naming {
-            "\($0.recipient.sentenceCased) \($0.recipient.verb("doesn't", "don't")) "
-                + "want \($0.gift)."
+            let who = $0.recipient
+            return "\(who.sentenceCased) \(who.verb("doesn't", "don't")) want \($0.gift)."
         }
         /// Yelling, shouting or screaming.
         public var yell = "You shout. Nothing shouts back."
