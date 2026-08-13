@@ -115,6 +115,12 @@ public func expectNoAmbiguity(
 /// this cannot render is reported as its own issue rather than skipped, which is
 /// what keeps "reflected" from quietly meaning "unchecked".
 ///
+/// That last sentence has no exception to it as of #246. `give` used to be one:
+/// the one line about two objects, so not a ``GameText/Line``, so unreachable by
+/// reflection and compared by hand below the loop — the single line in here that
+/// could change shape without the sweep noticing. It takes a ``GameText/Gift``
+/// now, and goes through the same door as the other forty-eight.
+///
 /// It is split out from ``expectNoEngineStubLineSurvives(in:game:sourceLocation:)``
 /// so the sweep can be tested for being *alive*: a reflection loop that matches
 /// nothing passes silently, where one asserted to see all forty-nine lines
@@ -138,6 +144,11 @@ public func engineVoicedStubLines(in ours: GameText.StubReplies) -> [String] {
         case let fixed as String: [fixed]
         case let line as GameText.Line<GameText.Noun>: [line(one), line(many)]
         case let line as GameText.Line<GameText.Noun?>: [line(one), line(many), line(nil)]
+        // Both arrangements, because a line about two things has two things its
+        // verb might agree with and the wording rarely agrees with the one it
+        // names first. One order would let a template that hard-codes the
+        // *other* agreement through.
+        case let line as GameText.Line<GameText.Gift>: [line(one, many), line(many, one)]
         default: nil
         }
     }
@@ -149,13 +160,7 @@ public func engineVoicedStubLines(in ours: GameText.StubReplies) -> [String] {
     for (mine, theirs) in zip(
         Mirror(reflecting: ours).children, Mirror(reflecting: engine).children)
     {
-        // `give` is the one line about *two* objects, so it is not a `Line` and
-        // reflection cannot reach it: a dynamic cast to a function type is not
-        // reliable in Swift, and an earlier draft of this sweep trapped doing
-        // it. It is compared by hand below, and the label check in
-        // `theStubSweepSeesEveryLineAGameHasNotVoiced` is what proves the
-        // hand-written case has not been forgotten.
-        guard let label = mine.label, label != "give" else { continue }
+        guard let label = mine.label else { continue }
         guard let ourSamples = samples(of: mine.value),
             let engineSamples = samples(of: theirs.value)
         else {
@@ -171,7 +176,6 @@ public func engineVoicedStubLines(in ours: GameText.StubReplies) -> [String] {
             voiced.append(label)
         }
     }
-    if ours.give(one, many) == engine.give(one, many) { voiced.append("give") }
     return voiced
 }
 

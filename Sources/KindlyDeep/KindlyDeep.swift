@@ -100,11 +100,9 @@ struct KindlyDeep: Game, GameMain {
                 """
             return "\(dark) \(between) \(striker)"
         }
-        text.nowOn = { _ in
-            """
+        text.nowOn = """
             Flint, sparks, and the wick takes; the dark gives ground again, grudgingly, to about arm's length.
             """
-        }
 
         // The narrow half of the register complaint (#126, box 17). The round
         // refuted the aggregate — "the engine's voice in a coal mine" is a

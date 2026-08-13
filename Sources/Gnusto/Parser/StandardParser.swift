@@ -125,7 +125,7 @@ struct StandardParser {
                             verbPhrase: "greet", rawInput: rawInput))
                 }
                 guard scope.orderTakers[addressee] != nil else {
-                    return .failure(.notTakingOrders(definiteName(of: addressee)))
+                    return .failure(.notTakingOrders(definiteNoun(of: addressee)))
                 }
                 return order(rest, to: addressee, address: address, scope: scope, rawInput: rawInput)
             }
@@ -719,5 +719,12 @@ struct StandardParser {
     /// proper name. The parser's counterpart to `TurnFrame.definiteName(of:)`.
     private func definiteName(of id: EntityID) -> String {
         GameText.definite(displayName(of: id), proper: vocabulary.properNames.contains(id))
+    }
+
+    /// The same phrase, carrying its number, for the one parser line whose verb
+    /// has to agree with the person it names. The parser's counterpart to
+    /// `TurnFrame.definiteNoun(of:)`.
+    private func definiteNoun(of id: EntityID) -> GameText.Noun {
+        GameText.Noun(definiteName(of: id), plural: vocabulary.plurals.contains(id))
     }
 }

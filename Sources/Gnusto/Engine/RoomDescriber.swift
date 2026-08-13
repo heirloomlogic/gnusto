@@ -62,7 +62,7 @@ enum RoomDescriber {
             if let vehicle {
                 frame.say(
                     frame.definition.text.locationInVehicle(
-                        roomName, frame.definiteName(of: vehicle)))
+                        roomName, frame.definiteNoun(of: vehicle)))
             } else {
                 frame.say(roomName)
             }
@@ -119,19 +119,19 @@ enum RoomDescriber {
         func listContents(
             _ ids: [EntityID]?,
             of holder: EntityID,
-            as line: (_ item: String, _ holder: String) -> String
+            as line: GameText.Line<GameText.Holding>
         ) {
             for id in ids ?? []
             where Visibility.isPerceivable(id, definition: definition, state: state) {
                 sayListing(of: id) {
-                    line(frame.indefiniteName(of: id), frame.definiteName(of: holder))
+                    line(frame.indefiniteNoun(of: id), frame.definiteNoun(of: holder))
                 }
             }
         }
 
         for itemID in roomItems {
             guard let item = definition.items[itemID] else { continue }
-            sayListing(of: itemID) { definition.text.itemHere(frame.indefiniteName(of: itemID)) }
+            sayListing(of: itemID) { definition.text.itemHere(frame.indefiniteNoun(of: itemID)) }
 
             // "On the X is a Y." for a surface standing in the room.
             if item.isSurface {
@@ -157,7 +157,7 @@ enum RoomDescriber {
             if let presence = frame.presenceText(of: actorID) {
                 frame.say(presence)
             } else {
-                frame.say(frame.definition.text.actorHere(frame.indefiniteName(of: actorID)))
+                frame.say(frame.definition.text.actorHere(frame.indefiniteNoun(of: actorID)))
             }
         }
     }

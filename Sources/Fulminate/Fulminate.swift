@@ -84,9 +84,17 @@ struct Fulminate: Game, GameMain {
     /// with it. Five of the six actors carry `properName` and capitalise
     /// themselves, which hid it; the patrolman doesn't, and printed "the
     /// patrolman looks at it and looks away."
-    let talk = Conversation(
-        noInterest: { "\(GameText.sentenceCase($0)) looks at it and looks away." }
-    )
+    let talk = Conversation(text: talkText)
+
+    /// The one conversation line this house re-voices. A `static` so the stored
+    /// property above stays a one-liner, and because the bootstrap reflects over
+    /// stored properties only — a static is invisible to it, which is what we
+    /// want for a line table.
+    static var talkText: Conversation.Text {
+        var text = Conversation.Text()
+        text.noInterest = .naming { "\($0.sentenceCased) looks at it and looks away." }
+        return text
+    }
 
     /// Whether the carriage house has gone up. Rooms and props read this to
     /// describe themselves on the right side of the evening.
@@ -139,13 +147,17 @@ struct Fulminate: Game, GameMain {
     /// line doesn't, and the cast happens to be the reason for four of them.
     var text: GameText {
         var text = GameText()
-        text.greets = { "\($0) looks at you and does not answer." }
-        text.notTakingOrders = { "\($0) hears you out and goes on doing exactly what \($0) was doing." }
+        text.greets = .naming {
+            "\($0) \($0.verb("looks", "look")) at you and \($0.verb("does", "do")) not answer."
+        }
+        text.notTakingOrders = .naming {
+            "\($0) \($0.verb("hears", "hear")) you out and \($0.verb("goes", "go")) on doing exactly what \($0) \($0.verb("was", "were")) doing."
+        }
         // X ME is the first thing a player types, and this player has a past.
         text.selfDescription =
             "The same man who took statements in this hall in 1948, four years older."
         // A house of suspects is a house somebody will try to search, or grab.
-        text.cantSearchActor = { "You are not putting a hand on \($0) tonight." }
+        text.cantSearchActor = .naming { "You are not putting a hand on \($0) tonight." }
         // Three of them answer to "man" and three to "woman", so this line
         // gets read more often than you would think. The Oxford comma is the
         // house style, not an article workaround.

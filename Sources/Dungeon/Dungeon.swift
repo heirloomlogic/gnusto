@@ -119,7 +119,7 @@ struct Dungeon: Game, GameMain {
     var text: GameText {
         var text = GameText()
         text.pitchBlack = { Prose.grueWarning }
-        text.nothingSpecial = { "There's nothing special about \($0)." }
+        text.nothingSpecial = .naming { "There's nothing special about \($0)." }
         text.alreadyOpen = "It is already open."
         text.alreadyClosed = "It is already closed."
         text.alreadyHave = "You already have that!"
@@ -131,10 +131,10 @@ struct Dungeon: Game, GameMain {
         // The grating is the only lock in the game, so its two lines are the
         // engine's stock ones re-voiced rather than a rule of their own.
         text.unlockedMessage = Prose.gratingUnlocked
-        text.locked = { _ in Prose.gratingLocked }
+        text.locked = .init(Prose.gratingLocked)
         // `enter`/`go through` on a thing that is neither doorway nor vehicle.
         // The Bank's walls and the curtain answer for themselves at stage 2.
-        text.cantEnterThat = Prose.cantEnterThat
+        text.cantEnterThat = .naming(Prose.cantEnterThat)
 
         // The six stock lines that take a person as their subject. The engine's
         // doc comment says a game re-skinning one usually wants the family, and
@@ -142,13 +142,13 @@ struct Dungeon: Game, GameMain {
         // greetings as rules, and every verb that falls *past* a rule still
         // reached a modern narrator. `V-COMMAND` (`gverbs.zil:359`) is the
         // source for the order refusal. (#233)
-        text.cantTakeActor = { "\(GameText.sentenceCase($0)) has other plans." }
-        text.cantSearchActor = { "\(GameText.sentenceCase($0)) would not stand for it." }
-        text.notTakingOrders = { "\(GameText.sentenceCase($0)) pays no attention." }
-        text.doesNotKnowHow = {
+        text.cantTakeActor = .naming { "\($0.sentenceCased) \($0.verb("has", "have")) other plans." }
+        text.cantSearchActor = .naming { "\($0.sentenceCased) would not stand for it." }
+        text.notTakingOrders = .naming { "\($0.sentenceCased) \($0.verb("pays", "pay")) no attention." }
+        text.doesNotKnowHow = .naming {
             "\($0.sentenceCased) \($0.verb("has", "have")) no idea how to do that."
         }
-        text.greets = { "\(GameText.sentenceCase($0)) says nothing in reply." }
+        text.greets = .naming { "\($0.sentenceCased) \($0.verb("says", "say")) nothing in reply." }
 
         // The stub floor — every verb the parser knows and no mechanic answers.
         text.stubs = Prose.stubFloor

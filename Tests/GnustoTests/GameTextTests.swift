@@ -48,6 +48,70 @@ struct GameTextTests {
     }
 }
 
+/// The shape rule stated on ``GameText`` itself, made checkable.
+///
+/// The complaint this answers is that reading the type top to bottom showed
+/// several shapes with no way to tell which slot obeyed which rule. Naming the
+/// rule in a doc comment fixes that for exactly as long as the next line to
+/// arrive is written by somebody who read it, so it is asserted here instead:
+/// a line is a `String`, a `Line` over a noun, or a label on the list below,
+/// which is the taxonomy in executable form.
+struct GameTextShapeTests {
+    /// The lines that are deliberately *not* ``GameText/Line``s, each for a
+    /// stated reason. Adding to this list is a decision; arriving in it by
+    /// accident is what the test prevents.
+    static let notLines: Set<String> = [
+        // Their subject is not a thing in the world but a word the player
+        // typed, and `Line` is `ExpressibleByStringLiteral` — one of these as a
+        // `Line` would let a game write `text.unknownWord = "Eh?"` and silently
+        // drop the word the sentence is about.
+        "unknownWord", "noReferent", "missingObject", "multipleNotAllowedWith",
+        // Written by the parser, from `Vocabulary`, before any entity is
+        // resolved. None carries a verb that agrees with its noun.
+        "missingIndirect", "missingTopic", "missingDirection", "ambiguous",
+        // A list, a number, a title, or nothing at all.
+        "inventorySentence", "scoreLine", "banner", "pitchBlack",
+        // A name and a *list*, which is a third thing again: the list is what
+        // the verb agrees with, and `Line` has no shape for it.
+        "openingReveals", "inTheContainer",
+        // Not a line — the stub floor, swept separately.
+        "stubs",
+    ]
+
+    @Test func everyLineIsAStringAOneNounLineOrADeclaredException() {
+        for child in Mirror(reflecting: GameText()).children {
+            guard let label = child.label else { continue }
+            // Positive identification only. A dynamic cast to a *function*
+            // type is not reliable in Swift and an earlier sweep trapped doing
+            // it, so the question asked here is "is this a shape we know?" and
+            // never "is this a closure of some particular arity?".
+            let known =
+                child.value is String
+                || child.value is GameText.Line<GameText.Noun>
+                || child.value is GameText.Line<GameText.Noun?>
+                || child.value is GameText.Line<GameText.Holding>
+                || child.value is GameText.Line<GameText.Gift>
+                || child.value is GameText.Line<GameText.Aboard>
+            #expect(
+                known || Self.notLines.contains(label),
+                """
+                `GameText.\(label)` is neither a `String`, a `Line` over a noun, \
+                nor a declared exception. Either give it a `Line` — a line about \
+                a thing in the world should take a `GameText.Noun`, so its verbs \
+                can agree with what it names — or add it to `notLines` with the \
+                reason it is not one.
+                """)
+        }
+    }
+
+    /// A line added without being classified fails by name above; a line added
+    /// that happens to be a `String` would pass it silently. This is what
+    /// catches that one.
+    @Test func theSweepSeesEveryLineTheTypeShips() {
+        #expect(Mirror(reflecting: GameText()).children.count == 120)
+    }
+}
+
 /// What the stock lines on `GameText` proper say about a thing that is
 /// grammatically plural.
 ///
@@ -72,41 +136,46 @@ struct PluralAgreementTests {
             PluralLab(),
             [
                 "open gates", "north", "search bins", "search crates",
-                "turn on lamps", "turn off lamps",
+                "search hamper", "turn on lamps", "turn off lamps",
                 "hello hands", "hello scales",
                 "follow hands", "follow scales",
                 "hands, take scales",
             ])
 
         // `itemHere` — "There are some metal bins here."
-        #expect(transcript.contains("There is some metal bins here."))
+        #expect(transcript.contains("There are some metal bins here."))
         // `actorHere` — "Some stable hands are here."
-        #expect(transcript.contains("Some stable hands is here."))
-        // `itemInContainer` — "In the wicker hamper are some lead weights."
-        // The verb belongs to the *contents*, which the sentence names second.
-        #expect(transcript.contains("In the wicker hamper is some lead weights."))
+        #expect(transcript.contains("Some stable hands are here."))
+        // `itemInContainer` — the verb belongs to the *contents*, which the
+        // sentence names second.
+        #expect(transcript.contains("In the wicker hamper are some lead weights."))
         // `locked` — "The iron gates are locked."
-        #expect(transcript.contains("The iron gates is locked."))
+        #expect(transcript.contains("The iron gates are locked."))
         // `closedContainer`, off the travel path — "The iron gates are closed."
-        #expect(transcript.contains("The iron gates is closed."))
+        #expect(transcript.contains("The iron gates are closed."))
         // `closedContainer`, off the search path — "The metal bins are closed."
-        #expect(transcript.contains("The metal bins is closed."))
+        #expect(transcript.contains("The metal bins are closed."))
         // `emptyContainer` — "The wooden crates are empty."
-        #expect(transcript.contains("The wooden crates is empty."))
+        #expect(transcript.contains("The wooden crates are empty."))
         // `nowOn` — "The carriage lamps are now on."
-        #expect(transcript.contains("The carriage lamps is now on."))
+        #expect(transcript.contains("The carriage lamps are now on."))
         // `nowOff` — "The carriage lamps are now off."
-        #expect(transcript.contains("The carriage lamps is now off."))
+        #expect(transcript.contains("The carriage lamps are now off."))
         // `greets` — "The stable hands nod, and say nothing."
-        #expect(transcript.contains("The stable hands nods, and says nothing."))
+        #expect(transcript.contains("The stable hands nod, and say nothing."))
         // `cantGreetThat` — "The scales are unlikely to answer."
-        #expect(transcript.contains("The scales is unlikely to answer."))
+        #expect(transcript.contains("The scales are unlikely to answer."))
         // `alreadyFollowing` — "The stable hands are right here."
-        #expect(transcript.contains("The stable hands is right here."))
+        #expect(transcript.contains("The stable hands are right here."))
         // `cantFollowThat` — "The scales aren't going anywhere."
-        #expect(transcript.contains("The scales isn't going anywhere."))
+        #expect(transcript.contains("The scales aren't going anywhere."))
         // `notTakingOrders` — "The stable hands have no intention …"
-        #expect(transcript.contains("The stable hands has no intention of taking orders from you."))
+        #expect(transcript.contains("The stable hands have no intention of taking orders from you."))
+        // `inTheContainer` — the search path, where the verb used to be chosen
+        // by *counting* the contents. One plural thing is one thing, so it said
+        // "is"; the rule is plural when there are several **or** when the only
+        // one is itself plural.
+        #expect(transcript.contains("In the wicker hamper are some lead weights."))
     }
 
     /// The same lines, aimed at the singular twin of each plural thing. This is

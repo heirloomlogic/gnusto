@@ -423,9 +423,13 @@ struct StubVerbTests {
 
     /// The trait reaches the listing article too, since English has no plural
     /// indefinite of its own: "a scales" was as wrong as "the scales is".
+    ///
+    /// The listing *verb* went the same way in #246. This assertion read
+    /// "There is some scales here." until then — the article fixed and the
+    /// copula still disagreeing with it, in one sentence.
     @Test func aPluralNounIsListedWithSomeRatherThanAn() async throws {
         let transcript = try await play(StubLab(), ["look"])
-        #expect(transcript.contains("There is some scales here."))
+        #expect(transcript.contains("There are some scales here."))
         #expect(!transcript.contains("a scales"))
     }
 
