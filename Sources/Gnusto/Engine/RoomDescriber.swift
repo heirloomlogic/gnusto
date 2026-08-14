@@ -41,11 +41,12 @@ enum RoomDescriber {
             )
         }
 
-        // Outside the scratch lock above, deliberately: `pitchBlack` is a
-        // closure, and a game's dark line typically reads the world (is the
-        // companion still here?), which re-enters the frame via `Ctx.current`
-        // and would deadlock if called while holding it. Same reason
-        // `describedText` waits until line 55.
+        // Outside the scratch lock above, deliberately: every stock line is a
+        // `Line`, so any of them may be `.live` and read the world to word
+        // itself (is the companion still here?), which re-enters the frame via
+        // `Ctx.current` and would deadlock if called while holding the lock.
+        // `pitchBlack` is the one most likely to; the rule is for all of them.
+        // Same reason `describedText` waits until line 55.
         guard !isDark else {
             frame.say(frame.definition.text.pitchBlack())
             return

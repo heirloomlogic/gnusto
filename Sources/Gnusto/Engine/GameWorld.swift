@@ -197,7 +197,7 @@ public actor GameWorld {
         case .restart: return performRestart()
         case .save:
             pendingPrompt = .saveFilename
-            return freeReply(definition.text.savePrompt)
+            return freeReply(definition.text.savePrompt())
         case .restore:
             pendingPrompt = .restoreFilename(returnToDeathPrompt: false)
             return freeReply(restorePromptText())
@@ -289,7 +289,7 @@ public actor GameWorld {
             }
             objects = state.pronounThem.filter { visible.contains($0) }
             guard !objects.isEmpty else {
-                return freeReply(definition.text.cantSeeAnySuchThing)
+                return freeReply(definition.text.cantSeeAnySuchThing())
             }
         }
         if intent == .putIn || intent == .putOn, let indirect = parsed.indirectObject {
@@ -297,7 +297,7 @@ public actor GameWorld {
         }
         guard !objects.isEmpty else {
             return freeReply(
-                intent == .take ? definition.text.nothingToTakeHere : definition.text.notCarryingAnything)
+                intent == .take ? definition.text.nothingToTakeHere() : definition.text.notCarryingAnything())
         }
 
         // Every early return above was a free reply; from here the turn
@@ -368,14 +368,14 @@ public actor GameWorld {
     /// player where (and when — the status line's moves) they are. Free.
     func performUndo() -> TurnResult {
         guard let snapshot = undoSnapshot else {
-            return freeReply(definition.text.cantUndo)
+            return freeReply(definition.text.cantUndo())
         }
         state = snapshot
         undoSnapshot = nil
         pendingClarification = nil
         let frame = TurnFrame(definition: definition, state: state)
         Ctx.$frame.withValue(frame) {
-            frame.say(definition.text.undone)
+            frame.say(definition.text.undone())
             RoomDescriber.describeCurrentLocation(mode: .entry, frame: frame)
         }
         return commit(frame)
@@ -528,7 +528,7 @@ public actor GameWorld {
             DefaultActions.score(frame)
         }
         if frame.with({ $0.state.status }) == .dead {
-            frame.say(frame.definition.text.deathPrompt)
+            frame.say(frame.definition.text.deathPrompt())
         }
     }
 
@@ -637,7 +637,7 @@ public actor GameWorld {
             case .consumed:
                 break
             case .fallThrough:
-                frame.say(frame.definition.text.deathBanner)
+                frame.say(frame.definition.text.deathBanner())
                 frame.with { $0.state.status = .dead }
             }
         }

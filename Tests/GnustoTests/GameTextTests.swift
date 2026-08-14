@@ -3,8 +3,9 @@ import Testing
 
 @testable import Gnusto
 
-/// A game that re-skins a couple of stock lines to prove the engine speaks
-/// through `GameText`.
+/// A game that re-skins a few stock lines to prove the engine speaks through
+/// `GameText` — and re-skins one of them *live*, so the two spellings of a
+/// fixed line sit in one `text` block where they can be compared.
 private struct SnarkyGame: Game {
     let title = "Snark"
     let intro = "A very small cave."
@@ -28,6 +29,13 @@ private struct SnarkyGame: Game {
         var text = GameText()
         text.taken = "Snagged."
         text.cantGoThatWay = "Walls exist, you know."
+        // The same slot type as the two above, widened. Nothing in the engine
+        // changed to allow it, and neither of those two paid anything for it.
+        text.timePasses = .live {
+            pebble.isHeld
+                ? "A moment passes, pebble in hand."
+                : "A moment passes, empty-handed."
+        }
         return text
     }
 }
@@ -36,6 +44,8 @@ private struct SnarkyGame: Game {
 /// game can override; the defaults are the classic voice (covered by the
 /// Cloak transcript canary).
 struct GameTextTests {
+    /// Both fixed lines here are written as plain string literals, which is the
+    /// half of the shape rule that has to keep costing nothing.
     @Test func overriddenLinesSpeakInTheGamesVoice() async throws {
         let transcript = try await play(SnarkyGame(), ["take pebble", "west"])
         expectInOrder(transcript, ["Snagged.", "Walls exist, you know."])
@@ -46,6 +56,22 @@ struct GameTextTests {
         let transcript = try await play(SnarkyGame(), ["drop pebble"])
         expectInOrder(transcript, ["You aren't carrying that."])
     }
+
+    /// A fixed line is fixed because the *game* wrote it that way, not because
+    /// the engine's own wording for it happens to look at nothing. The same
+    /// slot answers differently on two turns here, which is the thing a `String`
+    /// could not do and the reason every stock line is a `Line`.
+    @Test func aLiveLineIsAskedAgainEveryTurn() async throws {
+        let transcript = try await play(
+            SnarkyGame(), ["wait", "take pebble", "wait"])
+        expectInOrder(
+            transcript,
+            [
+                "A moment passes, empty-handed.",
+                "Snagged.",
+                "A moment passes, pebble in hand.",
+            ])
+    }
 }
 
 /// The shape rule stated on ``GameText`` itself, made checkable.
@@ -54,8 +80,8 @@ struct GameTextTests {
 /// several shapes with no way to tell which slot obeyed which rule. Naming the
 /// rule in a doc comment fixes that for exactly as long as the next line to
 /// arrive is written by somebody who read it, so it is asserted here instead:
-/// a line is a `String`, a `Line` over a noun, or a label on the list below,
-/// which is the taxonomy in executable form.
+/// a line is a `Line` over `Void`, a `Line` over a noun, or a label on the list
+/// below, which is the taxonomy in executable form.
 struct GameTextShapeTests {
     /// The lines that are deliberately *not* ``GameText/Line``s, each for a
     /// stated reason. Adding to this list is a decision; arriving in it by
@@ -69,8 +95,9 @@ struct GameTextShapeTests {
         // Written by the parser, from `Vocabulary`, before any entity is
         // resolved. None carries a verb that agrees with its noun.
         "missingIndirect", "missingTopic", "missingDirection", "ambiguous",
-        // A list, a number, a title, or nothing at all.
-        "inventorySentence", "scoreLine", "banner", "pitchBlack",
+        // A list, a number, or a title. Not "nothing at all": a line handed
+        // nothing is a `Line<Void>` and goes through the sweep like the rest.
+        "inventorySentence", "scoreLine", "banner",
         // A name and a *list*, which is a third thing again: the list is what
         // the verb agrees with, and `Line` has no shape for it.
         "openingReveals", "inTheContainer",
@@ -78,7 +105,7 @@ struct GameTextShapeTests {
         "stubs",
     ]
 
-    @Test func everyLineIsAStringAOneNounLineOrADeclaredException() {
+    @Test func everyLineIsAVoidLineAOneNounLineOrADeclaredException() {
         for child in Mirror(reflecting: GameText()).children {
             guard let label = child.label else { continue }
             // Positive identification only. A dynamic cast to a *function*
@@ -86,7 +113,7 @@ struct GameTextShapeTests {
             // it, so the question asked here is "is this a shape we know?" and
             // never "is this a closure of some particular arity?".
             let known =
-                child.value is String
+                child.value is GameText.Line<Void>
                 || child.value is GameText.Line<GameText.Noun>
                 || child.value is GameText.Line<GameText.Noun?>
                 || child.value is GameText.Line<GameText.Holding>
@@ -95,18 +122,19 @@ struct GameTextShapeTests {
             #expect(
                 known || Self.notLines.contains(label),
                 """
-                `GameText.\(label)` is neither a `String`, a `Line` over a noun, \
-                nor a declared exception. Either give it a `Line` — a line about \
-                a thing in the world should take a `GameText.Noun`, so its verbs \
-                can agree with what it names — or add it to `notLines` with the \
+                `GameText.\(label)` is neither a `Line` over `Void`, a `Line` \
+                over a noun, nor a declared exception. Either give it a `Line` — \
+                a line about a thing in the world should take a `GameText.Noun`, \
+                so its verbs can agree with what it names, and one about nothing \
+                in particular takes `Void` — or add it to `notLines` with the \
                 reason it is not one.
                 """)
         }
     }
 
-    /// A line added without being classified fails by name above; a line added
-    /// that happens to be a `String` would pass it silently. This is what
-    /// catches that one.
+    /// A line added without being classified fails by name above; a raw closure
+    /// added straight to ``notLines``, classified but never argued for, would
+    /// pass it silently. This is what catches that one.
     @Test func theSweepSeesEveryLineTheTypeShips() {
         #expect(Mirror(reflecting: GameText()).children.count == 120)
     }

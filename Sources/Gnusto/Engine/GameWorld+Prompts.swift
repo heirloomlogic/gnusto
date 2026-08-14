@@ -23,8 +23,8 @@ extension GameWorld {
     /// slots in the saves directory.
     func restorePromptText() -> String {
         let names = SaveStore.existingSaveNames(in: saveDirectory)
-        guard !names.isEmpty else { return definition.text.restorePrompt }
-        return "\(definition.text.restorePrompt) (saved: \(names.joined(separator: ", ")))"
+        guard !names.isEmpty else { return definition.text.restorePrompt() }
+        return "\(definition.text.restorePrompt()) (saved: \(names.joined(separator: ", ")))"
     }
 
     /// Consumes the line that answers an open engine prompt.
@@ -32,19 +32,19 @@ extension GameWorld {
         switch prompt {
         case .saveFilename:
             guard !line.isEmpty else {
-                return freeReply(definition.text.cancelled)
+                return freeReply(definition.text.cancelled())
             }
             do {
                 let url = try SaveStore.resolveForWrite(line, in: saveDirectory)
                 try SaveFile.write(state, title: definition.title, to: url)
-                return freeReply(definition.text.saved)
+                return freeReply(definition.text.saved())
             } catch {
-                return freeReply(definition.text.saveFailed)
+                return freeReply(definition.text.saveFailed())
             }
 
         case .restoreFilename(let returnToDeathPrompt):
             guard !line.isEmpty else {
-                return restoreFailed(definition.text.cancelled, returnToDeathPrompt)
+                return restoreFailed(definition.text.cancelled(), returnToDeathPrompt)
             }
             do {
                 let url = SaveStore.resolve(line, in: saveDirectory)
@@ -57,9 +57,9 @@ extension GameWorld {
                     // from an unreadable one: the player just sees "Restore
                     // failed." A crafted file learns nothing about which check
                     // caught it.
-                    return restoreFailed(definition.text.restoreFailed, returnToDeathPrompt)
+                    return restoreFailed(definition.text.restoreFailed(), returnToDeathPrompt)
                 case .wrongGame:
-                    return restoreFailed(definition.text.wrongGameSave, returnToDeathPrompt)
+                    return restoreFailed(definition.text.wrongGameSave(), returnToDeathPrompt)
                 }
             }
 
@@ -74,7 +74,7 @@ extension GameWorld {
                 guard undoSnapshot != nil else {
                     pendingPrompt = .deathChoice
                     return freeReply(
-                        "\(definition.text.cantUndo)\n\n\(definition.text.deathPrompt)")
+                        "\(definition.text.cantUndo())\n\n\(definition.text.deathPrompt())")
                 }
                 // The snapshot predates the fatal turn — this revives.
                 return performUndo()
@@ -84,7 +84,7 @@ extension GameWorld {
                 return freeReply("")
             default:
                 pendingPrompt = .deathChoice
-                return freeReply(definition.text.deathChoiceUnrecognized)
+                return freeReply(definition.text.deathChoiceUnrecognized())
             }
         }
     }
@@ -101,7 +101,7 @@ extension GameWorld {
         pendingClarification = nil
         let frame = TurnFrame(definition: definition, state: state)
         Ctx.$frame.withValue(frame) {
-            frame.say(definition.text.restored)
+            frame.say(definition.text.restored())
             RoomDescriber.describeCurrentLocation(mode: .entry, frame: frame)
         }
         return commit(frame)
@@ -114,6 +114,6 @@ extension GameWorld {
             return freeReply(message)
         }
         pendingPrompt = .deathChoice
-        return freeReply("\(message)\n\n\(definition.text.deathPrompt)")
+        return freeReply("\(message)\n\n\(definition.text.deathPrompt())")
     }
 }

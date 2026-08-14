@@ -113,8 +113,8 @@ extension StubVerb {
         _ line: @escaping @Sendable (GameText, GameText.Noun) -> String
     ) -> StubVerb {
         .init(intent, patterns, reach) { text, command in
-            guard let object = command.directObject else { return text.didntUnderstand }
-            guard !object.isPlayer else { return text.stubs.yourself }
+            guard let object = command.directObject else { return text.didntUnderstand() }
+            guard !object.isPlayer else { return text.stubs.yourself() }
             guard !object.isActor else { return text.stubs.somebodyElse(object.definiteNoun) }
             return line(text, object.definiteNoun)
         }
@@ -517,7 +517,7 @@ extension DefaultActions {
 
         .optionallyNamed(.drink, [["drink", .directObject]], reach: .directObject) { $0.stubs.drink($1) },
 
-        .plain(.sleep, [["sleep"]], reach: .notNeeded) { $0.stubs.sleep },
+        .plain(.sleep, [["sleep"]], reach: .notNeeded) { $0.stubs.sleep() },
 
         // `wake up <object>` earns its row: without it, "wake up the troll"
         // falls to `wake <object>`, which swallows "up troll", fails the
@@ -564,9 +564,9 @@ extension DefaultActions {
             namesObject: true
         ) { text, command in
             guard let item = command.directObject, let recipient = command.indirectObject
-            else { return text.didntUnderstand }
+            else { return text.didntUnderstand() }
             // Either slot can be the player, and neither reads with its name.
-            guard !item.isPlayer, !recipient.isPlayer else { return text.stubs.yourself }
+            guard !item.isPlayer, !recipient.isPlayer else { return text.stubs.yourself() }
             return text.stubs.give(item.definiteNoun, recipient.definiteNoun)
         },
 
@@ -578,7 +578,7 @@ extension DefaultActions {
                 ["scream"],
             ],
             reach: .notNeeded
-        ) { $0.stubs.yell },
+        ) { $0.stubs.yell() },
 
         // Waving a thing means waving a thing you've got hold of.
         .optionallyNamed(
@@ -615,9 +615,9 @@ extension DefaultActions {
             reach: .directObject
         ) { $0.stubs.jump($1) },
 
-        .plain(.swim, [["swim"]], reach: .notNeeded) { $0.stubs.swim },
+        .plain(.swim, [["swim"]], reach: .notNeeded) { $0.stubs.swim() },
 
-        .plain(.dive, [["dive"]], reach: .notNeeded) { $0.stubs.dive },
+        .plain(.dive, [["dive"]], reach: .notNeeded) { $0.stubs.dive() },
 
         .plain(
             .stand,
@@ -626,7 +626,7 @@ extension DefaultActions {
                 ["stand", "up"],
             ],
             reach: .notNeeded
-        ) { $0.stubs.stand },
+        ) { $0.stubs.stand() },
 
         .optionallyNamed(
             .sit,
@@ -648,9 +648,9 @@ extension DefaultActions {
                 ["lie", "down"],
             ],
             reach: .notNeeded
-        ) { $0.stubs.lie },
+        ) { $0.stubs.lie() },
 
-        .plain(.kneel, [["kneel"]], reach: .notNeeded) { $0.stubs.kneel },
+        .plain(.kneel, [["kneel"]], reach: .notNeeded) { $0.stubs.kneel() },
 
         // MARK: Liquids and containers
 
@@ -699,9 +699,9 @@ extension DefaultActions {
 
         // MARK: Ritual and flavor
 
-        .plain(.pray, [["pray"]], reach: .notNeeded) { $0.stubs.pray },
+        .plain(.pray, [["pray"]], reach: .notNeeded) { $0.stubs.pray() },
 
-        .plain(.sing, [["sing"]], reach: .notNeeded) { $0.stubs.sing },
+        .plain(.sing, [["sing"]], reach: .notNeeded) { $0.stubs.sing() },
 
         .plain(
             .curse,
@@ -710,7 +710,7 @@ extension DefaultActions {
                 ["swear"],
             ],
             reach: .notNeeded
-        ) { $0.stubs.curse },
+        ) { $0.stubs.curse() },
 
         .plain(
             .xyzzy,
@@ -719,7 +719,7 @@ extension DefaultActions {
                 ["plugh"],
             ],
             reach: .notNeeded
-        ) { $0.stubs.xyzzy },
+        ) { $0.stubs.xyzzy() },
 
         // Counting coins behind glass is exactly what a display case is for.
         .optionallyNamed(.count, [["count", .directObject]], reach: .notNeeded) { $0.stubs.count($1) },
@@ -727,9 +727,9 @@ extension DefaultActions {
         // Bare `think` only. `think about <topic>` would match "think about"
         // with an empty topic and rob the parser of its "What do you want to
         // think about?" question.
-        .plain(.think, [["think"]], reach: .notNeeded) { $0.stubs.think },
+        .plain(.think, [["think"]], reach: .notNeeded) { $0.stubs.think() },
 
-        .plain(.wish, [["wish"]], reach: .notNeeded) { $0.stubs.wish },
+        .plain(.wish, [["wish"]], reach: .notNeeded) { $0.stubs.wish() },
 
         // MARK: Commerce
 
