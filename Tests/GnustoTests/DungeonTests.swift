@@ -4693,13 +4693,14 @@ struct DungeonTests {
                 "The mat is already under the door.",
                 // The screwdriver is still standing in the near keyhole.
                 "There is something in the keyhole already.",
-                "That will not unlock it.",
+                "That will not turn the lock.",
                 "Something turns over inside the door, and the lock gives.",
             ])
     }
 
     /// The skeleton keys punch the far key out perfectly well and will not turn
-    /// this lock, and the mainframe has its own line about it.
+    /// this lock — in the same words the grating uses for a key that does not
+    /// fit it, which is the whole of #263.
     @Test func theSkeletonKeysPunchTheKeyOutAndStillWillNotTurnTheLock() async throws {
         let transcript = try await play(
             Dungeon(),
@@ -4717,7 +4718,7 @@ struct DungeonTests {
             [
                 "There is a faint noise from the far side of the door",
                 "As the mat comes up, a rusty iron key slides off it",
-                "Whatever these open, it is not this.",
+                "That will not turn the lock.",
             ])
     }
 
@@ -4756,6 +4757,72 @@ struct DungeonTests {
             [
                 "Something turns over inside the door, and the lock gives.",
                 "It is already unlocked.",
+            ])
+    }
+
+    /// **Both of the game's locks refuse a wrong key in one voice.** #260's
+    /// neighbour, and the same defect one guard over: the grating fell to the
+    /// engine's "That doesn't fit the lock." while the Palantir had written two
+    /// lines of its own for the idea, so three registers answered it and which
+    /// one the player heard depended on the lock and on the key. The line is
+    /// direction-neutral because the engine's slot answers `lock` as well as
+    /// `unlock`, which is what the second grating pair pins. (#263)
+    @Test func bothOfTheGamesLocksRefuseAWrongKeyInOneVoice() async throws {
+        let grating = try await play(
+            Dungeon(),
+            Self.toMazeFive + ["take keys"] + Self.mazeFiveToTheGrating
+                + [
+                    "unlock grating with lamp", "unlock grating with keys",
+                    "lock grating with lamp",
+                ],
+            seed: 18)
+
+        expectInOrder(
+            grating,
+            [
+                "That will not turn the lock.",
+                "The grate is unlocked.",
+                "That will not turn the lock.",
+            ])
+
+        // The solve up to the turn of the lock, with the screwdriver offered
+        // in place of the key it just punched out.
+        let oakDoor = try await play(
+            Dungeon(),
+            Self.toTheTinyRoom + Array(Self.theOakDoorSolve.dropLast(3))
+                + ["unlock door with screwdriver"],
+            seed: 18)
+
+        #expect(oakDoor.contains("That will not turn the lock."))
+    }
+
+    /// **The grating's own two lines say which side of it you are standing
+    /// on.** `GRATE-FUNCTION` answers both turns of this lock itself, because
+    /// the lock is on the underside: from the Clearing there is nothing to put
+    /// a key into, and the two directions refuse there in different words.
+    /// Before #263 nothing guarded `lock` at all, so the grating could be
+    /// locked from the Clearing — from the wrong side of its own lock. (#263)
+    @Test func theGratingsLockOnlyTurnsFromUnderneathIt() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toMazeFive + ["take keys"] + Self.mazeFiveToTheGrating
+                + [
+                    "unlock grating with keys", "lock grating with keys",
+                    "unlock grating with keys", "open grating", "up",
+                    "lock grating with keys", "unlock grating with keys",
+                ],
+            seed: 18)
+
+        expectInOrder(
+            transcript,
+            [
+                "The grate is unlocked.",
+                "The grate is locked.",
+                "The grate is unlocked.",
+                "The grating opens to reveal trees above you.",
+                "Clearing",
+                "You cannot lock it from this side.",
+                "You cannot reach the lock from up here.",
             ])
     }
 

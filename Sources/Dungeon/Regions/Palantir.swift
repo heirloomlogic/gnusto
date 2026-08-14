@@ -424,9 +424,8 @@ extension DungeonPalantir {
     @RuleBuilder fileprivate var doorRules: Rules {
         oakDoor.describe { Prose.oakDoor(matUnderIt: matUnderDoor) }
 
-        // The engine's stock refusal is re-voiced game-wide for the grating,
-        // which is the only other lock in the game, so this door has to say its
-        // own line rather than borrow one about a grating.
+        // The game-wide line names whatever it is refusing to open, and this
+        // door's full name — "the door made of oak" — reads badly in it.
         oakDoor.before(.open) {
             try require(!oakDoor.isLocked, else: Prose.doorIsLocked)
         }
@@ -434,12 +433,11 @@ extension DungeonPalantir {
         // Unlocking. `lockedBy` already knows which key fits; what this adds is
         // the one thing the engine cannot know — a tool left in the near
         // keyhole is in the way of the wards, and the source will not turn the
-        // lock over it.
+        // lock over it. The wrong-key refusal is the game's, not this rule's,
+        // so the skeleton keys get the same answer here as they get at the
+        // grating. (#263)
         oakDoor.before(.unlock) {
-            guard let offered = command.indirectObject else {
-                try refuse(Prose.cantUnlockWithThat)
-            }
-            try require(offered == rustyIronKey, else: Prose.cantUnlockWithThat)
+            try require(command.indirectObject == rustyIronKey, else: gameText.wrongKey())
             try require(keyholeTiny.contents.isEmpty, else: Prose.keyholeBlocked)
             try require(oakDoor.isLocked, else: gameText.alreadyUnlocked())
             oakDoor.isLocked = false

@@ -139,10 +139,6 @@ extension Prose {
         As the mat comes up, a rusty iron key slides off it and onto the floor.
         """
 
-    static let wrongKeys = "Whatever these open, it is not this."
-
-    static let cantUnlockWithThat = "That will not unlock it."
-
     static let doorUnlocked = """
         Something turns over inside the door, and the lock gives.
         """
