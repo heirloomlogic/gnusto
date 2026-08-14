@@ -419,11 +419,21 @@ extension Prose {
         There is an open grating, descending into darkness.
         """
 
-    static let gratingLocked = "The grating is locked."
+    /// Why it will not open, as against ``gratingLocked``, which is what the
+    /// lock says when it turns.
+    static let gratingLockedShut = "The grating is locked."
 
     /// The grating has no keyhole on the forest side; the lock is underneath.
+    /// The two directions refuse differently there, as `GRATE-FUNCTION` does:
+    /// unlocking is out of reach, where locking is simply the wrong side.
     static let gratingLockNotReachable = """
         You cannot reach the lock from up here.
+        """
+
+    /// See ``gratingLockNotReachable``. The trilogy's own line, its contraction
+    /// expanded to match its neighbour's.
+    static let gratingCannotLockFromAbove = """
+        You cannot lock it from this side.
         """
 
     // MARK: - The Great Canyon

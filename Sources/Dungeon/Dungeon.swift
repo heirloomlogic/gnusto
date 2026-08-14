@@ -128,17 +128,24 @@ struct Dungeon: Game, GameMain {
         // written to the shape of the two lines above. (#260)
         text.alreadyUnlocked = "It is already unlocked."
         text.alreadyLocked = "It is already locked."
+        // A wrong key, which the oak door and the grating both refuse by
+        // reading this rather than each writing a line of its own. It names
+        // neither direction, because the slot answers `lock` as well as
+        // `unlock`. (#263)
+        text.wrongKey = "That will not turn the lock."
+        // Its two confirmations. Both of the game's locks say something of
+        // their own instead — these are the register the *next* lockable
+        // inherits, and the reason they stay subject-free is that the family
+        // they belong to is `opened`/`closed`: a lock with a sentence about
+        // itself has a rule to say it from.
+        text.lockedMessage = "It is now locked."
+        text.unlockedMessage = "It is now unlocked."
         text.alreadyHave = "You already have that!"
         text.didntUnderstand = "That sentence isn't one I recognize."
         text.nothingToTakeHere = "There's nothing here you can take."
         // The basket carrying the only light down the shaft darkens a room the
         // way turning a lamp off does, so the two say the same sentence.
         text.nowDark = .init(Prose.itIsNowPitchBlack)
-        // The grating is the only lock that reaches the engine's own lock
-        // handling, so its two lines are the stock ones re-voiced rather than a
-        // rule of their own.
-        text.unlockedMessage = .init(Prose.gratingUnlocked)
-        text.locked = .init(Prose.gratingLocked)
         // `enter`/`go through` on a thing that is neither doorway nor vehicle.
         // The Bank's walls and the curtain answer for themselves at stage 2.
         text.cantEnterThat = .naming(Prose.cantEnterThat)
@@ -779,20 +786,25 @@ struct Dungeon: Game, GameMain {
             player.location == maze.gratingRoom ? Prose.gratingFromBelow : Prose.grating
         }
 
-        // Unlocking it. `lockedBy(_:)` already tells the engine which key fits
-        // and where it has to be, so the only thing this rule adds is the one
-        // fact the engine cannot know: the lock is on the underside, and there
-        // is nothing to put a key into from the forest.
+        // Both turns of the lock, which `GRATE-FUNCTION` answers itself for the
+        // same reason this does: the lock is on the underside, so which side
+        // the player is standing on decides the answer, and the two directions
+        // refuse from above in different words. Everything the engine's own
+        // handler would have said is read back out of the game's register
+        // rather than written again here, so a key that does not fit this lock
+        // and one that does not fit the oak door get the same sentence. (#263)
         aboveGround.grating.before(.unlock) {
-            try require(
-                player.location == maze.gratingRoom, else: Prose.gratingLockNotReachable)
+            try turnTheGratingsLock(to: false, wrongSide: Prose.gratingLockNotReachable)
+        }
+        aboveGround.grating.before(.lock) {
+            try turnTheGratingsLock(to: true, wrongSide: Prose.gratingCannotLockFromAbove)
         }
 
         // Opening it lights the room below — the source's own light bit,
         // written at runtime — and says which side of it you are standing on,
         // which is why this replaces the default rather than embellishing it.
         aboveGround.grating.before(.open) {
-            try require(!aboveGround.grating.isLocked, else: Prose.gratingLocked)
+            try require(!aboveGround.grating.isLocked, else: Prose.gratingLockedShut)
             try require(!aboveGround.grating.isOpen, else: gameText.alreadyOpen())
             aboveGround.grating.isOpen = true
             maze.gratingRoom.isLit = true
@@ -806,6 +818,34 @@ struct Dungeon: Game, GameMain {
             maze.gratingRoom.isLit = false
             try reply(Prose.gratingCloses)
         }
+    }
+
+    /// One turn of the grating's lock, in whichever direction. The two differ
+    /// only in the state they turn the lock to and in what the wrong side of
+    /// it says, so they are written once — a guard on one direction and not
+    /// the other being the hole this replaces. Nothing guarded `lock` at all
+    /// before #263, so the grating could be locked from the Clearing, which is
+    /// the wrong side of its own lock.
+    ///
+    /// Everything the engine's own `setLocked` would have said is read back
+    /// out of the game's register, in the order it says it, so this lock and
+    /// the oak door refuse a wrong key in one voice.
+    ///
+    /// - Parameters:
+    ///   - locked: the state the lock is being turned to.
+    ///   - refusal: what to say to somebody standing over the grating rather
+    ///     than under it, which is not the same sentence in both directions.
+    /// - Throws: always — every path here refuses or replies.
+    private func turnTheGratingsLock(to locked: Bool, wrongSide refusal: String) throws -> Never {
+        try require(player.location == maze.gratingRoom, else: refusal)
+        try require(
+            aboveGround.grating.isLocked != locked,
+            else: locked ? gameText.alreadyLocked() : gameText.alreadyUnlocked())
+        guard let key = command.indirectObject else { try refuse(gameText.didntUnderstand()) }
+        try require(key.isHeld, else: gameText.keyNotHeld(key.definiteNoun))
+        try require(key == aboveGround.skeletonKeys, else: gameText.wrongKey())
+        aboveGround.grating.isLocked = locked
+        try reply(locked ? Prose.gratingLocked : Prose.gratingUnlocked)
     }
 
     /// Milestone 4 — the cyclops

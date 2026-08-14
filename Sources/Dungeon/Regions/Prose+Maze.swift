@@ -70,8 +70,14 @@ extension Prose {
         Above you is a grating locked with a skull-and-crossbones lock.
         """
 
-    /// Trilogy verbatim.
+    /// Trilogy verbatim — the pair `GRATE-FUNCTION` says for the two turns of
+    /// this lock, which is why they are the grating's own lines and not the
+    /// game-wide ``GameText/unlockedMessage``/``GameText/lockedMessage``. Those
+    /// two say nothing about a particular lock; these two name the grate.
     static let gratingUnlocked = "The grate is unlocked."
+
+    /// Trilogy verbatim. See ``gratingUnlocked``.
+    static let gratingLocked = "The grate is locked."
 
     /// Trilogy verbatim.
     static let gratingOpensFromBelow = """

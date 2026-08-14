@@ -81,15 +81,6 @@ extension Dungeon {
         // rule that does not throw, so the take completes and the key lands on
         // the sentence after "Taken."
         aboveGround.welcomeMat.before(.take) { palantirWing.liftTheMat() }
-
-        // The skeleton keys punch the far key out perfectly well and will not
-        // turn this lock, and the mainframe has a line about it. On the keys
-        // rather than on the door because they are the indirect object, and so
-        // are heard first.
-        aboveGround.skeletonKeys.before(.unlock) {
-            guard command.directObject == palantirWing.oakDoor else { return }
-            try refuse(Prose.wrongKeys)
-        }
     }
 
     /// The chute: rigging it, riding it, and everything you can lose down it.

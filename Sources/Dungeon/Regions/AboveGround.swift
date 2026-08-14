@@ -481,8 +481,9 @@ struct DungeonAboveGround: GameContent {
         description(Prose.skeletonKeys)
         trait(.weight, 10)
         // One of the source's four `PALOBJS`. They will punch the oak door's
-        // key out of the far keyhole and they will not turn its lock — the
-        // mainframe answers that with its own line. See ``DungeonPalantir``.
+        // key out of the far keyhole and they will not turn its lock, which
+        // the door refuses in the game's own wrong-key line — the same one the
+        // grating these keys *do* open uses. See ``DungeonPalantir``.
         trait(.keyholeTool, true)
     }
 
