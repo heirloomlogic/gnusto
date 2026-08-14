@@ -195,3 +195,80 @@ struct PluralLab: Game {
         twins.starts(in: yard)
     }
 }
+
+/// A game that re-voices the two lines about a container and everything in it.
+///
+/// The fixture exists for what its templates *don't* do. Neither counts
+/// anything, and neither knows that a list holding one plural thing is plural —
+/// the rule the engine itself got wrong, printing "In the hamper is some
+/// scales." They ask ``GameText/Noun/verb(_:_:)``, and ``GameText/Noun/list(_:)``
+/// has already worked the number out. That is the whole claim of #253: the
+/// grammar left a default body and moved into the type, so a game re-voicing
+/// these lines cannot inherit the defect by re-deriving it.
+struct ListVoiceLab: Game {
+    let title = "List Voice Lab"
+    let intro = "A pantry."
+
+    let pantry = Location {
+        name("Pantry")
+        description("Shelves, and things on them.")
+    }
+
+    /// One plural thing inside, which is the case counting gets wrong. Open,
+    /// so `search` reaches the line rather than the closed-container refusal.
+    let hamper = Item {
+        name("wicker hamper")
+        adjectives("wicker")
+        container
+    }
+
+    let weights = Item {
+        name("lead weights")
+        adjectives("lead")
+        plural
+    }
+
+    /// Two singular things inside, which is the case counting gets right.
+    let crate = Item {
+        name("pine crate")
+        adjectives("pine")
+        container
+        openable
+    }
+
+    let apple = Item { name("red apple") }
+    let candle = Item { name("wax candle") }
+
+    /// The singular control. Without it a template that hard-coded "sit" and
+    /// never called `verb(_:_:)` would pass every other case here — the failure
+    /// mode ``PluralLab``'s own header exists to rule out.
+    let bowl = Item {
+        name("clay bowl")
+        adjectives("clay")
+        container
+    }
+
+    let pear = Item { name("ripe pear") }
+
+    var text: GameText {
+        var text = GameText()
+        text.inTheContainer = .naming {
+            "Inside \($0.holder), \($0.item.verb("sits", "sit")) \($0.item)."
+        }
+        text.openingReveals = .naming {
+            "\($0.holder.sentenceCased) gives up \($0.item)."
+        }
+        return text
+    }
+
+    var map: WorldMap {
+        player.starts(in: pantry)
+        hamper.starts(in: pantry)
+        crate.starts(in: pantry)
+        bowl.starts(in: pantry)
+        weights.starts(inside: hamper)
+        apple.starts(inside: crate)
+        candle.starts(inside: crate)
+        pear.starts(inside: bowl)
+    }
+}

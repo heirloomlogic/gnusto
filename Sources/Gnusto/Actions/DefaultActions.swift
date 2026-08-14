@@ -275,7 +275,12 @@ enum DefaultActions {
         if contents.isEmpty {
             frame.say(frame.definition.text.opened())
         } else {
-            frame.say(frame.definition.text.openingReveals(item.definiteNoun, contents))
+            // Labelled rather than positional: as closures these two took the
+            // container *first*, and both slots are a `Noun`, so a silent
+            // reversal is exactly what the compiler cannot catch.
+            frame.say(
+                frame.definition.text.openingReveals(
+                    .init(item: .list(contents), holder: item.definiteNoun)))
         }
     }
 
@@ -362,7 +367,9 @@ enum DefaultActions {
         if contents.isEmpty {
             frame.say(frame.definition.text.emptyContainer(item.definiteNoun))
         } else {
-            frame.say(frame.definition.text.inTheContainer(item.definiteNoun, contents))
+            frame.say(
+                frame.definition.text.inTheContainer(
+                    .init(item: .list(contents), holder: item.definiteNoun)))
         }
     }
 
@@ -751,7 +758,7 @@ enum DefaultActions {
         let held = frame.with { scratch in
             (scratch.state.containment().held[.player] ?? [])
                 .map { id in
-                    (
+                    GameText.Carried.Entry(
                         noun: frame.indefiniteNoun(of: id),
                         isWorn: scratch.state.wornItems.contains(id)
                     )

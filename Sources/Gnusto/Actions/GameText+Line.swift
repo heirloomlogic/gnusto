@@ -199,22 +199,48 @@ extension GameText {
     /// answer the only question an author actually asks at the call site: which
     /// one is the container? `\($0.holder)` answers it; `\($1)` does not.
     ///
-    /// One struct serves all four placement lines rather than one apiece,
-    /// because their roles really are the same two. That is also what lets
-    /// `RoomDescriber` keep handing ``GameText/itemOnSurface`` and
-    /// ``GameText/itemInContainer`` to one helper as a value.
+    /// One struct serves every line whose two things stand in this relation,
+    /// rather than one apiece — which is also what lets `RoomDescriber` keep
+    /// handing ``GameText/itemOnSurface`` and ``GameText/itemInContainer`` to
+    /// one helper as a value. Another such line should cost no edit here.
     ///
     /// A `Line` is `ExpressibleByStringLiteral`, so a two-object line will take
     /// a fixed sentence — `text.putItemIn = "Done."` — and print it without
-    /// either name. For these four that is a legitimate thing for a game to
-    /// want, and the sentence it prints is still true. It is not legitimate for
-    /// a line whose whole content is the thing it was handed, which is why
+    /// either name. For these that is a legitimate thing for a game to want,
+    /// and the sentence it prints is still true. It is not legitimate for a
+    /// line whose whole content is the thing it was handed, which is why
     /// ``GameText/unknownWord`` and its neighbours are not `Line`s at all.
     public struct Holding: Sendable {
-        /// What was placed, or what is being listed.
+        /// What was placed, or what is being listed. Several things joined by
+        /// ``GameText/Noun/list(_:)`` arrive here as one, so a line about a
+        /// container and everything in it uses this slot like any other — and
+        /// `\($0.item.verb("is", "are"))` agrees with the whole list.
         public let item: Noun
         /// What holds it — the container, or the surface it rests on.
         public let holder: Noun
+    }
+
+    /// Everything the player is carrying, and which of it is being worn.
+    ///
+    /// The odd one out among the role structs, and the reason is the worn flag.
+    /// The other lines about several things take them as one ``Noun/list(_:)``
+    /// and never look at the parts; this line has something to say about each
+    /// part, so it cannot join them before the game has had its say. A game that
+    /// wants "wearing" rather than "(being worn)", or wants the worn things last,
+    /// needs them still separable — and that is exactly what a bare `[Noun]`
+    /// would have thrown away.
+    public struct Carried: Sendable {
+        /// One thing in hand.
+        public struct Entry: Sendable {
+            /// What it is.
+            public let noun: Noun
+            /// Whether the player is wearing it rather than holding it.
+            public let isWorn: Bool
+        }
+
+        /// What the player is carrying, in the order the listing should read.
+        /// Never empty — ``GameText/emptyHanded`` answers that case instead.
+        public let entries: [Entry]
     }
 
     /// Something offered, and whoever is being offered it.
@@ -280,6 +306,35 @@ extension GameText.Line where Object == GameText.Holding {
     /// - Returns: the sentence to print.
     public func callAsFunction(_ item: GameText.Noun, _ holder: GameText.Noun) -> String {
         self(.init(item: item, holder: holder))
+    }
+}
+
+extension GameText.Line where Object == GameText.Carried {
+    /// A line about everything in the player's hands.
+    ///
+    /// ```swift
+    /// text.inventorySentence = .naming {
+    ///     "You have " + GameText.list($0.entries.map {
+    ///         $0.isWorn ? "\($0.noun), worn" : "\($0.noun)"
+    ///     }) + "."
+    /// }
+    /// ```
+    ///
+    /// - Parameter line: builds the sentence from what is being carried.
+    /// - Returns: the line.
+    public static func naming(
+        _ line: @escaping @Sendable (GameText.Carried) -> String
+    ) -> Self {
+        .init(line)
+    }
+
+    /// Renders the line. See ``GameText/Line/callAsFunction(_:_:)-(Noun,Noun)``
+    /// for why it takes the parts rather than the role struct.
+    ///
+    /// - Parameter entries: what the player is carrying, in listing order.
+    /// - Returns: the sentence to print.
+    public func callAsFunction(_ entries: [GameText.Carried.Entry]) -> String {
+        self(.init(entries: entries))
     }
 }
 

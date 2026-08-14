@@ -11,7 +11,7 @@
 /// }
 /// ```
 ///
-/// Every line has one of four shapes, and which one it has is a rule rather
+/// Every line has one of five shapes, and which one it has is a rule rather
 /// than an accident of what the engine's own wording happened to need:
 ///
 /// - **A line about nothing in particular is a `Line<Void>`.** Nothing in it
@@ -28,10 +28,18 @@
 ///   ``Holding``, ``Gift``, ``Aboard``. The roles are a type rather than a
 ///   pair so that the API can answer the question an author actually asks:
 ///   `\($0.holder)` says which one is the container where `\($1)` does not.
+/// - **A line about *several* things is a line about one.** ``Noun/list(_:)``
+///   joins them and carries the number the whole phrase has, so "In the hamper
+///   are some scales" is written the same way "In the box is a coin" is, and the
+///   agreement rule lives in the type rather than in each template.
+///   ``inventorySentence`` is the exception, over the ``Carried`` role struct:
+///   it has something to say about *each* thing — which of them is being worn —
+///   so it cannot have them joined before the game has had its say.
 /// - **A line about something that is not a thing in the world stays a raw
 ///   closure.** A word the player typed (``unknownWord``, ``noReferent``,
-///   ``missingObject``), a list (``ambiguous``, ``inventorySentence``) or a
-///   number (``scoreLine``). These are deliberately *not* ``Line``s: `Line` is
+///   ``missingObject``), a list of *words* the parser has not resolved to
+///   anything (``ambiguous``), or a number (``scoreLine``). These are
+///   deliberately *not* ``Line``s: `Line` is
 ///   `ExpressibleByStringLiteral`, so making ``unknownWord`` one would let a
 ///   game write `text.unknownWord = "Eh?"` and silently drop the word that is
 ///   the whole content of the line.
@@ -101,6 +109,34 @@ public struct GameText: Sendable {
         /// - Returns: whichever agrees.
         public func verb(_ singular: String, _ plural: String) -> String {
             isPlural ? plural : singular
+        }
+
+        /// Several nouns as one — "a sword, a lamp, and some scales" — carrying
+        /// the number the whole phrase has rather than the number any one of
+        /// them has.
+        ///
+        /// That number is the reason this is here and not at the call site.
+        /// English agrees with the *list*, and a list is plural two ways: when
+        /// it holds more than one thing, **or** when the only thing it holds is
+        /// itself plural. Counting alone gets the second wrong, and the engine
+        /// got it wrong — one plural thing in a box printed "In the hamper is
+        /// some scales." A game re-voicing that line would have had to re-derive
+        /// the rule from scratch and could have made the same mistake; this is
+        /// the rule written once, in the type that exists to own it.
+        ///
+        /// An empty list is plural ("none of them are here") and renders as the
+        /// empty phrase. No stock line calls one with nothing in it — the
+        /// callers all branch on empty first, with a line of their own — but a
+        /// game's might, and silently reading as singular would be the same
+        /// defect one case further out.
+        ///
+        /// - Parameter nouns: the phrases to join, in the order they should
+        ///   read.
+        /// - Returns: one noun standing for all of them.
+        public static func list(_ nouns: [Noun]) -> Noun {
+            Noun(
+                GameText.list(nouns.map(\.phrase)),
+                plural: nouns.count != 1 || nouns.first?.isPlural == true)
         }
     }
 
@@ -379,21 +415,31 @@ public struct GameText: Sendable {
         "You put \($0.item) in \($0.holder)."
     }
 
-    /// Opening a container with visible contents.
-    public var openingReveals: @Sendable (_ name: Noun, _ contents: [Noun]) -> String = {
-        "Opening \($0) reveals \(GameText.list($1.map(\.phrase)))."
+    /// Opening a container with visible contents. The contents arrive as one
+    /// ``Noun/list(_:)``, so `$0.item` is everything that was in there.
+    public var openingReveals: Line<Holding> = .naming {
+        "Opening \($0.holder) reveals \($0.item)."
     }
 
-    /// "In the X is a Y." / "In the X are a Y and a Z."
+    /// "In the X is a Y." / "In the X are a Y and a Z." — the answer to
+    /// `search`.
     ///
-    /// The verb agrees with the *contents*, so it is plural when there are
-    /// several of them **or** when the only one is itself plural. Counting
-    /// alone got the second case wrong — one plural thing in a box printed "In
-    /// the hamper is some scales." — which is why the contents arrive as nouns
-    /// that know their own number rather than as rendered strings.
-    public var inTheContainer: @Sendable (_ name: Noun, _ contents: [Noun]) -> String = {
-        let plural = $1.count != 1 || $1.first?.isPlural == true
-        return "In \($0) \(plural ? "are" : "is") \(GameText.list($1.map(\.phrase)))."
+    /// It ships the same sentence as ``itemInContainer`` and is deliberately a
+    /// second slot, because the two print at different moments and from
+    /// different callers. This one answers a question the player asked, once,
+    /// about everything in the container. That one is a paragraph of the room
+    /// description, printed per item, unasked, on every look — and any single
+    /// one of them can be superseded by that item's own `firstSight`. A game
+    /// that wants its room paragraphs terser than its search answers needs the
+    /// two apart; merging them would be reuse bought with an authorial choice.
+    ///
+    /// The verb agrees with the *contents*, and ``Noun/list(_:)`` is what knows
+    /// their number: plural when there are several **or** when the only one is
+    /// itself plural. That rule used to live in this line's body, where a game
+    /// re-voicing it would have had to re-derive it — and could have got it
+    /// wrong the way the engine did, printing "In the hamper is some scales."
+    public var inTheContainer: Line<Holding> = .naming {
+        "In \($0.holder) \($0.item.verb("is", "are")) \($0.item)."
     }
 
     /// The aside printed when handling a worn item removes it first.
@@ -453,8 +499,12 @@ public struct GameText: Sendable {
     /// lantern, an apple, and a velvet cloak (being worn)."). The names arrive
     /// already articled, since only the caller knows which are proper names.
     /// Only called with at least one item; `emptyHanded` covers the rest.
-    public var inventorySentence: @Sendable (_ items: [(noun: Noun, isWorn: Bool)]) -> String = {
-        let phrases = $0.map { $0.noun.phrase + ($0.isWorn ? " (being worn)" : "") }
+    ///
+    /// The one line about several things that does **not** take them as a single
+    /// ``Noun/list(_:)``: it has something to say about each of them, so
+    /// ``Carried`` keeps them apart until the game has had its say.
+    public var inventorySentence: Line<Carried> = .naming {
+        let phrases = $0.entries.map { $0.noun.phrase + ($0.isWorn ? " (being worn)" : "") }
         return "You are carrying \(GameText.list(phrases))."
     }
 
@@ -632,8 +682,13 @@ public struct GameText: Sendable {
     }
 
     /// Joins already-rendered phrases into an English list ("a Y", "a Y and a
-    /// Z", "a Y, a Z, and a W") for contents listings. The articles are the
-    /// caller's, since only the caller knows which of them are proper names.
+    /// Z", "a Y, a Z, and a W"). The articles are the caller's, since only the
+    /// caller knows which of them are proper names.
+    ///
+    /// This one returns a `String` and so forgets what number the list came out
+    /// as. Reach for ``Noun/list(_:)`` instead wherever a verb has to agree with
+    /// the result — that is the whole difference between them, and the reason
+    /// "In the hamper is some scales." was ever printed.
     ///
     /// - Parameter phrases: the rendered phrases to join.
     /// - Returns: the phrases joined into an English list.
