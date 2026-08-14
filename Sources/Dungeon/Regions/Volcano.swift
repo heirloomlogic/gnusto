@@ -497,6 +497,7 @@ struct DungeonVolcano: GameContent {
         adjectives("small", "low", "south", "southern")
         synonyms("door", "doorway", "opening", "rubble")
         scenery
+        door
     }
 
     let dustyRoomDust = Item {

@@ -69,6 +69,9 @@ struct ZorkAboveGround: GameContent {
         adjectives("front")
         description(Prose.frontDoor)
         scenery
+        // Boarded, so no exit hangs on it and the map cannot say what it is.
+        // `FRONT-DOOR` carries `DOORBIT` all the same (`1dungeon.zil:424`).
+        door
     }
 
     let mailbox = Item {

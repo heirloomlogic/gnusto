@@ -253,6 +253,18 @@ struct Zork1: Game, GameMain {
         // Cross-bundle wiring is the host's job, same as the exits below.
         scoring.treasures(treasureRoster, into: house.trophyCase)
 
+        // `V-KNOCK` (`gverbs.zil:765`) branches on `DOORBIT`: "Nobody's home."
+        // at a door, and names the thing knocked on at anything else. The stub
+        // floor carries the second branch, because it is the one a line can
+        // word; this carries the first, because being a door is a fact about
+        // the map and no stub line can see it. Game-wide rather than one rule
+        // per door: the source asks the flag, not the object, and a door the
+        // game grows later is covered the day the map hangs it.
+        world.before(.knock) {
+            guard let object = command.directObject, object.isDoor else { return }
+            try reply(Prose.verbKnockDoor)
+        }
+
         // Behind House ends its paragraph on the state of the kitchen window,
         // as `EAST-HOUSE` does. The room is `ZorkAboveGround`'s and the window
         // is `ZorkHouse`'s, so the sentence that reads both is the host's.

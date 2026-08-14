@@ -496,6 +496,8 @@ struct DungeonEndgame: GameContent {
         synonyms("door")
         description(Prose.lockedCellDoor)
         scenery
+        // Never opens, so it is never an exit; still a door to knock on.
+        door
     }
 
     /// The Parapet's own description names the pit it is a ledge over, and the

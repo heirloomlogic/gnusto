@@ -726,18 +726,27 @@ struct DungeonEndgameTests {
             ])
     }
 
-    /// `knock` is the game's own default answer now, not this bundle's
-    /// interception of every knock anywhere. The line a player sees is the same;
-    /// what changed is that a door somewhere else can answer for itself, which a
-    /// `world.before` rule made impossible for good.
+    /// `knock` is the game's own default answer, not this bundle's interception
+    /// of every knock anywhere — a door somewhere else has to be able to answer
+    /// for itself, which claiming the whole intent made impossible for good.
+    ///
+    /// It is also `V-KNOCK`'s two branches, in one transcript. The front door is
+    /// a door and gets the door line; the mailbox is not and gets named. Both
+    /// commands are typed in the same room, so the only thing that separated
+    /// them is the thing being knocked on. (#247)
     @Test func knockingAnywhereElseGetsTheGamesOwnAnswer() async throws {
         let transcript = try await play(
             Dungeon(),
             ["knock on door", "knock on mailbox"],
             seed: Self.seed)
 
-        #expect(occurrences(of: "You knock, and nobody answers.", in: transcript) == 2)
-        #expect(!transcript.contains("Nobody answers."))
+        expectInOrder(
+            transcript,
+            [
+                "You knock, and nobody answers.",
+                "You knock on the small mailbox. It is not something that answers.",
+            ])
+        #expect(occurrences(of: "You knock, and nobody answers.", in: transcript) == 1)
     }
 
     // MARK: - The route, in pieces

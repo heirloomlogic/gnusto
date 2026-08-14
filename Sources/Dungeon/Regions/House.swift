@@ -245,6 +245,8 @@ struct DungeonHouse: GameContent {
         synonyms("door", "lettering", "letters")
         description(Prose.woodenDoor)
         scenery
+        // Nailed shut and read rather than opened, so no exit hangs on it.
+        door
     }
 
     /// Shared between ``livingRoom`` and ``cellar``, so the slam is felt from

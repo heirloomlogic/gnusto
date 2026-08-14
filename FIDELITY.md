@@ -1396,9 +1396,15 @@ may not, and `Prose.drinkWater` has kept the source's "I" since Task 8.
 - **`dig` loses its instrument.** `V-DIG` (`:416`) answers about the tool and
   defaults it to `HANDS`; the engine hands the line no instrument, so the hands
   are written into the sentence.
-- **`knock` loses its second branch.** `V-KNOCK` (`:765`) asks "Why knock on a
-  X?" of anything that is not a door; the floor keeps the door branch, which is
-  what is left after every door in the game has had its say.
+- **`knock` keeps both branches, and loses one article.** `V-KNOCK` (`:765`)
+  answers "Nobody's home." at a `DOORBIT` object and "Why knock on a X?" at
+  anything else. Both are reproduced (#247) — the split is a game-wide rule,
+  since a stub line cannot see doorness. What departs is the article: the source
+  writes `"Why knock on a " D ,PRSO "?"`, and every named stub line in the engine
+  is handed the *definite* phrase, uniformly. So this game says "Why knock on the
+  small mailbox?". Widening the engine for one game's article would put `knock`
+  out of step with the other thirty-four named stub lines, which is a worse
+  trade than one word.
 - **`give` answers with the actor branch throughout.** `V-GIVE` (`:714`) has a
   non-actor branch and the engine's line cannot tell the two apart, so a mailbox
   refuses politely where the source would say "You can't give a X to a Y!"
@@ -1445,11 +1451,11 @@ engine defaults keep their wording and ignore the name.
 
 **Since #245** the same shape covers every stub line with an object to name —
 eighteen, not six — behind a `GameText.Line` that takes a bare string as readily
-as a naming closure, so widening one stopped being an API break. That makes one
-shortfall recorded above reachable: `V-KNOCK`'s non-door branch names the thing
-knocked on, and `Prose+Stubs.swift` said in a comment that the line could not.
-It can; reproducing it is a separate fidelity call against `gverbs.zil:767`, and
-this game's `knock` is unchanged until that call is made.
+as a naming closure, so widening one stopped being an API break. That made one
+shortfall recorded above reachable, and **#247 took it**: `V-KNOCK`'s two
+branches both answer now. `DOORBIT` is a fact about the thing knocked on and no
+stub line can see one, so the split is a game-wide `world.before(.knock)` rule
+reading ``Item/isDoor``, with the floor keeping the branch a line can word.
 
 ### Tests
 
@@ -3322,6 +3328,32 @@ known strange people, but fighting a …?" becomes *"You have known strange peop
 but fighting that?"*. `V-SQUEEZE`'s actor branch ("The … does not understand
 this.", `:1287`) and `V-COMMAND`'s ("The … pays no attention.", `:359`) are taken
 with only the engine's own article handling replacing the ZIL's.
+
+**`knock` has two branches, and this game chose which things are doors (#247).**
+`V-KNOCK` (`gverbs.zil:766`) answers one way at a `DOORBIT` object and another at
+everything else. Both are here: the door half is a game-wide `world.before(.knock)`
+rule reading ``Item/isDoor``, the other half is the floor's line, and both are
+adapted rather than taken — the source's second branch is a question, and this
+narrator does not ask the player questions it will not answer.
+
+`isDoor` is true wherever the map hangs a way through on the thing, which covers
+eight for free: the kitchen window, the grating, the trap door, the Palantir's oak
+door, and the endgame's crypt, wooden, bronze and cell doors. Seven more declare
+the `door` trait because they lead nowhere the map models: the boarded front door,
+the Living Room's gothic wooden door, the Riddle Room's stone door, the Royal
+Puzzle's two steel doors, the locked cell door and the volcano's small door.
+Fifteen in all.
+
+That set is **this game's reading**, not a transcription of the mainframe's
+`DOORBIT` list, which is what an adaptation is entitled to. The doorways — the
+Bank's, the Dam's, the Living Room's, the Temple's — are deliberately not doors:
+a doorway is a hole, and knocking on one earns the other branch. So are the
+Temple's Egyptian doors and the gates of Hades, which are scenery in the plural
+and read better named than knocked at.
+
+The endgame's wooden door is the standing exception, named in the rule: it answers
+its own knock with the quiz, and `before` rules run outside-in, so the game-wide
+rule would otherwise speak over it.
 
 **One departure, and it is a mechanism rather than a sentence.** The floor is
 installed as `text.stubs` rather than as the `action(…)` rows this game and

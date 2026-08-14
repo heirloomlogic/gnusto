@@ -26,6 +26,7 @@ public struct ItemTrait: Sendable {
         case surface
         case container
         case openable
+        case door
         case startsOpen
         case transparent
         case startsUnlocked
@@ -214,6 +215,20 @@ public let container = ItemTrait(kind: .container)
 /// The item can be opened and closed. An `openable` item **starts closed**
 /// unless it also declares `startsOpen`.
 public let openable = ItemTrait(kind: .openable)
+
+/// The item is a door — something a verb may reasonably treat as a way through
+/// rather than as a thing.
+///
+/// **Most doors never declare this.** Hanging an exit on an item
+/// (`hall.north(garden, via: frontDoor)`) says it already, and the bootstrap
+/// reads it back into ``Item/isDoor``. The trait is for the door that leads
+/// nowhere: one boarded shut, one painted on, one whose far side the map does
+/// not model. Those are still doors to the player, and to any verb that asks.
+///
+/// It gates no movement and opens nothing. What it changes is what a rule can
+/// ask: `object.isDoor` is how "knock on the front door" tells itself from
+/// "knock on the bench" without the game listing its doors by hand.
+public let door = ItemTrait(kind: .door)
 
 /// An `openable` item begins the game open rather than closed.
 public let startsOpen = ItemTrait(kind: .startsOpen)

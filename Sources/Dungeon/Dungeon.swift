@@ -385,6 +385,27 @@ struct Dungeon: Game, GameMain {
     @RuleBuilder private var coreRules: Rules {
         scoring.treasures(treasureRoster, into: house.trophyCase)
 
+        // `V-KNOCK` (`gverbs.zil:766`) branches on `DOORBIT`: one answer at a
+        // door, another at anything else. The stub floor carries the second
+        // branch, because it is the one a line can word; this carries the
+        // first, because being a door is a fact about the map and no stub line
+        // can see it. Game-wide rather than one rule per door — this game has
+        // fifteen of them and grows one per milestone, and the source asks the
+        // flag, not the object.
+        //
+        // The endgame's wooden door is the one door that answers for itself, and
+        // `before` rules run outside-in, so this one would speak over it. Naming
+        // it here is the honest spelling: the exception belongs to the game that
+        // owns both halves, not to a guard in the engine. See
+        // ``DungeonEndgame/quizRules``.
+        world.before(.knock) {
+            guard let object = command.directObject,
+                object.isDoor,
+                object != endgame.woodenDoor
+            else { return }
+            try reply(Prose.verbKnockDoor)
+        }
+
         // Behind House ends its paragraph on the state of the kitchen window,
         // as `EAST-HOUSE` does in both sources. The room is
         // ``DungeonAboveGround``'s and the window is ``DungeonHouse``'s, so the

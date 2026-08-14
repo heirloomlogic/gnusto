@@ -121,6 +121,8 @@ struct DungeonAboveGround: GameContent {
         adjectives("front", "boarded", "oak")
         description(Prose.frontDoor)
         scenery
+        // Boarded: a door with nowhere to go, so the map cannot say it is one.
+        door
     }
 
     let mailbox = Item {

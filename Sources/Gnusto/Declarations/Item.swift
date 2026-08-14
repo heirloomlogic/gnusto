@@ -166,6 +166,23 @@ public struct Item: Sendable, Equatable {
         return frame.definition.items[id]?.isContainer == true
     }
 
+    /// True if this item is a door — the front door, the trap door, the grating.
+    ///
+    /// Either the map says so, by hanging a way through on the thing
+    /// (`hall.north(garden, via: frontDoor)`), or the item declares ``door``.
+    /// The first covers every door a player can walk through, which is why most
+    /// games never declare the second.
+    ///
+    /// It answers the same for every room, which is deliberate. A rule that
+    /// wants "a door *here*" — the one the player could walk through from where
+    /// they stand — wants the room's exits, not this. What this is for is the
+    /// question a verb asks about the thing in front of it: knocking on a door
+    /// is a different act from knocking on a bench, wherever either is standing.
+    public var isDoor: Bool {
+        let (frame, id) = resolved
+        return frame.definition.items[id]?.isDoor == true
+    }
+
     /// True if the item can be picked up — anything that isn't scenery or an
     /// actor. The inverse of "a fixture," useful for telling loose floor items
     /// from the furniture.

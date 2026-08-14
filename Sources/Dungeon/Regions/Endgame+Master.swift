@@ -72,9 +72,11 @@ extension DungeonEndgame {
     @RuleBuilder var quizRules: Rules {
         woodenDoor.describe { woodenDoor.isOpen ? Prose.woodenDoorOpen : Prose.woodenDoorClosed }
 
-        // The one door in the game that answers. Everything else in the game
-        // gets the bundle's `action(.knock)`, which is the game's default rather
-        // than an interception — see ``DungeonEndgame/actions``.
+        // The one door in the game that answers. Every other door gets the
+        // game-wide `.knock` rule in ``Dungeon``, which names this one to stay
+        // out of its way: `before` rules run outside-in, so a world rule speaks
+        // first, and the exception belongs where both halves are visible rather
+        // than in a guard here.
         woodenDoor.before(.knock) { try knockAtTheWoodenDoor() }
 
         // The door does not open to hands. It opens to three right answers —

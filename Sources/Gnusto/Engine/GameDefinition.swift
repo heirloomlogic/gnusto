@@ -78,6 +78,10 @@ struct ItemDefinition: Sendable {
     /// there is no trait to switch on.
     var isActor = false
 
+    /// Set by Bootstrap where an exit hangs on this item, or by the `door`
+    /// trait. See ``Item/isDoor``.
+    var isDoor = false
+
     /// Items are takable unless they're scenery — or people.
     var isTakable: Bool { !isScenery && !isActor }
 
@@ -96,6 +100,7 @@ struct ItemDefinition: Sendable {
             case .surface: isSurface = true
             case .container: isContainer = true
             case .openable: isOpenable = true
+            case .door: isDoor = true
             case .startsOpen: startsOpen = true
             case .transparent: isTransparent = true
             case .startsUnlocked: startsUnlocked = true
