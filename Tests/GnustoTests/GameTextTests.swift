@@ -95,12 +95,11 @@ struct GameTextShapeTests {
         // Written by the parser, from `Vocabulary`, before any entity is
         // resolved. None carries a verb that agrees with its noun.
         "missingIndirect", "missingTopic", "missingDirection", "ambiguous",
-        // A list, a number, or a title. Not "nothing at all": a line handed
-        // nothing is a `Line<Void>` and goes through the sweep like the rest.
-        "inventorySentence", "scoreLine", "banner",
-        // A name and a *list*, which is a third thing again: the list is what
-        // the verb agrees with, and `Line` has no shape for it.
-        "openingReveals", "inTheContainer",
+        // A number or a title. Not "a list of things" and not "nothing at
+        // all": a line handed nothing is a `Line<Void>`, and several things
+        // are one `Noun.list(_:)`, so both go through the sweep like the rest.
+        // `ambiguous` above stays because its list is of *words*.
+        "scoreLine", "banner",
         // Not a line — the stub floor, swept separately.
         "stubs",
     ]
@@ -119,6 +118,7 @@ struct GameTextShapeTests {
                 || child.value is GameText.Line<GameText.Holding>
                 || child.value is GameText.Line<GameText.Gift>
                 || child.value is GameText.Line<GameText.Aboard>
+                || child.value is GameText.Line<GameText.Carried>
             #expect(
                 known || Self.notLines.contains(label),
                 """
@@ -137,6 +137,43 @@ struct GameTextShapeTests {
     /// pass it silently. This is what catches that one.
     @Test func theSweepSeesEveryLineTheTypeShips() {
         #expect(Mirror(reflecting: GameText()).children.count == 120)
+    }
+}
+
+/// ``GameText/Noun/list(_:)`` — several things as one, carrying the number the
+/// whole phrase has.
+///
+/// The number is the point. A list is plural two ways, and the engine used to
+/// know only one of them: it counted, so one plural thing in a box printed "In
+/// the hamper is some scales." The rule lived in that line's body, where every
+/// game re-voicing the line would have had to re-derive it. (#253)
+struct ListNounTests {
+    static let coin = GameText.Noun("a gold coin")
+    static let scales = GameText.Noun("some scales", plural: true)
+
+    @Test func oneSingularThingIsSingular() {
+        #expect(GameText.Noun.list([Self.coin]).isPlural == false)
+    }
+
+    /// The case counting gets wrong, and the reason the helper exists.
+    @Test func oneThingThatIsItselfPluralIsPlural() {
+        #expect(GameText.Noun.list([Self.scales]).isPlural == true)
+    }
+
+    @Test func severalSingularThingsArePlural() {
+        #expect(GameText.Noun.list([Self.coin, Self.coin]).isPlural == true)
+    }
+
+    /// No stock line calls one with nothing in it — they all branch on empty
+    /// first — but reading as singular would be the same defect one case out.
+    @Test func nothingIsPluralAndReadsAsNothing() {
+        let empty = GameText.Noun.list([])
+        #expect(empty.isPlural == true)
+        #expect(empty.phrase.isEmpty)
+    }
+
+    @Test func thePhraseIsTheEnglishList() {
+        #expect(GameText.Noun.list([Self.coin, Self.scales]).phrase == "a gold coin and some scales")
     }
 }
 
@@ -269,5 +306,32 @@ struct PluralAgreementTests {
 
         // The control: already a `Noun`, already agreeing.
         #expect(transcript.contains("The twins do not know how to do that."))
+    }
+}
+
+/// The claim #253 was filed on: a game re-voicing a line about a container and
+/// its contents inherits the agreement rather than re-deriving it.
+///
+/// ``ListVoiceLab``'s templates count nothing and know nothing about lists. If
+/// they still agree, the grammar is where it belongs.
+struct ListVoiceTests {
+    /// One session, four cases: the singular control, one thing that is itself
+    /// plural, several things, and the line with no verb to agree — which is
+    /// what shows the contents arrive already joined.
+    @Test func aReVoicedLineInheritsTheAgreementItNeverWrote() async throws {
+        let transcript = try await play(
+            ListVoiceLab(), ["search bowl", "search hamper", "open crate", "search crate"])
+        expectInOrder(
+            transcript,
+            [
+                // Singular: a template that hard-coded "sit" dies here.
+                "Inside the clay bowl, sits a ripe pear.",
+                // One thing, itself plural — the case counting gets wrong.
+                "Inside the wicker hamper, sit some lead weights.",
+                // No verb to agree, so what this proves is the joining.
+                "The pine crate gives up a red apple and a wax candle.",
+                // Several things.
+                "Inside the pine crate, sit a red apple and a wax candle.",
+            ])
     }
 }

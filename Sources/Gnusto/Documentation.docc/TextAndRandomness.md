@@ -71,6 +71,16 @@ Those three are the same type, and it is the same type the lines above use. A ve
 
 A `Line` is handed a ``GameText/Noun``, never a bare name: the rendered phrase plus its number, so ``GameText/Noun/verb(_:_:)`` can pick the form that agrees and a game may call a thing `rails` and get "The rails are not food." Interpolating one prints its phrase, so a line with no verb to agree pays nothing for the facility. The number comes from the `plural` trait, declared for the same reason `properName` is: no engine should guess it, and no game should have to rename a thing to suit a stock line.
 
+A line about **several** things is a line about one. ``GameText/Noun/list(_:)`` joins them into a single noun that carries the number the *whole phrase* has — plural when there are several, and also when the only one is itself plural:
+
+```swift
+text.inTheContainer = .naming { "In \($0.holder) \($0.item.verb("is", "are")) \($0.item)." }
+```
+
+That second rule is why the helper exists rather than a `[Noun]` parameter. The engine used to decide by counting, so one plural thing in a box printed "In the hamper is some scales." — and the rule lived in the line's body, where a game re-voicing it had to re-derive it and could get it wrong the same way. The template above never counts anything.
+
+``GameText/inventorySentence`` is the exception, over ``GameText/Carried``: it has something to say about *each* thing it lists — which of them is being worn — so it cannot have them joined before the game has had its say.
+
 A line about **two** things is a `Line` too, over a role struct that names them — ``GameText/Holding`` (a thing and what holds it), ``GameText/Gift``, ``GameText/Aboard``:
 
 ```swift
@@ -79,7 +89,7 @@ text.putItemIn = .naming { "You tuck \($0.item) into \($0.holder)." }
 
 The roles are a type rather than a pair because `\($0.holder)` answers the question an author actually asks — which one is the container? — and `\($1)` does not. Both halves are nouns, which matters more here than for a one-object line: a two-object sentence has two things its verb might agree with, and it is rarely the one named first. ``GameText/itemOnSurface`` reads "On the table are the rails."
 
-The lines that are *not* `Line`s are the ones handed something the sentence cannot do without: a word the player typed (``GameText/unknownWord``), a list (``GameText/ambiguous``), a number (``GameText/scoreLine``). They stay closures on purpose — `Line` is `ExpressibleByStringLiteral`, and a `Line` for `unknownWord` would let a game write `text.unknownWord = "Eh?"` and silently drop the word the line is *about*. A line handed *nothing* has nothing to drop, which is why ``GameText/pitchBlack`` is a `Line<Void>` and these are not.
+The lines that are *not* `Line`s are the ones handed something the sentence cannot do without: a word the player typed (``GameText/unknownWord``), a list of *words* the parser never resolved to anything (``GameText/ambiguous``), a number (``GameText/scoreLine``). They stay closures on purpose — `Line` is `ExpressibleByStringLiteral`, and a `Line` for `unknownWord` would let a game write `text.unknownWord = "Eh?"` and silently drop the word the line is *about*. A line handed *nothing* has nothing to drop, which is why ``GameText/pitchBlack`` is a `Line<Void>` and these are not.
 
 ## Randomness that replays
 
