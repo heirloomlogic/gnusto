@@ -250,7 +250,7 @@ extension Prose {
         stubs.curse = "Such language in a high-class establishment like this!"
         // `V-ADVENT` (`gverbs.zil:154`), which both `xyzzy` and `plugh` route to
         // (`gsyntax.zil:352`) — as they do on the engine's single intent.
-        stubs.xyzzy = Prose.verbMagicWordInert
+        stubs.xyzzy = .init(Prose.verbMagicWordInert)
         // `V-COUNT`'s general branch (`gverbs.zil:369`).
         stubs.count = "You have lost your mind."
         // Invented: no `THINK` in `gsyntax.zil`.

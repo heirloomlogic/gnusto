@@ -1,6 +1,7 @@
 extension GameText {
-    /// One stock line, in whichever of its two shapes the game wants it: a
-    /// fixed sentence, or a sentence that names the thing it is about.
+    /// One stock line, in whichever shape the game wants it: a fixed sentence,
+    /// a sentence assembled when it prints, or one that names the thing it is
+    /// about.
     ///
     /// ```swift
     /// text.stubs.dig = "You have nothing to dig with."
@@ -16,15 +17,19 @@ extension GameText {
     /// the name or not. Widening a line is now the business of the game that
     /// wants it, and costs the games that don't nothing.
     ///
-    /// `Object` says whether the line is *always* about something. A line whose
-    /// every parser row carries a direct object takes a ``GameText/Noun`` and
-    /// is written with ``naming(_:)``. One that also answers a bare command —
-    /// `smell`, `climb`, `wake` — takes `Noun?` and is written with
-    /// ``naming(orBare:_:)``, which asks for both halves so neither can be
-    /// left in the engine's voice by accident. A verb with no object slot at
-    /// all is not a `Line`; it is a plain `String`, because there is nothing
-    /// for a closure to be handed, and a slot that offers one is an invitation
-    /// to write prose that can never print.
+    /// `Object` says what the line is about. A line whose every parser row
+    /// carries a direct object takes a ``GameText/Noun`` and is written with
+    /// ``naming(_:)``. One that also answers a bare command — `smell`, `climb`,
+    /// `wake` — takes `Noun?` and is written with ``naming(orBare:_:)``, which
+    /// asks for both halves so neither can be left in the engine's voice by
+    /// accident. A verb with no object slot at all takes `Void`: there is no
+    /// name to hand it, but there is still a *turn* to write it in, which is
+    /// what ``live(_:)`` is for.
+    ///
+    /// The shape is therefore about what the sentence is *given*, never about
+    /// how it is *built*. Every one of them takes a string literal, so the
+    /// fixed spelling of any line is the same three tokens whatever slot it
+    /// sits in.
     ///
     /// The object arrives as a ``GameText/Noun`` and never as a bare string,
     /// for the reason `Noun` exists: it carries its own number, so "The rails
@@ -81,6 +86,44 @@ extension GameText.Line: ExpressibleByStringLiteral, ExpressibleByStringInterpol
     /// - Parameter stringInterpolation: the assembled sentence.
     public init(stringInterpolation: DefaultStringInterpolation) {
         self.init(String(stringInterpolation: stringInterpolation))
+    }
+}
+
+extension GameText.Line where Object == Void {
+    /// A line that is assembled when it prints rather than when it is written.
+    ///
+    /// ```swift
+    /// text.pitchBlack = .live {
+    ///     lantern.isOn ? "The dark presses in anyway." : "It is pitch black."
+    /// }
+    /// ```
+    ///
+    /// This is the liveness axis, and it is the same argument ``naming(_:)``
+    /// makes about names. A line that says nothing about a particular thing is
+    /// not thereby a line that says nothing about the *world*: `cantGoThatWay`
+    /// could depend on which wall the player just walked into, and `timePasses`
+    /// on what the player can hear while it does. Which of the engine's own
+    /// lines happen to want that is the engine's business, and not a shape for
+    /// it to press onto every game.
+    ///
+    /// - Parameter line: builds the sentence at the moment it prints. It is
+    ///   handed nothing: whatever it consults, it reaches for itself.
+    /// - Returns: the line.
+    public static func live(_ line: @escaping @Sendable () -> String) -> Self {
+        .init(line)
+    }
+
+    /// Renders the line. The engine calls this; a game assigns the line and
+    /// never calls it.
+    ///
+    /// The no-argument spelling is here so that a line about nothing is *called*
+    /// about nothing. Without it every read site would say `text.taken(())`,
+    /// which is the empty tuple leaking out of a generic parameter and into
+    /// prose code that has no reason to know the shape exists.
+    ///
+    /// - Returns: the sentence to print.
+    public func callAsFunction() -> String {
+        self(())
     }
 }
 

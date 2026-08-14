@@ -86,7 +86,7 @@ struct KindlyDeep: Game, GameMain {
     /// you. It asks now.
     var text: GameText {
         var text = GameText()
-        text.pitchBlack = {
+        text.pitchBlack = .live {
             let dark =
                 "Dark of the sort found only underground: complete, unhurried, and inches from your face."
             let striker =

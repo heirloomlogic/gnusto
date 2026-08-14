@@ -45,11 +45,14 @@ public func refuse(_ message: String) throws -> Never {
 ///
 /// - Parameters:
 ///   - condition: the requirement that must hold.
-///   - message: the refusal shown when it doesn't.
+///   - message: the refusal shown when it doesn't. Not built on the turns the
+///     requirement holds: this is the one refusal sink whose message is usually
+///     *not* printed, and a stock line may be a ``GameText/Line/live(_:)`` that
+///     goes looking around the room to word itself.
 /// - Throws: the turn interrupt the engine catches when the condition fails.
-public func require(_ condition: Bool, else message: String) throws {
+public func require(_ condition: Bool, else message: @autoclosure () -> String) throws {
     guard condition else {
-        try refuse(message)
+        try refuse(message())
     }
 }
 

@@ -33,13 +33,13 @@ enum ParseError: Error, Equatable {
     func playerMessage(_ text: GameText) -> String {
         switch self {
         case .empty:
-            text.beg
+            text.beg()
         case .unknownWord(let word):
             text.unknownWord(word)
         case .notInScope:
-            text.cantSeeAnySuchThing
+            text.cantSeeAnySuchThing()
         case .notAVerb, .unmatchedSyntax:
-            text.didntUnderstand
+            text.didntUnderstand()
         case .noReferent(let word):
             text.noReferent(word)
         case .missingObject(let verb, _):
@@ -53,7 +53,7 @@ enum ParseError: Error, Equatable {
         case .ambiguous(let names, _, _):
             text.ambiguous(names)
         case .multipleNotAllowed:
-            text.multipleNotAllowedThere
+            text.multipleNotAllowedThere()
         case .notTakingOrders(let name):
             text.notTakingOrders(name)
         }

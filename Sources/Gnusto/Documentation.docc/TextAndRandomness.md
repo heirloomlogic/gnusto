@@ -23,11 +23,14 @@ struct Snark: Game {
 }
 ```
 
-Fixed lines are plain strings. A line built around a name is a ``GameText/Line``, which takes a bare string as readily as a naming closure — so whether a line names the thing it is about is the game's call and not a shape the engine picked:
+Every line is a ``GameText/Line``, and a `Line` takes a bare string as readily as a closure — so whether a line names the thing it is about, or looks around before it speaks, is the game's call and not a shape the engine picked:
 
 ```swift
 text.cantReach = .naming { "\($0) is right there, and yet." }
+text.pitchBlack = .live { lantern.isOn ? "Dark, and getting darker." : "Pitch black." }
 ```
+
+What the generic parameter says is what the line is *given*. A line built around a name takes a ``GameText/Noun``; one about nothing in particular takes `Void`, and reaches for ``GameText/Line/live(_:)`` when it wants the turn it prints in rather than the moment it was written. Neither costs a game that wants the plain sentence anything: that spelling is the string literal, in every slot.
 
 ## Articles are the engine's job
 
@@ -64,7 +67,7 @@ text.stubs.smash = .naming { "\($0.sentenceCased) \($0.verb("is", "are")) stoute
 
 Overriding one re-skins the line; replacing the *behavior* is a rule or an `actions` row. See <doc:StubVerbs>.
 
-Those three are the same type, and it is the same type the lines above use. Only a verb with no object slot on any row — `sing`, `pray`, `swim` — is a plain `String`, because there is nothing for a closure to be handed.
+Those three are the same type, and it is the same type the lines above use. A verb with no object slot on any row — `sing`, `pray`, `swim` — is a `Line<Void>`.
 
 A `Line` is handed a ``GameText/Noun``, never a bare name: the rendered phrase plus its number, so ``GameText/Noun/verb(_:_:)`` can pick the form that agrees and a game may call a thing `rails` and get "The rails are not food." Interpolating one prints its phrase, so a line with no verb to agree pays nothing for the facility. The number comes from the `plural` trait, declared for the same reason `properName` is: no engine should guess it, and no game should have to rename a thing to suit a stock line.
 
@@ -76,7 +79,7 @@ text.putItemIn = .naming { "You tuck \($0.item) into \($0.holder)." }
 
 The roles are a type rather than a pair because `\($0.holder)` answers the question an author actually asks — which one is the container? — and `\($1)` does not. Both halves are nouns, which matters more here than for a one-object line: a two-object sentence has two things its verb might agree with, and it is rarely the one named first. ``GameText/itemOnSurface`` reads "On the table are the rails."
 
-The lines that are *not* `Line`s are the ones whose subject is not a thing in the world: a word the player typed (``GameText/unknownWord``), a list (``GameText/ambiguous``), a number (``GameText/scoreLine``), or nothing at all (``GameText/pitchBlack``). They stay closures on purpose — `Line` is `ExpressibleByStringLiteral`, and a `Line` for `unknownWord` would let a game write `text.unknownWord = "Eh?"` and silently drop the word the line is *about*.
+The lines that are *not* `Line`s are the ones handed something the sentence cannot do without: a word the player typed (``GameText/unknownWord``), a list (``GameText/ambiguous``), a number (``GameText/scoreLine``). They stay closures on purpose — `Line` is `ExpressibleByStringLiteral`, and a `Line` for `unknownWord` would let a game write `text.unknownWord = "Eh?"` and silently drop the word the line is *about*. A line handed *nothing* has nothing to drop, which is why ``GameText/pitchBlack`` is a `Line<Void>` and these are not.
 
 ## Randomness that replays
 

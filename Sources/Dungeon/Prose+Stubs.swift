@@ -170,8 +170,8 @@ extension Prose {
         // `V-SKIP` picks one of four (`WHEEEEE`, `gverbs.zil:1272`); this is the
         // one the table is named for. Trilogy verbatim.
         stubs.jump = "Wheeeeeeeeee!!!!!"
-        stubs.swim = Prose.noSwimming
-        stubs.dive = Prose.noDiving
+        stubs.swim = .init(Prose.noSwimming)
+        stubs.dive = .init(Prose.noDiving)
         // `V-STAND` (`gverbs.zil:1305`). Trilogy verbatim.
         stubs.stand = "You are already standing, I think."
         stubs.sit = "That is not something you could sit on."
@@ -200,12 +200,12 @@ extension Prose {
 
         // MARK: Ritual and flavor
 
-        stubs.pray = Prose.verbPray
+        stubs.pray = .init(Prose.verbPray)
         stubs.sing = "The dungeon is unmoved by your singing."
         // `V-CURSES` (`gverbs.zil:382`). Trilogy verbatim, and the only line in
         // this floor the player is likely to go looking for on purpose.
         stubs.curse = "Such language in a high-class establishment like this!"
-        stubs.xyzzy = Prose.verbMagicWordInert
+        stubs.xyzzy = .init(Prose.verbMagicWordInert)
         // The mainframe's count is a hint toward the grating under the leaves,
         // but the number cannot be confirmed from
         // `docs/games/dungeon-prose-comparison.md` and inventing one is worse

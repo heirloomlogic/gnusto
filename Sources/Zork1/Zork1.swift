@@ -38,7 +38,7 @@ struct Zork1: Game, GameMain {
     var text: GameText {
         var text = GameText()
         // The famous dark-room line (gverbs.zil V-LOOK / the grue clause).
-        text.pitchBlack = { "It is pitch black. You are likely to be eaten by a grue." }
+        text.pitchBlack = "It is pitch black. You are likely to be eaten by a grue."
         // Examining an ordinary thing (gverbs.zil V-EXAMINE).
         text.nothingSpecial = .naming { "There's nothing special about \($0)." }
         // Open/close and possession refusals (gverbs.zil).

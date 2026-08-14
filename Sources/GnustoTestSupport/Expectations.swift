@@ -141,7 +141,7 @@ public func engineVoicedStubLines(in ours: GameText.StubReplies) -> [String] {
     /// Every sentence one line can print, or `nil` for a shape not known here.
     func samples(of line: Any) -> [String]? {
         switch line {
-        case let fixed as String: [fixed]
+        case let line as GameText.Line<Void>: [line()]
         case let line as GameText.Line<GameText.Noun>: [line(one), line(many)]
         case let line as GameText.Line<GameText.Noun?>: [line(one), line(many), line(nil)]
         // Both arrangements, because a line about two things has two things its
