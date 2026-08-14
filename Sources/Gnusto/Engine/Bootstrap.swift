@@ -285,6 +285,7 @@ enum Bootstrap {
                         "\"\(fromID)\"'s \(direction) exit uses \"\(doorID)\" as a door, "
                             + "which is not declared openable.")
                 }
+                items[doorID]?.isDoor = true
                 claimExit(.door(to: toID, door: doorID), direction, from: fromID)
 
             case .conditionalExit(let from, let direction, let to, let condition, let blocked):

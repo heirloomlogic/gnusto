@@ -243,5 +243,16 @@ struct DoorTests {
         _ = try Bootstrap.build(LockedDoorGame())
         _ = try Bootstrap.build(GratingGame())
         _ = try Bootstrap.build(HiddenDoorGame())
+        _ = try Bootstrap.build(BoardedDoorGame())
+    }
+
+    /// ``Item/isDoor`` answers from two places and has to agree with both: the
+    /// map, which says it by hanging a way through on the thing, and the `door`
+    /// trait, which is what a door leading nowhere falls back on. Saying both is
+    /// a union and stays true. A bench is neither, and that is the half a verb
+    /// actually branches on. (#247)
+    @Test func isDoorReadsBothTheMapAndTheTrait() async throws {
+        let transcript = try await play(BoardedDoorGame(), ["knock on bench"])
+        #expect(transcript.contains("trait:true map:true both:true bench:false"))
     }
 }

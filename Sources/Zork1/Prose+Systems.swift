@@ -57,6 +57,12 @@ extension Prose {
     /// (`gsyntax.zil:352`). Also the stub floor's `xyzzy`.
     static let verbMagicWordInert = "A hollow voice says \"Fool.\""
 
+    /// `V-KNOCK`'s door branch (`gverbs.zil:767`). Read from two places — the
+    /// game-wide `.knock` rule, which is what knows a door from a bench, and
+    /// the stub floor's bare half — so it is a constant rather than a literal
+    /// in either.
+    static let verbKnockDoor = "Nobody's home."
+
     /// This game's own: `V-HELLO` (`gverbs.zil:734`) draws one of four
     /// (`HELLOS`, `:2198`), which an `action(…)` row has no stream to draw from.
     static let verbHello = "Nobody here returns your greeting."

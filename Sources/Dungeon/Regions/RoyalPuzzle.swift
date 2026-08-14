@@ -404,6 +404,7 @@ struct DungeonRoyalPuzzle: GameContent {
         synonyms("door")
         description(Prose.puzzleSteelDoor)
         scenery
+        door
     }
 
     /// `CPDR2`, the same door from the Side Room, where it has a handle.
@@ -412,6 +413,7 @@ struct DungeonRoyalPuzzle: GameContent {
         synonyms("door")
         description(Prose.puzzleSideRoomDoor)
         scenery
+        door
     }
 
     // MARK: - Scenery

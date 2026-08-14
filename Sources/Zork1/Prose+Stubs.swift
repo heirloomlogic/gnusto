@@ -124,12 +124,15 @@ extension Prose {
         stubs.squeeze = "How singularly useless."
         // `V-SHAKE`'s un-takeable branch (`gverbs.zil:1217`).
         stubs.shake = "You can't take it; thus, you can't shake it!"
-        // `V-KNOCK`'s door branch (`gverbs.zil:767`). The other branch names the
-        // thing knocked on, which this line could since #245 and still doesn't:
-        // reproducing it is a fidelity call against the source's two branches,
-        // not a side effect of the engine growing the ability. A stub floor is
-        // in any case what answers after every door in the game has had its say.
-        stubs.knock = "Nobody's home."
+        // `V-KNOCK`'s *other* branch (`gverbs.zil:769`): the source asks why you
+        // are knocking on anything that is not a door. Its door branch is a
+        // game-wide rule in `Zork1.rules`, because `DOORBIT` is a fact about the
+        // map rather than about the line. The bare half has no source verb —
+        // `KNOCK ON` requires an object — so it keeps the door branch's words,
+        // which is what shipped before either branch was reproduced.
+        stubs.knock = .naming(orBare: Prose.verbKnockDoor) {
+            "Why knock on \($0)?"
+        }
         // Invented: Zork I's `THROW AT` requires an actor (`gsyntax.zil:486`),
         // and `V-THROW` drops the object rather than refusing, so there is no
         // general refusal to reproduce.

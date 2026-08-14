@@ -115,12 +115,21 @@ extension Prose {
         // `V-SQUEEZE`'s other branch: "How singularly useless."
         stubs.squeeze = .naming { "Squeezing \($0) is singularly useless." }
         stubs.shake = .naming { "You shake \($0). Nothing comes loose." }
-        // `V-KNOCK` (`gverbs.zil:766`) answers "Nobody's home." at a door and
-        // asks why you are knocking on anything else; one line covers both.
+        // `V-KNOCK` (`gverbs.zil:766`) branches on `DOORBIT` and this floor
+        // carries the half a line can word: the one about anything that is not
+        // a door. The door half is a game-wide rule in ``Dungeon``, because
+        // doorness is a fact about the map. Adapted rather than reproduced —
+        // the source asks "Why knock on a X?", which is a question, and this
+        // game's narrator does not ask the player questions it will not answer.
         // Lived in the endgame's prose file while it was that bundle's
         // `action(…)` row — it was always game-wide, and this is where the
         // game-wide floor lives now.
-        stubs.knock = "You knock, and nobody answers."
+        // The line has to be true of a mailbox, a doorway and a welcome mat
+        // alike — this branch is everything that is *not* a door — so it says
+        // nothing about an inside, which a mat has not got.
+        stubs.knock = .naming(orBare: Prose.verbKnockDoor) {
+            "You knock on \($0). \($0.verb("It is", "They are")) not something that answers."
+        }
         // "the dungeon" rather than "here": the source's own word for the whole
         // place (`V-SWIM`, `gverbs.zil:1324`), and the only way a line printed
         // in 196 rooms can name a place at all.

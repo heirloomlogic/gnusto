@@ -33,6 +33,72 @@ struct TrapDoorGame: Game {
     }
 }
 
+/// The three ways an item can stand in relation to being a door: one the map
+/// hangs a way through on, one that declares the `door` trait because it leads
+/// nowhere, and one that is a bench.
+struct BoardedDoorGame: Game {
+    let title = "BoardedDoor"
+    let intro = ""
+
+    let porch = Location {
+        name("Porch")
+        description("A porch, and a house nobody has opened in years.")
+    }
+
+    let hall = Location {
+        name("Hall")
+        description("A stone hall.")
+    }
+
+    /// The map says this one is a door; it never has to say so itself.
+    let sideDoor = Item {
+        name("side door")
+        openable
+    }
+
+    /// Boarded shut, so no exit hangs on it and the map cannot say what it is.
+    let frontDoor = Item {
+        name("front door")
+        scenery
+        door
+    }
+
+    /// Belt and braces: an exit hangs on it *and* it declares the trait. The two
+    /// halves are a union, so saying it twice has to be the same as saying it
+    /// once — the corner a game gets into by declaring a fact the map already
+    /// carries.
+    let backDoor = Item {
+        name("back door")
+        openable
+        door
+    }
+
+    let bench = Item {
+        name("wooden bench")
+        scenery
+    }
+
+    var map: WorldMap {
+        player.starts(in: porch)
+        porch.north(hall, via: sideDoor)
+        porch.south(hall, via: backDoor)
+        frontDoor.starts(in: porch)
+        bench.starts(in: porch)
+    }
+
+    var rules: Rules {
+        // Reads all four back through the accessor, in one line of output, so a
+        // regression names which one moved.
+        world.before(.knock) {
+            try reply(
+                """
+                trait:\(frontDoor.isDoor) map:\(sideDoor.isDoor) \
+                both:\(backDoor.isDoor) bench:\(bench.isDoor)
+                """)
+        }
+    }
+}
+
 /// A locked door between a hall and a vault. The door is openable + lockable;
 /// the player must unlock it with the key before it will open, and only then
 /// can pass.

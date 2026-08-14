@@ -39,6 +39,14 @@ extension Prose {
 
     static let verbPray = "Nothing in particular answers."
 
+    /// `V-KNOCK`'s door branch (`gverbs.zil:766`), adapted. The source says
+    /// "Nobody's home."; this game is played mostly below ground, where nobody
+    /// was ever home and the joke is the wrong one, so the door answers for its
+    /// own emptiness instead. Read from the game-wide `.knock` rule and from
+    /// the stub floor's bare half, so it is a constant rather than a literal in
+    /// either.
+    static let verbKnockDoor = "You knock, and nobody answers."
+
     static let verbMagicWordInert = "A hollow voice says nothing at all."
 
     static let verbEcho = "The word bounces off the walls and comes back unchanged."

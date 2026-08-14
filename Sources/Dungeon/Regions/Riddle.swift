@@ -65,6 +65,7 @@ struct DungeonRiddle: GameContent {
         adjectives("great", "stone", "dressed")
         synonyms("door", "doorway", "stone")
         scenery
+        door
     }
 
     let riddleLintel = Item {

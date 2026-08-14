@@ -102,4 +102,21 @@ struct Zork1ProseTests {
         // source's `A ,PRSO` is.
         expectInOrder(transcript, ["I've known strange people, but fighting a small mailbox?"])
     }
+
+    /// `V-KNOCK` (`gverbs.zil:765`) branches on `DOORBIT`, and both branches
+    /// answer here. The front door is boarded and the window is an exit, so the
+    /// two halves of ``Item/isDoor`` are both exercised; the mailbox is the
+    /// branch that names what was knocked on. (#247)
+    @Test func knockingTellsADoorFromEverythingElse() async throws {
+        let transcript = try await play(
+            Zork1(),
+            ["knock on door", "knock on mailbox", "north", "east", "knock on window"])
+        #expect(turnOutput(of: "knock on door", in: transcript).contains("Nobody's home."))
+        #expect(turnOutput(of: "knock on window", in: transcript).contains("Nobody's home."))
+        // The source writes "Why knock on a " D ,PRSO "?" — an indefinite
+        // article the engine's named stub lines do not deal in. See FIDELITY.md.
+        #expect(
+            turnOutput(of: "knock on mailbox", in: transcript)
+                .contains("Why knock on the small mailbox?"))
+    }
 }

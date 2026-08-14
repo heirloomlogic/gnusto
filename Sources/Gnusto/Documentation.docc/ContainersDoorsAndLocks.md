@@ -221,6 +221,18 @@ var map: WorldMap {
 
 Because a door is an ordinary item, everything above composes: give the door a ``Item/lockedBy(_:)`` entry and the player must unlock it before it will open; declare it ``hidden`` (below) and the exit stays secret until the door is revealed.
 
+``Item/isDoor`` reads that fact back, for a rule that wants to tell a door from a bench — knocking on one is not the same act as knocking on the other. Naming the door on an exit is what usually sets it, so a door you can walk through never declares anything. The ``door`` trait is for the one you can't:
+
+```swift
+let frontDoor = Item {
+    name("front door")
+    scenery
+    door          // boarded shut: no exit hangs on it, so the map can't say
+}
+```
+
+It gates no movement and opens nothing. It exists so that a door leading nowhere is still a door to any verb that asks.
+
 A door is also a way through **by name**, not only by direction. `enter trap door`, `go through trap door`, `walk through trap door` and `climb through trap door` all take the exit the door gates, from either side — the engine finds the door on the current room's exits and makes the same move `go` would, so a shut door refuses in the same words, a locked one reads as shut, and an unrevealed one is not there at all. Nothing to declare: it follows from naming the door on the exit.
 
 That is one verb with two jobs, which is the classic parser's own shape: the same word boards a vehicle (see <doc:ActorsAndVehicles>). The door wins where an item is somehow both — a door is referenced by an exit rather than placed in a room, so boarding one by name was never possible anyway — and a `before(.board)` rule on the item pre-empts either.
