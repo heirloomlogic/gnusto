@@ -161,14 +161,16 @@ struct Fulminate: Game, GameMain {
         // Three of them answer to "man" and three to "woman", so this line
         // gets read more often than you would think. The Oxford comma is the
         // house style, not an article workaround.
-        text.ambiguous = { "Which do you mean: \($0.joined(separator: ", or "))?" }
+        text.ambiguous = .naming {
+            "Which do you mean: \($0.names.joined(separator: ", or "))?"
+        }
 
         // This game keeps no score, and every ending — the win included — used
         // to close on an engine-voice line saying nothing had been achieved,
         // directly under the paragraph saying it had. The evening is measured
         // in minutes, so the epilogue is too.
-        text.scoreLine = { _, _, moves in
-            "You were in that house for \(moves) \(moves == 1 ? "turn" : "turns")."
+        text.scoreLine = .naming {
+            "You were in that house for \($0.moves) \($0.moves == 1 ? "turn" : "turns")."
         }
 
         // The stock stub lines are room-blind and state-blind, and this game

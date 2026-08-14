@@ -121,6 +121,11 @@ public func expectNoAmbiguity(
 /// could change shape without the sweep noticing. It takes a ``GameText/Gift``
 /// now, and goes through the same door as the other forty-eight.
 ///
+/// Which sentences each line prints is the *subject's* business as of #255:
+/// ``LineSubject/samples(one:many:)`` supplies them, so a subject arriving
+/// tomorrow is swept the day it lands rather than after somebody teaches a
+/// switch here about it.
+///
 /// It is split out from ``expectNoEngineStubLineSurvives(in:game:sourceLocation:)``
 /// so the sweep can be tested for being *alive*: a reflection loop that matches
 /// nothing passes silently, where one asserted to see all forty-nine lines
@@ -131,48 +136,33 @@ public func expectNoAmbiguity(
 public func engineVoicedStubLines(in ours: GameText.StubReplies) -> [String] {
     let engine = GameText.StubReplies()
 
-    // A plural noun catches a template that hard-codes its agreement — "The
-    // rails is not food." is the defect ``GameText/Noun`` exists to prevent —
-    // and `nil` catches a game that re-voices a line's naming half and leaves
-    // its bare half in the engine's words.
-    let one = GameText.Noun("the brass lantern")
-    let many = GameText.Noun("the rails", plural: true)
-
-    /// Every sentence one line can print, or `nil` for a shape not known here.
-    func samples(of line: Any) -> [String]? {
-        switch line {
-        case let line as GameText.Line<Void>: [line()]
-        case let line as GameText.Line<GameText.Noun>: [line(one), line(many)]
-        case let line as GameText.Line<GameText.Noun?>: [line(one), line(many), line(nil)]
-        // Both arrangements, because a line about two things has two things its
-        // verb might agree with and the wording rarely agrees with the one it
-        // names first. One order would let a template that hard-codes the
-        // *other* agreement through.
-        case let line as GameText.Line<GameText.Gift>: [line(one, many), line(many, one)]
-        default: nil
-        }
-    }
-
     // Zipped rather than keyed by label: both sides are the same concrete type,
     // so `Mirror` walks them in the same declaration order, and a dictionary
     // would only add a lookup that can't miss and a trap that can't fire.
+    //
+    // One cast, because every subject a `Line` can be about supplies its own
+    // examples — including both arrangements of a two-object line, which the
+    // wording rarely agrees with in the order it names them. A shape this
+    // couldn't render used to be reported as its own issue and skipped; a
+    // subject that can't be swept now fails to compile instead.
     var voiced: [String] = []
     for (mine, theirs) in zip(
         Mirror(reflecting: ours).children, Mirror(reflecting: engine).children)
     {
         guard let label = mine.label else { continue }
-        guard let ourSamples = samples(of: mine.value),
-            let engineSamples = samples(of: theirs.value)
+        guard let mine = mine.value as? any StockLine,
+            let theirs = theirs.value as? any StockLine
         else {
             Issue.record(
                 """
-                `GameText.StubReplies.\(label)` has a shape this sweep can't \
-                render. Teach `samples(of:)` about it, or the line ships \
-                unchecked in every game with a floor.
+                `GameText.StubReplies.\(label)` is not a `GameText.Line`, so \
+                this sweep can't render it. Give it a `Line` — its subject \
+                conforming to `LineSubject` is all the sweep needs — or the \
+                line ships unchecked in every game with a floor.
                 """)
             continue
         }
-        if zip(ourSamples, engineSamples).contains(where: { $0 == $1 }) {
+        if zip(mine.samples, theirs.samples).contains(where: { $0 == $1 }) {
             voiced.append(label)
         }
     }

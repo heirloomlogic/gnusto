@@ -79,55 +79,46 @@ struct GameTextTests {
 /// The complaint this answers is that reading the type top to bottom showed
 /// several shapes with no way to tell which slot obeyed which rule. Naming the
 /// rule in a doc comment fixes that for exactly as long as the next line to
-/// arrive is written by somebody who read it, so it is asserted here instead:
-/// a line is a `Line` over `Void`, a `Line` over a noun, or a label on the list
-/// below, which is the taxonomy in executable form.
+/// arrive is written by somebody who read it, so it is asserted here instead.
+///
+/// As of #255 the assertion is one cast. Every stock line is a
+/// ``GameText/Line``, and every `Line` is a ``StockLine`` whatever it is about,
+/// so a subject added tomorrow is classified the day it lands — where the
+/// seven-arm disjunction this replaced had to be taught each new shape by hand,
+/// in this file and two others.
 struct GameTextShapeTests {
-    /// The lines that are deliberately *not* ``GameText/Line``s, each for a
+    /// The properties that are deliberately *not* ``GameText/Line``s, each for a
     /// stated reason. Adding to this list is a decision; arriving in it by
     /// accident is what the test prevents.
+    ///
+    /// It used to hold eleven names. Ten of them were lines about something the
+    /// sentence could not do without — a word, a prompt, a score — kept out
+    /// because `Line` was unconditionally `ExpressibleByStringLiteral` and a
+    /// game could have dropped the subject. That is a conformance now
+    /// (``DroppableSubject``), so they are `Line`s like everything else and the
+    /// list is down to the one property that is not a line at all.
     static let notLines: Set<String> = [
-        // Their subject is not a thing in the world but a word the player
-        // typed, and `Line` is `ExpressibleByStringLiteral` — one of these as a
-        // `Line` would let a game write `text.unknownWord = "Eh?"` and silently
-        // drop the word the sentence is about.
-        "unknownWord", "noReferent", "missingObject", "multipleNotAllowedWith",
-        // Written by the parser, from `Vocabulary`, before any entity is
-        // resolved. None carries a verb that agrees with its noun.
-        "missingIndirect", "missingTopic", "missingDirection", "ambiguous",
-        // A number or a title. Not "a list of things" and not "nothing at
-        // all": a line handed nothing is a `Line<Void>`, and several things
-        // are one `Noun.list(_:)`, so both go through the sweep like the rest.
-        // `ambiguous` above stays because its list is of *words*.
-        "scoreLine", "banner",
         // Not a line — the stub floor, swept separately.
-        "stubs",
+        "stubs"
     ]
 
-    @Test func everyLineIsAVoidLineAOneNounLineOrADeclaredException() {
+    @Test func everyLineIsAStockLineOrADeclaredException() {
         for child in Mirror(reflecting: GameText()).children {
             guard let label = child.label else { continue }
             // Positive identification only. A dynamic cast to a *function*
             // type is not reliable in Swift and an earlier sweep trapped doing
-            // it, so the question asked here is "is this a shape we know?" and
-            // never "is this a closure of some particular arity?".
-            let known =
-                child.value is GameText.Line<Void>
-                || child.value is GameText.Line<GameText.Noun>
-                || child.value is GameText.Line<GameText.Noun?>
-                || child.value is GameText.Line<GameText.Holding>
-                || child.value is GameText.Line<GameText.Gift>
-                || child.value is GameText.Line<GameText.Aboard>
-                || child.value is GameText.Line<GameText.Carried>
+            // it, so the question asked here is "is this a line?" and never
+            // "is this a closure of some particular arity?".
             #expect(
-                known || Self.notLines.contains(label),
+                child.value is any StockLine || Self.notLines.contains(label),
                 """
-                `GameText.\(label)` is neither a `Line` over `Void`, a `Line` \
-                over a noun, nor a declared exception. Either give it a `Line` — \
-                a line about a thing in the world should take a `GameText.Noun`, \
-                so its verbs can agree with what it names, and one about nothing \
-                in particular takes `Void` — or add it to `notLines` with the \
-                reason it is not one.
+                `GameText.\(label)` is not a `GameText.Line`, nor a declared \
+                exception. Give it a `Line` — a line about a thing in the world \
+                takes a `GameText.Noun` so its verbs can agree with what it \
+                names, one about nothing in particular takes `Nothing`, and one \
+                about anything else takes a subject conforming to \
+                `LineSubject` — or add it to `notLines` with the reason it is \
+                not one.
                 """)
         }
     }
@@ -137,6 +128,62 @@ struct GameTextShapeTests {
     /// pass it silently. This is what catches that one.
     @Test func theSweepSeesEveryLineTheTypeShips() {
         #expect(Mirror(reflecting: GameText()).children.count == 120)
+    }
+
+    /// The sweep above proves each line *is* a `StockLine`; this proves the
+    /// conformance carries its weight. A `samples` that returned nothing would
+    /// satisfy every cast in here and leave `engineVoicedStubLines` comparing
+    /// empty lists — a floor sweep that passes because it looks at nothing.
+    @Test func everyLineRendersAtLeastOneSentenceThroughItsSubject() {
+        for child in Mirror(reflecting: GameText()).children {
+            guard let label = child.label, let line = child.value as? any StockLine else {
+                continue
+            }
+            #expect(!line.samples.isEmpty, "`GameText.\(label)` renders no sentences.")
+            #expect(
+                line.samples.allSatisfy { !$0.isEmpty },
+                "`GameText.\(label)` renders an empty sentence.")
+        }
+    }
+}
+
+/// The lines whose whole content is what they were handed.
+///
+/// `Line` is `ExpressibleByStringLiteral` only where the subject is a
+/// ``DroppableSubject``, so `text.unknownWord = "Eh?"` does not compile. That is
+/// the half of #255 the compiler enforces and a test cannot: what a test *can*
+/// pin is that the engine's own wording for each of them actually quotes its
+/// subject, since a line that names nothing is what the gate exists to prevent.
+struct UndroppableSubjectTests {
+    @Test func everyLineAboutAWordQuotesTheWord() {
+        let text = GameText()
+        #expect(text.unknownWord("frotz").contains("frotz"))
+        #expect(text.noReferent("them").contains("them"))
+        #expect(text.multipleNotAllowedWith("eat").contains("eat"))
+    }
+
+    @Test func everyPromptNamesTheVerbItIsWaitingOn() {
+        let text = GameText()
+        #expect(text.missingObject("take") == "What do you want to take?")
+        #expect(
+            text.missingIndirect("put", "the coin", "in") == "What do you want to put the coin in?")
+        #expect(
+            text.missingTopic("ask", "the troll", "about")
+                == "What do you want to ask the troll about?")
+        // The optional halves: a topic verb with no object and no preposition.
+        #expect(text.missingTopic("mutter", nil, "") == "What do you want to mutter?")
+        #expect(
+            text.missingDirection("push", "the rock") == "Which way do you want to push the rock?")
+    }
+
+    @Test func theRemainingSubjectsPrintWhatTheyWereHanded() {
+        let text = GameText()
+        #expect(text.ambiguous(["the lamp", "the lantern"]) == "Which do you mean: the lamp or the lantern?")
+        #expect(text.banner("Zork", "").contains("Zork"))
+        #expect(text.banner("Zork", "Underground").contains("Underground"))
+        #expect(text.scoreLine(7, 350, 1) == "Your score is 7 of a possible 350, in 1 turn.")
+        // No maximum declared, and more than one turn: both conditionals off.
+        #expect(text.scoreLine(7, 0, 12) == "Your score is 7, in 12 turns.")
     }
 }
 
