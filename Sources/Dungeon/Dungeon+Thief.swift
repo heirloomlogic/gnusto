@@ -180,7 +180,7 @@ extension Dungeon {
             // it — which, with the thief standing over the hoard, is the one
             // thing that is certainly untrue.
             guard let offered = command.directObject else { return }
-            guard offered.isHeld else { try refuse(text.notHolding()) }
+            guard offered.isHeld else { try refuse(gameText.notHolding()) }
             offered.move(heldBy: thief.thief)
             thief.thiefAdmiring = true
             startFuse("thief.admires")

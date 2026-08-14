@@ -489,7 +489,7 @@ extension DungeonPalantir {
         lid.describe { Prose.metalLid(open: lid.isOpen) }
 
         lid.before(.open) {
-            try require(!lid.isOpen, else: Prose.lidAlreadyOpen)
+            try require(!lid.isOpen, else: gameText.alreadyOpen())
             lid.isOpen = true
             try reply(Prose.lidOpens)
         }
@@ -498,7 +498,7 @@ extension DungeonPalantir {
         // own refusal and the reason a screwdriver left in the lock is a
         // problem rather than a convenience.
         lid.before(.close) {
-            try require(lid.isOpen, else: Prose.lidAlreadyClosed)
+            try require(lid.isOpen, else: gameText.alreadyClosed())
             try require(keyhole.contents.isEmpty, else: Prose.keyholeOccupied)
             lid.isOpen = false
             try reply(Prose.lidCloses)

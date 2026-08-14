@@ -786,7 +786,7 @@ struct Dungeon: Game, GameMain {
         // which is why this replaces the default rather than embellishing it.
         aboveGround.grating.before(.open) {
             try require(!aboveGround.grating.isLocked, else: Prose.gratingLocked)
-            try require(!aboveGround.grating.isOpen, else: text.alreadyOpen())
+            try require(!aboveGround.grating.isOpen, else: gameText.alreadyOpen())
             aboveGround.grating.isOpen = true
             maze.gratingRoom.isLit = true
             try reply(
@@ -794,7 +794,7 @@ struct Dungeon: Game, GameMain {
                     ? Prose.gratingOpensFromBelow : Prose.gratingOpensFromAbove)
         }
         aboveGround.grating.before(.close) {
-            try require(aboveGround.grating.isOpen, else: text.alreadyClosed())
+            try require(aboveGround.grating.isOpen, else: gameText.alreadyClosed())
             aboveGround.grating.isOpen = false
             maze.gratingRoom.isLit = false
             try reply(Prose.gratingCloses)

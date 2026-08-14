@@ -96,6 +96,14 @@ extension GameContent {
     /// in a bundle's rule bodies, exactly as in a `Game`.
     public var command: Command { Ctx.current.command }
 
+    /// The stock lines the engine is speaking this turn — usable as a bare
+    /// identifier in a bundle's rule bodies, exactly as in a `Game`.
+    ///
+    /// A bundle declares no ``Game/text`` of its own, so this is how its rules
+    /// answer in the host game's voice instead of re-typing its wording and
+    /// hoping the two stay in step. See ``Game/gameText``.
+    public var gameText: GameText { Ctx.current.definition.text }
+
     /// By default a bundle namespaces its entities under its own type name, so
     /// each distinct bundle type gets a distinct prefix automatically.
     public var namespace: String { String(describing: type(of: self)) }

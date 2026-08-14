@@ -64,7 +64,7 @@ extension Prose {
     /// game, what anyone who swings at the scenery reads — was a narrator this
     /// game has never used. All four are `V-ATTACK`'s own branches
     /// (`gverbs.zil:176-193`). (#242)
-    static var combatText: MeleeCombat.CombatText {
+    static let combatText: MeleeCombat.CombatText = {
         var text = MeleeCombat.CombatText()
         text.attackFutile = attackFutile
         // `V-ATTACK:182`, which names its target; #242 widened `noWeapon` so it
@@ -76,10 +76,10 @@ extension Prose {
         // `V-ATTACK:185`.
         text.weaponNotHeld = .naming { "You aren't even holding \($0)." }
         return text
-    }
+    }()
 
     /// Every engine stub verb, in Zork I's words where Zork I has any.
-    static var stubFloor: GameText.StubReplies {
+    static let stubFloor: GameText.StubReplies = {
         var stubs = GameText.StubReplies()
 
         // MARK: People
@@ -275,5 +275,5 @@ extension Prose {
         stubs.blow = "You can't blast anything by using words."
 
         return stubs
-    }
+    }()
 }

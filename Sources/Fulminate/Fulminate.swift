@@ -90,11 +90,11 @@ struct Fulminate: Game, GameMain {
     /// property above stays a one-liner, and because the bootstrap reflects over
     /// stored properties only — a static is invisible to it, which is what we
     /// want for a line table.
-    static var talkText: Conversation.Text {
+    static let talkText: Conversation.Text = {
         var text = Conversation.Text()
         text.noInterest = .naming { "\($0.sentenceCased) looks at it and looks away." }
         return text
-    }
+    }()
 
     /// Whether the carriage house has gone up. Rooms and props read this to
     /// describe themselves on the right side of the evening.

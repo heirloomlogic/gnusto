@@ -67,16 +67,16 @@ extension Prose {
     /// answered by a narrator the rest of the game had stopped using — box 12
     /// at the one verb the box did not look at. All four are `V-ATTACK`'s own
     /// branches (`gverbs.zil:176-190`). (#233)
-    static var combatText: MeleeCombat.CombatText {
+    static let combatText: MeleeCombat.CombatText = {
         var text = MeleeCombat.CombatText()
         text.attackFutile = attackFutile
         text.noWeapon = "Trying that with your bare hands would be suicidal."
         text.notAWeapon = .naming { "Attacking anything with \($0) would be suicidal." }
         text.weaponNotHeld = .naming { "You aren't even holding \($0)." }
         return text
-    }
+    }()
 
-    static var stubFloor: GameText.StubReplies {
+    static let stubFloor: GameText.StubReplies = {
         var stubs = GameText.StubReplies()
 
         // MARK: People
@@ -234,5 +234,5 @@ extension Prose {
         stubs.blow = .naming { "Blowing on \($0) achieves nothing." }
 
         return stubs
-    }
+    }()
 }

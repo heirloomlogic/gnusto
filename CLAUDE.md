@@ -119,6 +119,11 @@ Rule phases by scope, all filed in `Engine/Bootstrap.swift`:
 In any rule body: `say`, `refuse`, `reply`, `handled`, `require(_:else:)`, `end(won:)`, `die`,
 `describeSurroundings`, `arrive(at:)`, `enter(_:)`, `proceed`.
 `refuse`/`reply`/`handled`/`end`/`die` are `throws -> Never`.
+`gameText` is the stock line table this turn is being spoken from — write that, never a
+bare `text`, which inside a `Game`'s `rules` reaches the game's own (usually computed)
+property and rebuilds the whole table. A `GameContent`/`GamePlugin` has no `text` at all.
+Same root cause one scope up: a constant prose table is a `static let = { … }()`, never a
+computed `static var`, which rebuilds it on every read.
 
 ## Gotchas that cost real time
 

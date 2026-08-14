@@ -180,4 +180,23 @@ extension Game {
     /// The command currently being performed — usable as a bare identifier
     /// in rule bodies.
     public var command: Command { Ctx.current.command }
+
+    /// The stock lines the engine is speaking this turn — the same ``GameText``
+    /// the pipeline itself reads, for a rule that answers in one of them:
+    ///
+    /// ```swift
+    /// grating.before(.open) {
+    ///     try require(!grating.isOpen, else: gameText.alreadyOpen())
+    ///     grating.isOpen = true
+    ///     try reply("The grating swings open.")
+    /// }
+    /// ```
+    ///
+    /// Write this and never a bare `text`, which inside a `rules` block reaches
+    /// the game's own ``text`` property — usually a *computed* one, so it
+    /// rebuilds the whole table to read one line out of it, and its answer is
+    /// the engine's only by coincidence rather than by construction. This hands
+    /// back the table the bootstrap already stored, which is the voice the
+    /// player is hearing and costs no allocations to read.
+    public var gameText: GameText { Ctx.current.definition.text }
 }

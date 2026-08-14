@@ -267,6 +267,20 @@ Five free functions are available in any rule body:
 
 `say` returns normally; the other four return `Never` and read well after a `guard … else`.
 
+### Answer in the engine's own words with `gameText`
+
+A rule that is refusing something the engine already has a sentence for should say the engine's sentence, so a game that re-skins the line once gets it everywhere. ``gameText`` is the stock table this turn is being spoken from:
+
+```swift
+grating.before(.open) {
+    try require(!grating.isOpen, else: gameText.alreadyOpen())
+    grating.isOpen = true
+    try reply("The grating swings open.")
+}
+```
+
+Write `gameText`, not `text`. Inside a `Game`'s `rules` block a bare `text` reaches the game's *own* ``Game/text`` property — usually a computed one, so it rebuilds the whole table to read one line out of it, and its answer matches the engine's only by coincidence. ``Game/gameText`` reads the table the bootstrap already stored. It is also the only way in from a ``GameContent`` bundle or a ``GamePlugin``, neither of which declares a `text` of its own — before it, a bundle's rules re-typed the host game's wording by hand.
+
 ## Compose rules across regions
 
 `rules` is a result-builder, and it accepts whole ``Rules`` values as well as individual rules. Break a large game's logic into per-region helper properties and splice them together:
