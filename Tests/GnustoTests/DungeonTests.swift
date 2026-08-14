@@ -4721,6 +4721,44 @@ struct DungeonTests {
             ])
     }
 
+    /// **Both of the game's locks answer a lock already turned the way you are
+    /// turning it in one voice.** The engine's stock pair is "That's already
+    /// unlocked."/"That's already locked.", where this game's own neighbours
+    /// are "It is already open." and "It is already closed." The Palantir used
+    /// to paper over half the gap with a hand-typed constant for its oak door
+    /// and nothing spoke for the grating, so which lock the player was standing
+    /// at decided which register they heard. `expectInOrder` pins the wording
+    /// rather than a negative on the stock line, because either engine line
+    /// arriving in these slots displaces the sequence. (#260)
+    @Test func bothOfTheGamesLocksAnswerAnAlreadyTurnedLockInOneVoice() async throws {
+        let grating = try await play(
+            Dungeon(),
+            Self.toMazeFive + ["take keys"] + Self.mazeFiveToTheGrating
+                + [
+                    "unlock grating with keys", "unlock grating with keys",
+                    "lock grating with keys", "lock grating with keys",
+                ],
+            seed: 18)
+
+        expectInOrder(
+            grating,
+            ["The grate is unlocked.", "It is already unlocked.", "It is already locked."])
+
+        // The solve up to the turn of the lock, then the same turn again.
+        let oakDoor = try await play(
+            Dungeon(),
+            Self.toTheTinyRoom + Array(Self.theOakDoorSolve.dropLast(2))
+                + ["unlock door with key"],
+            seed: 18)
+
+        expectInOrder(
+            oakDoor,
+            [
+                "Something turns over inside the door, and the lock gives.",
+                "It is already unlocked.",
+            ])
+    }
+
     // MARK: - Milestone 8: the coal chute
 
     /// **Without a rope the chute is milestone 3's one-way drop into the

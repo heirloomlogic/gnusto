@@ -441,7 +441,7 @@ extension DungeonPalantir {
             }
             try require(offered == rustyIronKey, else: Prose.cantUnlockWithThat)
             try require(keyholeTiny.contents.isEmpty, else: Prose.keyholeBlocked)
-            try require(oakDoor.isLocked, else: Prose.doorAlreadyUnlocked)
+            try require(oakDoor.isLocked, else: gameText.alreadyUnlocked())
             oakDoor.isLocked = false
             try reply(Prose.doorUnlocked)
         }

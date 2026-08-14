@@ -147,8 +147,6 @@ extension Prose {
         Something turns over inside the door, and the lock gives.
         """
 
-    static let doorAlreadyUnlocked = "It is already unlocked."
-
     static let doorIsLocked = "The door is locked."
 
     /// The game-wide answer for `look through <anything>`. Written to be true

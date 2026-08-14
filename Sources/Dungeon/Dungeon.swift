@@ -122,14 +122,21 @@ struct Dungeon: Game, GameMain {
         text.nothingSpecial = .naming { "There's nothing special about \($0)." }
         text.alreadyOpen = "It is already open."
         text.alreadyClosed = "It is already closed."
+        // The same pair one verb over. The mainframe has no counterpart to
+        // borrow — `V-LOCK` (`gverbs.zil:855`) answers "It doesn't seem to
+        // work." and `V-UNLOCK` calls it — so these are Dungeon's own prose,
+        // written to the shape of the two lines above. (#260)
+        text.alreadyUnlocked = "It is already unlocked."
+        text.alreadyLocked = "It is already locked."
         text.alreadyHave = "You already have that!"
         text.didntUnderstand = "That sentence isn't one I recognize."
         text.nothingToTakeHere = "There's nothing here you can take."
         // The basket carrying the only light down the shaft darkens a room the
         // way turning a lamp off does, so the two say the same sentence.
         text.nowDark = .init(Prose.itIsNowPitchBlack)
-        // The grating is the only lock in the game, so its two lines are the
-        // engine's stock ones re-voiced rather than a rule of their own.
+        // The grating is the only lock that reaches the engine's own lock
+        // handling, so its two lines are the stock ones re-voiced rather than a
+        // rule of their own.
         text.unlockedMessage = .init(Prose.gratingUnlocked)
         text.locked = .init(Prose.gratingLocked)
         // `enter`/`go through` on a thing that is neither doorway nor vehicle.
