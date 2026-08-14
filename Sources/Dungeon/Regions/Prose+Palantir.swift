@@ -81,13 +81,6 @@ extension Prose {
 
     static let lidInTheWay = "The lid is over it."
 
-    /// The game's own `alreadyOpen`/`alreadyClosed`, said here rather than read
-    /// off ``GameText``: a `GameContent` bundle's rules have no `text` of their
-    /// own, and the two lines are one word apart from the host's.
-    static let lidAlreadyOpen = "It is already open."
-
-    static let lidAlreadyClosed = "It is already closed."
-
     /// Two wordings for one state, keyed to two verbs: this one answers a lid
     /// being closed over a keyhole that has something in it, and
     /// ``keyholeBlocked`` answers a keyhole being asked to take a second thing

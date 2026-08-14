@@ -114,4 +114,12 @@ extension GamePlugin {
     /// The command currently being performed — usable as a bare identifier
     /// in a plugin's rule bodies, exactly as in a `Game`.
     public var command: Command { Ctx.current.command }
+
+    /// The stock lines the engine is speaking this turn — usable as a bare
+    /// identifier in a plugin's rule bodies, exactly as in a `Game`.
+    ///
+    /// A plugin declares no ``Game/text`` of its own, so this is how its rules
+    /// answer in the host game's voice rather than in wording of their own that
+    /// a re-skinned game can't reach. See ``Game/gameText``.
+    public var gameText: GameText { Ctx.current.definition.text }
 }

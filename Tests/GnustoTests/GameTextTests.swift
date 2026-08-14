@@ -1,4 +1,5 @@
 import GnustoTestSupport
+import Synchronization
 import Testing
 
 @testable import Gnusto
@@ -333,5 +334,151 @@ struct ListVoiceTests {
                 // Several things.
                 "Inside the pine crate, sit a red apple and a wax candle.",
             ])
+    }
+}
+
+/// How many times ``VoiceLab``'s computed `text` has been built. The number is
+/// stamped into the lines themselves, so a line can say which build it came
+/// from — which is the only way to tell a stored table from a rebuilt one that
+/// happens to say the same words.
+private let voiceBuilds = Atomic(0)
+
+/// A bundle whose rules answer in the *host game's* stock voice.
+///
+/// A ``GameContent`` declares no `text` of its own, so before ``gameText``
+/// there was no way for one to reach the game's lines at all and bundles
+/// re-typed the host's wording by hand.
+private struct VoiceCellar: GameContent {
+    let vault = Location {
+        name("Vault")
+        description("A stone vault under the house.")
+    }
+
+    let locker = Item {
+        name("tin locker")
+        adjectives("tin")
+        openable
+    }
+
+    var map: WorldMap {
+        locker.starts(in: vault)
+    }
+
+    var rules: Rules {
+        locker.before(.close) {
+            try require(locker.isOpen, else: gameText.alreadyClosed())
+            locker.isOpen = false
+            try reply("The locker clicks shut.")
+        }
+    }
+}
+
+/// A game with the ordinary *computed* `text`, re-voicing two lines and
+/// stamping each with the build it came from.
+///
+/// Three things read those lines on the way through: the engine's own default
+/// action (through `crate`, which has no rules), a rule in the game
+/// (`hatch`), and a rule in a bundle (`locker`). All three must show the same
+/// build number, because there is only supposed to be one table.
+private struct VoiceLab: Game {
+    let title = "Voice"
+    let intro = "A vault with three lids."
+
+    let cellar = VoiceCellar()
+
+    let hatch = Item {
+        name("iron hatch")
+        adjectives("iron")
+        openable
+    }
+
+    /// No rules at all, so its OPEN and CLOSE are the engine's own and its
+    /// refusals come from the table the engine is holding.
+    let crate = Item {
+        name("pine crate")
+        adjectives("pine")
+        openable
+        startsOpen
+    }
+
+    var content: GameContents {
+        cellar
+    }
+
+    var text: GameText {
+        let build = voiceBuilds.wrappingAdd(1, ordering: .relaxed).newValue
+        var text = GameText()
+        text.alreadyOpen = "It is already open. (build \(build))"
+        text.alreadyClosed = "It is already closed. (build \(build))"
+        return text
+    }
+
+    var rules: Rules {
+        hatch.before(.open) {
+            try require(!hatch.isOpen, else: gameText.alreadyOpen())
+            hatch.isOpen = true
+            try reply("The hatch swings up.")
+        }
+    }
+
+    var map: WorldMap {
+        hatch.starts(in: cellar.vault)
+        crate.starts(in: cellar.vault)
+        player.starts(in: cellar.vault)
+    }
+}
+
+/// ``gameText`` — the stock lines a rule body answers in, read off the
+/// definition the engine is already using rather than rebuilt from the game's
+/// own computed property. (#256)
+struct GameVoiceTests {
+    /// The build number stamped into every re-voiced line in one transcript.
+    private func builds(in transcript: String) -> [Substring] {
+        transcript.split(separator: "(build ").dropFirst().map { chunk in
+            chunk.prefix { $0.isNumber }
+        }
+    }
+
+    /// The whole claim in one session: the engine's own refusal, a rule's, and
+    /// a bundle rule's all quote the same build of the table.
+    ///
+    /// Comparing the stamps rather than counting the builds is what makes this
+    /// independent of how many other tests in the process have booted the same
+    /// game — the question is never "how many tables exist" but "is the one the
+    /// rule read the one the engine is speaking from".
+    @Test func everyReaderQuotesTheSameTable() async throws {
+        let transcript = try await play(
+            VoiceLab(),
+            [
+                // The engine's own default actions, no rule involved.
+                "open crate", "close crate", "close crate",
+                // A rule in the game.
+                "open hatch", "open hatch",
+                // A rule in a content bundle, which has no `text` of its own.
+                "open locker", "close locker", "close locker",
+            ])
+
+        // The words, in order, so a failure says which reader went wrong and
+        // not merely that the numbers disagreed.
+        expectInOrder(
+            transcript,
+            [
+                "It is already open. (build",  // the engine's own `open`
+                "It is already closed. (build",  // the engine's own `close`
+                "The hatch swings up.",
+                "It is already open. (build",  // a rule in the game
+                "The locker clicks shut.",
+                "It is already closed. (build",  // a rule in a bundle
+            ])
+
+        // …and the numbers, which is where a rebuilt table gives itself away.
+        // The four stamps above are one build or the reader that disagreed was
+        // reading its own copy.
+        #expect(Set(builds(in: transcript)).count == 1)
+
+        // No reader fell through to the engine's own wording, which is the way
+        // this could pass by saying nothing at all.
+        #expect(!transcript.contains("That's already open."))
+        #expect(!transcript.contains("That's already closed."))
     }
 }
