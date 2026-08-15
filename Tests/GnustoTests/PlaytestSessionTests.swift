@@ -71,6 +71,30 @@ struct PlaytestSessionTests {
         #expect(StatusFooter.always.complaint == nil)
     }
 
+    /// The opening handed back over JSON is rendered, not raw.
+    ///
+    /// `<br>` is the engine's hard-break marker and `TextWrap.plain` exists so
+    /// that it never reaches a reader literally. The transcript on disk gets
+    /// that from `TranscriptRecorder`; the `opening` field is the same words on
+    /// a different channel and has to agree.
+    ///
+    /// Found by a play-tester, which is the part worth keeping: it read
+    /// `Dungeon<br>The Great Underground Empire` in the first thing the server
+    /// ever showed it and filed the marker. A harness that manufactures its own
+    /// false positives spends a verifier on itself, so this is a defect in the
+    /// tool and not a curiosity.
+    @Test func theOpeningHandedBackIsRenderedRatherThanRaw() async throws {
+        let harness = try Harness(HardBreakGame())
+        let session = try await harness.sessions.open(label: "rendered", seed: 0)
+        let opening = try await session.opening()
+
+        #expect(opening.text.contains("Chapter One\nA Beginning"))
+        #expect(!opening.text.contains(TextWrap.lineBreak))
+        // The actual invariant is that the two channels agree, so check the one
+        // that was already right rather than only the one that was wrong.
+        #expect(try text(at: session.transcriptURL).contains("Chapter One\nA Beginning"))
+    }
+
     // MARK: - Byte identity
 
     /// The crown jewel. A session plays; a REPL plays the same list at the same

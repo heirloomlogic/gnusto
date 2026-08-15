@@ -429,7 +429,15 @@ actor PlaytestSession {
         let annotated = footer.annotate(result, turnCost: false, fields: fields)
         recorder?.record(openingOutput: annotated)
         openingBlock = TranscriptRecorder.text(openingOutput: annotated)
-        openingOutput = result.output
+        // Rendered, not raw. `<br>` is the engine's hard-break marker, and
+        // `TextWrap.plain` exists so it never reaches a reader literally — the
+        // transcript on disk gets that treatment from `TranscriptRecorder`, and
+        // this field, which is the same words handed back over JSON, has to get
+        // it too. A play-tester that read `Dungeon<br>The Great Underground
+        // Empire` in the one place it looked first would file the marker as a
+        // defect, which is a false positive the harness manufactured about
+        // itself.
+        openingOutput = TextWrap.plain(result.output)
         statusLine = footer.line(result.status, turnCost: false, fields: fields)
         lastMoves = result.status.moves
         finished = result.isFinished

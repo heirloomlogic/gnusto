@@ -63,3 +63,25 @@ struct WeatherStation: Game {
         player.starts(in: deck)
     }
 }
+
+/// A game whose intro carries the `<br>` hard-break marker, for the two channels
+/// a session answers on: the transcript it writes to disk and the `opening` text
+/// it hands back over JSON.
+///
+/// The marker is deliberately in the *intro* rather than a room description,
+/// because that is where a real one was found — Dungeon's banner puts the title
+/// over its subtitle with a `<br>`, and it is the first thing a play-test agent
+/// ever reads.
+struct HardBreakGame: Game {
+    let title = "Hard Break"
+    let intro = "Chapter One<br>A Beginning"
+
+    let study = Location {
+        name("Study")
+        description("A desk, a lamp, and a manuscript nobody has finished.")
+    }
+
+    var map: WorldMap {
+        player.starts(in: study)
+    }
+}
