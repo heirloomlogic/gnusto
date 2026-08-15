@@ -286,6 +286,14 @@ extension DefaultActions {
                 ["hello", .directObject],
                 ["hi", .directObject],
                 ["greet"],
+                // The two rows `GnustoConversation` also mints. They are here
+                // because "say hello to the troll" is what a player types at a
+                // person, and a game without the conversation plugin answered
+                // it with "That sentence isn't one I recognize." Bare "say" is
+                // still nobody's verb — these are three-word patterns, so a
+                // game that owns SAY outright keeps it.
+                ["say", "hello", "to", .directObject],
+                ["say", "hi", "to", .directObject],
             ],
             reach: .notNeeded
         ) { try greet($0, frame: $1) },
@@ -370,7 +378,9 @@ extension DefaultActions {
         .engineLevel(.undo, [["undo"]]),
         .engineLevel(.restart, [["restart"]]),
         .engineLevel(.save, [["save"]]),
-        .engineLevel(.restore, [["restore"]]),
+        // "load" is the word a player who has just typed SAVE reaches for next,
+        // and it is plumbing rather than fiction, so no game has to opt in.
+        .engineLevel(.restore, [["restore"], ["load"]]),
     ]
 
     /// Keyed for the stage-4 lookup — the same dispatch table the stub path

@@ -405,6 +405,107 @@ struct DungeonProseTests {
         #expect(!turnOutput(of: "take leaves", in: transcript).contains("Taken."))
     }
 
+    /// The same defect twice more, on one branch. `NEST`'s `FDESC` — "Beside
+    /// you on the branch is a small bird's nest." — and `EGG`'s long paragraph
+    /// are both **listing** lines in `1dungeon.zil`, and both were declared as
+    /// the examine text. So Up a Tree named no nest at all, and then a stock
+    /// "On the birds nest is a jewel-encrusted egg." spoke about a thing the
+    /// room had never mentioned; and `x egg` told a player holding the egg that
+    /// it was still in the nest they had just emptied.
+    @Test func upATreeListsTheNestAndTheEggAndExamineAnswersAboutThem() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            ["north", "north", "up", "x egg", "take egg", "examine egg", "look", "x nest"])
+
+        // Both listing lines print, in the order the containment gives them.
+        let perch = turnOutput(of: "up", in: transcript)
+        #expect(perch.contains("Beside you on the branch is a small bird's nest."))
+        #expect(perch.contains("In the bird's nest is a large egg encrusted"))
+        // And the stock sentence they replace never prints.
+        #expect(!transcript.contains("On the birds nest is"))
+
+        // In the nest, `x egg` may still say so; in the hand it must not.
+        #expect(turnOutput(of: "x egg", in: transcript).contains("large egg encrusted"))
+        let inHand = turnOutput(of: "examine egg", in: transcript)
+        #expect(inHand.contains("A large egg encrusted with precious jewels"))
+        #expect(!inHand.contains("In the bird's nest is"))
+
+        // The egg's line is an `FDESC` and stops once the egg is touched. The
+        // nest's has nothing to touch it, so it goes on printing — and the nest
+        // is still `scenery`, so this is the author's line, not the engine's.
+        let after = turnOutput(of: "look", in: transcript)
+        #expect(after.contains("Beside you on the branch is a small bird's nest."))
+        #expect(!after.contains("large egg encrusted"))
+
+        // Examining the nest answers about the nest.
+        #expect(turnOutput(of: "x nest", in: transcript).contains("shallow cup of twigs"))
+    }
+
+    // MARK: - Nouns the prose names and the parser did not know
+
+    /// The egg's paragraph names a clasp; the grating's names a heavy lock, and
+    /// so does its twin from below and so does ``Prose/gratingLockNotReachable``.
+    /// None of the four sentences had a noun behind it, so `x clasp` answered "I
+    /// don't know the word" and `x lock` "You can't see any such thing" — which
+    /// is the answer reserved for a noun that is not in scope, and reads as a
+    /// bug when the game has just printed it.
+    @Test func theClaspAndTheLockAnswerToTheNamesTheProseUses() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            [
+                "north", "north", "up", "take egg", "x clasp",
+                "down", "north", "east", "examine lock", "push leaves", "x lock", "x grate",
+            ])
+
+        // The clasp is the egg's, and answers with it.
+        #expect(turnOutput(of: "x clasp", in: transcript).contains("delicate looking clasp"))
+        #expect(!transcript.contains("I don't know the word \"clasp\""))
+
+        // The lock is the grating's — and stays out of scope until the leaves
+        // come off, because so does the grating.
+        #expect(
+            turnOutput(of: "examine lock", in: transcript)
+                .contains("You can't see any such thing"))
+        // (The constant is hand-wrapped between "heavy" and "lock".)
+        #expect(turnOutput(of: "x lock", in: transcript).contains("fastened with a heavy"))
+        #expect(turnOutput(of: "x grate", in: transcript).contains("A sturdy iron grating"))
+    }
+
+    // MARK: - A way in the room points at
+
+    /// Behind House ends its paragraph on the window, and `enter window` walks
+    /// through it — but `enter house` fell past `.board`'s door branch to
+    /// `cantEnterThat` and answered with `V-THROUGH`'s generic head-butt.
+    /// `WHITE-HOUSE-F` answers `THROUGH` itself: from this side an open window
+    /// walks you in and a shut one says so, and from every other side the house
+    /// says there is no way in rather than butting your head.
+    @Test func enterHouseFindsTheWindowOrSaysThereIsNoWayIn() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            [
+                "enter house",  // West of House: no way in from this side
+                "south", "east",  // round to Behind House
+                "go through house",  // still shut
+                "open window",
+                "enter house",  // and now it walks
+                "x bottle",
+            ])
+
+        expectInOrder(
+            transcript,
+            [
+                "You can't see how to get in from here.",
+                "Behind House",
+                "The window is the only way in",
+                "Opened.",
+                "Kitchen",
+            ])
+        // Really in the kitchen, not merely told about it.
+        #expect(turnOutput(of: "x bottle", in: transcript).contains("clear glass bottle"))
+        // And the generic refusal never appears on any of the three turns.
+        #expect(!transcript.contains("hit your head against the white house"))
+    }
+
     /// **The rusty knife called itself "older than anything else you are
     /// carrying"** — false against the elvish sword, and the game stages
     /// exactly that frame: taking the knife with the sword in hand is what

@@ -32,8 +32,11 @@ struct Zork1BaubleTests {
             [
                 "grinding"  // Prose.brokenCanaryWinds
             ])
-        // No songbird, and no bauble ever falls from a ruined bird.
-        #expect(!transcript.contains("songbird"))
+        // No songbird, and no bauble ever falls from a ruined bird. The word
+        // appears once up the tree, in the egg's listing paragraph — "scavenged
+        // by a childless songbird" — which is the nest's line and not the
+        // bird's, so the check is on the turn that would have summoned one.
+        #expect(!turnOutput(of: "wind canary", in: transcript).contains("songbird"))
         #expect(!transcript.contains("bauble"))
     }
 

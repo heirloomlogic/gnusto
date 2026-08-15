@@ -338,11 +338,25 @@ struct DungeonAboveGround: GameContent {
         scenery
     }
 
+    /// Two channels, not one, the same way the pile of leaves is. "Beside you
+    /// on the branch is a small bird's nest." is a sentence about *where the
+    /// nest is* — the trilogy's `LDESC`, this engine's `firstSight` — and it
+    /// was declared as the examine text. So Up a Tree named no nest at all, and
+    /// then the egg's listing line said "On the birds nest is…" about a thing
+    /// the room had never mentioned.
+    ///
+    /// `scenery` is kept: it withholds the *engine's* stock sentence and never
+    /// the author's. Nothing marks the nest touched, so the line prints on
+    /// every look, which is what the source does.
+    ///
+    /// `bird` is an adjective alongside `birds` because the tokenizer drops a
+    /// trailing `'s`, so a player typing `bird's nest` hands the parser
+    /// `["bird", "nest"]` and matched nothing.
     let nest = Item {
         name("birds nest")
-        adjectives("small", "birds")
-        synonyms("nest")
-        description(Prose.nest)
+        adjectives("small", "bird", "birds")
+        firstSight(Prose.nest)
+        description(Prose.nestExamined)
         surface
         scenery
     }
@@ -351,10 +365,20 @@ struct DungeonAboveGround: GameContent {
     /// 5 to case. It is a container, sealed by a mechanism too fine for brute
     /// fingers — forcing it wrecks the bird inside (a host rule, since the
     /// canary lives in ``DungeonHouse``).
+    ///
+    /// Two channels, like ``DungeonAboveGround/brokenEgg`` below: the source's
+    /// long paragraph opens "In the bird's nest is…", which is the `FDESC` and
+    /// belongs to the listing line. Bound to `description(…)`, it told a player
+    /// holding the egg that it was still in the nest.
+    ///
+    /// `clasp` is a synonym because the paragraph names one, and a noun the
+    /// prose names is a noun the parser owes an answer for.
     let egg = Item {
         name("jewel-encrusted egg")
         adjectives("jewel", "encrusted", "jeweled", "birds")
+        synonyms("clasp")
         description(Prose.egg)
+        firstSight(Prose.eggInNest)
         trait(.takeValue, 5)
         trait(.depositValue, 5)
         container
@@ -461,10 +485,16 @@ struct DungeonAboveGround: GameContent {
 
     /// Locked by a key this milestone does not place — the maze holds it. Down
     /// through it is the Grating Room, which arrives with the maze.
+    ///
+    /// `lock` is a synonym because three separate lines name one — the examine
+    /// text here, its twin from below, and ``Prose/gratingLockNotReachable`` —
+    /// and `x lock` answered "You can't see any such thing" to all three.
+    /// `grating` needs no synonym of its own: it is the last word of the name,
+    /// which is the noun.
     let grating = Item {
         name("iron grating")
         adjectives("iron", "metal")
-        synonyms("grate", "grating")
+        synonyms("grate", "lock")
         container
         openable
         scenery

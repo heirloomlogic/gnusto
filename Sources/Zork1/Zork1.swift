@@ -272,6 +272,26 @@ struct Zork1: Game, GameMain {
             Prose.behindHouse(windowOpen: house.window.isOpen)
         }
 
+        // `enter house` is `WHITE-HOUSE-F`'s `THROUGH` branch, and it answers
+        // for the same pair: from behind the house an open window walks you
+        // into the Kitchen and a shut one says so, and from any other side
+        // there is no way in. Without it `enter house` fell through to
+        // `V-THROUGH`'s generic head-butt from every side alike.
+        aboveGround.whiteHouseAtBehind.before(.board) {
+            try require(house.window.isOpen, else: Prose.enterHouseWindowShut)
+            try enter(house.kitchen)
+            try handled()
+        }
+        for side in [
+            aboveGround.whiteHouseAtWest,
+            aboveGround.whiteHouseAtNorth,
+            aboveGround.whiteHouseAtSouth,
+        ] {
+            side.before(.board) {
+                try refuse(Prose.enterHouseNoWayIn)
+            }
+        }
+
         // Event scoring: the original pays for reaching the kitchen (first
         // way into the house), for descending into the cellar, and for
         // pressing east past the troll into the East-West Passage. All are

@@ -185,6 +185,19 @@ struct SaveRestoreTests {
         #expect(turnOutput(of: "inventory", in: transcript).contains("gold coin"))
     }
 
+    /// LOAD is RESTORE. It is the word a player who has just typed SAVE reaches
+    /// for next, and it went to "I don't know the word "load"." — which reads,
+    /// wrongly, as if the game had no way to bring a save back.
+    @Test func loadIsAnotherSpellingOfRestore() async throws {
+        let path = temporarySavePath("load")
+        defer { try? FileManager.default.removeItem(atPath: path) }
+        let transcript = try await play(
+            StrongboxGame(),
+            ["take coin", "save", path, "drop coin", "load", path, "inventory"])
+        expectInOrder(transcript, ["Saved.", "Restore from what file?", "Restored."])
+        #expect(turnOutput(of: "inventory", in: transcript).contains("gold coin"))
+    }
+
     @Test func theRestorePromptListsExistingSaves() async throws {
         let dir = FileManager.default.temporaryDirectory
             .appendingPathComponent("gnusto-list-\(UUID().uuidString)", isDirectory: true)
