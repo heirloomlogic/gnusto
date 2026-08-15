@@ -158,9 +158,18 @@ final class TranscriptRecorder {
 
     /// Appends a block of output, rendering the `<br>` hard-break marker as a
     /// newline (via `TextWrap.plain`) the way the plain console does.
+    ///
+    /// The trailing blank line is unconditional, and that matters more than it
+    /// looks: `REPL.run` writes `"\(result.output)\n\n"` to the IO handler for
+    /// every turn without exception, so a recorded transcript only matches the
+    /// string `ScriptedIOHandler` builds — the one a transcript test asserts on —
+    /// if this agrees on the empty case too. It once special-cased empty output to
+    /// a single newline, which diverged by exactly one byte on the one turn that
+    /// prints nothing: `QUIT` at the death prompt, answered with `freeReply("")`.
+    /// A tester's command list is supposed to *be* a regression test, so a
+    /// one-byte drift on a reachable path is a real defect, not a cosmetic one.
     private func appendOutput(_ output: String) {
-        let text = TextWrap.plain(output)
-        append(text.isEmpty ? "\n" : "\(text)\n\n")
+        append("\(TextWrap.plain(output))\n\n")
     }
 
     private func append(_ text: String) {

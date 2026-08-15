@@ -16,6 +16,13 @@ struct TranscriptCommandTests {
             .appendingPathComponent("session.txt")
     }
 
+    /// A fresh, isolated save directory, so a test's `save` slots can't be seen
+    /// by another test or by the developer's real ones.
+    private func tempDirectory() -> URL {
+        FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+    }
+
     @Test func scriptRecordsTurnsUntilUnscript() async throws {
         let file = tempTranscript()
         let transcript = try await play(
@@ -45,6 +52,47 @@ struct TranscriptCommandTests {
     @Test func unscriptWithoutRecordingIsReported() async throws {
         let transcript = try await play(OperaHouse(), ["unscript", "look"])
         #expect(transcript.contains("[No transcript is being recorded.]"))
+    }
+
+    /// The whole play-test harness rests on one claim, stated in
+    /// `bin/playtest-replay` and `docs/playtesting.md`: a `GNUSTO_TRANSCRIPT`
+    /// recording is "byte-for-byte what `ScriptedIOHandler` produces in the test
+    /// suite," so a tester's command list *is* a regression test. Two different
+    /// pieces of code produce that format — `TranscriptRecorder` for the file and
+    /// `REPL` + `ScriptedIOHandler` for the string — so the claim needs a test or
+    /// it is only a comment.
+    ///
+    /// Driving one REPL with both at once compares them on the same run, which is
+    /// stricter than replaying twice and cannot drift on scheduling.
+    ///
+    /// Note the two shapes deliberately excluded: `script`/`unscript`
+    /// confirmations reach `io.write` but not the recorder (the recorder does not
+    /// exist yet when the first one prints), and a front-end `Input.quit` echoes a
+    /// bare prompt to the handler while the recorder writes `> quit`. Neither can
+    /// occur in a `playtest-replay` session, which is what this contract covers.
+    @Test func recordedTranscriptMatchesTheScriptedOneByteForByte() async throws {
+        let world = try GameWorld(game: OperaHouse(), seed: 1, saveDirectory: tempDirectory())
+        let file = tempTranscript()
+        let io = ScriptedIOHandler(lines: ["look", "// a tester note", "south", "quit"])
+        await REPL(world: world, io: io, transcriptURL: file).run()
+
+        let recorded = try String(contentsOf: file, encoding: .utf8)
+        #expect(recorded == io.transcript)
+    }
+
+    /// The same contract across an *empty* turn output, which is the one place the
+    /// two producers disagreed: `QUIT` at the death prompt sets the status and
+    /// returns `freeReply("")`, so the turn prints nothing at all.
+    @Test func byteIdentityHoldsForAnEmptyTurnOutput() async throws {
+        let world = try GameWorld(game: MorgueGame(), seed: 1, saveDirectory: tempDirectory())
+        let file = tempTranscript()
+        // `take poison` dies and arms the death prompt; `quit` there is answered
+        // by `freeReply("")` — an empty output, and the whole point of this test.
+        let io = ScriptedIOHandler(lines: ["take poison", "quit"])
+        await REPL(world: world, io: io, transcriptURL: file).run()
+
+        let recorded = try String(contentsOf: file, encoding: .utf8)
+        #expect(recorded == io.transcript)
     }
 
     @Test func preArmedTranscriptCapturesTheOpening() async throws {
