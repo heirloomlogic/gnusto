@@ -234,6 +234,12 @@ computed `static var`, which rebuilds it on every read.
   So a door is a way through by name as well as by direction, and a game does
   **not** want its own `#verb` for "go through" — two files in this repo had
   independently minted one before the engine had the word.
+- **`and` joins two objects, and a name beats a list.** `take the bottle and the
+  sack` is one turn over two objects, expanded exactly as `take all` is —
+  labeled lines, once-per-turn upkeep, the same four verbs. The parser reads the
+  whole phrase as a *name* first and only splits it when nothing answers to it,
+  so `name("cup and saucer")` keeps working and no phrase changes meaning. The
+  comma is not a conjunction yet: the addressing path claims it.
 - **Containment is room-granular; `reach { }` is the escape hatch.** A thing in one
   square of a floor the player walks around inside is "in the room" from every
   square. `item.reach(otherwise: "…") { … }` narrows that once, for every verb that

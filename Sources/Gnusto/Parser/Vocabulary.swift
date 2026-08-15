@@ -43,6 +43,21 @@ struct Vocabulary: Sendable {
     /// (the bootstrap warns).
     static let reservedWords: Set<String> = ["it", "them", "all", "everything"]
 
+    /// The words that join two object phrases: `take the bottle and the sack`.
+    ///
+    /// Deliberately neither noise nor reserved. Not noise, because dropping the
+    /// word would *join* the two phrases rather than separate them. Not
+    /// reserved, because an item is free to use it among its own words — the
+    /// parser reads a phrase as a name before it ever reads it as a list, so
+    /// `name("cup and saucer")` keeps answering to every word of itself.
+    ///
+    /// A `static let` rather than a per-game `var`, the way ``reservedWords``
+    /// is and ``noiseWords`` isn't: filler varies by game and the bootstrap
+    /// collects it, but nothing in the engine or the DSL lets a game name a
+    /// conjunction of its own, and a settable property nobody sets is a lie
+    /// about the surface.
+    static let conjunctions: Set<String> = ["and"]
+
     /// Every word in the game, flattened once at bootstrap so `knows` is a
     /// single set lookup (it runs per token on parse-failure paths).
     var allKnownWords: Set<String> = []
@@ -98,6 +113,7 @@ struct Vocabulary: Sendable {
             .union(directions.keys)
             .union(prepositions)
             .union(noiseWords)
+            .union(Self.conjunctions)
             .union(Self.reservedWords)
         for lexicon in itemLexicons.values {
             allKnownWords.formUnion(lexicon.nouns)

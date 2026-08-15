@@ -1,18 +1,26 @@
 /// A parsed command in ID form; `GameWorld` converts it to the author-facing
 /// `Command` by attaching canonical proxies.
 struct ParsedCommand: Equatable {
-    /// A multi-object marker in the direct slot: "take all", "drop them".
-    /// The parser only flags it; expansion needs world state, so it happens
-    /// in `GameWorld`.
+    /// Several objects in the direct slot. The keywords are a *marker*: what
+    /// "all" stands for needs world state, so expansion happens in `GameWorld`.
+    /// A conjunction list is already resolved — the player named each thing, so
+    /// there is nothing left to expand.
     enum MultiObject: Equatable {
         case all
         case them
+        /// `take the bottle and the sack`, in the order the player wrote it.
+        case list([EntityID])
 
-        init?(phrase: [String]) {
+        /// The keyword the phrase spells, if it spells one. Not an initializer,
+        /// because it can't reach ``list(_:)`` — a list has no spelling to
+        /// recognize, it is what the parser builds when a phrase splits on a
+        /// conjunction — and every caller uses this as the question "is this
+        /// phrase a keyword?" rather than as a way to make one.
+        static func keyword(phrase: [String]) -> MultiObject? {
             switch phrase {
-            case ["all"], ["everything"]: self = .all
-            case ["them"]: self = .them
-            default: return nil
+            case ["all"], ["everything"]: .all
+            case ["them"]: .them
+            default: nil
             }
         }
     }
@@ -429,28 +437,40 @@ struct StandardParser {
         }
 
         // Structure fits; resolve the noun phrases against scope. Multi-object
-        // keywords are flagged in the direct slot and refused in the indirect.
+        // keywords are flagged in the direct slot and refused in the indirect;
+        // so is a conjunction list, which only the direct slot accepts.
         var directID: EntityID?
         var multiple: ParsedCommand.MultiObject?
         if let phrase = directPhrase {
-            if let keyword = ParsedCommand.MultiObject(phrase: phrase) {
+            if let keyword = ParsedCommand.MultiObject.keyword(phrase: phrase) {
                 multiple = keyword
             } else {
-                switch resolve(phrase, in: scope, alsoConsidering: distant) {
-                case .success(let id): directID = id
-                case .failure(let error):
-                    return .nearMiss(positioned(error, tokens: tokens, phraseStart: directStart))
+                switch resolveDirect(
+                    phrase, at: directStart, in: tokens, scope: scope, distant: distant)
+                {
+                case .success(let ids) where ids.count == 1: directID = ids[0]
+                case .success(let ids): multiple = .list(ids)
+                case .failure(let error): return .nearMiss(error)
                 }
             }
         }
         var indirectID: EntityID?
         if let phrase = indirectPhrase {
-            guard ParsedCommand.MultiObject(phrase: phrase) == nil else {
+            guard ParsedCommand.MultiObject.keyword(phrase: phrase) == nil else {
                 return .nearMiss(.multipleNotAllowed)
             }
             switch resolve(phrase, in: scope, alsoConsidering: distant) {
             case .success(let id): indirectID = id
             case .failure(let error):
+                // `put the coin in the box and the sack` names two places for
+                // one thing. Only the direct slot is several, and saying so
+                // beats reporting the joined phrase as a thing nobody can see.
+                // Second pass, the same way the direct slot's is: a name that
+                // has "and" among its own words resolved above and never got
+                // here.
+                guard listSegments(of: phrase) == nil else {
+                    return .nearMiss(.multipleNotAllowed)
+                }
                 return .nearMiss(positioned(error, tokens: tokens, phraseStart: indirectStart))
             }
         }
@@ -645,6 +665,77 @@ struct StandardParser {
                 .filter { !vocabulary.noiseWords.contains($0) }
         }
         return tokens
+    }
+
+    /// Resolves the direct slot: one thing, or several joined by a conjunction.
+    ///
+    /// The split is a **second pass**, tried only once the whole phrase has
+    /// failed to name anything. That ordering is the whole safety argument: an
+    /// item declared `name("cup and saucer")` answers to its own words before
+    /// the conjunction is ever read as punctuation, so adding the word to the
+    /// parser cannot change the meaning of a phrase that already worked.
+    ///
+    /// - Parameters:
+    ///   - phrase: the slot's tokens.
+    ///   - start: where the phrase begins in `tokens` — a question about one
+    ///     member of the list is answered in *that member's* place.
+    ///   - tokens: the line as typed.
+    ///   - scope: what the player can name.
+    ///   - distant: the far-sighted fallback set.
+    /// - Returns: the objects the player named, at least one, in the order they
+    ///   named them; or the error to report.
+    private func resolveDirect(
+        _ phrase: [String], at start: Int, in tokens: [String],
+        scope: Scope, distant: Set<EntityID>
+    ) -> Result<[EntityID], ParseError> {
+        let whole = resolve(phrase, in: scope, alsoConsidering: distant)
+        guard case .failure(let wholeError) = whole else {
+            return whole.map { [$0] }
+        }
+        // Nothing answers to the phrase entire — so it may be several phrases
+        // joined by "and".
+        guard let pieces = listSegments(of: phrase) else {
+            return .failure(positioned(wholeError, tokens: tokens, phraseStart: start))
+        }
+
+        var ids: [EntityID] = []
+        for piece in pieces {
+            // `take the coin and all` asks for one thing and everything at
+            // once. Only a whole phrase may be a keyword.
+            guard ParsedCommand.MultiObject.keyword(phrase: Array(piece)) == nil else {
+                return .failure(.multipleNotAllowed)
+            }
+            switch resolve(Array(piece), in: scope, alsoConsidering: distant) {
+            case .success(let id):
+                if !ids.contains(id) { ids.append(id) }
+            case .failure(let error):
+                // `piece.startIndex` is its offset within `phrase`, since
+                // `phrase` is a zero-based array.
+                return .failure(
+                    positioned(error, tokens: tokens, phraseStart: start + piece.startIndex))
+            }
+        }
+        // One id can come back from several pieces — one thing named twice, or
+        // a trailing `and` with nothing behind it. The caller reads that as a
+        // single object and takes the ordinary path.
+        return .success(ids)
+    }
+
+    /// The phrase's conjunction-separated pieces, or `nil` when it is no kind
+    /// of list: no conjunction in it, or nothing but conjunctions.
+    ///
+    /// The one definition of "does this phrase name several things", so the
+    /// direct slot (which accepts a list) and the indirect slot (which refuses
+    /// one) can never come to disagree about what a list is. Each piece keeps
+    /// its place, as an `ArraySlice` over `phrase`: a clarifying question about
+    /// one member has to be answerable in that member's own position.
+    ///
+    /// - Parameter phrase: the slot's tokens.
+    /// - Returns: the pieces, at least one and never empty, or `nil`.
+    private func listSegments(of phrase: [String]) -> [ArraySlice<String>]? {
+        guard phrase.contains(where: Vocabulary.conjunctions.contains) else { return nil }
+        let pieces = phrase.split(whereSeparator: Vocabulary.conjunctions.contains)
+        return pieces.isEmpty ? nil : pieces
     }
 
     /// Resolves a noun phrase against scope: every token must be one of the
