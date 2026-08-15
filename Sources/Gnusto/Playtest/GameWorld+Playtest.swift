@@ -48,6 +48,16 @@ struct TurnAudit: Sendable {
     /// The indirect object the parser bound, if the pattern had one.
     var indirectObject: EntityID?
 
+    /// The direction the line asked for, for a movement command.
+    ///
+    /// Here for the same reason as the rest of this record: which way somebody
+    /// went is not recoverable from the prose. `n`, `north` and `go north` are
+    /// one move and three spellings, an exit refused by a shut door prints text
+    /// that names no direction at all, and a room description that mentions
+    /// three ways out has to be matched against the ones actually taken. The
+    /// parse knows; the transcript does not.
+    var direction: Direction?
+
     /// Every token of the input the game's vocabulary does not know, in the
     /// order typed. Normally empty on a line that parsed, since the parser
     /// requires every token to be consumed.
@@ -70,6 +80,7 @@ struct TurnAudit: Sendable {
         self.intent = parsed.intent
         self.directObject = parsed.directObject
         self.indirectObject = parsed.indirectObject
+        self.direction = parsed.direction
         self.unknownWords = unknownWords
     }
 }

@@ -88,6 +88,14 @@ actor PlaytestSession {
     /// share its saves directory, exactly as `bin/playtest-replay` defines it.
     nonisolated let label: String
 
+    /// What this session may be told beyond what the game has printed to it.
+    ///
+    /// `nonisolated` because it never changes and because the firewall has to
+    /// be checkable without awaiting the session — a tool that refused only
+    /// after queueing behind a two-hundred-command batch would be a firewall
+    /// with a latency. See ``PlaytestRole``.
+    nonisolated let role: PlaytestRole
+
     /// This run's directory name under the label, `probe-001` and up.
     nonisolated let probe: String
 
@@ -154,6 +162,23 @@ actor PlaytestSession {
     /// What the world will do with the next line. See ``PlaytestAwaiting``.
     private var pending: PlaytestAwaiting = .none
 
+    /// What the game has shown this session and the session has not followed
+    /// up. See ``CoverageLedger``, which is built from the printed text and the
+    /// parse record and reads nothing else — the firewall lives there.
+    ///
+    /// Derived state, so it is thrown away and rebuilt by ``boot()`` rather
+    /// than carried across an eviction: the replay is exact, so re-feeding the
+    /// same lines rebuilds the same ledger, and a ledger that survived a replay
+    /// would double-count every item in it.
+    private var ledger = CoverageLedger()
+
+    /// The command count at which the last inline `harness:` note went out.
+    ///
+    /// One tier of intervention and no more, so the note also has to be rare:
+    /// a channel an agent has learned to skip is worse than no channel. See
+    /// ``PlaytestSignals``.
+    private var lastNudge = 0
+
     /// True once the session has used the player-facing `save` or `restore`.
     ///
     /// Such a session may never be evicted. Eviction is safe *because* replay
@@ -172,6 +197,7 @@ actor PlaytestSession {
     ///   - label: the tester's namespace.
     ///   - probe: this run's directory name.
     ///   - seed: the random seed to pin.
+    ///   - role: what this session may be told. See ``PlaytestRole``.
     ///   - prepared: the game, booted once by the server.
     ///   - directory: this probe's directory.
     ///   - saveDirectory: the label's saves directory.
@@ -180,6 +206,7 @@ actor PlaytestSession {
         label: String,
         probe: String,
         seed: UInt64,
+        role: PlaytestRole,
         prepared: PreparedGame,
         directory: URL,
         saveDirectory: URL
@@ -188,6 +215,7 @@ actor PlaytestSession {
         self.label = label
         self.probe = probe
         self.seed = seed
+        self.role = role
         self.prepared = prepared
         self.directory = directory
         self.saveDirectory = saveDirectory
@@ -267,7 +295,7 @@ actor PlaytestSession {
         var ran = 0
         for line in commands {
             let index = turns.count + 1
-            let block = await run(line, in: world)
+            let block = await run(line, at: index, in: world)
             turns.append(
                 Turn(
                     index: index, line: line,
@@ -282,6 +310,7 @@ actor PlaytestSession {
         let unrun = Array(commands.dropFirst(ran))
         return Self.capped(tail: blocks)
             + trailer(ran: ran, requested: commands.count, unrun: unrun)
+            + nudge()
     }
 
     /// Reads back part of the session's own transcript.
@@ -327,6 +356,223 @@ actor PlaytestSession {
         }
         return Self.capped(head: blocks)
             + "[playtest] session=\(id) recalled=\(blocks.count) of \(turns.count) lines\n"
+    }
+
+    // MARK: - The queue
+
+    /// What the game has shown this session that the session has not followed
+    /// up, ranked cheapest-first.
+    struct Coverage: Sendable {
+        /// How many items are open. The decreasing integer the queue is read
+        /// by, and deliberately the first field: a report is something an agent
+        /// reads once and rationalises, a countdown is something it burns down.
+        let open: Int
+        /// How many have been closed.
+        let closed: Int
+        /// The room the status line last named, so the caller can see why the
+        /// ranking put what it did on top.
+        let room: String
+        /// The ranked items.
+        let items: [CoverageItem]
+        /// The one frontier hint, when the queue has run dry.
+        let hint: String?
+        /// The inline `harness:` note, when a threshold has tripped.
+        let note: String?
+    }
+
+    /// The queue.
+    ///
+    /// **Reads nothing but the ledger**, which in turn reads nothing but the
+    /// printed text and the parse record. That is the firewall, and it is worth
+    /// stating at the one method a tester calls most: there is no branch here
+    /// on `prepared.definition`, no room roster, no timer roster, no
+    /// vocabulary. A room this session never stood in cannot be named by
+    /// anything it gets back.
+    ///
+    /// - Parameter limit: how many items to return.
+    /// - Throws: ``PlaytestError`` when a session that had been evicted cannot
+    ///   reopen its transcript to replay itself.
+    /// - Returns: the open count and the top of the queue.
+    func coverage(limit: Int) async throws -> Coverage {
+        _ = try await liveWorld()
+        return Coverage(
+            open: ledger.openCount,
+            closed: ledger.items.count - ledger.openCount,
+            room: ledger.currentRoom,
+            items: ledger.queue(limit: limit),
+            hint: ledger.frontierHint(),
+            note: ledger.signals().note)
+    }
+
+    /// The measured signals. See ``PlaytestSignals``.
+    ///
+    /// - Returns: the numbers, off this session's own record.
+    func stats() -> PlaytestSignals {
+        ledger.signals()
+    }
+
+    // MARK: - Notes
+
+    /// Writes a `//` comment into the transcript at the current turn.
+    ///
+    /// The point is *where* it lands. A tester that reads a wrong line and
+    /// files it forty turns later into a schema field is reconstructing the
+    /// frame from memory; one that writes a note the moment it reads the line
+    /// puts the observation in the evidence, next to the line, at the turn
+    /// that printed it. It costs no turn and no clock tick, because it goes
+    /// down the front-end comment path (``TesterInput/isComment``) and never
+    /// reaches the parser — so a note between two commands cannot change what
+    /// the second one does.
+    ///
+    /// A `suspicious` note also raises a ``CoverageItem/Kind/hunch``: a
+    /// suspicion the tester formed is an obligation to look again from a
+    /// different frame, rather than a feeling it may walk away from. The marker
+    /// goes in the comment text rather than beside it, so that a replay of
+    /// `commands.txt` rebuilds the hunch along with everything else.
+    ///
+    /// - Parameters:
+    ///   - text: what to write. Newlines are squeezed out — a comment is one
+    ///     transcript line by construction, and a second line would not carry
+    ///     the `>` echo the format is read by.
+    ///   - suspicious: file it as a hunch as well as a note.
+    /// - Throws: ``PlaytestError`` for empty text, or a transcript that can't
+    ///   be opened.
+    /// - Returns: the line as it was written, and the frame it went in at.
+    func note(_ text: String, suspicious: Bool) async throws -> String {
+        let line = Self.commentLine(text, suspicious: suspicious)
+        guard line.count > 3 else {
+            throw PlaytestError("note needs something to say; it was given \"\(text)\".")
+        }
+        let world = try await liveWorld()
+        let index = turns.count + 1
+        let block = await run(line, at: index, in: world)
+        turns.append(Turn(index: index, line: line, isComment: true, block: block))
+        persistCommands()
+        return """
+            \(block)[playtest] session=\(id) noted at line \(index), \
+            room=\(ledger.currentRoom), moves=\(lastMoves) — no turn passed.
+            """
+    }
+
+    /// A note as one transcript line, marker and all.
+    ///
+    /// - Parameters:
+    ///   - text: the tester's words.
+    ///   - suspicious: whether to mark it as a hunch.
+    /// - Returns: a line ``TesterInput/isComment(_:)`` accepts.
+    private static func commentLine(_ text: String, suspicious: Bool) -> String {
+        var body = text.split(whereSeparator: \.isNewline)
+            .joined(separator: " ")
+            .trimmingCharacters(in: .whitespaces)
+        while body.hasPrefix("//") || body.hasPrefix("#") {
+            body = String(body.dropFirst(body.hasPrefix("//") ? 2 : 1))
+                .trimmingCharacters(in: .whitespaces)
+        }
+        return suspicious ? "// [suspicious] \(body)" : "// \(body)"
+    }
+
+    // MARK: - Stopping
+
+    /// What a tester is told when it says it is done.
+    struct Closing: Sendable {
+        /// Always true. `finish` reports; it does not refuse.
+        let accepted = true
+        /// How many items were still open.
+        let open: Int
+        /// A sample of them, cheapest first.
+        let items: [CoverageItem]
+        /// The measured signals.
+        let signals: PlaytestSignals
+        /// The frontier hint, when the queue had run dry.
+        let hint: String?
+        /// Where the evidence is.
+        let transcript: String
+        /// The prose the agent reads.
+        let message: String
+    }
+
+    /// Accepts a tester's decision to stop, and tells it what it is leaving.
+    ///
+    /// **It reports; it does not refuse.** That is a reversal, and the reason
+    /// is measurement rather than taste: two agents played the bare session
+    /// surface with no queue and no enforcement at all, and both volunteered
+    /// honest gap lists better than a deferral form would have extracted —
+    /// where the machinery to compel them would have invited the failure this
+    /// harness is being rebuilt to escape, an agent burning a checklist down
+    /// mechanically instead of reading. So there is no minimum word count on
+    /// the reason, no cap on how much may be left, and no escalation.
+    ///
+    /// What survives is the accounting. The open list at `finish` **is** the
+    /// round's coverage gap, itemised, and it goes into the report whether or
+    /// not the tester explains it — an unexplained gap is still a gap, shown
+    /// blank.
+    ///
+    /// The summary and the reason are written into the transcript as comments,
+    /// so the record of why a session stopped sits in the evidence rather than
+    /// in a tool result nobody kept.
+    ///
+    /// - Parameters:
+    ///   - summary: what the tester found, in its own words.
+    ///   - leaving: why it is stopping with items open, or `nil`.
+    ///   - limit: how many open items to name back.
+    /// - Throws: ``PlaytestError`` for an empty summary, or a transcript that
+    ///   can't be opened.
+    /// - Returns: the accounting.
+    func finish(summary: String, leaving: String?, limit: Int) async throws -> Closing {
+        let trimmed = summary.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            throw PlaytestError(
+                "finish needs a summary — one or two sentences on what you found.")
+        }
+        _ = try await note("[finish] \(trimmed)", suspicious: false)
+        if let leaving, !leaving.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            _ = try await note("[leaving] \(leaving)", suspicious: false)
+        }
+
+        let items = ledger.queue(limit: limit)
+        let open = ledger.openCount
+        var message =
+            open == 0
+            ? "Noted. Nothing was left open when you stopped."
+            : """
+            Noted. Still open when you stopped: \(open) \
+            item\(open == 1 ? "" : "s")\(items.isEmpty ? "." : ", e.g.")
+            """
+        for item in items {
+            message += "\n  \(item.rendered)"
+        }
+        if let hint = ledger.frontierHint() {
+            message += "\n\(hint)"
+        }
+        if leaving == nil && open > 0 {
+            message += """
+
+                Say why in `leaving`, or call move again — either is fine. An unexplained \
+                gap is still counted as a gap.
+                """
+        }
+        return Closing(
+            open: open,
+            items: items,
+            signals: ledger.signals(),
+            hint: ledger.frontierHint(),
+            transcript: transcriptURL.path,
+            message: message)
+    }
+
+    /// The inline `harness:` line, at most one per twenty commands.
+    ///
+    /// Appended to a `move` result and to nothing else — never recorded, so a
+    /// nudge cannot reach the transcript and cost this harness its byte
+    /// identity with the REPL.
+    ///
+    /// - Returns: the line to append, or the empty string.
+    private func nudge() -> String {
+        guard let note = ledger.signals().note, ledger.commands >= lastNudge + 20 else {
+            return ""
+        }
+        lastNudge = ledger.commands
+        return "[playtest] \(note)\n"
     }
 
     // MARK: - Eviction and rehydration
@@ -391,7 +637,7 @@ actor PlaytestSession {
             """)
         for index in turns.indices {
             guard !finished else { break }
-            turns[index].block = await run(turns[index].line, in: world)
+            turns[index].block = await run(turns[index].line, at: index + 1, in: world)
         }
         return world
     }
@@ -421,6 +667,8 @@ actor PlaytestSession {
                 cannot record is not opened at all.
                 """)
         }
+        ledger = CoverageLedger()
+        lastNudge = 0
         let world = GameWorld(prepared: prepared, seed: seed, saveDirectory: saveDirectory)
         let result = await world.begin()
         let fields = await world.statusFields()
@@ -438,6 +686,10 @@ actor PlaytestSession {
         // defect, which is a false positive the harness manufactured about
         // itself.
         openingOutput = TextWrap.plain(result.output)
+        // The ledger reads the rendered text for the same reason the `opening`
+        // field does: `<br>` is a marker, not a word, and a queue item named
+        // after one would be an obligation to examine punctuation.
+        ledger.observeOpening(output: openingOutput, room: result.status.locationName)
         statusLine = footer.line(result.status, turnCost: false, fields: fields)
         lastMoves = result.status.moves
         finished = result.isFinished
@@ -458,14 +710,18 @@ actor PlaytestSession {
     ///
     /// - Parameters:
     ///   - line: the raw line, as the tester sent it.
+    ///   - index: the line's 1-based position in `commands.txt`, which is what
+    ///     a queue item cites when it says where it was shown something.
     ///   - world: the live world.
     /// - Returns: the transcript block the line produced.
-    private func run(_ line: String, in world: GameWorld) async -> String {
+    private func run(_ line: String, at index: Int, in world: GameWorld) async -> String {
         // A comment never reaches the parser, so it costs no turn and no clock
         // tick — and it stays in the transcript, which is the point of writing
         // one.
         if TesterInput.isComment(line) {
             recorder?.record(commentLine: line)
+            ledger.observeComment(
+                line, room: ledger.currentRoom, moves: lastMoves, line: index)
             return TranscriptRecorder.text(commentLine: line)
         }
 
@@ -478,6 +734,15 @@ actor PlaytestSession {
         let turnCost = result.status.moves > movesBefore
         let annotated = footer.annotate(result, turnCost: turnCost, fields: fields)
         recorder?.record(command: line, output: annotated)
+
+        ledger.observe(
+            command: line,
+            audit: audit,
+            output: TextWrap.plain(result.output),
+            room: result.status.locationName,
+            moves: result.status.moves,
+            line: index,
+            turnCost: turnCost)
 
         statusLine = footer.line(result.status, turnCost: turnCost, fields: fields)
         lastMoves = result.status.moves

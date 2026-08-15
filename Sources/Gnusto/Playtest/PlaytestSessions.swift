@@ -82,10 +82,14 @@ actor PlaytestSessions {
     /// - Parameters:
     ///   - label: the tester's namespace; becomes a directory name.
     ///   - seed: the random seed this session replays.
+    ///   - role: what the session may be told beyond what the game prints to
+    ///     it. See ``PlaytestRole``; the default is the human case.
     /// - Throws: ``PlaytestError`` for an unusable label or a directory that
     ///   can't be made.
     /// - Returns: the new session.
-    func open(label: String, seed: UInt64) async throws -> PlaytestSession {
+    func open(
+        label: String, seed: UInt64, role: PlaytestRole = .unrestricted
+    ) async throws -> PlaytestSession {
         guard Self.isPlainName(label) else {
             throw PlaytestError(
                 """
@@ -111,6 +115,7 @@ actor PlaytestSessions {
             label: label,
             probe: probe,
             seed: seed,
+            role: role,
             prepared: prepared,
             directory: directory,
             saveDirectory: saveDirectory)

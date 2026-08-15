@@ -100,6 +100,21 @@ struct PlaytestToolResult: Sendable {
         self.text = json.text
         self.structured = json
     }
+
+    /// Both channels, saying the same thing in two registers.
+    ///
+    /// For a result whose reader is a language model *and* whose fields a
+    /// client may want to validate: the coverage queue is a list of commands to
+    /// paste, and a list reads as a list, not as one line of escaped JSON. The
+    /// structured half carries the same items for anything counting them.
+    ///
+    /// - Parameters:
+    ///   - text: the prose.
+    ///   - structured: the same content, as fields.
+    init(text: String, structured: JSONValue) {
+        self.text = text
+        self.structured = structured
+    }
 }
 
 // MARK: - The table
@@ -122,27 +137,40 @@ enum PlaytestTools {
     static func table(for game: PreparedGame, environment: [String: String]) -> [PlaytestTool] {
         let sessions = PlaytestSessions(prepared: game, environment: environment)
         return [
-            survey(for: game),
+            survey(for: game, sessions),
             open(sessions),
             move(sessions),
             recall(sessions),
+            coverage(sessions),
+            note(sessions),
+            finish(sessions),
         ]
     }
 
     /// `survey` — everything true of the game before anybody plays it.
     ///
-    /// Static, and takes no session: the answer is a function of the game
-    /// *type*, so there is no world to build and no seed to pick. It is the
-    /// same value `GameWorld.survey()` reads off a running world, read instead
-    /// off the definition a `PreparedGame` already holds.
+    /// The answer is a function of the game *type*, so there is no world to
+    /// build and no seed to pick: it is the same value `GameWorld.survey()`
+    /// reads off a running world, read instead off the definition a
+    /// `PreparedGame` already holds.
     ///
-    /// This is deliberately the *only* tool in the stage that introduces the
-    /// protocol, so that a framing mistake is found while there is one cheap
-    /// thing on the wire rather than a session registry.
+    /// **It takes a session anyway, and that is the firewall.** This is the
+    /// oracle — the room roster, the timer roster, the verb tables, `maxScore`
+    /// — and whether a caller may see it is a fact about the caller, not about
+    /// the game. A role is carried by a session, so a survey without one has
+    /// nobody to ask permission of; there is therefore no such thing as an
+    /// anonymous survey. A person driving their own game by hand opens a
+    /// session with the default role and gets everything. See ``PlaytestRole``,
+    /// which also says why this is enforced here rather than by handing a
+    /// tester a shorter tool list.
     ///
-    /// - Parameter game: the game to survey.
+    /// - Parameters:
+    ///   - game: the game to survey.
+    ///   - sessions: the registry the session id is looked up in.
     /// - Returns: the row.
-    private static func survey(for game: PreparedGame) -> PlaytestTool {
+    private static func survey(
+        for game: PreparedGame, _ sessions: PlaytestSessions
+    ) -> PlaytestTool {
         PlaytestTool(
             name: "survey",
             mutatesState: false,
@@ -151,15 +179,32 @@ enum PlaytestTools {
                 it: the rooms and how they connect, the declared fuses and \
                 daemons, the verb table split into core verbs and one-line \
                 stubs, the cast, the maximum score, and any warnings the \
-                bootstrap raised. Costs no turns and needs no session.
+                bootstrap raised. Costs no turns. This is the answer key, so a \
+                session opened in a play-testing role is refused it — see the \
+                role argument on open.
                 """,
             inputSchema: [
                 "type": "object",
-                "properties": [:],
+                "properties": [
+                    "session": [
+                        "type": "string",
+                        "description": .string(
+                            "The id open returned. Required: whether you may read the "
+                                + "answer key is a fact about your session's role."),
+                    ]
+                ],
+                "required": ["session"],
                 "additionalProperties": false,
             ],
             outputSchema: surveySchema,
-            handler: { _ in PlaytestToolResult(PlaytestSurvey(game.definition).json) })
+            handler: { arguments in
+                let session = try await sessions.session(
+                    try string(arguments, "session", tool: "survey"))
+                guard session.role.seesOracleData else {
+                    throw PlaytestError(session.role.refusal(of: "survey"))
+                }
+                return PlaytestToolResult(PlaytestSurvey(game.definition).json)
+            })
     }
 
     // MARK: - Sessions
@@ -189,7 +234,9 @@ enum PlaytestTools {
                 in the process leaves the evidence behind and the session can \
                 be replayed. One label per tester: probes under a label share \
                 its save slots, and two testers sharing a label share each \
-                other's saves.
+                other's saves. The queue of things the game has already shown \
+                you comes back with the opening, so you can plan from it \
+                before spending a turn.
                 """,
             inputSchema: [
                 "type": "object",
@@ -208,6 +255,18 @@ enum PlaytestTools {
                                 + "what bin/playtest-replay uses, so the same commands "
                                 + "replay identically in either harness."),
                     ],
+                    "role": [
+                        "type": "string",
+                        "enum": .array(PlaytestRole.allCases.map { .string($0.rawValue) }),
+                        "description": .string(
+                            "What this session may be told. A play-testing role plays "
+                                + "blind: survey and every other answer-key query is "
+                                + "refused, because a tester holding the room roster "
+                                + "navigates instead of exploring, and one holding the "
+                                + "vocabulary can never find a printed noun with nothing "
+                                + "behind it. Defaults to unrestricted, for a person "
+                                + "driving their own game."),
+                    ],
                 ],
                 "required": ["label"],
                 "additionalProperties": false,
@@ -216,14 +275,19 @@ enum PlaytestTools {
             handler: { arguments in
                 let label = try string(arguments, "label", tool: "open")
                 let seed = try seed(arguments)
-                let session = try await sessions.open(label: label, seed: seed)
+                let role = try role(arguments)
+                let session = try await sessions.open(label: label, seed: seed, role: role)
                 let opening = try await session.opening()
+                let coverage = try await session.coverage(limit: queueLimit)
                 return PlaytestToolResult([
                     "session": .string(session.id),
                     "seed": .integer(Int(bitPattern: UInt(seed))),
+                    "role": .string(role.rawValue),
                     "opening": .string(opening.text),
                     "status": .string(opening.status),
                     "awaiting": .string(opening.awaiting.rawValue),
+                    "open": .integer(coverage.open),
+                    "queue": .array(coverage.items.map(\.json)),
                     "transcript": .string(session.transcriptURL.path),
                     "commands": .string(session.commandsURL.path),
                 ])
@@ -239,10 +303,21 @@ enum PlaytestTools {
                 "description": "The session id, which is also its directory under the label.",
             ],
             "seed": ["type": "integer"],
+            "role": [
+                "type": "string",
+                "enum": .array(PlaytestRole.allCases.map { .string($0.rawValue) }),
+            ],
             "opening": [
                 "type": "string",
                 "description": "The intro, the banner and the first room description.",
             ],
+            "open": [
+                "type": "integer",
+                "description": .string(
+                    "How many things the game has already shown you that you have not "
+                        + "followed up. Read it as a countdown."),
+            ],
+            "queue": ["type": "array", "items": queueItemSchema],
             "status": [
                 "type": "string",
                 "description": .string(
@@ -256,7 +331,10 @@ enum PlaytestTools {
             "transcript": ["type": "string"],
             "commands": ["type": "string"],
         ],
-        "required": ["session", "seed", "opening", "status", "awaiting", "transcript", "commands"],
+        "required": [
+            "session", "seed", "role", "opening", "status", "awaiting", "open", "queue",
+            "transcript", "commands",
+        ],
     ]
 
     /// `move` — play some commands.
@@ -371,6 +449,266 @@ enum PlaytestTools {
             })
     }
 
+    // MARK: - The queue
+
+    /// How many queue items a result carries.
+    ///
+    /// Enough to choose between, few enough to read. The whole point of the
+    /// queue is that the next move is obvious; forty candidates is a research
+    /// project, and the ranking has already decided which twelve matter.
+    static let queueLimit = 12
+
+    /// `coverage` — what the game has shown you that you have not followed up.
+    ///
+    /// **This handler does not touch `definition`, and must not.** Everything
+    /// it returns is derived from the text this session printed and the parse
+    /// record of this session's own commands — see ``CoverageLedger``. A tester
+    /// told the room roster navigates instead of exploring, and one told the
+    /// vocabulary can never discover a printed noun with nothing behind it, so
+    /// both defect classes would go out with the leak.
+    ///
+    /// - Parameter sessions: the registry to find the session in.
+    /// - Returns: the row.
+    private static func coverage(_ sessions: PlaytestSessions) -> PlaytestTool {
+        PlaytestTool(
+            name: "coverage",
+            mutatesState: false,
+            description: """
+                The things this game has shown you and you have not followed \
+                up, cheapest first, each one a command to paste: a noun the \
+                prose printed that you never named, a direction a room \
+                described that you never took, a verb from the standard \
+                repertoire that fits something you have found, an object you \
+                changed and never looked at again, and your own suspicions \
+                still owed a second look. Built only from what the game printed \
+                into this session — it is not a map, and it knows nothing you \
+                have not been told. Costs no turns.
+                """,
+            inputSchema: [
+                "type": "object",
+                "properties": [
+                    "session": ["type": "string", "description": "The id open returned."],
+                    "limit": [
+                        "type": "integer",
+                        "minimum": 1,
+                        "description": .string(
+                            "How many items to return. Defaults to \(queueLimit)."),
+                    ],
+                ],
+                "required": ["session"],
+                "additionalProperties": false,
+            ],
+            outputSchema: coverageSchema,
+            handler: { arguments in
+                let session = try await sessions.session(
+                    try string(arguments, "session", tool: "coverage"))
+                let limit = max(1, arguments["limit"]?.intValue ?? queueLimit)
+                let coverage = try await session.coverage(limit: limit)
+                return PlaytestToolResult(
+                    text: coverage.rendered(session: session.id),
+                    structured: coverage.json(session: session.id))
+            })
+    }
+
+    /// The shape of one queue item, shared by `open`, `coverage` and `finish`.
+    private static let queueItemSchema: JSONValue = [
+        "type": "object",
+        "properties": [
+            "id": ["type": "string"],
+            "kind": [
+                "type": "string",
+                "enum": [
+                    "noun", "exit", "object", "restate", "hunch", "timer", "displacement",
+                ],
+            ],
+            "how": [
+                "type": "string",
+                "description": .string(
+                    "The command to type. Prefixed with the room, or with the one step "
+                        + "you have already walked to get there, when it is elsewhere."),
+            ],
+            "why": [
+                "type": "string",
+                "description": "Where and when the game showed you this.",
+            ],
+            "room": ["type": "string"],
+            "line": ["type": "integer"],
+            "closedByLooking": [
+                "type": "boolean",
+                "description": .string(
+                    "False for a timer or a displacement: those want a look at a second "
+                        + "frame and a note quoting a printed line, not one command."),
+            ],
+        ],
+        "required": ["id", "kind", "how", "why", "room", "line", "closedByLooking"],
+    ]
+
+    /// The shape of a `coverage` result.
+    private static let coverageSchema: JSONValue = [
+        "type": "object",
+        "properties": [
+            "session": ["type": "string"],
+            "open": [
+                "type": "integer",
+                "description": "How many items are open. Read it as a countdown.",
+            ],
+            "closed": ["type": "integer"],
+            "room": ["type": "string"],
+            "items": ["type": "array", "items": queueItemSchema],
+            "hint": [
+                "type": "string",
+                "description": "Present only when the queue has run dry.",
+            ],
+            "harness": [
+                "type": "string",
+                "description": .string(
+                    "A measured signal that has tripped a threshold. Informational: "
+                        + "nothing is blocked by it."),
+            ],
+        ],
+        "required": ["session", "open", "closed", "room", "items"],
+    ]
+
+    // MARK: - Notes and stopping
+
+    /// `note` — write a comment into the transcript where you saw the thing.
+    ///
+    /// - Parameter sessions: the registry to find the session in.
+    /// - Returns: the row.
+    private static func note(_ sessions: PlaytestSessions) -> PlaytestTool {
+        PlaytestTool(
+            name: "note",
+            mutatesState: true,
+            description: """
+                Write a comment into this session's transcript at the turn you \
+                are standing on. It costs no turn and no clock tick, and it is \
+                recorded in the evidence next to the line that prompted it — so \
+                flag a wrong line the moment you read it rather than \
+                reconstructing the frame forty turns later. Set suspicious when \
+                you think something is wrong but cannot yet say so: that files \
+                the note as a hunch on your queue, to be probed again from a \
+                different room or a later hour, and it is also how you close a \
+                timer or displacement item, which wants a verdict quoting a \
+                printed line.
+                """,
+            inputSchema: [
+                "type": "object",
+                "properties": [
+                    "session": ["type": "string", "description": "The id open returned."],
+                    "text": [
+                        "type": "string",
+                        "description": .string(
+                            "What to write. One line: newlines are squeezed out, because "
+                                + "a transcript comment is one line by construction."),
+                    ],
+                    "suspicious": [
+                        "type": "boolean",
+                        "description": .string(
+                            "File it as a hunch as well as a note. Defaults to false."),
+                    ],
+                ],
+                "required": ["session", "text"],
+                "additionalProperties": false,
+            ],
+            outputSchema: nil,
+            handler: { arguments in
+                let session = try await sessions.session(
+                    try string(arguments, "session", tool: "note"))
+                return PlaytestToolResult(
+                    text: try await session.note(
+                        try string(arguments, "text", tool: "note"),
+                        suspicious: boolean(arguments, "suspicious")))
+            })
+    }
+
+    /// `finish` — say you are done, and be told what you are leaving.
+    ///
+    /// It accepts. That is the point of the row: two agents played the bare
+    /// session surface with no queue and no enforcement, and both volunteered
+    /// honest gap lists better than a deferral form would have extracted, so
+    /// this asks rather than extracts. The accounting is still kept, and an
+    /// unexplained gap is still counted as a gap.
+    ///
+    /// - Parameter sessions: the registry to find the session in.
+    /// - Returns: the row.
+    private static func finish(_ sessions: PlaytestSessions) -> PlaytestTool {
+        PlaytestTool(
+            name: "finish",
+            mutatesState: true,
+            description: """
+                Say what you found and that you are stopping. It always \
+                accepts, and it tells you what was still open when you stopped, \
+                in the same paste-able terms coverage uses, plus the signals \
+                measured off your own transcript. If you are leaving things \
+                open on purpose, say why in `leaving` — an unexplained gap is \
+                still counted as a gap, and the reason is what the round's \
+                critic reads. The summary and the reason are written into the \
+                transcript as comments, so they live in the evidence. Calling \
+                it does not close the session: you can call move again after.
+                """,
+            inputSchema: [
+                "type": "object",
+                "properties": [
+                    "session": ["type": "string", "description": "The id open returned."],
+                    "summary": [
+                        "type": "string",
+                        "description": "What you found, in your own words.",
+                    ],
+                    "leaving": [
+                        "type": "string",
+                        "description": .string(
+                            "Why you are stopping with items still open. Optional, and "
+                                + "not scored on length."),
+                    ],
+                ],
+                "required": ["session", "summary"],
+                "additionalProperties": false,
+            ],
+            outputSchema: finishSchema,
+            handler: { arguments in
+                let session = try await sessions.session(
+                    try string(arguments, "session", tool: "finish"))
+                let closing = try await session.finish(
+                    summary: try string(arguments, "summary", tool: "finish"),
+                    leaving: arguments["leaving"]?.stringValue,
+                    limit: queueLimit)
+                return PlaytestToolResult(
+                    text: closing.message, structured: closing.json)
+            })
+    }
+
+    /// The shape of a `finish` result.
+    private static let finishSchema: JSONValue = [
+        "type": "object",
+        "properties": [
+            "accepted": [
+                "type": "boolean",
+                "description": "Always true. finish reports; it does not refuse.",
+            ],
+            "open": ["type": "integer"],
+            "items": ["type": "array", "items": queueItemSchema],
+            "signals": [
+                "type": "object",
+                "properties": [
+                    "commands": ["type": "integer"],
+                    "roomsVisited": ["type": "integer"],
+                    "roomDwell": ["type": "number"],
+                    "novelCommandRatio": ["type": "number"],
+                    "nounFollowRate": ["type": "number"],
+                    "nounsPrintedByExamines": ["type": "integer"],
+                    "interactionBreadth": ["type": "number"],
+                    "objectsBound": ["type": "integer"],
+                    "dischargeRate": ["type": "number"],
+                    "openItems": ["type": "integer"],
+                ],
+            ],
+            "hint": ["type": "string"],
+            "transcript": ["type": "string"],
+            "message": ["type": "string"],
+        ],
+        "required": ["accepted", "open", "items", "signals", "transcript", "message"],
+    ]
+
     // MARK: - Reading arguments
 
     /// A required string argument.
@@ -441,6 +779,30 @@ enum PlaytestTools {
                 "open's seed must be a whole number of zero or more; it was given \(raw.text).")
         }
         return UInt64(value)
+    }
+
+    /// The `role` argument: absent means the human case.
+    ///
+    /// An unrecognised role is refused rather than downgraded to `explorer` or
+    /// promoted to `unrestricted`. Either guess would be wrong in a way nobody
+    /// would notice: the first silently blinds a game author, and the second
+    /// silently hands a tester the answer key and invalidates its round.
+    ///
+    /// - Parameter arguments: the call's arguments.
+    /// - Throws: ``PlaytestError`` naming the roles there are.
+    /// - Returns: the role.
+    private static func role(_ arguments: JSONValue) throws -> PlaytestRole {
+        guard let raw = arguments["role"] else { return .unrestricted }
+        guard let name = raw.stringValue, let role = PlaytestRole(rawValue: name) else {
+            let known = PlaytestRole.allCases.map(\.rawValue).joined(separator: ", ")
+            throw PlaytestError(
+                """
+                open's role must be one of: \(known). It was given \(raw.text). Neither \
+                guess is safe here — the wrong way up, it hands a tester the answer key \
+                and quietly invalidates the round.
+                """)
+        }
+        return role
     }
 
     /// The shape of a `survey` result.
@@ -517,6 +879,110 @@ enum PlaytestTools {
             "cast", "warnings",
         ],
     ]
+}
+
+// MARK: - Rendering the queue
+
+extension CoverageItem {
+    /// One queue item as JSON, matching `PlaytestTools.queueItemSchema`.
+    var json: JSONValue {
+        [
+            "id": .string(id),
+            "kind": .string(kind.rawValue),
+            "how": .string(how),
+            "why": .string(why),
+            "room": .string(room),
+            "line": .integer(line),
+            "closedByLooking": .bool(kind.closedByLooking),
+        ]
+    }
+}
+
+extension PlaytestSession.Coverage {
+    /// The queue as prose: a countdown, then one line per item.
+    ///
+    /// Prose first because the reader is a language model deciding what to type
+    /// next, and a list of commands reads as a list of commands where the same
+    /// content escaped into one JSON line reads as a wall. The structured half
+    /// carries the same items for anything counting them.
+    ///
+    /// - Parameter session: the session id, so a copied result says whose it is.
+    /// - Returns: the text block.
+    func rendered(session: String) -> String {
+        var lines = ["[playtest] session=\(session) open=\(open) closed=\(closed) room=\(room)"]
+        if items.isEmpty {
+            lines.append(
+                hint ?? "Nothing is open here. Walk somewhere the game has told you about.")
+        }
+        for item in items {
+            lines.append("  \(item.rendered)")
+        }
+        if !items.isEmpty, let hint {
+            lines.append(hint)
+        }
+        if let note {
+            lines.append("[playtest] \(note)")
+        }
+        return lines.joined(separator: "\n") + "\n"
+    }
+
+    /// The queue as JSON, matching `PlaytestTools.coverageSchema`.
+    ///
+    /// - Parameter session: the session id.
+    /// - Returns: the document.
+    func json(session: String) -> JSONValue {
+        var entry: [String: JSONValue] = [
+            "session": .string(session),
+            "open": .integer(open),
+            "closed": .integer(closed),
+            "room": .string(room),
+            "items": .array(items.map(\.json)),
+        ]
+        if let hint {
+            entry["hint"] = .string(hint)
+        }
+        if let note {
+            entry["harness"] = .string(note)
+        }
+        return .object(entry)
+    }
+}
+
+extension PlaytestSignals {
+    /// The signals as JSON, matching the `signals` block of
+    /// `PlaytestTools.finishSchema`.
+    var json: JSONValue {
+        [
+            "commands": .integer(commands),
+            "roomsVisited": .integer(roomsVisited),
+            "roomDwell": .double(roomDwell),
+            "novelCommandRatio": .double(novelCommandRatio),
+            "nounFollowRate": .double(nounFollowRate),
+            "nounsPrintedByExamines": .integer(nounsPrintedByExamines),
+            "interactionBreadth": .double(interactionBreadth),
+            "objectsBound": .integer(objectsBound),
+            "dischargeRate": .double(dischargeRate),
+            "openItems": .integer(openItems),
+        ]
+    }
+}
+
+extension PlaytestSession.Closing {
+    /// The closing record as JSON, matching `PlaytestTools.finishSchema`.
+    var json: JSONValue {
+        var entry: [String: JSONValue] = [
+            "accepted": .bool(accepted),
+            "open": .integer(open),
+            "items": .array(items.map(\.json)),
+            "signals": signals.json,
+            "transcript": .string(transcript),
+            "message": .string(message),
+        ]
+        if let hint {
+            entry["hint"] = .string(hint)
+        }
+        return .object(entry)
+    }
 }
 
 // MARK: - Rendering the survey

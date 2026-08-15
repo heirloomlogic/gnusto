@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 
 @testable import CloakOfDarkness
@@ -19,13 +20,23 @@ import Testing
 /// added one would be asserting the opposite of the design. See the note at
 /// the top of `MCPServer.swift`.
 struct MCPProtocolTests {
-    /// A server over one game, with the real tool table.
+    /// A server over one game, with the real tool table, writing into a
+    /// directory of its own.
+    ///
+    /// `GNUSTO_PLAYTEST_DIR` on the same precedent as `GNUSTO_SAVE_DIR`: a test
+    /// that opens a session must never write into the developer's real
+    /// `.context/playtest`, where it would sit next to a play-test round's
+    /// evidence and look like part of it.
     private func server() throws -> MCPServer {
-        MCPServer(
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        return MCPServer(
             name: "gnusto-playtest",
             version: "test",
             instructions: nil,
-            tools: PlaytestTools.table(for: try PreparedGame(OperaHouse()), environment: [:]))
+            tools: PlaytestTools.table(
+                for: try PreparedGame(OperaHouse()),
+                environment: ["GNUSTO_PLAYTEST_DIR": root.path]))
     }
 
     /// A server over one tool that always fails, for the tool-error case.
@@ -183,12 +194,29 @@ struct MCPProtocolTests {
 
     // MARK: - survey
 
-    /// The one tool this stage ships, end to end over the wire: parseable
-    /// JSON, in both channels, naming rooms the game actually has.
+    /// Survey end to end over the wire: parseable JSON, in both channels,
+    /// naming rooms the game actually has.
+    ///
+    /// It takes a session, and that is the firewall rather than an argument for
+    /// its own sake — the survey is the answer key, and whether a caller may
+    /// read it is a fact about the caller. This one opens with the default role,
+    /// which is the human case. `PlaytestCoverageTests` holds the refusal.
     @Test func surveyReturnsTheGamesRooms() async throws {
+        let server = try server()
+        let opened = try parse(
+            await server.handle(
+                line: """
+                    {"jsonrpc":"2.0","id":8,"method":"tools/call","params":\
+                    {"name":"open","arguments":{"label":"surveying"}}}
+                    """))
+        let session = try #require(
+            opened["result"]?["structuredContent"]?["session"]?.stringValue)
         let response = try parse(
-            await server().handle(
-                line: #"{"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"survey","arguments":{}}}"#))
+            await server.handle(
+                line: """
+                    {"jsonrpc":"2.0","id":9,"method":"tools/call","params":\
+                    {"name":"survey","arguments":{"session":"\(session)"}}}
+                    """))
 
         #expect(response["result"]?["isError"] == .bool(false))
 
@@ -303,7 +331,7 @@ struct MCPProtocolTests {
 
         @Test func aCallThatAdvancesAWorldIsOrdered() throws {
             let server = try server()
-            for tool in ["open", "move"] {
+            for tool in ["open", "move", "note", "finish"] {
                 let frame =
                     #"{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"#
                     + "\"\(tool)\"}}"
@@ -313,7 +341,7 @@ struct MCPProtocolTests {
 
         @Test func aReaderIsNotOrdered() throws {
             let server = try server()
-            for tool in ["survey", "recall"] {
+            for tool in ["survey", "recall", "coverage"] {
                 let frame =
                     #"{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"#
                     + "\"\(tool)\"}}"
@@ -343,7 +371,7 @@ struct MCPProtocolTests {
         @Test func everyRowDeclaresWhetherItMutates() throws {
             let mutating = Set(
                 try server().tools.filter(\.mutatesState).map(\.name))
-            #expect(mutating == ["open", "move"])
+            #expect(mutating == ["open", "move", "note", "finish"])
         }
     }
 }
