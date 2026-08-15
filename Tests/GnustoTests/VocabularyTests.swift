@@ -44,6 +44,51 @@ struct VocabularyTests {
         #expect(Vocabulary.words(in: phrase) == expected)
     }
 
+    // MARK: - Literal synonyms
+
+    /// The alias table a pattern literal is compared through. Canonical on both
+    /// sides, so a row written `into` accepts `in` exactly as one written `in`
+    /// accepts `into` — an author who spells a row's preposition either way
+    /// gets the same forgiveness, and neither spelling is privileged.
+    @Test(
+        arguments: [
+            // A word always matches itself, in or out of the table.
+            ("in", "in", true),
+            ("with", "with", true),
+            ("inside", "inside", true),
+            // The table, read forwards: the row says `in`, the player typed…
+            ("in", "inside", true),
+            ("in", "into", true),
+            ("on", "onto", true),
+            ("on", "upon", true),
+            // …and backwards: the row says `into`, the player typed `in`.
+            ("into", "in", true),
+            ("onto", "on", true),
+            ("upon", "onto", true),
+            ("inside", "into", true),
+            // Different canonical forms never meet.
+            ("in", "on", false),
+            ("inside", "onto", false),
+            ("in", "out", false),
+            ("in", "outside", false),
+            ("on", "off", false),
+            // A word outside the table is only ever itself.
+            ("with", "in", false),
+            ("to", "into", false),
+            ("in", "sack", false),
+        ] as [(String, String, Bool)])
+    func literalMatchesItsSynonyms(word: String, token: String, expected: Bool) {
+        #expect(Vocabulary.literal(word, matches: token) == expected)
+    }
+
+    /// Aliasing is a *pattern-literal* rule and nothing else. `inside` stays a
+    /// direction, which is what keeps a bare `inside` travelling.
+    @Test func aliasedWordsAreStillTheDirectionsTheyWere() {
+        #expect(Vocabulary.standardDirections["inside"] == .in)
+        #expect(Vocabulary.standardDirections["in"] == .in)
+        #expect(Vocabulary.literalSynonyms["outside"] == nil)
+    }
+
     // MARK: - What bootstrap makes of a declaration
 
     @Test func aPossessiveAdjectiveRegistersItsStem() throws {

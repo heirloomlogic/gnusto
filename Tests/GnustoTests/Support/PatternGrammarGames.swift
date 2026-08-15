@@ -50,6 +50,15 @@ struct WorkshopGame: Game {
         description("A brass toggle, engraved ON.")
     }
 
+    /// The same hazard as `on switch`, against the other mechanism: a name
+    /// whose first word is a synonym of the literal that closes an object slot.
+    /// What it costs to get wrong is spelled out at
+    /// `StandardParser.firstOccurrence(of:in:from:)`. Issue #269.
+    let insidePocket = Item {
+        name("inside pocket")
+        description("A pocket cut from a lining, with nothing left to line.")
+    }
+
     let gnome = Item {
         name("garden gnome")
         adjectives("garden")
@@ -82,6 +91,7 @@ struct WorkshopGame: Game {
         lamp.starts(in: workshop)
         rug.starts(in: workshop)
         onSwitch.starts(in: workshop)
+        insidePocket.starts(in: workshop)
         gnome.starts(in: workshop)
         crate.starts(in: workshop)
         ironCrate.starts(in: workshop)
