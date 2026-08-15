@@ -49,7 +49,9 @@ plugins on; CI touches it, and a workspace that has it already is set. See
 
 `GNUSTO_SEED` pins a binary's random stream the way `play(_:_:seed:)` pins a test's, so
 a hand-played session replays as a test. `GNUSTO_TRANSCRIPT` records it,
-`GNUSTO_SAVE_DIR` keeps scripted saves out of your real slots, and a line starting `//`
+`GNUSTO_SAVE_DIR` keeps scripted saves out of your real slots, `GNUSTO_STATUS=1` appends
+a `[status] room=… | moves=… | turn=cost|free | …` line to every turn (a `REPL`
+argument, not an environment read — the suite is unaffected), and a line starting `//`
 or `#` is a tester comment that never reaches the parser. See `docs/playtesting.md`.
 
 `GNUSTO_SEED` also seeds the **suite**: it supplies the seed for every `play(_:_:)` call

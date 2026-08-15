@@ -95,6 +95,35 @@ struct TranscriptCommandTests {
         #expect(recorded == io.transcript)
     }
 
+    /// Byte-identity has to survive the status footer, because the footer is
+    /// appended on the way to *two* sinks — `io.write` and the recorder — and a
+    /// second producer of a format is a second place for it to drift. `REPL.run`
+    /// computes the annotated output once and hands the same string to both; this
+    /// is what pins that down, so a later refactor that annotates each sink
+    /// separately fails here rather than in a play-test round six months on.
+    ///
+    /// Worth a test of its own rather than a parameter on the case above: with
+    /// `GNUSTO_STATUS` in force, a session's transcript is what the export path
+    /// will assert against, so the contract matters most in exactly the
+    /// configuration the harness runs in.
+    @Test func byteIdentityHoldsWithTheStatusFooterInForce() async throws {
+        let world = try GameWorld(game: OperaHouse(), seed: 1, saveDirectory: tempDirectory())
+        let file = tempTranscript()
+        // `score` is a meta intent and costs no turn, so this run also covers a
+        // `turn=free` footer sitting between two `turn=cost` ones.
+        let io = ScriptedIOHandler(lines: ["look", "score", "south", "quit"])
+        let footer = StatusFooter(environment: ["GNUSTO_STATUS": "1"])
+        await REPL(world: world, io: io, transcriptURL: file, status: footer.inForce).run()
+
+        let recorded = try String(contentsOf: file, encoding: .utf8)
+        #expect(recorded == io.transcript)
+        // Guard against the assertion passing because no footer was rendered at
+        // all: two identical empty-of-footer transcripts would also be equal.
+        #expect(recorded.contains("[status] room="))
+        #expect(recorded.contains("turn=free"))
+        #expect(recorded.contains("turn=cost"))
+    }
+
     @Test func preArmedTranscriptCapturesTheOpening() async throws {
         // The `GNUSTO_TRANSCRIPT` path arrives as `transcriptURL`; recording
         // starts before the loop, so the intro and first look are captured.

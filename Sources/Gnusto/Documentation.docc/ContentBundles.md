@@ -80,6 +80,22 @@ struct Attic: GameContent {
 
 Because bundle-owned entity IDs are namespaced, so are their save-file keys — a bundle's `@Global` persists under `Bundle.flag`. Nothing shipped before this change owned bundle content, so there's no migration; keep a plugin's own state additive as usual.
 
+## A bundle can add a field to the status footer
+
+``StatusLine`` is three fields — room, score, moves — and the engine cannot reach the libraries that know anything else: `GnustoClock` depends on `Gnusto`, not the other way round. So a bundle that knows something a tester needs hands it up:
+
+```swift
+public var statusFields: [(String, String)] { [("time", now.formatted(format))] }
+```
+
+Nothing prints unless a session asks for a footer (`GNUSTO_STATUS=1`; see `docs/playtesting.md`), at which point the pairs are appended to every turn's `[status]` line after the four standard fields, in declaration order:
+
+```
+[status] room=Front Hall | moves=12 | score=0 | turn=cost | time=5:46 pm
+```
+
+Each field is read inside a live turn frame, so it may read globals, traits and the turn counter freely — `Clock`'s hour is a function of `moves`, and a value computed at bootstrap would say half past five forever. That frame is a **throwaway**, discarded rather than committed, so a field must be **read-only**: one that writes loses its write silently. There is no cheap way to enforce that — the frame has to be live for the reads to work — so it is a contract rather than a guarantee.
+
 ## Cross-bundle references
 
 - **Top-level wiring** — a game connecting one bundle's room to another's — is ordinary, compile-checked property access: `attic.landing.down(cellar.vault)`. Renaming either room breaks the exit at compile time.

@@ -134,6 +134,27 @@ Four commands, three turns. If you assumed four you are now reasoning about the 
 minute. Anchor every hour you claim with a real reading — `time`, or a room listing you
 can place — rather than with arithmetic.
 
+### Or stop counting: `GNUSTO_STATUS=1`
+
+Set it and every turn gets one out-of-fiction line saying where you are, what the move
+counter reads, and whether the command you just typed cost anything:
+
+```
+[status] room=Front Hall | moves=12 | score=0 | turn=cost | time=5:46 pm
+```
+
+`turn=cost|free` is the move counter's own delta across the turn, so it is right about
+the meta verbs, the parse errors, and the custom verb nothing answered, without you
+knowing which is which. `time=` appears in games that use `GnustoClock`; a game's
+bundles and plugins add their own fields after the four standard ones.
+
+The footer goes into the transcript file and onto the console as one string, so an
+excerpt you lift out of the recording is still what the tester read. It is **off unless
+asked for**, and it is a `REPL` argument rather than an environment read, so
+`GNUSTO_STATUS=1 swift test` leaves the suite's transcripts alone. When you lift an
+excerpt into a regression test, drop the `[status]` lines: they are scaffolding for the
+reader, not the game's words.
+
 ## Deep states: save once, restore per probe
 
 Reaching 6:26 by typing thirty `z`s in every probe is a waste. Save at the anchor once

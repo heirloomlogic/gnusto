@@ -88,6 +88,26 @@ public protocol GamePlugin: Sendable {
     /// factories (returning `TimedEvent` for the host's own `timers` block)
     /// are how a plugin animates the host's actors.
     @TimerBuilder var timers: [TimedEvent] { get }
+
+    /// Extra `name=value` pairs for the play-test status footer — what this
+    /// system knows that the three-field ``StatusLine`` (room, score, moves)
+    /// does not. Defaults to empty, and costs nothing unless a footer is in
+    /// force.
+    ///
+    /// Read inside a live turn frame, so a field may read globals, traits and
+    /// the turn counter freely. It must be **read-only**: the frame is a
+    /// throwaway that is discarded rather than committed, so a field that
+    /// writes loses its write silently. See ``GameContent/statusFields``.
+    ///
+    /// This is the one thing a plugin contributes without the host splicing it.
+    /// Everything else here — verbs, actions, rules, timers — changes what the
+    /// game *does*, so the host opts in by hand; a status field only annotates
+    /// a transcript the host asked for, and there is no host block to splice it
+    /// into. The bootstrap finds it by walking the host's stored properties,
+    /// the same walk that already catches an unlisted bundle — so a plugin the
+    /// host stores is seen, and one constructed inline in a computed property
+    /// is not.
+    var statusFields: [(String, String)] { get }
 }
 
 extension GamePlugin {
@@ -103,6 +123,10 @@ extension GamePlugin {
 
     /// Plugins with no timed events can omit the `timers` block.
     public var timers: [TimedEvent] { [] }
+
+    /// Plugins with nothing to add to the status footer can omit
+    /// `statusFields`, which is nearly all of them.
+    public var statusFields: [(String, String)] { [] }
 
     /// The player character — usable as a bare identifier in a plugin's
     /// rule and timer bodies, exactly as in a `Game`.

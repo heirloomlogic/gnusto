@@ -51,6 +51,18 @@ public actor GameWorld {
     /// the next input line *is* its answer; see `PendingPrompt` and `answer`
     /// in `GameWorld+Prompts.swift`.
     var pendingPrompt: PendingPrompt?
+    /// How many times each declared fuse or daemon has actually run its body
+    /// this session, by timer name — the play-test harness's answer to "did
+    /// this timer ever fire?", which no amount of reading the transcript can
+    /// settle for a timer whose body says nothing.
+    ///
+    /// Actor state, never serialized: it is a fact about *this run of the
+    /// program*, not about the world, so it must not reach `WorldState`,
+    /// `SaveFile` or `isConsistent`. The precedent is `undoSnapshot` above and
+    /// `initialState`, both kept here for exactly the same reason — history
+    /// must not leak into a save file. A restore therefore leaves the tally
+    /// alone, which is right: the timers really did fire.
+    var firedTimers: [String: Int] = [:]
 
     /// Builds the world from a game definition, validating it up front.
     /// The random stream is seeded fresh each run; use `init(game:seed:)`
@@ -127,27 +139,50 @@ public actor GameWorld {
     /// - Parameter input: one line of player input.
     /// - Returns: the turn's output and status.
     public func perform(_ input: String) -> TurnResult {
+        performAudited(input).result
+    }
+
+    /// `perform`, plus what the parser made of the line — see ``TurnAudit`` for
+    /// why the second half exists and why it can't be recovered from the first.
+    ///
+    /// The whole body of `perform` lives here rather than the other way round:
+    /// a second copy of the clarification dance would be a second thing to keep
+    /// in step, and the one that drifted would be the one nobody plays.
+    ///
+    /// - Parameter input: one line of player input.
+    /// - Returns: the turn's output and status, and the parse record.
+    func performAudited(_ input: String) -> (result: TurnResult, audit: TurnAudit) {
         if let prompt = pendingPrompt {
             pendingPrompt = nil
-            return answer(prompt, with: input.trimmingCharacters(in: .whitespaces))
+            let result = answer(prompt, with: input.trimmingCharacters(in: .whitespaces))
+            // The line was an answer, not a command: no verb was read from it,
+            // so every parse field stays empty and `answeredPrompt` says why.
+            return (result, TurnAudit(answeredPrompt: true))
         }
 
         let scope = currentScope()
         let tokens = parser.tokenize(input)
+        // Asked of the vocabulary rather than inferred from the reply: the
+        // player-facing message names at most one word and only on some of the
+        // failure paths, while this is every token the game has never heard of,
+        // available even on the lines that parsed.
+        let unknown = tokens.filter { !definition.vocabulary.knows($0) }
 
         if let pending = pendingClarification {
             pendingClarification = nil
             let augmented = pending.prefix + tokens + pending.suffix
             switch parser.parse(tokens: augmented, rawInput: input, scope: scope) {
             case .success(let parsed):
-                return armDeathPromptIfNeeded(run(parsed))
+                let result = armDeathPromptIfNeeded(run(parsed))
+                return (result, TurnAudit(parsed, unknownWords: unknown))
             case .failure(let error):
                 // Still ambiguous ("brass" matched two): ask the narrower
                 // question. Anything else means the line wasn't an answer —
                 // fall through and parse it as a fresh command.
                 if let context = error.clarification {
                     pendingClarification = context
-                    return freeReply(error.playerMessage(definition.text))
+                    let result = freeReply(error.playerMessage(definition.text))
+                    return (result, TurnAudit(unknownWords: unknown))
                 }
             }
         }
@@ -155,9 +190,11 @@ public actor GameWorld {
         switch parser.parse(tokens: tokens, rawInput: input, scope: scope) {
         case .failure(let error):
             pendingClarification = error.clarification
-            return freeReply(error.playerMessage(definition.text))
+            let result = freeReply(error.playerMessage(definition.text))
+            return (result, TurnAudit(unknownWords: unknown))
         case .success(let parsed):
-            return armDeathPromptIfNeeded(run(parsed))
+            let result = armDeathPromptIfNeeded(run(parsed))
+            return (result, TurnAudit(parsed, unknownWords: unknown))
         }
     }
 
@@ -586,7 +623,7 @@ public actor GameWorld {
                 return true
             }
             if fires {
-                runCatching(event, frame: frame)
+                runCatching(event, named: name, frame: frame)
             }
         }
         for name in frame.with({ $0.state.activeDaemons.sorted() }) {
@@ -594,11 +631,16 @@ public actor GameWorld {
             guard let event = definition.timers[name],
                 frame.with({ $0.state.activeDaemons.contains(name) })
             else { continue }
-            runCatching(event, frame: frame)
+            runCatching(event, named: name, frame: frame)
         }
     }
 
-    private func runCatching(_ event: TimedEvent, frame: TurnFrame) {
+    private func runCatching(_ event: TimedEvent, named name: String, frame: TurnFrame) {
+        // Counted before the body runs, so a timer that traps or ends the game
+        // still registers as having fired — the tally answers "did this ever
+        // happen?", and the crash is the loudest possible yes. See
+        // `firedTimers`.
+        firedTimers[name, default: 0] += 1
         do {
             try event.body()
         } catch let interrupt as TurnInterrupt {

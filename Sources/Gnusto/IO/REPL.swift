@@ -15,6 +15,13 @@ public struct REPL: Sendable {
     /// (the tester can still begin recording with `script`). Set by `GameMain`
     /// from `GNUSTO_TRANSCRIPT`; tests pass it explicitly.
     private let transcriptURL: URL?
+    /// The `[status]` footer to append to every turn, or `nil` for none. Set by
+    /// `GameMain` from `GNUSTO_STATUS`; tests pass it explicitly.
+    ///
+    /// Defaulting to `nil` is the whole safety argument: `play(_:_:)` builds its
+    /// REPL without the argument, so no environment variable can make the suite's
+    /// transcripts grow a line. See ``StatusFooter``.
+    private let status: StatusFooter?
 
     /// Creates a REPL driving the given world through the given IO handler.
     ///
@@ -23,10 +30,16 @@ public struct REPL: Sendable {
     ///   - io: the IO handler for input and output.
     ///   - transcriptURL: a file to record the whole session to from the start,
     ///     or `nil` to begin idle.
-    public init(world: GameWorld, io: any IOHandler, transcriptURL: URL? = nil) {
+    ///   - status: a status footer to append to every turn's output, or `nil`
+    ///     for the plain transcript a player and the test suite see.
+    public init(
+        world: GameWorld, io: any IOHandler, transcriptURL: URL? = nil,
+        status: StatusFooter? = nil
+    ) {
         self.world = world
         self.io = io
         self.transcriptURL = transcriptURL
+        self.status = status
     }
 
     /// Runs the prompt/parse/perform/print loop until the game ends.
@@ -36,12 +49,19 @@ public struct REPL: Sendable {
         var recorder = transcriptURL.flatMap { try? TranscriptRecorder(url: $0) }
 
         var result = await world.begin()
-        io.write("\(result.output)\n\n")
-        recorder?.record(openingOutput: result.output)
+        // The opening is not a turn, so it is `turn=free` — truthfully, since
+        // the move counter stands at zero after it.
+        var output = await annotated(result, turnCost: false)
+        io.write("\(output)\n\n")
+        recorder?.record(openingOutput: output)
         io.showStatus(result.status)
         io.updateCompletions(await world.completionCandidates())
 
         while !result.isFinished, let input = io.readLine(prompt: "> ") {
+            // Read before the turn runs: `turn=cost|free` is the move counter's
+            // delta across it, which is the engine's own definition of whether
+            // world time passed — not a guess from the intent or the reply.
+            let movesBefore = result.status.moves
             switch input {
             case .line(let line):
                 // A comment or a transcript toggle is handled here and re-prompts
@@ -55,12 +75,14 @@ public struct REPL: Sendable {
                     continue
                 }
                 result = await world.perform(line)
-                recorder?.record(command: line, output: result.output)
+                output = await annotated(result, turnCost: result.status.moves > movesBefore)
+                recorder?.record(command: line, output: output)
             case .quit:
                 result = await world.requestQuit()
-                recorder?.record(command: "quit", output: result.output)
+                output = await annotated(result, turnCost: result.status.moves > movesBefore)
+                recorder?.record(command: "quit", output: output)
             }
-            io.write("\(result.output)\n\n")
+            io.write("\(output)\n\n")
             io.showStatus(result.status)
             io.updateCompletions(await world.completionCandidates())
         }
@@ -69,10 +91,37 @@ public struct REPL: Sendable {
 
         // A reached ending (won/lost/quit) gets a final hand-off so a
         // full-screen front end can keep its last words visible; a bare
-        // end-of-input (EOF) just stops.
+        // end-of-input (EOF) just stops. The game's ending text, not the
+        // annotated line: `finish` is the fiction's last words held up for the
+        // player, and the footer is scaffolding for whoever reads the
+        // transcript afterwards.
         if result.isFinished {
             io.finish(result.output)
         }
+    }
+
+    /// A turn's output with the status footer appended, or the output verbatim
+    /// when no footer was asked for.
+    ///
+    /// Called once per turn and its result used for **both** `io.write` and
+    /// `recorder?.record` — never computed twice, and never appended to one and
+    /// not the other. `bin/playtest-replay` and `docs/playtesting.md` both claim
+    /// a recorded transcript is byte-for-byte the string the test suite asserts
+    /// on; a footer on one channel only would make that false again, on every
+    /// turn rather than on the one empty one it was last false for.
+    ///
+    /// - Parameters:
+    ///   - result: the turn that just ran.
+    ///   - turnCost: whether the move counter advanced across it.
+    /// - Returns: the text to print and to record.
+    private func annotated(_ result: TurnResult, turnCost: Bool) async -> String {
+        guard let status else { return result.output }
+        let footer = status.line(
+            result.status, turnCost: turnCost, fields: await world.statusFields())
+        // The engine joins a turn's paragraphs with a blank line, so the footer
+        // arrives as one more paragraph. An empty turn — `quit` at the death
+        // prompt — is the footer alone, with no leading blank line to pad it.
+        return result.output.isEmpty ? footer : "\(result.output)\n\n\(footer)"
     }
 
     /// Starts or stops transcript recording in response to `script`/`unscript`,

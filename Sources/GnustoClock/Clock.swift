@@ -219,4 +219,20 @@ public struct Clock: GameContent {
             say(timeIsLine(now.formatted(format)))
         }
     }
+
+    /// The hour, for the play-test status footer — `time=5:46 pm`.
+    ///
+    /// The engine's own status line is three fields (room, score, moves) and
+    /// the engine cannot reach this type: `GnustoClock` depends on `Gnusto`,
+    /// not the other way round. So the clock hands its field up rather than the
+    /// engine reaching down for it.
+    ///
+    /// Worth the wiring because a timed game's every defect is a defect about
+    /// *when*: a line that is true at half past five and false at six reads
+    /// identically in a transcript that never says which it was. Read-only, as
+    /// the contract requires — ``now`` derives the time from the move counter
+    /// and writes nothing.
+    public var statusFields: [(String, String)] {
+        [("time", now.formatted(format))]
+    }
 }
