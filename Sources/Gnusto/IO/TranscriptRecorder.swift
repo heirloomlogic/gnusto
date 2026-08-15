@@ -132,15 +132,14 @@ final class TranscriptRecorder {
     ///   - command: the command the player typed.
     ///   - output: the turn's output text.
     func record(command: String, output: String) {
-        append("> \(command)\n")
-        appendOutput(output)
+        append(Self.text(command: command, output: output))
     }
 
     /// Records a tester comment line, kept in the transcript as a note.
     ///
     /// - Parameter commentLine: the raw comment line, marker included.
     func record(commentLine: String) {
-        append("> \(commentLine)\n")
+        append(Self.text(commentLine: commentLine))
     }
 
     /// Records the game's opening output (intro, banner, first look) — for a
@@ -148,7 +147,7 @@ final class TranscriptRecorder {
     ///
     /// - Parameter openingOutput: the opening turn's output text.
     func record(openingOutput: String) {
-        appendOutput(openingOutput)
+        append(Self.text(openingOutput: openingOutput))
     }
 
     /// Flushes and closes the transcript file.
@@ -156,8 +155,50 @@ final class TranscriptRecorder {
         try? handle.close()
     }
 
-    /// Appends a block of output, rendering the `<br>` hard-break marker as a
-    /// newline (via `TextWrap.plain`) the way the plain console does.
+    private func append(_ text: String) {
+        try? handle.write(contentsOf: Data(text.utf8))
+    }
+
+    // MARK: - The format itself, in one place
+
+    /// One turn's block, exactly as it goes into the file.
+    ///
+    /// Rendering is `static` and separate from writing because the file is no
+    /// longer the only consumer: the play-test session hands the same block
+    /// back to an agent as a tool result, and the whole harness rests on the
+    /// claim that a session's transcript is byte-for-byte the one the REPL
+    /// writes. Two functions producing "the transcript format" would be two
+    /// places for that claim to rot, so there is one, and both callers go
+    /// through it.
+    ///
+    /// - Parameters:
+    ///   - command: the command the player typed.
+    ///   - output: the turn's output text.
+    /// - Returns: the block to write.
+    static func text(command: String, output: String) -> String {
+        "> \(command)\n\(outputText(output))"
+    }
+
+    /// One comment line's block. A comment costs no turn, so it has no output
+    /// and no trailing blank line — it sits directly above the command it
+    /// annotates.
+    ///
+    /// - Parameter commentLine: the raw comment line, marker included.
+    /// - Returns: the block to write.
+    static func text(commentLine: String) -> String {
+        "> \(commentLine)\n"
+    }
+
+    /// The opening's block: no command echo, because nobody typed anything.
+    ///
+    /// - Parameter openingOutput: the opening turn's output text.
+    /// - Returns: the block to write.
+    static func text(openingOutput: String) -> String {
+        outputText(openingOutput)
+    }
+
+    /// A block of output, rendering the `<br>` hard-break marker as a newline
+    /// (via `TextWrap.plain`) the way the plain console does.
     ///
     /// The trailing blank line is unconditional, and that matters more than it
     /// looks: `REPL.run` writes `"\(result.output)\n\n"` to the IO handler for
@@ -168,11 +209,7 @@ final class TranscriptRecorder {
     /// prints nothing: `QUIT` at the death prompt, answered with `freeReply("")`.
     /// A tester's command list is supposed to *be* a regression test, so a
     /// one-byte drift on a reachable path is a real defect, not a cosmetic one.
-    private func appendOutput(_ output: String) {
-        append("\(TextWrap.plain(output))\n\n")
-    }
-
-    private func append(_ text: String) {
-        try? handle.write(contentsOf: Data(text.utf8))
+    private static func outputText(_ output: String) -> String {
+        "\(TextWrap.plain(output))\n\n"
     }
 }

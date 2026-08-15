@@ -17,6 +17,27 @@ struct PlaytestTool: Sendable {
     /// The name the client calls it by.
     let name: String
 
+    /// Whether this row changes session state, and so must run in the order the
+    /// frames arrived rather than whenever its task happens to be scheduled.
+    ///
+    /// `MCPServer.serve` answers each frame in its own child task, which is what
+    /// keeps a slow call from stalling the ones behind it. That is right for a
+    /// reader like `survey` or `recall` and wrong for anything that advances a
+    /// world: a client may have several `tools/call` in flight — a model can emit
+    /// two `move` blocks in one turn — and two of those landing on one session in
+    /// scheduler order would apply the turns in an order nobody chose. In a
+    /// harness whose whole claim is that a command list replays identically, an
+    /// arbitrary interleaving is not a race to tolerate; it is the one property
+    /// being sold.
+    ///
+    /// So a mutating row is awaited in wire order. Turns cost microseconds of
+    /// engine work, so the throughput given up is nothing, and the ordering
+    /// bought is total. Readers still overtake it freely.
+    ///
+    /// Second in the row on purpose: a reader deciding whether a new tool is
+    /// safe to answer concurrently should not have to look for the answer.
+    let mutatesState: Bool
+
     /// What it does, written for the agent that has to decide whether to call
     /// it. This is documentation with a job.
     let description: String
@@ -87,10 +108,25 @@ struct PlaytestToolResult: Sendable {
 enum PlaytestTools {
     /// Every tool, in the order a client will list them.
     ///
-    /// - Parameter game: the game the tools answer about.
+    /// The session registry is built here and captured by the three rows that
+    /// need it, so there is exactly one per server and the tools that share
+    /// sessions share them by construction rather than by agreement.
+    ///
+    /// - Parameters:
+    ///   - game: the game the tools answer about.
+    ///   - environment: the process environment, for the session registry's
+    ///     knobs — `GNUSTO_MCP_MAX_SESSIONS` and `GNUSTO_PLAYTEST_DIR`. Passed
+    ///     in rather than read here, on the same composition-root convention as
+    ///     every other environment read in the engine.
     /// - Returns: the table.
-    static func table(for game: PreparedGame) -> [PlaytestTool] {
-        [survey(for: game)]
+    static func table(for game: PreparedGame, environment: [String: String]) -> [PlaytestTool] {
+        let sessions = PlaytestSessions(prepared: game, environment: environment)
+        return [
+            survey(for: game),
+            open(sessions),
+            move(sessions),
+            recall(sessions),
+        ]
     }
 
     /// `survey` — everything true of the game before anybody plays it.
@@ -109,6 +145,7 @@ enum PlaytestTools {
     private static func survey(for game: PreparedGame) -> PlaytestTool {
         PlaytestTool(
             name: "survey",
+            mutatesState: false,
             description: """
                 Everything about this game that is true before anybody plays \
                 it: the rooms and how they connect, the declared fuses and \
@@ -123,6 +160,287 @@ enum PlaytestTools {
             ],
             outputSchema: surveySchema,
             handler: { _ in PlaytestToolResult(PlaytestSurvey(game.definition).json) })
+    }
+
+    // MARK: - Sessions
+
+    /// `open` — start a session and read the game's first words.
+    ///
+    /// The seed defaults to 0 to match `bin/playtest-replay --seed 0`, so a
+    /// finding from a session and a finding from the script name the same run.
+    /// It is a per-session argument rather than an environment variable
+    /// precisely so a stray `GNUSTO_SEED` in a client's environment cannot
+    /// silently re-seed every session in the process; see
+    /// `PlaytestServer.serve`.
+    ///
+    /// - Parameter sessions: the registry to open in.
+    /// - Returns: the row.
+    private static func open(_ sessions: PlaytestSessions) -> PlaytestTool {
+        PlaytestTool(
+            name: "open",
+            mutatesState: true,
+            description: """
+                Start a play-test session: boots the game at a pinned seed and \
+                returns the session id to pass to every other session tool, the \
+                game's opening text, and the status line naming the room, the \
+                move counter and the score. The session records to disk from \
+                this moment — the transcript and the command list are written \
+                under .context/playtest/<label>/<probe>/, so a crash anywhere \
+                in the process leaves the evidence behind and the session can \
+                be replayed. One label per tester: probes under a label share \
+                its save slots, and two testers sharing a label share each \
+                other's saves.
+                """,
+            inputSchema: [
+                "type": "object",
+                "properties": [
+                    "label": [
+                        "type": "string",
+                        "description": .string(
+                            "Your name for this run's scratch directory: letters, digits, "
+                                + "underscore, hyphen and dot, not starting with a dot."),
+                    ],
+                    "seed": [
+                        "type": "integer",
+                        "minimum": 0,
+                        "description": .string(
+                            "Pins the game's one random stream. Defaults to 0, which is "
+                                + "what bin/playtest-replay uses, so the same commands "
+                                + "replay identically in either harness."),
+                    ],
+                ],
+                "required": ["label"],
+                "additionalProperties": false,
+            ],
+            outputSchema: openSchema,
+            handler: { arguments in
+                let label = try string(arguments, "label", tool: "open")
+                let seed = try seed(arguments)
+                let session = try await sessions.open(label: label, seed: seed)
+                let opening = try await session.opening()
+                return PlaytestToolResult([
+                    "session": .string(session.id),
+                    "seed": .integer(Int(bitPattern: UInt(seed))),
+                    "opening": .string(opening.text),
+                    "status": .string(opening.status),
+                    "awaiting": .string(opening.awaiting.rawValue),
+                    "transcript": .string(session.transcriptURL.path),
+                    "commands": .string(session.commandsURL.path),
+                ])
+            })
+    }
+
+    /// The shape of an `open` result.
+    private static let openSchema: JSONValue = [
+        "type": "object",
+        "properties": [
+            "session": [
+                "type": "string",
+                "description": "The session id, which is also its directory under the label.",
+            ],
+            "seed": ["type": "integer"],
+            "opening": [
+                "type": "string",
+                "description": "The intro, the banner and the first room description.",
+            ],
+            "status": [
+                "type": "string",
+                "description": .string(
+                    "The [status] line for turn zero: room, moves, score, whether the "
+                        + "turn cost one, and any field the game's plugins contribute."),
+            ],
+            "awaiting": [
+                "type": "string",
+                "enum": ["none", "clarification", "saveFilename", "restoreFilename", "deathChoice"],
+            ],
+            "transcript": ["type": "string"],
+            "commands": ["type": "string"],
+        ],
+        "required": ["session", "seed", "opening", "status", "awaiting", "transcript", "commands"],
+    ]
+
+    /// `move` — play some commands.
+    ///
+    /// Prose, not JSON. The result is literally the bytes this batch appended
+    /// to the session's transcript, plus a `[playtest]` trailer: a transcript
+    /// is multi-line and quote-heavy, so escaping it into a JSON string both
+    /// inflates it and makes it harder to read for the one reader whose whole
+    /// job is reading it.
+    ///
+    /// - Parameter sessions: the registry to find the session in.
+    /// - Returns: the row.
+    private static func move(_ sessions: PlaytestSessions) -> PlaytestTool {
+        PlaytestTool(
+            name: "move",
+            mutatesState: true,
+            description: """
+                Play one or more commands in a session and read what the game \
+                printed, in transcript form with a [status] line under every \
+                turn. A line starting // or # is a comment: it is recorded in \
+                the transcript and costs no turn and no clock tick, so annotate \
+                what you see as you see it. The batch stops early — and says \
+                how many commands went unrun — when the game ends, or when a \
+                question opens that would swallow your next line as its answer \
+                (a disambiguation, a save or restore filename, the choice after \
+                a death). Pass allowPrompts when you mean to answer one inside \
+                the same batch. A long result is trimmed to its most recent \
+                turns with a marker naming the recall range that reads back the \
+                rest. script and unscript are refused: the session is already \
+                recording.
+                """,
+            inputSchema: [
+                "type": "object",
+                "properties": [
+                    "session": ["type": "string", "description": "The id open returned."],
+                    "commands": [
+                        "type": "array",
+                        "items": ["type": "string"],
+                        "minItems": 1,
+                        "description": "The lines to type, in order.",
+                    ],
+                    "allowPrompts": [
+                        "type": "boolean",
+                        "description": .string(
+                            "Keep going when a question opens mid-batch, because the next "
+                                + "command is meant to answer it. Defaults to false."),
+                    ],
+                ],
+                "required": ["session", "commands"],
+                "additionalProperties": false,
+            ],
+            outputSchema: nil,
+            handler: { arguments in
+                let session = try await sessions.session(
+                    try string(arguments, "session", tool: "move"))
+                let commands = try strings(arguments, "commands", tool: "move")
+                let allowPrompts = boolean(arguments, "allowPrompts")
+                return PlaytestToolResult(
+                    text: try await session.move(
+                        commands: commands, allowPrompts: allowPrompts))
+            })
+    }
+
+    /// `recall` — read the session's own transcript back.
+    ///
+    /// One tool rather than a `tail` and a `grep`, because a tool an agent has
+    /// to choose between is a tool it chooses wrong.
+    ///
+    /// - Parameter sessions: the registry to find the session in.
+    /// - Returns: the row.
+    private static func recall(_ sessions: PlaytestSessions) -> PlaytestTool {
+        PlaytestTool(
+            name: "recall",
+            mutatesState: false,
+            description: """
+                Read part of a session's transcript back: the lines from `from` \
+                to `to` inclusive, numbered the way the session numbers them — \
+                line 1 is the first command you sent, and 0 is the opening. \
+                Optionally filtered to the turns whose text contains `grep`, \
+                each returned whole so the command that caused a line and the \
+                status under it come with it. Costs no turns and changes \
+                nothing.
+                """,
+            inputSchema: [
+                "type": "object",
+                "properties": [
+                    "session": ["type": "string", "description": "The id open returned."],
+                    "from": [
+                        "type": "integer",
+                        "description": "First line to read; 0 includes the opening.",
+                    ],
+                    "to": ["type": "integer", "description": "Last line to read, inclusive."],
+                    "grep": [
+                        "type": "string",
+                        "description": .string(
+                            "Keep only the turns containing this text, "
+                                + "case-insensitively."),
+                    ],
+                ],
+                "required": ["session", "from", "to"],
+                "additionalProperties": false,
+            ],
+            outputSchema: nil,
+            handler: { arguments in
+                let session = try await sessions.session(
+                    try string(arguments, "session", tool: "recall"))
+                return PlaytestToolResult(
+                    text: try await session.recall(
+                        from: try integer(arguments, "from", tool: "recall"),
+                        to: try integer(arguments, "to", tool: "recall"),
+                        grep: arguments["grep"]?.stringValue))
+            })
+    }
+
+    // MARK: - Reading arguments
+
+    /// A required string argument.
+    ///
+    /// Every one of these throws rather than defaulting, and the message names
+    /// the tool and the argument: a tool error reaches the agent as text it can
+    /// act on, so "move needs a session" is a fixed call and "invalid
+    /// arguments" is a wasted round trip. Nothing here traps — see
+    /// ``MCPServer``.
+    ///
+    /// - Parameters:
+    ///   - arguments: the call's arguments.
+    ///   - key: the argument name.
+    ///   - tool: the tool's name, for the message.
+    /// - Throws: ``PlaytestError`` when it is missing or not a string.
+    /// - Returns: the value.
+    private static func string(
+        _ arguments: JSONValue, _ key: String, tool: String
+    ) throws -> String {
+        guard let value = arguments[key]?.stringValue, !value.isEmpty else {
+            throw PlaytestError("\(tool) needs a \(key) argument, as a non-empty string.")
+        }
+        return value
+    }
+
+    /// A required whole-number argument.
+    private static func integer(
+        _ arguments: JSONValue, _ key: String, tool: String
+    ) throws -> Int {
+        guard let value = arguments[key]?.intValue else {
+            throw PlaytestError("\(tool) needs a \(key) argument, as a whole number.")
+        }
+        return value
+    }
+
+    /// A required array-of-strings argument.
+    private static func strings(
+        _ arguments: JSONValue, _ key: String, tool: String
+    ) throws -> [String] {
+        guard let raw = arguments[key]?.arrayValue else {
+            throw PlaytestError("\(tool) needs a \(key) argument, as an array of strings.")
+        }
+        let values = raw.compactMap(\.stringValue)
+        guard values.count == raw.count else {
+            throw PlaytestError("\(tool)'s \(key) must hold strings only.")
+        }
+        return values
+    }
+
+    /// An optional boolean argument, false when absent or not a boolean.
+    ///
+    /// The one argument reader that does not throw: a flag left off is the
+    /// common case and means no, and a client that sends `"true"` as a string
+    /// meant yes but gets the safe answer rather than a refusal.
+    private static func boolean(_ arguments: JSONValue, _ key: String) -> Bool {
+        arguments[key] == .bool(true) || arguments[key]?.stringValue == "true"
+    }
+
+    /// The `seed` argument: absent means 0.
+    ///
+    /// Negative is refused rather than wrapped. A seed is a `UInt64` and the
+    /// wire only carries signed integers, so `-1` could plausibly mean the top
+    /// of the range or a typo; refusing says which it was.
+    private static func seed(_ arguments: JSONValue) throws -> UInt64 {
+        guard let raw = arguments["seed"] else { return 0 }
+        guard let value = raw.intValue, value >= 0 else {
+            throw PlaytestError(
+                "open's seed must be a whole number of zero or more; it was given \(raw.text).")
+        }
+        return UInt64(value)
     }
 
     /// The shape of a `survey` result.

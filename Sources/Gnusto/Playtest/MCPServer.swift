@@ -68,6 +68,29 @@ struct MCPServer: Sendable {
     /// Every tool this server offers. See ``PlaytestTools``.
     let tools: [PlaytestTool]
 
+    /// Whether this frame is a `tools/call` on a row that advances a world, and
+    /// so has to be run in the order it arrived rather than concurrently.
+    ///
+    /// Deliberately cheap and deliberately incurious: anything it cannot read —
+    /// a malformed frame, an unknown tool, a method that is not `tools/call` —
+    /// is not mutating, and goes down the concurrent path to be answered (or
+    /// refused) there. Nothing here reports an error, because a predicate that
+    /// also validated would be two answers to one question.
+    ///
+    /// It costs a second parse of the frames that say yes. That is a few
+    /// microseconds against a turn, and it buys a `serve` loop that reads as
+    /// what it is.
+    ///
+    /// - Parameter line: the raw frame, without its newline.
+    /// - Returns: whether it must be run in wire order.
+    func mutatesState(line: String) -> Bool {
+        guard let request = try? JSONValue(text: line),
+            request["method"]?.stringValue == "tools/call",
+            let name = request["params"]?["name"]?.stringValue
+        else { return false }
+        return tools.first { $0.name == name }?.mutatesState ?? false
+    }
+
     /// Answers one request frame.
     ///
     /// - Parameter line: one JSON document, without its newline.
@@ -237,11 +260,12 @@ enum PlaytestServer {
     ///
     /// - Parameters:
     ///   - game: makes the game to serve — `Self.init`, called once here.
-    ///   - environment: the process environment. Nothing in this stage reads
-    ///     it; the per-session knobs land on top of it next. It is a parameter
-    ///     rather than a `ProcessInfo` lookup because `GameMain` is the
-    ///     composition root and every other environment read in the engine
-    ///     goes through it.
+    ///   - environment: the process environment, which reaches the session
+    ///     registry through the tool table: `GNUSTO_MCP_MAX_SESSIONS` caps how
+    ///     many sessions hold a live world, and `GNUSTO_PLAYTEST_DIR` moves
+    ///     where they write. It is a parameter rather than a `ProcessInfo`
+    ///     lookup because `GameMain` is the composition root and every other
+    ///     environment read in the engine goes through it.
     static func serve<G: Game>(game: () -> G, environment: [String: String]) async {
         let protocolOut = claimProtocolChannel()
         let writer = StdioWriter(descriptor: protocolOut)
@@ -267,14 +291,34 @@ enum PlaytestServer {
                 Play-test server for the game "\(prepared.definition.title)". \
                 One binary is one game, so no tool takes a game name.
                 """,
-            tools: PlaytestTools.table(for: prepared))
+            tools: PlaytestTools.table(for: prepared, environment: environment))
 
-        // Each frame is answered in its own child task, so a slow tool call
-        // does not stall the ones behind it, and the group drains in-flight
-        // work before `serve` returns on end of input. Discarding, because a
-        // child's result is the frame it already wrote.
+        // A reader is answered in its own child task, so a slow call does not
+        // stall the ones behind it, and the group drains in-flight work before
+        // `serve` returns on end of input. Discarding, because a child's result
+        // is the frame it already wrote.
+        //
+        // A call that advances a world is awaited here instead, in the order the
+        // frames arrived. A client may have several `tools/call` in flight — a
+        // model can emit two `move` blocks in one turn — and letting two of them
+        // reach one session in whatever order the scheduler chose would apply
+        // the turns in an order nobody picked. This harness sells one property
+        // above all others: that a command list replays to the same transcript.
+        // Ordering the writes is how that stays true of the session itself and
+        // not merely of the replay. See ``PlaytestTool/mutatesState``.
+        //
+        // The cost is that two `move`s cannot overlap even in different
+        // sessions. A turn is microseconds of engine work, so that is nothing;
+        // readers still overtake freely, which is the case the concurrency was
+        // for.
         await withDiscardingTaskGroup { group in
             for await frame in StdioReader.frames(from: STDIN_FILENO) {
+                if server.mutatesState(line: frame) {
+                    if let response = await server.handle(line: frame) {
+                        await writer.write(response)
+                    }
+                    continue
+                }
                 group.addTask {
                     guard let response = await server.handle(line: frame) else { return }
                     await writer.write(response)

@@ -110,18 +110,19 @@ public struct REPL: Sendable {
     /// on; a footer on one channel only would make that false again, on every
     /// turn rather than on the one empty one it was last false for.
     ///
+    /// The join itself lives on ``StatusFooter/annotate(_:turnCost:fields:)``,
+    /// because the play-test session driver has to produce the identical bytes
+    /// and a second copy of the empty-turn rule would be a second thing to keep
+    /// in step.
+    ///
     /// - Parameters:
     ///   - result: the turn that just ran.
     ///   - turnCost: whether the move counter advanced across it.
     /// - Returns: the text to print and to record.
     private func annotated(_ result: TurnResult, turnCost: Bool) async -> String {
         guard let status else { return result.output }
-        let footer = status.line(
-            result.status, turnCost: turnCost, fields: await world.statusFields())
-        // The engine joins a turn's paragraphs with a blank line, so the footer
-        // arrives as one more paragraph. An empty turn — `quit` at the death
-        // prompt — is the footer alone, with no leading blank line to pad it.
-        return result.output.isEmpty ? footer : "\(result.output)\n\n\(footer)"
+        return status.annotate(
+            result, turnCost: turnCost, fields: await world.statusFields())
     }
 
     /// Starts or stops transcript recording in response to `script`/`unscript`,

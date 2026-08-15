@@ -74,6 +74,15 @@ public struct StatusFooter: Sendable {
         return self
     }
 
+    /// A footer that is in force whatever the environment says.
+    ///
+    /// For the driver that has already decided it wants one: a play-test
+    /// session records for a machine, which needs the room and the turn cost on
+    /// every turn and cannot be asked to reconstruct them from prose. Built
+    /// through the public initializer rather than by reaching past it, so there
+    /// is exactly one definition of what "on" means.
+    static let always = StatusFooter(environment: ["GNUSTO_STATUS": "on"])
+
     /// What to tell the operator on standard error, or `nil` when there is
     /// nothing to say.
     public var complaint: String? {
@@ -113,6 +122,29 @@ public struct StatusFooter: Sendable {
         ]
         let rendered = (standard + fields).map { "\($0.0)=\(Self.oneLine($0.1))" }
         return "[status] \(rendered.joined(separator: " | "))"
+    }
+
+    /// A turn's output with the footer appended as one more paragraph.
+    ///
+    /// The two drivers that append a footer — ``REPL`` and the play-test
+    /// session — call this rather than each joining the pieces themselves.
+    /// There is exactly one interesting case and it is easy to get wrong in
+    /// only one of two places: an *empty* turn (`quit` at the death prompt,
+    /// answered with `freeReply("")`) is the footer alone, with no leading
+    /// blank line padding it out from nothing. A session's transcript has to
+    /// be byte-identical to the REPL's for the same commands, so the join is
+    /// written once.
+    ///
+    /// - Parameters:
+    ///   - result: the turn that just ran.
+    ///   - turnCost: whether the move counter advanced across it.
+    ///   - fields: the contributed fields, from `GameWorld.statusFields()`.
+    /// - Returns: the text to print and to record.
+    func annotate(
+        _ result: TurnResult, turnCost: Bool, fields: [(String, String)]
+    ) -> String {
+        let footer = line(result.status, turnCost: turnCost, fields: fields)
+        return result.output.isEmpty ? footer : "\(result.output)\n\n\(footer)"
     }
 
     /// Collapses the two characters the line's own shape is made of.

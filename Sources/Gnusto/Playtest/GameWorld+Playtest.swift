@@ -74,9 +74,69 @@ struct TurnAudit: Sendable {
     }
 }
 
+// MARK: - What the world is waiting for
+
+/// What the world will do with the *next* line of input, when that is
+/// something other than parse it as a command.
+///
+/// A driver that cannot see this has to paper over it. `bin/playtest-replay`
+/// ends every command file with `printf 'quit\nquit\n'` for exactly this
+/// reason: an armed prompt eats the first `quit` as its answer, so the script
+/// sends two and hopes. A session can ask, so it asks — and can stop a batch
+/// at the moment a question opens instead of feeding the answer slot with a
+/// command the tester meant for the parser.
+enum PlaytestAwaiting: String, Sendable {
+    /// Nothing. The next line is parsed as a command.
+    case none
+    /// "Which do you mean…?" — the next line is tried as the answer first and
+    /// falls back to being a fresh command.
+    case clarification
+    /// The next line is a filename to save to.
+    case saveFilename
+    /// The next line is the name of a save to restore.
+    case restoreFilename
+    /// The player is dead; the next line must be RESTART, RESTORE, UNDO or
+    /// QUIT, and nothing else is reachable until it is.
+    case deathChoice
+
+    /// The one-sentence explanation a halted batch reports.
+    var explanation: String {
+        switch self {
+        case .none:
+            "nothing is pending"
+        case .clarification:
+            "the game asked a clarifying question and reads your next line as its answer"
+        case .saveFilename:
+            "the game is waiting for a filename to save to"
+        case .restoreFilename:
+            "the game is waiting for the name of a save to restore"
+        case .deathChoice:
+            "the player is dead and the game is waiting for RESTART, RESTORE, UNDO or QUIT"
+        }
+    }
+}
+
 // MARK: - State, rosters, and the footer's fields
 
 extension GameWorld {
+    /// What the world will do with the next line of input. See
+    /// ``PlaytestAwaiting``.
+    ///
+    /// An engine prompt outranks a clarification because the engine does: a
+    /// pending prompt is consumed before the parser is reached at all
+    /// (`performAudited`'s first statement), where a clarification only gets
+    /// first refusal on the line.
+    ///
+    /// - Returns: the pending question, or ``PlaytestAwaiting/none``.
+    func awaiting() -> PlaytestAwaiting {
+        switch pendingPrompt {
+        case .saveFilename: return .saveFilename
+        case .restoreFilename: return .restoreFilename
+        case .deathChoice: return .deathChoice
+        case nil: return pendingClarification == nil ? .none : .clarification
+        }
+    }
+
     /// A copy of the whole mutable world, for a driver that wants to branch a
     /// session and come back.
     ///

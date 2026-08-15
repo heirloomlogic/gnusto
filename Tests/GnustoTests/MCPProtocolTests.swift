@@ -25,7 +25,7 @@ struct MCPProtocolTests {
             name: "gnusto-playtest",
             version: "test",
             instructions: nil,
-            tools: PlaytestTools.table(for: try PreparedGame(OperaHouse())))
+            tools: PlaytestTools.table(for: try PreparedGame(OperaHouse()), environment: [:]))
     }
 
     /// A server over one tool that always fails, for the tool-error case.
@@ -37,6 +37,7 @@ struct MCPProtocolTests {
             tools: [
                 PlaytestTool(
                     name: "explode",
+                    mutatesState: false,
                     description: "Always throws.",
                     inputSchema: ["type": "object", "properties": [:]],
                     outputSchema: nil,
@@ -166,7 +167,7 @@ struct MCPProtocolTests {
     /// which is the invariant that has to survive the table growing through
     /// the stages that add sessions, moves and coverage.
     @Test func toolsListEnumeratesEveryEntryInTheTable() async throws {
-        let table = PlaytestTools.table(for: try PreparedGame(OperaHouse()))
+        let table = PlaytestTools.table(for: try PreparedGame(OperaHouse()), environment: [:])
         let response = try parse(await server().handle(line: #"{"jsonrpc":"2.0","id":8,"method":"tools/list"}"#))
         let listed = try #require(response["result"]?["tools"]?.arrayValue)
 
@@ -279,6 +280,70 @@ struct MCPProtocolTests {
                 #expect(PlaytestMode.requested(arguments: ["Fulminate"], environment: ["GNUSTO_MCP": value]))
             }
             #expect(!PlaytestMode.requested(arguments: ["Fulminate"], environment: ["GNUSTO_PLAIN": "1"]))
+        }
+    }
+
+    /// Which frames `serve` has to run in wire order, and which it may answer
+    /// concurrently.
+    ///
+    /// Found by driving a real binary with all four frames written at once, the
+    /// way a pipe delivers them: the `move` was answered before the `open` it
+    /// followed and failed with "no such session", because every frame had its
+    /// own child task and the scheduler picked. Responses arriving out of order
+    /// is legal JSON-RPC and fine; *turns being applied* out of order is not,
+    /// in a harness whose one claim is that a command list replays identically.
+    @Suite struct Ordering {
+        private func server() throws -> MCPServer {
+            MCPServer(
+                name: "gnusto-playtest",
+                version: "test",
+                instructions: nil,
+                tools: PlaytestTools.table(for: try PreparedGame(OperaHouse()), environment: [:]))
+        }
+
+        @Test func aCallThatAdvancesAWorldIsOrdered() throws {
+            let server = try server()
+            for tool in ["open", "move"] {
+                let frame =
+                    #"{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"#
+                    + "\"\(tool)\"}}"
+                #expect(server.mutatesState(line: frame), "\(tool) must run in wire order")
+            }
+        }
+
+        @Test func aReaderIsNotOrdered() throws {
+            let server = try server()
+            for tool in ["survey", "recall"] {
+                let frame =
+                    #"{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"#
+                    + "\"\(tool)\"}}"
+                #expect(!server.mutatesState(line: frame), "\(tool) may be answered concurrently")
+            }
+        }
+
+        /// The predicate answers a question, never raises one: a frame it
+        /// cannot read takes the concurrent path and is refused there, so there
+        /// is exactly one place that reports a bad frame.
+        @Test func anUnreadableFrameIsNotTreatedAsMutating() throws {
+            let server = try server()
+            for frame in [
+                "not json at all",
+                #"{"jsonrpc":"2.0","id":1,"method":"tools/list"}"#,
+                #"{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"nope"}}"#,
+                #"{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{}}"#,
+                #"{"jsonrpc":"2.0","method":"notifications/initialized"}"#,
+            ] {
+                #expect(!server.mutatesState(line: frame))
+            }
+        }
+
+        /// Every row is classified deliberately. A row added later without a
+        /// thought about ordering should fail here rather than race in the
+        /// field.
+        @Test func everyRowDeclaresWhetherItMutates() throws {
+            let mutating = Set(
+                try server().tools.filter(\.mutatesState).map(\.name))
+            #expect(mutating == ["open", "move"])
         }
     }
 }
