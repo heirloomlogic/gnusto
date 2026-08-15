@@ -27,9 +27,22 @@ extension GameMain where Self: Game {
     /// Bootstrap failures (an invalid game definition) are reported to
     /// standard error and exit the process with a nonzero status, the same
     /// as a hand-written `main.swift` would.
+    ///
+    /// `--mcp` (or `GNUSTO_MCP`) takes the other branch entirely: the process
+    /// becomes a play-test server speaking MCP on stdio and never builds a
+    /// world here, because the server builds one `PreparedGame` and spins a
+    /// world per session. Since every game is `@main struct G: Game, GameMain`,
+    /// putting the switch here makes every game that has ever been written
+    /// with this engine — including one whose author has never heard of the
+    /// play-test harness — reachable by an agent for the cost of one
+    /// `.mcp.json` entry. See ``PlaytestMode`` and `PlaytestServer.serve`.
     public static func main() async {
+        let environment = ProcessInfo.processInfo.environment
+        if PlaytestMode.requested(arguments: CommandLine.arguments, environment: environment) {
+            await PlaytestServer.serve(game: Self.init, environment: environment)
+            return
+        }
         do {
-            let environment = ProcessInfo.processInfo.environment
             let seed = SeedRequest(environment: environment)
             let status = StatusFooter(environment: environment)
             // Unpinned runs go through the unseeded initializer rather than
