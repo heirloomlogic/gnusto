@@ -41,6 +41,13 @@ extension Prose {
         is clear that the owners must have been extremely wealthy.
         """
 
+    /// `WHITE-HOUSE-F`'s `THROUGH` branch, verbatim: what `enter house` says
+    /// from behind the house when the kitchen window is still shut.
+    static let enterHouseWindowShut = "The window is closed."
+
+    /// And from any other side of the house.
+    static let enterHouseNoWayIn = "I can't see how to get in from here."
+
     static let frontDoor = """
         A heavy oak door, planked over from the inside. It hasn't opened
         in a long time.
@@ -91,14 +98,31 @@ extension Prose {
         branches. The nearest branch above you is above your reach.
         """
 
+    /// The nest's `LDESC` — where it is, which is this engine's `firstSight`.
+    /// The nest never leaves its branch, so the same sentence also serves as
+    /// its examine text, which is what the original prints.
     static let nest = "Beside you on the branch is a small bird's nest."
 
-    static let egg = """
+    /// The egg as the nest holds it: the `FDESC`, printed in place of a stock
+    /// "On the nest is a jewel-encrusted egg." line.
+    static let eggInNest = """
         In the bird's nest is a large egg encrusted with precious jewels,
         apparently scavenged by a childless songbird. The egg is covered
         with fine gold inlay, and ornamented in lapis lazuli and
         mother-of-pearl. Unlike most eggs, this one is hinged and closed
         with a delicate looking clasp. The egg appears extremely fragile.
+        """
+
+    /// The egg in the hand: the same paragraph with its opening clause
+    /// repaired and the rest verbatim. Where the egg *is* is the listing line's
+    /// business, and saying it here told a player holding the egg that it was
+    /// still in a nest they had just emptied.
+    static let egg = """
+        A large egg encrusted with precious jewels, apparently scavenged by
+        a childless songbird. The egg is covered with fine gold inlay, and
+        ornamented in lapis lazuli and mother-of-pearl. Unlike most eggs,
+        this one is hinged and closed with a delicate looking clasp. The egg
+        appears extremely fragile.
         """
 
     static let canary = """
@@ -149,8 +173,16 @@ extension Prose {
         A path leads south.
         """
 
+    /// Where the pile is — the `LDESC`, this engine's `firstSight` — and the
+    /// only thing that tells a player there is anything here to push.
     static let leaves = """
         On the ground is a pile of leaves.
+        """
+
+    /// The pile's own examine text. The original has none, so this is written
+    /// fresh rather than repeating where the leaves are.
+    static let leavesExamined = """
+        Dead leaves, drifted deep and gone brown, and a great many of them.
         """
 
     static let leavesMoveEmbellishment = "In disturbing the pile of leaves, a grating is revealed."

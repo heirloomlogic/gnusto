@@ -124,8 +124,21 @@ struct ZorkAboveGround: GameContent {
         scenery
     }
 
+    /// Two channels, not one. "Beside you on the branch is a small bird's
+    /// nest." is a sentence about *where the nest is* — the `LDESC`, this
+    /// engine's `firstSight` — and it was declared as the examine text alone,
+    /// so Up a Tree named no nest and then the egg's listing line said "On the
+    /// nest is…" about a thing the room had never mentioned. The nest never
+    /// leaves its branch, so the one sentence is true in both channels.
+    ///
+    /// `scenery` is kept: it withholds the *engine's* stock listing sentence
+    /// and never the author's. `bird` is an adjective alongside `birds`
+    /// because the tokenizer drops a trailing `'s`, so a player typing `bird's
+    /// nest` hands the parser `["bird", "nest"]`.
     let nest = Item {
         name("nest")
+        adjectives("small", "bird", "birds")
+        firstSight(Prose.nest)
         description(Prose.nest)
         surface
         scenery
@@ -135,10 +148,17 @@ struct ZorkAboveGround: GameContent {
     /// case (in ``ZorkHouse``) describes itself by whether it holds this egg;
     /// since the two live in different bundles, the host declares that
     /// `describe` rule (`Zork1.rules`).
+    /// Two channels here too: the long paragraph opens "In the bird's nest
+    /// is…", which is the `FDESC` and belongs to the listing line. Bound to
+    /// `description(…)`, it told a player holding the egg that it was still in
+    /// the nest. `clasp` is a synonym because the paragraph names one, and a
+    /// noun the prose names is a noun the parser owes an answer for.
     let egg = Item {
         name("jewel-encrusted egg")
         adjectives("jewel", "encrusted", "jeweled")
+        synonyms("clasp")
         description(Prose.egg)
+        firstSight(Prose.eggInNest)
         // The original's values: 5 for the find, 5 for the case.
         trait(.takeValue, 5)
         trait(.depositValue, 5)
@@ -159,19 +179,32 @@ struct ZorkAboveGround: GameContent {
     /// Pushing the leaves reveals the grating — the Task 4 push-to-reveal
     /// pattern (`before(.push)` + `reply`, not `after`, so the stock "You
     /// can't move that." never prints ahead of the reveal line).
+    /// Two channels again. "On the ground is a pile of leaves." is the
+    /// `LDESC` — where the pile is, and the only thing that tells a player
+    /// there is anything here to push — and it was the examine text, so the
+    /// Clearing listed nothing at all. `firstSight` is what announces the pile;
+    /// `scenery` is kept so the announcement is the author's sentence rather
+    /// than a stock one, and so the pile still cannot be picked up.
     let leaves = Item {
         name("pile of leaves")
         adjectives("dead")
-        description(Prose.leaves)
+        synonyms("leaf", "pile")
+        firstSight(Prose.leaves)
+        description(Prose.leavesExamined)
         scenery
     }
 
     /// Openable, and locked by `skeletonKey` via the `map` block below, so it
     /// starts (and stays) locked: `open grating` refuses with the built-in
     /// "is locked" message with no rule of our own needed.
+    /// `grate` and `lock` are nouns the game says out loud — the description
+    /// names a heavy lock — and neither was declared, so `x grate` and `x lock`
+    /// both answered "You can't see any such thing". `grating` needs no synonym
+    /// of its own: it is the last word of the name, which is the noun.
     let grating = Item {
         name("iron grating")
         adjectives("iron", "metal")
+        synonyms("grate", "lock")
         description(Prose.grating)
         container
         openable

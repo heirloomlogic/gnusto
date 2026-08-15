@@ -57,6 +57,20 @@ extension Prose {
         is clear that the owners must have been extremely wealthy.
         """
 
+    /// `enter house` from Behind House, with the window still shut. Adapted
+    /// from `WHITE-HOUSE-F`'s "The window is closed.", which is flat next to
+    /// this game's window, whose whole description is about how far ajar it is.
+    static let enterHouseWindowShut = """
+        The window is the only way in, and it is not open far enough yet.
+        """
+
+    /// `enter house` from any side but Behind House. `WHITE-HOUSE-F`'s own
+    /// answer, kept nearly verbatim: the stock refusal is `V-THROUGH`'s
+    /// head-butt, which says nothing about there being a way in somewhere else.
+    static let enterHouseNoWayIn = """
+        You can't see how to get in from here.
+        """
+
     /// The five lines below are written fresh, for five nouns the four sides of
     /// the house and the clearing print and nothing answered — *field*, which
     /// is the game's opening room, and *path*, four times, going four different
@@ -279,15 +293,39 @@ extension Prose {
 
     static let cannotClimbHigher = "You cannot climb any higher."
 
+    /// Where the nest is — the trilogy's `LDESC`, which is this engine's
+    /// `firstSight`. Verbatim Zork I.
     static let nest = "Beside you on the branch is a small bird's nest."
 
+    /// The nest's own examine text. Written fresh, because ``Prose/nest`` says
+    /// only where the nest is, and a player standing beside it did not type the
+    /// command to be told that.
+    static let nestExamined = """
+        A shallow cup of twigs and grass, wedged where the branch forks.
+        Whatever built it has been gone a long while.
+        """
+
+    /// The egg as the nest holds it — the source's `FDESC`, the room-listing
+    /// paragraph, printed in place of a stock "On the birds nest is…" line.
     /// Verbatim Zork I.
-    static let egg = """
+    static let eggInNest = """
         In the bird's nest is a large egg encrusted with precious jewels,
         apparently scavenged by a childless songbird. The egg is covered
         with fine gold inlay, and ornamented in lapis lazuli and
         mother-of-pearl. Unlike most eggs, this one is hinged and closed
         with a delicate looking clasp. The egg appears extremely fragile.
+        """
+
+    /// The egg in the hand: Zork I's paragraph with its opening clause
+    /// repaired and the rest verbatim. Where the egg *is* is the listing line's
+    /// business, and saying it here told a player holding the egg that it was
+    /// still in a nest they had just emptied.
+    static let egg = """
+        A large egg encrusted with precious jewels, apparently scavenged by
+        a childless songbird. The egg is covered with fine gold inlay, and
+        ornamented in lapis lazuli and mother-of-pearl. Unlike most eggs,
+        this one is hinged and closed with a delicate looking clasp. The egg
+        appears extremely fragile.
         """
 
     /// Verbatim Zork I.

@@ -446,16 +446,14 @@ public struct Conversation: GameContent {
     // MARK: - GameContent
 
     /// The verbs the layer contributes: `ask`, `tell`, `show`, `talk`, and the
-    /// greeting rows the engine deliberately leaves to a conversation system —
-    /// a bare hello, and the long-winded "say hello to X". (`greet <object>`,
-    /// `hello <object>` and `hi <object>` are built in; bare `hello` is not,
-    /// so a game can own that word outright without a launch warning.)
+    /// one greeting row the engine deliberately leaves to a conversation system
+    /// — a bare hello. (`greet <object>`, `hello <object>`, `hi <object>` and
+    /// `say hello to <object>` are built in; bare `hello` is not, so a game can
+    /// own that word outright without a launch warning.)
     public var verbs: [SyntaxRule] {
         [.ask, .tell, .show, .talk]
         SyntaxRule("hello", intent: .greet)
         SyntaxRule("hi", intent: .greet)
-        SyntaxRule("say", "hello", "to", .directObject, intent: .greet)
-        SyntaxRule("say", "hi", "to", .directObject, intent: .greet)
     }
 
     /// The layer's default actions — what happens when no table answered.

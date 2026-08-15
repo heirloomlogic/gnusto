@@ -71,6 +71,22 @@ struct AddressingTests {
         #expect(turnOutput(of: "greet usher", in: transcript).contains("nods, and says nothing"))
     }
 
+    /// And so does the longhand. "say hello to the troll" is what a player types
+    /// at a person, and a game without `GnustoConversation` — which mints these
+    /// two rows for itself — answered it with "That sentence isn't one I
+    /// recognize." Bare SAY stays nobody's verb: these are three-word patterns,
+    /// so a game that owns the word outright keeps it.
+    @Test func sayHelloToSomebodyIsAGreetingToo() async throws {
+        let transcript = try await play(
+            Antechamber(), ["say hello to usher", "say hi to the usher"])
+        #expect(
+            turnOutput(of: "say hello to usher", in: transcript)
+                .contains("The usher nods, and says nothing."))
+        #expect(
+            turnOutput(of: "say hi to the usher", in: transcript)
+                .contains("The usher nods, and says nothing."))
+    }
+
     // MARK: - Bare greetings
 
     @Test func greetingSomethingInanimateIsRefused() async throws {

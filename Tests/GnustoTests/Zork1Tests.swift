@@ -322,7 +322,11 @@ struct Zork1Tests {
             transcript,
             [
                 "Up a Tree",
-                "On the nest is a jewel-encrusted egg.",
+                // The nest's `FDESC` and the egg's, in that order, in place of
+                // two stock listing lines — one of which never printed at all,
+                // because the nest is `scenery`.
+                "Beside you on the branch is a small bird's nest.",
+                "In the bird's nest is a large egg encrusted with precious jewels,",
                 "Taken.",
                 "Forest Path",
                 "Living Room",

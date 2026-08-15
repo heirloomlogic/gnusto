@@ -68,6 +68,7 @@ struct CoreVerbTests {
         "follow rat", "chase rat", "go after rat", "run after rat", "walk after rat",
         // greet
         "greet rat", "hello rat", "hi rat", "greet",
+        "say hello to rat", "say hi to rat",
         // board
         "enter boat", "board boat", "get in boat", "get into boat",
         "go through boat", "walk through boat", "step through boat",
@@ -79,7 +80,7 @@ struct CoreVerbTests {
         // meta
         "score", "quit", "q", "version",
         // engine-level
-        "undo", "restart", "save", "restore",
+        "undo", "restart", "save", "restore", "load",
     ]
 
     /// Ties the hand-written list to the table, so a core row added later can't

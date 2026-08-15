@@ -415,6 +415,34 @@ struct Dungeon: Game, GameMain {
             Prose.behindHouse(windowOpen: house.window.isOpen)
         }
 
+        // And `enter house` answers for the same pair. The window is a `via:`
+        // door, so `enter window` walks; the house is neither doorway nor
+        // vehicle, so `enter house` fell to `cantEnterThat` and answered "You
+        // hit your head against the white house" — `V-THROUGH`'s generic line,
+        // given to a player standing in front of a paragraph that had just
+        // pointed at the window.
+        //
+        // `WHITE-HOUSE-F` answers `THROUGH` itself and this is its branch: from
+        // the room behind the house, an open window walks you into the Kitchen
+        // and a shut one says so; from any other side, there is no way in and
+        // the house says that rather than butting your head. The rule lives
+        // here because the house is ``DungeonAboveGround``'s and the window is
+        // ``DungeonHouse``'s.
+        aboveGround.whiteHouseAtBehind.before(.board) {
+            try require(house.window.isOpen, else: Prose.enterHouseWindowShut)
+            try enter(house.kitchen)
+            try handled()
+        }
+        for side in [
+            aboveGround.whiteHouseAtWest,
+            aboveGround.whiteHouseAtNorth,
+            aboveGround.whiteHouseAtSouth,
+        ] {
+            side.before(.board) {
+                try refuse(Prose.enterHouseNoWayIn)
+            }
+        }
+
         // The mainframe's room values, as event awards: getting into the
         // kitchen, and getting below the house.
         scoring.visit(house.kitchen, register: "kitchen")

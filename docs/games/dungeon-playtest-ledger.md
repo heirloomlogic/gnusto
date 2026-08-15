@@ -271,3 +271,38 @@ a row belongs to the sentence in its key rather than to the box it was filed und
 
 Pass every `fixed` and `refuted` key above as `ledgerKeys` on the next round. The list is
 seventeen keys longer than it was.
+
+## 2026-08-14 — a hand-played session, not a harness round
+
+**Not the harness.** A player walked the first eighteen turns with `swift run Dungeon` and
+annotated the transcript inline, which is the method `docs/playtesting.md` teaches and the
+one the automated round is a scaled copy of. The rows are keyed the same way and count the
+same, but there is no round report beside them and no seed to re-pin: nothing here depends
+on the dice.
+
+Five rows, and four of them are one defect. **A sentence bound to the wrong description
+channel** was box 8's class in the second pass — the Clearing's leaves, row 152 above —
+and the same swap was sitting on the branch above it, twice, plus two nouns the prose says
+out loud and the parser had never been told. All five are `preexisting`; `git log -S` puts
+every one of them in the region's first commit.
+
+| Class | Row | What was done |
+|---|---|---|
+| `mechanic-contradicts-prose` | `AboveGround.swift::up a tree beside you on the branch is a s…` | `NEST`'s `FDESC` moved to `firstSight`, where the room prints it, and `x nest` got an examine text of its own. Up a Tree had named no nest at all and then listed an egg "on the birds nest". `scenery` kept, as with the leaves. |
+| `prose-untrue-of-frame` | `Prose+AboveGround.swift::x egg in the birds nest is a large egg en…` | `EGG`'s `FDESC` moved to `firstSight` too, so the long paragraph is the listing line the source makes it; the examine text is the same paragraph with its opening clause repaired, because it was telling a player holding the egg that it was still in the nest. |
+| `unanswerable-noun` | `AboveGround.swift::x clasp i dont know the word clasp` | `clasp` is a synonym of the egg. The paragraph names one in both games and neither had a noun behind it. |
+| `unanswerable-noun` | `AboveGround.swift::x lock you cant see any such thing` | `lock` is a synonym of the grating. Three sentences name a heavy lock — the examine text, its twin from below, and `gratingLockNotReachable` — and `x lock` answered with the line reserved for a noun that is not in scope. |
+| `mechanic-contradicts-prose` | `Dungeon.swift::enter house you hit your head against the …` | `WHITE-HOUSE-F` answers `THROUGH` itself (`1actions.zil:117`): behind the house an open window walks you into the Kitchen and a shut one says so, and from any other side the house says there is no way in. `enter house` had fallen to `V-THROUGH`'s generic head-butt from every side, in front of a paragraph that had just pointed at the window.
+
+All five carry the same fix in `Sources/Zork1/`, which had byte-identical copies of four of
+them and, in the fifth, no `grate` or `grating` synonym at all. Cover is three tests in
+`DungeonProseTests.swift` and two in `Zork1ProseTests.swift`, each negative assertion
+paired with a positive control.
+
+**Four engine defects came out of the same eighteen turns and are filed rather than fixed**
+— `TAKE ALL` enumerating the visible set instead of the reachable-minus-carried one, the
+pitch-black line and the grue daemon's warning both firing on the walk-in turn, `look
+inside X` failing where `look in X` works, and no conjunction support at all. None is a
+Dungeon defect and none has a key here.
+
+Pass these five keys as `ledgerKeys` too. The list is twenty-two keys longer than it was.
