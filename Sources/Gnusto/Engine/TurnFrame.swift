@@ -4,6 +4,12 @@ import Synchronization
 struct Scratch: Sendable {
     var state: WorldState
     var output: [String] = []
+    /// Every sentence this turn has said, for ``TurnFrame/sayOnceThisTurn(_:)``
+    /// to check itself against. A separate ledger because `output` is a render
+    /// buffer and not a record: ``GameWorld/label(outputFrom:as:frame:)``
+    /// rewrites a multi-object run's entries into one joined line, and a
+    /// sentence folded into that line would stop being findable.
+    var said: Set<String> = []
     var command: Command?
     var isLive = true
     /// True while a stage 1–3 `before` rule body is executing — the only
@@ -300,7 +306,18 @@ final class TurnFrame: Sendable {
     }
 
     func say(_ text: String) {
-        with { $0.output.append(text) }
+        with { scratch in
+            scratch.output.append(text)
+            scratch.said.insert(text)
+        }
+    }
+
+    /// ``say(_:)``, unless this turn has already said exactly `text`.
+    func sayOnceThisTurn(_ text: String) {
+        with { scratch in
+            guard scratch.said.insert(text).inserted else { return }
+            scratch.output.append(text)
+        }
     }
 
     /// Runs the stage-4 default action for the current command immediately,

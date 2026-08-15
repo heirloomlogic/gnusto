@@ -441,7 +441,10 @@ enum DefaultActions {
                 at: $0.state.playerLocation, definition: definition, state: $0.state)
         }
         if isDarkNow {
-            frame.say(definition.text.nowDark())
+            // Once per turn, for the same reason `RoomDescriber` says
+            // `pitchBlack` that way: this is the other sentence a game may word
+            // as its threat, on a turn the grue is about to speak too.
+            frame.sayOnceThisTurn(definition.text.nowDark())
         }
     }
 

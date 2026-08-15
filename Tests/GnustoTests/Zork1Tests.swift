@@ -191,15 +191,19 @@ struct Zork1Tests {
                 "undo", "look", "quit",
             ],
             seed: 0)
-        // The descent turn: slam, pitch black, then the warning — in order.
+        // The descent turn: slam, then the grue sentence — once. Zork points
+        // both `text.pitchBlack` and the grue's warning at that one line, so the
+        // room describer and the daemon each have a claim on it and the turn
+        // prints it a single time.
         let descent = turnOutput(of: "down", in: transcript)
+        let grue = "It is pitch black. You are likely to be eaten by a grue."
         expectInOrder(
             descent,
             [
                 "The trap door crashes shut, and you hear someone barring it.",
-                "It is pitch black. You are likely to be eaten by a grue.",
-                "It is pitch black. You are likely to be eaten by a grue.",
+                grue,
             ])
+        #expect(occurrences(of: grue, in: descent) == 1)
         let looks = transcript.components(separatedBy: "> look")
         // The grace turn is a reprieve — no grue yet; the third dark turn is the
         // end — but the grue's meal doesn't stick. The death message prints, then
