@@ -163,8 +163,9 @@ enum Visibility {
         // by the room walk below. That placement is what keeps them out of room
         // listings and a location's contents; this line is the only way they
         // enter scope, whether the walk is their own or somebody else's asking
-        // "can I get at him". `TAKE ALL` reads this set, and is kept off the
-        // player by `isTakable`, which is false for people.
+        // "can I get at him". `TAKE ALL` reads the *reachable* form of this
+        // set, and is kept off the player by `isTakable`, which is false for
+        // people.
         if location == state.playerLocation { result.insert(.player) }
         // Guards against a runtime-created placement cycle (e.g. a container
         // moved inside its own contents) sending this walk into an infinite

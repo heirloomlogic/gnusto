@@ -52,6 +52,9 @@ struct ActorTests {
         #expect(taking.contains("gray rock: Taken."))
         #expect(!taking.contains("troll"))
         #expect(!taking.contains("sentry"))
+        // Nor what they are holding: the axe is visible in the troll's hands
+        // and never reachable, so `all` doesn't volunteer the attempt (#267).
+        #expect(!taking.contains("axe"))
     }
 
     @Test func actorRulesRideTheOrdinaryTableAndItBinds() async throws {
