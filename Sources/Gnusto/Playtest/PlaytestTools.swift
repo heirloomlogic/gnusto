@@ -138,12 +138,18 @@ enum PlaytestTools {
         let sessions = PlaytestSessions(prepared: game, environment: environment)
         return [
             survey(for: game, sessions),
+            vocabulary(for: game, sessions),
             open(sessions),
             move(sessions),
             recall(sessions),
             coverage(sessions),
             note(sessions),
+            checkpoint(sessions),
+            restore(sessions),
+            rewind(sessions),
             finish(sessions),
+            export(sessions),
+            replay(for: game),
         ]
     }
 
@@ -206,6 +212,122 @@ enum PlaytestTools {
                 return PlaytestToolResult(PlaytestSurvey(game.definition).json)
             })
     }
+
+    /// `vocabulary` — does the parser know these words?
+    ///
+    /// **Oracle data, gated exactly like `survey`, and for the sharper of the
+    /// two reasons.** A tester that can ask which words the parser knows can
+    /// never again discover that a printed noun has nothing behind it: it would
+    /// simply not type the word. That is the K8 class, and it is the single
+    /// largest defect class every round finds — the whole argument for the
+    /// firewall reduced to one tool. So a play-testing role is refused, and the
+    /// refusal says why.
+    ///
+    /// It exists for the two callers who are not being measured. The round's
+    /// **verifier** adjudicating a K8 finding needs to know whether the word is
+    /// really absent, and asking the vocabulary is exact where matching the
+    /// reply against *"You can't see any such thing"* is a string-match on prose
+    /// a game may re-skin. And a **game author** driving their own game opens
+    /// with the default `unrestricted` role, where twenty candidate nouns lifted
+    /// out of one room description resolve in a single call and cost no turns.
+    ///
+    /// - Parameters:
+    ///   - game: the game whose vocabulary to ask.
+    ///   - sessions: the registry the session id is looked up in, for the role.
+    /// - Returns: the row.
+    private static func vocabulary(
+        for game: PreparedGame, _ sessions: PlaytestSessions
+    ) -> PlaytestTool {
+        PlaytestTool(
+            name: "vocabulary",
+            mutatesState: false,
+            description: """
+                Ask whether this game's parser knows each of a list of words, \
+                all in one call and for no turns. This is answer-key data and a \
+                session opened in a play-testing role is refused it — a tester \
+                who can look up the vocabulary can never find the defect where a \
+                room description prints a noun the parser has never heard of, \
+                which is the commonest defect there is. Type the word at the game \
+                instead; that is the test. For a verifier judging such a finding, \
+                or for an author driving their own game with role=unrestricted, \
+                this answers exactly where the reply text only hints. Words are \
+                split the way the parser splits them, so "master's" is asked as \
+                "master".
+                """,
+            inputSchema: [
+                "type": "object",
+                "properties": [
+                    "session": [
+                        "type": "string",
+                        "description": .string(
+                            "The id open returned. Required: whether you may read the "
+                                + "answer key is a fact about your session's role."),
+                    ],
+                    "words": [
+                        "type": "array",
+                        "items": ["type": "string"],
+                        "minItems": 1,
+                        "description": "The words to ask about, as you would type them.",
+                    ],
+                ],
+                "required": ["session", "words"],
+                "additionalProperties": false,
+            ],
+            outputSchema: vocabularySchema,
+            handler: { arguments in
+                let session = try await sessions.session(
+                    try string(arguments, "session", tool: "vocabulary"))
+                guard session.role.seesOracleData else {
+                    throw PlaytestError(session.role.refusal(of: "vocabulary"))
+                }
+                let words = try strings(arguments, "words", tool: "vocabulary")
+                // Read off the definition rather than a world: the answer is a
+                // fact about the game type, so a session that has been evicted
+                // is not replayed just to be asked a question about its
+                // vocabulary.
+                let answers = game.definition.knows(words)
+                let listing =
+                    answers
+                    .map { "\($0.word): \($0.known ? "known" : "NOT KNOWN")" }
+                    .joined(separator: "\n")
+                return PlaytestToolResult(
+                    text: "\(listing)\n",
+                    structured: [
+                        "words": .array(
+                            answers.map {
+                                ["word": .string($0.word), "known": .bool($0.known)]
+                            }),
+                        "unknown": .array(
+                            answers.filter { !$0.known }.map { .string($0.word) }),
+                    ])
+            })
+    }
+
+    /// The shape of a `vocabulary` result.
+    private static let vocabularySchema: JSONValue = [
+        "type": "object",
+        "properties": [
+            "words": [
+                "type": "array",
+                "items": [
+                    "type": "object",
+                    "properties": [
+                        "word": ["type": "string"],
+                        "known": ["type": "boolean"],
+                    ],
+                    "required": ["word", "known"],
+                ],
+            ],
+            "unknown": [
+                "type": "array",
+                "items": ["type": "string"],
+                "description": .string(
+                    "Just the words the parser has never heard of, so a caller checking "
+                        + "twenty nouns reads one short list."),
+            ],
+        ],
+        "required": ["words", "unknown"],
+    ]
 
     // MARK: - Sessions
 
@@ -677,6 +799,371 @@ enum PlaytestTools {
             })
     }
 
+    // MARK: - Going back
+
+    /// `checkpoint` — mark a place to come back to.
+    ///
+    /// In memory and session-scoped, and pointedly **not** the player's `save`.
+    /// A tester has to be able to probe `save` and `restore` as game commands —
+    /// they are two-turn prompt interactions with their own defects — so the
+    /// agent's own branching cannot be the same mechanism. A checkpoint here is
+    /// an index into the command list, which is why it costs nothing, survives
+    /// an eviction, and keeps a reproducer honest: coming back to one truncates
+    /// the list, so a finding filed afterwards still replays from line one.
+    ///
+    /// - Parameter sessions: the registry to find the session in.
+    /// - Returns: the row.
+    private static func checkpoint(_ sessions: PlaytestSessions) -> PlaytestTool {
+        PlaytestTool(
+            name: "checkpoint",
+            mutatesState: true,
+            description: """
+                Mark where you are standing so you can come back to it with \
+                restore. Costs no turn and writes no save file — this is the \
+                harness remembering a place, not the game's own SAVE, which you \
+                should still type at the game when you mean to test it. Coming \
+                back drops the turns after the mark from this session's command \
+                list (they are kept beside the transcript as branch-NNN.txt), so \
+                whatever you file afterwards still replays from the first line. \
+                Marking the same name twice moves it.
+                """,
+            inputSchema: [
+                "type": "object",
+                "properties": [
+                    "session": ["type": "string", "description": "The id open returned."],
+                    "name": [
+                        "type": "string",
+                        "description": "What to call this place, e.g. \"before the grate\".",
+                    ],
+                ],
+                "required": ["session", "name"],
+                "additionalProperties": false,
+            ],
+            outputSchema: checkpointSchema,
+            handler: { arguments in
+                let session = try await sessions.session(
+                    try string(arguments, "session", tool: "checkpoint"))
+                let marked = try await session.checkpoint(
+                    try string(arguments, "name", tool: "checkpoint"))
+                return PlaytestToolResult(text: marked.message, structured: marked.json)
+            })
+    }
+
+    /// The shape of a `checkpoint` result.
+    private static let checkpointSchema: JSONValue = [
+        "type": "object",
+        "properties": [
+            "name": ["type": "string"],
+            "line": [
+                "type": "integer",
+                "description": "The recorded line it stands at; 0 is the opening.",
+            ],
+            "room": ["type": "string"],
+            "moves": ["type": "integer"],
+            "message": ["type": "string"],
+        ],
+        "required": ["name", "line", "room", "moves", "message"],
+    ]
+
+    /// `restore` — go back to a marked place.
+    ///
+    /// - Parameter sessions: the registry to find the session in.
+    /// - Returns: the row.
+    private static func restore(_ sessions: PlaytestSessions) -> PlaytestTool {
+        PlaytestTool(
+            name: "restore",
+            mutatesState: true,
+            description: """
+                Go back to a place you marked with checkpoint. The world, the \
+                queue and the move counter all return to that line, and the turns \
+                after it leave this session's command list — kept beside the \
+                transcript as branch-NNN.txt, so the branch you abandoned is \
+                still evidence. This is the harness, not the game's RESTORE verb; \
+                type that at the game if what you want to test is the game's own \
+                restore.
+                """,
+            inputSchema: [
+                "type": "object",
+                "properties": [
+                    "session": ["type": "string", "description": "The id open returned."],
+                    "name": [
+                        "type": "string",
+                        "description": "The checkpoint's name.",
+                    ],
+                ],
+                "required": ["session", "name"],
+                "additionalProperties": false,
+            ],
+            outputSchema: rewindSchema,
+            handler: { arguments in
+                let session = try await sessions.session(
+                    try string(arguments, "session", tool: "restore"))
+                let rewound = try await session.restore(
+                    checkpoint: try string(arguments, "name", tool: "restore"))
+                return PlaytestToolResult(text: rewound.message, structured: rewound.json)
+            })
+    }
+
+    /// `rewind` — take back the last few turns.
+    ///
+    /// - Parameter sessions: the registry to find the session in.
+    /// - Returns: the row.
+    private static func rewind(_ sessions: PlaytestSessions) -> PlaytestTool {
+        PlaytestTool(
+            name: "rewind",
+            mutatesState: true,
+            description: """
+                Take back the last few recorded lines: the world, the queue and \
+                the move counter go back to where they were, and the lines leave \
+                this session's command list (kept beside the transcript as \
+                branch-NNN.txt). Comments count as lines, because that is how \
+                they are numbered everywhere else. Goes back at most \
+                \(PlaytestSession.snapshotRing) lines — the history it keeps in \
+                memory is bounded — so mark a place with checkpoint before you \
+                wander off if you may want to come back from further away.
+                """,
+            inputSchema: [
+                "type": "object",
+                "properties": [
+                    "session": ["type": "string", "description": "The id open returned."],
+                    "turns": [
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": .integer(PlaytestSession.snapshotRing),
+                        "description": "How many recorded lines to take back.",
+                    ],
+                ],
+                "required": ["session", "turns"],
+                "additionalProperties": false,
+            ],
+            outputSchema: rewindSchema,
+            handler: { arguments in
+                let session = try await sessions.session(
+                    try string(arguments, "session", tool: "rewind"))
+                let rewound = try await session.rewind(
+                    turns: try integer(arguments, "turns", tool: "rewind"))
+                return PlaytestToolResult(text: rewound.message, structured: rewound.json)
+            })
+    }
+
+    /// The shape of a `rewind` or `restore` result — one schema, because going
+    /// back a fixed number of turns and going back to a mark are the same
+    /// operation with two ways of naming the line.
+    private static let rewindSchema: JSONValue = [
+        "type": "object",
+        "properties": [
+            "name": [
+                "type": "string",
+                "description": "The checkpoint's name, absent for a plain rewind.",
+            ],
+            "line": ["type": "integer"],
+            "room": ["type": "string"],
+            "moves": ["type": "integer"],
+            "discarded": [
+                "type": "integer",
+                "description": "How many recorded lines left the command list.",
+            ],
+            "branch": [
+                "type": "string",
+                "description": "Where the discarded turns were kept.",
+            ],
+            "status": ["type": "string"],
+            "message": ["type": "string"],
+        ],
+        "required": ["line", "room", "moves", "discarded", "status", "message"],
+    ]
+
+    // MARK: - Finishing up
+
+    /// `export` — write the evidence out, and prove it replays.
+    ///
+    /// The write is a convenience: `commands.txt` and the transcript have been
+    /// on disk since the first turn, because a `fatalError` in any game rule
+    /// takes down every session in the process and the evidence has to survive
+    /// that. What is new here is the **verify**, and it is the reason the row
+    /// exists: the command list goes through a fresh `REPL` in-process and the
+    /// result is compared to the recorded file byte for byte. That pins the
+    /// session driver to the REPL permanently — the two loops cannot drift
+    /// without a real session noticing — and it re-proves, on evidence, the
+    /// claim the whole harness rests on.
+    ///
+    /// - Parameter sessions: the registry to find the session in.
+    /// - Returns: the row.
+    private static func export(_ sessions: PlaytestSessions) -> PlaytestTool {
+        PlaytestTool(
+            name: "export",
+            mutatesState: true,
+            description: """
+                Write this session's evidence out and check that it replays: the \
+                command list goes through a fresh copy of the game and the result \
+                is compared to the recorded transcript byte for byte, so what you \
+                cite is provably a regression test. Returns four paths — the \
+                transcript as recorded with a [status] line per turn, the same \
+                transcript without them (quote your excerpts from that one, \
+                because a suite test never sees a [status] line), the command \
+                list, and a plain-language summary. It does not close the \
+                session: you can carry on playing afterwards. If the check fails, \
+                say so in your report — that is a defect in this harness, not in \
+                the game.
+                """,
+            inputSchema: [
+                "type": "object",
+                "properties": [
+                    "session": ["type": "string", "description": "The id open returned."]
+                ],
+                "required": ["session"],
+                "additionalProperties": false,
+            ],
+            outputSchema: exportSchema,
+            handler: { arguments in
+                let session = try await sessions.session(
+                    try string(arguments, "session", tool: "export"))
+                let exported = try await session.export()
+                return PlaytestToolResult(
+                    text: exported.message, structured: exported.json)
+            })
+    }
+
+    /// The shape of an `export` result.
+    private static let exportSchema: JSONValue = [
+        "type": "object",
+        "properties": [
+            "transcript": [
+                "type": "string",
+                "description": "As recorded, with a [status] line under every turn.",
+            ],
+            "transcriptWithoutStatus": [
+                "type": "string",
+                "description": .string(
+                    "The same run without the [status] lines — the string a suite test "
+                        + "asserts on, so quote excerpts from here."),
+            ],
+            "commands": ["type": "string"],
+            "summary": ["type": "string"],
+            "lines": ["type": "integer"],
+            "seed": ["type": "integer"],
+            "verified": [
+                "type": "boolean",
+                "description": .string(
+                    "Always true: a failed byte-identity check is a tool error rather "
+                        + "than a field, because a reproducer that may not reproduce is "
+                        + "not a result to read past."),
+            ],
+            "message": ["type": "string"],
+        ],
+        "required": [
+            "transcript", "transcriptWithoutStatus", "commands", "summary", "lines", "seed",
+            "verified", "message",
+        ],
+    ]
+
+    /// `replay` — play a command list in a fresh world, with no session at all.
+    ///
+    /// The verifier's tool. It is a different subagent from the tester that filed
+    /// the finding and holds no session id, so everything session-scoped is
+    /// useless to it; what it holds is a command list, a seed and a claim about a
+    /// line. See ``PlaytestReplay``.
+    ///
+    /// - Parameter game: the game to replay.
+    /// - Returns: the row.
+    private static func replay(for game: PreparedGame) -> PlaytestTool {
+        PlaytestTool(
+            name: "replay",
+            mutatesState: false,
+            description: """
+                Play a list of commands in a brand-new copy of the game and read \
+                the transcript. No session: nothing you do here touches anybody's \
+                session, no files are written, and two callers cannot see each \
+                other. Give `expect` an excerpt and you get a verdict instead — \
+                whether that text really printed, at which turn, in which room, \
+                at which move count, and the whole turn it printed in so you can \
+                see the frame. Whitespace is collapsed before matching, so an \
+                excerpt re-wrapped by a report still matches the line it came \
+                from, and the [status] footers are not searched. This is how you \
+                check a reproducer without playing the game yourself.
+                """,
+            inputSchema: [
+                "type": "object",
+                "properties": [
+                    "commands": [
+                        "type": "array",
+                        "items": ["type": "string"],
+                        "description": .string(
+                            "The lines to type, in order. Empty replays just the opening. "
+                                + "A line starting // or # is a comment and costs no turn."),
+                    ],
+                    "seed": [
+                        "type": "integer",
+                        "minimum": 0,
+                        "description": .string(
+                            "The seed the finding names. Defaults to 0, which is what "
+                                + "sessions and bin/playtest-replay use."),
+                    ],
+                    "expect": [
+                        "type": "string",
+                        "description": .string(
+                            "An excerpt to look for. Given one, the result is a verdict "
+                                + "rather than the transcript."),
+                    ],
+                ],
+                "required": ["commands"],
+                "additionalProperties": false,
+            ],
+            outputSchema: replaySchema,
+            handler: { arguments in
+                let commands = try strings(arguments, "commands", tool: "replay")
+                let outcome = try await PlaytestReplay.run(
+                    prepared: game,
+                    commands: commands,
+                    seed: try seed(arguments),
+                    expect: arguments["expect"]?.stringValue)
+                return PlaytestToolResult(
+                    text: outcome.rendered, structured: outcome.json)
+            })
+    }
+
+    /// The shape of a `replay` result.
+    private static let replaySchema: JSONValue = [
+        "type": "object",
+        "properties": [
+            "lines": ["type": "integer"],
+            "finished": [
+                "type": "boolean",
+                "description": "Whether the game ended during the replay.",
+            ],
+            "transcript": [
+                "type": "string",
+                "description": .string(
+                    "The whole replay, present when no expect was given. Trimmed to its "
+                        + "last turns if it is very long."),
+            ],
+            "found": [
+                "type": "boolean",
+                "description": "Whether the expected excerpt printed. Absent without expect.",
+            ],
+            "turn": [
+                "type": "integer",
+                "description": .string(
+                    "The line that printed it, numbered as a session numbers lines: 1 is "
+                        + "the first command, 0 the opening."),
+            ],
+            "room": ["type": "string"],
+            "moves": ["type": "integer"],
+            "command": [
+                "type": "string",
+                "description": "The line typed to reach it, absent for the opening.",
+            ],
+            "actualContext": [
+                "type": "string",
+                "description": .string(
+                    "The whole turn it printed in — or, when it never printed, the last "
+                        + "turn of the replay, so a false claim comes back with the frame "
+                        + "that was really there."),
+            ],
+        ],
+        "required": ["lines", "finished"],
+    ]
+
     /// The shape of a `finish` result.
     private static let finishSchema: JSONValue = [
         "type": "object",
@@ -982,6 +1469,131 @@ extension PlaytestSession.Closing {
             entry["hint"] = .string(hint)
         }
         return .object(entry)
+    }
+}
+
+// MARK: - Rendering a checkpoint, a rewind and an export
+
+extension PlaytestSession.Marked {
+    /// A checkpoint as JSON, matching `PlaytestTools.checkpointSchema`.
+    var json: JSONValue {
+        [
+            "name": .string(name),
+            "line": .integer(line),
+            "room": .string(room),
+            "moves": .integer(moves),
+            "message": .string(message),
+        ]
+    }
+}
+
+extension PlaytestSession.Rewound {
+    /// A rewind as JSON, matching `PlaytestTools.rewindSchema`. The two optional
+    /// fields are left out rather than sent as null: a plain rewind has no name
+    /// to report, and a rewind that discarded nothing wrote no branch file.
+    var json: JSONValue {
+        var entry: [String: JSONValue] = [
+            "line": .integer(line),
+            "room": .string(room),
+            "moves": .integer(moves),
+            "discarded": .integer(discarded),
+            "status": .string(status),
+            "message": .string(message),
+        ]
+        if let name {
+            entry["name"] = .string(name)
+        }
+        if let branch {
+            entry["branch"] = .string(branch)
+        }
+        return .object(entry)
+    }
+}
+
+extension PlaytestSession.Export {
+    /// An export as JSON, matching `PlaytestTools.exportSchema`.
+    var json: JSONValue {
+        [
+            "transcript": .string(transcript),
+            "transcriptWithoutStatus": .string(transcriptWithoutStatus),
+            "commands": .string(commands),
+            "summary": .string(summary),
+            "lines": .integer(lines),
+            "seed": .integer(Int(bitPattern: UInt(seed))),
+            "verified": .bool(verified),
+            "message": .string(message),
+        ]
+    }
+}
+
+// MARK: - Rendering a replay
+
+extension PlaytestReplay.Outcome {
+    /// The replay as the caller reads it: a verdict when one was asked for, and
+    /// otherwise the transcript.
+    ///
+    /// Prose either way, and for the same reason `move` is prose: this is a
+    /// transcript, which is multi-line and full of quotation marks, and the one
+    /// reader whose whole job is reading it should not have to un-escape it. The
+    /// structured half carries the same fields for anything checking them.
+    var rendered: String {
+        var lines = [
+            "[playtest] replay lines=\(self.lines) finished=\(finished)"
+        ]
+        guard let verdict else {
+            return lines[0] + "\n" + Self.clipped(transcript)
+        }
+        lines.append(
+            verdict.found
+                ? """
+                found=true turn=\(verdict.turn) room=\(verdict.room) \
+                moves=\(verdict.moves)\
+                \(verdict.command.map { " command=`\($0)`" } ?? " (the opening)")
+                """
+                : """
+                found=false — that text printed nowhere in this replay. The last turn is \
+                below; check the command list and the seed before you believe the claim.
+                """)
+        lines.append("")
+        lines.append(Self.clipped(verdict.context))
+        return lines.joined(separator: "\n")
+    }
+
+    /// The replay as JSON, matching `PlaytestTools.replaySchema`.
+    var json: JSONValue {
+        var entry: [String: JSONValue] = [
+            "lines": .integer(lines),
+            "finished": .bool(finished),
+        ]
+        guard let verdict else {
+            entry["transcript"] = .string(Self.clipped(transcript))
+            return .object(entry)
+        }
+        entry["found"] = .bool(verdict.found)
+        entry["turn"] = .integer(verdict.turn)
+        entry["room"] = .string(verdict.room)
+        entry["moves"] = .integer(verdict.moves)
+        entry["actualContext"] = .string(Self.clipped(verdict.context))
+        if let command = verdict.command {
+            entry["command"] = .string(command)
+        }
+        return .object(entry)
+    }
+
+    /// The last ``PlaytestSession/resultCharacterCap`` characters, with a marker
+    /// when anything went.
+    ///
+    /// The same ceiling a `move` answers under, and the same argument: a tool
+    /// built to save its caller a job must not be able to answer with 40 KB. The
+    /// tail is kept because a replay's interesting end is its end — the turn the
+    /// claim is about is the one the reproducer was cut to reach.
+    private static func clipped(_ text: String) -> String {
+        let cap = PlaytestSession.resultCharacterCap
+        guard text.count > cap else { return text }
+        return """
+            [truncated \(text.count - cap) characters from the start of this replay]
+
+            """ + String(text.suffix(cap))
     }
 }
 

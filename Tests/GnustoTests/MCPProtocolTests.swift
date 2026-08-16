@@ -331,7 +331,9 @@ struct MCPProtocolTests {
 
         @Test func aCallThatAdvancesAWorldIsOrdered() throws {
             let server = try server()
-            for tool in ["open", "move", "note", "finish"] {
+            for tool in [
+                "open", "move", "note", "finish", "checkpoint", "restore", "rewind", "export",
+            ] {
                 let frame =
                     #"{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"#
                     + "\"\(tool)\"}}"
@@ -339,9 +341,12 @@ struct MCPProtocolTests {
             }
         }
 
+        /// `replay` is a reader even though it plays a game: it boots a world of
+        /// its own and touches no session, so two of them overlapping cannot
+        /// apply anybody's turns out of order.
         @Test func aReaderIsNotOrdered() throws {
             let server = try server()
-            for tool in ["survey", "recall", "coverage"] {
+            for tool in ["survey", "recall", "coverage", "vocabulary", "replay"] {
                 let frame =
                     #"{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"#
                     + "\"\(tool)\"}}"
@@ -371,7 +376,11 @@ struct MCPProtocolTests {
         @Test func everyRowDeclaresWhetherItMutates() throws {
             let mutating = Set(
                 try server().tools.filter(\.mutatesState).map(\.name))
-            #expect(mutating == ["open", "move", "note", "finish"])
+            #expect(
+                mutating == [
+                    "open", "move", "note", "finish", "checkpoint", "restore", "rewind",
+                    "export",
+                ])
         }
     }
 }

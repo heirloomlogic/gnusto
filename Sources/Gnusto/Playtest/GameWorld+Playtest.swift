@@ -148,6 +148,19 @@ extension GameWorld {
         }
     }
 
+    /// Whether the game has reached an ending — won, lost, or quit.
+    ///
+    /// The same fact a `TurnResult` carries as `isFinished`, asked of the world
+    /// afterwards. A driver that handed the whole command list to a `REPL`
+    /// rather than running the turns itself never sees the results, and
+    /// "did it end?" is not recoverable from the transcript: a list that ran to
+    /// the end and a list cut short by a death both stop printing.
+    ///
+    /// - Returns: true once nothing more can be played.
+    func hasEnded() -> Bool {
+        state.status.isFinal
+    }
+
     /// A copy of the whole mutable world, for a driver that wants to branch a
     /// session and come back.
     ///
@@ -197,14 +210,7 @@ extension GameWorld {
     /// - Parameter words: the words to ask about, as typed.
     /// - Returns: each word paired with whether the game knows it, in order.
     func knows(_ words: [String]) -> [(word: String, known: Bool)] {
-        words.map { word in
-            // Split the way the parser splits, so a caller that hands over
-            // "master's" gets the answer for the token the parser would make
-            // of it rather than a guaranteed no. See `Vocabulary.words(in:)`.
-            let tokens = Vocabulary.words(in: word)
-            let known = !tokens.isEmpty && tokens.allSatisfy { definition.vocabulary.knows($0) }
-            return (word, known)
-        }
+        definition.knows(words)
     }
 
     /// The extra status-footer fields the game's bundles and plugins
@@ -228,6 +234,29 @@ extension GameWorld {
         }
         _ = scratch.retire()  // discard: a status field is read-only by contract
         return fields
+    }
+}
+
+extension GameDefinition {
+    /// Whether the vocabulary knows each of these words, batched.
+    ///
+    /// On the definition rather than on the world because the answer is a fact
+    /// about the game *type*: no turn has to have run, no world has to exist,
+    /// and the `vocabulary` tool can therefore answer without booting or
+    /// rehydrating the session whose role it checked. `GameWorld.knows(_:)`
+    /// delegates here so there is one splitter and one definition of "knows".
+    ///
+    /// - Parameter words: the words to ask about, as typed.
+    /// - Returns: each word paired with whether the game knows it, in order.
+    func knows(_ words: [String]) -> [(word: String, known: Bool)] {
+        words.map { word in
+            // Split the way the parser splits, so a caller that hands over
+            // "master's" gets the answer for the token the parser would make
+            // of it rather than a guaranteed no. See `Vocabulary.words(in:)`.
+            let tokens = Vocabulary.words(in: word)
+            let known = !tokens.isEmpty && tokens.allSatisfy { vocabulary.knows($0) }
+            return (word, known)
+        }
     }
 }
 

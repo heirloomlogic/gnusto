@@ -44,12 +44,24 @@ struct PlaytestSessionTests {
     /// The same commands through a real `REPL`, with the footer a session
     /// always runs with, returning what `ScriptedIOHandler` recorded — the
     /// exact string a transcript test in this suite asserts on.
+    ///
+    /// - Parameters:
+    ///   - game: the game to play.
+    ///   - commands: the lines to feed.
+    ///   - seed: the seed to pin.
+    ///   - saveDirectory: where bare save names resolve.
+    ///   - status: the footer, or `nil` for the plain transcript
+    ///     `play(_:_:seed:)` produces — which is what `export`'s second file
+    ///     has to be.
+    /// - Throws: whatever building the world throws.
+    /// - Returns: the transcript.
     private func replTranscript(
-        _ game: some Game, _ commands: [String], seed: UInt64, saveDirectory: URL
+        _ game: some Game, _ commands: [String], seed: UInt64, saveDirectory: URL,
+        status: StatusFooter? = StatusFooter.always
     ) async throws -> String {
         let world = try GameWorld(game: game, seed: seed, saveDirectory: saveDirectory)
         let io = ScriptedIOHandler(lines: commands)
-        await REPL(world: world, io: io, status: StatusFooter.always).run()
+        await REPL(world: world, io: io, status: status).run()
         return io.transcript
     }
 
@@ -169,6 +181,251 @@ struct PlaytestSessionTests {
         let replayed = try await replTranscript(
             MorgueGame(), commands, seed: 0, saveDirectory: session.saveDirectory)
         #expect(recorded == replayed)
+    }
+
+    // MARK: - Exporting
+
+    /// `export` is the byte-identity invariant turned into a tool: it replays
+    /// the session's own command list through a fresh `REPL` and refuses to
+    /// hand back a citable path unless the bytes match.
+    ///
+    /// The second file is the other half of the point. A finding's excerpt gets
+    /// lifted into a suite test as an `expectInOrder` needle, and the suite never
+    /// prints a `[status]` line — an excerpt carrying one would fail against a
+    /// green suite and look like the game's fault. So the footer-free transcript
+    /// is written too, and it is asserted here to be exactly what a REPL with no
+    /// footer writes rather than the recorded file with lines filtered out of it.
+    @Test func exportWritesBothTranscriptsAndProvesTheyReplay() async throws {
+        let harness = try Harness(OperaHouse())
+        let commands = ["look", "x cloak", "// worth having", "west", "put cloak on hook"]
+        let session = try await harness.sessions.open(label: "exporting", seed: 0)
+        _ = try await session.opening()
+        _ = try await session.move(commands: commands, allowPrompts: false)
+
+        let exported = try await session.export()
+        #expect(exported.verified)
+        #expect(exported.lines == commands.count)
+        #expect(exported.message.contains("verified"))
+
+        let footered = try text(at: URL(fileURLWithPath: exported.transcript))
+        let plain = try text(at: URL(fileURLWithPath: exported.transcriptWithoutStatus))
+        #expect(footered.contains("[status] room="))
+        #expect(!plain.contains("[status]"))
+        #expect(
+            footered
+                == (try await replTranscript(
+                    OperaHouse(), commands, seed: 0, saveDirectory: session.saveDirectory)))
+        #expect(
+            plain
+                == (try await replTranscript(
+                    OperaHouse(), commands, seed: 0, saveDirectory: session.saveDirectory,
+                    status: nil)))
+        // The same prose in both, so an excerpt taken from either names the same
+        // turn.
+        #expect(plain.contains("You put the velvet cloak on the small brass hook."))
+        #expect(footered.contains("You put the velvet cloak on the small brass hook."))
+
+        #expect(try text(at: URL(fileURLWithPath: exported.commands)) == commands.joined(separator: "\n") + "\n")
+        let summary = try text(at: URL(fileURLWithPath: exported.summary))
+        #expect(summary.contains("byte identity: verified"))
+        #expect(summary.contains("lines recorded: 5 (4 commands, 1 comment)"))
+        #expect(summary.contains("transcript-without-status.txt"))
+    }
+
+    /// Exporting closes the recording; playing on reopens it and rewrites the
+    /// file from the blocks in hand, so a tester that thinks of one more thing
+    /// after it exported loses neither the old turns nor the new one.
+    @Test func aSessionCarriesOnAfterAnExport() async throws {
+        let harness = try Harness(OperaHouse())
+        let session = try await harness.sessions.open(label: "reopening", seed: 0)
+        _ = try await session.opening()
+        _ = try await session.move(commands: ["look"], allowPrompts: false)
+        _ = try await session.export()
+
+        _ = try await session.move(commands: ["x cloak"], allowPrompts: false)
+        let again = try await session.export()
+        #expect(again.verified)
+        #expect(again.lines == 2)
+        #expect(
+            try text(at: session.transcriptURL)
+                == (try await replTranscript(
+                    OperaHouse(), ["look", "x cloak"], seed: 0,
+                    saveDirectory: session.saveDirectory)))
+    }
+
+    // MARK: - Checkpoints, restores and rewinds
+
+    /// A checkpoint is an index into the command list, so coming back to it
+    /// **truncates the record**. That is the design and not an omission: the
+    /// invariant sold here is that `commands.txt` replays to `transcript.txt`,
+    /// and a restore that rewound the world while leaving the record alone would
+    /// break it on the spot — every reproducer filed afterwards would be a list
+    /// of commands that does not produce the quoted line.
+    ///
+    /// What that would otherwise cost is the branch nobody took, so the
+    /// discarded turns are kept beside the transcript as evidence. Nothing is
+    /// lost; it stops being canonical.
+    @Test func restoringACheckpointTruncatesTheRecordSoItStillReplays() async throws {
+        let harness = try Harness(OperaHouse())
+        let session = try await harness.sessions.open(label: "branching", seed: 0)
+        _ = try await session.opening()
+        _ = try await session.move(commands: ["x cloak", "west"], allowPrompts: false)
+
+        let marked = try await session.checkpoint("in the cloakroom")
+        #expect(marked.line == 2)
+        #expect(marked.room == "Cloakroom")
+
+        _ = try await session.move(commands: ["put cloak on hook", "east"], allowPrompts: false)
+        let back = try await session.restore(checkpoint: "in the cloakroom")
+        #expect(back.name == "in the cloakroom")
+        #expect(back.line == 2)
+        #expect(back.discarded == 2)
+        #expect(back.room == "Cloakroom")
+
+        // Both files are the prefix, and the prefix replays to exactly them.
+        #expect(try text(at: session.commandsURL) == "x cloak\nwest\n")
+        #expect(
+            try text(at: session.transcriptURL)
+                == (try await replTranscript(
+                    OperaHouse(), ["x cloak", "west"], seed: 0,
+                    saveDirectory: session.saveDirectory)))
+
+        // The world really went back: the cloak is in hand again, so hanging it
+        // is a thing that can still be done.
+        let after = try await session.move(commands: ["put cloak on hook"], allowPrompts: false)
+        #expect(after.contains("You put the velvet cloak on the small brass hook."))
+
+        // And the branch survives as evidence, marked as not canonical.
+        let branch = try text(at: URL(fileURLWithPath: try #require(back.branch)))
+        #expect(branch.contains("[branch] 2 lines rewound out of session branching/probe-001"))
+        #expect(branch.contains("> east"))
+    }
+
+    /// A rewind takes the queue back with the world. A restore that put the
+    /// world back and left the ledger where it was would re-offer every item the
+    /// discarded turns closed and hide every one they raised — the queue would be
+    /// describing a session that no longer exists.
+    @Test func aRewindTakesTheQueueBackWithTheWorld() async throws {
+        let harness = try Harness(AviaryGame())
+        let session = try await harness.sessions.open(
+            label: "rewinding", seed: 0, role: .explorer)
+        _ = try await session.opening()
+        _ = try await session.move(
+            commands: ["x nest", "x pebble", "take pebble"], allowPrompts: false)
+        #expect(try await session.coverage(limit: 200).items.contains { $0.id == "restate:pebble" })
+
+        let back = try await session.rewind(turns: 1)
+        #expect(back.name == nil)
+        #expect(back.line == 2)
+        #expect(back.discarded == 1)
+        // The take is gone from the record, from the world, and from the queue.
+        #expect(try text(at: session.commandsURL) == "x nest\nx pebble\n")
+        #expect(!(try await session.coverage(limit: 200).items.contains { $0.id == "restate:pebble" }))
+        let inventory = try await session.move(commands: ["i"], allowPrompts: false)
+        #expect(!inventory.contains("pebble"))
+    }
+
+    /// Going back further than the ring reaches is a replay of the retained
+    /// prefix — the same machinery an eviction uses, and exact for the same
+    /// reason. The ring is a fast path, not the only one, which is what lets it
+    /// be bounded.
+    @Test func aRestoreOlderThanTheRingReplaysThePrefix() async throws {
+        let harness = try Harness(OperaHouse())
+        let session = try await harness.sessions.open(label: "deep", seed: 0)
+        _ = try await session.opening()
+        _ = try await session.move(commands: ["x cloak"], allowPrompts: false)
+        _ = try await session.checkpoint("start")
+        _ = try await session.move(
+            commands: Array(repeating: "look", count: PlaytestSession.snapshotRing + 4),
+            allowPrompts: false)
+
+        let back = try await session.restore(checkpoint: "start")
+        #expect(back.line == 1)
+        #expect(back.discarded == PlaytestSession.snapshotRing + 4)
+        #expect(try text(at: session.commandsURL) == "x cloak\n")
+        #expect(
+            try text(at: session.transcriptURL)
+                == (try await replTranscript(
+                    OperaHouse(), ["x cloak"], seed: 0,
+                    saveDirectory: session.saveDirectory)))
+    }
+
+    /// A rewind onto a turn that opened a question replays rather than
+    /// snapshotting, because `GameWorld.restore(_:)` closes questions on purpose
+    /// and a session that came back to a line with a clarification armed has to
+    /// find it armed — otherwise the next line means something different than it
+    /// would in a replay, and the transcript stops being reproducible.
+    @Test func aRewindOntoAnOpenQuestionReplaysAndTheQuestionIsStillThere() async throws {
+        let harness = try Harness(LanternShopGame())
+        let session = try await harness.sessions.open(label: "asked", seed: 0)
+        _ = try await session.opening()
+        _ = try await session.move(commands: ["take lantern"], allowPrompts: false)
+        _ = try await session.checkpoint("asked")
+        _ = try await session.move(commands: ["brass", "look"], allowPrompts: true)
+
+        _ = try await session.restore(checkpoint: "asked")
+        // The clarification is open again, so the next line is read as its
+        // answer — which only happens if the rewind went through the replay.
+        let answer = try await session.move(commands: ["brass"], allowPrompts: true)
+        #expect(answer.contains("ran=1/1"))
+        #expect(!answer.contains("don't know the word"))
+    }
+
+    /// The one refusal. Replay is exact only while the run depends on nothing
+    /// outside it, and a save slot is outside it — so a session that used the
+    /// player's own `save` cannot be put back to a line the ring no longer
+    /// holds. Refused as a tool error naming the command list, rather than
+    /// silently landing in a world that never happened.
+    @Test func aSessionThatSavedCannotRewindPastTheRing() async throws {
+        let harness = try Harness(OperaHouse())
+        let session = try await harness.sessions.open(label: "saved", seed: 0)
+        _ = try await session.opening()
+        // The batch halts on the armed filename prompt, so the checkpoint stands
+        // at a line whose snapshot is unusable — `GameWorld.restore(_:)` closes
+        // questions on purpose — and the only way back is a replay, which this
+        // session may not do.
+        _ = try await session.move(commands: ["save"], allowPrompts: false)
+        #expect(await session.isPinned())
+        _ = try await session.checkpoint("armed")
+        _ = try await session.move(commands: ["slot", "look"], allowPrompts: true)
+
+        let refusal = await #expect(throws: PlaytestError.self) {
+            try await session.restore(checkpoint: "armed")
+        }
+        #expect(refusal?.description.contains("save or restore") == true)
+        #expect(refusal?.description.contains("Nothing moved") == true)
+        // Nothing moved: the record is whole.
+        #expect(try text(at: session.commandsURL) == "save\nslot\nlook\n")
+    }
+
+    /// The refusals that are about arithmetic rather than about safety.
+    @Test func rewindAndRestoreRefuseLegibly() async throws {
+        let harness = try Harness(OperaHouse())
+        let session = try await harness.sessions.open(label: "refusing", seed: 0)
+        _ = try await session.opening()
+        _ = try await session.move(commands: ["look"], allowPrompts: false)
+
+        let tooFar = await #expect(throws: PlaytestError.self) {
+            try await session.rewind(turns: PlaytestSession.snapshotRing + 1)
+        }
+        #expect(tooFar?.description.contains("at most \(PlaytestSession.snapshotRing)") == true)
+        #expect(tooFar?.description.contains("checkpoint") == true)
+
+        let tooMany = await #expect(throws: PlaytestError.self) {
+            try await session.rewind(turns: 4)
+        }
+        #expect(tooMany?.description.contains("has only 1") == true)
+
+        let unknown = await #expect(throws: PlaytestError.self) {
+            try await session.restore(checkpoint: "nowhere")
+        }
+        #expect(unknown?.description.contains("has none") == true)
+
+        _ = try await session.checkpoint("here")
+        let missing = await #expect(throws: PlaytestError.self) {
+            try await session.restore(checkpoint: "elsewhere")
+        }
+        #expect(missing?.description.contains("This session has: here") == true)
     }
 
     // MARK: - Halting on a question

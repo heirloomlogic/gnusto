@@ -722,14 +722,18 @@ struct PlaytestCoverageTests {
         #expect(closing["transcript"]?.stringValue?.hasSuffix("transcript.txt") == true)
     }
 
-    /// Every row is classified for ordering deliberately, and the two that write
-    /// the transcript say so. A row added later without a thought about it
+    /// Every row is classified for ordering deliberately, and the ones that
+    /// write the transcript say so. A row added later without a thought about it
     /// should fail here rather than race in the field.
     @Test func theWritingRowsDeclareThatTheyMutate() throws {
         let table = PlaytestTools.table(for: try PreparedGame(AviaryGame()), environment: [:])
         #expect(
-            Set(table.filter(\.mutatesState).map(\.name)) == ["open", "move", "note", "finish"])
+            Set(table.filter(\.mutatesState).map(\.name)) == [
+                "open", "move", "note", "finish", "checkpoint", "restore", "rewind", "export",
+            ])
         #expect(
-            Set(table.filter { !$0.mutatesState }.map(\.name)) == ["survey", "recall", "coverage"])
+            Set(table.filter { !$0.mutatesState }.map(\.name)) == [
+                "survey", "vocabulary", "recall", "coverage", "replay",
+            ])
     }
 }

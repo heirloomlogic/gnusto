@@ -150,6 +150,23 @@ final class TranscriptRecorder {
         append(Self.text(openingOutput: openingOutput))
     }
 
+    /// Writes back a block this class already rendered.
+    ///
+    /// Not a fourth way to say what a turn looks like: the argument comes from
+    /// one of the `text(...)` functions below, and this only puts it on disk
+    /// again. A play-test session needs it because two of its operations rewrite
+    /// the file from blocks it is already holding — a `rewind`, which truncates
+    /// the transcript to the turn it went back to, and the resumption of
+    /// recording after an `export` closed the file. Both keep the promise that
+    /// `commands.txt` replays to exactly these bytes, which is only true if the
+    /// bytes written the second time are the bytes that were there.
+    ///
+    /// - Parameter renderedBlock: a block from `text(command:output:)`,
+    ///   `text(commentLine:)` or `text(openingOutput:)`.
+    func record(renderedBlock: String) {
+        append(renderedBlock)
+    }
+
     /// Flushes and closes the transcript file.
     func close() {
         try? handle.close()

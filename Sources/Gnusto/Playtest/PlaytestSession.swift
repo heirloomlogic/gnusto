@@ -69,6 +69,18 @@ actor PlaytestSession {
         var block: String
     }
 
+    /// How many turns of world state a session keeps behind it, for `rewind`.
+    ///
+    /// A ring, so the memory is bounded rather than growing with the session: a
+    /// `WorldState` is a struct of dictionaries and each snapshot is a distinct
+    /// copy of the ones the turn touched, so an unbounded history of a long
+    /// Dungeon session would be the largest thing in the process by a wide
+    /// margin. Thirty-two is chosen against what a rewind is *for* — undoing a
+    /// handful of turns that went somewhere uninteresting — and a request to go
+    /// further is answered by a named checkpoint, which costs nothing because it
+    /// is an index rather than a state.
+    static let snapshotRing = 32
+
     /// The most text a `move` or `recall` result may carry, in characters.
     ///
     /// A tool built to make a move cheap must not be able to answer with 40 KB
@@ -126,6 +138,23 @@ actor PlaytestSession {
     /// file `bin/playtest-replay --commands` can replay as-is.
     nonisolated let commandsURL: URL
 
+    /// The same transcript with the `[status]` footers taken out, written by
+    /// ``export()``.
+    ///
+    /// It exists because of what happens to an excerpt after a round: a finding
+    /// quotes a line, somebody lifts the quote into a regression test as an
+    /// `expectInOrder` needle, and the suite's `play(_:_:seed:)` never prints a
+    /// `[status]` line. An excerpt that carried one would fail against a green
+    /// suite, and the failure would look like the game's fault. So a session
+    /// hands back both files and the names say which is which: `transcript.txt`
+    /// is what this session recorded, footers and all, and this is the one a
+    /// test may be written from.
+    nonisolated let transcriptWithoutStatusURL: URL
+
+    /// A plain-language account of the session, written by ``export()`` — how
+    /// far it got, what it measured, and whether the byte-identity check passed.
+    nonisolated let summaryURL: URL
+
     /// The game, booted once for the whole process.
     private let prepared: PreparedGame
 
@@ -179,6 +208,62 @@ actor PlaytestSession {
     /// ``PlaytestSignals``.
     private var lastNudge = 0
 
+    /// One recorded line's worth of "everything it would take to stand here
+    /// again", for ``rewind(turns:)`` and ``restore(checkpoint:)``.
+    ///
+    /// Two halves, and both are needed. The `WorldState` is the game; the
+    /// ledger, the counters and the pending question are the *session* reading
+    /// it, and a rewind that put the world back and left the queue where it was
+    /// would re-offer every item the discarded turns closed and hide every one
+    /// they raised. The ledger is a value type, so this is a copy and not a
+    /// handle.
+    ///
+    /// Not routed through `SaveStore`/`SaveFile`, deliberately: that path is a
+    /// two-turn prompt interaction, it touches disk, and it is itself something
+    /// a play-test session has to be able to exercise. A checkpoint that went
+    /// through it would be testing the thing it is supposed to stand outside of,
+    /// and the tester's own `save` and `restore` would stop being probeable.
+    private struct Snapshot {
+        /// How many lines had been recorded when this was taken. `0` is the
+        /// opening.
+        let line: Int
+        let state: WorldState
+        let ledger: CoverageLedger
+        let statusLine: String
+        let lastMoves: Int
+        let finished: Bool
+        /// What was armed at the time. A snapshot taken with a question open is
+        /// not usable — `GameWorld.restore(_:)` closes questions on purpose —
+        /// so the rewind falls back to a replay for that line. See
+        /// ``truncate(to:naming:)``.
+        let pending: PlaytestAwaiting
+        let lastNudge: Int
+    }
+
+    /// The last ``snapshotRing`` turns, oldest first.
+    private var ring: [Snapshot] = []
+
+    /// A place the tester asked to be able to come back to.
+    ///
+    /// **An index, not a state.** A checkpoint is "the command list was this
+    /// long here", which is worth stating because the alternative is worse in
+    /// three ways: it costs nothing to keep, so an agent may take as many as it
+    /// likes; it survives an eviction, where a held `WorldState` would be
+    /// dropped and a later `restore` would have to fail; and coming back to it
+    /// is a truncation of `commands.txt`, which is what keeps a finding reached
+    /// after a restore reproducible — the reproducer is the whole list from line
+    /// one, and there is exactly one list.
+    private struct Checkpoint {
+        let line: Int
+        let room: String
+        let moves: Int
+    }
+
+    private var checkpoints: [String: Checkpoint] = [:]
+
+    /// How many branches have been written off, for the file names.
+    private var branches = 0
+
     /// True once the session has used the player-facing `save` or `restore`.
     ///
     /// Such a session may never be evicted. Eviction is safe *because* replay
@@ -221,6 +306,9 @@ actor PlaytestSession {
         self.saveDirectory = saveDirectory
         self.transcriptURL = directory.appendingPathComponent("transcript.txt")
         self.commandsURL = directory.appendingPathComponent("commands.txt")
+        self.transcriptWithoutStatusURL =
+            directory.appendingPathComponent("transcript-without-status.txt")
+        self.summaryURL = directory.appendingPathComponent("summary.txt")
     }
 
     // MARK: - What a tool asks for
@@ -290,6 +378,7 @@ actor PlaytestSession {
                 """)
         }
         let world = try await liveWorld()
+        try resumeRecordingIfNeeded()
 
         var blocks: [(index: Int, text: String)] = []
         var ran = 0
@@ -444,6 +533,7 @@ actor PlaytestSession {
             throw PlaytestError("note needs something to say; it was given \"\(text)\".")
         }
         let world = try await liveWorld()
+        try resumeRecordingIfNeeded()
         let index = turns.count + 1
         let block = await run(line, at: index, in: world)
         turns.append(Turn(index: index, line: line, isComment: true, block: block))
@@ -560,6 +650,418 @@ actor PlaytestSession {
             message: message)
     }
 
+    // MARK: - Exporting
+
+    /// Where a finished session's evidence is, and whether it holds up.
+    struct Export: Sendable {
+        /// The transcript as this session recorded it, `[status]` footers and
+        /// all.
+        let transcript: String
+        /// The same transcript with the footers taken out — the string a
+        /// `play(_:_:seed:)` test asserts on, so an excerpt lifted from here
+        /// into the suite carries nothing the suite will not see.
+        let transcriptWithoutStatus: String
+        /// The command list, replayable by either harness.
+        let commands: String
+        /// The plain-language account.
+        let summary: String
+        /// How many lines were recorded.
+        let lines: Int
+        /// The seed all of it replays at.
+        let seed: UInt64
+        /// Whether the recorded transcript is byte-for-byte the one a fresh
+        /// `REPL` writes for the same list. Always true, or this throws.
+        let verified: Bool
+        /// The prose the agent reads.
+        let message: String
+    }
+
+    /// Closes the recording, writes the rest of the evidence, and **proves the
+    /// transcript is the REPL's**.
+    ///
+    /// The proof is the point of the tool, and it is worth being exact about
+    /// what it proves. This session's transcript was written by the loop in
+    /// ``run(_:at:in:)``, which is `REPL.run`'s loop with the IO handler taken
+    /// out. The verify feeds the same command list to a *fresh* `REPL` through
+    /// `ScriptedIOHandler` — the arrangement `play(_:_:seed:)` uses — and
+    /// compares the whole file to the whole string. Byte-for-byte, not
+    /// substring: the last divergence between the two drivers was one byte on
+    /// one reachable turn (empty output at the death prompt) and it cost a
+    /// stage to find.
+    ///
+    /// So every session that is exported re-proves, on real evidence, the claim
+    /// the entire harness rests on: **a tester's command list is a regression
+    /// test.** `docs/playtesting.md` and `bin/playtest-replay` both promise that
+    /// in those words. A mismatch is not a formatting problem to note and move
+    /// past; it means a finding's reproducer might not reproduce, so it is
+    /// raised as a tool error naming both files and the first byte that differs
+    /// — after everything has been written, so nothing is lost to the failure.
+    ///
+    /// The one honest caveat is a session that used the player's own `save` or
+    /// `restore`: those reach a file outside the run, which another probe under
+    /// the same label may have rewritten since, so a mismatch there may be about
+    /// the slot rather than about the driver. The message says so when it
+    /// applies.
+    ///
+    /// Exporting does not end the session. The next `move` reopens the
+    /// transcript and rewrites it from the blocks in hand, so a tester that
+    /// exports and then thinks of one more thing loses nothing.
+    ///
+    /// - Throws: ``PlaytestError`` when a file cannot be written or read, and
+    ///   when the two transcripts differ.
+    /// - Returns: the paths, and the verdict.
+    func export() async throws -> Export {
+        // Rehydrates first, so an evicted session exports the whole run rather
+        // than the prefix its transcript happened to be truncated to.
+        _ = try await liveWorld()
+        persistCommands()
+        recorder?.close()
+        recorder = nil
+
+        let lines = turns.map(\.line)
+        let recorded = try read(transcriptURL)
+        let replayed = await replay(lines, status: footer)
+        let plain = await replay(lines, status: nil)
+        try write(plain, to: transcriptWithoutStatusURL)
+
+        let verified = recorded == replayed
+        let signals = ledger.signals()
+        try write(
+            Self.summary(
+                session: id, title: prepared.definition.title, seed: seed, lines: lines,
+                signals: signals, open: ledger.openCount, verified: verified,
+                divergence: verified ? nil : Self.divergence(recorded, replayed)),
+            to: summaryURL)
+
+        let files = """
+            transcript (as recorded, with [status] lines): \(transcriptURL.path)
+            transcript (no [status] lines — write tests from this one): \
+            \(transcriptWithoutStatusURL.path)
+            commands: \(commandsURL.path)
+            summary: \(summaryURL.path)
+            """
+        guard verified else {
+            throw PlaytestError(
+                """
+                Everything is on disk, and the byte-identity check FAILED — report this, it \
+                is a finding about the harness and not about the game. \(lines.count) lines \
+                replayed through a fresh REPL at seed \(seed) did not produce the bytes this \
+                session recorded. A tester's command list is supposed to *be* a regression \
+                test, so a reproducer filed from this session may not reproduce.
+                \(Self.divergence(recorded, replayed))\
+                \(pinned
+                    ? "\n\nThis session used the player's own save or restore, which reaches "
+                        + "a file outside the run: another probe under label \(label) may have "
+                        + "rewritten a slot since, in which case the difference is about the "
+                        + "slot and not about the driver. Check the diverging turn.\n"
+                    : "\n")
+                \(files)
+                """)
+        }
+        return Export(
+            transcript: transcriptURL.path,
+            transcriptWithoutStatus: transcriptWithoutStatusURL.path,
+            commands: commandsURL.path,
+            summary: summaryURL.path,
+            lines: lines.count,
+            seed: seed,
+            verified: true,
+            message: """
+                Exported \(lines.count) line\(lines.count == 1 ? "" : "s") at seed \(seed), \
+                and verified: replaying them through a fresh REPL produces this transcript \
+                byte for byte, so the command list is a regression test.
+                \(files)
+                \(signals.line)
+                """)
+    }
+
+    /// The same commands through a real `REPL`, returning what
+    /// `ScriptedIOHandler` recorded.
+    ///
+    /// The session's own save directory, not a scratch one: a run that typed
+    /// `save` and then `restore` only reproduces against the slots it wrote.
+    ///
+    /// - Parameters:
+    ///   - commands: the lines to feed.
+    ///   - status: the footer to append, or `nil` for the plain transcript the
+    ///     suite sees.
+    /// - Returns: the transcript.
+    private func replay(_ commands: [String], status: StatusFooter?) async -> String {
+        let world = GameWorld(prepared: prepared, seed: seed, saveDirectory: saveDirectory)
+        let io = ScriptedIOHandler(lines: commands)
+        await REPL(world: world, io: io, status: status).run()
+        return io.transcript
+    }
+
+    // MARK: - Going back
+
+    /// A place a tester can come back to.
+    struct Marked: Sendable {
+        let name: String
+        /// The recorded-line index it stands at.
+        let line: Int
+        let room: String
+        let moves: Int
+        let message: String
+    }
+
+    /// What came of going back.
+    struct Rewound: Sendable {
+        /// The checkpoint's name, or `nil` for a plain rewind.
+        let name: String?
+        /// The recorded-line index the session now stands at.
+        let line: Int
+        let room: String
+        let moves: Int
+        /// How many recorded lines were dropped.
+        let discarded: Int
+        /// Where the dropped turns were kept, or `nil` when there were none.
+        let branch: String?
+        /// The `[status]` line as of the line it went back to.
+        let status: String
+        let message: String
+    }
+
+    /// Marks the current line so the tester can come back to it.
+    ///
+    /// - Parameter name: what to call it.
+    /// - Throws: ``PlaytestError`` for an empty name.
+    /// - Returns: where the mark was put.
+    func checkpoint(_ name: String) async throws -> Marked {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            throw PlaytestError("checkpoint needs a name to remember this place by.")
+        }
+        _ = try await liveWorld()
+        let line = turns.count
+        let existing = checkpoints[trimmed]
+        checkpoints[trimmed] = Checkpoint(
+            line: line, room: ledger.currentRoom, moves: lastMoves)
+        return Marked(
+            name: trimmed,
+            line: line,
+            room: ledger.currentRoom,
+            moves: lastMoves,
+            message: """
+                \(existing == nil ? "Marked" : "Moved") `\(trimmed)` to line \(line) \
+                (\(ledger.currentRoom), moves=\(lastMoves)). Call restore with that name to \
+                come back; the turns after it are written off to a branch file and dropped \
+                from the command list, so what you file afterwards still replays from line \
+                one.
+                """)
+    }
+
+    /// Goes back to a marked place.
+    ///
+    /// - Parameter name: the checkpoint's name.
+    /// - Throws: ``PlaytestError`` when nothing answers to the name, when the
+    ///   mark is stale, or when the session cannot be put back there.
+    /// - Returns: what was dropped.
+    func restore(checkpoint name: String) async throws -> Rewound {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let mark = checkpoints[trimmed] else {
+            let known = checkpoints.keys.sorted().joined(separator: ", ")
+            throw PlaytestError(
+                checkpoints.isEmpty
+                    ? """
+                    No checkpoint \"\(trimmed)\", and this session has none. Call checkpoint \
+                    first, or use rewind to go back a number of turns.
+                    """
+                    : "No checkpoint \"\(trimmed)\". This session has: \(known).")
+        }
+        guard mark.line <= turns.count else {
+            checkpoints.removeValue(forKey: trimmed)
+            throw PlaytestError(
+                """
+                Checkpoint \"\(trimmed)\" stood at line \(mark.line) and this session is now \
+                \(turns.count) lines long — an earlier rewind went back past it, so the mark \
+                pointed at turns that no longer exist. It has been dropped.
+                """)
+        }
+        return try await truncate(to: mark.line, naming: trimmed)
+    }
+
+    /// Goes back a number of recorded lines.
+    ///
+    /// - Parameter count: how many lines to drop, comments included, because
+    ///   that is how the lines are numbered everywhere else in this session.
+    /// - Throws: ``PlaytestError`` for a count that is not positive, one past
+    ///   the ring, or a session that cannot be put back there.
+    /// - Returns: what was dropped.
+    func rewind(turns count: Int) async throws -> Rewound {
+        guard count > 0 else {
+            throw PlaytestError("rewind needs a positive number of turns to go back.")
+        }
+        guard count <= Self.snapshotRing else {
+            throw PlaytestError(
+                """
+                rewind goes back at most \(Self.snapshotRing) lines and was asked for \
+                \(count). Nothing moved. That is the depth of the snapshot ring, which is \
+                bounded so a long session does not carry its whole history in memory — to \
+                come back from further away, mark the place with checkpoint before you go, \
+                which costs nothing because a checkpoint is an index rather than a state.
+                """)
+        }
+        guard count <= turns.count else {
+            throw PlaytestError(
+                """
+                rewind was asked for \(count) lines and this session has only \
+                \(turns.count). Nothing moved.
+                """)
+        }
+        return try await truncate(to: turns.count - count, naming: nil)
+    }
+
+    /// Puts the session back at a recorded line and writes off everything after
+    /// it.
+    ///
+    /// **Both files are truncated, and that is the design rather than an
+    /// omission.** The invariant this harness sells is that `commands.txt`
+    /// replays to `transcript.txt`; a rewind that rewound the world and left the
+    /// record alone would break it on the spot, and every reproducer filed
+    /// afterwards would be a list of commands that does not produce the quoted
+    /// line. So the record goes back too, and a finding reached after a rewind
+    /// has a reproducer that is still the whole list from line one.
+    ///
+    /// What that would otherwise cost is the evidence of the branch nobody took,
+    /// so the discarded turns are written to `branch-NNN.txt` beside the
+    /// transcript before they go, with a comment line saying where they came
+    /// from. Nothing is lost; it stops being canonical.
+    ///
+    /// Two ways back, and the second is the reason the first can be a bounded
+    /// ring. If the ring still holds the line, the world is put back from it
+    /// directly. If it does not — or if the snapshot was taken with a question
+    /// open, which `GameWorld.restore(_:)` closes and a replay would re-arm —
+    /// the world is dropped and the retained prefix is replayed, which is the
+    /// same machinery an eviction uses and is exact for the same reason. That
+    /// path is refused for a session that used the player's own `save` or
+    /// `restore`, on the same argument that pins one against eviction: its run
+    /// depends on a file the replay does not control.
+    ///
+    /// - Parameters:
+    ///   - target: the line to stand at afterwards; `0` is the opening.
+    ///   - name: the checkpoint's name, when this came from one.
+    /// - Throws: ``PlaytestError`` when the session cannot be put back there.
+    /// - Returns: what was dropped.
+    private func truncate(to target: Int, naming name: String?) async throws -> Rewound {
+        _ = try await liveWorld()
+        let dropped = Array(turns[target...])
+        let usable = ring.first { $0.line == target && $0.pending == .none }
+        guard usable != nil || !pinned else {
+            throw PlaytestError(
+                """
+                Can't go back to line \(target): this session used the player's own save or \
+                restore, and the only way back to a line the snapshot ring no longer holds \
+                is to replay the lines up to it — which is not safe once a run depends on a \
+                save slot, because the slot may have been rewritten since and the replay \
+                would land in a world that never happened. Nothing moved. Open a fresh \
+                session and replay \(commandsURL.path) up to line \(target) if you need \
+                this.
+                """)
+        }
+
+        let branch = writeBranch(dropped)
+        turns.removeSubrange(target...)
+        checkpoints = checkpoints.filter { $0.value.line <= target }
+        ring.removeAll { $0.line > target }
+
+        if let usable, let world {
+            await world.restore(usable.state)
+            ledger = usable.ledger
+            statusLine = usable.statusLine
+            lastMoves = usable.lastMoves
+            finished = usable.finished
+            lastNudge = usable.lastNudge
+            pending = await world.awaiting()
+            try rewriteTranscript()
+        } else {
+            // The eviction path, used deliberately: drop the world and let
+            // `liveWorld` replay the prefix. It rewrites the transcript from the
+            // beginning as it goes, so the two files agree at the end of it.
+            recorder?.close()
+            recorder = nil
+            world = nil
+            openingBlock = ""
+            ring = []
+            finished = false
+            for index in turns.indices {
+                turns[index].block = ""
+            }
+            _ = try await liveWorld()
+        }
+        persistCommands()
+
+        return Rewound(
+            name: name,
+            line: target,
+            room: ledger.currentRoom,
+            moves: lastMoves,
+            discarded: dropped.count,
+            branch: branch?.path,
+            status: statusLine,
+            message: """
+                Back at line \(target) — \(ledger.currentRoom), moves=\(lastMoves)\
+                \(name.map { ", the checkpoint you called `\($0)`" } ?? "").
+                \(dropped.count) line\(dropped.count == 1 ? "" : "s") dropped from the \
+                command list\(branch.map { ", kept as evidence at \($0.path)" } ?? "").
+                \(statusLine)
+                """)
+    }
+
+    /// Writes the turns a rewind discarded to their own file.
+    ///
+    /// Best effort, and never a reason to fail the rewind: the branch is a
+    /// courtesy to whoever reads the round afterwards, where the truncation
+    /// itself is what keeps the reproducer honest.
+    ///
+    /// - Parameter dropped: the turns being written off, oldest first.
+    /// - Returns: where they went, or `nil` when there were none or the write
+    ///   failed.
+    private func writeBranch(_ dropped: [Turn]) -> URL? {
+        guard !dropped.isEmpty else { return nil }
+        branches += 1
+        let url = directory.appendingPathComponent(String(format: "branch-%03d.txt", branches))
+        let header = TranscriptRecorder.text(
+            commentLine: """
+                // [branch] \(dropped.count) lines rewound out of session \(id) at line \
+                \(dropped.first?.index ?? 0). Kept as evidence; not a canonical transcript.
+                """)
+        let text = header + dropped.map(\.block).joined()
+        guard (try? Data(text.utf8).write(to: url, options: .atomic)) != nil else { return nil }
+        return url
+    }
+
+    /// Reopens the transcript and writes back the blocks the session is holding.
+    ///
+    /// Truncating rather than appending, for the reason stated at ``boot()``:
+    /// one write path is cheaper to trust than an append path that has to be
+    /// sure where it left off, and the bytes written the second time are the
+    /// bytes that were there.
+    ///
+    /// - Throws: ``PlaytestError`` when the file cannot be reopened.
+    private func rewriteTranscript() throws {
+        recorder?.close()
+        recorder = nil
+        do {
+            recorder = try TranscriptRecorder(url: transcriptURL)
+        } catch {
+            throw PlaytestError(
+                "Couldn't reopen the transcript at \(transcriptURL.path): \(error).")
+        }
+        recorder?.record(renderedBlock: openingBlock)
+        for turn in turns {
+            recorder?.record(renderedBlock: turn.block)
+        }
+    }
+
+    /// Reopens the transcript when an ``export()`` closed it, so play can go on.
+    ///
+    /// - Throws: ``PlaytestError`` when the file cannot be reopened.
+    private func resumeRecordingIfNeeded() throws {
+        guard recorder == nil, world != nil else { return }
+        try rewriteTranscript()
+    }
+
     /// The inline `harness:` line, at most one per twenty commands.
     ///
     /// Appended to a `move` result and to nothing else — never recorded, so a
@@ -616,6 +1118,7 @@ actor PlaytestSession {
         recorder = nil
         world = nil
         openingBlock = ""
+        ring = []
         for index in turns.indices {
             turns[index].block = ""
         }
@@ -695,6 +1198,14 @@ actor PlaytestSession {
         finished = result.isFinished
         pending = await world.awaiting()
         self.world = world
+        // The ring is derived state like the ledger, so it is thrown away and
+        // refilled by the replay rather than carried across an eviction — every
+        // line of the replay goes through `run`, which remembers it. The named
+        // checkpoints are *not* thrown away, and that is the whole reason they
+        // are indices: a replay puts the lines they point at back where they
+        // were.
+        ring = []
+        await remember(line: 0, in: world)
         return world
     }
 
@@ -722,6 +1233,10 @@ actor PlaytestSession {
             recorder?.record(commentLine: line)
             ledger.observeComment(
                 line, room: ledger.currentRoom, moves: lastMoves, line: index)
+            // Snapshotted like any other recorded line: `rewind` counts lines,
+            // comments included, so a rewind that landed on one would otherwise
+            // have to replay the session to find a frame it was already holding.
+            await remember(line: index, in: world)
             return TranscriptRecorder.text(commentLine: line)
         }
 
@@ -757,7 +1272,33 @@ actor PlaytestSession {
         {
             pinned = true
         }
+        await remember(line: index, in: world)
         return TranscriptRecorder.text(command: line, output: annotated)
+    }
+
+    /// Puts this line's world and this line's reading of it into the ring.
+    ///
+    /// Called at the bottom of every recorded line, after everything about the
+    /// line has been applied — the whole value of a snapshot is that it is the
+    /// frame the tester was actually standing in when it decided to go back.
+    ///
+    /// - Parameters:
+    ///   - line: the recorded-line index this snapshot stands at.
+    ///   - world: the live world.
+    private func remember(line: Int, in world: GameWorld) async {
+        ring.append(
+            Snapshot(
+                line: line,
+                state: await world.snapshot(),
+                ledger: ledger,
+                statusLine: statusLine,
+                lastMoves: lastMoves,
+                finished: finished,
+                pending: pending,
+                lastNudge: lastNudge))
+        if ring.count > Self.snapshotRing {
+            ring.removeFirst()
+        }
     }
 
     /// Refuses `script` and `unscript` before anything runs.
@@ -805,6 +1346,126 @@ actor PlaytestSession {
     private func persistCommands() {
         let text = turns.map(\.line).joined(separator: "\n")
         try? Data("\(text)\n".utf8).write(to: commandsURL, options: .atomic)
+    }
+
+    /// Every line this session has recorded, in order — the list that replays
+    /// it.
+    func commandList() -> [String] {
+        turns.map(\.line)
+    }
+
+    /// Reads one of the session's own files.
+    ///
+    /// - Parameter url: the file.
+    /// - Throws: ``PlaytestError`` naming it, because the caller is an agent and
+    ///   a `CocoaError` is not something it can act on.
+    /// - Returns: the contents as text.
+    private func read(_ url: URL) throws -> String {
+        do {
+            return String(decoding: try Data(contentsOf: url), as: UTF8.self)
+        } catch {
+            throw PlaytestError("Couldn't read \(url.path): \(error).")
+        }
+    }
+
+    /// Writes one of the session's own files, atomically.
+    ///
+    /// - Parameters:
+    ///   - text: the contents.
+    ///   - url: where to put them.
+    /// - Throws: ``PlaytestError`` naming the file.
+    private func write(_ text: String, to url: URL) throws {
+        do {
+            try Data(text.utf8).write(to: url, options: .atomic)
+        } catch {
+            throw PlaytestError("Couldn't write \(url.path): \(error).")
+        }
+    }
+
+    /// The plain-language account `export` leaves beside the transcript.
+    ///
+    /// Written for a person opening the directory a month later with no idea
+    /// what these four files are, so it says what each one is for and what the
+    /// numbers mean. Everything in it is the session's own record plus the
+    /// game's title, which the opening banner printed — nothing here reaches for
+    /// the definition, and the firewall holds through the export the same way it
+    /// holds through the queue.
+    ///
+    /// - Parameters:
+    ///   - session: the session id.
+    ///   - title: the game's title.
+    ///   - seed: the seed it replays at.
+    ///   - lines: every recorded line.
+    ///   - signals: the measured signals.
+    ///   - open: how many queue items were still open.
+    ///   - verified: whether the byte-identity check passed.
+    ///   - divergence: where the two transcripts first differ, when they do.
+    /// - Returns: the file's contents.
+    private static func summary(
+        session: String, title: String, seed: UInt64, lines: [String],
+        signals: PlaytestSignals, open: Int, verified: Bool, divergence: String?
+    ) -> String {
+        let comments = lines.filter(TesterInput.isComment).count
+        var text = """
+            Play-test session \(session)
+            game: \(title)
+            seed: \(seed)
+            lines recorded: \(lines.count) (\(lines.count - comments) \
+            command\(lines.count - comments == 1 ? "" : "s"), \(comments) \
+            comment\(comments == 1 ? "" : "s"))
+            signals: \(signals.line)
+            queue items still open: \(open)
+
+            byte identity: \(verified ? "verified" : "FAILED")
+              Replaying commands.txt through a fresh REPL at this seed \
+            \(verified ? "produces transcript.txt exactly" : "did NOT reproduce transcript.txt")\
+            \(verified
+                ? ", so this command list is a regression test."
+                : " — a reproducer filed from this session may not reproduce.")
+
+            files here:
+              commands.txt                   every line fed, comments included
+              transcript.txt                 as recorded, with a [status] line per turn
+              transcript-without-status.txt  the same run without them — write a suite \
+            test from this one
+              branch-NNN.txt                 turns a rewind discarded, kept as evidence
+
+            """
+        if let divergence {
+            text += "\n\(divergence)\n"
+        }
+        return text
+    }
+
+    /// Where two transcripts first differ, with a window of each.
+    ///
+    /// Byte identity is the invariant; a report that only said "they differ"
+    /// would leave the reader diffing two files by hand to find the one turn
+    /// that matters, which on a five-hundred-line session is the whole job.
+    ///
+    /// - Parameters:
+    ///   - recorded: what the session wrote.
+    ///   - replayed: what a fresh `REPL` wrote for the same lines.
+    /// - Returns: a paragraph naming the offset and quoting both sides.
+    private static func divergence(_ recorded: String, _ replayed: String) -> String {
+        let left = Array(recorded.utf8)
+        let right = Array(replayed.utf8)
+        var offset = 0
+        while offset < left.count, offset < right.count, left[offset] == right[offset] {
+            offset += 1
+        }
+        func window(_ bytes: [UInt8]) -> String {
+            let start = max(0, offset - 80)
+            let end = min(bytes.count, offset + 80)
+            guard start < end else { return "(end of file)" }
+            return String(decoding: bytes[start..<end], as: UTF8.self)
+        }
+        return """
+            First difference at byte \(offset) of \(left.count) recorded / \(right.count) \
+            replayed.
+            recorded: …\(window(left))…
+            replayed: …\(window(right))…
+            """
     }
 
     // MARK: - The trailer, and the cap
