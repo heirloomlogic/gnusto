@@ -177,6 +177,8 @@ see the two disagree.
     report-shape.md                    the round report and the ledger
     issue-shape.md                     the one issue a round files
 bin/playtest-replay                    the replay helper
+bin/playtest-measure                   how curiously a session played, off its artifacts
+bin/gnusto-mcp, .mcp.json              every game as a live play-test server
 docs/playtesting.md                    driving it by hand, without any of this
 ```
 
@@ -201,3 +203,40 @@ one, so the harness warns testers that engine facts may be anachronistic. Calibr
 is a **multi-tree** exercise — the three defects usually cited don't co-exist in any
 single commit. `docs/playtesting.md` has the per-tree answer key and the reasoning;
 `docs/games/fulminate-playtest-2026-07-29.md` has the last run's scores.
+
+## Measuring a change to the harness
+
+Calibration asks whether the harness still finds known defects. This asks the other
+question: whether a change to it — a coverage ranking, a charter, a brief — made
+testers play *better*. `bin/playtest-measure` is the instrument. Point it at probe
+directories and it reads `commands.txt` and `transcript.txt` for distinct rooms
+entered, distinct verbs used, distinct objects examined, and command counts. Nothing
+is self-reported.
+
+Three rules, each of which was learned by getting it wrong:
+
+**Run a control, never compare against stored numbers.** Build a binary carrying the
+*old* behaviour, run it through the *same* dispatch as the new one, and compare those
+two. Recorded numbers from an earlier round were produced by a different driver — a
+different model, prompt, or client — and that difference is easily larger than the
+effect being measured. In August 2026 a comparison against stored numbers said plain
+cheapness ranking cost 12 distinct verbs; a matched control said it cost none, and two
+ranking changes had been built to fix a regression that did not exist.
+
+**Only Dungeon can confirm anything.** Its 195 rooms are the only map in the corpus
+with headroom. Fulminate's ten put every condition inside every other's spread — over
+20 probes its rooms-entered ranges 1–8 with a mean near 5 regardless of what the
+harness is doing. It can *falsify* a change cheaply, and it is worth running for that,
+but a Fulminate pass is not evidence.
+
+**Say what would count as success before running it.** Write the bar down, then honour
+it. Re-tuning until the numbers pass is how a null result becomes a feature.
+
+Two tells that a comparison has drifted, both worth checking before believing a
+number: sessions opened per dispatched run (runs that open four sessions each are not
+comparable to stored runs that opened one), and the command count moving with the
+result — an arm that simply played longer will look better at everything.
+
+```sh
+bin/playtest-measure .context/playtest/<label>/probe-*
+```

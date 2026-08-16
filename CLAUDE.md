@@ -39,7 +39,13 @@ bin/playtest-replay --build Fulminate                              # once
 bin/playtest-replay Fulminate --commands probe.txt --seed 0 --label mine --tail 60
 
 bin/gnusto-mcp Fulminate                       # what an MCP client runs; stdout is the protocol
+bin/playtest-measure .context/playtest/mine/probe-*   # rooms, verbs, objects — off the artifacts
 ```
+
+Measuring a harness change wants a **control binary run through the same dispatch**,
+never a comparison against numbers recorded in an earlier round, and only Dungeon has
+the map size to confirm a result. `.claude/skills/playtest/SKILL.md`, "Measuring a
+change to the harness", says why both of those cost real work when ignored.
 
 `bin/playtest-replay` stays even though the server can replay too: the calibration
 workflow in `.claude/skills/playtest/SKILL.md` builds from a worktree at an old

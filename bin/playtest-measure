@@ -1,0 +1,118 @@
+#!/usr/bin/env python3
+"""Measure how curiously an agent played, from the artifacts a session leaves.
+
+Everything here is read off `commands.txt` and `transcript.txt`, which a session
+writes durably after every batch. Nothing is self-reported, which is the whole
+point: the old harness's two census agents exist because an agent asked how much
+it had covered answered 2 when the truth was 261, and 112 when the truth was 155.
+
+This is the instrument for an A/B on the harness itself — a ranking change, a
+charter change, a brief change. `SKILL.md`'s "Measuring a change to the harness"
+says how to use it without fooling yourself; the short version is that you need a
+control binary run through the *same* dispatch, and that only Dungeon has the
+headroom to confirm anything.
+
+**The counting rules are frozen on purpose.** Every recorded number ever compared
+was produced by this arithmetic, so changing it silently invalidates every
+past-versus-present comparison in the ledgers. Add a field rather than redefining
+one, and if a rule genuinely has to change, re-measure the stored probes with it.
+
+Usage: bin/playtest-measure <probe-dir> [<probe-dir> ...]
+
+  bin/playtest-measure .context/playtest/mine/probe-*
+"""
+import re
+import sys
+from collections import Counter
+from pathlib import Path
+
+# The status footer the engine appends to every turn, e.g.
+#   [status] room=West of House | moves=12 | score=0 | turn=cost
+STATUS = re.compile(r"^\[status\] room=(?P<room>[^|]+?) \| moves=(?P<moves>\d+).*turn=(?P<cost>\w+)")
+
+# Commands that mean "look closer at a thing" — the direct measure of curiosity.
+EXAMINE = {"x", "examine", "look at", "read", "search", "look in", "look under", "look behind"}
+
+# A state change worth re-examining after: what the coverage ledger raises a
+# `restate:` item for.
+MUTATING = {"take", "get", "drop", "open", "close", "turn on", "turn off", "light",
+            "move", "push", "pull", "unlock", "lock", "fill", "empty", "break", "burn"}
+
+
+def verb_and_object(line):
+    """Split a command into a leading verb phrase and the rest."""
+    words = line.strip().lower().split()
+    if not words:
+        return None, None
+    for size in (3, 2):                       # "look in", "turn on", …
+        if len(words) >= size:
+            phrase = " ".join(words[:size])
+            if phrase in EXAMINE or phrase in MUTATING:
+                return phrase, " ".join(words[size:])
+    return words[0], " ".join(words[1:])
+
+
+def measure(probe):
+    probe = Path(probe)
+    commands = [
+        l.rstrip("\n") for l in (probe / "commands.txt").read_text().splitlines()
+        if l.strip()
+    ]
+    transcript = (probe / "transcript.txt").read_text()
+
+    engine = [c for c in commands if not c.lstrip().startswith(("//", "#"))]
+    notes = len(commands) - len(engine)
+
+    rooms, moves, free = [], 0, 0
+    for line in transcript.splitlines():
+        m = STATUS.match(line)
+        if not m:
+            continue
+        rooms.append(m.group("room").strip())
+        moves = max(moves, int(m.group("moves")))
+        if m.group("cost") == "free":
+            free += 1
+
+    verbs, examined, taken = Counter(), set(), set()
+    per_object = {}
+    restated = set()
+    for c in engine:
+        verb, obj = verb_and_object(c)
+        if not verb:
+            continue
+        verbs[verb] += 1
+        if obj:
+            per_object.setdefault(obj, set()).add(verb)
+        if verb in EXAMINE and obj:
+            if obj in taken:                  # looked again after changing it
+                restated.add(obj)
+            examined.add(obj)
+        if verb in MUTATING and obj:
+            taken.add(obj)
+
+    deepest = sorted(per_object.items(), key=lambda kv: -len(kv[1]))[:5]
+    return {
+        "probe": str(probe),
+        "commands typed": len(commands),
+        "  of which notes": notes,
+        "engine commands": len(engine),
+        "turns charged": moves,
+        "free commands": free,
+        "distinct rooms entered": len(set(rooms)),
+        "distinct verbs used": len(verbs),
+        "distinct objects examined": len(examined),
+        "objects touched then re-examined": len(restated),
+        "median verbs per object": (
+            sorted(len(v) for v in per_object.values())[len(per_object) // 2]
+            if per_object else 0),
+        "deepest objects": ", ".join(f"{o}({len(v)})" for o, v in deepest),
+        "restated objects": ", ".join(sorted(restated)) or "(none)",
+    }
+
+
+for arg in sys.argv[1:]:
+    stats = measure(arg)
+    print(f"\n=== {stats.pop('probe')} ===")
+    width = max(len(k) for k in stats)
+    for key, value in stats.items():
+        print(f"{key:<{width}} : {value}")
