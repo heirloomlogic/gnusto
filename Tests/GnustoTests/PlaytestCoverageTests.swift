@@ -522,6 +522,27 @@ struct PlaytestCoverageTests {
         #expect(complaint.contains("defer"))
     }
 
+    /// An abstain session that takes the fork anyway is recorded as having
+    /// taken it.
+    ///
+    /// The policy is an instruction and not a lock — a tester that reaches a
+    /// fork while doing something else has discovered something, and the ledger
+    /// records rather than forbids it. But then the record has to be *true*: a
+    /// round reads these to decide which branches went untested, so a fork this
+    /// session actually took must never come back as one it left alone.
+    @Test func anAbstainSessionThatTakesTheForkAnywaySaysSo() async throws {
+        let session = try await session(AviaryGame(), divergence: .abstain)
+        _ = try await session.move(commands: ["x oak"], allowPrompts: false)
+        #expect(!(try await ids(session).contains("object:oak:burn")))
+
+        _ = try await session.move(commands: ["burn oak"], allowPrompts: false)
+
+        let closing = try await session.finish(
+            summary: "burned it despite orders", leaving: nil, limit: 200)
+        let fork = try #require(closing.forks.first { $0.id == "object:oak:burn" })
+        #expect(fork.taken)
+    }
+
     // MARK: - The egg
 
     /// **The egg.** Anything that changes a thing puts looking at it back on the

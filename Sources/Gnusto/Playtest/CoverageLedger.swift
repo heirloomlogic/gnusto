@@ -1273,6 +1273,14 @@ struct CoverageLedger: Sendable {
         guard prefixed else {
             guard let position = positions[id] else { return }
             items[position].discharged = true
+            // A fork closed by a command is a fork the tester *took*, whatever
+            // its policy said. `abstained` means only "closed on sight, never
+            // asked for", and a session that reached for the thing anyway has
+            // tested that branch — so the flag has to come back off, or
+            // ``forks()`` reports a branch as untested that somebody tested.
+            // A policy is an instruction, not a lock; the record is what has to
+            // be true.
+            items[position].abstained = false
             return
         }
         for index in items.indices where items[index].id.hasPrefix(id) {
