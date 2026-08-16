@@ -265,37 +265,55 @@ public actor GameWorld {
     ) -> TurnResult {
         let intent = parsed.intent
         // "robot, take all" fails the first clause: the loop expands against
-        // what the *player* can see and runs stage 4 once per object, and
+        // what the *player* can get at and runs stage 4 once per object, and
         // stage 4 is exactly what an order never reaches.
         guard parsed.actor == nil, Self.multiObjectIntents.contains(intent) else {
             return freeReply(definition.text.multipleNotAllowedWith(parsed.verbPhrase))
         }
 
-        /// What the player can see and what they hold — the two sets a keyword
-        /// expands against. Built on demand, because a list the player wrote
-        /// out is already resolved and a room sweep would be for nothing.
-        func sets() -> (visible: Set<EntityID>, held: Set<EntityID>) {
-            let index = state.containment()
-            return (
-                Visibility.visibleItems(
-                    at: state.playerLocation, definition: definition, state: state, index: index),
-                Set(index.held[.player] ?? [])
-            )
-        }
-
+        // The index is built inside each keyword case rather than out here:
+        // a list the player wrote out is already resolved, and a room sweep
+        // for it would be for nothing.
         var objects: [EntityID]
         switch multiple {
-        case .all:
-            let (visible, held) = sets()
+        case .all where intent == .take:
+            let index = state.containment()
+            // The question TAKE ALL asks is "what could I pick up here", and
+            // that is the *reachable* set, not the nameable one: a shut glass
+            // case shows its medal and the troll's axe is plainly in his hands,
+            // but offering either only earns a refusal by name (#267). A
+            // `reach { … }` veto is deliberately still offered — `reachableItems`
+            // is containment-only, and a rule that says "the length of the
+            // gallery away" wants to say it, not to vanish the thing.
+            let reachable = Visibility.reachableItems(
+                at: state.playerLocation, definition: definition, state: state, index: index)
+            // Subtract the player's inventory to *any* depth. The direct
+            // children are not enough: the water is in the bottle and the
+            // bottle is in your hand, and ALL has nothing to add to that.
+            // A TAKE ALL policy, not an impossibility — `take water` by name
+            // still runs, and is still the game's own business to answer.
+            let carried = index.closure(under: index.held[.player] ?? [])
             objects = inDisplayOrder(
-                intent == .take
-                    ? visible.filter { definition.items[$0]?.isTakable == true && !held.contains($0) }
-                    : Array(held))
+                reachable.filter {
+                    definition.items[$0]?.isTakable == true && !carried.contains($0)
+                })
+        case .all:
+            // DROP/PUT ALL is the opposite question and keeps the opposite
+            // answer: what you hold, direct children only, so DROP ALL empties
+            // your hands and not your sack. Worn items are placed
+            // `.heldBy(.player)` too, which is why they come along.
+            objects = inDisplayOrder(state.containment().held[.player] ?? [])
         case .them:
             guard !state.pronounThem.isEmpty else {
                 return freeReply(definition.text.noReferent("them"))
             }
-            let visible = sets().visible
+            // Visible, not reachable: "them" is a pronoun recalling the group
+            // the player just named, and a member that has since gone behind
+            // glass should be refused by name rather than silently dropped
+            // from the group.
+            let visible = Visibility.visibleItems(
+                at: state.playerLocation, definition: definition, state: state,
+                index: state.containment())
             objects = inDisplayOrder(state.pronounThem.filter { visible.contains($0) })
             guard !objects.isEmpty else {
                 return freeReply(definition.text.cantSeeAnySuchThing())

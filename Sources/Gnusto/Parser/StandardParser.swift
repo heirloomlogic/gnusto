@@ -180,7 +180,15 @@ struct StandardParser {
 
         // Candidate rules: those whose leading verb words prefix the tokens.
         // The table is pre-sorted most-specific-first.
-        let candidates = syntaxRules.filter { tokens.starts(with: $0.leadingWords) }
+        //
+        // A row's verb-identifying run may end in a preposition — `look in`,
+        // `get in`, `turn on`, `blow out` — and the player is owed its
+        // synonyms, so the comparison is between canonical spellings. Both
+        // sides are folded in advance rather than per comparison: the rows once
+        // at bootstrap, the line once here, which keeps the filter itself the
+        // single prefix test it has always been.
+        let canonical = tokens.map(Vocabulary.canonical)
+        let candidates = syntaxRules.filter { canonical.starts(with: $0.canonicalLeadingWords) }
 
         guard !candidates.isEmpty else {
             let first = tokens[0]
@@ -346,7 +354,7 @@ struct StandardParser {
                     // The literal closes the open object slot: the tokens up
                     // to its first occurrence are the slot's phrase.
                     guard
-                        let split = tokens[cursor...].firstIndex(of: word),
+                        let split = firstOccurrence(of: word, in: tokens, from: cursor),
                         split > cursor
                     else {
                         return missingTheWordThatClosesTheSlot(
@@ -363,7 +371,9 @@ struct StandardParser {
                     openSlot = nil
                     lastLiteral = word
                 } else {
-                    guard cursor < tokens.count, tokens[cursor] == word else {
+                    guard cursor < tokens.count,
+                        Vocabulary.literal(word, matches: tokens[cursor])
+                    else {
                         return .mismatch
                     }
                     cursor += 1
@@ -488,6 +498,27 @@ struct StandardParser {
                 rawInput: rawInput))
     }
 
+    /// Where the literal `word` stands on the line at or after `cursor` — the
+    /// split that closes an open object slot.
+    ///
+    /// **Exact before synonym, and that ordering is the whole point.** Both
+    /// halves of `put the inside pocket in the box` can close a slot the
+    /// pattern spells `in`, and the phrase has to end at the `in` the player
+    /// typed. One pass looking for either word would stop at `inside`, hand the
+    /// slot nothing, and make the row decline a sentence it can place. Widening
+    /// a literal is only safe while the row's own word still wins.
+    ///
+    /// - Parameters:
+    ///   - word: the literal as the pattern spells it.
+    ///   - tokens: the line as typed.
+    ///   - cursor: where the open slot's phrase begins.
+    /// - Returns: the index of the closing literal, or nil if the line has no
+    ///   spelling of it left.
+    private func firstOccurrence(of word: String, in tokens: [String], from cursor: Int) -> Int? {
+        tokens[cursor...].firstIndex(of: word)
+            ?? tokens[cursor...].firstIndex { Vocabulary.literal(word, matches: $0) }
+    }
+
     /// Whether a fixed-width run of pattern elements is on the line at `start`
     /// — a literal where the literal goes, a direction word where the direction
     /// goes. The same comparisons the element cases make as the loop walks on,
@@ -509,7 +540,7 @@ struct StandardParser {
             guard position < tokens.count else { return false }
             switch element {
             case .word(let word):
-                guard tokens[position] == word else { return false }
+                guard Vocabulary.literal(word, matches: tokens[position]) else { return false }
             case .direction:
                 guard vocabulary.directions[tokens[position]] != nil else { return false }
             case .directObject, .indirectObject, .topic:

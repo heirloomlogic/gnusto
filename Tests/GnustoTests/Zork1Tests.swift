@@ -191,15 +191,19 @@ struct Zork1Tests {
                 "undo", "look", "quit",
             ],
             seed: 0)
-        // The descent turn: slam, pitch black, then the warning — in order.
+        // The descent turn: slam, then the grue sentence — once. Zork points
+        // both `text.pitchBlack` and the grue's warning at that one line, so the
+        // room describer and the daemon each have a claim on it and the turn
+        // prints it a single time.
         let descent = turnOutput(of: "down", in: transcript)
+        let grue = "It is pitch black. You are likely to be eaten by a grue."
         expectInOrder(
             descent,
             [
                 "The trap door crashes shut, and you hear someone barring it.",
-                "It is pitch black. You are likely to be eaten by a grue.",
-                "It is pitch black. You are likely to be eaten by a grue.",
+                grue,
             ])
+        #expect(occurrences(of: grue, in: descent) == 1)
         let looks = transcript.components(separatedBy: "> look")
         // The grace turn is a reprieve — no grue yet; the third dark turn is the
         // end — but the grue's meal doesn't stick. The death message prints, then
@@ -739,8 +743,9 @@ struct Zork1Tests {
     }
 
     /// Phase 6 on the slice: "take all"/"drop all" with labeled lines, the
-    /// pronoun "it" through a container, and the reach/see distinction —
-    /// water is visible through the closed glass bottle but not takable.
+    /// pronoun "it" through a container, and the reach/see distinction — the
+    /// water is visible through the closed glass bottle and so nameable, but
+    /// out of reach, so "all" never offers it (#267).
     @Test func kitchenSweepWithAllAndPronouns() async throws {
         let transcript = try await play(
             Zork1(),
@@ -758,13 +763,12 @@ struct Zork1Tests {
             [
                 "Kitchen",
                 // take all: name-sorted, per-object results; the scenery
-                // window is skipped, and the water refuses because loose
-                // water can't be carried — it slips through your fingers.
+                // window is skipped, and so is the water — behind the shut
+                // bottle's glass, it is in view and out of arm's reach.
                 "brown sack: Taken.",
                 "clove of garlic: Taken.",
                 "glass bottle: Taken.",
                 "lunch: Taken.",
-                "quantity of water: The water slips through your fingers.",
                 // drop all: everything just taken goes back down.
                 "brown sack: Dropped.",
                 "clove of garlic: Dropped.",
@@ -783,6 +787,11 @@ struct Zork1Tests {
         #expect(!transcript.contains("window: "))
         #expect(!transcript.contains("trap door: "))
         #expect(!transcript.contains("trophy case: Taken."))
+        // Never offered, so never refused: the water's own line stays for the
+        // player who names it directly.
+        #expect(!transcript.contains("quantity of water: "))
+        // And it is still perfectly nameable — the shut bottle is glass.
+        #expect(transcript.contains("In the glass bottle is a quantity of water."))
     }
 
     // MARK: - Round Room hub

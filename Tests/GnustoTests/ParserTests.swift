@@ -54,6 +54,15 @@ struct ParserTests {
         ("find cloak", Expected(intent: .lookIn, direct: "cloak")),
         ("look for the velvet cloak", Expected(intent: .lookIn, direct: "cloak")),
         ("search for cloak", Expected(intent: .lookIn, direct: "cloak")),
+        // A pattern's preposition is matched through the synonym table, so a
+        // row written `in` answers to `inside` and `into` as well. Issue #269.
+        ("look inside cloak", Expected(intent: .lookIn, direct: "cloak")),
+        ("look into the velvet cloak", Expected(intent: .lookIn, direct: "cloak")),
+        ("search in cloak", Expected(intent: .lookIn, direct: "cloak")),
+        ("search inside cloak", Expected(intent: .lookIn, direct: "cloak")),
+        ("hang cloak upon hook", Expected(intent: .putOn, direct: "cloak", indirect: "hook")),
+        ("hang cloak onto hook", Expected(intent: .putOn, direct: "cloak", indirect: "hook")),
+        ("put upon the cloak", Expected(intent: .wear, direct: "cloak")),
         ("n", Expected(intent: .go, direction: .north)),
         ("south", Expected(intent: .go, direction: .south)),
         ("go north", Expected(intent: .go, direction: .north)),

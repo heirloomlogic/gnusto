@@ -234,6 +234,13 @@ extension DefaultActions {
             [
                 ["look", "in", .directObject],
                 ["search", .directObject],
+                // SEARCH IN is a spelling of LOOK IN, and only a row can say
+                // so: with none, `in the sack` is a noun phrase, and SEARCH
+                // answers a thing the room just described with "You can't see
+                // any such thing". The literal synonyms then buy INSIDE and
+                // INTO on top of it, for this row and for LOOK IN alike.
+                // Issue #269.
+                ["search", "in", .directObject],
                 ["find", .directObject],
                 ["look", "for", .directObject],
                 ["search", "for", .directObject],

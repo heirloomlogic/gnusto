@@ -53,7 +53,11 @@ public struct DangerousDark: GameContent {
     let lethality: Int
 
     /// - Parameters:
-    ///   - warning: said on the first turn that ends in darkness.
+    ///   - warning: said on the first turn that ends in darkness — and said
+    ///     *once*, so a game that also points `text.pitchBlack` at this sentence
+    ///     (Zork does: there, the dark-room line is the threat) reads it a
+    ///     single time on the turn it walks into the dark. Two different
+    ///     sentences are two different sentences, and both print.
     ///   - death: the `die(_:)` message.
     ///   - graceTurns: guaranteed-safe dark turns after the warning — warn on
     ///     dark turn 1, safe through dark turn `graceTurns + 1`, then dice.
@@ -76,6 +80,10 @@ public struct DangerousDark: GameContent {
     /// from dark turn `graceTurns + 2` on, each turn rolls `chance(lethality)`
     /// to be eaten. Stepping back into the light — or ``suspended`` — resets the
     /// count. Guards before the draw, so a lit turn burns no randomness.
+    ///
+    /// The warning goes out through ``sayOnceThisTurn(_:)``, which changes what
+    /// is printed and nothing else: a warning swallowed for repeating the room's
+    /// own dark line is still a warned turn.
     public var timers: [TimedEvent] {
         daemon("grue", autostart: true) {
             guard !suspended, !player.location.isLit else {
@@ -84,7 +92,7 @@ public struct DangerousDark: GameContent {
             }
             darkTurns += 1
             if darkTurns == 1 {
-                say(warning)
+                sayOnceThisTurn(warning)
             } else if darkTurns >= graceTurns + 2, chance(lethality) {
                 try die(death)
             }

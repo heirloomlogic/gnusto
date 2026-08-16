@@ -47,8 +47,13 @@ enum RoomDescriber {
         // `Ctx.current` and would deadlock if called while holding the lock.
         // `pitchBlack` is the one most likely to; the rule is for all of them.
         // Same reason `describedText` waits until line 55.
+        //
+        // Once per turn, because a game may point another emitter at this same
+        // sentence — Zork's dark-room line *is* the grue's threat — and the two
+        // are not ordered: the describer usually speaks first, but a timer that
+        // warns and then `arrive(at:)`s a dark room reverses it.
         guard !isDark else {
-            frame.say(frame.definition.text.pitchBlack())
+            frame.sayOnceThisTurn(frame.definition.text.pitchBlack())
             return
         }
 

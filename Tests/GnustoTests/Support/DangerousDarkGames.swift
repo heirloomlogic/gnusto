@@ -132,6 +132,93 @@ struct WardedDarkGame: Game {
     }
 }
 
+/// The Zork arrangement: one sentence bound to *both* knobs. `text.pitchBlack`
+/// and the plugin's `warning` are the same string, because in this voice the
+/// dark-room line **is** the threat — which is exactly what Zork 1
+/// (`Sources/Zork1/Zork1.swift`) and Dungeon (`Sources/Dungeon/Dungeon.swift`)
+/// both do. Walking in fires the describer and then the daemon, so without a
+/// once-per-turn emitter the player reads the sentence twice.
+///
+/// Grace 1 and lethality 100, so the cadence is three beats — warn on dark turn
+/// 1, silence on 2, death on 3 — and a warning silenced for being a repeat can
+/// be told apart from a warning that never ticked the counter.
+struct GrueVoicedDarkGame: Game {
+    /// The one sentence, so the fixture cannot drift out of agreement with
+    /// itself the way two literals would.
+    static let grue = "It is pitch black. You are likely to be eaten by a grue."
+
+    let title = "Grue-Voiced Dark"
+    let intro = "The lamp is the only argument you have."
+
+    let camp = Location {
+        name("Camp")
+        description("A ring of stones around dead coals.")
+    }
+
+    let cave = Location {
+        name("Cave")
+        description("A low limestone chamber.")
+        dark
+    }
+
+    let lamp = Item {
+        name("tin lamp")
+        lightSource
+        startsLit
+    }
+
+    let dangerousDark = DangerousDark(
+        warning: GrueVoicedDarkGame.grue,
+        death: "Something in the dark finds you before you find it.",
+        graceTurns: 1,
+        lethality: 100
+    )
+
+    /// One voice for the whole dark: the room's line, the line that announces a
+    /// doused lamp, and the grue's warning are one sentence. Three emitters,
+    /// three routes into darkness, one thing to read.
+    var text: GameText {
+        var text = GameText()
+        text.pitchBlack = .init(GrueVoicedDarkGame.grue)
+        text.nowDark = .init(GrueVoicedDarkGame.grue)
+        return text
+    }
+
+    var content: GameContents {
+        dangerousDark
+    }
+
+    var verbs: [SyntaxRule] {
+        SyntaxRule("summon", intent: Intent("summon"))
+    }
+
+    var timers: [TimedEvent] {
+        // The order-independent case: a timer that speaks the sentence *first*
+        // and only then puts the player in the dark, so the describer is the
+        // second emitter rather than the first. Fuses tick ahead of daemons
+        // (`GameWorld.tickTimers`), so this turn has three claims on one
+        // sentence — the fuse, the room describer, and the grue.
+        fuse("lure", after: 1) {
+            say(GrueVoicedDarkGame.grue)
+            arrive(at: cave)
+        }
+    }
+
+    var rules: Rules {
+        world.before(Intent("summon")) {
+            startFuse("lure")
+            try reply("Something takes hold of you.")
+        }
+    }
+
+    var map: WorldMap {
+        camp.north(cave)
+        cave.south(camp)
+        player.starts(in: camp)
+        lamp.starts(in: camp)
+    }
+}
+
 /// Custom prose and a three-turn grace period.
 struct PatientDarkGame: Game {
     let title = "Patient Dark"

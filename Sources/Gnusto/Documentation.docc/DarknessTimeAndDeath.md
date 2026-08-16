@@ -130,6 +130,8 @@ For a small, readable pass at these mechanics on their own, the **Lighthouse** e
 
 `Sources/Zork1/` ties it together. The brass lantern is a `lightSource` whose fuel is two fuses — a dim warning at 20 burning turns, dead at 25 — started by an `after(.turnOn)` rule and *paused* by `after(.turnOff)` (bank `fuseRemaining`, stop the fuses; relighting restarts them at the banked counts). The grue is an autostarted daemon that counts consecutive turns ending in darkness: a warning, a silent turn of grace, then `die(…)` — and any lit turn resets it. Both survive save/restore because their state is a `@Global` and the timer schedule.
 
+Zork points the warning and ``GameText/pitchBlack`` at the *same* sentence, because there the dark-room line is the threat — so on the turn you walk into the dark, the room describer and the grue both want to say it. Both reach for ``sayOnceThisTurn(_:)``, so the player reads it once, whichever spoke first. A game that words its dark room and its warning differently gets both lines, unchanged: the comparison is the text, not the situation.
+
 ## See also
 
 - <doc:TheTurnPipeline>

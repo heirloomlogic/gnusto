@@ -95,8 +95,10 @@ struct ReachTests {
         #expect(turnOutput(of: "turn on taper", in: transcript).contains("now on"))
     }
 
-    /// `take all` expands from the *visible* set, so the chalk is still offered
-    /// and still refused by name — one line each, not a silent omission.
+    /// `take all` expands from the *reachable* set, and `reachableItems` is
+    /// containment-only — it never consults a `reach { … }` rule. So the chalk
+    /// is still offered and still refused by name, one line each, rather than
+    /// silently omitted: a rule with something to say gets to say it.
     @Test func takeAllRefusesTheUnreachableOneByName() async throws {
         let transcript = try await play(SplitRoomGame(), ["take all"])
         let output = turnOutput(of: "take all", in: transcript)

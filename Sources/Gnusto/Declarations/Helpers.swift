@@ -21,6 +21,24 @@ public func say(_ message: String) {
     Ctx.current.say(message)
 }
 
+/// Prints a message unless this turn has already printed exactly it.
+///
+/// For a sentence more than one emitter can have a claim on in one turn. The
+/// engine's own case is the dark: the room describer prints
+/// ``GameText/pitchBlack`` because a dark room has nothing else to describe,
+/// and `GnustoDangerousDark`'s grue prints its warning because the fairness
+/// contract owes the player a warned turn. Zork points both at one sentence and
+/// gets it once; a game that words them differently gets both lines, because
+/// what is compared is the text and not the situation.
+///
+/// The memory is this turn only, and dropping a line changes nothing else — a
+/// schedule that counted the turn has still counted it.
+///
+/// - Parameter message: the text to print at most once this turn.
+public func sayOnceThisTurn(_ message: String) {
+    Ctx.current.sayOnceThisTurn(message)
+}
+
 /// Blocks the current action with a complaint. The default action and any
 /// remaining `before`/`after` rules are skipped; world time still passes.
 ///
