@@ -1,0 +1,46 @@
+# TEMPORARY. Delete before merge.
+#
+# Isolates the two variables that changed at once when test.yml moved to a
+# container: the ARM runner, and the swift-syntax prebuilt. Debug only — the
+# question is whether the build links, not whether the suite passes.
+#
+#   A: x86_64, prebuilt ON   — passes if ARM is implicated
+#   B: ARM,    prebuilt OFF  — passes if the prebuilt is implicated
+#
+# Both failing would point at the 6.3.2 pin instead.
+
+name: Scratch probe
+
+on:
+  push:
+    branches:
+      - "heirloomlogic/prebuilt-swift-syntax-ci"
+
+jobs:
+  a-x86-prebuilt-on:
+    runs-on: ubuntu-latest
+    container: swift:6.3.2-noble
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - name: Resolve
+        run: |
+          swift --version
+          swift package resolve
+          ls .build/prebuilts/swift-syntax 2>/dev/null || echo "NO PREBUILT"
+      - name: Test (Debug)
+        run: swift test --build-system swiftbuild
+
+  b-arm-prebuilt-off:
+    runs-on: ubuntu-24.04-arm
+    container: swift:6.3.2-noble
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - name: Resolve
+        run: |
+          swift --version
+          swift package resolve --disable-experimental-prebuilts
+          ls .build/prebuilts/swift-syntax 2>/dev/null || echo "NO PREBUILT"
+      - name: Test (Debug)
+        run: swift test --build-system swiftbuild --disable-experimental-prebuilts
