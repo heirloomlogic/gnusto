@@ -59,6 +59,12 @@ jobs:
     # to move to a newer Swift.
     container: swift:6.3.3-noble
 
+    # A container job runs steps under `sh`, and on Ubuntu that is dash, which
+    # rejects the `set -o pipefail` in the build step below. Ask for bash.
+    defaults:
+      run:
+        shell: bash
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7

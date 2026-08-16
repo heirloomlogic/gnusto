@@ -69,6 +69,13 @@ jobs:
     # trips swiftlang/swift-package-manager#10218 is never in the graph.
     container: swift:6.3.3-noble
 
+    # A container job runs steps under `sh`, and on Ubuntu that is dash, which
+    # rejects `set -o pipefail` outright — the build step below died in zero
+    # seconds the first time. Ask for bash explicitly.
+    defaults:
+      run:
+        shell: bash
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
