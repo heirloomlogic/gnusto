@@ -52,27 +52,35 @@ jobs:
 
   build-linux:
     runs-on: ubuntu-latest
+
+    # Ubuntu runners ship no Swift, so the toolchain arrives as an image rather
+    # than an install step — no scripted download, and a pinned compiler, which
+    # matters because a game's macro plugins are compiler-coupled.
+    #
+    # The pin trails latest stable deliberately. SwiftPM downloads a prebuilt
+    # swift-syntax for macros instead of compiling it, which saves minutes per
+    # build, but the Linux prebuilts are published per exact toolchain and not
+    # every release has one. Before bumping, check that yours does:
+    #
+    #   curl -sfI https://download.swift.org/prebuilts/swift-syntax/603.0.2/swift-6.3.3-RELEASE-ubuntu_noble_x86_64.json
+    #
+    # substituting the swift-syntax version your package resolves to and the
+    # toolchain you want. 200 means the bump is free; 404 means you pay for it.
+    container: swift:6.3.2-noble
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
 
-      # Ubuntu runners ship no Swift; bring it in via swiftly and put it on PATH.
-      - name: Install Swift toolchain
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y libcurl4-openssl-dev
-          curl -fsSL -O "https://download.swift.org/swiftly/linux/swiftly-$(uname -m).tar.gz"
-          tar zxf "swiftly-$(uname -m).tar.gz"
-          ./swiftly init --quiet-shell-followup --assume-yes --skip-install
-          . "$HOME/.local/share/swiftly/env.sh"
-          swiftly install --assume-yes 6.3.3
-          swiftly use 6.3.3
-          echo "$HOME/.local/share/swiftly/bin" >> "$GITHUB_PATH"
-          swift --version
+      # The container runs as root over a checkout git considers foreign;
+      # without this, git refuses it as "dubious ownership".
+      - name: Trust the workspace
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
       - name: Build and package release binaries
         run: |
           set -euo pipefail
+          swift --version
           mkdir -p dist
           arch="$(uname -m)"
           bindir="$(swift build -c release --show-bin-path)"

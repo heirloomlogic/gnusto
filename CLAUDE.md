@@ -47,6 +47,13 @@ resolve`) has to have run first. `.dev-tooling` is the sentinel that turns the d
 plugins on; CI touches it, and a workspace that has it already is set. See
 `.github/workflows/lint.yml`, which is the authority on the sequence.
 
+**Linux CI runs in the `swift:6.3.2-noble` image, and that pin trails latest stable
+on purpose** — it is the newest Linux toolchain SwiftPM publishes a prebuilt
+swift-syntax for, which is worth minutes a run. Don't bump it without reading the
+comment in `.github/workflows/test.yml`, which is the authority and states the one
+`curl` that says whether a newer pin is free. The Release suite runs on pushes to
+main, not on PRs.
+
 `GNUSTO_SEED` pins a binary's random stream the way `play(_:_:seed:)` pins a test's, so
 a hand-played session replays as a test. `GNUSTO_TRANSCRIPT` records it,
 `GNUSTO_SAVE_DIR` keeps scripted saves out of your real slots, and a line starting `//`
