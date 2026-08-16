@@ -7,7 +7,8 @@ export const meta = {
   phases: [
     { title: 'Survey', detail: 'one cartographer: rooms, timers, vocabulary, and which oracle tiers exist' },
     { title: 'Play', detail: 'one playtester per charter, each replaying its own reproducers' },
-    { title: 'Triage', detail: 'dedup in plain code, then one adversarial refuter per survivor' },
+    { title: 'Cluster', detail: 'one agent maps each excerpt to the declaration that printed it' },
+    { title: 'Triage', detail: 'dedup on the declaration, then one adversarial refuter per survivor' },
     { title: 'Critic', detail: 'coverage counted off the transcripts, and what the round missed' },
   ],
 }
@@ -346,11 +347,16 @@ const FINDINGS_SCHEMA = {
 const VERDICT_SCHEMA = {
   type: 'object',
   additionalProperties: false,
-  required: ['verdict', 'reason'],
+  required: ['verdict', 'reason', 'attemptedRefutation'],
   properties: {
     verdict: {
       type: 'string',
       enum: ['confirmed-defect', 'refuted', 'route-elsewhere', 'needs-human'],
+    },
+    attemptedRefutation: {
+      type: 'string',
+      description:
+        'The strongest case AGAINST this finding, written out, and required even when you confirm it. Not a formality: an agent that has to state the best argument for the other side cannot rubber-stamp cheaply, and a confirmation whose refutation attempt is thin is itself a signal a reader can act on. Say what would have to be true for the line to be correct, and why it is not.',
     },
     refutationKind: {
       type: 'string',
@@ -385,6 +391,29 @@ const VERDICT_SCHEMA = {
         blamedCommit: { type: 'string' },
         blamedSubject: { type: 'string' },
         note: { type: 'string' },
+      },
+    },
+  },
+}
+
+const CLUSTER_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['assignments'],
+  properties: {
+    assignments: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['index', 'declaration'],
+        properties: {
+          index: { type: 'integer', description: 'The finding number as given, 1-based.' },
+          declaration: {
+            type: 'string',
+            description: 'The emitting declaration as `<file>::<name>`, or the literal `unlocated` when no search found it. Never a guess.',
+          },
+        },
       },
     },
   },
@@ -515,174 +544,111 @@ Look in each reply for \`the \` immediately before a capitalized name or an hono
 // point: N identical testers find one bug N times.
 const CHARTERS = [
   {
-    key: 'tourist',
-    // The survey already crossed every printed noun against the vocabulary in
-    // code, which is cheaper and more complete than discovering it by playing.
-    // Hand that list over as a worklist rather than making the tourist re-derive
-    // it — its job is then to confirm each one in a real frame.
-    checklist: (survey) => {
-      const gaps = (survey.printedNouns || []).filter((n) => !n.answerable)
-      if (!gaps.length) {
-        return 'The survey crossed every printed noun against the vocabulary and found no gaps. Spot-check a handful anyway — the survey reads source, and prose assembled at runtime can print a noun the source does not show literally — then say in your coverage note that the static pass was clean.'
-      }
-      return `The survey found ${gaps.length} noun(s) the prose prints that the vocabulary does not answer. Confirm each in a real frame with \`x <noun>\`, and report them as ONE finding per owning text rather than one per word:
+    key: 'explorer',
+    // The only charter that plays blind, and the only one that instantiates more
+    // than once. `copies` is capped at 3: past that the regions get too thin to
+    // be worth a whole agent, and the divergence cycle stops covering forks and
+    // starts duplicating them.
+    copies: (regions) => Math.min(Math.max(regions.length, 1), 3),
+    blind: true,
+    brief: `Walk the map and burn the queue. You are the charter that finds the egg.
 
-${gaps.map((n) => `  x ${n.noun}${n.printedIn ? `          (printed in ${n.printedIn})` : ''}`).join('\n')}
+You have no map, no room list, no timer list, no vocabulary and no design doc, and you
+must not go looking for any of them. That is not a handicap, it is the job: somebody
+handed the map navigates instead of exploring, and somebody handed the vocabulary can
+never discover that a noun the prose printed has nothing behind it.
 
-Then go looking for the ones the survey could not see: nouns in prose that is built at
-runtime, in refusals, in blocked-exit text, and in topic answers.`
-    },
-    brief: `Walk every room. Type every noun the game puts on the page. You own K8.
+\`coverage\` is your worklist. Every item is a command you can paste and a sentence
+saying where the game showed you the thing. Work it down. The count it returns is a
+countdown, not a statistic — the round is measured on whether you closed it.
 
-BFS the exit graph from the survey's room list. In each room: \`look\`; then \`x <noun>\`
-for every noun the description printed; then \`x <noun>\` for every noun those examine
-texts printed, one level deep and no further. Walk every exit the description names,
-and every exit the graph has that the description does not name. Type every blocked
-direction and examine every noun its refusal prints. Then \`search\` and \`open\`
-anything the room implies has an inside.
+Three things it will keep asking you for, and all three are the point:
+- **a way out you have not taken.** Take it.
+- **a verb you have not tried on a thing.** Try it. Most of what a game gets wrong, it
+  gets wrong the first time somebody opens, burns, reads, climbs or searches a thing
+  rather than looking at it.
+- **a second look at something you just changed.** This is the one that finds real
+  defects. Take a thing and examine it again; a description that still says where the
+  thing used to be is a defect, and it is invisible to anybody who did not look twice.
 
-You own: unanswerable nouns, exits the prose names that do not exist, exits that
-exist unnamed, disagreement between the design doc's map and the real graph, and
-examine text that contradicts the room description.
+Read every description as prose and ask whether it is true *here, now, in this state*.
+When it is not, \`note\` it with \`suspicious: true\` at the turn that printed it, quoting
+the line. A note costs no turn.
 
-Do not report the stock "You see nothing special about the X." — that is the correct
-answer for a scenery stub whose only job is to make a noun answerable, which is
-exactly the fix K8 prescribes. It becomes a finding only when the room description
-gave X a distinguishing detail that the examine text then withholds.
-
-You use only look / x / read / search / open and directions, so you should never see
-an unknown-word reply. If you do, the game printed a noun it cannot answer: that is
-K8 and it is yours — a noun the game printed and cannot answer, whoever else may own
-unknown words this round.`,
+You own: a printed noun the parser then denies, a description that contradicts what you
+were just told, a line that describes a state the world is no longer in, and an exit the
+prose names that does not exist.`,
   },
   {
-    key: 'clock-watcher',
+    key: 'timekeeper',
     appliesTo: (survey) => (survey.timers || []).length > 0,
-    brief: `A line has to know the room AND the state. Only a cross-product finds the cell
+    brief: `A line has to know the room AND the moment. Only a cross-product finds the cell
 where it does not. You are the charter that catches an NPC watching a fire from the
-bottom of a dark cellar.
+bottom of a dark cellar, and every marquee defect this harness has ever found was yours.
 
-Read your axes off the survey's timers, not off the word "clock". For a clock game the
-axis is the hour. Otherwise it is whatever the game's own timers branch on — tide
-stage, spell state, light and dark. A game with no timers has no clock-watcher, and
-you say so rather than inventing work.
+**You discover the timetable by watching, not by reading it.** You are not given the
+timer list. Stand somewhere and let turns pass; \`coverage\` will tell you when a
+do-nothing probe printed differently in one room at two moments with nothing you typed
+to explain it, which is what a fuse or a daemon looks like from the player's chair.
+Those items are not closed by looking once — they want a second frame and a note
+quoting the printed line.
 
-Pass A, on-cell. One probe per scheduled stop. Get to the room, fill to the hour, then
-\`time\`, \`look\`, \`x <actor>\`, and examine every thing the actor's listing line
-mentions. Judge the listing line against THIS room at THIS hour, and the examine text
-against what has and has not happened yet. Note: an actor's ARRIVAL line prints on the
-turn they arrive and masks the standing listing line, so probe the turn after as well —
-this is where the location-blind listing line actually shows.
+Pass A, on-cell. Get to a room, wait for the event, then \`look\`, \`x <actor>\`, and
+examine everything the actor's listing line mentions. Judge the listing line against
+THIS room at THIS moment. An arrival line masks the standing listing line on the turn
+it prints, so probe the turn after as well — that is where a location-blind line shows.
 
-Pass B, off-cell. Stand in the room for the stop before and the stop after. Per K4 an
-actor is always listed if perceivable, so an actor who leaves with no departure line
-and an actor whose departure was narrated but who is still listed are both defects.
+Pass B, off-cell. Stand in the room for the moment before and the moment after. An actor
+who leaves with no departure line, and one whose departure was narrated but who is still
+listed, are both defects.
 
-Pass C, ghost-cell. Stand where the actor is not, at that hour. Does anything print
-about them? Does a line name the room you are standing in as though it were elsewhere?
+Pass C, ghost-cell. Stand where the actor is not. Does anything print about them? Does a
+line name the room you are standing in as though it were somewhere else?
 
-Pass D, event x room. Separate pass, and where aftermath defects live, because a fuse
-prints once per game and cannot be found by walking. For each alarm and each fuse whose
-body reads the player's location (the survey flags these), one fresh run per reachable
-room that parks the player there through the event and its fuse turns.
+Pass D, displacement. Be in room A for the event and move to room B before its aftermath
+fires. Judge each clause separately: does it belong to where you are now, or to where you
+were then?
 
-Pass E, displacement. Per K10, be in room A for the event and move to room B before the
-fuse fires. Judge each clause separately: does it belong to where the player is now, or
-to where they were then?
+Use \`checkpoint\` and \`restore\` to hold an anchor rather than replaying dozens of waits.
 
-Budget: save at the anchors the survey names and \`--restore\` per probe rather than
-replaying dozens of waits.
-
-Do not report a cell you never occupied — log it as uncovered. Do not report any hour
-you did not anchor with a real reading. Do not report an actor's listing line repeating
-across turns; per K1 that is by design.`,
-  },
-  {
-    key: 'vandal',
-    // Generated rather than described: the first calibration round lost
-    // `cantTakeActor` because the sweep was left to the tester to derive.
-    checklist: articleSweep,
-    brief: `Reach every stock refusal the game did not re-skin, and every one whose register is
-wrong for the game. You found \`cantTakeActor\`.
-
-**STEP 1 IS MANDATORY AND COMES FIRST. Do it before you form any other plan, and
-report its result even if it is "all clean".** The article sweep below is the single
-highest-yield probe in this whole harness and it is two commands long. A round where
-you skipped it to go exploring is a failed round, however interesting the things you
-found instead. Work the checklist the survey handed you literally, command by command;
-do not re-derive which ones are worth trying.
-
-STEP 2 is everything the checklist does not already cover: \`x\` each actor, then run
-the same verbs on one item of each kind — takeable, container, wearable, scenery, a
-locked thing — and on a door. Use ONLY words in the known-verb list.
-
-Judge four things:
-(a) Any reply with \`the \` immediately before a capitalized name or Mr/Mrs/Miss/Dr/Sir
-    — K9, the un-re-skinned stock line.
-(b) Any reply in a register the game does not otherwise use.
-(c) Any reply that asserts something HAPPENED. "You find nothing of interest in the
-    cook" claims a search that did not occur.
-(d) Prose claiming a mechanic the game does not enforce — a patrolman "keeping
-    everybody out of it" while the player is standing in it.
-
-STEP 3, the stub verbs, and this is new ground. The engine now answers ~48 verbs it has
-no mechanic for — \`sing\`, \`smell\`, \`dig\`, \`climb\`, \`jump\`, \`pray\`, \`listen\`,
-\`xyzzy\` — with one line of stock prose each, from \`GameText.stubs\`. They parse, they
-cost a turn, and **the ones the game has not re-skinned are in the engine's voice, not
-the game's.** The survey reports which stubs the game overrides; the complement is your
-list. Run each one and judge the register exactly as in (b) above: "Your singing is
-better kept to yourself." is fine in a generic engine and wrong in the mouth of a 1952
-murder investigation.
-
-Report a stub in the wrong register as \`register-mismatch\` at severity \`minor\` —
-these are cheap to fix and there may be dozens, so file them as ONE finding per game
-listing the offenders, not forty findings. A stub whose prose is actively *false* of the
-game (it names a thing the game has no concept of) is a \`prose-untrue-of-frame\` finding
-in its own right.
-
-\`frotz\` is the engine's reserved non-word: it is guaranteed to fail to parse, so use it
-when you need a known parse error. Any *other* \`I don't know the word\` is now worth
-looking at — it means either a noun the game printed and cannot answer (K8, yours) or a
-verb a player would reasonably reach for that has no stub yet.`,
+Do not report a cell you never occupied — say you did not reach it. Do not report an
+actor's listing line repeating across turns; that is by design.`,
   },
   {
     key: 'interrogator',
     appliesTo: (_survey, capabilities) => capabilities.has('talk'),
     brief: `Ask everyone about everyone, twice, and about things they cannot know yet.
 
-Work the topic matrix from the design doc's evidence tables, or the topic rows in
-source. For every (actor, topic): ask, ask AGAIN, then a THIRD time. Repeat-aware
-dialogue retires prose, and the failure modes are a paragraph recited twice, or an
-"again" variant that swallowed the only real answer.
+For every (actor, topic): ask, ask AGAIN, then a THIRD time. Repeat-aware dialogue
+retires prose, and the failure modes are a paragraph recited twice, or an "again"
+variant that swallowed the only real answer.
 
 Then every topic before its gate: ask about a thing before it exists, about an object
-without holding it, about a fact not yet learned. Then ask everyone about a topic
-nobody owns, to reach each per-actor fallback — the contract says everyone has a
-fallback and there is no dead air. Then show evidence to the wrong person.
+without holding it, about a fact not yet learned. Then ask everyone about a topic nobody
+owns, to reach each per-actor fallback — everyone has one and there is no dead air. Then
+show evidence to the wrong person.
 
-Then the past-tense questions, which are the most important: where a character's answer
-describes where someone WAS, check it against the schedule. "Past-tense truth is read
-from the timetable, never hand-written prose" is the single most load-bearing line in
-the contract, and a character whose account contradicts the timetable is the defect it
-exists to prevent. Where a character is documented as the deliberate exception who goes
-on answering, check that they still do on the fourth ask.
+Then the past-tense questions, which matter most: where an answer describes where someone
+WAS, check it against what you have watched happen. A character whose account contradicts
+the timetable is the defect this charter exists to prevent.
 
-Do not report an actor declining a subject — characterization. Do not report an unknown
-word for a topic noun that no row claims and no prose names; that topic was never
-promised. But a topic the prose NAMES and no row answers is K8, and is yours.`,
+Do not report an actor declining a subject — that is characterization. But a topic the
+prose NAMES and nobody answers is yours.`,
   },
   {
     key: 'solver',
     brief: `The only charter that checks the game can be won.
 
-Take the route from the design doc's solution if there is one, else the walkthrough
-test's command list, else maxScore plus the scoring rules. Play it.
+Take the route from the design doc's solution if you were given one, else the
+walkthrough test's command list, else the score rules. Play it.
 
 Then play it MINUS ONE STEP, once per step, to check each gate actually gates: win
-without the evidence, win before the evidence exists, reach the fuller ending without
-the fact it is supposed to require. Then let any deadline run out and check the losing
-ending fires and reads as a loss. Then check the score line reads N of a possible N on
-the full route.
+without the evidence, win before the evidence exists, reach the fuller ending without the
+fact it is supposed to require. Then let any deadline run out and check the losing ending
+fires and reads as a loss. Then check the score line reads N of a possible N.
+
+\`replay\` is stateless and cheap — use it for the minus-one-step runs rather than
+walking each one by hand.
 
 You own unwinnability (severity blocking), a win that fires without its gate, a
 knowledge-gated tier firing when the fact was never learned, and an ending whose prose
@@ -692,57 +658,54 @@ Do not report prose taste on the ending. Do not report a route that failed on yo
 typo — replay it first; it is deterministic and cheap.`,
   },
   {
-    key: 'idiot',
-    brief: `Every wrong move a real player makes in the first five minutes, and what the game
-says back.
+    key: 'wrong-footer',
+    // Generated rather than described: the first calibration round lost
+    // `cantTakeActor` because the sweep was left to the tester to derive.
+    checklist: articleSweep,
+    brief: `Type the wrong thing on purpose and judge the reply. You are three of the old
+charters in one: the stock line nobody re-skinned, the beginner's mistake, and the line
+that should have stopped repeating.
 
-Right verb, wrong noun. Right noun, wrong room. Verbs out of order — unlock before
-taking the key, cast before memorizing, accuse on turn one. Ambiguous nouns: where
-several characters answer to "man" or "woman", \`x man\` must disambiguate in the
-game's own voice. Plurals. Empty input. A bare noun. A bare direction into a wall.
-\`open\` something that does not open. \`take all\`.
+**STEP 1 IS MANDATORY AND COMES FIRST.** The article sweep below is the highest-yield
+probe in this harness and it is two commands long. Work it literally; do not re-derive
+which rows are worth trying.
 
-Then the player themselves, which is newly answerable and therefore newly breakable:
-\`x me\`, \`x myself\`, \`x self\`, \`take me\`, \`search me\`, \`i\`, \`take all\`, and
-\`look\` in a room you are alone in. The player is always in scope but placed nowhere,
-so it must answer to all three words and must NOT appear in a room listing, in the
-inventory, or in what \`take all\` picks up. An unknown-word reply to \`x me\` is a
-regression: the player is answerable now.
+STEP 2, the beginner's mistakes. Right verb, wrong noun. Right noun, wrong room. Verbs
+out of order — unlock before taking the key, accuse on turn one. Ambiguous nouns, where
+several characters answer to "man". Plurals. Empty input. A bare noun. A bare direction
+into a wall. \`take all\`. Then the player themselves: \`x me\`, \`x myself\`, \`take me\`,
+\`search me\`, \`i\`. The player is always in scope but placed nowhere, so it must answer
+to all three words and must NOT appear in a room listing, an inventory, or \`take all\`.
 
-You own: a refusal that names something the player cannot know yet, or leaks an entity
-from another room; a disambiguation prompt listing things the player cannot see; "You
-can't see any such thing" for a thing that is right there (per K7 that is now a real
-defect, not stock behaviour); a refusal in the stock voice where its neighbours were
-re-skinned; \`take all\` picking up what it should not.
+STEP 3, the stub verbs. The engine answers ~48 verbs it has no mechanic for — \`sing\`,
+\`dig\`, \`jump\`, \`pray\`, \`xyzzy\` — with one stock line each, and the ones the game has
+not re-skinned are in the engine's voice rather than the game's. File a wrong register as
+ONE finding per game listing the offenders, not forty findings. A stub whose prose is
+actively *false* of the game is a finding in its own right.
 
-Unknown-word replies used to be somebody else's problem and are not any more: the engine
-now stubs ~48 verbs, so \`I don't know the word "X"\` means either a noun the game
-printed and cannot answer (K8 — yours) or a verb with no stub yet (worth one line in your
-coverage note). \`frotz\` is the reserved non-word and is the only guaranteed parse
-error. Still collect them in one list with counts rather than filing one finding each.`,
-  },
-  {
-    key: 're-reader',
-    brief: `Repeat a command until the prose repeats, and judge whether it should have.
+STEP 4, the repeats. \`look\` five times in a room: an ITEM's first-sight line must stop
+once the player touches it, an ACTOR's must NOT stop, ever. \`open\` a container twice.
+\`z\` ten times, watching the room's per-turn lines — one printing every single turn reads
+as a stuck record, one that printed once and never again reads as a bug too.
 
-Take every line that reads like a first-time line and repeat what produced it. \`look\`
-five times in a room: an ITEM's first-sight line must stop once the player touches it,
-and an ACTOR's must NOT stop, ever. \`x <item>\` after taking it. \`open\` a container
-twice. \`search\` twice. \`ask X about Y\` three times. \`z\` ten times in each room,
-watching the room's per-turn rules: an atmospheric line printing every single turn reads
-as a stuck record, and one that printed once and never again reads as a bug too. Turn on
-a lamp that is already on. Take a thing twice. Anything the design doc says happens
-"once".
+Judge every reply four ways: (a) \`the \` immediately before a capitalized name or an
+honorific; (b) a register the game does not otherwise use; (c) a reply asserting
+something HAPPENED that did not — "You find nothing of interest in the cook" claims a
+search that never occurred; (d) prose claiming a mechanic the game does not enforce.
 
-You own: a first-sight line outliving the touch; a once-only line printing twice or
-never; an atmospheric line with no variation across ten turns; state that appears to
-un-reveal (K5); and a distinctive phrase used for two different characters, which reads
-as one character's voice leaking into another.
+\`frotz\` is the reserved non-word and the only guaranteed parse error. Any *other*
+"I don't know the word" is a noun the game printed and cannot answer, or a verb with no
+stub yet. Collect them in one list with counts.
 
-Do not report an actor's presence line repeating. This is the single most likely false
-positive on this charter and it is the exact opposite of a bug (K1).`,
+Do not report an actor's presence line repeating. It is the most likely false positive
+here and it is the exact opposite of a bug.`,
   },
 ]
+
+// Divergence is assigned round-robin rather than drawn, which is risk 4 in the
+// plan made concrete: three explorers left to chance can all draw `abstain`, and
+// then nobody opens the egg and the round reports a fork it never tested.
+const DIVERGENCE_CYCLE = ['commit', 'abstain', 'defer']
 
 // ---------------------------------------------------------------------------
 // Phase 1 — Survey
@@ -784,12 +747,37 @@ if (!survey) throw new Error('survey failed; a round without a denominator canno
 // than a keyword means a new axis needs no new branch here.
 const active = CHARTERS.filter((c) => !c.appliesTo || c.appliesTo(survey, capabilities))
 const requested = ARGS.charters ? new Set(String(ARGS.charters).split(',').map((s) => s.trim())) : null
-const playRoster = requested ? active.filter((c) => requested.has(c.key)) : active
-const skipped = CHARTERS.filter((c) => !playRoster.includes(c))
+const chosen = requested ? active.filter((c) => requested.has(c.key)) : active
+const skipped = CHARTERS.filter((c) => !chosen.includes(c))
+
+// Regions come from `focus` when the operator split the map, and are otherwise
+// one unnamed region — which is the right answer for a nine-room game and the
+// wrong one for a 195-room game whose operator forgot.
+const regions = String(ARGS.focus || '')
+  .split(/\s*\|\s*/)
+  .map((r) => r.trim())
+  .filter(Boolean)
+
+// One charter can run more than once. Only `explorer` does today, and the
+// assignment it carries — a region and a divergence policy — is the reason: two
+// explorers with the same policy in the same region are one explorer run twice.
+const playRoster = chosen.flatMap((charter) => {
+  const copies = charter.copies ? charter.copies(regions) : 1
+  return Array.from({ length: copies }, (_, i) => ({
+    charter,
+    key: copies > 1 ? `${charter.key}-${i + 1}` : charter.key,
+    region: regions.length ? regions[i % regions.length] : null,
+    // Only the blind charters take a policy. The others are running fixed
+    // rosters or a known route, so withholding a move from them would just make
+    // their own job incomplete.
+    divergence: charter.blind ? DIVERGENCE_CYCLE[i % DIVERGENCE_CYCLE.length] : 'commit',
+  }))
+})
 
 log(
   `${game}: ${survey.rooms.length} rooms, ${(survey.timers || []).length} timers, tiers ${survey.tiers.join('+')}. ` +
-    `Charters: ${playRoster.map((c) => c.key).join(', ')}${skipped.length ? ` — not run: ${skipped.map((c) => c.key).join(', ')}` : ''}.`
+    `Testers: ${playRoster.map((r) => `${r.key}${r.charter.blind ? `/${r.divergence}` : ''}`).join(', ')}` +
+    `${skipped.length ? ` — not run: ${skipped.map((c) => c.key).join(', ')}` : ''}.`
 )
 
 // ---------------------------------------------------------------------------
@@ -816,38 +804,57 @@ for (let round = 1; round <= maxRounds && dryRounds < dryTarget; round++) {
   // charters; not worth the round-boundary complication yet.
   const reports = (
     await parallel(
-      playRoster.map((charter) => () =>
-        agent(
-          `${ground(labelFor(`r${round}`, 'play', charter.key))}
+      playRoster.map((assignment) => () => {
+        const { charter } = assignment
+        // Rule 2: a blind charter is told nothing the game has not printed to
+        // it. The survey still runs — the critic needs a denominator — it just
+        // stops reaching the testers who are supposed to be discovering it.
+        const oracle = charter.blind
+          ? ''
+          : `
+The survey found:
+- Rooms: ${survey.rooms.join(', ')}
+- State axes: ${(survey.stateAxes || []).join(', ') || 'none'}
+- Stock keys the game re-skinned: ${(survey.reskinnedTextKeys || []).join(', ') || 'none'}
+- Stub-verb replies the game re-skinned: ${(survey.reskinnedStubs || []).join(', ') || 'NONE — every stub answers in the engine voice'}
+- Proper-named actors: ${(survey.properNamedActors || []).join(', ') || 'none'}
+`
+        const server = `mcp__${game.toLowerCase()}__`
+        const tools = ['open', 'move', 'recall', 'coverage', 'note', 'finish', 'checkpoint', 'restore', 'replay']
+        return agent(
+          `${ground(labelFor(`r${round}`, 'play', assignment.key))}
 
 Your charter is **${charter.key}**. Round ${round} of at most ${maxRounds}.
 
+You play through the game's own MCP server. Its tools are deferred, so fetch them first
+with \`ToolSearch\`, query \`select:${tools.map((t) => server + t).join(',')}\`.
+
+Open with \`label: "${assignment.key}"\`, \`seed: ${seed}\`, \`role: "${charter.blind ? 'explorer' : 'unrestricted'}"\`${charter.blind ? `, \`divergence: "${assignment.divergence}"\`` : ''}.
+${charter.blind ? `**Read the \`instruction\` your open returns and follow it for the whole session.** It tells you what to do the first time the game offers you something you cannot take back. Another tester has been given the opposite orders, so the branch you leave alone is covered and the one you take is yours to describe.\n` : ''}
+Every turn's output ends with a \`[status]\` line naming the room, the move counter and
+whether the command cost a turn. \`note\` writes a comment into your transcript at the
+current turn and costs nothing — use it the moment a line reads wrong, not forty turns
+later from memory. \`finish\` ends the session.
+${assignment.region ? `\n**Your region is ${assignment.region}.**\n` : ''}
 ${charter.brief}
 
 Your turn budget is about ${turnBudget} engine turns. Spend it on breadth first, then
 depth on whatever looked wrong.
-
-The survey found:
-- Rooms: ${survey.rooms.join(', ')}
-- State axes: ${(survey.stateAxes || []).join(', ') || 'none'}
-- Timers: ${(survey.timers || []).map((t) => `${t.label} (${t.kind}${t.at ? ' @ ' + t.at : ''}${t.readsPlayerLocation ? ', reads player location' : ''})`).join('; ') || 'none'}
-- Stock keys the game re-skinned: ${(survey.reskinnedTextKeys || []).join(', ') || 'none'}
-- Stub-verb replies the game re-skinned: ${(survey.reskinnedStubs || []).join(', ') || 'NONE — every stub answers in the engine voice'}
-- Proper-named actors: ${(survey.properNamedActors || []).join(', ') || 'none'}
-${charter.checklist ? `\nYOUR GENERATED CHECKLIST:\n${charter.checklist(survey)}\n` : ''}
+${oracle}${charter.checklist ? `\nYOUR GENERATED CHECKLIST:\n${charter.checklist(survey)}\n` : ''}
 ${seen.size ? `\nAlready seen in earlier rounds or the ledger — do NOT report these again:\n${[...seen].slice(0, 60).join('\n')}` : ''}
 
-Annotate your command files with \`//\` as you go, and REPLAY EACH REPRODUCER FROM A
-CLEAN START before you report it. Set replayedCleanly honestly; a finding whose
-reproducer you did not re-verify is dropped at triage, so guessing gains you nothing.
-Carry that clean replay's \`[playtest] transcript=…\` path into \`transcriptPath\`, so the
-finding arrives with the evidence attached rather than with a description of it.
+The session records to disk from the moment you open it, so the evidence is already
+attached: carry the transcript path your \`open\` returned into \`transcriptPath\`. Use
+\`replay\` to re-run a trimmed reproducer from a clean start before you report it — it
+boots a fresh world and touches nothing, so it cannot disturb your session. Set
+\`replayedCleanly\` honestly; a finding whose reproducer you did not re-verify is dropped
+at triage, so guessing gains you nothing.
 
-Your coverage note is not a formality. Name the cells you did not reach. A charter that
+Your coverage note is not a formality. Name what you did not reach. A charter that
 reports findings and hides its gaps makes the round look thorough when it was not.`,
-          { label: `play:${charter.key}`, phase: 'Play', schema: FINDINGS_SCHEMA }
+          { label: `play:${assignment.key}`, phase: 'Play', schema: FINDINGS_SCHEMA }
         )
-      )
+      })
     )
   ).filter(Boolean)
 
@@ -861,9 +868,9 @@ reports findings and hides its gaps makes the round look thorough when it was no
     }
   }
 
-  phase('Triage')
+  phase('Cluster')
 
-  const fresh = []
+  const candidates = []
   for (const report of reports) {
     for (const f of report.findings || []) {
       f.charter = report.charter
@@ -875,14 +882,75 @@ reports findings and hides its gaps makes the round look thorough when it was no
         refuted.push({ ...f, refutationKind: 'not-reproducible', reason: 'The tester did not re-verify the trimmed reproducer from a clean start.' })
         continue
       }
-      // Frame deliberately excluded from the key: one untrue sentence seen at
-      // two hours is ONE defect with two frames. Keying on the frame would
-      // dispatch two fixers at one branch.
-      const key = `${f.ownerFile}::${normalize(f.excerpt)}`
-      if (seen.has(key)) continue
-      seen.add(key)
-      fresh.push({ ...f, key })
+      candidates.push(f)
     }
+  }
+
+  // Re-keying dedup from the excerpt to the emitting declaration is the lever
+  // the whole round's cost sits on: keyed on text, Fulminate's findings stayed
+  // ~70 classes and bought ~70 verifiers; keyed on the declaration that printed
+  // them, they collapse to ~18-20. Six testers reading one location-blind
+  // listing line in six rooms report six excerpts of one defect, and only the
+  // declaration tells you that.
+  //
+  // **This is an agent, and the plan called for code.** It cannot be code: the
+  // mapping is excerpt -> the declaration that emits it, which means searching
+  // the source tree, and this script has no filesystem access. Nor can the
+  // tester supply it, because the blind charters may not read source at all —
+  // that is the point of them. So it is one cheap mechanical agent whose whole
+  // job is the lookup, and the dedup below is plain code over what it returns.
+  // One agent here removes tens of verifiers downstream.
+  const clustered = candidates.length
+    ? await agent(
+        `${groundMin(labelFor(`r${round}`, 'cluster'))}
+
+You are the clusterer. You do not judge findings; you locate the code that printed them.
+
+For each finding below, find the **declaration** whose text the excerpt came from and
+report its id as \`<file>::<declaration>\` — the property or constant the string is
+declared on, not the line number and not the file alone. \`grep -rn\` a distinctive
+fragment of the excerpt under \`${pkg}/Sources/\` and read outward to the enclosing
+\`let\`/\`static let\`/trait. Prose tables are the common case in this repo: a hit in a
+\`Prose\` enum is the declaration, and the entity that references it is not.
+
+Two findings that quote different sentences of the same declaration get the SAME id.
+Two findings quoting one sentence printed in different rooms get the same id as well —
+one untrue sentence seen in two frames is one defect with two frames.
+
+When you cannot find it, say \`unlocated\` rather than guessing. A wrong id merges two
+real defects into one and the second is never fixed, which is worse than an extra class.
+
+${candidates.map((f, i) => `${i + 1}. [${f.charter}] ${f.ownerFile}
+   ${f.excerpt}`).join('\n')}`,
+        { label: `cluster:r${round}`, phase: 'Cluster', schema: CLUSTER_SCHEMA, effort: 'low' }
+      )
+    : null
+
+  const declarations = new Map(
+    ((clustered && clustered.assignments) || []).map((a) => [a.index, a.declaration])
+  )
+
+  phase('Triage')
+
+  const fresh = []
+  const merged = []
+  for (const [i, f] of candidates.entries()) {
+    const declaration = declarations.get(i + 1)
+    // Falling back to the old text key rather than dropping the finding: an
+    // unlocated excerpt is still a defect, it just dedups less well.
+    const key =
+      declaration && declaration !== 'unlocated'
+        ? `decl::${declaration}`
+        : `${f.ownerFile}::${normalize(f.excerpt)}`
+    if (seen.has(key)) {
+      merged.push({ ...f, key })
+      continue
+    }
+    seen.add(key)
+    fresh.push({ ...f, key, declaration: declaration || null })
+  }
+  if (merged.length) {
+    log(`Round ${round}: ${merged.length} finding(s) merged into a class already seen.`)
   }
 
   if (!fresh.length) {
@@ -903,7 +971,7 @@ reports findings and hides its gaps makes the round look thorough when it was no
       // The verifier must not be the charter that found it, and spreading the
       // lens across the other charters is what makes the panel diverse rather
       // than N copies of the same skepticism.
-      const others = playRoster.filter((c) => c.key !== f.charter)
+      const others = playRoster.filter((r) => r.key !== f.charter)
       const lens = others.length ? others[index % others.length].key : 'skeptic'
       // Indexed, not categorized: two findings can share a category, and this is
       // the label whose collisions cost the round its evidence.
@@ -966,6 +1034,12 @@ actually been wrong, most frequent first.
    itself as a fix, say so in the note: a fix that reintroduced the class it was
    repairing is the single most useful thing this harness can report.
 
+Whatever you conclude, write the strongest case AGAINST the finding into
+\`attemptedRefutation\` — including when you confirm it. Say what would have to be true
+for the line to be correct in its frame, and then why it is not. This is required, and
+it is the check on you: a verifier that cannot argue the other side has not really
+examined this one.
+
 Then, only if it survives all four: is the fix a judgement call with more than one
 reasonable answer? Answer needs-human rather than confirmed-defect. That is not a
 hedge; it routes the finding to a person instead of to an agent that will pick a design
@@ -989,7 +1063,7 @@ by coin flip.`,
     }
     const { finding, verdict } = row
     if (verdict.verdict === 'confirmed-defect' || verdict.verdict === 'needs-human') {
-      confirmed.push({ ...finding, verdict: verdict.verdict, verifierNote: verdict.reason, correctedFrame: verdict.correctedFrame, provenance: verdict.provenance })
+      confirmed.push({ ...finding, verdict: verdict.verdict, verifierNote: verdict.reason, attemptedRefutation: verdict.attemptedRefutation, correctedFrame: verdict.correctedFrame, provenance: verdict.provenance })
       if (verdict.provenance && verdict.provenance.age === 'introduced') {
         log(`Newly introduced: "${String(finding.claim).slice(0, 70)}" — blamed on ${verdict.provenance.blamedCommit || '?'}${verdict.provenance.blamedSubject ? ` (${verdict.provenance.blamedSubject})` : ''}.`)
       }
@@ -1260,7 +1334,8 @@ roster and can be wrong or flattering. The transcripts under
   "112 of 195" against a real 155 because this number was asked rather than counted.${unmatchedHeadings.size ? `\n- ${unmatchedHeadings.size} heading(s) in the transcripts match no roster room (${[...unmatchedHeadings].slice(0, 12).join(', ')}) — either the roster is short or these are not headings. Say which.` : ''}
 - Turns spent by testers: ${turnsSpent} of ~${turnBudget * playRoster.length} budgeted. This EXCLUDES the verifiers' own probes, which are usually a large share of the round, so treat it as a floor and count the true total from the transcripts.
 - There is deliberately no "cells probed" count: free-text cell labels are not comparable between charters, so any total would be a number that means nothing. Build the real cross-product yourself from the transcripts, against the ${survey.rooms.length}-room roster and the timers above.
-- Charters run: ${playRoster.map((c) => c.key).join(', ')}. NOT run: ${skipped.map((c) => c.key).join(', ') || 'none'}.
+- Testers run: ${playRoster.map((r) => `${r.key}${r.charter.blind ? ` (${r.divergence}${r.region ? `, ${r.region}` : ''})` : ''}`).join(', ')}. Charters NOT run: ${skipped.map((c) => c.key).join(', ') || 'none'}.
+- The blind charters were given no room list, no timer list and no design doc, deliberately. A finding of theirs that the doc licenses is the expected cost of that, not a harness failure — but if more than about two in five are refuted that way, say so: the brief needs tightening, not the doc handing back.
 - Confirmed ${confirmed.length}, refuted ${refuted.length}, findings routed to another issue ${routed.length}. Every confirmed finding is filed; this round edits nothing.
 - Unknown-word replies: ${unknownWordTotal} occurrences over ${unknownWordDistinct} distinct words, counted off the transcripts (the testers self-reported ${reportedWordTotal} over ${unknownWords.size}; a gap between the two is a reporting defect, not a coverage one, and is worth a line). Not findings in themselves and not coverage — but ~48 verbs are stubs now, so a large number here is itself worth a sentence.
 - Timers, and whether any was left unexercised: ${(survey.timers || []).map((t) => t.label).join(', ') || 'none'}.
@@ -1304,7 +1379,10 @@ return {
   packagePath: pkg,
   seed,
   tiers: survey.tiers,
-  charters: { run: playRoster.map((c) => c.key), skipped: skipped.map((c) => c.key) },
+  charters: {
+    run: playRoster.map((r) => ({ key: r.key, charter: r.charter.key, region: r.region, divergence: r.charter.blind ? r.divergence : null })),
+    skipped: skipped.map((c) => c.key),
+  },
   confirmed,
   refuted,
   routed,

@@ -13,6 +13,11 @@ never asks whether it is *true*.
 `references/playtester-brief.md` is the doctrine and the judgement kernel; every
 tester reads it. This file is the operator's recipe for starting a round.
 
+Testers play through the game's own MCP server, registered per game in `.mcp.json`, so
+a round needs no build step of its own beyond the one below. The blind charters get a
+live coverage queue instead of a map: what the game has shown them and they have not
+followed up, every item a command to paste.
+
 ## Run a round
 
 ```sh
@@ -103,7 +108,7 @@ whoever remembered the rule.
 | `seed` | `0` | Pins the stream via `GNUSTO_SEED`. Record it; a finding without a seed isn't reproducible. |
 | `turns` | `60` | Engine turns per charter. Token cost, not CPU cost, is the real budget. |
 | `charters` | all applicable | Comma-separated subset, e.g. `"tourist,clock-watcher"`. |
-| `focus` | none | The coverage split, in your words, handed to every agent that judges prose. Free text: say which charter takes which region, and how it gets there. See below. |
+| `focus` | none | The coverage split. **Separate regions with `|`** — each becomes one explorer, up to three, and they are handed out with different divergence policies. Say how each region is reached. See below. |
 | `verifyEffort` | inherit | Reasoning effort for the verifiers — the round's largest fan-out, and so its cost. Turn it down to buy a bigger round; read the warning below first. |
 | `rounds` / `dryRounds` | `1` / `2` | Loop until N consecutive rounds surface nothing new. |
 | `packagePath` | `"."` | Drive another checkout — a worktree at an older commit, for calibration. |
