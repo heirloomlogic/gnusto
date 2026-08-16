@@ -20,6 +20,7 @@ that covers your task before writing code.
 | `docs/playtesting.md` | how to play a game by hand and read the transcript as prose, plus the calibration answer key |
 | `.claude/skills/playtest/`, `.claude/workflows/playtest.js` | the automated play-test harness: subagents play, read prose, and report lines untrue of their frame |
 | `bin/playtest-replay` | one-line non-interactive replay of any game, seed pinned |
+| `bin/gnusto-mcp`, `.mcp.json` | every demo game as an MCP play-test server — an agent opens a session, takes turns, and is told what it was shown and never followed up. One binary is one game, so no tool takes a game name |
 | `FIDELITY.md` | Zork 1 and Dungeon only: where their content departs from the original. Nothing else uses it. The two do **not** share a prose rule: Zork 1 reproduces verbatim, Dungeon adapts, and the Dungeon section states its rule before any region entry |
 
 ## Commands
@@ -36,7 +37,14 @@ xcrun swift-format lint --strict --parallel --recursive --configuration .swift-f
 
 bin/playtest-replay --build Fulminate                              # once
 bin/playtest-replay Fulminate --commands probe.txt --seed 0 --label mine --tail 60
+
+bin/gnusto-mcp Fulminate                       # what an MCP client runs; stdout is the protocol
 ```
+
+`bin/playtest-replay` stays even though the server can replay too: the calibration
+workflow in `.claude/skills/playtest/SKILL.md` builds from a worktree at an old
+commit, and a 2026-07 commit has no `--mcp`. Retiring the script retires
+calibration, which is the regression test for the whole harness.
 
 CI runs the strict lint. Run it before you claim done.
 
