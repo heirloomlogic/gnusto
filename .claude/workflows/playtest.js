@@ -1,15 +1,14 @@
 export const meta = {
   name: 'playtest',
   description:
-    'Automated play-test round for a Gnusto demo game: charter-diverse subagents read transcripts as prose, every finding is replayed and then adversarially refuted, and the round is gated on swift test plus the strict lint.',
+    'Automated play-test round for a Gnusto demo game: charter-diverse subagents read transcripts as prose, every finding is replayed and then adversarially refuted, and a critic counts the coverage off the transcripts rather than believing the testers.',
   whenToUse:
-    'Invoked by /playtest <game>. Needs args {game, packagePath, docPath, capabilities, turns, charters, fix, rounds}. The calling session builds the binary first (bin/playtest-replay --build <Game>) and writes the returned report; this script has no filesystem access of its own.',
+    'Invoked by /playtest <game>. Needs args {game, packagePath, docPath, capabilities, turns, charters, rounds}. The calling session builds the binary first (bin/playtest-replay --build <Game>) and writes the returned report; this script has no filesystem access of its own.',
   phases: [
     { title: 'Survey', detail: 'one cartographer: rooms, timers, vocabulary, and which oracle tiers exist' },
     { title: 'Play', detail: 'one playtester per charter, each replaying its own reproducers' },
     { title: 'Triage', detail: 'dedup in plain code, then one adversarial refuter per survivor' },
-    { title: 'Fix', detail: 'one fixer per owning file, test-first (opt-in)' },
-    { title: 'Gate', detail: 'swift test, strict lint, and the completeness critic' },
+    { title: 'Critic', detail: 'coverage counted off the transcripts, and what the round missed' },
   ],
 }
 
@@ -71,27 +70,6 @@ const maxRounds = clamp(ARGS.rounds, 1, 6, 1)
 const dryTarget = clamp(ARGS.dryRounds, 1, 3, 2)
 const seed = clamp(ARGS.seed, 0, Number.MAX_SAFE_INTEGER, 0)
 
-const FIX_MODES = ['none', 'game', 'all']
-const requestedFix = FIX_MODES.includes(ARGS.fix) ? ARGS.fix : 'none'
-const fixMode = docPath ? requestedFix : 'none'
-if (requestedFix !== 'none' && !docPath) {
-  log(
-    `${game} has no design doc, so this round files findings without fixing them. The repo makes docs/games/<game>.md the copy source of truth and requires a prose change to land there in the same commit; a prose fix with no doc to update would break the rule it is meant to follow.`
-  )
-}
-
-function clamp(value, lo, hi, fallback) {
-  const n = Number(value)
-  if (!Number.isFinite(n)) return fallback
-  return Math.max(lo, Math.min(hi, Math.floor(n)))
-}
-
-// ---------------------------------------------------------------------------
-// Ground truth handed to every agent, verbatim and identically
-// ---------------------------------------------------------------------------
-
-// Identical is the point. N testers judging against N slightly different
-// oracles produce findings that cannot be deduplicated or cross-verified.
 const REF = '.claude/skills/playtest/references'
 
 // Every agent is HANDED its replay label rather than asked to invent one. Asking
@@ -412,22 +390,6 @@ const VERDICT_SCHEMA = {
   },
 }
 
-const FIX_SCHEMA = {
-  type: 'object',
-  additionalProperties: false,
-  required: ['fixed', 'testName', 'sawItFailFirst', 'filesTouched', 'assertionsRemoved', 'docUpdated', 'notes'],
-  properties: {
-    fixed: { type: 'boolean' },
-    testName: { type: 'string' },
-    sawItFailFirst: { type: 'boolean' },
-    filesTouched: { type: 'array', items: { type: 'string' } },
-    assertionsRemoved: { type: 'integer' },
-    docUpdated: { type: 'boolean' },
-    escalated: { type: 'string', description: 'Set when the only available fix would breach the mechanics contract.' },
-    notes: { type: 'string' },
-  },
-}
-
 /// Counted off the transcripts, not asked of the testers — see the census agent
 /// in the Gate phase for why the difference matters.
 const CENSUS_SCHEMA = {
@@ -501,23 +463,6 @@ const CRITIC_SCHEMA = {
     charterSilence: { type: 'string' },
     nextRoundTargets: { type: 'array', items: { type: 'string' } },
     trustworthiness: { type: 'string', enum: ['sound', 'round-is-thin', 'verifier-suspect'] },
-  },
-}
-
-const GATE_SCHEMA = {
-  type: 'object',
-  additionalProperties: false,
-  required: ['testsPassed', 'testCount', 'lintPassed', 'assertionsWeakened', 'contractIntact', 'summary'],
-  properties: {
-    testsPassed: { type: 'boolean' },
-    testCount: { type: 'integer' },
-    failingTests: { type: 'array', items: { type: 'string' } },
-    lintPassed: { type: 'boolean' },
-    lintSkippedReason: { type: 'string' },
-    assertionsWeakened: { type: 'boolean' },
-    weakenedDetail: { type: 'string' },
-    contractIntact: { type: 'boolean' },
-    summary: { type: 'string' },
   },
 }
 
@@ -1091,151 +1036,33 @@ function ownerClass(file) {
   if (f === 'CLAUDE.md') return 'engine'
   // The game suites share a tree with the engine's, so split them by name. A
   // suite not named for its game (CloakTranscriptTests.swift) reads as engine,
-  // which is the safe direction: filed rather than fixed under `fix: "game"`.
+  // which is the safe direction for an issue checklist to guess.
   if (f.startsWith('Tests/')) return f.includes(game) ? 'game' : 'engine'
   if (f.startsWith(`Sources/${game}/`)) return 'game'
   if (f.startsWith('docs/games/')) return 'game'
   return 'unknown'
 }
 
-// Why a confirmed finding was NOT fixed, or null if it is fixable. Named rather
-// than inferred, so `report-shape.md`'s "Why not fixed here" column is read off
-// the return value instead of reconstructed by hand every round.
-//
-// `harness` is excluded by this rule and not by falling through to `unknown`: a
-// fixer editing the workflow that is currently running it, or the briefs its
-// sibling agents are still reading, changes the run underneath itself. The
-// harness does not repair itself mid-round.
-//
-// `unclassified` is what a leftover `unknown` becomes here. The classifier's word
-// is the state of the path; this one is the state of the finding, and the whole
-// point of splitting `harness` out is that reaching it now means a path nothing
-// recognises — usually a tester inventing or misspelling an `ownerFile`.
-function notFixedReason(cls, verdict) {
-  if (verdict === 'needs-human') return 'needs-human'
-  if (cls === 'harness') return 'harness'
-  if (cls === 'unknown') return 'unclassified'
-  if (fixMode === 'all') return null
-  if (fixMode === 'game' && cls === 'game') return null
-  return 'out-of-mode'
-}
+// ---------------------------------------------------------------------------
+// Phase 4 — Critic
+// ---------------------------------------------------------------------------
 
-// Fixed order and zero entries, so a round that fixed nothing still prints all four.
-const FILED_REASONS = ['needs-human', 'harness', 'out-of-mode', 'unclassified']
+phase('Critic')
 
-const fixable = []
-const filed = []
-const filedByReason = Object.fromEntries(FILED_REASONS.map((r) => [r, 0]))
-const unrecognizedOwners = new Set()
+// `ownerClass` outlives the fix phase because `issue-shape.md` asks the operator
+// to label every checklist row with its owner. It classifies; it no longer
+// decides anything, since nothing in this round edits the tree.
 for (const f of confirmed) {
-  // Carried on the finding rather than left to be recomputed: `issue-shape.md`
-  // asks the operator to label each checklist row with the owner, and re-running
-  // the ladder by hand is how the two drifted apart in the first place.
-  const cls = ownerClass(f.ownerFile)
-  const reason = notFixedReason(cls, f.verdict)
-  if (!reason) {
-    fixable.push({ ...f, ownerClass: cls })
-    continue
-  }
-  filed.push({ ...f, ownerClass: cls, notFixedReason: reason })
-  filedByReason[reason] += 1
-  if (reason === 'unclassified') unrecognizedOwners.add(f.ownerFile)
+  f.ownerClass = ownerClass(f.ownerFile)
 }
-const filedBreakdown = FILED_REASONS.map((r) => `${r} ${filedByReason[r]}`).join(', ')
-
-// Unconditional: a round that fixed nothing has to say why, and that is exactly
-// the round whose Fix phase never runs.
-log(
-  `Fix mode "${fixMode}": fixing ${fixable.length} of ${confirmed.length} confirmed findings; filing ${filed.length} (${filedBreakdown}).`
+const unrecognizedOwners = new Set(
+  confirmed.filter((f) => f.ownerClass === 'unknown').map((f) => f.ownerFile)
 )
-
 if (unrecognizedOwners.size) {
   log(
-    `Unrecognised ownerFile paths, which no fix mode can reach — most often a tester inventing or misspelling one: ${[...unrecognizedOwners].join(', ')}`
+    `Unrecognised ownerFile paths — most often a tester inventing or misspelling one: ${[...unrecognizedOwners].join(', ')}`
   )
 }
-
-const fixes = []
-if (fixable.length) {
-  phase('Fix')
-
-  // Cluster by owning file and give each fixer disjoint files. Several agents
-  // editing one game file in parallel is a merge conflict with extra steps; for
-  // a one-file game the cluster count is 1 and this degenerates to a serial
-  // batch loop, which is correct.
-  const clusters = new Map()
-  for (const f of fixable) {
-    const k = f.ownerFile
-    if (!clusters.has(k)) clusters.set(k, [])
-    clusters.get(k).push(f)
-  }
-  log(`Fixing ${fixable.length} findings across ${clusters.size} disjoint file clusters.`)
-
-  const results = await parallel(
-    [...clusters.entries()].map(([file, group]) => () =>
-      agent(
-        `${groundMin(labelFor('fix', file.split('/').pop()))}
-
-Read \`${REF}/fixer-brief.md\` first and follow it exactly.
-
-You own **${file}** and nothing else. Another fixer is working in a different file
-right now, so do not touch theirs.
-
-Fix these ${group.length} confirmed defects, TEST FIRST — write the failing transcript
-test from the reproducer, run it, SEE IT FAIL, then fix, then see it pass:
-
-${group.map((f, i) => `${i + 1}. ${f.claim}
-   Frame:      ${f.frame.room}${f.frame.hour ? ' @ ' + f.frame.hour : ''} — ${f.frame.state}
-   Excerpt:    ${f.excerpt}
-   Reproducer: ${JSON.stringify(f.reproducer)}
-   Fault:      ${f.fault}
-   Verifier:   ${f.verifierNote || ''}${f.alsoSeenIn && f.alsoSeenIn.length ? `\n   Also false in: ${f.alsoSeenIn.join('; ')} — your fix must satisfy every one of these frames, not just the first` : ''}`).join('\n\n')}
-
-${docPath ? `Any prose you change must also change in \`${docPath}\`, in this same commit.` : ''}
-If the only fix you can see would change a count or structure the mechanics contract
-pins, STOP and report it in \`escalated\` instead of doing it.
-
-Report assertionsRemoved honestly. It is checked independently, and a fixer that
-deleted an assertion has not fixed anything.`,
-        { label: `fix:${file.split('/').pop()}`, phase: 'Fix', schema: FIX_SCHEMA }
-      ).then((r) => ({ file, group, result: r }))
-    )
-  )
-  fixes.push(...results.filter(Boolean))
-}
-
-// ---------------------------------------------------------------------------
-// Phase 5 — Gate
-// ---------------------------------------------------------------------------
-
-phase('Gate')
-
-const touched = fixes.flatMap((f) => (f.result && f.result.filesTouched) || [])
-
-const gateThunk = () =>
-  agent(
-      `${groundMin(labelFor('gate'))}
-
-You are the gate. Nothing you are told about the fixes is to be trusted; check it.
-
-1. Run \`swift test --build-system swiftbuild\` and report the real count and any
-   failures. (This repo needs --build-system swiftbuild because the test target
-   imports the executable targets.)
-2. Run the strict lint:
-   \`xcrun swift-format lint --strict --parallel --recursive --configuration .swift-format Sources Tests\`
-   **\`.swift-format\` is gitignored and absent from a fresh clone** — it is generated by
-   \`.build/checkouts/Persnicket/bin/ci-lint-setup\`. Run that first if the file is
-   missing. If you cannot lint, set lintPassed false and say why in lintSkippedReason.
-   Do not report a pass you did not observe.
-3. \`git diff\` the test files and check whether any assertion was REMOVED or LOOSENED —
-   a deleted \`#expect\`, a needle dropped from an expectInOrder list, a narrowed
-   substring. Set assertionsWeakened and quote what you found. This is the check the
-   fixers cannot be trusted to make about themselves.
-4. ${docPath ? `Diff \`${docPath}\` and confirm no count or structure in its mechanics contract changed. Prose may change; the invariants may not.` : 'No design doc, so no contract to check: set contractIntact true.'}
-
-Files the fixers say they touched: ${touched.join(', ')}`,
-      { label: 'gate', phase: 'Gate', schema: GATE_SCHEMA, effort: 'high' }
-    )
 
 // Coverage arithmetic in plain code, from the survey's denominator, so the
 // critic judges numbers it did not produce. This is what turns "a clean round
@@ -1291,9 +1118,8 @@ const reportedWordTotal = [...unknownWords.values()].reduce((a, b) => a + b, 0)
 // because a derived number does not depend on seventy-nine agents reading a
 // field description the same way.
 // Started here, awaited by the critic — not `await`ed on this line. Nothing in
-// the gate reads it, and the gate is the round's longest pole (`swift test`
-// plus a strict recursive lint), so blocking on a subagent round-trip in front
-// of it is dead wall clock on every round.
+// nothing before the critic reads it, so blocking on a subagent round-trip in
+// front of the critic is dead wall clock on every round.
 const censusPromise = agent(
   `${groundMin(labelFor('census'))}
 
@@ -1435,8 +1261,7 @@ roster and can be wrong or flattering. The transcripts under
 - Turns spent by testers: ${turnsSpent} of ~${turnBudget * playRoster.length} budgeted. This EXCLUDES the verifiers' own probes, which are usually a large share of the round, so treat it as a floor and count the true total from the transcripts.
 - There is deliberately no "cells probed" count: free-text cell labels are not comparable between charters, so any total would be a number that means nothing. Build the real cross-product yourself from the transcripts, against the ${survey.rooms.length}-room roster and the timers above.
 - Charters run: ${playRoster.map((c) => c.key).join(', ')}. NOT run: ${skipped.map((c) => c.key).join(', ') || 'none'}.
-- Confirmed ${confirmed.length}, refuted ${refuted.length}, findings routed to another issue ${routed.length}, fixed ${fixes.filter((f) => f.result && f.result.fixed).length}.
-- Filed rather than fixed: ${filed.length} (${filedBreakdown}). \`${REF}/report-shape.md\` defines the four reasons.
+- Confirmed ${confirmed.length}, refuted ${refuted.length}, findings routed to another issue ${routed.length}. Every confirmed finding is filed; this round edits nothing.
 - Unknown-word replies: ${unknownWordTotal} occurrences over ${unknownWordDistinct} distinct words, counted off the transcripts (the testers self-reported ${reportedWordTotal} over ${unknownWords.size}; a gap between the two is a reporting defect, not a coverage one, and is worth a line). Not findings in themselves and not coverage — but ~48 verbs are stubs now, so a large number here is itself worth a sentence.
 - Timers, and whether any was left unexercised: ${(survey.timers || []).map((t) => t.label).join(', ') || 'none'}.
 
@@ -1463,12 +1288,9 @@ worse than not running.`,
   )
 }
 
-// The gate runs the suite and the lint; the critic re-counts coverage from the
-// transcripts. Neither reads the other's output, and both are slow, so they run
-// together rather than one waiting on the other. The census, started above,
-// finishes inside the critic's own wait.
-const [gate, critic] = await parallel(
-  touched.length ? [gateThunk, criticThunk] : [() => null, criticThunk])
+// The critic re-counts coverage from the transcripts. The census, started
+// above, finishes inside its own wait.
+const critic = await criticThunk()
 
 const census = await censusPromise
 const censusWords = (census && census.words) || []
@@ -1481,20 +1303,15 @@ return {
   game,
   packagePath: pkg,
   seed,
-  fixMode,
   tiers: survey.tiers,
   charters: { run: playRoster.map((c) => c.key), skipped: skipped.map((c) => c.key) },
   confirmed,
-  filed,
-  filedByReason,
   refuted,
   routed,
   // The census is the authority; what the testers said is kept beside it so a
   // reader can see the two disagree.
   unknownWords: censusWords.length ? [...censusWords].sort((a, b) => b.count - a.count) : selfReportedWords,
   unknownWordsSelfReported: selfReportedWords,
-  fixes: fixes.map((f) => ({ file: f.file, ...(f.result || {}), findings: f.group.map((g) => g.claim) })),
-  gate,
   critic,
   coverage: {
     // Same rule as `unknownWords` above: the census is the authority and the

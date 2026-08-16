@@ -36,7 +36,8 @@ commands rather than repeating one when you need to assert about a later turn.
 
 ## The rules you are bound by
 
-These are the repo's, not mine, and the gate checks them independently.
+These are the repo's, not mine. Nothing checks them for you now — the round
+that filed the finding does not fix, so you are the last check.
 
 **Copy lives in the design doc.** `docs/games/<game>.md` is the story-and-copy
 source of truth. A prose change lands in the doc **in the same commit** as the code.

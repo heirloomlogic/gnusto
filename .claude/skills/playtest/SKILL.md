@@ -28,8 +28,7 @@ Workflow({ scriptPath: ".claude/workflows/playtest.js", args: {
   docPath: "docs/games/fulminate.md",   // null when the game has no design doc
   capabilities: ["clock", "talk"],
   seed: 0,
-  turns: 60,
-  fix: "none"
+  turns: 60
 }})
 ```
 
@@ -46,11 +45,9 @@ what a game depends on: `GnustoClock` → `clock`, `GnustoConversation` → `tal
 on that, so a game with no clock gets no clock-watcher.
 
 **`docPath` is `docs/games/<game>.md` if it exists and `null` if it doesn't.** Check
-with `ls docs/games/`; don't work from a list, here or anywhere. A missing doc doesn't
-stop the round finding defects; it stops it *fixing* prose, because the repo makes the
-design doc the copy source of truth.
+with `ls docs/games/`; don't work from a list, here or anywhere.
 
-Pass the doc **even for a `fix: "none"` round**. It changes what the verifiers can
+Pass the doc whenever there is one. It changes what the verifiers can
 argue: with a contract they refute on "the doc licenses this", and without one they
 fall back to "you cannot tell intent from outside, so a preference is refuted", which
 rejects good findings along with bad. See the Refuted section of
@@ -108,28 +105,20 @@ whoever remembered the rule.
 | `charters` | all applicable | Comma-separated subset, e.g. `"tourist,clock-watcher"`. |
 | `focus` | none | The coverage split, in your words, handed to every agent that judges prose. Free text: say which charter takes which region, and how it gets there. See below. |
 | `verifyEffort` | inherit | Reasoning effort for the verifiers — the round's largest fan-out, and so its cost. Turn it down to buy a bigger round; read the warning below first. |
-| `fix` | `"none"` | `none` files everything, in the round's one issue. `game` also fixes findings owned by the game's own files. `all` fixes engine findings too. No setting touches the harness's own files. |
 | `rounds` / `dryRounds` | `1` / `2` | Loop until N consecutive rounds surface nothing new. |
 | `packagePath` | `"."` | Drive another checkout — a worktree at an older commit, for calibration. |
 | `ledgerKeys` | `[]` | Keys from previous reports, so the loop doesn't re-find its own rejections. |
 | `routedIssues` | `[]` | `[{number, owns}]` for open issues that own a defect class. Derive it fresh — see above. |
 
-**`fix` defaults to `none`, and the fix phase is experimental.** Fixing is where the
-harness stops being safe: the failure mode isn't a crash, it's a *plausible* wrong fix
-in a densely prose-coupled suite. Run a round with `fix: "none"`, read the findings
-yourself, then decide.
+**A round finds and files; it does not fix.** The fix phase is gone, and with it the
+gate that existed to check the fixers. Fixing was where the harness stopped being
+safe: the failure mode was never a crash, it was a *plausible* wrong fix in a densely
+prose-coupled suite, applied by an agent that had read the finding and not the game.
+Read the round's issue, then fix by hand — `references/fixer-brief.md` is still the
+rules that bind whoever does, and it now binds a person.
 
-Three overrides ignore the flag entirely. No design doc means no prose fixing. A fix
-that would change a count or structure pinned by a mechanics contract is escalated to
-a human, never applied — the gate checks that independently, because a prohibition only
-the offender checks is not a prohibition. And **the harness does not repair itself
-mid-round**: a finding whose `ownerClass` is `harness` is filed at every setting,
-because a fixer editing the workflow that is currently running it, or the briefs its
-sibling agents are still reading, changes the run underneath itself.
-
-Every finding the round files carries a `notFixedReason`, and the workflow logs the
-breakdown whether or not anything was fixable — including the round where nothing was.
-`references/report-shape.md` defines the reasons.
+Every confirmed finding still carries an `ownerClass`, because the issue checklist
+labels each row with its owner. It classifies and no longer decides anything.
 
 **`focus` is how a game bigger than one round gets a split instead of an accident.** Six
 charters all start where the player starts. On a nine-room game that costs nothing; on a
@@ -160,7 +149,7 @@ replies against transcripts holding 261, and the 2026-08-11 round self-reported 
 rooms against a real 155. Neither was a tester lying — a field description is read
 seventy-nine different ways by seventy-nine agents, and a derived number does not depend
 on that. The pattern to copy when adding the third: a hardcoded command, a strict schema
-with a `note` for the empty case, started early and awaited late so it overlaps the gate,
+with a `note` for the empty case, started early and awaited late so it overlaps the critic,
 and **the self-report kept beside the count rather than replaced by it**, so a reader can
 see the two disagree.
 

@@ -42,22 +42,21 @@ after the issue is filed, not before.
    each **defect → frame → cause**, in that order, with the cause naming the missing
    branch. Where a defect was introduced by an earlier fix, the lead sentence says
    so.
-3. **Fixed** — each with the test that fails without it.
-4. **Filed, not fixed** — the round's one issue, named once, then the classes inside
-   it and the reason each wasn't fixed. The workflow hands you the reason: every
-   entry in the returned `filed` carries a `notFixedReason`, and `filedByReason`
-   totals them. Elaborate on it in the operator's words; don't reconstruct it.
-5. **Routed elsewhere** — one entry per open issue the round forwarded symptoms to,
+3. **Filed** — the round's one issue, named once, then the classes inside it. Every
+   confirmed finding is filed: a round finds and files, and nothing in it edits the
+   tree. Each entry carries an `ownerClass`, which labels the row with its owner and
+   decides nothing.
+4. **Routed elsewhere** — one entry per open issue the round forwarded symptoms to,
    with counts, plus anything promoted *out* of a bucket and the argument for it. Omit
    the section when the round routed nothing, which is the common case. An issue that
    has since closed does not belong here at all: its symptoms are regressions, and
    they go under *Fixed* or *Filed*.
-6. **Refuted** — the claim *and* the refutation. This section is how the verifier
+5. **Refuted** — the claim *and* the refutation. This section is how the verifier
    gets audited. A round with an empty refuted list either got lucky or isn't
    really refuting.
-7. **Coverage** — the load-bearing section. See below.
-8. **Hygiene** — test count, lint result, and the diff stat for test files, with an
-   explicit statement that no assertion was removed.
+6. **Coverage** — the load-bearing section. See below.
+7. **Hygiene** — the seed, the turn budget, and any charter that did not run. A round
+   that changes nothing has no test count or diff stat to report.
 
 ## Coverage is the section that keeps the report honest
 
@@ -117,30 +116,20 @@ when they're standing there. All four predate this branch.
   definite article in front of a proper name. A sweep of the actor-directed keys says
   this is the only one still missing.
 
-## Fixed
+## Filed
 
-| # | Finding | Site | Test that fails without the fix |
+Three findings, deduplicating to two classes. Filed as #80.
+
+| Class | Severity | Owner | Site |
 |---|---|---|---|
-| F-0003 | `cantTakeActor` not re-skinned | `Sources/Fulminate/Fulminate.swift` `text` block | `actorLinesAreAllInTheGamesOwnVoice` |
+| `cantTakeActor` not re-skinned | major | `game` | `Sources/Fulminate/Fulminate.swift` `text` block |
+| Mrs. Vane's location-blind listing line | major | `game` | `Sources/Fulminate/Cast.swift` |
 
-Doc changes in this commit: `docs/games/fulminate.md` — Cast copy for Mrs. Kettle.
-
-## Filed, not fixed
-
-Two findings, deduplicating to one class. Filed as #80.
-
-| Class | Severity | Why not fixed here |
-|---|---|---|
-| Mrs. Vane's location-blind listing line | major | `needs-human` — more than one reasonable design. |
-
-The right-hand column starts from the finding's `notFixedReason`:
-
-| Reason | Means |
-|---|---|
-| `needs-human` | The verifier confirmed it and declined to let a fixer near the design. |
-| `harness` | Owned by the harness, which does not repair itself mid-round. |
-| `out-of-mode` | The `fix` setting this round didn't reach its owner class. |
-| `unclassified` | Nothing recognised the `ownerFile` — usually the tester invented or misspelled it, and worth correcting in the finding rather than explaining away here. |
+`ownerClass` is one of `game`, `engine`, `harness` or `unknown`. It says who owns the
+site, not what should happen next — a round files everything and fixes nothing.
+`unknown` means no rule recognised the `ownerFile`, which usually means the tester
+invented or misspelled it; correct it in the finding rather than explaining it away
+here.
 
 ## Routed elsewhere
 
