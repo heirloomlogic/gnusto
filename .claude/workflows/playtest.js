@@ -333,17 +333,22 @@ const FINDINGS_SCHEMA = {
           category: { type: 'string', enum: CATEGORIES },
           severity: { type: 'string', enum: ['blocking', 'major', 'minor', 'note'] },
           excerpt: { type: 'string', description: 'The offending text verbatim, with enough context to place it.' },
+          // No `anchor`. It existed because a tester computing the hour from a
+          // command count got it wrong — meta commands and parse failures cost
+          // no turn — so the finding had to carry the transcript line that
+          // proved the claim. Every turn now ends with a `[status]` footer
+          // naming the room, the move counter and whether the command cost a
+          // turn, so the hour is read rather than derived and the proof is in
+          // the transcript by construction. A field asking a tester to
+          // re-attest what the harness already recorded is a field that can
+          // only be wrong.
           frame: {
             type: 'object',
             additionalProperties: false,
-            required: ['room', 'anchor', 'state'],
+            required: ['room', 'state'],
             properties: {
-              room: { type: 'string' },
+              room: { type: 'string', description: 'Copied from the turn\'s `[status]` line.' },
               hour: { type: 'string' },
-              anchor: {
-                type: 'string',
-                description: 'The line IN THE TRANSCRIPT that proves the hour or turn. Arithmetic alone is not an anchor.',
-              },
               state: { type: 'string' },
             },
           },
@@ -584,7 +589,9 @@ function articleSweep(survey) {
   for (const a of actors) for (const g of gaps) lines.push(`  ${g.probe(a)}          → would expose stock \`${g.key}\``)
   return `These ${gaps.length} actor-directed stock lines are NOT re-skinned by this game: ${gaps.map((g) => g.key).join(', ')}.
 Every actor below has a proper name or an honorific, so each of these commands should
-be answered in the game's own voice and any that isn't is a K9 finding. RUN THEM ALL:
+be answered in the game's own voice. Any that isn't is a \`register-mismatch\`: a stock
+line printing a definite article in front of a proper name, "The Dr. Pike would take
+exception to that." RUN THEM ALL:
 
 ${lines.join('\n')}
 
@@ -788,7 +795,7 @@ Report:
 3. The state axes a line could be wrong along.
 4. Every noun the prose prints, crossed against the vocabulary (name, synonyms,
    adjectives), with whether it is answerable. Cross these two in code, not by playing:
-   K8 is checkable before a single turn.
+   whether every printed noun has a word behind it is checkable before a single turn.
 5. Which stock text keys the game overrides in its \`text\` block, AND which stub-verb
    replies it overrides via \`text.stubs.<verb>\`. The COMPLEMENT of each is a vandal
    target list. Read \`Sources/Gnusto/Actions/GameText.swift\` for the full stub roster
@@ -1094,7 +1101,6 @@ ${batch
   Category:   ${f.category}   Severity: ${f.severity}
   Excerpt:    ${f.excerpt}
   Frame:      ${f.frame.room}${f.frame.hour ? ' @ ' + f.frame.hour : ''} — ${f.frame.state}
-  Anchor:     ${f.frame.anchor}
   Reproducer: ${JSON.stringify(f.reproducer)}
   Fault:      ${f.fault}
   Owner file: ${f.ownerFile}`
@@ -1113,10 +1119,11 @@ repo's testers have actually been wrong, most frequent first.
    silently discards a regression.
 3. **Did the tester misread?** Replay the reproducer YOURSELF, once per finding:
    \`bin/playtest-replay ${game} --commands <file> --seed ${seed} --label ${verifyLabel}-<n>\`.
-   Confirm the excerpt appears verbatim, in the frame claimed, with the hour anchored by
-   a real reading and not by counting commands — remember meta commands and parse
-   failures cost no turn. If the quoted text is not in the tree, or the frame is wrong,
-   refute and say which.
+   Confirm the excerpt appears verbatim and in the frame claimed. The \`[status]\` footer
+   on each turn names the room, the move counter and whether the command cost a turn, so
+   check the claimed frame against that line rather than against a command count — meta
+   commands and parse failures cost no turn. If the quoted text is not in the tree, or
+   the frame does not match the footer, refute and say which.
 
    Give each replay its own label suffix. A label is a namespace holding many probes,
    and a batch that replays everything under one label produces a directory nobody can

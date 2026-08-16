@@ -210,10 +210,17 @@ two seconds instead of costing a full fan-out: a helper deleted by an edit somew
 else, a phase name that no longer matches `meta`, a roster that hands the wrong
 assignment to the wrong charter. It has caught all three.
 
-It also writes every generated prompt to `/tmp/prompts.txt`, which is the only cheap
-place to check the firewall — that the blind charters' prompts carry no design doc, no
-room roster and no timer list is a property of the *text*, and grepping it is how you
-know. Run it after any edit to `playtest.js`.
+It also writes every generated prompt to `/tmp/prompts.txt` and then **asserts against
+them**, which is the only cheap place to check the firewall — that a blind charter's
+prompt carries no design doc, no judgement kernel, no timer schedule and no region but
+its own is a property of the *text*, and grepping it is how you know. That assertion
+earned itself immediately: the operator's coverage plan was being pasted into every
+prompt, so a blind explorer got nine of Fulminate's ten rooms three lines above its
+brief telling it "you have no map, no room list".
+
+The other assertions pin the batched verifiers (two raters, batch/rater labels, a
+measurable agreement denominator) and the absence of the retired censuses. It exits
+non-zero when any of them fails. Run it after any edit to `playtest.js`.
 
 **One thing it cannot tell you:** whether the game's MCP server is reachable. A
 `.mcp.json` added mid-session is not picked up until the session restarts, and the

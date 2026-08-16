@@ -65,8 +65,9 @@ so in your report rather than quietly editing it away.
 ## Fixing the two commonest shapes
 
 **A location-blind or state-blind listing line.** Per K1, an actor's `firstSight`
-prints on every look forever, so it cannot know where the actor is. Per K2 you
-cannot have both `firstSight` and `presence` on one entity. So: delete the
+prints on every look forever, so it cannot know where the actor is. You cannot have
+both `firstSight` and `presence` on one entity — that is a fatal bootstrap error, not
+a precedence question. So: delete the
 `firstSight(…)` trait and add a `presence { }` rule that branches on the actor's own
 location and on the state that matters. Branch on **both** — a rule keyed on the
 event alone is how the original defect got reintroduced by its own fix.

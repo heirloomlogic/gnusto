@@ -1,8 +1,12 @@
 # The playtester's brief
 
-Read this before your charter. It is the same for every tester and every game, so
-that findings from different testers can be compared, deduplicated, and verified
-against one another.
+Read this before your charter. It is the same for every charter that reads it, so
+that a finding of yours reads the same way as one from a tester who was somewhere
+else in the game.
+
+**The blind charters do not read this file.** They get `finding-contract.md` and
+nothing else, on purpose: somebody handed the map navigates instead of exploring.
+If you are one of them you are not here.
 
 ## What you are looking for
 
@@ -15,13 +19,13 @@ question, asked of every line: *given where the player is and what has happened,
 is this sentence true?*
 
 `swift test` cannot ask that question. A transcript test asserts that a line
-**appears**; it never asks whether the line is **true**. All ~780 tests pass while
-an NPC goes on "looking at the fire" from the bottom of a dark coal cellar, because
-a test that greps for "looking at the fire" finds it and is satisfied. You are the
+**appears**; it never asks whether the line is **true**. Every test passes while an
+NPC goes on "looking at the fire" from the bottom of a dark coal cellar, because a
+test that greps for "looking at the fire" finds it and is satisfied. You are the
 part of the process that isn't satisfied.
 
-Every defect in the answer key below was found by a human reading prose, and none
-by the suite:
+Every defect in this answer key was found by a human reading prose, and none by the
+suite:
 
 | The line | Why it was false |
 |---|---|
@@ -32,97 +36,63 @@ by the suite:
 | "the dust … settles on the hall table" | Printed in the kitchen, which has no hall table |
 | "The Dr. Pike would take exception to that." | A stock line with a definite article in front of a proper name |
 
-## How to play
+## How a session works
 
-Every turn is a fresh process. You do not hold a session open; you replay the whole
-command list from the start each time, with the seed pinned, and read the result.
+You play the live game through its own MCP server, one turn at a time. `open`
+starts a session and hands back the game's first words; `move` takes turns; the
+session stays open, so there is no replaying from the start to see the next line.
 
-```sh
-bin/playtest-replay <Game> --commands <your-file> --seed 0 --label <the label you were given> --tail 60
-```
+- **Every turn ends with a `[status]` line** naming the room, the move counter and
+  whether the command cost a turn. Read it rather than computing it. Meta commands
+  and parse failures cost no turn, stub verbs like `sing` and `dig` do, and this
+  footer is why none of that is arithmetic you have to get right any more.
+- **`coverage` is a worklist, not a statistic.** Each item is a command you can
+  paste and a sentence saying where the game showed you the thing. The count it
+  returns is a countdown.
+- **`note` costs no turn.** Use it the moment a line reads wrong, at the turn that
+  printed it — not forty turns later from memory. `suspicious: true` marks it.
+  Notes are written into the transcript, so they live in the evidence.
+- **`finish` accepts.** It does not refuse, it has no minimum on the reason, and it
+  does not close the session — you can call `move` again after. What it does is
+  account: it tells you what was still open when you stopped, and that list *is*
+  the round's coverage gap. An unexplained gap is still counted as a gap, so say
+  why in `leaving` if you are stopping on purpose.
+- **If your `open` returns an `instruction`, follow it for the whole session.** It
+  tells you what to do the first time the game offers something you cannot take
+  back. Another tester has the opposite orders, so the branch you leave alone is
+  covered by them and the one you take is yours to describe.
 
-Append to your command file, run again, read the new tail. A boot plus a hundred
-turns is milliseconds, so replaying is free. Determinism falls out of it: the
-transcript you just read is exactly the transcript `play(Game(), [...], seed: 0)`
-will produce, which is why your command list *is* your reproducer.
-
-Five things to know:
-
-- **Batch commands when you are only walking.** Add five at a time to cross the
-  map, one at a time when you are reading closely.
-- **`--tail` is how you stay affordable.** Re-reading a growing transcript every
-  turn is the real cost of this job. Read the tail; open the full file only when
-  you need earlier context.
-- **Annotate as you go.** A line starting `//` or `#` is recorded in the transcript
-  and never reaches the parser — no turn, no clock tick, no rule. Write down what
-  you are probing and why. The annotated transcript is an artifact someone else
-  will read. Blank lines are free too — the tool strips them out of the command
-  file — so group your probes with them.
-- **For a deep state, save once and restore.** `--save <slot>` at the end of a
-  prologue, then `--restore <slot>` in each probe, instead of replaying forty
-  `z`s. Restoring costs no turn, so it does not move the clock. Saves live at the
-  label, which is what lets a later probe restore an earlier probe's anchor.
-- **Your label is a namespace; each run is a probe under it.** Use the label you
-  were given and don't invent a short one — every run allocates its own
-  `.context/playtest/<label>/probe-NNN/`, so nothing you or anyone else replays can
-  overwrite a transcript. Cite the `[playtest] transcript=…` path the tool prints,
-  never a bare label: the path is fixed, and a label is not. Write nothing outside
-  `.context/playtest/`.
+Write nothing outside `.context/playtest/`.
 
 ## Your reproducer is the deliverable
 
 A finding without a reproducer cannot become a test, and a finding that cannot
-become a test will come back. Every finding must carry the seed and the **shortest**
-command list that reaches it.
+become a test will come back. Every finding carries the seed and the **shortest**
+command list that reaches it — not the forty commands you actually typed.
 
-**Replay your reproducer from a clean start before you report it.** If the trimmed
-list does not produce the line you are reporting, you have not found the reproducer
-yet — say so in your coverage note rather than reporting a sequence that doesn't
-work.
-
-## Frame arithmetic
-
-**Never count commands as turns.** Meta commands (`score`, `quit`, `version`,
-`undo`, `restart`, `save`, `restore`) and *every command that fails to parse* cost
-no turn at all. This is the most common timing mistake in this repo, and it is easy
-to make: four commands where one was a typo is three turns, and if you assumed four
-you are now reasoning about the wrong minute.
-
-The trap runs the other way too. A **stub verb parses and costs a turn** even though
-it does nothing — `sing`, `dig`, `xyzzy` all move the clock. So a probe padded with
-"harmless" verbs drifts forward, not back. `frotz` is the engine's reserved non-word
-and is the only reliably free thing you can type.
-
-So: compute the hour if you like — turn *n* reads `start + minutesPerTurn·(n−1)` —
-but **anchor every hour you claim with a real reading inside the transcript**, from
-`time` or from a room listing you can place. A probe whose anchor disagrees with
-your arithmetic is void, and reporting it wastes a verifier.
+The server replays and verifies that list for you and records the transcript path
+it produced. If the trimmed list does not produce the line you are reporting, you
+have not found the reproducer yet; say so in your coverage note rather than
+reporting a sequence that does not work.
 
 ## The judgement kernel
 
-These hold for every game, with no game knowledge at all. When the design doc is
-silent, this is your oracle. Each is stated so you can rule on it from a transcript.
+Three rules that hold for every game, statable from a transcript with no game
+knowledge. Everything else the engine guarantees is in `CLAUDE.md`, which you have
+— repeating it here is where doc-drift comes from.
 
 **K1 — There are two description channels, and they behave differently.**
 `description(…)` / `describe { }` is the *examine* text. `firstSight(…)` /
 `presence { }` is the *room-listing* paragraph. On an item the listing line prints
 until the player touches it. **On an actor it prints on every look, forever.**
 
-Therefore an actor's listing line must be true in every room and at every hour that
-actor can occupy. A listing line that names a place ("in her chair"), a posture
-toward a thing that might not be there ("looking at the fire"), or a state that
-might not have happened yet ("has looked at the wreckage") is a defect unless it is
-a `presence` rule keyed on *both* the room and the state.
-
-**K2 — A static trait and its rule are mutually exclusive.** `description` plus
-`describe`, or `firstSight` plus `presence`, on one entity is a fatal bootstrap
-error. So the fix for a location-blind `firstSight` is to *delete the trait* and add
-a `presence` rule — never to add a second channel. Precedence: runtime assignment >
-rule > static trait. Presence has no runtime setter.
-
-**K3 — `onEnter` runs after the player has moved, and cannot block entry.** Prose
-claiming the player can't get somewhere, printed while they are standing there, is a
-defect: either the prose is wrong or the gate is missing.
+So an actor's listing line must be true in every room and at every hour that actor
+can occupy. One that names a place ("in her chair"), a posture toward a thing that
+might not be there ("looking at the fire"), or a state that might not have happened
+yet ("has looked at the wreckage") is a defect unless it is a `presence` rule keyed
+on *both* the room and the state. Name the channel in your fault: the fix for a
+location-blind `firstSight` is to delete the trait and add a `presence` rule, never
+to add a second channel — declaring both is a fatal bootstrap error.
 
 **K4 — Actors are always listed if perceivable.** `scenery` has no effect on them;
 only `hidden`-and-unrevealed, or being offstage, suppresses one. So an actor who
@@ -130,64 +100,13 @@ leaves with no departure line has silently ceased to exist, and an actor whose
 departure was narrated but who is still in the listing is the same defect inverted.
 Check both directions.
 
-**K5 — `reveal()` is one-way and `isTouched` is read-only.** Neither is a toggle. A
-first-time line that prints twice, or state that appears to un-reveal, is a defect.
-
-**K6 — Meta intents and parse failures cost no turn.** See *Frame arithmetic*.
-
-**K7 — `search` / `find` / `look for` all mean the same intent**, and it refuses in
-a fixed order: `cantReach` for something out of reach, then a person, then anything
-that isn't a container ("You find nothing of interest in the …").
-**"You can't see any such thing" is reserved for a noun that isn't in scope at
-all** — so that answer to `search <a thing the room just described>` is a defect,
-not stock behavior. (This changed; older notes say otherwise. Trust the code.)
-
-**K8 — Every noun the game prints must be answerable.** Not just room descriptions:
-examine texts, refusals, blocked-exit prose, topic answers. If the game's prose put
-a word on the page, the parser must know it. Vocabulary comes from `name` (last word
-is the noun, earlier words are adjectives) plus `synonyms` and `adjectives`.
-
-**The tie-break that matters:** if an open issue owns unknown words this round, your
-prompt says so — but that never covers a word the game's own prose printed, which is
-K8 and yours regardless. A room that describes "black and white tile, worn through to
-the grout" and then cannot answer `x tile` is a K8 finding, even though the reply is
-an unknown-word reply. Ask: did the game invite this word? If yes, report it. If you
-invented it, note it in your list and move on.
-
-**K9 — Stock lines interpolate a definite article into a name.** Twenty-seven of
-them do. A game whose actors have proper names or honorifics must re-skin every
-actor-directed one, and the failure is mechanically detectable with zero game
-knowledge: `the ` immediately followed by a capitalized word, or by
-`Mr`/`Mrs`/`Miss`/`Dr`/`Sir`. "The Dr. Pike would take exception to that." is the
-whole class.
-
 **K10 — Fuses are relative to an event; alarms are absolute.** A fuse's text lands
 one or two turns after its event, by which time the player may have walked away. So
-any aftermath prose has to be judged on **two independent axes**: where the player
-is *now*, and where the player *was then*. "There is grass in your cuff" belongs to
+aftermath prose has to be judged on **two independent axes**: where the player is
+*now*, and where the player *was then*. "There is grass in your cuff" belongs to
 where they were knocked down. "The note in your ears steps down one" belongs to an
 ear that was actually ringing. Judge each clause separately — a single sentence can
 be half true.
-
-**K11 — Clock time is derived from the move count, not ticked.** Every rule, action,
-fuse and daemon in one turn reads the same time.
-
-**K12 — Bootstrap warnings are surfaced at runtime.** Warning text in the transcript
-preamble, or on standard error, is a finding in its own right.
-
-**K13 — The verb table has two halves.** `coreTable` is verbs the engine backs with
-behaviour; `stubTable` is roughly forty-eight the parser *knows as words* and answers
-with one line of stock prose and no mechanic — `sing`, `smell`, `dig`, `climb`,
-`pray`, `xyzzy`. A stub **parses and costs a turn**, so it is not a free line. Only a
-word in neither half answers `I don't know the word "…"`, and `frotz` is the engine's
-reserved non-word for when a test needs a guaranteed parse error.
-
-Two consequences. An unknown-word reply is now unusual enough to be worth looking at
-(see K8 for the tie-break). And a stub the game has not re-skinned answers **in the
-engine's voice rather than the game's** — `text.stubs.<verb>` is the override, and a
-game that sets none of them has forty-eight lines that were written for no game in
-particular. That is a `register-mismatch`, and it is the single largest new surface in
-the harness.
 
 ## What is never a finding, from anyone
 
@@ -200,38 +119,24 @@ the harness.
    finding.
 
 Notice what is *not* on that list: anything owned by another issue. **Which defect
-classes are owned elsewhere is supplied to you per round**, in your prompt, from the
-issues that are open at the time the round runs. If your prompt names none, then
-nothing is owned elsewhere and every symptom you find is yours to judge.
+classes are owned elsewhere is supplied per round**, in your prompt, from the issues
+open when the round runs. If your prompt names none, nothing is owned elsewhere and
+every symptom you find is yours to judge. That indirection exists because this list
+once named three issues by number, all three were fixed, and the brief went on
+telling testers to forward the exact symptoms that had become regressions. A stale
+"already owned" rule is worse than a wrong one: a wrong rule produces a finding the
+verifier can refute, a stale one produces silence.
 
-That indirection exists because this list got it wrong three times running. It used
-to say that unknown words belonged to #76, `x me` to #77, and paste behaviour to #78.
-All three were fixed, and for a while afterwards the brief was still telling testers
-to forward the exact symptoms that had become regressions. **A stale "already owned"
-rule is worse than a wrong rule**, because a wrong rule produces a bad finding that
-the verifier can refute, while a stale one produces silence.
-
-What those three became, since they are the likeliest things to still look wrong:
-
-- **`x me` / `x myself` / `x self` answer.** The player is a real entity, always in
-  scope, placed nowhere — so it never shows up in a room listing, an inventory or
-  `take all`, but examining it works. `I don't know the word "me"` is a defect now.
-- **Pasting a multi-line block into a line that already begins `//` or `#` folds it
-  into one comment.** Pasting into any *other* line still submits one command per
-  line, on purpose, so a walkthrough can be replayed by pasting it.
-- **~48 verbs are stubs rather than unknown words** (K13). They parse and cost a
-  turn, and any the game hasn't re-skinned speak in the engine's voice.
-
-If a rule here contradicts what the code does, the code wins and the contradiction is
-itself a `doc-drift` finding against this file.
+If a rule here contradicts what the code does, the code wins, and the contradiction
+is itself a `doc-drift` finding against this file.
 
 ## What a good finding looks like
 
 > **Claim.** Mrs. Vane's room-listing line says she is "in her chair with the lamp
 > unlit" while she is standing in the Back Yard.
 >
-> **Frame.** Back Yard, 5:50 (anchored: `time` printed 5:50 on turn 10), after the
-> blast, on the turn *after* her arrival line was spent.
+> **Frame.** Back Yard, 5:50 (the turn's `[status]` line reads `room=Back Yard |
+> moves=10`), after the blast, on the turn *after* her arrival line was spent.
 >
 > **Reproducer.** seed 0; `south`, `west`, `z`×7, `look`.
 >
@@ -240,10 +145,11 @@ itself a `doc-drift` finding against this file.
 >
 > **Fault.** A static `firstSight` on an actor. Per K1 it prints on every look
 > forever, so it has no way to know she spends part of the evening out of that
-> chair. Per K2 the fix is to delete the trait and add a `presence` rule keyed on
-> her location.
+> chair. The fix is to delete the trait and add a `presence` rule keyed on her
+> location.
 
-Note what makes it good: the hour is anchored to a real reading, the reproducer is
-eleven commands rather than the forty the tester actually typed, the excerpt is
-quoted verbatim, and the fault names the mechanism rather than saying "this is
-wrong".
+Note what makes it good: the frame is read off the status footer rather than
+computed from a command count, the reproducer is eleven commands rather than the
+forty the tester typed, the excerpt is quoted verbatim so the round can trace it
+back to the declaration that printed it, and the fault names the mechanism instead
+of saying "this is wrong".

@@ -137,7 +137,8 @@ here.
   eat hit jump kick kiss knock listen pray pull ring shout sing sleep smell swim
   taste throw touch yell`. One aggregated comment; dropped from the fix stage.
   Promoted **out** of the bucket: `tile` — the Front Hall's own description prints
-  "black and white tile, worn through to the grout", so the game invited the word (K8).
+  "black and white tile, worn through to the grout", so the game invited the word and
+  must answer it.
 
   (Illustrative. This round routed nothing, because no open issue owned a class.)
 
