@@ -108,6 +108,13 @@ actor PlaytestSession {
     /// with a latency. See ``PlaytestRole``.
     nonisolated let role: PlaytestRole
 
+    /// Which way this session was told to go at an irreversible action.
+    ///
+    /// `nonisolated` for the same reason as ``role``: the `open` result quotes
+    /// it back, and a tester has to be told its policy in the same breath it is
+    /// given its first queue. See ``DivergencePolicy``.
+    nonisolated let divergence: DivergencePolicy
+
     /// This run's directory name under the label, `probe-001` and up.
     nonisolated let probe: String
 
@@ -199,7 +206,7 @@ actor PlaytestSession {
     /// than carried across an eviction: the replay is exact, so re-feeding the
     /// same lines rebuilds the same ledger, and a ledger that survived a replay
     /// would double-count every item in it.
-    private var ledger = CoverageLedger()
+    private var ledger: CoverageLedger
 
     /// The command count at which the last inline `harness:` note went out.
     ///
@@ -283,6 +290,8 @@ actor PlaytestSession {
     ///   - probe: this run's directory name.
     ///   - seed: the random seed to pin.
     ///   - role: what this session may be told. See ``PlaytestRole``.
+    ///   - divergence: what to do at an irreversible action. See
+    ///     ``DivergencePolicy``.
     ///   - prepared: the game, booted once by the server.
     ///   - directory: this probe's directory.
     ///   - saveDirectory: the label's saves directory.
@@ -292,6 +301,7 @@ actor PlaytestSession {
         probe: String,
         seed: UInt64,
         role: PlaytestRole,
+        divergence: DivergencePolicy,
         prepared: PreparedGame,
         directory: URL,
         saveDirectory: URL
@@ -301,6 +311,8 @@ actor PlaytestSession {
         self.probe = probe
         self.seed = seed
         self.role = role
+        self.divergence = divergence
+        self.ledger = CoverageLedger(divergence: divergence)
         self.prepared = prepared
         self.directory = directory
         self.saveDirectory = saveDirectory
@@ -564,6 +576,21 @@ actor PlaytestSession {
     // MARK: - Stopping
 
     /// What a tester is told when it says it is done.
+    /// One irreversible action this session was offered.
+    struct ForkOutcome: Sendable {
+        /// The queue item's id, `object:<thing>:<intent>`.
+        let id: String
+        /// The command that takes it, as typed from its own room.
+        let command: String
+        /// Where it was offered.
+        let room: String
+        /// Whether this session actually took it. False both for a fork it
+        /// never got to and for one its policy told it to leave — the round
+        /// wants to know the branch is untested either way, and the session's
+        /// own `divergence` says which of the two happened.
+        let taken: Bool
+    }
+
     struct Closing: Sendable {
         /// Always true. `finish` reports; it does not refuse.
         let accepted = true
@@ -575,6 +602,12 @@ actor PlaytestSession {
         let signals: PlaytestSignals
         /// The frontier hint, when the queue had run dry.
         let hint: String?
+        /// Every fork this session met, and whether it took it.
+        ///
+        /// The round assembles these across its testers: a fork that comes back
+        /// `taken: false` from every session is a branch the whole round left
+        /// alone, which is a coverage gap nothing else in the harness can see.
+        let forks: [ForkOutcome]
         /// Where the evidence is.
         let transcript: String
         /// The prose the agent reads.
@@ -646,6 +679,9 @@ actor PlaytestSession {
             items: items,
             signals: ledger.signals(),
             hint: ledger.frontierHint(),
+            forks: ledger.forks().map {
+                ForkOutcome(id: $0.id, command: $0.command, room: $0.room, taken: $0.taken)
+            },
             transcript: transcriptURL.path,
             message: message)
     }
@@ -729,8 +765,9 @@ actor PlaytestSession {
         try write(
             Self.summary(
                 session: id, title: prepared.definition.title, seed: seed, lines: lines,
-                signals: signals, open: ledger.openCount, verified: verified,
-                divergence: verified ? nil : Self.divergence(recorded, replayed)),
+                signals: signals, open: ledger.openCount, divergence: divergence,
+                verified: verified,
+                firstDifference: verified ? nil : Self.firstDifference(recorded, replayed)),
             to: summaryURL)
 
         let files = """
@@ -748,7 +785,7 @@ actor PlaytestSession {
                 replayed through a fresh REPL at seed \(seed) did not produce the bytes this \
                 session recorded. A tester's command list is supposed to *be* a regression \
                 test, so a reproducer filed from this session may not reproduce.
-                \(Self.divergence(recorded, replayed))\
+                \(Self.firstDifference(recorded, replayed))\
                 \(pinned
                     ? "\n\nThis session used the player's own save or restore, which reaches "
                         + "a file outside the run: another probe under label \(label) may have "
@@ -1170,7 +1207,7 @@ actor PlaytestSession {
                 cannot record is not opened at all.
                 """)
         }
-        ledger = CoverageLedger()
+        ledger = CoverageLedger(divergence: divergence)
         lastNudge = 0
         let world = GameWorld(prepared: prepared, seed: seed, saveDirectory: saveDirectory)
         let result = await world.begin()
@@ -1398,12 +1435,14 @@ actor PlaytestSession {
     ///   - lines: every recorded line.
     ///   - signals: the measured signals.
     ///   - open: how many queue items were still open.
+    ///   - divergence: the fork policy this session ran under.
     ///   - verified: whether the byte-identity check passed.
-    ///   - divergence: where the two transcripts first differ, when they do.
+    ///   - firstDifference: where the two transcripts first differ, when they do.
     /// - Returns: the file's contents.
     private static func summary(
         session: String, title: String, seed: UInt64, lines: [String],
-        signals: PlaytestSignals, open: Int, verified: Bool, divergence: String?
+        signals: PlaytestSignals, open: Int, divergence: DivergencePolicy,
+        verified: Bool, firstDifference: String?
     ) -> String {
         let comments = lines.filter(TesterInput.isComment).count
         var text = """
@@ -1415,6 +1454,7 @@ actor PlaytestSession {
             comment\(comments == 1 ? "" : "s"))
             signals: \(signals.line)
             queue items still open: \(open)
+            divergence policy: \(divergence.rawValue)
 
             byte identity: \(verified ? "verified" : "FAILED")
               Replaying commands.txt through a fresh REPL at this seed \
@@ -1431,8 +1471,8 @@ actor PlaytestSession {
               branch-NNN.txt                 turns a rewind discarded, kept as evidence
 
             """
-        if let divergence {
-            text += "\n\(divergence)\n"
+        if let firstDifference {
+            text += "\n\(firstDifference)\n"
         }
         return text
     }
@@ -1447,7 +1487,7 @@ actor PlaytestSession {
     ///   - recorded: what the session wrote.
     ///   - replayed: what a fresh `REPL` wrote for the same lines.
     /// - Returns: a paragraph naming the offset and quoting both sides.
-    private static func divergence(_ recorded: String, _ replayed: String) -> String {
+    private static func firstDifference(_ recorded: String, _ replayed: String) -> String {
         let left = Array(recorded.utf8)
         let right = Array(replayed.utf8)
         var offset = 0

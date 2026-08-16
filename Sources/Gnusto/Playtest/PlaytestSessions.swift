@@ -84,11 +84,14 @@ actor PlaytestSessions {
     ///   - seed: the random seed this session replays.
     ///   - role: what the session may be told beyond what the game prints to
     ///     it. See ``PlaytestRole``; the default is the human case.
+    ///   - divergence: what the session does at an irreversible action.
+    ///     Defaults to ``DivergencePolicy/commit``, the historical behaviour.
     /// - Throws: ``PlaytestError`` for an unusable label or a directory that
     ///   can't be made.
     /// - Returns: the new session.
     func open(
-        label: String, seed: UInt64, role: PlaytestRole = .unrestricted
+        label: String, seed: UInt64, role: PlaytestRole = .unrestricted,
+        divergence: DivergencePolicy = .commit
     ) async throws -> PlaytestSession {
         guard Self.isPlainName(label) else {
             throw PlaytestError(
@@ -116,6 +119,7 @@ actor PlaytestSessions {
             probe: probe,
             seed: seed,
             role: role,
+            divergence: divergence,
             prepared: prepared,
             directory: directory,
             saveDirectory: saveDirectory)

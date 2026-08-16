@@ -98,6 +98,76 @@ enum PlaytestRole: String, Sendable, CaseIterable {
     }
 }
 
+// MARK: - Which way this tester is told to go at a fork
+
+/// What a session does the first time the game offers it something it cannot
+/// take back.
+///
+/// **The problem this solves is that testers converge.** Left to itself, every
+/// explorer sent into the same game opens the same egg, burns the same leaflet
+/// and kills the same troll, because those are the interesting things to do and
+/// they are all equally interesting to everybody. The branch nobody took is then
+/// untested by the whole round, however many testers it ran — and the untaken
+/// branch is where a two-channel defect hides, because a description that
+/// outlives the state change is only wrong for the tester who *didn't* make it.
+///
+/// So the fork is assigned rather than left to chance. Two policies over one
+/// object are the coverage; the round report names any fork no tester took at
+/// all, which is a gap the old harness could not see because it had no idea a
+/// fork existed.
+///
+/// **A policy is an instruction, not a mechanism.** Nothing here stops a session
+/// typing whatever it likes — the engine is not going to refuse `open egg`
+/// because a JSON field said `abstain`. What the policy changes is the queue: an
+/// `abstain` tester is not *asked*, and is not left holding an obligation it is
+/// under orders not to discharge. Enforcement would be the wrong tool anyway,
+/// since a tester that stumbles into a fork while doing something else has
+/// discovered something, and the ledger would rather record that than forbid it.
+enum DivergencePolicy: String, Sendable, CaseIterable {
+    /// Take the irreversible action the first time it is available. The
+    /// historical behaviour, and the default, so a session that says nothing
+    /// gets exactly the queue it always got.
+    case commit
+    /// Probe everything else about the object and leave it in the state it was
+    /// found in. Fork cells are closed on sight rather than offered, so they
+    /// never sit in the queue as work this tester is forbidden to do.
+    case abstain
+    /// Leave it, finish everything else, come back to it last. Fork cells sort
+    /// below every other open item instead of competing on cheapness.
+    case `defer`
+
+    /// The sentence a session is opened with, so the tester knows what it has
+    /// been told to do before it meets its first fork.
+    var instruction: String {
+        switch self {
+        case .commit:
+            """
+            Divergence policy: commit. When you meet something you cannot take back — \
+            opening, burning, eating or drinking a thing — do it the first time you can, \
+            then keep testing past it. Another tester has been told to leave it alone, so \
+            the far side of that change is yours to describe.
+            """
+        case .abstain:
+            """
+            Divergence policy: abstain. Probe everything else about a thing you cannot \
+            take back — opening, burning, eating or drinking it — and leave it as you \
+            found it. Those moves are already off your queue; you are not missing them. \
+            Another tester is committing them, so the unchanged state is yours to \
+            describe, and a description that only reads correctly *after* the change is \
+            a defect only you can find.
+            """
+        case .defer:
+            """
+            Divergence policy: defer. Leave anything you cannot take back — opening, \
+            burning, eating or drinking a thing — until you have worked out everything \
+            else you can reach. Those moves sort to the bottom of your queue and come \
+            back to you at the end, so the state you spend most of the session in is the \
+            one the game started in.
+            """
+        }
+    }
+}
+
 // MARK: - One thing you were shown and did not follow up
 
 /// A single open item on a session's queue.
@@ -205,6 +275,28 @@ struct CoverageItem: Sendable {
     /// True when an examine printed the noun that raised this. The
     /// noun-follow-rate signal is a count over these.
     let bornOfExamine: Bool
+
+    /// True for a matrix cell asking for something that cannot be taken back.
+    ///
+    /// The set is small and named in ``CoverageLedger/irreversibleIntents``:
+    /// opening, burning, eating, drinking. It is what a
+    /// ``DivergencePolicy`` acts on.
+    ///
+    /// **A one-way passage is not marked**, though the plan for this names one
+    /// alongside the objects. It cannot be: the ledger reads printed text, and
+    /// nothing a room description says tells you an exit has no way back — that
+    /// is knowable only after walking it, which is exactly too late for a policy
+    /// to have an opinion. Marking exits would mean reading the map, which is
+    /// the one thing this file may not do.
+    var fork = false
+
+    /// True when an ``DivergencePolicy/abstain`` session closed this fork on
+    /// sight rather than being asked to take it.
+    ///
+    /// Kept distinct from an ordinary discharge because the round report has to
+    /// tell the two apart: a fork this tester *took* and a fork it was under
+    /// orders to leave are both closed, and only the first one has been tested.
+    var abstained = false
 
     /// Whether it has been followed up.
     var discharged = false
@@ -429,8 +521,18 @@ struct CoverageLedger: Sendable {
     /// The move counter as of the last observation.
     private var moves = 0
 
+    /// Which way this session was told to go at a fork. See
+    /// ``DivergencePolicy``.
+    let divergence: DivergencePolicy
+
     /// Nothing is remembered yet.
-    init() {}
+    ///
+    /// - Parameter divergence: what to do at an irreversible action. Defaults to
+    ///   ``DivergencePolicy/commit``, which is the queue this ledger has always
+    ///   produced.
+    init(divergence: DivergencePolicy = .commit) {
+        self.divergence = divergence
+    }
 
     // MARK: - Reading a turn
 
@@ -582,6 +684,16 @@ struct CoverageLedger: Sendable {
     func queue(limit: Int) -> [CoverageItem] {
         let open = items.filter { !$0.discharged }
         let ranked = open.sorted { left, right in
+            // A deferred fork sinks below everything, including items in other
+            // rooms, because "come back to it last" means last in the session
+            // and not last in the room. Checked ahead of proximity for that
+            // reason, and only under `defer`: under the default policy this
+            // whole comparison is skipped and the ranking is the one every
+            // recorded measurement was taken against.
+            if divergence == .defer {
+                let held = (left.fork ? 1 : 0, right.fork ? 1 : 0)
+                if held.0 != held.1 { return held.0 < held.1 }
+            }
             let here = (left.room == currentRoom ? 0 : 1, right.room == currentRoom ? 0 : 1)
             if here.0 != here.1 { return here.0 < here.1 }
             if left.kind.tier != right.kind.tier { return left.kind.tier < right.kind.tier }
@@ -927,7 +1039,39 @@ struct CoverageLedger: Sendable {
                     room: record.room,
                     line: line,
                     depth: record.depth,
-                    bornOfExamine: false))
+                    bornOfExamine: false,
+                    fork: Self.irreversibleIntents.contains(probe.intent)))
+        }
+    }
+
+    /// The intents a ``DivergencePolicy`` has an opinion about: the ones whose
+    /// effect a later turn cannot put back.
+    ///
+    /// Deliberately short. `take` is not here — dropping it restores the world,
+    /// near enough, and a policy that withheld `take` would withhold most of the
+    /// game. `close` is not here either, which is what makes `open` worth
+    /// listing: the pair is only reversible in the *world*, and the prose
+    /// channel it exposes is not. Opening the egg and closing it again does not
+    /// un-print the sentence that was wrong while it was open.
+    private static let irreversibleIntents: Set<Intent> = [.open, .burn, .eat, .drink]
+
+    /// Every fork this session met, and what became of it.
+    ///
+    /// The round report's input, and the reason the policy is worth recording at
+    /// all: two sessions over one object with different policies are the
+    /// coverage, and a fork that comes back `taken: false` from *every* session
+    /// in a round is a branch the round never tested. The old harness could not
+    /// name that gap because nothing in it knew a fork existed.
+    ///
+    /// - Returns: one entry per fork cell, in the order the game offered them.
+    func forks() -> [(id: String, command: String, room: String, taken: Bool)] {
+        items.filter(\.fork).map { item in
+            (
+                id: item.id,
+                command: item.command,
+                room: item.room,
+                taken: item.discharged && !item.abstained
+            )
         }
     }
 
@@ -1092,8 +1236,19 @@ struct CoverageLedger: Sendable {
     // MARK: - Bookkeeping
 
     /// Adds an item, or leaves an existing one alone.
+    ///
+    /// A fork raised under ``DivergencePolicy/abstain`` is recorded and closed
+    /// in the same breath. It is *recorded* rather than dropped because the
+    /// round report has to be able to say that this tester met the egg and was
+    /// under orders to leave it — a fork nobody was even offered is a different
+    /// gap from a fork nobody took, and only the ledger knows which happened.
     private mutating func raise(_ item: CoverageItem) {
         guard positions[item.id] == nil, items.count < Self.itemCap else { return }
+        var item = item
+        if item.fork && divergence == .abstain {
+            item.abstained = true
+            item.discharged = true
+        }
         positions[item.id] = items.count
         items.append(item)
     }

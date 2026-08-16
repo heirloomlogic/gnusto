@@ -389,6 +389,21 @@ enum PlaytestTools {
                                 + "behind it. Defaults to unrestricted, for a person "
                                 + "driving their own game."),
                     ],
+                    "divergence": [
+                        "type": "string",
+                        "enum": .array(DivergencePolicy.allCases.map { .string($0.rawValue) }),
+                        "description": .string(
+                            "What to do the first time the game offers something you "
+                                + "cannot take back — opening, burning, eating or drinking "
+                                + "a thing. Testers left to themselves all open the same "
+                                + "egg, so the branch nobody took goes untested however "
+                                + "many of them ran; a round assigns these instead. "
+                                + "commit takes the action, abstain leaves the thing as "
+                                + "found, defer comes back to it last. The queue follows "
+                                + "the policy, so an abstain session is never asked for a "
+                                + "move it is under orders not to make. Defaults to "
+                                + "commit, which is the queue this tool has always given."),
+                    ],
                 ],
                 "required": ["label"],
                 "additionalProperties": false,
@@ -398,13 +413,17 @@ enum PlaytestTools {
                 let label = try string(arguments, "label", tool: "open")
                 let seed = try seed(arguments)
                 let role = try role(arguments)
-                let session = try await sessions.open(label: label, seed: seed, role: role)
+                let divergence = try divergence(arguments)
+                let session = try await sessions.open(
+                    label: label, seed: seed, role: role, divergence: divergence)
                 let opening = try await session.opening()
                 let coverage = try await session.coverage(limit: queueLimit)
                 return PlaytestToolResult([
                     "session": .string(session.id),
                     "seed": .integer(Int(bitPattern: UInt(seed))),
                     "role": .string(role.rawValue),
+                    "divergence": .string(divergence.rawValue),
+                    "instruction": .string(divergence.instruction),
                     "opening": .string(opening.text),
                     "status": .string(opening.status),
                     "awaiting": .string(opening.awaiting.rawValue),
@@ -428,6 +447,16 @@ enum PlaytestTools {
             "role": [
                 "type": "string",
                 "enum": .array(PlaytestRole.allCases.map { .string($0.rawValue) }),
+            ],
+            "divergence": [
+                "type": "string",
+                "enum": .array(DivergencePolicy.allCases.map { .string($0.rawValue) }),
+            ],
+            "instruction": [
+                "type": "string",
+                "description": .string(
+                    "The divergence policy in words, to be followed for the whole "
+                        + "session. Your queue already reflects it."),
             ],
             "opening": [
                 "type": "string",
@@ -454,8 +483,8 @@ enum PlaytestTools {
             "commands": ["type": "string"],
         ],
         "required": [
-            "session", "seed", "role", "opening", "status", "awaiting", "open", "queue",
-            "transcript", "commands",
+            "session", "seed", "role", "divergence", "instruction", "opening", "status",
+            "awaiting", "open", "queue", "transcript", "commands",
         ],
     ]
 
@@ -661,8 +690,17 @@ enum PlaytestTools {
                     "False for a timer or a displacement: those want a look at a second "
                         + "frame and a note quoting a printed line, not one command."),
             ],
+            "fork": [
+                "type": "boolean",
+                "description": .string(
+                    "True for something you cannot take back. Your divergence policy "
+                        + "already decided what to do with these, so they are here only "
+                        + "if it wants you to take them."),
+            ],
         ],
-        "required": ["id", "kind", "how", "why", "room", "line", "closedByLooking"],
+        "required": [
+            "id", "kind", "how", "why", "room", "line", "closedByLooking", "fork",
+        ],
     ]
 
     /// The shape of a `coverage` result.
@@ -1189,11 +1227,30 @@ enum PlaytestTools {
                     "openItems": ["type": "integer"],
                 ],
             ],
+            "forks": [
+                "type": "array",
+                "description": .string(
+                    "Every irreversible action this session was offered, and whether it "
+                        + "took it. A round collects these across its testers: a fork no "
+                        + "session took is a branch the whole round left untested."),
+                "items": [
+                    "type": "object",
+                    "properties": [
+                        "id": ["type": "string"],
+                        "command": ["type": "string"],
+                        "room": ["type": "string"],
+                        "taken": ["type": "boolean"],
+                    ],
+                    "required": ["id", "command", "room", "taken"],
+                ],
+            ],
             "hint": ["type": "string"],
             "transcript": ["type": "string"],
             "message": ["type": "string"],
         ],
-        "required": ["accepted", "open", "items", "signals", "transcript", "message"],
+        "required": [
+            "accepted", "open", "items", "signals", "forks", "transcript", "message",
+        ],
     ]
 
     // MARK: - Reading arguments
@@ -1266,6 +1323,32 @@ enum PlaytestTools {
                 "open's seed must be a whole number of zero or more; it was given \(raw.text).")
         }
         return UInt64(value)
+    }
+
+    /// The `divergence` argument: absent means the historical behaviour.
+    ///
+    /// Refused rather than guessed at, for the same reason as ``role(_:)`` one
+    /// step below: a round assigns these policies across its testers so that the
+    /// forks get covered between them, and a policy silently downgraded to
+    /// `commit` would leave the round believing a branch had been left alone by
+    /// somebody when in fact nobody left it alone at all.
+    ///
+    /// - Parameter arguments: the call's arguments.
+    /// - Throws: ``PlaytestError`` naming the policies there are.
+    /// - Returns: the policy.
+    private static func divergence(_ arguments: JSONValue) throws -> DivergencePolicy {
+        guard let raw = arguments["divergence"] else { return .commit }
+        guard let name = raw.stringValue, let policy = DivergencePolicy(rawValue: name) else {
+            let known = DivergencePolicy.allCases.map(\.rawValue).joined(separator: ", ")
+            throw PlaytestError(
+                """
+                open's divergence must be one of: \(known). It was given \(raw.text). A \
+                round hands these out so that two testers cover both sides of an \
+                irreversible action between them, so guessing one would quietly leave a \
+                branch untested while the report claimed it was covered.
+                """)
+        }
+        return policy
     }
 
     /// The `role` argument: absent means the human case.
@@ -1381,6 +1464,7 @@ extension CoverageItem {
             "room": .string(room),
             "line": .integer(line),
             "closedByLooking": .bool(kind.closedByLooking),
+            "fork": .bool(fork),
         ]
     }
 }
@@ -1461,6 +1545,15 @@ extension PlaytestSession.Closing {
             "accepted": .bool(accepted),
             "open": .integer(open),
             "items": .array(items.map(\.json)),
+            "forks": .array(
+                forks.map {
+                    .object([
+                        "id": .string($0.id),
+                        "command": .string($0.command),
+                        "room": .string($0.room),
+                        "taken": .bool($0.taken),
+                    ])
+                }),
             "signals": signals.json,
             "transcript": .string(transcript),
             "message": .string(message),

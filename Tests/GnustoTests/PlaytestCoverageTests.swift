@@ -35,9 +35,11 @@ struct PlaytestCoverageTests {
 
     /// An opened, booted session.
     private func session(
-        _ game: some Game, role: PlaytestRole = .explorer
+        _ game: some Game, role: PlaytestRole = .explorer,
+        divergence: DivergencePolicy = .commit
     ) async throws -> PlaytestSession {
-        let session = try await sessions(game).open(label: "queue", seed: 0, role: role)
+        let session = try await sessions(game).open(
+            label: "queue", seed: 0, role: role, divergence: divergence)
         _ = try await session.opening()
         return session
     }
@@ -391,6 +393,133 @@ struct PlaytestCoverageTests {
 
         _ = try await session.move(commands: ["take pebble"], allowPrompts: false)
         #expect(try await ids(session).contains("object:pebble:drop"))
+    }
+
+    // MARK: - Divergence
+
+    /// **The fork.** `commit` is offered the irreversible move; `abstain` is not
+    /// asked for it at all.
+    ///
+    /// The oak's description says *branch*, which is enough for the repertoire
+    /// to offer `burn` — and burning is the shape of thing a whole round can
+    /// lose by accident, because every tester left to itself burns it. An
+    /// `abstain` session does not carry that as an obligation it is forbidden to
+    /// discharge; the item is closed on sight, and the fork record says it was
+    /// left rather than taken.
+    @Test func abstainIsNotEvenAskedForTheIrreversibleMove() async throws {
+        let committed = try await session(AviaryGame(), divergence: .commit)
+        _ = try await committed.move(commands: ["x oak"], allowPrompts: false)
+        #expect(try await ids(committed).contains("object:oak:burn"))
+
+        let abstained = try await session(AviaryGame(), divergence: .abstain)
+        _ = try await abstained.move(commands: ["x oak"], allowPrompts: false)
+        #expect(!(try await ids(abstained).contains("object:oak:burn")))
+
+        // Closed, but recorded: a fork nobody was offered and a fork somebody
+        // was told to leave are different gaps, and only the ledger knows which.
+        let closing = try await abstained.finish(
+            summary: "left it as I found it", leaving: nil, limit: 200)
+        let fork = try #require(closing.forks.first { $0.id == "object:oak:burn" })
+        #expect(fork.taken == false)
+        #expect(fork.command == "burn oak")
+    }
+
+    /// A fork the session actually took comes back `taken`.
+    ///
+    /// Which is the half that makes the round's arithmetic work: a fork reported
+    /// `taken: false` by *every* tester is a branch nothing tested, and that
+    /// claim is only worth making if a taken one says so.
+    @Test func aForkTheSessionTookIsReportedTaken() async throws {
+        let session = try await session(AviaryGame(), divergence: .commit)
+        _ = try await session.move(commands: ["x oak", "burn oak"], allowPrompts: false)
+
+        let closing = try await session.finish(
+            summary: "burned it", leaving: nil, limit: 200)
+        let fork = try #require(closing.forks.first { $0.id == "object:oak:burn" })
+        #expect(fork.taken)
+    }
+
+    /// `defer` sinks a fork below everything, including items in other rooms.
+    ///
+    /// "Come back to it last" means last in the session, not last in the room —
+    /// so the check is ahead of room proximity, and this asserts the strong
+    /// version: with a queue holding items from two rooms, the fork is still
+    /// bottom.
+    @Test func deferSinksAForkBelowEvenAnotherRoomsWork() async throws {
+        let session = try await session(AviaryGame(), divergence: .defer)
+        _ = try await session.move(
+            commands: ["x oak", "north", "x bench"], allowPrompts: false)
+
+        let queue = try await session.coverage(limit: 200).items
+        let burn = try #require(queue.firstIndex { $0.id == "object:oak:burn" })
+        #expect(burn == queue.count - 1)
+        // And it really is competing against work elsewhere, or the assertion
+        // above would hold for a one-room queue by default.
+        #expect(Set(queue.map(\.room)).count > 1)
+    }
+
+    /// The default policy leaves the queue exactly as it was.
+    ///
+    /// The ranking is measured, and every recorded number was taken against the
+    /// `commit` ordering — so the fork rule has to be inert unless a round asks
+    /// for it. Same commands, two sessions, one of them saying nothing about
+    /// divergence: the same items in the same order.
+    @Test func theDefaultPolicyChangesNothingAboutTheQueue() async throws {
+        let quiet = try await sessions(AviaryGame()).open(label: "queue", seed: 0, role: .explorer)
+        _ = try await quiet.opening()
+        _ = try await quiet.move(commands: ["x oak", "x nest"], allowPrompts: false)
+
+        let asked = try await session(AviaryGame(), divergence: .commit)
+        _ = try await asked.move(commands: ["x oak", "x nest"], allowPrompts: false)
+
+        let left = try await quiet.coverage(limit: 200).items.map(\.id)
+        let right = try await asked.coverage(limit: 200).items.map(\.id)
+        #expect(left == right)
+        #expect(left.contains("object:oak:burn"))
+    }
+
+    /// Over the wire: a policy comes back with the instruction that goes with
+    /// it, and a policy nobody has heard of is refused rather than guessed at.
+    ///
+    /// The refusal matters more than it looks. A round hands these out so two
+    /// testers cover both sides of a fork between them; a typo quietly
+    /// downgraded to `commit` would leave the report claiming a branch was left
+    /// alone when in fact every tester took it.
+    @Test func aDivergencePolicyArrivesWithItsInstructionOrIsRefused() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        let server = MCPServer(
+            name: "gnusto-playtest", version: "test", instructions: nil,
+            tools: PlaytestTools.table(
+                for: try PreparedGame(AviaryGame()),
+                environment: ["GNUSTO_PLAYTEST_DIR": root.path]))
+
+        func open(_ label: String, divergence: String) async throws -> JSONValue {
+            try JSONValue(
+                text: try #require(
+                    await server.handle(
+                        line: """
+                            {"jsonrpc":"2.0","id":1,"method":"tools/call","params":\
+                            {"name":"open","arguments":{"label":"\(label)",\
+                            "role":"explorer","divergence":"\(divergence)"}}}
+                            """)))
+        }
+
+        let abstaining = try await open("abstaining", divergence: "abstain")
+        let structured = try #require(abstaining["result"]?["structuredContent"])
+        #expect(structured["divergence"]?.stringValue == "abstain")
+        let instruction = try #require(structured["instruction"]?.stringValue)
+        #expect(instruction.contains("leave it as you"))
+        #expect(instruction.contains("already off your queue"))
+
+        let nonsense = try await open("nonsense", divergence: "whatever")
+        #expect(nonsense["error"] == nil)
+        #expect(nonsense["result"]?["isError"] == .bool(true))
+        let complaint = try #require(
+            nonsense["result"]?["content"]?.arrayValue?.first?["text"]?.stringValue)
+        #expect(complaint.contains("commit"))
+        #expect(complaint.contains("abstain"))
+        #expect(complaint.contains("defer"))
     }
 
     // MARK: - The egg
