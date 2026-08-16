@@ -1,13 +1,15 @@
 # TEMPORARY. Delete before merge.
 #
-# Isolates the two variables that changed at once when test.yml moved to a
-# container: the ARM runner, and the swift-syntax prebuilt. Debug only — the
-# question is whether the build links, not whether the suite passes.
+# Round 1 settled the first question:
+#   A: x86_64, prebuilt ON  -> FAILED (same missing GnustoMacrosTests.so)
+#   B: ARM,    prebuilt OFF -> passed, 2m14s
+# So the prebuilt is implicated and the architecture is not.
 #
-#   A: x86_64, prebuilt ON   — passes if ARM is implicated
-#   B: ARM,    prebuilt OFF  — passes if the prebuilt is implicated
-#
-# Both failing would point at the 6.3.2 pin instead.
+# Round 2 asks whether the host-only macro TEST target is the trigger. If the
+# build succeeds with GnustoMacrosTests removed from the manifest, then the
+# prebuilt is usable for everything except that one target, and relocating it
+# would recover the win. If it still fails, prebuilts and swiftbuild are simply
+# incompatible for this package.
 
 name: Scratch probe
 
@@ -17,30 +19,31 @@ on:
       - "heirloomlogic/prebuilt-swift-syntax-ci"
 
 jobs:
-  a-x86-prebuilt-on:
-    runs-on: ubuntu-latest
-    container: swift:6.3.2-noble
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
-      - name: Resolve
-        run: |
-          swift --version
-          swift package resolve
-          ls .build/prebuilts/swift-syntax 2>/dev/null || echo "NO PREBUILT"
-      - name: Test (Debug)
-        run: swift test --build-system swiftbuild
-
-  b-arm-prebuilt-off:
+  c-arm-prebuilt-on-no-macro-tests:
     runs-on: ubuntu-24.04-arm
     container: swift:6.3.2-noble
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Drop the macro test target from the manifest
+        run: |
+          python3 -c '
+          import re
+          src = open("Package.swift").read()
+          pattern = re.compile(r"\n\s*\.testTarget\(\s*\n\s*name: \"GnustoMacrosTests\".*?\n\s*\),", re.DOTALL)
+          new, n = pattern.subn("", src)
+          assert n == 1, "expected exactly one GnustoMacrosTests target, removed %d" % n
+          open("Package.swift", "w").write(new)
+          print("removed GnustoMacrosTests from the manifest")
+          '
+          rm -rf Tests/GnustoMacrosTests
+
       - name: Resolve
         run: |
           swift --version
-          swift package resolve --disable-experimental-prebuilts
+          swift package resolve
           ls .build/prebuilts/swift-syntax 2>/dev/null || echo "NO PREBUILT"
+
       - name: Test (Debug)
-        run: swift test --build-system swiftbuild --disable-experimental-prebuilts
+        run: swift test --build-system swiftbuild
