@@ -760,6 +760,57 @@ struct PlaytestCoverageTests {
         #expect(refusal?.description.contains("needs a summary") == true)
     }
 
+    /// The closing record is written beside the transcript, so a round can read
+    /// what a session did instead of interviewing the agent that played it.
+    ///
+    /// This is the file that retires the two censuses. The orchestration script
+    /// has no filesystem and never sees a tool result, so a round's room count
+    /// used to be either self-reported — 112 claimed against 155 walked — or
+    /// reconstructed by grepping transcripts for the engine's own prose, which
+    /// stops working the moment a game re-voices that line. Neither failure is
+    /// available to a file the server writes.
+    @Test func finishWritesTheClosingRecordBesideTheTranscript() async throws {
+        let session = try await session(AviaryGame())
+        _ = try await session.move(commands: ["x oak", "north"], allowPrompts: false)
+
+        let closing = try await session.finish(
+            summary: "the yard and the shed", leaving: "out of budget", limit: 3)
+
+        // Counted off the status line, in first-seen order, and not asked.
+        #expect(closing.roomsVisited == ["Yard", "Shed"])
+
+        let written = try text(at: session.closingURL)
+        #expect(written.contains("\"roomsVisited\":[\"Yard\",\"Shed\"]"))
+        #expect(written.contains("\"open\":\(closing.open)"))
+        #expect(written.contains("\"accepted\":true"))
+        // The record sits in the probe directory the transcript is in, so one
+        // path finds both.
+        #expect(
+            session.closingURL.deletingLastPathComponent()
+                == session.transcriptURL.deletingLastPathComponent())
+    }
+
+    /// Unknown words are counted off the **parse record**, not off the prose.
+    ///
+    /// `TurnAudit.unknownWords` is every token the vocabulary failed to consume,
+    /// which is what the round actually wants to know. The alternative the
+    /// harness used for two rounds — grepping the transcript for `I don't know
+    /// the word` — reads the engine's own sentence to find out something the
+    /// engine already knew, disagreed with the testers' tally by two orders of
+    /// magnitude, and would go silent for any game that re-voices
+    /// ``GameText/unknownWord``.
+    @Test func theClosingRecordCountsUnknownWordsOffTheParseRecord() async throws {
+        let session = try await session(AviaryGame())
+        _ = try await session.move(
+            commands: ["frotz", "frotz", "x oak"], allowPrompts: false)
+
+        let closing = try await session.finish(summary: "tried a word", leaving: nil, limit: 3)
+        #expect(closing.unknownWords["frotz"] == 2)
+        // A word the game does know is not in the tally at all.
+        #expect(closing.unknownWords["oak"] == nil)
+        #expect(try text(at: session.closingURL).contains("\"frotz\":2"))
+    }
+
     /// A queue that has run dry says so in player-visible terms — how many
     /// rooms the tester stood in that described a way out, all of them used —
     /// and never *"you never entered the Shed."*

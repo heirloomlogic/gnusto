@@ -1244,12 +1244,29 @@ enum PlaytestTools {
                     "required": ["id", "command", "room", "taken"],
                 ],
             ],
+            "roomsVisited": [
+                "type": "array",
+                "description": .string(
+                    "The rooms the status line named, in first-seen order. Counted off "
+                        + "this session, not recalled — a round reads it rather than "
+                        + "asking you how far you got."),
+                "items": ["type": "string"],
+            ],
+            "unknownWords": [
+                "type": "object",
+                "description": .string(
+                    "Every token the vocabulary did not know, and how often it was "
+                        + "typed. The parser's own record, so a game that re-voices the "
+                        + "'I don't know the word' line does not hide it."),
+                "additionalProperties": ["type": "integer"],
+            ],
             "hint": ["type": "string"],
             "transcript": ["type": "string"],
             "message": ["type": "string"],
         ],
         "required": [
-            "accepted", "open", "items", "signals", "forks", "transcript", "message",
+            "accepted", "open", "items", "signals", "forks", "roomsVisited",
+            "unknownWords", "transcript", "message",
         ],
     ]
 
@@ -1555,6 +1572,9 @@ extension PlaytestSession.Closing {
                     ])
                 }),
             "signals": signals.json,
+            "roomsVisited": .array(roomsVisited.map { .string($0) }),
+            "unknownWords": .object(
+                unknownWords.mapValues { .integer($0) }),
             "transcript": .string(transcript),
             "message": .string(message),
         ]

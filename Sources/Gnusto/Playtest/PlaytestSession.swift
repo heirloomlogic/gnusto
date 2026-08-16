@@ -162,6 +162,15 @@ actor PlaytestSession {
     /// far it got, what it measured, and whether the byte-identity check passed.
     nonisolated let summaryURL: URL
 
+    /// The closing record, written by ``finish(summary:leaving:limit:)`` — the
+    /// rooms walked, the words the parser refused, the forks met and the items
+    /// left open, as JSON.
+    ///
+    /// A round reads these instead of interviewing its testers. Its absence
+    /// beside a `transcript.txt` means the session never called `finish`, and
+    /// the round says so rather than quietly leaving the row out.
+    nonisolated let closingURL: URL
+
     /// The game, booted once for the whole process.
     private let prepared: PreparedGame
 
@@ -321,6 +330,7 @@ actor PlaytestSession {
         self.transcriptWithoutStatusURL =
             directory.appendingPathComponent("transcript-without-status.txt")
         self.summaryURL = directory.appendingPathComponent("summary.txt")
+        self.closingURL = directory.appendingPathComponent("closing.json")
     }
 
     // MARK: - What a tool asks for
@@ -608,6 +618,15 @@ actor PlaytestSession {
         /// `taken: false` from every session is a branch the whole round left
         /// alone, which is a coverage gap nothing else in the harness can see.
         let forks: [ForkOutcome]
+        /// The rooms the status line named, in first-seen order.
+        ///
+        /// Counted, not asked. A round that asks a tester which rooms it saw
+        /// gets a number the tester reconstructed from memory at the end of a
+        /// long session, and the two rounds that checked found it wrong in both
+        /// directions.
+        let roomsVisited: [String]
+        /// Every token the vocabulary did not know, and how often it was typed.
+        let unknownWords: [String: Int]
         /// Where the evidence is.
         let transcript: String
         /// The prose the agent reads.
@@ -674,7 +693,7 @@ actor PlaytestSession {
                 gap is still counted as a gap.
                 """
         }
-        return Closing(
+        let closing = Closing(
             open: open,
             items: items,
             signals: ledger.signals(),
@@ -682,8 +701,33 @@ actor PlaytestSession {
             forks: ledger.forks().map {
                 ForkOutcome(id: $0.id, command: $0.command, room: $0.room, taken: $0.taken)
             },
+            roomsVisited: ledger.roomsVisited,
+            unknownWords: ledger.unknownWords,
             transcript: transcriptURL.path,
             message: message)
+        writeClosingRecord(closing)
+        return closing
+    }
+
+    /// Writes the closing record beside the transcript, so the round can read
+    /// what this session did without asking the agent that played it.
+    ///
+    /// This is the whole reason the accounting is trustworthy. The orchestration
+    /// script has no filesystem of its own and never sees a tool result — only
+    /// the tester's report comes back to it — so before this file existed the
+    /// round's room and word counts were either self-reported (wrong: 112
+    /// claimed against 155 walked, and 2 claimed against 261 typed) or
+    /// reconstructed by grepping transcripts for the engine's own prose (wrong
+    /// the moment a game re-voices that line). A file the server writes is
+    /// neither.
+    ///
+    /// Deliberately best-effort. A session whose scratch directory has gone
+    /// away has still played the game, and `finish` reports; it does not refuse.
+    /// A round that finds a `transcript.txt` with no `closing.json` beside it
+    /// reports the session as unfinished, which is a truer thing to say than a
+    /// silently missing row.
+    private func writeClosingRecord(_ closing: Closing) {
+        try? Data("\(closing.json.text)\n".utf8).write(to: closingURL, options: .atomic)
     }
 
     // MARK: - Exporting

@@ -501,6 +501,18 @@ struct CoverageLedger: Sendable {
     /// Rooms the status line has named, in first-seen order.
     private(set) var roomsVisited: [String] = []
 
+    /// Every token the game's vocabulary did not know, and how often it was
+    /// typed.
+    ///
+    /// This is the *parser's* record, taken from ``TurnAudit/unknownWords``,
+    /// and not a count of `I don't know the word` lines in the transcript. The
+    /// two rounds that grepped the transcript for that sentence were reading
+    /// the engine's prose to find out what the engine already knew, which is
+    /// why they disagreed with the testers' own tally by two orders of
+    /// magnitude and had to be reported side by side. A game that re-voices
+    /// ``GameText/unknownWord`` breaks the grep and does not break this.
+    private(set) var unknownWords: [String: Int] = [:]
+
     /// One step of the map the tester has actually walked: room → direction →
     /// where it came out. Purely session-derived, and the reason a queue item
     /// in the next room over can still be a command to paste.
@@ -577,6 +589,10 @@ struct CoverageLedger: Sendable {
         commands += 1
         self.moves = moves
         distinctCommands.insert(Self.normalized(command))
+
+        for word in audit.unknownWords {
+            unknownWords[word, default: 0] += 1
+        }
 
         let typed = Self.contentWords(in: command)
         namedWords.formUnion(typed)
