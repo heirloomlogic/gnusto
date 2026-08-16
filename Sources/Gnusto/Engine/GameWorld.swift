@@ -250,8 +250,8 @@ public actor GameWorld {
         return commit(frame)
     }
 
-    /// The intents that accept "all"/"them" in the direct slot. Everything
-    /// else refuses multiple objects up front.
+    /// The intents that accept several objects in the direct slot — "all",
+    /// "them", or a conjunction list. Everything else refuses up front.
     static let multiObjectIntents: Set<Intent> = [.take, .drop, .putIn, .putOn]
 
     /// A multi-object turn: expand the marker against the current state,
@@ -271,11 +271,13 @@ public actor GameWorld {
             return freeReply(definition.text.multipleNotAllowedWith(parsed.verbPhrase))
         }
 
-        let index = state.containment()
-
+        // The index is built inside each keyword case rather than out here:
+        // a list the player wrote out is already resolved, and a room sweep
+        // for it would be for nothing.
         var objects: [EntityID]
         switch multiple {
         case .all where intent == .take:
+            let index = state.containment()
             // The question TAKE ALL asks is "what could I pick up here", and
             // that is the *reachable* set, not the nameable one: a shut glass
             // case shows its medal and the troll's axe is plainly in his hands,
@@ -291,15 +293,16 @@ public actor GameWorld {
             // A TAKE ALL policy, not an impossibility — `take water` by name
             // still runs, and is still the game's own business to answer.
             let carried = index.closure(under: index.held[.player] ?? [])
-            objects = reachable.filter {
-                definition.items[$0]?.isTakable == true && !carried.contains($0)
-            }
+            objects = inDisplayOrder(
+                reachable.filter {
+                    definition.items[$0]?.isTakable == true && !carried.contains($0)
+                })
         case .all:
             // DROP/PUT ALL is the opposite question and keeps the opposite
             // answer: what you hold, direct children only, so DROP ALL empties
             // your hands and not your sack. Worn items are placed
             // `.heldBy(.player)` too, which is why they come along.
-            objects = index.held[.player] ?? []
+            objects = inDisplayOrder(state.containment().held[.player] ?? [])
         case .them:
             guard !state.pronounThem.isEmpty else {
                 return freeReply(definition.text.noReferent("them"))
@@ -309,11 +312,18 @@ public actor GameWorld {
             // glass should be refused by name rather than silently dropped
             // from the group.
             let visible = Visibility.visibleItems(
-                at: state.playerLocation, definition: definition, state: state, index: index)
-            objects = state.pronounThem.filter { visible.contains($0) }
+                at: state.playerLocation, definition: definition, state: state,
+                index: state.containment())
+            objects = inDisplayOrder(state.pronounThem.filter { visible.contains($0) })
             guard !objects.isEmpty else {
                 return freeReply(definition.text.cantSeeAnySuchThing())
             }
+        case .list(let named):
+            // Already resolved, so no set to sweep and no order to invent: the
+            // player wrote one. Deliberately unfiltered too — "all" skips the
+            // scenery statue, but a player who names it has asked about that
+            // thing and is owed the refusal.
+            objects = named
         }
         if intent == .putIn || intent == .putOn, let indirect = parsed.indirectObject {
             objects.removeAll { $0 == indirect }
@@ -327,11 +337,6 @@ public actor GameWorld {
         // really runs, so it becomes the thing UNDO reverses.
         undoSnapshot = snapshot
 
-        // Stable, player-legible order: by display name, then ID.
-        objects.sort { lhs, rhs in
-            let (lhsName, rhsName) = (displayName(of: lhs), displayName(of: rhs))
-            return lhsName == rhsName ? lhs < rhs : lhsName < rhsName
-        }
         state.pronounThem = objects
 
         let indirectItem = parsed.indirectObject.flatMap { definition.registry.items[$0] }
@@ -371,6 +376,16 @@ public actor GameWorld {
             finishTurn(intent: intent, frame: frame)
         }
         return commit(frame)
+    }
+
+    /// A keyword stands for a set, which has no order of its own, so it gets a
+    /// stable player-legible one: by display name, then ID. A list the player
+    /// wrote out doesn't come through here — theirs is the order.
+    private func inDisplayOrder(_ objects: [EntityID]) -> [EntityID] {
+        objects.sorted { lhs, rhs in
+            let (lhsName, rhsName) = (displayName(of: lhs), displayName(of: rhs))
+            return lhsName == rhsName ? lhs < rhs : lhsName < rhsName
+        }
     }
 
     /// Merges everything one object's run said into a single

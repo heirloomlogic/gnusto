@@ -23,7 +23,10 @@ enum ParseError: Error, Equatable {
     /// slot ends its pattern, so the answer appends like any other.
     case missingDirection(verb: String, objectName: String, prefix: [String])
     case ambiguous(names: [String], prefix: [String], suffix: [String])
-    /// "all"/"them" in the indirect slot — only the direct slot is multiple.
+    /// Several objects where the slot holds one: "all"/"them" or a conjunction
+    /// list in the indirect slot, or a keyword standing among the members of a
+    /// list ("take the coin and all"). Only the direct slot is multiple, and
+    /// only as a whole.
     case multipleNotAllowed
     /// `butler, take the letter` — addressing a person with anything other
     /// than a greeting. The engine has no way for one character to act on
