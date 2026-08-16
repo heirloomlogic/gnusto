@@ -15,7 +15,7 @@ struct PatternGrammarTests {
 
     static let scope = Scope(visibleItems: [
         EntityID("lamp"), EntityID("rug"), EntityID("gnome"), EntityID("crate"),
-        EntityID("ironCrate"), EntityID("onSwitch"),
+        EntityID("ironCrate"), EntityID("onSwitch"), EntityID("insidePocket"),
     ])
 
     @Test func twoObjectsAroundAPreposition() throws {
@@ -352,6 +352,87 @@ struct PatternGrammarTests {
         #expect(parsed.directObject == EntityID("crate"))
         #expect(parsed.indirectObject == EntityID("gnome"))
         #expect(parsed.direction == .north)
+    }
+
+    // MARK: - A literal's synonyms
+
+    /// The exact-first pin. Widening a pattern literal to its synonyms is only
+    /// safe while the row's own word still wins where the line offers both:
+    /// `inside` and `in` can each close the slot in `put <object> in <second
+    /// object>`, and the phrase has to end at the second of them. Issue #269.
+    @Test func aLiteralClosingASlotPrefersTheWordThePlayerTyped() throws {
+        let parser = try Self.makeParser()
+        let parsed = try parser.parse("put the inside pocket in the box", scope: Self.scope).get()
+        #expect(parsed.intent == .putIn)
+        #expect(parsed.directObject == EntityID("insidePocket"))
+        #expect(parsed.indirectObject == EntityID("crate"))
+        #expect(parsed.preposition == "in")
+    }
+
+    /// The same line with only the synonym on it: no exact `in` to prefer, so
+    /// the fallback splits at `into` and both halves still land.
+    @Test func aLiteralClosingASlotFallsBackToItsSynonym() throws {
+        let parser = try Self.makeParser()
+        let parsed = try parser.parse("put the pocket into the box", scope: Self.scope).get()
+        #expect(parsed.intent == .putIn)
+        #expect(parsed.directObject == EntityID("insidePocket"))
+        #expect(parsed.indirectObject == EntityID("crate"))
+        // The pattern's word, not the typed one: a rule reading
+        // `command.preposition` sees `in` however the player spelled it.
+        #expect(parsed.preposition == "in")
+    }
+
+    /// A name beginning with an aliased word is still a name. Nothing about the
+    /// alias table reaches noun resolution.
+    @Test(arguments: [
+        "examine the inside pocket",
+        "x inside pocket",
+        "take inside pocket",
+    ])
+    func anAliasedWordInsideANounPhraseStaysPartOfIt(_ input: String) throws {
+        let parser = try Self.makeParser()
+        let parsed = try parser.parse(input, scope: Self.scope).get()
+        #expect(parsed.directObject == EntityID("insidePocket"))
+    }
+
+    /// Bare direction words are read before any verb row and never consult the
+    /// alias table, so `in` and `inside` still travel — and so do their
+    /// opposites, which the table deliberately leaves out.
+    @Test(arguments: [
+        ("in", Direction.in),
+        ("inside", Direction.in),
+        ("out", Direction.out),
+        ("outside", Direction.out),
+    ])
+    func aBareDirectionStillTravels(_ input: String, _ expected: Direction) throws {
+        let parser = try Self.makeParser()
+        let parsed = try parser.parse(input, scope: Self.scope).get()
+        #expect(parsed.intent == .go)
+        #expect(parsed.direction == expected)
+    }
+
+    /// A trailing particle is matched through the table too — and, being
+    /// positional, has no exact-first question to settle.
+    @Test func aTrailingParticleAnswersToItsSynonym() throws {
+        let parser = try Self.makeParser()
+        let parsed = try parser.parse("turn the lamp upon", scope: Self.scope).get()
+        #expect(parsed.intent == Intent("turnOn"))
+        #expect(parsed.directObject == EntityID("lamp"))
+    }
+
+    /// What the table must *not* do: two different canonical words stay
+    /// different, and a word outside it is only ever itself. Each of these is a
+    /// row the parser has, spelled with a preposition that row never means.
+    @Test(arguments: [
+        ("give lamp into gnome", Intent("give")),  // the row says `to`
+        ("look upon rug", Intent("lookUnder")),  // the row says `under`
+        ("wind lamp on", Intent("wind")),  // the row says `up`
+        ("put lamp inside gnome", Intent("give")),  // `in` is not `to`
+    ])
+    func anUnrelatedPrepositionIsStillNotTheRowsWord(_ input: String, _ forbidden: Intent) throws {
+        let parser = try Self.makeParser()
+        let reached = try? parser.parse(input, scope: Self.scope).get().intent
+        #expect(reached != forbidden, "\"\(input)\" reached \(forbidden)")
     }
 
     @Test func theWiderShapesReachTheirRules() async throws {

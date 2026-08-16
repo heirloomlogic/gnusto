@@ -60,6 +60,17 @@ public struct SyntaxRule: Sendable {
     /// per game. Both were allocating a fresh array per access.
     let leadingWords: [String]
 
+    /// ``leadingWords`` with every preposition folded to the one spelling
+    /// ``Vocabulary/literalSynonyms`` writes it in, so that candidate selection
+    /// is a plain prefix test against a line canonicalized the same way.
+    ///
+    /// Stored for the reason ``leadingWords`` is: the filter walks the whole
+    /// table on every command, and canonicalizing a row's words there would put
+    /// two dictionary lookups per row on the parser's hottest line — where
+    /// doing it here costs one pass over the table at bootstrap, and doing it
+    /// to the *line* costs one pass over half a dozen tokens per turn.
+    let canonicalLeadingWords: [String]
+
     /// Every literal word in the pattern, in order.
     let literalWords: [String]
 
@@ -101,6 +112,7 @@ public struct SyntaxRule: Sendable {
             if stillLeading { leading.append(word) }
         }
         self.leadingWords = leading
+        self.canonicalLeadingWords = leading.map(Vocabulary.canonical)
         self.literalWords = literals
         self.specificity = literals.count * 10 + (elements.count - literals.count)
     }
