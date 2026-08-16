@@ -26,18 +26,22 @@ jobs:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
+      # awk, not python3 — the Swift image has no python3 (round 2 attempt 1
+      # died on exit 127 here, which was this script's bug, not the package's).
       - name: Drop the macro test target from the manifest
         run: |
-          python3 -c '
-          import re
-          src = open("Package.swift").read()
-          pattern = re.compile(r"\n\s*\.testTarget\(\s*\n\s*name: \"GnustoMacrosTests\".*?\n\s*\),", re.DOTALL)
-          new, n = pattern.subn("", src)
-          assert n == 1, "expected exactly one GnustoMacrosTests target, removed %d" % n
-          open("Package.swift", "w").write(new)
-          print("removed GnustoMacrosTests from the manifest")
-          '
+          set -eu
+          awk '
+          /^[[:space:]]*\.testTarget\($/ { held = $0; have = 1; next }
+          have && /name: "GnustoMacrosTests"/ { have = 0; skipping = 1; removed = 1; next }
+          have { print held; have = 0 }
+          skipping { if ($0 ~ /^[[:space:]]*\),$/) skipping = 0; next }
+          { print }
+          END { if (!removed) { print "ERROR: GnustoMacrosTests not found" > "/dev/stderr"; exit 1 } }
+          ' Package.swift > Package.swift.new
+          mv Package.swift.new Package.swift
           rm -rf Tests/GnustoMacrosTests
+          echo "removed GnustoMacrosTests; testTarget count now $(grep -c testTarget Package.swift)"
 
       - name: Resolve
         run: |
