@@ -171,6 +171,7 @@ see the two disagree.
     report-shape.md                    the round report and the ledger
     issue-shape.md                     the one issue a round files
 bin/playtest-replay                    the replay helper
+.claude/workflows/playtest.dryrun.mjs  zero-agent dry run of the orchestration
 bin/playtest-measure                   how curiously a session played, off its artifacts
 bin/gnusto-mcp, .mcp.json              every game as a live play-test server
 docs/playtesting.md                    driving it by hand, without any of this
@@ -197,6 +198,27 @@ one, so the harness warns testers that engine facts may be anachronistic. Calibr
 is a **multi-tree** exercise — the three defects usually cited don't co-exist in any
 single commit. `docs/playtesting.md` has the per-tree answer key and the reasoning;
 `docs/games/fulminate-playtest-2026-07-29.md` has the last run's scores.
+
+## Before you dispatch a round
+
+```sh
+node .claude/workflows/playtest.dryrun.mjs
+```
+
+Stubs every agent and runs the real orchestration, so the cheap failures show up in
+two seconds instead of costing a full fan-out: a helper deleted by an edit somewhere
+else, a phase name that no longer matches `meta`, a roster that hands the wrong
+assignment to the wrong charter. It has caught all three.
+
+It also writes every generated prompt to `/tmp/prompts.txt`, which is the only cheap
+place to check the firewall — that the blind charters' prompts carry no design doc, no
+room roster and no timer list is a property of the *text*, and grepping it is how you
+know. Run it after any edit to `playtest.js`.
+
+**One thing it cannot tell you:** whether the game's MCP server is reachable. A
+`.mcp.json` added mid-session is not picked up until the session restarts, and the
+round will then fail at `ToolSearch` for every tester. Confirm the tools resolve before
+dispatching.
 
 ## Measuring a change to the harness
 

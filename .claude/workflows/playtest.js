@@ -71,6 +71,18 @@ const maxRounds = clamp(ARGS.rounds, 1, 6, 1)
 const dryTarget = clamp(ARGS.dryRounds, 1, 3, 2)
 const seed = clamp(ARGS.seed, 0, Number.MAX_SAFE_INTEGER, 0)
 
+function clamp(value, lo, hi, fallback) {
+  const n = Number(value)
+  if (!Number.isFinite(n)) return fallback
+  return Math.max(lo, Math.min(hi, Math.floor(n)))
+}
+
+// ---------------------------------------------------------------------------
+// Ground truth handed to every agent, verbatim and identically
+// ---------------------------------------------------------------------------
+
+// Identical is the point. N testers judging against N slightly different
+// oracles produce findings that cannot be deduplicated or cross-verified.
 const REF = '.claude/skills/playtest/references'
 
 // Every agent is HANDED its replay label rather than asked to invent one. Asking
@@ -117,6 +129,43 @@ and the game is \`${game}\`. The pinned seed for this round is \`${seed}\`.
 
 ${replayHowTo(label)}
 `.trim()
+
+// The blind charters' preamble. Same repo, same seed, same finding contract —
+// and no design doc, no `CLAUDE.md`, and no replay-tool how-to, because they play
+// through the session server instead.
+//
+// Dropping `CLAUDE.md` costs one known finding: the patrolman case, a rendered
+// phrase interpolated sentence-initially without `GameText.sentenceCase`, which a
+// tester found by having read the convention. That is a regex, and a regex is a
+// strictly better detector than "a tester happened to remember the rule" — it
+// belongs in a sweep, not in twelve thousand words of every tester's context.
+const groundBlind = (label) => `
+You are play-testing \`${game}\` for the Gnusto engine repo. The pinned seed for this
+round is \`${seed}\`.
+
+Read \`${REF}/finding-contract.md\` before you report anything: it is what a finding must
+carry. Read nothing else. In particular do **not** open the game's source, its design
+doc, its tests, or \`CLAUDE.md\` — you are judging whether the prose is true of the
+situation it printed in, and that is decided by what the game told you and nothing else.
+Somebody handed the map navigates instead of exploring; somebody handed the vocabulary
+can never discover that a printed noun has nothing behind it.
+
+You will therefore report some things the design licenses. That is expected and it is
+priced in: a verifier reads the doc whole and adjudicates afterwards. Report what you
+observed, say plainly what you think is wrong with it, and let the verifier rule.
+${focus ? `
+**The operator's coverage plan for this round.** Find your own assignment in it; the
+rest is context.
+
+${focus}
+` : ''}
+${routedIssues.length ? `**Owned elsewhere this round.** These issues are open and own a defect class. A
+symptom that belongs to one of them is routed, not reported:
+
+${routedIssues.map((i) => `- **#${i.number}** — ${i.owns}`).join('\n')}
+` : ''}
+Your label for this session is \`${label}\`.
+`
 
 const ground = (label) => `
 You are working on the Gnusto engine repo. The package under test is at \`${pkg}\`
@@ -766,7 +815,11 @@ const playRoster = chosen.flatMap((charter) => {
   return Array.from({ length: copies }, (_, i) => ({
     charter,
     key: copies > 1 ? `${charter.key}-${i + 1}` : charter.key,
-    region: regions.length ? regions[i % regions.length] : null,
+    // Only a charter that instantiates per region gets one. A single-copy
+    // charter handed `regions[0]` would be told its region is whichever the
+    // operator happened to name first, which is worse than being told nothing:
+    // the timekeeper would have skipped every clock cell outside it.
+    region: copies > 1 && regions.length ? regions[i % regions.length] : null,
     // Only the blind charters take a policy. The others are running fixed
     // rosters or a known route, so withholding a move from them would just make
     // their own job incomplete.
@@ -822,7 +875,7 @@ The survey found:
         const server = `mcp__${game.toLowerCase()}__`
         const tools = ['open', 'move', 'recall', 'coverage', 'note', 'finish', 'checkpoint', 'restore', 'replay']
         return agent(
-          `${ground(labelFor(`r${round}`, 'play', assignment.key))}
+          `${(charter.blind ? groundBlind : ground)(labelFor(`r${round}`, 'play', assignment.key))}
 
 Your charter is **${charter.key}**. Round ${round} of at most ${maxRounds}.
 
@@ -1212,7 +1265,7 @@ no transcripts.`,
   // fact about the role rather than about any one round, and unlike the verifiers
   // there is no judgement here to degrade — the number is either the grep's or it
   // is wrong, and the critic checks it against the transcripts either way.
-  { label: 'census', phase: 'Gate', schema: CENSUS_SCHEMA, effort: 'low', model: 'haiku' })
+  { label: 'census', phase: 'Critic', schema: CENSUS_SCHEMA, effort: 'low', model: 'haiku' })
 
 // The room census, same shape and started in the same breath. `roomsVisited` is
 // a tester self-report field and was never crossed against the transcripts,
@@ -1276,7 +1329,7 @@ matches no files, report an empty list and say so in \`note\` — that is a real
 answer and it means the round wrote no transcripts.`,
   // Haiku for the same reason as the word census: one sweep of text files and a
   // count, with no judgement in it to lose.
-  { label: 'room-census', phase: 'Gate', schema: ROOM_CENSUS_SCHEMA, effort: 'low', model: 'haiku' })
+  { label: 'room-census', phase: 'Critic', schema: ROOM_CENSUS_SCHEMA, effort: 'low', model: 'haiku' })
 
 // Census is the authority, self-report is kept beside it — the word census's
 // rule applied to rooms. A union rather than a replacement, because the two miss
@@ -1359,7 +1412,7 @@ ticks and blanks. Then answer three questions plainly:
 
 Be blunt. An honest thin round is useful; a thin round dressed as a thorough one is
 worse than not running.`,
-    { label: 'critic', phase: 'Gate', schema: CRITIC_SCHEMA, effort: 'high' }
+    { label: 'critic', phase: 'Critic', schema: CRITIC_SCHEMA, effort: 'high' }
   )
 }
 
