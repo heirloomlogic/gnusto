@@ -39,6 +39,9 @@ bin/playtest-replay --build Fulminate                              # once
 bin/playtest-replay Fulminate --commands probe.txt --seed 0 --label mine --tail 60
 
 bin/gnusto-mcp Fulminate                       # what an MCP client runs; stdout is the protocol
+                                               # builds then execs ONCE, at connect: a running
+                                               # server is frozen at its session's commit, so
+                                               # restart the session after editing the engine
 bin/playtest-measure .context/playtest/mine/probe-*   # rooms, verbs, objects — off the artifacts
 ```
 

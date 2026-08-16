@@ -222,10 +222,31 @@ The other assertions pin the batched verifiers (two raters, batch/rater labels, 
 measurable agreement denominator) and the absence of the retired censuses. It exits
 non-zero when any of them fails. Run it after any edit to `playtest.js`.
 
-**One thing it cannot tell you:** whether the game's MCP server is reachable. A
-`.mcp.json` added mid-session is not picked up until the session restarts, and the
-round will then fail at `ToolSearch` for every tester. Confirm the tools resolve before
-dispatching.
+**Two things it cannot tell you**, both about the servers rather than the script.
+
+*Whether the game's MCP server is reachable.* A `.mcp.json` added mid-session is not
+picked up until the session restarts, and the round will then fail at `ToolSearch` for
+every tester. Confirm the tools resolve before dispatching.
+
+*Whether the server is the code you just wrote.* `bin/gnusto-mcp` builds and then
+`exec`s, once, when the client connects — so a server is frozen at the commit its
+session started on. Edit the engine mid-session and every tester goes on playing the
+old binary, silently and successfully. **Restart the session after any change under
+`Sources/Gnusto/Playtest/`.**
+
+This one fails quietly, which is why it is worth a check rather than a memory. Open a
+throwaway session and call `finish` on it:
+
+```
+open  label: staleness-check, role: explorer
+finish  session: <id>, summary: checking the binary
+```
+
+A current server returns `roomsVisited` and `unknownWords` in the result and leaves a
+`closing.json` in the probe directory. A stale one returns neither and writes no file
+— and a round dispatched against it collates nothing, reports every session as never
+having finished, and looks exactly like a round where the testers all crashed.
+Delete the scratch directory afterwards.
 
 ## Measuring a change to the harness
 
