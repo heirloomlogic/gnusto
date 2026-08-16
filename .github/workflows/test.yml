@@ -10,33 +10,50 @@ on:
 
 jobs:
   test-linux:
-    # ARM runners are free for public repos and faster than the x86 ones, and
-    # the swift-syntax prebuilt below is published for aarch64 as well.
+    # ARM runners are free for public repos and measurably faster here: the
+    # Debug suite builds and runs in ~2m against ~3m40s on the x86 runner.
     runs-on: ubuntu-24.04-arm
 
-    # The toolchain arrives as an image rather than an install step. Two reasons
-    # beyond the ~30s saved: the image is version-pinned (macro plugins are
-    # compiler-coupled, so a floating toolchain is a real hazard), and SwiftPM
-    # keys its swift-syntax prebuilt off the exact compiler version, so the
-    # toolchain has to be something a prebuilt exists for.
+    # The toolchain arrives as an image rather than a scripted install. Beyond
+    # the ~30s saved, the compiler is pinned, which matters because macro
+    # plugins are compiler-coupled and a floating toolchain is a real hazard.
+    container: swift:6.3.3-noble
+
+    # This package cannot use SwiftPM's prebuilt swift-syntax yet, and that is
+    # worth writing down because the idea is so obviously attractive.
     #
-    # THE PIN TRAILS LATEST STABLE ON PURPOSE. From Swift 6.2 SwiftPM downloads
-    # a prebuilt `MacroSupport` static library instead of compiling swift-syntax
-    # (~700 files, and this workflow used to build it once per configuration).
-    # It is on by default; nothing in Package.swift asks for it. But the Linux
-    # prebuilts are published per exact toolchain, and as of August 2026 the
-    # newest Linux toolchain with one is 6.3.2 — 6.3.3 has none, though the
-    # macOS 6.3.3 prebuilt exists. Bumping this to "latest" silently costs
-    # several minutes a run. Before bumping, check that a prebuilt exists:
+    # Since 6.2 SwiftPM downloads a prebuilt `MacroSupport` static library
+    # instead of compiling swift-syntax (~700 files, built once per
+    # configuration). It is on by default and needs nothing from Package.swift.
+    # It does work here: on 6.3.2 the aarch64 prebuilt downloads in 0.26s and
+    # swift-syntax never compiles. The build then fails to link, on both x86_64
+    # and aarch64:
     #
-    #   curl -sfI https://download.swift.org/prebuilts/swift-syntax/603.0.2/swift-6.3.3-RELEASE-ubuntu_noble_aarch64.json
+    #   GnustoMacrosTests-test-runner: clang: error: no such file or directory:
+    #     '.build/out/Products/Debug-linux/GnustoMacrosTests.so'
     #
-    # (substituting the swift-syntax version this package resolves to, and the
-    # toolchain you want). A 200 means the bump is free; a 404 means it isn't.
-    # The "Confirm swift-syntax prebuilt" step below reports what actually
-    # happened, so a wrong guess here shows up as a warning rather than a
-    # mystery slowdown.
-    container: swift:6.3.2-noble
+    # That is swiftlang/swift-package-manager#10218 — when the Swift Build
+    # system builds a testable variant of a macro target whose swift-syntax
+    # products came from a prebuilt, the prebuilt never reaches the test
+    # product's link inputs. A SwiftPM maintainer has a fix landing in 6.5.
+    #
+    # Deleting GnustoMacrosTests does not dodge it; that was measured, not
+    # assumed. Without it the build links and then dies at runtime instead:
+    #
+    #   GnustoTests.so: undefined symbol: $s11SwiftSyntax011LabeledExprB0VN
+    #
+    # because GnustoTests depends on Gnusto, which depends on the macro. Every
+    # test target here reaches swift-syntax that way, so there is no subset of
+    # the suite that can use the prebuilt today.
+    #
+    # So prebuilts are disabled explicitly rather than left to chance: no Linux
+    # prebuilt is published for 6.3.3 today, but if one appears, the default
+    # would flip this job from working to failing on that link error, with
+    # nothing in the diff to explain it.
+    #
+    # WHEN 6.5 SHIPS: drop the --disable-experimental-prebuilts flags below and
+    # confirm the log shows "Downloading package prebuilt" with no swift-syntax
+    # compilation. That is worth several minutes a run.
 
     steps:
       - name: Checkout repository
@@ -48,11 +65,11 @@ jobs:
       - name: Trust the workspace
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
-      # Only SwiftPM's shared cache — the downloaded prebuilt and the dependency
-      # checkouts, both content-addressed and cheap to restore. Deliberately not
-      # `.build`: that holds compiled objects for two configurations under a
-      # build system whose layout is still moving, and a stale hit there is a
-      # debugging session, not a saved minute.
+      # SwiftPM's shared cache only — the dependency checkouts, content-addressed
+      # and cheap to restore. Deliberately not `.build`: that holds compiled
+      # objects for two configurations under a build system whose layout is
+      # still moving, and a stale hit there is a debugging session, not a saved
+      # minute.
       - name: Cache SwiftPM downloads
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
@@ -64,21 +81,7 @@ jobs:
       - name: Resolve dependencies
         run: |
           swift --version
-          swift package resolve
-
-      # Package.resolved is not tracked (see .gitignore), so swift-syntax floats
-      # within the range Package.swift declares. The day it tags a version with
-      # no published prebuilt, the range moves past the prebuilt and this job
-      # quietly goes back to compiling swift-syntax from source. Warn rather
-      # than fail: a swift-syntax release should not red-X the repo, but it
-      # should say so out loud.
-      - name: Confirm swift-syntax prebuilt
-        run: |
-          if [ -d .build/prebuilts/swift-syntax ]; then
-            echo "Using prebuilt swift-syntax: $(ls .build/prebuilts/swift-syntax)"
-          else
-            echo "::warning::No swift-syntax prebuilt for this toolchain — swift-syntax will build from source (several minutes). See the pin comment in .github/workflows/test.yml."
-          fi
+          swift package resolve --disable-experimental-prebuilts
 
       # The test target `@testable import`s the CloakOfDarkness and Zork1
       # executable targets. The legacy `native` build system refuses that
@@ -87,7 +90,7 @@ jobs:
       # combo fails at link time (Xcode 26.x eagerly links SwiftUICore, fixed
       # in 6.4); Linux has no SwiftUICore, so a stable toolchain links cleanly.
       - name: Test (Debug)
-        run: swift test --build-system swiftbuild
+        run: swift test --build-system swiftbuild --disable-experimental-prebuilts
 
       # Release run guards against optimization-only regressions (e.g. generic
       # `#Predicate` miscompiles) that the Debug suite passes through silently.
@@ -96,9 +99,9 @@ jobs:
       # before it. Widen this back to PRs if one ever slips through.
       - name: Test (Release)
         if: github.event_name == 'push'
-        run: swift test -c release --build-system swiftbuild
+        run: swift test -c release --build-system swiftbuild --disable-experimental-prebuilts
 
       # The starter template is a standalone package with a path dependency on
       # this repo; building it here keeps the template from rotting.
       - name: Template (Debug)
-        run: swift test --package-path Templates/NewGame --build-system swiftbuild
+        run: swift test --package-path Templates/NewGame --build-system swiftbuild --disable-experimental-prebuilts

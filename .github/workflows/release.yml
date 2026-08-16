@@ -63,10 +63,11 @@ jobs:
     # x86_64 — moving this runner would silently change what people download.
     runs-on: ubuntu-latest
 
-    # Same toolchain image and same version pin as the test workflow; the
-    # rationale for both, including why the pin trails latest stable, is in
-    # .github/workflows/test.yml. Keep the two in step.
-    container: swift:6.3.2-noble
+    # Same toolchain image and version as the test workflow — keep the two in
+    # step. Nothing here needs the prebuilt-swift-syntax caveat that workflow
+    # documents: no test targets are built, so the macro test target that
+    # trips swiftlang/swift-package-manager#10218 is never in the graph.
+    container: swift:6.3.3-noble
 
     steps:
       - name: Checkout repository

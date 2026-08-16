@@ -55,18 +55,9 @@ jobs:
 
     # Ubuntu runners ship no Swift, so the toolchain arrives as an image rather
     # than an install step — no scripted download, and a pinned compiler, which
-    # matters because a game's macro plugins are compiler-coupled.
-    #
-    # The pin trails latest stable deliberately. SwiftPM downloads a prebuilt
-    # swift-syntax for macros instead of compiling it, which saves minutes per
-    # build, but the Linux prebuilts are published per exact toolchain and not
-    # every release has one. Before bumping, check that yours does:
-    #
-    #   curl -sfI https://download.swift.org/prebuilts/swift-syntax/603.0.2/swift-6.3.3-RELEASE-ubuntu_noble_x86_64.json
-    #
-    # substituting the swift-syntax version your package resolves to and the
-    # toolchain you want. 200 means the bump is free; 404 means you pay for it.
-    container: swift:6.3.2-noble
+    # matters because a game's macro plugins are compiler-coupled. Bump the tag
+    # to move to a newer Swift.
+    container: swift:6.3.3-noble
 
     steps:
       - name: Checkout repository
