@@ -26,7 +26,7 @@ struct Snark: Game {
 Every line is a ``GameText/Line``, and a `Line` takes a bare string as readily as a closure — so whether a line names the thing it is about, or looks around before it speaks, is the game's call and not a shape the engine picked:
 
 ```swift
-text.cantReach = .naming { "\($0) is right there, and yet." }
+text.cantReach = .naming { "\($0.sentenceCased) is right there, and yet." }
 text.pitchBlack = .live { lantern.isOn ? "Dark, and getting darker." : "Pitch black." }
 ```
 

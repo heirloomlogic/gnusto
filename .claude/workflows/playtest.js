@@ -134,11 +134,14 @@ ${replayHowTo(label)}
 // and no design doc, no `CLAUDE.md`, and no replay-tool how-to, because they play
 // through the session server instead.
 //
-// Dropping `CLAUDE.md` costs one known finding: the patrolman case, a rendered
+// Dropping `CLAUDE.md` cost one known finding: the patrolman case, a rendered
 // phrase interpolated sentence-initially without `GameText.sentenceCase`, which a
-// tester found by having read the convention. That is a regex, and a regex is a
-// strictly better detector than "a tester happened to remember the rule" — it
-// belongs in a sweep, not in twelve thousand words of every tester's context.
+// tester found by having read the convention. That is now a sweep —
+// `Tests/GnustoTests/ProseConventionTests.swift`, run by CI on every `swift test`
+// — and a sweep is a strictly better detector than "a tester happened to remember
+// the rule". It found the two live cases the tester had missed, and a third in a
+// DocC article teaching the convention, so the trade came out ahead rather than
+// merely even.
 const groundBlind = (label) => `
 You are play-testing \`${game}\` for the Gnusto engine repo. The pinned seed for this
 round is \`${seed}\`.

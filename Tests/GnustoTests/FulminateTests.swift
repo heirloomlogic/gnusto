@@ -739,6 +739,27 @@ struct FulminateTests {
         #expect(!answer.contains("the patrolman looks at it"))
     }
 
+    /// The same fault, in the two lines the fix above missed. `greets` and
+    /// `notTakingOrders` were written the same way and went on printing "the
+    /// patrolman hears you out" for as long as the sibling did — invisible for
+    /// the same reason, and found by the source sweep in
+    /// ``ProseConventionTests`` rather than by anybody reading a transcript.
+    ///
+    /// Only `notTakingOrders` is asserted, because only it can be reached:
+    /// every actor in this house carries a conversation, so `GnustoConversation`
+    /// answers a greeting before ``GameText/greets`` is consulted and the line
+    /// is unreachable in Fulminate. It was fixed anyway — a line that is right
+    /// only because nothing calls it is a trap for whoever adds the sixth
+    /// actor.
+    @Test func theOrderRefusalThatOpensOnHisNameGetsACapitalLetterToo() async throws {
+        let approach = ["south", "west"] + Array(repeating: "z", count: 10)
+        let transcript = try await play(Fulminate(), approach + ["patrolman, go north"])
+
+        let ordered = turnOutput(of: "patrolman, go north", in: transcript)
+        #expect(ordered.contains("The patrolman hears you out"))
+        #expect(!ordered.contains("the patrolman hears you out"))
+    }
+
     // MARK: - Frames the stock lines were never told about
 
     /// Fulminate set five `text` keys and no `text.stubs.*` at all, so the
