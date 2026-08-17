@@ -98,8 +98,7 @@ jobs:
       # main rather than on every PR: such a regression surfaces at merge, not
       # before it. Widen this back to PRs if one ever slips through.
       - name: Test (Release)
-        # TEMPORARY: gate removed to exercise this step once on the branch.
-        # Restore `if: github.event_name == 'push'` before merge.
+        if: github.event_name == 'push'
         run: swift test -c release --build-system swiftbuild --disable-experimental-prebuilts
 
       # The starter template is a standalone package with a path dependency on
