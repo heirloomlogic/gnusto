@@ -245,6 +245,30 @@ struct PlaytestCoverageTests {
             ])
     }
 
+    /// The intro's scene-setting is not the starting room's queue.
+    ///
+    /// The opening prints the intro, the banner and the first room together,
+    /// and harvesting all three attributes the blurb's nouns to whatever room
+    /// the player happens to start in. On Zork 1 that is not a rounding error:
+    /// the blurb names the dam, the temple, the mine, the river, the maze, the
+    /// barrow and the thief, so a blind explorer's opening queue came back
+    /// eleven parts scene-setting to one part room — every one of those nouns
+    /// hundreds of commands from where it was being told to examine it.
+    ///
+    /// Both directions, because over-cutting is the opposite failure and it is
+    /// worse: a queue harvested from nothing leaves the first room unexamined
+    /// and the frontier empty, and the explorer charter is measured on burning
+    /// that queue down.
+    @Test func theIntrosSceneSettingIsNotTheStartingRoomsQueue() async throws {
+        let ids = try await ids(session(BlurbGame()))
+
+        for blurb in ["cathedral", "harbour", "city", "plague"] {
+            #expect(!ids.contains("noun:\(blurb)@Doorway"), "the intro's \(blurb) reached the queue")
+        }
+        #expect(ids.contains("noun:lantern@Doorway"))
+        #expect(ids.contains("noun:hook@Doorway"))
+    }
+
     /// The queue comes back with the opening, so the tester plans from it rather
     /// than forming a plan and then being told what it missed.
     @Test func openHandsBackTheQueueWithTheOpeningText() async throws {

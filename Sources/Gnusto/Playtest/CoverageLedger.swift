@@ -548,16 +548,63 @@ struct CoverageLedger: Sendable {
 
     // MARK: - Reading a turn
 
-    /// Records the opening: the intro, the banner and the first room
-    /// description, which is where the first nouns and the first exits come
-    /// from.
+    /// Records the opening, which is where the first nouns and the first exits
+    /// come from.
+    ///
+    /// **Only the room part of it.** `begin()` prints three things at once —
+    /// the game's intro, its banner, and the first room — and just the last of
+    /// those is about where the player is standing. Harvesting all three files
+    /// the blurb's scenery under the starting room, and the cost is not a
+    /// rounding error: Zork 1's intro names the dam, the temple, the mine, the
+    /// river, the maze, the barrow and the thief, so a blind explorer's opening
+    /// queue came back eleven parts scene-setting to one part room. The
+    /// explorer charter is measured on burning that queue down, and every one
+    /// of those items sends it to examine something hundreds of commands away
+    /// — which then answers *you can't see any such thing*, which that charter
+    /// is told to report as a printed noun the parser denies. So the round pays
+    /// for the turn twice, once in the tester and once in the verifier refuting
+    /// what it filed.
+    ///
+    /// The behaviour was known before it was understood: ``AviaryGame``'s intro
+    /// is deliberately noun-free so that the opening-queue assertion is "about
+    /// the room rather than about the intro", which is this defect written down
+    /// as a fixture workaround.
     ///
     /// - Parameters:
     ///   - output: the opening text, without the status footer.
     ///   - room: the room the status line named.
     mutating func observeOpening(output: String, room: String) {
         visit(room)
-        harvest(output: output, room: room, depth: 1, bornOfExamine: false, line: 0)
+        harvest(
+            output: Self.roomBlock(in: output, room: room),
+            room: room, depth: 1, bornOfExamine: false, line: 0)
+    }
+
+    /// The tail of the opening that describes the starting room.
+    ///
+    /// The room heading is the seam: the engine prints it on a line of its own
+    /// immediately before the description, so everything from there down is the
+    /// room and everything above it is the intro and the banner. The *last*
+    /// such line rather than the first, because a blurb is free to mention the
+    /// room by name and the heading is the one nearest the description.
+    ///
+    /// A game whose opening never prints the heading — one starting in the dark
+    /// — falls back to the whole text. Over-harvesting is the survivable error
+    /// here, since a wrong queue item costs one turn; harvesting nothing leaves
+    /// the first room with no frontier at all, and the explorer with nothing to
+    /// work down.
+    private static func roomBlock(in output: String, room: String) -> String {
+        let heading = room.trimmingCharacters(in: .whitespaces)
+        guard !heading.isEmpty else { return output }
+        let lines = output.components(separatedBy: "\n")
+        guard
+            let start = lines.lastIndex(where: {
+                $0.trimmingCharacters(in: .whitespaces) == heading
+            })
+        else {
+            return output
+        }
+        return lines[start...].joined(separator: "\n")
     }
 
     /// Records one command and what it printed.

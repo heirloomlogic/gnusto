@@ -27,9 +27,12 @@ import Gnusto
 ///   than being handed a timer roster.
 struct AviaryGame: Game {
     let title = "Aviary"
-    /// Deliberately noun-free: the queue's opening contents are asserted as an
-    /// exact set, and an intro that named things would put them in it and make
-    /// the assertion about the intro rather than about the room.
+    /// Noun-free, though it no longer has to be. This once read "deliberately
+    /// noun-free … an intro that named things would put them in it", which was
+    /// a workaround for the opening harvest filing the blurb's nouns under the
+    /// starting room. That is fixed at the source now — ``BlurbGame`` is the
+    /// fixture that pins it — and this stays plain only so the exact-set
+    /// assertion below reads as one thing.
     let intro = "Look at everything twice."
 
     let yard = Location {
@@ -109,5 +112,37 @@ struct AviaryGame: Game {
             guard player.location == yard, player.moves % 3 == 0 else { return }
             say("Something stirs overhead.")
         }
+    }
+}
+
+/// A game whose intro sets a scene the player is not standing in.
+///
+/// `begin()` prints three things at once — the intro, the banner and the first
+/// room — and only the last of them is *about* where the player is. This
+/// fixture exists to pin that seam. `cathedral`, `harbour` and `plague` are
+/// named by the blurb and by nothing in the Doorway, so a queue offering them
+/// is sending a tester to examine scenery that is not there, and then inviting
+/// it to file the resulting "you can't see any such thing" as a printed noun
+/// the parser denies.
+///
+/// ``AviaryGame`` cannot catch this: its intro is deliberately noun-free, which
+/// was the workaround for exactly this behaviour rather than a fix for it.
+struct BlurbGame: Game {
+    let title = "Blurb"
+    let intro = "A cathedral burned in the harbour city, and the plague came after."
+
+    let doorway = Location {
+        name("Doorway")
+        description("A stone doorway. A lantern hangs from a hook.")
+    }
+
+    let lantern = Item {
+        name("lantern")
+        scenery
+    }
+
+    var map: WorldMap {
+        player.starts(in: doorway)
+        lantern.starts(in: doorway)
     }
 }
