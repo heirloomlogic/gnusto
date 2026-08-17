@@ -68,12 +68,15 @@ Four things, none of them optional:
 - **Which charters found nothing, and why.** "Not run — budget" and "run, found
   nothing in its own class" are very different results and must not look the same.
 - **Rooms entered, as a count and a list, with the never-entered ones named.** The
-  count comes from `coverage.rooms`, which is **derived from the transcripts** and
-  not from what the testers said — `visited` is the union, `fromTranscripts` and
-  `selfReported` are the two sides, and `enteredButUnreported` is the gap. A gap is
-  a *reporting* defect rather than a coverage one and is worth its own sentence; the
-  2026-08-11 Dungeon round published "112 of 195" against a real 155 because this
-  number used to be asked rather than counted.
+  count comes from `coverage.rooms`, and it is **read off the `closing.json` each
+  session wrote at `finish`**, never from what a tester said: `visited` is the union
+  of every session's `roomsVisited`, `neverVisited` is the survey's roster minus
+  that, and `offRoster` is a name the survey did not predict. The gap that used to
+  live in this bullet is now `coverage.sessionsUnfinished` — a probe holding a
+  transcript with no closing record beside it, which is a session that played and
+  left no account of itself. **Name those.** A coverage figure computed without them
+  is a floor and has to say so. The 2026-08-11 Dungeon round published "112 of 195"
+  against a real 155 because this number used to be asked rather than counted.
 - **Entered is not covered, and the two must not be one number.** A room the harness
   only walked through while replaying a committed route from
   `.context/playtest/routes/` is reach, not coverage — 21 of Dungeon's were exactly

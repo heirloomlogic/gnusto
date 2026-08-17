@@ -79,10 +79,19 @@ return (async () => {
 ${src}
 })()
 `
+// Real ledger keys, in the shape the ledgers actually record: an owner file and
+// a chunk of the game's own prose. Dungeon's are used deliberately — they are
+// the pair that proves the leak matters, naming a room, its description and its
+// source file, and they are what the egg round has to pass in.
+const dryLedgerKeys = [
+  'Sources/Dungeon/Regions/AboveGround.swift::up up a tree you are about 10 feet above the ground nestled among some large branches',
+  'Sources/Fulminate/Fulminate.swift::the dr pike would take exception to that',
+]
 const dryArgs = {
   game: 'Fulminate', packagePath: '.', docPath: 'docs/games/fulminate.md',
   capabilities: ['clock','talk'], seed: 0, turns: 60,
   focus: 'ground floor: Front Hall, Parlour, Kitchen | upstairs: Landing, Boarder\'s Room, Study | outside: Back Yard, Carriage House',
+  ledgerKeys: dryLedgerKeys,
 }
 const fn = new Function('__stub','__phases','__logs','__args', body)
 const result = await fn(stub, phases, logs, dryArgs)
@@ -172,6 +181,63 @@ for (const p of blind) {
   // told it had no room list.
   const mine = regions.filter((r) => p.prompt.includes(r))
   check(mine.length <= 1, `${p.label} was handed ${mine.length} regions, not just its own`)
+  // A dedupe key is `<ownerFile>::<the game's own prose>`, so the ledger is a
+  // room list, a source map and an excerpt file in one. Pasting it into a blind
+  // prompt is the coverage-plan leak wearing a different hat, and it is worse:
+  // the keys are supplied per round, so the size of the leak grows with the
+  // ledger. Suppressing a rediscovery is done in plain code at `seen.has(key)`
+  // and does not depend on the tester having been told anything.
+  for (const key of dryLedgerKeys) {
+    const [owner, prose] = key.split('::')
+    check(!p.prompt.includes(owner), `${p.label} was handed the ledger's source map (${owner})`)
+    check(!p.prompt.includes(prose), `${p.label} was handed a ledger excerpt: "${prose.slice(0, 48)}…"`)
+  }
+}
+
+// Sessions must write where the collator looks. `open` names the directory the
+// server creates (`.context/playtest/<label>/<probe>/`) and the collator globs
+// for it, and the two are in different files with no compiler between them.
+// They drifted the moment testers moved off `bin/playtest-replay` onto the
+// session server: `open` started passing a bare charter key while the glob went
+// on expecting the game-prefixed replay label. Nothing downstream can tell an
+// empty glob from a round where every tester crashed — the collator answers
+// "0 sessions finished" to both, and the critic is told coverage is a floor.
+const globToRe = (g) =>
+  new RegExp(`^${g.split('*').map((s) => s.replace(/[.+?^${}()|[\]\\]/g, '\\$&')).join('[^/]*')}$`)
+
+const openLabels = prompts
+  .filter((p) => /^play:/.test(String(p.label || '')))
+  .map((p) => (p.prompt.match(/Open with `label: "([^"]+)"`/) || [])[1])
+check(
+  openLabels.length > 0 && openLabels.every(Boolean),
+  'could not read an `open` label out of every play prompt'
+)
+
+const collator = prompts.find((p) => p.label === 'collator')
+const collatorGlobs = collator
+  ? [...new Set([...collator.prompt.matchAll(/\.context\/playtest\/([^/\s]*\*[^/\s]*)\//g)].map((m) => m[1]))]
+  : []
+check(collatorGlobs.length > 0, 'the collator prompt names no .context/playtest glob')
+for (const label of openLabels.filter(Boolean)) {
+  check(
+    collatorGlobs.some((g) => globToRe(g).test(label)),
+    `sessions open under "${label}", which no collator glob matches (${collatorGlobs.join(', ')})`
+  )
+}
+// The inverse, and the half that bites hardest. A replay probe holds a
+// `transcript.txt` and never a `closing.json`, because `bin/playtest-replay`
+// does not write one — so a glob wide enough to catch the round's own replays
+// reports them as testers who played and never accounted for it.
+for (const replay of [
+  'Fulminate-r1-play-explorer-1',
+  'Fulminate-r1-verify-b01-r1',
+  'Fulminate-critic',
+  'Fulminate-collator',
+]) {
+  check(
+    !collatorGlobs.some((g) => globToRe(g).test(replay)),
+    `a collator glob matches "${replay}", a replay label that never holds a closing.json`
+  )
 }
 
 // The critic gets the agreement figure and is told not to read a high one as

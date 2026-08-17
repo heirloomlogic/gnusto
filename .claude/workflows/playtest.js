@@ -61,11 +61,11 @@ const turnBudget = clamp(ARGS.turns, 20, 250, 60)
 // rather than a region schema because what a split needs to say differs per game
 // — a route prefix here, an hour there — and a schema would only be guessed at.
 const focus = typeof ARGS.focus === 'string' ? ARGS.focus.trim() : ''
-// Reasoning effort for the verifiers, which are the round's largest fan-out: one
-// per fresh finding, so they set its cost. Left inheriting by default. Turning it
-// down is a budget call and belongs to the operator, not to the file: a verifier
-// that refutes real defects yields a thin round that reads as a clean one, and
-// that failure is silent.
+// Reasoning effort for the verifiers, which are the round's largest fan-out: two
+// independent raters over each batch of 25, so they set its cost. Left inheriting
+// by default. Turning it down is a budget call and belongs to the operator, not to
+// the file: a verifier that refutes real defects yields a thin round that reads as
+// a clean one, and that failure is silent.
 const verifyEffort = EFFORTS.includes(ARGS.verifyEffort) ? ARGS.verifyEffort : undefined
 const maxRounds = clamp(ARGS.rounds, 1, 6, 1)
 const dryTarget = clamp(ARGS.dryRounds, 1, 3, 2)
@@ -97,6 +97,28 @@ const REF = '.claude/skills/playtest/references'
 // display label like `verify:frame` had to make one up. Sanitize instead.
 const labelFor = (...parts) =>
   [game, ...parts].join('-').replace(/[^A-Za-z0-9._-]+/g, '-').replace(/^[.-]+/, '')
+
+// Where a *session* writes, as against a replay, and the glob that finds it
+// again. The server makes `.context/playtest/<label>/<probe>/` out of whatever
+// label `open` was given, and the collator globs that directory for
+// `closing.json` — two facts six hundred lines apart with nothing between them
+// to catch a drift.
+//
+// They drifted the moment testers moved off `bin/playtest-replay` onto the
+// session server: `open` began passing a bare charter key while the glob went
+// on expecting the game-prefixed replay label. Neither side is wrong on its
+// own, and the failure is silent in the worst way, because the collator's
+// answer to "no session wrote anything" is the same as its answer to "every
+// tester crashed" — zero finished, and the critic told its coverage is a floor.
+//
+// So both are derived from one segment, and the dry run asserts they still
+// agree. The segment also keeps replays *out*: a replay probe holds a
+// `transcript.txt` and never a `closing.json`, so a glob loose enough to catch
+// `<game>-r1-play-…` or `<game>-r1-verify-…` reports the round's own replays as
+// testers who played and never accounted for it.
+const SESSION_SEGMENT = 'session'
+const sessionLabelFor = (round, key) => labelFor(`r${round}`, SESSION_SEGMENT, key)
+const SESSION_GLOB = `${game}-r*-${SESSION_SEGMENT}-*`
 
 // How to replay, said once for both ground blocks. It differs between them only in
 // where it sits — after the briefs for an agent that judges prose, straight after the
@@ -856,6 +878,21 @@ log(
 // Phase 2 + 3 — Play, then Triage
 // ---------------------------------------------------------------------------
 
+// Every key this round already knows about, and the only thing that actually
+// suppresses a rediscovery: `seen.has(key)` below runs over every finding no
+// matter what its tester was told.
+//
+// Which is why the sighted charters get this pasted into their prompts and the
+// blind ones do not. A key is `<ownerFile>::<the game's own prose>`, so the
+// ledger is a room list, a source map and an excerpt file at once — handing 60
+// of them to an explorer whose brief opens "you have no map, no room list, no
+// vocabulary, and you must not go looking for any of them" gives away more than
+// the survey ever would, and the leak grows with the ledger rather than with the
+// game. Dungeon's rows 72 and 113 are both the Up a Tree room, its description
+// and its file.
+//
+// The warning was only ever deterrence; dedup is code. So the blind charters
+// lose nothing mechanical, and the dry run asserts no key reaches them.
 const seen = new Set(ledger)
 const confirmed = []
 const refuted = []
@@ -916,7 +953,7 @@ Your charter is **${charter.key}**. Round ${round} of at most ${maxRounds}.
 You play through the game's own MCP server. Its tools are deferred, so fetch them first
 with \`ToolSearch\`, query \`select:${tools.map((t) => server + t).join(',')}\`.
 
-Open with \`label: "${assignment.key}"\`, \`seed: ${seed}\`, \`role: "${charter.blind ? 'explorer' : 'unrestricted'}"\`${charter.blind ? `, \`divergence: "${assignment.divergence}"\`` : ''}.
+Open with \`label: "${sessionLabelFor(round, assignment.key)}"\`, \`seed: ${seed}\`, \`role: "${charter.blind ? 'explorer' : 'unrestricted'}"\`${charter.blind ? `, \`divergence: "${assignment.divergence}"\`` : ''}.
 ${charter.blind ? `**Read the \`instruction\` your open returns and follow it for the whole session.** It tells you what to do the first time the game offers you something you cannot take back. Another tester has been given the opposite orders, so the branch you leave alone is covered and the one you take is yours to describe.\n` : ''}
 Every turn's output ends with a \`[status]\` line naming the room, the move counter and
 whether the command cost a turn. \`note\` writes a comment into your transcript at the
@@ -928,7 +965,7 @@ ${charter.brief}
 Your turn budget is about ${turnBudget} engine turns. Spend it on breadth first, then
 depth on whatever looked wrong.
 ${oracle}${charter.checklist ? `\nYOUR GENERATED CHECKLIST:\n${charter.checklist(survey)}\n` : ''}
-${seen.size ? `\nAlready seen in earlier rounds or the ledger — do NOT report these again:\n${[...seen].slice(0, 60).join('\n')}` : ''}
+${!charter.blind && seen.size ? `\nAlready seen in earlier rounds or the ledger — do NOT report these again:\n${[...seen].slice(0, 60).join('\n')}` : ''}
 
 The session records to disk from the moment you open it, so the evidence is already
 attached: carry the transcript path your \`open\` returned into \`transcriptPath\`. Use
@@ -1376,7 +1413,7 @@ not judge, file, explain or play.
 Every play-test session writes a \`closing.json\` beside its transcript when it
 calls \`finish\`. From \`${pkg}\`, list them:
 
-    ls .context/playtest/${game}-*/*/closing.json
+    ls .context/playtest/${SESSION_GLOB}/*/closing.json
 
 Read every one. Each holds \`roomsVisited\` (room names, in the order the session
 first stood in them), \`unknownWords\` (token → how many times it was typed) and
@@ -1393,15 +1430,17 @@ Report:
 - \`sessionsUnfinished\`: probe directories holding a \`transcript.txt\` with no
   \`closing.json\` beside it. Find them with:
 
-      ls -d .context/playtest/${game}-*/*/ | while read d; do [ -f "$d/transcript.txt" ] && [ ! -f "$d/closing.json" ] && echo "$d"; done
+      ls -d .context/playtest/${SESSION_GLOB}/*/ | while read d; do [ -f "$d/transcript.txt" ] && [ ! -f "$d/closing.json" ] && echo "$d"; done
 
   Name them. A session that never called \`finish\` played the game and left no
   account of it; a round that drops the row rather than reporting it is claiming
   coverage it cannot show.
 
-Exclude any \`${game}-critic\`, \`${game}-collator\` or \`${game}-verify\` directory
-the globs pick up — that is the round auditing itself, not playing it. Say so in
-\`note\` if you had to.
+Both globs are narrow on purpose: only a session opened through the game's own
+server lands under \`${SESSION_GLOB}\`. The round's replays and its own audit runs
+write elsewhere, and they hold a transcript with no \`closing.json\` beside it — so
+a wider glob would report the round's own machinery as testers who never finished.
+Do not widen them. If you think a session is missing, say so in \`note\`.
 
 If the globs match nothing, report zeroes and empty lists and say so in \`note\`.
 That is a real answer and it means the round wrote no sessions.`,
