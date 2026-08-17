@@ -151,3 +151,87 @@ aimed at a listed actor; a stale source comment at `Fulminate.swift:268-270`) we
 raised as findings, so
 they have no keys and are carried as next-round targets in the report rather than as rows
 here.
+
+## 2026-08-17 — second round against `main`, `1df88f3` (`fix: none`, nothing applied)
+
+Every `confirmed` row below is an **open defect in the game as it ships**, filed as
+**#280**. Full keys, frames, reproducers, coverage grids and the harness result:
+`docs/games/fulminate-playtest-2026-08-17.md`. Seed `0`, 6 charters, 81 probes, 1,505
+engine turns. 15 raised → 15 confirmed (10 `confirmed-defect`, 5 `needs-human`), 12
+refuted. Verifier agreement 88.9% over 27 double-rated findings, 0 single-rated.
+Deduplicating the 15 by root cause gives 13 classes; the critic added 3 more that no
+tester raised, for the 16 checklist boxes in #280, and the Class column names them in box
+order. `C13`, `C14` and `C16` are the harness boxes and have no rows here — like `C18` of
+the previous round, they were found by the completeness critic and confirmed by hand.
+
+**This round records regressions, and they are the round's headline.** Seven of the
+fifteen findings were introduced by `7c92508`, the commit that fixed the previous round's
+eighteen classes, so the 2026-07-31 entry's claim that no fix in this repo's history
+reintroduced a class it was fixing no longer holds. Two are verifiable in that diff:
+`7c92508` added `text.stubs.climb` and `text.stubs.stand` verbatim, and it removed an
+unanswerable noun from the blast paragraph (class `C1` of the last round) while adding a
+fresh one, `window`, to the lab lamp. A further four findings trace to `ed8d377`
+(2026-07-29) and so predate the previous round and were missed by it. The `C13` engine row
+is a separate regression, two days old, from `7cec4aa`.
+
+`ledgerKeys` was passed as the **seven** keys from the 2026-07-31 refuted table that were
+*not* refuted as `licensed-by-doc`. The six that were (R04, R05, R07, R08, R10, R11) were
+withheld on purpose: `docs/games/fulminate.md:77-83` has since narrowed that clause, and
+passing them would have suppressed findings the doc now says are filable.
+
+**Keys below are the workflow's own, recorded in full and untruncated** — the shape dedup
+actually compares. Every previous row in this file is display-truncated with `…`, which
+`normalize()` never emits, so none of them can match anything: dedup keys on
+`decl::<file>::<declaration>` whenever the clusterer locates the declaration and only
+falls back to `<ownerFile>::<normalized excerpt>` when it returns `unlocated`. Row `C15`
+below is the one finding that took that fallback, and its key is excerpt-derived noise
+rather than a declaration — recorded as returned, and not expected to match.
+
+| Key | Class | Verdict | Note |
+|---|---|---|---|
+| `decl::Sources/Fulminate/Fulminate.swift::clock` | C1 status-clock | needs-human | major, wrong-footer, **regression introduced by `7cec4aa`**; `ownerClass` engine, real site `Sources/GnustoClock/Clock.swift` + `GameWorld.statusFields()` |
+| `decl::Sources/Fulminate/Fulminate.swift::teague.description` | C2 teague death clause | confirmed | major, explorer-1, introduced by `ed8d377` |
+| `decl::Sources/Fulminate/Fulminate.swift::timers/clock.blast` | C3 blast deixis | confirmed | major, explorer-1, introduced by `7c92508` |
+| `decl::Sources/Fulminate/Fulminate.swift::timers/blast.after` | C3 blast deixis | confirmed | minor, explorer-1, introduced by `ed8d377` |
+| `decl::Sources/Fulminate/Fulminate.swift::rules/suitcase.before(.take)` | C4 suitcase owner | confirmed | major, explorer-1, introduced by `7c92508` |
+| `decl::Sources/Fulminate/Fulminate.swift::rules/kettle.topics/teague` | C5 kettle testimony | needs-human | major, interrogator, introduced by `7c92508` |
+| `decl::Sources/Fulminate/Fulminate.swift::rules/constance.topics/julian` | C6 constance chair | confirmed | major, interrogator, introduced by `ed8d377` |
+| `decl::Sources/Fulminate/Fulminate.swift::rules/teague.topics/constance` | C7 window | confirmed | major, interrogator, introduced by `ed8d377` |
+| `decl::Sources/Fulminate/Fulminate.swift::rules/labLamp.describe` | C7 window | confirmed | minor, solver, **introduced by `7c92508` while fixing C1 of the last round** |
+| `decl::Sources/Fulminate/Fulminate.swift::glove` | C8 glove placement | needs-human | major, explorer-2, the round's one true rater split |
+| `decl::Sources/Fulminate/Fulminate.swift::teagueDay` | C9 boarder's light | needs-human | major, explorer-2, introduced by `7c92508` |
+| `decl::Sources/Fulminate/Fulminate.swift::text/stubs.stand` | C10 stand stub | confirmed | major, wrong-footer, **line added by `7c92508`** |
+| `decl::Sources/Fulminate/Fulminate.swift::text/stubs.climb` | C11 climb stub | confirmed | major, wrong-footer, **line added by `7c92508`** |
+| `decl::Sources/Gnusto/Actions/GameText.swift::Stubs.touch` | C12 touch | confirmed | major, wrong-footer; site to change is Fulminate's `text.stubs.touch` |
+| `Sources/Fulminate/Fulminate.swift::z time passes  z time passes  z time passes  z time passes  z time passes` | C15 back yard crossings | needs-human | minor, timekeeper; the one `unlocated` fallback key this round |
+
+### Refuted this round — pass these as `ledgerKeys` next time
+
+| Key | Charter | Refutation kind |
+|---|---|---|
+| `decl::Sources/Fulminate/Fulminate.swift::parlourLamp` | explorer-1 | none |
+| `decl::Sources/Fulminate/Fulminate.swift::rules/coat.before(.take)` | explorer-1 | licensed-by-doc |
+| `decl::Sources/Fulminate/Fulminate.swift::intro` | explorer-1 | stock-behavior-by-design |
+| `decl::Sources/Fulminate/Fulminate.swift::drawer` | explorer-1 | stock-behavior-by-design |
+| `decl::Sources/Fulminate/Fulminate.swift::studyLamp` | explorer-2 | stock-behavior-by-design |
+| `decl::Sources/Fulminate/Fulminate.swift::teague.firstSight` | explorer-2 | characterization |
+| `decl::Sources/Fulminate/Fulminate.swift::timers/clock.coroner` | explorer-2 | licensed-by-doc |
+| `decl::Sources/Fulminate/Fulminate.swift::rules/constance.presence` | timekeeper | licensed-by-doc |
+| `decl::Sources/Fulminate/Fulminate.swift::rules/world.before(.stand)` | timekeeper | stock-behavior-by-design |
+| `decl::Sources/Fulminate/Fulminate.swift::rules/pike.topics/fallback` | interrogator | characterization |
+| `decl::Sources/Fulminate/Fulminate.swift::actions/accuse` | solver | licensed-by-doc |
+| `decl::Sources/Gnusto/Actions/GameText.swift::Stubs.pray` | wrong-footer | stock-behavior-by-design |
+
+Four of the twelve refutations still leaned on `licensed-by-doc`, so the clause the design
+doc narrowed after the last round is still doing real work and is still worth watching.
+Three refutations went and fetched evidence rather than arguing from the finding's own
+text — the post-6:10 receipt in the overcoat, three live `scoreLine` values, and a grep
+proving `.attack` and `.kiss` are not re-skinned in this tree — and one of those overturned
+a finding by showing its reproducer landed fourteen minutes before the frame it described.
+
+Two residual claims surfaced inside refutation prose and were never filed as findings, so
+they have no keys and are carried as next-round targets in the report rather than as rows
+here: Dr. Pike's presence line *"standing about with his hat on"* printing unchanged in
+the Back Yard in front of a burning building, and the Boarder's Room bed described as
+made with squared corners while Teague sits on it. Both were raised as unprobed cells by
+explorer-2 rather than as claims, and neither has a verified frame.
