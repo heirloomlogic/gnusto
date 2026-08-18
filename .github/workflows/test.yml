@@ -10,10 +10,78 @@ on:
 
 jobs:
   test-linux:
-    runs-on: ubuntu-latest
+    # ARM runners are free for public repos and measurably faster here: the
+    # Debug suite builds and runs in ~2m against ~3m40s on the x86 runner.
+    runs-on: ubuntu-24.04-arm
+
+    # The toolchain arrives as an image rather than a scripted install. Beyond
+    # the ~30s saved, the compiler is pinned, which matters because macro
+    # plugins are compiler-coupled and a floating toolchain is a real hazard.
+    container: swift:6.3.3-noble
+
+    # This package cannot use SwiftPM's prebuilt swift-syntax yet, and that is
+    # worth writing down because the idea is so obviously attractive.
+    #
+    # Since 6.2 SwiftPM downloads a prebuilt `MacroSupport` static library
+    # instead of compiling swift-syntax (~700 files, built once per
+    # configuration). It is on by default and needs nothing from Package.swift.
+    # It does work here: on 6.3.2 the aarch64 prebuilt downloads in 0.26s and
+    # swift-syntax never compiles. The build then fails to link, on both x86_64
+    # and aarch64:
+    #
+    #   GnustoMacrosTests-test-runner: clang: error: no such file or directory:
+    #     '.build/out/Products/Debug-linux/GnustoMacrosTests.so'
+    #
+    # That is swiftlang/swift-package-manager#10218 — when the Swift Build
+    # system builds a testable variant of a macro target whose swift-syntax
+    # products came from a prebuilt, the prebuilt never reaches the test
+    # product's link inputs. A SwiftPM maintainer has a fix landing in 6.5.
+    #
+    # Deleting GnustoMacrosTests does not dodge it; that was measured, not
+    # assumed. Without it the build links and then dies at runtime instead:
+    #
+    #   GnustoTests.so: undefined symbol: $s11SwiftSyntax011LabeledExprB0VN
+    #
+    # because GnustoTests depends on Gnusto, which depends on the macro. Every
+    # test target here reaches swift-syntax that way, so there is no subset of
+    # the suite that can use the prebuilt today.
+    #
+    # So prebuilts are disabled explicitly rather than left to chance: no Linux
+    # prebuilt is published for 6.3.3 today, but if one appears, the default
+    # would flip this job from working to failing on that link error, with
+    # nothing in the diff to explain it.
+    #
+    # WHEN 6.5 SHIPS: drop the --disable-experimental-prebuilts flags below and
+    # confirm the log shows "Downloading package prebuilt" with no swift-syntax
+    # compilation. That is worth several minutes a run.
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      # The container runs as root over a checkout git considers foreign;
+      # without this, git refuses ("dubious ownership") wherever SwiftPM or a
+      # build step shells out to it.
+      - name: Trust the workspace
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      # SwiftPM's shared cache only — the dependency checkouts, content-addressed
+      # and cheap to restore. Deliberately not `.build`: that holds compiled
+      # objects for two configurations under a build system whose layout is
+      # still moving, and a stale hit there is a debugging session, not a saved
+      # minute.
+      - name: Cache SwiftPM downloads
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: /root/.cache/org.swift.swiftpm
+          key: swiftpm-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Package.swift') }}
+          restore-keys: |
+            swiftpm-${{ runner.os }}-${{ runner.arch }}-
+
+      - name: Resolve dependencies
+        run: |
+          swift --version
+          swift package resolve --disable-experimental-prebuilts
 
       # The test target `@testable import`s the CloakOfDarkness and Zork1
       # executable targets. The legacy `native` build system refuses that
@@ -21,29 +89,19 @@ jobs:
       # Build system (`--build-system swiftbuild`) supports it. On macOS that
       # combo fails at link time (Xcode 26.x eagerly links SwiftUICore, fixed
       # in 6.4); Linux has no SwiftUICore, so a stable toolchain links cleanly.
-      # Ubuntu runners are cheaper too. Install Swift via swiftly.
-      - name: Install Swift toolchain
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y libcurl4-openssl-dev
-          curl -fsSL -O "https://download.swift.org/swiftly/linux/swiftly-$(uname -m).tar.gz"
-          tar zxf "swiftly-$(uname -m).tar.gz"
-          ./swiftly init --quiet-shell-followup --assume-yes --skip-install
-          . "$HOME/.local/share/swiftly/env.sh"
-          swiftly install --assume-yes 6.3.3
-          swiftly use 6.3.3
-          echo "$HOME/.local/share/swiftly/bin" >> "$GITHUB_PATH"
-          swift --version
-
       - name: Test (Debug)
-        run: swift test --build-system swiftbuild
+        run: swift test --build-system swiftbuild --disable-experimental-prebuilts
 
       # Release run guards against optimization-only regressions (e.g. generic
       # `#Predicate` miscompiles) that the Debug suite passes through silently.
+      # It is the most expensive step by a wide margin, so it runs on pushes to
+      # main rather than on every PR: such a regression surfaces at merge, not
+      # before it. Widen this back to PRs if one ever slips through.
       - name: Test (Release)
-        run: swift test -c release --build-system swiftbuild
+        if: github.event_name == 'push'
+        run: swift test -c release --build-system swiftbuild --disable-experimental-prebuilts
 
       # The starter template is a standalone package with a path dependency on
       # this repo; building it here keeps the template from rotting.
       - name: Template (Debug)
-        run: swift test --package-path Templates/NewGame --build-system swiftbuild
+        run: swift test --package-path Templates/NewGame --build-system swiftbuild --disable-experimental-prebuilts
