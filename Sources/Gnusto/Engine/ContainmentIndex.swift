@@ -59,4 +59,29 @@ struct ContainmentIndex: Sendable {
     func children(of id: EntityID) -> [EntityID] {
         (onSurface[id] ?? []) + (inContainer[id] ?? [])
     }
+
+    /// Everything under `roots` through `children(of:)`, to any depth, with the
+    /// roots themselves included. Holding is not containment here, so an actor
+    /// carried inside a sack contributes the actor and not their pockets.
+    ///
+    /// It walks **down** from a known set, which is what a caller asking "is
+    /// this one already mine?" of many candidates wants: one pass over the
+    /// subtree rather than a walk up the chain per candidate, which would
+    /// re-tread the same `bottle → player` link once for every item in the
+    /// bottle.
+    ///
+    /// `visited` is the cycle guard as well as the result: a runtime-created
+    /// placement cycle must not send this round forever.
+    ///
+    /// - Parameter roots: the entities to walk down from.
+    /// - Returns: the roots and every descendant of them.
+    func closure(under roots: some Sequence<EntityID>) -> Set<EntityID> {
+        var visited = Set<EntityID>()
+        var pending = Array(roots)
+        while let id = pending.popLast() {
+            guard visited.insert(id).inserted else { continue }
+            pending.append(contentsOf: children(of: id))
+        }
+        return visited
+    }
 }

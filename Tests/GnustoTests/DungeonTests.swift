@@ -599,9 +599,11 @@ struct DungeonTests {
                 "Your score is 5 of a possible 716",
             ])
 
-        // The jewel-encrusted egg is gone from the game rather than merely
-        // opened, so nothing answers to its description any more.
-        #expect(!transcript.contains("hinged and closed"))
+        // The intact egg's paragraph is the *nest's listing line*, so it prints
+        // on arrival and not again: the jewel-encrusted egg is gone from the
+        // game rather than merely opened, and nothing answers to it after.
+        #expect(turnOutput(of: "up", in: transcript).contains("hinged and closed"))
+        #expect(!turnOutput(of: "examine egg", in: transcript).contains("hinged and closed"))
     }
 
     /// The forfeit stated in points. Force the egg, carry the wreck home, and

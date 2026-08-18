@@ -59,7 +59,8 @@ struct CoreVerbTests {
         "turn off lamp", "turn lamp off", "switch off lamp", "switch lamp off",
         "extinguish lamp", "douse lamp", "blow out lamp", "blow lamp out",
         // lookIn
-        "look in sack", "search sack", "find sack", "look for sack", "search for sack",
+        "look in sack", "search sack", "search in sack", "find sack", "look for sack",
+        "search for sack",
         // push
         "push bench", "move bench", "press bench",
         // go
@@ -68,6 +69,7 @@ struct CoreVerbTests {
         "follow rat", "chase rat", "go after rat", "run after rat", "walk after rat",
         // greet
         "greet rat", "hello rat", "hi rat", "greet",
+        "say hello to rat", "say hi to rat",
         // board
         "enter boat", "board boat", "get in boat", "get into boat",
         "go through boat", "walk through boat", "step through boat",
@@ -79,7 +81,7 @@ struct CoreVerbTests {
         // meta
         "score", "quit", "q", "version",
         // engine-level
-        "undo", "restart", "save", "restore",
+        "undo", "restart", "save", "restore", "load",
     ]
 
     /// Ties the hand-written list to the table, so a core row added later can't
@@ -88,16 +90,63 @@ struct CoreVerbTests {
         #expect(Self.everyCoreCommand.count == SyntaxRule.coreTable.count)
     }
 
-    @Test(arguments: CoreVerbTests.everyCoreCommand)
-    func everyCoreVerbAnswers(_ command: String) async throws {
+    /// What "the row reached its handler" looks like from the transcript: the
+    /// parser didn't decline the sentence, no slot went unfilled, and something
+    /// was said. Shared with the synonym list below, which asks the same
+    /// question of the same rows spelled another way.
+    static func expectTheRowAnswered(_ command: String) async throws {
         let transcript = try await play(
             CoreLab(), [command], saveDirectory: Self.saveDirectory)
         let turn = turnOutput(of: command, in: transcript)
-        #expect(!turn.contains("I don't know the word"), "\(command): \(turn)")
+        expectEveryNounAnswered(turn, "Command: \(command)")
         #expect(!turn.contains("I didn't understand"), "\(command): \(turn)")
         // A slot the command didn't fill would prompt instead of answering.
         #expect(!turn.contains("What do you want to"), "\(command): \(turn)")
         #expect(!turn.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, "\(command)")
+    }
+
+    @Test(arguments: CoreVerbTests.everyCoreCommand)
+    func everyCoreVerbAnswers(_ command: String) async throws {
+        try await Self.expectTheRowAnswered(command)
+    }
+
+    // MARK: - The same rows, spelled with a preposition's synonym
+
+    /// Deliberately a second list rather than more entries in
+    /// ``everyCoreCommand``, whose count is pinned to the row count: none of
+    /// these is a new row. Each is a row above reached by a word its pattern
+    /// never spells out, which is what ``Vocabulary/literalSynonyms`` buys —
+    /// every row containing `in` or `on`, widened without a row of its own.
+    /// Issue #269.
+    static let everyPrepositionSynonym = [
+        // The sentence the issue was filed from.
+        "look inside sack", "look into sack",
+        "search inside sack", "search into sack",
+        // putIn / putOn, where the literal closes an open object slot.
+        "put cloak inside sack", "put cloak upon bench",
+        "hang cloak upon bench", "place cloak onto bench",
+        // board, where the synonym is in the verb-identifying run.
+        "get inside boat", "walk inside boat",
+        // A trailing particle, matched positionally.
+        "turn lamp upon", "switch lamp upon",
+        // Stub rows: the same table serves them, and nothing about it knows
+        // whether the row it widened is backed by behavior.
+        "climb onto bench", "sit upon bench",
+    ]
+
+    @Test(arguments: CoreVerbTests.everyPrepositionSynonym)
+    func aPrepositionSynonymReachesTheSameRow(_ command: String) async throws {
+        try await Self.expectTheRowAnswered(command)
+    }
+
+    /// End to end, the transcript from the issue: both spellings list the
+    /// sack's contents, in the same words.
+    @Test func lookInsideSaysWhatLookInSays() async throws {
+        let transcript = try await play(
+            CoreLab(), ["put cloak in sack", "look in sack", "look inside the sack"],
+            saveDirectory: Self.saveDirectory)
+        #expect(turnOutput(of: "look in sack", in: transcript).contains("velvet cloak"))
+        #expect(turnOutput(of: "look inside the sack", in: transcript).contains("velvet cloak"))
     }
 
     // MARK: - The table holds together

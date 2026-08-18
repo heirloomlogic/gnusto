@@ -257,15 +257,18 @@ It runs at **stage 0**, ahead of every `before` rule — which is the point, sin
 
 ## Produce output and control the turn
 
-Five free functions are available in any rule body:
+Six free functions are available in any rule body:
 
 - ``say(_:)`` — add a line to the turn's output and keep going. The default action still runs.
+- ``sayOnceThisTurn(_:)`` — `say`, but at most once per turn, for a sentence another emitter may also have a claim on.
 - ``refuse(_:)`` — print a complaint and abort the action (and remaining rules).
 - ``reply(_:)`` — print a response *in place of* the default action. Same mechanics as `refuse`, different intent: use it when your rule is the behavior, not a veto.
 - ``handled()`` — finish an action without adding a line, after the rule has already produced its whole response with ``say(_:)``.
 - ``end(won:)`` — end the game; the engine prints the final score afterward.
 
-`say` returns normally; the other four return `Never` and read well after a `guard … else`.
+The two `say`s return normally; the other four return `Never` and read well after a `guard … else`.
+
+The engine's own case for ``sayOnceThisTurn(_:)`` is the dark. A dark room has nothing to describe, so the room describer prints ``GameText/pitchBlack``; `GnustoDangerousDark`'s grue prints its warning, because the fairness contract owes the player a warned turn. Point both at one sentence — Zork does, where the dark-room line *is* the threat — and the turn says it once; give them different words and both still print, since what is compared is the text and nothing else. The memory is one turn deep, and dropping a line changes nothing but the output: a schedule that counted the turn has still counted it.
 
 ### Answer in the engine's own words with `gameText`
 

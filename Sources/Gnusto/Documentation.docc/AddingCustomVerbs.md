@@ -126,6 +126,14 @@ extension Intent {
 
 Among rows sharing a verb word, the parser tries the most specific pattern first (more literal words, then more slots); ties keep their table order. The literal word sealing the direct object ahead of an indirect slot arrives on ``Command/preposition``.
 
+### A preposition's synonyms come free
+
+Write a row's preposition once. `in` also answers to `inside` and `into`, and `on` to `onto` and `upon`, wherever the literal stands in the pattern — in the verb-identifying run (`look in`), closing an object slot (`put <object> in <second object>`), or as a trailing particle (`turn <object> on`). So a single `["pour", .directObject, "in", .indirectObject]` accepts `pour water into the sack`, and a second row spelling out `into` buys nothing.
+
+Two things the table deliberately does not do. It never reaches noun resolution, so a game may still name a thing `inside pocket` — and `put the inside pocket in the box` splits at the `in` the player typed, because a literal closing a slot looks for its own word before it looks for a synonym. And it is not the direction table: a bare `in`, `inside`, `out` or `outside` is still a way to walk.
+
+``Command/preposition`` carries the **pattern's** word, not the typed one, so a rule reading it sees `in` however the player spelled it.
+
 ## Reclaiming a built-in verb
 
 A verb table merges the built-in rows, each content bundle's, each plugin's, and the game's own, under a **last-wins** policy keyed on what the player types (the full pattern). If your pattern exactly matches a **core** row, yours reclaims it — the parser emits *your* intent instead — and the engine logs a non-fatal warning so the override is never silent. The intent name doesn't have to match the typed word, which is what makes a reclaim readable:

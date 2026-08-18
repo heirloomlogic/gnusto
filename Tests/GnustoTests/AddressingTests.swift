@@ -2,7 +2,8 @@ import Gnusto
 import GnustoTestSupport
 import Testing
 
-/// `<actor>, <words>` — the one place a comma changes what a sentence means.
+/// `<actor>, <words>` — the one place a comma changes who a sentence is aimed
+/// at. It reads first, ahead of the separator reading `ConjunctionTests` pins.
 ///
 /// The engine has no system for one character to act on another's word, so the
 /// only order it can honour is a greeting; everything else is heard and
@@ -54,9 +55,9 @@ struct AddressingTests {
         #expect(transcript.contains("I don't know the word \"butler\"."))
     }
 
-    /// A comma whose prefix names nobody goes straight back to being noise,
-    /// and nothing downstream — a clarification prefix, a topic slot — ever
-    /// sees one.
+    /// A comma whose prefix names nobody falls through to the separator
+    /// reading — but one at the end of a phrase has nothing on the far side of
+    /// it to separate, so it is punctuation and drops out.
     @Test func acommaThatAddressesNobodyIsStillNoise() async throws {
         let transcript = try await play(Antechamber(), ["take the lamp,", "inventory"])
         #expect(transcript.contains("Taken."))
@@ -69,6 +70,22 @@ struct AddressingTests {
         let transcript = try await play(Antechamber(), ["usher, hello", "greet usher"])
         #expect(transcript.contains("The usher nods, and says nothing."))
         #expect(turnOutput(of: "greet usher", in: transcript).contains("nods, and says nothing"))
+    }
+
+    /// And so does the longhand. "say hello to the troll" is what a player types
+    /// at a person, and a game without `GnustoConversation` — which mints these
+    /// two rows for itself — answered it with "That sentence isn't one I
+    /// recognize." Bare SAY stays nobody's verb: these are three-word patterns,
+    /// so a game that owns the word outright keeps it.
+    @Test func sayHelloToSomebodyIsAGreetingToo() async throws {
+        let transcript = try await play(
+            Antechamber(), ["say hello to usher", "say hi to the usher"])
+        #expect(
+            turnOutput(of: "say hello to usher", in: transcript)
+                .contains("The usher nods, and says nothing."))
+        #expect(
+            turnOutput(of: "say hi to the usher", in: transcript)
+                .contains("The usher nods, and says nothing."))
     }
 
     // MARK: - Bare greetings

@@ -299,8 +299,8 @@ an incomplete order raises stays an order: `robot, push` asks "What do you want
 to push?", and the answer completes the robot's command, not yours.
 
 Two things an order deliberately isn't. `robot, take all` is refused: the
-multi-object loop expands against what the *player* can see and runs stage 4 per
-object. And an order-taker who is in no room at all — held, contained,
+multi-object loop expands against what the *player* can get at and runs stage 4
+per object. And an order-taker who is in no room at all — held, contained,
 `vanish()`ed — falls back to the stock refusal, because there is nowhere for the
 order to be carried out.
 

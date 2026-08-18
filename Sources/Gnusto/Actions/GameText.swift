@@ -11,10 +11,13 @@
 /// }
 /// ```
 ///
-/// Every line has one of five shapes, and which one it has is a rule rather
-/// than an accident of what the engine's own wording happened to need:
+/// **Every line is a ``Line``.** What differs between them is what the line is
+/// *about* — its subject — and that is a type conforming to ``LineSubject``
+/// rather than a shape written down in prose. The bullets below describe the
+/// subjects the engine ships; the authority is the conformance, so a subject
+/// added tomorrow is swept and classified without an edit here:
 ///
-/// - **A line about nothing in particular is a `Line<Void>`.** Nothing in it
+/// - **A line about nothing in particular is a `Line<Nothing>`.** Nothing in it
 ///   is about a particular thing, so there is nothing to hand it — but there
 ///   is still a turn to write it in, so a game that wants one assembled while
 ///   the player stands there reaches for ``Line/live(_:)``. Those are the two
@@ -35,14 +38,18 @@
 ///   ``inventorySentence`` is the exception, over the ``Carried`` role struct:
 ///   it has something to say about *each* thing — which of them is being worn —
 ///   so it cannot have them joined before the game has had its say.
-/// - **A line about something that is not a thing in the world stays a raw
-///   closure.** A word the player typed (``unknownWord``, ``noReferent``,
-///   ``missingObject``), a list of *words* the parser has not resolved to
-///   anything (``ambiguous``), or a number (``scoreLine``). These are
-///   deliberately *not* ``Line``s: `Line` is
-///   `ExpressibleByStringLiteral`, so making ``unknownWord`` one would let a
-///   game write `text.unknownWord = "Eh?"` and silently drop the word that is
-///   the whole content of the line.
+/// - **A line about something that is not a thing in the world is a `Line` too,
+///   over a subject it may not drop.** A word quoted back at the player
+///   (``Word``: ``unknownWord``, ``noReferent``, ``multipleNotAllowedWith``),
+///   the part of a sentence the parser is still waiting for (``Prompt``: the
+///   `missing…` family), the things one phrase matched (``Choices``:
+///   ``ambiguous``), the title (``Banner``) or the score (``Score``). These
+///   five are ``LineSubject``s and deliberately not ``DroppableSubject``s, so
+///   ``Line`` is *not* `ExpressibleByStringLiteral` over them: `text.unknownWord
+///   = "Eh?"` does not compile, because it would silently drop the word that is
+///   the whole content of the line. Every other subject may be dropped — a
+///   two-object line that prints `"Done."` is a legitimate thing for a game to
+///   want — and the difference is a conformance rather than a convention.
 ///
 /// The object arrives as a ``Noun`` — a *rendered noun phrase* ("the troll",
 /// "a troll", "Mrs. Vane") that also knows its number — and never as a bare
@@ -141,42 +148,42 @@ public struct GameText: Sendable {
     }
 
     /// The reply to an empty input line.
-    public var beg: Line<Void> = "I beg your pardon?"
+    public var beg: Line<Nothing> = "I beg your pardon?"
     /// A successful `take`.
-    public var taken: Line<Void> = "Taken."
+    public var taken: Line<Nothing> = "Taken."
     /// A successful `drop`.
-    public var dropped: Line<Void> = "Dropped."
+    public var dropped: Line<Nothing> = "Dropped."
     /// Taking something already carried.
-    public var alreadyHave: Line<Void> = "You already have that."
+    public var alreadyHave: Line<Nothing> = "You already have that."
     /// Taking something that isn't takable (scenery).
-    public var cantTake: Line<Void> = "You can't take that."
+    public var cantTake: Line<Nothing> = "You can't take that."
     /// Taking a person.
     public var cantTakeActor: Line<Noun> = .naming {
         "\($0.sentenceCased) would take exception to that."
     }
     /// Dropping (or otherwise handling) something not carried.
-    public var notCarrying: Line<Void> = "You aren't carrying that."
+    public var notCarrying: Line<Nothing> = "You aren't carrying that."
     /// Wearing or placing something not in hand.
-    public var notHolding: Line<Void> = "You aren't holding that."
+    public var notHolding: Line<Nothing> = "You aren't holding that."
     /// Wearing something already worn.
-    public var alreadyWearing: Line<Void> = "You're already wearing that."
+    public var alreadyWearing: Line<Nothing> = "You're already wearing that."
     /// Taking off something not worn.
-    public var notWearing: Line<Void> = "You're not wearing that."
+    public var notWearing: Line<Nothing> = "You're not wearing that."
     /// Wearing something without the `wearable` trait.
-    public var cantWear: Line<Void> = "You can't wear that."
+    public var cantWear: Line<Nothing> = "You can't wear that."
     /// Putting something onto a non-surface.
-    public var cantPutOnThat: Line<Void> = "You can't put things on that."
+    public var cantPutOnThat: Line<Nothing> = "You can't put things on that."
     /// Putting something onto itself.
-    public var cantPutOnItself: Line<Void> = "You can't put something on itself."
+    public var cantPutOnItself: Line<Nothing> = "You can't put something on itself."
     /// Moving where no exit leads.
-    public var cantGoThatWay: Line<Void> = "You can't go that way."
+    public var cantGoThatWay: Line<Nothing> = "You can't go that way."
     /// Entering something that is neither a door on the way out of this room nor
     /// `enterable`.
     public var cantEnterThat: Line<Noun> = .naming {
         "You can't get into \($0)."
     }
     /// Entering an enterable the player is carrying.
-    public var cantEnterCarried: Line<Void> = "You can't get into something you're carrying."
+    public var cantEnterCarried: Line<Nothing> = "You can't get into something you're carrying."
     /// Entering the vehicle the player is already in.
     public var alreadyInVehicle: Line<Noun> = .naming {
         "You're already in \($0)."
@@ -194,7 +201,7 @@ public struct GameText: Sendable {
         "You get out of \($0)."
     }
     /// Disembarking while on foot.
-    public var notInVehicle: Line<Void> = "You aren't in anything."
+    public var notInVehicle: Line<Nothing> = "You aren't in anything."
     /// Disembarking from something other than the boarded vehicle.
     public var notInThat: Line<Noun> = .naming {
         "You aren't in \($0)."
@@ -209,18 +216,18 @@ public struct GameText: Sendable {
         "Not while you're in \($0)."
     }
     /// A bare `go` with no direction.
-    public var whichWay: Line<Void> = "Which way?"
+    public var whichWay: Line<Nothing> = "Which way?"
     /// Looking around a dark room. The line most likely to want
     /// ``Line/live(_:)``: it prints on every dark turn, in every dark room, and
     /// a game whose darkness has anything in it — a companion, a sound, a smell
     /// — has to check that the thing is still there before saying so.
-    public var pitchBlack: Line<Void> = "It is pitch black. You can't see a thing."
+    public var pitchBlack: Line<Nothing> = "It is pitch black. You can't see a thing."
     /// An `inventory` with nothing carried.
-    public var emptyHanded: Line<Void> = "You are empty-handed."
+    public var emptyHanded: Line<Nothing> = "You are empty-handed."
     /// Reading something with no description to read.
-    public var nothingWritten: Line<Void> = "There's nothing written on that."
+    public var nothingWritten: Line<Nothing> = "There's nothing written on that."
     /// A `wait` turn — a beat passes while fuses and daemons tick.
-    public var timePasses: Line<Void> = "Time passes."
+    public var timePasses: Line<Nothing> = "Time passes."
 
     // MARK: - Following
 
@@ -254,46 +261,46 @@ public struct GameText: Sendable {
         "\($0.sentenceCased) \($0.verb("is", "are")) unlikely to answer."
     }
     /// A bare hello with nobody about.
-    public var nobodyToGreet: Line<Void> = "There's nobody here to greet."
+    public var nobodyToGreet: Line<Nothing> = "There's nobody here to greet."
     /// A bare hello where several people could have been meant.
-    public var greetsTheRoom: Line<Void> = "You say hello to the room in general."
+    public var greetsTheRoom: Line<Nothing> = "You say hello to the room in general."
 
     // MARK: - Containers
 
     /// A successful `open` of an empty container.
-    public var opened: Line<Void> = "Opened."
+    public var opened: Line<Nothing> = "Opened."
     /// A successful `close`.
-    public var closed: Line<Void> = "Closed."
+    public var closed: Line<Nothing> = "Closed."
     /// A successful `lock`.
-    public var lockedMessage: Line<Void> = "Locked."
+    public var lockedMessage: Line<Nothing> = "Locked."
     /// A successful `unlock`.
-    public var unlockedMessage: Line<Void> = "Unlocked."
+    public var unlockedMessage: Line<Nothing> = "Unlocked."
     /// Opening something without the `openable` trait.
-    public var cantOpenThat: Line<Void> = "You can't open that."
+    public var cantOpenThat: Line<Nothing> = "You can't open that."
     /// Closing something without the `openable` trait.
-    public var cantCloseThat: Line<Void> = "You can't close that."
+    public var cantCloseThat: Line<Nothing> = "You can't close that."
     /// Opening something already open.
-    public var alreadyOpen: Line<Void> = "That's already open."
+    public var alreadyOpen: Line<Nothing> = "That's already open."
     /// Closing something already closed.
-    public var alreadyClosed: Line<Void> = "That's already closed."
+    public var alreadyClosed: Line<Nothing> = "That's already closed."
     /// Locking something without the `lockable` trait.
-    public var cantLockThat: Line<Void> = "You can't lock that."
+    public var cantLockThat: Line<Nothing> = "You can't lock that."
     /// Unlocking something without the `lockable` trait.
-    public var cantUnlockThat: Line<Void> = "You can't unlock that."
+    public var cantUnlockThat: Line<Nothing> = "You can't unlock that."
     /// Locking something already locked.
-    public var alreadyLocked: Line<Void> = "That's already locked."
+    public var alreadyLocked: Line<Nothing> = "That's already locked."
     /// Unlocking something already unlocked.
-    public var alreadyUnlocked: Line<Void> = "That's already unlocked."
+    public var alreadyUnlocked: Line<Nothing> = "That's already unlocked."
     /// Locking or unlocking with an item that isn't this lock's key.
-    public var wrongKey: Line<Void> = "That doesn't fit the lock."
+    public var wrongKey: Line<Nothing> = "That doesn't fit the lock."
     /// Putting something into a non-container.
-    public var cantPutInThat: Line<Void> = "You can't put things in that."
+    public var cantPutInThat: Line<Nothing> = "You can't put things in that."
     /// Putting something into itself.
-    public var cantPutInItself: Line<Void> = "You can't put something in itself."
+    public var cantPutInItself: Line<Nothing> = "You can't put something in itself."
     /// Putting something into a container that is at capacity.
-    public var noRoom: Line<Void> = "There's no room."
+    public var noRoom: Line<Nothing> = "There's no room."
     /// Pushing something the default action won't move.
-    public var cantMoveThat: Line<Void> = "You can't move that."
+    public var cantMoveThat: Line<Nothing> = "You can't move that."
 
     // MARK: - Light
 
@@ -306,52 +313,52 @@ public struct GameText: Sendable {
         "\($0.sentenceCased) \($0.verb("is", "are")) now off."
     }
     /// Turning on something already lit.
-    public var alreadyOn: Line<Void> = "It's already on."
+    public var alreadyOn: Line<Nothing> = "It's already on."
     /// Turning off something already unlit.
-    public var alreadyOff: Line<Void> = "It's already off."
+    public var alreadyOff: Line<Nothing> = "It's already off."
     /// Turning on something without the `lightSource` trait.
-    public var cantTurnOnThat: Line<Void> = "You can't turn that on."
+    public var cantTurnOnThat: Line<Nothing> = "You can't turn that on."
     /// Turning off something without the `lightSource` trait.
-    public var cantTurnOffThat: Line<Void> = "You can't turn that off."
+    public var cantTurnOffThat: Line<Nothing> = "You can't turn that off."
     /// Extinguishing the only light in a dark place.
-    public var nowDark: Line<Void> = "It is now pitch black."
+    public var nowDark: Line<Nothing> = "It is now pitch black."
 
     // MARK: - Undo & restart
 
     /// A successful `undo`.
-    public var undone: Line<Void> = "Previous turn undone."
+    public var undone: Line<Nothing> = "Previous turn undone."
     /// An `undo` with no snapshot to rewind to.
-    public var cantUndo: Line<Void> = "There's nothing to undo."
+    public var cantUndo: Line<Nothing> = "There's nothing to undo."
 
     // MARK: - Save & restore
 
     /// The filename question after `save`.
-    public var savePrompt: Line<Void> = "Save to what file?"
+    public var savePrompt: Line<Nothing> = "Save to what file?"
     /// The filename question after `restore`.
-    public var restorePrompt: Line<Void> = "Restore from what file?"
+    public var restorePrompt: Line<Nothing> = "Restore from what file?"
     /// A successful `save`.
-    public var saved: Line<Void> = "Saved."
+    public var saved: Line<Nothing> = "Saved."
     /// A `save` whose file couldn't be written.
-    public var saveFailed: Line<Void> = "Save failed."
+    public var saveFailed: Line<Nothing> = "Save failed."
     /// A successful `restore`.
-    public var restored: Line<Void> = "Restored."
+    public var restored: Line<Nothing> = "Restored."
     /// A `restore` whose file is missing, unreadable, or not a save.
-    public var restoreFailed: Line<Void> = "Restore failed."
+    public var restoreFailed: Line<Nothing> = "Restore failed."
     /// A `restore` from a save that belongs to a different game.
-    public var wrongGameSave: Line<Void> = "That save file is from a different game."
+    public var wrongGameSave: Line<Nothing> = "That save file is from a different game."
     /// An empty answer to a filename prompt.
-    public var cancelled: Line<Void> = "Cancelled."
+    public var cancelled: Line<Nothing> = "Cancelled."
 
     // MARK: - Death
 
     /// The banner printed right after a `die(_:)` message.
-    public var deathBanner: Line<Void> = "*** You have died ***"
+    public var deathBanner: Line<Nothing> = "*** You have died ***"
     /// The interactive prompt offered after death (and re-offered after a
     /// failed restore or an unrecognized answer).
-    public var deathPrompt: Line<Void> =
+    public var deathPrompt: Line<Nothing> =
         "Would you like to RESTART, RESTORE a saved game, UNDO your last turn, or QUIT?"
     /// The nudge for any other input at the death prompt.
-    public var deathChoiceUnrecognized: Line<Void> = "Please type RESTART, RESTORE, UNDO, or QUIT."
+    public var deathChoiceUnrecognized: Line<Nothing> = "Please type RESTART, RESTORE, UNDO, or QUIT."
 
     /// The item resolved (it was visible to the parser), but a reachability
     /// guard failed — you can see it, you just can't touch it (e.g. through a
@@ -512,35 +519,36 @@ public struct GameText: Sendable {
     /// title on its own line above the tagline (a hard break) rather than
     /// letting the full-screen renderer fold the two together; plain output
     /// turns it back into a newline.
-    public var banner: @Sendable (_ title: String, _ tagline: String) -> String = {
-        $1.isEmpty ? $0 : "\($0)\(TextWrap.lineBreak)\($1)"
+    public var banner: Line<Banner> = .naming {
+        $0.tagline.isEmpty ? $0.title : "\($0.title)\(TextWrap.lineBreak)\($0.tagline)"
     }
 
     /// The `score` report, also printed as the end-of-game epilogue.
-    public var scoreLine: @Sendable (_ score: Int, _ maxScore: Int, _ moves: Int) -> String = {
-        let possible = $1 > 0 ? " of a possible \($1)" : ""
-        return "Your score is \($0)\(possible), in \($2) \($2 == 1 ? "turn" : "turns")."
+    public var scoreLine: Line<Score> = .naming {
+        let possible = $0.maxScore > 0 ? " of a possible \($0.maxScore)" : ""
+        let turns = $0.moves == 1 ? "turn" : "turns"
+        return "Your score is \($0.score)\(possible), in \($0.moves) \(turns)."
     }
 
     // MARK: - Yourself
 
     /// Examining yourself, when the game has neither set a description on
     /// `player.item` nor given it a `describe { }` rule.
-    public var selfDescription: Line<Void> = "You look much as you always do."
+    public var selfDescription: Line<Nothing> = "You look much as you always do."
 
     /// Taking yourself. The stock person's refusal reads as though somebody
     /// else were involved, so the player gets their own line.
-    public var cantTakeSelf: Line<Void> = "You have yourself well in hand already."
+    public var cantTakeSelf: Line<Nothing> = "You have yourself well in hand already."
 
     /// Searching yourself. Nothing is turned out, because the player's
     /// pockets are the inventory and `i` already reports them.
-    public var cantSearchSelf: Line<Void> = "You pat yourself down and find only what you're carrying."
+    public var cantSearchSelf: Line<Nothing> = "You pat yourself down and find only what you're carrying."
 
     /// Greeting yourself.
-    public var cantGreetSelf: Line<Void> = "You and yourself have already met."
+    public var cantGreetSelf: Line<Nothing> = "You and yourself have already met."
 
     /// Following yourself.
-    public var cantFollowSelf: Line<Void> = "You are already right here."
+    public var cantFollowSelf: Line<Nothing> = "You are already right here."
 
     // MARK: - Stub verbs
 
@@ -552,25 +560,25 @@ public struct GameText: Sendable {
     // MARK: - Parser replies
 
     /// A word outside the game's whole vocabulary.
-    public var unknownWord: @Sendable (_ word: String) -> String = {
+    public var unknownWord: Line<Word> = .naming {
         "I don't know the word \"\($0)\"."
     }
 
     /// A pronoun ("it", "them") with nothing bound to it yet.
-    public var noReferent: @Sendable (_ word: String) -> String = {
+    public var noReferent: Line<Word> = .naming {
         "I don't know what \"\($0)\" refers to."
     }
 
     /// Known words that name nothing currently in view.
-    public var cantSeeAnySuchThing: Line<Void> = "You can't see any such thing."
+    public var cantSeeAnySuchThing: Line<Nothing> = "You can't see any such thing."
     /// A line no verb pattern fits.
-    public var didntUnderstand: Line<Void> = "I didn't understand that sentence."
+    public var didntUnderstand: Line<Nothing> = "I didn't understand that sentence."
 
     /// Stage 4's last resort: a verb row matched, so the parser understood the
     /// sentence, but nothing in the game answers this intent — no action, no
     /// rule, no stub line. Distinct from ``didntUnderstand``, which is the
     /// parser's own failure, and free for the same reason: nothing happened.
-    public var cantDoThat: Line<Void> = "You can't do that."
+    public var cantDoThat: Line<Nothing> = "You can't do that."
 
     /// Giving an order to somebody who doesn't take them — `butler, open the
     /// door`. Obeying is a mechanic a game writes, one character at a time
@@ -591,46 +599,46 @@ public struct GameText: Sendable {
     }
 
     /// A verb missing its object — answerable on the next line.
-    public var missingObject: @Sendable (_ verb: String) -> String = {
-        "What do you want to \($0)?"
+    public var missingObject: Line<Prompt> = .naming {
+        "What do you want to \($0.verb)?"
     }
 
     /// A verb missing its second object — answerable on the next line.
-    public var missingIndirect: @Sendable (_ verb: String, _ objectName: String, _ preposition: String) -> String = {
-        "What do you want to \($0) \($1) \($2)?"
+    public var missingIndirect: Line<Prompt> = .naming {
+        "What do you want to \($0.verb) \($0.object ?? "") \($0.preposition)?"
     }
 
     /// A verb missing its topic — answerable on the next line. The object and
     /// the word introducing the subject are both optional, so one line covers
     /// "ask the butler about", "think about", and a bare "mutter".
-    public var missingTopic: @Sendable (_ verb: String, _ objectName: String?, _ preposition: String) -> String = {
-        let object = $1.map { " \($0)" } ?? ""
-        let about = $2.isEmpty ? "" : " \($2)"
-        return "What do you want to \($0)\(object)\(about)?"
+    public var missingTopic: Line<Prompt> = .naming {
+        let object = $0.object.map { " \($0)" } ?? ""
+        let about = $0.preposition.isEmpty ? "" : " \($0.preposition)"
+        return "What do you want to \($0.verb)\(object)\(about)?"
     }
 
     /// A verb that takes a noun and a direction, given only the noun —
     /// answerable on the next line, because the direction ends the pattern.
-    public var missingDirection: @Sendable (_ verb: String, _ objectName: String) -> String = {
-        "Which way do you want to \($0) \($1)?"
+    public var missingDirection: Line<Prompt> = .naming {
+        "Which way do you want to \($0.verb) \($0.object ?? "")?"
     }
 
     /// A noun phrase matching several things — answerable on the next line.
-    public var ambiguous: @Sendable (_ names: [String]) -> String = {
-        "Which do you mean: \($0.joined(separator: " or "))?"
+    public var ambiguous: Line<Choices> = .naming {
+        "Which do you mean: \($0.names.joined(separator: " or "))?"
     }
 
     // MARK: - Multi-object commands
 
     /// "all"/"them" in the indirect slot, where only one object fits.
-    public var multipleNotAllowedThere: Line<Void> = "You can't use multiple objects there."
+    public var multipleNotAllowedThere: Line<Nothing> = "You can't use multiple objects there."
     /// "take all" with nothing eligible to take.
-    public var nothingToTakeHere: Line<Void> = "There is nothing here to take."
+    public var nothingToTakeHere: Line<Nothing> = "There is nothing here to take."
     /// "drop all" (or "put all …") with nothing carried.
-    public var notCarryingAnything: Line<Void> = "You aren't carrying anything."
+    public var notCarryingAnything: Line<Nothing> = "You aren't carrying anything."
 
     /// "all"/"them" with a verb that only handles one object at a time.
-    public var multipleNotAllowedWith: @Sendable (_ verb: String) -> String = {
+    public var multipleNotAllowedWith: Line<Word> = .naming {
         "You can't use multiple objects with \"\($0)\"."
     }
 
@@ -725,7 +733,7 @@ extension GameText {
     /// string as readily as a naming closure — so whether a stub says what the
     /// player was pointing at is the game's call rather than a shape the engine
     /// picked. `Line<Noun>` where every row carries an object, `Line<Noun?>`
-    /// where the line owns a nameless half as well, `Line<Void>` for a verb with
+    /// where the line owns a nameless half as well, `Line<Nothing>` for a verb with
     /// no object slot on any row — that last one has no name to be handed, but
     /// it still prints in a turn, so ``GameText/Line/live(_:)`` is open to it
     /// like any other line.
@@ -748,7 +756,7 @@ extension GameText {
         /// named its object. The player item is called "yourself", so those
         /// lines would read "The yourself is not food." — one line covers all of
         /// them rather than fifteen self-specific variants.
-        public var yourself: Line<Void> = "Best leave yourself out of it."
+        public var yourself: Line<Nothing> = "Best leave yourself out of it."
 
         /// A stub verb aimed at somebody else, where the verb would otherwise
         /// have reported a completed act on a person — "The cook is not food.",
@@ -831,7 +839,7 @@ extension GameText {
         /// Drinking something undrinkable.
         public var drink: Line<Noun?> = "There's nothing here worth drinking."
         /// Going to sleep.
-        public var sleep: Line<Void> = "You're not sleepy."
+        public var sleep: Line<Nothing> = "You're not sleepy."
         /// Waking, or waking somebody who isn't asleep. The bare `wake` and
         /// `wake up` name nothing.
         public var wake: Line<Noun?> = "There's no sleeping to be interrupted."
@@ -849,7 +857,7 @@ extension GameText {
             return "\(who.sentenceCased) \(who.verb("doesn't", "don't")) want \($0.gift)."
         }
         /// Yelling, shouting or screaming.
-        public var yell: Line<Void> = "You shout. Nothing shouts back."
+        public var yell: Line<Nothing> = "You shout. Nothing shouts back."
         /// Waving, with or without something in hand. The bare `wave` names
         /// nothing.
         public var wave: Line<Noun?> = "You wave. Nothing comes of it."
@@ -864,18 +872,18 @@ extension GameText {
         /// nothing.
         public var jump: Line<Noun?> = "You jump on the spot. Nothing is achieved."
         /// Swimming with no water to swim in.
-        public var swim: Line<Void> = "There's nothing here to swim in."
+        public var swim: Line<Nothing> = "There's nothing here to swim in."
         /// Diving with nothing to dive into.
-        public var dive: Line<Void> = "There's nothing here to dive into."
+        public var dive: Line<Nothing> = "There's nothing here to dive into."
         /// Standing when already upright.
-        public var stand: Line<Void> = "You're already standing."
+        public var stand: Line<Nothing> = "You're already standing."
         /// Sitting with nowhere to sit. The bare `sit` and `sit down` name
         /// nothing.
         public var sit: Line<Noun?> = "There's nothing comfortable to sit on."
         /// Lying down.
-        public var lie: Line<Void> = "The floor doesn't look inviting."
+        public var lie: Line<Nothing> = "The floor doesn't look inviting."
         /// Kneeling.
-        public var kneel: Line<Void> = "You kneel. Nothing takes notice."
+        public var kneel: Line<Nothing> = "You kneel. Nothing takes notice."
 
         // MARK: Liquids and containers
 
@@ -903,19 +911,19 @@ extension GameText {
         // MARK: Ritual and flavor
 
         /// Praying.
-        public var pray: Line<Void> = "Your prayers go unanswered."
+        public var pray: Line<Nothing> = "Your prayers go unanswered."
         /// Singing.
-        public var sing: Line<Void> = "Your singing is better kept to yourself."
+        public var sing: Line<Nothing> = "Your singing is better kept to yourself."
         /// Cursing or swearing.
-        public var curse: Line<Void> = "Nobody here is offended."
+        public var curse: Line<Nothing> = "Nobody here is offended."
         /// The magic words, `xyzzy` and `plugh`, where they mean nothing.
-        public var xyzzy: Line<Void> = "Nothing happens."
+        public var xyzzy: Line<Nothing> = "Nothing happens."
         /// Counting something.
         public var count: Line<Noun?> = "You lose count."
         /// Thinking.
-        public var think: Line<Void> = "You think. Nothing occurs to you."
+        public var think: Line<Nothing> = "You think. Nothing occurs to you."
         /// Wishing.
-        public var wish: Line<Void> = "Wishing doesn't make it so."
+        public var wish: Line<Nothing> = "Wishing doesn't make it so."
 
         // MARK: Commerce
 

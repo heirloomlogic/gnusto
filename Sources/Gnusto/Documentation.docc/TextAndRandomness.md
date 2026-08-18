@@ -67,7 +67,7 @@ text.stubs.smash = .naming { "\($0.sentenceCased) \($0.verb("is", "are")) stoute
 
 Overriding one re-skins the line; replacing the *behavior* is a rule or an `actions` row. See <doc:StubVerbs>.
 
-Those three are the same type, and it is the same type the lines above use. A verb with no object slot on any row — `sing`, `pray`, `swim` — is a `Line<Void>`.
+Those three are the same type, and it is the same type the lines above use. A verb with no object slot on any row — `sing`, `pray`, `swim` — is a `Line<Nothing>`.
 
 A `Line` is handed a ``GameText/Noun``, never a bare name: the rendered phrase plus its number, so ``GameText/Noun/verb(_:_:)`` can pick the form that agrees and a game may call a thing `rails` and get "The rails are not food." Interpolating one prints its phrase, so a line with no verb to agree pays nothing for the facility. The number comes from the `plural` trait, declared for the same reason `properName` is: no engine should guess it, and no game should have to rename a thing to suit a stock line.
 
@@ -89,7 +89,16 @@ text.putItemIn = .naming { "You tuck \($0.item) into \($0.holder)." }
 
 The roles are a type rather than a pair because `\($0.holder)` answers the question an author actually asks — which one is the container? — and `\($1)` does not. Both halves are nouns, which matters more here than for a one-object line: a two-object sentence has two things its verb might agree with, and it is rarely the one named first. ``GameText/itemOnSurface`` reads "On the table are the rails."
 
-The lines that are *not* `Line`s are the ones handed something the sentence cannot do without: a word the player typed (``GameText/unknownWord``), a list of *words* the parser never resolved to anything (``GameText/ambiguous``), a number (``GameText/scoreLine``). They stay closures on purpose — `Line` is `ExpressibleByStringLiteral`, and a `Line` for `unknownWord` would let a game write `text.unknownWord = "Eh?"` and silently drop the word the line is *about*. A line handed *nothing* has nothing to drop, which is why ``GameText/pitchBlack`` is a `Line<Void>` and these are not.
+Every stock line is a `Line`. What differs is its **subject** — the type it is about — and the set of those is the ``LineSubject`` protocol rather than a list somebody has to keep current: ``GameText/Nothing``, ``GameText/Noun`` and `Noun?`, the role structs above, and five more for the lines about something that isn't in the world at all. A word quoted back at the player is a ``GameText/Word`` (``GameText/unknownWord``, ``GameText/noReferent``); the part of a sentence the parser is still waiting for is a ``GameText/Prompt`` (the `missing…` family); the things one phrase matched are ``GameText/Choices`` (``GameText/ambiguous``); the title is a ``GameText/Banner`` and the score a ``GameText/Score``.
+
+Those last five are the ones a line may **not** leave unsaid, and the type enforces it. `Line` is `ExpressibleByStringLiteral` only where its subject conforms to ``DroppableSubject``, so a fixed sentence is available to every line about a thing in the world — `text.putItemIn = "Done."` prints no names and is still true — and unavailable where the subject *is* the content:
+
+```swift
+text.unknownWord = "Eh?"                                    // does not compile
+text.unknownWord = .naming { "There is no \"\($0)\" here." } // the only way to write it
+```
+
+A line handed *nothing* has nothing to drop, which is why ``GameText/pitchBlack`` is a `Line<Nothing>` and takes a literal like the rest.
 
 ## Randomness that replays
 

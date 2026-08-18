@@ -88,7 +88,7 @@ struct Zork1ProseTests {
     @Test func theFloorKeepsTheReachGuardTheRowsGaveAway() async throws {
         let transcript = try await play(
             Zork1(),
-            ["north", "east", "open window", "enter house", "west", "take bottle", "squeeze water"])
+            ["north", "east", "open window", "enter house", "take bottle", "squeeze water"])
         #expect(turnOutput(of: "squeeze water", in: transcript).contains("can't reach"))
         #expect(!turnOutput(of: "squeeze water", in: transcript).contains("singularly useless"))
     }
@@ -118,5 +118,73 @@ struct Zork1ProseTests {
         #expect(
             turnOutput(of: "knock on mailbox", in: transcript)
                 .contains("Why knock on the small mailbox?"))
+    }
+
+    // MARK: - Listing sentences that were standing in for examine texts
+
+    /// `NEST`'s `FDESC`, `EGG`'s `FDESC` and `LEAVES`'s `LDESC` are all
+    /// **listing** lines in `1dungeon.zil`, and all three were declared as the
+    /// examine text. So Up a Tree named no nest, the Clearing listed nothing at
+    /// all — losing the only hint that there is something here to push — and
+    /// `x egg` told a player holding the egg it was still in the nest.
+    @Test func theListingLinesListAndTheExamineTextsExamine() async throws {
+        let transcript = try await play(
+            Zork1(),
+            [
+                "north", "north", "up", "take egg", "examine egg", "look",
+                "down", "north", "x leaves", "push leaves", "x grate",
+            ])
+
+        let perch = turnOutput(of: "up", in: transcript)
+        #expect(perch.contains("Beside you on the branch is a small bird's nest."))
+        #expect(perch.contains("In the bird's nest is a large egg encrusted"))
+        #expect(!transcript.contains("On the nest is a jewel-encrusted egg."))
+
+        // In the hand, the egg's own text — and not a claim about the nest.
+        let inHand = turnOutput(of: "examine egg", in: transcript)
+        #expect(inHand.contains("A large egg encrusted with precious jewels"))
+        #expect(!inHand.contains("In the bird's nest is"))
+
+        // The nest's line goes on printing; the egg's stops once it is touched.
+        let after = turnOutput(of: "look", in: transcript)
+        #expect(after.contains("Beside you on the branch is a small bird's nest."))
+        #expect(!after.contains("large egg encrusted"))
+
+        // The Clearing lists its leaves, and examining answers about them.
+        #expect(turnOutput(of: "x leaves", in: transcript).contains("Dead leaves, drifted deep"))
+        #expect(!turnOutput(of: "x leaves", in: transcript).contains("On the ground is a pile"))
+        #expect(turnOutput(of: "push leaves", in: transcript).contains("grating is revealed"))
+        // And `grate` is a noun at last: `SYNONYM GRATE GRATING`, undeclared.
+        #expect(turnOutput(of: "x grate", in: transcript).contains("A sturdy iron grating"))
+    }
+
+    /// `WHITE-HOUSE-F` answers `THROUGH` itself (`1actions.zil:117`): from
+    /// behind the house an open window walks you into the Kitchen and a shut one
+    /// says so, and from any other side there is no way in. Without that branch
+    /// `enter house` fell to `V-THROUGH`'s generic head-butt from every side.
+    @Test func enterHouseIsWhiteHouseFsOwnBranch() async throws {
+        let transcript = try await play(
+            Zork1(),
+            [
+                "enter house",  // West of House: no way in from this side
+                "north", "east",  // round to Behind House
+                "go through house",  // still shut
+                "open window",
+                "enter house",  // and now it walks
+                "take bottle",
+            ])
+
+        expectInOrder(
+            transcript,
+            [
+                "I can't see how to get in from here.",
+                "Behind House",
+                "The window is closed.",
+                "Opened.",
+                "Kitchen",
+            ])
+        // Really in the kitchen, not merely told about it.
+        #expect(turnOutput(of: "take bottle", in: transcript).contains("Taken."))
+        #expect(!transcript.contains("hit your head against the white house"))
     }
 }

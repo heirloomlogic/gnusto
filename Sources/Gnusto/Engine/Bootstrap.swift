@@ -514,6 +514,16 @@ enum Bootstrap {
             vocabulary.verbWords.formUnion(rule.leadingWords)
             vocabulary.prepositions.formUnion(
                 rule.literalWords.dropFirst(rule.leadingWords.count))
+            // A literal answers to its synonyms wherever in the pattern it
+            // stands, so those count as structural too: a word the parser will
+            // match is a word it admits to knowing, and a noise word that would
+            // make `into` untypeable is caught by the same diagnostic as one
+            // aimed at the `in` the row was written with. Not verb words,
+            // though — Tab-completion offers `look`, never `look into`.
+            for word in rule.literalWords {
+                vocabulary.prepositions.formUnion(
+                    Vocabulary.spellings(of: word).subtracting([word]))
+            }
             // A pattern's literals are declarations too, and die the same way.
             for word in rule.literalWords
             where Vocabulary.words(in: word) != [word.lowercased()] {

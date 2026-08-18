@@ -43,6 +43,89 @@ struct Vocabulary: Sendable {
     /// (the bootstrap warns).
     static let reservedWords: Set<String> = ["it", "them", "all", "everything"]
 
+    /// The words that join two object phrases: `take the bottle and the sack`.
+    ///
+    /// Deliberately neither noise nor reserved. Not noise, because dropping the
+    /// word would *join* the two phrases rather than separate them. Not
+    /// reserved, because an item is free to use it among its own words — the
+    /// parser reads a phrase as a name before it ever reads it as a list, so
+    /// `name("cup and saucer")` keeps answering to every word of itself.
+    ///
+    /// A `static let` rather than a per-game `var`, the way ``reservedWords``
+    /// is and ``noiseWords`` isn't: filler varies by game and the bootstrap
+    /// collects it, but nothing in the engine or the DSL lets a game name a
+    /// conjunction of its own, and a settable property nobody sets is a lie
+    /// about the surface.
+    static let conjunctions: Set<String> = ["and"]
+
+    /// Spellings of a pattern's preposition that mean the same thing, mapped to
+    /// the one the tables are written in.
+    ///
+    /// A preposition in a verb row is a bare ``SyntaxElement/word(_:)``, so
+    /// `["look", "in", .directObject]` used to answer to `look in sack` and to
+    /// nothing else — `look inside sack` died at candidate selection, before any
+    /// of the parser's forgiving machinery ran. This table buys every row
+    /// containing `in` or `on` its synonyms at once, which is what the
+    /// alternative — a row per spelling — cannot do for a verb a game declares
+    /// itself. Issue #269.
+    ///
+    /// It is consulted **only** where a pattern literal is compared to a token.
+    /// Noun resolution never reads it, so a game may still name a thing
+    /// `inside pocket`; the direction table never reads it, so a bare `inside`
+    /// still travels. `out`/`outside` is deliberately absent — no row wants it,
+    /// and every pair costs the candidate filter another word to canonicalize.
+    static let literalSynonyms: [String: String] = [
+        "inside": "in",
+        "into": "in",
+        "onto": "on",
+        "upon": "on",
+    ]
+
+    /// The one spelling of `word` the tables are written in — itself, for
+    /// everything that isn't a preposition with synonyms.
+    ///
+    /// Comparing canonical forms rather than asking "is either of these a
+    /// synonym of the other" is what makes the table symmetric: a row written
+    /// `into` accepts `in` exactly as one written `in` accepts `into`, because
+    /// the table says which words mean the same thing and not which spelling an
+    /// author happened to pick.
+    ///
+    /// - Parameter word: any literal or typed word.
+    /// - Returns: its canonical spelling.
+    static func canonical(_ word: String) -> String {
+        literalSynonyms[word] ?? word
+    }
+
+    /// Whether a token is a way of typing a pattern's literal word.
+    ///
+    /// For the candidate filter, which asks this of every row on the table
+    /// every turn, both sides are canonicalized in advance instead — see
+    /// ``SyntaxRule/canonicalLeadingWords``.
+    ///
+    /// - Parameters:
+    ///   - word: the literal as the pattern spells it.
+    ///   - token: the word the player typed.
+    /// - Returns: whether the two are the same preposition.
+    static func literal(_ word: String, matches token: String) -> Bool {
+        token == word || canonical(token) == canonical(word)
+    }
+
+    /// Every way of typing `word`, itself included — `in` yields `in`,
+    /// `inside`, `into`.
+    ///
+    /// The bootstrap registers these alongside the literals a verb row actually
+    /// spells, so that a word the parser will match is a word the parser admits
+    /// to knowing, and a noise word that would make one untypeable is caught by
+    /// the same diagnostic that catches the spelling the row was written in.
+    ///
+    /// - Parameter word: a literal from a verb pattern.
+    /// - Returns: it and its synonyms.
+    static func spellings(of word: String) -> Set<String> {
+        let canonical = canonical(word)
+        return Set(literalSynonyms.filter { $0.value == canonical }.keys)
+            .union([word, canonical])
+    }
+
     /// Every word in the game, flattened once at bootstrap so `knows` is a
     /// single set lookup (it runs per token on parse-failure paths).
     var allKnownWords: Set<String> = []
@@ -98,6 +181,7 @@ struct Vocabulary: Sendable {
             .union(directions.keys)
             .union(prepositions)
             .union(noiseWords)
+            .union(Self.conjunctions)
             .union(Self.reservedWords)
         for lexicon in itemLexicons.values {
             allKnownWords.formUnion(lexicon.nouns)

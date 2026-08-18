@@ -58,29 +58,35 @@ jobs:
           if-no-files-found: error
 
   build-linux:
+    # x86_64 on purpose. The test workflow runs on ARM, but the asset names here
+    # come from `uname -m`, and the published Linux binaries have always been
+    # x86_64 — moving this runner would silently change what people download.
     runs-on: ubuntu-latest
+
+    # Same toolchain image and version as the test workflow — keep the two in
+    # step. Nothing here needs the prebuilt-swift-syntax caveat that workflow
+    # documents: no test targets are built, so the macro test target that
+    # trips swiftlang/swift-package-manager#10218 is never in the graph.
+    container: swift:6.3.3-noble
+
+    # A container job runs steps under `sh`, and on Ubuntu that is dash, which
+    # rejects `set -o pipefail` outright — the build step below died in zero
+    # seconds the first time. Ask for bash explicitly.
+    defaults:
+      run:
+        shell: bash
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
-      # Same toolchain install as the test workflow: Ubuntu runners ship no Swift,
-      # so bring it in via swiftly and put it on PATH for later steps.
-      - name: Install Swift toolchain
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y libcurl4-openssl-dev
-          curl -fsSL -O "https://download.swift.org/swiftly/linux/swiftly-$(uname -m).tar.gz"
-          tar zxf "swiftly-$(uname -m).tar.gz"
-          ./swiftly init --quiet-shell-followup --assume-yes --skip-install
-          . "$HOME/.local/share/swiftly/env.sh"
-          swiftly install --assume-yes 6.3.3
-          swiftly use 6.3.3
-          echo "$HOME/.local/share/swiftly/bin" >> "$GITHUB_PATH"
-          swift --version
+      - name: Trust the workspace
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
       - name: Build and package release binaries
         run: |
           set -euo pipefail
+          swift --version
           mkdir -p dist
           arch="$(uname -m)"
           bindir="$(swift build -c release --show-bin-path)"

@@ -52,27 +52,32 @@ jobs:
 
   build-linux:
     runs-on: ubuntu-latest
+
+    # Ubuntu runners ship no Swift, so the toolchain arrives as an image rather
+    # than an install step — no scripted download, and a pinned compiler, which
+    # matters because a game's macro plugins are compiler-coupled. Bump the tag
+    # to move to a newer Swift.
+    container: swift:6.3.3-noble
+
+    # A container job runs steps under `sh`, and on Ubuntu that is dash, which
+    # rejects the `set -o pipefail` in the build step below. Ask for bash.
+    defaults:
+      run:
+        shell: bash
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
 
-      # Ubuntu runners ship no Swift; bring it in via swiftly and put it on PATH.
-      - name: Install Swift toolchain
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y libcurl4-openssl-dev
-          curl -fsSL -O "https://download.swift.org/swiftly/linux/swiftly-$(uname -m).tar.gz"
-          tar zxf "swiftly-$(uname -m).tar.gz"
-          ./swiftly init --quiet-shell-followup --assume-yes --skip-install
-          . "$HOME/.local/share/swiftly/env.sh"
-          swiftly install --assume-yes 6.3.3
-          swiftly use 6.3.3
-          echo "$HOME/.local/share/swiftly/bin" >> "$GITHUB_PATH"
-          swift --version
+      # The container runs as root over a checkout git considers foreign;
+      # without this, git refuses it as "dubious ownership".
+      - name: Trust the workspace
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
       - name: Build and package release binaries
         run: |
           set -euo pipefail
+          swift --version
           mkdir -p dist
           arch="$(uname -m)"
           bindir="$(swift build -c release --show-bin-path)"

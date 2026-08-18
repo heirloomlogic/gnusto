@@ -12,6 +12,9 @@ struct DangerousDarkTests {
             NightfallGame(),
             ["north", "look", "look", "quit"])
         // The arrival turn ends in darkness: pitch black, then the warning.
+        // Stock prose gives those two knobs different words, so this is also
+        // where "both lines survive" is pinned for the walk-in route — the
+        // once-per-turn emitter drops a repeated sentence, never a distinct one.
         expectInOrder(
             turnOutput(of: "north", in: transcript),
             [
@@ -139,5 +142,86 @@ struct DangerousDarkTests {
             turnOutput(of: "north", in: transcript),
             ["It is pitch black.", "something in it is breathing"])
         #expect(!transcript.contains("*** You have died ***"))
+    }
+
+    // MARK: - One sentence, however many emitters
+
+    /// The Zork arrangement: `text.pitchBlack` and the plugin's `warning` are
+    /// the same string, so the walk-in turn has two claims on one sentence. The
+    /// player reads it once — and reads it again next turn, because the memory
+    /// is one turn deep and the room is still dark.
+    @Test func oneSentenceOnTwoKnobsIsSaidOnce() async throws {
+        let transcript = try await play(
+            GrueVoicedDarkGame(),
+            ["north", "look", "quit"])
+        #expect(
+            occurrences(of: GrueVoicedDarkGame.grue, in: turnOutput(of: "north", in: transcript))
+                == 1)
+        #expect(
+            occurrences(of: GrueVoicedDarkGame.grue, in: turnOutput(of: "look", in: transcript))
+                == 1)
+    }
+
+    /// The silence is a printing decision, not a scheduling one: `darkTurns`
+    /// still ticked on the arrival turn, so grace and death land exactly where
+    /// the cadence says. Grace 1, lethality 100 — warn on dark turn 1, silence
+    /// on 2, death on 3.
+    @Test func theSilencedWarningStillTicksTheClock() async throws {
+        let transcript = try await play(
+            GrueVoicedDarkGame(),
+            ["north", "look", "look", "quit"])
+        let looks = transcript.components(separatedBy: "> look")
+        #expect(!looks[1].contains("finds you"))
+        expectInOrder(
+            looks[2],
+            [
+                "Something in the dark finds you before you find it.",
+                "*** You have died ***",
+            ])
+    }
+
+    /// Darkness that falls where the player is standing rather than being walked
+    /// into. `turn off lamp` announces it with `nowDark`, which this game words
+    /// as the grue's sentence too — a third claim, on a third route in, and
+    /// still one line.
+    @Test func dousingTheLampInPlaceSaysItOnce() async throws {
+        let transcript = try await play(
+            GrueVoicedDarkGame(),
+            ["take lamp", "north", "turn off lamp", "quit"])
+        // Carrying a lit lamp in, the cave describes itself normally.
+        #expect(turnOutput(of: "north", in: transcript).contains("A low limestone chamber."))
+        #expect(
+            occurrences(
+                of: GrueVoicedDarkGame.grue, in: turnOutput(of: "turn off lamp", in: transcript))
+                == 1)
+    }
+
+    /// The same route with the two knobs worded *differently*: `NightfallGame`
+    /// keeps the stock "It is now pitch black." and the stock warning, and both
+    /// print. What is dropped is a repeated sentence, never the situation that
+    /// produced it.
+    @Test func dousingTheLampKeepsTwoDistinctLines() async throws {
+        let transcript = try await play(
+            NightfallGame(),
+            ["take lamp", "north", "turn off lamp", "quit"])
+        expectInOrder(
+            turnOutput(of: "turn off lamp", in: transcript),
+            [
+                "It is now pitch black.",
+                "The darkness is absolute, and something in it is breathing.",
+            ])
+    }
+
+    /// Order-independence. A fuse says the sentence and *then* moves the player
+    /// into the dark, so this turn's emitters are the fuse, the room describer
+    /// and the grue daemon — three claims, one sentence. Only the describer
+    /// reaching for the same once-per-turn emitter makes this come out right.
+    @Test func aTimerThatSpeaksFirstSilencesTheDescriber() async throws {
+        let transcript = try await play(
+            GrueVoicedDarkGame(),
+            ["summon", "quit"])
+        let pull = turnOutput(of: "summon", in: transcript)
+        #expect(pull.contains("Something takes hold of you."))
+        #expect(occurrences(of: GrueVoicedDarkGame.grue, in: pull) == 1)
     }
 }
