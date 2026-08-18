@@ -416,10 +416,10 @@ struct DungeonAlice: GameContent {
     /// One extra row on a stub verb, which the bootstrap allows silently. The
     /// engine's `throw` parses `throw <thing> at <thing>`; the sentence this
     /// region needs is `throw the red cake in the pool`, and *at* a pool is not
-    /// what anybody means.
+    /// what anybody means. One row is enough for both spellings — `in` answers
+    /// to `into` wherever a pattern puts it (issue #269).
     var verbs: [SyntaxRule] {
         SyntaxRule("throw", .directObject, "in", .indirectObject, intent: .throwAt)
-        SyntaxRule("throw", .directObject, "into", .indirectObject, intent: .throwAt)
     }
 
     // MARK: - Map

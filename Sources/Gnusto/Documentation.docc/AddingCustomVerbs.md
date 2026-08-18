@@ -128,7 +128,7 @@ Among rows sharing a verb word, the parser tries the most specific pattern first
 
 ### A preposition's synonyms come free
 
-Write a row's preposition once. `in` also answers to `inside` and `into`, and `on` to `onto` and `upon`, wherever the literal stands in the pattern — in the verb-identifying run (`look in`), closing an object slot (`put <object> in <second object>`), or as a trailing particle (`turn <object> on`). So a single `["pour", .directObject, "in", .indirectObject]` accepts `pour water into the sack`, and a second row spelling out `into` buys nothing.
+Write a row's preposition once. `in` also answers to `inside` and `into`, and `on` to `onto` and `upon`, wherever the literal stands in the pattern — in the verb-identifying run (`look in`), closing an object slot (`put <object> in <second object>`), or as a trailing particle (`turn <object> on`). So a single `["pour", .directObject, "in", .indirectObject]` accepts `pour water into the sack`, and a second row spelling out `into` buys nothing — worse than nothing, in fact: it can never match, because the canonical row is tried first and the two are the same pattern to the parser. The built-in table takes its own advice, `put <object> in <second object>` and `get in <object>` each being one row that answers to every spelling.
 
 Two things the table deliberately does not do. It never reaches noun resolution, so a game may still name a thing `inside pocket` — and `put the inside pocket in the box` splits at the `in` the player typed, because a literal closing a slot looks for its own word before it looks for a synonym. And it is not the direction table: a bare `in`, `inside`, `out` or `outside` is still a way to walk.
 
