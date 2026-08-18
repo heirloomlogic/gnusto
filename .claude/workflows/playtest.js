@@ -672,6 +672,14 @@ prose names that does not exist.`,
   {
     key: 'timekeeper',
     appliesTo: (survey) => (survey.timers || []).length > 0,
+    // Instantiates per region for the same reason the explorer does, and capped
+    // the same way. A single timekeeper handed no region covers whatever it
+    // drifts into: on Fulminate 2026-08-17 it owned the whole cross-product,
+    // spent three quarters of its probes on the first of two declared windows,
+    // and left 6:30-6:50 unprobed in five of nine rooms — the one band the round
+    // was dispatched to read. Splitting it is not about buying turns, it is
+    // about the seat that owns the cross-product not choosing its own coverage.
+    copies: (regions) => Math.min(Math.max(regions.length, 1), 3),
     brief: `A line has to know the room AND the moment. Only a cross-product finds the cell
 where it does not. You are the charter that catches an NPC watching a fire from the
 bottom of a dark cellar, and every marquee defect this harness has ever found was yours.

@@ -90,7 +90,20 @@ const dryLedgerKeys = [
 const dryArgs = {
   game: 'Fulminate', packagePath: '.', docPath: 'docs/games/fulminate.md',
   capabilities: ['clock','talk'], seed: 0, turns: 60,
-  focus: 'ground floor: Front Hall, Parlour, Kitchen | upstairs: Landing, Boarder\'s Room, Study | outside: Back Yard, Carriage House',
+  // Deliberately written in affordances rather than room names, because a region
+  // is pasted verbatim into a blind explorer's prompt. This fixture used to read
+  // "ground floor: Front Hall, Parlour, Kitchen | upstairs: Landing, Boarder's
+  // Room, Study | outside: Back Yard, Carriage House" and passed, because the
+  // only region assertion counted regions and never read one — so the harness's
+  // own worked example handed a blind charter eight of Fulminate's ten rooms.
+  // Space is expressible without the roster: the game's opening paragraph itself
+  // says "the stairs go up", so "the floor above" leaks nothing the player has
+  // not already been shown, exactly as an hour leaks nothing the watch does not.
+  focus:
+    'the first hour, 5:30 to 6:20, on the floor you start on and outside the house'
+    + ' | the last half hour, 6:20 to 6:50, on the floor you start on and outside'
+    + ' | the whole evening on the floor above: the opening tells you the stairs go'
+    + ' up, so go up early and stay up, waiting rather than coming down',
   ledgerKeys: dryLedgerKeys,
 }
 const fn = new Function('__stub','__phases','__logs','__args', body)
@@ -181,6 +194,27 @@ for (const p of blind) {
   // told it had no room list.
   const mine = regions.filter((r) => p.prompt.includes(r))
   check(mine.length <= 1, `${p.label} was handed ${mine.length} regions, not just its own`)
+  // Counting regions is not the same as reading one. A single region naming
+  // three rooms passes the count and is still the map, which is how this file's
+  // own fixture handed a blind explorer eight of Fulminate's ten rooms for as
+  // long as the count was the only test. The roster is the answer key the
+  // explorer exists to reconstruct, so no room name belongs in its prompt at
+  // all — not in a region, not in a routed issue's `owns` text, not anywhere.
+  // Say "the floor above" and "outside the house"; the game's own opening prints
+  // the exits, so an affordance leaks nothing an hour does not.
+  //
+  // This matches whole roster names, so it is a backstop and not the rule: an
+  // operator who writes "Landing" and "Study" still passes it, because the
+  // roster says "Upstairs Landing" and "Vane's Study". Matching the distinctive
+  // word instead would false-positive on Room, Hall, Yard and Study, which are
+  // ordinary English a brief has to be able to use. The rule stays "name no
+  // room"; this catches the copy-paste version of breaking it.
+  for (const room of survey.rooms) {
+    check(
+      !p.prompt.includes(room),
+      `${p.label} was handed the room roster: "${room}" appears in its prompt`
+    )
+  }
   // A dedupe key is `<ownerFile>::<the game's own prose>`, so the ledger is a
   // room list, a source map and an excerpt file in one. Pasting it into a blind
   // prompt is the coverage-plan leak wearing a different hat, and it is worse:

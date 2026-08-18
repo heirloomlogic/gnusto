@@ -108,7 +108,7 @@ whoever remembered the rule.
 | `seed` | `0` | Pins the stream via `GNUSTO_SEED`. Record it; a finding without a seed isn't reproducible. |
 | `turns` | `60` | Engine turns per charter. Token cost, not CPU cost, is the real budget. |
 | `charters` | all applicable | Comma-separated subset, e.g. `"tourist,clock-watcher"`. |
-| `focus` | none | The coverage split. **Separate regions with `|`** — each becomes one explorer, up to three, and they are handed out with different divergence policies. Say how each region is reached. See below. |
+| `focus` | none | The coverage split, as **one string** with regions separated by `\|` — an array is silently read as a single region. Each region becomes one `explorer` *and* one `timekeeper`, up to three of each; the explorers are handed different divergence policies. Say how each region is reached, and **name no room**. See below. |
 | `verifyEffort` | inherit | Reasoning effort for the verifiers — the round's largest fan-out, and so its cost. Turn it down to buy a bigger round; read the warning below first. |
 | `rounds` / `dryRounds` | `1` / `2` | Loop until N consecutive rounds surface nothing new. |
 | `packagePath` | `"."` | Drive another checkout — a worktree at an older commit, for calibration. |
@@ -138,6 +138,34 @@ Free text, not a region schema, because what a split has to say differs per game
 route prefix in one, an hour of the evening in another. `docs/games/dungeon-playtest-2026-08-11.md`
 is the worked example — eight regions over six charters, each with the walkthrough stage
 that reaches it.
+
+**Name no room.** A region is pasted verbatim into a blind explorer's prompt, and the room
+roster is the answer key that charter exists to reconstruct. The dry run now fails on a
+roster name in a blind prompt — but it matches whole names, so it catches the copy-paste
+version and not an operator who writes "Landing" for "Upstairs Landing". The rule is
+yours to keep.
+
+**Space is still expressible — say the affordance, not the roster.** This reads like a
+rule against splitting a small game by place, and it is not. The game's own opening prints
+its exits: Fulminate's first paragraph says *"the stairs go up"*, so **"the floor above"**
+leaks nothing the player has not already been handed, exactly as an hour leaks nothing the
+watch does not. "Below the ground floor", "outside the house", "as deep as you can get"
+are all fair. `Vane's Study` is not.
+
+Getting this wrong costs a whole axis. Fulminate's 2026-08-17 round split by clock alone,
+on the reasoning that a nine-room game's map cannot be named — and left the vertical axis
+owned by nobody. Both of the two scheduled arrival lines that printed in *zero* transcripts
+were upstairs, and so were both `talk.shows` rows that never fired, including the one the
+round was dispatched to reach. A 26-turn probe of `up`, `west`, `z`×24 filled five blank
+cells afterwards. It was not expensive; it was unassigned.
+
+**A region is an assignment, so give every seat one.** The sighted charters are told to
+*"Find your own charter in it and treat that row as your assignment"* — so a `focus` with
+no charter rows in it assigns nothing, and the charter falls back to instinct. In that same
+round the timekeeper owned the whole cross-product, read two unlabelled time windows, and
+spent three quarters of its probes on the first one. `explorer` and `timekeeper` both
+instantiate per region now, so the number of regions you declare is the number of copies
+of each you get, capped at three.
 
 **`verifyEffort` is the cost dial, and it is sharp.** The verifiers are the round's
 largest fan-out — two independent raters over each batch of 25 findings — so they set its
