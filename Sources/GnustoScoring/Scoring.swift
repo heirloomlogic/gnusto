@@ -36,7 +36,7 @@ extension TraitKey<Int> {
 /// `maxScore` is still the host's own literal — the engine reads it at
 /// bootstrap, before any rule can run — but it is no longer unchecked. The
 /// ``awards`` table is the one place a register's value is written, so the
-/// manifest and the payout cannot drift apart, and ``ScoreDeclaring`` hands
+/// manifest and the payout cannot drift apart, and `ScoreDeclaring` hands
 /// the total to the bootstrap, which warns when it disagrees with `maxScore`.
 public struct Scoring: GameContent {
     /// Register names already paid out. A wrapper struct rather than a bare

@@ -131,8 +131,8 @@ public struct MeleeCombat: GameContent {
     ///
     /// `stunned` is the countdown, and a villain has an entry in it for exactly
     /// as long as he is unconscious — counting down to zero and resting there
-    /// for the last of those turns. ``Actor/isUnconscious`` is the same fact
-    /// where other plugins can see it; ``stun(_:key:turnsLeft:)`` writes both.
+    /// for the last of those turns. `Actor.isUnconscious` is the same fact
+    /// where other plugins can see it; `stun(_:key:turnsLeft:)` writes both.
     ///
     /// `engaged` is the source's `FIGHTBIT`: a villain is in it from the blow
     /// that starts the fight — the player's, or his own — until the two of them
@@ -208,7 +208,7 @@ public struct MeleeCombat: GameContent {
     }
 
     /// Writes both halves of "he is out cold" at once: the ledger's countdown,
-    /// which is this plugin's, and ``Actor/isUnconscious``, which is the
+    /// which is this plugin's, and `Actor.isUnconscious`, which is the
     /// engine's and is how `GnustoActors` — a plugin that cannot see this
     /// ledger — knows to stop him roaming and picking pockets. Going through
     /// one funnel is what keeps the two from drifting.
@@ -266,7 +266,7 @@ public struct MeleeCombat: GameContent {
     /// `outcomeCutpoints(weaponStrength:)`). A stunned villain doesn't roll —
     /// the next blow lands clean.
     ///
-    /// A knockout also sets ``Actor/isUnconscious`` — see ``stun(_:key:turnsLeft:)``.
+    /// A knockout also sets `Actor.isUnconscious` — see `stun(_:key:turnsLeft:)`.
     /// It is cleared again by the villain's own
     /// ``aggression(of:key:daemonName:strikesFirst:playerStrength:while:prose:)`` daemon, so
     /// a villain registered here without one stays down for good once knocked
@@ -374,7 +374,7 @@ public struct MeleeCombat: GameContent {
     /// strikes in the turn he starts it rather than telegraphing it. `I-FIGHT`
     /// clears the bit on the villain the player is no longer standing with, so
     /// walking out ends a fight and walking back in asks the question again.
-    /// Neither 0 nor 100 draws; see ``startsAFight(chance:)``.
+    /// Neither 0 nor 100 draws; see `startsAFight(chance:)`.
     ///
     /// `while:` is an extra gate evaluated before the same-room guard and
     /// before any draw — so a villain whose combat is scoped (the thief only

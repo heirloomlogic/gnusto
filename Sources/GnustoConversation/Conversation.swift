@@ -93,9 +93,9 @@ public struct Conversation: GameContent {
     /// This layer's stock lines, gathered into one value the way
     /// `MeleeCombat.CombatText` gathers combat's — a plugin that claims a verb
     /// owns that verb's voice, so the lines live with the plugin rather than on
-    /// ``GameText``.
+    /// `GameText`.
     ///
-    /// Each line about a person takes a ``GameText/Noun`` rather than a bare
+    /// Each line about a person takes a `GameText.Noun` rather than a bare
     /// name: three of the five carry a verb that has to agree with whoever they
     /// name, and a game with a plural cast — the stable hands, the twins —
     /// otherwise gets "the twins waits for you to come to the point" with no

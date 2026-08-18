@@ -81,7 +81,7 @@ public struct DangerousDark: GameContent {
     /// to be eaten. Stepping back into the light — or ``suspended`` — resets the
     /// count. Guards before the draw, so a lit turn burns no randomness.
     ///
-    /// The warning goes out through ``sayOnceThisTurn(_:)``, which changes what
+    /// The warning goes out through `sayOnceThisTurn(_:)`, which changes what
     /// is printed and nothing else: a warning swallowed for repeating the room's
     /// own dark line is still a warned turn.
     public var timers: [TimedEvent] {
