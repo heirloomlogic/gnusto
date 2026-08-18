@@ -7,22 +7,48 @@ everything a previous round already rejected, forever — the harness argues wit
 instead of converging. And with it, a key marked `fixed` that shows up again is not a new
 finding, it is a **regression**, and it goes back at raised severity.
 
-Pass `ledgerKeys` into the workflow with every key below whose verdict is `refuted` or
-`fixed`.
+Pass `ledgerKeys` into the workflow with every key below whose verdict is `refuted`.
+
+**Not the `fixed` ones, and the instruction to pass them was wrong.** `ledgerKeys` feeds
+`seen`, and a finding whose key matches is **dropped** — merged away unverified and
+unreported. So passing a `fixed` key instructs the harness to swallow in silence exactly
+the thing the paragraph above says is the point of this file: a `fixed` row that comes
+back is a regression at raised severity, and it cannot come back if the round is told to
+throw it away. Withhold them, and say in the round report that you did.
 
 The key is `<ownerFile>::<normalized offending text>`, with the frame deliberately
 excluded — one untrue sentence seen in two frames is one defect, so keying on the frame
 would dispatch two fixers at one branch. Keys are abbreviated here for reading; the full
 ones are in the round reports.
 
+**Correction, 2026-08-18: the full ones are not in the round reports.**
+`docs/games/dungeon-playtest-2026-08-11.md` contains no key table — the string `::` does
+not occur in it — so no full key from that round survives anywhere in this repo. Every
+row below is display-truncated with `…`, and `normalize()` strips every character that is
+not `[a-z0-9 ]` and can therefore never emit one. **None of the 2026-08-11 keys can match
+anything a later round produces**, whatever its verdict. They are a reading record, not a
+working dedup set. (Their one remaining use: up to 60 are pasted into the *sighted*
+charters' prompts under "do not report these again", which is deterrence and works on
+prose rather than on string equality.) Record full, untruncated keys from now on — the
+shape the clusterer actually compares is `decl::<file>::<declaration>`, with the excerpt
+form only as an `unlocated` fallback.
+
 ## 2026-08-11 — first round, `0080053` (`fix: none`, nothing applied)
 
-Ran at **seed 2**, not the harness default 0. Seed 2 is the seed
-`DungeonWalkthroughTests` pins its 716-point route to, and the route is the only way a
+Ran at **seed 2**, not the harness default 0. Seed 2 was then the seed
+`DungeonWalkthroughTests` pinned its 716-point route to, and the route is the only way a
 tester reaches the volcano, the Royal Puzzle or the Endgame inside a round's budget — the
 far side of this game is two hundred correct commands from the front door. A prefix
-replayed at another seed lands somewhere else, quietly. Any round that wants the deep
-regions has to pin 2 as well, or re-derive its own route.
+replayed at another seed lands somewhere else, quietly.
+
+> **The seed is 52 now, and has been since the day after this round.** `97b5032`
+> (*"Villains block rather than swing (#237) (#238)"*, 2026-08-12) gave the troll and the
+> thief a strike-first probability, which moved every draw in the game;
+> `DungeonWalkthroughTests.seed` was re-pinned by brute-force scan and 52 is the only
+> seed below 400 the route still wins on. **A later round pins 52**, not 2 — the
+> sentence this note replaces would have sent one to a seed where its own route prefixes
+> land somewhere else and the `solver` charter, whose brief takes its route from this
+> very test, fails outright. Read the constant, never a number written down here.
 
 Oracle tiers T0/T1/T2/T3 — all four, unlike KindlyDeep's first round: `docs/games/dungeon.md`
 exists and carries the mechanics contract, which is what let the verifiers refute on "the
@@ -269,8 +295,11 @@ rather than guessed at.
 given above — all three name a sentence no pass has changed, and the ledger's rule is that
 a row belongs to the sentence in its key rather than to the box it was filed under.
 
-Pass every `fixed` and `refuted` key above as `ledgerKeys` on the next round. The list is
-seventeen keys longer than it was.
+~~Pass every `fixed` and `refuted` key above as `ledgerKeys` on the next round.~~ **Struck
+2026-08-18** — see the correction in the preamble. Passing a `fixed` key makes the round
+*drop* a rematch of it unverified, which is precisely how a regression goes unseen; and
+every key in this file is display-truncated, so none of them can match anything anyway.
+Pass the thirteen `refuted` keys, for deterrence in the sighted prompts, and nothing else.
 
 ## 2026-08-14 — a hand-played session, not a harness round
 
