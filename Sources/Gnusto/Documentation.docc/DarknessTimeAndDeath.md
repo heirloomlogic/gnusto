@@ -4,7 +4,7 @@ Light sources that carry into dark rooms, fuses and daemons that tick the world'
 
 ## Overview
 
-Four mechanics turn a collection of rooms into a game with stakes: darkness the player must bring light into, timed events that move the world along whether or not the player acts, the classic SAVE / RESTORE / UNDO / RESTART meta-verbs, and death that offers a way back. This article covers all four — they interlock, and the Zork-style burning lantern chased by a grue uses every one of them.
+A dark room is not a described room with the lights off. Its contents stop being nouns: there is nothing to examine, nothing to take, and no exits worth naming until somebody brings a light. That is the sharpest of the four mechanics on this page, and the other three take from the player the same way — fuses and daemons move the world while they think about it, `undo` gives exactly one turn back, and ``die(_:)`` ends the game without ending the process. A burning lantern chased by a grue is all four at once.
 
 ## Darkness and light sources
 
@@ -72,8 +72,8 @@ Only the *schedule* — which timers are running, and the fuses' remaining count
 
 Four engine-level meta verbs manage the game as a program. Like all meta intents they run no rules and cost no turn — and they are deliberately not overridable through a game's `actions` block.
 
-- **`save`** asks "Save to what file?" and writes the whole world state — placements, the turn counter, the timer schedule, the random stream, everything — as JSON to the answered path. Relative paths resolve against the current directory; an empty answer cancels.
-- **`restore`** asks for a filename, validates the file (a save from a different game is refused with its own message), and swaps the saved state in. Because the random stream rides along, a restored game replays exactly the randomness it would have had.
+- **`save`** asks "Save to what file?" and writes the whole world state — placements, the turn counter, the timer schedule, the random stream, everything — as JSON. A **bare name** like `autumn` is a save *slot*, stored as `autumn.gnusto` in the game's saves directory (`<app support>/Gnusto/Saves/<title>`, or wherever `GNUSTO_SAVE_DIR` points), created owner-only on first write. An answer containing a `/`, or starting with `~`, is an explicit path and is honored verbatim. Slot names are sanitized, so `..` cannot walk out of the directory. An empty answer cancels.
+- **`restore`** asks the same question and lists the slots it can see — `(saved: autumn, cellar)` — then validates the file (a save from a different game is refused with its own message) and swaps the saved state in. The prompt runs in the filename completion context, so Tab completes against those slot names. Because the random stream rides along, a restored game replays exactly the randomness it would have had.
 - **`undo`** reverses exactly one turn, from a snapshot the engine takes before every turn that actually runs. One level, classic-style; the snapshot lives outside the world state, so undo history never leaks into save files.
 - **`restart`** rewinds to the pristine opening — same seed, so a restarted game is the identical game — and replays the intro.
 

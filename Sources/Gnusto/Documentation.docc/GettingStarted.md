@@ -4,7 +4,7 @@ Build and run your first text adventure, one piece at a time.
 
 ## Overview
 
-This guide walks you from an empty package to a small, playable game. By the end you will have declared two rooms and an object, wired them together, added a rule, tested a play session, and run the whole thing at a prompt. It assumes you can write basic Swift; it assumes nothing about interactive fiction.
+By the end of this guide you will have a game with two rooms, one object, one rule, and a test that plays it. It assumes you can write basic Swift; it assumes nothing about interactive fiction.
 
 Prefer to start from something that already runs? The repo ships a complete starter package at `Templates/NewGame` — copy it out, rename it, and skim this guide for the *why* behind each piece.
 
@@ -40,7 +40,7 @@ let package = Package(
 )
 ```
 
-Gnusto requires macOS 15 or newer (it uses `Synchronization.Mutex`), and builds with the Swift 6 language mode.
+Gnusto needs a Swift 6.2 toolchain and the Swift 6 language mode. The `.macOS(.v15)` floor is `Synchronization.Mutex`; Linux is tested in CI and needs no platform line.
 
 ## Declare a game
 
@@ -81,7 +81,7 @@ The `map` block is where geography and starting positions live. `player.starts(i
 
 ## Run it
 
-Three lines turn a game value into a running session:
+Two lines turn a game value into a running session:
 
 ```swift
 let world = try GameWorld(game: MyGame())

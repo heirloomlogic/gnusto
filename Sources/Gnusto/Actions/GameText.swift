@@ -62,7 +62,7 @@
 ///
 /// The parser's own lines are the one place a name arrives as a `String`:
 /// ``ambiguous`` and the `missing…` family are written before any entity is
-/// resolved, from ``Vocabulary`` rather than from the turn frame. None of them
+/// resolved, from `Vocabulary` rather than from the turn frame. None of them
 /// carries a verb that agrees with the noun, so none of them has a number to
 /// get wrong. ``notTakingOrders`` did, and the vocabulary carries the plural
 /// set for its sake.
@@ -647,7 +647,7 @@ public struct GameText: Sendable {
     /// The name with its definite article ("the velvet cloak"), or the name
     /// alone when it is a proper name ("Mrs. Vane").
     ///
-    /// The engine calls this — and ``indefinite(_:proper:)`` — *before* it
+    /// The engine calls this — and ``indefinite(_:proper:plural:)`` — *before* it
     /// reaches a line's closure, which is why every template above interpolates
     /// a finished phrase rather than putting an article in front of a bare
     /// name. A custom closure receives the same finished phrase; these statics

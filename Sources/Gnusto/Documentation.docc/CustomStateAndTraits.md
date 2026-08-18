@@ -4,9 +4,7 @@ Carry your own data on entities and in globals, alongside the engine's closed co
 
 ## Overview
 
-A ``Global`` normally holds one scalar (`Bool`, `Int`, `Double`, `String`), and an item or location carries only the traits the engine knows about (`wearable`, `surface`, `dark`, …). Those closed sets are deliberate: the engine's behavior branches over a small, readable vocabulary you can audit at a glance. But a game system — a wallet, combat stats, an item's price — needs to carry data the engine itself never acts on. Custom state and custom traits are the open edges beside that closed core: unlimited declarative data for your rules to read and write, boxed through the same storage the engine already saves and restores.
-
-The split is the whole idea. **The engine still switches only on the closed core.** Your custom values ride along type-erased and are only ever read by your own rule code.
+The engine only ever branches on a closed set of traits and scalar globals, and that is what keeps its behavior auditable: every decision it can make is visible in a handful of small enums. Your game's own data does not have to live in that set. A wallet, a set of combat stats, an item's price — custom state and custom traits ride along type-erased through the same storage the engine already saves and restores, read by your rules and by nothing else.
 
 ## Rich `@Global` state
 
@@ -75,10 +73,6 @@ let price = lantern[.price] ?? 0
 A key declared with a default (`TraitKey("weight", default: 1)`) can be read as a non-optional `V` through `item[default: .weight]` instead.
 
 Custom traits are **immutable declared facts** — they never touch the world state. For per-entity state that *changes* during play (an item's current charge, a creature's HP), use a `@Global` keyed however your system needs; traits are for the fixed properties an entity is born with.
-
-## Closed core, open edges
-
-The engine never switches on a custom trait or a `.data` global — it only branches over the closed ``ItemTrait``/``LocationTrait`` kinds and scalar ``StateValue`` cases it acts on (`isSurface`, `isWearable`, `dark`, …). That's what keeps the engine auditable: every behavior it drives is still visible in a handful of small enums, while your systems get unlimited declarative properties that only your rules interpret.
 
 ## Worked example
 

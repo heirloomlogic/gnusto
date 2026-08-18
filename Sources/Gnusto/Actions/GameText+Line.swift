@@ -494,7 +494,7 @@ extension GameText.Line where Object == GameText.Holding {
 }
 
 extension GameText.Line where Object == GameText.Carried {
-    /// Renders the line. See ``GameText/Line/callAsFunction(_:_:)-(Noun,Noun)``
+    /// Renders the line. See the `Holding` overload above
     /// for why it takes the parts rather than the role struct.
     ///
     /// - Parameter entries: what the player is carrying, in listing order.
@@ -505,7 +505,7 @@ extension GameText.Line where Object == GameText.Carried {
 }
 
 extension GameText.Line where Object == GameText.Gift {
-    /// Renders the line. See ``GameText/Line/callAsFunction(_:_:)-(Noun,Noun)``
+    /// Renders the line. See the `Holding` overload above
     /// for why it takes the two separately.
     ///
     /// - Parameters:
@@ -568,7 +568,7 @@ extension GameText {
     /// ``Holding`` is one struct for every line about a thing and its holder:
     /// they stand in one relation, and another prompt should cost no edit here.
     /// The parts are plain `String`s rather than ``Noun``s because they are read
-    /// off ``Vocabulary`` before anything has been resolved — there is no entity
+    /// off `Vocabulary` before anything has been resolved — there is no entity
     /// yet to have a number.
     ///
     /// ```swift

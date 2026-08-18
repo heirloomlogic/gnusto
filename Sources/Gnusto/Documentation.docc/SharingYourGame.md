@@ -4,9 +4,9 @@ Turn a finished game into a single command-line binary you can hand to a friend.
 
 ## Overview
 
-A Gnusto game is a Swift package, but the person you want to play it shouldn't need Xcode, a toolchain, or any idea what "SwiftPM" means. This guide takes a game from *runs on my machine* to *a single file that runs on a friend's Mac* — first by making the game a proper executable, then by giving it a polished terminal front end, and finally by exporting the release binary with `bin/export-game`.
+The person you want to play your game should not need Xcode, a toolchain, or any idea what SwiftPM is. This guide takes a game from *runs on my machine* to *one file that runs on somebody else's*, which is `bin/export-game` and a short conversation with Gatekeeper.
 
-The export path is intentionally small for a first pass: it builds a **macOS** binary for one of the demo products and prints exactly how to share it. Cross-platform Linux binaries and real notarization are noted here as future work, not yet built.
+`bin/export-game` builds macOS only, because it builds on the machine you are standing at. Tagging a version gets both platforms: `.github/workflows/release.yml` builds every executable product for macOS and Linux and attaches them to the release. Neither path notarizes, so a downloaded macOS binary still has to be un-quarantined by hand.
 
 ## Make a game runnable
 
@@ -55,7 +55,7 @@ swift build --product Zork1
 
 ## Environment variables
 
-Five variables configure a running game, a sixth reports on one, and a seventh replaces the game with a play-test server. All are optional — a game with none of them set behaves exactly as it always has.
+Seven variables configure a running game, two report on one, and one replaces the game with a play-test server. All are optional — a game with none of them set behaves exactly as it always has.
 
 | Variable | Effect |
 |---|---|
@@ -64,8 +64,11 @@ Five variables configure a running game, a sixth reports on one, and a seventh r
 | `GNUSTO_TRANSCRIPT` | Records the session from launch. `1`, `on`, `true` or `yes` writes a timestamped file; anything else is a slot name, or a path if it contains a `/`. |
 | `GNUSTO_TRANSCRIPT_DIR` | Where slot-named transcripts go. Defaults to `<app support>/Gnusto/Transcripts/<game>`. Read whenever a transcript file is resolved, so it also applies to a `script` typed mid-session — not only at launch. |
 | `GNUSTO_SAVE_DIR` | Where saves go. Defaults to `<app support>/Gnusto/Saves/<game>`. Point it somewhere disposable to keep a scripted run out of your real save slots. |
+| `GNUSTO_STATUS` | Appends a `[status] room=… | moves=… | turn=cost\|free` line to every turn. Takes `1`/`0`, `on`/`off`, `true`/`false`, `yes`/`no`; anything else is a complaint on stderr rather than a guess. Read by ``GameMain`` and handed to ``REPL`` as an argument, not read from the environment down in the engine — so `GNUSTO_STATUS=1 swift test` changes nothing. See <doc:PlayTesting>. |
+| `GNUSTO_PLAYTEST_DIR` | Where play-test sessions write. Defaults to `.context/playtest`. Same reason as `GNUSTO_SAVE_DIR`: a harness driving a checkout it doesn't own has to keep its output away from yours. |
+| `GNUSTO_MCP_MAX_SESSIONS` | How many play-test sessions may hold a live world at once. Defaults to 32. Over the cap the oldest is evicted to its command list and replays itself on next use, so an evicted session answers exactly as it did before — it just costs more to ask. |
 | `GNUSTO_STACK_REPORT` | Prints how much of the bootstrap's 16 MB stack the game's declarations actually used, one line per boot, on stderr. A flag, not a setting. Diagnostic — see <doc:SplittingAGameAcrossFiles#Split-for-reading-not-for-the-stack>. |
-| `GNUSTO_MCP` | Serves the play-test protocol over stdio instead of playing, the same as the `--mcp` flag. A flag, not a setting. For a client that can set an environment but not an argument vector — see [Serving the game to an agent](#Serving-the-game-to-an-agent). |
+| `GNUSTO_MCP` | Serves the play-test protocol over stdio instead of playing, the same as the `--mcp` flag. A flag, not a setting. For a client that can set an environment but not an argument vector — see <doc:PlayTesting>. |
 
 `GNUSTO_SEED` is what makes a bug report reproducible. Everything random in a game — combat rolls, roaming actors, ``oneOf(_:)`` prose — draws from one seeded stream, so a transcript recorded under a pinned seed replays turn for turn on any machine, and the command list drops straight into a `play(_:_:seed:)` test. See <doc:TestingYourGame> for the in-suite side of the same knob.
 
@@ -75,51 +78,7 @@ GNUSTO_SEED=0 GNUSTO_TRANSCRIPT=1 swift run Lighthouse
 
 A value that isn't a whole number from 0 to 18446744073709551615 is reported on standard error and ignored, and the game seeds at random as usual. Silence would be worse than a complaint: the one thing the variable is for is reproducibility, so a typo that quietly handed back a random stream would defeat it.
 
-Comments and `script`/`unscript` are the tester's other two knobs, and they belong to the front end rather than the environment — see the next section.
-
-## Play-testing conveniences
-
-Comments, paste-folding, and transcript recording are all front-end concerns: those lines never reach ``GameWorld``, so none of them costs a turn or moves the clock.
-
-### Comments
-
-A line whose first non-blank characters are `//` or `#` is a note, not a command. The story window shows it in dim italics and a running transcript records it, but the engine never sees it — no parse, no rules, no fuse or daemon. Comments also stay out of Up/Down recall, so the history stays a list of things the game actually ran.
-
-### Pasting a note
-
-In a terminal that supports bracketed paste, pasting a multi-line block into a line that already begins `//` or `#` folds it into one comment: every line break becomes a single space, and nothing is submitted until you press Return. Pasting into any other line still submits one command per line, so a walkthrough can be replayed by pasting it. Terminals without bracketed paste — the Linux console, or tmux without pass-through — behave as before, submitting one line at a time.
-
-### Recording a transcript
-
-`script` starts writing the session to a file and `unscript` stops; `script <name>` names it, and a name containing `/` or starting with `~` is treated as a path. To record from the opening text instead, set `GNUSTO_TRANSCRIPT` to a path, or to `1` for a timestamped file in the game's transcripts directory (`<app-support>/Gnusto/Transcripts/<title>/`, which `GNUSTO_TRANSCRIPT_DIR` overrides). A transcript is plain text — `> command` lines interleaved with the game's output, comments included — so a tester can attach one to a bug report.
-
-### Serving the game to an agent
-
-Every Gnusto game is also a play-test server. `GameMain` answers `--mcp` — or the `GNUSTO_MCP` environment variable, for a client that can set an environment but not an argument vector — by speaking the Model Context Protocol over stdio instead of playing. An agent opens a session, takes turns, reads back its own transcript, and is told what the game has shown it that it never followed up.
-
-Nothing in your game has to know about this. The switch lives in the `GameMain` protocol extension every game already conforms to, so a game written by somebody who has never read this page becomes a server for the cost of a flag.
-
-`bin/gnusto-mcp` is the launcher, and a copy ships in `Templates/NewGame/bin/`:
-
-```sh
-bin/gnusto-mcp MyGame
-```
-
-It builds the game, asks where the binary landed, and hands the process over. **Stdout is the protocol**, so the build's progress goes to stderr and nothing else is printed at all — which is also why the build isn't silenced, since a failing server's stderr is where a client shows you the compile error.
-
-Register the game with a `.mcp.json` at your package root, one entry per game:
-
-```json
-{
-  "mcpServers": {
-    "mygame": { "command": "bin/gnusto-mcp", "args": ["MyGame"] }
-  }
-}
-```
-
-One binary is one game, so no tool ever takes a game name. If you copied `Templates/NewGame`, both files are already there and renaming the product in `.mcp.json` is the only edit.
-
-Two things worth knowing before the first run. A cold start builds the game, which can take longer than a client's startup timeout — get the build out of the way once with `swift build`, or raise the timeout (`MCP_TIMEOUT`, in milliseconds); later runs are a no-op build and start immediately. And a project-scoped server is approved once, per project, on first use.
+Comments, `script`/`unscript` and the play-test server are the tester's other knobs. They belong to the front end rather than the environment, and they have their own page: <doc:PlayTesting>.
 
 ## The `<br>` hard-break marker
 
@@ -132,30 +91,30 @@ For the rare *intentional* break within a paragraph — a banner's title above i
 `bin/export-game` release-builds an executable product and copies the single binary into `dist/`:
 
 ```sh
-bin/export-game Zork1        # → dist/Zork1
+bin/export-game Lighthouse   # → dist/Lighthouse
 bin/export-game              # lists the available products
 ```
 
-It discovers the current package's executable products from its manifest, so it lists whatever your package ships — the demo `Zork1` and `CloakOfDarkness` here, or the `MyGame` in a fresh `Templates/NewGame` copy, with no edits to the script. Under the hood it's just `swift build -c release --product <Product>` followed by a copy of the built binary to `dist/<Product>` — no bundle, no installer, one file.
+It discovers the current package's executable products from its manifest, so it lists whatever your package ships — the seven demo games here, or the `MyGame` in a fresh `Templates/NewGame` copy, with no edits to the script. Under the hood it's `swift build -c release --product <Product>` followed by a copy of the built binary to `dist/<Product>` — no bundle, no installer, one file.
 
 ## Share it on macOS 15+
 
 On macOS 15 or newer the binary dynamically links the Swift runtime that ships with the OS, so the file **is** the game: your friend runs it directly, with no Xcode and no Swift toolchain installed.
 
 ```sh
-./dist/Zork1
+./dist/Lighthouse
 ```
 
 The one wrinkle is Gatekeeper. A binary someone *downloads* is quarantined, and macOS will refuse to run it until that's cleared. The recipient can clear it themselves:
 
 ```sh
-xattr -dr com.apple.quarantine ./Zork1
+xattr -dr com.apple.quarantine ./Lighthouse
 ```
 
 or you can ad-hoc sign the binary before sending it:
 
 ```sh
-codesign -s - dist/Zork1
+codesign -s - dist/Lighthouse
 ```
 
 ## Publish binaries for a tag
