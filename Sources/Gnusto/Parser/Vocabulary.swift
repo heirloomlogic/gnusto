@@ -58,6 +58,17 @@ struct Vocabulary: Sendable {
     /// about the surface.
     static let conjunctions: Set<String> = ["and"]
 
+    /// The words that except objects from a group: `take all but the sword`.
+    ///
+    /// Claimed the way ``conjunctions`` are, and neither noise nor reserved for
+    /// the same two reasons. Not noise, because dropping the word would fold
+    /// the exception back into the group it was meant to leave out. Not
+    /// reserved, because the parser only reads one as punctuation *behind a
+    /// multi-object keyword* — and a keyword is itself a reserved word no item
+    /// can answer to — so `name("last but one ticket")` keeps answering to
+    /// every word of itself without needing a second pass to rescue it.
+    static let exclusions: Set<String> = ["but", "except"]
+
     /// Spellings of a pattern's preposition that mean the same thing, mapped to
     /// the one the tables are written in.
     ///
@@ -182,6 +193,7 @@ struct Vocabulary: Sendable {
             .union(prepositions)
             .union(noiseWords)
             .union(Self.conjunctions)
+            .union(Self.exclusions)
             .union(Self.reservedWords)
         for lexicon in itemLexicons.values {
             allKnownWords.formUnion(lexicon.nouns)

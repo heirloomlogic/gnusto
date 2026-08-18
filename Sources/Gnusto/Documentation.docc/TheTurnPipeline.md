@@ -25,6 +25,10 @@ Four parser behaviors go beyond one-line-in, one-command-out:
 
   Commas are not yet conjunctions — the addressing path (`troll, take the sword`) claims them. Write `take the bottle and the sack and the lamp`.
 
+- **Exclusions.** `take all but the sword` is the escape hatch when `all` would sweep up the one thing the player wants left alone — a lit lamp, a cursed idol, the thing that kills you when you carry it. `but` and `except` are the same word to the parser, what follows is itself a phrase (`take all except the sword and the lamp` excepts two), and `them` takes one as readily as `all` does. Excepting something that was never in the set is deliberately no error: the player said which things they didn't mean, not which things are here, so `take all but the statue` runs whether or not the statue was ever on offer. A subtraction that empties a group that wasn't empty says so in its own words rather than claiming the room is bare — that goes for the container `put all in the sack` takes out of its own group, too.
+
+  The word is claimed **only behind a multi-object keyword**, and that is what makes it safe to add. `all`, `everything` and `them` are reserved words no item can answer to, so a phrase this split claims can never also be something's declared name — `take last but one ticket` finds no keyword in front of the `but` and resolves as the one object it names, without needing the conjunction's second pass to rescue it. The same rule is why `take the coin but the feather` is left unread: a phrase that names two things and excepts one of them is not English anybody types, and refusing it keeps the word available to games.
+
 ## The stages of a turn
 
 Once a command parses, the engine runs these stages in order. Rules are matched by **scope** (world, the current location, or one of the command's objects) and by **intent** (a rule with no intents listed matches any).
