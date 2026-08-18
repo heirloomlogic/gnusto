@@ -335,3 +335,114 @@ inside X` failing where `look in X` works, and no conjunction support at all. No
 Dungeon defect and none has a key here.
 
 Pass these five keys as `ledgerKeys` too. The list is twenty-two keys longer than it was.
+
+
+## 2026-08-18 — second round, `bd5f79b` (`fix: none`, nothing applied)
+
+Ran at **seed 52**, the seed `DungeonWalkthroughTests` pins its 716-point route to. Oracle
+tiers T0–T4, all five. `verifyEffort` inherited, not turned down. 52 findings: 42 confirmed
+(29 unanimous, 13 `needs-human`), 10 refuted, 0 routed. Round report:
+`docs/games/dungeon-playtest-2026-08-18.md`.
+
+**Every `confirmed` row below is an open defect in the game as it ships, filed as #286.**
+
+**The 39 `fixed` keys above were withheld from `ledgerKeys`.** Only the 13 `refuted` ones
+were passed, which is what the correction at the top of this file instructs. Nothing in
+this round matched any of them, and nothing could have: they are all display-truncated with
+`…`, which `normalize()` can never emit.
+
+**These keys are full and untruncated**, in the `decl::<file>::<declaration>` shape the
+clusterer actually compares — the first round in this file for which that is true.
+
+Every row is `preexisting`; the verifiers dated all 42 confirmed findings against `git
+log -S` and not one arrived with a recent fix. **No row here is a regression, and none of
+the 39 `fixed` rows above came back.** The next round's first job is still to check that
+none of them has.
+
+Four things deserve a flag.
+
+**The critic rated the round `round-is-thin`, and 42 findings do not contradict that.**
+Three region prefixes pointed six of eight testers at three regions. Volcano is 0/10 rooms
+worked, Palantir 0/5, Royal Puzzle 0/2, Dam 0/8, Coal Mine 1/13 — thirty-eight rooms the
+committed route walks straight through and nobody addressed a word to. A region with no
+rows below is **not** clean; it is unvisited.
+
+**The thief was dead in every session by move 48, and that is a property of the prefixes,
+not of the dice.** `route616.txt` line 42 is `attack thief with sword`, and all three region
+prefixes are prefixes of that route. `shadowy figure` appears zero times in ~18,900 played
+commands, so six of the thirty-five timers are dead code for the whole round. A prefix that
+omits line 42 is the single highest-value change the next round can make.
+
+**Two keys are coarser than the defect and will over-match.**
+`decl::Sources/Gnusto/Actions/StubVerbs.swift::stubs` and
+`decl::Sources/Gnusto/Actions/CoreVerbs.swift::cores` name whole declaration arrays, not
+lines. Both are `confirmed`, so neither is passed as a `ledgerKey` and neither can suppress
+anything today — but if either is ever marked `refuted`, narrow it first or it will swallow
+every future finding on any stub or core verb.
+
+**Thirteen rows are `needs-human`, and in three of them the verifier corrected the finder's
+own diagnosis.** `Prose+EndgameMechanics.swift::masterArrives` (the capitalised lines are
+the outlier, not the listing line), `CoreVerbs.swift::cores` (the prescribed fix makes Zork 1
+warn at launch) and `AboveGround.swift::mailbox` (confirmed on object-property fidelity, not
+on the prose contradiction the finder led with). Read the round report's per-site notes
+before acting on any of the three; the claim alone points at the wrong line.
+
+| Key (full) | Verdict | Category | Severity |
+|---|---|---|---|
+| `decl::Sources/Dungeon/Regions/Prose+House.swift::bottle` | confirmed | prose-untrue-of-state | major |
+| `decl::Sources/Dungeon/Regions/Prose+Alice.swift::sphere` | confirmed | prose-untrue-of-state | major |
+| `decl::Sources/Dungeon/Regions/Prose+Alice.swift::etchingsAbove` | confirmed | unanswerable-noun | major |
+| `decl::Sources/Dungeon/Regions/Prose+Alice.swift::cageGas` | confirmed | unanswerable-noun | minor |
+| `decl::Sources/Dungeon/Regions/Prose+Alice.swift::machineRoomWithButtons` | confirmed | unanswerable-noun | minor |
+| `decl::Sources/Dungeon/Regions/Prose+Dam.swift::reservoirWater` | confirmed | prose-untrue-of-state | major |
+| `decl::Sources/Dungeon/Regions/Prose+River.swift::buoy` | confirmed | presence-line-location-blind | major |
+| `decl::Sources/Dungeon/Regions/River.swift::barrel` | confirmed (needs-human) | mechanic-contradicts-prose | major |
+| `decl::Sources/Dungeon/Regions/Prose+River.swift::boatHissesFlat` | confirmed (needs-human) | gate-not-gating | major |
+| `decl::Sources/Dungeon/Regions/Prose+River.swift::beachDigs` | confirmed | unanswerable-noun | major |
+| `decl::Sources/Dungeon/Regions/Prose+River.swift::frigidRiverHere` | confirmed | prose-untrue-of-frame | major |
+| `decl::Sources/Dungeon/Regions/Prose+AboveGround.swift::distantView` | confirmed | prose-untrue-of-frame | major |
+| `decl::Sources/Dungeon/Regions/Prose+River.swift::whiteCliffsFromBelow` | confirmed | prose-untrue-of-frame | minor |
+| `decl::Sources/Dungeon/Regions/Prose+River.swift::aragainFallsItself` | confirmed | prose-untrue-of-frame | minor |
+| `decl::Sources/Dungeon/Regions/Prose+River.swift::rainbowItself` | confirmed | prose-untrue-of-frame | minor |
+| `decl::Sources/Dungeon/Regions/Prose+Temple.swift::torchNoRope` | confirmed | mechanic-contradicts-prose | major |
+| `decl::Sources/Dungeon/Regions/Prose+Temple.swift::spirits` | confirmed | prose-untrue-of-state | major |
+| `decl::Sources/Dungeon/Regions/Prose+Temple.swift::candles` | confirmed (needs-human) | prose-untrue-of-state | major |
+| `decl::Sources/Dungeon/Regions/Prose+RoundRoom.swift::roundRoomCompass` | confirmed | unanswerable-noun | major |
+| `decl::Sources/Gnusto/Actions/StubVerbs.swift::stubs` | confirmed (needs-human) | prose-untrue-of-frame | major |
+| `decl::Sources/Dungeon/Regions/Prose+Temple.swift::bellCools` | confirmed | prose-untrue-of-frame | minor |
+| `decl::Sources/Dungeon/Regions/Prose+Temple.swift::blackBook` | confirmed (needs-human) | mechanic-contradicts-prose | minor |
+| `decl::Sources/Dungeon/Prose+Stubs.swift::stubs.climb` | confirmed (needs-human) | stock-line-not-reskinned | minor |
+| `decl::Sources/Dungeon/Regions/Prose+Alice.swift::blueIcingWriting` | confirmed | prose-untrue-of-state | major |
+| `decl::Sources/Dungeon/Regions/Prose+Alice.swift::poolLeak` | confirmed | prose-untrue-of-state | major |
+| `decl::Sources/Dungeon/Regions/Prose+Alice.swift::robotSpringsTheCage` | confirmed | mechanic-contradicts-prose | major |
+| `decl::Sources/Dungeon/Regions/Prose+Alice.swift::robotIsOutOfEarshot` | confirmed (needs-human) | stock-line-not-reskinned | minor |
+| `decl::Sources/Dungeon/Regions/Prose+River.swift::geronimoNotInBarrel` | confirmed | prose-untrue-of-frame | major |
+| `decl::Sources/Dungeon/Regions/Prose+River.swift::barrelInside` | confirmed (needs-human) | prose-untrue-of-state | minor |
+| `decl::Sources/Dungeon/Prose+Systems.swift::verbSmell` | confirmed (needs-human) | prose-untrue-of-frame | minor |
+| `decl::Sources/Dungeon/Regions/Prose+Temple.swift::exorcismLapses` | confirmed | prose-untrue-of-frame | major |
+| `decl::Sources/Dungeon/Regions/Prose+Temple.swift::bellRingRedHot` | confirmed | prose-untrue-of-state | major |
+| `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::pineEndOpen` | confirmed | prose-untrue-of-state | major |
+| `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::guardians` | confirmed (needs-human) | prose-untrue-of-frame | major |
+| `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::cryptTransition` | confirmed | prose-untrue-of-state | minor |
+| `decl::Sources/Dungeon/Prose+Systems.swift::toll` | confirmed | register-mismatch | note |
+| `decl::Sources/Dungeon/Regions/Prose+EndgameMechanics.swift::masterArrives` | confirmed (needs-human) | register-mismatch | note |
+| `decl::Sources/Dungeon/Regions/Prose+AboveGround.swift::gratingFromBelow` | confirmed | prose-untrue-of-state | major |
+| `decl::Sources/Dungeon/Regions/Prose+Cellar.swift::chimney` | confirmed | mechanic-contradicts-prose | major |
+| `decl::Sources/Dungeon/Regions/Prose+Bank.swift::viewingRoom` | confirmed (needs-human) | unanswerable-noun | major |
+| `decl::Sources/Dungeon/Regions/AboveGround.swift::mailbox` | confirmed | mechanic-contradicts-prose | minor |
+| `decl::Sources/Gnusto/Actions/CoreVerbs.swift::cores` | confirmed (needs-human) | register-mismatch | minor |
+| `decl::Sources/Dungeon/Regions/Prose+Alice.swift::bucketGoesNowhereElse` | refuted | mechanic-contradicts-prose | major |
+| `decl::Sources/Dungeon/Regions/Prose+River.swift::river2` | refuted | mechanic-contradicts-prose | major |
+| `decl::Sources/Dungeon/Regions/Prose+River.swift::digRevealsStatue` | refuted | prose-untrue-of-state | minor |
+| `decl::Sources/Dungeon/Prose+Systems.swift::drinkWater` | refuted | stock-line-not-reskinned | minor |
+| `decl::Sources/Dungeon/Regions/Prose+AboveGround.swift::clearing` | refuted | exit-prose-mismatch | minor |
+| `decl::Sources/Dungeon/Regions/Prose+River.swift::whiteCliffsNorth` | refuted | unwinnable | blocking |
+| `decl::Sources/Dungeon/Regions/Prose+River.swift::river5` | refuted | exit-prose-mismatch | major |
+| `decl::Sources/Dungeon/Regions/Prose+River.swift::chasmDeadEnd` | refuted | exit-prose-mismatch | minor |
+| `decl::Sources/Dungeon/Regions/Prose+Temple.swift::bellRedHot` | refuted | prose-untrue-of-state | minor |
+| `decl::Sources/Dungeon/Prose+Stubs.swift::stubs.sit` | refuted | register-mismatch | minor |
+
+Pass the ten `refuted` keys above as `ledgerKeys` next round, alongside the thirteen from
+2026-08-11. **Not the forty-two `confirmed` ones**, and not the thirty-nine `fixed` ones
+above them. The list is twenty-three keys long, and for the first time ten of them can
+actually match.
