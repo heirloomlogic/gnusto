@@ -6,6 +6,8 @@ isn't committed.
 | Path | Committed | Contents |
 |---|---|---|
 | `.context/playtest/<label>/<probe>/` | no | one run: its transcript with the `//` annotations, its effective command list, its stderr, and a summary naming the game, seed and label |
+| `.context/playtest/<label>/<probe>/branch-NNN.txt` | no | turns a `rewind` wrote out of the transcript. Really played, so they count toward coverage; not canonical, so the reproducer beside them does not produce them |
+| `.context/playtest/.replays/<probe>/` | no | one sessionless `replay` — the same `commands.txt` and `transcript.txt`, plus a `summary.txt` naming the seed. The leading dot reserves it: no tester label can start with one |
 | `docs/games/<game>-playtest-<YYYY-MM-DD>.md` | **yes** | the round report below |
 | `docs/games/<game>-playtest-ledger.md` | **yes** | append-only: every dedupe key ever seen, with its verdict |
 | one GitHub issue | — | every confirmed class as a checklist — see `issue-shape.md` |
@@ -17,6 +19,14 @@ in order to pick up one class goes in the issue. `issue-shape.md` owns the secon
 made; the probe directory under it is one run, written once and never rewritten. So a
 citation is `.context/playtest/<label>/probe-004/transcript.txt` — the path the tool
 printed — and a citation ending at the label points at a directory, not at evidence.
+
+**A frame read from `replay` is citable too, and citing it is not optional.** Every
+`replay` call now answers with `transcript=<path>` on its first line and writes that
+file. Before it did, the 2026-08-17 round produced a report asserting an ending branch
+that appears in **no file in the tree**, and three charters whose load-bearing frames
+came from free replays nobody could re-read. If you read a line off a replay and quote
+it, quote the path with it; a claim whose only witness was a tool result that scrolled
+past is a claim the next reader cannot check.
 
 The report is committed even when the round found nothing. "We ran and found
 nothing" is the single most useful thing to be able to prove six months later, and
@@ -77,6 +87,14 @@ Four things, none of them optional:
   left no account of itself. **Name those.** A coverage figure computed without them
   is a floor and has to say so. The 2026-08-11 Dungeon round published "112 of 195"
   against a real 155 because this number used to be asked rather than counted.
+- **Turns, from `coverage.turns`, and never from what anybody said they spent.** Four
+  numbers: `sessions` (the testers' transcripts), `branches` (turns a `rewind` wrote
+  out of a transcript — really played, so really counted), `replays` (the verifiers'
+  probes, usually the largest), and `total`. Report the total and the tester/verifier
+  split; a round whose verifiers outspend its testers many times over played less than
+  it argued, and that belongs in the coverage section rather than being averaged away.
+  The 2026-08-17 round published 295 against artifacts holding about 1,493, because
+  this number used to be asked.
 - **Entered is not covered, and the two must not be one number.** A room the harness
   only walked through while replaying a committed route from
   `.context/playtest/routes/` is reach, not coverage — 21 of Dungeon's were exactly
@@ -96,7 +114,8 @@ Four things, none of them optional:
 
 Commit `3fab729` · seed `0` · charters: tourist, clock-watcher, vandal, re-reader
 Oracle tiers: T0 kernel, T1 design doc (contract + timeline + solution), T2
-FulminateTests, T3 source. Budget: 190 turns planned, 174 spent over 31 probes.
+FulminateTests, T3 source. Budget: 190 turns planned; 174 counted off the footers
+(151 in transcripts, 23 in rewound branches) plus 402 in 31 verifier replay probes.
 
 ## The round
 

@@ -17,6 +17,8 @@ import Foundation
 /// .context/playtest/<label>/saves/          shared by every probe under the label
 /// .context/playtest/<label>/<probe>/transcript.txt
 ///                                  /commands.txt
+/// .context/playtest/.replays/<probe>/       one sessionless `replay`: the same two
+///                                           files, plus the script's summary.txt
 /// ```
 ///
 /// A label is a tester's namespace and a probe is one run; each `open`
@@ -25,6 +27,16 @@ import Foundation
 /// reason: `mkdir` **is** the lock — it fails when the directory exists, and it
 /// fails atomically — and sessions here genuinely run at the same time.
 actor PlaytestSessions {
+    /// Where a sessionless `replay` leaves its evidence.
+    ///
+    /// **The leading dot is what reserves it.** ``isPlainName(_:)`` refuses a
+    /// label starting with one — the rule that keeps a tester out of
+    /// `bin/playtest-replay`'s `.bin` cache — so no label can ever collide with
+    /// this directory and no guard is needed to say so. It also keeps the round's
+    /// own `${game}-r*-session-*` glob narrow by construction: a replay probe is
+    /// the round's machinery, not a tester who never called `finish`.
+    static let replayLabel = ".replays"
+
     /// How many sessions may hold a live world at once, absent
     /// `GNUSTO_MCP_MAX_SESSIONS`.
     static let defaultMaxSessions = 32
@@ -154,6 +166,30 @@ actor PlaytestSessions {
     /// How many sessions this registry has ever opened. For the suite.
     func count() -> Int {
         sessions.count
+    }
+
+    /// Takes a directory for one sessionless `replay` to write its evidence into.
+    ///
+    /// **Best effort, and never a reason to fail a replay.** The same posture
+    /// ``PlaytestSession/writeBranch(_:)`` takes, and for a sharper reason: the
+    /// caller is a verifier adjudicating somebody's finding, and refusing to
+    /// adjudicate because a disk was full would be a worse answer than
+    /// adjudicating without a file to cite.
+    ///
+    /// It goes through the registry rather than being computed in
+    /// ``PlaytestReplay`` so that one type owns the disk layout and one `mkdir`
+    /// lock serves both allocators — two verifiers replaying at the same instant
+    /// cannot take the same probe, for the same reason two testers cannot.
+    ///
+    /// - Returns: the fresh probe directory, or `nil` if one could not be made.
+    func replayProbe() -> URL? {
+        let labelDirectory = root.appendingPathComponent(
+            Self.replayLabel, isDirectory: true)
+        guard
+            (try? FileManager.default.createDirectory(
+                at: labelDirectory, withIntermediateDirectories: true)) != nil
+        else { return nil }
+        return try? Self.allocateProbe(in: labelDirectory).1
     }
 
     // MARK: - Eviction

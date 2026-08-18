@@ -75,6 +75,12 @@ it produced. If the trimmed list does not produce the line you are reporting, yo
 have not found the reproducer yet; say so in your coverage note rather than
 reporting a sequence that does not work.
 
+`replay` writes its own probe directory and hands back `transcript=<path>` on the
+first line. Copy that path into your finding whenever the frame you are quoting
+came from a replay rather than from your own session — it is the file that holds
+the turn, and a quote with no file behind it cannot be checked by anyone who
+wasn't there.
+
 ## The judgement kernel
 
 Three rules that hold for every game, statable from a transcript with no game

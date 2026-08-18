@@ -149,7 +149,7 @@ enum PlaytestTools {
             rewind(sessions),
             finish(sessions),
             export(sessions),
-            replay(for: game),
+            replay(for: game, sessions),
         ]
     }
 
@@ -1102,23 +1102,31 @@ enum PlaytestTools {
     /// useless to it; what it holds is a command list, a seed and a claim about a
     /// line. See ``PlaytestReplay``.
     ///
-    /// - Parameter game: the game to replay.
+    /// - Parameters:
+    ///   - game: the game to replay.
+    ///   - sessions: the registry, asked only for a probe directory to leave the
+    ///     evidence in. A replay still holds no session and joins none.
     /// - Returns: the row.
-    private static func replay(for game: PreparedGame) -> PlaytestTool {
+    private static func replay(
+        for game: PreparedGame, _ sessions: PlaytestSessions
+    ) -> PlaytestTool {
         PlaytestTool(
             name: "replay",
             mutatesState: false,
             description: """
                 Play a list of commands in a brand-new copy of the game and read \
                 the transcript. No session: nothing you do here touches anybody's \
-                session, no files are written, and two callers cannot see each \
-                other. Give `expect` an excerpt and you get a verdict instead — \
-                whether that text really printed, at which turn, in which room, \
-                at which move count, and the whole turn it printed in so you can \
-                see the frame. Whitespace is collapsed before matching, so an \
-                excerpt re-wrapped by a report still matches the line it came \
-                from, and the [status] footers are not searched. This is how you \
-                check a reproducer without playing the game yourself.
+                session and two callers cannot see each other. Give `expect` an \
+                excerpt and you get a verdict instead — whether that text really \
+                printed, at which turn, in which room, at which move count, and \
+                the whole turn it printed in so you can see the frame. Whitespace \
+                is collapsed before matching, so an excerpt re-wrapped by a report \
+                still matches the line it came from, and the [status] footers are \
+                not searched. This is how you check a reproducer without playing \
+                the game yourself. Every call writes its own probe directory and \
+                answers with `transcript=<path>`: quote that path in whatever you \
+                file, because a frame you read here and cited nowhere is a claim \
+                the next reader cannot check.
                 """,
             inputSchema: [
                 "type": "object",
@@ -1154,7 +1162,8 @@ enum PlaytestTools {
                     prepared: game,
                     commands: commands,
                     seed: try seed(arguments),
-                    expect: arguments["expect"]?.stringValue)
+                    expect: arguments["expect"]?.stringValue,
+                    probe: await sessions.replayProbe())
                 return PlaytestToolResult(
                     text: outcome.rendered, structured: outcome.json)
             })
@@ -1197,6 +1206,21 @@ enum PlaytestTools {
                     "The whole turn it printed in — or, when it never printed, the last "
                         + "turn of the replay, so a false claim comes back with the frame "
                         + "that was really there."),
+            ],
+            "transcriptPath": [
+                "type": "string",
+                "description": .string(
+                    "Where this replay's transcript was written. Written once and never "
+                        + "rewritten, so it is the evidence a reader follows later — cite "
+                        + "it in whatever you file. Absent only if the write failed, which "
+                        + "does not fail the replay."),
+            ],
+            "commandsPath": [
+                "type": "string",
+                "description": .string(
+                    "The command list beside it, which replays to that transcript "
+                        + "exactly. The seed that produced both is in summary.txt in the "
+                        + "same directory."),
             ],
         ],
         "required": ["lines", "finished"],
@@ -1247,9 +1271,20 @@ enum PlaytestTools {
             "roomsVisited": [
                 "type": "array",
                 "description": .string(
-                    "The rooms the status line named, in first-seen order. Counted off "
-                        + "this session, not recalled — a round reads it rather than "
-                        + "asking you how far you got."),
+                    "Every room the status line named, in first-seen order — including "
+                        + "rooms reached inside a branch a rewind later wrote off, whose "
+                        + "turns were really played. Counted off this session, not "
+                        + "recalled: a round reads it rather than asking you how far you "
+                        + "got. signals.roomsVisited counts only the canonical transcript, "
+                        + "so the two may differ for a session that rewound."),
+                "items": ["type": "string"],
+            ],
+            "roomsOnlyInBranches": [
+                "type": "array",
+                "description": .string(
+                    "The rooms above whose evidence is in a branch-NNN.txt rather than in "
+                        + "transcript.txt. Empty unless this session rewound out of a room "
+                        + "it had entered."),
                 "items": ["type": "string"],
             ],
             "unknownWords": [
@@ -1266,7 +1301,7 @@ enum PlaytestTools {
         ],
         "required": [
             "accepted", "open", "items", "signals", "forks", "roomsVisited",
-            "unknownWords", "transcript", "message",
+            "roomsOnlyInBranches", "unknownWords", "transcript", "message",
         ],
     ]
 
@@ -1573,6 +1608,7 @@ extension PlaytestSession.Closing {
                 }),
             "signals": signals.json,
             "roomsVisited": .array(roomsVisited.map { .string($0) }),
+            "roomsOnlyInBranches": .array(roomsOnlyInBranches.map { .string($0) }),
             "unknownWords": .object(
                 unknownWords.mapValues { .integer($0) }),
             "transcript": .string(transcript),
@@ -1650,8 +1686,12 @@ extension PlaytestReplay.Outcome {
     /// reader whose whole job is reading it should not have to un-escape it. The
     /// structured half carries the same fields for anything checking them.
     var rendered: String {
+        // The path goes on the header line, before anything the caller came for,
+        // because the one thing it reliably forgets to do is cite it.
         var lines = [
             "[playtest] replay lines=\(self.lines) finished=\(finished)"
+                + (probe.map { " transcript=\($0.appendingPathComponent("transcript.txt").path)" }
+                    ?? "")
         ]
         guard let verdict else {
             return lines[0] + "\n" + Self.clipped(transcript)
@@ -1678,6 +1718,12 @@ extension PlaytestReplay.Outcome {
             "lines": .integer(lines),
             "finished": .bool(finished),
         ]
+        if let probe {
+            entry["transcriptPath"] =
+                .string(probe.appendingPathComponent("transcript.txt").path)
+            entry["commandsPath"] =
+                .string(probe.appendingPathComponent("commands.txt").path)
+        }
         guard let verdict else {
             entry["transcript"] = .string(Self.clipped(transcript))
             return .object(entry)

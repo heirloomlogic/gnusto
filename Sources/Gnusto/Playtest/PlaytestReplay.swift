@@ -22,11 +22,24 @@ import Foundation
 /// on. Everything below the run is text: the frame a verdict reports is read
 /// back out of the `[status]` footer, which is what the footer is for.
 ///
-/// **It touches nothing.** A fresh `GameWorld` over the shared `PreparedGame`, a
-/// throwaway save directory that is deleted on the way out, no session, no
-/// registry, no files under `.context/playtest`. Two verifiers replaying two
-/// findings at once cannot see each other, and neither can disturb a tester
-/// mid-session.
+/// **It disturbs nothing, and it leaves evidence.** A fresh `GameWorld` over the
+/// shared `PreparedGame`, a throwaway save directory that is deleted on the way
+/// out, no session and no registry entry: two verifiers replaying two findings
+/// at once cannot see each other, and neither can reach a tester mid-session.
+///
+/// What it does write is its own probe directory — `commands.txt` and
+/// `transcript.txt` under `.context/playtest/.replays/probe-NNN/`, exactly the
+/// two files a session writes and in exactly the same layout. That is a
+/// correction rather than an original design. For its first rounds a replay
+/// wrote nothing at all, on the argument that a verifier's tool should be pure;
+/// the 2026-08-17 round then filed three charters whose load-bearing frames came
+/// from free replays, and one whole ending branch that the report asserts and
+/// that appears in **no file in the tree**. A finding nobody can re-read is not
+/// evidence, and `references/report-shape.md`'s cite-the-probe rule exists
+/// precisely to stop that. Purity was the wrong thing to buy.
+///
+/// The write is best effort and never fails a replay: the verdict is the answer,
+/// the file is the receipt.
 enum PlaytestReplay {
     /// The most commands one replay may run.
     ///
@@ -74,6 +87,9 @@ enum PlaytestReplay {
         let finished: Bool
         /// The verdict, when the caller asked one.
         let verdict: Verdict?
+        /// Where this replay's `transcript.txt` was written, for a finding to
+        /// cite. `nil` when no directory was offered or the write failed.
+        let probe: URL?
     }
 
     /// Plays a command list into a fresh world and reports what happened.
@@ -85,11 +101,17 @@ enum PlaytestReplay {
     ///   - seed: the seed to pin. A finding names one; 0 is
     ///     `bin/playtest-replay`'s default and a session's.
     ///   - expect: an excerpt to look for, or `nil` to read the transcript.
+    ///   - probe: a fresh directory to leave `commands.txt` and `transcript.txt`
+    ///     in, or `nil` to run without leaving a receipt. The server always
+    ///     passes one; the suite passes `nil` where the files are not the
+    ///     subject.
     /// - Throws: ``PlaytestError`` for a list that is too long or that holds a
     ///   `script`/`unscript` line — neither of which runs anything.
-    /// - Returns: the transcript, and the verdict when one was asked for.
+    /// - Returns: the transcript, the verdict when one was asked for, and where
+    ///   the evidence went.
     static func run(
-        prepared: PreparedGame, commands: [String], seed: UInt64, expect: String?
+        prepared: PreparedGame, commands: [String], seed: UInt64, expect: String?,
+        probe: URL? = nil
     ) async throws -> Outcome {
         guard commands.count <= commandLimit else {
             throw PlaytestError(
@@ -128,7 +150,54 @@ enum PlaytestReplay {
             transcript: transcript,
             lines: commands.count,
             finished: await world.hasEnded(),
-            verdict: expect.map { Self.verdict(on: $0, in: blocks) })
+            verdict: expect.map { Self.verdict(on: $0, in: blocks) },
+            probe: probe.flatMap { Self.write(commands, transcript, seed: seed, to: $0) })
+    }
+
+    /// Writes a replay's two files, and reports where.
+    ///
+    /// The two evidence files go or neither does. `commands.txt` replaying to
+    /// `transcript.txt` is the invariant this whole harness sells, and a
+    /// directory holding a transcript whose command list failed to write is
+    /// worse than no evidence, because it looks like evidence.
+    ///
+    /// **The seed goes in a third file, not into `commands.txt`.** That is
+    /// `bin/playtest-replay`'s `summary.txt`, matched deliberately: a probe
+    /// directory a finding cites should say which seed produced it without the
+    /// reader reconstructing that from the round report. It cannot be a comment
+    /// at the head of the command list, tempting as that is —
+    /// `ScriptedIOHandler` echoes *every* line it is fed as `> line`, comments
+    /// included, so such a list would neither reproduce the transcript beside it
+    /// nor keep the turn numbering a verdict reports. `summary.txt` is written
+    /// last and is not part of the guarantee; losing it costs a label, not the
+    /// evidence.
+    ///
+    /// - Parameters:
+    ///   - commands: the lines fed, in order.
+    ///   - transcript: what they printed.
+    ///   - seed: the seed that produced it.
+    ///   - directory: the probe directory, already made.
+    /// - Returns: the directory when both files landed, `nil` otherwise.
+    private static func write(
+        _ commands: [String], _ transcript: String, seed: UInt64, to directory: URL
+    ) -> URL? {
+        let transcriptURL = directory.appendingPathComponent("transcript.txt")
+        let commandsURL = directory.appendingPathComponent("commands.txt")
+        guard
+            (try? Data(commands.map { "\($0)\n" }.joined().utf8).write(
+                to: commandsURL, options: .atomic)) != nil,
+            (try? Data(transcript.utf8).write(to: transcriptURL, options: .atomic)) != nil
+        else { return nil }
+
+        let summary = """
+            [playtest] replay seed=\(seed) commands=\(commands.count)
+            [playtest] transcript=\(transcriptURL.path)
+            [playtest] commands=\(commandsURL.path)
+
+            """
+        try? Data(summary.utf8).write(
+            to: directory.appendingPathComponent("summary.txt"), options: .atomic)
+        return directory
     }
 
     // MARK: - Reading the transcript back

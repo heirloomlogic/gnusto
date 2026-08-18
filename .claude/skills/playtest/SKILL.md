@@ -177,17 +177,31 @@ permanently and needs no flag: it reads files and adds up integers, and there is
 judgement in it to lose.
 
 **Anything the report states as a number is counted, not asked.** The rule exists because
-the same mistake happened twice: the 2026-07-31 round self-reported 2 unknown-word replies
-against transcripts holding 261, and the 2026-08-11 round self-reported 112 of 195 rooms
-against a real 155. Neither was a tester lying — a field description is read seventy-nine
-different ways by seventy-nine agents, and a derived number does not depend on that.
+the same mistake happened three times: the 2026-07-31 round self-reported 2 unknown-word
+replies against transcripts holding 261, the 2026-08-11 round self-reported 112 of 195
+rooms against a real 155, and the 2026-08-17 round reported 295 turns spent — exactly the
+sum of six testers' self-reports — against artifacts holding about 1,493. None of them was
+a tester lying; a field description is read seventy-nine different ways by seventy-nine
+agents, and a derived number does not depend on that.
 
-Both of those numbers now come from `closing.json`, which the session server writes at
-`finish` out of the status line and the parser's own record of tokens it could not consume.
-The collator globs those files and sums them; nobody is asked how far they got. **The
-pattern to copy for the next number: have the engine write it down, then glob for the
+The first two now come from `closing.json`, which the session server writes at `finish` out
+of the status line and the parser's own record of tokens it could not consume. The third is
+counted off the `[status]` footers: every footer says `turn=cost` or `turn=free`, so the
+round greps for the first across three places — the testers' transcripts, the `branch-NNN.txt`
+files a rewind wrote off, and the verifiers' probes under `.context/playtest/.replays/`.
+The collator does all of it; nobody is asked how far they got.
+
+Two lessons worth carrying, because the third instance taught them and the first two
+didn't. **A number cannot be counted until something writes the thing down** — turns
+stayed a self-report for as long as it did because `replay` wrote no file, so a verifier's
+turns existed nowhere to be counted. And **a rewind is not an erasure**: a room worked for
+ten turns and then rewound out was still worked, so the coverage arithmetic reads the
+branch files too.
+
+**The pattern to copy for the next number: have the engine write it down, then glob for the
 file.** An agent grepping transcripts for the engine's own prose is the second-best version
-of this and goes wrong the moment a game re-voices the line.
+of this and goes wrong the moment a game re-voices the line — grepping for the *footer*,
+which the harness writes and no game can re-voice, is the acceptable middle.
 
 ## What lives where
 
@@ -284,7 +298,20 @@ A current server returns `roomsVisited` and `unknownWords` in the result and lea
 `closing.json` in the probe directory. A stale one returns neither and writes no file
 — and a round dispatched against it collates nothing, reports every session as never
 having finished, and looks exactly like a round where the testers all crashed.
-Delete the scratch directory afterwards.
+
+Check the other half in the same breath, because the round's turn count now depends
+on it:
+
+```
+replay  commands: ["look"]
+```
+
+A current server answers `[playtest] replay lines=1 finished=false transcript=…` and
+leaves that file under `.context/playtest/.replays/probe-001/`. A server predating
+that writes nothing, and the collator's replay glob comes back empty — which reads as
+a round whose verifiers never checked anything rather than as a stale binary.
+
+Delete the scratch directory afterwards, `.replays` included.
 
 ## Measuring a change to the harness
 

@@ -32,7 +32,10 @@ const findings = (charter) => ({
          reproducer: ['down','z'], fault: 'presence line ignores room', ownerFile: 'Sources/Fulminate/Cast.swift',
          replayedCleanly: true, transcriptPath: '/tmp/t.txt' }]
     : [],
-  coverage: { honestSummary: 'walked it', cellsSkipped: [], turnsSpent: 40 },
+  // No `turnsSpent`: the round counts turns off the `[status]` footers now, and
+  // the field is gone from COVERAGE, whose `additionalProperties: false` would
+  // reject a tester that still sent one.
+  coverage: { honestSummary: 'walked it', cellsSkipped: [] },
 })
 
 const stub = async (prompt, opts = {}) => {
@@ -60,6 +63,7 @@ const stub = async (prompt, opts = {}) => {
       rooms: ['Front Hall', 'Cellar'],
       words: [{ word: 'grout', count: 2 }],
       forksNobodyTook: ['fork:burn-the-letter@Parlour'],
+      turns: { sessions: 252, branches: 102, replays: 1139, replayProbes: 71 },
       sessionsFinished: 3,
       sessionsUnfinished: ['.context/playtest/Fulminate-explorer-b/probe-002/'],
       note: '',
@@ -247,9 +251,21 @@ check(
   'could not read an `open` label out of every play prompt'
 )
 
+// The label glob, read out of the collator's own commands in both forms it can
+// take: a bare shell glob under `.context/playtest/`, and `find -path` with the
+// label between `*/` and `/*/`. The second is the current one — see the
+// bare-glob check below for why the recipes moved — and requiring the trailing
+// `/*/` is what keeps `*/probe-*/transcript.txt` out of this list: that pattern
+// names a probe, not a tester's label, and matching openLabels against it would
+// be meaningless.
 const collator = prompts.find((p) => p.label === 'collator')
 const collatorGlobs = collator
-  ? [...new Set([...collator.prompt.matchAll(/\.context\/playtest\/([^/\s]*\*[^/\s]*)\//g)].map((m) => m[1]))]
+  ? [
+      ...new Set([
+        ...[...collator.prompt.matchAll(/\.context\/playtest\/([^/\s"]*\*[^/\s"]*)\//g)].map((m) => m[1]),
+        ...[...collator.prompt.matchAll(/-path "\*\/([^/"]*\*[^/"]*)\/\*\//g)].map((m) => m[1]),
+      ]),
+    ]
   : []
 check(collatorGlobs.length > 0, 'the collator prompt names no .context/playtest glob')
 for (const label of openLabels.filter(Boolean)) {
@@ -273,6 +289,48 @@ for (const replay of [
     `a collator glob matches "${replay}", a replay label that never holds a closing.json`
   )
 }
+
+// Turns are counted, not asked — and the check is arithmetic rather than a
+// keyword, because the failure it guards against is a number that *looks*
+// counted. The 2026-08-17 round reported 295 turns, which was exactly the sum of
+// six testers' self-reports against artifacts holding about 1,493; nothing in
+// the round could tell the two apart, because both are integers in the same
+// field. Here the collator's four numbers are known, so the critic's prompt has
+// to add up to them or the plumbing dropped a class of turn on the way.
+//
+// The branch total is the one most likely to be lost: it lives in
+// `branch-NNN.txt` rather than in any transcript, and every earlier count in
+// this harness's history missed it.
+const criticPrompt = () => (prompts.find((p) => p.label === 'critic') || {}).prompt || ''
+const stubTurns = { sessions: 252, branches: 102, replays: 1139, replayProbes: 71 }
+check(
+  criticPrompt().includes(`**${stubTurns.sessions + stubTurns.branches + stubTurns.replays} world turns**`),
+  'the critic was not given the counted turn total (sessions + branches + replays)'
+)
+check(
+  criticPrompt().includes(`${stubTurns.branches} in branches`),
+  'the critic\'s turn count drops the branch files, which hold turns that were really played'
+)
+check(
+  criticPrompt().includes(`${stubTurns.replays} across ${stubTurns.replayProbes} replay probes`),
+  'the critic was not told what the verifiers spent, which is usually most of the round'
+)
+check(
+  collator ? /grep -h 'turn=cost'/.test(collator.prompt) : false,
+  'the collator is not told to count turns off the [status] footers'
+)
+check(
+  collator ? /find \.context\/playtest\/\.replays .*-exec grep -h 'turn=cost'/.test(collator.prompt) : false,
+  'the collator never reads the replay probes, so verifier turns are invisible again'
+)
+// `find`, not a bare glob. An unmatched shell glob aborts the whole command under
+// zsh, so a round whose testers all crashed would hand the collator a shell error
+// where it needed a zero — and an agent asked for an integer will produce one
+// anyway. This is the same class as the numbers being asked in the first place.
+check(
+  collator ? !/^\s*(grep|ls) [^\n]*\.context\/playtest/m.test(collator.prompt) : false,
+  'the collator counts with a bare shell glob, which aborts under zsh when nothing matches'
+)
 
 // The critic gets the agreement figure and is told not to read a high one as
 // good news on its own. That caution is the whole mitigation for batching.

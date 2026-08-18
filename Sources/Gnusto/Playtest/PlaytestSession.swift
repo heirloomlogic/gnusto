@@ -280,6 +280,23 @@ actor PlaytestSession {
     /// How many branches have been written off, for the file names.
     private var branches = 0
 
+    /// Every room this session has ever stood in, in first-seen order,
+    /// **including rooms it only reached inside a branch a rewind wrote off**.
+    ///
+    /// The ledger's own `roomsVisited` is rewound with everything else, because
+    /// the signals computed beside it — dwell, breadth — are ratios over the
+    /// canonical transcript and would be nonsense against a room count the
+    /// commands count no longer matches. That is right for a signal and wrong
+    /// for coverage: a tester who worked a room for ten turns and then rewound
+    /// out of it has read that room's prose, and a round that reports the room
+    /// as never entered under-counts in the direction that flatters it. This is
+    /// the coverage answer, kept here rather than in the ledger precisely
+    /// because ``truncate(to:naming:)`` must not be able to roll it back.
+    ///
+    /// A replayed prefix re-walks rooms already held, so both ways back from a
+    /// rewind — the ring and the replay — leave this list unchanged.
+    private var roomsEverVisited: [String] = []
+
     /// True once the session has used the player-facing `save` or `restore`.
     ///
     /// Such a session may never be evicted. Eviction is safe *because* replay
@@ -624,7 +641,25 @@ actor PlaytestSession {
         /// gets a number the tester reconstructed from memory at the end of a
         /// long session, and the two rounds that checked found it wrong in both
         /// directions.
+        ///
+        /// **Every room the session ever stood in, whether or not the turns
+        /// survived a rewind.** The 2026-08-17 round reported Vane's Study as
+        /// never entered after a tester worked it for ten turns and rewound; six
+        /// branch files that round held 102 real turns the coverage denominator
+        /// could not see. ``roomsOnlyInBranches`` says which of these to look for
+        /// in a `branch-NNN.txt` rather than in `transcript.txt`, and
+        /// `signals.roomsVisited` stays the canonical count — see
+        /// ``roomsEverVisited`` for why the two are allowed to disagree.
         let roomsVisited: [String]
+
+        /// The rooms in ``roomsVisited`` whose evidence is in a branch file
+        /// rather than in the transcript, because a rewind wrote those turns off.
+        ///
+        /// Empty for a session that never rewound, which is most of them. It is
+        /// here so that a reader who greps `transcript.txt` for a room this
+        /// record claims, finds nothing, and concludes the record is lying, is
+        /// instead told where to look.
+        let roomsOnlyInBranches: [String]
         /// Every token the vocabulary did not know, and how often it was typed.
         let unknownWords: [String: Int]
         /// Where the evidence is.
@@ -701,7 +736,10 @@ actor PlaytestSession {
             forks: ledger.forks().map {
                 ForkOutcome(id: $0.id, command: $0.command, room: $0.room, taken: $0.taken)
             },
-            roomsVisited: ledger.roomsVisited,
+            roomsVisited: roomsEverVisited,
+            roomsOnlyInBranches: roomsEverVisited.filter {
+                !ledger.roomsVisited.contains($0)
+            },
             unknownWords: ledger.unknownWords,
             transcript: transcriptURL.path,
             message: message)
@@ -1112,6 +1150,19 @@ actor PlaytestSession {
         return url
     }
 
+    /// Records that the session stood in a room, for good.
+    ///
+    /// Called from the two places the ledger is told a room — the opening and
+    /// every line after it — and from nowhere that a rewind reaches. See
+    /// ``roomsEverVisited``.
+    ///
+    /// - Parameter room: the name the status line gave, which may be empty when
+    ///   the footer had none.
+    private func visit(_ room: String) {
+        guard !room.isEmpty, !roomsEverVisited.contains(room) else { return }
+        roomsEverVisited.append(room)
+    }
+
     /// Reopens the transcript and writes back the blocks the session is holding.
     ///
     /// Truncating rather than appending, for the reason stated at ``boot()``:
@@ -1274,6 +1325,7 @@ actor PlaytestSession {
         // field does: `<br>` is a marker, not a word, and a queue item named
         // after one would be an obligation to examine punctuation.
         ledger.observeOpening(output: openingOutput, room: result.status.locationName)
+        visit(result.status.locationName)
         statusLine = footer.line(result.status, turnCost: false, fields: fields)
         lastMoves = result.status.moves
         finished = result.isFinished
@@ -1339,6 +1391,7 @@ actor PlaytestSession {
             moves: result.status.moves,
             line: index,
             turnCost: turnCost)
+        visit(result.status.locationName)
 
         statusLine = footer.line(result.status, turnCost: turnCost, fields: fields)
         lastMoves = result.status.moves

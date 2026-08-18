@@ -301,6 +301,57 @@ struct PlaytestSessionTests {
         #expect(branch.contains("> east"))
     }
 
+    /// A rewind takes the world, the record and the queue back. It does **not**
+    /// take back the fact that the tester read a room's prose.
+    ///
+    /// The 2026-08-17 round reported Vane's Study as never entered after a
+    /// tester worked it for ten turns and rewound out; six branch files that
+    /// round held 102 real engine turns the coverage denominator could not see,
+    /// and a next-round planner handed that list spends its budget re-walking a
+    /// walked room. Coverage is what the session *saw*, so it is kept where a
+    /// rewind cannot reach it — and both ways back are checked here, because the
+    /// ring path restores a held ledger and the replay path rebuilds one from
+    /// nothing, and only one of those would have been caught by testing either
+    /// alone.
+    ///
+    /// `signals.roomsVisited` stays canonical and is asserted as such: the
+    /// signals beside it are ratios over the commands that survived, and pairing
+    /// a rewound command count with a room count that was not would report a
+    /// session as skimming for having gone back.
+    @Test func coverageKeepsARoomThatARewindWroteOff() async throws {
+        let harness = try Harness(OperaHouse())
+        let session = try await harness.sessions.open(label: "rewound-rooms", seed: 0)
+        _ = try await session.opening()
+        _ = try await session.move(commands: ["x cloak"], allowPrompts: false)
+        _ = try await session.checkpoint("the foyer")
+
+        // Out to the Cloakroom and back, from inside the snapshot ring.
+        _ = try await session.move(commands: ["west", "x hook"], allowPrompts: false)
+        #expect(
+            try await session.restore(checkpoint: "the foyer").room
+                == "Foyer of the Opera House")
+
+        let afterRing = try await session.finish(
+            summary: "went west and came back", leaving: nil, limit: 3)
+        #expect(afterRing.roomsVisited == ["Foyer of the Opera House", "Cloakroom"])
+        #expect(afterRing.roomsOnlyInBranches == ["Cloakroom"])
+        #expect(afterRing.signals.roomsVisited == 1)
+
+        // And again from past the ring, which drops the world and the ledger and
+        // replays the retained prefix — a prefix that never leaves the Foyer.
+        _ = try await session.move(
+            commands: ["west"] + Array(repeating: "look", count: PlaytestSession.snapshotRing + 4),
+            allowPrompts: false)
+        _ = try await session.restore(checkpoint: "the foyer")
+        #expect(try text(at: session.commandsURL) == "x cloak\n")
+
+        let afterReplay = try await session.finish(
+            summary: "and again, from further out", leaving: nil, limit: 3)
+        #expect(afterReplay.roomsVisited == ["Foyer of the Opera House", "Cloakroom"])
+        #expect(afterReplay.roomsOnlyInBranches == ["Cloakroom"])
+        #expect(afterReplay.signals.roomsVisited == 1)
+    }
+
     /// A rewind takes the queue back with the world. A restore that put the
     /// world back and left the ledger where it was would re-offer every item the
     /// discarded turns closed and hide every one they raised — the queue would be

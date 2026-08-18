@@ -395,20 +395,23 @@ const FINDINGS_SCHEMA = {
         },
       },
     },
-    // No `unknownWords` and no `roomsVisited`. Both used to be asked of the
-    // tester and both were wrong — 2 occurrences reported against transcripts
-    // holding 261, and 112 rooms claimed against 155 walked. The session server
-    // now writes them into `closing.json` off the parse record and the status
-    // line, so the round reads them instead. A word the *game printed* and
-    // cannot answer is still a defect and still gets filed as an ordinary
-    // finding; it was never the count that made it one.
+    // No `unknownWords`, no `roomsVisited` and no `turnsSpent`. All three used
+    // to be asked of the tester and all three were wrong — 2 unknown-word
+    // occurrences reported against transcripts holding 261, 112 rooms claimed
+    // against 155 walked, and a 2026-08-17 round that reported 295 turns where
+    // the artifacts held about 1,493. The session server writes the first two
+    // into `closing.json` off the parse record and the status line; the third is
+    // now counted off the `[status]` footers by the collator, which it could not
+    // be until `replay` started writing a probe directory — before that a
+    // verifier's turns existed in no file and only the tester could be asked.
+    // A word the *game printed* and cannot answer is still a defect and still
+    // gets filed as an ordinary finding; it was never the count that made it one.
     coverage: {
       type: 'object',
       additionalProperties: false,
-      required: ['cellsSkipped', 'turnsSpent', 'honestSummary'],
+      required: ['cellsSkipped', 'honestSummary'],
       properties: {
         cellsSkipped: { type: 'array', items: { type: 'string' } },
-        turnsSpent: { type: 'integer' },
         droppedNonReproducible: { type: 'array', items: { type: 'string' } },
         honestSummary: {
           type: 'string',
@@ -535,7 +538,7 @@ const CLUSTER_SCHEMA = {
 const COLLATOR_SCHEMA = {
   type: 'object',
   additionalProperties: false,
-  required: ['rooms', 'words', 'sessionsFinished', 'sessionsUnfinished'],
+  required: ['rooms', 'words', 'turns', 'sessionsFinished', 'sessionsUnfinished'],
   properties: {
     rooms: {
       type: 'array',
@@ -559,6 +562,19 @@ const COLLATOR_SCHEMA = {
       type: 'array',
       description: 'Forks that appear in some closing.json with taken:false and in none with taken:true — a branch the whole round left alone.',
       items: { type: 'string' },
+    },
+    turns: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['sessions', 'branches', 'replays', 'replayProbes'],
+      description:
+        'World turns counted off the `[status]` footers — every `turn=cost` is one turn the game charged, and every `turn=free` is a parse failure or a meta command that charged nothing. Counted, never asked: the 2026-08-17 round reported 295 against artifacts holding about 1,493.',
+      properties: {
+        sessions: { type: 'integer', description: 'In the testers\' canonical transcripts.' },
+        branches: { type: 'integer', description: 'In branch-NNN.txt files — turns really played, then rewound out of the transcript.' },
+        replays: { type: 'integer', description: 'In the verifiers\' replay probes. Usually the largest of the three.' },
+        replayProbes: { type: 'integer', description: 'How many replay probe directories exist.' },
+      },
     },
     sessionsFinished: { type: 'integer', description: 'Probe directories holding a closing.json.' },
     sessionsUnfinished: {
@@ -1399,7 +1415,17 @@ function rosterMatch(name) {
   return survey.rooms.find((r) => loose(r) === loose(name)) || null
 }
 
-const turnsSpent = coverage.reduce((n, c) => n + (c.turnsSpent || 0), 0)
+// The round's turn count, off the artifacts. `turns.sessions` and
+// `turns.branches` are what the testers spent — the branches included, because a
+// room worked for ten turns and then rewound out was still worked — and
+// `turns.replays` is what the verifiers spent checking them. Nothing here is
+// asked of an agent that played: see the note on COVERAGE's dropped
+// `turnsSpent`.
+function countedTurns(turns) {
+  const t = turns || {}
+  const testers = (t.sessions || 0) + (t.branches || 0)
+  return { ...t, testers, total: testers + (t.replays || 0) }
+}
 
 // What the sessions wrote down, gathered off disk.
 //
@@ -1421,7 +1447,7 @@ not judge, file, explain or play.
 Every play-test session writes a \`closing.json\` beside its transcript when it
 calls \`finish\`. From \`${pkg}\`, list them:
 
-    ls .context/playtest/${SESSION_GLOB}/*/closing.json
+    find .context/playtest -path "*/${SESSION_GLOB}/*/closing.json"
 
 Read every one. Each holds \`roomsVisited\` (room names, in the order the session
 first stood in them), \`unknownWords\` (token → how many times it was typed) and
@@ -1434,21 +1460,44 @@ Report:
 - \`forksNobodyTook\`: the \`id\` of every fork appearing with \`taken: false\` and
   never with \`taken: true\`. A fork no session took is a branch the whole round
   left alone, and nothing else in the harness can see it.
+- \`turns\`: the round's world turns, counted off the \`[status]\` footers. Every
+  footer says \`turn=cost\` or \`turn=free\`, and only the first is a turn the game
+  charged — a parse failure and a meta command both print \`turn=free\` and cost
+  nothing, which is why counting \`> \` lines instead would be wrong. Four numbers,
+  each its own command, run from \`${pkg}\`:
+
+      find .context/playtest -path "*/${SESSION_GLOB}/*/transcript.txt" -exec grep -h 'turn=cost' {} + | wc -l
+      find .context/playtest -path "*/${SESSION_GLOB}/*/branch-*.txt" -exec grep -h 'turn=cost' {} + | wc -l
+      find .context/playtest/.replays -path "*/probe-*/transcript.txt" -exec grep -h 'turn=cost' {} + | wc -l
+      find .context/playtest/.replays -type d -name 'probe-*' | wc -l
+
+  In order: \`sessions\`, \`branches\`, \`replays\`, \`replayProbes\`. Use \`find\` and
+  not a bare shell glob: \`find\` does its own matching, so a pattern that matches
+  nothing prints \`0\` in every shell, where an unmatched glob **aborts the whole
+  command** under zsh and would hand you a shell error to interpret as a count.
+  A genuine zero is a real answer; say in \`note\` which of the four it was.
+
+  The branch files are not a rounding error — one round held 102 real turns in six
+  of them — and \`.replays\` is the verifiers' and usually the largest of the three.
 - \`sessionsFinished\`: how many \`closing.json\` files you read.
 - \`sessionsUnfinished\`: probe directories holding a \`transcript.txt\` with no
   \`closing.json\` beside it. Find them with:
 
-      ls -d .context/playtest/${SESSION_GLOB}/*/ | while read d; do [ -f "$d/transcript.txt" ] && [ ! -f "$d/closing.json" ] && echo "$d"; done
+      find .context/playtest -path "*/${SESSION_GLOB}/*/transcript.txt" | while read t; do [ -f "$(dirname "$t")/closing.json" ] || dirname "$t"; done
 
   Name them. A session that never called \`finish\` played the game and left no
   account of it; a round that drops the row rather than reporting it is claiming
   coverage it cannot show.
 
-Both globs are narrow on purpose: only a session opened through the game's own
-server lands under \`${SESSION_GLOB}\`. The round's replays and its own audit runs
-write elsewhere, and they hold a transcript with no \`closing.json\` beside it — so
-a wider glob would report the round's own machinery as testers who never finished.
-Do not widen them. If you think a session is missing, say so in \`note\`.
+The session globs are narrow on purpose: only a session opened through the game's
+own server lands under \`${SESSION_GLOB}\`. The round's replays and its own audit
+runs write elsewhere — a replay probe lands under \`.context/playtest/.replays/\`,
+whose leading dot both reserves it against any tester label and keeps it out of
+every unqualified glob — and they hold a transcript with no \`closing.json\` beside
+it, so a wider glob would report the round's own machinery as testers who never
+finished. Do not widen them; the turn count is the one place \`.replays\` is read,
+and it is named explicitly there. If you think a session is missing, say so in
+\`note\`.
 
 If the globs match nothing, report zeroes and empty lists and say so in \`note\`.
 That is a real answer and it means the round wrote no sessions.`,
@@ -1475,13 +1524,14 @@ const roomTallyPromise = collatorPromise.then((collated) => {
     sessionsFinished: (collated && collated.sessionsFinished) || 0,
     sessionsUnfinished: (collated && collated.sessionsUnfinished) || [],
     words: (collated && collated.words) || [],
+    turns: countedTurns(collated && collated.turns),
   }
 })
 
 const criticThunk = async () => {
   const {
     visited, offRoster, neverVisited, forksNobodyTook, sessionsFinished,
-    sessionsUnfinished, words,
+    sessionsUnfinished, words, turns,
   } = await roomTallyPromise
   const unknownWordTotal = words.reduce((n, w) => n + (w.count || 0), 0)
 
@@ -1506,7 +1556,7 @@ truth and they win over anything here.
   the grid \`X\` for a room a charter worked in and \`.\` for one it only passed through.
 - Sessions that wrote a closing record: ${sessionsFinished}.${sessionsUnfinished.length ? ` **${sessionsUnfinished.length} session(s) never called \`finish\`** (${sessionsUnfinished.slice(0, 8).join(', ')}) — their rooms and words are missing from every count above, so the coverage figure is a floor and you should say so in as many words.` : ''}
 - Forks no session took: ${forksNobodyTook.length ? forksNobodyTook.join(', ') : 'none'}. Each is an irreversible action the whole round declined, which is a coverage gap nothing else in the harness can see. Name them in the coverage section and make one a target for next round.
-- Turns spent by testers: ${turnsSpent} of ~${turnBudget * playRoster.length} budgeted. This EXCLUDES the verifiers' own probes, which are usually a large share of the round, so treat it as a floor and count the true total from the transcripts.
+- Turns: **${turns.total} world turns**, counted off the \`[status]\` footers rather than asked of anybody. Testers spent ${turns.testers} of ~${turnBudget * playRoster.length} budgeted (${turns.sessions} in their transcripts, ${turns.branches} in branches a rewind wrote off but that were really played); the verifiers spent ${turns.replays} across ${turns.replayProbes} replay probes under \`.context/playtest/.replays/\`. A round whose verifiers outspend its testers several times over is normal and not by itself a problem — but if \`${turns.testers}\` is far under budget while \`${turns.replays}\` is large, the round argued more than it played, and that is worth a sentence. This field used to be the sum of the testers' self-reports and was wrong by a factor of five the last time anyone checked it against the files.
 - There is deliberately no "cells probed" count: free-text cell labels are not comparable between charters, so any total would be a number that means nothing. Build the real cross-product yourself from the transcripts, against the ${survey.rooms.length}-room roster and the timers above.
 - Testers run: ${playRoster.map((r) => `${r.key}${r.charter.blind ? ` (${r.divergence}${r.region ? `, ${r.region}` : ''})` : ''}`).join(', ')}. Charters NOT run: ${skipped.map((c) => c.key).join(', ') || 'none'}.
 - The blind charters were given no room list, no timer list and no design doc, deliberately. A finding of theirs that the doc licenses is the expected cost of that, not a harness failure — but if more than about two in five are refuted that way, say so: the brief needs tightening, not the doc handing back.
@@ -1582,7 +1632,7 @@ return {
     forksNobodyTook: roomTally.forksNobodyTook,
     sessionsFinished: roomTally.sessionsFinished,
     sessionsUnfinished: roomTally.sessionsUnfinished,
-    turnsSpent,
+    turns: roomTally.turns,
     perCharter: coverage,
   },
 }

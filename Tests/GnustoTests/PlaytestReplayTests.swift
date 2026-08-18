@@ -46,6 +46,19 @@ struct PlaytestReplayTests {
         String(decoding: try Data(contentsOf: url), as: UTF8.self)
     }
 
+    /// A tool table over a root the test can then read, for the rows whose
+    /// subject is what they left on disk.
+    private func table(_ game: some Game) throws -> (root: URL, tools: [PlaytestTool]) {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        return (
+            root,
+            PlaytestTools.table(
+                for: try PreparedGame(game),
+                environment: ["GNUSTO_PLAYTEST_DIR": root.path])
+        )
+    }
+
     // MARK: - The claim a finding makes
 
     /// A claim that holds up comes back with the frame: which line printed it,
@@ -202,6 +215,99 @@ struct PlaytestReplayTests {
         #expect(try await session.coverage(limit: 200).items.map(\.id).sorted() == before)
         #expect(try text(at: session.transcriptURL) == recorded)
         #expect(try text(at: session.commandsURL) == "x oak\n")
+    }
+
+    // MARK: - The receipt
+
+    /// A replay leaves a probe directory, and the path is in the first line of
+    /// what the caller reads.
+    ///
+    /// The 2026-08-17 round is why. Three charters reported load-bearing frames
+    /// read from free replays, and one whole ending branch that the report
+    /// asserts appears in **no file in the tree** — a claim nobody who was not
+    /// there can check, which is exactly what the cite-the-probe rule exists to
+    /// prevent. The files are the fix and the path on the header line is what
+    /// makes citing it the path of least resistance.
+    @Test func aReplayLeavesAProbeDirectoryAndSaysWhere() async throws {
+        let (root, tools) = try table(OperaHouse())
+        let replay = try #require(tools.first { $0.name == "replay" })
+
+        let result = try await replay.handler(["commands": ["look", "west"]])
+
+        let probe = root.appendingPathComponent(PlaytestSessions.replayLabel)
+            .appendingPathComponent("probe-001")
+        let transcript = probe.appendingPathComponent("transcript.txt")
+        #expect(result.text.hasPrefix("[playtest] replay lines=2 finished=false transcript="))
+        #expect(result.text.contains(transcript.path))
+        let structured = try #require(result.structured)
+        #expect(structured["transcriptPath"]?.stringValue == transcript.path)
+        #expect(
+            structured["commandsPath"]?.stringValue
+                == probe.appendingPathComponent("commands.txt").path)
+        #expect(try text(at: transcript).contains("Cloakroom"))
+        #expect(try text(at: probe.appendingPathComponent("commands.txt")) == "look\nwest\n")
+        #expect(
+            try text(at: probe.appendingPathComponent("summary.txt"))
+                .hasPrefix("[playtest] replay seed=0 commands=2\n"))
+    }
+
+    /// The file a finding cites replays to the transcript beside it, byte for
+    /// byte.
+    ///
+    /// This is ``aReplayIsByteIdenticalToASession`` applied to the *written*
+    /// evidence rather than to the value in memory, and it is the reason the
+    /// seed is recorded in `summary.txt` rather than as a comment at the head of
+    /// the command list: `ScriptedIOHandler` echoes every line it is fed,
+    /// comments included, so a list carrying its own header would not reproduce
+    /// the transcript filed next to it.
+    @Test func theWrittenCommandListReplaysToTheWrittenTranscript() async throws {
+        let (root, tools) = try table(OperaHouse())
+        let replay = try #require(tools.first { $0.name == "replay" })
+
+        _ = try await replay.handler(
+            ["commands": ["look", "// the cloak is the point", "x cloak", "west"]])
+
+        let probe = root.appendingPathComponent(PlaytestSessions.replayLabel)
+            .appendingPathComponent("probe-001")
+        let commands = try text(at: probe.appendingPathComponent("commands.txt"))
+            .split(separator: "\n", omittingEmptySubsequences: false)
+            .dropLast()
+            .map(String.init)
+
+        let again = try await PlaytestReplay.run(
+            prepared: try PreparedGame(OperaHouse()), commands: commands, seed: 0, expect: nil)
+        #expect(again.transcript == (try text(at: probe.appendingPathComponent("transcript.txt"))))
+    }
+
+    /// Two replays cannot take the same probe, and a replay cannot land in a
+    /// tester's label.
+    ///
+    /// The leading dot is the whole guard: `isPlainName` refuses a label that
+    /// starts with one, so no session can be opened into `.replays` and no
+    /// collision check is needed to say so.
+    @Test func replayProbesAreAllocatedApartFromEverySession() async throws {
+        let (root, tools) = try table(OperaHouse())
+        let replay = try #require(tools.first { $0.name == "replay" })
+        let open = try #require(tools.first { $0.name == "open" })
+
+        _ = try await open.handler(["label": "tester", "seed": 0])
+        _ = try await replay.handler(["commands": ["look"]])
+        _ = try await replay.handler(["commands": ["west"]])
+
+        let replays = root.appendingPathComponent(PlaytestSessions.replayLabel)
+        #expect(
+            try text(at: replays.appendingPathComponent("probe-001/commands.txt")) == "look\n")
+        #expect(
+            try text(at: replays.appendingPathComponent("probe-002/commands.txt")) == "west\n")
+        // The tester's own probe-001 is a different directory entirely, and the
+        // round's `<game>-r*-session-*` glob reaches neither of the replays.
+        #expect(
+            FileManager.default.fileExists(
+                atPath: root.appendingPathComponent("tester/probe-001").path))
+        await #expect(throws: PlaytestError.self) {
+            _ = try await open.handler(
+                ["label": .string(PlaytestSessions.replayLabel), "seed": 0])
+        }
     }
 
     /// The two refusals, each of which runs nothing.
