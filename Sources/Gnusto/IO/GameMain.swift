@@ -27,10 +27,24 @@ extension GameMain where Self: Game {
     /// Bootstrap failures (an invalid game definition) are reported to
     /// standard error and exit the process with a nonzero status, the same
     /// as a hand-written `main.swift` would.
+    ///
+    /// `--mcp` (or `GNUSTO_MCP`) takes the other branch entirely: the process
+    /// becomes a play-test server speaking MCP on stdio and never builds a
+    /// world here, because the server builds one `PreparedGame` and spins a
+    /// world per session. Since every game is `@main struct G: Game, GameMain`,
+    /// putting the switch here makes every game that has ever been written
+    /// with this engine — including one whose author has never heard of the
+    /// play-test harness — reachable by an agent for the cost of one
+    /// `.mcp.json` entry. See ``PlaytestMode`` and `PlaytestServer.serve`.
     public static func main() async {
+        let environment = ProcessInfo.processInfo.environment
+        if PlaytestMode.requested(arguments: CommandLine.arguments, environment: environment) {
+            await PlaytestServer.serve(game: Self.init, environment: environment)
+            return
+        }
         do {
-            let environment = ProcessInfo.processInfo.environment
             let seed = SeedRequest(environment: environment)
+            let status = StatusFooter(environment: environment)
             // Unpinned runs go through the unseeded initializer rather than
             // repeating its `UInt64.random` here, so "random by default" stays
             // one policy in one place.
@@ -45,13 +59,17 @@ extension GameMain where Self: Game {
             if let complaint = seed.complaint {
                 writeToStandardError(complaint)
             }
+            if let complaint = status.complaint {
+                writeToStandardError(complaint)
+            }
             if let report = world.definition.warningReport {
                 writeToStandardError(report)
             }
             await Self.run(
                 world: world,
                 io: await defaultIOHandler(world: world, environment: environment),
-                transcriptURL: transcriptURL(world: world, environment: environment))
+                transcriptURL: transcriptURL(world: world, environment: environment),
+                status: status.inForce)
         } catch {
             writeToStandardError("\(error)")
             exit(1)
@@ -66,8 +84,12 @@ extension GameMain where Self: Game {
     ///   - world: the world to drive.
     ///   - io: the IO handler for input and output.
     ///   - transcriptURL: a file to record the whole session to, or `nil`.
-    static func run(world: GameWorld, io: some IOHandler, transcriptURL: URL? = nil) async {
-        await REPL(world: world, io: io, transcriptURL: transcriptURL).run()
+    ///   - status: a `[status]` footer to append to every turn, or `nil`.
+    static func run(
+        world: GameWorld, io: some IOHandler, transcriptURL: URL? = nil,
+        status: StatusFooter? = nil
+    ) async {
+        await REPL(world: world, io: io, transcriptURL: transcriptURL, status: status).run()
     }
 
     /// The transcript file to record from launch, from `GNUSTO_TRANSCRIPT`: a

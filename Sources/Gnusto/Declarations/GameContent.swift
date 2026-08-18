@@ -52,6 +52,23 @@ public protocol GameContent: Sendable {
     /// with the host or another bundle is a fatal bootstrap diagnostic.
     @TimerBuilder var timers: [TimedEvent] { get }
 
+    /// Extra `name=value` pairs for the play-test status footer — the hour, the
+    /// weather, whatever this bundle knows that the three-field ``StatusLine``
+    /// (room, score, moves) does not. Defaults to empty, and costs nothing at
+    /// all unless a footer is in force.
+    ///
+    /// ```swift
+    /// public var statusFields: [(String, String)] { [("time", now.formatted(format))] }
+    /// ```
+    ///
+    /// Read inside a live turn frame, so a field may read globals, traits and
+    /// the turn counter freely. It must be **read-only**: the frame it runs in
+    /// is a throwaway that is discarded rather than committed, so a field that
+    /// writes loses its write silently. There is no cheap way to enforce that —
+    /// the same frame has to be live for the reads to work — so it is a
+    /// contract rather than a guarantee.
+    var statusFields: [(String, String)] { get }
+
     /// Prefixes this bundle's entity IDs so its rooms/items/`@Global`s can't
     /// collide with the host game's or another bundle's. A bundle entity stored
     /// as `let hall = Location { … }` becomes `EntityID("\(namespace).hall")`,
@@ -84,6 +101,10 @@ extension GameContent {
 
     /// Bundles with no timed events can omit the `timers` block.
     public var timers: [TimedEvent] { [] }
+
+    /// Bundles with nothing to add to the status footer can omit
+    /// `statusFields`, which is nearly all of them.
+    public var statusFields: [(String, String)] { [] }
 
     /// The player character — usable as a bare identifier in a bundle's
     /// `map`, `rules`, and `timers` blocks, exactly as in a `Game`.

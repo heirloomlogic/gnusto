@@ -15,7 +15,8 @@ point, and a transcript test. Copy it out, rename it, and start writing rooms.
    git URL (the commented-out line above it).
 
 3. Rename `MyGame` to taste — the package name, the two target names, the
-   `Sources/MyGame` and `Tests/MyGameTests` directories, and the struct.
+   `Sources/MyGame` and `Tests/MyGameTests` directories, the struct, and the
+   product name in `.mcp.json`.
 
 Then:
 
@@ -30,6 +31,23 @@ swallows stdin during the build):
 ```sh
 "$(swift build --show-bin-path)/MyGame"
 ```
+
+## Let an agent play-test it
+
+`.mcp.json` and `bin/gnusto-mcp` are already wired up: your game is an MCP
+play-test server, and an agent can open a session, take turns, and read back
+what the prose actually printed. Nothing in your game has to know about it —
+`GameMain` answers `--mcp` for every Gnusto game, yours included.
+
+An MCP client asks once to approve a project-scoped server, then:
+
+```sh
+bin/gnusto-mcp MyGame      # what the client runs; stdout is the protocol
+```
+
+The first run builds, which can outlast a client's startup timeout. Run
+`swift build` once first, or raise the client's timeout (`MCP_TIMEOUT`, in
+milliseconds).
 
 ## What the template demonstrates
 

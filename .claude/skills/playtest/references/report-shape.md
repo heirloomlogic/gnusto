@@ -6,6 +6,8 @@ isn't committed.
 | Path | Committed | Contents |
 |---|---|---|
 | `.context/playtest/<label>/<probe>/` | no | one run: its transcript with the `//` annotations, its effective command list, its stderr, and a summary naming the game, seed and label |
+| `.context/playtest/<label>/<probe>/branch-NNN.txt` | no | turns a `rewind` wrote out of the transcript. Really played, so they count toward coverage; not canonical, so the reproducer beside them does not produce them |
+| `.context/playtest/.replays/<probe>/` | no | one sessionless `replay` — the same `commands.txt` and `transcript.txt`, plus a `summary.txt` naming the seed. The leading dot reserves it: no tester label can start with one |
 | `docs/games/<game>-playtest-<YYYY-MM-DD>.md` | **yes** | the round report below |
 | `docs/games/<game>-playtest-ledger.md` | **yes** | append-only: every dedupe key ever seen, with its verdict |
 | one GitHub issue | — | every confirmed class as a checklist — see `issue-shape.md` |
@@ -17,6 +19,14 @@ in order to pick up one class goes in the issue. `issue-shape.md` owns the secon
 made; the probe directory under it is one run, written once and never rewritten. So a
 citation is `.context/playtest/<label>/probe-004/transcript.txt` — the path the tool
 printed — and a citation ending at the label points at a directory, not at evidence.
+
+**A frame read from `replay` is citable too, and citing it is not optional.** Every
+`replay` call now answers with `transcript=<path>` on its first line and writes that
+file. Before it did, the 2026-08-17 round produced a report asserting an ending branch
+that appears in **no file in the tree**, and three charters whose load-bearing frames
+came from free replays nobody could re-read. If you read a line off a replay and quote
+it, quote the path with it; a claim whose only witness was a tool result that scrolled
+past is a claim the next reader cannot check.
 
 The report is committed even when the round found nothing. "We ran and found
 nothing" is the single most useful thing to be able to prove six months later, and
@@ -42,22 +52,21 @@ after the issue is filed, not before.
    each **defect → frame → cause**, in that order, with the cause naming the missing
    branch. Where a defect was introduced by an earlier fix, the lead sentence says
    so.
-3. **Fixed** — each with the test that fails without it.
-4. **Filed, not fixed** — the round's one issue, named once, then the classes inside
-   it and the reason each wasn't fixed. The workflow hands you the reason: every
-   entry in the returned `filed` carries a `notFixedReason`, and `filedByReason`
-   totals them. Elaborate on it in the operator's words; don't reconstruct it.
-5. **Routed elsewhere** — one entry per open issue the round forwarded symptoms to,
+3. **Filed** — the round's one issue, named once, then the classes inside it. Every
+   confirmed finding is filed: a round finds and files, and nothing in it edits the
+   tree. Each entry carries an `ownerClass`, which labels the row with its owner and
+   decides nothing.
+4. **Routed elsewhere** — one entry per open issue the round forwarded symptoms to,
    with counts, plus anything promoted *out* of a bucket and the argument for it. Omit
    the section when the round routed nothing, which is the common case. An issue that
    has since closed does not belong here at all: its symptoms are regressions, and
    they go under *Fixed* or *Filed*.
-6. **Refuted** — the claim *and* the refutation. This section is how the verifier
+5. **Refuted** — the claim *and* the refutation. This section is how the verifier
    gets audited. A round with an empty refuted list either got lucky or isn't
    really refuting.
-7. **Coverage** — the load-bearing section. See below.
-8. **Hygiene** — test count, lint result, and the diff stat for test files, with an
-   explicit statement that no assertion was removed.
+6. **Coverage** — the load-bearing section. See below.
+7. **Hygiene** — the seed, the turn budget, and any charter that did not run. A round
+   that changes nothing has no test count or diff stat to report.
 
 ## Coverage is the section that keeps the report honest
 
@@ -69,12 +78,23 @@ Four things, none of them optional:
 - **Which charters found nothing, and why.** "Not run — budget" and "run, found
   nothing in its own class" are very different results and must not look the same.
 - **Rooms entered, as a count and a list, with the never-entered ones named.** The
-  count comes from `coverage.rooms`, which is **derived from the transcripts** and
-  not from what the testers said — `visited` is the union, `fromTranscripts` and
-  `selfReported` are the two sides, and `enteredButUnreported` is the gap. A gap is
-  a *reporting* defect rather than a coverage one and is worth its own sentence; the
-  2026-08-11 Dungeon round published "112 of 195" against a real 155 because this
-  number used to be asked rather than counted.
+  count comes from `coverage.rooms`, and it is **read off the `closing.json` each
+  session wrote at `finish`**, never from what a tester said: `visited` is the union
+  of every session's `roomsVisited`, `neverVisited` is the survey's roster minus
+  that, and `offRoster` is a name the survey did not predict. The gap that used to
+  live in this bullet is now `coverage.sessionsUnfinished` — a probe holding a
+  transcript with no closing record beside it, which is a session that played and
+  left no account of itself. **Name those.** A coverage figure computed without them
+  is a floor and has to say so. The 2026-08-11 Dungeon round published "112 of 195"
+  against a real 155 because this number used to be asked rather than counted.
+- **Turns, from `coverage.turns`, and never from what anybody said they spent.** Four
+  numbers: `sessions` (the testers' transcripts), `branches` (turns a `rewind` wrote
+  out of a transcript — really played, so really counted), `replays` (the verifiers'
+  probes, usually the largest), and `total`. Report the total and the tester/verifier
+  split; a round whose verifiers outspend its testers many times over played less than
+  it argued, and that belongs in the coverage section rather than being averaged away.
+  The 2026-08-17 round published 295 against artifacts holding about 1,493, because
+  this number used to be asked.
 - **Entered is not covered, and the two must not be one number.** A room the harness
   only walked through while replaying a committed route from
   `.context/playtest/routes/` is reach, not coverage — 21 of Dungeon's were exactly
@@ -94,7 +114,8 @@ Four things, none of them optional:
 
 Commit `3fab729` · seed `0` · charters: tourist, clock-watcher, vandal, re-reader
 Oracle tiers: T0 kernel, T1 design doc (contract + timeline + solution), T2
-FulminateTests, T3 source. Budget: 190 turns planned, 174 spent over 31 probes.
+FulminateTests, T3 source. Budget: 190 turns planned; 174 counted off the footers
+(151 in transcripts, 23 in rewound branches) plus 402 in 31 verifier replay probes.
 
 ## The round
 
@@ -117,30 +138,20 @@ when they're standing there. All four predate this branch.
   definite article in front of a proper name. A sweep of the actor-directed keys says
   this is the only one still missing.
 
-## Fixed
+## Filed
 
-| # | Finding | Site | Test that fails without the fix |
+Three findings, deduplicating to two classes. Filed as #80.
+
+| Class | Severity | Owner | Site |
 |---|---|---|---|
-| F-0003 | `cantTakeActor` not re-skinned | `Sources/Fulminate/Fulminate.swift` `text` block | `actorLinesAreAllInTheGamesOwnVoice` |
+| `cantTakeActor` not re-skinned | major | `game` | `Sources/Fulminate/Fulminate.swift` `text` block |
+| Mrs. Vane's location-blind listing line | major | `game` | `Sources/Fulminate/Cast.swift` |
 
-Doc changes in this commit: `docs/games/fulminate.md` — Cast copy for Mrs. Kettle.
-
-## Filed, not fixed
-
-Two findings, deduplicating to one class. Filed as #80.
-
-| Class | Severity | Why not fixed here |
-|---|---|---|
-| Mrs. Vane's location-blind listing line | major | `needs-human` — more than one reasonable design. |
-
-The right-hand column starts from the finding's `notFixedReason`:
-
-| Reason | Means |
-|---|---|
-| `needs-human` | The verifier confirmed it and declined to let a fixer near the design. |
-| `harness` | Owned by the harness, which does not repair itself mid-round. |
-| `out-of-mode` | The `fix` setting this round didn't reach its owner class. |
-| `unclassified` | Nothing recognised the `ownerFile` — usually the tester invented or misspelled it, and worth correcting in the finding rather than explaining away here. |
+`ownerClass` is one of `game`, `engine`, `harness` or `unknown`. It says who owns the
+site, not what should happen next — a round files everything and fixes nothing.
+`unknown` means no rule recognised the `ownerFile`, which usually means the tester
+invented or misspelled it; correct it in the finding rather than explaining it away
+here.
 
 ## Routed elsewhere
 
@@ -148,7 +159,8 @@ The right-hand column starts from the finding's `notFixedReason`:
   eat hit jump kick kiss knock listen pray pull ring shout sing sleep smell swim
   taste throw touch yell`. One aggregated comment; dropped from the fix stage.
   Promoted **out** of the bucket: `tile` — the Front Hall's own description prints
-  "black and white tile, worn through to the grout", so the game invited the word (K8).
+  "black and white tile, worn through to the grout", so the game invited the word and
+  must answer it.
 
   (Illustrative. This round routed nothing, because no open issue owned a class.)
 

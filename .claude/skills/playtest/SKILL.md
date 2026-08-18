@@ -13,6 +13,11 @@ never asks whether it is *true*.
 `references/playtester-brief.md` is the doctrine and the judgement kernel; every
 tester reads it. This file is the operator's recipe for starting a round.
 
+Testers play through the game's own MCP server, registered per game in `.mcp.json`, so
+a round needs no build step of its own beyond the one below. The blind charters get a
+live coverage queue instead of a map: what the game has shown them and they have not
+followed up, every item a command to paste.
+
 ## Run a round
 
 ```sh
@@ -28,8 +33,7 @@ Workflow({ scriptPath: ".claude/workflows/playtest.js", args: {
   docPath: "docs/games/fulminate.md",   // null when the game has no design doc
   capabilities: ["clock", "talk"],
   seed: 0,
-  turns: 60,
-  fix: "none"
+  turns: 60
 }})
 ```
 
@@ -46,11 +50,9 @@ what a game depends on: `GnustoClock` → `clock`, `GnustoConversation` → `tal
 on that, so a game with no clock gets no clock-watcher.
 
 **`docPath` is `docs/games/<game>.md` if it exists and `null` if it doesn't.** Check
-with `ls docs/games/`; don't work from a list, here or anywhere. A missing doc doesn't
-stop the round finding defects; it stops it *fixing* prose, because the repo makes the
-design doc the copy source of truth.
+with `ls docs/games/`; don't work from a list, here or anywhere.
 
-Pass the doc **even for a `fix: "none"` round**. It changes what the verifiers can
+Pass the doc whenever there is one. It changes what the verifiers can
 argue: with a contract they refute on "the doc licenses this", and without one they
 fall back to "you cannot tell intent from outside, so a preference is refuted", which
 rejects good findings along with bad. See the Refuted section of
@@ -106,30 +108,22 @@ whoever remembered the rule.
 | `seed` | `0` | Pins the stream via `GNUSTO_SEED`. Record it; a finding without a seed isn't reproducible. |
 | `turns` | `60` | Engine turns per charter. Token cost, not CPU cost, is the real budget. |
 | `charters` | all applicable | Comma-separated subset, e.g. `"tourist,clock-watcher"`. |
-| `focus` | none | The coverage split, in your words, handed to every agent that judges prose. Free text: say which charter takes which region, and how it gets there. See below. |
+| `focus` | none | The coverage split, as **one string** with regions separated by `\|` — an array is silently read as a single region. Each region becomes one `explorer` *and* one `timekeeper`, up to three of each; the explorers are handed different divergence policies. Say how each region is reached, and **name no room**. See below. |
 | `verifyEffort` | inherit | Reasoning effort for the verifiers — the round's largest fan-out, and so its cost. Turn it down to buy a bigger round; read the warning below first. |
-| `fix` | `"none"` | `none` files everything, in the round's one issue. `game` also fixes findings owned by the game's own files. `all` fixes engine findings too. No setting touches the harness's own files. |
 | `rounds` / `dryRounds` | `1` / `2` | Loop until N consecutive rounds surface nothing new. |
 | `packagePath` | `"."` | Drive another checkout — a worktree at an older commit, for calibration. |
 | `ledgerKeys` | `[]` | Keys from previous reports, so the loop doesn't re-find its own rejections. |
 | `routedIssues` | `[]` | `[{number, owns}]` for open issues that own a defect class. Derive it fresh — see above. |
 
-**`fix` defaults to `none`, and the fix phase is experimental.** Fixing is where the
-harness stops being safe: the failure mode isn't a crash, it's a *plausible* wrong fix
-in a densely prose-coupled suite. Run a round with `fix: "none"`, read the findings
-yourself, then decide.
+**A round finds and files; it does not fix.** The fix phase is gone, and with it the
+gate that existed to check the fixers. Fixing was where the harness stopped being
+safe: the failure mode was never a crash, it was a *plausible* wrong fix in a densely
+prose-coupled suite, applied by an agent that had read the finding and not the game.
+Read the round's issue, then fix by hand — `references/fixer-brief.md` is still the
+rules that bind whoever does, and it now binds a person.
 
-Three overrides ignore the flag entirely. No design doc means no prose fixing. A fix
-that would change a count or structure pinned by a mechanics contract is escalated to
-a human, never applied — the gate checks that independently, because a prohibition only
-the offender checks is not a prohibition. And **the harness does not repair itself
-mid-round**: a finding whose `ownerClass` is `harness` is filed at every setting,
-because a fixer editing the workflow that is currently running it, or the briefs its
-sibling agents are still reading, changes the run underneath itself.
-
-Every finding the round files carries a `notFixedReason`, and the workflow logs the
-breakdown whether or not anything was fixable — including the round where nothing was.
-`references/report-shape.md` defines the reasons.
+Every confirmed finding still carries an `ownerClass`, because the issue checklist
+labels each row with its owner. It classifies and no longer decides anything.
 
 **`focus` is how a game bigger than one round gets a split instead of an accident.** Six
 charters all start where the player starts. On a nine-room game that costs nothing; on a
@@ -145,24 +139,69 @@ route prefix in one, an hour of the evening in another. `docs/games/dungeon-play
 is the worked example — eight regions over six charters, each with the walkthrough stage
 that reaches it.
 
-**`verifyEffort` is the cost dial, and it is sharp.** The verifiers are one agent per
-fresh finding, so on a round that finds sixty they are most of the bill. But they are
-also the layer whose failure is invisible: a fixer misled by a bad finding damages prose
-that was right, which is loud, while a refuter that rejects *good* findings produces a
-thin round that reads as a clean one. Turn it down to afford more charters or more turns,
-and say in the report's header that you did. **Both censuses** — unknown words and rooms
-— are on Haiku permanently and need no flag: each runs one `grep` and counts, and there
-is no judgement in either to lose.
+**Name no room.** A region is pasted verbatim into a blind explorer's prompt, and the room
+roster is the answer key that charter exists to reconstruct. The dry run now fails on a
+roster name in a blind prompt — but it matches whole names, so it catches the copy-paste
+version and not an operator who writes "Landing" for "Upstairs Landing". The rule is
+yours to keep.
 
-**Anything the report states as a number is counted, not asked.** Both censuses exist
-because the same mistake happened twice: the 2026-07-31 round self-reported 2 unknown-word
-replies against transcripts holding 261, and the 2026-08-11 round self-reported 112 of 195
-rooms against a real 155. Neither was a tester lying — a field description is read
-seventy-nine different ways by seventy-nine agents, and a derived number does not depend
-on that. The pattern to copy when adding the third: a hardcoded command, a strict schema
-with a `note` for the empty case, started early and awaited late so it overlaps the gate,
-and **the self-report kept beside the count rather than replaced by it**, so a reader can
-see the two disagree.
+**Space is still expressible — say the affordance, not the roster.** This reads like a
+rule against splitting a small game by place, and it is not. The game's own opening prints
+its exits: Fulminate's first paragraph says *"the stairs go up"*, so **"the floor above"**
+leaks nothing the player has not already been handed, exactly as an hour leaks nothing the
+watch does not. "Below the ground floor", "outside the house", "as deep as you can get"
+are all fair. `Vane's Study` is not.
+
+Getting this wrong costs a whole axis. Fulminate's 2026-08-17 round split by clock alone,
+on the reasoning that a nine-room game's map cannot be named — and left the vertical axis
+owned by nobody. Both of the two scheduled arrival lines that printed in *zero* transcripts
+were upstairs, and so were both `talk.shows` rows that never fired, including the one the
+round was dispatched to reach. A 26-turn probe of `up`, `west`, `z`×24 filled five blank
+cells afterwards. It was not expensive; it was unassigned.
+
+**A region is an assignment, so give every seat one.** The sighted charters are told to
+*"Find your own charter in it and treat that row as your assignment"* — so a `focus` with
+no charter rows in it assigns nothing, and the charter falls back to instinct. In that same
+round the timekeeper owned the whole cross-product, read two unlabelled time windows, and
+spent three quarters of its probes on the first one. `explorer` and `timekeeper` both
+instantiate per region now, so the number of regions you declare is the number of copies
+of each you get, capped at three.
+
+**`verifyEffort` is the cost dial, and it is sharp.** The verifiers are the round's
+largest fan-out — two independent raters over each batch of 25 findings — so they set its
+cost. They are also the layer whose failure is invisible: a fixer misled by a bad finding
+damages prose that was right, which is loud, while a refuter that rejects *good* findings
+produces a thin round that reads as a clean one. Turn it down to afford more charters or
+more turns, and say in the report's header that you did. The **collator** is on Haiku
+permanently and needs no flag: it reads files and adds up integers, and there is no
+judgement in it to lose.
+
+**Anything the report states as a number is counted, not asked.** The rule exists because
+the same mistake happened three times: the 2026-07-31 round self-reported 2 unknown-word
+replies against transcripts holding 261, the 2026-08-11 round self-reported 112 of 195
+rooms against a real 155, and the 2026-08-17 round reported 295 turns spent — exactly the
+sum of six testers' self-reports — against artifacts holding about 1,493. None of them was
+a tester lying; a field description is read seventy-nine different ways by seventy-nine
+agents, and a derived number does not depend on that.
+
+The first two now come from `closing.json`, which the session server writes at `finish` out
+of the status line and the parser's own record of tokens it could not consume. The third is
+counted off the `[status]` footers: every footer says `turn=cost` or `turn=free`, so the
+round greps for the first across three places — the testers' transcripts, the `branch-NNN.txt`
+files a rewind wrote off, and the verifiers' probes under `.context/playtest/.replays/`.
+The collator does all of it; nobody is asked how far they got.
+
+Two lessons worth carrying, because the third instance taught them and the first two
+didn't. **A number cannot be counted until something writes the thing down** — turns
+stayed a self-report for as long as it did because `replay` wrote no file, so a verifier's
+turns existed nowhere to be counted. And **a rewind is not an erasure**: a room worked for
+ten turns and then rewound out was still worked, so the coverage arithmetic reads the
+branch files too.
+
+**The pattern to copy for the next number: have the engine write it down, then glob for the
+file.** An agent grepping transcripts for the engine's own prose is the second-best version
+of this and goes wrong the moment a game re-voices the line — grepping for the *footer*,
+which the harness writes and no game can re-voice, is the acceptable middle.
 
 ## What lives where
 
@@ -177,6 +216,9 @@ see the two disagree.
     report-shape.md                    the round report and the ledger
     issue-shape.md                     the one issue a round files
 bin/playtest-replay                    the replay helper
+.claude/workflows/playtest.dryrun.mjs  zero-agent dry run of the orchestration
+bin/playtest-measure                   how curiously a session played, off its artifacts
+bin/gnusto-mcp, .mcp.json              every game as a live play-test server
 docs/playtesting.md                    driving it by hand, without any of this
 ```
 
@@ -201,3 +243,109 @@ one, so the harness warns testers that engine facts may be anachronistic. Calibr
 is a **multi-tree** exercise — the three defects usually cited don't co-exist in any
 single commit. `docs/playtesting.md` has the per-tree answer key and the reasoning;
 `docs/games/fulminate-playtest-2026-07-29.md` has the last run's scores.
+
+## Before you dispatch a round
+
+```sh
+node .claude/workflows/playtest.dryrun.mjs
+```
+
+Stubs every agent and runs the real orchestration, so the cheap failures show up in
+two seconds instead of costing a full fan-out: a helper deleted by an edit somewhere
+else, a phase name that no longer matches `meta`, a roster that hands the wrong
+assignment to the wrong charter. It has caught all three.
+
+It also writes every generated prompt to `/tmp/prompts.txt` and then **asserts against
+them**, which is the only cheap place to check the firewall — that a blind charter's
+prompt carries no design doc, no judgement kernel, no timer schedule and no region but
+its own is a property of the *text*, and grepping it is how you know. That assertion
+earned itself immediately: the operator's coverage plan was being pasted into every
+prompt, so a blind explorer got nine of Fulminate's ten rooms three lines above its
+brief telling it "you have no map, no room list".
+
+The other assertions pin the batched verifiers (two raters, batch/rater labels, a
+measurable agreement denominator) and the absence of the retired censuses. It exits
+non-zero when any of them fails. Run it after any edit to `playtest.js`.
+
+**Two things it cannot tell you**, both about the servers rather than the script.
+
+*Whether the game's MCP server is reachable.* Two ways it isn't, and the round fails at
+`ToolSearch` for every tester either way, so confirm the tools resolve before dispatching.
+
+A `.mcp.json` added mid-session is not picked up until the session restarts. And
+`bin/gnusto-mcp` runs `swift build` before it `exec`s — so on a tree whose engine has just
+changed, every registered game attempts a cold rebuild at once, and they can all pass the
+client's startup timeout together. Seven servers vanishing looks exactly like a broken
+`.mcp.json` and is nothing of the kind. **Run `swift build` to completion in the session
+before the one that dispatches**; the script's own header says the same thing, and it is
+cheaper to obey than to diagnose.
+
+*Whether the server is the code you just wrote.* `bin/gnusto-mcp` builds and then
+`exec`s, once, when the client connects — so a server is frozen at the commit its
+session started on. Edit the engine mid-session and every tester goes on playing the
+old binary, silently and successfully. **Restart the session after any change under
+`Sources/Gnusto/Playtest/`.**
+
+This one fails quietly, which is why it is worth a check rather than a memory. Open a
+throwaway session and call `finish` on it:
+
+```
+open  label: staleness-check, role: explorer
+finish  session: <id>, summary: checking the binary
+```
+
+A current server returns `roomsVisited` and `unknownWords` in the result and leaves a
+`closing.json` in the probe directory. A stale one returns neither and writes no file
+— and a round dispatched against it collates nothing, reports every session as never
+having finished, and looks exactly like a round where the testers all crashed.
+
+Check the other half in the same breath, because the round's turn count now depends
+on it:
+
+```
+replay  commands: ["look"]
+```
+
+A current server answers `[playtest] replay lines=1 finished=false transcript=…` and
+leaves that file under `.context/playtest/.replays/probe-001/`. A server predating
+that writes nothing, and the collator's replay glob comes back empty — which reads as
+a round whose verifiers never checked anything rather than as a stale binary.
+
+Delete the scratch directory afterwards, `.replays` included.
+
+## Measuring a change to the harness
+
+Calibration asks whether the harness still finds known defects. This asks the other
+question: whether a change to it — a coverage ranking, a charter, a brief — made
+testers play *better*. `bin/playtest-measure` is the instrument. Point it at probe
+directories and it reads `commands.txt` and `transcript.txt` for distinct rooms
+entered, distinct verbs used, distinct objects examined, and command counts. Nothing
+is self-reported.
+
+Three rules, each of which was learned by getting it wrong:
+
+**Run a control, never compare against stored numbers.** Build a binary carrying the
+*old* behaviour, run it through the *same* dispatch as the new one, and compare those
+two. Recorded numbers from an earlier round were produced by a different driver — a
+different model, prompt, or client — and that difference is easily larger than the
+effect being measured. In August 2026 a comparison against stored numbers said plain
+cheapness ranking cost 12 distinct verbs; a matched control said it cost none, and two
+ranking changes had been built to fix a regression that did not exist.
+
+**Only Dungeon can confirm anything.** Its 195 rooms are the only map in the corpus
+with headroom. Fulminate's ten put every condition inside every other's spread — over
+20 probes its rooms-entered ranges 1–8 with a mean near 5 regardless of what the
+harness is doing. It can *falsify* a change cheaply, and it is worth running for that,
+but a Fulminate pass is not evidence.
+
+**Say what would count as success before running it.** Write the bar down, then honour
+it. Re-tuning until the numbers pass is how a null result becomes a feature.
+
+Two tells that a comparison has drifted, both worth checking before believing a
+number: sessions opened per dispatched run (runs that open four sessions each are not
+comparable to stored runs that opened one), and the command count moving with the
+result — an arm that simply played longer will look better at everything.
+
+```sh
+bin/playtest-measure .context/playtest/<label>/probe-*
+```

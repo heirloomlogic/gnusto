@@ -205,6 +205,17 @@ struct GameDefinition: Sendable {
     /// `DefaultActions.run`; an intent absent here falls through to the
     /// built-in behavior (or "I didn't understand" for an unknown intent).
     let actionOverrides: [Intent: IntentAction]
+    /// The extra status-line fields the game's content bundles and plugins
+    /// contribute, held as closures because a field is *read at display time*:
+    /// `Clock`'s hour is a function of the live `moves` counter, so a value
+    /// computed here at bootstrap would say half past five forever.
+    ///
+    /// Each closure is `GameContent/statusFields` or `GamePlugin/statusFields`,
+    /// in declaration order, and must be evaluated inside a live turn frame —
+    /// see `GameWorld.statusFields()`, which builds a throwaway one. Empty for
+    /// almost every game, which is what keeps the footer free when nobody
+    /// asked for it.
+    let statusFields: [@Sendable () -> [(String, String)]]
     /// Non-fatal bootstrap notes — e.g. a custom verb shadowing a built-in.
     /// Surfaced for tooling and tests; play proceeds regardless. `var` so the
     /// bootstrap can add the dead-intent check after evaluating the `rules`

@@ -101,6 +101,20 @@ var rules: Rules {
 }
 ```
 
+## The one thing the host doesn't splice
+
+``GamePlugin/statusFields`` adds `name=value` pairs to the play-test status footer, and it is the single member the host gets by *storing* the plugin rather than by splicing it into a block of its own:
+
+```swift
+struct Barometer: GamePlugin {
+    var statusFields: [(String, String)] { [("glass", "falling")] }
+}
+```
+
+Everything else here changes what the game does, so the host opts in by hand. A status field annotates a transcript the host already asked for and changes nothing about the world — and there is no `Game` block to splice it into — so the bootstrap reads it off the host's stored properties, the same walk that catches an unlisted bundle. A plugin the host stores is found; one constructed inline inside a computed property is not.
+
+The field is read inside a live turn frame that is then discarded, so it must be read-only — and it is sampled at the *close* of the turn rather than after the turn's counter advanced, so a field derived from `moves` names the turn it is printed under. See <doc:ContentBundles#A-bundle-can-add-a-field-to-the-status-footer> for the full contract, sampling point included, which is identical for both protocols.
+
 ## Content-bearing plugins own their region
 
 A logic-only ``GamePlugin`` declares no world of its own — it operates entirely over entities the host passes it. A plugin that needs to ship its *own* rooms, items, and `@Global` state is a <doc:ContentBundles> instead: a ``GameContent`` carries `map`, `rules`, and `verbs`, and the bootstrap discovers its entities by reflection, [namespacing](<doc:ContentBundles#EntityIDs-are-namespaced-by-the-bundle>) them under the bundle so a reusable plugin can't collide with the host. List it in the game's `content`.

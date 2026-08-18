@@ -20,6 +20,7 @@ that covers your task before writing code.
 | `docs/playtesting.md` | how to play a game by hand and read the transcript as prose, plus the calibration answer key |
 | `.claude/skills/playtest/`, `.claude/workflows/playtest.js` | the automated play-test harness: subagents play, read prose, and report lines untrue of their frame |
 | `bin/playtest-replay` | one-line non-interactive replay of any game, seed pinned |
+| `bin/gnusto-mcp`, `.mcp.json` | every demo game as an MCP play-test server — an agent opens a session, takes turns, and is told what it was shown and never followed up. One binary is one game, so no tool takes a game name |
 | `FIDELITY.md` | Zork 1 and Dungeon only: where their content departs from the original. Nothing else uses it. The two do **not** share a prose rule: Zork 1 reproduces verbatim, Dungeon adapts, and the Dungeon section states its rule before any region entry |
 
 ## Commands
@@ -36,7 +37,23 @@ xcrun swift-format lint --strict --parallel --recursive --configuration .swift-f
 
 bin/playtest-replay --build Fulminate                              # once
 bin/playtest-replay Fulminate --commands probe.txt --seed 0 --label mine --tail 60
+
+bin/gnusto-mcp Fulminate                       # what an MCP client runs; stdout is the protocol
+                                               # builds then execs ONCE, at connect: a running
+                                               # server is frozen at its session's commit, so
+                                               # restart the session after editing the engine
+bin/playtest-measure .context/playtest/mine/probe-*   # rooms, verbs, objects — off the artifacts
 ```
+
+Measuring a harness change wants a **control binary run through the same dispatch**,
+never a comparison against numbers recorded in an earlier round, and only Dungeon has
+the map size to confirm a result. `.claude/skills/playtest/SKILL.md`, "Measuring a
+change to the harness", says why both of those cost real work when ignored.
+
+`bin/playtest-replay` stays even though the server can replay too: the calibration
+workflow in `.claude/skills/playtest/SKILL.md` builds from a worktree at an old
+commit, and a 2026-07 commit has no `--mcp`. Retiring the script retires
+calibration, which is the regression test for the whole harness.
 
 CI runs the strict lint. Run it before you claim done.
 
@@ -58,7 +75,9 @@ suite runs on pushes to main, not on PRs.
 
 `GNUSTO_SEED` pins a binary's random stream the way `play(_:_:seed:)` pins a test's, so
 a hand-played session replays as a test. `GNUSTO_TRANSCRIPT` records it,
-`GNUSTO_SAVE_DIR` keeps scripted saves out of your real slots, and a line starting `//`
+`GNUSTO_SAVE_DIR` keeps scripted saves out of your real slots, `GNUSTO_STATUS=1` appends
+a `[status] room=… | moves=… | turn=cost|free | …` line to every turn (a `REPL`
+argument, not an environment read — the suite is unaffected), and a line starting `//`
 or `#` is a tester comment that never reaches the parser. See `docs/playtesting.md`.
 
 `GNUSTO_SEED` also seeds the **suite**: it supplies the seed for every `play(_:_:)` call

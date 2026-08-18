@@ -55,7 +55,7 @@ swift build --product Zork1
 
 ## Environment variables
 
-Five variables configure a running game and a sixth reports on one. All are optional — a game with none of them set behaves exactly as it always has.
+Five variables configure a running game, a sixth reports on one, and a seventh replaces the game with a play-test server. All are optional — a game with none of them set behaves exactly as it always has.
 
 | Variable | Effect |
 |---|---|
@@ -65,6 +65,7 @@ Five variables configure a running game and a sixth reports on one. All are opti
 | `GNUSTO_TRANSCRIPT_DIR` | Where slot-named transcripts go. Defaults to `<app support>/Gnusto/Transcripts/<game>`. Read whenever a transcript file is resolved, so it also applies to a `script` typed mid-session — not only at launch. |
 | `GNUSTO_SAVE_DIR` | Where saves go. Defaults to `<app support>/Gnusto/Saves/<game>`. Point it somewhere disposable to keep a scripted run out of your real save slots. |
 | `GNUSTO_STACK_REPORT` | Prints how much of the bootstrap's 16 MB stack the game's declarations actually used, one line per boot, on stderr. A flag, not a setting. Diagnostic — see <doc:SplittingAGameAcrossFiles#Split-for-reading-not-for-the-stack>. |
+| `GNUSTO_MCP` | Serves the play-test protocol over stdio instead of playing, the same as the `--mcp` flag. A flag, not a setting. For a client that can set an environment but not an argument vector — see [Serving the game to an agent](#Serving-the-game-to-an-agent). |
 
 `GNUSTO_SEED` is what makes a bug report reproducible. Everything random in a game — combat rolls, roaming actors, ``oneOf(_:)`` prose — draws from one seeded stream, so a transcript recorded under a pinned seed replays turn for turn on any machine, and the command list drops straight into a `play(_:_:seed:)` test. See <doc:TestingYourGame> for the in-suite side of the same knob.
 
@@ -91,6 +92,34 @@ In a terminal that supports bracketed paste, pasting a multi-line block into a l
 ### Recording a transcript
 
 `script` starts writing the session to a file and `unscript` stops; `script <name>` names it, and a name containing `/` or starting with `~` is treated as a path. To record from the opening text instead, set `GNUSTO_TRANSCRIPT` to a path, or to `1` for a timestamped file in the game's transcripts directory (`<app-support>/Gnusto/Transcripts/<title>/`, which `GNUSTO_TRANSCRIPT_DIR` overrides). A transcript is plain text — `> command` lines interleaved with the game's output, comments included — so a tester can attach one to a bug report.
+
+### Serving the game to an agent
+
+Every Gnusto game is also a play-test server. `GameMain` answers `--mcp` — or the `GNUSTO_MCP` environment variable, for a client that can set an environment but not an argument vector — by speaking the Model Context Protocol over stdio instead of playing. An agent opens a session, takes turns, reads back its own transcript, and is told what the game has shown it that it never followed up.
+
+Nothing in your game has to know about this. The switch lives in the `GameMain` protocol extension every game already conforms to, so a game written by somebody who has never read this page becomes a server for the cost of a flag.
+
+`bin/gnusto-mcp` is the launcher, and a copy ships in `Templates/NewGame/bin/`:
+
+```sh
+bin/gnusto-mcp MyGame
+```
+
+It builds the game, asks where the binary landed, and hands the process over. **Stdout is the protocol**, so the build's progress goes to stderr and nothing else is printed at all — which is also why the build isn't silenced, since a failing server's stderr is where a client shows you the compile error.
+
+Register the game with a `.mcp.json` at your package root, one entry per game:
+
+```json
+{
+  "mcpServers": {
+    "mygame": { "command": "bin/gnusto-mcp", "args": ["MyGame"] }
+  }
+}
+```
+
+One binary is one game, so no tool ever takes a game name. If you copied `Templates/NewGame`, both files are already there and renaming the product in `.mcp.json` is the only edit.
+
+Two things worth knowing before the first run. A cold start builds the game, which can take longer than a client's startup timeout — get the build out of the way once with `swift build`, or raise the timeout (`MCP_TIMEOUT`, in milliseconds); later runs are a no-op build and start immediately. And a project-scoped server is approved once, per project, on first use.
 
 ## The `<br>` hard-break marker
 

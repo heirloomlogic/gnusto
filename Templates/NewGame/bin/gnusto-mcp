@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+#
+# Serve one Gnusto game to an MCP client over stdio. Registered per game in
+# .mcp.json; not something you normally run by hand.
+#
+# Usage:  bin/gnusto-mcp <Game>          (e.g. bin/gnusto-mcp Zork1)
+#
+# Every Gnusto game is `@main struct Game: Game, GameMain {}`, and `GameMain`
+# answers `--mcp` by serving the play-test protocol instead of playing. So this
+# script is only ever three steps: build the game, ask where the binary landed,
+# and hand the process over to it.
+#
+# **Stdout is the protocol.** Every byte this script writes before the exec would
+# be read by the client as JSON-RPC, so the build's progress goes to stderr and
+# nothing else is printed at all. That is also why the build is not silenced: an
+# MCP client shows a failing server's stderr, and a compile error is the one
+# thing worth seeing there.
+#
+# **Cold starts.** The first run for a game builds it, which can take longer than
+# the client's startup timeout — raise it with MCP_TIMEOUT (milliseconds), or get
+# the build out of the way once with `swift build`. Later runs are a no-op build
+# and start immediately.
+
+set -euo pipefail
+
+die() { echo "gnusto-mcp: $*" >&2; exit 2; }
+
+# Run from the package root regardless of where the client invoked us from: an
+# MCP client chooses its own working directory, and `swift build` has to be
+# standing in the package.
+cd "$(dirname "$0")/.."
+
+game="${1:-}"
+[[ -n "$game" ]] || die "usage: bin/gnusto-mcp <Game>"
+
+swift build --product "$game" >&2 || die "could not build $game"
+
+# Ask for the bin path, never guess it. Under the swiftbuild build system it is
+# .build/out/Products/Debug, not .build/debug — and a stale .build/debug copy
+# from an earlier `swift run` may also exist, so guessing is a coin flip between
+# the binary just built and one from last week.
+bindir="$(swift build --product "$game" --show-bin-path)"
+[[ -x "$bindir/$game" ]] || die "built $game but found no executable at $bindir/$game"
+
+exec "$bindir/$game" --mcp

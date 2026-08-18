@@ -147,11 +147,13 @@ struct Fulminate: Game, GameMain {
     /// line doesn't, and the cast happens to be the reason for four of them.
     var text: GameText {
         var text = GameText()
+        // `sentenceCased` for the reason given above `talkText`: the phrase
+        // arrives rendered, and both of these lines open on it.
         text.greets = .naming {
-            "\($0) \($0.verb("looks", "look")) at you and \($0.verb("does", "do")) not answer."
+            "\($0.sentenceCased) \($0.verb("looks", "look")) at you and \($0.verb("does", "do")) not answer."
         }
         text.notTakingOrders = .naming {
-            "\($0) \($0.verb("hears", "hear")) you out and \($0.verb("goes", "go")) on doing exactly what \($0) \($0.verb("was", "were")) doing."
+            "\($0.sentenceCased) \($0.verb("hears", "hear")) you out and \($0.verb("goes", "go")) on doing exactly what \($0) \($0.verb("was", "were")) doing."
         }
         // X ME is the first thing a player types, and this player has a past.
         text.selfDescription =

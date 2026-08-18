@@ -687,6 +687,25 @@ enum Bootstrap {
             actionOverrides[action.intent] = action
         }
 
+        // Phase 3c — collect the status-footer fields. Closures, not values:
+        // a field is read at display time, inside a live frame (see
+        // `GameDefinition.statusFields`). Bundles come from `content`, like
+        // everything else a bundle declares. Plugins are the exception, and
+        // deliberately so: a plugin is spliced by hand everywhere else, but a
+        // status field changes nothing about the game and has no host block to
+        // be spliced into, so it is read off the host's stored properties —
+        // the same Mirror walk that catches an unlisted bundle above. Anything
+        // that is both is already counted as a bundle.
+        var statusFields: [@Sendable () -> [(String, String)]] = modules.map { module in
+            { module.statusFields }
+        }
+        for child in Mirror(reflecting: game).children {
+            guard let plugin = child.value as? any GamePlugin,
+                !(child.value is any GameContent)
+            else { continue }
+            statusFields.append { plugin.statusFields }
+        }
+
         // Phase 4 — evaluate the rules block inside a registration frame, so
         // any stray live reads see the initial state rather than trapping.
         let cast = Set(items.filter { $0.key != .player && $0.value.isActor }.keys)
@@ -720,6 +739,7 @@ enum Bootstrap {
             vocabulary: vocabulary,
             syntaxRules: syntaxRules,
             actionOverrides: actionOverrides,
+            statusFields: statusFields,
             warnings: verbWarnings + vocabularyWarnings + traitWarnings + actionWarnings,
             onDeath: { game.onDeath() })
 
