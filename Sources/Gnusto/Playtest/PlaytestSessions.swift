@@ -163,6 +163,35 @@ actor PlaytestSessions {
         return session
     }
 
+    /// The session a tool call names, and — for an oracle tool — the check that
+    /// its role may be told the answer key.
+    ///
+    /// The two live together because authorization here *is* a fact about the
+    /// session: a role is carried by a session, so there is no such thing as an
+    /// anonymous survey and no point at which a tool holds one without the
+    /// other. Written twice in two handlers, the guard was a thing a
+    /// fourteenth row could forget — and the failure of forgetting it is not a
+    /// crash or a wrong number, it is the answer key going to a blind tester,
+    /// which is the single thing the firewall exists to prevent. Here, `oracle:`
+    /// is a parameter the author has to answer.
+    ///
+    /// - Parameters:
+    ///   - arguments: the call's arguments, which carry the tool's name for the
+    ///     refusal message.
+    ///   - oracle: whether this tool serves answer-key data.
+    /// - Throws: ``PlaytestError`` when no session answers to the id, or when
+    ///   one does and its role may not be told.
+    /// - Returns: the session.
+    func session(
+        _ arguments: PlaytestToolArguments, oracle: Bool = false
+    ) throws -> PlaytestSession {
+        let session = try session(try PlaytestTools.sessionID(arguments))
+        guard !oracle || session.role.seesOracleData else {
+            throw PlaytestError(session.role.refusal(of: arguments.tool))
+        }
+        return session
+    }
+
     /// How many sessions this registry has ever opened. For the suite.
     func count() -> Int {
         sessions.count

@@ -84,8 +84,24 @@ extension JSONValue {
     /// - Throws: a `DecodingError` when the text isn't JSON. The server turns
     ///   that into a `-32700`; nothing here traps.
     init(text: String) throws {
-        self = try JSONDecoder().decode(JSONValue.self, from: Data(text.utf8))
+        self = try Self.decoder.decode(JSONValue.self, from: Data(text.utf8))
     }
+
+    /// The one decoder, and below it the one encoder.
+    ///
+    /// A coder is stateless once configured, and both are built on every frame
+    /// otherwise — a server's whole life is frames. `static let` rather than a
+    /// computed `static var`, on the constant-table rule this repo states for
+    /// prose in `CLAUDE.md`: a `var` would rebuild the thing on every read,
+    /// which is the cost this is here to stop paying.
+    private static let decoder = JSONDecoder()
+
+    /// The encoder ``text`` renders through, configured once.
+    private static let encoder: JSONEncoder = {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
+        return encoder
+    }()
 
     /// This value as compact JSON on a single line — the frame format the
     /// transport writes, and the text a structured tool result is rendered to.
@@ -99,10 +115,8 @@ extension JSONValue {
     /// double, which cannot be parsed out of JSON and is never built here; the
     /// fallback is `null`, which is at least a legal frame.
     var text: String {
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
         guard
-            let data = try? encoder.encode(self),
+            let data = try? Self.encoder.encode(self),
             let text = String(data: data, encoding: .utf8)
         else {
             return "null"

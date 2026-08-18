@@ -232,7 +232,7 @@ struct PlaytestReplayTests {
         let (root, tools) = try table(OperaHouse())
         let replay = try #require(tools.first { $0.name == "replay" })
 
-        let result = try await replay.handler(["commands": ["look", "west"]])
+        let result = try await replay.call(["commands": ["look", "west"]])
 
         let probe = root.appendingPathComponent(PlaytestSessions.replayLabel)
             .appendingPathComponent("probe-001")
@@ -264,7 +264,7 @@ struct PlaytestReplayTests {
         let (root, tools) = try table(OperaHouse())
         let replay = try #require(tools.first { $0.name == "replay" })
 
-        _ = try await replay.handler(
+        _ = try await replay.call(
             ["commands": ["look", "// the cloak is the point", "x cloak", "west"]])
 
         let probe = root.appendingPathComponent(PlaytestSessions.replayLabel)
@@ -290,9 +290,9 @@ struct PlaytestReplayTests {
         let replay = try #require(tools.first { $0.name == "replay" })
         let open = try #require(tools.first { $0.name == "open" })
 
-        _ = try await open.handler(["label": "tester", "seed": 0])
-        _ = try await replay.handler(["commands": ["look"]])
-        _ = try await replay.handler(["commands": ["west"]])
+        _ = try await open.call(["label": "tester", "seed": 0])
+        _ = try await replay.call(["commands": ["look"]])
+        _ = try await replay.call(["commands": ["west"]])
 
         let replays = root.appendingPathComponent(PlaytestSessions.replayLabel)
         #expect(
@@ -305,7 +305,7 @@ struct PlaytestReplayTests {
             FileManager.default.fileExists(
                 atPath: root.appendingPathComponent("tester/probe-001").path))
         await #expect(throws: PlaytestError.self) {
-            _ = try await open.handler(
+            _ = try await open.call(
                 ["label": .string(PlaytestSessions.replayLabel), "seed": 0])
         }
     }

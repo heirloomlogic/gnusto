@@ -96,7 +96,13 @@ struct TurnAudit: Sendable {
 /// sends two and hopes. A session can ask, so it asks — and can stop a batch
 /// at the moment a question opens instead of feeding the answer slot with a
 /// command the tester meant for the parser.
-enum PlaytestAwaiting: String, Sendable {
+/// `CaseIterable` so that `openSchema`'s advertised `enum` is derived from
+/// these cases rather than transcribed beside them. A schema that stopped
+/// describing what its handler returns is one of the two ways an MCP server
+/// rots — `PlaytestTools`'s own header says so — and a hand-typed list is how
+/// that happens: adding a case here would otherwise ship an `outputSchema` that
+/// omits it, and a validating client would reject a correct result.
+enum PlaytestAwaiting: String, Sendable, CaseIterable {
     /// Nothing. The next line is parsed as a command.
     case none
     /// "Which do you mean…?" — the next line is tried as the answer first and

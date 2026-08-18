@@ -77,9 +77,16 @@ struct MCPServer: Sendable {
     /// refused) there. Nothing here reports an error, because a predicate that
     /// also validated would be two answers to one question.
     ///
-    /// It costs a second parse of the frames that say yes. That is a few
-    /// microseconds against a turn, and it buys a `serve` loop that reads as
-    /// what it is.
+    /// **It costs a second parse of every frame, not only of the frames that
+    /// say yes** — `serve` asks this of each one, so the parse below happens
+    /// and then `handle` does it again. For a `move` that is a few microseconds
+    /// against a turn and buys a `serve` loop that reads as what it is. For a
+    /// `replay` carrying thousands of commands in one frame it is not
+    /// negligible, and the fix — parse once in `serve` and pass the value to
+    /// both — is worth taking on its own, with its own tests, rather than as a
+    /// side effect of some other change: this predicate is what makes the
+    /// wire-order guarantee true, and that guarantee is the one property this
+    /// harness sells above all others.
     ///
     /// - Parameter line: the raw frame, without its newline.
     /// - Returns: whether it must be run in wire order.
@@ -179,7 +186,10 @@ struct MCPServer: Sendable {
             return failure(id: id, code: Self.invalidParams, message: "no such tool: \(name)")
         }
         do {
-            let outcome = try await tool.handler(params["arguments"] ?? [:])
+            // `call` rather than `handler`, so the row supplies its own name to
+            // the argument readers that quote it in their errors. See
+            // ``PlaytestTool/call(_:)`` and ``PlaytestToolArguments``.
+            let outcome = try await tool.call(params["arguments"] ?? [:])
             var result: [String: JSONValue] = [
                 "content": [["type": "text", "text": .string(outcome.text)]],
                 "isError": false,

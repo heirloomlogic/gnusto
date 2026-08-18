@@ -51,7 +51,27 @@ struct PlaytestTool: Sendable {
 
     /// The work. Throwing is a *tool* failure and reaches the agent as
     /// `isError: true` — see ``MCPServer``.
-    let handler: @Sendable (JSONValue) async throws -> PlaytestToolResult
+    ///
+    /// Takes ``PlaytestToolArguments`` rather than bare `JSONValue` so that the
+    /// row's own name travels with the call — see that type for why.
+    let handler: @Sendable (PlaytestToolArguments) async throws -> PlaytestToolResult
+
+    /// Runs this row against a call's raw arguments.
+    ///
+    /// The one place a `PlaytestToolArguments` is built, and it takes the name
+    /// from ``name`` — so a row cannot be called under another row's name and
+    /// nothing outside this struct has to know the name is needed at all. That
+    /// is the whole point: the dispatcher just resolved the row, and the suite
+    /// calls a row it is already holding, so neither should have to restate
+    /// what the row is called.
+    ///
+    /// - Parameter json: the client's `arguments` object.
+    /// - Throws: whatever the handler throws — a *tool* failure, not a
+    ///   protocol one. See ``MCPServer``.
+    /// - Returns: the result.
+    func call(_ json: JSONValue) async throws -> PlaytestToolResult {
+        try await handler(PlaytestToolArguments(json: json, tool: name))
+    }
 
     /// This row as its `tools/list` entry.
     var listing: JSONValue {
@@ -65,6 +85,31 @@ struct PlaytestTool: Sendable {
         }
         return .object(entry)
     }
+}
+
+/// A `tools/call`'s arguments, carrying the name of the row they arrived for.
+///
+/// The name is here because every argument reader wants it: a tool error
+/// reaches the agent as text it can act on, so the message has to say *"move
+/// needs a session"* rather than *"invalid arguments"*. Before this type each
+/// handler re-typed its own name as a literal to supply that — twenty-two
+/// copies over thirteen rows, and a copy that disagreed with its row's `name:`
+/// would send a language model a correctly-formatted sentence about the wrong
+/// tool. `MCPServer.call` has already resolved the row by name before it
+/// dispatches, so the name is in hand there and nothing needs to restate it.
+///
+/// The same argument the file's header makes for the table itself, one level
+/// down: a fact that is already written once should not be written again
+/// somewhere it can drift.
+struct PlaytestToolArguments: Sendable {
+    /// The `arguments` object the client sent, or an empty object.
+    let json: JSONValue
+
+    /// The name of the tool being called, for every error message below.
+    let tool: String
+
+    /// One argument, unread and untyped.
+    subscript(key: String) -> JSONValue? { json[key] }
 }
 
 /// What a tool hands back.
@@ -170,6 +215,14 @@ enum PlaytestTools {
     /// which also says why this is enforced here rather than by handing a
     /// tester a shorter tool list.
     ///
+    /// Because the answer is a function of the game type, it is built **once**,
+    /// here, and the handler closes over the finished `JSONValue`. Rebuilding
+    /// it per call re-walked the whole room graph and re-encoded every room,
+    /// exit and timer: measured at **7.96 ms** a call on Dungeon, for a value
+    /// that cannot change while the process lives. One table is built per
+    /// server, so this is paid once at connect — where a cold start is already
+    /// paying for a `swift build`.
+    ///
     /// - Parameters:
     ///   - game: the game to survey.
     ///   - sessions: the registry the session id is looked up in.
@@ -177,7 +230,8 @@ enum PlaytestTools {
     private static func survey(
         for game: PreparedGame, _ sessions: PlaytestSessions
     ) -> PlaytestTool {
-        PlaytestTool(
+        let answer = PlaytestSurvey(game.definition).json
+        return PlaytestTool(
             name: "survey",
             mutatesState: false,
             description: """
@@ -204,12 +258,8 @@ enum PlaytestTools {
             ],
             outputSchema: surveySchema,
             handler: { arguments in
-                let session = try await sessions.session(
-                    try string(arguments, "session", tool: "survey"))
-                guard session.role.seesOracleData else {
-                    throw PlaytestError(session.role.refusal(of: "survey"))
-                }
-                return PlaytestToolResult(PlaytestSurvey(game.definition).json)
+                _ = try await sessions.session(arguments, oracle: true)
+                return PlaytestToolResult(answer)
             })
     }
 
@@ -275,12 +325,8 @@ enum PlaytestTools {
             ],
             outputSchema: vocabularySchema,
             handler: { arguments in
-                let session = try await sessions.session(
-                    try string(arguments, "session", tool: "vocabulary"))
-                guard session.role.seesOracleData else {
-                    throw PlaytestError(session.role.refusal(of: "vocabulary"))
-                }
-                let words = try strings(arguments, "words", tool: "vocabulary")
+                _ = try await sessions.session(arguments, oracle: true)
+                let words = try strings(arguments, "words")
                 // Read off the definition rather than a world: the answer is a
                 // fact about the game type, so a session that has been evicted
                 // is not replayed just to be asked a question about its
@@ -410,7 +456,7 @@ enum PlaytestTools {
             ],
             outputSchema: openSchema,
             handler: { arguments in
-                let label = try string(arguments, "label", tool: "open")
+                let label = try string(arguments, "label")
                 let seed = try seed(arguments)
                 let role = try role(arguments)
                 let divergence = try divergence(arguments)
@@ -477,7 +523,7 @@ enum PlaytestTools {
             ],
             "awaiting": [
                 "type": "string",
-                "enum": ["none", "clarification", "saveFilename", "restoreFilename", "deathChoice"],
+                "enum": .array(PlaytestAwaiting.allCases.map { .string($0.rawValue) }),
             ],
             "transcript": ["type": "string"],
             "commands": ["type": "string"],
@@ -539,9 +585,8 @@ enum PlaytestTools {
             ],
             outputSchema: nil,
             handler: { arguments in
-                let session = try await sessions.session(
-                    try string(arguments, "session", tool: "move"))
-                let commands = try strings(arguments, "commands", tool: "move")
+                let session = try await sessions.session(arguments)
+                let commands = try strings(arguments, "commands")
                 let allowPrompts = boolean(arguments, "allowPrompts")
                 return PlaytestToolResult(
                     text: try await session.move(
@@ -590,12 +635,11 @@ enum PlaytestTools {
             ],
             outputSchema: nil,
             handler: { arguments in
-                let session = try await sessions.session(
-                    try string(arguments, "session", tool: "recall"))
+                let session = try await sessions.session(arguments)
                 return PlaytestToolResult(
                     text: try await session.recall(
-                        from: try integer(arguments, "from", tool: "recall"),
-                        to: try integer(arguments, "to", tool: "recall"),
+                        from: try integer(arguments, "from"),
+                        to: try integer(arguments, "to"),
                         grep: arguments["grep"]?.stringValue))
             })
     }
@@ -651,8 +695,7 @@ enum PlaytestTools {
             ],
             outputSchema: coverageSchema,
             handler: { arguments in
-                let session = try await sessions.session(
-                    try string(arguments, "session", tool: "coverage"))
+                let session = try await sessions.session(arguments)
                 let limit = max(1, arguments["limit"]?.intValue ?? queueLimit)
                 let coverage = try await session.coverage(limit: limit)
                 return PlaytestToolResult(
@@ -668,9 +711,7 @@ enum PlaytestTools {
             "id": ["type": "string"],
             "kind": [
                 "type": "string",
-                "enum": [
-                    "noun", "exit", "object", "restate", "hunch", "timer", "displacement",
-                ],
+                "enum": .array(CoverageItem.Kind.allCases.map { .string($0.rawValue) }),
             ],
             "how": [
                 "type": "string",
@@ -772,11 +813,10 @@ enum PlaytestTools {
             ],
             outputSchema: nil,
             handler: { arguments in
-                let session = try await sessions.session(
-                    try string(arguments, "session", tool: "note"))
+                let session = try await sessions.session(arguments)
                 return PlaytestToolResult(
                     text: try await session.note(
-                        try string(arguments, "text", tool: "note"),
+                        try string(arguments, "text"),
                         suspicious: boolean(arguments, "suspicious")))
             })
     }
@@ -826,10 +866,9 @@ enum PlaytestTools {
             ],
             outputSchema: finishSchema,
             handler: { arguments in
-                let session = try await sessions.session(
-                    try string(arguments, "session", tool: "finish"))
+                let session = try await sessions.session(arguments)
                 let closing = try await session.finish(
-                    summary: try string(arguments, "summary", tool: "finish"),
+                    summary: try string(arguments, "summary"),
                     leaving: arguments["leaving"]?.stringValue,
                     limit: queueLimit)
                 return PlaytestToolResult(
@@ -879,10 +918,9 @@ enum PlaytestTools {
             ],
             outputSchema: checkpointSchema,
             handler: { arguments in
-                let session = try await sessions.session(
-                    try string(arguments, "session", tool: "checkpoint"))
+                let session = try await sessions.session(arguments)
                 let marked = try await session.checkpoint(
-                    try string(arguments, "name", tool: "checkpoint"))
+                    try string(arguments, "name"))
                 return PlaytestToolResult(text: marked.message, structured: marked.json)
             })
     }
@@ -934,10 +972,9 @@ enum PlaytestTools {
             ],
             outputSchema: rewindSchema,
             handler: { arguments in
-                let session = try await sessions.session(
-                    try string(arguments, "session", tool: "restore"))
+                let session = try await sessions.session(arguments)
                 let rewound = try await session.restore(
-                    checkpoint: try string(arguments, "name", tool: "restore"))
+                    checkpoint: try string(arguments, "name"))
                 return PlaytestToolResult(text: rewound.message, structured: rewound.json)
             })
     }
@@ -976,10 +1013,9 @@ enum PlaytestTools {
             ],
             outputSchema: rewindSchema,
             handler: { arguments in
-                let session = try await sessions.session(
-                    try string(arguments, "session", tool: "rewind"))
+                let session = try await sessions.session(arguments)
                 let rewound = try await session.rewind(
-                    turns: try integer(arguments, "turns", tool: "rewind"))
+                    turns: try integer(arguments, "turns"))
                 return PlaytestToolResult(text: rewound.message, structured: rewound.json)
             })
     }
@@ -1054,8 +1090,7 @@ enum PlaytestTools {
             ],
             outputSchema: exportSchema,
             handler: { arguments in
-                let session = try await sessions.session(
-                    try string(arguments, "session", tool: "export"))
+                let session = try await sessions.session(arguments)
                 let exported = try await session.export()
                 return PlaytestToolResult(
                     text: exported.message, structured: exported.json)
@@ -1157,7 +1192,7 @@ enum PlaytestTools {
             ],
             outputSchema: replaySchema,
             handler: { arguments in
-                let commands = try strings(arguments, "commands", tool: "replay")
+                let commands = try strings(arguments, "commands")
                 let outcome = try await PlaytestReplay.run(
                     prepared: game,
                     commands: commands,
@@ -1315,41 +1350,55 @@ enum PlaytestTools {
     /// arguments" is a wasted round trip. Nothing here traps — see
     /// ``MCPServer``.
     ///
+    /// The tool's name comes off ``PlaytestToolArguments/tool``, which the
+    /// dispatcher filled in from the row it resolved, so no caller supplies it
+    /// and no caller can supply the wrong one.
+    ///
     /// - Parameters:
     ///   - arguments: the call's arguments.
     ///   - key: the argument name.
-    ///   - tool: the tool's name, for the message.
     /// - Throws: ``PlaytestError`` when it is missing or not a string.
     /// - Returns: the value.
     private static func string(
-        _ arguments: JSONValue, _ key: String, tool: String
+        _ arguments: PlaytestToolArguments, _ key: String
     ) throws -> String {
         guard let value = arguments[key]?.stringValue, !value.isEmpty else {
-            throw PlaytestError("\(tool) needs a \(key) argument, as a non-empty string.")
+            throw PlaytestError(
+                "\(arguments.tool) needs a \(key) argument, as a non-empty string.")
         }
         return value
     }
 
+    /// The `session` argument, read exactly as every other required string is.
+    ///
+    /// Exposed for ``PlaytestSessions/session(_:oracle:)``, which does the
+    /// lookup and the oracle check together, so that reading the id and
+    /// resolving it stay one step with one error voice.
+    static func sessionID(_ arguments: PlaytestToolArguments) throws -> String {
+        try string(arguments, "session")
+    }
+
     /// A required whole-number argument.
     private static func integer(
-        _ arguments: JSONValue, _ key: String, tool: String
+        _ arguments: PlaytestToolArguments, _ key: String
     ) throws -> Int {
         guard let value = arguments[key]?.intValue else {
-            throw PlaytestError("\(tool) needs a \(key) argument, as a whole number.")
+            throw PlaytestError("\(arguments.tool) needs a \(key) argument, as a whole number.")
         }
         return value
     }
 
     /// A required array-of-strings argument.
     private static func strings(
-        _ arguments: JSONValue, _ key: String, tool: String
+        _ arguments: PlaytestToolArguments, _ key: String
     ) throws -> [String] {
         guard let raw = arguments[key]?.arrayValue else {
-            throw PlaytestError("\(tool) needs a \(key) argument, as an array of strings.")
+            throw PlaytestError(
+                "\(arguments.tool) needs a \(key) argument, as an array of strings.")
         }
         let values = raw.compactMap(\.stringValue)
         guard values.count == raw.count else {
-            throw PlaytestError("\(tool)'s \(key) must hold strings only.")
+            throw PlaytestError("\(arguments.tool)'s \(key) must hold strings only.")
         }
         return values
     }
@@ -1359,7 +1408,7 @@ enum PlaytestTools {
     /// The one argument reader that does not throw: a flag left off is the
     /// common case and means no, and a client that sends `"true"` as a string
     /// meant yes but gets the safe answer rather than a refusal.
-    private static func boolean(_ arguments: JSONValue, _ key: String) -> Bool {
+    private static func boolean(_ arguments: PlaytestToolArguments, _ key: String) -> Bool {
         arguments[key] == .bool(true) || arguments[key]?.stringValue == "true"
     }
 
@@ -1368,7 +1417,7 @@ enum PlaytestTools {
     /// Negative is refused rather than wrapped. A seed is a `UInt64` and the
     /// wire only carries signed integers, so `-1` could plausibly mean the top
     /// of the range or a typo; refusing says which it was.
-    private static func seed(_ arguments: JSONValue) throws -> UInt64 {
+    private static func seed(_ arguments: PlaytestToolArguments) throws -> UInt64 {
         guard let raw = arguments["seed"] else { return 0 }
         guard let value = raw.intValue, value >= 0 else {
             throw PlaytestError(
@@ -1388,7 +1437,7 @@ enum PlaytestTools {
     /// - Parameter arguments: the call's arguments.
     /// - Throws: ``PlaytestError`` naming the policies there are.
     /// - Returns: the policy.
-    private static func divergence(_ arguments: JSONValue) throws -> DivergencePolicy {
+    private static func divergence(_ arguments: PlaytestToolArguments) throws -> DivergencePolicy {
         guard let raw = arguments["divergence"] else { return .commit }
         guard let name = raw.stringValue, let policy = DivergencePolicy(rawValue: name) else {
             let known = DivergencePolicy.allCases.map(\.rawValue).joined(separator: ", ")
@@ -1413,7 +1462,7 @@ enum PlaytestTools {
     /// - Parameter arguments: the call's arguments.
     /// - Throws: ``PlaytestError`` naming the roles there are.
     /// - Returns: the role.
-    private static func role(_ arguments: JSONValue) throws -> PlaytestRole {
+    private static func role(_ arguments: PlaytestToolArguments) throws -> PlaytestRole {
         guard let raw = arguments["role"] else { return .unrestricted }
         guard let name = raw.stringValue, let role = PlaytestRole(rawValue: name) else {
             let known = PlaytestRole.allCases.map(\.rawValue).joined(separator: ", ")

@@ -176,7 +176,13 @@ struct CoverageItem: Sendable {
     ///
     /// Every kind is derivable from printed text plus the parse record; there
     /// is deliberately no kind that could only be built from source.
-    enum Kind: String, Sendable {
+    ///
+    /// `CaseIterable` so that `queueItemSchema` derives its advertised `enum`
+    /// from these cases instead of restating them. That schema is embedded in
+    /// three declared output schemas — `open`, `coverage` and `finish` — so a
+    /// kind added here and not there would break validation on three tools at
+    /// once, for a client that checks.
+    enum Kind: String, Sendable, CaseIterable {
         /// A word the prose printed that no command has ever named.
         case noun
         /// A direction the prose named, from a room, that was never taken.
@@ -442,10 +448,20 @@ struct CoverageLedger: Sendable {
     private struct ObjectRecord {
         var label: String
         var room: String
-        /// Everything the game has printed *about* this thing: the sentence it
-        /// was named in, and every examine of it. The interaction matrix is
-        /// filtered against this text and nothing else.
-        var text: String
+        /// Every distinct word the game has printed *about* this thing: the
+        /// sentence it was named in, and every examine of it. The interaction
+        /// matrix is filtered against this vocabulary and nothing else.
+        ///
+        /// A set of words rather than the accumulated prose, because the prose
+        /// was only ever read one way — split into words and made into a set —
+        /// and it was read again in full every time the object was *named*, not
+        /// only when it was examined. That made the cost of naming a thing grow
+        /// with how often it had already been described: measured on Dungeon,
+        /// 400 repetitions of `x <one object>` took the per-turn cost from
+        /// 0.87 ms to 5.5 ms, linearly, while `look` and `wait` over the same
+        /// span stayed flat. Folding each new output in as it arrives is
+        /// O(the new output) instead of O(everything ever printed).
+        var vocabulary: Set<String>
         /// The verbs already tried against it, by intent — so `x`, `examine`
         /// and `look at` count once, and `search` does not re-offer `look in`.
         var tried: Set<Intent> = []
@@ -677,7 +693,7 @@ struct CoverageLedger: Sendable {
         watchForDisplacement(output: output, room: room, line: line)
 
         if audit.intent == .examine, let subject = audit.directObject {
-            objects[subject]?.text += "\n\(output)"
+            objects[subject]?.vocabulary.formUnion(Self.words(in: output))
             refreshMatrix(for: subject, line: line)
         }
     }
@@ -723,7 +739,7 @@ struct CoverageLedger: Sendable {
                 how: "probe it again from somewhere else",
                 why: """
                     your own note at line \(line) in \(room): \
-                    \(Self.clipped(text)) — a hunch wants a second frame
+                    \(Self.quoted(text)) — a hunch wants a second frame
                     """,
                 room: room,
                 line: line,
@@ -903,7 +919,7 @@ struct CoverageLedger: Sendable {
         objects[id] = ObjectRecord(
             label: word,
             room: room,
-            text: "",
+            vocabulary: Set(Self.words(in: word)),
             lastPrintedRoom: room,
             depth: inherited?.depth ?? 1)
     }
@@ -1015,7 +1031,7 @@ struct CoverageLedger: Sendable {
                 how: "look, wait a few turns, look again",
                 why: """
                     \(intent.raw) in \(room) printed something new at line \(line) that \
-                    nothing you typed explains: \(Self.clipped(evidence)). Look again at a \
+                    nothing you typed explains: \(Self.quoted(evidence)). Look again at a \
                     different moment and write a note quoting the line
                     """,
                 room: room,
@@ -1086,10 +1102,19 @@ struct CoverageLedger: Sendable {
     /// reach the rooms no exit lists.
     private mutating func refreshMatrix(for id: EntityID, line: Int) {
         guard let record = objects[id] else { return }
-        let vocabulary = Set(Self.words(in: "\(record.label) \(record.text)"))
+        let vocabulary = record.vocabulary
         var offered: Set<Intent> = record.tried
-        for probe in Self.repertoire where probe.applies(to: vocabulary, held: record.held) {
-            guard !offered.contains(probe.intent) else { continue }
+        // The cheap test first. `applies` walks up to 255 trigger stems against
+        // every word the object has ever been described with, and this runs for
+        // every bound object on every turn — while `offered` is a set lookup
+        // that already knows the answer for anything the tester has tried.
+        // Filtering on `applies` first meant paying the scan and then throwing
+        // the result away. Both are pure and `offered` grows only below, so the
+        // order is free to choose.
+        for probe in Self.repertoire {
+            guard !offered.contains(probe.intent),
+                probe.applies(to: vocabulary, held: record.held)
+            else { continue }
             offered.insert(probe.intent)
             let phrase = probe.takesObject ? "\(probe.verb) \(record.label)" : probe.verb
             raise(
@@ -1595,13 +1620,34 @@ struct CoverageLedger: Sendable {
     }
 
     /// The words that stand in for a thing rather than naming one.
-    private static let pronouns: Set<String> = [
-        "it", "them", "they", "him", "her", "all", "everything", "both", "those",
-        "these", "one", "ones",
-    ]
+    ///
+    /// Built *on* ``Vocabulary/reservedWords`` rather than restating it. That
+    /// set is the engine's own definition of the words the parser claims for
+    /// itself — the three this doc names above are three of its four — so a
+    /// fifth added there has to reach ``isLabel(_:)`` too. Re-typed, it would
+    /// not: `isLabel` would accept the new word as an object label and build an
+    /// item id out of a word meaning "whatever the last line meant", which is
+    /// the one failure this list exists to prevent.
+    ///
+    /// The rest are pronouns and quantifiers the parser has no opinion about
+    /// but prose uses constantly, so they are named here and only here.
+    ///
+    /// Reading the static does not breach this file's firewall: `reservedWords`
+    /// is engine-wide, not a fact about the game under test — unlike
+    /// ``Vocabulary/prepositions``, which the bootstrap fills per game and
+    /// which is why ``prepositions`` below stays private.
+    private static let pronouns: Set<String> = Vocabulary.reservedWords.union([
+        "they", "him", "her", "both", "those", "these", "one", "ones",
+    ])
 
     /// A fragment short enough to quote inside a queue line.
-    private static func clipped(_ text: String) -> String {
+    ///
+    /// Named apart from the two `clipped` helpers in ``PlaytestSession`` and
+    /// ``PlaytestTools``: those enforce the 12,000-character result cap and keep
+    /// a text's *tail*, where this one elides a quotation's *head* down to 90
+    /// characters and adds the quotation marks. Same word, opposite end, three
+    /// orders of magnitude apart — so it does not share their name.
+    private static func quoted(_ text: String) -> String {
         let squeezed = text.split(whereSeparator: \.isWhitespace).joined(separator: " ")
         guard squeezed.count > 90 else { return "\"\(squeezed)\"" }
         return "\"\(squeezed.prefix(87))…\""
@@ -1617,12 +1663,20 @@ struct CoverageLedger: Sendable {
     /// `in` and `out` are excluded even though the engine has them: they are
     /// far too common in ordinary prose to read as exits, and the false
     /// positives would crowd out the compass directions that carry the signal.
-    private static let directions: [String: Direction] = [
-        "north": .north, "south": .south, "east": .east, "west": .west,
-        "northeast": .northeast, "northwest": .northwest,
-        "southeast": .southeast, "southwest": .southwest,
-        "up": .up, "down": .down,
-    ]
+    ///
+    /// Derived from ``Direction`` rather than re-typed from it, so the
+    /// exclusion above is the only thing this declaration actually says. A
+    /// direction added to the engine and not to a hand-written copy here would
+    /// stop the ledger raising and discharging `exit:` items for it *silently*,
+    /// while ``walked`` went on keying that same direction off the real enum —
+    /// so the queue and the walked map would disagree and neither would say so.
+    ///
+    /// Reading the enum does not breach this file's firewall: `Direction` is an
+    /// engine-wide static, not a fact about the game under test.
+    private static let directions: [String: Direction] = Dictionary(
+        uniqueKeysWithValues: Direction.allCases
+            .filter { $0 != .in && $0 != .out }
+            .map { ($0.rawValue, $0) })
 
     /// The words after which the second half of a command names a second thing.
     private static let prepositions: Set<String> = [

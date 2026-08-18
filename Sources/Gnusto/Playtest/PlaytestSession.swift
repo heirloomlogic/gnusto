@@ -1202,7 +1202,13 @@ actor PlaytestSession {
     ///
     /// - Returns: the line to append, or the empty string.
     private func nudge() -> String {
-        guard let note = ledger.signals().note, ledger.commands >= lastNudge + 20 else {
+        // The cheap clause first, deliberately. `signals()` makes six full
+        // passes over the queue, and nineteen calls in twenty are going to be
+        // thrown away on the interval test — so asking the interval first is
+        // the difference between paying for those passes every turn and paying
+        // once per twenty. Both clauses are pure and `lastNudge` moves only
+        // after both pass, so the order is free to choose.
+        guard ledger.commands >= lastNudge + 20, let note = ledger.signals().note else {
             return ""
         }
         lastNudge = ledger.commands
@@ -1480,12 +1486,6 @@ actor PlaytestSession {
     private func persistCommands() {
         let text = turns.map(\.line).joined(separator: "\n")
         try? Data("\(text)\n".utf8).write(to: commandsURL, options: .atomic)
-    }
-
-    /// Every line this session has recorded, in order — the list that replays
-    /// it.
-    func commandList() -> [String] {
-        turns.map(\.line)
     }
 
     /// Reads one of the session's own files.
