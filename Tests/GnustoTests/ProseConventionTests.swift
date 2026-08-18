@@ -117,6 +117,16 @@ struct ProseConventionTests {
             // adjective, and a word fragment.
             #"static func button(_ shape: String) -> String { "A \(shape) button, worn smooth." }"#,
             #"static func wall(_ face: String) -> String { "The \(face)ern wall." }"#,
+            // A closure nested *inside* a naming body rebinds `$0`, so the
+            // inner one is not the rendered phrase and the sweep must not
+            // rule on it. This is `GameText.missingTopic` verbatim, which the
+            // sweep reported as a fault until it counted depth.
+            #"""
+            text.missingTopic = .naming {
+                let object = $0.object.map { " \($0)" } ?? ""
+                return "What do you want to \($0.verb)\(object)?"
+            }
+            """#,
         ]
         for line in good {
             #expect(
@@ -233,7 +243,16 @@ struct ProseConventionTests {
             for span in spans(of: line) {
                 switch span.kind {
                 case .string:
-                    guard namingDepth != nil else { continue }
+                    // Directly in the `.naming` body, and not one closure
+                    // deeper. A nested closure rebinds `$0` — `missingTopic`
+                    // builds its optional fragment with
+                    // `$0.object.map { " \($0)" }`, where the inner `$0` is
+                    // the unwrapped `String` and not the rendered phrase. The
+                    // sweep's whole licence is that inside a naming body `$0`
+                    // *is* a phrase; where that stops being true the sweep has
+                    // to stop ruling, or it reports a fault against a spelling
+                    // that is correct.
+                    guard let naming = namingDepth, depth == naming + 1 else { continue }
                     found += faults(
                         inLiteral: span.text, path: path, line: number, excerpt: raw,
                         lineStartOpensASentence: true)
