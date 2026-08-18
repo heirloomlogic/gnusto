@@ -189,7 +189,7 @@ rather than a declaration — recorded as returned, and not expected to match.
 
 | Key | Class | Verdict | Note |
 |---|---|---|---|
-| `decl::Sources/Fulminate/Fulminate.swift::clock` | C1 status-clock | needs-human | major, wrong-footer, **regression introduced by `7cec4aa`**; `ownerClass` engine, real site `Sources/GnustoClock/Clock.swift` + `GameWorld.statusFields()` |
+| `decl::Sources/Fulminate/Fulminate.swift::clock` | C1 status-clock | fixed | major, wrong-footer, **regression introduced by `7cec4aa`**; `ownerClass` engine, real site `Sources/GnustoClock/Clock.swift` + `GameWorld.statusFields()`. Repaired 2026-08-18 — see [Amendments](#amendments) |
 | `decl::Sources/Fulminate/Fulminate.swift::teague.description` | C2 teague death clause | confirmed | major, explorer-1, introduced by `ed8d377` |
 | `decl::Sources/Fulminate/Fulminate.swift::timers/clock.blast` | C3 blast deixis | confirmed | major, explorer-1, introduced by `7c92508` |
 | `decl::Sources/Fulminate/Fulminate.swift::timers/blast.after` | C3 blast deixis | confirmed | minor, explorer-1, introduced by `ed8d377` |
@@ -235,3 +235,43 @@ here: Dr. Pike's presence line *"standing about with his hat on"* printing uncha
 the Back Yard in front of a burning building, and the Boarder's Room bed described as
 made with squared corners while Teague sits on it. Both were raised as unprobed cells by
 explorer-2 rather than as claims, and neither has a verified frame.
+
+## Amendments
+
+**2026-08-18 — the `C1 status-clock` row marked `fixed`.** The `[status]` footer box of
+#280, and the one finding of that round that was never Fulminate's: the game's prose was
+right all along and the scaffolding under it was a tick fast.
+
+The round left it `needs-human` because three repairs were reasonable and the verifier
+declined to pick. Fix **(a)** was taken — the contributed fields are now sampled at the
+turn's close, before the move counter advances, which is the instant every rule,
+`describe` block and timer in that turn read. The other two were rejected with reasons
+that are now standing tests rather than an argument in a commit message:
+
+- **(b) subtract `minutesPerTurn` inside `Clock.statusFields`** reads a minute early on a
+  paused clock, on a clock moved by `advance(by:)` mid-turn, and on a free turn.
+  `aPausedClockReadsTheSameHourInTheProseAndTheFooter` and
+  `aClockAdvancedInsideATurnIsReportedAtItsNewHour` are that objection, kept honest.
+- **(c) leave the code and correct the documents** would have left
+  `finding-contract.md`'s instruction to read the hour off the footer permanently
+  qualified — for a field three charters had already worked around by hand and two had
+  dropped sound findings over.
+
+The sample rides on the turn's own `Scratch` and `GameWorld.commit(_:)` adopts it, so a
+frame that never ran `finishTurn` — the opening, UNDO, RESTART, RESTORE — carries nil and
+*clears the previous sample by committing*. That shape was chosen over clearing at each
+entry point because an entry-point list has to be kept complete, and the first draft of
+one had already missed `requestQuit()`, which reaches `runTurn` without passing through
+`performAudited`.
+
+Five tests, four of which fail against the old behaviour; the two that pinned the
+off-by-one (`aClockGameShowsTheHour`, and `PlaytestSessionTests`'
+`aCommentIsRecordedAndCostsNoTurnAndNoClockTick`) were updated, and nothing else in the
+suite moved. Docs corrected in six places, including one claim on
+`GameWorld.statusFields()` that was simply false: *"the whole thing is skipped when
+nobody declared a field"* is true only of a game with no content bundle at all, because
+`Bootstrap` collects one closure per module whether or not the module overrides the
+default.
+
+**The other fifteen boxes of #280 are untouched by this.** They are Fulminate's own prose
+and stand as filed.

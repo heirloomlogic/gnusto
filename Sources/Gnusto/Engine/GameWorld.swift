@@ -64,6 +64,19 @@ public actor GameWorld {
     /// alone, which is right: the timers really did fire.
     var firedTimers: [String: Int] = [:]
 
+    /// The world as the last turn that *cost* a move stood at its close,
+    /// before its counter advanced — or nil, meaning "read the fields live".
+    ///
+    /// Actor state, never serialized, for the same reason as `undoSnapshot`
+    /// and `initialState` above: it is a fact about the turn just committed,
+    /// not about the world. Written only by ``commit(_:)``, out of the
+    /// retiring frame's `Scratch`, and cleared only by ``freeReply(_:)`` and
+    /// the play-test `restore(_:)` — which between them are every way a
+    /// `TurnResult` reaches a driver without a cost turn behind it. Read only
+    /// by `statusFields()`. See ``Scratch/statusFieldState`` for why the
+    /// sample exists at all.
+    var statusFieldState: WorldState?
+
     /// Builds the world from a game definition, validating it up front.
     /// The random stream is seeded fresh each run; use `init(game:seed:)`
     /// to replay a specific one.
@@ -467,7 +480,12 @@ public actor GameWorld {
 
     /// A parse-error-style response: message only, no rules, no turn.
     func freeReply(_ message: String) -> TurnResult {
-        TurnResult(
+        // No turn ran, so the last one's sample is stale: this reply was
+        // written against live state and the footer under it must read the
+        // same world. One of the two places the sample is cleared; the other
+        // is `commit`, which does it by adopting a nil.
+        statusFieldState = nil
+        return TurnResult(
             output: message,
             isFinished: state.status.isFinal,
             status: statusLine())
@@ -591,6 +609,31 @@ public actor GameWorld {
             // because an each-turn rule above may have ended it).
             if frame.with({ $0.state.status }) == .playing {
                 tickTimers(frame: frame)
+            }
+            // The sample the contributed status fields are read against, taken
+            // here and nowhere else. Both halves of the position are
+            // load-bearing.
+            //
+            // *After* the each-turn rules and the timer tick, so a rule that
+            // flipped a global or a fuse that called `clock.advance(by:)` this
+            // turn is in it — the turn's last word is written at this instant,
+            // not at its first. *Before* the line below, because that line is
+            // the whole of #280: everything the turn printed was written at
+            // the count as it stands right here.
+            //
+            // Gated on the empty table, which is the same guard
+            // `statusFields()` returns early on. Note what that guard does not
+            // mean: `Bootstrap` collects one closure per content module
+            // whether or not the module overrides the default, so a bundled
+            // game reaches this line and pays one copy of a struct of COW
+            // dictionaries per cost turn even when every closure returns [].
+            // That is the same order as the two the turn already takes for its
+            // UNDO snapshot, and it buys laziness at the other end: the
+            // closures themselves are only run when a footer asks.
+            if !definition.statusFields.isEmpty {
+                frame.with { scratch in
+                    scratch.statusFieldState = scratch.state
+                }
             }
             frame.with { $0.state.moves += 1 }
         }
@@ -839,6 +882,13 @@ public actor GameWorld {
     func commit(_ frame: TurnFrame) -> TurnResult {
         let scratch = frame.retire()
         state = scratch.state
+        // Adopted, never merged — and taking a nil *is* the invalidation.
+        // The opening, UNDO, RESTART, RESTORE and every meta or unhandled
+        // command arrive here with a frame that never ran the capture, so
+        // they correctly send the footer back to live state. None of them
+        // moved the counter, so live state is the world their words were
+        // written in.
+        statusFieldState = scratch.statusFieldState
         return TurnResult(
             output: scratch.output.joined(separator: "\n\n"),
             isFinished: scratch.state.status.isFinal,

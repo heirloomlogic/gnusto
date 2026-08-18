@@ -148,6 +148,17 @@ the meta verbs, the parse errors, and the custom verb nothing answered, without 
 knowing which is which. `time=` appears in games that use `GnustoClock`; a game's
 bundles and plugins add their own fields after the four standard ones.
 
+**The two halves of the line are sampled at different instants, deliberately.**
+`room=`, `moves=`, `score=` and `turn=` are the turn's *result* — where it left you and
+what it cost. A contributed field is read against the world as the turn *closed*, before
+the counter advanced, which is the instant every rule, `describe` block and timer in that
+turn read. So `time=` is the minute the prose above it was written at and can be quoted
+straight into a finding. One consequence worth knowing before it looks like a bug: the
+opening and turn one both read the game's starting hour, because nothing had happened
+yet either time. That is a clock working, not a clock stuck. (It was one tick fast
+between 2026-08-15 and the fix for #280; a transcript recorded in that window needs the
+correction applied before you quote its hour.)
+
 The footer goes into the transcript file and onto the console as one string, so an
 excerpt you lift out of the recording is still what the tester read. It is **off unless
 asked for**, and it is a `REPL` argument rather than an environment read, so

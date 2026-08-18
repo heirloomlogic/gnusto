@@ -589,8 +589,12 @@ struct PlaytestSessionTests {
         // The comment sits in the transcript with no output block of its own,
         // so the next command's echo follows it immediately.
         #expect(report.contains("> // nothing has moved\n> take coin\n"))
-        #expect(report.contains("moves=1 | score=0 | turn=cost | time=8:01 pm"))
-        #expect(report.contains("moves=2 | score=0 | turn=cost | time=8:02 pm"))
+        // The hours are the ones each turn was written at, not the ones its
+        // counter left behind — see `Scratch.statusFieldState`. What this test
+        // is about survives that unchanged: two cost turns exactly one minute
+        // apart, with the comment between them adding nothing to either.
+        #expect(report.contains("moves=1 | score=0 | turn=cost | time=8:00 pm"))
+        #expect(report.contains("moves=2 | score=0 | turn=cost | time=8:01 pm"))
         #expect(!report.contains("moves=3"))
         #expect(report.contains("ran=3/3"))
     }

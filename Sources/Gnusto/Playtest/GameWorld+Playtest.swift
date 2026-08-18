@@ -185,13 +185,17 @@ extension GameWorld {
     ///
     /// Clears the open clarification and prompt, because a question asked
     /// against the old state has no answer in the new one — the same
-    /// housekeeping `performUndo` and `performRestart` do.
+    /// housekeeping `performUndo` and `performRestart` do. And the
+    /// status-field sample, which belongs to a turn this state has never
+    /// taken: a rewind swaps the world out from under it, and a footer read
+    /// afterwards would name the hour of a turn that has been written off.
     ///
     /// - Parameter snapshot: a state previously returned by `snapshot()`.
     func restore(_ snapshot: WorldState) {
         state = snapshot
         pendingClarification = nil
         pendingPrompt = nil
+        statusFieldState = nil
     }
 
     /// The static facts about the game — everything a driver can report
@@ -221,14 +225,31 @@ extension GameWorld {
     /// This builds a throwaway one exactly as `begin()` does, and then
     /// **discards** it rather than committing: the scratch's writes go nowhere,
     /// which is the read-only contract stated on `GameContent.statusFields`
-    /// made literal. It is also why the whole thing is skipped when nobody
-    /// declared a field, and why the caller only asks when a footer is in
-    /// force.
+    /// made literal. The caller only asks when a footer is in force, so a game
+    /// nobody is play-testing never runs an author's closure at all.
+    ///
+    /// **Which world it reads.** Not the live one, when the last turn cost a
+    /// move: the frame is built over the world as that turn stood at its
+    /// *close* — after its each-turn rules and its timer tick, before its
+    /// counter advanced — which is the instant every word the turn printed was
+    /// written at. So `time=` names the minute of the prose above it, while
+    /// the `moves=` beside it names the count the turn left behind. The two
+    /// are sampled at different instants deliberately; see
+    /// ``Scratch/statusFieldState`` and issue #280. A turn that advanced no
+    /// counter has no such instant and falls back to live state, which for
+    /// that turn is the same world.
+    ///
+    /// **What the empty check does not mean.** It is not "this game
+    /// contributes nothing": `Bootstrap` collects one closure per content
+    /// module whether or not the module overrides the protocol's default, so
+    /// any game with a bundle gets past this guard and pays for a scratch
+    /// frame whose `flatMap` then returns nothing. Only a game with no
+    /// bundles and no stored plugin returns here.
     ///
     /// - Returns: the contributed `name`/`value` pairs, in declaration order.
     func statusFields() -> [(String, String)] {
         guard !definition.statusFields.isEmpty else { return [] }
-        let scratch = TurnFrame(definition: definition, state: state)
+        let scratch = TurnFrame(definition: definition, state: statusFieldState ?? state)
         let fields = Ctx.$frame.withValue(scratch) {
             definition.statusFields.flatMap { $0() }
         }

@@ -113,7 +113,7 @@ struct Barometer: GamePlugin {
 
 Everything else here changes what the game does, so the host opts in by hand. A status field annotates a transcript the host already asked for and changes nothing about the world — and there is no `Game` block to splice it into — so the bootstrap reads it off the host's stored properties, the same walk that catches an unlisted bundle. A plugin the host stores is found; one constructed inline inside a computed property is not.
 
-The field is read inside a live turn frame that is then discarded, so it must be read-only. See <doc:ContentBundles#A-bundle-can-add-a-field-to-the-status-footer> for the full contract, which is identical for both protocols.
+The field is read inside a live turn frame that is then discarded, so it must be read-only — and it is sampled at the *close* of the turn rather than after the turn's counter advanced, so a field derived from `moves` names the turn it is printed under. See <doc:ContentBundles#A-bundle-can-add-a-field-to-the-status-footer> for the full contract, sampling point included, which is identical for both protocols.
 
 ## Content-bearing plugins own their region
 

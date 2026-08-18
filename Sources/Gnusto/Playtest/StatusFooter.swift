@@ -14,6 +14,11 @@ import Foundation
 /// out to be a meta verb, and "which room was that?" is a scroll upwards.
 /// `moves=` and `turn=` answer the first; `room=` answers the second.
 ///
+/// A contributed field like `time=` answers a third — *when* — and is sampled
+/// at the turn's close rather than after its counter advanced, so that it
+/// names the minute the turn's own words were written in. See
+/// ``GameWorld/statusFields()``.
+///
 /// Off unless asked for. `GNUSTO_STATUS` is read by ``GameMain`` — the
 /// composition root — and the value handed to ``REPL/init(world:io:transcriptURL:status:)``,
 /// which defaults to `nil`. The test suite constructs its REPLs without the
@@ -109,7 +114,10 @@ public struct StatusFooter: Sendable {
     ///     parse error, a meta verb, a command nothing answered, and the
     ///     opening, none of which the world's clock notices.
     ///   - fields: extra `name`/`value` pairs from the game's bundles and
-    ///     plugins. See `GameWorld.statusFields()`.
+    ///     plugins, read against the world as of the turn's *close* where the
+    ///     three standard fields above are the turn's *result* — so a `time=`
+    ///     derived from `moves=` reads one tick below it by design. See
+    ///     `GameWorld.statusFields()`.
     /// - Returns: the `[status] …` line, without a trailing newline.
     func line(
         _ status: StatusLine, turnCost: Bool, fields: [(String, String)]
@@ -138,7 +146,8 @@ public struct StatusFooter: Sendable {
     /// - Parameters:
     ///   - result: the turn that just ran.
     ///   - turnCost: whether the move counter advanced across it.
-    ///   - fields: the contributed fields, from `GameWorld.statusFields()`.
+    ///   - fields: the contributed fields, from `GameWorld.statusFields()` —
+    ///     sampled at the turn's close, not after its counter advanced.
     /// - Returns: the text to print and to record.
     func annotate(
         _ result: TurnResult, turnCost: Bool, fields: [(String, String)]

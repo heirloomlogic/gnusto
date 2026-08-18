@@ -232,6 +232,16 @@ public struct Clock: GameContent {
     /// identically in a transcript that never says which it was. Read-only, as
     /// the contract requires — ``now`` derives the time from the move counter
     /// and writes nothing.
+    ///
+    /// It derives it from the counter **as the turn closed**, because that is
+    /// where the engine samples a contributed field: the same reading the
+    /// turn's `.time` action, its `describe` blocks, and the alarms and
+    /// scheduled moves in its timer phase all took. Until #280 the field was
+    /// read one increment later, so every cost turn's footer stood one
+    /// ``minutesPerTurn`` ahead of every hour the game itself had just
+    /// printed — and because a free turn advances no counter, the offset was
+    /// not constant and so could not be corrected by habit. Nothing here
+    /// changed to fix it; the sampling point did.
     public var statusFields: [(String, String)] {
         [("time", now.formatted(format))]
     }

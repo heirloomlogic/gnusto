@@ -42,10 +42,12 @@ You play the live game through its own MCP server, one turn at a time. `open`
 starts a session and hands back the game's first words; `move` takes turns; the
 session stays open, so there is no replaying from the start to see the next line.
 
-- **Every turn ends with a `[status]` line** naming the room, the move counter and
-  whether the command cost a turn. Read it rather than computing it. Meta commands
-  and parse failures cost no turn, stub verbs like `sing` and `dig` do, and this
-  footer is why none of that is arithmetic you have to get right any more.
+- **Every turn ends with a `[status]` line** naming the room, the move counter,
+  whether the command cost a turn, and — in a game with a clock — the hour. Read it
+  rather than computing it. Meta commands and parse failures cost no turn, stub verbs
+  like `sing` and `dig` do, and this footer is why none of that is arithmetic you have
+  to get right any more. The hour is the one that turn's own words were written at, so
+  it goes straight into a finding's `frame` without adjustment.
 - **`coverage` is a worklist, not a statistic.** Each item is a command you can
   paste and a sentence saying where the game showed you the thing. The count it
   returns is a countdown.

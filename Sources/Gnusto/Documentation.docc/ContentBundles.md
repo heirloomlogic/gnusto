@@ -96,6 +96,8 @@ Nothing prints unless a session asks for a footer (`GNUSTO_STATUS=1`; see `docs/
 
 Each field is read inside a live turn frame, so it may read globals, traits and the turn counter freely — `Clock`'s hour is a function of `moves`, and a value computed at bootstrap would say half past five forever. That frame is a **throwaway**, discarded rather than committed, so a field must be **read-only**: one that writes loses its write silently. There is no cheap way to enforce that — the frame has to be live for the reads to work — so it is a contract rather than a guarantee.
 
+The frame is built over the world as the turn stood at its **close**: after its `afterEachTurn` rules and its timer tick, and before its move counter advanced. That is the same instant every rule in the turn read, so a field derived from `moves` names the turn it is printed under rather than the one after it — `Clock`'s hour and the hour that turn's `describe` blocks printed are one reading. The four standard fields beside it are the opposite kind of fact and are read *after* the counter moves, because `moves=` is the count the turn left behind. A turn that advanced no counter — a parse error, a meta verb, the opening, UNDO, RESTORE — has no such instant, and the field is read live, which for that turn is the same world. Getting this wrong is issue #280: for two days the footer's `time=` stood one tick ahead of every hour the game itself printed, and only on turns that cost a move.
+
 ## Cross-bundle references
 
 - **Top-level wiring** — a game connecting one bundle's room to another's — is ordinary, compile-checked property access: `attic.landing.down(cellar.vault)`. Renaming either room breaks the exit at compile time.

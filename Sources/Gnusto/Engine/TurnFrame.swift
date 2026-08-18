@@ -30,6 +30,26 @@ struct Scratch: Sendable {
     var liveTextDepth = 0
     /// How many ``enter(_:)`` moves are on the stack — see ``Reentry/walk``.
     var walkDepth = 0
+    /// The world as it stood at the close of this turn, *before* the move
+    /// counter advanced — or nil on a turn that never advanced it.
+    ///
+    /// The status footer's four standard fields are read *after* the counter
+    /// moves, and that is right: `moves=` is the count the turn left behind
+    /// and `turn=cost` is the delta that says so. A **contributed** field is
+    /// the opposite kind of fact. `Clock.now` is a function of `moves`, so
+    /// every rule, `describe` block, action and timer in the turn read the
+    /// hour one tick below the committed count — and a field sampled after
+    /// the increment named a minute in which not one word of the turn was
+    /// written. Issue #280: the footer said `time=5:32 pm` over a wristwatch
+    /// that said 5:30, on every cost turn, all evening.
+    ///
+    /// It lives here rather than on the actor so that it cannot outlive the
+    /// turn that took it. ``GameWorld/commit(_:)`` adopts whatever the
+    /// retiring frame carries, which means a frame that never ran
+    /// `finishTurn` — the opening, UNDO, RESTART, RESTORE — carries nil and
+    /// *clears the previous sample by committing*. There is no list of entry
+    /// points for a later turn path to fall off the end of.
+    var statusFieldState: WorldState?
 }
 
 /// The two seams at which the engine calls code the author wrote, and so the

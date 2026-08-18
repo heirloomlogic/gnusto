@@ -122,6 +122,10 @@ because it is a defect in the instrument the testers are told to read the frame 
   `minutesPerTurn` inside `Clock.statusFields` (wrong while the clock is paused or on a free
   turn), or leave the code and correct the two harness documents. Somebody has to decide
   which artifact is wrong before an agent picks by coin flip.
+  **Decided 2026-08-18: the first.** The contributed fields are sampled at the turn's
+  close, before the counter advances. The ledger's Amendments section carries the
+  reasoning and what the other two forks would have cost; this entry stands as the round
+  wrote it.
 
 - **`X TEAGUE` says the house is one "where a man has just died" six minutes before the
   explosion, while Dr. Pike is alive in the Parlour.** *Frame:* Kitchen, 5:40 pm, before
