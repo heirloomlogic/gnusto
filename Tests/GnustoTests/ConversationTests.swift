@@ -44,6 +44,14 @@ struct ConversationTests {
         #expect(transcript.contains("A dreadful business, sir."))
     }
 
+    /// A comma inside a subject stays punctuation even now that it joins
+    /// object phrases elsewhere (#276) — a topic table matches words, and the
+    /// row that wants both of them still gets both.
+    @Test func aCommaInsideASubjectIsStillPunctuation() async throws {
+        let transcript = try await play(Manor(), ["ask butler about the murder, the weapon"])
+        #expect(transcript.contains("The poker is where it always is."))
+    }
+
     /// Word order doesn't matter either — the row wants its words present,
     /// not in a particular arrangement.
     @Test func keywordWordsMayArriveInAnyOrder() async throws {

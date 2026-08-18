@@ -247,8 +247,13 @@ computed `static var`, which rebuilds it on every read.
   sack` is one turn over two objects, expanded exactly as `take all` is —
   labeled lines, once-per-turn upkeep, the same four verbs. The parser reads the
   whole phrase as a *name* first and only splits it when nothing answers to it,
-  so `name("cup and saucer")` keeps working and no phrase changes meaning. The
-  comma is not a conjunction yet: the addressing path claims it.
+  so `name("cup and saucer")` keeps working and no phrase changes meaning. **The
+  comma joins too**, and separates more strongly: the addressing path reads the
+  line's first comma first (`troll, take the sword`) and hands it over only when
+  the words before it name nobody, and below that the phrase is cut at its
+  commas before each group is offered as a name — so `take cup and saucer, the
+  coin` is two things. A comma at either end of a phrase, or doubled, is
+  punctuation and drops out.
 - **Containment is room-granular; `reach { }` is the escape hatch.** A thing in one
   square of a floor the player walks around inside is "in the room" from every
   square. `item.reach(otherwise: "…") { … }` narrows that once, for every verb that

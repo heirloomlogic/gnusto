@@ -23,7 +23,7 @@ Four parser behaviors go beyond one-line-in, one-command-out:
 
   The split is a **second pass**, tried only once the whole phrase has failed to name anything. That is what makes the word safe to add: an item declared `name("cup and saucer")` answers to every word of itself, so `take cup and saucer` is one thing, and no phrase that worked before means something else now. The cost is that a game holding a `cup`, a `saucer` *and* a `cup and saucer` can't ask for the first two together — the name wins. Declare a synonym without the conjunction if you need both readings.
 
-  Commas are not yet conjunctions — the addressing path (`troll, take the sword`) claims them. Write `take the bottle and the sack and the lamp`.
+  **A comma separates too**, so `take the bottle, the sack and the lamp` is the same list `take the bottle and the sack and the lamp` is, and `take the bottle, the sack` needs no `and` at all. The addressing path reads the *first* comma first (`troll, take the sword`) and only hands it over when the words before it name nobody, so no order changes meaning. Below that, a comma separates more strongly than `and` does — the phrase is cut at its commas and each group is then offered as a name before its own `and` is read as punctuation, which is what lets `take cup and saucer, the coin` be two things and keep the first one's name. A comma standing on its own at either end of a phrase, or doubled, is punctuation and drops out: `take the lamp,` is still one lamp, and the Oxford comma of `take the coin, the feather, and the idol` is one separator, not two.
 
 ## The stages of a turn
 
