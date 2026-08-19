@@ -4,7 +4,7 @@ import Gnusto
 ///
 /// The prose belongs to the *transition into* this stop — `departure` is
 /// printed in the room being left and `arrival` in the room being entered, in
-/// that order, the same way ``GnustoActors`` narrates a wandering actor. Both
+/// that order, the same way `GnustoActors` narrates a wandering actor. Both
 /// are optional, and a stop with neither moves the actor in silence.
 public struct Stop: Sendable {
     /// When the actor is due here.
@@ -49,7 +49,7 @@ public struct Stop: Sendable {
 
 /// An actor's day, written down: a list of stops the clock walks them through.
 ///
-/// Where ``GnustoActors``' `roams` gives a wanderer who *might* be somewhere,
+/// Where `GnustoActors`' `roams` gives a wanderer who *might* be somewhere,
 /// a timetable gives one who *is*. That distinction is the whole point — it is
 /// what makes ``location(at:)`` a truthful answer to "where was he at a quarter
 /// to six", and so what lets a game check an alibi against something other than

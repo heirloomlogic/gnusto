@@ -35,7 +35,7 @@ extension GameMain where Self: Game {
     /// putting the switch here makes every game that has ever been written
     /// with this engine — including one whose author has never heard of the
     /// play-test harness — reachable by an agent for the cost of one
-    /// `.mcp.json` entry. See ``PlaytestMode`` and `PlaytestServer.serve`.
+    /// `.mcp.json` entry. See `PlaytestMode` and `PlaytestServer.serve`.
     public static func main() async {
         let environment = ProcessInfo.processInfo.environment
         if PlaytestMode.requested(arguments: CommandLine.arguments, environment: environment) {

@@ -4,10 +4,23 @@ on:
   push:
     tags:
       - "[0-9]+.[0-9]+.[0-9]+*"
+  # Build on PRs that touch documentation, without deploying. A broken doc link
+  # is a warning DocC degrades to plain text, so nothing fails at the tag — it
+  # just ships wrong. Catching it on the PR is the only place it costs nothing.
+  pull_request:
+    paths:
+      - "Sources/**/*.docc/**"
+      - "Sources/**/*.swift"
+      - ".github/workflows/documentation.yml"
   workflow_dispatch:
 
 permissions:
   contents: write
+
+env:
+  # Never ./docs — that directory is hand-written and tracked, and the plugin
+  # deletes its --output-path before writing to it.
+  DOCS_OUTPUT: .docs-build
 
 jobs:
   documentation:
@@ -24,23 +37,47 @@ jobs:
           touch .dev-tooling
           swift package resolve
 
-      - name: Clean docs directory
-        run: rm -rf ./docs
+      # Combined documentation merges one archive per target into a single site.
+      # It is gated on two docc features; assert them here so a runner without
+      # the gate fails on this line rather than somewhere inside the plugin.
+      - name: Check docc feature gates
+        run: |
+          features="$(dirname "$(dirname "$(xcrun --find docc)")")/share/docc/features.json"
+          cat "$features"
+          grep -q '"dependency"' "$features"
+          grep -q '"synthesized-landing-page-name"' "$features"
 
+      # Targets are named explicitly rather than discovered: the package also
+      # ships seven demo executables and a macro target, and none of them
+      # belongs on the site.
       - name: Build documentation
         run: |
-          swift package --allow-writing-to-directory ./docs \
-            generate-documentation --target Gnusto \
+          swift package --allow-writing-to-directory "$DOCS_OUTPUT" \
+            generate-documentation \
+            --target Gnusto \
+            --target GnustoScoring \
+            --target GnustoActors \
+            --target GnustoDangerousDark \
+            --target GnustoMeleeCombat \
+            --target GnustoSpellcasting \
+            --target GnustoClock \
+            --target GnustoConversation \
+            --target GnustoTestSupport \
+            --enable-experimental-combined-documentation \
             --disable-indexing \
             --transform-for-static-hosting \
             --hosting-base-path /gnusto \
-            --output-path ./docs
+            --output-path "$DOCS_OUTPUT" \
+            --warnings-as-errors
 
       - name: Create .nojekyll file
-        run: touch ./docs/.nojekyll
+        run: touch "$DOCS_OUTPUT/.nojekyll"
 
       - name: Deploy to GitHub Pages
+        # Tags only. A pull_request run builds to prove the docs still resolve
+        # and stops there.
+        if: startsWith(github.ref, 'refs/tags/')
         uses: JamesIves/github-pages-deploy-action@d92aa235d04922e8f08b40ce78cc5442fcfbfa2f # v4.8.0
         with:
           branch: gh-pages
-          folder: docs
+          folder: .docs-build

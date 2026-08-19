@@ -212,8 +212,8 @@ var verbs: [SyntaxRule] {
 
 ## Notes for engine work
 
-- The table is split: ``SyntaxRule/coreTable`` is the rows with real behavior,
-  ``SyntaxRule/stubTable`` is these, and `standardTable` is both. Bootstrap keys
+- The table is split: `coreTable` is the rows with real behavior,
+  `stubTable` is these, and `standardTable` is both. Bootstrap keys
   its override warning off `coreTable`, and that split *is* the stub flag.
 - A stub's intent, rows and line are one `StubVerb` value, so a stub can't be
   half-declared — rows with no line would fall through to stage 4's last resort,

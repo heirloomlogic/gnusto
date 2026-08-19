@@ -42,7 +42,7 @@ Once a command parses, the engine runs these stages in order. Rules are matched 
 
 Then the turn counter advances by one and the turn commits.
 
-The symmetry is deliberate: `before` rules run outside-in (world, then location, then item) so broad rules get first say; `after` rules run inside-out. A `before` rule is your chance to *change or forbid* what is about to happen; an `after` rule reacts to what *did* happen.
+`before` rules run outside-in — world, then location, then item — so the broadest rule gets first refusal; `after` rules run inside-out. A `before` rule changes or forbids what is about to happen. An `after` rule only gets to have an opinion about what already did.
 
 ## Stopping the turn: refuse, reply, and end
 

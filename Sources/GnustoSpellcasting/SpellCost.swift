@@ -8,7 +8,7 @@ import Gnusto
 /// magic word); `SpellCost` is layered on top to decide availability and cost:
 ///
 /// - ``cantrip`` — an at-will spell: always castable, free, never used up.
-/// - ``prepared(book:)`` — a memorized ("Vancian") spell: it must be committed
+/// - ``prepared(book:learnVia:)`` — a memorized ("Vancian") spell: it must be committed
 ///   to a finite memory first (from a spellbook, or freely when `book` is nil)
 ///   and is spent when cast, so it must be re-memorized to cast again.
 /// - ``energy(_:)`` — a points-based spell: casting draws from a shared magical

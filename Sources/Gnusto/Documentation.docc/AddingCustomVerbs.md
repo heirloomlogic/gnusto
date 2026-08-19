@@ -8,9 +8,27 @@ Gnusto ships with a standard verb table in two tiers. The **core** tier is verbs
 
 When your game needs a verb neither tier covers — `ring`, `wind`, `chime`, `barter` — you declare it once with `#verb` and handle it in a rule.
 
+### What the core tier already answers
+
+Thirty-one intents, listed here because the commonest reason to mint a verb is not knowing the engine already has it. Two files in this repo had independently minted a "go through" before the engine's own `enter` was noticed.
+
+Handling things: `take`/`get`/`grab`/`hold`/`carry`/`pick up`, `drop`/`discard`/`put down`, `put … on`/`onto`/`hang`/`place`, `put … in`/`into`, `wear`/`don`, `remove`/`doff`/`take off`.
+
+Looking: `examine`/`x`/`inspect`/`look at`, `read`, `look`/`l`, `look in`/`search`/`find`/`look for`, `inventory`/`inv`/`i`.
+
+Working things: `open`, `close`/`shut`, `lock … with`, `unlock … with`, `turn on`/`switch on`/`light`, `turn off`/`switch off`/`extinguish`/`douse`/`blow out`, `push`/`move`/`press`.
+
+Going: `go`/`walk`/`run`, `enter`/`board`/`get in`/`go through`/`climb`/`step`, `exit`/`disembark`/`get out of`, `follow`/`chase`/`go after`, `wait`/`z`.
+
+People: `greet`/`hello`/`hi`/`say to`.
+
+Meta: `score`, `version`, `quit`/`q`, and the four the engine answers ahead of the pipeline — `save`, `restore`, `undo`, `restart`.
+
+Every intent constant lives on ``Intent``, which is the browsable list. The four engine-level verbs cannot be overridden at all: ``GameWorld`` answers them before any rule runs, so `action(.save)` never fires — and the bootstrap warns rather than letting you find out from a transcript. Overriding any of the other core verbs warns too; overriding a stub verb is silent, because reclaiming a stub is the expected end state. See <doc:BootstrapDiagnostics>.
+
 `wait` (and its alias `z`) is a normal, time-passing turn: it prints the `timePasses` line ("Time passes.") and lets fuses and daemons tick — the standard way to let a countdown run down or a wandering monster catch up. Re-skin the line by mutating `text.timePasses`.
 
-There are three beats to a custom verb: **declare** it, **list** it in a `verbs` block, and **respond** to it in a rule.
+A custom verb takes three steps in three places: `#verb` declares it, the `verbs` block lists it, and a rule answers it.
 
 ## Declare the verb
 

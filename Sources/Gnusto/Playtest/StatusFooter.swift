@@ -17,7 +17,7 @@ import Foundation
 /// A contributed field like `time=` answers a third — *when* — and is sampled
 /// at the turn's close rather than after its counter advanced, so that it
 /// names the minute the turn's own words were written in. See
-/// ``GameWorld/statusFields()``.
+/// `statusFields`.
 ///
 /// Off unless asked for. `GNUSTO_STATUS` is read by ``GameMain`` — the
 /// composition root — and the value handed to ``REPL/init(world:io:transcriptURL:status:)``,

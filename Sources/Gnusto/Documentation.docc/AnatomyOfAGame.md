@@ -4,9 +4,7 @@ How a single Swift type becomes a world the engine can run.
 
 ## Overview
 
-A Gnusto game is one type conforming to ``Game``. That one type carries everything: the rooms and things, where they start, and the rules that govern them. This article covers the model underneath — how the engine finds your declarations, how one value is both a declaration and a live reference, and how the immutable world is kept separate from the state that changes as the player plays.
-
-Once that model is clear, the rest of Gnusto follows from it.
+A Gnusto game is one type conforming to ``Game``. That one type carries everything: the rooms and things, where they start, and the rules that govern them. This article is the model underneath — how the engine finds your declarations, how one value is both a declaration and a live reference, and how the world that never changes is kept apart from the state that does.
 
 ## Declarations are stored properties
 
@@ -21,7 +19,7 @@ struct OperaHouse: Game {
 }
 ```
 
-When you construct the world with ``GameWorld/init(game:)``, the engine's bootstrap reflects over the game value with `Mirror` and collects every ``Location``, ``Item``, and ``Global``. It names each entity after the property it was stored in: `foyer` becomes ``EntityID`` `"foyer"`, `cloak` becomes `"cloak"`, and so on. You never write these IDs by hand — the property name *is* the name.
+When you construct the world with ``GameWorld/init(game:saveDirectory:)``, the engine's bootstrap reflects over the game value with `Mirror` and collects every ``Location``, ``Item``, and ``Global``. It names each entity after the property it was stored in: `foyer` becomes ``EntityID`` `"foyer"`, `cloak` becomes `"cloak"`, and so on. You never write these IDs by hand — the property name *is* the name.
 
 This is why declarations must live in the type's main body, not an extension: Swift only allows stored properties there, and the Mirror only sees stored properties. (When even the declarations need to span files or ship separately, that is what a ``GameContent`` bundle is for — see <doc:ContentBundles>.)
 
@@ -62,21 +60,19 @@ The protocol extension also hands every game three ambient references usable as 
 
 ## The `map` block
 
-`map` is a result-builder property that yields a ``WorldMap`` — a flat list of ``MapEntry`` statements: exits, blocked exits, initial item placements, and the player's start.
+`map` is a result-builder property that yields a ``WorldMap`` — a flat list of ``MapEntry`` statements: exits, initial item placements, and the player's start.
 
 ```swift
 var map: WorldMap {
     foyer.south(bar)                 // an exit
-    foyer.north(blocked: "Not yet.") // a blocked exit with a refusal message
-    bar.north(foyer)
+    bar.north(foyer)                 // and the way back, stated separately
 
     player.starts(in: foyer)         // where the player begins
     cloak.startsWorn                 // where each thing begins
-    hook.starts(in: cloakroom)
 }
 ```
 
-Exits are directional and one-way: `foyer.south(bar)` does not imply `bar.north(foyer)`. Declaring both is deliberate, so asymmetric maps (a chute, a one-way door) need no special case. Because `map` is a builder, you can split it across files and compose it from sub-maps — see <doc:SplittingAGameAcrossFiles>.
+Exits are one-way, so an asymmetric map needs no special case. There are five kinds of exit and eight ways to place a thing; <doc:WorldMapAndExits> covers all of them.
 
 ## Immutable definition, mutable state
 
@@ -85,7 +81,7 @@ Internally, the engine keeps two things strictly apart:
 - The **definition** is everything that never changes during play: names, descriptions, exits, rules, and the parser's vocabulary. It is built once, from your declarations, at startup.
 - The **state** is everything that *does* change: where each item is, what is lit, the score, the turn count, which things have been touched, and your ``Global`` values.
 
-The entire mutable state is a single `Codable` value. That is a deliberate design choice: because all change funnels through one value, a turn's mutations can be committed atomically at its end (see <doc:TheTurnPipeline>), and save/restore becomes a serialization call rather than a feature bolted across the codebase.
+The entire mutable state is a single `Codable` value. Every change funnels through it, so a turn commits atomically at its end (see <doc:TheTurnPipeline>) and save/restore is a serialization call rather than a feature threaded through the codebase.
 
 When you write `cloak.isWorn` or `player.score += 1` in a rule, you are reading and writing that one state value through the entity's token — never touching the definition, and never seeing another turn's half-finished changes.
 
