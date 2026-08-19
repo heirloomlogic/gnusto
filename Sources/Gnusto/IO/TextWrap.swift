@@ -17,7 +17,7 @@ import Foundation
 /// the author happened to type at.
 ///
 /// **Both** channels apply that rule, which is the whole point of this type.
-/// They used to disagree: ``wrap(_:width:)`` folded and ``plain(_:)`` did not,
+/// They used to disagree: the reflowing one folded and ``plain(_:)`` did not,
 /// so a literal printed at the source's wrap column on the one channel that
 /// transcripts, CI and every play-test artifact are read in — and at *two*
 /// columns the moment a clause was concatenated onto it. That is what made a
@@ -32,15 +32,19 @@ import Foundation
 ///   a banner's title over its tagline. Non-whitespace, so unlike a trailing
 ///   double space it survives editors and formatters that trim line endings.
 /// - **Indentation** makes a **form**: an inscription, a map legend, a ring of
-///   letters cut round a shaft, a scrap of verse. ``isPreformatted(_:)`` reads
-///   it as Markdown reads it — a literal block, never folded and never
+///   letters cut round a shaft, a scrap of verse. Both channels read it as
+///   Markdown reads it — a literal block, never folded and never
 ///   re-packed. That is a description of what this package's authors already
 ///   did, not a rule imposed on them: every such block in every game target is
 ///   indented, and nothing else in a game target is.
 ///
-/// ``fold(_:)`` is the one implementation of all of that. ``plain(_:)`` and
-/// ``wrap(_:width:)`` are both built on it, so the two channels cannot drift
-/// apart again about what a paragraph is.
+/// One internal `fold` is the single implementation of all of that, and both
+/// ``plain(_:)`` and the reflowing renderer are built on it, so the two channels
+/// cannot drift apart again about what a paragraph is.
+///
+/// Only ``plain(_:)`` and ``lineBreak`` are public: a front end that prints text
+/// needs to render the marker and the fold, and the terminal-column machinery
+/// behind the full-screen handler is the engine's own.
 public enum TextWrap {
     /// The in-band hard line-break marker (as in Markdown/HTML): a break within
     /// a paragraph, no blank line, formatter-proof. The full-screen renderer
