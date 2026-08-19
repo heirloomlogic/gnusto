@@ -67,7 +67,17 @@
 # writes the "> " prompt but not the piped command, so stdout is answers with
 # the questions missing. GNUSTO_TRANSCRIPT records "> command" interleaved with
 # the output, byte-for-byte what ScriptedIOHandler produces in the test suite —
-# so the file printed here IS the string a transcript test asserts on.
+# so the file printed here is the string a transcript test asserts on, once the
+# `[status]` lines below are dropped from the excerpt.
+#
+# Why every turn carries a `[status]` footer: GNUSTO_STATUS is set here, always,
+# the way the play-test session server hardcodes StatusFooter.always for the
+# same reason. Two of them. A reader gets the room, the move counter and whether
+# the command cost a turn without reconstructing any of it from prose — and a
+# round counts its own turns by grepping these transcripts for `turn=cost`,
+# which is a number nothing else can produce. It is not conditional on an
+# inherited GNUSTO_STATUS: a stray exported `0` would put the count back to
+# silently missing every CLI replay, which is the bug this replaced (#288).
 
 set -euo pipefail
 
@@ -237,10 +247,12 @@ errlog="$probe_dir/stderr.txt"
 status=0
 # GNUSTO_TRANSCRIPT with a slash in it is honored verbatim and its parent
 # directories are created, so one variable is enough. GNUSTO_SAVE_DIR keeps
-# saves inside this tester's scratch. perl's alarm stands in for timeout(1),
-# which macOS does not ship.
+# saves inside this tester's scratch. GNUSTO_STATUS is set for the reason given
+# in the header: the transcript is evidence for a counter as well as prose for a
+# reader. perl's alarm stands in for timeout(1), which macOS does not ship.
 GNUSTO_PLAIN=1 \
 GNUSTO_SEED="$seed" \
+GNUSTO_STATUS=1 \
 GNUSTO_TRANSCRIPT="$transcript" \
 GNUSTO_SAVE_DIR="$scratch/saves" \
   perl -e 'alarm shift; exec @ARGV or die "exec failed: $!\n"' \

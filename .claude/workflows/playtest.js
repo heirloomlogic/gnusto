@@ -120,6 +120,40 @@ const SESSION_SEGMENT = 'session'
 const sessionLabelFor = (round, key) => labelFor(`r${round}`, SESSION_SEGMENT, key)
 const SESSION_GLOB = `${game}-r*-${SESSION_SEGMENT}-*`
 
+// The other two label trees, derived the same way and for the same reason. A
+// tester replaying from the command line writes under its `play` label and a
+// verifier under its `verify` one, and both hold a `transcript.txt` with a
+// `[status]` footer on every turn — so they are countable, and until #288 they
+// were counted by nobody. The 2026-08-18 round played 32,987 commands through
+// them and reported 11,238 turns.
+//
+// They are separate constants rather than a wider `SESSION_GLOB` because the
+// paragraph above is still true: these directories hold no `closing.json`, so a
+// session glob loose enough to reach them answers "158 testers never finished".
+// The rule is that the *turn count* may name every tree and *session
+// accounting* may name only one, and the dry run asserts both halves.
+//
+// Deliberately not counted: the labels the round's own machinery replays under —
+// `<game>-survey`, `-r<n>-cluster`, `-critic`, `-collator`. Those agents get a
+// replay how-to so they can check something, not so they can play, and turns
+// spent there are neither a tester's coverage nor a verifier's checking. The
+// exclusion is not silent, though: `countedTurns`' residual surfaces whatever
+// they spend, so one that starts spending a real budget asks for its own row
+// instead of being noticed a round later.
+const PLAY_SEGMENT = 'play'
+const playLabelFor = (round, key) => labelFor(`r${round}`, PLAY_SEGMENT, key)
+const PLAY_GLOB = `${game}-r*-${PLAY_SEGMENT}-*`
+
+const VERIFY_SEGMENT = 'verify'
+const verifyLabelFor = (round, batch, rater) =>
+  labelFor(
+    `r${round}`,
+    VERIFY_SEGMENT,
+    `b${String(batch).padStart(2, '0')}`,
+    `r${rater}`
+  )
+const VERIFY_GLOB = `${game}-r*-${VERIFY_SEGMENT}-*`
+
 // How to replay, said once for both ground blocks. It differs between them only in
 // where it sits — after the briefs for an agent that judges prose, straight after the
 // header for one that doesn't — so the drift between two copies would be invisible
@@ -566,14 +600,22 @@ const COLLATOR_SCHEMA = {
     turns: {
       type: 'object',
       additionalProperties: false,
-      required: ['sessions', 'branches', 'replays', 'replayProbes'],
+      required: [
+        'sessions', 'branches', 'replays', 'replayProbes',
+        'playReplays', 'playProbes', 'verifyReplays', 'verifyProbes', 'all',
+      ],
       description:
-        'World turns counted off the `[status]` footers — every `turn=cost` is one turn the game charged, and every `turn=free` is a parse failure or a meta command that charged nothing. Counted, never asked: the 2026-08-17 round reported 295 against artifacts holding about 1,493.',
+        'World turns counted off the `[status]` footers — every `turn=cost` is one turn the game charged, and every `turn=free` is a parse failure or a meta command that charged nothing. Counted, never asked: the 2026-08-17 round reported 295 against artifacts holding about 1,493, and the 2026-08-18 round reported 11,238 while 32,987 typed commands sat in trees nothing globbed.',
       properties: {
         sessions: { type: 'integer', description: 'In the testers\' canonical transcripts.' },
         branches: { type: 'integer', description: 'In branch-NNN.txt files — turns really played, then rewound out of the transcript.' },
-        replays: { type: 'integer', description: 'In the verifiers\' replay probes. Usually the largest of the three.' },
-        replayProbes: { type: 'integer', description: 'How many replay probe directories exist.' },
+        replays: { type: 'integer', description: 'In the replay probes the session server writes under `.replays/`. Mostly the verifiers.' },
+        replayProbes: { type: 'integer', description: 'How many `.replays/` probe directories exist.' },
+        playReplays: { type: 'integer', description: 'In the testers\' own `bin/playtest-replay` probes, under their play labels.' },
+        playProbes: { type: 'integer', description: 'How many probe directories exist under the play labels.' },
+        verifyReplays: { type: 'integer', description: 'In the verifiers\' `bin/playtest-replay` probes, under their verify labels. Usually the largest single number here.' },
+        verifyProbes: { type: 'integer', description: 'How many probe directories exist under the verify labels.' },
+        all: { type: 'integer', description: 'Every `turn=cost` anywhere under `.context/playtest`, with no glob applied — the residual against the five turn counts above is how a label tree nobody globs for announces itself instead of reading as zero.' },
       },
     },
     sessionsFinished: { type: 'integer', description: 'Probe directories holding a closing.json.' },
@@ -970,7 +1012,7 @@ The survey found:
         const server = `mcp__${game.toLowerCase()}__`
         const tools = ['open', 'move', 'recall', 'coverage', 'note', 'finish', 'checkpoint', 'restore', 'replay']
         return agent(
-          `${(charter.blind ? groundBlind : ground)(labelFor(`r${round}`, 'play', assignment.key))}
+          `${(charter.blind ? groundBlind : ground)(playLabelFor(round, assignment.key))}
 
 Your charter is **${charter.key}**. Round ${round} of at most ${maxRounds}.
 
@@ -1131,12 +1173,7 @@ ${candidates.map((f, i) => `${i + 1}. [${f.charter}] ${f.ownerFile}
         const lens = playRoster.length
           ? playRoster[(batchIndex + rater) % playRoster.length].key
           : 'skeptic'
-        const verifyLabel = labelFor(
-          `r${round}`,
-          'verify',
-          `b${String(batchIndex + 1).padStart(2, '0')}`,
-          `r${rater + 1}`
-        )
+        const verifyLabel = verifyLabelFor(round, batchIndex + 1, rater + 1)
         return agent(
           `${ground(verifyLabel)}
 
@@ -1415,16 +1452,29 @@ function rosterMatch(name) {
   return survey.rooms.find((r) => loose(r) === loose(name)) || null
 }
 
-// The round's turn count, off the artifacts. `turns.sessions` and
-// `turns.branches` are what the testers spent — the branches included, because a
-// room worked for ten turns and then rewound out was still worked — and
-// `turns.replays` is what the verifiers spent checking them. Nothing here is
-// asked of an agent that played: see the note on COVERAGE's dropped
-// `turnsSpent`.
+// The round's turn count, off the artifacts, split by who spent it rather than
+// by how the turn was driven. A tester spends turns in its session transcript,
+// in branches a rewind wrote off — a room worked for ten turns and then rewound
+// out was still worked — and in its own `bin/playtest-replay` probes. A verifier
+// spends them replaying reproducers, through the server's `replay` tool or the
+// CLI. Nothing here is asked of an agent that played: see the note on COVERAGE's
+// dropped `turnsSpent`.
+//
+// `unattributed` is the residual, and it is there because this number has now
+// been quietly short three times — the branch files, then `.replays`, then both
+// CLI trees. A sum over an enumerated list of globs cannot report the tree
+// nobody listed; it reports a plausible total and waits a round. So the collator
+// also counts every `turn=cost` under `.context/playtest` with no glob at all,
+// and the difference is handed to the critic to judge. It is not folded into
+// `total`, because the honest reading of a large residual is "some tree is
+// uncounted, or another game's artifacts share this checkout" and those want
+// different answers.
 function countedTurns(turns) {
   const t = turns || {}
-  const testers = (t.sessions || 0) + (t.branches || 0)
-  return { ...t, testers, total: testers + (t.replays || 0) }
+  const testers = (t.sessions || 0) + (t.branches || 0) + (t.playReplays || 0)
+  const verifiers = (t.replays || 0) + (t.verifyReplays || 0)
+  const total = testers + verifiers
+  return { ...t, testers, verifiers, total, unattributed: Math.max(0, (t.all || 0) - total) }
 }
 
 // What the sessions wrote down, gathered off disk.
@@ -1463,22 +1513,36 @@ Report:
 - \`turns\`: the round's world turns, counted off the \`[status]\` footers. Every
   footer says \`turn=cost\` or \`turn=free\`, and only the first is a turn the game
   charged — a parse failure and a meta command both print \`turn=free\` and cost
-  nothing, which is why counting \`> \` lines instead would be wrong. Four numbers,
-  each its own command, run from \`${pkg}\`:
+  nothing, which is why counting \`> \` lines instead would be wrong. Nine numbers,
+  run from \`${pkg}\`. Run them exactly as written; one shell invocation holding all
+  nine lines is fine and cheaper, since they print in the order below:
 
       find .context/playtest -path "*/${SESSION_GLOB}/*/transcript.txt" -exec grep -h 'turn=cost' {} + | wc -l
       find .context/playtest -path "*/${SESSION_GLOB}/*/branch-*.txt" -exec grep -h 'turn=cost' {} + | wc -l
       find .context/playtest/.replays -path "*/probe-*/transcript.txt" -exec grep -h 'turn=cost' {} + | wc -l
       find .context/playtest/.replays -type d -name 'probe-*' | wc -l
+      find .context/playtest -path "*/${PLAY_GLOB}/*/transcript.txt" -exec grep -h 'turn=cost' {} + | wc -l
+      find .context/playtest -path "*/${PLAY_GLOB}/*/transcript.txt" | wc -l
+      find .context/playtest -path "*/${VERIFY_GLOB}/*/transcript.txt" -exec grep -h 'turn=cost' {} + | wc -l
+      find .context/playtest -path "*/${VERIFY_GLOB}/*/transcript.txt" | wc -l
+      find .context/playtest \\( -name transcript.txt -o -name 'branch-*.txt' \\) -exec grep -h 'turn=cost' {} + | wc -l
 
-  In order: \`sessions\`, \`branches\`, \`replays\`, \`replayProbes\`. Use \`find\` and
+  In order: \`sessions\`, \`branches\`, \`replays\`, \`replayProbes\`, \`playReplays\`,
+  \`playProbes\`, \`verifyReplays\`, \`verifyProbes\`, \`all\`. Use \`find\` and
   not a bare shell glob: \`find\` does its own matching, so a pattern that matches
   nothing prints \`0\` in every shell, where an unmatched glob **aborts the whole
   command** under zsh and would hand you a shell error to interpret as a count.
-  A genuine zero is a real answer; say in \`note\` which of the four it was.
+  A genuine zero is a real answer; say in \`note\` which of the nine it was.
 
-  The branch files are not a rounding error — one round held 102 real turns in six
-  of them — and \`.replays\` is the verifiers' and usually the largest of the three.
+  None of them is a rounding error. One round held 102 real turns in six branch
+  files. The four in the middle are \`bin/playtest-replay\` runs — a tester probing
+  something it saw, a verifier replaying a reproducer — and on the round that found
+  this they held 32,987 typed commands against a reported total of 11,238.
+
+  \`all\` is the one number with no glob in it: every \`turn=cost\` anywhere under
+  \`.context/playtest\`, which is what the eight above are a breakdown *of*. Report it
+  exactly as \`find\` gives it, even when it exceeds their sum — that difference is
+  the point of asking, and the critic is the one who judges it.
 - \`sessionsFinished\`: how many \`closing.json\` files you read.
 - \`sessionsUnfinished\`: probe directories holding a \`transcript.txt\` with no
   \`closing.json\` beside it. Find them with:
@@ -1491,13 +1555,20 @@ Report:
 
 The session globs are narrow on purpose: only a session opened through the game's
 own server lands under \`${SESSION_GLOB}\`. The round's replays and its own audit
-runs write elsewhere — a replay probe lands under \`.context/playtest/.replays/\`,
-whose leading dot both reserves it against any tester label and keeps it out of
-every unqualified glob — and they hold a transcript with no \`closing.json\` beside
-it, so a wider glob would report the round's own machinery as testers who never
-finished. Do not widen them; the turn count is the one place \`.replays\` is read,
-and it is named explicitly there. If you think a session is missing, say so in
-\`note\`.
+runs write elsewhere — the session server's \`replay\` tool writes under
+\`.context/playtest/.replays/\`, whose leading dot both reserves it against any
+tester label and keeps it out of every unqualified glob, and \`bin/playtest-replay\`
+writes under \`${PLAY_GLOB}\` and \`${VERIFY_GLOB}\`. All three hold a transcript
+with no \`closing.json\` beside it, so a wider session glob would report the
+round's own machinery as 150-odd testers who never finished.
+
+So the rule has two halves, and they pull opposite ways. **The turn count names
+every tree** — it is the one thing all four are read for, and every one of them is
+named explicitly above. **Session accounting names only \`${SESSION_GLOB}\`** —
+\`rooms\`, \`words\`, \`forksNobodyTook\`, \`sessionsFinished\` and
+\`sessionsUnfinished\` are all about \`closing.json\`, which nothing outside a
+session writes. Do not widen the session globs, and do not narrow the turn count
+back to them. If you think a session is missing, say so in \`note\`.
 
 If the globs match nothing, report zeroes and empty lists and say so in \`note\`.
 That is a real answer and it means the round wrote no sessions.`,
@@ -1556,7 +1627,7 @@ truth and they win over anything here.
   the grid \`X\` for a room a charter worked in and \`.\` for one it only passed through.
 - Sessions that wrote a closing record: ${sessionsFinished}.${sessionsUnfinished.length ? ` **${sessionsUnfinished.length} session(s) never called \`finish\`** (${sessionsUnfinished.slice(0, 8).join(', ')}) — their rooms and words are missing from every count above, so the coverage figure is a floor and you should say so in as many words.` : ''}
 - Forks no session took: ${forksNobodyTook.length ? forksNobodyTook.join(', ') : 'none'}. Each is an irreversible action the whole round declined, which is a coverage gap nothing else in the harness can see. Name them in the coverage section and make one a target for next round.
-- Turns: **${turns.total} world turns**, counted off the \`[status]\` footers rather than asked of anybody. Testers spent ${turns.testers} of ~${turnBudget * playRoster.length} budgeted (${turns.sessions} in their transcripts, ${turns.branches} in branches a rewind wrote off but that were really played); the verifiers spent ${turns.replays} across ${turns.replayProbes} replay probes under \`.context/playtest/.replays/\`. A round whose verifiers outspend its testers several times over is normal and not by itself a problem — but if \`${turns.testers}\` is far under budget while \`${turns.replays}\` is large, the round argued more than it played, and that is worth a sentence. This field used to be the sum of the testers' self-reports and was wrong by a factor of five the last time anyone checked it against the files.
+- Turns: **${turns.total} world turns**, counted off the \`[status]\` footers rather than asked of anybody. Testers spent ${turns.testers} of ~${turnBudget * playRoster.length} budgeted (${turns.sessions} in their session transcripts, ${turns.branches} in branches a rewind wrote off but that were really played, ${turns.playReplays} across ${turns.playProbes} \`bin/playtest-replay\` probes of their own); the verifiers spent ${turns.verifiers} (${turns.replays} across ${turns.replayProbes} probes under \`.context/playtest/.replays/\`, ${turns.verifyReplays} across ${turns.verifyProbes} \`bin/playtest-replay\` probes). A round whose verifiers outspend its testers several times over is normal and not by itself a problem — but if \`${turns.testers}\` is far under budget while \`${turns.verifiers}\` is large, the round argued more than it played, and that is worth a sentence. This field used to be the sum of the testers' self-reports and was wrong by a factor of five; then it was counted off two trees out of four and wrong by a factor of three.${turns.unattributed ? ` **${turns.unattributed} further \`turn=cost\` lines sit under \`.context/playtest/\` and are attributed to none of the trees above.** That is either a label tree this round counts for nobody — which is exactly how the two numbers above went wrong the last two times — or another game's artifacts sharing this checkout. Say which, name the directories, and treat the total as a floor until somebody does.` : ' The residual against an unglobbed count of the whole scratch tree is zero, so nothing was played under a label this round does not attribute.'}
 - There is deliberately no "cells probed" count: free-text cell labels are not comparable between charters, so any total would be a number that means nothing. Build the real cross-product yourself from the transcripts, against the ${survey.rooms.length}-room roster and the timers above.
 - Testers run: ${playRoster.map((r) => `${r.key}${r.charter.blind ? ` (${r.divergence}${r.region ? `, ${r.region}` : ''})` : ''}`).join(', ')}. Charters NOT run: ${skipped.map((c) => c.key).join(', ') || 'none'}.
 - The blind charters were given no room list, no timer list and no design doc, deliberately. A finding of theirs that the doc licenses is the expected cost of that, not a harness failure — but if more than about two in five are refuted that way, say so: the brief needs tightening, not the doc handing back.

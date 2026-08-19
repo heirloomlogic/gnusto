@@ -38,6 +38,20 @@ const findings = (charter) => ({
   coverage: { honestSummary: 'walked it', cellsSkipped: [] },
 })
 
+// The collator's turn counts, in one place: the stub returns them and the
+// assertions at the bottom add them up. Two copies of these numbers would fail
+// in the wrong direction — a drifted fixture reads as "playtest.js dropped a
+// class of turn", which is the exact bug the assertions exist to catch.
+//
+// The figures are the 2026-08-18 Dungeon round's, which is the round that
+// discovered the two CLI trees were invisible. `all` deliberately exceeds the
+// eight globbed numbers, so the residual path is the one under test.
+const stubTurns = {
+  sessions: 252, branches: 102, replays: 1139, replayProbes: 71,
+  playReplays: 7646, playProbes: 39, verifyReplays: 25341, verifyProbes: 119,
+  all: 34_600,
+}
+
 const stub = async (prompt, opts = {}) => {
   prompts.push({ label: opts.label, phase: opts.phase, prompt })
   const l = String(opts.label || '')
@@ -63,7 +77,7 @@ const stub = async (prompt, opts = {}) => {
       rooms: ['Front Hall', 'Cellar'],
       words: [{ word: 'grout', count: 2 }],
       forksNobodyTook: ['fork:burn-the-letter@Parlour'],
-      turns: { sessions: 252, branches: 102, replays: 1139, replayProbes: 71 },
+      turns: stubTurns,
       sessionsFinished: 3,
       sessionsUnfinished: ['.context/playtest/Fulminate-explorer-b/probe-002/'],
       note: '',
@@ -251,42 +265,71 @@ check(
   'could not read an `open` label out of every play prompt'
 )
 
-// The label glob, read out of the collator's own commands in both forms it can
-// take: a bare shell glob under `.context/playtest/`, and `find -path` with the
-// label between `*/` and `/*/`. The second is the current one — see the
-// bare-glob check below for why the recipes moved — and requiring the trailing
-// `/*/` is what keeps `*/probe-*/transcript.txt` out of this list: that pattern
-// names a probe, not a tester's label, and matching openLabels against it would
-// be meaningless.
+// The label globs, read out of the collator's own commands in both forms they
+// can take: a bare shell glob under `.context/playtest/`, and `find -path` with
+// the label between `*/` and the next path segment. The second is the current
+// one — see the bare-glob check below for why the recipes moved. Requiring a
+// segment *after* the label is what keeps `*/probe-*/transcript.txt` out of this
+// list: that pattern names a probe, not a tester's label, and matching a label
+// against it would be meaningless.
+const extractGlobs = (text) => [
+  ...new Set([
+    ...[...text.matchAll(/\.context\/playtest\/([^/\s"]*\*[^/\s"]*)\//g)].map((m) => m[1]),
+    ...[...text.matchAll(/-path "\*\/([^/"]*\*[^/"]*)\/[^/"]*\//g)].map((m) => m[1]),
+  ]),
+]
 const collator = prompts.find((p) => p.label === 'collator')
-const collatorGlobs = collator
-  ? [
-      ...new Set([
-        ...[...collator.prompt.matchAll(/\.context\/playtest\/([^/\s"]*\*[^/\s"]*)\//g)].map((m) => m[1]),
-        ...[...collator.prompt.matchAll(/-path "\*\/([^/"]*\*[^/"]*)\/\*\//g)].map((m) => m[1]),
-      ]),
-    ]
-  : []
+const collatorGlobs = collator ? extractGlobs(collator.prompt) : []
 check(collatorGlobs.length > 0, 'the collator prompt names no .context/playtest glob')
+
+// Session *accounting* is the narrow half, and the only recipes that do it are
+// the ones that mention `closing.json`. A replay probe holds a `transcript.txt`
+// and never a `closing.json`, because `bin/playtest-replay` does not write one —
+// so a closing glob wide enough to catch the round's own replays reports 150-odd
+// directories as testers who played and never accounted for it.
+const closingGlobs = collator
+  ? extractGlobs(collator.prompt.split('\n').filter((l) => l.includes('closing.json')).join('\n'))
+  : []
+check(closingGlobs.length > 0, 'no collator recipe globs for closing.json')
 for (const label of openLabels.filter(Boolean)) {
   check(
-    collatorGlobs.some((g) => globToRe(g).test(label)),
-    `sessions open under "${label}", which no collator glob matches (${collatorGlobs.join(', ')})`
+    closingGlobs.some((g) => globToRe(g).test(label)),
+    `sessions open under "${label}", which no closing-record glob matches (${closingGlobs.join(', ')})`
   )
 }
-// The inverse, and the half that bites hardest. A replay probe holds a
-// `transcript.txt` and never a `closing.json`, because `bin/playtest-replay`
-// does not write one — so a glob wide enough to catch the round's own replays
-// reports them as testers who played and never accounted for it.
-for (const replay of [
-  'Fulminate-r1-play-explorer-1',
-  'Fulminate-r1-verify-b01-r1',
-  'Fulminate-critic',
-  'Fulminate-collator',
-]) {
+
+// Every label the round hands `bin/playtest-replay`, read the way `openLabels`
+// is read: off the command the prompt actually prints. Not just the testers' and
+// the verifiers' — `replayHowTo` reaches `groundMin` too, so the survey, the
+// cluster agent, the critic and the collator all carry one. Scanning every
+// prompt rather than two label prefixes is the difference between guarding the
+// mechanism and guarding the two trees already known to be broken.
+//
+// Each label is then in exactly one of two states, and both are asserted:
+// *counted* by a `turn=cost` recipe, or listed in UNCOUNTED. Until #288 the
+// testers' and the verifiers' were in neither, which is not a state a reader can
+// see — 32,987 typed commands reported as 11,238.
+const UNCOUNTED = ['Fulminate-survey', 'Fulminate-r1-cluster', 'Fulminate-critic', 'Fulminate-collator']
+const collatorLines = collator ? collator.prompt.split('\n') : []
+const turnGlobs = extractGlobs(
+  collatorLines.filter((l) => /-exec grep -h 'turn=cost'/.test(l)).join('\n')
+)
+const cliLabels = [
+  ...new Set(
+    prompts.map((p) => (p.prompt.match(/--label (\S+)/) || [])[1]).filter(Boolean)
+  ),
+]
+check(cliLabels.length > 0, 'no prompt hands bin/playtest-replay a --label to count')
+check(turnGlobs.length > 0, 'no collator recipe counts turn=cost under a label glob')
+for (const label of cliLabels) {
+  const counted = turnGlobs.some((g) => globToRe(g).test(label))
   check(
-    !collatorGlobs.some((g) => globToRe(g).test(replay)),
-    `a collator glob matches "${replay}", a replay label that never holds a closing.json`
+    counted || UNCOUNTED.includes(label),
+    `"${label}" is replayed under, counted by no turn=cost recipe (${turnGlobs.join(', ')}), and not declared uncounted`
+  )
+  check(
+    !closingGlobs.some((g) => globToRe(g).test(label)),
+    `a closing-record glob matches "${label}", a replay label that never holds a closing.json`
   )
 }
 
@@ -295,25 +338,46 @@ for (const replay of [
 // counted. The 2026-08-17 round reported 295 turns, which was exactly the sum of
 // six testers' self-reports against artifacts holding about 1,493; nothing in
 // the round could tell the two apart, because both are integers in the same
-// field. Here the collator's four numbers are known, so the critic's prompt has
-// to add up to them or the plumbing dropped a class of turn on the way.
+// field. Here the collator's numbers are known, so the critic's prompt has to
+// add up to them or the plumbing dropped a class of turn on the way.
 //
 // The branch total is the one most likely to be lost: it lives in
 // `branch-NNN.txt` rather than in any transcript, and every earlier count in
 // this harness's history missed it.
 const criticPrompt = () => (prompts.find((p) => p.label === 'critic') || {}).prompt || ''
-const stubTurns = { sessions: 252, branches: 102, replays: 1139, replayProbes: 71 }
+const stubTotal =
+  stubTurns.sessions + stubTurns.branches + stubTurns.playReplays
+  + stubTurns.replays + stubTurns.verifyReplays
 check(
-  criticPrompt().includes(`**${stubTurns.sessions + stubTurns.branches + stubTurns.replays} world turns**`),
-  'the critic was not given the counted turn total (sessions + branches + replays)'
+  criticPrompt().includes(`**${stubTotal} world turns**`),
+  'the critic was not given the counted turn total over all five turn counts'
+)
+// The residual against an unglobbed count of the whole scratch tree. It is the
+// one number that cannot be short, and its whole job is to make the *next*
+// uncounted tree loud instead of silent — so the fixture's `all` deliberately
+// exceeds the sum, and the critic has to be told by how much.
+check(
+  criticPrompt().includes(`**${stubTurns.all - stubTotal} further \`turn=cost\` lines`),
+  'the critic was not told about turns under labels no glob attributes'
 )
 check(
   criticPrompt().includes(`${stubTurns.branches} in branches`),
   'the critic\'s turn count drops the branch files, which hold turns that were really played'
 )
 check(
-  criticPrompt().includes(`${stubTurns.replays} across ${stubTurns.replayProbes} replay probes`),
-  'the critic was not told what the verifiers spent, which is usually most of the round'
+  criticPrompt().includes(`${stubTurns.replays} across ${stubTurns.replayProbes} probes`),
+  'the critic was not told what the session server\'s replay tool spent'
+)
+// The two trees #288 found. They are the larger half of a round's replaying and
+// were reported by nobody, so they get their own assertions rather than resting
+// on the total above.
+check(
+  criticPrompt().includes(`${stubTurns.playReplays} across ${stubTurns.playProbes}`),
+  'the critic\'s turn count drops the testers\' own bin/playtest-replay probes'
+)
+check(
+  criticPrompt().includes(`${stubTurns.verifyReplays} across ${stubTurns.verifyProbes}`),
+  'the critic\'s turn count drops the verifiers\' bin/playtest-replay probes'
 )
 check(
   collator ? /grep -h 'turn=cost'/.test(collator.prompt) : false,
@@ -322,6 +386,18 @@ check(
 check(
   collator ? /find \.context\/playtest\/\.replays .*-exec grep -h 'turn=cost'/.test(collator.prompt) : false,
   'the collator never reads the replay probes, so verifier turns are invisible again'
+)
+// The unglobbed count that `unattributed` is measured against. Without it the
+// residual is always zero and the check above passes on a harness that can no
+// longer see a whole tree.
+// "No glob" means no `-path` and no hand-picked subtree: `.replays`' recipe is
+// also glob-free by `extractGlobs`' reckoning, and matching on that would let
+// this pass on a prompt with no residual recipe in it at all.
+check(
+  collatorLines.some(
+    (l) => /-exec grep -h 'turn=cost'/.test(l) && !/-path|\.replays/.test(l)
+  ),
+  'no collator recipe counts turn=cost over the whole tree, so the residual is always zero'
 )
 // `find`, not a bare glob. An unmatched shell glob aborts the whole command under
 // zsh, so a round whose testers all crashed would hand the collator a shell error
