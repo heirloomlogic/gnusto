@@ -294,7 +294,7 @@ struct DungeonProseTests {
                 .contains("Silence, out of a wall that had a great deal of machinery"))
         #expect(!transcript.contains("a faint whirring — the round room"))
         #expect(!transcript.contains("You hear the whir from the round room"))
-        #expect(transcript.contains("there is no way into\nit from this side"))
+        #expect(transcript.contains("there is no way into it from this side"))
     }
 
     /// The control, by the other road in: with the machinery still running all
@@ -832,7 +832,7 @@ struct DungeonProseTests {
 
         #expect(transcript.contains("Round Room"))
         let stopped = turnOutput(of: "x passages", in: transcript)
-        #expect(stopped.contains("standing still\nat last long enough to be counted"))
+        #expect(stopped.contains("standing still at last long enough to be counted"))
         #expect(!stopped.contains("no way to tell"))
     }
 

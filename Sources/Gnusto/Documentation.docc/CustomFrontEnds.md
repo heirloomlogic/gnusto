@@ -68,26 +68,32 @@ The protocol is `Sendable`, so a handler that keeps state keeps it behind a
 lock. ``ScriptedIOHandler`` and ``TerminalIOHandler`` both box theirs in a
 `Mutex`.
 
-### The `<br>` marker
+### Rendering the text you are handed
 
 Game prose is written as multi-line string literals wrapped for source
-readability, so the engine folds single newlines into spaces and treats a blank
-line as a paragraph break. An author who wants a break *inside* a paragraph — a
-sign, a scrap of verse, a banner over its tagline — writes `<br>`, which is
-non-whitespace and therefore survives editors that trim line endings.
+readability. The newlines in them are the author's typing, not the author's
+layout: a single newline is a soft break that folds to a space, a blank line is
+a paragraph break, `<br>` is a hard break *inside* a paragraph (a banner's title
+over its tagline), and an indented line is a form — a sign, an inscription, a
+scrap of verse — that keeps its own shape.
 
-A handler that reflows honors the marker as part of its layout. A handler that
-doesn't reflow replaces it with a newline, or the player reads it:
+So `write(_:)` is handed prose, not layout. A handler that does not lay text out
+itself renders it with `TextWrap.plain(_:)`, which applies all four rules:
 
 ```swift
 func write(_ text: String) {
-    print(text.replacingOccurrences(of: "<br>", with: "\n"), terminator: "")
+    print(TextWrap.plain(text), terminator: "")
 }
 ```
 
-The wrapping and terminal-column machinery behind the full-screen handler is
-internal to the engine. A front end that lays text out itself, in a `UITextView`
-or a DOM node, has a better one already.
+Do not print `text` raw. A raw handler shows `<br>` to the player and breaks
+every paragraph at whatever column the game's source happened to be typed at.
+
+A handler that *does* reflow — a `UITextView`, a DOM node — wants the paragraph
+structure rather than the rendered string, and should fold and split on the same
+four rules before handing text to its own layout. The terminal-column machinery
+behind the full-screen handler is internal to the engine; a front end with a
+real layout engine has a better one already.
 
 ## `.quit` is not a command
 

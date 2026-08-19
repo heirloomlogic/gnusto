@@ -77,6 +77,30 @@ struct TextWrapTests {
         #expect(TextWrap.plain("no markup here") == "no markup here")
     }
 
+    @Test("plain() folds a paragraph the same way wrap() does")
+    func plainFoldsLikeWrap() {
+        // The two channels used to disagree here, which is what made a trailing
+        // `\` on every prose line look like a convention.
+        #expect(TextWrap.plain("line one\nline two") == "line one line two")
+        #expect(TextWrap.plain("a\nb\n\nc\nd") == "a b\n\nc d")
+    }
+
+    @Test("plain() folds before it substitutes the marker")
+    func plainFoldsBeforeSubstituting() {
+        // The other order turns <br> into a newline that the fold then eats,
+        // silently downgrading a hard break to a space.
+        #expect(TextWrap.plain("Title\nHere<br>The\nsubtitle") == "Title Here\nThe subtitle")
+        // And the space the fold joined on does not survive as an indent.
+        #expect(TextWrap.plain("Title<br>\nTagline") == "Title\nTagline")
+    }
+
+    @Test("plain() keeps a form's shape and the block separators around it")
+    func plainKeepsFormsAndSeparators() {
+        #expect(
+            TextWrap.plain("inscribed\n\n  Abandon every hope\n  all ye who enter here!\n\n")
+                == "inscribed\n\n  Abandon every hope\n  all ye who enter here!\n\n")
+    }
+
     @Test("Empty input yields no lines")
     func emptyInput() {
         #expect(TextWrap.wrap("", width: 40) == [])

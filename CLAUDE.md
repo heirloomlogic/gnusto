@@ -155,6 +155,19 @@ computed `static var`, which rebuilds it on every read.
 
 ## Gotchas that cost real time
 
+- **Write prose as one plain multi-line `"""` literal. No trailing `\`, no `+`.**
+  Where you break a source line is never where the player sees a break:
+  `TextWrap` folds a single newline to a space on **both** channels, so a
+  hard-wrapped literal and a one-line one render identically. Compose with
+  interpolation *inside* the literal — `"""\(body) The tide is low."""` — never
+  `body + " The tide is low."`. `Tests/GnustoTests/ProseConventionTests.swift`
+  fails the build on either spelling in a game target. (A trailing `\` is still
+  right in a JSON-RPC frame, a `fatalError` diagnostic or an MCP tool
+  description: none of those is routed through `TextWrap`, so none has a fold to
+  rely on.) Three ways to mean a break: a **blank line** is a new paragraph,
+  **`<br>`** is a hard break inside one, and a line **indented two spaces** is a
+  *form* — a sign, an inscription, a scrap of verse, a map legend — which keeps
+  its line endings, its inner spacing and its indent, and is never re-packed.
 - **Two description channels, not one.** `description(…)` / `describe { }` is the
   *examine* text. `firstSight(…)` / `presence { }` is the *room-listing* paragraph.
   On an item the listing line prints until the player touches it; on an actor it

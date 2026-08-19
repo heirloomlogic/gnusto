@@ -1,7 +1,8 @@
 import Foundation
 
-/// Reflows prose to a column width for the full-screen terminal interpreter.
-/// Pure and side-effect-free so it can be unit-tested without a live terminal.
+/// Renders game prose for a channel: reflowed to a column width for the
+/// full-screen terminal, folded for every plain one. Pure and side-effect-free
+/// so it can be unit-tested without a live terminal.
 ///
 /// The whole transcript is re-wrapped at the current width on every render, so
 /// this is the one place the "smart reflow on resize" behavior actually lives.
@@ -12,39 +13,75 @@ import Foundation
 /// wrapped for source readability, so honoring those incidental newlines as
 /// hard breaks would shatter the layout whenever the window is narrower than
 /// the width the author happened to wrap at (dangling "This", "and", …).
-/// Folding them makes the wrap depend only on the real terminal width.
+/// Folding them makes the layout depend on the channel and never on the column
+/// the author happened to type at.
 ///
-/// For the rare *intentional* break within a paragraph (a banner's title over
-/// its tagline, a scrap of verse's line endings), authors write the
-/// ``lineBreak`` marker `<br>` — non-whitespace, so unlike a trailing double
-/// space it survives editors and formatters that trim line endings.
+/// **Both** channels apply that rule, which is the whole point of this type.
+/// They used to disagree: ``wrap(_:width:)`` folded and ``plain(_:)`` did not,
+/// so a literal printed at the source's wrap column on the one channel that
+/// transcripts, CI and every play-test artifact are read in — and at *two*
+/// columns the moment a clause was concatenated onto it. That is what made a
+/// trailing `\` on every prose line look like a convention. It never was one;
+/// it was a workaround for this, and there is nothing left for it to work
+/// around.
 ///
-/// Some prose is a **form** rather than a paragraph: an inscription, a map
-/// legend, a ring of letters cut round a shaft. Those are written *indented*
-/// inside their literal, which ``isPreformatted(_:)`` reads as Markdown reads
-/// it — a literal block, never folded and never re-packed. That is a
-/// description of what this package's authors already did, not a rule imposed
-/// on them: every such block in every game target is indented, and nothing
-/// else in a game target is.
+/// Three ways to say something other than "this is running prose":
+///
+/// - A **blank line** starts a new paragraph.
+/// - The ``lineBreak`` marker `<br>` is a hard break *within* a paragraph, for
+///   a banner's title over its tagline. Non-whitespace, so unlike a trailing
+///   double space it survives editors and formatters that trim line endings.
+/// - **Indentation** makes a **form**: an inscription, a map legend, a ring of
+///   letters cut round a shaft, a scrap of verse. ``isPreformatted(_:)`` reads
+///   it as Markdown reads it — a literal block, never folded and never
+///   re-packed. That is a description of what this package's authors already
+///   did, not a rule imposed on them: every such block in every game target is
+///   indented, and nothing else in a game target is.
 ///
 /// ``fold(_:)`` is the one implementation of all of that. ``plain(_:)`` and
 /// ``wrap(_:width:)`` are both built on it, so the two channels cannot drift
-/// apart about what a paragraph is.
-enum TextWrap {
+/// apart again about what a paragraph is.
+public enum TextWrap {
     /// The in-band hard line-break marker (as in Markdown/HTML): a break within
     /// a paragraph, no blank line, formatter-proof. The full-screen renderer
     /// honors it through the fold; plain output turns it into a newline via
     /// ``plain(_:)`` so it never shows literally.
-    static let lineBreak = "<br>"
+    public static let lineBreak = "<br>"
 
-    /// Renders game text for a plain, non-wrapping channel: turns the hard-break
-    /// marker into a real newline. (Plain output doesn't fold, so a newline is
-    /// already a visible break — only the marker needs translating.)
+    /// Renders game text for a plain, non-reflowing channel: folds the
+    /// paragraph's soft breaks, then turns the hard-break marker into a real
+    /// newline.
+    ///
+    /// The fold runs **first**. The other order would turn `<br>` into a newline
+    /// that the fold then eats, silently downgrading a hard break to a space.
+    ///
+    /// A paragraph therefore arrives as one line, however the author happened to
+    /// wrap the literal. That is the whole point: a plain channel has no column
+    /// to reflow to, so the alternative is printing at whatever width the source
+    /// was typed at — and printing at *two* widths the moment a clause is
+    /// interpolated onto a wrapped literal. The terminal the output lands in
+    /// wraps a long line; it cannot un-wrap a short one.
     ///
     /// - Parameter text: the game text to render.
-    /// - Returns: the text with every `<br>` replaced by a newline.
-    static func plain(_ text: String) -> String {
-        text.replacingOccurrences(of: lineBreak, with: "\n")
+    /// - Returns: the text folded, with every `<br>` replaced by a newline.
+    public static func plain(_ text: String) -> String {
+        let segments = fold(text).components(separatedBy: lineBreak)
+        guard segments.count > 1 else { return segments[0] }
+        return segments.enumerated()
+            .map { index, segment in
+                // Trim only the whitespace flanking a marker, the way `wrap`
+                // drops it when it splits a segment into words — so a marker
+                // written at the end of a source line does not leave the next
+                // line indented by the space the fold joined on. Text away from
+                // a marker is never touched.
+                var segment = Substring(segment)
+                if index > 0 { segment = segment.drop(while: { $0 == " " || $0 == "\t" }) }
+                if index < segments.count - 1 {
+                    while segment.last == " " || segment.last == "\t" { segment = segment.dropLast() }
+                }
+                return String(segment)
+            }
+            .joined(separator: "\n")
     }
 
     /// Whether a line is **preformatted** — indented past the paragraph margin,
