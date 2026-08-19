@@ -92,6 +92,73 @@ struct TextWrapTests {
         #expect(TextWrap.wrap("ab", width: 0) == ["a", "b"])
     }
 
+    // MARK: - Forms (preformatted blocks)
+
+    @Test("An indented line keeps its shape and its indentation")
+    func preformattedLineSurvives() {
+        // Two spaces past the margin is a form, not prose: it does not fold
+        // into the sentence above it and it is not re-packed on spaces.
+        #expect(
+            TextWrap.wrap("inscribed\n\n  Abandon every hope\n  all ye who enter here!", width: 40)
+                == ["inscribed", "", "  Abandon every hope", "  all ye who enter here!"])
+    }
+
+    @Test("A form does not fold into the prose on either side of it")
+    func preformattedDoesNotFoldAtItsSeams() {
+        // No blank lines at all: the seam above and below the form is still a
+        // hard break, because one of the two lines is preformatted.
+        #expect(
+            TextWrap.wrap("above\n  the form\nbelow", width: 40)
+                == ["above", "  the form", "below"])
+    }
+
+    @Test("Adjacent form lines stay separate lines")
+    func preformattedLinesDoNotFoldTogether() {
+        #expect(
+            TextWrap.wrap("  a b\n  c d", width: 40) == ["  a b", "  c d"])
+    }
+
+    @Test("Inner spacing inside a form is preserved, never collapsed")
+    func preformattedKeepsInnerSpacing() {
+        // The letter-rings in Dungeon are built entirely from run-length
+        // spacing; collapsing it is what made them unreadable.
+        #expect(
+            TextWrap.wrap("    .    ? A G I ?    .", width: 60)
+                == ["    .    ? A G I ?    ."])
+    }
+
+    @Test("A form wider than the column is chopped, never overflowed")
+    func preformattedWiderThanColumnIsChopped() {
+        #expect(TextWrap.wrap("  abcdefgh", width: 5) == ["  abc", "defgh"])
+    }
+
+    @Test("A tab-indented line is a form too")
+    func tabIndentIsPreformatted() {
+        #expect(TextWrap.wrap("above\n\tthe form", width: 40) == ["above", "\tthe form"])
+    }
+
+    @Test("One leading space is prose, not a form")
+    func oneLeadingSpaceStillFolds() {
+        // The threshold is two, so a single stray space — the shape a composed
+        // value can produce at runtime — still folds and still collapses.
+        #expect(TextWrap.wrap("above\n below", width: 40) == ["above below"])
+    }
+
+    @Test("fold() leaves blank runs, leading and trailing newlines alone")
+    func foldPreservesBlankStructure() {
+        // The REPL hands plain() a turn's output already terminated by "\n\n";
+        // a fold that normalized that would fuse turn blocks together.
+        #expect(TextWrap.fold("one\ntwo\n\n") == "one two\n\n")
+        #expect(TextWrap.fold("\n\nlead") == "\n\nlead")
+        #expect(TextWrap.fold("a\n\n\n\nb") == "a\n\n\n\nb")
+        #expect(TextWrap.fold("") == "")
+    }
+
+    @Test("fold() trims the seam it joins on, from both sides")
+    func foldTrimsTheSeam() {
+        #expect(TextWrap.fold("one \n two") == "one two")
+    }
+
     // MARK: - Wide characters (CJK / emoji)
 
     @Test("Wide glyphs pack by column, never overflowing the width")

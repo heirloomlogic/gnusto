@@ -15,9 +15,21 @@ import Foundation
 /// Folding them makes the wrap depend only on the real terminal width.
 ///
 /// For the rare *intentional* break within a paragraph (a banner's title over
-/// its tagline, a sign, a scrap of verse), authors write the ``lineBreak``
-/// marker `<br>` — non-whitespace, so unlike a trailing double space it
-/// survives editors and formatters that trim line endings.
+/// its tagline, a scrap of verse's line endings), authors write the
+/// ``lineBreak`` marker `<br>` — non-whitespace, so unlike a trailing double
+/// space it survives editors and formatters that trim line endings.
+///
+/// Some prose is a **form** rather than a paragraph: an inscription, a map
+/// legend, a ring of letters cut round a shaft. Those are written *indented*
+/// inside their literal, which ``isPreformatted(_:)`` reads as Markdown reads
+/// it — a literal block, never folded and never re-packed. That is a
+/// description of what this package's authors already did, not a rule imposed
+/// on them: every such block in every game target is indented, and nothing
+/// else in a game target is.
+///
+/// ``fold(_:)`` is the one implementation of all of that. ``plain(_:)`` and
+/// ``wrap(_:width:)`` are both built on it, so the two channels cannot drift
+/// apart about what a paragraph is.
 enum TextWrap {
     /// The in-band hard line-break marker (as in Markdown/HTML): a break within
     /// a paragraph, no blank line, formatter-proof. The full-screen renderer
@@ -35,6 +47,66 @@ enum TextWrap {
         text.replacingOccurrences(of: lineBreak, with: "\n")
     }
 
+    /// Whether a line is **preformatted** — indented past the paragraph margin,
+    /// which Markdown reads as a literal block and which this package's prose
+    /// already uses for inscriptions, map legends, diagrams and verse. A
+    /// preformatted line is never folded into its neighbors, never re-packed,
+    /// and never de-indented.
+    ///
+    /// Two spaces, because that is the smallest extra indent any game target
+    /// uses (the Hades inscription, `Prose+Temple.swift`) and because nothing
+    /// else in a game target is indented at all — so the threshold has no false
+    /// positives to trade against.
+    ///
+    /// - Parameter line: one line of the text, with its indentation intact.
+    /// - Returns: `true` when the line is a literal block rather than prose.
+    static func isPreformatted(_ line: Substring) -> Bool {
+        line.hasPrefix("  ") || line.hasPrefix("\t")
+    }
+
+    /// Folds Markdown's soft breaks: a newline between two non-blank,
+    /// non-preformatted lines becomes one space.
+    ///
+    /// Every other newline survives byte for byte — blank lines, runs of them,
+    /// leading and trailing ones, and any seam that touches a preformatted
+    /// line. That verbatim promise is load-bearing rather than tidy: the REPL
+    /// hands ``plain(_:)`` a turn's output already terminated by `"\n\n"`, the
+    /// transcript recorder appends its own, and the status footer joins on one,
+    /// so a paragraph-model round-trip that normalized blank runs would fuse
+    /// turn blocks together and break every consumer that slices on them.
+    ///
+    /// - Parameter text: the text to fold.
+    /// - Returns: the text with its soft breaks folded to spaces.
+    static func fold(_ text: String) -> String {
+        let lines = text.split(separator: "\n", omittingEmptySubsequences: false)
+        guard var folded = lines.first.map(String.init) else { return text }
+        var previous = lines[0]
+        for line in lines.dropFirst() {
+            if isSoftBreak(between: previous, and: line) {
+                // Trim the seam from both sides, because `wrap` collapses seam
+                // whitespace unconditionally when it splits on spaces. Without
+                // this the two paths could disagree about a line that ends or
+                // begins with a space.
+                while folded.last == " " || folded.last == "\t" { folded.removeLast() }
+                folded += " " + line.drop(while: { $0 == " " || $0 == "\t" })
+            } else {
+                folded += "\n" + line
+            }
+            previous = line
+        }
+        return folded
+    }
+
+    /// Whether the newline between two adjacent lines is a soft break — the
+    /// single question ``fold(_:)``, ``plain(_:)`` and ``wrap(_:width:)`` all
+    /// ask, asked in one place.
+    private static func isSoftBreak(between previous: Substring, and next: Substring) -> Bool {
+        !previous.allSatisfy(\.isWhitespace)
+            && !next.allSatisfy(\.isWhitespace)
+            && !isPreformatted(previous)
+            && !isPreformatted(next)
+    }
+
     /// Reflows `text` into visual lines no wider than `width` columns.
     ///
     /// Newlines within a paragraph fold to spaces; blank lines separate
@@ -43,44 +115,42 @@ enum TextWrap {
     /// break without starting a new paragraph, for the rare intentional break.
     /// Words are packed greedily and broken only at spaces; a word longer than
     /// `width` (a URL, a long identifier) is hard-split into `width`-sized
-    /// chunks rather than overflowing.
+    /// chunks rather than overflowing. A preformatted line keeps its own shape
+    /// and its indentation, and is only ever chopped if it is wider than the
+    /// column.
     ///
     /// - Parameters:
     ///   - text: the prose to reflow; single newlines are soft, blank lines are
-    ///     paragraph breaks, `<br>` is a hard break.
+    ///     paragraph breaks, `<br>` is a hard break, an indented line is a form.
     ///   - width: the column width to wrap to; values below 1 are treated as 1.
     /// - Returns: the visual lines, top to bottom (empty if `text` is blank).
     static func wrap(_ text: String, width: Int) -> [String] {
         let width = max(1, width)
 
-        // Group source lines into paragraphs: a whitespace-only line is a
-        // break; consecutive non-blank lines belong to the same paragraph.
-        let sourceLines = text.split(separator: "\n", omittingEmptySubsequences: false)
-        var paragraphs: [[Substring]] = []
-        var current: [Substring] = []
-        for line in sourceLines {
-            if line.allSatisfy(\.isWhitespace) {
-                if !current.isEmpty {
-                    paragraphs.append(current)
-                    current = []
-                }
-            } else {
-                current.append(line)
-            }
-        }
-        if !current.isEmpty { paragraphs.append(current) }
-
+        // After the fold, every non-blank line is either one whole paragraph or
+        // one line of a form, so there is nothing left to group.
         var lines: [String] = []
-        for (index, paragraph) in paragraphs.enumerated() {
-            if index > 0 { lines.append("") }  // one blank line between paragraphs
+        var pendingSeparator = false
+        for line in fold(text).split(separator: "\n", omittingEmptySubsequences: false) {
+            if line.allSatisfy(\.isWhitespace) {
+                pendingSeparator = !lines.isEmpty  // never leads, never trails
+                continue
+            }
+            if pendingSeparator {
+                lines.append("")  // one blank line between paragraphs
+                pendingSeparator = false
+            }
 
-            // Fold the paragraph's soft breaks to spaces, then split on the
-            // hard-break marker into segments that wrap independently but stay
-            // adjacent (no paragraph gap between them).
-            let folded = paragraph.joined(separator: " ")
-            for segment in folded.components(separatedBy: lineBreak) {
-                let words = segment.split(separator: " ", omittingEmptySubsequences: true)
-                lines += wrapWords(words, width: width)
+            // Split on the hard-break marker into segments that lay out
+            // independently but stay adjacent (no paragraph gap between them).
+            let preformatted = isPreformatted(line)
+            for segment in line.components(separatedBy: lineBreak) {
+                if preformatted {
+                    lines += hardSplit(Substring(segment), width: width)
+                } else {
+                    let words = segment.split(separator: " ", omittingEmptySubsequences: true)
+                    lines += wrapWords(words, width: width)
+                }
             }
         }
         return lines
