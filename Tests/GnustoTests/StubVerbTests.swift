@@ -18,8 +18,24 @@ struct StubVerbTests {
         let problems = SyntaxRule.standardTable.flatMap(\.patternProblems)
         #expect(problems.isEmpty, "\(problems)")
 
-        let keys = SyntaxRule.standardTable.map(\.key)
-        #expect(keys.count == Set(keys).count, "duplicate rows in the standard table")
+        // Deduped by *canonical* pattern rather than by ``SyntaxRule/Key``,
+        // which subsumes the exact repeat: two rows differing only in how a
+        // preposition is spelled are one row to the parser — candidate
+        // selection compares canonical spellings, and equal specificity keeps
+        // table order, so the later row can never fire. #273 removed the three
+        // the core table was carrying.
+        func respelt(_ rule: SyntaxRule) -> [SyntaxElement] {
+            rule.elements.map { element in
+                guard case .word(let word) = element else { return element }
+                return .word(Vocabulary.canonical(word))
+            }
+        }
+
+        let respellings = Dictionary(grouping: SyntaxRule.standardTable, by: respelt)
+            .values
+            .filter { $0.count > 1 }
+            .map { $0.map(\.patternDescription).joined(separator: " / ") }
+        #expect(respellings.isEmpty, "one row respelled as another: \(respellings)")
 
         // No stub row may quietly replace a core row, or the core row's real
         // behavior would vanish with no warning.
