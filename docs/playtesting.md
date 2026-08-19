@@ -82,8 +82,9 @@ Black and white tile, worn through to the grout along the line people walk. …
 
 Answers with the questions missing. `GNUSTO_TRANSCRIPT` records `> look` interleaved
 with the output, byte-for-byte what `ScriptedIOHandler` produces in the suite — so the
-file is both readable *and* the exact string a test asserts on. `bin/playtest-replay`
-sets it for you and prints the path in its trailer.
+file is both readable *and* the exact string a test asserts on, once you drop the
+`[status]` lines described below. `bin/playtest-replay` sets it for you and prints the
+path in its trailer.
 
 ## Annotate as you go
 
@@ -165,6 +166,11 @@ asked for**, and it is a `REPL` argument rather than an environment read, so
 `GNUSTO_STATUS=1 swift test` leaves the suite's transcripts alone. When you lift an
 excerpt into a regression test, drop the `[status]` lines: they are scaffolding for the
 reader, not the game's words.
+
+**`bin/playtest-replay` asks for it on your behalf**, on every run, and so does the MCP
+session server — the two recorders both write for a machine as well as for you. A round
+counts its own turns by grepping those transcripts for `turn=cost`, which is the only
+count that does not depend on somebody remembering how far they got.
 
 ## Deep states: save once, restore per probe
 

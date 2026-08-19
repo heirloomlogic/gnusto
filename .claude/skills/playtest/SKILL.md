@@ -187,9 +187,21 @@ agents, and a derived number does not depend on that.
 The first two now come from `closing.json`, which the session server writes at `finish` out
 of the status line and the parser's own record of tokens it could not consume. The third is
 counted off the `[status]` footers: every footer says `turn=cost` or `turn=free`, so the
-round greps for the first across three places — the testers' transcripts, the `branch-NNN.txt`
-files a rewind wrote off, and the verifiers' probes under `.context/playtest/.replays/`.
-The collator does all of it; nobody is asked how far they got.
+round greps for the first across four places — the testers' transcripts, the `branch-NNN.txt`
+files a rewind wrote off, the probes under `.context/playtest/.replays/` that the server's
+own `replay` tool writes, and the `bin/playtest-replay` probes under the round's `-play-` and
+`-verify-` labels. The collator does all of it; nobody is asked how far they got.
+
+The last of those four is the newest and was the largest. `bin/playtest-replay` wrote no
+footers until #288, so its transcripts held no `turn=cost` to grep and its labels matched no
+glob — two independent exclusions, and the 2026-08-18 round's own completeness critic caught
+one of them. It reported 11,238 turns over artifacts holding 32,987 further typed commands.
+
+There is a fifth grep now, with no glob in it at all: every `turn=cost` under
+`.context/playtest`. It is not added to the total — it is *differenced* against it, and the
+critic is handed the residual. A sum over an enumerated list of globs has been short three
+times running and each time reported a plausible number and waited a round; a residual is
+how the next uncounted tree says so on the round it appears in rather than the one after.
 
 Two lessons worth carrying, because the third instance taught them and the first two
 didn't. **A number cannot be counted until something writes the thing down** — turns
