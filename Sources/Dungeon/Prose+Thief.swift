@@ -99,10 +99,11 @@ extension Prose {
                 clatters to the floor beside him.
                 """
         }
-        // One logical line: the list is as long as the bag was, so a hard wrap
-        // written here would land in a different place every time.
-        return "As the thief dies, the power of his magic decreases, and his treasures reappear: "
-            + "\(GameText.list(loot)). His stiletto clatters to the floor beside him."
+        return """
+            As the thief dies, the power of his magic decreases, and his treasures
+            reappear: \(GameText.list(loot)). His stiletto clatters to the floor
+            beside him.
+            """
     }
 
     // MARK: - Giving him things

@@ -1875,7 +1875,7 @@ struct DungeonTests {
                 "A ghost appears in the room",
                 "banishes them to the Land of the Living Dead",
             ])
-        #expect(!transcript.contains("bag of coins\n"))
+        #expect(!transcript.contains("bag of coins"))
     }
 
     /// The rusty knife announces itself to the elvish sword, and then kills

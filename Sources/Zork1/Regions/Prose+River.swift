@@ -145,9 +145,16 @@ extension Prose {
     /// `BOAT-LABEL`'s `TEXT`. The original's breaks that carry meaning — one per
     /// instruction, and each line of the closing warning — become paragraph
     /// breaks; the ones that are only its column width fold back into their
-    /// sentences. Not `<br>`: that marker is a hard break in the full-screen
-    /// renderer but a blank line in every plain channel, so a form built from it
-    /// would read differently to a play-tester than to a player.
+    /// sentences. Paragraph breaks rather than an indented form, because the
+    /// label is a page of running text with headings, not a shape — the form is
+    /// for the ring of letters and the inscription over Hades, where the
+    /// *arrangement* is the content.
+    ///
+    /// (This comment used to say `<br>` was unusable here because it "is a hard
+    /// break in the full-screen renderer but a blank line in every plain
+    /// channel". It never was: `TextWrap.plain` renders the marker as a single
+    /// newline, the same break the full-screen renderer draws. The choice above
+    /// stands on its own; the reason given for it did not.)
     static let tanLabel = """
         !!!!FROBOZZ MAGIC BOAT COMPANY!!!!
 

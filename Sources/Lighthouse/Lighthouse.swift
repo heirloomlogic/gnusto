@@ -360,11 +360,11 @@ struct Lighthouse: Game {
                 """
             switch tideStage {
             case 0:
-                return body + " The tide is low, the planks dry underfoot."
+                return "\(body) The tide is low, the planks dry underfoot."
             case 1, 2:
-                return body + " Water is beginning to lap over the far planks."
+                return "\(body) Water is beginning to lap over the far planks."
             default:
-                return body + " The sea stands over the planks now, and it is not going back."
+                return "\(body) The sea stands over the planks now, and it is not going back."
             }
         }
 

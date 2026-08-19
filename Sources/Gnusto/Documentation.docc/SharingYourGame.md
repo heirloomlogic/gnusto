@@ -80,11 +80,16 @@ A value that isn't a whole number from 0 to 18446744073709551615 is reported on 
 
 Comments, `script`/`unscript` and the play-test server are the tester's other knobs. They belong to the front end rather than the environment, and they have their own page: <doc:PlayTesting>.
 
-## The `<br>` hard-break marker
+## How your prose is laid out
 
-Because the interpreter reflows every paragraph to the current width, an ordinary newline inside a paragraph is treated as a soft break and folds to a space — only a blank line starts a new paragraph. That's what keeps prose authored as multi-line `"""` literals from shattering when the window is narrow.
+An ordinary newline inside a paragraph is a soft break and folds to a space; only a blank line starts a new paragraph. **Both** channels do this — the full-screen interpreter reflows the folded paragraph to the window width, and plain output prints it as one line for the terminal, pipe or file it lands in to handle. So write your `"""` literals hard-wrapped for whatever reads well in the editor: where you break a line is never where the player sees a break. You never need a trailing `\` and you never need `"…" + "…"`; interpolate into one literal and let the fold do its job.
 
-For the rare *intentional* break within a paragraph — a banner's title above its tagline, a sign, a scrap of verse — write the `<br>` marker. The full-screen renderer honors it as a hard break; plain output turns it back into a newline, so it never shows literally on either path. See <doc:TextAndRandomness> for where game text like the startup banner is customized.
+Two ways to say you meant a break:
+
+- **`<br>`** is a hard break *within* a paragraph — a banner's title above its tagline. The full-screen renderer honors it as a break; plain output turns it into a newline, so it never shows literally on either path.
+- **Indent a line by two spaces** and it becomes a *form*: a sign, an inscription, a scrap of verse, a map legend. A form keeps its own line endings, its own inner spacing and its indentation, on both channels, and is only ever chopped if it is wider than the window.
+
+See <doc:TextAndRandomness> for where game text like the startup banner is customized.
 
 ## Export a standalone binary
 

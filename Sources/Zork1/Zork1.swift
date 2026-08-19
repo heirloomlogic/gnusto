@@ -143,8 +143,10 @@ struct Zork1: Game, GameMain {
         action(.score) {
             let moves = player.moves
             say(
-                "Your score is \(player.score) of a possible \(possibleScore), "
-                    + "in \(moves) \(moves == 1 ? "turn" : "turns").")
+                """
+                Your score is \(player.score) of a possible \(possibleScore),
+                in \(moves) \(moves == 1 ? "turn" : "turns").
+                """)
             say(Prose.rankLine(ZorkRank.name(for: player.score)))
         }
         // `diagnose` reports the death toll and how many resurrections remain

@@ -33,8 +33,8 @@ struct Fixtures: GameContent {
         synonyms("table", "inkwells", "inkwell", "ink", "quills", "quill")
         description(
             """
-            A working surface under a working man's idea of order: inkwells at three \
-            different levels of evaporation, quills he has given up on, and a clear patch \
+            A working surface under a working man's idea of order: inkwells at three
+            different levels of evaporation, quills he has given up on, and a clear patch
             in the middle exactly the size of the book.
             """)
         surface
@@ -50,8 +50,8 @@ struct Fixtures: GameContent {
         synonyms("shelves", "shelf", "volumes", "volume", "library")
         description(
             """
-            Wall to wall and floor to ceiling, spines in nine languages and at least one \
-            alphabet you would rather not look at directly. Not one of them is the one on \
+            Wall to wall and floor to ceiling, spines in nine languages and at least one
+            alphabet you would rather not look at directly. Not one of them is the one on
             the desk, which is the only one he ever opens.
             """)
         scenery
@@ -63,8 +63,8 @@ struct Fixtures: GameContent {
         synonyms("wall", "walls", "stone", "stones", "tower", "room", "study")
         description(
             """
-            Tower stone, warm from the candle and from three centuries of somebody being \
-            in here. The west wall is the one with the door in it, and the door is the one \
+            Tower stone, warm from the candle and from three centuries of somebody being
+            in here. The west wall is the one with the door in it, and the door is the one
             with the opinions.
             """)
         scenery
@@ -76,7 +76,7 @@ struct Fixtures: GameContent {
         synonyms("candles", "candlelight", "flame")
         description(
             """
-            Burning steadily on a saucer of its own drippings. It has been lit since dawn \
+            Burning steadily on a saucer of its own drippings. It has been lit since dawn
             and shows every sign of intending to outlast the morning.
             """)
         scenery
@@ -88,8 +88,8 @@ struct Fixtures: GameContent {
         synonyms("cauldron", "pots", "pot", "stack")
         description(
             """
-            Stacked in the corner, three deep, two of them cracked clean through. You know \
-            precisely what the look he gave you at the threshold meant, because you have \
+            Stacked in the corner, three deep, two of them cracked clean through. You know
+            precisely what the look he gave you at the threshold meant, because you have
             seen him give it to these.
             """)
         scenery
@@ -103,9 +103,9 @@ struct Fixtures: GameContent {
         synonyms("wizard", "mage", "cloak", "staff", "hat", "robes", "robe", "letters", "letter", "circle")
         description(
             """
-            Halfway to the Circle by now, in the cloak, the robes, and the hat he found in \
-            the end by taking it off his own head, with the staff in one hand and their \
-            letters in the other. The Circle does not care to wait, and he has never once \
+            Halfway to the Circle by now, in the cloak, the robes, and the hat he found in
+            the end by taking it off his own head, with the staff in one hand and their
+            letters in the other. The Circle does not care to wait, and he has never once
             asked it to.
             """)
         scenery
@@ -119,7 +119,7 @@ struct Fixtures: GameContent {
         synonyms("road", "track", "lane", "path", "slope")
         description(
             """
-            Green, steep, and going down to a road with nobody on it. He was making better \
+            Green, steep, and going down to a road with nobody on it. He was making better
             time than the robes deserved, and there is no sign of him coming back up.
             """)
         scenery
@@ -137,7 +137,7 @@ struct Fixtures: GameContent {
         synonyms("walls", "stone", "stones", "stonework", "tower", "air")
         description(
             """
-            Cold tower stone, unrelieved for the whole length of the gallery. Nobody has \
+            Cold tower stone, unrelieved for the whole length of the gallery. Nobody has
             ever hung anything here or wanted to stand here, and the air knows it.
             """)
         scenery
@@ -151,8 +151,8 @@ struct Fixtures: GameContent {
         synonyms("vault", "cellar", "ceiling", "stone", "stones", "tower", "air", "magic", "undercroft")
         description(
             """
-            Low ribs of stone springing from the floor and meeting overhead, chalky to look \
-            at and chalkier to breathe. The magic down here is nobody's in particular any \
+            Low ribs of stone springing from the floor and meeting overhead, chalky to look
+            at and chalkier to breathe. The magic down here is nobody's in particular any
             more; it has simply been worked into the air by everyone who ever came down.
             """)
         scenery
@@ -167,7 +167,7 @@ struct Fixtures: GameContent {
         synonyms("peg", "nail")
         description(
             """
-            Driven into the vault stone at head height and bent up at the tip. The last of \
+            Driven into the vault stone at head height and bent up at the tip. The last of
             the master's security arrangements, and by some distance the least ingenious.
             """)
         surface

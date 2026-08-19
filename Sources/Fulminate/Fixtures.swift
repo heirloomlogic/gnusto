@@ -37,8 +37,8 @@ struct Fixtures: GameContent {
         synonyms("passageway", "corridor", "hallway")
         description(
             """
-            It runs back past the foot of the stairs to the kitchen door. The shortest \
-            distance in this house between the people who live in it and the people who \
+            It runs back past the foot of the stairs to the kitchen door. The shortest
+            distance in this house between the people who live in it and the people who
             are paid to be in it, and worn accordingly.
             """)
         scenery
@@ -55,8 +55,8 @@ struct Fixtures: GameContent {
         synonyms("pan", "stockpot", "supper", "stew")
         description(
             """
-            Big enough for a household, and filled tonight for one fewer than that. It \
-            goes on at a quarter to six. Mrs. Kettle can tell you the time by it and, \
+            Big enough for a household, and filled tonight for one fewer than that. It
+            goes on at a quarter to six. Mrs. Kettle can tell you the time by it and,
             given the smallest opening, will.
             """)
         scenery
@@ -72,8 +72,8 @@ struct Fixtures: GameContent {
         synonyms("steps", "doorstep", "threshold")
         description(
             """
-            One worn stone outside the kitchen door, and the last swept thing between the \
-            house and the grass. Everybody in this house has come out onto it tonight and \
+            One worn stone outside the kitchen door, and the last swept thing between the
+            house and the grass. Everybody in this house has come out onto it tonight and
             most of them have gone further.
             """)
         scenery
@@ -95,8 +95,8 @@ struct Fixtures: GameContent {
         synonyms("fedora", "brim", "hatband")
         description(
             """
-            Grey felt, blocked stiff, and a size that was right for him some years ago. \
-            It has not been off his head since he came, on the reasoning that taking it \
+            Grey felt, blocked stiff, and a size that was right for him some years ago.
+            It has not been off his head since he came, on the reasoning that taking it
             off would mean he had arrived somewhere.
             """)
     }
@@ -109,8 +109,8 @@ struct Fixtures: GameContent {
         synonyms("notepad", "pocketbook")
         description(
             """
-            Black, pocket-sized, with an elastic round it and everybody's name in it \
-            including yours. He has not opened it since he wrote you down and does not \
+            Black, pocket-sized, with an elastic round it and everybody's name in it
+            including yours. He has not opened it since he wrote you down and does not
             intend to in front of you.
             """)
     }
@@ -122,7 +122,7 @@ struct Fixtures: GameContent {
         pikeHat.before(.take) {
             try refuse(
                 """
-                It is on his head, and nothing about the way he is wearing it suggests he \
+                It is on his head, and nothing about the way he is wearing it suggests he
                 is waiting to be asked for it.
                 """)
         }

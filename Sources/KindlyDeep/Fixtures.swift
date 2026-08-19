@@ -43,8 +43,8 @@ struct Fixtures: GameContent {
         synonyms("entries", "roadway")
         description(
             """
-            The main entry, which stops here now. You have walked it in the dark twice a \
-            day for two years and could still walk it, if there were any of it left to \
+            The main entry, which stops here now. You have walked it in the dark twice a
+            day for two years and could still walk it, if there were any of it left to
             walk.
             """)
         scenery
@@ -55,8 +55,8 @@ struct Fixtures: GameContent {
         synonyms("entries", "roadway")
         description(
             """
-            The stable entry, running back east toward the fall. Wide enough for a mule \
-            and a loaded trip, and swept, because the stable boss holds views about that \
+            The stable entry, running back east toward the fall. Wide enough for a mule
+            and a loaded trip, and swept, because the stable boss holds views about that
             too.
             """)
         scenery
@@ -67,7 +67,7 @@ struct Fixtures: GameContent {
         synonyms("entries", "roadway")
         description(
             """
-            The entry runs past above you, back up to the north. Down here you are out of \
+            The entry runs past above you, back up to the north. Down here you are out of
             it, which is the entire architectural argument for a shelter hole.
             """)
         scenery
@@ -78,7 +78,7 @@ struct Fixtures: GameContent {
         synonyms("entries", "roadway")
         description(
             """
-            The entry ends its useful career here, at the mouth of the old works. What \
+            The entry ends its useful career here, at the mouth of the old works. What
             continues east is a crawl, and what goes north is nobody's road any more.
             """)
         scenery
@@ -92,8 +92,8 @@ struct Fixtures: GameContent {
         synonyms("wall", "whitewash", "whitewashed", "stable")
         description(
             """
-            Whitewashed, and recently. Lime over rock, laid on to throw what light there \
-            is back at you — a small kindness that costs a mine nothing and is therefore \
+            Whitewashed, and recently. Lime over rock, laid on to throw what light there
+            is back at you — a small kindness that costs a mine nothing and is therefore
             rarer than it should be.
             """)
         scenery
@@ -105,8 +105,8 @@ struct Fixtures: GameContent {
         synonyms("brick", "bricks", "paving")
         description(
             """
-            Worn brick, laid in a herringbone by somebody who did not have to and swept \
-            by somebody who does. It is the only floor in these workings that is not \
+            Worn brick, laid in a herringbone by somebody who did not have to and swept
+            by somebody who does. It is the only floor in these workings that is not
             simply whatever the rock left.
             """)
         scenery
@@ -119,8 +119,8 @@ struct Fixtures: GameContent {
         synonyms("shelter", "hole", "timbers", "floor")
         description(
             """
-            The shelter hole is cut square into the rib and timbered honestly, which is \
-            more than can be said for some of this section. Its floor is dry, and dry is \
+            The shelter hole is cut square into the rib and timbered honestly, which is
+            more than can be said for some of this section. Its floor is dry, and dry is
             the whole of what it is selling.
             """)
         scenery
@@ -133,8 +133,8 @@ struct Fixtures: GameContent {
         synonyms("stone", "sides", "roof", "wall", "walls", "floor", "shadow")
         description(
             """
-            Rock above, rock below, and rock at both elbows, close enough that the lamp \
-            throws your own shadow across it and into your eyes. It is not going anywhere \
+            Rock above, rock below, and rock at both elbows, close enough that the lamp
+            throws your own shadow across it and into your eyes. It is not going anywhere
             and neither, for the moment, are you.
             """)
         scenery
@@ -146,7 +146,7 @@ struct Fixtures: GameContent {
         synonyms("gap")
         description(
             """
-            From the inside it is simply the shape you are: a gap the fall did not quite \
+            From the inside it is simply the shape you are: a gap the fall did not quite
             close, running east and west, and no wider anywhere than it is here.
             """)
         scenery
@@ -163,7 +163,7 @@ struct Fixtures: GameContent {
         synonyms("rubble", "rock", "rocks")
         description(
             """
-            The far edge of the same fall, come round the corner to meet you. It left the \
+            The far edge of the same fall, come round the corner to meet you. It left the
             crawl the way a man leaves a tip: without meaning to, and not generously.
             """)
         scenery
@@ -176,8 +176,8 @@ struct Fixtures: GameContent {
         synonyms("walls")
         description(
             """
-            Rock, squared off where the sinkers squared it forty years ago, with the bell \
-            bolted to it at the height of a man's hand. Everything down here that matters \
+            Rock, squared off where the sinkers squared it forty years ago, with the bell
+            bolted to it at the height of a man's hand. Everything down here that matters
             is fixed to this wall.
             """)
         scenery
@@ -191,8 +191,8 @@ struct Fixtures: GameContent {
         synonyms("gap", "floor")
         description(
             """
-            The crawl comes out here at floor level, beside the air-door, looking from \
-            this side like exactly what it is: the way a man gets through, and nothing \
+            The crawl comes out here at floor level, beside the air-door, looking from
+            this side like exactly what it is: the way a man gets through, and nothing
             larger.
             """)
         scenery
@@ -206,8 +206,8 @@ struct Fixtures: GameContent {
         synonyms("prop", "timbers", "timber", "floor")
         description(
             """
-            Props set forty years ago and still standing, which says something for the \
-            man who set them. The floor between them has not been walked on since, and \
+            Props set forty years ago and still standing, which says something for the
+            man who set them. The floor between them has not been walked on since, and
             shows it: undisturbed, and undisturbed a long while.
             """)
         scenery
@@ -219,8 +219,8 @@ struct Fixtures: GameContent {
         synonyms("sweetness", "quiet")
         description(
             """
-            It smells faintly sweet, and it is perfectly still, and there is nothing \
-            whatever alarming about it to look at. That is the entire problem with it, \
+            It smells faintly sweet, and it is perfectly still, and there is nothing
+            whatever alarming about it to look at. That is the entire problem with it,
             and the reason a mule's nose outranks a man's opinion down here.
             """)
         scenery

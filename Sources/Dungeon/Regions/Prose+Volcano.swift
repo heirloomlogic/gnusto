@@ -525,7 +525,7 @@ extension Prose {
             tied
                 ? "A piece of wire tied to a hook holds the balloon in place."
                 : "Dangling from the basket is a piece of braided wire.",
-        ].joined(separator: "\n")
+        ].joined(separator: " ")
     }
 
     static func balloonExamined(inflated: String?, tied: Bool) -> String {
@@ -546,7 +546,7 @@ extension Prose {
             tied
                 ? "The balloon is tied to a hook by the braided wire."
                 : "A braided wire is dangling over the side of the basket.",
-        ].joined(separator: "\n")
+        ].joined(separator: " ")
     }
 
     static let clothBag = """
@@ -572,7 +572,7 @@ extension Prose {
         """
     }
 
-    static let wireMightBeTied = "\nThe wire might possibly be tied, though."
+    static let wireMightBeTied = " The wire might possibly be tied, though."
 
     static let clothBagIsEmpty = "It doesn't appear that there's anything inside."
 

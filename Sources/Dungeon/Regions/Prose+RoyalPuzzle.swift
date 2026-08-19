@@ -382,7 +382,7 @@ extension Prose {
 
     static func puzzleSideRoom(open: Bool) -> String {
         """
-        You are in a small room with an exit north and \
+        You are in a small room with an exit north and
         \(open ? "a passage" : "a steel door") to the east.
         """
     }

@@ -181,7 +181,14 @@ public final class TerminalIOHandler: IOHandler {
         gnustoEmergencyRestore()
         let trimmed = finalText.trimmingCharacters(in: .whitespacesAndNewlines)
         if !trimmed.isEmpty {
-            emit(trimmed + "\n")
+            // Wrapped, not raw: this was the one output path in the package that
+            // rendered neither way, so a `<br>` in an ending reached the player
+            // literally and a source-wrapped literal printed at the author's
+            // column. Wrapped at the live width rather than a fixed one, so the
+            // ending does not change column on the way out of the alternate
+            // screen the player was just reading.
+            let lines = TextWrap.wrap(trimmed, width: terminalSize().cols)
+            emit(lines.joined(separator: "\n") + "\n")
         }
     }
 

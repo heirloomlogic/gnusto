@@ -158,11 +158,14 @@ struct SalvageYardGame: Game {
             pairs.flatMap { [$0.from, $0.to] } + [("ghost", ghost), ("echo", echo)]
         let placements = tracked.map { "\($0.0)=\(whereIs($0.1))" }.joined(separator: " ")
         let room = yard.contents.map(\.name).sorted().joined(separator: ",")
+        // Indented, so `TextWrap` reads it as a form and keeps it one row per
+        // field. This is a state dump routed through the transcript, not prose:
+        // folded into a paragraph the artifact is still assertable but unreadable.
         return """
-            \(placements)
-            room=[\(room)]
-            nailReachable=\(nail.isReachable)
-            aboard=\(player.vehicle?.name ?? "none")
+              \(placements)
+              room=[\(room)]
+              nailReachable=\(nail.isReachable)
+              aboard=\(player.vehicle?.name ?? "none")
             """
     }
 

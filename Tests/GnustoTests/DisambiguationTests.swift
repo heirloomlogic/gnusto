@@ -13,8 +13,7 @@ struct DisambiguationTests {
         expectInOrder(
             transcript,
             [
-                "Which do you mean: the brass lantern or the rusty lantern "
-                    + "or the small brass lantern?",
+                "Which do you mean: the brass lantern or the rusty lantern or the small brass lantern?",
                 "Taken.",
                 // The question was free: only the completed take counted.
                 "in 1 turn",
@@ -33,8 +32,7 @@ struct DisambiguationTests {
         expectInOrder(
             transcript,
             [
-                "Which do you mean: the brass lantern or the rusty lantern "
-                    + "or the small brass lantern?",
+                "Which do you mean: the brass lantern or the rusty lantern or the small brass lantern?",
                 "Which do you mean: the brass lantern or the small brass lantern?",
                 "Taken.",
                 "small brass lantern",

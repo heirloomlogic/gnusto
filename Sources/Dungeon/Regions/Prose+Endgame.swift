@@ -317,7 +317,7 @@ extension Prose {
     /// - Returns: the description.
     static func mirrorPanelOpen(onto room: String?) -> String {
         """
-        The mirror stands open on its hinge, and the \(beyond(room)) is on the \
+        The mirror stands open on its hinge, and the \(beyond(room)) is on the
         other side of it.
         """
     }
@@ -551,11 +551,11 @@ extension Prose {
     static func sundialSet(_ number: String, byHand: Bool) -> String {
         byHand
             ? """
-            The dial turns stiffly under your hand, and the pointer comes to \
+            The dial turns stiffly under your hand, and the pointer comes to
             rest at \(number).
             """
             : """
-            Somewhere above you the dial turns stiffly, and the pointer comes \
+            Somewhere above you the dial turns stiffly, and the pointer comes
             to rest at \(number).
             """
     }
