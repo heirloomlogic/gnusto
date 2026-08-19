@@ -26,8 +26,20 @@ enum TextWrap {
     static let lineBreak = "<br>"
 
     /// Renders game text for a plain, non-wrapping channel: turns the hard-break
-    /// marker into a real newline. (Plain output doesn't fold, so a newline is
-    /// already a visible break — only the marker needs translating.)
+    /// marker into a real newline. Nothing else is touched — an authored newline
+    /// reaches the output as the author wrapped it.
+    ///
+    /// That puts one obligation on prose that is **composed** — a `"""` literal
+    /// with a clause concatenated or interpolated onto it. Such a value must be a
+    /// single line (continue the source with `\`), or the appended clause lands on
+    /// the end of a short line and the paragraph prints ragged. Uncomposed prose
+    /// may stay hard-wrapped: it renders at the author's column, which is narrow
+    /// but even. ``wrap(_:width:)`` folds either way, so the full-screen path never
+    /// sees the difference.
+    ///
+    /// Making `plain` fold soft newlines the way `wrap` does would retire the
+    /// obligation, and is deliberately deferred: it rewrites the bytes of every
+    /// recorded transcript, and the game suites assert on those bytes (#294).
     ///
     /// - Parameter text: the game text to render.
     /// - Returns: the text with every `<br>` replaced by a newline.

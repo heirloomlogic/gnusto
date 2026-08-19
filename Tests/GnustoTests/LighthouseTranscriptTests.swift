@@ -162,6 +162,35 @@ struct LighthouseTranscriptTests {
             ])
     }
 
+    /// The jetty's live description is one paragraph in every tide stage.
+    ///
+    /// Plain output prints an authored newline verbatim (`TextWrap.plain` only
+    /// translates `<br>`), and this description concatenates a tide clause onto
+    /// its body — so a body hard-wrapped in the source used to break the
+    /// paragraph mid-sentence and then run the second line to 106 columns (#294).
+    ///
+    /// The daemon bumps `tideStage` at the end of a turn, so four looks read
+    /// stages 0, 1, 2 and 3. The fourth turn drowns you; that is the room's
+    /// contract, tested above, and it does not reach these assertions.
+    @Test func theJettyDescribesEachTideStageAsOneParagraph() async throws {
+        // Wrapped like the rule it mirrors, and joined the same way: if the source
+        // literal loses its `\`, this expectation gains a space the output hasn't.
+        let body = """
+            A short timber jetty on stone footings runs out from the foot of \
+            the lighthouse to the mooring where the keeper's boat rides.
+            """
+
+        let transcript = try await play(Lighthouse(), ["look", "look", "look", "look"])
+
+        expectInOrder(
+            transcript,
+            [
+                "\(body) The tide is low, the planks dry underfoot.",
+                "\(body) Water is beginning to lap over the far planks.",
+                "\(body) The sea stands over the planks now, and it is not going back.",
+            ])
+    }
+
     /// An actor, a custom verb, and `@Global` state: the keeper answers when
     /// talked to, and her one-time briefing (tracked by `keeperGreeted`) gives
     /// way to a shorter reminder.

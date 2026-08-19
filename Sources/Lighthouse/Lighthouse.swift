@@ -352,10 +352,12 @@ struct Lighthouse: Game {
     // MARK: - Rules
 
     var rules: Rules {
-        // The jetty's live description reads the tide `@Global`.
+        // The jetty's live description reads the tide `@Global`. A tide clause is
+        // appended to `body`, so `body` is continued with `\` to keep its value one
+        // line — see `TextWrap.plain` for why a composed value must be (#294).
         jetty.describe {
             let body = """
-                A short timber jetty on stone footings runs out from the foot of
+                A short timber jetty on stone footings runs out from the foot of \
                 the lighthouse to the mooring where the keeper's boat rides.
                 """
             switch tideStage {
