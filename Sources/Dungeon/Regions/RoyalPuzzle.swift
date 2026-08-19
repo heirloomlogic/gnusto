@@ -663,7 +663,7 @@ extension DungeonRoyalPuzzle {
     fileprivate func openingParagraph(_ state: RoyalPuzzleGrid) -> String {
         guard !hasPushed else { return Prose.puzzleDiagram(state.diagramRing) }
         guard warningNote.isTouched else { return Prose.puzzleRoomAtEntry }
-        return Prose.puzzleRoomAtEntry + " " + Prose.puzzleThiefWasRight
+        return "\(Prose.puzzleRoomAtEntry) \(Prose.puzzleThiefWasRight)"
     }
 
     /// Walking the grid. A location `before` rule runs at stage 3, ahead of

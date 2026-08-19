@@ -172,8 +172,7 @@ struct ConjunctionTests {
         expectInOrder(
             transcript,
             [
-                "Which do you mean: the brass lantern or the rusty lantern "
-                    + "or the small brass lantern?",
+                "Which do you mean: the brass lantern or the rusty lantern or the small brass lantern?",
                 "rusty lantern: Taken.",
                 "small brass lantern: Taken.",
             ])
@@ -278,8 +277,7 @@ struct ConjunctionTests {
         expectInOrder(
             transcript,
             [
-                "Which do you mean: the brass lantern or the rusty lantern "
-                    + "or the small brass lantern?",
+                "Which do you mean: the brass lantern or the rusty lantern or the small brass lantern?",
                 "rusty lantern: Taken.",
                 "small brass lantern: Taken.",
             ])

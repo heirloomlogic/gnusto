@@ -78,8 +78,10 @@ struct ShrineContent: GameContent {
             let value = item[.value] ?? 0
             credit(value)
             try reply(
-                "You lay the \(item.name) in the offering bowl. "
-                    + "Your merit rises to \(merit()).")
+                """
+                You lay the \(item.name) in the offering bowl.
+                Your merit rises to \(merit()).
+                """)
         }
     }
 }

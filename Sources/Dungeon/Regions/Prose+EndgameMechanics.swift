@@ -117,8 +117,8 @@ extension Prose {
         let side = northward ? "north" : "south"
         let glass = intact ? "" : " Broken glass lies along the foot of it."
         return """
-            An enormous box fills the hallway to the \(side), floor to ceiling \
-            and wall to wall. What faces you is \
+            An enormous box fills the hallway to the \(side), floor to ceiling
+            and wall to wall. What faces you is
             \(boxFaceName(face)).\(openFaceClause(face, open: open))\(glass)
             """
     }
@@ -133,12 +133,12 @@ extension Prose {
     static func boxBesideYou(face: BoxFace?, open: Bool) -> String {
         guard open else {
             return """
-                The side of the box stands beside you, close enough to touch: \
+                The side of the box stands beside you, close enough to touch:
                 \(boxFaceName(face)).
                 """
         }
         return """
-            The side of the box stands beside you, and the \(openingName(face)) in it \
+            The side of the box stands beside you, and the \(openingName(face)) in it
             is swung open on a dark space within.
             """
     }
@@ -151,8 +151,8 @@ extension Prose {
     /// - Returns: the description.
     static func boxFromOutside(face: BoxFace?, open: Bool) -> String {
         """
-        A rectangular box the full height of the hallway, longer than it is \
-        wide. The side toward you is \
+        A rectangular box the full height of the hallway, longer than it is
+        wide. The side toward you is
         \(boxFaceName(face)).\(openFaceClause(face, open: open))
         """
     }
