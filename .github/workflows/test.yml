@@ -8,11 +8,29 @@ on:
     branches:
       - "**"
 
+permissions:
+  contents: read
+
+# A PR groups by ref, so a force-push supersedes its own run. Everything else gets a
+# unique group via run_id, deliberately: GitHub cancels a *pending* run as soon as a
+# third enters the group, whatever cancel-in-progress says. Sharing one group across
+# pushes to main would therefore drop the Release-configuration test below on exactly
+# the bursty merges — measured at 2 of the last 40 pushes — and main has no branch
+# protection, so that run is the only gate there is.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   test-linux:
     # ARM runners are free for public repos and measurably faster here: the
     # Debug suite builds and runs in ~2m against ~3m40s on the x86 runner.
     runs-on: ubuntu-24.04-arm
+
+    # Roughly twice the worst observed run (16m23s, the push-to-main leg that adds the
+    # Release suite). Generous on purpose: this bounds a hang, and the default is six
+    # hours. A false timeout costs a red build; the minutes it saves are free anyway.
+    timeout-minutes: 35
 
     # The toolchain arrives as an image rather than a scripted install. Beyond
     # the ~30s saved, the compiler is pinned, which matters because macro
@@ -57,7 +75,12 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Nothing here pushes, and every step after this one runs SwiftPM, which
+          # executes third-party build-tool plugin code. Left at the default, the
+          # token sits in .git/config for all of it.
+          persist-credentials: false
 
       # The container runs as root over a checkout git considers foreign;
       # without this, git refuses ("dubious ownership") wherever SwiftPM or a
@@ -71,7 +94,7 @@ jobs:
       # still moving, and a stale hit there is a debugging session, not a saved
       # minute.
       - name: Cache SwiftPM downloads
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: /root/.cache/org.swift.swiftpm
           key: swiftpm-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Package.swift') }}

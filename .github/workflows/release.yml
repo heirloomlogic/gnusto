@@ -15,8 +15,17 @@ on:
       - "[0-9]+.[0-9]+.[0-9]+*"
   workflow_dispatch:
 
+# Read by default; only the `release` job below is granted write, because only it
+# publishes. The two build jobs need nothing — artifact upload authenticates with
+# ACTIONS_RUNTIME_TOKEN, which is independent of GITHUB_TOKEN.
 permissions:
-  contents: write
+  contents: read
+
+# A deploy, so a superseded run is never cancelled. Distinct tags are distinct refs;
+# grouping by ref only serialises a re-run of the same tag, which is what you want.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
 
 # Products to build but never publish. "Zork" is Activision's; the Zork1 target
 # exists here only as an internal demo, so it is excluded from public release
@@ -27,9 +36,14 @@ env:
 jobs:
   build-macos:
     runs-on: macos-26
+    timeout-minutes: 25
     steps:
       - name: Checkout repository
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Builds only; `swift build` runs plugin code, so do not leave the token
+          # lying in .git/config for it.
+          persist-credentials: false
 
       # `swift build -c release --product <P>` is the same recipe bin/export-game
       # uses locally; on macOS 15+ the binary links the OS Swift runtime, so the
@@ -51,17 +65,21 @@ jobs:
           ls -la dist
 
       - name: Upload macOS artifacts
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: release-macos
           path: dist/*.tar.gz
           if-no-files-found: error
+          # Artifacts outlive a run attempt, so without this "Re-run all jobs" on a
+          # release dies on 409 Conflict before it builds anything.
+          overwrite: true
 
   build-linux:
     # x86_64 on purpose. The test workflow runs on ARM, but the asset names here
     # come from `uname -m`, and the published Linux binaries have always been
     # x86_64 — moving this runner would silently change what people download.
     runs-on: ubuntu-latest
+    timeout-minutes: 25
 
     # Same toolchain image and version as the test workflow — keep the two in
     # step. Nothing here needs the prebuilt-swift-syntax caveat that workflow
@@ -78,7 +96,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Builds only. `git config --global --add safe.directory` below needs no auth.
+          persist-credentials: false
 
       - name: Trust the workspace
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
@@ -99,11 +120,13 @@ jobs:
           ls -la dist
 
       - name: Upload Linux artifacts
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: release-linux
           path: dist/*.tar.gz
           if-no-files-found: error
+          # See the macOS upload: without this a re-run cannot replace its artifacts.
+          overwrite: true
 
   release:
     needs: [build-macos, build-linux]
@@ -111,15 +134,28 @@ jobs:
     # real tag push publishes a release.
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    # The only job that writes. Creating a release and uploading its assets need
+    # exactly this and nothing more.
+    permissions:
+      contents: write
+
     steps:
       - name: Download build artifacts
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           path: artifacts
 
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
+          # This job deliberately has no checkout — it only moves artifacts. But `gh`
+          # finds its repo from --repo, then GH_REPO, then a git remote, and never
+          # from GITHUB_REPOSITORY. Without this line every command below dies with
+          # "fatal: not a git repository" after the assets have already been built,
+          # which is how tags 0.1.0 through 0.3.0 all published zero binaries.
+          GH_REPO: ${{ github.repository }}
           TAG: ${{ github.ref_name }}
         run: |
           set -euo pipefail

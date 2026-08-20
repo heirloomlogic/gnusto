@@ -1,0 +1,16 @@
+# Actions drift silently. Three of this repo's five were left on the Node 20 runtime
+# past its 2026-04-30 end of life, and the only sign was a deprecation warning buried
+# in a release log. Nothing watched them; now something does.
+#
+# Swift packages are deliberately absent: Package.resolved is gitignored here, so
+# there is no lockfile for Dependabot to bump.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns:
+          - "*"
