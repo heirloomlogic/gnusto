@@ -4052,9 +4052,9 @@ struct DungeonTests {
         let transcript = try await play(
             Dungeon(), Self.toTheRoyalPuzzlePastTheThief + ["west", "east"], seed: 120)
 
-        // Fragments chosen to sit inside one wrapped line: the prose is
-        // hand-wrapped and nothing in the engine re-wraps it, so an assertion
-        // spanning a line break never matches.
+        // Fragments chosen to sit inside one wrapped line: `TextWrap` re-wraps
+        // the paragraph to the transcript's width, so an assertion spanning
+        // the break it lands on never matches.
         expectInOrder(
             transcript,
             [

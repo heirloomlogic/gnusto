@@ -466,7 +466,9 @@ struct DungeonProseTests {
         #expect(
             turnOutput(of: "examine lock", in: transcript)
                 .contains("You can't see any such thing"))
-        // (The constant is hand-wrapped between "heavy" and "lock".)
+        // (Short of "lock": `TextWrap` re-wraps the paragraph to the
+        // transcript's width, and this is one of the fragments that survives
+        // wherever the break lands.)
         #expect(turnOutput(of: "x lock", in: transcript).contains("fastened with a heavy"))
         #expect(turnOutput(of: "x grate", in: transcript).contains("A sturdy iron grating"))
     }
@@ -1100,6 +1102,59 @@ struct DungeonProseTests {
         #expect(
             turnOutput(of: "x west door", in: transcript)
                 .contains("A chimney of rock, barely wide enough for one"))
+    }
+
+    // MARK: - Three facts about one machine, in one paragraph
+
+    /// **The balloon's listing line and its examine text are each one
+    /// paragraph, not three.** The basket, the bag over it and the wire off its
+    /// side are three facts about three parts of one machine, and a listing
+    /// line is the sentence that tells a player *one thing stands here*: this
+    /// room already lists a hook and a zorkmid, so broken three ways one
+    /// balloon reads as three more items. The source says the same twice —
+    /// `ODESC1` (`dung.355:4339`) is a single string printed by one `TELL`, and
+    /// `LEDGE-FUNCTION` (`act2.92:745`) splices the Wide Ledge's state clause
+    /// on with a leading space rather than a break. (#302)
+    ///
+    /// The refusals pin the same seam one level down. The wire is the only part
+    /// with a verb of its own (`WIRE-FUNCTION`, `act2.92:587`), so it is the
+    /// only one whose refusal carries a second sentence — and the other two
+    /// must not pick it up, which is what the old `+`-spliced spelling made
+    /// possible and nothing tested.
+    @Test func theBalloonsThreeFactsArriveAsOneParagraph() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            DungeonTests.toTheVolcano
+                + ["look", "examine basket"]
+                + ["take cloth bag", "take receptacle", "take braided wire"]
+                + ["pull receptacle"],
+            seed: 18)
+
+        // Blocks, not fragments: whatever width the transcript wraps to, the
+        // paragraph that opens on the basket is the one that ends on the wire.
+        func paragraph(naming noun: String, of command: String) -> String? {
+            turnOutput(of: command, in: transcript)
+                .components(separatedBy: "\n\n")
+                .first { $0.contains(noun) }
+        }
+
+        let listed = try #require(paragraph(naming: "wicker basket", of: "look"))
+        #expect(listed.contains("The cloth bag is draped over the side"))
+        #expect(listed.contains("Dangling from the basket is a piece of braided wire."))
+
+        let examined = try #require(paragraph(naming: "cloth bag", of: "examine basket"))
+        #expect(examined.contains("Directly in the middle of it is a metal receptacle."))
+        #expect(examined.contains("A braided wire is dangling over the side of the basket."))
+
+        // The wire's hint is the wire's, and the wire's alone.
+        for part in ["take cloth bag", "take receptacle", "pull receptacle"] {
+            let refusal = turnOutput(of: part, in: transcript)
+            #expect(refusal.contains("is an integral part of the basket"))
+            #expect(!refusal.contains("might possibly be tied"))
+        }
+        let wire = turnOutput(of: "take braided wire", in: transcript)
+        #expect(wire.contains("The braided wire is an integral part of the basket"))
+        #expect(wire.contains("The wire might possibly be tied, though."))
     }
 
     // MARK: - The floor speaks in the game's voice (#233, box 12)

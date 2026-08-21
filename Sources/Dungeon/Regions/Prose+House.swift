@@ -22,8 +22,9 @@ extension Prose {
     /// clause and not the paragraph. (#233)
     ///
     /// - Parameter windowOpen: whether the window stands open.
-    /// - Returns: the paragraph. The hand wrap is the output's, so the clause
-    ///   that varies stays on one printed line.
+    /// - Returns: the paragraph. Where the literal breaks is not where the
+    ///   player sees a break — `TextWrap` folds a paragraph's soft newlines on
+    ///   both channels — so the varying clause needs no line of its own.
     static func kitchen(windowOpen: Bool) -> String {
         """
         You are in the kitchen of the white house. A table seems to have been
