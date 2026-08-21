@@ -88,7 +88,11 @@ Four things, none of them optional:
   count comes from `coverage.rooms`, and it is **read off the `closing.json` each
   session wrote at `finish`**, never from what a tester said: `visited` is the union
   of every session's `roomsVisited`, `neverVisited` is the survey's roster minus
-  that, and `offRoster` is a name the survey did not predict. The gap that used to
+  that, rendered `Name (id)`, and `offRoster` is a room id the roster does not
+  hold. Both sides are room **ids**, because a display name is prose and two rooms
+  may share one — so an `offRoster` entry no longer means somebody retyped a name,
+  it means the artifacts and the roster describe different builds, and that is
+  worth a sentence of its own. The gap that used to
   live in this bullet is now `coverage.sessionsUnfinished` — a probe holding a
   transcript with no closing record beside it, which is a session that played and
   left no account of itself. **Name those.** A coverage figure computed without them

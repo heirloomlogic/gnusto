@@ -98,6 +98,12 @@ const REF = '.claude/skills/playtest/references'
 const labelFor = (...parts) =>
   [game, ...parts].join('-').replace(/[^A-Za-z0-9._-]+/g, '-').replace(/^[.-]+/, '')
 
+// The game's own MCP server, as the tool namespace spells it. `.mcp.json` keys
+// one server per game by the lowercased name, and both the cartographer and
+// every tester have to name its tools to fetch them — so the convention is
+// stated once here rather than re-derived at each call site.
+const mcpTools = (...names) => names.map((n) => `mcp__${game.toLowerCase()}__${n}`).join(',')
+
 // Where a *session* writes, as against a replay, and the glob that finds it
 // again. The server makes `.context/playtest/<label>/<probe>/` out of whatever
 // label `open` was given, and the collator globs that directory for
@@ -331,6 +337,33 @@ const CATEGORIES = [
 // closes stops suppressing findings the moment the next round runs.
 const ROUTED_ISSUES = { type: 'string' }
 
+// The two rosters this schema carries are the round's denominators, and both
+// are **copied from the engine's `survey` tool**, not transcribed. That is
+// #287's root cause written into the schema: the numerators come from the
+// engine — `roomsVisited` off the status line's `locationID`, `firedTimers` off
+// `GameWorld.firedTimers` — so a denominator an agent retyped out of
+// `Sources/<Game>/` is a second key space, and a join between two key spaces
+// silently scores the misses as zero.
+//
+// Rooms carry `id` as well as `name` for the sharper half of it: a display name
+// is prose, and a game may give two rooms the same one — at which point a
+// name-keyed roster cannot represent the answer whatever it is joined against.
+// `visitedRooms` below has the numbers.
+//
+// The judgement fields stay the cartographer's: `at`, `readsPlayerLocation`,
+// `kind` and the reachable/unreachable split are read out of the source, which
+// is work only a reader can do. The split is exactly the line to draw — the
+// engine owns the key space, the agent owns what the key space cannot say.
+const ROOM_ROW = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['id', 'name'],
+  properties: {
+    id: { type: 'string', description: 'The room\'s declared id, copied exactly from the survey tool. This is the key everything else joins on.' },
+    name: { type: 'string', description: 'Its display name, copied exactly. Not unique, and not a key.' },
+  },
+}
+
 const SURVEY_SCHEMA = {
   type: 'object',
   additionalProperties: false,
@@ -338,19 +371,23 @@ const SURVEY_SCHEMA = {
   properties: {
     rooms: {
       type: 'array',
-      description: 'Every reachable room, by its display name.',
-      items: { type: 'string' },
+      description: 'Every reachable room, from the survey tool: one row per room it returned with isReachable true, id and name copied exactly.',
+      items: ROOM_ROW,
     },
-    unreachableRooms: { type: 'array', items: { type: 'string' } },
+    unreachableRooms: {
+      type: 'array',
+      description: 'The rooms the survey tool returned with isReachable false — declared, but nothing leads to them.',
+      items: ROOM_ROW,
+    },
     timers: {
       type: 'array',
-      description: 'Each alarm, fuse and timetable stop, and whether its body reads the player location.',
+      description: 'Each alarm, fuse and timetable stop, and whether its body reads the player location. One row per timer the survey tool returned, no more and no fewer.',
       items: {
         type: 'object',
         additionalProperties: false,
-        required: ['label', 'kind', 'readsPlayerLocation'],
+        required: ['name', 'kind', 'readsPlayerLocation'],
         properties: {
-          label: { type: 'string' },
+          name: { type: 'string', description: 'The timer\'s declared name, copied exactly from the survey tool. This is the key `firedTimers` is in.' },
           kind: { type: 'string', enum: ['alarm', 'fuse', 'daemon', 'stop'] },
           at: { type: 'string' },
           readsPlayerLocation: { type: 'boolean' },
@@ -601,7 +638,7 @@ const COLLATOR_SCHEMA = {
   properties: {
     rooms: {
       type: 'array',
-      description: 'Every distinct room name appearing in any closing.json `roomsVisited`, copied exactly.',
+      description: 'Every distinct room `id` appearing in any closing.json `roomsVisited`, copied exactly. The id, not the name: two rooms may share a display name, and the survey roster this is scored against is keyed by id.',
       items: { type: 'string' },
     },
     words: {
@@ -913,11 +950,32 @@ const survey = await agent(
 You are the cartographer for this play-test round. You do not play; you read the code
 and the docs and produce the denominator every later phase measures itself against.
 
+**The room roster and the timer roster are not yours to write. Copy them.** The game's
+own MCP server will hand you both, exactly as the engine declared them, and the round's
+numerators are counted in that same key space — so a name you retype, tidy or infer
+scores as a room nobody entered and a timer that never fired. Fetch the tools with
+\`ToolSearch\`, query \`select:${mcpTools('open', 'survey', 'finish')}\`,
+then:
+
+    open  → label: "${labelFor('survey')}", seed: ${seed}   (take the default role: you are
+                                                              the one agent this round that
+                                                              is SUPPOSED to hold the answer key)
+    survey → the rooms, the timers, the verb tables, maxScore, the bootstrap's warnings
+
+Rooms with \`isReachable: true\` go in \`rooms\`; the rest go in \`unreachableRooms\`. Copy
+\`id\` and \`name\` character for character in both, and copy each timer's \`name\` the same
+way. Do not add a row the tool did not return and do not drop one it did. Call \`finish\`
+when you are done.
+
 Report:
-1. Every reachable room, and any room that exists but nothing leads to.
-2. Every alarm, fuse, daemon and timetable stop — and for each, whether its body reads
+1. Every reachable room, and any room that exists but nothing leads to — both off the
+   tool, as above.
+2. Every alarm, fuse, daemon and timetable stop — one row per timer the tool named — and
+   for each, whether its body reads
    the player's location or a "was here when it happened" flag. That flag is what marks
-   which timers need the full event x room cross-product, so get it right.
+   which timers need the full event x room cross-product, so get it right. \`kind\`, \`at\`
+   and \`readsPlayerLocation\` are yours to read out of the source; only the name is the
+   tool's.
 3. The state axes a line could be wrong along.
 4. Every noun the prose prints, crossed against the vocabulary (name, synonyms,
    adjectives), with whether it is answerable. Cross these two in code, not by playing:
@@ -930,11 +988,23 @@ Report:
 6. Which actors have proper names or honorifics.
 7. Which oracle tiers were actually available to you.
 
-Read \`Sources/${game}/\` and ${docPath ? `\`${docPath}\`` : 'the game type\'s doc comment'}. Be exhaustive about rooms and timers; that is what coverage is scored against.`,
+Read \`Sources/${game}/\` and ${docPath ? `\`${docPath}\`` : 'the game type\'s doc comment'} for everything above that the tool does not answer. The rosters themselves are the tool's, verbatim; that is what coverage is scored against.`,
   { label: `survey:${game}`, phase: 'Survey', schema: SURVEY_SCHEMA }
 )
 
 if (!survey) throw new Error('survey failed; a round without a denominator cannot report coverage honestly')
+
+// A room as a reader should see it: `Name (id)`. Every room list a person reads
+// goes through this, because the roster is keyed by id and a display name is not
+// unique — a list that printed the name alone would say "Coal Mine" seven times
+// and name nothing. An id on no roster prints alone rather than being dressed up
+// as a room.
+const roomNames = new Map(survey.rooms.map((r) => [r.id, r.name]))
+const roomLabel = (id) => (roomNames.has(id) ? `${roomNames.get(id)} (${id})` : id)
+
+// The whole roster, rendered once. It is an invariant of the round and it used
+// to be rebuilt per non-blind charter per round.
+const roomRoster = survey.rooms.map((r) => roomLabel(r.id)).join(', ')
 
 // Each charter decides for itself whether this game gives it anything to do,
 // reading the survey and the manifest capabilities directly. A predicate rather
@@ -1041,21 +1111,21 @@ for (let round = 1; round <= maxRounds && dryRounds < dryTarget; round++) {
           ? ''
           : `
 The survey found:
-- Rooms: ${survey.rooms.join(', ')}
+- Rooms: ${roomRoster}
 - State axes: ${(survey.stateAxes || []).join(', ') || 'none'}
 - Stock keys the game re-skinned: ${(survey.reskinnedTextKeys || []).join(', ') || 'none'}
 - Stub-verb replies the game re-skinned: ${(survey.reskinnedStubs || []).join(', ') || 'NONE — every stub answers in the engine voice'}
 - Proper-named actors: ${(survey.properNamedActors || []).join(', ') || 'none'}
 `
-        const server = `mcp__${game.toLowerCase()}__`
-        const tools = ['open', 'move', 'recall', 'coverage', 'note', 'finish', 'checkpoint', 'restore', 'replay']
+        const tools = mcpTools(
+          'open', 'move', 'recall', 'coverage', 'note', 'finish', 'checkpoint', 'restore', 'replay')
         return agent(
           `${(charter.blind ? groundBlind : ground)(playLabelFor(round, assignment.key))}
 
 Your charter is **${charter.key}**. Round ${round} of at most ${maxRounds}.
 
 You play through the game's own MCP server. Its tools are deferred, so fetch them first
-with \`ToolSearch\`, query \`select:${tools.map((t) => server + t).join(',')}\`.
+with \`ToolSearch\`, query \`select:${tools}\`.
 
 Open with \`label: "${sessionLabelFor(round, assignment.key)}"\`, \`seed: ${seed}\`, \`role: "${charter.blind ? 'explorer' : 'unrestricted'}"\`${charter.blind ? `, \`divergence: "${assignment.divergence}"\`` : ''}.
 ${charter.blind ? `**Read the \`instruction\` your open returns and follow it for the whole session.** It tells you what to do the first time the game offers you something you cannot take back. Another tester has been given the opposite orders, so the branch you leave alone is covered and the one you take is yours to describe.\n` : ''}
@@ -1545,47 +1615,58 @@ if (unrecognizedOwners.size) {
 // Coverage arithmetic in plain code, from the survey's denominator, so the
 // critic judges numbers it did not produce. This is what turns "a clean round
 // produces an empty report, not a plausible one" into a measurement.
-//
-// Reconciled against the survey roster rather than unioned raw. A tester that
-// writes "Landing" where the survey says "Upstairs Landing" would otherwise
-// inflate the numerator past the denominator — the first calibration round
-// printed "13 of 9 rooms visited", which is the exact shape of a number that
-// makes a reader stop trusting the report.
-const loose = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '')
 
-// Exact match only, and anything else is reported off-roster rather than
-// guessed at.
+// One join, both rosters. Rooms and timers ask the same question of two lists —
+// which of the declared things did the round touch, which touched things are on
+// no declared list — and until #287 they asked it in two hand-rolled loops, one
+// of them O(n·m) over a 195-row roster.
 //
-// The fuzzy word-subset matcher this replaces existed to forgive a tester who
-// typed "Landing" for "Upstairs Landing". Nobody types the name any more — it
-// comes off the status line, which prints what the engine calls the room — so
-// the forgiveness has no job and the hazard it carried is not worth keeping. On
-// Dungeon's 195-room roster "Maze 1" *uniquely* substring-matches "Maze 14", so
-// even an unambiguous partial match was a coin flip. A name that does not match
-// exactly is a fact about the survey or the game, and the critic should see it
-// rather than have it quietly resolved.
-function rosterMatch(name) {
-  return survey.rooms.find((r) => loose(r) === loose(name)) || null
+// **Exact string equality, and deliberately so.** Both sides are the engine's
+// key space now: the roster is copied out of the `survey` tool, and the
+// observations are the engine's own — `roomsVisited` carries the room's
+// `locationID` and `firedTimers` is keyed by `definition.timers`' keys. The
+// normalizer that used to sit here lowercased and stripped punctuation, which
+// was the right forgiveness when the roster was retyped prose and is the wrong
+// one now: it can fold two distinct ids into one bucket, and one silently wins.
+// Collapsing two declared things into one is the exact defect this change
+// exists to remove, so a copy that drifts in case is reported rather than
+// absorbed.
+//
+// That makes `offRoster` news instead of noise. It used to mean "an agent
+// retyped a name badly", which the critic had to reason past every round; it now
+// means the roster and the artifacts disagree about what this game *is* — a
+// stale `closing.json` from an older build, another game's probes in the scratch
+// tree, or a room the game names at runtime. Each of those wants saying out loud.
+//
+// `missing` is the reportable half in both cases. A declared thing that shows up
+// in nothing is the coverage gap no transcript can display: an unentered room
+// prints nothing, and a timer whose body only sets a flag prints nothing even
+// when it fires.
+//
+// - `observed`: names/ids seen, in any order, possibly repeated.
+// - `roster`:   the declared list, which sets the order of `missing`.
+function reconcile(observed, roster) {
+  const declared = new Set(roster || [])
+  const matched = new Set()
+  const offRoster = []
+  for (const o of observed || []) {
+    if (declared.has(o)) matched.add(o)
+    else offRoster.push(o)
+  }
+  return { matched, offRoster, missing: (roster || []).filter((r) => !matched.has(r)) }
 }
 
 // The declared timers against the ones that actually ran their bodies.
 //
-// The right-hand side is the engine's: `GameWorld.firedTimers` counts every fuse
-// and daemon body as it runs, and the session server folds it into
-// `closing.json` at `finish`. Nothing here is inferred from prose, which matters
-// because the prose may not exist — a timer whose body only sets a flag leaves
-// no sentence for anybody to grep, so "did that ever fire?" is not recoverable
-// from a transcript at all. See `SKILL.md` for the round that established that
-// the expensive way.
-//
-// The left-hand side is still the cartographer's transcription of
-// `Sources/<Game>/`, and that asymmetry is #287's remaining site rather than
-// this one's to fix. What it costs here is handled rather than hidden: the two
-// are joined through `loose()`, and a fired name matching no declared one is
-// reported as `offRoster` — a fact about the roster, which the critic is told
-// to read that way and to weigh against `neverFired` before believing it.
+// Both sides are counted rather than inferred. `GameWorld.firedTimers` counts
+// every fuse and daemon body as it runs and the session server folds it into
+// `closing.json` at `finish`; the roster is the `survey` tool's, in the same
+// key space. Nothing here is read off prose, which matters because the prose may
+// not exist — a timer whose body only sets a flag leaves no sentence for anybody
+// to grep, so "did that ever fire?" is not recoverable from a transcript at all.
+// See `SKILL.md` for the round that established that the expensive way.
 function firedTimers(rows) {
-  const declared = (survey.timers || []).map((t) => t.label).filter(Boolean)
+  const declared = (survey.timers || []).map((t) => t.name).filter(Boolean)
   // Summed defensively. The collator is asked for one row per name, but a
   // duplicated name must add up rather than print twice in the critic's line.
   const fired = new Map()
@@ -1593,16 +1674,39 @@ function firedTimers(rows) {
     if (!row || !row.name) continue
     fired.set(row.name, (fired.get(row.name) || 0) + (row.count || 0))
   }
-  const firedKeys = new Set([...fired.keys()].map(loose))
-  const declaredKeys = new Set(declared.map(loose))
+  const { offRoster, missing } = reconcile([...fired.keys()], declared)
   return {
     declared,
     fired: [...fired]
       .map(([name, count]) => ({ name, count }))
       .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name)),
-    neverFired: declared.filter((d) => !firedKeys.has(loose(d))),
-    offRoster: [...fired.keys()].filter((n) => !declaredKeys.has(loose(n))),
+    neverFired: missing,
+    offRoster,
   }
+}
+
+// The declared rooms against the ones a session actually stood in.
+//
+// The same join, and the same reason it is now honest. Before #287 the
+// numerator was display names off the status line and the denominator was an
+// agent's transcription of `Sources/<Game>/`, which is two key spaces — and the
+// numerator's could not represent the answer, because a display name is prose
+// and nothing stops two rooms sharing one. Dungeon declares 143 rooms under 126
+// distinct names, seven of them "Coal Mine": a tester who walked all seven
+// contributed one entry, and seventeen rooms could never be counted at all. The
+// 2026-08-18 round published "119 of 195 rooms visited" off that arithmetic and
+// listed as never-entered five Frigid River stretches two charters had stood in.
+//
+// Both sides are room ids now. `names` is carried alongside so the report can
+// say "Coal Mine (mine3)" rather than making a reader resolve an id.
+function visitedRooms(ids) {
+  const roster = survey.rooms.map((r) => r.id)
+  const { matched, offRoster, missing } = reconcile(ids, roster)
+  // `neverVisited` comes out rendered — `Name (id)` — because both its readers,
+  // the critic's prompt and the returned `coverage.rooms`, want it that way and
+  // rendering it twice is how the two came to disagree about turn counts once
+  // already. Nothing downstream wants a bare room id.
+  return { visited: matched, offRoster, neverVisited: missing.map(roomLabel) }
 }
 
 // The round's turn count, off the artifacts, split by who spent it rather than
@@ -1652,14 +1756,18 @@ calls \`finish\`. From \`${pkg}\`, list them:
 
     find ${SCRATCH} -path "*/${SESSION_GLOB}/*/${CLOSING}"
 
-Read every one. Each holds \`roomsVisited\` (room names, in the order the session
-first stood in them), \`unknownWords\` (token → how many times it was typed),
+Read every one. Each holds \`roomsVisited\` (one row per room, each with an \`id\`
+and a \`name\`, in the order the session first stood in them),
+\`unknownWords\` (token → how many times it was typed),
 \`forks\` (each with an \`id\`, a \`command\`, a \`room\` and a \`taken\` flag) and
 \`firedTimers\` (timer name → how many times the engine ran its body).
 
 Report:
 
-- \`rooms\`: every distinct name appearing in any \`roomsVisited\`, copied exactly.
+- \`rooms\`: every distinct \`id\` appearing in any \`roomsVisited\`, copied exactly.
+  The \`id\`, not the \`name\` — a name is prose and two rooms may carry the same
+  one, so a list of names cannot be scored against a room roster. Do not tidy an
+  id, expand it, or turn it back into the name beside it.
 - \`words\`: one row per distinct token, with its count summed across all files.
 - \`forksNobodyTook\`: the \`id\` of every fork appearing with \`taken: false\` and
   never with \`taken: true\`. A fork no session took is a branch the whole round
@@ -1752,26 +1860,15 @@ That is a real answer and it means the round wrote no sessions.`,
 
 // Derived once, off the promise, so the critic's prompt and the returned
 // coverage cannot disagree about what was walked.
-const roomTallyPromise = collatorPromise.then((collated) => {
-  const visited = new Set()
-  const offRoster = new Set()
-  for (const name of (collated && collated.rooms) || []) {
-    const match = rosterMatch(name)
-    if (match) visited.add(match)
-    else offRoster.add(name)
-  }
-  return {
-    visited,
-    offRoster,
-    neverVisited: survey.rooms.filter((r) => !visited.has(r)),
-    timers: firedTimers(collated && collated.timers),
-    forksNobodyTook: (collated && collated.forksNobodyTook) || [],
-    sessionsFinished: (collated && collated.sessionsFinished) || 0,
-    sessionsUnfinished: (collated && collated.sessionsUnfinished) || [],
-    words: (collated && collated.words) || [],
-    turns: countedTurns(collated && collated.turns),
-  }
-})
+const roomTallyPromise = collatorPromise.then((collated) => ({
+  ...visitedRooms((collated && collated.rooms) || []),
+  timers: firedTimers(collated && collated.timers),
+  forksNobodyTook: (collated && collated.forksNobodyTook) || [],
+  sessionsFinished: (collated && collated.sessionsFinished) || 0,
+  sessionsUnfinished: (collated && collated.sessionsUnfinished) || [],
+  words: (collated && collated.words) || [],
+  turns: countedTurns(collated && collated.turns),
+}))
 
 const criticThunk = async () => {
   const {
@@ -1819,19 +1916,21 @@ const criticThunk = async () => {
       + ` sets a flag prints nothing, so silence in the prose is not evidence either way. Name`
       + ` them in the coverage section and make one a target for next round.`
   }
-  // A mis-transcribed label produces BOTH lists at once — the roster spelling in
-  // `neverFired` and the engine's in `offRoster` — and read separately that is a
-  // dead timer invented out of a typo, which is the exact false positive this
-  // field exists to remove. So the two are crossed here rather than left to the
-  // critic to notice.
+  // Both sides are the engine's key space, so this list ought to be empty and a
+  // non-empty one is news rather than noise. It used to mean an agent had
+  // retyped a name badly; now it means the roster and the artifacts describe
+  // different builds. Either way the two lists have to be read together — a
+  // name that is `offRoster` here is very likely the same timer that is sitting
+  // in `neverFired` under its other spelling, and read apart they are a dead
+  // timer invented out of a mismatch.
   if (timers.offRoster.length) {
     timerNote +=
       ` ${timers.offRoster.length} fired name(s) match no declared timer`
-      + ` (${timers.offRoster.join(', ')}) — the roster above is the cartographer's`
-      + ` transcription of the source while these come from the engine, so a mismatch means the`
-      + ` roster is wrong, not that a timer appeared from nowhere. Reconcile them by name before`
-      + ` you believe the never-fired list: any of those may be one of these under another`
-      + ` spelling.`
+      + ` (${timers.offRoster.join(', ')}). Both lists come from the engine — the roster from`
+      + ` the survey tool, these from the sessions' own tallies — so they cannot disagree`
+      + ` about a game unless a \`closing.json\` was written by an older or a different build,`
+      + ` or another game's probes are in the scratch tree. Say which, and cross the two lists`
+      + ` before you believe the never-fired one.`
   }
 
   return agent(
@@ -1846,7 +1945,7 @@ and the unknown words are read from the \`closing.json\` each session wrote at \
 so they are counted rather than recalled; the prose notes below them are still self-report
 and can be flattering. The transcripts under \`${pkg}/${SCRATCH}/\` are the ground
 truth and they win over anything here.
-- Rooms: ${visited.size} of ${survey.rooms.length} entered. Never entered: ${neverVisited.join(', ') || 'none'}.${offRoster.size ? ` ${offRoster.size} name(s) in the closing records match no roster room (${[...offRoster].slice(0, 12).join(', ')}) — either the survey's roster is short or the game renames a room at runtime. Say which.` : ''}
+- Rooms: ${visited.size} of ${survey.rooms.length} entered, counted by room id rather than by display name — a name is prose and this game's rooms need not carry distinct ones. Never entered: ${neverVisited.join(', ') || 'none'}.${offRoster.length ? ` ${offRoster.length} room id(s) in the closing records are on no roster (${offRoster.slice(0, 12).join(', ')}). Both sides come from the engine now, so this is not a transcription slip: it means a \`closing.json\` was written by an older or a different build, another game's probes are in the scratch tree, or the game names a room at runtime. Say which, and treat the fraction above as approximate until you have.` : ''}
 - **Entered is not covered, and the report must not conflate them.** The count above is
   every room a session stood in, which includes rooms that only flashed past inside a
   replayed prefix from \`${SCRATCH}/routes/\` while the harness typed somebody
@@ -1930,11 +2029,13 @@ return {
     disagreements,
   },
   coverage: {
+    // Room ids on both sides — the survey tool's roster against the ids the
+    // sessions' own `roomsVisited` carried.
     rooms: {
       visited: roomTally.visited.size,
       total: survey.rooms.length,
       neverVisited: roomTally.neverVisited,
-      offRoster: [...roomTally.offRoster],
+      offRoster: roomTally.offRoster,
     },
     // Declared against fired, both counted rather than asked. `neverFired` is
     // the reportable half: nothing else in the round can distinguish a timer

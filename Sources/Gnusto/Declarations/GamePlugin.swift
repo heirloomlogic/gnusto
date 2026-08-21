@@ -90,8 +90,7 @@ public protocol GamePlugin: Sendable {
     @TimerBuilder var timers: [TimedEvent] { get }
 
     /// Extra `name=value` pairs for the play-test status footer — what this
-    /// system knows that the three-field ``StatusLine`` (room, score, moves)
-    /// does not. Defaults to empty, and costs nothing unless a footer is in
+    /// system knows that ``StatusLine`` (room, score, moves) does not. Defaults to empty, and costs nothing unless a footer is in
     /// force.
     ///
     /// Read inside a live turn frame, so a field may read globals, traits and

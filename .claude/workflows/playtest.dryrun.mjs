@@ -18,13 +18,31 @@ const phases = []
 const logs = []
 
 const survey = {
-  rooms: ['Front Hall','Parlour','Kitchen','Cellar','Upstairs Landing','Boarder\'s Room',"Vane's Study",'Back Yard','Carriage House','Orange Grove Avenue'],
+  // `{id, name}` since #287, and the last two rows are the whole reason: two
+  // rooms under one display name is the case a name-keyed roster cannot
+  // represent, and Dungeon has seventeen of them. The collator below reports one
+  // of the pair and not the other, so the critic has to be able to say that
+  // "Stair" was both entered and never entered — of different rooms.
+  rooms: [
+    { id: 'frontHall', name: 'Front Hall' },
+    { id: 'parlour', name: 'Parlour' },
+    { id: 'kitchen', name: 'Kitchen' },
+    { id: 'cellar', name: 'Cellar' },
+    { id: 'landing', name: 'Upstairs Landing' },
+    { id: 'boardersRoom', name: "Boarder's Room" },
+    { id: 'study', name: "Vane's Study" },
+    { id: 'backYard', name: 'Back Yard' },
+    { id: 'carriageHouse', name: 'Carriage House' },
+    { id: 'avenue', name: 'Orange Grove Avenue' },
+    { id: 'frontStair', name: 'Stair' },
+    { id: 'backStair', name: 'Stair' },
+  ],
   // Two, deliberately: the stub collator below reports a fire for one of them
   // and nothing for the other, so the critic's "declared and never fired" line
   // has both a positive and a negative to get right.
   timers: [
-    { label: 'clock', kind: 'alarm', at: '20:15', readsPlayerLocation: true },
-    { label: 'lamp', kind: 'fuse', readsPlayerLocation: false },
+    { name: 'clock', kind: 'alarm', at: '20:15', readsPlayerLocation: true },
+    { name: 'lamp', kind: 'fuse', readsPlayerLocation: false },
   ],
   stateAxes: ['hour'], tiers: ['source','doc'],
   printedNouns: [{ noun: 'grout', answerable: false, printedIn: 'Front Hall' }],
@@ -126,7 +144,11 @@ const stub = async (prompt, opts = {}) => {
   }
   if (l === 'collator') {
     return {
-      rooms: ['Front Hall', 'Cellar'],
+      // Room ids, as a `closing.json` carries them. `frontStair` and not
+      // `backStair`, so the twin under the same display name has to come back
+      // as never entered; `boilerRoom` is on no roster at all, which is the
+      // branch that says the artifacts and the roster describe different builds.
+      rooms: ['frontHall', 'cellar', 'frontStair', 'boilerRoom'],
       words: [{ word: 'grout', count: 2 }],
       forksNobodyTook: ['fork:burn-the-letter@Parlour'],
       // One roster timer that fired, one roster timer that did not, and one
@@ -293,7 +315,21 @@ check(!labels.includes('census'), 'the unknown-word census agent is back')
 check(!labels.includes('room-census'), 'the room census agent is back')
 check(labels.includes('collator'), 'the closing-record collator did not run')
 check(!/CENSUS_SCHEMA/.test(src), 'CENSUS_SCHEMA is still declared')
-check(!/rosterMatch\(name\)[\s\S]{0,400}wordSubset/.test(src), 'the fuzzy word-subset room matcher is back')
+// The roster join is an exact lookup on a normalized key and nothing else. The
+// fuzzy word-subset matcher this replaced existed to forgive a tester who typed
+// "Landing" for "Upstairs Landing"; nobody types a room name any more, and on
+// Dungeon's roster "Maze 1" *uniquely* substring-matches "Maze 14", so even an
+// unambiguous partial match was a coin flip. Named against `reconcile` since
+// #287 merged the room and timer joins — the old spelling had stopped existing,
+// which made this check pass for the wrong reason. The case/punctuation
+// normalizer went with it: both sides are the engine's key space now, and a
+// normalizer that folds two declared ids into one bucket is the very collapse
+// #287 exists to remove.
+check(
+  !/function reconcile\([\s\S]{0,700}(wordSubset|loose\(|\.includes\(|\.startsWith\(|\.indexOf\()/
+    .test(src),
+  'the roster join matches loosely again instead of on exact string equality'
+)
 
 // Nothing asks a tester for a number the session server writes down.
 check(!/roomsVisited: \{ type: 'array'/.test(src), 'roomsVisited is a tester-reported field again')
@@ -315,7 +351,7 @@ for (const p of blind) {
   // than none.
   for (const timer of survey.timers) {
     if (!timer.at) continue
-    check(!p.prompt.includes(timer.at), `${p.label} was handed timer ${timer.label}'s schedule`)
+    check(!p.prompt.includes(timer.at), `${p.label} was handed timer ${timer.name}'s schedule`)
   }
   for (const noun of survey.printedNouns) {
     check(!p.prompt.includes(noun.noun), `${p.label} was handed the vocabulary answer key`)
@@ -347,11 +383,18 @@ for (const p of blind) {
   // word instead would false-positive on Room, Hall, Yard and Study, which are
   // ordinary English a brief has to be able to use. The rule stays "name no
   // room"; this catches the copy-paste version of breaking it.
+  //
+  // Both halves of a room row, since #287. The id is as much the answer key as
+  // the name is — more, now that it is the key the whole round joins on — and a
+  // brief that pasted `westOfHouse` would be handing over the roster in the one
+  // spelling this file used not to look for.
   for (const room of survey.rooms) {
-    check(
-      !p.prompt.includes(room),
-      `${p.label} was handed the room roster: "${room}" appears in its prompt`
-    )
+    for (const leak of [room.name, room.id]) {
+      check(
+        !p.prompt.includes(leak),
+        `${p.label} was handed the room roster: "${leak}" appears in its prompt`
+      )
+    }
   }
   // A dedupe key is `<ownerFile>::<the game's own prose>`, so the ledger is a
   // room list, a source map and an excerpt file in one. Pasting it into a blind
@@ -687,11 +730,11 @@ if (critic) {
     critic.prompt.includes('**Declared and never fired in any session: lamp.**'),
     'the critic was not told which declared timers nothing exercised'
   )
-  // A mis-transcribed roster label lands in BOTH lists at once, and read apart
-  // they are a dead timer invented out of a typo. The critic has to be told to
-  // cross them.
+  // A fired name on no roster lands in BOTH lists at once — itself here, its
+  // roster twin in `neverFired` — and read apart they are a dead timer invented
+  // out of a mismatch. The critic has to be told to cross them.
   check(
-    /1 fired name\(s\) match no declared timer \(ghost\)[\s\S]{0,300}before you believe the never-fired list/
+    /1 fired name\(s\) match no declared timer \(ghost\)[\s\S]{0,400}before you believe the never-fired one/
       .test(critic.prompt),
     'a fired timer the roster does not hold was dropped, or not crossed against the never-fired list'
   )
@@ -718,6 +761,61 @@ check(
   result.coverage && result.coverage.timers
     && JSON.stringify(result.coverage.timers.neverFired) === '["lamp"]',
   `coverage.timers.neverFired is not the unexercised roster: ${JSON.stringify(result.coverage && result.coverage.timers)}`
+)
+
+// The room key space. The 2026-08-18 Dungeon round published "119 of 195 rooms
+// visited" from a numerator of display names and a denominator an agent had
+// retyped out of `Sources/`. Neither half could be repaired on its own: names
+// are not unique, so seventeen of that game's 143 rooms could not be counted at
+// all whatever the two sides were matched with. These assert the whole path:
+// the survey tool -> the roster -> the collator's ids -> the critic's line.
+const surveyPrompt = promptFor((p) => /^survey:/.test(String(p.label || '')))
+check(
+  /select:[^\n]*mcp__fulminate__survey/.test(surveyPrompt),
+  'the cartographer is no longer told to read the room and timer rosters off the survey tool'
+)
+check(
+  /Copy[\s\S]{0,200}\bid\b[\s\S]{0,200}character for character/.test(surveyPrompt),
+  'the cartographer is not told to copy the roster ids verbatim'
+)
+check(
+  collator ? /every distinct .id. appearing in any/.test(collator.prompt) : false,
+  'the collator is asked for room names again rather than room ids'
+)
+// The collision, end to end. `frontStair` was entered and `backStair` was not,
+// and they share the display name "Stair" — so a round that had gone back to
+// keying on the name would report neither or both.
+check(
+  /Never entered:[^\n]*Stair \(backStair\)/.test(critic ? critic.prompt : ''),
+  "the critic's never-entered list cannot name one of two rooms that share a display name"
+)
+check(
+  !/Never entered:[^\n]*Stair \(frontStair\)/.test(critic ? critic.prompt : ''),
+  'a room a session stood in is listed as never entered — the join is not on the id'
+)
+check(
+  /- Rooms: 3 of 12 entered/.test(critic ? critic.prompt : ''),
+  'the room fraction is not the roster minus the ids the sessions recorded'
+)
+// A room id on no roster is news now that both sides are the engine's, so the
+// critic is told what it actually means rather than "the survey is short".
+check(
+  /1 room id\(s\) in the closing records are on no roster \(boilerRoom\)/.test(critic ? critic.prompt : ''),
+  'an off-roster room id was dropped instead of reported'
+)
+check(
+  result.coverage && result.coverage.rooms
+    && JSON.stringify(result.coverage.rooms.neverVisited).includes('Stair (backStair)')
+    && result.coverage.rooms.total === 12
+    && result.coverage.rooms.visited === 3,
+  `coverage.rooms is not id-keyed: ${JSON.stringify(result.coverage && result.coverage.rooms)}`
+)
+// One join for both rosters. Rooms and timers ask the same question of two
+// lists, and answering it twice is how the two halves of #287 drifted apart in
+// the first place.
+check(
+  /function reconcile\(/.test(src) && !/function rosterMatch\(/.test(src),
+  'rooms and timers have gone back to hand-rolling the same roster join twice'
 )
 
 console.log('\nASSERTIONS:', failures.length ? `${failures.length} FAILED` : 'all passed')

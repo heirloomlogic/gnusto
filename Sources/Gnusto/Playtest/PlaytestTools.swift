@@ -1308,18 +1308,28 @@ enum PlaytestTools {
                 "description": .string(
                     "Every room the status line named, in first-seen order — including "
                         + "rooms reached inside a branch a rewind later wrote off, whose "
-                        + "turns were really played. Counted off this session, not "
-                        + "recalled: a round reads it rather than asking you how far you "
-                        + "got. signals.roomsVisited counts only the canonical transcript, "
-                        + "so the two may differ for a session that rewound."),
-                "items": ["type": "string"],
+                        + "turns were really played. Each row carries the room's declared "
+                        + "id and its display name. The id is the key: a name is prose and "
+                        + "two rooms may share one, so a coverage count keyed on the name "
+                        + "cannot reach the survey's room roster. Counted off this "
+                        + "session, not recalled: a round reads it rather than asking you "
+                        + "how far you got. signals.roomsVisited counts only the canonical "
+                        + "transcript, so the two may differ for a session that rewound."),
+                "items": [
+                    "type": "object",
+                    "properties": [
+                        "id": ["type": "string"],
+                        "name": ["type": "string"],
+                    ],
+                    "required": ["id", "name"],
+                ],
             ],
             "roomsOnlyInBranches": [
                 "type": "array",
                 "description": .string(
-                    "The rooms above whose evidence is in a branch-NNN.txt rather than in "
-                        + "transcript.txt. Empty unless this session rewound out of a room "
-                        + "it had entered."),
+                    "The ids of the rooms above whose evidence is in a branch-NNN.txt "
+                        + "rather than in transcript.txt. Empty unless this session "
+                        + "rewound out of a room it had entered."),
                 "items": ["type": "string"],
             ],
             "firedTimers": [
@@ -1669,8 +1679,10 @@ extension PlaytestSession.Closing {
                     ])
                 }),
             "signals": signals.json,
-            "roomsVisited": .array(roomsVisited.map { .string($0) }),
-            "roomsOnlyInBranches": .array(roomsOnlyInBranches.map { .string($0) }),
+            "roomsVisited": .array(
+                roomsVisited.map { .object(["id": .string($0.id.raw), "name": .string($0.name)]) }
+            ),
+            "roomsOnlyInBranches": .array(roomsOnlyInBranches.map { .string($0.raw) }),
             "firedTimers": .object(firedTimers.mapValues { .integer($0) }),
             "unknownWords": .object(
                 unknownWords.mapValues { .integer($0) }),

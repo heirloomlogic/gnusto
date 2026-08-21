@@ -295,7 +295,12 @@ actor PlaytestSession {
     ///
     /// A replayed prefix re-walks rooms already held, so both ways back from a
     /// rewind — the ring and the replay — leave this list unchanged.
-    private var roomsEverVisited: [String] = []
+    ///
+    /// **Keyed by the room's `EntityID`, and carrying the display name beside
+    /// it**, for the reason ``Closing/roomsVisited`` gives: a display name is
+    /// prose, two rooms may share one, and this list is the numerator of a
+    /// fraction whose denominator is a roster of declared rooms.
+    private var roomsEverVisited: [Closing.VisitedRoom] = []
 
     /// Every timer that has ever fired in this session, by name, and how many
     /// times — **including fires inside a branch a rewind wrote off**.
@@ -638,6 +643,21 @@ actor PlaytestSession {
     }
 
     struct Closing: Sendable {
+        /// One room this session stood in: the ID the game declared it under,
+        /// and the name the status line printed.
+        ///
+        /// Both, because the two are for different readers. The ID is the join
+        /// key — the same key space `survey`'s room roster is in, so a
+        /// numerator built from these can reach that denominator. The name is
+        /// what a report says out loud, and looking it up costs a round nothing
+        /// if it travels alongside.
+        struct VisitedRoom: Sendable, Equatable {
+            /// The declared ID, as `Location`'s property name gave it.
+            let id: EntityID
+            /// The display name the status line printed for it.
+            let name: String
+        }
+
         /// Always true. `finish` reports; it does not refuse.
         let accepted = true
         /// How many items were still open.
@@ -654,12 +674,21 @@ actor PlaytestSession {
         /// `taken: false` from every session is a branch the whole round left
         /// alone, which is a coverage gap nothing else in the harness can see.
         let forks: [ForkOutcome]
-        /// The rooms the status line named, in first-seen order.
+        /// The rooms the status line named, in first-seen order, each with the
+        /// ID the game declared it under.
         ///
         /// Counted, not asked. A round that asks a tester which rooms it saw
         /// gets a number the tester reconstructed from memory at the end of a
         /// long session, and the two rounds that checked found it wrong in both
         /// directions.
+        ///
+        /// **Keyed by ID, because the display name cannot be a key.** This list
+        /// is the numerator of the round's room coverage and `survey`'s room
+        /// roster is the denominator; before the ID travelled, the two were in
+        /// different key spaces and one of them could not represent the answer.
+        /// Dungeon declares 143 rooms under 126 distinct names, so a
+        /// name-keyed record charged a tester who walked all seven Coal Mines
+        /// with one room and left seventeen rooms permanently uncountable.
         ///
         /// **Every room the session ever stood in, whether or not the turns
         /// survived a rewind.** The 2026-08-17 round reported Vane's Study as
@@ -669,16 +698,25 @@ actor PlaytestSession {
         /// in a `branch-NNN.txt` rather than in `transcript.txt`, and
         /// `signals.roomsVisited` stays the canonical count — see
         /// ``roomsEverVisited`` for why the two are allowed to disagree.
-        let roomsVisited: [String]
+        let roomsVisited: [VisitedRoom]
 
-        /// The rooms in ``roomsVisited`` whose evidence is in a branch file
-        /// rather than in the transcript, because a rewind wrote those turns off.
+        /// The IDs of the rooms in ``roomsVisited`` whose evidence is in a
+        /// branch file rather than in the transcript, because a rewind wrote
+        /// those turns off.
         ///
         /// Empty for a session that never rewound, which is most of them. It is
         /// here so that a reader who greps `transcript.txt` for a room this
         /// record claims, finds nothing, and concludes the record is lying, is
         /// instead told where to look.
-        let roomsOnlyInBranches: [String]
+        ///
+        /// Decided by *name*, because the ledger this is checked against holds
+        /// display names — a room string there is an item identity and a
+        /// transcript-heading matcher, not a coverage key, and it stays that
+        /// way. The cost is that where two rooms share a name, standing in one
+        /// of them canonically suppresses the hint for the other. That is a
+        /// pointer to where the evidence lives, so a missed hint costs a reader
+        /// one `grep`; nothing is counted off it.
+        let roomsOnlyInBranches: [EntityID]
 
         /// Every timer whose body ran in this session, by name, and how often —
         /// the engine's own tally, not an inference off the prose.
@@ -741,6 +779,7 @@ actor PlaytestSession {
 
         let items = ledger.queue(limit: limit)
         let open = ledger.openCount
+        let ledgerRooms = Set(ledger.roomsVisited)
         var message =
             open == 0
             ? "Noted. Nothing was left open when you stopped."
@@ -770,8 +809,8 @@ actor PlaytestSession {
                 ForkOutcome(id: $0.id, command: $0.command, room: $0.room, taken: $0.taken)
             },
             roomsVisited: roomsEverVisited,
-            roomsOnlyInBranches: roomsEverVisited.filter {
-                !ledger.roomsVisited.contains($0)
+            roomsOnlyInBranches: roomsEverVisited.compactMap {
+                ledgerRooms.contains($0.name) ? nil : $0.id
             },
             firedTimers: firedTimersEver,
             unknownWords: ledger.unknownWords,
@@ -1190,11 +1229,17 @@ actor PlaytestSession {
     /// every line after it — and from nowhere that a rewind reaches. See
     /// ``roomsEverVisited``.
     ///
-    /// - Parameter room: the name the status line gave, which may be empty when
-    ///   the footer had none.
-    private func visit(_ room: String) {
-        guard !room.isEmpty, !roomsEverVisited.contains(room) else { return }
-        roomsEverVisited.append(room)
+    /// Takes the whole status line rather than a room string, because the two
+    /// halves it records have to come from one reading of it: an ID paired with
+    /// some other turn's name would be a record nothing could check.
+    ///
+    /// - Parameter status: the status line this turn ended on.
+    private func visit(_ status: StatusLine) {
+        let id = status.locationID
+        guard !id.raw.isEmpty, !roomsEverVisited.contains(where: { $0.id == id }) else {
+            return
+        }
+        roomsEverVisited.append(Closing.VisitedRoom(id: id, name: status.locationName))
     }
 
     /// Reopens the transcript and writes back the blocks the session is holding.
@@ -1365,7 +1410,7 @@ actor PlaytestSession {
         // field does: `<br>` is a marker, not a word, and a queue item named
         // after one would be an obligation to examine punctuation.
         ledger.observeOpening(output: openingOutput, room: result.status.locationName)
-        visit(result.status.locationName)
+        visit(result.status)
         statusLine = footer.line(result.status, turnCost: false, fields: fields)
         lastMoves = result.status.moves
         finished = result.isFinished
@@ -1431,7 +1476,7 @@ actor PlaytestSession {
             moves: result.status.moves,
             line: index,
             turnCost: turnCost)
-        visit(result.status.locationName)
+        visit(result.status)
 
         statusLine = footer.line(result.status, turnCost: turnCost, fields: fields)
         lastMoves = result.status.moves

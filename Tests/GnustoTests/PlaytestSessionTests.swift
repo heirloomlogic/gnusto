@@ -333,8 +333,9 @@ struct PlaytestSessionTests {
 
         let afterRing = try await session.finish(
             summary: "went west and came back", leaving: nil, limit: 3)
-        #expect(afterRing.roomsVisited == ["Foyer of the Opera House", "Cloakroom"])
-        #expect(afterRing.roomsOnlyInBranches == ["Cloakroom"])
+        #expect(afterRing.roomsVisited.map(\.id.raw) == ["foyer", "cloakroom"])
+        #expect(afterRing.roomsVisited.map(\.name) == ["Foyer of the Opera House", "Cloakroom"])
+        #expect(afterRing.roomsOnlyInBranches.map(\.raw) == ["cloakroom"])
         #expect(afterRing.signals.roomsVisited == 1)
 
         // And again from past the ring, which drops the world and the ledger and
@@ -347,8 +348,8 @@ struct PlaytestSessionTests {
 
         let afterReplay = try await session.finish(
             summary: "and again, from further out", leaving: nil, limit: 3)
-        #expect(afterReplay.roomsVisited == ["Foyer of the Opera House", "Cloakroom"])
-        #expect(afterReplay.roomsOnlyInBranches == ["Cloakroom"])
+        #expect(afterReplay.roomsVisited.map(\.id.raw) == ["foyer", "cloakroom"])
+        #expect(afterReplay.roomsOnlyInBranches.map(\.raw) == ["cloakroom"])
         #expect(afterReplay.signals.roomsVisited == 1)
     }
 
