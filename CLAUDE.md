@@ -222,6 +222,15 @@ computed `static var`, which rebuilds it on every read.
 - **Actors are always listed** if perceivable. `scenery` has no effect on them; only
   `hidden`-and-unrevealed or offstage suppresses one.
 - **`reveal()` is one-way** and `isTouched` is read-only — neither is a toggle.
+- **A timer fires on a count, not on a place.** Whatever room the player walked to
+  is the room a fuse or daemon's line prints in, so a body that `say`s "the bell
+  appears to have cooled down" says it two rooms away. `say(_:from:)` is the
+  question written once: pass the room (or rooms) the sentence is true in, or the
+  item/actor it is about, and it prints nowhere else. The room form ignores light —
+  a bell in the dark is still heard from inside the room; the item form asks
+  `isVisible`, which light does gate and which anything carried always passes. Say
+  it **before** a state change that hides its own subject: a candle already blown
+  out lights nothing, itself included. `DarknessTimeAndDeath.md` has the rule.
 - **`maxScore` is checked against the `Scoring` award table.** `Scoring(awards:)` is the
   one place a register's points are written — `awardOnce("beacon")` and
   `visit(_:register:)` read them from there, and an unlisted register is a `fatalError`,

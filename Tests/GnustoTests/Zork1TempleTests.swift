@@ -163,6 +163,58 @@ struct Zork1TempleTests {
             ])
     }
 
+    /// The window and the bell are both on counts rather than on places, so
+    /// both fuses ask where the player is standing before they say anything.
+    /// Ring and climb out: the ritual still resets and the bell still cools,
+    /// and the player is told about neither, because both are happening in a
+    /// room a staircase below them.
+    @Test func theGateFusesSayNothingToAPlayerWhoHasClimbedOut() async throws {
+        let transcript = try await play(
+            Zork1(),
+            Self.toHadesWithKit
+                + ["ring bell", "up"] + Array(repeating: "wait", count: 22)
+                + ["down", "examine bell"],
+            seed: 0)
+
+        #expect(!transcript.contains("resume their hideous jeering"))
+        #expect(!transcript.contains("appears to have cooled down"))
+        // Both fuses ran regardless: the bell is cold when they come back down.
+        #expect(
+            turnOutput(of: "examine bell", in: transcript).contains("once rung to call the faithful"))
+    }
+
+    /// The candles burn on a count too, and their two rungs are things you
+    /// watch happen to a flame. Light them, leave them at the gate, and the
+    /// wick still runs out — announced to nobody.
+    @Test func theCandlesBurnDownSilentlyWhereThePlayerCannotSeeThem() async throws {
+        let transcript = try await play(
+            Zork1(),
+            Self.toHadesWithKit
+                + ["light matches", "light candles", "drop candles", "up"]
+                + Array(repeating: "wait", count: 26),
+            seed: 0)
+
+        #expect(transcript.contains("The candles are lit."))
+        #expect(!transcript.contains("The candles won't last long now."))
+        #expect(!transcript.contains("The flame is extinguished."))
+    }
+
+    /// The control: carried, the candles report both rungs.
+    @Test func theCandlesAnnounceEveryRungToAPlayerHoldingThem() async throws {
+        let transcript = try await play(
+            Zork1(),
+            Self.toHadesWithKit + ["light matches", "light candles"]
+                + Array(repeating: "wait", count: 26),
+            seed: 0)
+
+        expectInOrder(
+            transcript,
+            [
+                "The candles won't last long now.",
+                "The flame is extinguished.",
+            ])
+    }
+
     /// The rung bell is left red hot: too hot to pick up until it cools, twenty
     /// turns on — a deliberate anti-softlock so a fumbled ritual never traps it.
     /// Its examine text tracks the heat — glowing red while hot, an ordinary

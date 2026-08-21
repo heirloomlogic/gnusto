@@ -203,6 +203,32 @@ struct Fulminate: Game, GameMain {
         player.location == backYard || player.location == carriageHouse
     }
 
+    /// The three levels of the house.
+    ///
+    /// The blast's two paragraphs are written in doors and breakage going off
+    /// *above* and *below* the man listening to them, and that is a claim about
+    /// which floor he is standing on. Indoors-or-outdoors was the axis both
+    /// bodies branched on, and it is one axis short: nothing gives way below a
+    /// man in the cellar, and there are no rooms above one on the landing.
+    enum Storey {
+        case cellar
+        case ground
+        case upstairs
+    }
+
+    /// Which level the player is on. Asked only from inside the house — both
+    /// readers branch on ``playerIsOutBack`` first, which owns the
+    /// indoors/outdoors axis — so the yard's answer is never consulted.
+    /// Computed, like `playerIsOutBack`, so the bootstrap's reflection walk
+    /// doesn't take it for an entity, and legal only inside a rule body.
+    var playerStorey: Storey {
+        switch player.location {
+        case cellar: .cellar
+        case landing, study, boardersRoom: .upstairs
+        default: .ground
+        }
+    }
+
     /// Where somebody was at a given minute, as Mrs. Kettle would say it.
     ///
     /// The lookup is the whole demonstration — see the mechanics contract — and
@@ -1199,30 +1225,44 @@ struct Fulminate: Game, GameMain {
 
             wasInTheYardForTheBlast = player.location == backYard
             knockedFlat = wasInTheYardForTheBlast
-            say(
-                wasInTheYardForTheBlast
-                    ? """
+
+            if wasInTheYardForTheBlast {
+                say(
+                    """
 
                     There is no moment in which it is about to happen. The carriage house comes apart. There is no
                     bang, particularly — more the sound of a door slamming in a cave — and then the ground hits you
                     in the back and you work out, after a moment, that you are lying down. Slates come out of the sky
                     and go into the grass edge-first. Twenty feet of the garden wall lies down with you. The heat
                     arrives last and all at once and takes the hair off the back of your hand.
+                    """)
+            } else {
+                // The one clause of the indoor paragraph that is about a floor
+                // rather than about a house — and, like the rest of it, noun-free:
+                // a room that cannot answer `x roof` has no business printing the
+                // word.
+                let breakage =
+                    switch playerStorey {
+                    case .cellar: "Above you a long run of breakage starts and finishes"
+                    case .ground: "Below you a long run of breakage starts and finishes"
+                    case .upstairs: "Below you a long run of breakage starts and finishes, floor after floor of it"
+                    }
+
+                // This paragraph prints in six rooms and can name nothing that
+                // lives in only one of them. It used to inventory the crockery,
+                // the shelf, the plaster, the ceiling, the sash and the pane,
+                // none of which any room could produce when asked for it. What
+                // survives is the part that is true everywhere indoors: a sound,
+                // and a house going quiet.
+                say(
                     """
-                    // This paragraph prints in six rooms and can name nothing
-                    // that lives in only one of them. It used to inventory the
-                    // crockery, the shelf, the plaster, the ceiling, the sash
-                    // and the pane, none of which any room could produce when
-                    // asked for it. What survives is the part that is true
-                    // everywhere indoors: a sound, and a house going quiet.
-                    : """
 
                     Somewhere out behind the house something goes off with a flat, unimpressive thump, and
                     everything in the place shivers at once and then is still. Whatever you are standing on comes up
                     an inch and puts itself back. Something lets go above you and comes down slowly and greyly
-                    afterwards. Below you a long run of breakage starts and finishes, and after that the house is
-                    quieter than a house ought to be.
+                    afterwards. \(breakage), and after that the house is quieter than a house ought to be.
                     """)
+            }
 
             // Placed after the death check above, so a player who was standing
             // in the lab never schedules an aftermath they aren't alive for.
@@ -1258,31 +1298,47 @@ struct Fulminate: Game, GameMain {
                     """)
             }
 
-            say(
-                playerIsOutBack
-                    ? """
+            if playerIsOutBack {
+                say(
+                    """
 
                     The dust is coming down out of the air slowly, the way it does indoors, and there is nothing
                     indoors about any of this. Behind you the house is emptying itself into the garden: a door,
                     another door, somebody taking the stairs at a run.
-                    """
-                    : """
-
-                    The house holds still for a count of three. Then a door goes above you, and another one below, and
-                    the stairs take somebody at a run, and the yard door bangs and does not come back — and by the
-                    end of it the rooms you can hear are empty and everybody who was in them is out on the grass.
-                    Dust comes along behind all of it and settles on everything with a flat top.
                     """)
-            // The one thing only this turn can say about her: she did not go
-            // down when it went. Her presence line carries the rest of the
-            // evening, so this beat has to be about the moment, not the pose.
-            if player.location == backYard, delphine.isIn(backYard) {
+            } else {
+                // Two doors and a staircase, placed relative to the man hearing
+                // them. This is the clause that made the fuse a floor short: the
+                // house has three levels, and only the middle one has a door
+                // above it and a door below it.
+                let doorsGoing =
+                    switch playerStorey {
+                    case .cellar: "a door goes above you, and another one above that"
+                    case .ground: "a door goes above you, and another one below"
+                    case .upstairs: "a door goes close by, and another one below"
+                    }
+
                 say(
                     """
 
-                    Delphine Marsh did not go down when it went. She did not even put a hand out.
+                    The house holds still for a count of three. Then \(doorsGoing), and the stairs take somebody at
+                    a run, and the yard door bangs and does not come back — and by the end of it the rooms you can
+                    hear are empty and everybody who was in them is out on the grass. Dust comes along behind all of
+                    it and settles on everything with a flat top.
                     """)
             }
+
+            // The one thing only this turn can say about her: she did not go
+            // down when it went. Her presence line carries the rest of the
+            // evening, so this beat has to be about the moment, not the pose.
+            // Said *from* her, which is the same question the two-room guard
+            // this used to carry was asking the long way round.
+            say(
+                """
+
+                Delphine Marsh did not go down when it went. She did not even put a hand out.
+                """,
+                from: delphine)
             startFuse("blast.settling")
         }
 

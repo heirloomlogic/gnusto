@@ -69,7 +69,7 @@ what has to remain true no matter how the story is rewritten.
 | A fact taught by evidence (`learning:`) | The receipt teaches that Teague lied to Constance. | The keystone fact is *learned*, never assumed. |
 | Per-actor fallback replies | "Mrs. Vane looks past you." | Everyone has a fallback. No dead air. |
 | Answers that land once | Every table carries an `again:` line in its own voice, and so does every `talk.shows` row. | Nobody recites an important paragraph twice. Mrs. Kettle is the deliberate exception: her rows read the timetable live, so they go on answering. |
-| Nothing speaks from a room it has left | Constance's greeting, alibi row and fallback branch on which of her two rooms she is in; the aftermath fuse branches on where the player is standing, not on where they were. | A reply or a timed-event body either reads the frame it prints in or stops naming anything that room-specific. |
+| Nothing speaks from a room it has left | Constance's greeting, alibi row and fallback branch on which of her two rooms she is in; both blast bodies branch on which of the house's three levels the player is standing on, not on where they were and not merely on indoors/outdoors. | A reply or a timed-event body either reads the frame it prints in or stops naming anything that room-specific. The house has levels, and a sentence about what is above or below the listener has to read them. |
 
 **Free to change:** every name, all prose, room descriptions, topic keywords, the tone, the
 title, and which suspect is guilty.
@@ -468,7 +468,9 @@ fired a timed event. Three things close that class, and a rewrite has all three:
   phrase, so `hat`, `marble`, `pine` and `doctor` were unreachable words the prose printed;
 - deleting the noun, where it belongs to no room. The indoor blast paragraph prints in six
   rooms, and this engine has no backdrop scenery, so it may not name the crockery or the
-  ceiling: what a paragraph like that can carry is a sound and a house going quiet.
+  ceiling: what a paragraph like that can carry is a sound and a house going quiet. The
+  per-level clauses added for #305 obey the same rule — "above you", "below you", "close
+  by", never "the roof" or "the landing", because no room upstairs owns either word.
 
 A word that travels with a person goes `heldBy` them — Dr. Pike's hat, the patrolman's
 notebook. Held items are in scope wherever their owner is standing and are not listed, so

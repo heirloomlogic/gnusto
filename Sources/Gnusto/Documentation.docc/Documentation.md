@@ -98,6 +98,9 @@ Each has its own documentation in this archive. They are not linked from here: a
 - ``Command``
 - ``say(_:)``
 - ``sayOnceThisTurn(_:)``
+- ``say(_:from:)-(String,Location...)``
+- ``say(_:from:)-(String,Item)``
+- ``say(_:from:)-(String,Actor)``
 - ``refuse(_:)``
 - ``reply(_:)``
 - ``require(_:else:)``

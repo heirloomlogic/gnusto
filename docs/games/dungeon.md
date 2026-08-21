@@ -1063,10 +1063,12 @@ that a line *appears* and never asks whether it is *true*.
    wrong — a room that went on whirring "would be telling the player their own
    solution had not worked".
 2. **A fuse body that prints a line about an object tests that the object is
-   perceivable first.** `DungeonTemple.burnCandleStage()` is the pattern, and
-   `DungeonHouse.timers` reads `isVisible` *before* the state change, because a
-   lamp on the floor of the room you are standing in is the light in that room
-   and putting it out takes the room's contents out of sight.
+   perceivable first.** The engine names the rule now: `say(_:from:)` takes the
+   room the sentence is true in, or the thing it is about, and prints nowhere
+   else. `DungeonTemple.burnCandleStage()` and `DungeonHouse.timers` are the
+   worked examples, and both ask *before* the state change, because a lamp on
+   the floor of the room you are standing in is the light in that room and
+   putting it out takes the room's contents out of sight.
 3. **A scenery item answers about the place the player is in.** One item
    answering for a far thing and a near thing under the same synonym is the
    Rocky Ledge's `x passage` bug: the noun belongs to whichever item is about the

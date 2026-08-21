@@ -691,16 +691,22 @@ struct DungeonTemple: GameContent {
     var timers: [TimedEvent] {
         // The ceremony's window. Six turns after the bell, three after the
         // candles; either lapsing puts the spirits back.
+        //
+        // The window closes wherever the player has walked to; the wraiths only
+        // jeer at somebody standing in front of them, so the state change is
+        // unconditional and the telling is not.
         fuse("exorcismLapse", after: 6) {
             guard !spiritsBanished else { return }
             exorcismStage = 0
-            say(Prose.exorcismLapses)
+            say(Prose.exorcismLapses, from: entranceToHades)
         }
 
         // The rung bell cools, so a fumbled ceremony is never a dead end.
+        // "Appears to have cooled" is an observation, and the bell is lying
+        // where it fell at the gate.
         fuse("bellCools", after: 20) {
             bellHot = false
-            say(Prose.bellCools)
+            say(Prose.bellCools, from: bell)
         }
 
         // The candles burn down in the source's three stages — twenty turns,
@@ -743,14 +749,17 @@ struct DungeonTemple: GameContent {
     func burnCandleStage() {
         candleStage += 1
         guard candleStage < Self.candleStages.count else {
+            // Said while they are still alight. Candles that have already gone
+            // out light nothing, themselves included, so asking afterwards
+            // would leave a player watching them burn down in an unlit room
+            // with no account of why it went dark.
+            say(Prose.candlesGone, from: candles)
             candles.isLit = false
-            if candles.isVisible {
-                say(Prose.candlesGone)
-            }
             return
         }
         startFuse("candlesBurn", after: Self.candleStages[candleStage])
-        guard candles.isVisible else { return }
-        say(candleStage == Self.candleStages.count - 1 ? Prose.candlesVeryShort : Prose.candlesShorter)
+        say(
+            candleStage == Self.candleStages.count - 1 ? Prose.candlesVeryShort : Prose.candlesShorter,
+            from: candles)
     }
 }
