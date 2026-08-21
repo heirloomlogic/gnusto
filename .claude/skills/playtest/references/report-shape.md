@@ -63,7 +63,14 @@ after the issue is filed, not before.
    they go under *Fixed* or *Filed*.
 5. **Refuted** — the claim *and* the refutation. This section is how the verifier
    gets audited. A round with an empty refuted list either got lucky or isn't
-   really refuting.
+   really refuting. It also carries the **rater-independence audit**: quote at
+   least one finding both raters judged the same way, its `raterViews` in full —
+   each rater's own `attemptedRefutation`, side by side — and say whether they
+   read as separately reasoned or interchangeable. The script writes nothing to
+   disk, so if the report does not carry the rationales they exist nowhere
+   afterwards, and the agreement percentage has to be taken on trust. The
+   2026-08-18 Dungeon round had to judge independence off
+   `commands.effective.txt` byte-comparisons for exactly that reason.
 6. **Coverage** — the load-bearing section. See below.
 7. **Hygiene** — the seed, the turn budget, and any charter that did not run. A round
    that changes nothing has no test count or diff stat to report.

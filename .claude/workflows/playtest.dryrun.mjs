@@ -24,13 +24,40 @@ const survey = {
   printedNouns: [{ noun: 'grout', answerable: false, printedIn: 'Front Hall' }],
   reskinnedTextKeys: ['cantTakeActor'], reskinnedStubs: [], properNamedActors: ['Mrs. Vane','Dr. Pike'],
 }
+// Enough distinct findings to take every exit the reconciliation loop has. One
+// finding on the confirmed path leaves four of the five push sites unexecuted,
+// and the whole point of the rationale assertions is that they run against all
+// of them.
+//
+// The interrogator's four are what make the *ordering* of the critic's paired
+// sample testable: with `VERDICTS_BY_INDEX` below they produce three confirmed
+// rows ahead of the first refuted one, so a sample drawn down `confirmed`
+// instead of across the three lists shows one verdict and the assertion says so.
+const bug = (claim, excerpt, ownerFile, extra = {}) => ({
+  claim, excerpt, ownerFile,
+  category: 'prose-untrue-of-frame', severity: 'minor',
+  frame: { room: 'Parlour', state: 'after 20:15' },
+  reproducer: ['z'], fault: 'unknown',
+  replayedCleanly: true, transcriptPath: '/tmp/t.txt',
+  ...extra,
+})
 const findings = (charter) => ({
   charter,
   findings: charter.startsWith('explorer')
-    ? [{ claim: 'listing line is location-blind', category: 'prose-untrue-of-frame', severity: 'major',
-         excerpt: 'Mrs. Vane is here, watching the fire.', frame: { room: 'Cellar', state: 'after 20:15' },
-         reproducer: ['down','z'], fault: 'presence line ignores room', ownerFile: 'Sources/Fulminate/Cast.swift',
-         replayedCleanly: true, transcriptPath: '/tmp/t.txt' }]
+    ? [bug('listing line is location-blind', 'Mrs. Vane is here, watching the fire.', 'Sources/Fulminate/Cast.swift',
+          { category: 'prose-untrue-of-frame', severity: 'major', frame: { room: 'Cellar', state: 'after 20:15' },
+            reproducer: ['down','z'], fault: 'presence line ignores room' })]
+    : charter === 'interrogator'
+    ? [bug('the study door refuses in the wrong words', 'The door is locked tight against you.', 'Sources/Fulminate/Doors.swift'),
+       bug('the parlour clock ticks after it stops', 'The mantel clock ticks on, indifferent.', 'Sources/Fulminate/Clockwork.swift'),
+       bug('the cellar smells of nothing', 'You smell nothing unexpected.', 'Sources/Fulminate/Cellar.swift'),
+       bug('the grove is described at night as by day', 'Orange blossom hangs heavy in the sun.', 'Sources/Fulminate/Grove.swift')]
+    // The two exits taken before any verifier sees a finding: routed by the
+    // tester, and dropped for never having been replayed. Both land in the same
+    // lists as a rated verdict, so both are checked for the same shape.
+    : charter === 'solver'
+    ? [bug('the lamp runs out early', 'The lamp gutters and dies.', 'Sources/Fulminate/Lamp.swift', { routedTo: '99' }),
+       bug('the yard gate sticks', 'The gate will not budge.', 'Sources/Fulminate/Yard.swift', { replayedCleanly: false })]
     : [],
   // No `turnsSpent`: the round counts turns off the `[status]` footers now, and
   // the field is gone from COVERAGE, whose `additionalProperties: false` would
@@ -61,15 +88,34 @@ const stub = async (prompt, opts = {}) => {
   // One verdict per finding the prompt actually numbered, so the stub stays
   // honest about batch size rather than assuming one: a reconciliation that
   // silently drops findings would otherwise dry-run green.
+  // Each rater's text is keyed off its own label. Two raters returning the same
+  // string is what the harness cannot tell from two raters who never read each
+  // other — so the fixture makes them differ, and the assertions below check
+  // that BOTH survive to the critic rather than that one of them does.
   if (l.startsWith('verify')) {
+    const rater = (l.match(/r(\d+)$/) || [])[1] || '?'
     const count = (prompt.match(/^\[\d+\] found by the /gm) || []).length
+    // Both raters agree on every finding — the case the reconciliation collapses
+    // — but they do not all agree on the same *verdict*, so the loop takes all
+    // three of its rated exits within one dry run. Deliberately front-loaded
+    // rather than cycled: the confirmed rows have to outnumber and precede the
+    // others for the critic's sampling assertion to be able to fail.
+    const VERDICTS_BY_INDEX = [
+      'confirmed-defect', 'confirmed-defect', 'confirmed-defect',
+      'refuted', 'route-elsewhere', 'refuted',
+    ]
     return {
-      verdicts: Array.from({ length: count }, (_, i) => ({
-        index: i + 1,
-        verdict: 'confirmed-defect',
-        reason: 'true',
-        attemptedRefutation: 'the doc might license it; it does not',
-      })),
+      verdicts: Array.from({ length: count }, (_, i) => {
+        const verdict = VERDICTS_BY_INDEX[i % VERDICTS_BY_INDEX.length]
+        return {
+          index: i + 1,
+          verdict,
+          reason: `rater ${rater} reason`,
+          attemptedRefutation: `rater ${rater} tried the doc-licenses-it line and it does not hold`,
+          ...(verdict === 'refuted' ? { refutationKind: 'licensed-by-doc' } : {}),
+          ...(verdict === 'route-elsewhere' ? { routedTo: '99' } : {}),
+        }
+      }),
     }
   }
   if (l === 'collator') {
@@ -134,6 +180,7 @@ console.log('\nLOGS:'); for (const l of logs) console.log('  ', l)
 console.log('\nRESULT KEYS:', Object.keys(result).join(', '))
 console.log('CHARTERS RUN:', JSON.stringify(result.charters.run, null, 1))
 console.log('CONFIRMED:', result.confirmed.length, '| key:', result.confirmed[0] && result.confirmed[0].key)
+console.log('VERDICTS :', `confirmed ${result.confirmed.length}, refuted ${result.refuted.length}, routed ${result.routed.length}`)
 writeFileSync('/tmp/prompts.txt', prompts.map(p => `===== ${p.label} =====\n${p.prompt}`).join('\n\n'))
 
 // ---------------------------------------------------------------------------
@@ -166,6 +213,42 @@ check(
 check(
   result.verification && result.verification.bothRaters > 0,
   'no finding was judged by two raters, so agreement is unmeasurable'
+)
+
+// Both raters' rationales survive reconciliation, on every path. Reconciliation
+// picks one verdict, and it used to pick one rationale with it — `views[0]` —
+// which discarded rater 2 on the agreement case: 40 of 52 findings in the
+// 2026-08-18 round. Nothing downstream could tell that from two raters who
+// genuinely wrote the same thing, and the round's own rubber-stamp check was
+// reading the survivor.
+const allVerdicts = [...result.confirmed, ...result.refuted, ...result.routed]
+check(
+  allVerdicts.every((f) => Array.isArray(f.raterViews)),
+  `a verdict carries no raterViews array: ${JSON.stringify(allVerdicts.find((f) => !Array.isArray(f.raterViews)))}`
+)
+// `|| []` rather than a bare `.length`: `check` records a failure and carries on,
+// so a run that has already failed the line above must still reach the report
+// instead of dying in a TypeError that names no property.
+const paired = allVerdicts.filter((f) => (f.raterViews || []).length >= 2)
+check(paired.length > 0, 'no verdict kept two raters, so reconciliation is still collapsing them')
+for (const f of paired) {
+  const texts = f.raterViews.map((v) => v.attemptedRefutation)
+  check(
+    texts.every(Boolean) && new Set(texts).size === texts.length,
+    `raterViews lost or duplicated an attemptedRefutation: ${JSON.stringify(texts)}`
+  )
+  check(
+    f.raterViews.every((v, i) => v.rater === i + 1 && v.verdict && v.reason),
+    `a raterView is missing its rater number, verdict or reason: ${JSON.stringify(f.raterViews)}`
+  )
+}
+const raterTexts = [...new Set(paired.flatMap((f) => f.raterViews.map((v) => v.attemptedRefutation)).filter(Boolean))]
+// The collapsed single-rater field is gone rather than kept beside the array. A
+// field that holds rater 1's text and reads like the verdict's whole reasoning
+// is the trap this change exists to remove, not something to leave lying about.
+check(
+  !allVerdicts.some((f) => 'attemptedRefutation' in f),
+  'a top-level attemptedRefutation is back on a verdict, alongside raterViews'
 )
 
 // The censuses are gone and the collator replaced them. A reintroduced census
@@ -417,6 +500,38 @@ if (critic) {
   check(/rubber-stamp/.test(critic.prompt), 'the critic was not warned about batched raters agreeing cheaply')
   check(/never called .finish./.test(critic.prompt), 'the critic was not told about unfinished sessions')
   check(/Forks no session took/.test(critic.prompt), 'the critic was not given the untaken forks')
+  // The rubber-stamp warning is only a warning if the evidence is in the prompt.
+  // It used to say "sample two or three `attemptedRefutation` fields from the
+  // confirmed list", naming a field that reached the critic in no form at all —
+  // so the one check the harness has against two raters agreeing cheaply was
+  // asked to read something it had never been given.
+  for (const t of raterTexts) {
+    check(
+      critic.prompt.includes(t),
+      `the critic's prompt is missing a rater's own attempted refutation: "${t.slice(0, 48)}…"`
+    )
+  }
+  check(
+    /Paired refutation attempts/.test(critic.prompt),
+    'the critic was not handed the paired refutation attempts'
+  )
+  // Sampled across the verdict lists, not down the first one. Two raters
+  // rubber-stamping a refutation discard a real defect, and a round with far
+  // more confirmed findings than refuted ones would fill the sample from
+  // `confirmed` alone and never show the more expensive failure.
+  const sampledVerdicts = [
+    ...new Set(
+      [...critic.prompt.matchAll(/^\*\*.*\*\* — both raters said (\S+)\.$/gm)].map((m) => m[1])
+    ),
+  ]
+  check(
+    sampledVerdicts.length >= 2,
+    `the paired sample shows only one kind of verdict (${sampledVerdicts.join(', ') || 'none'}), so it was drawn down one list`
+  )
+  check(
+    !/attemptedRefutation. fields from the confirmed list/.test(critic.prompt),
+    'the critic is told to sample a field name again instead of reading the pairs it was given'
+  )
 }
 
 console.log('\nASSERTIONS:', failures.length ? `${failures.length} FAILED` : 'all passed')
