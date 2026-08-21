@@ -720,13 +720,11 @@ struct DungeonDam: GameContent {
     var timers: [TimedEvent] {
         // A struck match lasts two turns. The flame goes out wherever the book
         // has got to; the line about it is only said where the player could
-        // watch it happen, read before the change for the same reason the
-        // lantern's last rung reads it before (``DungeonHouse/timers``).
+        // watch it happen, and said before the change for the same reason the
+        // lantern's last rung is (``DungeonHouse/timers``).
         fuse("matchBurnsOut", after: 2) {
-            let watched = matchbook.isVisible
+            say(Prose.matchBurnsOut, from: matchbook)
             matchbook.isLit = false
-            guard watched else { return }
-            say(Prose.matchBurnsOut)
         }
 
         // The rising water. One rung of the ladder each turn; when it goes over
@@ -734,14 +732,13 @@ struct DungeonDam: GameContent {
         // the doors are shut for the rest of the game.
         daemon("damLeak") {
             floodLevel += 1
-            let here = player.location == maintenanceRoom
             guard floodLevel <= Prose.floodLadder.count else {
                 stopDaemon("damLeak")
-
-                if here { try die(Prose.floodDrowns) }
+                // Drowning is not a `say`, so this one keeps its own room test.
+                if player.location == maintenanceRoom { try die(Prose.floodDrowns) }
                 return
             }
-            if here { say(Prose.floodRises(Prose.floodLadder[floodLevel - 1])) }
+            say(Prose.floodRises(Prose.floodLadder[floodLevel - 1]), from: maintenanceRoom)
         }
     }
 }

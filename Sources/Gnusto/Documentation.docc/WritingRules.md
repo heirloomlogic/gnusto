@@ -257,17 +257,18 @@ It runs at **stage 0**, ahead of every `before` rule — which is the point, sin
 
 ## Produce output and control the turn
 
-Seven free functions are available in any rule body:
+Eight free functions are available in any rule body:
 
 - ``say(_:)`` — add a line to the turn's output and keep going. The default action still runs.
 - ``sayOnceThisTurn(_:)`` — `say`, but at most once per turn, for a sentence another emitter may also have a claim on.
+- ``say(_:from:)-(String,Location...)`` — `say`, but only if the player is standing in a room the line is true of. What a **timer** wants; the ``say(_:from:)-(String,Item)`` form asks ``Item/isVisible`` instead.
 - ``refuse(_:)`` — print a complaint and abort the action (and remaining rules).
 - ``reply(_:)`` — print a response *in place of* the default action. Same mechanics as `refuse`, different intent: use it when your rule is the behavior, not a veto.
 - ``require(_:else:)`` — refuse with that message unless the condition holds. The message is an autoclosure, so a call that builds its complaint from live state pays nothing on the passing path.
 - ``handled()`` — finish an action without adding a line, after the rule has already produced its whole response with ``say(_:)``.
 - ``end(won:)`` — end the game; the engine prints the final score afterward.
 
-The two `say`s return normally; the rest return `Never` and read well after a `guard … else`.
+The three `say`s return normally; the rest return `Never` and read well after a `guard … else`.
 
 ### Running the default yourself with `proceed`
 

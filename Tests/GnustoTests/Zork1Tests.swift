@@ -172,6 +172,29 @@ struct Zork1Tests {
         #expect(relights[2].contains("burned-out lamp"))
     }
 
+    /// All three rungs are sentences about how a flame looks, and a fuse lands
+    /// them wherever the player happens to be standing. Left burning in the
+    /// Living Room, the lamp runs itself dry with nobody watching and says
+    /// nothing about it in the kitchen next door.
+    ///
+    /// The fuel still runs out — the half of this that is easy to break — so
+    /// the burn-out is asserted through the one thing that survives the
+    /// silence: the lamp is spent when the player walks back in on it.
+    @Test func theLanternBurnsDownSilentlyWhereThePlayerCannotSeeIt() async throws {
+        let transcript = try await play(
+            Zork1(),
+            ["south", "east", "open window", "west", "west"]
+                + ["take lantern", "turn on lantern", "drop lantern", "east"]
+                + Array(repeating: "wait", count: 232)
+                + ["west", "turn on lantern"])
+
+        #expect(!transcript.contains("a bit dimmer"))
+        #expect(!transcript.contains("The lamp is nearly out."))
+        #expect(!transcript.contains("more light than from the brass lantern"))
+        let relights = transcript.components(separatedBy: "> turn on lantern")
+        #expect(relights[2].contains("burned-out lamp"))
+    }
+
     /// Darkness is lethal, but not final: a warning on the first dark turn,
     /// one silent turn of grace, the grue on the third — and then Zork's
     /// canonical resurrection, which sets you back on your feet in the forest
@@ -954,6 +977,25 @@ struct Zork1Tests {
                 // 40 banked (kitchen 10, cellar 25, E-W passage 5); the trunk adds 15.
                 "Your score is 55 of a possible 350",
             ])
+    }
+
+    /// The drain runs on a count, and its line is something you watch happen to
+    /// a body of water: mud laid bare. Turn the bolt and walk back into the
+    /// Maintenance Room and the reservoir empties on schedule and says nothing
+    /// about it — the player finds it drained when they come back for the
+    /// trunk.
+    @Test func theReservoirDrainsSilentlyWhereThePlayerCannotSeeIt() async throws {
+        let transcript = try await play(
+            Zork1(),
+            Self.approachTheChargedDam
+                + ["turn bolt with wrench", "north", "north"]  // → Dam Lobby → Maintenance Room
+                + Array(repeating: "wait", count: 8)  // the drain completes out of sight
+                + ["south", "south", "west", "north"],  // → Dam → Reservoir South → the bed
+            seed: 39)
+
+        #expect(!transcript.contains("a bed of slick"))
+        // But it drained: the lake is a mud pile and can be walked across.
+        #expect(transcript.contains("large mud pile"))
     }
 
     /// The bolt will not turn until the panel is charged: without the yellow

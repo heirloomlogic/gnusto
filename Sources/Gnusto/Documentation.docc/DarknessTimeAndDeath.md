@@ -52,8 +52,8 @@ A ``TimedEvent`` is a named timer declared in a game or bundle `timers` block. A
 ```swift
 var timers: [TimedEvent] {
     fuse("lanternDies", after: 25) {
+        say("The brass lantern flickers and goes out.", from: lantern)
         lantern.isLit = false
-        say("The brass lantern flickers and goes out.")
     }
     daemon("grue", autostart: true) {
         guard !player.location.isLit else { return }
@@ -65,6 +65,24 @@ var timers: [TimedEvent] {
 Rules start and stop timers by name: ``startFuse(_:after:)`` (the optional count overrides the declared one; restarting resets it), ``stopFuse(_:)``, ``fuseRemaining(_:)``, ``startDaemon(_:)``, ``stopDaemon(_:)``, ``isDaemonActive(_:)``. `autostart` covers timers that should run from turn one with no starting rule. Naming a timer no `timers` block declares is a wiring error and traps; declaring two timers with one name is a fatal bootstrap diagnostic (timer names are global across the game and its bundles — a bundle's own rules refer to them by the literal string, so they are deliberately not namespaced).
 
 Timers tick **once per typed command**, at the very end of the turn — after the world's `after`/each-turn rules, fuses first and then daemons, each group in name order. `take all` over five objects ticks once, not five times. They tick on refused turns (world time passes) but not on parse errors, meta commands, or once the game has ended. A timer started during a turn ticks at the end of that same turn, so a `fuse(after: 1)` started by a rule fires as that very turn ends.
+
+### Say it only where it is true
+
+A timer fires on a **count**, not on a place. Whatever room the player has walked to by the turn the body runs is the room the line prints in — so a fuse that says "the bell appears to have cooled down" says it two rooms and a staircase from the bell, and one that says "a door goes above you, and another one below" says it to somebody standing in the cellar. This is the commonest defect in timer code, and it is not a wording problem: the body never asked where the player was.
+
+`say(_:from:)` is that question, in the shape of a `say`. Name the room the sentence is true in, or the thing it is about, and the line prints from there and nowhere else:
+
+```swift
+fuse("bellCools", after: 20) {
+    bellHot = false                          // the world moves regardless…
+    say("The bell appears to have cooled down.", from: bell)
+}
+```
+
+- ``say(_:from:)-(String,Location...)`` takes one room or several — a reservoir emptying is visible from either shore and from the bed between them, so name all three. Darkness does **not** gate it: a bell rung in an unlit room is still heard from inside it.
+- ``say(_:from:)-(String,Item)`` (and its ``Actor`` twin) asks ``Item/isVisible``, which the dark *does* gate, and which what the player is carrying always passes. It is the one to reach for when the sentence is something you have to see to believe.
+
+Dropping the line changes nothing else, exactly as ``sayOnceThisTurn(_:)`` does. Put the state change above the `say` and the fuel still runs out, the window still shuts, the gates still open — the player is simply not told about a room they are not in. The one ordering trap is a change that puts its own subject out of sight: ask *before* you blow the candle out, or nobody standing over it will be told why the room went dark.
 
 Only the *schedule* — which timers are running, and the fuses' remaining counts — lives in the world's state. The bodies are code, registered at bootstrap; a restored save re-binds its schedule to the declared bodies by name. That split is what lets timers survive save files.
 

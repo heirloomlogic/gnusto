@@ -355,17 +355,27 @@ struct ZorkHouse: GameContent {
         }
     }
 
+    /// The three rungs of the burn-down. A fuse's text lands wherever the
+    /// player happens to be standing, so each rung is said *from* the lamp: a
+    /// line about how a flame looks is for somebody who can see the flame. The
+    /// fuel runs out either way — a lamp left burning two hundred feet down
+    /// burns itself dry whether or not anybody is there to watch — so only the
+    /// `say` is conditional.
     var timers: [TimedEvent] {
         fuse("lanternDim", after: 200) {
-            say(Prose.lanternDim)
+            say(Prose.lanternDim, from: lantern)
         }
         fuse("lanternLastGasp", after: 225) {
-            say(Prose.lanternLastGasp)
+            say(Prose.lanternLastGasp, from: lantern)
         }
         fuse("lanternDies", after: 230) {
+            // Said before the change, not after: a lamp lying on the floor of
+            // the room the player is standing in is the light in that room, and
+            // putting it out takes the room's own contents out of sight. The
+            // player watched it happen; they get told.
             lanternBurnedOut = true
+            say(Prose.lanternDies, from: lantern)
             lantern.isLit = false
-            say(Prose.lanternDies)
         }
     }
 }

@@ -113,10 +113,13 @@ Zork 1's across is the mistake it exists to prevent.
 - **The lantern's fuel is deliberately tiny**: dim warning after 20 burning
   turns, dead after 25 — the original burns for hundreds. Chosen so a
   transcript test (`lanternBurnsOut`) can watch the whole arc. Turning the
-  lantern off banks the remaining turns (the classic economy); the dim
-  warning prints wherever the player is, without the original's
-  can-you-see-the-lamp check. A burned-out lantern refuses `turn on` with
-  `Prose.lanternSpent`, and nothing in the slice replaces it.
+  lantern off banks the remaining turns (the classic economy). Every rung
+  now carries the original's can-you-see-the-lamp check *(closed in the
+  fidelity pass — the warnings used to print wherever the player was)*: they
+  are said `from: lantern`, and the last one is said before the flame goes
+  out, so a lamp dying at the player's feet still explains the blackout. A
+  burned-out lantern refuses `turn on` with `Prose.lanternSpent`, and nothing
+  in the slice replaces it.
 - **The grue rolls the dice** *(closed in the fidelity pass — was a deterministic
   linger clock)*, like the original: a warning on the first consecutive turn *ending*
   in darkness (the kept fairness beat — the grue never eats you on the turn the dark

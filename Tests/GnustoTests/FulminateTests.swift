@@ -51,6 +51,32 @@ struct FulminateTests {
         #expect(fromHall.contains("goes off with a flat, unimpressive thump"))
     }
 
+    /// The blast and the turn after it are written in doors and breakage going
+    /// off above and below the man hearing them, and that is a claim about
+    /// which floor he is standing on. The branch used to be indoors/outdoors,
+    /// which put a run of breakage below a player in the Cellar — the lowest
+    /// room in the house — and a door above one on the top floor.
+    @Test func theBlastNarratesTheFloorThePlayerIsStandingOn() async throws {
+        let cellar = try await play(
+            Fulminate(),
+            ["south", "open drawer", "take flashlight", "turn on flashlight", "down"]
+                + Array(repeating: "z", count: 5))
+        #expect(cellar.contains("Above you a long run of breakage"))
+        #expect(!cellar.contains("Below you a long run of breakage"))
+        #expect(cellar.contains("a door goes above you, and another one above that"))
+
+        let upstairs = try await play(Fulminate(), ["up"] + Array(repeating: "z", count: 9))
+        #expect(upstairs.contains("Below you a long run of breakage starts and finishes, floor after floor"))
+        #expect(upstairs.contains("a door goes close by, and another one below"))
+
+        // The ground floor is the one the paragraph was always written from,
+        // and there it still reads exactly as it did.
+        let hall = try await play(Fulminate(), Array(repeating: "z", count: 10))
+        #expect(hall.contains("Something lets go above you"))
+        #expect(hall.contains("Below you a long run of breakage"))
+        #expect(hall.contains("a door goes above you, and another one below"))
+    }
+
     /// Being in the room when it goes up is a way to end the evening, and the
     /// player is given eight turns of standing in it to think better of that.
     @Test func standingInTheLabWhenItGoesUpIsFatal() async throws {

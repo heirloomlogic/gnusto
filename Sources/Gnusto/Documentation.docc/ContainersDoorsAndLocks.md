@@ -126,11 +126,12 @@ wardedDoor.before(.close) {
 }
 
 fuse("lampDies", after: 9) {
-    let watched = lamp.isVisible      // asked before it goes out
+    say("The lamp gutters, and goes out.", from: lamp)   // asked before it goes out
     lamp.isLit = false
-    if watched { say("The lamp gutters, and goes out.") }
 }
 ```
+
+A timer says its line only where that line is true, and the `from:` above is the shorthand for it — see <doc:DarknessTimeAndDeath>, which has the rule and the ordering trap the comment is pointing at.
 
 Reach for these rather than rebuilding the answer from ``Item/isHeld``, ``Item/isIn(_:)`` and ``Item/holds(_:)``: `holds(_:)` tests one level only, and a ``surface`` is not a ``container`` and so is never ``Item/isOpen`` — which is how a hand-rolled version ends up refusing over a book sitting on a table in the same room.
 

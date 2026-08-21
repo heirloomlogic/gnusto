@@ -389,10 +389,15 @@ struct ZorkTemple: GameContent {
     var timers: [TimedEvent] {
         // The exorcism window. If the ritual stalls at stage 1 or 2 for three
         // turns, the spirits recover and the sequence must start over.
+        //
+        // A fuse fires on a count and not on a place, so every line below is
+        // gated on the player being where its subject is: the window shuts
+        // wherever they walked to, but the spirits only jeer at somebody
+        // standing in front of them.
         fuse("exorcismLapse", after: 3) {
             guard !ghostsBanished else { return }
             exorcismStage = 0
-            say(Prose.exorcismLapses)
+            say(Prose.exorcismLapses, from: entranceToHades)
         }
 
         // The rung bell cools after twenty turns — a deliberate anti-softlock
@@ -400,18 +405,20 @@ struct ZorkTemple: GameContent {
         // (FIDELITY.md).
         fuse("bellCools", after: 20) {
             bellHot = false
-            say(Prose.bellCools)
+            say(Prose.bellCools, from: bell)
         }
 
         // Candle burn-down: a dim warning, then out for good. Banked while
-        // unlit, like the lantern.
+        // unlit, like the lantern. Both lines are things you watch happen to a
+        // flame, and `candlesDie` asks before it puts the flame out — candles
+        // that have already gone dark light nothing, themselves included.
         fuse("candlesDim", after: 20) {
-            say(Prose.candlesDim)
+            say(Prose.candlesDim, from: candles)
         }
         fuse("candlesDie", after: 25) {
             candlesBurnedOut = true
+            say(Prose.candlesDie, from: candles)
             candles.isLit = false
-            say(Prose.candlesDie)
         }
     }
 }
