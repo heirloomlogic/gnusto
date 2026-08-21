@@ -6,21 +6,36 @@ struct ParsedCommand: Equatable {
     /// A conjunction list is already resolved — the player named each thing, so
     /// there is nothing left to expand.
     enum MultiObject: Equatable {
-        case all
-        case them
+        /// Everything eligible, minus what the player excepted:
+        /// `take all but the sword`. The exclusion rides with the keyword
+        /// because only a keyword can take one — it is the marker whose
+        /// meaning isn't settled yet, so what it stands for *minus the sword*
+        /// isn't settled either.
+        case all(excluding: [EntityID])
+        case them(excluding: [EntityID])
         /// `take the bottle and the sack`, in the order the player wrote it.
+        /// Already resolved, so there is nothing left to except.
         case list([EntityID])
 
-        /// The keyword the phrase spells, if it spells one. Not an initializer,
-        /// because it can't reach ``list(_:)`` — a list has no spelling to
-        /// recognize, it is what the parser builds when a phrase splits on a
-        /// conjunction — and every caller uses this as the question "is this
-        /// phrase a keyword?" rather than as a way to make one.
-        static func keyword(phrase: [String]) -> MultiObject? {
+        /// The keyword the phrase spells, if it spells one, carrying whatever
+        /// the player excepted from it. Not an initializer, because it can't
+        /// reach ``list(_:)`` — a list has no spelling to recognize, it is
+        /// what the parser builds when a phrase splits on a conjunction — and
+        /// most callers use this as the question "is this phrase a keyword?"
+        /// rather than as a way to make one.
+        static func keyword(phrase: [String], excluding: [EntityID] = []) -> MultiObject? {
             switch phrase {
-            case ["all"], ["everything"]: .all
-            case ["them"]: .them
+            case ["all"], ["everything"]: .all(excluding: excluding)
+            case ["them"]: .them(excluding: excluding)
             default: nil
+            }
+        }
+
+        /// What the player excepted from the group, if anything.
+        var exclusions: [EntityID] {
+            switch self {
+            case .all(let excluded), .them(let excluded): excluded
+            case .list: []
             }
         }
     }
@@ -465,8 +480,17 @@ struct StandardParser {
         var directID: EntityID?
         var multiple: ParsedCommand.MultiObject?
         if let phrase = directPhrase {
-            if let keyword = ParsedCommand.MultiObject.keyword(phrase: phrase) {
-                multiple = keyword
+            if let split = keywordSplit(of: phrase) {
+                // `all`, or `all but the sword`. Only the exclusion resolves
+                // here; what the keyword stands for needs world state.
+                switch excludedObjects(
+                    split.exclusion, at: directStart, in: tokens, scope: scope, distant: distant)
+                {
+                case .success(let ids):
+                    multiple = .keyword(phrase: split.group, excluding: ids)
+                case .failure(let error):
+                    return .nearMiss(error)
+                }
             } else {
                 switch resolveDirect(
                     phrase, at: directStart, in: tokens, scope: scope, distant: distant)
@@ -479,7 +503,10 @@ struct StandardParser {
         }
         var indirectID: EntityID?
         if let phrase = indirectPhrase {
-            guard ParsedCommand.MultiObject.keyword(phrase: phrase) == nil else {
+            // `put the coin in all`, and `put the coin in all but the sack`
+            // with it: a keyword names a group either way, and only the direct
+            // slot is several.
+            guard keywordSplit(of: phrase) == nil else {
                 return .nearMiss(.multipleNotAllowed)
             }
             switch resolve(phrase, in: scope, alsoConsidering: distant) {
@@ -845,6 +872,58 @@ struct StandardParser {
     /// What stands between two object phrases rather than inside one: the
     /// conjunctions, and the comma the player wrote in place of one.
     private static let separators = Vocabulary.conjunctions.union([","])
+
+    /// The multi-object keyword a phrase spells and the exclusion trimming it:
+    /// `all but the sword` is the keyword `all` and the phrase `sword`, and a
+    /// bare `all` is the keyword and nothing.
+    ///
+    /// The exclusion is claimed **only behind a keyword**, which is what makes
+    /// the word safe to read as punctuation — and does it structurally, where
+    /// the conjunction needs a second pass. A keyword is a reserved word no
+    /// item can answer to (``Vocabulary/exclusions`` argues this out), so
+    /// `take last but one ticket` spells no keyword, never reaches the split,
+    /// and resolves as the one object it names.
+    ///
+    /// - Parameter phrase: the slot's tokens.
+    /// - Returns: the keyword's own words and the exclusion phrase — an
+    ///   `ArraySlice`, so it keeps its place in the line and a question about
+    ///   it is answered there — or nil when the phrase spells no keyword.
+    private func keywordSplit(
+        of phrase: [String]
+    ) -> (group: [String], exclusion: ArraySlice<String>)? {
+        if ParsedCommand.MultiObject.keyword(phrase: phrase) != nil {
+            return (phrase, [])
+        }
+        guard let mark = phrase.firstIndex(where: Vocabulary.exclusions.contains),
+            ParsedCommand.MultiObject.keyword(phrase: Array(phrase[..<mark])) != nil
+        else { return nil }
+        return (Array(phrase[..<mark]), phrase[(mark + 1)...])
+    }
+
+    /// What an exclusion phrase names.
+    ///
+    /// Resolved through ``resolveDirect(_:at:in:scope:distant:)``, so
+    /// `take all except the sword and the lamp` excepts two things without a
+    /// second splitter existing to disagree with the first one — and
+    /// `take all except the sword, the lamp` excepts two for the same reason,
+    /// the comma being that one splitter's business as much as the
+    /// conjunction is.
+    ///
+    /// - Returns: the objects excepted, possibly none — a trailing `but` with
+    ///   nothing behind it is forgiven exactly as a trailing `and` is.
+    private func excludedObjects(
+        _ phrase: ArraySlice<String>, at start: Int, in tokens: [String],
+        scope: Scope, distant: Set<EntityID>
+    ) -> Result<[EntityID], ParseError> {
+        guard !phrase.isEmpty else { return .success([]) }
+        let words = Array(phrase)
+        // `take all but everything` asks for the group and then for the group.
+        guard ParsedCommand.MultiObject.keyword(phrase: words) == nil else {
+            return .failure(.multipleNotAllowed)
+        }
+        return resolveDirect(
+            words, at: start + phrase.startIndex, in: tokens, scope: scope, distant: distant)
+    }
 
     /// Resolves a noun phrase against scope: every token must be one of the
     /// item's words, and the final token must be a noun.

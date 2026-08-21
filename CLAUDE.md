@@ -295,6 +295,14 @@ computed `static var`, which rebuilds it on every read.
   commas before each group is offered as a name — so `take cup and saucer, the
   coin` is two things. A comma at either end of a phrase, or doubled, is
   punctuation and drops out.
+- **`but`/`except` trims a keyword, and only a keyword.** `take all but the
+  sword`, `drop them except the lamp`, `take all except the sword and the lamp`
+  — the exception is itself a phrase, and excepting something that was never in
+  the set is a no-op, not a complaint. Requiring `all`/`everything`/`them` in
+  front of the word is what keeps it available to items: a keyword is a reserved
+  word nothing can be named, so `name("last but one ticket")` is safe by
+  construction rather than by a second pass. `take the coin but the feather` is
+  deliberately unread.
 - **Containment is room-granular; `reach { }` is the escape hatch.** A thing in one
   square of a floor the player walks around inside is "in the room" from every
   square. `item.reach(otherwise: "…") { … }` narrows that once, for every verb that

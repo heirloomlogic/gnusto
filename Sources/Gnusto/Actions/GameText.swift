@@ -636,6 +636,11 @@ public struct GameText: Sendable {
     public var nothingToTakeHere: Line<Nothing> = "There is nothing here to take."
     /// "drop all" (or "put all …") with nothing carried.
     public var notCarryingAnything: Line<Nothing> = "You aren't carrying anything."
+    /// The group had things in it and the subtraction emptied it — `take all
+    /// but the coin` where the coin was the only thing on offer, or `put all in
+    /// the sack` where the sack is all you are carrying. Neither line above is
+    /// true of where that player is standing.
+    public var nothingLeftOfTheGroup: Line<Nothing> = "That leaves nothing at all."
 
     /// "all"/"them" with a verb that only handles one object at a time.
     public var multipleNotAllowedWith: Line<Word> = .naming {

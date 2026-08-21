@@ -2,10 +2,11 @@ import Gnusto
 
 /// Exercises multi-object commands: "take all", "drop all", "put all in …",
 /// the group pronoun "them", and conjunction lists ("take the coin and the
-/// feather"). The vault holds a mix of takables, a scenery statue that "all"
-/// must skip, an idol whose `before` rule refuses, a held sack for container
-/// targets, and a `cup and saucer` whose own name contains the conjunction;
-/// the closet is bare.
+/// feather"), and exclusions ("take all but the coin"). The vault holds a mix
+/// of takables, a scenery statue that "all" must skip, an idol whose `before`
+/// rule refuses, a held sack for container targets, and two things whose own
+/// names contain a word the parser also reads as punctuation — a `cup and
+/// saucer` and a `last but one ticket`; the closet is bare.
 struct VaultGame: Game {
     let title = "Vault"
     let intro = "A vault and an empty closet."
@@ -59,6 +60,12 @@ struct VaultGame: Game {
         name("cup and saucer")
     }
 
+    /// And one whose own phrase contains an exclusion word: `take last but one
+    /// ticket` must be this item, never everything-except-a-ticket.
+    let ticket = Item {
+        name("last but one ticket")
+    }
+
     var map: WorldMap {
         player.starts(in: vault)
         coin.starts(in: vault)
@@ -66,6 +73,7 @@ struct VaultGame: Game {
         idol.starts(in: vault)
         statue.starts(in: vault)
         saucer.starts(in: vault)
+        ticket.starts(in: vault)
         sack.startsHeld
         cloak.startsWorn
         vault.north(closet)

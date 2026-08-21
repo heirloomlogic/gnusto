@@ -375,8 +375,26 @@ public actor GameWorld {
             // thing and is owed the refusal.
             objects = named
         }
+        // Two things come out of the group before it runs, and they are one
+        // subtraction: what the player excepted (`take all but the sword`) and
+        // the container they named to put things into. Neither is checked
+        // against the group first — the player said which things they did not
+        // mean, not which things are here, so excepting something that was
+        // never on offer is no error worth stopping the command for.
+        //
+        // What they share is the answer when they empty a group that had
+        // something in it. "You aren't carrying anything" is false of a player
+        // holding the one thing they just excepted, and equally false of one
+        // holding only the sack they said to put things in.
+        var subtract = multiple.exclusions
         if intent == .putIn || intent == .putOn, let indirect = parsed.indirectObject {
-            objects.removeAll { $0 == indirect }
+            subtract.append(indirect)
+        }
+        if !objects.isEmpty, !subtract.isEmpty {
+            objects.removeAll(where: subtract.contains)
+            guard !objects.isEmpty else {
+                return freeReply(definition.text.nothingLeftOfTheGroup())
+            }
         }
         guard !objects.isEmpty else {
             return freeReply(

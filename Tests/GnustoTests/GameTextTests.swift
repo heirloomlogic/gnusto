@@ -128,7 +128,7 @@ struct GameTextShapeTests {
     /// added straight to ``notLines``, classified but never argued for, would
     /// pass it silently. This is what catches that one.
     @Test func theSweepSeesEveryLineTheTypeShips() {
-        #expect(Mirror(reflecting: GameText()).children.count == 120)
+        #expect(Mirror(reflecting: GameText()).children.count == 121)
     }
 
     /// The sweep above proves each line *is* a `StockLine`; this proves the
