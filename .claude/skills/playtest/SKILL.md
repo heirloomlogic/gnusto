@@ -334,6 +334,15 @@ directories and it reads `commands.txt` and `transcript.txt` for distinct rooms
 entered, distinct verbs used, distinct objects examined, and command counts. Nothing
 is self-reported.
 
+All three producers write that pair under those names — the session server, its
+sessionless `replay`, and `bin/playtest-replay` — so one invocation may mix probes
+from a whole round. That was not true until #299: the CLI script called its command
+list `commands.effective.txt`, so the instrument raised `FileNotFoundError` on the
+larger half of a round's probes, and a round whose numbers nobody could get was a
+round nobody measured. The layout is now declared once, in `playtest.js`, and
+`playtest.dryrun.mjs` reads the producers' own source and fails if one of them stops
+writing what is declared.
+
 Three rules, each of which was learned by getting it wrong:
 
 **Run a control, never compare against stored numbers.** Build a binary carrying the

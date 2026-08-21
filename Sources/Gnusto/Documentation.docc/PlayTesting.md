@@ -47,7 +47,7 @@ bin/playtest-replay --build Fulminate                    # once, separately
 bin/playtest-replay Fulminate --commands probe.txt --seed 0 --label mine --tail 60
 ```
 
-Building is a separate one-shot on purpose: a replay that also builds cannot be trusted to have replayed the same binary twice. Output lands under `.context/playtest/<label>/<probe>/` as `transcript.txt`, `commands.effective.txt`, `stderr.txt` and `summary.txt`. Read the transcript file rather than the tail on your terminal — the tail is for checking the run happened.
+Building is a separate one-shot on purpose: a replay that also builds cannot be trusted to have replayed the same binary twice. Output lands under `.context/playtest/<label>/<probe>/` as `transcript.txt`, `commands.txt`, `stderr.txt` and `summary.txt` — the same two evidence files the session server writes, under the same names. Read the transcript file rather than the tail on your terminal — the tail is for checking the run happened.
 
 `bin/playtest-measure` reads a probe directory and reports what the run covered: rooms entered, distinct verbs, objects examined, objects touched and then re-examined. Its counting rules are frozen deliberately, so a number from last year still compares.
 

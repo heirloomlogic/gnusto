@@ -5,7 +5,7 @@ isn't committed.
 
 | Path | Committed | Contents |
 |---|---|---|
-| `.context/playtest/<label>/<probe>/` | no | one run: its transcript with the `//` annotations, its effective command list, its stderr, and a summary naming the game, seed and label |
+| `.context/playtest/<label>/<probe>/` | no | one run: `transcript.txt` with the `//` annotations, `commands.txt` — every line actually fed — its stderr, and a summary naming the game, seed and label. A session and a `bin/playtest-replay` probe hold the same two names, which is what lets `bin/playtest-measure` read either |
 | `.context/playtest/<label>/<probe>/branch-NNN.txt` | no | turns a `rewind` wrote out of the transcript. Really played, so they count toward coverage; not canonical, so the reproducer beside them does not produce them |
 | `.context/playtest/.replays/<probe>/` | no | one sessionless `replay` — the same `commands.txt` and `transcript.txt`, plus a `summary.txt` naming the seed. The leading dot reserves it: no tester label can start with one |
 | `docs/games/<game>-playtest-<YYYY-MM-DD>.md` | **yes** | the round report below |

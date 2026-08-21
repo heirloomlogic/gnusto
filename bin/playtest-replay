@@ -14,7 +14,7 @@
 #                       comment: the engine records it in the transcript and
 #                       skips it, so annotate freely. A blank line is a
 #                       separator: this tool strips it while building the
-#                       effective command file, so group your probes with them.
+#                       file it feeds the engine, so group your probes with them.
 #   --keep-blank-lines  Pass blank lines through to the engine instead of
 #                       stripping them. The one reason to: probing what the
 #                       parser does with empty input, which is otherwise
@@ -54,7 +54,7 @@
 #
 #   .context/playtest/<label>/saves/          shared by every probe under the label
 #   .context/playtest/<label>/<probe>/transcript.txt
-#                                    /commands.effective.txt
+#                                    /commands.txt
 #                                    /stderr.txt
 #                                    /summary.txt
 #
@@ -62,6 +62,13 @@
 # two runs. Transcripts belong to the probe because they are evidence: a finding
 # cites the path this run printed, and that path has to still hold this run's
 # transcript when somebody follows it a year later.
+#
+# `commands.txt` is the name the session server and its sessionless `replay` tool
+# already use, and all three hold the same thing: every line actually fed to the
+# engine, comments included. This script called it `commands.effective.txt` until
+# #299, which is one probe layout written down twice — every reader of a probe
+# opens `commands.txt`. `SKILL.md`'s "Measuring a change to the harness" says what
+# that cost.
 #
 # Why it prints the transcript FILE and not stdout: the plain ConsoleIOHandler
 # writes the "> " prompt but not the piped command, so stdout is answers with
@@ -198,13 +205,13 @@ else
 fi
 
 # The cap counts engine commands only. Neither a comment (the REPL skips it) nor
-# a blank line (stripped below, when the effective file is built) reaches
+# a blank line (stripped below, when the fed file is built) reaches
 # perform(), so they are free and must not count against the budget.
 engine_lines="$(grep -cvE '^[[:space:]]*(//|#|$)' "$commands" || true)"
 [[ "$engine_lines" -le "$max_turns" ]] \
   || die "$engine_lines commands exceeds --max-turns $max_turns"
 
-effective="$probe_dir/commands.effective.txt"
+fed="$probe_dir/commands.txt"
 {
   # save and restore are two-turn interactions: the parser knows only the bare
   # verbs, and the engine then asks for a filename on the *next* input line.
@@ -239,7 +246,7 @@ effective="$probe_dir/commands.effective.txt"
   # `text.scoreLine` to — is the proof the session ran to the end rather than
   # wedging partway.
   printf 'quit\nquit\n'
-} > "$effective"
+} > "$fed"
 
 transcript="$probe_dir/transcript.txt"
 errlog="$probe_dir/stderr.txt"
@@ -257,7 +264,7 @@ GNUSTO_TRANSCRIPT="$transcript" \
 GNUSTO_SAVE_DIR="$scratch/saves" \
   perl -e 'alarm shift; exec @ARGV or die "exec failed: $!\n"' \
        "$timeout_secs" "$binary" \
-  < "$effective" > /dev/null 2> "$errlog" || status=$?
+  < "$fed" > /dev/null 2> "$errlog" || status=$?
 
 if [[ ! -f "$transcript" ]]; then
   detail=""
@@ -283,7 +290,7 @@ summary="$probe_dir/summary.txt"
 {
   echo "[playtest] game=$game seed=$seed label=$label probe=$probe commands=$engine_lines exit=$status"
   echo "[playtest] transcript=$transcript"
-  echo "[playtest] commands=$effective"
+  echo "[playtest] commands=$fed"
   # perl's alarm kills with SIGALRM (14); the shell reports 128+14.
   if [[ "$status" -eq 142 || "$status" -eq 14 ]]; then
     echo "[playtest] TIMEOUT after ${timeout_secs}s — the game never reached quit. Report this."

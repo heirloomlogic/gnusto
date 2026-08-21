@@ -146,6 +146,31 @@ const check = (ok, what) => { if (!ok) failures.push(what) }
 const labels = prompts.map((p) => String(p.label || ''))
 const promptText = prompts.map((p) => p.prompt).join('\n')
 
+// The probe layout, read out of playtest.js rather than restated here.
+//
+// `playtest.js` declares the scratch root, the `.replays` tree, the probe name
+// and the artifact filenames once and builds every recipe from them. This file
+// is where those names are checked against the four languages that actually
+// write the files, so it must not hold a copy of its own: everything below that
+// needs a path takes it from here.
+//
+// Scraped rather than imported, because playtest.js is not importable on its
+// own — its top level reads the injected `agent`, `parallel`, `phase`, `log`
+// and `args`, which is why `body` above wraps the source instead of loading it.
+const layoutConst = (name) => (src.match(new RegExp(`^const ${name} = '([^']*)'`, 'm')) || [])[1]
+const LAYOUT = {
+  SCRATCH: layoutConst('SCRATCH'),
+  REPLAY_TREE: layoutConst('REPLAY_TREE'),
+  PROBE: layoutConst('PROBE'),
+  TRANSCRIPT: layoutConst('TRANSCRIPT'),
+}
+for (const [name, value] of Object.entries(LAYOUT)) {
+  check(!!value, `playtest.js no longer declares ${name}, so the recipes restate the layout again`)
+}
+// A layout name spliced into a regex. The names carry `.` and `*`, both of which
+// mean something else there.
+const literal = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
 // Every phase() call has a matching meta.phases entry, and vice versa. A title
 // that drifts out of `meta` gets its own progress box and nobody notices.
 const metaPhases = [...src.matchAll(/\{ title: '([^']+)'/g)].map((m) => m[1])
@@ -274,7 +299,7 @@ check(
 // against it would be meaningless.
 const extractGlobs = (text) => [
   ...new Set([
-    ...[...text.matchAll(/\.context\/playtest\/([^/\s"]*\*[^/\s"]*)\//g)].map((m) => m[1]),
+    ...[...text.matchAll(new RegExp(`${literal(LAYOUT.SCRATCH)}/([^/\\s"]*\\*[^/\\s"]*)/`, 'g'))].map((m) => m[1]),
     ...[...text.matchAll(/-path "\*\/([^/"]*\*[^/"]*)\/[^/"]*\//g)].map((m) => m[1]),
   ]),
 ]
@@ -344,7 +369,9 @@ for (const label of cliLabels) {
 // The branch total is the one most likely to be lost: it lives in
 // `branch-NNN.txt` rather than in any transcript, and every earlier count in
 // this harness's history missed it.
-const criticPrompt = () => (prompts.find((p) => p.label === 'critic') || {}).prompt || ''
+const promptFor = (match) =>
+  (prompts.find((p) => (typeof match === 'function' ? match(p) : p.label === match)) || {}).prompt || ''
+const criticPrompt = () => promptFor('critic')
 const stubTotal =
   stubTurns.sessions + stubTurns.branches + stubTurns.playReplays
   + stubTurns.replays + stubTurns.verifyReplays
@@ -383,20 +410,21 @@ check(
   collator ? /grep -h 'turn=cost'/.test(collator.prompt) : false,
   'the collator is not told to count turns off the [status] footers'
 )
+const replayRecipe = new RegExp(
+  `-path "\\*/${literal(LAYOUT.REPLAY_TREE)}/${literal(LAYOUT.PROBE)}/${literal(LAYOUT.TRANSCRIPT)}" -exec grep -h 'turn=cost'`
+)
 check(
-  collator ? /find \.context\/playtest\/\.replays .*-exec grep -h 'turn=cost'/.test(collator.prompt) : false,
+  collator ? replayRecipe.test(collator.prompt) : false,
   'the collator never reads the replay probes, so verifier turns are invisible again'
 )
 // The unglobbed count that `unattributed` is measured against. Without it the
 // residual is always zero and the check above passes on a harness that can no
 // longer see a whole tree.
-// "No glob" means no `-path` and no hand-picked subtree: `.replays`' recipe is
-// also glob-free by `extractGlobs`' reckoning, and matching on that would let
-// this pass on a prompt with no residual recipe in it at all.
+// "No glob" means no `-path`, which is now the whole of it: every other counting
+// recipe discriminates with a pattern, including the `.replays` pair, which used
+// to start inside its own subtree and had to be excluded by name.
 check(
-  collatorLines.some(
-    (l) => /-exec grep -h 'turn=cost'/.test(l) && !/-path|\.replays/.test(l)
-  ),
+  collatorLines.some((l) => /-exec grep -h 'turn=cost'/.test(l) && !/-path/.test(l)),
   'no collator recipe counts turn=cost over the whole tree, so the residual is always zero'
 )
 // `find`, not a bare glob. An unmatched shell glob aborts the whole command under
@@ -406,6 +434,107 @@ check(
 check(
   collator ? !/^\s*(grep|ls) [^\n]*\.context\/playtest/m.test(collator.prompt) : false,
   'the collator counts with a bare shell glob, which aborts under zsh when nothing matches'
+)
+
+// ---------------------------------------------------------------------------
+// One artifact layout, held in step across the four languages that write it
+// ---------------------------------------------------------------------------
+//
+// `playtest.js` holds the declaration (hoisted to `LAYOUT` at the top of these
+// assertions); this is where it is checked against the shell, the Python and the
+// Swift that actually create a probe directory. Nothing compiles those together,
+// so reading their source is the only cross-check available — `SESSION_SEGMENT`'s
+// treatment, applied to files instead of labels. `SKILL.md`'s "Measuring a change
+// to the harness" tells the #299 story that made it necessary.
+//
+// Comment lines are stripped first. Every one of these files also *explains* the
+// layout in prose, and two of them name the retired filename on purpose; a check
+// that cannot tell a path from a paragraph would forbid a file from saying why a
+// name changed.
+const code = (path) =>
+  readFileSync(path, 'utf8').split('\n').filter((l) => !/^\s*(#|\/\/|\*|\/\*)/.test(l)).join('\n')
+const SOURCES = {
+  replayScript: 'bin/playtest-replay',
+  replayTool: 'Sources/Gnusto/Playtest/PlaytestReplay.swift',
+  sessionServer: 'Sources/Gnusto/Playtest/PlaytestSession.swift',
+  sessionDirectories: 'Sources/Gnusto/Playtest/PlaytestSessions.swift',
+  measurer: 'bin/playtest-measure',
+}
+const SOURCE = Object.fromEntries(Object.entries(SOURCES).map(([k, path]) => [k, code(path)]))
+const PRODUCERS = ['replayScript', 'replayTool', 'sessionServer']
+
+// The evidence files, read OFF the consumer rather than written here, so this
+// file holds no copy of the layout to drift on its own. Then: every producer
+// writes every one of them, and *writes* rather than merely mentions — the name
+// has to sit at the tail of a path being built, either after a `/` inside a
+// quoted shell path or as the whole argument to `appendingPathComponent`. That
+// is what tells a line of code from a line of documentation, and it is also what
+// makes a rename fail here: `commands.effective.txt` does not end in
+// `/commands.txt"`, so the one spelling of this bug that has actually shipped
+// needs no special case of its own.
+const artifacts = [
+  ...new Set([...SOURCE.measurer.matchAll(/probe \/ "([^"]+)"/g)].map((m) => m[1])),
+]
+check(
+  artifacts.length >= 2 && artifacts.includes(LAYOUT.TRANSCRIPT),
+  `the layout cross-check reads ${JSON.stringify(artifacts)} out of ${SOURCES.measurer}; it should find at least ${LAYOUT.TRANSCRIPT} and a command list`
+)
+for (const key of PRODUCERS) {
+  for (const artifact of artifacts) {
+    check(
+      new RegExp(`(?:/|\\(")${literal(artifact)}"`).test(SOURCE[key]),
+      `${SOURCES[key]} builds no path ending in ${artifact}, which ${SOURCES.measurer} opens in every probe it is pointed at`
+    )
+  }
+}
+
+// The sessionless `replay` tool's tree, and the probe directory name. Both are
+// the Swift side's to choose and the collator's to glob for. The zero padding
+// lives here rather than in the declaration because the glob is all `playtest.js`
+// needs to know; what the two minters share is the stem.
+const replayLabel = (SOURCE.sessionDirectories.match(/replayLabel = "([^"]+)"/) || [])[1]
+check(
+  replayLabel === LAYOUT.REPLAY_TREE,
+  `the session server writes sessionless replays under "${replayLabel}" and the collator globs "${LAYOUT.REPLAY_TREE}"`
+)
+const probeStem = LAYOUT.PROBE.replace(/\*+$/, '')
+for (const key of ['replayScript', 'sessionDirectories']) {
+  check(
+    SOURCE[key].includes(`${probeStem}%03d`),
+    `${SOURCES[key]} names its probe directories something other than ${LAYOUT.PROBE}`
+  )
+}
+
+// Every recipe starts where the round always creates. A pattern that matches
+// nothing prints `0`; a start directory `find` cannot open prints its complaint
+// on stderr and lets the pipe print `0` anyway, which is a shell error wearing
+// the costume of a count. That is site 2 of #299, and it is a property of the
+// generated text, so here is where it can be asserted.
+const findStarts = [
+  ...new Set(collatorLines.filter((l) => /^\s*find /.test(l)).map((l) => l.trim().split(/\s+/)[1])),
+]
+check(findStarts.length > 0, 'the collator prompt runs no find at all')
+for (const start of findStarts) {
+  check(
+    start === LAYOUT.SCRATCH,
+    `a collator recipe starts find at "${start}" rather than "${LAYOUT.SCRATCH}"; only the pattern may discriminate`
+  )
+}
+
+// ---------------------------------------------------------------------------
+// A check a rater cannot run is not a refutation
+// ---------------------------------------------------------------------------
+//
+// The verifier brief tells every rater to check a claimed frame against the
+// `[status]` footer. `bin/playtest-replay` has written one on every turn since
+// #288, so an absent footer means a stale build — and without an instruction for
+// that case the rater refutes, scoring the round's own plumbing as a defeated
+// finding. Same read-a-zero-as-a-fact shape as the recipes above; different
+// mechanism, so it gets its own heading.
+const verifierPrompt = promptFor((p) => /^verify:/.test(String(p.label || '')))
+check(
+  /no .?\[status\].? line at all/.test(verifierPrompt) && /needs-human/.test(verifierPrompt),
+  'the verifier brief says nothing about a transcript with no [status] footer, so a stale binary reads as a refutation'
 )
 
 // The critic gets the agreement figure and is told not to read a high one as
