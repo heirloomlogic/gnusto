@@ -19,7 +19,13 @@ const logs = []
 
 const survey = {
   rooms: ['Front Hall','Parlour','Kitchen','Cellar','Upstairs Landing','Boarder\'s Room',"Vane's Study",'Back Yard','Carriage House','Orange Grove Avenue'],
-  timers: [{ label: 'clock', kind: 'alarm', at: '20:15', readsPlayerLocation: true }],
+  // Two, deliberately: the stub collator below reports a fire for one of them
+  // and nothing for the other, so the critic's "declared and never fired" line
+  // has both a positive and a negative to get right.
+  timers: [
+    { label: 'clock', kind: 'alarm', at: '20:15', readsPlayerLocation: true },
+    { label: 'lamp', kind: 'fuse', readsPlayerLocation: false },
+  ],
   stateAxes: ['hour'], tiers: ['source','doc'],
   printedNouns: [{ noun: 'grout', answerable: false, printedIn: 'Front Hall' }],
   reskinnedTextKeys: ['cantTakeActor'], reskinnedStubs: [], properNamedActors: ['Mrs. Vane','Dr. Pike'],
@@ -123,6 +129,11 @@ const stub = async (prompt, opts = {}) => {
       rooms: ['Front Hall', 'Cellar'],
       words: [{ word: 'grout', count: 2 }],
       forksNobodyTook: ['fork:burn-the-letter@Parlour'],
+      // One roster timer that fired, one roster timer that did not, and one
+      // fired name the roster does not hold. The third is the case that says the
+      // cartographer's roster is wrong, and it has to reach the critic as that
+      // rather than as a fourth timer.
+      timers: [{ name: 'clock', count: 4 }, { name: 'ghost', count: 1 }],
       turns: stubTurns,
       sessionsFinished: 3,
       sessionsUnfinished: ['.context/playtest/Fulminate-explorer-b/probe-002/'],
@@ -303,6 +314,7 @@ for (const p of blind) {
   // many words, and a check that cannot tell a denial from a handout is worse
   // than none.
   for (const timer of survey.timers) {
+    if (!timer.at) continue
     check(!p.prompt.includes(timer.at), `${p.label} was handed timer ${timer.label}'s schedule`)
   }
   for (const noun of survey.printedNouns) {
@@ -661,7 +673,52 @@ if (critic) {
     !/attemptedRefutation. fields from the confirmed list/.test(critic.prompt),
     'the critic is told to sample a field name again instead of reading the pairs it was given'
   )
+  check(
+    critic.prompt.includes('Timers declared: clock, lamp'),
+    'the critic was not given the declared timer roster'
+  )
+  check(
+    critic.prompt.includes('clock (4)'),
+    'the critic was not told which timers actually fired, or how often'
+  )
+  // The negative is the whole point of the field: silence in the prose is not
+  // evidence, so this sentence is the only place the round can say it.
+  check(
+    critic.prompt.includes('**Declared and never fired in any session: lamp.**'),
+    'the critic was not told which declared timers nothing exercised'
+  )
+  // A mis-transcribed roster label lands in BOTH lists at once, and read apart
+  // they are a dead timer invented out of a typo. The critic has to be told to
+  // cross them.
+  check(
+    /1 fired name\(s\) match no declared timer \(ghost\)[\s\S]{0,300}before you believe the never-fired list/
+      .test(critic.prompt),
+    'a fired timer the roster does not hold was dropped, or not crossed against the never-fired list'
+  )
 }
+
+// The fired-timer tally. `GameWorld.firedTimers` counted every body that ran and
+// nothing downstream read it, so a round's only answer to "did that timer ever
+// fire?" was to diff sentences across repeated `wait` output — which cannot see
+// a timer whose body prints nothing. These assert the whole path: collator
+// schema -> closing.json -> critic prompt.
+check(
+  collator ? /firedTimers/.test(collator.prompt) : false,
+  'the collator is never told to read firedTimers out of the closing records'
+)
+// An empty tally is ambiguous — nothing fired, or every record predates the
+// field — and the flattering reading of it is "every timer is dead". The guard
+// cannot be exercised in the same run as the populated case, so the source
+// carries it.
+check(
+  /No closing record carried a[^\n]*tally at all[\s\S]{0,400}Do NOT report an unexercised timer off this/.test(src),
+  'the critic is not warned off reading an empty fired-timer tally as dead timers'
+)
+check(
+  result.coverage && result.coverage.timers
+    && JSON.stringify(result.coverage.timers.neverFired) === '["lamp"]',
+  `coverage.timers.neverFired is not the unexercised roster: ${JSON.stringify(result.coverage && result.coverage.timers)}`
+)
 
 console.log('\nASSERTIONS:', failures.length ? `${failures.length} FAILED` : 'all passed')
 for (const f of failures) console.log('   ✗', f)

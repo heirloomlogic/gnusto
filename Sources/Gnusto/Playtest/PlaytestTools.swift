@@ -1322,6 +1322,18 @@ enum PlaytestTools {
                         + "it had entered."),
                 "items": ["type": "string"],
             ],
+            "firedTimers": [
+                "type": "object",
+                "description": .string(
+                    "Every timer whose body ran in this session, by declared name, and "
+                        + "how often — the engine's own tally, not an inference off the "
+                        + "prose. A name missing here fired nothing; a name present fired "
+                        + "at least that many times. Read against the survey's timer "
+                        + "roster it says which declared timers a round never exercised, "
+                        + "which no amount of reading the transcript can settle for a "
+                        + "timer whose body says nothing."),
+                "additionalProperties": ["type": "integer"],
+            ],
             "unknownWords": [
                 "type": "object",
                 "description": .string(
@@ -1336,7 +1348,8 @@ enum PlaytestTools {
         ],
         "required": [
             "accepted", "open", "items", "signals", "forks", "roomsVisited",
-            "roomsOnlyInBranches", "unknownWords", "transcript", "message",
+            "roomsOnlyInBranches", "firedTimers", "unknownWords", "transcript",
+            "message",
         ],
     ]
 
@@ -1658,6 +1671,7 @@ extension PlaytestSession.Closing {
             "signals": signals.json,
             "roomsVisited": .array(roomsVisited.map { .string($0) }),
             "roomsOnlyInBranches": .array(roomsOnlyInBranches.map { .string($0) }),
+            "firedTimers": .object(firedTimers.mapValues { .integer($0) }),
             "unknownWords": .object(
                 unknownWords.mapValues { .integer($0) }),
             "transcript": .string(transcript),

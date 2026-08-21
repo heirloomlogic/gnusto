@@ -814,6 +814,48 @@ struct PlaytestCoverageTests {
                 == session.transcriptURL.deletingLastPathComponent())
     }
 
+    /// The engine's fired-timer tally reaches the closing record.
+    ///
+    /// `PlaytestSeamTests.firedTimersCountsEveryBodyThatRan` owns the tally
+    /// itself; this owns the carriage — the `Closing` field and the bytes on
+    /// disk, which is the half a round can read. `CoverageLedger` cannot supply
+    /// it: the ledger infers timer activity by set-differencing sentences across
+    /// repeated output, and it has to, because it is firewalled from the
+    /// declared roster. The round is not, and this is what lets it say "this
+    /// timer was declared and never fired in any session."
+    @Test func theClosingRecordCarriesTheEnginesFiredTimerTally() async throws {
+        let session = try await session(HeartbeatGame())
+        _ = try await session.move(commands: ["z", "z", "z"], allowPrompts: false)
+
+        let closing = try await session.finish(summary: "listened", leaving: nil, limit: 3)
+        // The daemon runs at the end of every turn; the two-turn autostart fuse
+        // fires once and is gone.
+        #expect(closing.firedTimers["heartbeat"] == 3)
+        // Declared, never started, so it is absent rather than zero — and it is
+        // the absence the round reads as "nothing exercised this".
+        #expect(closing.firedTimers["doom"] == nil)
+
+        let written = try text(at: session.closingURL)
+        #expect(written.contains("\"heartbeat\":3"))
+        #expect(written.contains("\"dawn\":1"))
+        #expect(!written.contains("\"doom\""))
+    }
+
+    /// A session that fired nothing writes the key anyway, empty.
+    ///
+    /// The collator has to tell "nothing fired" from "this record predates the
+    /// field", and an absent key is the only signal it has for the second. So
+    /// the empty object is the assertion here, not the empty dictionary —
+    /// `PlaytestSeamTests.aParseErrorFiresNothing` already owns that.
+    @Test func aSessionThatNeverCostATurnWritesAnEmptyTally() async throws {
+        let session = try await session(HeartbeatGame())
+        _ = try await session.move(commands: ["frotz"], allowPrompts: false)
+
+        let closing = try await session.finish(summary: "typed nonsense", leaving: nil, limit: 3)
+        #expect(closing.firedTimers.isEmpty)
+        #expect(try text(at: session.closingURL).contains("\"firedTimers\":{}"))
+    }
+
     /// Unknown words are counted off the **parse record**, not off the prose.
     ///
     /// `TurnAudit.unknownWords` is every token the vocabulary failed to consume,

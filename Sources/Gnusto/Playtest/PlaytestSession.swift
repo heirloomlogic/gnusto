@@ -297,6 +297,25 @@ actor PlaytestSession {
     /// rewind — the ring and the replay — leave this list unchanged.
     private var roomsEverVisited: [String] = []
 
+    /// Every timer that has ever fired in this session, by name, and how many
+    /// times — **including fires inside a branch a rewind wrote off**.
+    ///
+    /// `GameWorld.firedTimers` is the oracle and this is the session's copy of
+    /// it, kept for the one reason ``roomsEverVisited`` is kept: a rewind that
+    /// goes back through a replay boots a fresh world, and a fresh world's tally
+    /// starts at nothing. Losing a fire that way would let the round say "this
+    /// timer never fired" about a timer that did, which is the one direction of
+    /// error the whole closing record exists to rule out. Folded in
+    /// ``remember(line:in:)``, which is the one place a rewind cannot reach.
+    ///
+    /// **Membership is exact; the counts are a floor.** A name absent here fired
+    /// no body in this session. A name present fired at least that many times —
+    /// merged with `max` rather than summed, because a replayed prefix re-fires
+    /// the timers the discarded tally already counted and adding the two would
+    /// report a daemon as running twice per turn. The round's question is "was
+    /// this declared timer ever exercised?", which membership answers exactly.
+    private var firedTimersEver: [String: Int] = [:]
+
     /// True once the session has used the player-facing `save` or `restore`.
     ///
     /// Such a session may never be evicted. Eviction is safe *because* replay
@@ -660,6 +679,20 @@ actor PlaytestSession {
         /// record claims, finds nothing, and concludes the record is lying, is
         /// instead told where to look.
         let roomsOnlyInBranches: [String]
+
+        /// Every timer whose body ran in this session, by name, and how often —
+        /// the engine's own tally, not an inference off the prose.
+        ///
+        /// Read against the survey's timer roster, which is the denominator: a
+        /// declared name missing from every session's tally is a timer the round
+        /// never exercised, and a name *here* that the roster does not hold means
+        /// the roster is wrong rather than that a timer appeared from nowhere.
+        ///
+        /// **Membership is exact; the counts are a floor.** See
+        /// ``PlaytestSession/firedTimersEver``, and `SKILL.md` for why the
+        /// heuristic in `CoverageLedger` cannot answer this and must not try.
+        let firedTimers: [String: Int]
+
         /// Every token the vocabulary did not know, and how often it was typed.
         let unknownWords: [String: Int]
         /// Where the evidence is.
@@ -740,6 +773,7 @@ actor PlaytestSession {
             roomsOnlyInBranches: roomsEverVisited.filter {
                 !ledger.roomsVisited.contains($0)
             },
+            firedTimers: firedTimersEver,
             unknownWords: ledger.unknownWords,
             transcript: transcriptURL.path,
             message: message)
@@ -1416,16 +1450,25 @@ actor PlaytestSession {
         return TranscriptRecorder.text(command: line, output: annotated)
     }
 
-    /// Puts this line's world and this line's reading of it into the ring.
+    /// Puts this line's world and this line's reading of it into the ring, and
+    /// folds anything about the line a rewind must not be able to undo into the
+    /// session.
     ///
     /// Called at the bottom of every recorded line, after everything about the
     /// line has been applied — the whole value of a snapshot is that it is the
     /// frame the tester was actually standing in when it decided to go back.
     ///
+    /// Which is also why the fired-timer fold is here rather than at the seams
+    /// that drop a world. Every one of those seams — a rewind past the ring, a
+    /// plain ``evict()``, a rehydration — is then safe by construction instead
+    /// of by an argument that has to be re-derived the next time one is added.
+    /// See ``firedTimersEver``.
+    ///
     /// - Parameters:
     ///   - line: the recorded-line index this snapshot stands at.
     ///   - world: the live world.
     private func remember(line: Int, in world: GameWorld) async {
+        firedTimersEver.merge(await world.firedTimers, uniquingKeysWith: max)
         ring.append(
             Snapshot(
                 line: line,
