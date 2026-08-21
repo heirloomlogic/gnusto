@@ -1084,11 +1084,11 @@ reports findings and hides its gaps makes the round look thorough when it was no
     for (const f of report.findings || []) {
       f.charter = report.charter
       if (f.routedTo) {
-        routed.push(f)
+        record(routed, f)
         continue
       }
       if (!f.replayedCleanly) {
-        refuted.push({ ...f, refutationKind: 'not-reproducible', reason: 'The tester did not re-verify the trimmed reproducer from a clean start.' })
+        record(refuted, { ...f, refutationKind: 'not-reproducible', reason: 'The tester did not re-verify the trimmed reproducer from a clean start.' })
         continue
       }
       candidates.push(f)
@@ -1328,7 +1328,7 @@ by coin flip.`,
   for (const finding of fresh) {
     const views = byFinding.get(finding.key) || []
     if (!views.length) {
-      refuted.push({
+      record(refuted, {
         ...finding,
         refutationKind: 'none',
         reason:
@@ -1345,8 +1345,15 @@ by coin flip.`,
       singleRated++
     }
 
+    // Only the *verdict* is reconciled. A rationale is not a verdict, so it is
+    // never merged away: `record` puts every rater's own words on the row,
+    // whatever branch it takes.
     let verdict
     if (distinct.size === 1) {
+      // The summary `reason` that reaches `verifierNote` is rater 1's, and that
+      // is all that field claims to be. Reading it as the verdict's whole
+      // reasoning is the trap; `raterViews` is what the independence check
+      // downstream reads.
       verdict = views[0]
     } else {
       // Deliberately not a majority vote or a third rater: with two lenses
@@ -1358,7 +1365,6 @@ by coin flip.`,
         reason: views
           .map((v, i) => `Rater ${i + 1} said ${v.verdict}: ${v.reason}`)
           .join(' — '),
-        attemptedRefutation: views.map((v) => v.attemptedRefutation).filter(Boolean).join('\n\n'),
       }
       disagreements.push({
         claim: finding.claim,
@@ -1368,14 +1374,14 @@ by coin flip.`,
     }
 
     if (verdict.verdict === 'confirmed-defect' || verdict.verdict === 'needs-human') {
-      confirmed.push({ ...finding, verdict: verdict.verdict, verifierNote: verdict.reason, attemptedRefutation: verdict.attemptedRefutation, correctedFrame: verdict.correctedFrame, provenance: verdict.provenance, raters: views.length })
+      record(confirmed, { ...finding, verdict: verdict.verdict, verifierNote: verdict.reason, correctedFrame: verdict.correctedFrame, provenance: verdict.provenance }, views)
       if (verdict.provenance && verdict.provenance.age === 'introduced') {
         log(`Newly introduced: "${String(finding.claim).slice(0, 70)}" — blamed on ${verdict.provenance.blamedCommit || '?'}${verdict.provenance.blamedSubject ? ` (${verdict.provenance.blamedSubject})` : ''}.`)
       }
     } else if (verdict.verdict === 'route-elsewhere') {
-      routed.push({ ...finding, routedTo: verdict.routedTo, reason: verdict.reason })
+      record(routed, { ...finding, routedTo: verdict.routedTo, reason: verdict.reason }, views)
     } else {
-      refuted.push({ ...finding, refutationKind: verdict.refutationKind, reason: verdict.reason })
+      record(refuted, { ...finding, refutationKind: verdict.refutationKind, reason: verdict.reason }, views)
     }
   }
 
@@ -1384,6 +1390,71 @@ by coin flip.`,
       `Round ${round}: ${disagreements.length} finding(s) split the raters and went to needs-human.`
     )
   }
+}
+
+/// The one door into `confirmed`, `refuted` and `routed`, so a verdict row
+/// cannot exist without every rater's own words beside it — labelled, whole, and
+/// in the order the raters were dispatched. Reconciliation used to pick one
+/// rationale along with the one verdict, which discarded rater 2 on the 77% of
+/// findings the two agreed about: precisely the case the rubber-stamp check
+/// downstream is asked to judge. `VERDICT_SCHEMA` makes `reason` and
+/// `attemptedRefutation` mandatory per rater so the two can be compared, and
+/// keeping one of them is keeping a field the round then cannot audit.
+///
+/// A row no verifier ever saw — routed by its tester, or never replayed — gets
+/// `[]`, which is the truth and is a different thing from a field that went
+/// missing.
+function record(list, row, views = []) {
+  list.push({
+    ...row,
+    raterViews: views.map((v, i) => ({
+      rater: i + 1,
+      verdict: v.verdict,
+      reason: v.reason,
+      attemptedRefutation: v.attemptedRefutation,
+    })),
+  })
+}
+
+/// Whether both raters returned the same verdict for a row — the property the
+/// rubber-stamp check is about, read off the raters rather than off the
+/// reconciled verdict, so a `needs-human` row (where by definition they
+/// differed) is not a pair.
+function isAgreedPair(f) {
+  const views = f.raterViews || []
+  return views.length >= 2 && new Set(views.map((v) => v.verdict)).size === 1
+}
+
+/// Up to `n` rows taken round-robin across the lists rather than in list order.
+/// Two raters rubber-stamping a *refutation* discard a real defect, which is the
+/// more expensive direction — and a round with forty confirmed findings and ten
+/// refuted ones would fill the whole sample from the first list and never show
+/// one.
+function roundRobin(lists, n) {
+  const out = []
+  for (let i = 0; out.length < n && lists.some((l) => l.length > i); i++) {
+    for (const l of lists) {
+      if (out.length >= n) break
+      if (l[i]) out.push(l[i])
+    }
+  }
+  return out
+}
+
+/// One agreed finding rendered for the rubber-stamp check: the claim, the
+/// verdict both raters reached, and each rater's own attempt to knock it down,
+/// printed whole. Two people arguing the same case from different angles do not
+/// write the same sentence; two rubber-stampers do.
+function pairedRow(f) {
+  return (
+    `**${f.claim || '(no claim)'}** — both raters said ${f.raterViews[0].verdict}.\n`
+    + f.raterViews
+      .map(
+        (v) =>
+          `  - Rater ${v.rater} tried to refute it: ${v.attemptedRefutation || '(left blank, which is itself a finding about this rater)'}`
+      )
+      .join('\n')
+  )
 }
 
 /// Splits a list into runs of at most `size`. A trailing short batch is fine:
@@ -1649,6 +1720,22 @@ const criticThunk = async () => {
   } = await roomTallyPromise
   const unknownWordTotal = words.reduce((n, w) => n + (w.count || 0), 0)
 
+  // The rubber-stamp check needs the raters' own words, not the name of a field.
+  // It used to say "sample two or three `attemptedRefutation` fields from the
+  // confirmed list", which asked the critic to read something no prompt
+  // contained — and on an agreed finding, which is most of them, that field held
+  // one rater's text anyway. So the pairs go in the brief, whole.
+  //
+  // Drawn from all three lists rather than `confirmed`, because agreement is the
+  // property under test and not which way the verdict went.
+  const agreedPairs = roundRobin(
+    [confirmed, refuted, routed].map((l) => l.filter(isAgreedPair)),
+    3
+  )
+  const pairedRationales =
+    agreedPairs.map(pairedRow).join('\n\n')
+    || '(none — no finding this round drew the same verdict from two raters, so rater independence cannot be judged off rationales at all. Say so rather than passing over it.)'
+
   return agent(
   `${groundMin(labelFor('critic'))}
 
@@ -1675,7 +1762,7 @@ truth and they win over anything here.
 - Testers run: ${playRoster.map((r) => `${r.key}${r.charter.blind ? ` (${r.divergence}${r.region ? `, ${r.region}` : ''})` : ''}`).join(', ')}. Charters NOT run: ${skipped.map((c) => c.key).join(', ') || 'none'}.
 - The blind charters were given no room list, no timer list and no design doc, deliberately. A finding of theirs that the doc licenses is the expected cost of that, not a harness failure — but if more than about two in five are refuted that way, say so: the brief needs tightening, not the doc handing back.
 - Confirmed ${confirmed.length}, refuted ${refuted.length}, findings routed to another issue ${routed.length}. Every confirmed finding is filed; this round edits nothing.
-- **Verifier agreement: ${agreementTotal ? `${Math.round((agreementMatched / agreementTotal) * 100)}% (${agreementMatched} of ${agreementTotal} findings judged the same way by both raters)` : 'not measurable — no finding got two raters'}.**${singleRated ? ` ${singleRated} finding(s) got only one rater, so the denominator is thinner than the finding count.` : ''} Verification is batched now — up to ${VERIFY_BATCH_SIZE} findings per verifier, ${VERIFY_RATERS} raters each — and this number is the check on that. Near-total agreement is not automatically good news: it is what both careful raters and two rubber-stampers produce. Sample two or three \`attemptedRefutation\` fields from the confirmed list and say whether they read as separately reasoned or interchangeable. That judgement is yours and nothing else in the round makes it.
+- **Verifier agreement: ${agreementTotal ? `${Math.round((agreementMatched / agreementTotal) * 100)}% (${agreementMatched} of ${agreementTotal} findings judged the same way by both raters)` : 'not measurable — no finding got two raters'}.**${singleRated ? ` ${singleRated} finding(s) got only one rater, so the denominator is thinner than the finding count.` : ''} Verification is batched now — up to ${VERIFY_BATCH_SIZE} findings per verifier, ${VERIFY_RATERS} raters each — and this number is the check on that. Near-total agreement is not automatically good news: it is what both careful raters and two rubber-stampers produce. **Read the paired refutation attempts printed below** and say whether the two raters reasoned separately or interchangeably. That judgement is yours and nothing else in the round makes it.
 - Unknown words: ${unknownWordTotal} occurrence(s) over ${words.length} distinct token(s), taken from the parse record rather than by grepping for the engine's refusal line. Not findings in themselves and not coverage — but ~48 verbs are stubs now, so a large number here is worth a sentence. A word the *game itself printed* and could not answer is a defect and should have arrived as an ordinary finding; if the count is high and no such finding was filed, that is a gap in the round, not in the game.
 - Timers, and whether any was left unexercised: ${(survey.timers || []).map((t) => t.label).join(', ') || 'none'}.
 
@@ -1684,6 +1771,14 @@ ${coverage.map((c) => `- ${c.charter} (round ${c.round}): ${c.honestSummary}${(c
 
 Refuted this round, with reasons:
 ${refuted.map((r) => `- [${r.charter || '?'}] ${r.claim || '(no claim)'} → ${r.refutationKind}: ${r.reason}`).join('\n') || '- none'}
+
+Paired refutation attempts, for the rubber-stamp check. Each finding below drew the
+SAME verdict from both raters, and each rater's own attempt to knock it down is
+printed whole. Two people arguing the same case from different angles do not write
+the same sentence; two rubber-stampers do. Say plainly which of the two you are
+looking at:
+
+${pairedRationales}
 
 Write the Coverage and Refuted sections of the report, per
 \`${REF}/report-shape.md\`. Include the state cross-product as an actual grid of
