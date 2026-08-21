@@ -82,8 +82,9 @@ Black and white tile, worn through to the grout along the line people walk. …
 
 Answers with the questions missing. `GNUSTO_TRANSCRIPT` records `> look` interleaved
 with the output, byte-for-byte what `ScriptedIOHandler` produces in the suite — so the
-file is both readable *and* the exact string a test asserts on. `bin/playtest-replay`
-sets it for you and prints the path in its trailer.
+file is both readable *and* the exact string a test asserts on, once you drop the
+`[status]` lines described below. `bin/playtest-replay` sets it for you and prints the
+path in its trailer.
 
 ## Annotate as you go
 
@@ -133,6 +134,43 @@ Your score is 0, in 3 turns.
 Four commands, three turns. If you assumed four you are now reasoning about the wrong
 minute. Anchor every hour you claim with a real reading — `time`, or a room listing you
 can place — rather than with arithmetic.
+
+### Or stop counting: `GNUSTO_STATUS=1`
+
+Set it and every turn gets one out-of-fiction line saying where you are, what the move
+counter reads, and whether the command you just typed cost anything:
+
+```
+[status] room=Front Hall | moves=12 | score=0 | turn=cost | time=5:46 pm
+```
+
+`turn=cost|free` is the move counter's own delta across the turn, so it is right about
+the meta verbs, the parse errors, and the custom verb nothing answered, without you
+knowing which is which. `time=` appears in games that use `GnustoClock`; a game's
+bundles and plugins add their own fields after the four standard ones.
+
+**The two halves of the line are sampled at different instants, deliberately.**
+`room=`, `moves=`, `score=` and `turn=` are the turn's *result* — where it left you and
+what it cost. A contributed field is read against the world as the turn *closed*, before
+the counter advanced, which is the instant every rule, `describe` block and timer in that
+turn read. So `time=` is the minute the prose above it was written at and can be quoted
+straight into a finding. One consequence worth knowing before it looks like a bug: the
+opening and turn one both read the game's starting hour, because nothing had happened
+yet either time. That is a clock working, not a clock stuck. (It was one tick fast
+between 2026-08-15 and the fix for #280; a transcript recorded in that window needs the
+correction applied before you quote its hour.)
+
+The footer goes into the transcript file and onto the console as one string, so an
+excerpt you lift out of the recording is still what the tester read. It is **off unless
+asked for**, and it is a `REPL` argument rather than an environment read, so
+`GNUSTO_STATUS=1 swift test` leaves the suite's transcripts alone. When you lift an
+excerpt into a regression test, drop the `[status]` lines: they are scaffolding for the
+reader, not the game's words.
+
+**`bin/playtest-replay` asks for it on your behalf**, on every run, and so does the MCP
+session server — the two recorders both write for a machine as well as for you. A round
+counts its own turns by grepping those transcripts for `turn=cost`, which is the only
+count that does not depend on somebody remembering how far they got.
 
 ## Deep states: save once, restore per probe
 

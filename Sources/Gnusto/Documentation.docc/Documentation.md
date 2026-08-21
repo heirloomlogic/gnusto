@@ -1,6 +1,6 @@
 # ``Gnusto``
 
-A Swift engine for writing parser-driven interactive fiction — text adventures in the tradition of Zork and Infocom's ZIL.
+An engine for writing interactive fiction in Swift.
 
 @Metadata {
     @DisplayName("Gnusto")
@@ -9,62 +9,23 @@ A Swift engine for writing parser-driven interactive fiction — text adventures
 
 ## Overview
 
-Gnusto turns a single Swift type into a playable text adventure. You *declare* your world — its rooms, its things, and the rules that govern them — and the engine parses player input, runs the turn, and prints the result.
+A game is one type conforming to ``Game``, and the engine reads four things off it: the ``Location``, ``Item``, ``Actor`` and ``Global`` values you declared as stored properties, which it finds by reflection and names after each property; a `map` block of exits and starting places; a `rules` block of behavior; and an optional `verbs` block that teaches the parser new words. <doc:GettingStarted> builds one from an empty package. <doc:AnatomyOfAGame> is the model underneath.
 
-```swift
-import Gnusto
+The same value is both the declaration and the live reference: `let cloak = Item { … }` declares the cloak, and `cloak.isWorn` reads its state inside a rule. That is the idea most of the rest follows from.
 
-struct TinyGame: Game {
-    let title = "A Tiny Game"
-    let intro = "You wake in a small, bright room."
+Each line the player types is parsed into a ``Command`` and run through a fixed pipeline — world, location and item `before` rules, the built-in action, then `after` rules, each-turn rules, and the timer tick. Any rule can ``refuse(_:)``, ``reply(_:)`` in the action's place, ``end(won:)`` the game, or ``die(_:)``. Every change commits atomically at the end of the turn, which is also what `save` writes and `undo` rewinds. See <doc:TheTurnPipeline>.
 
-    let room = Location {
-        name("Bright Room")
-        description("A plain white room with a single door, to the north.")
-    }
+### Which article to read
 
-    let coin = Item {
-        name("gold coin")
-        description("A heavy gold coin.")
-    }
+<doc:GettingStarted> first, then the **Lighthouse** demo (`Sources/Lighthouse/`, `swift run Lighthouse`) — one small winnable game that exercises containers and a locked door, a fuse and a daemon, a roaming actor, `@Global` state, a content bundle, and two plugins. Most of the guides below link back to it.
 
-    var map: WorldMap {
-        room.north(blocked: "The door is locked.")
-        player.starts(in: room)
-        coin.starts(in: room)
-    }
-}
+After that the articles are a reference, not a sequence: read <doc:WritingRules> and <doc:WorldMapAndExits> when you are building, <doc:TestingYourGame> and <doc:PlayTesting> when you want to know whether it works, and <doc:BootstrapDiagnostics> when the game refuses to start.
 
-let world = try GameWorld(game: TinyGame())
-await REPL(world: world, io: ConsoleIOHandler()).run()
-```
+### The optional libraries
 
-That is a complete, runnable game. The player can `look`, `examine coin`, `take coin`, check their `inventory`, and try to go `north`.
+The package ships seven libraries beside the engine, each a separate product you import only if you want it: `GnustoClock` (a time of day rather than a turn counter), `GnustoConversation` (asking, telling, showing, and what somebody has already been asked), `GnustoScoring`, `GnustoSpellcasting` (four casting paradigms), `GnustoMeleeCombat`, `GnustoDangerousDark`, and `GnustoActors`. An eighth, `GnustoTestSupport`, belongs in a test target.
 
-### The shape of a game
-
-A game is one type conforming to ``Game``. The engine reads four things off that type:
-
-- the ``Location``, ``Item``, and ``Global`` values you declare as stored properties, which it discovers by reflection and names after each property.
-- a `map` block of exits and initial placements, built from compile-checked property references (``WorldMap``).
-- a `rules` block of `before`/`after`/each-turn hooks that react to what the player does (``Rules``).
-- an optional `verbs` block that teaches the parser new words (``SyntaxRule``).
-
-The same value is both the *declaration* and the live *reference*: `let cloak = Item { … }` declares the cloak, and `cloak.isWorn` reads its live state inside a rule. See <doc:AnatomyOfAGame> for how that works.
-
-### How a turn runs
-
-Each line the player types is parsed into a ``Command``, then run through a fixed pipeline: world/location/item `before` rules, the built-in default action, then `after` rules, then each-turn rules and the timer tick. Any rule can ``refuse(_:)`` an action, ``reply(_:)`` in its place, ``end(won:)`` the game, or ``die(_:)`` — death offers the classic RESTART / RESTORE / UNDO / QUIT prompt. All state changes commit atomically at the end of the turn, which is also what `save` writes and `undo` rewinds. See <doc:TheTurnPipeline> and <doc:DarknessTimeAndDeath>.
-
-### Scaling up
-
-A game need not live in one file — or even one package. Compose `map` and `rules` from per-region helpers (<doc:SplittingAGameAcrossFiles>), promote a region to a self-contained ``GameContent`` bundle (<doc:ContentBundles>), or package a reusable system like commerce or combat as a ``GamePlugin`` (<doc:Plugins>).
-
-The **Lighthouse** example (`Sources/Lighthouse/`, run it with `swift run Lighthouse`) is a single small game that exercises most of this at once — containers and a locked door, a fuse and a daemon, a roaming actor, `@Global` state, a content bundle, and the scoring and actor plugins — and the guides above link back to it. It's the one to read after <doc:GettingStarted>.
-
-### Playing and sharing
-
-A game type that also conforms to ``GameMain`` is a complete `@main` executable — `swift run` it and, in a real terminal, it launches a full-screen Infocom-style interpreter (``TerminalIOHandler``) with a status bar and reflow-on-resize. When you're ready to hand it to someone, `bin/export-game` builds a single binary a friend can run on macOS with no toolchain. See <doc:SharingYourGame>.
+Each has its own documentation in this archive. They are not linked from here: a merged archive resolves symbol links only within a module, so a link across one would render as plain text rather than fail loudly. See <doc:Plugins> and <doc:ContentBundles> for how they splice in.
 
 ## Topics
 
@@ -81,9 +42,17 @@ A game type that also conforms to ``GameMain`` is a complete `@main` executable 
 - ``Item``
 - ``Player``
 - ``World``
+
+### The World Map
+
+- <doc:WorldMapAndExits>
 - ``WorldMap``
 - ``MapEntry``
 - ``Direction``
+- ``Location/exit(_:to:)``
+- ``Location/exit(_:to:via:)``
+- ``Location/exit(_:to:when:otherwise:)``
+- ``Location/exit(_:toward:)``
 
 ### Describing Entities
 
@@ -119,9 +88,6 @@ A game type that also conforms to ``GameMain`` is a complete `@main` executable 
 - ``Item/reach(otherwise:_:)``
 - ``Item/reveal()``
 - ``Item/isRevealed``
-- ``Location/exit(_:to:via:)``
-- ``Location/exit(_:to:when:otherwise:)``
-- ``Location/exit(_:toward:)``
 
 ### Writing Rules
 
@@ -131,13 +97,31 @@ A game type that also conforms to ``GameMain`` is a complete `@main` executable 
 - ``Intent``
 - ``Command``
 - ``say(_:)``
+- ``sayOnceThisTurn(_:)``
+- ``say(_:from:)-(String,Location...)``
+- ``say(_:from:)-(String,Item)``
+- ``say(_:from:)-(String,Actor)``
 - ``refuse(_:)``
 - ``reply(_:)``
+- ``require(_:else:)``
+- ``handled()``
+- ``proceed()``
 - ``end(won:)``
 - ``die(_:)``
 - ``Item/describe(_:)``
 - ``Location/describe(_:)``
 - ``Item/presence(_:)``
+
+### Player and World State
+
+- ``Player/score``
+- ``Player/moves``
+- ``Player/inventory``
+- ``Player/item``
+- ``Player/isCarrying(_:)``
+- ``Player/isWearing(_:)``
+- ``Location/isLit``
+- ``Location/isVisited``
 
 ### Actors & Vehicles
 
@@ -174,14 +158,17 @@ A game type that also conforms to ``GameMain`` is a complete `@main` executable 
 - ``Global``
 - ``GlobalValue``
 - ``StateValue``
+- ``TraitKey``
 
-### Adding Vocabulary
+### Verbs and Intents
 
 - <doc:AddingCustomVerbs>
 - <doc:StubVerbs>
 - ``verb(_:_:)``
 - ``SyntaxRule``
 - ``SyntaxElement``
+- ``IntentAction``
+- ``Topic``
 
 ### Text and Randomness
 
@@ -205,13 +192,25 @@ A game type that also conforms to ``GameMain`` is a complete `@main` executable 
 - ``TerminalIOHandler``
 - ``ScriptedIOHandler``
 
+### Writing a Front End
+
+- <doc:CustomFrontEnds>
+- ``Input``
+- ``CompletionCandidates``
+
 ### Sharing Your Game
 
 - <doc:SharingYourGame>
 
-### Testing Your Game
+### Testing and Play-testing
 
 - <doc:TestingYourGame>
+- <doc:PlayTesting>
+
+### Diagnostics
+
+- <doc:BootstrapDiagnostics>
+- ``BootstrapError``
 
 ### Composing Large Games
 
@@ -221,12 +220,12 @@ A game type that also conforms to ``GameMain`` is a complete `@main` executable 
 - ``GameContent``
 - ``GameContents``
 - ``GamePlugin``
+- ``ScoreDeclaring``
 
 ### Identity and Storage
 
 - ``EntityID``
 - ``Placement``
-- ``BootstrapError``
 
 ### Result Builders
 

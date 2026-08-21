@@ -4,7 +4,7 @@ Light sources that carry into dark rooms, fuses and daemons that tick the world'
 
 ## Overview
 
-Four mechanics turn a collection of rooms into a game with stakes: darkness the player must bring light into, timed events that move the world along whether or not the player acts, the classic SAVE / RESTORE / UNDO / RESTART meta-verbs, and death that offers a way back. This article covers all four — they interlock, and the Zork-style burning lantern chased by a grue uses every one of them.
+A dark room is not a described room with the lights off. Its contents stop being nouns: there is nothing to examine, nothing to take, and no exits worth naming until somebody brings a light. That is the sharpest of the four mechanics on this page, and the other three take from the player the same way — fuses and daemons move the world while they think about it, `undo` gives exactly one turn back, and ``die(_:)`` ends the game without ending the process. A burning lantern chased by a grue is all four at once.
 
 ## Darkness and light sources
 
@@ -52,8 +52,8 @@ A ``TimedEvent`` is a named timer declared in a game or bundle `timers` block. A
 ```swift
 var timers: [TimedEvent] {
     fuse("lanternDies", after: 25) {
+        say("The brass lantern flickers and goes out.", from: lantern)
         lantern.isLit = false
-        say("The brass lantern flickers and goes out.")
     }
     daemon("grue", autostart: true) {
         guard !player.location.isLit else { return }
@@ -66,14 +66,32 @@ Rules start and stop timers by name: ``startFuse(_:after:)`` (the optional count
 
 Timers tick **once per typed command**, at the very end of the turn — after the world's `after`/each-turn rules, fuses first and then daemons, each group in name order. `take all` over five objects ticks once, not five times. They tick on refused turns (world time passes) but not on parse errors, meta commands, or once the game has ended. A timer started during a turn ticks at the end of that same turn, so a `fuse(after: 1)` started by a rule fires as that very turn ends.
 
+### Say it only where it is true
+
+A timer fires on a **count**, not on a place. Whatever room the player has walked to by the turn the body runs is the room the line prints in — so a fuse that says "the bell appears to have cooled down" says it two rooms and a staircase from the bell, and one that says "a door goes above you, and another one below" says it to somebody standing in the cellar. This is the commonest defect in timer code, and it is not a wording problem: the body never asked where the player was.
+
+`say(_:from:)` is that question, in the shape of a `say`. Name the room the sentence is true in, or the thing it is about, and the line prints from there and nowhere else:
+
+```swift
+fuse("bellCools", after: 20) {
+    bellHot = false                          // the world moves regardless…
+    say("The bell appears to have cooled down.", from: bell)
+}
+```
+
+- ``say(_:from:)-(String,Location...)`` takes one room or several — a reservoir emptying is visible from either shore and from the bed between them, so name all three. Darkness does **not** gate it: a bell rung in an unlit room is still heard from inside it.
+- ``say(_:from:)-(String,Item)`` (and its ``Actor`` twin) asks ``Item/isVisible``, which the dark *does* gate, and which what the player is carrying always passes. It is the one to reach for when the sentence is something you have to see to believe.
+
+Dropping the line changes nothing else, exactly as ``sayOnceThisTurn(_:)`` does. Put the state change above the `say` and the fuel still runs out, the window still shuts, the gates still open — the player is simply not told about a room they are not in. The one ordering trap is a change that puts its own subject out of sight: ask *before* you blow the candle out, or nobody standing over it will be told why the room went dark.
+
 Only the *schedule* — which timers are running, and the fuses' remaining counts — lives in the world's state. The bodies are code, registered at bootstrap; a restored save re-binds its schedule to the declared bodies by name. That split is what lets timers survive save files.
 
 ## Save, restore, undo, restart
 
 Four engine-level meta verbs manage the game as a program. Like all meta intents they run no rules and cost no turn — and they are deliberately not overridable through a game's `actions` block.
 
-- **`save`** asks "Save to what file?" and writes the whole world state — placements, the turn counter, the timer schedule, the random stream, everything — as JSON to the answered path. Relative paths resolve against the current directory; an empty answer cancels.
-- **`restore`** asks for a filename, validates the file (a save from a different game is refused with its own message), and swaps the saved state in. Because the random stream rides along, a restored game replays exactly the randomness it would have had.
+- **`save`** asks "Save to what file?" and writes the whole world state — placements, the turn counter, the timer schedule, the random stream, everything — as JSON. A **bare name** like `autumn` is a save *slot*, stored as `autumn.gnusto` in the game's saves directory (`<app support>/Gnusto/Saves/<title>`, or wherever `GNUSTO_SAVE_DIR` points), created owner-only on first write. An answer containing a `/`, or starting with `~`, is an explicit path and is honored verbatim. Slot names are sanitized, so `..` cannot walk out of the directory. An empty answer cancels.
+- **`restore`** asks the same question and lists the slots it can see — `(saved: autumn, cellar)` — then validates the file (a save from a different game is refused with its own message) and swaps the saved state in. The prompt runs in the filename completion context, so Tab completes against those slot names. Because the random stream rides along, a restored game replays exactly the randomness it would have had.
 - **`undo`** reverses exactly one turn, from a snapshot the engine takes before every turn that actually runs. One level, classic-style; the snapshot lives outside the world state, so undo history never leaks into save files.
 - **`restart`** rewinds to the pristine opening — same seed, so a restarted game is the identical game — and replays the intro.
 

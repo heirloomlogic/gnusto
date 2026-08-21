@@ -187,8 +187,10 @@ struct WorkshopGame: Game {
                 return
             }
             try reply(
-                "You lob \(target.definiteName) at \(recipient.definiteName), "
-                    + "who ducks \(direction.rawValue).")
+                """
+                You lob \(target.definiteName) at \(recipient.definiteName),
+                who ducks \(direction.rawValue).
+                """)
         }
     }
 }

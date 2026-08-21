@@ -18,8 +18,17 @@ struct StubVerbTests {
         let problems = SyntaxRule.standardTable.flatMap(\.patternProblems)
         #expect(problems.isEmpty, "\(problems)")
 
-        let keys = SyntaxRule.standardTable.map(\.key)
-        #expect(keys.count == Set(keys).count, "duplicate rows in the standard table")
+        // Grouped by ``SyntaxRule/canonicalKey`` rather than ``SyntaxRule/Key``,
+        // which subsumes the exact repeat: a row that is another respelled can
+        // never fire (`Bootstrap.respellingWarnings` holds the argument), and
+        // #273 removed the three the core table was carrying. The bootstrap now
+        // asks every merged table the same question (#283); this stays because
+        // the engine's own table should be clean before any game is involved.
+        let respellings = Dictionary(grouping: SyntaxRule.standardTable, by: \.canonicalKey)
+            .values
+            .filter { $0.count > 1 }
+            .map { $0.map(\.patternDescription).joined(separator: " / ") }
+        #expect(respellings.isEmpty, "one row respelled as another: \(respellings)")
 
         // No stub row may quietly replace a core row, or the core row's real
         // behavior would vanish with no warning.

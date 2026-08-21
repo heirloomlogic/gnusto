@@ -39,6 +39,82 @@ public func sayOnceThisTurn(_ message: String) {
     Ctx.current.sayOnceThisTurn(message)
 }
 
+/// Prints a message only if the player is standing in a room it is true of.
+///
+/// The line a **timer** wants. A fuse or a daemon fires on a schedule, not on a
+/// place, so the room the player is in when the body runs is whatever room they
+/// walked to — and a sentence that narrates something happening *here* is a
+/// claim about a frame the body never read. This is that read, written once:
+///
+/// ```swift
+/// fuse("exorcismLapse", after: 6) {
+///     exorcismStage = 0                        // the world moves regardless…
+///     say(Prose.exorcismLapses, from: gate)    // …the telling does not
+/// }
+/// ```
+///
+/// Dropping the line changes nothing else, exactly as ``sayOnceThisTurn(_:)``
+/// does: put the state change above the `say` and it happens either way.
+///
+/// **Variadic, because a noise carries.** A sentence about a reservoir emptying
+/// is true from either bank and from the bed between them, so name all three;
+/// the line prints from any of them and nowhere else. There is no earshot
+/// radius in the engine and this is deliberately not one — it is the author
+/// enumerating the frames their sentence is true in.
+///
+/// **Standing in the room, not seeing it.** Darkness does not gate this one — a
+/// bell rung in an unlit room is still heard from inside it. For a sentence the
+/// player has to *see* to believe ("the candles are shorter now"), pass the
+/// thing instead of the room: the ``Item`` overload asks ``Item/isVisible``,
+/// which the dark does gate.
+///
+/// - Parameters:
+///   - message: the text to print.
+///   - sources: the rooms the message is true in.
+public func say(_ message: String, from sources: Location...) {
+    // The frame is bound once and the ids resolved off it, rather than through
+    // each `Location.id`: that accessor reaches `Ctx.current` per source, which
+    // is a lock apiece for a question one lock can answer. Resolution stays
+    // *outside* `with { }` — the `Mutex` is not reentrant.
+    let frame = Ctx.current
+    let here = frame.with { $0.state.playerLocation }
+    guard sources.contains(where: { frame.id(for: $0.token, describing: "Location") == here })
+    else { return }
+    frame.say(message)
+}
+
+/// Prints a message only if the player can currently see the thing it is about.
+///
+/// The ``Location`` overload above, for a sentence whose subject is an
+/// object rather than a room — a candle burning down, a bell cooling, a fuse
+/// reaching its charge. Gated on ``Item/isVisible``, so what the player is
+/// carrying always qualifies (the dark included) and what they left three rooms
+/// back never does.
+///
+/// Read *before* the state changes, if the change is what puts the thing out of
+/// sight: a candle that has already gone out lights nothing, itself included, so
+/// `say(…, from: candles)` must come above `candles.isLit = false` or the last
+/// stage of the burn goes unreported.
+///
+/// - Parameters:
+///   - message: the text to print.
+///   - source: the thing the message is about.
+public func say(_ message: String, from source: Item) {
+    guard source.isVisible else { return }
+    Ctx.current.say(message)
+}
+
+/// Prints a message only if the player can currently see the person it is
+/// about — the ``Item`` overload, for an actor.
+///
+/// - Parameters:
+///   - message: the text to print.
+///   - source: the person the message is about.
+public func say(_ message: String, from source: Actor) {
+    guard source.isVisible else { return }
+    Ctx.current.say(message)
+}
+
 /// Blocks the current action with a complaint. The default action and any
 /// remaining `before`/`after` rules are skipped; world time still passes.
 ///

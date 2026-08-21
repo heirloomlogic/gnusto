@@ -4,7 +4,7 @@ Hold things, open and close, lock with keys, and gate the map.
 
 ## Overview
 
-Most of what makes a world feel physical comes from a small family of item traits: things you can put objects **on** or **inside**, things that **open and close**, things a **key** locks, and **doors** that gate one room from the next. All of them are declared the same way as any other trait — a word inside an `Item { … }` block, or, for the lock/key relationship, one line in the `map` — and all of them expose live state you can read and set from a rule.
+A world feels physical when things can be inside other things, and Gnusto spells that as one word in an `Item { … }` block. Write ``container`` and the parser accepts `put coin in box` that moment; there is nothing else to wire up. The same goes for ``surface``, for ``openable``, and — with one line in the `map` rather than the item — for a lock and its key, and for a door standing between two rooms. All of them expose live state a rule can read and set.
 
 For the traits themselves see ``ItemTrait``; for writing the rules that react to them see <doc:WritingRules>.
 
@@ -126,11 +126,12 @@ wardedDoor.before(.close) {
 }
 
 fuse("lampDies", after: 9) {
-    let watched = lamp.isVisible      // asked before it goes out
+    say("The lamp gutters, and goes out.", from: lamp)   // asked before it goes out
     lamp.isLit = false
-    if watched { say("The lamp gutters, and goes out.") }
 }
 ```
+
+A timer says its line only where that line is true, and the `from:` above is the shorthand for it — see <doc:DarknessTimeAndDeath>, which has the rule and the ordering trap the comment is pointing at.
 
 Reach for these rather than rebuilding the answer from ``Item/isHeld``, ``Item/isIn(_:)`` and ``Item/holds(_:)``: `holds(_:)` tests one level only, and a ``surface`` is not a ``container`` and so is never ``Item/isOpen`` — which is how a hand-rolled version ends up refusing over a book sitting on a table in the same room.
 

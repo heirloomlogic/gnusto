@@ -160,7 +160,6 @@ extension DefaultActions {
             .putOn,
             [
                 ["put", .directObject, "on", .indirectObject],
-                ["put", .directObject, "onto", .indirectObject],
                 ["hang", .directObject, "on", .indirectObject],
                 ["place", .directObject, "on", .indirectObject],
             ],
@@ -169,10 +168,7 @@ extension DefaultActions {
 
         .handled(
             .putIn,
-            [
-                ["put", .directObject, "in", .indirectObject],
-                ["put", .directObject, "into", .indirectObject],
-            ],
+            [["put", .directObject, "in", .indirectObject]],
             reach: .bothObjects
         ) { try putIn($0, frame: $1) },
 
@@ -316,7 +312,6 @@ extension DefaultActions {
                 ["enter", .directObject],
                 ["board", .directObject],
                 ["get", "in", .directObject],
-                ["get", "into", .directObject],
                 ["go", "through", .directObject],
                 ["walk", "through", .directObject],
                 ["step", "through", .directObject],

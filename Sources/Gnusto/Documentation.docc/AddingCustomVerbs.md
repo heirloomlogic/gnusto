@@ -8,9 +8,27 @@ Gnusto ships with a standard verb table in two tiers. The **core** tier is verbs
 
 When your game needs a verb neither tier covers — `ring`, `wind`, `chime`, `barter` — you declare it once with `#verb` and handle it in a rule.
 
+### What the core tier already answers
+
+Thirty-one intents, listed here because the commonest reason to mint a verb is not knowing the engine already has it. Two files in this repo had independently minted a "go through" before the engine's own `enter` was noticed.
+
+Handling things: `take`/`get`/`grab`/`hold`/`carry`/`pick up`, `drop`/`discard`/`put down`, `put … on`/`onto`/`hang`/`place`, `put … in`/`into`, `wear`/`don`, `remove`/`doff`/`take off`.
+
+Looking: `examine`/`x`/`inspect`/`look at`, `read`, `look`/`l`, `look in`/`search`/`find`/`look for`, `inventory`/`inv`/`i`.
+
+Working things: `open`, `close`/`shut`, `lock … with`, `unlock … with`, `turn on`/`switch on`/`light`, `turn off`/`switch off`/`extinguish`/`douse`/`blow out`, `push`/`move`/`press`.
+
+Going: `go`/`walk`/`run`, `enter`/`board`/`get in`/`go through`/`climb`/`step`, `exit`/`disembark`/`get out of`, `follow`/`chase`/`go after`, `wait`/`z`.
+
+People: `greet`/`hello`/`hi`/`say to`.
+
+Meta: `score`, `version`, `quit`/`q`, and the four the engine answers ahead of the pipeline — `save`, `restore`, `undo`, `restart`.
+
+Every intent constant lives on ``Intent``, which is the browsable list. The four engine-level verbs cannot be overridden at all: ``GameWorld`` answers them before any rule runs, so `action(.save)` never fires — and the bootstrap warns rather than letting you find out from a transcript. Overriding any of the other core verbs warns too; overriding a stub verb is silent, because reclaiming a stub is the expected end state. See <doc:BootstrapDiagnostics>.
+
 `wait` (and its alias `z`) is a normal, time-passing turn: it prints the `timePasses` line ("Time passes.") and lets fuses and daemons tick — the standard way to let a countdown run down or a wandering monster catch up. Re-skin the line by mutating `text.timePasses`.
 
-There are three beats to a custom verb: **declare** it, **list** it in a `verbs` block, and **respond** to it in a rule.
+A custom verb takes three steps in three places: `#verb` declares it, the `verbs` block lists it, and a rule answers it.
 
 ## Declare the verb
 
@@ -128,7 +146,7 @@ Among rows sharing a verb word, the parser tries the most specific pattern first
 
 ### A preposition's synonyms come free
 
-Write a row's preposition once. `in` also answers to `inside` and `into`, and `on` to `onto` and `upon`, wherever the literal stands in the pattern — in the verb-identifying run (`look in`), closing an object slot (`put <object> in <second object>`), or as a trailing particle (`turn <object> on`). So a single `["pour", .directObject, "in", .indirectObject]` accepts `pour water into the sack`, and a second row spelling out `into` buys nothing.
+Write a row's preposition once. `in` also answers to `inside` and `into`, and `on` to `onto` and `upon`, wherever the literal stands in the pattern — in the verb-identifying run (`look in`), closing an object slot (`put <object> in <second object>`), or as a trailing particle (`turn <object> on`). So a single `["pour", .directObject, "in", .indirectObject]` accepts `pour water into the sack`, and a second row spelling out `into` buys nothing — worse than nothing, in fact: it can never match, because the canonical row is tried first and the two are the same pattern to the parser. The built-in table takes its own advice, `put <object> in <second object>` and `get in <object>` each being one row that answers to every spelling — and the bootstrap now says so out loud, warning `verb row "…" is "…" respelled, and can never match` for any two rows on the merged table that a canonical spelling makes one. Non-fatal: a dead row breaks nothing, so the game still starts. Delete the row it names.
 
 Two things the table deliberately does not do. It never reaches noun resolution, so a game may still name a thing `inside pocket` — and `put the inside pocket in the box` splits at the `in` the player typed, because a literal closing a slot looks for its own word before it looks for a synonym. And it is not the direction table: a bare `in`, `inside`, `out` or `outside` is still a way to walk.
 

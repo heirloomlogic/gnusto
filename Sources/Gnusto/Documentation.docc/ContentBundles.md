@@ -78,7 +78,25 @@ struct Attic: GameContent {
 }
 ```
 
-Because bundle-owned entity IDs are namespaced, so are their save-file keys — a bundle's `@Global` persists under `Bundle.flag`. Nothing shipped before this change owned bundle content, so there's no migration; keep a plugin's own state additive as usual.
+Because bundle-owned entity IDs are namespaced, so are their save-file keys — a bundle's `@Global` persists under `Bundle.flag`. Keep a bundle's own state additive, for the same reason any saved state has to be: a field that changes shape is a save file that no longer reads.
+
+## A bundle can add a field to the status footer
+
+``StatusLine`` is three fields — room, score, moves — and the engine cannot reach the libraries that know anything else: `GnustoClock` depends on `Gnusto`, not the other way round. So a bundle that knows something a tester needs hands it up:
+
+```swift
+public var statusFields: [(String, String)] { [("time", now.formatted(format))] }
+```
+
+Nothing prints unless a session asks for a footer (`GNUSTO_STATUS=1`; see <doc:PlayTesting>), at which point the pairs are appended to every turn's `[status]` line after the four standard fields, in declaration order:
+
+```
+[status] room=Front Hall | moves=12 | score=0 | turn=cost | time=5:46 pm
+```
+
+Each field is read inside a live turn frame, so it may read globals, traits and the turn counter freely — `Clock`'s hour is a function of `moves`, and a value computed at bootstrap would say half past five forever. That frame is a **throwaway**, discarded rather than committed, so a field must be **read-only**: one that writes loses its write silently. There is no cheap way to enforce that — the frame has to be live for the reads to work — so it is a contract rather than a guarantee.
+
+The frame is built over the world as the turn stood at its **close**: after its `afterEachTurn` rules and its timer tick, and before its move counter advanced. That is the same instant every rule in the turn read, so a field derived from `moves` names the turn it is printed under rather than the one after it — `Clock`'s hour and the hour that turn's `describe` blocks printed are one reading. The four standard fields beside it are the opposite kind of fact and are read *after* the counter moves, because `moves=` is the count the turn left behind. A turn that advanced no counter — a parse error, a meta verb, the opening, UNDO, RESTORE — has no such instant, and the field is read live, which for that turn is the same world. This was wrong once, and it cost two days: the footer's `time=` stood one tick ahead of every hour the game itself printed, and only on turns that cost a move.
 
 ## Cross-bundle references
 

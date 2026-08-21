@@ -348,13 +348,13 @@ struct ZorkDam: GameContent {
         daemon("damFlood") {
             let ladder = ["ankles", "shins", "knees", "hips", "waist", "chest", "neck"]
             floodLevel += 1
-            let here = player.location == maintenanceRoom
             if floodLevel <= ladder.count {
-                if here { say(Prose.floodRises(ladder[floodLevel - 1])) }
+                say(Prose.floodRises(ladder[floodLevel - 1]), from: maintenanceRoom)
             } else {
-                // Past the neck: the room is full.
+                // Past the neck: the room is full. Drowning is not a `say`, so
+                // this one keeps its own room test.
                 stopDaemon("damFlood")
-                if here { try die(Prose.floodDrowns) }
+                if player.location == maintenanceRoom { try die(Prose.floodDrowns) }
             }
         }
     }

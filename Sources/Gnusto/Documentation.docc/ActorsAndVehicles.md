@@ -5,11 +5,11 @@ and enterables the player can ride.
 
 ## Overview
 
-Phase 8 taught the engine that entities other than the player can hold
-things, take turns, and leave the world. Both features are deliberately
-thin: an ``Actor`` compiles down to the same storage as an ``Item``, and a
-vehicle is one trait plus one field of world state — everything else
-composes from machinery that already existed.
+A world with one person in it is a museum. The player is not the only
+thing that can hold something, take a turn, or leave; an ``Actor``
+compiles down to the same storage as an ``Item``, and a vehicle is one
+trait plus one field of world state. There is no new subsystem here,
+which is why there is so little of it to learn.
 
 ## Declaring an actor
 

@@ -23,7 +23,7 @@ import Gnusto
 /// randomness, so transcripts that never meet the actor stay stable no
 /// matter what he does elsewhere.
 ///
-/// **None of these daemons acts for an actor whose ``Actor/isUnconscious`` is
+/// **None of these daemons acts for an actor whose `Actor.isUnconscious` is
 /// set.** A man lying on the floor does not wander off, catch you up, or lift
 /// anything out of your hands, and he draws no randomness deciding not to.
 /// That flag is the engine's rather than this plugin's for a reason worth

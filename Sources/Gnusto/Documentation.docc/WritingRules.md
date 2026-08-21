@@ -4,7 +4,7 @@ Attach game logic to items, locations, and the world.
 
 ## Overview
 
-Rules are where a game stops being a map of static rooms and starts reacting. A rule is a phase (when it runs), an owner (what it watches), an optional set of intents (which actions it cares about), and a body of ordinary Swift that reads and writes the live world.
+A rule is four things: a phase (when it runs), an owner (what it watches), an optional set of intents (which actions it cares about), and a body of ordinary Swift that reads and writes the live world. Nothing about the body is special — it is Swift, in your module, with the whole world in scope.
 
 Every rule lives in a game's `rules` block, which yields a ``Rules`` value:
 
@@ -147,7 +147,7 @@ Four things are worth knowing:
 - **`describe` and a static `description(…)` are mutually exclusive.** Declaring both on the same entity — or two `describe` rules for it — is a fatal ``BootstrapError`` caught at startup, not a silent last-writer-wins. Pick one per entity.
 - **A runtime assignment still wins.** Setting ``Item/description`` (or ``Location/description``) directly in a rule overrides the `describe` closure from then on — useful for a one-way change like a lever that reveals a passage.
 - **Keep the closure pure.** It runs on every look and examine; read state, return a string, and don't mutate the world from inside it.
-- **Never ask for the text from inside it.** The engine calls this closure *from within* the call that is producing the text, so anything in the body that describes calls back into the machinery calling it, and it recurses. Three ways in: ``describeSurroundings(withRoomName:)``, ``arrive(at:)``, and — the easy one — reading the entity's own ``Item/description``. `chest.describe { "\(chest.description) It is scratched." }` looks like appending to the declared text, but `describe` and `description(…)` are mutually exclusive, so there is no declared text to read and the getter simply calls this closure again. To share a base string, put it in a `let` and interpolate that. The engine counts the nesting and traps with a message naming the entity rather than dying in a stack overflow — but the trap is a diagnostic, not a feature.
+- **Never ask for the text from inside it.** The engine calls this closure *from within* the call that is producing the text, so anything in the body that describes calls back into the machinery calling it, and it recurses. Three ways in: ``describeSurroundings(withRoomName:)``, ``arrive(at:withRoomName:)``, and — the easy one — reading the entity's own ``Item/description``. `chest.describe { "\(chest.description) It is scratched." }` looks like appending to the declared text, but `describe` and `description(…)` are mutually exclusive, so there is no declared text to read and the getter simply calls this closure again. To share a base string, put it in a `let` and interpolate that. The engine counts the nesting and traps with a message naming the entity rather than dying in a stack overflow — but the trap is a diagnostic, not a feature.
 
 ## When the room's description *is* the state
 
@@ -257,22 +257,39 @@ It runs at **stage 0**, ahead of every `before` rule — which is the point, sin
 
 ## Produce output and control the turn
 
-Six free functions are available in any rule body:
+Eight free functions are available in any rule body:
 
 - ``say(_:)`` — add a line to the turn's output and keep going. The default action still runs.
 - ``sayOnceThisTurn(_:)`` — `say`, but at most once per turn, for a sentence another emitter may also have a claim on.
+- ``say(_:from:)-(String,Location...)`` — `say`, but only if the player is standing in a room the line is true of. What a **timer** wants; the ``say(_:from:)-(String,Item)`` form asks ``Item/isVisible`` instead.
 - ``refuse(_:)`` — print a complaint and abort the action (and remaining rules).
 - ``reply(_:)`` — print a response *in place of* the default action. Same mechanics as `refuse`, different intent: use it when your rule is the behavior, not a veto.
+- ``require(_:else:)`` — refuse with that message unless the condition holds. The message is an autoclosure, so a call that builds its complaint from live state pays nothing on the passing path.
 - ``handled()`` — finish an action without adding a line, after the rule has already produced its whole response with ``say(_:)``.
 - ``end(won:)`` — end the game; the engine prints the final score afterward.
 
-The two `say`s return normally; the other four return `Never` and read well after a `guard … else`.
+The three `say`s return normally; the rest return `Never` and read well after a `guard … else`.
+
+### Running the default yourself with `proceed`
+
+A `before` rule that wants to add something *after* the built-in behavior has a problem: `before` runs first by definition, and `after` is too late to refuse. ``proceed()`` resolves it by running the default action right there:
+
+```swift
+mailbox.before(.open) {
+    try proceed()                    // the built-in open runs here
+    say("A city map is tucked inside the lid.")
+}
+```
+
+The call means "run the default now; I take responsibility". Once it runs, the pipeline skips its own stage-4 step so the default cannot run twice, and it also skips **every remaining `before` rule** ahead of the calling rule in this turn — including siblings in the same phase, not only later phases. A guard written as a later `before` rule never gets to run, so it cannot refuse an action that has already happened. That is the cost of the facility, and it is worth knowing before reaching for it.
+
+It is legal only from a `before`-phase rule and only once per turn. From an `after` or each-turn rule, or a second time, it traps with a message that says so rather than quietly running the default twice. If the default itself throws — a built-in `open` refusing a locked item — that interrupt propagates out of `proceed()` exactly as it would have out of the pipeline.
 
 The engine's own case for ``sayOnceThisTurn(_:)`` is the dark. A dark room has nothing to describe, so the room describer prints ``GameText/pitchBlack``; `GnustoDangerousDark`'s grue prints its warning, because the fairness contract owes the player a warned turn. Point both at one sentence — Zork does, where the dark-room line *is* the threat — and the turn says it once; give them different words and both still print, since what is compared is the text and nothing else. The memory is one turn deep, and dropping a line changes nothing but the output: a schedule that counted the turn has still counted it.
 
 ### Answer in the engine's own words with `gameText`
 
-A rule that is refusing something the engine already has a sentence for should say the engine's sentence, so a game that re-skins the line once gets it everywhere. ``gameText`` is the stock table this turn is being spoken from:
+A rule that is refusing something the engine already has a sentence for should say the engine's sentence, so a game that re-skins the line once gets it everywhere. ``Game/gameText`` is the stock table this turn is being spoken from:
 
 ```swift
 grating.before(.open) {

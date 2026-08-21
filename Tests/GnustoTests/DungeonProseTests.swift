@@ -294,7 +294,7 @@ struct DungeonProseTests {
                 .contains("Silence, out of a wall that had a great deal of machinery"))
         #expect(!transcript.contains("a faint whirring — the round room"))
         #expect(!transcript.contains("You hear the whir from the round room"))
-        #expect(transcript.contains("there is no way into\nit from this side"))
+        #expect(transcript.contains("there is no way into it from this side"))
     }
 
     /// The control, by the other road in: with the machinery still running all
@@ -832,7 +832,7 @@ struct DungeonProseTests {
 
         #expect(transcript.contains("Round Room"))
         let stopped = turnOutput(of: "x passages", in: transcript)
-        #expect(stopped.contains("standing still\nat last long enough to be counted"))
+        #expect(stopped.contains("standing still at last long enough to be counted"))
         #expect(!stopped.contains("no way to tell"))
     }
 
@@ -1257,5 +1257,35 @@ struct DungeonProseTests {
         // the living room — so the answer is about reach, not about squeezing.
         let squeeze = turnOutput(of: "squeeze window", in: transcript)
         #expect(!squeeze.contains("accomplishes nothing"))
+    }
+
+    // MARK: - Forms
+
+    /// Three of this game's set pieces are *forms* rather than paragraphs, and
+    /// the full-screen renderer used to fold and re-pack all of them: the ring
+    /// of letters became a run of words, the inscription over Hades became one
+    /// line, and the riddle's verse lost its line endings. Each is written
+    /// indented inside its literal, which is what `TextWrap` now reads as a
+    /// literal block.
+    ///
+    /// Pinned against the real prose rather than a fixture, because the defect
+    /// was that the engine and the game disagreed about which of the two this
+    /// text is.
+    @Test func theGamesFormsKeepTheirShapeInTheFullScreenRenderer() {
+        let ring = TextWrap.wrap(Prose.etchingsAbove, width: 80)
+        #expect(ring.contains("    f r o b o z z i c a"))
+        #expect(ring.contains("    l    M A G I C    d"))
+
+        let verse = TextWrap.wrap(Prose.riddleInscription, width: 80)
+        #expect(verse.contains("    No one passes who cannot say"))
+        #expect(verse.contains("    and cannot be drawn up"))
+
+        let gate = TextWrap.wrap(Prose.entranceToHades, width: 80)
+        #expect(gate.contains("  Abandon every hope"))
+        #expect(gate.contains("  all ye who enter here!"))
+
+        // The prose around a form is still prose: the sentence introducing the
+        // gate is folded and re-packed the way every other paragraph is.
+        #expect(gate.contains("You are outside a large gateway, on which is inscribed"))
     }
 }

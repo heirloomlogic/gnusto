@@ -1,0 +1,5 @@
+{
+  "mcpServers": {
+    "mygame": { "command": "bin/gnusto-mcp", "args": ["MyGame"] }
+  }
+}

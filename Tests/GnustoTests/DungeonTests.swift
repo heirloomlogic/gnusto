@@ -1432,6 +1432,39 @@ struct DungeonTests {
             ])
     }
 
+    /// A fuse fires on a count and not on a place, so both of the gate's fuses
+    /// ask where the player is standing before they say anything. Ring the bell
+    /// and climb out, and the ceremony still lapses and the bell still cools —
+    /// the player simply isn't told about wraiths jeering and a bell going cold
+    /// in a room a staircase below them.
+    @Test func theGateFusesSayNothingToAPlayerWhoHasClimbedOut() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheGateOfHades
+                + ["ring bell", "up"] + Array(repeating: "wait", count: 25)
+                + ["down", "examine bell"],
+            seed: 18)
+
+        #expect(!transcript.contains("The tension of this ceremony is broken"))
+        #expect(!transcript.contains("The bell appears to have cooled down"))
+        // Both fuses ran all the same: the bell is cold when they come back to
+        // it, which is the half of the fix that is easy to break.
+        #expect(
+            turnOutput(of: "examine bell", in: transcript).contains("once rung to call the faithful"))
+
+        // The control: stand at the gate for the same count and both lines land.
+        let staying = try await play(
+            Dungeon(),
+            Self.toTheGateOfHades + ["ring bell"] + Array(repeating: "wait", count: 25),
+            seed: 18)
+        expectInOrder(
+            staying,
+            [
+                "The tension of this ceremony is broken",
+                "The bell appears to have cooled down.",
+            ])
+    }
+
     /// The red-hot bell is a **reach** problem, not a per-verb one. The source
     /// answers take, ring and everything else with one sentence; one
     /// ``Item/reach(otherwise:)`` rule says it once and every verb the engine
@@ -1875,7 +1908,7 @@ struct DungeonTests {
                 "A ghost appears in the room",
                 "banishes them to the Land of the Living Dead",
             ])
-        #expect(!transcript.contains("bag of coins\n"))
+        #expect(!transcript.contains("bag of coins"))
     }
 
     /// The rusty knife announces itself to the elvish sword, and then kills

@@ -244,3 +244,61 @@ struct SentryPostGame: Game {
         }
     }
 }
+
+/// The mistake #283 names, in the shape Dungeon carried it: two rows for one
+/// pattern, differing only in how the preposition is spelled. `in` already
+/// answers to `into`, so the second row is dead — and the bootstrap has to say
+/// so without refusing to start the game, because a dead row breaks nothing.
+struct RespeltVerbGame: Game {
+    let title = "Respelt"
+    let intro = "A well, and a coin to throw into it."
+
+    let wellhead = Location {
+        name("Wellhead")
+        description("A mossy wellhead over a dark shaft.")
+    }
+
+    let well = Item {
+        name("well")
+        container
+    }
+
+    let coin = Item {
+        name("copper coin")
+        adjectives("copper")
+    }
+
+    var map: WorldMap {
+        player.starts(in: wellhead)
+        well.starts(in: wellhead)
+        coin.starts(in: wellhead)
+    }
+
+    var verbs: [SyntaxRule] {
+        SyntaxRule("toss", .directObject, "in", .indirectObject, intent: .throwAt)
+        SyntaxRule("toss", .directObject, "into", .indirectObject, intent: .throwAt)
+    }
+}
+
+/// The same mistake against a row the *engine* declares: nothing in this game
+/// spells `put <object> in <second object>`, but the built-in table does, so the
+/// row below can never fire either. Proves the check reads the merged table
+/// rather than the game's own block. Nothing here is played — the `verbs` block
+/// is the fixture, and the room exists so the game can start.
+struct RespeltBuiltInVerbGame: Game {
+    let title = "Respelt Built-In"
+    let intro = "A shelf and a box."
+
+    let pantry = Location {
+        name("Pantry")
+        description("A narrow pantry lined with shelves.")
+    }
+
+    var map: WorldMap {
+        player.starts(in: pantry)
+    }
+
+    var verbs: [SyntaxRule] {
+        SyntaxRule("put", .directObject, "into", .indirectObject, intent: .putIn)
+    }
+}

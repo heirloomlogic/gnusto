@@ -143,8 +143,10 @@ struct Zork1: Game, GameMain {
         action(.score) {
             let moves = player.moves
             say(
-                "Your score is \(player.score) of a possible \(possibleScore), "
-                    + "in \(moves) \(moves == 1 ? "turn" : "turns").")
+                """
+                Your score is \(player.score) of a possible \(possibleScore),
+                in \(moves) \(moves == 1 ? "turn" : "turns").
+                """)
             say(Prose.rankLine(ZorkRank.name(for: player.score)))
         }
         // `diagnose` reports the death toll and how many resurrections remain
@@ -766,11 +768,22 @@ struct Zork1: Game, GameMain {
         // water — the Loud Room falls quiet — when they fire. Declared here
         // because they touch entities from two bundles (``dam`` and
         // ``roundRoom``) that neither can reach from its own timers.
+        //
+        // Both lines are things you watch happen to a body of water — mud laid
+        // bare, a surface settling flat and grey — so both are said from the
+        // four rooms that body of water can be seen from: the top of the dam
+        // holding it, either shore, and the bed between them. The gates work
+        // their eight-turn count regardless; a player who turned the bolt and
+        // then climbed out to the lawn is simply not told, and finds a drained
+        // reservoir when he comes back down. The Loud Room hears the same news
+        // from its own description, which `waterMoving` rewrites.
         fuse("damDrain", after: 8) {
             dam.reservoirDrained = true
             dam.trunk.reveal()
             roundRoom.waterMoving = false
-            say(Prose.reservoirEmpties)
+            say(
+                Prose.reservoirEmpties,
+                from: dam.damRoom, dam.reservoirSouth, dam.reservoir, dam.reservoirNorth)
         }
         fuse("damRefill", after: 8) {
             dam.reservoirDrained = false
@@ -778,16 +791,20 @@ struct Zork1: Game, GameMain {
             if player.location == dam.reservoir {
                 try die(Prose.reservoirRefillDrowns)
             }
-            say(Prose.reservoirRefills)
+            say(
+                Prose.reservoirRefills,
+                from: dam.damRoom, dam.reservoirSouth, dam.reservoir, dam.reservoirNorth)
         }
 
         // The struck match's short life: two turns after it's lit, the burning
         // match goes out and vanishes. Armed by the striking rule above; here
         // because the match is a ``ZorkTemple`` item lit from a ``ZorkDam`` one.
         fuse("matchBurns", after: 2) {
+            // Asked while the flame is still on it and still in the world:
+            // a match that has already vanished is nowhere the player can see.
+            say(Prose.matchBurnsOut, from: temple.burningMatch)
             temple.burningMatch.isLit = false
             temple.burningMatch.vanish()
-            say(Prose.matchBurnsOut)
         }
 
         // He swings back at someone who has swung at him, and otherwise starts

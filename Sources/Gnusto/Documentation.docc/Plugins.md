@@ -4,9 +4,9 @@ Package a reusable game system as an importable unit of verbs and rules.
 
 ## Overview
 
-<doc:ContentBundles> let a game split its *own* world across types and packages. A **plugin** goes one step further: it packages a reusable game *system* — commerce, combat, dialog, magic — as an importable unit of verbs and rules that any game can opt into. Instead of hand-copying the same `buy`/`sell` logic into every shop game, you write it once as a ``GamePlugin`` and splice it in.
+A content bundle (<doc:ContentBundles>) splits a game's own world across types and packages. A plugin does something else: it packages a reusable *system* — spellcasting, a wall clock, combat — so a second game can import it. The seven `Gnusto*` libraries in this repo are all built this way, and so is the `buy`/`sell` logic you would otherwise hand-copy into every shop game.
 
-A plugin is **logic only**. It contributes the player-typeable vocabulary a system needs and the rules that react to it, but it owns no rooms, items, or `@Global` state of its own. It operates over entities and state the *host* game declares, receiving what it needs as parameters. That's what keeps it portable — it assumes nothing about the host's world beyond the traits and intents they agree on.
+A plugin is **logic only**. It contributes the vocabulary its system needs and the rules that react to it, and owns no rooms, items, or `@Global` state; everything it touches is declared by the host game and handed to it as a parameter. A plugin that needs a room of its own is not a plugin.
 
 ## A plugin is a `GamePlugin`
 
@@ -101,6 +101,20 @@ var rules: Rules {
 }
 ```
 
+## The one thing the host doesn't splice
+
+``GamePlugin/statusFields`` adds `name=value` pairs to the play-test status footer, and it is the single member the host gets by *storing* the plugin rather than by splicing it into a block of its own:
+
+```swift
+struct Barometer: GamePlugin {
+    var statusFields: [(String, String)] { [("glass", "falling")] }
+}
+```
+
+Everything else here changes what the game does, so the host opts in by hand. A status field annotates a transcript the host already asked for and changes nothing about the world — and there is no `Game` block to splice it into — so the bootstrap reads it off the host's stored properties, the same walk that catches an unlisted bundle. A plugin the host stores is found; one constructed inline inside a computed property is not.
+
+The field is read inside a live turn frame that is then discarded, so it must be read-only — and it is sampled at the *close* of the turn rather than after the turn's counter advanced, so a field derived from `moves` names the turn it is printed under. See <doc:ContentBundles#A-bundle-can-add-a-field-to-the-status-footer> for the full contract, sampling point included, which is identical for both protocols.
+
 ## Content-bearing plugins own their region
 
 A logic-only ``GamePlugin`` declares no world of its own — it operates entirely over entities the host passes it. A plugin that needs to ship its *own* rooms, items, and `@Global` state is a <doc:ContentBundles> instead: a ``GameContent`` carries `map`, `rules`, and `verbs`, and the bootstrap discovers its entities by reflection, [namespacing](<doc:ContentBundles#EntityIDs-are-namespaced-by-the-bundle>) them under the bundle so a reusable plugin can't collide with the host. List it in the game's `content`.
@@ -160,7 +174,7 @@ example that wires the first four:
 | `GnustoScoring` | `GameContent` | award-once registers | the award table to `init(awards:)`, treasures + the trophy case to `treasures(_:into:)` |
 | `GnustoActors` | `GamePlugin` | nothing — position *is* the actor's placement | actors, room sets, candidates to `roams`/`steals`/`reaction` |
 | `GnustoMeleeCombat` | `GameContent` | the combat ledger (health/stun/engagement by key) | villains, weapons, prose to `villain`/`aggression`, and each villain's `strikesFirst` odds of picking a fight nobody offered him |
-| `GnustoSpellcasting` | `GameContent` | the spell memory and the energy pool | spells + their ``SpellCost`` to `spell(_:cost:effect:)` |
+| `GnustoSpellcasting` | `GameContent` | the spell memory and the energy pool | spells + their `SpellCost` to `spell(_:cost:effect:)` |
 | `GnustoClock` | `GameContent` | the clock's offset and pause state | start time, minutes per turn, alarms to `at(_:named:perform:)`, timetables to `schedule(_:daemonName:_:)` |
 | `GnustoConversation` | `GameContent` | the facts the player has worked out, and which answers each actor has already given | actors + topic rows to `topics(of:)` (with `again:` lines for the answers that should land once), opening lines to `greeting(of:)`, evidence to `shows(_:to:)` |
 

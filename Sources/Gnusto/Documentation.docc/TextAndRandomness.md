@@ -4,7 +4,7 @@ Re-skin the engine's stock lines, and roll dice that replay.
 
 ## Overview
 
-Two systems give a game its voice: ``GameText``, the table of every stock line the engine can say, and the seeded random stream behind ``random(_:)``, `oneOf(_:)`, and ``chance(_:)``, which lets responses vary without ever varying between replays of the same seed.
+Every line the engine can say on its own initiative lives on one value, ``GameText``, and any of them can be replaced without writing a rule. The other half of a game's voice is variation, and Gnusto gets it from a seeded stream: the same seed replays the same session, so a response can be different every time and still be a test.
 
 ## Speaking in your own voice
 
@@ -26,7 +26,7 @@ struct Snark: Game {
 Every line is a ``GameText/Line``, and a `Line` takes a bare string as readily as a closure — so whether a line names the thing it is about, or looks around before it speaks, is the game's call and not a shape the engine picked:
 
 ```swift
-text.cantReach = .naming { "\($0) is right there, and yet." }
+text.cantReach = .naming { "\($0.sentenceCased) is right there, and yet." }
 text.pitchBlack = .live { lantern.isOn ? "Dark, and getting darker." : "Pitch black." }
 ```
 
@@ -51,7 +51,7 @@ Where a line *opens* on the phrase, reach for ``GameText/Noun/sentenceCased``: `
 text.cantTakeActor = .naming { "\($0.sentenceCased) would sooner not." }
 ```
 
-The other three helpers are public statics too, for a custom line that builds a phrase of its own: ``GameText/definite(_:proper:)``, ``GameText/indefinite(_:proper:)``, and ``GameText/list(_:)``, which joins already-rendered phrases into an English list. A rule can reach the same forms through ``Item/definiteName`` and ``Item/indefiniteName``.
+The other three helpers are public statics too, for a custom line that builds a phrase of its own: ``GameText/definite(_:proper:)``, ``GameText/indefinite(_:proper:plural:)``, and ``GameText/list(_:)``, which joins already-rendered phrases into an English list. A rule can reach the same forms through ``Item/definiteName`` and ``Item/indefiniteName``.
 
 A capitalized `name(…)` on an item or actor without `properName` is a non-fatal bootstrap warning — not an inference, since `Elvish sword` is a common noun, but the author who meant a proper name shouldn't have to find out from a transcript. Location names are exempt: the engine never articles a room.
 
@@ -123,7 +123,7 @@ let damage = random(2...12)
 
 All three draw from one stream whose position lives in the world state. That buys two guarantees:
 
-- **Replays**: a world built with ``GameWorld/init(game:seed:)`` plays out identically for the same seed and commands, on every platform — the backbone of transcript tests and reproducible bug reports. The plain ``GameWorld/init(game:)`` seeds fresh each run.
+- **Replays**: a world built with ``GameWorld/init(game:seed:saveDirectory:)`` plays out identically for the same seed and commands, on every platform — the backbone of transcript tests and reproducible bug reports. The plain ``GameWorld/init(game:saveDirectory:)`` seeds fresh each run.
 - **Saves**: the stream's position is part of the saved state, so a restored game continues with exactly the randomness it would have had.
 
 Pin the seed in a test the same way the engine's own suite does:

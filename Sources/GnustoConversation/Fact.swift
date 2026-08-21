@@ -1,7 +1,7 @@
 /// One thing the player has learned — a key into the conversation layer's
 /// saved knowledge.
 ///
-/// Modelled on ``Intent``: an opaque string identity that a game extends with
+/// Modelled on `Intent`: an opaque string identity that a game extends with
 /// its own constants, so that a mistyped fact is a compile error rather than
 /// a topic that silently never unlocks.
 ///

@@ -310,26 +310,23 @@ struct Lighthouse: Game {
         //
         // The state change is unconditional and the prose is not. A fuse fires
         // wherever the lamp is, and the lamp can be lit and left in a room the
-        // player is not standing in — so both lines check that the flame is
-        // somewhere the player could actually watch it go. `isVisible` and not
-        // `isReachable`: watching is not touching, and `turn on` needed reach,
-        // not possession, so the lamp can be burning in the open chest with the
-        // player standing over it.
+        // player is not standing in — so both lines are said *from* the lamp,
+        // which is `say(_:from:)` asking whether the flame is somewhere the
+        // player could watch it go. Seeing and not touching: `turn on` needed
+        // reach, not possession, so the lamp can be burning in the open chest
+        // with the player standing over it and both lines still arrive.
         fuse("lampDims", after: 6) {
-            if oilLamp.isLit, oilLamp.isVisible {
-                say("The oil lamp's flame sinks to a sullen flicker.")
+            if oilLamp.isLit {
+                say("The oil lamp's flame sinks to a sullen flicker.", from: oilLamp)
             }
         }
         fuse("lampDies", after: 9) {
-            // Asked before it goes out, because in the lamp room the lamp is the
+            // Said before it goes out, because in the lamp room the lamp is the
             // only thing lighting it: extinguish first and the player is in the
             // dark, the lamp is out of sight, and the one line that explains the
             // blackout is the line that gets swallowed.
-            let watched = oilLamp.isVisible
+            say("The oil lamp gutters, and goes out.", from: oilLamp)
             oilLamp.isLit = false
-            if watched {
-                say("The oil lamp gutters, and goes out.")
-            }
         }
 
         // The keeper roams between the base and the lamp room, moved by the
@@ -360,11 +357,11 @@ struct Lighthouse: Game {
                 """
             switch tideStage {
             case 0:
-                return body + " The tide is low, the planks dry underfoot."
+                return "\(body) The tide is low, the planks dry underfoot."
             case 1, 2:
-                return body + " Water is beginning to lap over the far planks."
+                return "\(body) Water is beginning to lap over the far planks."
             default:
-                return body + " The sea stands over the planks now, and it is not going back."
+                return "\(body) The sea stands over the planks now, and it is not going back."
             }
         }
 

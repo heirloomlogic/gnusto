@@ -20,6 +20,7 @@ that covers your task before writing code.
 | `docs/playtesting.md` | how to play a game by hand and read the transcript as prose, plus the calibration answer key |
 | `.claude/skills/playtest/`, `.claude/workflows/playtest.js` | the automated play-test harness: subagents play, read prose, and report lines untrue of their frame |
 | `bin/playtest-replay` | one-line non-interactive replay of any game, seed pinned |
+| `bin/gnusto-mcp`, `.mcp.json` | every demo game as an MCP play-test server — an agent opens a session, takes turns, and is told what it was shown and never followed up. One binary is one game, so no tool takes a game name |
 | `FIDELITY.md` | Zork 1 and Dungeon only: where their content departs from the original. Nothing else uses it. The two do **not** share a prose rule: Zork 1 reproduces verbatim, Dungeon adapts, and the Dungeon section states its rule before any region entry |
 
 ## Commands
@@ -36,7 +37,23 @@ xcrun swift-format lint --strict --parallel --recursive --configuration .swift-f
 
 bin/playtest-replay --build Fulminate                              # once
 bin/playtest-replay Fulminate --commands probe.txt --seed 0 --label mine --tail 60
+
+bin/gnusto-mcp Fulminate                       # what an MCP client runs; stdout is the protocol
+                                               # builds then execs ONCE, at connect: a running
+                                               # server is frozen at its session's commit, so
+                                               # restart the session after editing the engine
+bin/playtest-measure .context/playtest/mine/probe-*   # rooms, verbs, objects — off the artifacts
 ```
+
+Measuring a harness change wants a **control binary run through the same dispatch**,
+never a comparison against numbers recorded in an earlier round, and only Dungeon has
+the map size to confirm a result. `.claude/skills/playtest/SKILL.md`, "Measuring a
+change to the harness", says why both of those cost real work when ignored.
+
+`bin/playtest-replay` stays even though the server can replay too: the calibration
+workflow in `.claude/skills/playtest/SKILL.md` builds from a worktree at an old
+commit, and a 2026-07 commit has no `--mcp`. Retiring the script retires
+calibration, which is the regression test for the whole harness.
 
 CI runs the strict lint. Run it before you claim done.
 
@@ -58,7 +75,9 @@ suite runs on pushes to main, not on PRs.
 
 `GNUSTO_SEED` pins a binary's random stream the way `play(_:_:seed:)` pins a test's, so
 a hand-played session replays as a test. `GNUSTO_TRANSCRIPT` records it,
-`GNUSTO_SAVE_DIR` keeps scripted saves out of your real slots, and a line starting `//`
+`GNUSTO_SAVE_DIR` keeps scripted saves out of your real slots, `GNUSTO_STATUS=1` appends
+a `[status] room=… | moves=… | turn=cost|free | …` line to every turn (a `REPL`
+argument, not an environment read — the suite is unaffected), and a line starting `//`
 or `#` is a tester comment that never reaches the parser. See `docs/playtesting.md`.
 
 `GNUSTO_SEED` also seeds the **suite**: it supplies the seed for every `play(_:_:)` call
@@ -136,6 +155,19 @@ computed `static var`, which rebuilds it on every read.
 
 ## Gotchas that cost real time
 
+- **Write prose as one plain multi-line `"""` literal. No trailing `\`, no `+`.**
+  Where you break a source line is never where the player sees a break:
+  `TextWrap` folds a single newline to a space on **both** channels, so a
+  hard-wrapped literal and a one-line one render identically. Compose with
+  interpolation *inside* the literal — `"""\(body) The tide is low."""` — never
+  `body + " The tide is low."`. `Tests/GnustoTests/ProseConventionTests.swift`
+  fails the build on either spelling in a game target. (A trailing `\` is still
+  right in a JSON-RPC frame, a `fatalError` diagnostic or an MCP tool
+  description: none of those is routed through `TextWrap`, so none has a fold to
+  rely on.) Three ways to mean a break: a **blank line** is a new paragraph,
+  **`<br>`** is a hard break inside one, and a line **indented two spaces** is a
+  *form* — a sign, an inscription, a scrap of verse, a map legend — which keeps
+  its line endings, its inner spacing and its indent, and is never re-packed.
 - **Two description channels, not one.** `description(…)` / `describe { }` is the
   *examine* text. `firstSight(…)` / `presence { }` is the *room-listing* paragraph.
   On an item the listing line prints until the player touches it; on an actor it
@@ -190,6 +222,15 @@ computed `static var`, which rebuilds it on every read.
 - **Actors are always listed** if perceivable. `scenery` has no effect on them; only
   `hidden`-and-unrevealed or offstage suppresses one.
 - **`reveal()` is one-way** and `isTouched` is read-only — neither is a toggle.
+- **A timer fires on a count, not on a place.** Whatever room the player walked to
+  is the room a fuse or daemon's line prints in, so a body that `say`s "the bell
+  appears to have cooled down" says it two rooms away. `say(_:from:)` is the
+  question written once: pass the room (or rooms) the sentence is true in, or the
+  item/actor it is about, and it prints nowhere else. The room form ignores light —
+  a bell in the dark is still heard from inside the room; the item form asks
+  `isVisible`, which light does gate and which anything carried always passes. Say
+  it **before** a state change that hides its own subject: a candle already blown
+  out lights nothing, itself included. `DarknessTimeAndDeath.md` has the rule.
 - **`maxScore` is checked against the `Scoring` award table.** `Scoring(awards:)` is the
   one place a register's points are written — `awardOnce("beacon")` and
   `visit(_:register:)` read them from there, and an unlisted register is a `fatalError`,
@@ -247,8 +288,13 @@ computed `static var`, which rebuilds it on every read.
   sack` is one turn over two objects, expanded exactly as `take all` is —
   labeled lines, once-per-turn upkeep, the same four verbs. The parser reads the
   whole phrase as a *name* first and only splits it when nothing answers to it,
-  so `name("cup and saucer")` keeps working and no phrase changes meaning. The
-  comma is not a conjunction yet: the addressing path claims it.
+  so `name("cup and saucer")` keeps working and no phrase changes meaning. **The
+  comma joins too**, and separates more strongly: the addressing path reads the
+  line's first comma first (`troll, take the sword`) and hands it over only when
+  the words before it name nobody, and below that the phrase is cut at its
+  commas before each group is offered as a name — so `take cup and saucer, the
+  coin` is two things. A comma at either end of a phrase, or doubled, is
+  punctuation and drops out.
 - **`but`/`except` trims a keyword, and only a keyword.** `take all but the
   sword`, `drop them except the lamp`, `take all except the sword and the lamp`
   — the exception is itself a phrase, and excepting something that was never in

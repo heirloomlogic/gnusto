@@ -103,7 +103,7 @@ public struct Spellcasting: GameContent {
     }
 
     /// Registers one spell: the stage-4 behavior that casting its `intent`
-    /// performs, and — for a ``SpellCost/prepared(book:)`` spell — the behavior
+    /// performs, and — for a ``SpellCost/prepared(book:learnVia:)`` spell — the behavior
     /// of memorizing it via `prepareIntent`. Splice the result into the game's
     /// `actions` block.
     ///

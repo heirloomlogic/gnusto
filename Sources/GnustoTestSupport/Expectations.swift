@@ -109,20 +109,20 @@ public func expectNoAmbiguity(
 /// catches that; it does not catch a *forty-eighth* stub arriving in the engine
 /// tomorrow, which would slip past every named assertion at once.
 ///
-/// So this reads the properties off ``GameText/StubReplies`` with `Mirror`
+/// So this reads the properties off `GameText.StubReplies` with `Mirror`
 /// rather than listing them: every line the engine actually ships is compared,
 /// and one added tomorrow is compared the day it lands. A property whose type
 /// this cannot render is reported as its own issue rather than skipped, which is
 /// what keeps "reflected" from quietly meaning "unchecked".
 ///
 /// That last sentence has no exception to it as of #246. `give` used to be one:
-/// the one line about two objects, so not a ``GameText/Line``, so unreachable by
+/// the one line about two objects, so not a `GameText.Line`, so unreachable by
 /// reflection and compared by hand below the loop — the single line in here that
-/// could change shape without the sweep noticing. It takes a ``GameText/Gift``
+/// could change shape without the sweep noticing. It takes a `GameText.Gift`
 /// now, and goes through the same door as the other forty-eight.
 ///
 /// Which sentences each line prints is the *subject's* business as of #255:
-/// ``LineSubject/samples(one:many:)`` supplies them, so a subject arriving
+/// `LineSubject.samples(one:many:)` supplies them, so a subject arriving
 /// tomorrow is swept the day it lands rather than after somebody teaches a
 /// switch here about it.
 ///

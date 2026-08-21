@@ -4,17 +4,49 @@ on:
   push:
     tags:
       - "[0-9]+.[0-9]+.[0-9]+*"
+  # Build on PRs that touch documentation, without deploying. A broken doc link
+  # is a warning DocC degrades to plain text, so nothing fails at the tag — it
+  # just ships wrong. Catching it on the PR is the only place it costs nothing.
+  pull_request:
+    paths:
+      - "Sources/**/*.docc/**"
+      - "Sources/**/*.swift"
+      - ".github/workflows/documentation.yml"
   workflow_dispatch:
 
+# This workflow has one job, and that job pushes gh-pages at a tag, so `contents: write`
+# is the grant it needs. Moving it to job level would scope nothing — recorded here so
+# the workflow-level placement reads as deliberate rather than overlooked.
 permissions:
   contents: write
+
+# See test.yml for why non-PR runs get a singleton group rather than sharing one; here
+# it also keeps a tag's docs build from being cancelled while queued.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: true
+
+env:
+  # Never ./docs — that directory is hand-written and tracked, and the plugin
+  # deletes its --output-path before writing to it.
+  DOCS_OUTPUT: .docs-build
 
 jobs:
   documentation:
     runs-on: macos-26
+
+    # ~6m40s observed; DocC on macOS is the variable part.
+    timeout-minutes: 20
+
     steps:
       - name: Checkout repository
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Safe even though the deploy step below pushes: that action unsets this
+          # checkout's extraheader, drops the origin remote and re-adds one carrying
+          # its own `token` input, then names that remote on every git call. It
+          # rebuilds its auth from scratch and never reads what checkout persisted.
+          persist-credentials: false
 
       # The swift-docc-plugin is gated behind the dev sentinel in Package.swift,
       # so it must exist before the plugin command is available. Resolving here
@@ -24,23 +56,50 @@ jobs:
           touch .dev-tooling
           swift package resolve
 
-      - name: Clean docs directory
-        run: rm -rf ./docs
+      # Combined documentation merges one archive per target into a single site.
+      # It is gated on two docc features; assert them here so a runner without
+      # the gate fails on this line rather than somewhere inside the plugin.
+      - name: Check docc feature gates
+        run: |
+          features="$(dirname "$(dirname "$(xcrun --find docc)")")/share/docc/features.json"
+          cat "$features"
+          grep -q '"dependency"' "$features"
+          grep -q '"synthesized-landing-page-name"' "$features"
 
+      # Targets are named explicitly rather than discovered: the package also
+      # ships seven demo executables and a macro target, and none of them
+      # belongs on the site.
       - name: Build documentation
         run: |
-          swift package --allow-writing-to-directory ./docs \
-            generate-documentation --target Gnusto \
+          swift package --allow-writing-to-directory "$DOCS_OUTPUT" \
+            generate-documentation \
+            --target Gnusto \
+            --target GnustoScoring \
+            --target GnustoActors \
+            --target GnustoDangerousDark \
+            --target GnustoMeleeCombat \
+            --target GnustoSpellcasting \
+            --target GnustoClock \
+            --target GnustoConversation \
+            --target GnustoTestSupport \
+            --enable-experimental-combined-documentation \
             --disable-indexing \
             --transform-for-static-hosting \
             --hosting-base-path /gnusto \
-            --output-path ./docs
+            --output-path "$DOCS_OUTPUT" \
+            --warnings-as-errors
 
       - name: Create .nojekyll file
-        run: touch ./docs/.nojekyll
+        run: touch "$DOCS_OUTPUT/.nojekyll"
 
       - name: Deploy to GitHub Pages
-        uses: JamesIves/github-pages-deploy-action@d92aa235d04922e8f08b40ce78cc5442fcfbfa2f # v4.8.0
+        uses: JamesIves/github-pages-deploy-action@fa24774553152dd7873cd16ebd8d959b010c5445 # v4.9.0
         with:
           branch: gh-pages
-          folder: docs
+          folder: ${{ env.DOCS_OUTPUT }}
+          # Tags publish; everything else runs dry. A dry run still authenticates,
+          # does `git ls-remote`, builds the worktree and commits — the early return
+          # sits one step before the push — so a PR proves the whole deploy path
+          # instead of leaving it untested until the next tag. That is what makes
+          # `persist-credentials: false` above verifiable rather than hoped-for.
+          dry-run: ${{ !startsWith(github.ref, 'refs/tags/') }}

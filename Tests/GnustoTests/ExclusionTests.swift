@@ -174,4 +174,30 @@ struct ExclusionTests {
                 "in 0 turns",
             ])
     }
+
+    // MARK: - Where the comma meets the exclusion
+
+    /// The exception is resolved as a direct slot of its own, so it separates
+    /// the way one does: `and` and the comma both join inside it, and neither
+    /// needed a second splitter written for it.
+    @Test func anExclusionListMayBeJoinedByACommaInstead() async throws {
+        let transcript = try await play(VaultGame(), ["take all but the coin, the feather"])
+        #expect(transcript.contains("cup and saucer: Taken."))
+        #expect(!transcript.contains("brass coin:"))
+        #expect(!transcript.contains("gray feather:"))
+    }
+
+    /// A name with `but` among its own words keeps it while standing in a comma
+    /// list. The group is offered whole before anything in it is read as
+    /// punctuation, and no keyword stands in front of this `but` in any case.
+    @Test func aNameContainingAnExclusionWordIsStillOneMemberOfACommaList() async throws {
+        let transcript = try await play(VaultGame(), ["take last but one ticket, the coin"])
+        expectInOrder(
+            transcript,
+            [
+                "last but one ticket: Taken.",
+                "brass coin: Taken.",
+            ])
+        #expect(!transcript.contains("You can't see any such thing"))
+    }
 }

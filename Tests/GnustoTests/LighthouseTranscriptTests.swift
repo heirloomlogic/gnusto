@@ -118,7 +118,7 @@ struct LighthouseTranscriptTests {
             transcript,
             [
                 "Lamp Room",
-                "the reservoir is\ndry. You'll want the oil can in hand",
+                "the reservoir is dry. You'll want the oil can in hand",
             ])
         #expect(!transcript.contains("comes up roaring"))
     }
@@ -157,8 +157,41 @@ struct LighthouseTranscriptTests {
             [
                 "Cold water sluices between the planks of the jetty.",
                 "The sea is at your ankles",
-                "takes you\nwith it — without malice",
+                "takes you with it — without malice",
                 "*** You have died ***",
+            ])
+    }
+
+    /// The jetty's live description is one paragraph in every tide stage.
+    ///
+    /// #294: plain output used to print an authored newline verbatim, and this
+    /// description composes — a tide clause joined onto a body that is
+    /// hard-wrapped in the source. So the paragraph broke mid-sentence at the
+    /// author's column and then ran the second line to 106.
+    ///
+    /// The expectation is written the way the source is, and folded, which is
+    /// the claim: the rendered value no longer depends on where either literal
+    /// was wrapped. Nothing in `Sources/Lighthouse/` had to change to make it
+    /// pass.
+    ///
+    /// The daemon bumps `tideStage` at the end of a turn, so four looks read
+    /// stages 0, 1, 2 and 3. The fourth turn drowns you; that is the room's
+    /// contract, tested above, and it does not reach these assertions.
+    @Test func theJettyDescribesEachTideStageAsOneParagraph() async throws {
+        let body = TextWrap.fold(
+            """
+            A short timber jetty on stone footings runs out from the foot of
+            the lighthouse to the mooring where the keeper's boat rides.
+            """)
+
+        let transcript = try await play(Lighthouse(), ["look", "look", "look", "look"])
+
+        expectInOrder(
+            transcript,
+            [
+                "\(body) The tide is low, the planks dry underfoot.",
+                "\(body) Water is beginning to lap over the far planks.",
+                "\(body) The sea stands over the planks now, and it is not going back.",
             ])
     }
 
@@ -197,7 +230,7 @@ struct LighthouseTranscriptTests {
         #expect(!transcript.contains("I didn't understand that sentence."))
         // The tide never gets a turn to rise in, so it never gets to drown you.
         #expect(!transcript.contains("Cold water sluices between the planks of the jetty."))
-        #expect(!transcript.contains("takes you\nwith it"))
+        #expect(!transcript.contains("takes you with it"))
         #expect(turnOutput(of: "score", in: transcript).contains("in 0 turns."))
     }
 

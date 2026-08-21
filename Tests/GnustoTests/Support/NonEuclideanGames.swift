@@ -55,7 +55,7 @@ struct BankOfZorkGame: Game {
         name("Safety Depository")
         description(
             """
-            This is a large rectangular room. A shimmering curtain of light \
+            This is a large rectangular room. A shimmering curtain of light
             hangs across the north wall, and a passage leads south.
             """
         )

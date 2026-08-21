@@ -68,6 +68,26 @@ struct TopicSlotTests {
         #expect(parsed.topic == ["mr", "quivers"])
     }
 
+    /// The comma joins object phrases below the addressing reading (#276), but
+    /// a topic is words and never a list — so it goes back to being
+    /// punctuation here. That is what keeps an author's declared subject
+    /// matching the sentence that spells it: ``Topic/normalize(_:)`` reads a
+    /// keyword through the same splitter, which drops the comma outright.
+    @Test func aCommaInsideATopicIsPunctuationAndNotASeparator() throws {
+        let parser = try Self.makeParser()
+        let parsed = try parser.parse(
+            "ask butler about the war, and the king", scope: Self.scope
+        ).get()
+        #expect(parsed.topic == ["war", "and", "king"])
+        #expect(parsed.topic == Topic.normalize("the war, and the king"))
+    }
+
+    @Test func aTopicWithACommaReachesTheRuleAsWords() async throws {
+        let transcript = try await play(
+            ManorParserGame(), ["ask butler about the war, and the king"])
+        #expect(transcript.contains("The butler considers \"war and king\"."))
+    }
+
     @Test func aTopicCanFollowTheVerbWithNoObjectAtAll() throws {
         let parser = try Self.makeParser()
         let parsed = try parser.parse("think about mary", scope: Self.scope).get()

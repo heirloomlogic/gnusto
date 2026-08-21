@@ -18,7 +18,7 @@ extension Prose {
         You are in the kitchen of the white house. A table seems to have been
         used recently for the preparation of food. A passage leads to the west
         and a dark staircase can be seen leading upward. A dark chimney leads
-        down and to the east is a small window which is \
+        down and to the east is a small window which is
         \(windowOpen ? "open." : "slightly ajar.")
         """
     }
@@ -77,12 +77,12 @@ extension Prose {
     static let rug = "A thick, dusty oriental rug, heavy enough to take some effort to move."
 
     static let rugMoveEmbellishment = """
-        With a great effort, the rug is moved to one side of the room, \
+        With a great effort, the rug is moved to one side of the room,
         revealing the dusty cover of a closed trap door.
         """
 
     static let rugAlreadyMoved = """
-        Having moved the carpet previously, you find it impossible to move \
+        Having moved the carpet previously, you find it impossible to move
         it again.
         """
 

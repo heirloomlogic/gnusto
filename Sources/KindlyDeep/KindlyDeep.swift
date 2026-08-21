@@ -59,15 +59,15 @@ struct KindlyDeep: Game, GameMain {
     let maxScore = 25
 
     let intro = """
-        The roof gave no more warning than a handful of dust, and then the world came down behind you with a sound \
-        you felt in your teeth. That was... some time ago. You came back to yourself in the perfect dark, and you \
-        have been sitting in it since, doing the arithmetic: the fall is between you and the main entry; your \
-        cap-lamp went out when you did; your water went under the rock with your dinner bucket; and the shift \
-        above will have marked these workings lost until the men can timber their way in, which is measured in days, \
+        The roof gave no more warning than a handful of dust, and then the world came down behind you with a sound
+        you felt in your teeth. That was... some time ago. You came back to yourself in the perfect dark, and you
+        have been sitting in it since, doing the arithmetic: the fall is between you and the main entry; your
+        cap-lamp went out when you did; your water went under the rock with your dinner bucket; and the shift
+        above will have marked these workings lost until the men can timber their way in, which is measured in days,
         not hours.
 
-        Somewhere close, something large shifts its weight and breathes — patient, unbothered, smelling of hay. It \
-        would be a strange sort of comfort to anyone who had not spent two years leading Biscuit along these entries. \
+        Somewhere close, something large shifts its weight and breathes — patient, unbothered, smelling of hay. It
+        would be a strange sort of comfort to anyone who had not spent two years leading Biscuit along these entries.
         To you it is just the mule, waiting to hear what the two of you do next.
 
         There is a flint striker on your belt, where it always is. Down here you learn: first the lamp, then the plan.
@@ -95,7 +95,7 @@ struct KindlyDeep: Game, GameMain {
                 biscuitIsHere
                 ? "Somewhere near, hooves shift on stone."
                 : """
-                Nothing shifts in it and nothing breathes but you, which is a new development and not a \
+                Nothing shifts in it and nothing breathes but you, which is a new development and not a
                 welcome one.
                 """
             return "\(dark) \(between) \(striker)"
@@ -183,8 +183,8 @@ struct KindlyDeep: Game, GameMain {
         name("The Fresh Fall")
         description(
             """
-            The entry ends, abruptly, in a wall of fallen rock and splintered timber — the whole roof of the main \
-            entry, brought down and settled in to stay. Rails run under the rubble and do not come out. The stable \
+            The entry ends, abruptly, in a wall of fallen rock and splintered timber — the whole roof of the main
+            entry, brought down and settled in to stay. Rails run under the rubble and do not come out. The stable
             lies west, the shelter hole is a step down to the south, and the entry runs east toward the forks.
             """)
         dark
@@ -194,9 +194,9 @@ struct KindlyDeep: Game, GameMain {
         name("The Stable")
         description(
             """
-            Whitewashed walls, worn brick underfoot, and the deep sweet smell of hay: the underground stable, kept \
-            cleaner than most kitchens because the stable boss holds strong views. Biscuit's stall stands open, his \
-            name chalked over it in a careful hand, and the water trough beside it stands dry. The entry back east \
+            Whitewashed walls, worn brick underfoot, and the deep sweet smell of hay: the underground stable, kept
+            cleaner than most kitchens because the stable boss holds strong views. Biscuit's stall stands open, his
+            name chalked over it in a careful hand, and the water trough beside it stands dry. The entry back east
             is clear.
             """)
         dark
@@ -206,9 +206,9 @@ struct KindlyDeep: Game, GameMain {
         name("The Shelter Hole")
         description(
             """
-            A timbered shelter hole cut into the rib, where a man steps in when the trip runs: a bench, a dry floor, \
-            and — luxury of luxuries — a heap of clean straw somebody's conscience left here. It is the driest, \
-            safest corner these workings have to offer, which is to say it is dry and mostly safe. The entry is back \
+            A timbered shelter hole cut into the rib, where a man steps in when the trip runs: a bench, a dry floor,
+            and — luxury of luxuries — a heap of clean straw somebody's conscience left here. It is the driest,
+            safest corner these workings have to offer, which is to say it is dry and mostly safe. The entry is back
             up to the north.
             """)
         dark
@@ -227,8 +227,8 @@ struct KindlyDeep: Game, GameMain {
         name("The Low Crawl")
         description(
             """
-            Rock above, rock below, rock pressing in from both sides, and you between on your hands and knees with \
-            the lamp throwing your own shadow into your eyes. The crawl runs east and west, and it is no place to \
+            Rock above, rock below, rock pressing in from both sides, and you between on your hands and knees with
+            the lamp throwing your own shadow into your eyes. The crawl runs east and west, and it is no place to
             stop and think — thinking is better done where there is room to stand up and pace.
             """)
         dark
@@ -255,9 +255,9 @@ struct KindlyDeep: Game, GameMain {
         name("The Old Works")
         description(
             """
-            An old heading, worked out and abandoned, and the air in it is sweet. Nothing here has been touched in \
-            years: the props still stand, the floor is undisturbed, and the quiet is the particular quiet of a place \
-            that has stopped exchanging air with the rest of the world. It is, in every visible respect, the most \
+            An old heading, worked out and abandoned, and the air in it is sweet. Nothing here has been touched in
+            years: the props still stand, the floor is undisturbed, and the quiet is the particular quiet of a place
+            that has stopped exchanging air with the rest of the world. It is, in every visible respect, the most
             restful room in these workings.
             """)
         dark
@@ -283,7 +283,7 @@ struct KindlyDeep: Game, GameMain {
         synonyms("steel", "belt")
         description(
             """
-            A flint striker, worn shiny at the grip, riding where it always rides. It has no opinions and asks \
+            A flint striker, worn shiny at the grip, riding where it always rides. It has no opinions and asks
             nothing of you, and twice today it has been the difference between a mine and a grave.
             """)
     }
@@ -303,7 +303,7 @@ struct KindlyDeep: Game, GameMain {
         adjectives("good", "dry")
         description(
             """
-            Good hay, kept dry. Biscuit's, by rights. It is no use to you at all, which is the first honest thing \
+            Good hay, kept dry. Biscuit's, by rights. It is no use to you at all, which is the first honest thing
             this mine has said today.
             """)
         scenery
@@ -324,7 +324,7 @@ struct KindlyDeep: Game, GameMain {
         synonyms("seat", "initials")
         description(
             """
-            A plank bench worn smooth by men waiting out a trip, with two initials cut into the end of it by \
+            A plank bench worn smooth by men waiting out a trip, with two initials cut into the end of it by
             somebody with time and a knife. It is a good bench. It is not a bed.
             """)
         scenery
@@ -336,8 +336,8 @@ struct KindlyDeep: Game, GameMain {
         synonyms("rubble", "rock", "rocks", "roof", "timber", "timbers", "wall", "prop", "props", "dust")
         description(
             """
-            Rock and splintered prop, packed tight and gone quiet — the settled kind of fall, the kind that has \
-            finished moving and has no interest in being moved. Somewhere on the far side of it, men are timbering \
+            Rock and splintered prop, packed tight and gone quiet — the settled kind of fall, the kind that has
+            finished moving and has no interest in being moved. Somewhere on the far side of it, men are timbering
             toward you at the pace of men who think they are recovering bodies.
             """)
         scenery
@@ -350,7 +350,7 @@ struct KindlyDeep: Game, GameMain {
         plural
         description(
             """
-            Two iron rails running out of the fall and away east, the gauge of a mine car and a mule. They are the \
+            Two iron rails running out of the fall and away east, the gauge of a mine car and a mule. They are the
             reason you know these workings in the dark: you have walked them, alongside Biscuit, for two years.
             """)
         scenery
@@ -362,7 +362,7 @@ struct KindlyDeep: Game, GameMain {
         synonyms("name", "chalk")
         description(
             """
-            Biscuit's stall, swept and standing open, his name chalked over it by somebody who took trouble with \
+            Biscuit's stall, swept and standing open, his name chalked over it by somebody who took trouble with
             the letters. He has not looked at it once since the roof came down.
             """)
         scenery
@@ -375,7 +375,7 @@ struct KindlyDeep: Game, GameMain {
         synonyms("basin")
         description(
             """
-            The mule trough, dry as a flue. The line that fed it came down the main entry, and the main entry is the \
+            The mule trough, dry as a flue. The line that fed it came down the main entry, and the main entry is the
             wall of rock behind you. What was in it went into the brick hours ago.
             """)
         scenery
@@ -387,7 +387,7 @@ struct KindlyDeep: Game, GameMain {
         synonyms("board", "boards")
         description(
             """
-            A corn bin with a loose board along its foot — the sort of gap a man uses when he wants a thing to be \
+            A corn bin with a loose board along its foot — the sort of gap a man uses when he wants a thing to be
             where he left it. Biscuit has clearly known about it longer than you have.
             """)
         scenery
@@ -412,7 +412,7 @@ struct KindlyDeep: Game, GameMain {
         synonyms("gap", "floor")
         description(
             """
-            Room enough for a man on his hands and knees, if the man is motivated. It was not cut; it was left, by \
+            Room enough for a man on his hands and knees, if the man is motivated. It was not cut; it was left, by
             rock that could just as easily not have left it. It runs east, toward the shaft.
             """)
         scenery
@@ -426,7 +426,7 @@ struct KindlyDeep: Game, GameMain {
         synonyms("heading", "workings", "mouth", "silence")
         description(
             """
-            An old heading, worked out and left, running north into a dark that gives nothing back. The air coming \
+            An old heading, worked out and left, running north into a dark that gives nothing back. The air coming
             out of it is sweetish, almost pleasant, which is the single most alarming thing in these workings.
             """)
         scenery
@@ -448,8 +448,8 @@ struct KindlyDeep: Game, GameMain {
         synonyms("ladderway", "air")
         description(
             """
-            The shaft, going up out of the lamplight and on going up: four hundred feet of it, with weather at the \
-            top. The air coming down it is cold and moving and smells of the outside, and you have to make yourself \
+            The shaft, going up out of the lamplight and on going up: four hundred feet of it, with weather at the
+            top. The air coming down it is cold and moving and smells of the outside, and you have to make yourself
             stop breathing it and get on.
             """)
         scenery
@@ -470,7 +470,7 @@ struct KindlyDeep: Game, GameMain {
         synonyms("rope", "pull", "cord", "bracket")
         description(
             """
-            The signal bell and its rope, polished by a thousand gloved pulls. One ring travels all the way up the \
+            The signal bell and its rope, polished by a thousand gloved pulls. One ring travels all the way up the
             shaft to the engineer's ear, and the hoisting engineer never sleeps on shift. Allegedly.
             """)
         scenery
@@ -481,7 +481,7 @@ struct KindlyDeep: Game, GameMain {
         synonyms("collar", "chains", "harness", "singletree", "peg")
         description(
             """
-            Haul tack on its peg: collar, trace chains, and a singletree, all sized for a mule who has worn them \
+            Haul tack on its peg: collar, trace chains, and a singletree, all sized for a mule who has worn them
             daily for years.
             """)
         scenery
@@ -500,14 +500,14 @@ struct KindlyDeep: Game, GameMain {
         properName
         description(
             """
-            A mine mule of no particular color under the dust, built close to the ground and wide through the chest, \
-            with the calm of an animal that has spent years around falling rock and formed no opinion of it. He has \
-            hauled for you for two years. He knows these roads in the dark better than you know them in the light, \
+            A mine mule of no particular color under the dust, built close to the ground and wide through the chest,
+            with the calm of an animal that has spent years around falling rock and formed no opinion of it. He has
+            hauled for you for two years. He knows these roads in the dark better than you know them in the light,
             and both of you know it.
             """)
         firstSight(
             """
-            Biscuit the mine mule stands close by, dusty to the knees, watching you with the patience of an animal \
+            Biscuit the mine mule stands close by, dusty to the knees, watching you with the patience of an animal
             who has decided the situation is your job.
             """)
     }
@@ -556,7 +556,7 @@ struct KindlyDeep: Game, GameMain {
                     12,
                     {
                         """
-                        Your mouth has gone tacky and your tongue keeps finding the roof of it. Rock dust does that. \
+                        Your mouth has gone tacky and your tongue keeps finding the roof of it. Rock dust does that.
                         So does a shift and a cave-in without water.
                         """
                     }
@@ -565,8 +565,8 @@ struct KindlyDeep: Game, GameMain {
                     20,
                     {
                         """
-                        Thirst has stopped being an opinion and started being a fact — a dry, insistent one that gets \
-                        a word into every thought you try to finish. Swallowing has become something you do on \
+                        Thirst has stopped being an opinion and started being a fact — a dry, insistent one that gets
+                        a word into every thought you try to finish. Swallowing has become something you do on
                         purpose.
                         """
                     }
@@ -581,11 +581,11 @@ struct KindlyDeep: Game, GameMain {
                         let ache =
                             capLamp.isLit
                             ? """
-                            Your lips have split, there is an ache setting up behind your eyes, and the lamp-flame \
+                            Your lips have split, there is an ache setting up behind your eyes, and the lamp-flame
                             doubles when you look at it too long.
                             """
                             : """
-                            Your lips have split, and there is an ache setting up behind your eyes that the dark does \
+                            Your lips have split, and there is an ache setting up behind your eyes that the dark does
                             nothing to help with.
                             """
                         return """
@@ -599,11 +599,11 @@ struct KindlyDeep: Game, GameMain {
                     biscuitIsHere
                     ? "the last thing you hear is hooves on stone, coming near, too late"
                     : """
-                    the last thing you hear is nothing at all, which is worse, and is the thing you were trying to \
+                    the last thing you hear is nothing at all, which is worse, and is the thing you were trying to
                     avoid the whole time
                     """
                 return """
-                    The weakness arrives all at once, the way the roof did. Your knees go, the floor comes up with \
+                    The weakness arrives all at once, the way the roof did. Your knees go, the floor comes up with
                     surprising gentleness, and \(last). You died of thirst in the dark, one swallow short of the cage.
                     """
             })
@@ -620,7 +620,7 @@ struct KindlyDeep: Game, GameMain {
                     16,
                     {
                         """
-                        A yawn ambushes you mid-step. It has, you concede, been a very long day, and it started \
+                        A yawn ambushes you mid-step. It has, you concede, been a very long day, and it started
                         underground and got deeper.
                         """
                     }
@@ -636,7 +636,7 @@ struct KindlyDeep: Game, GameMain {
                             ? "standing still, staring at the lamp-flame, thinking nothing at all"
                             : "standing still in the dark, thinking nothing at all"
                         return """
-                            Your eyelids have taken on weight. Twice now you have caught yourself \(standing) — and \
+                            Your eyelids have taken on weight. Twice now you have caught yourself \(standing) — and
                             down here, thinking nothing at all is how accidents get their start.
                             """
                     }
@@ -645,8 +645,8 @@ struct KindlyDeep: Game, GameMain {
                     36,
                     {
                         """
-                        You are walking asleep, in the technical sense: moving, and no longer entirely present for \
-                        it. Find the straw and lie down, or your body will choose a spot on its own authority — and \
+                        You are walking asleep, in the technical sense: moving, and no longer entirely present for
+                        it. Find the straw and lie down, or your body will choose a spot on its own authority — and
                         it will not choose well.
                         """
                     }
@@ -658,8 +658,8 @@ struct KindlyDeep: Game, GameMain {
                     ? "Something warm noses your cheek once, twice — and gets no answer."
                     : "Nothing noses your cheek. The cold does all of the attending, and it is thorough."
                 return """
-                    Your body, done waiting, sits you down against the rib "for a moment." The cold of the stone \
-                    climbs into you with tradesmanlike patience. \(attending) You fell asleep in the wrong place, in \
+                    Your body, done waiting, sits you down against the rib "for a moment." The cold of the stone
+                    climbs into you with tradesmanlike patience. \(attending) You fell asleep in the wrong place, in
                     a world where places matter.
                     """
             })
@@ -716,7 +716,7 @@ struct KindlyDeep: Game, GameMain {
         action(.drink) {
             try reply(
                 """
-                There is nothing here fit to drink. Mine water is mine water, and a man who drinks it trades a bad \
+                There is nothing here fit to drink. Mine water is mine water, and a man who drinks it trades a bad
                 day for a worse week.
                 """)
         }
@@ -724,7 +724,7 @@ struct KindlyDeep: Game, GameMain {
             try require(
                 player.location == shelterHole,
                 else: """
-                    Not on bare stone, not in this cold. The shelter hole has straw and a dry floor; your legs will \
+                    Not on bare stone, not in this cold. The shelter hole has straw and a dry floor; your legs will
                     thank you for the walk.
                     """)
             fatigue = 0
@@ -736,7 +736,7 @@ struct KindlyDeep: Game, GameMain {
             let lyingDown =
                 capLamp.isLit
                 ? """
-                You pinch the lamp out first — nobody sleeps next to an open flame, and the oil will be wanted \
+                You pinch the lamp out first — nobody sleeps next to an open flame, and the oil will be wanted
                 later — and lie down in the straw
                 """
                 : """
@@ -745,11 +745,11 @@ struct KindlyDeep: Game, GameMain {
             let watch =
                 biscuitIsHere
                 ? """
-                Biscuit stands over you in the dark, head low, doing the watching, turnabout being fair, since you \
+                Biscuit stands over you in the dark, head low, doing the watching, turnabout being fair, since you
                 have done his for two years.
                 """
                 : """
-                Nobody stands over you; there is nobody down here to do it, and you sleep the shallow way a man \
+                Nobody stands over you; there is nobody down here to do it, and you sleep the shallow way a man
                 sleeps when the watching is his own job too.
                 """
             // A man does not sleep beside an open flame, and oil is a thing
@@ -757,8 +757,8 @@ struct KindlyDeep: Game, GameMain {
             capLamp.isLit = false
             try reply(
                 """
-                \(lyingDown) and let the weight of the shift come off your shoulders. \(watch) You wake with your \
-                legs answering questions again, in a dark so complete it takes a moment to remember it is not the \
+                \(lyingDown) and let the weight of the shift come off your shoulders. \(watch) You wake with your
+                legs answering questions again, in a dark so complete it takes a moment to remember it is not the
                 lamp that failed. The striker is on your belt, where it always is.
                 """)
         }
@@ -821,22 +821,21 @@ struct KindlyDeep: Game, GameMain {
         let scene =
             isTheLast
             ? """
-            You work the stopper out and drink, and this time there is nothing to count and no reason to stop early, \
-            so you finish it. It goes down cold and tastes of tin. The stopper goes back in from habit, which is the \
+            You work the stopper out and drink, and this time there is nothing to count and no reason to stop early,
+            so you finish it. It goes down cold and tastes of tin. The stopper goes back in from habit, which is the
             only reason left to do it.
             """
             : """
-            You work the stopper out and drink, counting, the way you were taught to do everything down here — and \
-            stop while there is still something to stop for. It goes down cold and tastes of tin, and for a while \
+            You work the stopper out and drink, counting, the way you were taught to do everything down here — and
+            stop while there is still something to stop for. It goes down cold and tastes of tin, and for a while
             the dust in your throat lets go. The stopper goes back in, and goes back in tight.
             """
         guard biscuitIsHere else { try reply(scene) }
         try reply(
-            scene + " "
-                + """
-                Biscuit watches every swallow with the frankness of an animal who has never once pretended not to \
-                want a thing.
-                """)
+            """
+            \(scene) Biscuit watches every swallow with the frankness of an animal who
+            has never once pretended not to want a thing.
+            """)
     }
 
     /// Beat 5, the beam. Reachable as `harness biscuit`, as `harness tack`, and
@@ -857,17 +856,17 @@ struct KindlyDeep: Game, GameMain {
         try require(
             biscuitIsHere,
             else: """
-                You look at the collar on its peg and at twelve feet of poplar, and the arithmetic is the same as it \
-                was: this is a two-body problem. He is not here. You left him on the other side of a crawl he cannot \
+                You look at the collar on its peg and at twelve feet of poplar, and the arithmetic is the same as it
+                was: this is a two-body problem. He is not here. You left him on the other side of a crawl he cannot
                 use.
                 """)
         beamHauled = true
         scoring.awardOnce("beam")
         try reply(
             """
-            You back him up to the beam and hitch on, and Biscuit takes the strain the way he takes everything — \
-            without ceremony. His shoulders set, his hooves bite, and the beam grinds off the gate an inch at a \
-            time until it lies clear. He shakes the dust off and looks around for something else to be better at \
+            You back him up to the beam and hitch on, and Biscuit takes the strain the way he takes everything —
+            without ceremony. His shoulders set, his hooves bite, and the beam grinds off the gate an inch at a
+            time until it lies clear. He shakes the dust off and looks around for something else to be better at
             than you.
             """)
     }
@@ -893,8 +892,8 @@ struct KindlyDeep: Game, GameMain {
         canteenDrinks -= 1
         try reply(
             """
-            You cup your hand and pour, and he takes it in one long pull that empties your palm and then asks, \
-            politely, for the rest. It was yours, and you will feel the lack of it — but he has hauled all shift on \
+            You cup your hand and pour, and he takes it in one long pull that empties your palm and then asks,
+            politely, for the rest. It was yours, and you will feel the lack of it — but he has hauled all shift on
             hay and promises, and some debts you pay when you can.
             """)
     }
@@ -902,14 +901,14 @@ struct KindlyDeep: Game, GameMain {
     /// The scratch under the forelock — his reaction to `pet biscuit`, and what
     /// bare `pet` finds when he is standing there.
     private static let theScratch = """
-        You scratch the spot under his forelock, and he leans into it until keeping your feet becomes a genuine \
+        You scratch the spot under his forelock, and he leans into it until keeping your feet becomes a genuine
         question of engineering.
         """
 
     /// Sitting on the bench — its own reply, and what bare `sit` finds in the
     /// one room that has somewhere to do it.
     private static let theBench = """
-        You sit, because it is there and your legs have opinions. It is a good bench, cut for men waiting on a trip \
+        You sit, because it is there and your legs have opinions. It is a good bench, cut for men waiting on a trip
         that is not coming. After a minute you stand again — sitting is not resting, and the straw is one step away.
         """
 
@@ -918,23 +917,23 @@ struct KindlyDeep: Game, GameMain {
     /// One ring, four hundred feet, and an engineer who was awake after all.
     /// Both endings open on it, because both endings are the same bell.
     private static let theBellAnswered = """
-        You take the pull and ring — one long stroke, and the sound goes up the shaft like a bird out of a trap. A \
-        pause, long enough to fit a whole day's fear into. Then, faint and far above, the answering signal: heard, \
+        You take the pull and ring — one long stroke, and the sound goes up the shaft like a bird out of a trap. A
+        pause, long enough to fit a whole day's fear into. Then, faint and far above, the answering signal: heard,
         coming.
         """
 
     /// Twenty-five points: the beam is clear and he is standing next to you.
     private static let bothComeUp = """
-        The cage comes down singing on its guides, and the cager steps out of it already talking — they had you \
-        marked for lost, the men are still two days from the far side of that fall, how in God's name — and stops, \
+        The cage comes down singing on its guides, and the cager steps out of it already talking — they had you
+        marked for lost, the men are still two days from the far side of that fall, how in God's name — and stops,
         because Biscuit has stepped forward to inspect the cage in a proprietary manner.
 
-        A mule cannot climb a ladderway, and the sling goes on him first — he suffers it with the dignity of long \
-        practice, and rises out of sight glaring like a parcel with opinions. The cage comes back for you. The gate \
-        rings shut, the deck lifts, and the dark of the workings drops away beneath your boots, already turning back \
+        A mule cannot climb a ladderway, and the sling goes on him first — he suffers it with the dignity of long
+        practice, and rises out of sight glaring like a parcel with opinions. The cage comes back for you. The gate
+        rings shut, the deck lifts, and the dark of the workings drops away beneath your boots, already turning back
         into geography.
 
-        Outside, they say, it is raining — soft, gray, spring rain. Biscuit has not stood in rain for four years. \
+        Outside, they say, it is raining — soft, gray, spring rain. Biscuit has not stood in rain for four years.
         You find you are glad it will be the first thing he gets.
         """
 
@@ -954,15 +953,15 @@ struct KindlyDeep: Game, GameMain {
         let theWait =
             beamHauled
             ? """
-            The cage comes down singing on its guides and lands behind a gate with nothing across it, which saves \
-            everybody an hour and three men's tempers. The cager steps out of it already talking — they had you \
-            marked for lost, the men are still two days from the far side of that fall, how in God's name — and then \
+            The cage comes down singing on its guides and lands behind a gate with nothing across it, which saves
+            everybody an hour and three men's tempers. The cager steps out of it already talking — they had you
+            marked for lost, the men are still two days from the far side of that fall, how in God's name — and then
             looks past you at the room, and stops talking, and lets it go.
             """
             : """
-            It takes them the better part of an hour to work the beam off the gate from their side, and they do it \
-            with three men and a chain and a good deal of shouted advice, all of which you listen to from four feet \
-            away with nothing useful to offer. The cager does not say anything about it. He has been down a long \
+            It takes them the better part of an hour to work the beam off the gate from their side, and they do it
+            with three men and a chain and a good deal of shouted advice, all of which you listen to from four feet
+            away with nothing useful to offer. The cager does not say anything about it. He has been down a long
             time and has seen men come up in worse order than this.
             """
         let theSentence =
@@ -972,11 +971,11 @@ struct KindlyDeep: Game, GameMain {
         return """
             \(theWait)
 
-            Nobody asks about the mule until the deck lifts. Then somebody does, and you find that the sentence you \
+            Nobody asks about the mule until the deck lifts. Then somebody does, and you find that the sentence you
             had ready does not come out, \(theSentence).
 
-            Outside it is raining — soft, gray, spring rain, the first in a week. You stand in it a while. Four \
-            hundred feet down, in the dark, something large shifts its weight and breathes, and goes on waiting to \
+            Outside it is raining — soft, gray, spring rain, the first in a week. You stand in it a while. Four
+            hundred feet down, in the dark, something large shifts its weight and breathes, and goes on waiting to
             hear what the two of you do next.
             """
     }
@@ -984,7 +983,7 @@ struct KindlyDeep: Game, GameMain {
     /// The moment itself, wherever the lifting hand belongs — both discovery
     /// routes end on this sentence, so it is written once.
     private static let theFind = """
-        Underneath, where a man keeps what he means to come back for: a tin canteen, stoppered, and full when you \
+        Underneath, where a man keeps what he means to come back for: a tin canteen, stoppered, and full when you
         shake it.
         """
 
@@ -1015,9 +1014,9 @@ struct KindlyDeep: Game, GameMain {
             scoring.awardOnce("lamp")
             try reply(
                 """
-                The flame takes on the second strike, steadies, and the dark steps back to a respectful distance. The \
-                first thing the light finds is a long mild face, inches from yours, ears forward — Biscuit, of \
-                course, dusty to the knees and entirely unsurprised. Whatever happens next, you will not be doing it \
+                The flame takes on the second strike, steadies, and the dark steps back to a respectful distance. The
+                first thing the light finds is a long mild face, inches from yours, ears forward — Biscuit, of
+                course, dusty to the knees and entirely unsurprised. Whatever happens next, you will not be doing it
                 alone.
                 """)
         }
@@ -1025,7 +1024,7 @@ struct KindlyDeep: Game, GameMain {
             capLamp.isLit
                 ? "Your cap-lamp, burning small and steady — a modest flame with a large responsibility."
                 : """
-                Your cap-lamp, out cold, smelling of oil and recent failure. The flint striker on your belt has \
+                Your cap-lamp, out cold, smelling of oil and recent failure. The flint striker on your belt has
                 opinions about that.
                 """
         }
@@ -1039,7 +1038,7 @@ struct KindlyDeep: Game, GameMain {
         capLamp.before(.drop, .putIn, .putOn) {
             try reply(
                 """
-                It goes on your cap and it stays there. Setting the only light in four hundred feet of workings down \
+                It goes on your cap and it stays there. Setting the only light in four hundred feet of workings down
                 on the floor is the kind of decision a man gets to make exactly once.
                 """)
         }
@@ -1053,8 +1052,8 @@ struct KindlyDeep: Game, GameMain {
             findTheCanteen()
             say(
                 """
-                Biscuit walks straight past his own stall — past the hay, past the dry trough — and puts his nose \
-                under the loose board at the foot of the corn bin, lifting it with the ease of long practice. \
+                Biscuit walks straight past his own stall — past the hay, past the dry trough — and puts his nose
+                under the loose board at the foot of the corn bin, lifting it with the ease of long practice.
                 \(Self.theFind) He looks from it to you and back, in case you are slow this morning.
                 """)
         }
@@ -1074,12 +1073,12 @@ struct KindlyDeep: Game, GameMain {
                 biscuitIsHere
                 ? "Biscuit, when you look up, has the expression of an animal who was about to mention it."
                 : """
-                You sit back on your heels with it, wishing briefly and uselessly that there were somebody here to \
+                You sit back on your heels with it, wishing briefly and uselessly that there were somebody here to
                 be smug at you about it.
                 """
             try reply(
                 """
-                You get a hand under the loose board and lift, and it comes up the way things do when somebody has \
+                You get a hand under the loose board and lift, and it comes up the way things do when somebody has
                 been lifting them for years. \(Self.theFind) \(lookingUp)
                 """)
         }
@@ -1096,10 +1095,10 @@ struct KindlyDeep: Game, GameMain {
             crawlBeatDone = true
             say(
                 """
-                You get down on your hands and knees at the edge of the fall, where the rock left a gap a man can use \
-                if he is honest about his size. Biscuit tries to follow — one hoof, then a knock of his head against \
-                stone — and cannot. The bray that follows you into the crawl is the most reproachful sound you have \
-                ever heard from anything on four legs. It recedes behind you, complaining, until the stone shuts it \
+                You get down on your hands and knees at the edge of the fall, where the rock left a gap a man can use
+                if he is honest about his size. Biscuit tries to follow — one hoof, then a knock of his head against
+                stone — and cannot. The bray that follows you into the crawl is the most reproachful sound you have
+                ever heard from anything on four legs. It recedes behind you, complaining, until the stone shuts it
                 out altogether.
                 """)
         }
@@ -1117,17 +1116,17 @@ struct KindlyDeep: Game, GameMain {
         airDoor.describe {
             if airDoor.isOpen {
                 """
-                The air-door stands wide on its hinges, and the ventilation goes through it the way it was meant to \
+                The air-door stands wide on its hinges, and the ventilation goes through it the way it was meant to
                 all along.
                 """
             } else if player.location == forks {
                 """
-                A stout ventilation door, built to swing easy and seal tight. The fall racked its frame and it is \
+                A stout ventilation door, built to swing easy and seal tight. The fall racked its frame and it is
                 jammed hard into it from this side; the bar, naturally, is on the other.
                 """
             } else {
                 """
-                A stout ventilation door, built to swing easy and seal tight. The frame is racked, so it will never \
+                A stout ventilation door, built to swing easy and seal tight. The frame is racked, so it will never
                 be pushed open from the far side — but the bar is on this side, and a bar is a thing that lifts.
                 """
             }
@@ -1142,7 +1141,7 @@ struct KindlyDeep: Game, GameMain {
             if player.location == forks {
                 try refuse(
                     """
-                    You put your shoulder to it and the door declines, politely but with the whole weight of the \
+                    You put your shoulder to it and the door declines, politely but with the whole weight of the
                     racked frame behind the refusal. If it opens at all, it opens from the far side.
                     """)
             }
@@ -1152,9 +1151,9 @@ struct KindlyDeep: Game, GameMain {
             startDaemon("biscuit.follow")
             try reply(
                 """
-                The door is jammed from the far side, but from here the bar lifts like it was waiting for you, and \
-                the door swings wide with a groan of old hinges. Ventilation sighs through the opening — and so does \
-                Biscuit, arriving at a businesslike trot, pressing his forehead against your chest hard enough to \
+                The door is jammed from the far side, but from here the bar lifts like it was waiting for you, and
+                the door swings wide with a groan of old hinges. Ventilation sighs through the opening — and so does
+                Biscuit, arriving at a businesslike trot, pressing his forehead against your chest hard enough to
                 stagger you. Apology accepted, apparently. Provisionally.
                 """)
         }
@@ -1183,14 +1182,14 @@ struct KindlyDeep: Game, GameMain {
                 : "hauling is a trade, and the professional is two rooms back the way you came"
             try reply(
                 """
-                You get your back under one end and achieve, at considerable cost, nothing. It wants hauling, not \
+                You get your back under one end and achieve, at considerable cost, nothing. It wants hauling, not
                 heroics — and \(professional).
                 """)
         }
         tack.before(.take) {
             try reply(
                 """
-                The collar alone is most of what you can lift, and none of it is any use on your shoulders. It goes \
+                The collar alone is most of what you can lift, and none of it is any use on your shoulders. It goes
                 on the mule, or it stays on the peg.
                 """)
         }
@@ -1202,7 +1201,7 @@ struct KindlyDeep: Game, GameMain {
         striker.before(.drop, .putIn, .putOn) {
             try reply(
                 """
-                Not down here. It goes on your belt and it stays on your belt, which is a rule you have never once \
+                Not down here. It goes on your belt and it stays on your belt, which is a rule you have never once
                 been tempted to test.
                 """)
         }
@@ -1249,12 +1248,12 @@ struct KindlyDeep: Game, GameMain {
             switch canteenDrinks {
             case 3:
                 """
-                A day-shift canteen, tin, stoppered tight, and — you shake it to be sure — full. It is the only \
+                A day-shift canteen, tin, stoppered tight, and — you shake it to be sure — full. It is the only
                 water in these workings, and you have already started doing arithmetic with it.
                 """
             case 2:
                 """
-                A tin canteen, better than half of it left. The arithmetic still comes out, provided nothing else \
+                A tin canteen, better than half of it left. The arithmetic still comes out, provided nothing else
                 goes wrong today.
                 """
             case 1:
@@ -1275,8 +1274,8 @@ struct KindlyDeep: Game, GameMain {
         actors.reaction(
             of: biscuit, to: [.talk],
             reply: """
-                You tell him how it stands: the fall, the door, the shaft. He listens the way he always does — one \
-                ear on you, one on the roof — and when you finish he breathes warm air down your collar, which is as \
+                You tell him how it stands: the fall, the door, the shaft. He listens the way he always does — one
+                ear on you, one on the roof — and when you finish he breathes warm air down your collar, which is as
                 close as he comes to signing off on a plan.
                 """)
         actors.reaction(of: biscuit, to: [.pet], reply: Self.theScratch)
@@ -1308,7 +1307,7 @@ struct KindlyDeep: Game, GameMain {
         straw.before(.burn) {
             try reply(
                 """
-                You have a striker and a lit lamp and no shortage of straw, which between them make this the single \
+                You have a striker and a lit lamp and no shortage of straw, which between them make this the single
                 worst idea available to you down here.
                 """)
         }
@@ -1331,7 +1330,7 @@ struct KindlyDeep: Game, GameMain {
         forks.before(.smell) {
             try reply(
                 """
-                You smell it the way you have all along: a faint sweetness off the north heading, pleasant, and \
+                You smell it the way you have all along: a faint sweetness off the north heading, pleasant, and
                 entirely wrong.
                 """)
         }
@@ -1344,14 +1343,14 @@ struct KindlyDeep: Game, GameMain {
         forks.before(.listen) {
             try reply(
                 """
-                Hooves shifting, a mule breathing, and past the door the long cold draught of the shaft — which is \
+                Hooves shifting, a mule breathing, and past the door the long cold draught of the shaft — which is
                 the sound of somewhere else, and the only one worth walking toward.
                 """)
         }
         shaftBottom.before(.climb) {
             try reply(
                 """
-                Four hundred feet of it, and a ladderway that has not been kept since they sank the second shaft. \
+                Four hundred feet of it, and a ladderway that has not been kept since they sank the second shaft.
                 Men who try it are found at the bottom of it. You came here to ring the bell.
                 """)
         }
@@ -1369,16 +1368,16 @@ struct KindlyDeep: Game, GameMain {
             let fourthStep =
                 capLamp.isLit
                 ? """
-                The lamp-flame stretches tall and blue as a crocus, which is very beautiful, and means you are \
+                The lamp-flame stretches tall and blue as a crocus, which is very beautiful, and means you are
                 already dead.
                 """
                 : """
-                There is no flame to go tall and blue and tell you what the air is doing, and it would not have \
+                There is no flame to go tall and blue and tell you what the air is doing, and it would not have
                 helped if there were.
                 """
             try die(
                 """
-                Three steps into the old works the sweetness in the air turns syrup-thick, and the fourth step is a \
+                Three steps into the old works the sweetness in the air turns syrup-thick, and the fourth step is a
                 stumble. \(fourthStep) The mule would have stopped you; the mule was not there to.
                 """)
         }
@@ -1396,42 +1395,42 @@ struct KindlyDeep: Game, GameMain {
         // the door swings one way, and the prose was wrong, not the map.
         forks.describe {
             let common = """
-                The entry forks here at the mouth of the old works. North, the old heading runs off into a silence \
+                The entry forks here at the mouth of the old works. North, the old heading runs off into a silence
                 that smells faintly, sweetly wrong.
                 """
             return airDoor.isOpen
                 ? """
-                \(common) The air-door stands open at the far side, swung back on its racked hinges the only way it \
-                will go, and the ventilation moves through it the way it was built to. It will not take you east — \
-                it opens toward you and always will. The crawl still runs east at floor level, and it is still the \
+                \(common) The air-door stands open at the far side, swung back on its racked hinges the only way it
+                will go, and the ventilation moves through it the way it was built to. It will not take you east —
+                it opens toward you and always will. The crawl still runs east at floor level, and it is still the
                 only way a man gets to the shaft.
                 """
                 : """
-                \(common) The air-door stands in its frame at the far side, and past it the shaft — but the fall \
-                racked the frame and jammed it fast from this side, and it is not going to be argued with. Beside \
-                it, at floor level, the rock left a low dark gap along the edge of the fall: a crawl, running east, \
+                \(common) The air-door stands in its frame at the far side, and past it the shaft — but the fall
+                racked the frame and jammed it fast from this side, and it is not going to be argued with. Beside
+                it, at floor level, the rock left a low dark gap along the edge of the fall: a crawl, running east,
                 for anyone honest about their size.
                 """
         }
 
         shaftBottom.describe {
             let common = """
-                And here it is: the shaft bottom, the one door out of the world below. The hoisting shaft rises out \
+                And here it is: the shaft bottom, the one door out of the world below. The hoisting shaft rises out
                 of sight, breathing cold top-side air down on you.
                 """
             let gate =
                 beamHauled
                 ? """
-                The cage gate stands clear in its frame, and the beam that was across it lies where it was dragged, \
+                The cage gate stands clear in its frame, and the beam that was across it lies where it was dragged,
                 off to one side and out of the argument.
                 """
                 : """
-                The cage gate stands in its frame — with a twelve-foot beam lying square across it, delivered by the \
+                The cage gate stands in its frame — with a twelve-foot beam lying square across it, delivered by the
                 same event that delivered everything else today.
                 """
             return """
-                \(common) \(gate) On the wall, the signal bell and its rope; on a peg, the haul tack, collar and \
-                chains kept where the work is. The air-door is in the west wall, and its bar is on this side; the \
+                \(common) \(gate) On the wall, the signal bell and its rope; on a peg, the haul tack, collar and
+                chains kept where the work is. The air-door is in the west wall, and its bar is on this side; the
                 crawl comes out at floor level beside it.
                 """
         }
@@ -1439,12 +1438,12 @@ struct KindlyDeep: Game, GameMain {
         beam.describe {
             beamHauled
                 ? """
-                Twelve feet of poplar, lately part of the roof and lately across the gate, now lying off to one side \
-                with the settled look of an object that has been moved by something stronger than it is. You know \
+                Twelve feet of poplar, lately part of the roof and lately across the gate, now lying off to one side
+                with the settled look of an object that has been moved by something stronger than it is. You know
                 someone it does not outweigh, and now so does it.
                 """
                 : """
-                Twelve feet of poplar, lately part of the roof, now lying across the cage gate with the settled look \
+                Twelve feet of poplar, lately part of the roof, now lying across the cage gate with the settled look
                 of an object that weighs more than you do. Considerably more. You know someone it does not outweigh.
                 """
         }
@@ -1452,11 +1451,11 @@ struct KindlyDeep: Game, GameMain {
         cageGate.describe {
             beamHauled
                 ? """
-                The gate the cage lands behind, sound enough and — now that there is nothing lying across it — good \
+                The gate the cage lands behind, sound enough and — now that there is nothing lying across it — good
                 for exactly the one thing it was built for.
                 """
                 : """
-                The gate the cage lands behind, sound enough and perfectly useless while twelve feet of poplar lies \
+                The gate the cage lands behind, sound enough and perfectly useless while twelve feet of poplar lies
                 across it.
                 """
         }
@@ -1474,8 +1473,8 @@ struct KindlyDeep: Game, GameMain {
         freshFall.exit(
             .north,
             blocked: """
-                The roof has been down an hour and has no plans to get up. The men above will timber their way \
-                through from the far side in a day or three; you do not currently have a day or three to sit here \
+                The roof has been down an hour and has no plans to get up. The men above will timber their way
+                through from the far side in a day or three; you do not currently have a day or three to sit here
                 being brave about it.
                 """)
 
@@ -1493,9 +1492,9 @@ struct KindlyDeep: Game, GameMain {
             to: oldWorks,
             when: { !biscuit.isIn(forks) },
             otherwise: """
-                Biscuit puts himself across the mouth of the old works like a bolted gate. Head low, feet planted; \
-                when you press, he leans his whole patient weight against you and pushes you back a step. He has \
-                walked past bad air before, and he can smell what you cannot. The old works stay shut, says the \
+                Biscuit puts himself across the mouth of the old works like a bolted gate. Head low, feet planted;
+                when you press, he leans his whole patient weight against you and pushes you back a step. He has
+                walked past bad air before, and he can smell what you cannot. The old works stay shut, says the
                 mule, and the mule has seniority.
                 """)
 

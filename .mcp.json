@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "cloakofdarkness": { "command": "bin/gnusto-mcp", "args": ["CloakOfDarkness"] },
+    "dungeon": { "command": "bin/gnusto-mcp", "args": ["Dungeon"] },
+    "fulminate": { "command": "bin/gnusto-mcp", "args": ["Fulminate"] },
+    "gramarye": { "command": "bin/gnusto-mcp", "args": ["Gramarye"] },
+    "kindlydeep": { "command": "bin/gnusto-mcp", "args": ["KindlyDeep"] },
+    "lighthouse": { "command": "bin/gnusto-mcp", "args": ["Lighthouse"] },
+    "zork1": { "command": "bin/gnusto-mcp", "args": ["Zork1"] }
+  }
+}

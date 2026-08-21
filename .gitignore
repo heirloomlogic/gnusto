@@ -25,5 +25,9 @@ xcuserdata/
 .build
 # Exported game binaries produced by bin/export-game.
 /dist
+# The rendered DocC site. Not `docs/`, which is hand-written and tracked: the
+# plugin deletes its --output-path before writing, so pointing it at docs/ costs
+# you twenty design documents.
+/.docs-build
 # Bytecode from bin/atlas/, the Dungeon atlas generator.
 __pycache__/

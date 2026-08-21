@@ -599,31 +599,26 @@ struct DungeonHouse: GameContent {
     }
 
     /// The three rungs of the burn-down. A fuse's text lands wherever the
-    /// player happens to be standing, so each body asks whether the lamp is
-    /// somewhere they could see it before it says anything about it — the guard
-    /// ``DungeonTemple/burnCandleStage()`` already puts on the candles. The fuel
-    /// runs out either way: a lamp left burning two hundred feet down burns
-    /// itself dry whether or not anybody is there to watch, so only the `say` is
-    /// conditional.
+    /// player happens to be standing, so each rung is said *from* the lamp: a
+    /// line about how a flame looks is for somebody who can see the flame. The
+    /// fuel runs out either way — a lamp left burning two hundred feet down
+    /// burns itself dry whether or not anybody is there to watch — so only the
+    /// `say` is conditional.
     var timers: [TimedEvent] {
         fuse("lanternDim", after: Self.lanternDimAt) {
-            guard lantern.isVisible else { return }
-            say(Prose.lanternDim)
+            say(Prose.lanternDim, from: lantern)
         }
         fuse("lanternLastGasp", after: Self.lanternLastGaspAt) {
-            guard lantern.isVisible else { return }
-            say(Prose.lanternLastGasp)
+            say(Prose.lanternLastGasp, from: lantern)
         }
         fuse("lanternDies", after: Self.lanternDiesAt) {
-            // Read before the change, not after: a lamp lying on the floor of
+            // Said before the change, not after: a lamp lying on the floor of
             // the room the player is standing in is the light in that room, and
             // putting it out takes the room's own contents out of sight. The
             // player watched it happen; they get told.
-            let watched = lantern.isVisible
             lanternBurnedOut = true
+            say(Prose.lanternDies, from: lantern)
             lantern.isLit = false
-            guard watched else { return }
-            say(Prose.lanternDies)
         }
     }
 }

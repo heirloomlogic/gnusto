@@ -14,7 +14,7 @@ Parsing can fail: an unknown word, nothing in scope, a verb with no object. **Pa
 
 ## How the parser converses
 
-Four parser behaviors go beyond one-line-in, one-command-out:
+Five parser behaviors go beyond one-line-in, one-command-out:
 
 - **Questions stay open.** When the parser asks a clarifying question — "Which do you mean: the brass lantern or the rusty lantern?", "What do you want to take?" — the next input line is first tried as its *answer*: an adjective (`brass`), a fuller phrase, or the missing object completes the original command. Narrowing can take several rounds; a line that isn't an answer simply runs as a fresh command and the question is forgotten. Questions, like all parse failures, are free turns.
 - **Pronouns.** `it` refers to the last direct object the player named (naming binds even if the action was refused); `them` refers to the group of the last multi-object command. A pronoun whose referent is gone from view fails in scope like any other noun.
@@ -23,9 +23,9 @@ Four parser behaviors go beyond one-line-in, one-command-out:
 
   The split is a **second pass**, tried only once the whole phrase has failed to name anything. That is what makes the word safe to add: an item declared `name("cup and saucer")` answers to every word of itself, so `take cup and saucer` is one thing, and no phrase that worked before means something else now. The cost is that a game holding a `cup`, a `saucer` *and* a `cup and saucer` can't ask for the first two together — the name wins. Declare a synonym without the conjunction if you need both readings.
 
-  Commas are not yet conjunctions — the addressing path (`troll, take the sword`) claims them. Write `take the bottle and the sack and the lamp`.
+  **A comma separates too**, so `take the bottle, the sack and the lamp` is the same list `take the bottle and the sack and the lamp` is, and `take the bottle, the sack` needs no `and` at all. The addressing path reads the *first* comma first (`troll, take the sword`) and only hands it over when the words before it name nobody, so no order changes meaning. Below that, a comma separates more strongly than `and` does — the phrase is cut at its commas and each group is then offered as a name before its own `and` is read as punctuation, which is what lets `take cup and saucer, the coin` be two things and keep the first one's name. A comma standing on its own at either end of a phrase, or doubled, is punctuation and drops out: `take the lamp,` is still one lamp, and the Oxford comma of `take the coin, the feather, and the idol` is one separator, not two.
 
-- **Exclusions.** `take all but the sword` is the escape hatch when `all` would sweep up the one thing the player wants left alone — a lit lamp, a cursed idol, the thing that kills you when you carry it. `but` and `except` are the same word to the parser, what follows is itself a phrase (`take all except the sword and the lamp` excepts two), and `them` takes one as readily as `all` does. Excepting something that was never in the set is deliberately no error: the player said which things they didn't mean, not which things are here, so `take all but the statue` runs whether or not the statue was ever on offer. A subtraction that empties a group that wasn't empty says so in its own words rather than claiming the room is bare — that goes for the container `put all in the sack` takes out of its own group, too.
+- **Exclusions.** `take all but the sword` is the escape hatch when `all` would sweep up the one thing the player wants left alone — a lit lamp, a cursed idol, the thing that kills you when you carry it. `but` and `except` are the same word to the parser, what follows is read exactly as a direct slot is — so it separates on the conjunction and on the comma alike, and `take all except the sword and the lamp` and `take all except the sword, the lamp` both except two — and `them` takes an exception as readily as `all` does. Excepting something that was never in the set is deliberately no error: the player said which things they didn't mean, not which things are here, so `take all but the statue` runs whether or not the statue was ever on offer. A subtraction that empties a group that wasn't empty says so in its own words rather than claiming the room is bare — that goes for the container `put all in the sack` takes out of its own group, too.
 
   The word is claimed **only behind a multi-object keyword**, and that is what makes it safe to add. `all`, `everything` and `them` are reserved words no item can answer to, so a phrase this split claims can never also be something's declared name — `take last but one ticket` finds no keyword in front of the `but` and resolves as the one object it names, without needing the conjunction's second pass to rescue it. The same rule is why `take the coin but the feather` is left unread: a phrase that names two things and excepts one of them is not English anybody types, and refusing it keeps the word available to games.
 
@@ -46,7 +46,7 @@ Once a command parses, the engine runs these stages in order. Rules are matched 
 
 Then the turn counter advances by one and the turn commits.
 
-The symmetry is deliberate: `before` rules run outside-in (world, then location, then item) so broad rules get first say; `after` rules run inside-out. A `before` rule is your chance to *change or forbid* what is about to happen; an `after` rule reacts to what *did* happen.
+`before` rules run outside-in — world, then location, then item — so the broadest rule gets first refusal; `after` rules run inside-out. A `before` rule changes or forbids what is about to happen. An `after` rule only gets to have an opinion about what already did.
 
 ## Stopping the turn: refuse, reply, and end
 

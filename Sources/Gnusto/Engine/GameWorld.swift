@@ -51,6 +51,31 @@ public actor GameWorld {
     /// the next input line *is* its answer; see `PendingPrompt` and `answer`
     /// in `GameWorld+Prompts.swift`.
     var pendingPrompt: PendingPrompt?
+    /// How many times each declared fuse or daemon has actually run its body
+    /// this session, by timer name — the play-test harness's answer to "did
+    /// this timer ever fire?", which no amount of reading the transcript can
+    /// settle for a timer whose body says nothing.
+    ///
+    /// Actor state, never serialized: it is a fact about *this run of the
+    /// program*, not about the world, so it must not reach `WorldState`,
+    /// `SaveFile` or `isConsistent`. The precedent is `undoSnapshot` above and
+    /// `initialState`, both kept here for exactly the same reason — history
+    /// must not leak into a save file. A restore therefore leaves the tally
+    /// alone, which is right: the timers really did fire.
+    var firedTimers: [String: Int] = [:]
+
+    /// The world as the last turn that *cost* a move stood at its close,
+    /// before its counter advanced — or nil, meaning "read the fields live".
+    ///
+    /// Actor state, never serialized, for the same reason as `undoSnapshot`
+    /// and `initialState` above: it is a fact about the turn just committed,
+    /// not about the world. Written only by ``commit(_:)``, out of the
+    /// retiring frame's `Scratch`, and cleared only by ``freeReply(_:)`` and
+    /// the play-test `restore(_:)` — which between them are every way a
+    /// `TurnResult` reaches a driver without a cost turn behind it. Read only
+    /// by `statusFields()`. See ``Scratch/statusFieldState`` for why the
+    /// sample exists at all.
+    var statusFieldState: WorldState?
 
     /// Builds the world from a game definition, validating it up front.
     /// The random stream is seeded fresh each run; use `init(game:seed:)`
@@ -127,27 +152,50 @@ public actor GameWorld {
     /// - Parameter input: one line of player input.
     /// - Returns: the turn's output and status.
     public func perform(_ input: String) -> TurnResult {
+        performAudited(input).result
+    }
+
+    /// `perform`, plus what the parser made of the line — see ``TurnAudit`` for
+    /// why the second half exists and why it can't be recovered from the first.
+    ///
+    /// The whole body of `perform` lives here rather than the other way round:
+    /// a second copy of the clarification dance would be a second thing to keep
+    /// in step, and the one that drifted would be the one nobody plays.
+    ///
+    /// - Parameter input: one line of player input.
+    /// - Returns: the turn's output and status, and the parse record.
+    func performAudited(_ input: String) -> (result: TurnResult, audit: TurnAudit) {
         if let prompt = pendingPrompt {
             pendingPrompt = nil
-            return answer(prompt, with: input.trimmingCharacters(in: .whitespaces))
+            let result = answer(prompt, with: input.trimmingCharacters(in: .whitespaces))
+            // The line was an answer, not a command: no verb was read from it,
+            // so every parse field stays empty and `answeredPrompt` says why.
+            return (result, TurnAudit(answeredPrompt: true))
         }
 
         let scope = currentScope()
         let tokens = parser.tokenize(input)
+        // Asked of the vocabulary rather than inferred from the reply: the
+        // player-facing message names at most one word and only on some of the
+        // failure paths, while this is every token the game has never heard of,
+        // available even on the lines that parsed.
+        let unknown = tokens.filter { !definition.vocabulary.knows($0) }
 
         if let pending = pendingClarification {
             pendingClarification = nil
             let augmented = pending.prefix + tokens + pending.suffix
             switch parser.parse(tokens: augmented, rawInput: input, scope: scope) {
             case .success(let parsed):
-                return armDeathPromptIfNeeded(run(parsed))
+                let result = armDeathPromptIfNeeded(run(parsed))
+                return (result, TurnAudit(parsed, unknownWords: unknown))
             case .failure(let error):
                 // Still ambiguous ("brass" matched two): ask the narrower
                 // question. Anything else means the line wasn't an answer —
                 // fall through and parse it as a fresh command.
                 if let context = error.clarification {
                     pendingClarification = context
-                    return freeReply(error.playerMessage(definition.text))
+                    let result = freeReply(error.playerMessage(definition.text))
+                    return (result, TurnAudit(unknownWords: unknown))
                 }
             }
         }
@@ -155,9 +203,11 @@ public actor GameWorld {
         switch parser.parse(tokens: tokens, rawInput: input, scope: scope) {
         case .failure(let error):
             pendingClarification = error.clarification
-            return freeReply(error.playerMessage(definition.text))
+            let result = freeReply(error.playerMessage(definition.text))
+            return (result, TurnAudit(unknownWords: unknown))
         case .success(let parsed):
-            return armDeathPromptIfNeeded(run(parsed))
+            let result = armDeathPromptIfNeeded(run(parsed))
+            return (result, TurnAudit(parsed, unknownWords: unknown))
         }
     }
 
@@ -448,7 +498,12 @@ public actor GameWorld {
 
     /// A parse-error-style response: message only, no rules, no turn.
     func freeReply(_ message: String) -> TurnResult {
-        TurnResult(
+        // No turn ran, so the last one's sample is stale: this reply was
+        // written against live state and the footer under it must read the
+        // same world. One of the two places the sample is cleared; the other
+        // is `commit`, which does it by adopting a nil.
+        statusFieldState = nil
+        return TurnResult(
             output: message,
             isFinished: state.status.isFinal,
             status: statusLine())
@@ -573,6 +628,31 @@ public actor GameWorld {
             if frame.with({ $0.state.status }) == .playing {
                 tickTimers(frame: frame)
             }
+            // The sample the contributed status fields are read against, taken
+            // here and nowhere else. Both halves of the position are
+            // load-bearing.
+            //
+            // *After* the each-turn rules and the timer tick, so a rule that
+            // flipped a global or a fuse that called `clock.advance(by:)` this
+            // turn is in it — the turn's last word is written at this instant,
+            // not at its first. *Before* the line below, because that line is
+            // the whole of #280: everything the turn printed was written at
+            // the count as it stands right here.
+            //
+            // Gated on the empty table, which is the same guard
+            // `statusFields()` returns early on. Note what that guard does not
+            // mean: `Bootstrap` collects one closure per content module
+            // whether or not the module overrides the default, so a bundled
+            // game reaches this line and pays one copy of a struct of COW
+            // dictionaries per cost turn even when every closure returns [].
+            // That is the same order as the two the turn already takes for its
+            // UNDO snapshot, and it buys laziness at the other end: the
+            // closures themselves are only run when a footer asks.
+            if !definition.statusFields.isEmpty {
+                frame.with { scratch in
+                    scratch.statusFieldState = scratch.state
+                }
+            }
             frame.with { $0.state.moves += 1 }
         }
 
@@ -642,7 +722,7 @@ public actor GameWorld {
                 return true
             }
             if fires {
-                runCatching(event, frame: frame)
+                runCatching(event, named: name, frame: frame)
             }
         }
         for name in frame.with({ $0.state.activeDaemons.sorted() }) {
@@ -650,11 +730,16 @@ public actor GameWorld {
             guard let event = definition.timers[name],
                 frame.with({ $0.state.activeDaemons.contains(name) })
             else { continue }
-            runCatching(event, frame: frame)
+            runCatching(event, named: name, frame: frame)
         }
     }
 
-    private func runCatching(_ event: TimedEvent, frame: TurnFrame) {
+    private func runCatching(_ event: TimedEvent, named name: String, frame: TurnFrame) {
+        // Counted before the body runs, so a timer that traps or ends the game
+        // still registers as having fired — the tally answers "did this ever
+        // happen?", and the crash is the loudest possible yes. See
+        // `firedTimers`.
+        firedTimers[name, default: 0] += 1
         do {
             try event.body()
         } catch let interrupt as TurnInterrupt {
@@ -815,6 +900,13 @@ public actor GameWorld {
     func commit(_ frame: TurnFrame) -> TurnResult {
         let scratch = frame.retire()
         state = scratch.state
+        // Adopted, never merged — and taking a nil *is* the invalidation.
+        // The opening, UNDO, RESTART, RESTORE and every meta or unhandled
+        // command arrive here with a frame that never ran the capture, so
+        // they correctly send the footer back to live state. None of them
+        // moved the counter, so live state is the world their words were
+        // written in.
+        statusFieldState = scratch.statusFieldState
         return TurnResult(
             output: scratch.output.joined(separator: "\n\n"),
             isFinished: scratch.state.status.isFinal,

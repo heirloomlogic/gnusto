@@ -137,7 +137,7 @@ struct StandardParser {
         // are heard and declined, exactly as they always were.
         if let comma = tokens.firstIndex(of: ","), comma > 0 {
             let address = Array(tokens[..<comma])
-            let rest = tokens[(comma + 1)...].filter { $0 != "," }
+            let rest = Array(tokens[(comma + 1)...])
             if case .success(let addressee) = resolve(address, in: scope),
                 scope.visibleActors.contains(addressee)
             {
@@ -176,11 +176,14 @@ struct StandardParser {
                 return order(rest, to: addressee, address: address, scope: scope, rawInput: rawInput)
             }
         }
-        // Not an address, or not to a person: the comma goes back to being
-        // noise before anything downstream — a clarification prefix, a topic
-        // slot — can see it. A line that was *only* commas is then empty, and
-        // has to be caught again: everything below assumes a first token.
-        let tokens = tokens.filter { $0 != "," }
+        // Not an address, or not to a person: every comma left on the line is
+        // then the conjunction the player wrote instead of "and" — `take the
+        // bottle, the sack and the lamp` (#276). Only one with words on both
+        // sides of it separates anything, and the address reading was the last
+        // thing a lone comma could have meant, so the rest go back to being
+        // noise. `,,` is then an empty line, and has to be caught a second
+        // time: everything below assumes a first token.
+        let tokens = Array(tokens.split(separator: ",").joined(separator: [","]))
         guard !tokens.isEmpty else {
             return .failure(.empty)
         }
@@ -233,10 +236,14 @@ struct StandardParser {
     /// The words after the comma, read as a command in the addressee's own
     /// scope and stamped with them as its agent.
     ///
+    /// The words keep any comma among them, so `robot, take the wrench, the
+    /// lever` reads its list exactly as `… wrench and the lever` does.
+    ///
     /// Recursion is bounded the same way ``isGreeting(_:at:address:scope:)``'s
-    /// is: a strictly shorter token list, the first comma already consumed, and
-    /// an inner scope carrying no order-takers — so an order can never be an
-    /// order to somebody else.
+    /// is: a strictly shorter token list every time, and an inner scope with no
+    /// visible actors and no order-takers — so the address reading can never
+    /// succeed a second time, and an order can never be an order to somebody
+    /// else.
     ///
     /// A failure is re-anchored on the address, so that the question an
     /// incomplete order asks ("What do you want to push?") is answered as an
@@ -266,8 +273,8 @@ struct StandardParser {
     /// GREET, which is what keeps `butler, take the lamp` from becoming
     /// anything at all.
     ///
-    /// Recursion is bounded: each inner parse gets a strictly shorter list with
-    /// the first comma already consumed.
+    /// Recursion is bounded: each inner parse gets a strictly shorter list, in
+    /// a scope with nobody in it to address.
     private func isGreeting(
         _ rest: [String], at addressee: EntityID, address: [String], scope: Scope
     ) -> Bool {
@@ -452,7 +459,13 @@ struct StandardParser {
                         directPhrase: directPhrase, preposition: preposition,
                         lastLiteral: lastLiteral, scope: scope, distant: distant)
                 }
-                topicWords = Array(tokens[cursor...])
+                // The comma joins object phrases, but a topic is words and
+                // never a list, so here it goes back to being punctuation.
+                // That is what keeps `ask the butler about the war, and the
+                // king` matching a keyword the author declared with the same
+                // comma in it: `Topic.normalize` reads it through the splitter
+                // that drops one outright.
+                topicWords = tokens[cursor...].filter { $0 != "," }
                 cursor = tokens.count
             }
         }
@@ -505,7 +518,7 @@ struct StandardParser {
                 // Second pass, the same way the direct slot's is: a name that
                 // has "and" among its own words resolved above and never got
                 // here.
-                guard listSegments(of: phrase) == nil else {
+                guard listSegments(of: phrase[...]) == nil else {
                     return .nearMiss(.multipleNotAllowed)
                 }
                 return .nearMiss(positioned(error, tokens: tokens, phraseStart: indirectStart))
@@ -707,10 +720,17 @@ struct StandardParser {
     ///
     /// **The one exception is the comma**, which survives as a token of its
     /// own (`"delphine,hello"` yields three tokens). It is the only mark that
-    /// changes what a sentence means — `butler, open the door` is addressed at
-    /// somebody — so `parse` reads it and then strips it. Everywhere else it
-    /// goes straight back to being noise. Splitting the line on commas first is
-    /// what keeps it: inside a segment it is just another separator.
+    /// changes what a sentence means, and it means two things: the first one on
+    /// the line may address somebody (`butler, open the door`), and every comma
+    /// ``parse(tokens:rawInput:scope:)`` does not spend that way separates
+    /// object phrases (`take the bottle, the sack and the lamp`). Splitting the
+    /// line on commas is what keeps it: inside a segment it is just another
+    /// separator.
+    ///
+    /// Every comma is kept here, including one standing beside nothing —
+    /// `usher,` is a bare greeting, and only the address reading knows that.
+    /// The rest are dropped in ``parse(tokens:rawInput:scope:)``, once that
+    /// reading has had its turn.
     func tokenize(_ input: String) -> [String] {
         var tokens: [String] = []
         for (index, segment)
@@ -725,13 +745,14 @@ struct StandardParser {
         return tokens
     }
 
-    /// Resolves the direct slot: one thing, or several joined by a conjunction.
+    /// Resolves the direct slot: one thing, or several the player listed.
     ///
-    /// The split is a **second pass**, tried only once the whole phrase has
-    /// failed to name anything. That ordering is the whole safety argument: an
-    /// item declared `name("cup and saucer")` answers to its own words before
-    /// the conjunction is ever read as punctuation, so adding the word to the
-    /// parser cannot change the meaning of a phrase that already worked.
+    /// **The comma separates more strongly than the conjunction does**, which
+    /// is how English reads `bread and butter, jam, and tea` — so the phrase is
+    /// cut at its commas first and each group is then offered to
+    /// ``resolveGroup(_:at:in:scope:distant:)`` as a name in its own right.
+    /// One group is the whole phrase, which is every line that has no comma in
+    /// it, so nothing without one changed.
     ///
     /// - Parameters:
     ///   - phrase: the slot's tokens.
@@ -746,55 +767,111 @@ struct StandardParser {
         _ phrase: [String], at start: Int, in tokens: [String],
         scope: Scope, distant: Set<EntityID>
     ) -> Result<[EntityID], ParseError> {
-        let whole = resolve(phrase, in: scope, alsoConsidering: distant)
+        let groups = phrase.split(separator: ",")
+        guard !groups.isEmpty else {
+            // Nothing but separators names nothing. Hand the phrase over
+            // whole and let the ordinary answer say so.
+            return resolveGroup(
+                phrase[...], at: start, in: tokens, scope: scope, distant: distant)
+        }
+
+        var ids: [EntityID] = []
+        for group in groups {
+            switch resolveGroup(group, at: start, in: tokens, scope: scope, distant: distant) {
+            case .success(let found):
+                // One id can come back from several groups or pieces — one
+                // thing named twice, or a trailing separator with nothing
+                // behind it. The caller reads a single id as one object and
+                // takes the ordinary path.
+                for id in found where !ids.contains(id) { ids.append(id) }
+            case .failure(let error):
+                return .failure(error)
+            }
+        }
+        return .success(ids)
+    }
+
+    /// Resolves one comma-separated group: one thing, or several joined by a
+    /// conjunction.
+    ///
+    /// The conjunction split is a **second pass**, tried only once the group
+    /// has failed to name anything entire. That ordering is the whole safety
+    /// argument: an item declared `name("cup and saucer")` answers to its own
+    /// words before the conjunction is ever read as punctuation, so adding the
+    /// word to the parser cannot change the meaning of a phrase that already
+    /// worked — and `take cup and saucer, the coin` keeps that name while
+    /// standing in a list, because the group is offered whole first.
+    ///
+    /// - Parameters:
+    ///   - group: the group's tokens, as a slice keeping its place in the
+    ///     slot's phrase.
+    ///   - start: where the phrase begins in `tokens`.
+    ///   - tokens: the line as typed.
+    ///   - scope: what the player can name.
+    ///   - distant: the far-sighted fallback set.
+    /// - Returns: the objects this group named, at least one, or the error.
+    private func resolveGroup(
+        _ group: ArraySlice<String>, at start: Int, in tokens: [String],
+        scope: Scope, distant: Set<EntityID>
+    ) -> Result<[EntityID], ParseError> {
+        // `take the coin, all` asks for one thing and everything at once. Only
+        // a whole phrase may be a keyword, and `fit` has already read that one.
+        guard ParsedCommand.MultiObject.keyword(phrase: Array(group)) == nil else {
+            return .failure(.multipleNotAllowed)
+        }
+        let whole = resolve(Array(group), in: scope, alsoConsidering: distant)
         guard case .failure(let wholeError) = whole else {
             return whole.map { [$0] }
         }
-        // Nothing answers to the phrase entire — so it may be several phrases
+        // Nothing answers to the group entire — so it may be several phrases
         // joined by "and".
-        guard let pieces = listSegments(of: phrase) else {
-            return .failure(positioned(wholeError, tokens: tokens, phraseStart: start))
+        guard let pieces = listSegments(of: group) else {
+            return .failure(
+                positioned(wholeError, tokens: tokens, phraseStart: start + group.startIndex))
         }
 
         var ids: [EntityID] = []
         for piece in pieces {
-            // `take the coin and all` asks for one thing and everything at
-            // once. Only a whole phrase may be a keyword.
             guard ParsedCommand.MultiObject.keyword(phrase: Array(piece)) == nil else {
                 return .failure(.multipleNotAllowed)
             }
             switch resolve(Array(piece), in: scope, alsoConsidering: distant) {
             case .success(let id):
-                if !ids.contains(id) { ids.append(id) }
+                ids.append(id)
             case .failure(let error):
-                // `piece.startIndex` is its offset within `phrase`, since
-                // `phrase` is a zero-based array.
+                // `piece.startIndex` is its offset within the slot's phrase,
+                // since every slice here indexes the same zero-based array.
                 return .failure(
                     positioned(error, tokens: tokens, phraseStart: start + piece.startIndex))
             }
         }
-        // One id can come back from several pieces — one thing named twice, or
-        // a trailing `and` with nothing behind it. The caller reads that as a
-        // single object and takes the ordinary path.
         return .success(ids)
     }
 
-    /// The phrase's conjunction-separated pieces, or `nil` when it is no kind
-    /// of list: no conjunction in it, or nothing but conjunctions.
+    /// The phrase's separated pieces, or `nil` when it is no kind of list: no
+    /// separator in it, or nothing but separators.
     ///
     /// The one definition of "does this phrase name several things", so the
     /// direct slot (which accepts a list) and the indirect slot (which refuses
     /// one) can never come to disagree about what a list is. Each piece keeps
-    /// its place, as an `ArraySlice` over `phrase`: a clarifying question about
-    /// one member has to be answerable in that member's own position.
+    /// its place, as a slice over the slot's phrase: a clarifying question
+    /// about one member has to be answerable in that member's own position.
     ///
-    /// - Parameter phrase: the slot's tokens.
+    /// Splitting drops empty pieces, which is what makes the Oxford comma of
+    /// `take the coin, the feather, and the idol` one separator and not two.
+    ///
+    /// - Parameter phrase: the slot's tokens, or a comma-separated group of
+    ///   them.
     /// - Returns: the pieces, at least one and never empty, or `nil`.
-    private func listSegments(of phrase: [String]) -> [ArraySlice<String>]? {
-        guard phrase.contains(where: Vocabulary.conjunctions.contains) else { return nil }
-        let pieces = phrase.split(whereSeparator: Vocabulary.conjunctions.contains)
+    private func listSegments(of phrase: ArraySlice<String>) -> [ArraySlice<String>]? {
+        guard phrase.contains(where: Self.separators.contains) else { return nil }
+        let pieces = phrase.split(whereSeparator: Self.separators.contains)
         return pieces.isEmpty ? nil : pieces
     }
+
+    /// What stands between two object phrases rather than inside one: the
+    /// conjunctions, and the comma the player wrote in place of one.
+    private static let separators = Vocabulary.conjunctions.union([","])
 
     /// The multi-object keyword a phrase spells and the exclusion trimming it:
     /// `all but the sword` is the keyword `all` and the phrase `sword`, and a
@@ -827,7 +904,10 @@ struct StandardParser {
     ///
     /// Resolved through ``resolveDirect(_:at:in:scope:distant:)``, so
     /// `take all except the sword and the lamp` excepts two things without a
-    /// second splitter existing to disagree with the first one.
+    /// second splitter existing to disagree with the first one — and
+    /// `take all except the sword, the lamp` excepts two for the same reason,
+    /// the comma being that one splitter's business as much as the
+    /// conjunction is.
     ///
     /// - Returns: the objects excepted, possibly none — a trailing `but` with
     ///   nothing behind it is forgiven exactly as a trailing `and` is.

@@ -7,22 +7,48 @@ everything a previous round already rejected, forever — the harness argues wit
 instead of converging. And with it, a key marked `fixed` that shows up again is not a new
 finding, it is a **regression**, and it goes back at raised severity.
 
-Pass `ledgerKeys` into the workflow with every key below whose verdict is `refuted` or
-`fixed`.
+Pass `ledgerKeys` into the workflow with every key below whose verdict is `refuted`.
+
+**Not the `fixed` ones, and the instruction to pass them was wrong.** `ledgerKeys` feeds
+`seen`, and a finding whose key matches is **dropped** — merged away unverified and
+unreported. So passing a `fixed` key instructs the harness to swallow in silence exactly
+the thing the paragraph above says is the point of this file: a `fixed` row that comes
+back is a regression at raised severity, and it cannot come back if the round is told to
+throw it away. Withhold them, and say in the round report that you did.
 
 The key is `<ownerFile>::<normalized offending text>`, with the frame deliberately
 excluded — one untrue sentence seen in two frames is one defect, so keying on the frame
 would dispatch two fixers at one branch. Keys are abbreviated here for reading; the full
 ones are in the round reports.
 
+**Correction, 2026-08-18: the full ones are not in the round reports.**
+`docs/games/dungeon-playtest-2026-08-11.md` contains no key table — the string `::` does
+not occur in it — so no full key from that round survives anywhere in this repo. Every
+row below is display-truncated with `…`, and `normalize()` strips every character that is
+not `[a-z0-9 ]` and can therefore never emit one. **None of the 2026-08-11 keys can match
+anything a later round produces**, whatever its verdict. They are a reading record, not a
+working dedup set. (Their one remaining use: up to 60 are pasted into the *sighted*
+charters' prompts under "do not report these again", which is deterrence and works on
+prose rather than on string equality.) Record full, untruncated keys from now on — the
+shape the clusterer actually compares is `decl::<file>::<declaration>`, with the excerpt
+form only as an `unlocated` fallback.
+
 ## 2026-08-11 — first round, `0080053` (`fix: none`, nothing applied)
 
-Ran at **seed 2**, not the harness default 0. Seed 2 is the seed
-`DungeonWalkthroughTests` pins its 716-point route to, and the route is the only way a
+Ran at **seed 2**, not the harness default 0. Seed 2 was then the seed
+`DungeonWalkthroughTests` pinned its 716-point route to, and the route is the only way a
 tester reaches the volcano, the Royal Puzzle or the Endgame inside a round's budget — the
 far side of this game is two hundred correct commands from the front door. A prefix
-replayed at another seed lands somewhere else, quietly. Any round that wants the deep
-regions has to pin 2 as well, or re-derive its own route.
+replayed at another seed lands somewhere else, quietly.
+
+> **The seed is 52 now, and has been since the day after this round.** `97b5032`
+> (*"Villains block rather than swing (#237) (#238)"*, 2026-08-12) gave the troll and the
+> thief a strike-first probability, which moved every draw in the game;
+> `DungeonWalkthroughTests.seed` was re-pinned by brute-force scan and 52 is the only
+> seed below 400 the route still wins on. **A later round pins 52**, not 2 — the
+> sentence this note replaces would have sent one to a seed where its own route prefixes
+> land somewhere else and the `solver` charter, whose brief takes its route from this
+> very test, fails outright. Read the constant, never a number written down here.
 
 Oracle tiers T0/T1/T2/T3 — all four, unlike KindlyDeep's first round: `docs/games/dungeon.md`
 exists and carries the mechanics contract, which is what let the verifiers refute on "the
@@ -269,8 +295,11 @@ rather than guessed at.
 given above — all three name a sentence no pass has changed, and the ledger's rule is that
 a row belongs to the sentence in its key rather than to the box it was filed under.
 
-Pass every `fixed` and `refuted` key above as `ledgerKeys` on the next round. The list is
-seventeen keys longer than it was.
+~~Pass every `fixed` and `refuted` key above as `ledgerKeys` on the next round.~~ **Struck
+2026-08-18** — see the correction in the preamble. Passing a `fixed` key makes the round
+*drop* a rematch of it unverified, which is precisely how a regression goes unseen; and
+every key in this file is display-truncated, so none of them can match anything anyway.
+Pass the thirteen `refuted` keys, for deterrence in the sighted prompts, and nothing else.
 
 ## 2026-08-14 — a hand-played session, not a harness round
 
@@ -306,3 +335,114 @@ inside X` failing where `look in X` works, and no conjunction support at all. No
 Dungeon defect and none has a key here.
 
 Pass these five keys as `ledgerKeys` too. The list is twenty-two keys longer than it was.
+
+
+## 2026-08-18 — second round, `bd5f79b` (`fix: none`, nothing applied)
+
+Ran at **seed 52**, the seed `DungeonWalkthroughTests` pins its 716-point route to. Oracle
+tiers T0–T4, all five. `verifyEffort` inherited, not turned down. 52 findings: 42 confirmed
+(29 unanimous, 13 `needs-human`), 10 refuted, 0 routed. Round report:
+`docs/games/dungeon-playtest-2026-08-18.md`.
+
+**Every `confirmed` row below is an open defect in the game as it ships, filed as #286.**
+
+**The 39 `fixed` keys above were withheld from `ledgerKeys`.** Only the 13 `refuted` ones
+were passed, which is what the correction at the top of this file instructs. Nothing in
+this round matched any of them, and nothing could have: they are all display-truncated with
+`…`, which `normalize()` can never emit.
+
+**These keys are full and untruncated**, in the `decl::<file>::<declaration>` shape the
+clusterer actually compares — the first round in this file for which that is true.
+
+Every row is `preexisting`; the verifiers dated all 42 confirmed findings against `git
+log -S` and not one arrived with a recent fix. **No row here is a regression, and none of
+the 39 `fixed` rows above came back.** The next round's first job is still to check that
+none of them has.
+
+Four things deserve a flag.
+
+**The critic rated the round `round-is-thin`, and 42 findings do not contradict that.**
+Three region prefixes pointed six of eight testers at three regions. Volcano is 0/10 rooms
+worked, Palantir 0/5, Royal Puzzle 0/2, Dam 0/8, Coal Mine 1/13 — thirty-eight rooms the
+committed route walks straight through and nobody addressed a word to. A region with no
+rows below is **not** clean; it is unvisited.
+
+**The thief was dead in every session by move 48, and that is a property of the prefixes,
+not of the dice.** `route616.txt` line 42 is `attack thief with sword`, and all three region
+prefixes are prefixes of that route. `shadowy figure` appears zero times in ~18,900 played
+commands, so six of the thirty-five timers are dead code for the whole round. A prefix that
+omits line 42 is the single highest-value change the next round can make.
+
+**Two keys are coarser than the defect and will over-match.**
+`decl::Sources/Gnusto/Actions/StubVerbs.swift::stubs` and
+`decl::Sources/Gnusto/Actions/CoreVerbs.swift::cores` name whole declaration arrays, not
+lines. Both are `confirmed`, so neither is passed as a `ledgerKey` and neither can suppress
+anything today — but if either is ever marked `refuted`, narrow it first or it will swallow
+every future finding on any stub or core verb.
+
+**Thirteen rows are `needs-human`, and in three of them the verifier corrected the finder's
+own diagnosis.** `Prose+EndgameMechanics.swift::masterArrives` (the capitalised lines are
+the outlier, not the listing line), `CoreVerbs.swift::cores` (the prescribed fix makes Zork 1
+warn at launch) and `AboveGround.swift::mailbox` (confirmed on object-property fidelity, not
+on the prose contradiction the finder led with). Read the round report's per-site notes
+before acting on any of the three; the claim alone points at the wrong line.
+
+| Key (full) | Verdict | Category | Severity |
+|---|---|---|---|
+| `decl::Sources/Dungeon/Regions/Prose+House.swift::bottle` | confirmed | prose-untrue-of-state | major |
+| `decl::Sources/Dungeon/Regions/Prose+Alice.swift::sphere` | confirmed | prose-untrue-of-state | major |
+| `decl::Sources/Dungeon/Regions/Prose+Alice.swift::etchingsAbove` | confirmed | unanswerable-noun | major |
+| `decl::Sources/Dungeon/Regions/Prose+Alice.swift::cageGas` | confirmed | unanswerable-noun | minor |
+| `decl::Sources/Dungeon/Regions/Prose+Alice.swift::machineRoomWithButtons` | confirmed | unanswerable-noun | minor |
+| `decl::Sources/Dungeon/Regions/Prose+Dam.swift::reservoirWater` | confirmed | prose-untrue-of-state | major |
+| `decl::Sources/Dungeon/Regions/Prose+River.swift::buoy` | confirmed | presence-line-location-blind | major |
+| `decl::Sources/Dungeon/Regions/River.swift::barrel` | confirmed (needs-human) | mechanic-contradicts-prose | major |
+| `decl::Sources/Dungeon/Regions/Prose+River.swift::boatHissesFlat` | confirmed (needs-human) | gate-not-gating | major |
+| `decl::Sources/Dungeon/Regions/Prose+River.swift::beachDigs` | confirmed | unanswerable-noun | major |
+| `decl::Sources/Dungeon/Regions/Prose+River.swift::frigidRiverHere` | confirmed | prose-untrue-of-frame | major |
+| `decl::Sources/Dungeon/Regions/Prose+AboveGround.swift::distantView` | confirmed | prose-untrue-of-frame | major |
+| `decl::Sources/Dungeon/Regions/Prose+River.swift::whiteCliffsFromBelow` | confirmed | prose-untrue-of-frame | minor |
+| `decl::Sources/Dungeon/Regions/Prose+River.swift::aragainFallsItself` | confirmed | prose-untrue-of-frame | minor |
+| `decl::Sources/Dungeon/Regions/Prose+River.swift::rainbowItself` | confirmed | prose-untrue-of-frame | minor |
+| `decl::Sources/Dungeon/Regions/Prose+Temple.swift::torchNoRope` | confirmed | mechanic-contradicts-prose | major |
+| `decl::Sources/Dungeon/Regions/Prose+Temple.swift::spirits` | confirmed | prose-untrue-of-state | major |
+| `decl::Sources/Dungeon/Regions/Prose+Temple.swift::candles` | confirmed (needs-human) | prose-untrue-of-state | major |
+| `decl::Sources/Dungeon/Regions/Prose+RoundRoom.swift::roundRoomCompass` | confirmed | unanswerable-noun | major |
+| `decl::Sources/Gnusto/Actions/StubVerbs.swift::stubs` | confirmed (needs-human) | prose-untrue-of-frame | major |
+| `decl::Sources/Dungeon/Regions/Prose+Temple.swift::bellCools` | confirmed | prose-untrue-of-frame | minor |
+| `decl::Sources/Dungeon/Regions/Prose+Temple.swift::blackBook` | confirmed (needs-human) | mechanic-contradicts-prose | minor |
+| `decl::Sources/Dungeon/Prose+Stubs.swift::stubs.climb` | confirmed (needs-human) | stock-line-not-reskinned | minor |
+| `decl::Sources/Dungeon/Regions/Prose+Alice.swift::blueIcingWriting` | confirmed | prose-untrue-of-state | major |
+| `decl::Sources/Dungeon/Regions/Prose+Alice.swift::poolLeak` | confirmed | prose-untrue-of-state | major |
+| `decl::Sources/Dungeon/Regions/Prose+Alice.swift::robotSpringsTheCage` | confirmed | mechanic-contradicts-prose | major |
+| `decl::Sources/Dungeon/Regions/Prose+Alice.swift::robotIsOutOfEarshot` | confirmed (needs-human) | stock-line-not-reskinned | minor |
+| `decl::Sources/Dungeon/Regions/Prose+River.swift::geronimoNotInBarrel` | confirmed | prose-untrue-of-frame | major |
+| `decl::Sources/Dungeon/Regions/Prose+River.swift::barrelInside` | confirmed (needs-human) | prose-untrue-of-state | minor |
+| `decl::Sources/Dungeon/Prose+Systems.swift::verbSmell` | confirmed (needs-human) | prose-untrue-of-frame | minor |
+| `decl::Sources/Dungeon/Regions/Prose+Temple.swift::exorcismLapses` | confirmed | prose-untrue-of-frame | major |
+| `decl::Sources/Dungeon/Regions/Prose+Temple.swift::bellRingRedHot` | confirmed | prose-untrue-of-state | major |
+| `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::pineEndOpen` | confirmed | prose-untrue-of-state | major |
+| `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::guardians` | confirmed (needs-human) | prose-untrue-of-frame | major |
+| `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::cryptTransition` | confirmed | prose-untrue-of-state | minor |
+| `decl::Sources/Dungeon/Prose+Systems.swift::toll` | confirmed | register-mismatch | note |
+| `decl::Sources/Dungeon/Regions/Prose+EndgameMechanics.swift::masterArrives` | confirmed (needs-human) | register-mismatch | note |
+| `decl::Sources/Dungeon/Regions/Prose+AboveGround.swift::gratingFromBelow` | confirmed | prose-untrue-of-state | major |
+| `decl::Sources/Dungeon/Regions/Prose+Cellar.swift::chimney` | confirmed | mechanic-contradicts-prose | major |
+| `decl::Sources/Dungeon/Regions/Prose+Bank.swift::viewingRoom` | confirmed (needs-human) | unanswerable-noun | major |
+| `decl::Sources/Dungeon/Regions/AboveGround.swift::mailbox` | confirmed | mechanic-contradicts-prose | minor |
+| `decl::Sources/Gnusto/Actions/CoreVerbs.swift::cores` | confirmed (needs-human) | register-mismatch | minor |
+| `decl::Sources/Dungeon/Regions/Prose+Alice.swift::bucketGoesNowhereElse` | refuted | mechanic-contradicts-prose | major |
+| `decl::Sources/Dungeon/Regions/Prose+River.swift::river2` | refuted | mechanic-contradicts-prose | major |
+| `decl::Sources/Dungeon/Regions/Prose+River.swift::digRevealsStatue` | refuted | prose-untrue-of-state | minor |
+| `decl::Sources/Dungeon/Prose+Systems.swift::drinkWater` | refuted | stock-line-not-reskinned | minor |
+| `decl::Sources/Dungeon/Regions/Prose+AboveGround.swift::clearing` | refuted | exit-prose-mismatch | minor |
+| `decl::Sources/Dungeon/Regions/Prose+River.swift::whiteCliffsNorth` | refuted | unwinnable | blocking |
+| `decl::Sources/Dungeon/Regions/Prose+River.swift::river5` | refuted | exit-prose-mismatch | major |
+| `decl::Sources/Dungeon/Regions/Prose+River.swift::chasmDeadEnd` | refuted | exit-prose-mismatch | minor |
+| `decl::Sources/Dungeon/Regions/Prose+Temple.swift::bellRedHot` | refuted | prose-untrue-of-state | minor |
+| `decl::Sources/Dungeon/Prose+Stubs.swift::stubs.sit` | refuted | register-mismatch | minor |
+
+Pass the ten `refuted` keys above as `ledgerKeys` next round, alongside the thirteen from
+2026-08-11. **Not the forty-two `confirmed` ones**, and not the thirty-nine `fixed` ones
+above them. The list is twenty-three keys long, and for the first time ten of them can
+actually match.

@@ -4,7 +4,7 @@ extension Clock {
     /// Puts an actor on a timetable: a daemon that keeps them where their day
     /// says they should be.
     ///
-    /// This is the deterministic counterpart to ``GnustoActors``' `roams`. The
+    /// This is the deterministic counterpart to `GnustoActors`' `roams`. The
     /// announcement discipline is the same — the departure line prints only if
     /// the player is standing in the room being left, the arrival line only in
     /// the room being entered, and neither in the dark — but nothing here draws

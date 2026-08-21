@@ -5,17 +5,41 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: read
+
+# See test.yml for why pushes get a singleton group rather than sharing one.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   swift-format-lint:
+    # macOS on purpose, and not a cost question — this repo is public. `xcrun` resolves
+    # the Xcode-bundled swift-format, which is the exact binary CLAUDE.md tells authors
+    # to run locally. A Linux swift-format would let CI and a developer's machine
+    # disagree about what "formatted" means, which is the worst way a linter can fail.
     runs-on: macos-26
+
+    # ~1m observed; floored well above that because a timeout is here to catch a hang.
+    timeout-minutes: 15
+
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Nothing here pushes, and `swift package resolve` below runs plugin code.
+          persist-credentials: false
 
       - name: Setup swift-format lint
         run: |
           touch .dev-tooling
           swift package resolve
           .build/checkouts/Persnicket/bin/ci-lint-setup
+          # macos-26 is a rolling image. When GitHub rolls the default Xcode this
+          # binary's formatting shifts underneath the repo and an unrelated PR goes
+          # red with nothing in the diff to explain it. Log the version so that
+          # failure is diagnosable in one look.
+          xcrun swift-format --version
 
       - name: Lint (strict)
         run: xcrun swift-format lint --strict --parallel --recursive --configuration .swift-format Sources Tests

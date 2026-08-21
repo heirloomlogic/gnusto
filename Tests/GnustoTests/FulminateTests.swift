@@ -51,6 +51,32 @@ struct FulminateTests {
         #expect(fromHall.contains("goes off with a flat, unimpressive thump"))
     }
 
+    /// The blast and the turn after it are written in doors and breakage going
+    /// off above and below the man hearing them, and that is a claim about
+    /// which floor he is standing on. The branch used to be indoors/outdoors,
+    /// which put a run of breakage below a player in the Cellar — the lowest
+    /// room in the house — and a door above one on the top floor.
+    @Test func theBlastNarratesTheFloorThePlayerIsStandingOn() async throws {
+        let cellar = try await play(
+            Fulminate(),
+            ["south", "open drawer", "take flashlight", "turn on flashlight", "down"]
+                + Array(repeating: "z", count: 5))
+        #expect(cellar.contains("Above you a long run of breakage"))
+        #expect(!cellar.contains("Below you a long run of breakage"))
+        #expect(cellar.contains("a door goes above you, and another one above that"))
+
+        let upstairs = try await play(Fulminate(), ["up"] + Array(repeating: "z", count: 9))
+        #expect(upstairs.contains("Below you a long run of breakage starts and finishes, floor after floor"))
+        #expect(upstairs.contains("a door goes close by, and another one below"))
+
+        // The ground floor is the one the paragraph was always written from,
+        // and there it still reads exactly as it did.
+        let hall = try await play(Fulminate(), Array(repeating: "z", count: 10))
+        #expect(hall.contains("Something lets go above you"))
+        #expect(hall.contains("Below you a long run of breakage"))
+        #expect(hall.contains("a door goes above you, and another one below"))
+    }
+
     /// Being in the room when it goes up is a way to end the evening, and the
     /// player is given eight turns of standing in it to think better of that.
     @Test func standingInTheLabWhenItGoesUpIsFatal() async throws {
@@ -737,6 +763,27 @@ struct FulminateTests {
         let answer = turnOutput(of: "show watch to patrolman", in: transcript)
         #expect(answer.contains("The patrolman looks at it and looks away."))
         #expect(!answer.contains("the patrolman looks at it"))
+    }
+
+    /// The same fault, in the two lines the fix above missed. `greets` and
+    /// `notTakingOrders` were written the same way and went on printing "the
+    /// patrolman hears you out" for as long as the sibling did — invisible for
+    /// the same reason, and found by the source sweep in
+    /// ``ProseConventionTests`` rather than by anybody reading a transcript.
+    ///
+    /// Only `notTakingOrders` is asserted, because only it can be reached:
+    /// every actor in this house carries a conversation, so `GnustoConversation`
+    /// answers a greeting before ``GameText/greets`` is consulted and the line
+    /// is unreachable in Fulminate. It was fixed anyway — a line that is right
+    /// only because nothing calls it is a trap for whoever adds the sixth
+    /// actor.
+    @Test func theOrderRefusalThatOpensOnHisNameGetsACapitalLetterToo() async throws {
+        let approach = ["south", "west"] + Array(repeating: "z", count: 10)
+        let transcript = try await play(Fulminate(), approach + ["patrolman, go north"])
+
+        let ordered = turnOutput(of: "patrolman, go north", in: transcript)
+        #expect(ordered.contains("The patrolman hears you out"))
+        #expect(!ordered.contains("the patrolman hears you out"))
     }
 
     // MARK: - Frames the stock lines were never told about

@@ -879,13 +879,13 @@ extension DungeonVolcano {
         // were.
         narrowLedge.describe {
             gnomeDoorOpen
-                ? "\(Prose.narrowLedge)\n\(Prose.narrowLedgeChimneyOpen)"
+                ? "\(Prose.narrowLedge) \(Prose.narrowLedgeChimneyOpen)"
                 : Prose.narrowLedge
         }
 
         wideLedge.describe {
             let south = dustyRoomWrecked ? Prose.wideLedgeRubble : Prose.wideLedgeDoor
-            return "\(Prose.wideLedge)\n\(south)"
+            return "\(Prose.wideLedge) \(south)"
         }
 
         // The examine channel, saying what the room's paragraph directly above

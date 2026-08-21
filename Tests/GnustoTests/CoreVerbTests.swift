@@ -45,10 +45,9 @@ struct CoreVerbTests {
         // doff
         "remove hat", "doff hat", "take off hat", "take hat off",
         // putOn
-        "put cloak on bench", "put cloak onto bench", "hang cloak on bench",
-        "place cloak on bench",
+        "put cloak on bench", "hang cloak on bench", "place cloak on bench",
         // putIn
-        "put cloak in sack", "put cloak into sack",
+        "put cloak in sack",
         // open / close
         "open box", "close box", "shut box",
         // lock / unlock
@@ -71,7 +70,7 @@ struct CoreVerbTests {
         "greet rat", "hello rat", "hi rat", "greet",
         "say hello to rat", "say hi to rat",
         // board
-        "enter boat", "board boat", "get in boat", "get into boat",
+        "enter boat", "board boat", "get in boat",
         "go through boat", "walk through boat", "step through boat",
         "climb through boat", "walk in boat",
         // disembark
@@ -122,11 +121,16 @@ struct CoreVerbTests {
         // The sentence the issue was filed from.
         "look inside sack", "look into sack",
         "search inside sack", "search into sack",
-        // putIn / putOn, where the literal closes an open object slot.
+        // putIn / putOn, where the literal closes an open object slot. The
+        // `into`/`onto` pair had rows of their own until #273 found those
+        // rows unreachable; answering here instead is the proof that
+        // deleting them cost the player nothing.
+        "put cloak into sack", "put cloak onto bench",
         "put cloak inside sack", "put cloak upon bench",
         "hang cloak upon bench", "place cloak onto bench",
-        // board, where the synonym is in the verb-identifying run.
-        "get inside boat", "walk inside boat",
+        // board, where the synonym is in the verb-identifying run — and
+        // `get into`, likewise a row of its own until #273.
+        "get into boat", "get inside boat", "walk inside boat",
         // A trailing particle, matched positionally.
         "turn lamp upon", "switch lamp upon",
         // Stub rows: the same table serves them, and nothing about it knows
@@ -147,6 +151,27 @@ struct CoreVerbTests {
             saveDirectory: Self.saveDirectory)
         #expect(turnOutput(of: "look in sack", in: transcript).contains("velvet cloak"))
         #expect(turnOutput(of: "look inside the sack", in: transcript).contains("velvet cloak"))
+    }
+
+    /// The question an unfinished command asks is worded from the **row's**
+    /// spelling, not the player's, and the near-miss loop keeps the first
+    /// candidate's — so both spellings of a preposition ask in the canonical
+    /// row's words. Pinned because it is the one visible consequence of #269
+    /// having made three rows unreachable, and because a future reordering of
+    /// the table would otherwise change these lines silently.
+    @Test func bothSpellingsAskTheSameQuestion() async throws {
+        let questions = [
+            "get in": "What do you want to get in?",
+            "get into": "What do you want to get in?",
+            "put cloak in": "What do you want to put the velvet cloak in?",
+            "put cloak into": "What do you want to put the velvet cloak in?",
+        ]
+        let transcript = try await play(
+            CoreLab(), questions.keys.sorted(), saveDirectory: Self.saveDirectory)
+        for (command, question) in questions {
+            let turn = turnOutput(of: command, in: transcript)
+            #expect(turn.contains(question), "\(command): \(turn)")
+        }
     }
 
     // MARK: - The table holds together
