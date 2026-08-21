@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
-"""Measure how curiously an agent played, from the artifacts a session leaves.
+"""Measure how curiously an agent played, from the artifacts a probe leaves.
 
-Everything here is read off `commands.txt` and `transcript.txt`, which a session
-writes durably after every batch. Nothing is self-reported, which is the whole
-point: the old harness's two census agents exist because an agent asked how much
-it had covered answered 2 when the truth was 261, and 112 when the truth was 155.
+Everything here is read off `commands.txt` and `transcript.txt`. Every producer
+in the harness writes that pair under those names — the session server after
+every batch, its sessionless `replay` tool, and `bin/playtest-replay` — so one
+invocation may mix probe directories from all three, which is what a real round
+leaves behind. Nothing is self-reported, which is the whole point: the old
+harness's two census agents exist because an agent asked how much it had covered
+answered 2 when the truth was 261, and 112 when the truth was 155.
 
 This is the instrument for an A/B on the harness itself — a ranking change, a
 charter change, a brief change. `SKILL.md`'s "Measuring a change to the harness"
@@ -110,9 +113,25 @@ def measure(probe):
     }
 
 
+# One argv is usually a whole round's probes, so a directory this cannot open
+# names itself and the rest are still measured. It is not a measurement of zero:
+# the difference has to leave here as a sentence, on stderr, with a non-zero
+# exit, which is the whole reason the instrument is worth pointing at anything.
+status = 0
 for arg in sys.argv[1:]:
-    stats = measure(arg)
+    try:
+        stats = measure(arg)
+    except FileNotFoundError as gap:
+        name = Path(gap.filename).name
+        # `bin/playtest-replay` called its command list commands.effective.txt
+        # until #299, so a probe from before then is the one cause worth naming.
+        stale = " — a bin/playtest-replay probe from before #299" if (
+            Path(arg, "commands.effective.txt").exists()) else ""
+        print(f"playtest-measure: {arg} holds no {name}{stale}", file=sys.stderr)
+        status = 1
+        continue
     print(f"\n=== {stats.pop('probe')} ===")
     width = max(len(k) for k in stats)
     for key, value in stats.items():
         print(f"{key:<{width}} : {value}")
+sys.exit(status)
