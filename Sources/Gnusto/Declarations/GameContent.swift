@@ -53,8 +53,8 @@ public protocol GameContent: Sendable {
     @TimerBuilder var timers: [TimedEvent] { get }
 
     /// Extra `name=value` pairs for the play-test status footer — the hour, the
-    /// weather, whatever this bundle knows that the three-field ``StatusLine``
-    /// (room, score, moves) does not. Defaults to empty, and costs nothing at
+    /// weather, whatever this bundle knows that ``StatusLine`` (room, score,
+    /// moves) does not. Defaults to empty, and costs nothing at
     /// all unless a footer is in force.
     ///
     /// ```swift

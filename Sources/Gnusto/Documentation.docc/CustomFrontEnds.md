@@ -120,7 +120,9 @@ A front end with no quit gesture — a pipe, a socket — never returns `.quit`,
 ## The status line
 
 ``StatusLine`` is the location name, the score and the move count, handed over
-after every turn. ``TerminalIOHandler`` paints it as a reverse-video bar;
+after every turn. It also carries the location's ``EntityID``, which is not for
+display: a display name is prose and two rooms may share one, so anything
+*recording* where the player has been needs the key the room roster is in. ``TerminalIOHandler`` paints it as a reverse-video bar;
 everything else ignores it.
 
 ``TurnResult/isFinished`` is the flag that stops the loop, and it is *not* the

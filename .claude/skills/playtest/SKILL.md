@@ -185,7 +185,14 @@ a tester lying; a field description is read seventy-nine different ways by seven
 agents, and a derived number does not depend on that.
 
 The first two now come from `closing.json`, which the session server writes at `finish` out
-of the status line and the parser's own record of tokens it could not consume. That file
+of the status line and the parser's own record of tokens it could not consume. **The rooms
+are recorded by `EntityID`, and the roster they are scored against is copied out of the
+`survey` tool rather than transcribed by the cartographer** — one key space on both sides,
+because a display name cannot be a key. Dungeon declares 143 rooms under 126 distinct
+`name(…)` strings, seven of them "Coal Mine", so the 2026-08-18 round's "119 of 195 rooms
+visited" was a fraction whose numerator and denominator could not meet: a tester who
+walked all seven Coal Mines contributed one, and seventeen rooms were uncountable
+however carefully the two sides were matched. That file
 also carries `firedTimers`, the engine's count of every fuse and daemon body that actually
 ran — which is what lets the round name a timer that was **declared and never fired in any
 session**. Nothing else can: a timer whose body only sets a flag prints nothing, so silence
@@ -311,7 +318,8 @@ open  label: staleness-check, role: explorer
 finish  session: <id>, summary: checking the binary
 ```
 
-A current server returns `roomsVisited`, `unknownWords` and `firedTimers` in the result
+A current server returns `roomsVisited` — one `{id, name}` row per room — plus
+`unknownWords` and `firedTimers` in the result
 and leaves a `closing.json` in the probe directory. A stale one returns none of them and writes no file
 — and a round dispatched against it collates nothing, reports every session as never
 having finished, and looks exactly like a round where the testers all crashed.

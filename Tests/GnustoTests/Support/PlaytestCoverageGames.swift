@@ -146,3 +146,32 @@ struct BlurbGame: Game {
         lantern.starts(in: doorway)
     }
 }
+
+/// Two rooms under one display name.
+///
+/// Dungeon's seven rooms called "Coal Mine", shrunk to the two it takes to
+/// prove the point: a coverage record keyed on the *display name* charges a
+/// tester who walked all seven with one room.
+/// ``PlaytestSession/Closing/roomsVisited`` has what that cost, and
+/// `closing.json`'s copy of it is what this fixture pins.
+struct CoalMineGame: Game {
+    let title = "Coal Mine"
+    let intro = "The passages here all look alike."
+
+    let upperMine = Location {
+        name("Coal Mine")
+        description("A non-descript part of a coal mine. A passage leads north.")
+    }
+
+    let lowerMine = Location {
+        name("Coal Mine")
+        description("A non-descript part of a coal mine. A passage leads south.")
+    }
+
+    var map: WorldMap {
+        upperMine.north(lowerMine)
+        lowerMine.south(upperMine)
+
+        player.starts(in: upperMine)
+    }
+}

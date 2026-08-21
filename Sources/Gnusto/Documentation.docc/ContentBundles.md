@@ -82,7 +82,7 @@ Because bundle-owned entity IDs are namespaced, so are their save-file keys — 
 
 ## A bundle can add a field to the status footer
 
-``StatusLine`` is three fields — room, score, moves — and the engine cannot reach the libraries that know anything else: `GnustoClock` depends on `Gnusto`, not the other way round. So a bundle that knows something a tester needs hands it up:
+``StatusLine`` says the room, the score and the moves, and the engine cannot reach the libraries that know anything else: `GnustoClock` depends on `Gnusto`, not the other way round. So a bundle that knows something a tester needs hands it up:
 
 ```swift
 public var statusFields: [(String, String)] { [("time", now.formatted(format))] }

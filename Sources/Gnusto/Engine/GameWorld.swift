@@ -2,6 +2,16 @@ import Foundation
 
 /// The status line a handler can display: location, score, and turn count.
 public struct StatusLine: Sendable {
+    /// The current location, by the ID the game declared it under.
+    ///
+    /// Not for display — ``locationName`` is what a status bar prints. This is
+    /// here because a display name is not an identity: `name(…)` is prose and
+    /// nothing stops two rooms sharing one. A consumer that records *where the
+    /// player has been* needs the key space the room roster is in, or a game
+    /// with repeated names has rooms it can never count. What that cost, in
+    /// numbers, is on `PlaytestSession.Closing.roomsVisited`, which is the
+    /// consumer in this repo.
+    public let locationID: EntityID
     /// The current location's name.
     public let locationName: String
     /// The player's current score.
@@ -922,6 +932,7 @@ public actor GameWorld {
 
     private func statusLine() -> StatusLine {
         StatusLine(
+            locationID: state.playerLocation,
             locationName: definition.locations[state.playerLocation]?.name
                 ?? state.playerLocation.raw,
             score: state.score,

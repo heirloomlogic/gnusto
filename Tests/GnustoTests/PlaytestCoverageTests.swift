@@ -801,10 +801,14 @@ struct PlaytestCoverageTests {
             summary: "the yard and the shed", leaving: "out of budget", limit: 3)
 
         // Counted off the status line, in first-seen order, and not asked.
-        #expect(closing.roomsVisited == ["Yard", "Shed"])
+        #expect(closing.roomsVisited.map(\.id.raw) == ["yard", "shed"])
+        #expect(closing.roomsVisited.map(\.name) == ["Yard", "Shed"])
 
         let written = try text(at: session.closingURL)
-        #expect(written.contains("\"roomsVisited\":[\"Yard\",\"Shed\"]"))
+        #expect(
+            written.contains(
+                "\"roomsVisited\":[{\"id\":\"yard\",\"name\":\"Yard\"},"
+                    + "{\"id\":\"shed\",\"name\":\"Shed\"}]"))
         #expect(written.contains("\"open\":\(closing.open)"))
         #expect(written.contains("\"accepted\":true"))
         // The record sits in the probe directory the transcript is in, so one
@@ -812,6 +816,31 @@ struct PlaytestCoverageTests {
         #expect(
             session.closingURL.deletingLastPathComponent()
                 == session.transcriptURL.deletingLastPathComponent())
+    }
+
+    /// Two rooms sharing a display name are two rooms in the record.
+    ///
+    /// This is the fault that made the 2026-08-18 Dungeon round's "119 of 195
+    /// rooms visited" unrepairable: the numerator was display names and the
+    /// denominator was a room roster, and Dungeon's 143 rooms carry 126 distinct
+    /// names. A tester who walked all seven Coal Mines contributed one entry,
+    /// and seventeen rooms could not be represented at all. The record is keyed
+    /// by ``EntityID`` now, and this is the assertion that keeps it that way —
+    /// the name is still carried, and is still a duplicate, so a record that
+    /// quietly went back to keying on it fails here rather than a round later.
+    @Test func twoRoomsUnderOneDisplayNameAreCountedSeparately() async throws {
+        let session = try await session(CoalMineGame())
+        _ = try await session.move(commands: ["north"], allowPrompts: false)
+
+        let closing = try await session.finish(
+            summary: "walked both halves of the mine", leaving: nil, limit: 3)
+
+        #expect(closing.roomsVisited.map(\.id.raw) == ["upperMine", "lowerMine"])
+        #expect(closing.roomsVisited.map(\.name) == ["Coal Mine", "Coal Mine"])
+        // The ledger's own count is the one that collapses them, and it stays
+        // that way on purpose: its room string is an item identity and a
+        // transcript-heading matcher, not a coverage key.
+        #expect(closing.signals.roomsVisited == 1)
     }
 
     /// The engine's fired-timer tally reaches the closing record.
