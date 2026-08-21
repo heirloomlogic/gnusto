@@ -185,7 +185,12 @@ a tester lying; a field description is read seventy-nine different ways by seven
 agents, and a derived number does not depend on that.
 
 The first two now come from `closing.json`, which the session server writes at `finish` out
-of the status line and the parser's own record of tokens it could not consume. The third is
+of the status line and the parser's own record of tokens it could not consume. That file
+also carries `firedTimers`, the engine's count of every fuse and daemon body that actually
+ran — which is what lets the round name a timer that was **declared and never fired in any
+session**. Nothing else can: a timer whose body only sets a flag prints nothing, so silence
+in a transcript is not evidence either way, and the 2026-08-18 round needed a completeness
+critic with two hand-built controls to settle it for six of Dungeon's thirty-five. The third is
 counted off the `[status]` footers: every footer says `turn=cost` or `turn=free`, so the
 round greps for the first across four places — the testers' transcripts, the `branch-NNN.txt`
 files a rewind wrote off, the probes under `.context/playtest/.replays/` that the server's
@@ -306,8 +311,8 @@ open  label: staleness-check, role: explorer
 finish  session: <id>, summary: checking the binary
 ```
 
-A current server returns `roomsVisited` and `unknownWords` in the result and leaves a
-`closing.json` in the probe directory. A stale one returns neither and writes no file
+A current server returns `roomsVisited`, `unknownWords` and `firedTimers` in the result
+and leaves a `closing.json` in the probe directory. A stale one returns none of them and writes no file
 — and a round dispatched against it collates nothing, reports every session as never
 having finished, and looks exactly like a round where the testers all crashed.
 

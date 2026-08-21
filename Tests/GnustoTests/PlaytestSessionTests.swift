@@ -352,6 +352,62 @@ struct PlaytestSessionTests {
         #expect(afterReplay.signals.roomsVisited == 1)
     }
 
+    /// A rewind does not unhappen a timer either, and the replay path is the
+    /// one that would have lost it.
+    ///
+    /// Same argument as ``coverageKeepsARoomThatARewindWroteOff`` and the same
+    /// two paths, because they fail differently: the ring hands the world back
+    /// its state and `GameWorld.firedTimers` is deliberately untouched by that,
+    /// while the replay path boots a **fresh** world whose tally starts at
+    /// nothing. A round that lost a fire that way would report a live timer as
+    /// never exercised, which is the one direction of error the closing record
+    /// exists to rule out.
+    @Test func theFiredTimerTallySurvivesBothWaysBackFromARewind() async throws {
+        let harness = try Harness(HeartbeatGame())
+
+        // Waits one line, checkpoints, waits `turns` more, rewinds to the
+        // checkpoint and reports the tally. Whether that rewind comes back
+        // through the ring or through a replay is decided by `turns` alone,
+        // which is the whole point of running it twice.
+        //
+        // The checkpoint is at line 1 rather than at the opening so the replay
+        // path has a **non-empty** prefix to re-play. That is what makes the
+        // `max` merge load-bearing: the fresh world re-fires the one retained
+        // line and reports 1, and a merge that took the newer value would throw
+        // away everything the branch did.
+        func waitedThenRewound(_ turns: Int, label: String) async throws -> [String: Int] {
+            let session = try await harness.sessions.open(label: label, seed: 0)
+            _ = try await session.opening()
+            _ = try await session.move(commands: ["z"], allowPrompts: false)
+            _ = try await session.checkpoint("one in")
+            _ = try await session.move(
+                commands: Array(repeating: "z", count: turns), allowPrompts: false)
+            _ = try await session.restore(checkpoint: "one in")
+            let closing = try await session.finish(
+                summary: "waited, then went back", leaving: nil, limit: 3)
+            // The canonical record really is one line long, so nothing below is
+            // the signals' doing.
+            #expect(closing.signals.commands == 1)
+            return closing.firedTimers
+        }
+
+        // Inside the ring: the world is handed its old state back, and
+        // `GameWorld.firedTimers` is deliberately not part of that state.
+        let afterRing = try await waitedThenRewound(3, label: "rewound-in-ring")
+        #expect(afterRing["heartbeat"] == 4)
+        #expect(afterRing["dawn"] == 1)
+
+        // Past it: the world is dropped and a fresh one replays the one retained
+        // line, so a tally read off that world alone would report 1.
+        let past = PlaytestSession.snapshotRing + 4
+        let afterReplay = try await waitedThenRewound(past, label: "rewound-past-ring")
+        #expect(afterReplay["heartbeat"] == past + 1)
+        #expect(afterReplay["dawn"] == 1)
+        // Declared and never started, either way round.
+        #expect(afterRing["doom"] == nil)
+        #expect(afterReplay["doom"] == nil)
+    }
+
     /// A rewind takes the queue back with the world. A restore that put the
     /// world back and left the ledger where it was would re-offer every item the
     /// discarded turns closed and hide every one they raised — the queue would be
@@ -725,6 +781,31 @@ struct PlaytestSessionTests {
             OperaHouse(), ["look", "x cloak", "west"], seed: 0,
             saveDirectory: first.saveDirectory)
         #expect(continued == replayed)
+    }
+
+    /// Eviction drops the world, and the tally is not the world's to lose.
+    ///
+    /// The agent never learns it was evicted and neither should the round: a
+    /// session that played thirty turns, lost its world to another session's
+    /// arrival and then called `finish` would otherwise account for no timer at
+    /// all — and "no timer fired" is exactly the sentence this field exists to
+    /// let a round say truthfully. Nothing in `evict()` is involved, which is
+    /// the point of folding the tally as each line is recorded rather than at
+    /// the seams that drop a world.
+    @Test func anEvictedSessionKeepsItsFiredTimerTally() async throws {
+        let harness = try Harness(HeartbeatGame(), maxSessions: 1)
+        let first = try await harness.sessions.open(label: "evicted-timers", seed: 0)
+        _ = try await first.opening()
+        _ = try await first.move(commands: ["z", "z", "z"], allowPrompts: false)
+
+        // Opening a second session puts the process over the cap of one.
+        let second = try await harness.sessions.open(label: "survivor", seed: 0)
+        _ = try await second.opening()
+        #expect(!(await first.isLive()))
+
+        let closing = try await first.finish(summary: "waited", leaving: nil, limit: 3)
+        #expect(closing.firedTimers["heartbeat"] == 3)
+        #expect(closing.firedTimers["dawn"] == 1)
     }
 
     /// A session that used `save` or `restore` may not be evicted. Replay is

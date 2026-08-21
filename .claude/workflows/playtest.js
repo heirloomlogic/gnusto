@@ -622,6 +622,19 @@ const COLLATOR_SCHEMA = {
       description: 'Forks that appear in some closing.json with taken:false and in none with taken:true — a branch the whole round left alone.',
       items: { type: 'string' },
     },
+    timers: {
+      type: 'array',
+      description: 'One row per distinct timer name appearing in any closing.json `firedTimers`, with its fire count summed across all sessions. The engine\'s own tally, so a name missing from every file fired nowhere this round. Empty is a real answer and means either that nothing fired or that the records predate the field — say which in `note`.',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['name', 'count'],
+        properties: {
+          name: { type: 'string' },
+          count: { type: 'integer' },
+        },
+      },
+    },
     turns: {
       type: 'object',
       additionalProperties: false,
@@ -1555,6 +1568,43 @@ function rosterMatch(name) {
   return survey.rooms.find((r) => loose(r) === loose(name)) || null
 }
 
+// The declared timers against the ones that actually ran their bodies.
+//
+// The right-hand side is the engine's: `GameWorld.firedTimers` counts every fuse
+// and daemon body as it runs, and the session server folds it into
+// `closing.json` at `finish`. Nothing here is inferred from prose, which matters
+// because the prose may not exist — a timer whose body only sets a flag leaves
+// no sentence for anybody to grep, so "did that ever fire?" is not recoverable
+// from a transcript at all. See `SKILL.md` for the round that established that
+// the expensive way.
+//
+// The left-hand side is still the cartographer's transcription of
+// `Sources/<Game>/`, and that asymmetry is #287's remaining site rather than
+// this one's to fix. What it costs here is handled rather than hidden: the two
+// are joined through `loose()`, and a fired name matching no declared one is
+// reported as `offRoster` — a fact about the roster, which the critic is told
+// to read that way and to weigh against `neverFired` before believing it.
+function firedTimers(rows) {
+  const declared = (survey.timers || []).map((t) => t.label).filter(Boolean)
+  // Summed defensively. The collator is asked for one row per name, but a
+  // duplicated name must add up rather than print twice in the critic's line.
+  const fired = new Map()
+  for (const row of rows || []) {
+    if (!row || !row.name) continue
+    fired.set(row.name, (fired.get(row.name) || 0) + (row.count || 0))
+  }
+  const firedKeys = new Set([...fired.keys()].map(loose))
+  const declaredKeys = new Set(declared.map(loose))
+  return {
+    declared,
+    fired: [...fired]
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name)),
+    neverFired: declared.filter((d) => !firedKeys.has(loose(d))),
+    offRoster: [...fired.keys()].filter((n) => !declaredKeys.has(loose(n))),
+  }
+}
+
 // The round's turn count, off the artifacts, split by who spent it rather than
 // by how the turn was driven. A tester spends turns in its session transcript,
 // in branches a rewind wrote off — a room worked for ten turns and then rewound
@@ -1603,8 +1653,9 @@ calls \`finish\`. From \`${pkg}\`, list them:
     find ${SCRATCH} -path "*/${SESSION_GLOB}/*/${CLOSING}"
 
 Read every one. Each holds \`roomsVisited\` (room names, in the order the session
-first stood in them), \`unknownWords\` (token → how many times it was typed) and
-\`forks\` (each with an \`id\`, a \`command\`, a \`room\` and a \`taken\` flag).
+first stood in them), \`unknownWords\` (token → how many times it was typed),
+\`forks\` (each with an \`id\`, a \`command\`, a \`room\` and a \`taken\` flag) and
+\`firedTimers\` (timer name → how many times the engine ran its body).
 
 Report:
 
@@ -1613,6 +1664,14 @@ Report:
 - \`forksNobodyTook\`: the \`id\` of every fork appearing with \`taken: false\` and
   never with \`taken: true\`. A fork no session took is a branch the whole round
   left alone, and nothing else in the harness can see it.
+- \`timers\`: one row per distinct name in any \`firedTimers\`, with its count
+  summed across all files. Copy the names exactly; do not tidy them, and do not
+  add a row for a timer you know about but no file mentions — the whole use of
+  this number is the *absence* of a row, which the critic reads against the
+  declared roster. A file with no \`firedTimers\` key at all was written by a
+  server older than the field: it contributes nothing, and if that is every file
+  you read, say so in \`note\` rather than reporting an empty list as "nothing
+  fired".
 - \`turns\`: the round's world turns, counted off the \`[status]\` footers. Every
   footer says \`turn=cost\` or \`turn=free\`, and only the first is a turn the game
   charged — a parse failure and a meta command both print \`turn=free\` and cost
@@ -1705,6 +1764,7 @@ const roomTallyPromise = collatorPromise.then((collated) => {
     visited,
     offRoster,
     neverVisited: survey.rooms.filter((r) => !visited.has(r)),
+    timers: firedTimers(collated && collated.timers),
     forksNobodyTook: (collated && collated.forksNobodyTook) || [],
     sessionsFinished: (collated && collated.sessionsFinished) || 0,
     sessionsUnfinished: (collated && collated.sessionsUnfinished) || [],
@@ -1716,7 +1776,7 @@ const roomTallyPromise = collatorPromise.then((collated) => {
 const criticThunk = async () => {
   const {
     visited, offRoster, neverVisited, forksNobodyTook, sessionsFinished,
-    sessionsUnfinished, words, turns,
+    sessionsUnfinished, words, turns, timers,
   } = await roomTallyPromise
   const unknownWordTotal = words.reduce((n, w) => n + (w.count || 0), 0)
 
@@ -1735,6 +1795,44 @@ const criticThunk = async () => {
   const pairedRationales =
     agreedPairs.map(pairedRow).join('\n\n')
     || '(none — no finding this round drew the same verdict from two raters, so rater independence cannot be judged off rationales at all. Say so rather than passing over it.)'
+
+  // Built here rather than inline, because the three cases it has to keep apart
+  // are the whole value of the field and a nested ternary inside a 1kB template
+  // line is where that distinction goes to die. The cases: no roster to measure
+  // against; a roster but no tally at all, which is ambiguous and must NOT read
+  // as "everything is dead"; and a real tally, where the negative is the news.
+  let timerNote = ''
+  if (timers.declared.length === 0) {
+    timerNote = ''
+  } else if (timers.fired.length === 0) {
+    timerNote =
+      ` **No closing record carried a \`firedTimers\` tally at all**, so nothing here tells you`
+      + ` a timer was dead — the records either predate the field or the collator's \`note\` says`
+      + ` why. Do NOT report an unexercised timer off this; say the round cannot tell, or settle`
+      + ` it from the transcripts.`
+  } else {
+    timerNote =
+      ` Fired at least once, counted by the engine as each body ran rather than inferred from`
+      + ` what printed: ${timers.fired.map((t) => `${t.name} (${t.count})`).join(', ')}.`
+      + ` **Declared and never fired in any session: ${timers.neverFired.join(', ') || 'none'}.**`
+      + ` That list is the one coverage gap no transcript can show you — a timer whose body only`
+      + ` sets a flag prints nothing, so silence in the prose is not evidence either way. Name`
+      + ` them in the coverage section and make one a target for next round.`
+  }
+  // A mis-transcribed label produces BOTH lists at once — the roster spelling in
+  // `neverFired` and the engine's in `offRoster` — and read separately that is a
+  // dead timer invented out of a typo, which is the exact false positive this
+  // field exists to remove. So the two are crossed here rather than left to the
+  // critic to notice.
+  if (timers.offRoster.length) {
+    timerNote +=
+      ` ${timers.offRoster.length} fired name(s) match no declared timer`
+      + ` (${timers.offRoster.join(', ')}) — the roster above is the cartographer's`
+      + ` transcription of the source while these come from the engine, so a mismatch means the`
+      + ` roster is wrong, not that a timer appeared from nowhere. Reconcile them by name before`
+      + ` you believe the never-fired list: any of those may be one of these under another`
+      + ` spelling.`
+  }
 
   return agent(
   `${groundMin(labelFor('critic'))}
@@ -1764,7 +1862,7 @@ truth and they win over anything here.
 - Confirmed ${confirmed.length}, refuted ${refuted.length}, findings routed to another issue ${routed.length}. Every confirmed finding is filed; this round edits nothing.
 - **Verifier agreement: ${agreementTotal ? `${Math.round((agreementMatched / agreementTotal) * 100)}% (${agreementMatched} of ${agreementTotal} findings judged the same way by both raters)` : 'not measurable — no finding got two raters'}.**${singleRated ? ` ${singleRated} finding(s) got only one rater, so the denominator is thinner than the finding count.` : ''} Verification is batched now — up to ${VERIFY_BATCH_SIZE} findings per verifier, ${VERIFY_RATERS} raters each — and this number is the check on that. Near-total agreement is not automatically good news: it is what both careful raters and two rubber-stampers produce. **Read the paired refutation attempts printed below** and say whether the two raters reasoned separately or interchangeably. That judgement is yours and nothing else in the round makes it.
 - Unknown words: ${unknownWordTotal} occurrence(s) over ${words.length} distinct token(s), taken from the parse record rather than by grepping for the engine's refusal line. Not findings in themselves and not coverage — but ~48 verbs are stubs now, so a large number here is worth a sentence. A word the *game itself printed* and could not answer is a defect and should have arrived as an ordinary finding; if the count is high and no such finding was filed, that is a gap in the round, not in the game.
-- Timers, and whether any was left unexercised: ${(survey.timers || []).map((t) => t.label).join(', ') || 'none'}.
+- Timers declared: ${timers.declared.join(', ') || 'none'}.${timerNote}
 
 Each charter's own coverage note:
 ${coverage.map((c) => `- ${c.charter} (round ${c.round}): ${c.honestSummary}${(c.cellsSkipped || []).length ? ` | skipped: ${c.cellsSkipped.join(', ')}` : ''}`).join('\n')}
@@ -1838,6 +1936,10 @@ return {
       neverVisited: roomTally.neverVisited,
       offRoster: [...roomTally.offRoster],
     },
+    // Declared against fired, both counted rather than asked. `neverFired` is
+    // the reportable half: nothing else in the round can distinguish a timer
+    // that never ran from one that ran and said nothing.
+    timers: roomTally.timers,
     forksNobodyTook: roomTally.forksNobodyTook,
     sessionsFinished: roomTally.sessionsFinished,
     sessionsUnfinished: roomTally.sessionsUnfinished,

@@ -62,6 +62,9 @@ public actor GameWorld {
     /// `initialState`, both kept here for exactly the same reason — history
     /// must not leak into a save file. A restore therefore leaves the tally
     /// alone, which is right: the timers really did fire.
+    ///
+    /// Read by ``PlaytestSession``, which folds it into `closing.json` so a
+    /// round can name the declared timers nothing exercised.
     var firedTimers: [String: Int] = [:]
 
     /// The world as the last turn that *cost* a move stood at its close,
