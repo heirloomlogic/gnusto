@@ -193,6 +193,52 @@ struct CustomVerbTests {
         #expect(definition.warnings.first?.contains("take <object>") == true)
     }
 
+    // MARK: - A row that is another row respelled
+
+    @Test func aGameRowThatRespellsItsOwnNeighbourWarns() async throws {
+        // Two rows, one pattern. The parser canonicalizes both sides of the
+        // candidate filter, and equal specificity keeps table order, so the
+        // `into` row can never fire — but the game plays exactly as it would
+        // without it, which is why this is a warning and not a diagnostic.
+        let (definition, _) = try Bootstrap.build(RespeltVerbGame())
+        #expect(
+            definition.warnings.contains { warning in
+                warning.contains("\"toss <object> into <second object>\"")
+                    && warning.contains("\"toss <object> in <second object>\"")
+                    && warning.contains("respelled")
+            }, "\(definition.warnings)")
+
+        let transcript = try await play(RespeltVerbGame(), ["toss coin into well"])
+        #expect(!transcript.contains("I didn't understand that sentence."))
+    }
+
+    @Test func aGameRowThatRespellsABuiltInWarns() throws {
+        // Nothing in this game spells `put <object> in <second object>`; the
+        // engine's table does. The check runs over the merged table, so the
+        // collision is caught across that seam and not only inside one block.
+        let (definition, _) = try Bootstrap.build(RespeltBuiltInVerbGame())
+        #expect(
+            definition.warnings.contains { warning in
+                warning.contains("\"put <object> into <second object>\"")
+                    && warning.contains("\"put <object> in <second object>\"")
+            }, "\(definition.warnings)")
+
+        // Not the *override* warning: the shapes differ, so nothing was
+        // reclaimed, and reporting it as an override would be a second wrong
+        // explanation of one mistake.
+        #expect(!definition.warnings.contains { $0.contains("overrides a built-in verb") })
+    }
+
+    @Test func anExactRepeatIsNotReportedAsARespelling() throws {
+        // `RestoredCoreVerbGame` lists `.steal` and then `.take`, splicing the
+        // same shapes twice. `dedupedLastWins` collapses those before the
+        // respelling check reads the table, so the one warning it earns is the
+        // override — not eight complaints about rows being respellings of
+        // themselves.
+        let (definition, _) = try Bootstrap.build(RestoredCoreVerbGame())
+        #expect(!definition.warnings.contains { $0.contains("respelled") })
+    }
+
     @Test func aWatchedButUnlistedVerbIntentWarns() throws {
         // ForgottenVerbGame keys a rule on `.ring` but never lists it, so no
         // row produces the intent — the bootstrap names the likely fix.

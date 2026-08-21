@@ -126,6 +126,23 @@ public struct SyntaxRule: Sendable {
 
     var key: Key { Key(elements: elements) }
 
+    /// Identifies a row by what the **parser** sees: the pattern with every
+    /// literal folded to the one spelling ``Vocabulary/literalSynonyms`` writes
+    /// it in. Two rows sharing this key are one row to the parser, and only the
+    /// first of them can ever fire — `Bootstrap.respellingWarnings` says why,
+    /// and reports it.
+    ///
+    /// Computed rather than stored, where ``leadingWords`` is stored: the
+    /// parser never reads this one, so it costs a pass at bootstrap instead of
+    /// an array on every row of every table for the life of the game.
+    var canonicalKey: Key {
+        Key(
+            elements: elements.map { element in
+                guard case .word(let word) = element else { return element }
+                return .word(Vocabulary.canonical(word))
+            })
+    }
+
     /// The pattern rendered for diagnostics: `give <object> to <second object>`.
     var patternDescription: String {
         elements.map { element in

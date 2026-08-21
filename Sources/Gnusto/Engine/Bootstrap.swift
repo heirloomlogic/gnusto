@@ -489,6 +489,7 @@ enum Bootstrap {
                     + "built-in verb of the same shape.")
         }
         let syntaxRules = Self.dedupedLastWins(SyntaxRule.standardTable + customVerbs)
+        verbWarnings.append(contentsOf: Self.respellingWarnings(syntaxRules))
         var vocabulary = Vocabulary()
         vocabulary.directions = Vocabulary.standardDirections
         // Every declared word — an item's, a verb pattern's, a game's filler
@@ -1092,6 +1093,38 @@ enum Bootstrap {
     /// ID, which `Placement.heldBy(.player)` needs for itself.
     private static func reservedPlayerID(_ owner: String) -> String {
         "\"player\" is a reserved entity ID (declared by \(owner)); rename this declaration."
+    }
+
+    /// Names every row on the merged table that only respells one above it.
+    ///
+    /// A row that differs from another in nothing but how a preposition is
+    /// spelled is dead on arrival: candidate selection compares canonical
+    /// spellings and equal specificity keeps table order, so the second row
+    /// never fires. ``dedupedLastWins`` cannot see it, keying on the exact
+    /// pattern — which is right, because silently dropping the row is what
+    /// would make the mistake cost an author a debugging session. Warned
+    /// instead, and over the *merged* table, so a game colliding with a bundle
+    /// or with a built-in is caught as readily as a game contradicting itself.
+    ///
+    /// - Parameter rules: the merged table, already deduped — an exact repeat
+    ///   has been collapsed by then, so nothing is reported as a respelling of
+    ///   itself.
+    /// - Returns: one warning per dead row, naming it and the row it repeats.
+    private static func respellingWarnings(_ rules: [SyntaxRule]) -> [String] {
+        var firstSpelling: [SyntaxRule.Key: SyntaxRule] = [:]
+        var warnings: [String] = []
+        for rule in rules {
+            let canonicalKey = rule.canonicalKey
+            guard let original = firstSpelling[canonicalKey] else {
+                firstSpelling[canonicalKey] = rule
+                continue
+            }
+            warnings.append(
+                "verb row \"\(rule.patternDescription)\" is "
+                    + "\"\(original.patternDescription)\" respelled, and can never match: a "
+                    + "pattern's preposition already answers to its synonyms.")
+        }
+        return warnings
     }
 
     /// Keeps the last row for each `(verb, shape)` key, preserving relative

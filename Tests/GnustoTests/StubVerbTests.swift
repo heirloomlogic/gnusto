@@ -18,20 +18,13 @@ struct StubVerbTests {
         let problems = SyntaxRule.standardTable.flatMap(\.patternProblems)
         #expect(problems.isEmpty, "\(problems)")
 
-        // Deduped by *canonical* pattern rather than by ``SyntaxRule/Key``,
-        // which subsumes the exact repeat: two rows differing only in how a
-        // preposition is spelled are one row to the parser — candidate
-        // selection compares canonical spellings, and equal specificity keeps
-        // table order, so the later row can never fire. #273 removed the three
-        // the core table was carrying.
-        func respelt(_ rule: SyntaxRule) -> [SyntaxElement] {
-            rule.elements.map { element in
-                guard case .word(let word) = element else { return element }
-                return .word(Vocabulary.canonical(word))
-            }
-        }
-
-        let respellings = Dictionary(grouping: SyntaxRule.standardTable, by: respelt)
+        // Grouped by ``SyntaxRule/canonicalKey`` rather than ``SyntaxRule/Key``,
+        // which subsumes the exact repeat: a row that is another respelled can
+        // never fire (`Bootstrap.respellingWarnings` holds the argument), and
+        // #273 removed the three the core table was carrying. The bootstrap now
+        // asks every merged table the same question (#283); this stays because
+        // the engine's own table should be clean before any game is involved.
+        let respellings = Dictionary(grouping: SyntaxRule.standardTable, by: \.canonicalKey)
             .values
             .filter { $0.count > 1 }
             .map { $0.map(\.patternDescription).joined(separator: " / ") }
