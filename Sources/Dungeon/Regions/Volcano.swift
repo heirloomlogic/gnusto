@@ -826,12 +826,14 @@ extension DungeonVolcano {
     }
 
     @RuleBuilder fileprivate var balloonPartRules: Rules {
-        for part in [clothBag, receptacle, braidedWire] {
-            part.before(.take, .pull) {
-                let extra = part == braidedWire ? Prose.wireMightBeTied : ""
-                try reply(Prose.balloonPartIsFixed(part.name) + extra)
-            }
+        for part in [clothBag, receptacle] {
+            part.before(.take, .pull) { try reply(Prose.balloonPartIsFixed(part.name)) }
         }
+
+        // The wire is the one part with a verb of its own, so it is the one
+        // part whose refusal points at it — and it has its own rule for that,
+        // beside the `.tie` and `.untie` rules below.
+        braidedWire.before(.take, .pull) { try reply(Prose.wireIsFixed(braidedWire.name)) }
 
         clothBag.before(.open) { try reply(Prose.clothBagWontOpen) }
         clothBag.before(.lookIn) { try reply(Prose.clothBagIsEmpty) }

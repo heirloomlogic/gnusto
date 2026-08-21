@@ -502,10 +502,20 @@ extension Prose {
 
     // MARK: - The balloon
 
-    /// The three lines are joined with newlines rather than spaces because
-    /// nothing in the engine re-wraps prose: every constant in this game is
-    /// hand-wrapped, and a sentence spliced into the middle of another one
-    /// would come out ragged.
+    /// **The basket, the bag over it and the wire off its side are one
+    /// paragraph, not three.** (#302)
+    ///
+    /// The listing line is the sentence that tells a player *one thing stands
+    /// here*, and this room already lists a hook and a zorkmid: broken three
+    /// ways, one balloon reads as three more items. The source says the same
+    /// thing twice — `ODESC1` (`dung.355:4339`) is a single string holding all
+    /// three facts, printed by one `TELL`, and `LEDGE-FUNCTION`
+    /// (`act2.92:745`) splices the Wide Ledge's state clause on with a space
+    /// rather than a break. The newlines inside `ODESC1` are 1981 hard wrap at
+    /// sixty-odd columns, the typography ``cardText`` already strips.
+    ///
+    /// Where the literals below break is likewise not where the player sees a
+    /// break: `TextWrap` folds a paragraph's soft newlines on both channels.
     static func balloonInPlace(inflated: String?, tied: Bool) -> String {
         let bag =
             if let inflated {
@@ -519,15 +529,19 @@ extension Prose {
                 fastened amidships.
                 """
             }
-        return [
-            "There is a large and extremely heavy wicker basket here.",
-            bag,
+        let wire =
             tied
-                ? "A piece of wire tied to a hook holds the balloon in place."
-                : "Dangling from the basket is a piece of braided wire.",
-        ].joined(separator: " ")
+            ? "A piece of wire tied to a hook holds the balloon in place."
+            : "Dangling from the basket is a piece of braided wire."
+        return """
+            There is a large and extremely heavy wicker basket here. \(bag) \(wire)
+            """
     }
 
+    /// One paragraph for ``balloonInPlace``'s reason, and for one more: the
+    /// source's own examine channel prints its two clauses as two `TELL`s, and
+    /// a `TELL` ends in a bare CRLF (`defs.171:233`) — a line break, never a
+    /// blank line. That is 1981 line typography, not a paragraph.
     static func balloonExamined(inflated: String?, tied: Bool) -> String {
         let bag =
             if let inflated {
@@ -541,12 +555,11 @@ extension Prose {
                 the middle of it is a metal receptacle.
                 """
             }
-        return [
-            bag,
+        let wire =
             tied
-                ? "The balloon is tied to a hook by the braided wire."
-                : "A braided wire is dangling over the side of the basket.",
-        ].joined(separator: " ")
+            ? "The balloon is tied to a hook by the braided wire."
+            : "A braided wire is dangling over the side of the basket."
+        return "\(bag) \(wire)"
     }
 
     static let clothBag = """
@@ -567,12 +580,18 @@ extension Prose {
     /// Verbatim; the trilogy's `BCONTENTS`.
     static func balloonPartIsFixed(_ part: String) -> String {
         """
-        The \(part) is an integral part of the basket and cannot be
-        removed.
+        The \(part) is an integral part of the basket and cannot be removed.
         """
     }
 
-    static let wireMightBeTied = " The wire might possibly be tied, though."
+    /// The same refusal with a second sentence the bag and the receptacle never
+    /// earn: `WIRE-FUNCTION` (`act2.92:587`) offers the wire a verb neither of
+    /// them has. One line, with the stem interpolated into it, so `BCONTENTS`'s
+    /// wording stays in one place and the hint cannot be handed to the wrong
+    /// part.
+    static func wireIsFixed(_ wire: String) -> String {
+        "\(balloonPartIsFixed(wire)) The wire might possibly be tied, though."
+    }
 
     static let clothBagIsEmpty = "It doesn't appear that there's anything inside."
 
@@ -641,8 +660,10 @@ extension Prose {
     static let balloonHasLanded = "The balloon has landed."
 
     /// The source builds these four from one sentence and a tail. They are
-    /// written out instead, because nothing in the engine re-wraps prose and a
-    /// tail spliced onto a stem comes out as one long line.
+    /// written out whole instead: a line of prose is one literal, and a tail
+    /// spliced onto a stem is the spelling `ProseConventionTests` exists to
+    /// keep out. Nothing about the rendering turns on it — `TextWrap` folds a
+    /// paragraph's soft newlines on both channels either way.
     static let balloonWatchedLiftingOff = "You watch as the balloon slowly lifts off."
 
     static let balloonWatchedClimbing = "You watch as the balloon slowly ascends."

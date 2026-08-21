@@ -184,8 +184,8 @@ extension Prose {
 
     /// And from the other sixty-three, where `up` answers ``puzzleNoWayUp`` and
     /// the ceiling really is solid. One fixed line rather than an interpolated
-    /// distance: nothing in the engine re-wraps prose, and a hand-wrapped
-    /// literal with a number in it comes out ragged in some of its states.
+    /// distance, because a square count is a number the player is never told
+    /// anywhere else and "away across the room" is the fact that matters.
     static let puzzleCeilingOpeningAcrossTheRoom = """
         A circle of darkness in the ceiling, away across the room above the
         square the hole comes down into. Over your own head there is nothing
@@ -196,10 +196,12 @@ extension Prose {
         The middle of the floor here is noticeably depressed.
         """
 
-    /// Two separately wrapped variants rather than one interpolation. Nothing
-    /// in the engine re-wraps prose, and "opening" and "steel door" are
-    /// different lengths, so a single hand-wrapped literal comes out ragged in
-    /// one of its two states — which is what a play-test caught.
+    /// Two whole variants rather than one literal with a noun interpolated
+    /// into it. The raggedness that first motivated this is gone — `TextWrap`
+    /// folds a paragraph's soft newlines on both channels, so the two spell
+    /// the same output — but a wall with a door in it and a wall with a hole
+    /// in it are two sentences worth reading side by side, not one sentence
+    /// with a hole in it.
     static func puzzleDoorWall(open: Bool) -> String {
         open
             ? """
@@ -403,8 +405,9 @@ extension Prose {
     /// What is actually on one side of the square the player is standing in.
     /// The four compass walls are the only things in the region that can answer
     /// this, because they are the only ones that name a direction.
-    /// Hand-wrapped in each branch, because nothing in the engine re-wraps
-    /// prose and the compass word is a different length in each of the four.
+    /// Each branch is its own literal, and the compass word interpolates into
+    /// all four. Where those literals break is not where the player sees a
+    /// break: `TextWrap` folds a paragraph's soft newlines on both channels.
     static func puzzleWallOnSide(_ side: String, _ cell: RoyalPuzzleCell) -> String {
         switch cell {
         case .floor:
