@@ -1,0 +1,48 @@
+name: Harness
+
+# Guards the play-test harness's cross-file invariants: the blind-charter firewall,
+# the session label/glob agreement, the turn-count arithmetic and the probe layout.
+# `.claude/workflows/playtest.dryrun.mjs` stubs every agent, runs the real
+# orchestration and asserts against the generated prompt text, so those properties
+# are checkable in a second instead of costing a full fan-out to discover.
+#
+# Its own file, not a step elsewhere, for two reasons. Nobody looks for `playtest`
+# in a workflow called Lint. And `test.yml` runs in `swift:6.3.3-noble`, which ships
+# no Node, so putting it there means adding a runtime to the container.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# See test.yml for why pushes get a singleton group rather than sharing one.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  playtest-dryrun:
+    runs-on: ubuntu-24.04-arm
+
+    # Sub-second observed; floored well above that because a timeout is here to
+    # catch a hang.
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Nothing here pushes, and the step below runs a script from the checkout.
+          persist-credentials: false
+
+      # No `paths:` filter above and no setup-node here, both deliberate. The job
+      # costs a runner boot and a second, so running it on every PR is cheaper than
+      # reasoning about which edits can reach the harness — and a filtered job
+      # becomes a permanently pending check the day branch protection is turned on.
+      # The runner ships Node and the script needs only ESM and `node:fs`; the
+      # version is logged so that a rolled image is diagnosable in one look.
+      - name: Play-test harness dry run
+        run: |
+          node --version
+          node .claude/workflows/playtest.dryrun.mjs
