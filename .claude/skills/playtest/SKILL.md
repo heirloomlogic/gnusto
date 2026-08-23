@@ -240,7 +240,7 @@ which the harness writes and no game can re-voice, is the acceptable middle.
     report-shape.md                    the round report and the ledger
     issue-shape.md                     the one issue a round files
 bin/playtest-replay                    the replay helper
-.claude/workflows/playtest.dryrun.mjs  zero-agent dry run of the orchestration
+.claude/workflows/playtest.dryrun.mjs  zero-agent dry run — a CI gate, not a suggestion
 bin/playtest-measure                   how curiously a session played, off its artifacts
 bin/gnusto-mcp, .mcp.json              every game as a live play-test server
 docs/playtesting.md                    driving it by hand, without any of this
@@ -289,7 +289,14 @@ brief telling it "you have no map, no room list".
 
 The other assertions pin the batched verifiers (two raters, batch/rater labels, a
 measurable agreement denominator) and the absence of the retired censuses. It exits
-non-zero when any of them fails. Run it after any edit to `playtest.js`.
+non-zero when any of them fails.
+
+**CI runs it on every pull request**, as the `Harness` workflow
+(`.github/workflows/harness.yml`) — no path filter, so no edit can route around it.
+Run it after any edit to `playtest.js` anyway: two seconds here beats a red check and
+a round trip. A deliberate change to an asserted property means changing the assertion
+in the same commit, which is the point — these are invariants somebody wrote down, not
+incidental facts about the text.
 
 **Two things it cannot tell you**, both about the servers rather than the script.
 

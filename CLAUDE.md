@@ -35,6 +35,8 @@ swift package --allow-writing-to-package-directory format-source-code
 .build/checkouts/Persnicket/bin/ci-lint-setup  # once per checkout — generates .swift-format
 xcrun swift-format lint --strict --parallel --recursive --configuration .swift-format Sources Tests
 
+node .claude/workflows/playtest.dryrun.mjs     # CI gate on the play-test harness
+
 bin/playtest-replay --build Fulminate                              # once
 bin/playtest-replay Fulminate --commands probe.txt --seed 0 --label mine --tail 60
 
@@ -55,7 +57,8 @@ workflow in `.claude/skills/playtest/SKILL.md` builds from a worktree at an old
 commit, and a 2026-07 commit has no `--mcp`. Retiring the script retires
 calibration, which is the regression test for the whole harness.
 
-CI runs the strict lint. Run it before you claim done.
+CI runs the strict lint, and runs the play-test harness dry run beside it. Run both
+before you claim done.
 
 **`.swift-format` is gitignored and generated, not checked in.** The lint fails with
 *"Unable to read configuration"* in a fresh checkout until `ci-lint-setup` writes it,
@@ -64,7 +67,16 @@ resolve`) has to have run first. `.dev-tooling` is the sentinel that turns the d
 plugins on; CI touches it, and a workspace that has it already is set. See
 `.github/workflows/lint.yml`, which is the authority on the sequence.
 
-**Linux CI runs in the `swift:6.3.3-noble` image on ARM runners, and passes
+**The lint runs in the same pinned container the tests do**, `swift:6.3.3-noble`, not
+on a macOS runner. swift-format ships with the toolchain, so the Swift version decides
+what "formatted" means and the platform does not — a macOS/Linux disagreement would be
+a swift-format bug. The pin is the point: a rolling macOS image floats its Xcode, and
+`xcrun swift-format --version` reports itself as `main`, so a formatting shift arrives
+as a red PR with nothing in the diff. If a local `xcrun` run and CI ever disagree,
+compare the two `--version` lines first — a Swift minor apart is the drift Persnicket
+warns about.
+
+**The test suite runs in the `swift:6.3.3-noble` image on ARM runners, and passes
 `--disable-experimental-prebuilts`.** SwiftPM's prebuilt swift-syntax would save
 minutes a run and is on by default, but it cannot link this package's macro test
 target under `--build-system swiftbuild`
