@@ -628,7 +628,7 @@ const CLUSTER_SCHEMA = {
 ///
 /// The session server now writes `closing.json` at `finish`, holding the rooms
 /// off the status line and the unknown words off the parse record. So there is
-/// nothing left to rosterMatch and no prose to grep: this agent exists only
+/// nothing left to reconcile and no prose to grep: this agent exists only
 /// because the orchestration script has no filesystem of its own. It reads
 /// files and adds up integers, which is why it is on Haiku permanently.
 const COLLATOR_SCHEMA = {
@@ -1645,7 +1645,7 @@ if (unrecognizedOwners.size) {
 //
 // - `observed`: names/ids seen, in any order, possibly repeated.
 // - `roster`:   the declared list, which sets the order of `missing`.
-function rosterMatch(observed, roster) {
+function reconcile(observed, roster) {
   const declared = new Set(roster || [])
   const matched = new Set()
   const offRoster = []
@@ -1674,7 +1674,7 @@ function firedTimers(rows) {
     if (!row || !row.name) continue
     fired.set(row.name, (fired.get(row.name) || 0) + (row.count || 0))
   }
-  const { offRoster, missing } = rosterMatch([...fired.keys()], declared)
+  const { offRoster, missing } = reconcile([...fired.keys()], declared)
   return {
     declared,
     fired: [...fired]
@@ -1701,7 +1701,7 @@ function firedTimers(rows) {
 // say "Coal Mine (mine3)" rather than making a reader resolve an id.
 function visitedRooms(ids) {
   const roster = survey.rooms.map((r) => r.id)
-  const { matched, offRoster, missing } = rosterMatch(ids, roster)
+  const { matched, offRoster, missing } = reconcile(ids, roster)
   // `neverVisited` comes out rendered — `Name (id)` — because both its readers,
   // the critic's prompt and the returned `coverage.rooms`, want it that way and
   // rendering it twice is how the two came to disagree about turn counts once
