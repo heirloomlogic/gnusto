@@ -27,12 +27,13 @@ jobs:
     # The residual gap is a developer on a newer Xcode than 6.3.3. Persnicket's CI
     # notes warn that the .swift-format schema can drift across a Swift minor, so if
     # a local run and this job ever disagree, compare the two `swift-format --version`
-    # lines first — the Xcode-bundled binary reports itself as `main`, which is why
-    # the version is logged on this side.
+    # lines first. That comparison is only possible on this side: the container
+    # answers `6.3.3` and the Xcode-bundled binary answers `main`.
     runs-on: ubuntu-24.04-arm
     container: swift:6.3.3-noble
 
-    # ~1m observed; floored well above that because a timeout is here to catch a hang.
+    # ~45s observed, image pull included; floored well above that because a timeout
+    # is here to catch a hang.
     timeout-minutes: 15
 
     steps:
