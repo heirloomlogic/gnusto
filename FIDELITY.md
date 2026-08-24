@@ -1574,6 +1574,13 @@ map, taken from `dung.355` and checked room by room against the exit counts in
   Zork I makes it the thief's doing and frees it when he falls. The Studio chimney
   is the way back, and the mainframe's rule for it is exact: at most two things in
   hand, and one of them the lamp.
+- **`climb chimney` is a second spelling of that exit, and a departure.** The
+  source has no `CLIMB` row that walks it; `up` is the only way. Added because
+  the chimney's own description says it "looks climbable" and the stub floor's
+  refusal denied the verb the room had just advertised — the 2026-08-18 round's
+  D4. Both spellings go through one load gate (`Dungeon.chimneyLoadGate()`), so
+  the count rule above holds whichever the player types, and the Kitchen end
+  refuses in the same words `down` does.
 - Values are the mainframe's, and two are not Zork I's: the painting cases for
   **7** where the trilogy pays 6, and the clockwork canary for **2** where it pays
   4. The egg is 5/5 and the bauble 1/1 in both.

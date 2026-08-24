@@ -540,6 +540,12 @@ struct DungeonHouse: GameContent {
             say(Prose.trapDoorSlam)
         }
 
+        // The Kitchen end of the same chimney the Studio climbs. It refuses in
+        // the words `down` already uses rather than in the stub floor's, which
+        // said nothing about why a chimney the room's paragraph calls "much too
+        // narrow to be worth the try" would not take you.
+        kitchenChimney.before(.climb) { try refuse(Prose.chimneyDownRefusal) }
+
         lantern.describe {
             lantern.isLit ? Prose.lanternOn : Prose.lanternOff
         }

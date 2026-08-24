@@ -633,14 +633,20 @@ struct DungeonProseTests {
     /// so — and says it in the game's own voice, which the old line did not.
     /// `Prose.verbSmell` was the engine's stub character for character, so the
     /// row installing it re-voiced nothing while the survey counted it done.
+    ///
+    /// It was re-voiced a second time for #286's D9, and the subject moved: the
+    /// old line said "Nothing **here** smells of anything in particular", which
+    /// is a claim about the room printed unchanged in ~194 of them. A bare
+    /// command has no object to be about, so it reports on the player.
     @Test func aRoomWithNothingToSmellAnswersInTheGamesOwnVoice() async throws {
         let transcript = try await play(
             Dungeon(), Self.toTheSmellyRoom.dropLast() + ["smell"], seed: 18)
 
         #expect(transcript.contains("Wooden Tunnel"))
         let here = turnOutput(of: "smell", in: transcript)
-        #expect(here.contains("Nothing here smells of anything in particular"))
+        #expect(here.contains("You smell nothing worth reporting."))
         #expect(!here.contains("nothing out of the ordinary"))
+        #expect(!here.contains("Nothing here smells"))
     }
 
     /// **`x stairs` in the Gas Room — a noun the room's own description prints
@@ -1213,6 +1219,34 @@ struct DungeonProseTests {
         let here = turnOutput(of: "listen", in: transcript)
         #expect(here.contains("learn nothing you did not already know"))
         #expect(!here.contains("nothing out of the ordinary"))
+    }
+
+    /// **D9's `smell guano`.** The floor answered "Nothing here smells of
+    /// anything in particular." while the player stood over a hunk of bat
+    /// guano. The fifth pass left the line alone on the ground that `smell` was
+    /// a channel the engine could not hand an object to; `SyntaxRule.stubTable`
+    /// hands it one, and `Sources/Zork1/` had already written the naming half.
+    ///
+    /// Both halves, in one room — and the bare half moved with the naming one.
+    /// "Nothing here smells of anything in particular." would have been the
+    /// same defect one command shallower: `smell` and `smell guano`, typed in
+    /// the same room one turn apart, cannot disagree about whether anything in
+    /// it has a smell.
+    @Test func smellNamesWhatItWasPointedAt() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheLoudRoom + ["east", "east", "smell guano", "smell"],
+            seed: 18)
+
+        #expect(transcript.contains("Small Cave"))
+        let named = turnOutput(of: "smell guano", in: transcript)
+        #expect(named.contains("The hunk of bat guano smells of exactly what it is."))
+        #expect(!named.contains("Nothing here smells of anything in particular."))
+        // And the bare half, in the same room, reports on the player instead of
+        // contradicting the line above it.
+        let bare = turnOutput(of: "smell", in: transcript)
+        #expect(bare.contains("You smell nothing worth reporting."))
+        #expect(!bare.contains("Nothing here smells"))
     }
 
     /// **`give sword to troll` answered "There is nobody here who wants it."**

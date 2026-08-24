@@ -721,6 +721,9 @@ struct DungeonRiver: GameContent {
             arc.describe { rainbowSolid ? Prose.rainbowSolidItself : Prose.rainbowItself }
         }
 
+        // The one room in the game too loud to hear anything else in.
+        aragainFalls.before(.listen) { try reply(Prose.fallsSound) }
+
         // The word cut into the staves. Said at the falls in the barrel it is a
         // decision; anywhere else — including at the falls on your own two
         // feet — the region's own default answers it.

@@ -176,13 +176,47 @@ struct Fulminate: Game, GameMain {
         }
 
         // The stock stub lines are room-blind and state-blind, and this game
-        // spends its evening contradicting them. The ones below are true of the
-        // house at large; the frames where they still would not be — flat on
-        // your back in the yard, the parlour full of armchairs — are rules.
-        text.stubs.listen =
-            "The house is doing what a house does, which tonight is not much of anything."
-        text.stubs.smell = "The stove, and the dust a house like this keeps between the wars."
-        text.stubs.climb = "You go up in this house by going up. It is that kind of house."
+        // spends its evening contradicting them. The bare halves below are true
+        // of the house at large; the frames where they still would not be —
+        // flat on your back in the yard, the parlour full of armchairs, the
+        // carriage house while it is still standing — are rules.
+        //
+        // Each of these is an assignment and not an `action(…)` row: a row
+        // returns from `actionOverrides` before `requireReach` and gives up the
+        // reach guard, the rendered name, number agreement and the
+        // `yourself`/`somebodyElse` guards along with it.
+        //
+        // The naming halves are what a bare sentence could not do. A room claim
+        // asked about a named thing is wrong twice over — it is a claim about
+        // the wrong subject, and it is a claim about a place the player may have
+        // walked out of.
+        text.stubs.listen = .naming(
+            orBare: "The house is doing what a house does, which tonight is not much of anything."
+        ) {
+            "\($0.sentenceCased) \($0.verb("is", "are")) not making a sound you could take down."
+        }
+        text.stubs.smell = .naming(
+            orBare: "The stove, and the dust a house like this keeps between the wars."
+        ) {
+            "You get a noseful of \($0), which tells you what you already knew."
+        }
+        // Never re-skinned until now, so the whole evening — a lit range, an
+        // open fire, a flue with the stove's heat in it — answered the engine's
+        // "You feel nothing out of the ordinary." Three of those answer for
+        // themselves below; this is what is left over, and it reports on the
+        // hand rather than on the room.
+        text.stubs.touch = .naming(orBare: "You are not going to find it by feeling around for it.") {
+            "You put a hand on \($0) and learn nothing a hand can tell you."
+        }
+        // Was "You go up in this house by going up. It is that kind of house.",
+        // which printed against a brick garden wall in the back garden, in a
+        // room with no `up` at all. The three flights the house does have take
+        // the verb back below, which is also why the bare half asks rather than
+        // answers: a bare `climb` in the front hall is one word short of
+        // something that works.
+        text.stubs.climb = .naming(orBare: "You would have to say what you meant to climb.") {
+            "You put a hand on \($0) and think better of it."
+        }
         text.stubs.stand = "You are on your feet, and have been since the streetcar."
         text.stubs.sit = "You did not come out on a Tuesday to sit down."
         // A house of witnesses, so the sister lines to the two already
@@ -258,6 +292,14 @@ struct Fulminate: Game, GameMain {
     private static let streetRefusal = """
         You came out here on a Tuesday because a man wrote you a letter. Walking back down the path now would make
         that the last thing you ever did for him.
+        """
+
+    /// The same, for the one flight in the house that is not yours to use. Two
+    /// spellings reach it — `up` from the kitchen and `climb back stairs` — and
+    /// a shut way refuses in one set of words however it was asked for.
+    private static let backStairsRefusal = """
+        The back stairs are the household's. A man who came here on a letter goes up the front way, where everybody
+        can see him do it.
         """
 
     // MARK: - Rooms
@@ -1608,15 +1650,63 @@ struct Fulminate: Game, GameMain {
             if blastHappened, playerIsOutBack { sawTheWreckage = true }
         }
 
-        // The one turn on which the stock line contradicts the sentence
-        // printed directly above it: the 5:46 alarm says the ground hit you in
-        // the back, and the 5:48 fuse stands you up again.
+        // Being knocked flat is one turn long; having been knocked flat lasts
+        // the evening. The stub says "and have been since the streetcar", which
+        // is a claim about the whole evening, so the second arm outlives the
+        // first — and reads the flag that outlives it.
         world.before(.stand) {
-            guard knockedFlat else { return }
+            guard wasInTheYardForTheBlast else { return }
+            try reply(
+                knockedFlat
+                    ? """
+                    You get an elbow under you and stop there. Whatever went off has not finished with the evening yet,
+                    and the grass is as good a place as any to find that out from.
+                    """
+                    : """
+                    You are upright. That was not true earlier this evening, when the carriage house put you on your
+                    back, and there is still grass in your cuff.
+                    """)
+        }
+
+        // The three flights the house has got. A staircase that answers CLIMB
+        // with a refusal is a room advertising the verb its own map denies, so
+        // each of these does what its own exit does — `enter(_:)` and not
+        // `arrive(at:)`, because the fiction is that the player walked and
+        // because the exit describes the far room as an entry.
+        frontStairs.before(.climb) {
+            try enter(landing)
+            try handled()
+        }
+        cellarSteps.before(.climb) {
+            try enter(cellar)
+            try handled()
+        }
+        // The one flight that refuses, and it refuses in the words `up` already
+        // uses — the same principle a shut door goes by, and the same constant.
+        backStairs.before(.climb) { try refuse(Fulminate.backStairsRefusal) }
+
+        // TOUCH over the three hot things in the game. The stock line — "You
+        // feel nothing out of the ordinary." — was the engine's until now, and
+        // a lit range is exactly the frame it cannot survive.
+        stove.before(.touch) {
             try reply(
                 """
-                You get an elbow under you and stop there. Whatever went off has not finished with the evening yet,
-                and the grass is as good a place as any to find that out from.
+                Cast iron with a fire under it. You take the hand back before you have finished deciding to.
+                """)
+        }
+        stovePipe.before(.touch) {
+            try reply(
+                blastHappened
+                    ? "Cold, now, and gritty, and bent about forty degrees out of true."
+                    : """
+                    You get about a second of it. Whatever the kitchen is burning, all of it comes up this pipe and
+                    goes past the end of that bench.
+                    """)
+        }
+        yardFire.before(.touch) {
+            try reply(
+                """
+                You get near enough to find out you do not want to be. Nobody is going to get closer to it tonight.
                 """)
         }
 
@@ -1632,23 +1722,75 @@ struct Fulminate: Game, GameMain {
         }
 
         // Thirty feet from a building the game has just said took the hair off
-        // the back of your hand.
+        // the back of your hand — and, before that, thirty feet from a building
+        // with its lamp on. Both arms exist because both are outdoors, and the
+        // stub floor's bare halves are about the house.
         backYard.before(.listen) {
-            guard blastHappened else { return }
             try reply(
-                """
-                What is left of the carriage house is ticking as it cools, and finding its level a piece at a time,
-                and none of it is in any hurry either.
-                """)
+                blastHappened
+                    ? """
+                    What is left of the carriage house is ticking as it cools, and finding its level a piece at a time,
+                    and none of it is in any hurry either.
+                    """
+                    : """
+                    A street of houses at dinner time, and under it somebody at a bench in the carriage house, working
+                    at something small enough to need both hands.
+                    """)
         }
 
         backYard.before(.smell) {
-            guard blastHappened else { return }
+            try reply(
+                blastHappened
+                    ? """
+                    Burnt timber, and under it something sharper that gets into the back of your throat and stays there.
+                    It is not a smell that came out of a stove.
+                    """
+                    : """
+                    Dry grass and ivy, and under them a thin chemical edge coming down the yard from the carriage
+                    house.
+                    """)
+        }
+
+        // The bare halves of `listen` and `smell` are claims about the house,
+        // and two rooms the player can stand in are not the house. The carriage
+        // house is a detached outbuilding — same defect as C11's, one room over
+        // — and the cellar has no stove in it and says so.
+        cellar.before(.smell) {
             try reply(
                 """
-                Burnt timber, and under it something sharper that gets into the back of your throat and stays there.
-                It is not a smell that came out of a stove.
+                Cold earth and whitewash, and the flat air of a room with another room on top of it. Nothing has
+                been cooked down here in fifty years.
                 """)
+        }
+        // The yard's twin, and the frame the round did not sight: the carriage
+        // house is a detached outbuilding, so "The house is doing what a house
+        // does" and "The stove, and the dust a house like this keeps between
+        // the wars" are both false of a man standing inside it. Same defect as
+        // C11's, one room over.
+        carriageHouse.before(.listen) {
+            try reply(
+                blastHappened
+                    ? """
+                    Quieter in here than it should be. Somewhere in the quiet a piece of metal ticks as it lets go of
+                    the heat.
+                    """
+                    : """
+                    The stove pipe ticks as the kitchen feeds it. Under that, the house, thirty feet off across the
+                    grass.
+                    """)
+        }
+
+        carriageHouse.before(.smell) {
+            try reply(
+                blastHappened
+                    ? """
+                    Burnt tar and burnt cloth, and under both of them the sharp one. That last is what a chemist
+                    would ask you about.
+                    """
+                    : """
+                    Hot tin, machine oil, and something underneath the two of them that is neither. Vane works in
+                    here with the door shut.
+                    """)
         }
 
         dryGrass.describe {
@@ -2426,11 +2568,7 @@ struct Fulminate: Game, GameMain {
         // The back stairs are the household's, not yours. Blocked rather than
         // absent, because the kitchen's description names them and the stock
         // "You can't go that way" reads like the game forgot.
-        kitchen.up(
-            blocked: """
-                The back stairs are the household's. A man who came here on a letter goes up the front way, where
-                everybody can see him do it.
-                """)
+        kitchen.up(blocked: Fulminate.backStairsRefusal)
 
         player.starts(in: frontHall)
         watch.startsWorn
