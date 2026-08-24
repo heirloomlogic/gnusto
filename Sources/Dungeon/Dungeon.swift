@@ -318,6 +318,12 @@ struct Dungeon: Game, GameMain {
             }
         }
 
+        // A resurrection restores the body, and the Alice wing is the one part
+        // of the map that keeps state about the body. The water half is the
+        // host's here as it is in ``bucketRules``; the wing puts back the rest.
+        if alice.bucket.holds(house.water) { house.water.vanish() }
+        alice.unsealAfterDeath()
+
         player.location = aboveGround.forestDeep
         say(Prose.resurrection)
         describeSurroundings()

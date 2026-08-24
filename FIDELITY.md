@@ -2099,7 +2099,17 @@ structure; neither says it in the source's characters.
   a player wheel the well's only lift into the Round Room and shut the Alice
   area behind them for good. Both ends of the trip also require you to be *in*
   the bucket, so it can never be left at one end of a shaft that has no other
-  way up or down.
+  way up or down — **except by dying in the Alice area**, which is where the
+  missing clock shows. The mainframe empties the bucket a hundred turns after it
+  rises (`<CLOCK-INT ,BCKIN 100>`, `act3.198:58`, fired by `<CEVENT 0 BUCKET T
+  "BCKIN">`, `dung.354:1560`), and an emptied bucket at the top descends on its
+  own, so the source never has to think about a player separated from the lift.
+  This game has no such fuse. Death is the only way to be parted from the
+  bucket, so death is where it goes back: `Dungeon.onDeath()` empties it and
+  returns it to the Circular Room, alongside clearing `DungeonAlice.shrunk`. It
+  is the same repair twice — a resurrection restores the body, and the Alice
+  wing is the one place that keeps state about the body. Without it the tin of
+  spices and the crystal sphere are sealed in and `maxScore` is unreachable.
 - **The robot has one room of earshot.** The engine deliberately lets an
   order-taker be named out of sight — that is what makes "the robot goes where
   you cannot" work — and deliberately leaves *how far* to the game. This game

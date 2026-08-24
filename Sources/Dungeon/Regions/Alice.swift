@@ -548,6 +548,27 @@ struct DungeonAlice: GameContent {
         try sendBucket(to: circularRoom, saying: Prose.bucketDescends)
     }
 
+    /// What a resurrection owes this wing, over and above a place to stand.
+    /// Called by ``Dungeon/onDeath()``, which empties the bucket first for the
+    /// reason it calls ``raiseBucket()`` — the water is a ``DungeonHouse`` item.
+    ///
+    /// This is the one part of the map that keeps state about the player's own
+    /// *body*, and a death four inches high used to leave every bit of it
+    /// standing — with the tin of spices and the crystal sphere behind it, so
+    /// the run's `maxScore` went with them. Two things sealed it: ``shrunk``
+    /// stayed set, and `eatMeCake.before(.eat)` guards on `!shrunk`, so the way
+    /// back down was shut by the flag saying you were already there; and the
+    /// bucket, which descends only for a passenger who empties it, was left at
+    /// the top of a shaft with no other way up. Death is the only way to be
+    /// parted from it, so death is where it goes back. `FIDELITY.md`, "The
+    /// bucket does not travel", carries the clock the mainframe uses instead.
+    ///
+    /// No prose: the resurrection speaks for the whole turn.
+    func unsealAfterDeath() {
+        shrunk = false
+        bucket.move(to: circularRoom)
+    }
+
     /// The move both ends of the trip make. Moving the bucket rather than the
     /// player is what carries a passenger — and their load — along with it.
     private func sendBucket(to room: Location, saying line: String) throws -> Never {
