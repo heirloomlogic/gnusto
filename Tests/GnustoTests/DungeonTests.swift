@@ -2389,9 +2389,13 @@ struct DungeonTests {
     private static let toTheWell =
         toTheEngravingsCave + ["southeast", "answer well", "east", "east"]
 
+    /// The ride up the shaft, which is the only way in or out of the Alice
+    /// wing: the bucket rises for water poured into it and descends for water
+    /// taken out, and both ends want you sitting in it.
+    private static let upTheWell = ["board bucket", "pour water in bucket", "get out", "east"]
+
     /// And up it, into the tea party.
-    private static let toTheTeaRoom =
-        toTheWell + ["board bucket", "pour water in bucket", "get out", "east"]
+    private static let toTheTeaRoom = toTheWell + upTheWell
 
     /// The Bank hangs off the Gallery, which is two rooms south of the Cellar
     /// and needs no fight and no seed.
@@ -2628,6 +2632,81 @@ struct DungeonTests {
             seed: 41)
 
         #expect(transcript.contains("the vapour goes into you"))
+    }
+
+    /// Resurrection puts the body back the way it found it. A death taken four
+    /// inches high used to leave ``DungeonAlice/shrunk`` set, so the iced cakes
+    /// went on reading themselves to a full-sized player standing on the grass
+    /// in broad daylight.
+    @Test func dyingSmallDoesNotLeaveYouReadingIcingLikeAMouse() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheTeaRoom
+                + ["take blue cake", "eat eat-me cake", "east", "open flask"]
+                // Resurrected in the deep forest, with the cake strewn south of
+                // the house along with everything else that was in your hands.
+                + ["east", "north", "north", "take blue cake", "read blue cake"],
+            seed: 41)
+
+        expectInOrder(
+            transcript,
+            [
+                "the vapour goes into you",
+                "standing among the trees with the daylight on your face",
+                "South of House",
+                "Taken.",
+                "far too small to make out",
+            ])
+    }
+
+    /// And the wing itself reopens. Two things sealed it, and the tin of rare
+    /// spices and the crystal sphere are both behind them, so a shrunken death
+    /// used to put `maxScore` out of reach for the rest of the run: `shrunk`
+    /// barred the Eat-Me cake, and the bucket — the only way in or out of the
+    /// well — was left standing at the top with the water still in it.
+    ///
+    /// The long way round is the point of the test. The triangular button is
+    /// pressed on the first visit so the Round Room's carousel is stopped and
+    /// the second descent is a walk rather than a lottery; the bottle is
+    /// gathered off the lawn where the death scattered it and refilled at the
+    /// dam, because the water that lifts the bucket is spent every trip.
+    @Test func aShrunkenDeathDoesNotSealTheSpicesInBehindIt() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheTeaRoom
+                // Stop the carousel first. The Machine Room is off the Low
+                // Room, at full size, so no cake is needed to reach it.
+                + ["northwest", "north", "push triangular button", "west", "out"]
+                + ["eat eat-me cake", "east", "open flask"]
+                // Above ground again. The bottle went south of the house with
+                // the rest of what was in your hands; the lamp is the exception
+                // and is waiting in the living room.
+                + ["east", "north", "north", "take bottle", "east", "west"]
+                + ["west", "take lamp", "turn on lamp", "open trap door", "down"]
+                + ["east", "north", "east"]
+                // Round Room, still, so northwest is northwest. Fill the bottle
+                // at the dam and come back for the Engravings Cave.
+                + ["northwest", "east", "fill bottle", "south", "south"]
+                + ["north", "southeast", "east", "east"]
+                // The bucket is waiting at the bottom of the well, as it would
+                // have been if the trip had ended in a climb rather than a
+                // flask.
+                + Self.upTheWell
+                + ["take red cake", "eat eat-me cake", "east"]
+                + ["throw red cake in pool", "take tin", "score"],
+            seed: 41)
+
+        expectInOrder(
+            transcript,
+            [
+                "Circular Room",
+                "There is a wooden bucket here.",
+                "The bucket rises",
+                "Tea Room",
+                "the room heaves upward around you",
+                "goes up at once in a column of steam",
+                "Your score is 45 of a possible 716",
+            ])
     }
 
     // MARK: - Milestone 5: the robot
