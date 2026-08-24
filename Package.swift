@@ -55,7 +55,7 @@ let package = Package(
     // line are a matched pair.
     platforms: [
         .macOS(.v15),  // Synchronization.Mutex
-        .iOS(.v17),  // Synchronization.Mutex
+        .iOS(.v18),  // Synchronization.Mutex
     ],
     products: [
         .library(name: "Gnusto", targets: ["Gnusto"]),
