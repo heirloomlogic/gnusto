@@ -2258,10 +2258,20 @@ player; both cost whatever is left of the volcano's 61 points.
 the brick goes off in, empties it of everything takeable, and — in the Living
 Room — empties the trophy case with it. This game gives the aftermath to the one
 room the source's own clock names, the Dusty Room, and to the ledge it stood on.
-Anywhere else the blast is fatal if you are standing in it and says "There is an
-explosion nearby" if you are not, and the room stays open. Sealing an arbitrary
-room needs a per-room flag the engine has no place for, and the only room the
-puzzle ever seals is the Dusty Room.
+Anywhere else the blast is fatal if you are standing in it and the room stays
+open. Sealing an arbitrary room needs a per-room flag the engine has no place
+for, and the only room the puzzle ever seals is the Dusty Room.
+
+**And the quarter has an earshot.** The mainframe prints "There is an explosion
+nearby", the rumble of the Dusty Room going down and the Wide Ledge's *(That was
+a narrow escape!)* unconditionally, so all three followed a player who had died
+in the volcano and woken among the trees. Here the three read one
+``DungeonVolcano/insideTheVolcano`` — the floor, the four levels of shaft, the
+three ledges, the Library and the Dusty Room — and are heard nowhere else. The
+cost is stated where it is paid: the brick travels, this bundle can only name its
+own quarter, and a charge carried across the map and set off there is now heard
+by nobody rather than by everybody. The robot's one room of earshot, above, is
+the same call made at milestone 5.
 
 **Also landed here.** `Sources/Gnusto/Engine/RoomDescriber.swift` now filters
 `scenery` out of the *"In the X is a Y."* and *"On the X is a Y."* listings, the
@@ -2790,7 +2800,10 @@ the object. Every framing sentence around it is this game's.
   wrong.
 - **The brochure's post.** `send for brochure` from anywhere, the Kitchen arms a
   three-turn clock and re-arms it on every entry until it fires, and the knock is
-  heard wherever the player is standing.
+  heard wherever the player is standing — the Land of the Dead included. It is
+  the one audible line in this game deliberately left without an
+  ``Earshot``: a mail-order catalogue that finds you anywhere is the source's own
+  joke, and gating it would be correcting a joke.
 
 #### Mechanics simplified or deferred
 

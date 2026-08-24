@@ -710,11 +710,11 @@ struct Dungeon: Game, GameMain {
         // dropping a brass bauble — once, ever. Wound up the tree, the bauble
         // falls to the forest floor below. Canary and forest live in different
         // bundles, so the host owns the trick; the set of rooms the bird
-        // answers in is ``DungeonAboveGround/isInTheWood(_:)``, which the
-        // region's own ambience daemon shares.
+        // answers in is ``DungeonAboveGround/theWood``, which the region's own
+        // ambience daemon shares.
         house.canary.before(.wind) {
             let here = player.location
-            guard !house.baubleDropped, aboveGround.isInTheWood(here) else {
+            guard !house.baubleDropped, aboveGround.theWood.contains(here) else {
                 try reply(Prose.canaryChirps)
             }
             house.bauble.move(to: here == aboveGround.upATree ? aboveGround.forestTree : here)

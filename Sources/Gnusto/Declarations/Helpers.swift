@@ -60,7 +60,8 @@ public func sayOnceThisTurn(_ message: String) {
 /// is true from either bank and from the bed between them, so name all three;
 /// the line prints from any of them and nowhere else. There is no earshot
 /// radius in the engine and this is deliberately not one — it is the author
-/// enumerating the frames their sentence is true in.
+/// enumerating the frames their sentence is true in. When the same list of
+/// frames answers for more than one sentence, hoist it: see ``Earshot``.
 ///
 /// **Standing in the room, not seeing it.** Darkness does not gate this one — a
 /// bell rung in an unlit room is still heard from inside it. For a sentence the
@@ -72,14 +73,28 @@ public func sayOnceThisTurn(_ message: String) {
 ///   - message: the text to print.
 ///   - sources: the rooms the message is true in.
 public func say(_ message: String, from sources: Location...) {
-    // The frame is bound once and the ids resolved off it, rather than through
-    // each `Location.id`: that accessor reaches `Ctx.current` per source, which
-    // is a lock apiece for a question one lock can answer. Resolution stays
-    // *outside* `with { }` — the `Mutex` is not reentrant.
+    say(message, from: Earshot(sources))
+}
+
+/// Prints a message only if the player is standing inside the neighbourhood it
+/// carries to.
+///
+/// The ``say(_:from:)-(String,Location...)`` overload with its room list given a
+/// name and hoisted out of the call — see ``Earshot``.
+///
+/// - Parameters:
+///   - message: the text to print.
+///   - earshot: the rooms the message is true in.
+public func say(_ message: String, from earshot: Earshot) {
+    // The frame is bound once and the player's room read off it, rather than
+    // through `player.location`: that accessor reaches `Ctx.current` again, and
+    // this is a question one lock can answer. The read stays *outside*
+    // `with { }` — the `Mutex` is not reentrant. Membership itself is
+    // ``Earshot/contains(_:)``, so the gate this applies and the gate an author
+    // can ask for are one piece of code and cannot drift apart.
     let frame = Ctx.current
-    let here = frame.with { $0.state.playerLocation }
-    guard sources.contains(where: { frame.id(for: $0.token, describing: "Location") == here })
-    else { return }
+    let here = frame.location(for: frame.with { $0.state.playerLocation })
+    guard earshot.contains(here) else { return }
     frame.say(message)
 }
 

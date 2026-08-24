@@ -126,6 +126,32 @@ struct FulminateTests {
         #expect(transcript.contains("he is the night desk up at the lab"))
     }
 
+    /// **A telephone is heard from the rooms off the hall, and answered only in
+    /// it.** The parlour is one room away through a doorway; it gets the rings
+    /// and not the voice.
+    @Test func theTelephoneIsHeardFromTheRoomsOffTheHall() async throws {
+        let transcript = try await play(
+            Fulminate(), ["west"] + Array(repeating: "z", count: 25))
+        #expect(transcript.contains("It rings eleven times."))
+        #expect(!transcript.contains("he is the night desk up at the lab"))
+    }
+
+    /// **And not from the cellar, which is under the kitchen behind a shut
+    /// door.** #306: the else-branch had no gate on it at all, so a man sitting
+    /// in the dark two floors down was told a telephone was ringing eleven
+    /// times somewhere he could not have heard it.
+    ///
+    /// The coroner is the control. He arrives at ten to seven whatever the
+    /// player was told at twenty past six, which is the whole contract of a
+    /// gated `say`: the clock does not wait to be listened to.
+    @Test func theTelephoneIsNotHeardFromTheCellar() async throws {
+        let transcript = try await play(
+            Fulminate(), ["south", "down"] + Array(repeating: "z", count: 39))
+        #expect(!transcript.contains("It rings eleven times."))
+        #expect(!transcript.contains("he is the night desk up at the lab"))
+        #expect(transcript.contains("The county man comes up the path at ten to seven"))
+    }
+
     @Test func theCoronerClosesTheCaseAtTenToSeven() async throws {
         let transcript = try await play(Fulminate(), Array(repeating: "z", count: 41))
         #expect(transcript.contains("The county man comes up the path at ten to seven"))

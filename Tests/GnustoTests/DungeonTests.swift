@@ -3545,6 +3545,39 @@ struct DungeonTests {
             ])
     }
 
+    /// **And a man in the Forest is not congratulated on a narrow escape.**
+    /// #306: the collapse lines had no gate on them at all, and death is the one
+    /// way out of the volcano quicker than either fuse — 5000 tons of rock in
+    /// the Dusty Room, then the trees and the daylight, and eight turns later
+    /// the Wide Ledge came down two hundred miles away and said *(That was a
+    /// narrow escape!)* to somebody standing in a wood.
+    ///
+    /// All three of the quarter's lines read one ``Earshot``, so this is the
+    /// negative for the whole set; ``theDustyRoomComesDownAndTakesTheWideLedgeWithIt``
+    /// is the matched positive, the same fuse with the player still in the shaft
+    /// when it fires. The explosion earlier in this very transcript is the
+    /// second control: the gate is on where the player is, not on whether the
+    /// timer ran.
+    @Test func theLedgeIsNotHeardComingDownFromAboveGround() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheWideLedge + Self.lightTheCharge
+                + ["south"] + Array(repeating: "wait", count: 13),
+            seed: 18)
+
+        expectInOrder(
+            transcript,
+            [
+                // Inside the quarter, the blast is heard.
+                "There is an explosion nearby.",
+                // Then the room comes down on the player, who wakes above ground.
+                "turning you into a pancake.",
+                "you find yourself standing among the trees",
+            ])
+        // And the ledge follows it eight turns later, in silence.
+        #expect(!transcript.contains("That was a narrow escape!"))
+    }
+
     /// **Burning the brick in your own hands is the joke the source tells
     /// once.** It works wherever you are standing.
     @Test func burningTheBrickInYourHandsBlowsYouToSmithereens() async throws {

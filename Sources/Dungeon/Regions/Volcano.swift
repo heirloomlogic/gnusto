@@ -125,6 +125,22 @@ struct DungeonVolcano: GameContent {
         alwaysDescribed
     }
 
+    // MARK: - Earshot
+
+    /// Everything the volcano hears. The shaft is one open space four levels
+    /// tall with three ledges opening off it and a floor at the bottom, so a
+    /// blast or a rockfall anywhere in the quarter is heard everywhere in it —
+    /// and, being a hole in the ground several regions from anywhere else, is
+    /// heard nowhere outside it. The Library and the Dusty Room are behind
+    /// doorways rather than doors; they hear it too.
+    ///
+    /// Built from ``shaft`` rather than re-listing its levels, so a milestone
+    /// that adds one to the balloon's climb adds it to the earshot in the same
+    /// edit. The Lava Room is over the floor and is not a level of the shaft.
+    var insideTheVolcano: Earshot {
+        Earshot(shaft + [lavaRoom, narrowLedge, library, volcanoView, wideLedge, dustyRoom])
+    }
+
     // MARK: - The balloon
 
     /// `BALLO`. An open-topped basket you climb into and ride, and the only
@@ -1089,7 +1105,15 @@ extension DungeonVolcano {
             let seenFromTheFloor = player.location == volcanoBottom
             wreckTheBalloon()
             guard aboard else {
-                say(seenFromTheFloor ? Prose.balloonExplodesWatched : Prose.balloonExplodesHeard)
+                // Watched from the floor, which is the one room with the rim
+                // overhead; heard anywhere else in the quarter, and — a tearing
+                // sound and something falling a long way being a claim about a
+                // shaft you are standing in — nowhere else at all.
+                if seenFromTheFloor {
+                    say(Prose.balloonExplodesWatched)
+                } else {
+                    say(Prose.balloonExplodesHeard, from: insideTheVolcano)
+                }
                 return
             }
             try die(Prose.balloonHitsTheRim)
@@ -1167,7 +1191,17 @@ extension DungeonVolcano {
         // brings the Wide Ledge down after it hangs off that one too.
         if inTheDustyRoom { startFuse("dustyRoomFalls") }
         guard !besideThePlayer else { try die(Prose.brickBoom) }
-        say(Prose.explosionNearby)
+        // A blast carries across the quarter it goes off in, and a quarter is a
+        // list rather than a radius (see ``Earshot``). **Deferred, not settled:**
+        // the honest earshot belongs to the room the charge is *in*, and the
+        // brick travels, so answering properly wants a map-wide room-to-
+        // neighbourhood lookup that no bundle can own. Until then this names the
+        // one quarter it can — its own, which is where the puzzle puts the brick,
+        // wired into the oblong hole. Carried to the far side of the map and set
+        // off there, the blast is now heard by nobody rather than by everybody;
+        // of those two wrongs, the second is the one that was saying "There is an
+        // explosion nearby." in the Forest.
+        say(Prose.explosionNearby, from: insideTheVolcano)
     }
 
     fileprivate func dustyRoomComesDown() throws {
@@ -1175,13 +1209,13 @@ extension DungeonVolcano {
         dustyRoomWrecked = true
         startFuse("wideLedgeFalls")
         guard !caught else { try die(Prose.roomCollapsesOnYou) }
-        say(Prose.ominousRumbling)
+        say(Prose.ominousRumbling, from: insideTheVolcano)
     }
 
     fileprivate func wideLedgeComesDown() throws {
         wideLedgeWrecked = true
         guard player.location == wideLedge else {
-            say(Prose.ledgeCollapsesElsewhere)
+            say(Prose.ledgeCollapsesElsewhere, from: insideTheVolcano)
             return
         }
         guard player.vehicle == balloon else {

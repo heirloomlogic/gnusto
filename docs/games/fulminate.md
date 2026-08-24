@@ -347,7 +347,7 @@ the source of truth; if they and this disagree, they win.
 | 6:02 | Delphine | Up to the study, straight to the desk drawers. |
 | **6:10** | Teague | Home, with a paper bag. **The receipt exists from here on.** |
 | 6:14 | Pike | Into the study, and not pleased to find company. |
-| **6:20** | — | **The telephone rings.** Second alarm — the lab's night man, about Pike. |
+| **6:20** | — | **The telephone rings.** Second alarm — the lab's night man, about Pike. Answered in the hall; heard as eleven rings from the parlour, the kitchen, the landing, the study and the boarders' room; not heard at all in the cellar or out back. |
 | 6:26 | Delphine | Down to the cellar, without a light. **Silent — the cellar is dark.** |
 | 6:30 | Teague | Up to his room. |
 | **6:50** | — | **The coroner.** Third alarm. Accident ruling. Game over. |
