@@ -54,6 +54,31 @@ struct Zork1: Game, GameMain {
         text.cantEnterThat = .naming {
             "You hit your head against \($0) as you attempt this feat."
         }
+        // `V-HELLO` (`gverbs.zil:724`), all three branches. `hello` used to be a
+        // verb of this game's own, answering from a row that could not see the
+        // room — so the troll, the thief and the cyclops were greeted with
+        // "Nobody here returns your greeting." The engine's `.greet` reads the
+        // frame, and ``ZorkSystems`` now hands it the bare words. (#325)
+        //
+        // The source's actor branch writes "The " D ,PRSO; the engine hands
+        // every named line the definite phrase already, so the article is the
+        // engine's here as it is for `knock`.
+        text.greets = .naming { "\($0.sentenceCased) bows his head to you in greeting." }
+        // The non-actor branch (`:731`) writes an *indefinite* article, which no
+        // named line in the engine deals in. One word, recorded in `FIDELITY.md`
+        // beside `knock`'s.
+        text.cantGreetThat = .naming {
+            "It's a well known fact that only schizophrenics say \"Hello\" to \($0)."
+        }
+        // Objectless `hello` draws one of four (`HELLOS`, `:2198`) and a stock
+        // line cannot draw, so these take two of the four; the draw is recorded
+        // in `FIDELITY.md` beside `jump`'s and `touch`'s. The split is between
+        // *empty* and *crowded*, not empty and occupied: the engine fills a bare
+        // greeting in with the sole visible actor, so `greetsTheRoom` needs two
+        // of the cast at once — which here means the roaming thief arriving on
+        // the troll or the cyclops.
+        text.nobodyToGreet = "Hello."
+        text.greetsTheRoom = "Good day."
         // The stub floor — every verb the parser knows and no mechanic answers.
         text.stubs = Prose.stubFloor
         return text

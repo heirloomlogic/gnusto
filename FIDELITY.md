@@ -1363,7 +1363,7 @@ fixed defect comes back.
   your head against the … as you attempt this feat." The stock text takes the
   thing's name for that reason.
 
-## The stub floor (`Sources/Zork1/Prose+Stubs.swift`, #242)
+## The stub floor (`Sources/Zork1/Prose+Stubs.swift`, #242, #325)
 
 The other side of the defect Dungeon's fifth pass repaired, and filed at the time
 for the reason the kitchen window states: a defect repaired on one side of a
@@ -1377,6 +1377,17 @@ change Dungeon made and for the same reason: `DefaultActions.run` returns from a
 action override *before* `requireReach`, so all thirteen rows had silently given
 up the reach guard, the object's rendered name, its number agreement and the
 `yourself`/`somebodyElse` guards.
+
+**#325 is the second pass, and its subject is the frame rather than the voice.**
+Ten of these lines asserted a place, an occupant or a state the line never read —
+"Nobody here returns your greeting." with the troll in the room, "The cyclops isn't
+sleeping." with the cyclops asleep, "You are already standing, I think." to a man
+sitting in the magic boat. Four of the repairs *added* source text rather than
+inventing any: `V-HELLO`'s three branches, `V-ALARM`'s actor branch, `V-LOWER`'s
+`HACK-HACK` stem, and `V-TURN` under the `turn … with …` row that `gsyntax.zil:505`
+sends there — so this game reproduces more of `gverbs.zil` after the pass than
+before it, not less. The three remaining are inventions moved off the room; they
+are in the *Inventions* group below.
 
 **Twenty-seven lines are `gverbs.zil`'s as written**, each cited at its
 assignment: `V-SQUEEZE`, `V-ATTACK`, `V-MUNG`, `V-BURN`, `V-CUT`, `V-MOVE`,
@@ -1420,6 +1431,37 @@ may not, and `Prose.drinkWater` has kept the source's "I" since Task 8.
   have nothing to reproduce. `smell` and `climb` keep the sentences this game
   gave both halves before the split, so nothing a player had already read changed.
 
+- **`raise`/`lower` take `HO-HUM`'s third, and `V-STAND` loses its vehicle
+  branch.** `V-LOWER` (`:902`) is `HACK-HACK "Playing in this way with the "`,
+  which draws one of three; `raise` calls it outright (`:1131`). These are rows
+  on verbs this game owns rather than stub lines, so they could have drawn — but
+  drawing would put them out of step with `jump`, `touch` and `wave`, which
+  cannot, so all five take a fixed entry and this is the same third of three.
+  `V-STAND` (`:1305`) is the harder one: aboard a vehicle the source performs
+  `V?DISEMBARK` instead of speaking, and ``Player/vehicle`` is read-only from a
+  rule, so `ZorkRiver`'s `world.before(.stand)` says where the player is sitting
+  and names the word that gets him out. Both were flat claims about the room
+  before #325 — "There's nothing here to lower." with the rope over the Dome Room
+  rail, "You are already standing, I think." to a man adrift on the Frigid River.
+- **`V-HELLO` keeps its three branches and loses its draw.** `hello` was a verb
+  of this game's own until #325, answering "Nobody here returns your greeting."
+  from a row that could not see the room the troll was standing in. It is the
+  engine's ``Intent/greet`` now — `ZorkSystems` contributes only the two bare
+  words the engine deliberately leaves to games — so the actor branch (`:727`)
+  and the non-actor branch (`:731`) both reproduce, and the objectless branch's
+  `PICK-ONE HELLOS` (`:2199`) takes two of its four entries rather than drawing.
+  The non-actor branch's article departs exactly as `knock`'s does: the source
+  writes `"to a " D ,PRSO`, and every named line in the engine is handed the
+  definite phrase.
+- **`V-ALARM`'s actor branch arrives, on one actor.** `wake` (`:157-166`) wakes a
+  sleeping actor and tells an upright one he is wide awake; a stub line can see
+  neither, so both its halves were false in front of the drugged cyclops. The
+  branch is two rules over one helper (#325) — the cyclops's own for `wake
+  cyclops` and his room's for bare `wake`, which names nobody and so reaches no
+  item rule — and waking him costs what striking him costs. He is the only
+  sleeper in the game. The floor keeps the non-actor branch, which is what a line
+  can word.
+
 ### Inventions — Zork I has no such verb at all
 
 Twelve of the engine's stubs appear nowhere in `gsyntax.zil`, so these lines are
@@ -1431,6 +1473,32 @@ rude — but no ZIL routine stands behind them and none is cited at its assignme
 `dive`, `empty` — plus `yourself`, for which no ZIL routine ever had to render the
 player's name, and `throwAt`, whose `THROW AT` requires an actor
 (`gsyntax.zil:486`) and drops the object rather than refusing.
+
+**Five of them were about the room or its company, and #325 moved them off it.**
+`buy` said "This is a dungeon, not a bazaar!" in the open field the game starts in.
+Bare `climb` said "There's nothing here worth climbing. Try up or down." on the
+Forest Path, whose own description is *one particularly large tree with some low
+branches*, whose tree answers `climb tree` by putting you up it, and which is one of
+the many rooms with neither of the exits the line recommends. `point` ("Nobody is
+looking.") and `kneel` ("Nobody is impressed.") counted the room's occupants in
+front of the troll, the thief and the cyclops — the greeting defect one verb over.
+`dive` ("That would take more water than you have.") reads as a claim about the
+water within reach, in a game with nine rooms that have water in them.
+
+An invented line is free to be about the narrator or the player; it is not free to
+survey a room it never read. The two rooms whose descriptions **are** about a smell
+— the Smelly Room's *foul odor* and the Gas Room's *smells strongly of coal gas* —
+answer bare `smell` for themselves for the same reason, in two more invented lines,
+since the source has no room-scoped `V-SMELL` branch to reproduce.
+
+**And a row that names its object has to write back the guards it skipped.**
+`DefaultActions.run` answers `yourself` and `somebodyElse` before an `action(…)`
+override is consulted, so widening `raise`/`lower` from a flat line to one that
+names what it was aimed at made `raise me` answer "Playing in this way with
+yourself has no effect." `ZorkSystems.refuseIfPerson(_:)` restores the two guards
+the row was never given. This is the cost the floor's own header names, met head-on
+rather than avoided: these are verbs the game owns, so the row is the right
+mechanism and the guards are the game's to write.
 
 ### An older claim, corrected
 
@@ -1461,6 +1529,15 @@ stub line can see one, so the split is a game-wide `world.before(.knock)` rule
 reading ``Item/isDoor``, with the floor keeping the branch a line can word.
 
 ### Tests
+
+#325 added `raiseAndLowerNameWhatTheyAreAimedAt` and
+`bareClimbDoesNotSurveyARoomItNeverRead` (`Zork1SystemsTests`),
+`helloReadsWhoIsInTheRoom` and `buyingDoesNotAnnounceWhereYouAreStanding`
+(`Zork1ProseTests`), `wakingTheCyclopsReadsWhetherHeIsAsleep` (`Zork1MazeTests`),
+`standReadsWhetherYouAreSittingInTheBoat` (`Zork1RiverTests`) and
+`theTwoRoomsThatSmellSayWhatOfTheirOwnSmell` (`Zork1CoalMineTests`). Each asserts
+**both** frames — the line where it is true and the different line where the flat
+literal lied — and three of them assert the old sentence is gone.
 
 `Tests/GnustoTests/Zork1ProseTests.swift`. The sweep,
 `noEngineStubLineSurvivesInZork1`, is the twin of Dungeon's and derives its

@@ -67,6 +67,33 @@ struct Zork1RiverTests {
             "launch boat",
         ]
 
+    /// `V-STAND` (`gverbs.zil:1305`) branches on the vehicle before it says
+    /// anything, and the stub floor's line is only its second branch. Both
+    /// frames: on the bank a man is already standing, and in the boat he is not.
+    /// The old transcript told a man adrift on the Frigid River that he was
+    /// already standing, "I think". (#325)
+    @Test func standReadsWhetherYouAreSittingInTheBoat() async throws {
+        let transcript = try await play(
+            Zork1(),
+            Self.toInflatedBoat + [
+                "stand",  // on the Dam Base: already standing
+                "drop sword",
+                "enter boat",
+                "stand",  // aboard: not standing at all
+                "get out",
+            ],
+            seed: 39)
+        expectInOrder(
+            transcript,
+            [
+                "You are already standing, I think.",
+                "You are sitting in the magic boat. Get out of it first.",
+            ])
+        // And the stock line is not printed twice — the second `stand` is the
+        // boat's, not the floor's.
+        #expect(occurrences(of: "You are already standing", in: transcript) == 1)
+    }
+
     /// The boat carries the player down the river to the sandy east bank: paddle
     /// to River-4, lift the buoy (and the emerald inside it), land, and dig the
     /// scarab out of the Sandy Cave. Kitchen (10), cellar (25) and East-West

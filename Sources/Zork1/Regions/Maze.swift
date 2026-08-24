@@ -387,6 +387,24 @@ struct ZorkMaze: GameContent {
         silverChalice.starts(in: treasureRoom)
     }
 
+    // MARK: - The cyclops's sleep
+
+    /// `V-ALARM`'s actor branch (`gverbs.zil:157-166`): a sleeping actor is
+    /// rudely awakened, an upright one is told he is wide awake. Read from two
+    /// rules — the cyclops's own and his room's — because `wake` parses with and
+    /// without a name and only one of those two spellings reaches an item.
+    ///
+    /// Rousing him costs the same however it is done: his subdued calm breaks,
+    /// the stair he guards closes again, and the wrath he had banked resumes
+    /// climbing. `cyclops.before(.attack)` takes the same three steps and passes
+    /// its own line, so what waking him costs has one definition.
+    private func rouseCyclops(_ line: String = Prose.cyclopsRudelyAwakened) throws -> Never {
+        guard cyclopsSubdued else { try reply(Prose.cyclopsWideAwake) }
+        cyclopsSubdued = false
+        cyclopsProvoked = true
+        try reply(line)
+    }
+
     // MARK: - Rules
 
     var rules: Rules {
@@ -409,13 +427,28 @@ struct ZorkMaze: GameContent {
         // wrath he'd banked resumes climbing. (A cyclops routed by `odysseus`
         // has vanished, so this only ever fires on the sleeper.)
         cyclops.before(.attack) {
-            if cyclopsSubdued {
-                cyclopsSubdued = false
-                cyclopsProvoked = true
-                try reply(Prose.cyclopsWakesFromAttack)
-            }
+            if cyclopsSubdued { try rouseCyclops(Prose.cyclopsWakesFromAttack) }
             cyclopsProvoked = true
             try reply(Prose.cyclopsShrugsOffAttack)
+        }
+
+        // `V-ALARM`'s actor branch (`gverbs.zil:157-166`), which the stub floor
+        // cannot reach: the source wakes a sleeping actor and tells an awake one
+        // he is wide awake. Both halves of `wake`'s line were false in front of
+        // the drugged cyclops — the bare row said "Nothing here is asleep." and
+        // the named one "The cyclops isn't sleeping." — with a giant snoring on
+        // the floor. Waking him costs what striking him costs, which is the
+        // stair he was no longer guarding. (#325)
+        cyclops.before(.wake) { try rouseCyclops() }
+        // And the bare `wake` the parser also accepts, which names nobody and so
+        // never reaches an item rule. Both halves of the floor's line were false
+        // in this room — "The cyclops isn't sleeping." and "Nothing here is
+        // asleep." — so both are claimed, and the second needs the room to claim
+        // it. Only while he is still in it: routed through the east wall by
+        // `odysseus`, he has vanished and the floor is right again.
+        cyclopsRoom.before(.wake) {
+            guard command.directObject == nil, cyclops.isIn(cyclopsRoom) else { return }
+            try rouseCyclops()
         }
 
         // Examining the cyclops reads his mood: fast asleep once fed the

@@ -775,6 +775,32 @@ Re-skinning `GameText.stubs` wholesale would fix these *and* about forty lines t
 merely in the wrong register rather than untrue. That is a different job and it is
 [Open question 1](#open-questions).
 
+### The rule the game's own verbs answer by (#325)
+
+The table above is about lines this game *inherited*. There is a second kind, and it
+took longer to see because the game wrote these itself: the stage-4 row behind a verb
+this game minted.
+
+Nine verbs are this game's own, and two of their rows answered with a claim about the
+room — *There is nothing here worth ringing.* and *There is nothing here to harness.*
+Both are read most often at the Shaft Bottom, which has the signal bell on its wall
+(ringing it is how the game is won) and Biscuit standing in his collar beside it. The
+bell and the mule claim their own nouns in `rules`, so the row only ever fires for
+something else in the room — and it then denied the two things the room is *for*.
+
+**The rule: a stage-4 row is about the thing named, never about the room.** A row is
+handed `command.directObject` and is handed nothing else; a sentence that surveys the
+place is a sentence written from information the row does not have. `ring beam` answers
+*The beam does not ring.* and `harness gate` answers *The cage gate does not take a
+harness.* — both true wherever they are typed, and both leaving room for the bell and
+the mule to be exactly where they are. The verb agrees with the noun (`rails` are
+plural and get *do*), and `ring me` still reaches the engine's `yourself` line, because
+a row skips the guards a stub line gets for free and has to write them back.
+
+There is no bare row to worry about here: every phrasing of both verbs declares a direct
+object, so a player who types `ring` on its own is asked *What do you want to ring?* by
+the parser and the action never runs.
+
 ### The nouns the mine prints
 
 About sixty distinct words, 286 occurrences. They sort into three buckets, and the
