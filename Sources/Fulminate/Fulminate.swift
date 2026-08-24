@@ -1408,23 +1408,28 @@ struct Fulminate: Game, GameMain {
                     """)
         }
 
-        // 6:20. A voice from the lab's night desk, for a player who happens to
-        // be standing near the telephone when it rings.
+        // 6:20. A voice from the lab's night desk for a player standing beside
+        // the telephone, and eleven rings for one who is only near enough to
+        // hear them. Near enough is the rooms off the hall and the three at the
+        // top of its stairs — not the cellar, which is under the kitchen behind
+        // a shut door, and not the yard or the carriage house, which are
+        // outside a closed house on a February evening. Written inline rather
+        // than hoisted into an `Earshot`: one sound, one sentence, one site.
         clock.at(TimeOfDay(18, 20), named: "clock.telephone") {
             say(
-                player.location == frontHall
-                    ? """
+                """
 
-                    The telephone rings. A man who does not give his name says he is the night desk up at the lab,
-                    that Dr. Pike signed out a car this afternoon and has not signed it back in, and that he would
-                    rather you heard it from him. Then he hangs up, having heard something in his own voice he did
-                    not care for.
-                    """
-                    : """
+                The telephone rings. A man who does not give his name says he is the night desk up at the lab,
+                that Dr. Pike signed out a car this afternoon and has not signed it back in, and that he would
+                rather you heard it from him. Then he hangs up, having heard something in his own voice he did
+                not care for.
+                """, from: frontHall)
+            say(
+                """
 
-                    The telephone starts ringing in the front hall. It rings eleven times. Nobody in this house is
-                    answering telephones tonight.
-                    """)
+                The telephone starts ringing in the front hall. It rings eleven times. Nobody in this house is
+                answering telephones tonight.
+                """, from: parlour, kitchen, landing, study, boardersRoom)
         }
 
         // 6:50. The deadline. The county man writes down what he is given,

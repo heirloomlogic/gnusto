@@ -242,7 +242,13 @@ computed `static var`, which rebuilds it on every read.
   a bell in the dark is still heard from inside the room; the item form asks
   `isVisible`, which light does gate and which anything carried always passes. Say
   it **before** a state change that hides its own subject: a candle already blown
-  out lights nothing, itself included. `DarknessTimeAndDeath.md` has the rule.
+  out lights nothing, itself included. When the sentence is about a **noise** —
+  an explosion, a rockfall, a telephone, a knock — the same list answers for
+  every line about that source, so hoist it: `Earshot` is that list with a name,
+  and `Earshot.contains(_:)` is the form for a body that must decide *before* it
+  speaks (a daemon that draws randomness, where guarding late moves the seed).
+  It is a list and never a computed radius; the engine will not derive one.
+  `DarknessTimeAndDeath.md` has the rule.
 - **`maxScore` is checked against the `Scoring` award table.** `Scoring(awards:)` is the
   one place a register's points are written — `awardOnce("beacon")` and
   `visit(_:register:)` read them from there, and an unlisted register is a `fatalError`,

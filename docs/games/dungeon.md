@@ -1069,6 +1069,12 @@ that a line *appears* and never asks whether it is *true*.
    worked examples, and both ask *before* the state change, because a lamp on
    the floor of the room you are standing in is the light in that room and
    putting it out takes the room's contents out of sight.
+   **A line about a noise names the neighbourhood it carries to**, as an
+   `Earshot` written once per source: `DungeonVolcano.insideTheVolcano` for the
+   blast, the rockfall and the ledge, and `DungeonAboveGround.theWood` for the
+   songbird — which asks `contains(_:)` rather than `say(_:from:)`, because it
+   has to guard before it draws or every pinned seed in the suite moves. The
+   brochure's knock is the deliberate exception, and `FIDELITY.md` says why.
 3. **A scenery item answers about the place the player is in.** One item
    answering for a far thing and a near thing under the same synonym is the
    Rocky Ledge's `x passage` bug: the noun belongs to whichever item is about the
