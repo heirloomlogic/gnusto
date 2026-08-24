@@ -269,6 +269,11 @@ struct DungeonAboveGround: GameContent {
     let treesAtSouthOfHouse = forestStand()
     let treesAtBehindHouse = forestStand()
 
+    /// A ninth stand, at Canyon View, where the immense forest west and south
+    /// is the wall of trees the player walked out of and the distant view was
+    /// answering for it. (#286)
+    let treesAtCanyonView = forestStand()
+
     /// Four paths going four different places, so the text is the parameter and
     /// the nouns are not: every one of them is a path, and the whole of what
     /// differs is where it goes. The Clearing's goes home and Canyon Bottom's
@@ -535,15 +540,18 @@ struct DungeonAboveGround: GameContent {
     }
 
     /// Canyon View names a great deal that is miles away — the White Cliffs,
-    /// Aragain Falls and its rainbow, the top of the dam, the forest. One item
-    /// answers for all of it rather than letting the parser deny things the
-    /// room has just pointed at.
+    /// Aragain Falls and its rainbow, the top of the dam. One item answers for
+    /// all of it rather than letting the parser deny things the room has just
+    /// pointed at.
+    ///
+    /// The forest is **not** one of them and stopped being a synonym here: it
+    /// is west and south of this square, an ordinary exit the player walked out
+    /// of, so answering `x forest` with "too far off to make out more than the
+    /// shape" was the far thing speaking for the near one. (#286)
     let distantViewAtTop = Item {
         name("view")
         adjectives("distant", "marvelous")
-        synonyms(
-            "cliffs", "falls", "rainbow", "dam", "river", "forest", "water",
-            "aragain")
+        synonyms("cliffs", "falls", "rainbow", "dam", "river", "water", "aragain")
         description(Prose.distantView)
         scenery
     }
@@ -774,6 +782,7 @@ struct DungeonAboveGround: GameContent {
         grating.starts(in: clearing)
         grating.lockedBy(skeletonKeys)
 
+        treesAtCanyonView.starts(in: canyonView)
         distantViewAtTop.starts(in: canyonView)
         distantViewAtLedge.starts(in: rockyLedge)
         rockyLedgePassage.starts(in: rockyLedge)
@@ -860,35 +869,37 @@ struct DungeonAboveGround: GameContent {
 
     // MARK: - The wood
 
-    /// Whether `here` is somewhere the songbird can hear you — the mainframe's
-    /// `BIRDBIT` set: the five Forest rooms and the perch above one of them,
-    /// but not the Clearing.
+    /// Where the songbird can be heard, and where it can hear you — the
+    /// mainframe's `BIRDBIT` set: the five Forest rooms and the perch above one
+    /// of them, but not the Clearing.
     ///
     /// Internal rather than private because the host's canary trick needs the
     /// same set, and one list in one place is what stops a later milestone from
     /// adding a forest room to only half of them.
-    ///
-    /// - Parameter here: the room to test.
-    /// - Returns: true when the songbird is within earshot.
-    func isInTheWood(_ here: Location) -> Bool {
-        here == forestDeep || here == forestSouth || here == forestTree
-            || here == forestCanyonEdge || here == forestNorth || here == upATree
+    var theWood: Earshot {
+        Earshot(
+            forestDeep, forestSouth, forestTree, forestCanyonEdge, forestNorth,
+            upATree)
     }
 
     var timers: [TimedEvent] {
         // The mainframe's forest ambience: roughly one turn in ten among the
-        // trees, a songbird is heard off in the distance. It guards before it
-        // draws, so a turn spent anywhere else burns no randomness.
+        // trees, a songbird is heard off in the distance. It asks where you are
+        // through ``Earshot/contains(_:)`` rather than through `say(_:from:)`
+        // because it has to guard *before* it draws: a turn spent anywhere else
+        // must burn no randomness, or every pinned seed in the suite moves.
         daemon("forestSongbird", autostart: true) {
-            guard isInTheWood(player.location) else { return }
+            guard theWood.contains(player.location) else { return }
             guard chance(10) else { return }
             say(Prose.songbirdHeard)
         }
 
         // The postal service, three turns after you last walked into the
-        // Kitchen. The knock is heard wherever you are — the source prints it
-        // unconditionally, and a player who orders one and then goes down the
-        // trap door hears it from the cellar.
+        // Kitchen. The one line in this file that is deliberately *not* given an
+        // earshot: the source prints the knock unconditionally, so a player who
+        // orders a brochure and then goes down the trap door hears it from the
+        // cellar. Wrong by any distance, and kept, because it is the mainframe's
+        // own joke about a mail-order catalogue that finds you anywhere.
         fuse("brochureArrives", after: 3) {
             brochureDelivered = true
             brochure.move(inside: mailbox)

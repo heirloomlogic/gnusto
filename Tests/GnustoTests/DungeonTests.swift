@@ -124,7 +124,7 @@ struct DungeonTests {
     private static let toTheTemple = toTheMirrors + ["rub mirror", "north", "north", "up"]
 
     /// And down to the gate of Hades with the ceremony's three pieces in hand.
-    private static let toTheGateOfHades =
+    static let toTheGateOfHades =
         toTheTemple
         + [
             "take bell", "east", "take book", "take candles",
@@ -170,11 +170,11 @@ struct DungeonTests {
     private static let mazeFiveToTheCyclops = ["southwest", "east", "south", "northeast"]
 
     /// From Maze-5 to the Grating Room: southwest, up, east, northeast.
-    private static let mazeFiveToTheGrating = ["southwest", "up", "east", "northeast"]
+    static let mazeFiveToTheGrating = ["southwest", "up", "east", "northeast"]
 
     /// The whole descent, past the troll, and into the maze as far as the
     /// skeleton. Seed 18 throughout: the troll falls to the first blow.
-    private static let toMazeFive = pastTheTroll + trollRoomToMazeFive
+    static let toMazeFive = pastTheTroll + trollRoomToMazeFive
 
     /// From the Loud Room out to the west bank of the Frigid River on foot —
     /// the mainframe's own road, and the one Zork I replaced with a passage
@@ -205,6 +205,15 @@ struct DungeonTests {
     /// of Aragain Falls on foot.
     private static let toAragainFalls =
         afloatOnTheRiver + ["down", "down", "down", "down", "land", "south", "get out"]
+
+    /// The stick's road to the far end of the rainbow: fetch the broken sharp
+    /// stick from the Dam Base, come back up through the Troll Room and out by
+    /// the chimney, then across the clearing and down the canyon. The stick is
+    /// carried on foot the whole way because it punctures the boat.
+    private static let stickToTheEndOfRainbow =
+        pastTheTroll + ["drop sword"] + crossroadsToTheDam
+        + ["down", "take stick", "north"] + damBackToTheTrollRoom + outByTheChimney
+        + ["east", "east", "east", "southeast", "southeast", "down", "down", "north"]
 
     /// From the Dam Base back to the Troll Room, which is the road out once the
     /// trap door has barred itself: up the dam, east and south to the Loud
@@ -911,7 +920,7 @@ struct DungeonTests {
                 "Round Room",
                 "circular stone room with passages leading off in eight",
                 "machinery whirs",
-                "compass needle swings",
+                "the floor has carried it somewhere else",
                 "the room turns under you as you go",
             ])
         #expect(!transcript.contains("blocked by cave-ins"))
@@ -2314,10 +2323,7 @@ struct DungeonTests {
     @Test func theStickWavesTheRainbowSolidAndShowsThePotOfGold() async throws {
         let transcript = try await play(
             Dungeon(),
-            Self.pastTheTroll + ["drop sword"] + Self.crossroadsToTheDam
-                + ["down", "take stick", "north"] + Self.damBackToTheTrollRoom
-                + Self.outByTheChimney
-                + ["east", "east", "east", "southeast", "southeast", "down", "down", "north"]
+            Self.stickToTheEndOfRainbow
                 + ["wave stick", "look", "take pot", "score", "west", "wave stick"],
             seed: 18)
 
@@ -2418,6 +2424,45 @@ struct DungeonTests {
         expectEveryNounAnswered(onFoot, "the Ancient Chasm, the Small Cave and Rocky Shore")
     }
 
+    /// Death takes you out of the barrel for good. Ride it over Aragain Falls,
+    /// come back to your senses in the forest, fetch the lamp and walk the long
+    /// way round to the falls again: the barrel is standing there and you are
+    /// standing beside it. The boarding used to be decided at read time, so the
+    /// moment the room matched again you were silently back inside a barrel you
+    /// had never re-entered — and GERONIMO killed you a second time from it.
+    @Test func aBarrelYouDiedInDoesNotTakeYouBackWhenYouReturn() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.stickToTheEndOfRainbow
+                + ["wave stick", "west", "west", "board barrel", "geronimo"]
+                + ["east", "west", "east", "open window", "enter window", "west"]
+                + ["take lamp", "east", "east", "east", "southeast"]
+                + ["southeast", "down", "down", "north", "west", "west"]
+                + ["look", "geronimo"],
+            seed: 18)
+
+        expectInOrder(
+            transcript,
+            [
+                "You are now in the wooden barrel.",
+                "the finest ride in the Great Underground Empire",
+                "you find yourself standing among the trees",
+                "End of Rainbow",
+                "Aragain Falls",
+                // The war cry, the second time, is answered off-barrel. The
+                // line makes no claim about the place, because the place it is
+                // most often shouted in is a 450-foot drop.
+                "A fine battle cry, and that is the whole of it.",
+            ])
+
+        // Back at the falls on foot: the room titles itself plainly and the
+        // barrel is listed as furniture standing in it.
+        let look = turnOutput(of: "look", in: transcript)
+        #expect(look.contains("Aragain Falls"))
+        #expect(!look.contains("in the wooden barrel"))
+        #expect(look.contains("There is a wooden barrel here."))
+    }
+
     @Test func everyNounTheRiverPrints() async throws {
         let afloat = try await play(
             Dungeon(),
@@ -2450,9 +2495,13 @@ struct DungeonTests {
     private static let toTheWell =
         toTheEngravingsCave + ["southeast", "answer well", "east", "east"]
 
+    /// The ride up the shaft, which is the only way in or out of the Alice
+    /// wing: the bucket rises for water poured into it and descends for water
+    /// taken out, and both ends want you sitting in it.
+    private static let upTheWell = ["board bucket", "pour water in bucket", "get out", "east"]
+
     /// And up it, into the tea party.
-    private static let toTheTeaRoom =
-        toTheWell + ["board bucket", "pour water in bucket", "get out", "east"]
+    private static let toTheTeaRoom = toTheWell + upTheWell
 
     /// The Bank hangs off the Gallery, which is two rooms south of the Cellar
     /// and needs no fight and no seed.
@@ -2689,6 +2738,81 @@ struct DungeonTests {
             seed: 41)
 
         #expect(transcript.contains("the vapour goes into you"))
+    }
+
+    /// Resurrection puts the body back the way it found it. A death taken four
+    /// inches high used to leave ``DungeonAlice/shrunk`` set, so the iced cakes
+    /// went on reading themselves to a full-sized player standing on the grass
+    /// in broad daylight.
+    @Test func dyingSmallDoesNotLeaveYouReadingIcingLikeAMouse() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheTeaRoom
+                + ["take blue cake", "eat eat-me cake", "east", "open flask"]
+                // Resurrected in the deep forest, with the cake strewn south of
+                // the house along with everything else that was in your hands.
+                + ["east", "north", "north", "take blue cake", "read blue cake"],
+            seed: 41)
+
+        expectInOrder(
+            transcript,
+            [
+                "the vapour goes into you",
+                "standing among the trees with the daylight on your face",
+                "South of House",
+                "Taken.",
+                "far too small to make out",
+            ])
+    }
+
+    /// And the wing itself reopens. Two things sealed it, and the tin of rare
+    /// spices and the crystal sphere are both behind them, so a shrunken death
+    /// used to put `maxScore` out of reach for the rest of the run: `shrunk`
+    /// barred the Eat-Me cake, and the bucket — the only way in or out of the
+    /// well — was left standing at the top with the water still in it.
+    ///
+    /// The long way round is the point of the test. The triangular button is
+    /// pressed on the first visit so the Round Room's carousel is stopped and
+    /// the second descent is a walk rather than a lottery; the bottle is
+    /// gathered off the lawn where the death scattered it and refilled at the
+    /// dam, because the water that lifts the bucket is spent every trip.
+    @Test func aShrunkenDeathDoesNotSealTheSpicesInBehindIt() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheTeaRoom
+                // Stop the carousel first. The Machine Room is off the Low
+                // Room, at full size, so no cake is needed to reach it.
+                + ["northwest", "north", "push triangular button", "west", "out"]
+                + ["eat eat-me cake", "east", "open flask"]
+                // Above ground again. The bottle went south of the house with
+                // the rest of what was in your hands; the lamp is the exception
+                // and is waiting in the living room.
+                + ["east", "north", "north", "take bottle", "east", "west"]
+                + ["west", "take lamp", "turn on lamp", "open trap door", "down"]
+                + ["east", "north", "east"]
+                // Round Room, still, so northwest is northwest. Fill the bottle
+                // at the dam and come back for the Engravings Cave.
+                + ["northwest", "east", "fill bottle", "south", "south"]
+                + ["north", "southeast", "east", "east"]
+                // The bucket is waiting at the bottom of the well, as it would
+                // have been if the trip had ended in a climb rather than a
+                // flask.
+                + Self.upTheWell
+                + ["take red cake", "eat eat-me cake", "east"]
+                + ["throw red cake in pool", "take tin", "score"],
+            seed: 41)
+
+        expectInOrder(
+            transcript,
+            [
+                "Circular Room",
+                "There is a wooden bucket here.",
+                "The bucket rises",
+                "Tea Room",
+                "the room heaves upward around you",
+                "goes up at once in a column of steam",
+                "Your score is 45 of a possible 716",
+            ])
     }
 
     // MARK: - Milestone 5: the robot
@@ -3063,6 +3187,27 @@ struct DungeonTests {
     }
 
     /// The buoy is the same shape, three bends down the Frigid River.
+    /// **The buoy's two channels are two lines.** One constant was passed to
+    /// both `firstSight(…)` and `description(…)`, so `x buoy` answered "There
+    /// is a red buoy here" about a buoy in the player's hands. The listing line
+    /// is the trilogy's and stays; the examine line is this game's own.
+    /// (#286 D2)
+    @Test func theBuoyExaminesAsAThingAndListsAsAPlace() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.afloatOnTheRiver + ["down", "down", "down", "take buoy", "examine buoy"],
+            seed: 18)
+
+        expectInOrder(
+            transcript,
+            [
+                "There is a red buoy here (probably a warning).",
+                "Taken.",
+                "A red plastic buoy the size of a small barrel",
+            ])
+        #expect(!turnOutput(of: "examine buoy", in: transcript).contains("There is a red buoy here"))
+    }
+
     @Test func theOpenedBuoyPrintsTheEmeraldsOwnLine() async throws {
         let transcript = try await play(
             Dungeon(),
@@ -3604,6 +3749,39 @@ struct DungeonTests {
                 "The balloon leaves the ledge.",
                 "The ledge collapses. (That was a narrow escape!)",
             ])
+    }
+
+    /// **And a man in the Forest is not congratulated on a narrow escape.**
+    /// #306: the collapse lines had no gate on them at all, and death is the one
+    /// way out of the volcano quicker than either fuse — 5000 tons of rock in
+    /// the Dusty Room, then the trees and the daylight, and eight turns later
+    /// the Wide Ledge came down two hundred miles away and said *(That was a
+    /// narrow escape!)* to somebody standing in a wood.
+    ///
+    /// All three of the quarter's lines read one ``Earshot``, so this is the
+    /// negative for the whole set; ``theDustyRoomComesDownAndTakesTheWideLedgeWithIt``
+    /// is the matched positive, the same fuse with the player still in the shaft
+    /// when it fires. The explosion earlier in this very transcript is the
+    /// second control: the gate is on where the player is, not on whether the
+    /// timer ran.
+    @Test func theLedgeIsNotHeardComingDownFromAboveGround() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheWideLedge + Self.lightTheCharge
+                + ["south"] + Array(repeating: "wait", count: 13),
+            seed: 18)
+
+        expectInOrder(
+            transcript,
+            [
+                // Inside the quarter, the blast is heard.
+                "There is an explosion nearby.",
+                // Then the room comes down on the player, who wakes above ground.
+                "turning you into a pancake.",
+                "you find yourself standing among the trees",
+            ])
+        // And the ledge follows it eight turns later, in silence.
+        #expect(!transcript.contains("That was a narrow escape!"))
     }
 
     /// **Burning the brick in your own hands is the joke the source tells

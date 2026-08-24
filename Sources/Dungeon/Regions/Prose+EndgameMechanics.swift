@@ -202,6 +202,20 @@ extension Prose {
         The walls of the box are shut on every side of you.
         """
 
+    /// One end stands open and the player asked for the other. See
+    /// ``boxNoWayOut``, which is the line for a box that really is shut.
+    static let boxThatSideIsShut = """
+        That wall of the box is shut.
+        """
+
+    /// The wall is open and the box is standing on a diagonal, so the gap gives
+    /// on a corner. ``boxPineSwingsOpen(onto:)`` says the same thing one turn
+    /// earlier, with the same noun phrase.
+    static let boxOpensOnACorner = """
+        The opening gives on the \(beyond(nil)), and there is no floor beyond it
+        to step out onto.
+        """
+
     static let boxWillNotTurnWithThePoleDown = """
         Nothing gives. Whatever the pole is resting in is holding the box where
         it stands.

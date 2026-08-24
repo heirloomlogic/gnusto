@@ -182,10 +182,18 @@ room they have left, or by a wreckage that has not happened yet, reads as a bug 
 play-tester caught three of them. So: nothing in a description or a presence line may assume
 a place the person is not currently standing in, or a time the game has not reached. Where
 that needs to vary, it varies — `describe { }` for the examine text, `presence { }` for the
-room-listing line. Constance's presence line is keyed on which room she is in; Constance's
-and Mrs. Kettle's descriptions are keyed on whether the blast has happened. Dr. Pike's is
-written to be true in the parlour, the yard and the study alike, which is the cheaper fix
-where it works.
+room-listing line. Constance's presence line is keyed on which room she is in; Constance's,
+Mrs. Kettle's and Teague's descriptions are keyed on whether the blast has happened. Dr.
+Pike's is written to be true in the parlour, the yard and the study alike, which is the
+cheaper fix where it works.
+
+**The rule reaches refusals too.** A `refuse` string is a constant in exactly the way a
+`description(…)` is. The 2026-08-17 round found Teague's twice over: his description called
+this *"a house where a man has just died"* from 5:38, six minutes before there was a death
+and forty minutes before the telephone tells the player about it; and the suitcase's refusal
+put its owner *"somewhere in this house"* for the whole evening, including the twenty-four
+minutes he spends on the far side of the front door. Both now read the data that moved him:
+the blast flag, and his own timetable.
 
 One word is reserved: **arithmetic** belongs to Constance's shock and appears nowhere else.
 The 2026-07-31 round found the code spending it in two other places first — Teague's
@@ -347,7 +355,7 @@ the source of truth; if they and this disagree, they win.
 | 6:02 | Delphine | Up to the study, straight to the desk drawers. |
 | **6:10** | Teague | Home, with a paper bag. **The receipt exists from here on.** |
 | 6:14 | Pike | Into the study, and not pleased to find company. |
-| **6:20** | — | **The telephone rings.** Second alarm — the lab's night man, about Pike. |
+| **6:20** | — | **The telephone rings.** Second alarm — the lab's night man, about Pike. Answered in the hall; heard as eleven rings from the parlour, the kitchen, the landing, the study and the boarders' room; not heard at all in the cellar or out back. |
 | 6:26 | Delphine | Down to the cellar, without a light. **Silent — the cellar is dark.** |
 | 6:30 | Teague | Up to his room. |
 | **6:50** | — | **The coroner.** Third alarm. Accident ruling. Game over. |
@@ -537,8 +545,14 @@ could reach.)
 
 **Teague, on what he told Constance:**
 > "I told the old lady he'd gone out. That's all I told her. I wanted half an hour in
-> that lab and I didn't want her watching the yard while I had it." He looks at the
-> window. "It wasn't a lie that was supposed to do anything."
+> that lab and I didn't want her watching the yard while I had it." He looks past you.
+> "It wasn't a lie that was supposed to do anything."
+
+(The gesture names nobody's furniture, for the same reason his hands do above. He used to
+look at the window; the confession lands in the front hall, which has none, and `window`
+is not a word this game answers anywhere. The lab lamp's pre-blast line printed the noun
+too, and now the man inside works to the bench and forgets the rest — which names
+nothing the yard has to answer for either.)
 
 **Constance, shown the glove:**
 > She takes it out of your hand, which you were not expecting, and turns it over once.

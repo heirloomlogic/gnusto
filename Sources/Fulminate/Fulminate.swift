@@ -862,17 +862,15 @@ struct Fulminate: Game, GameMain {
             """)
     }
 
+    /// Described by a rule for the same reason Constance and Mrs. Kettle are:
+    /// the sentence that makes him — the most helpful man in a house where
+    /// somebody has died — is a claim about the blast, and he is examinable
+    /// from 5:38, six minutes before there is a death to notice.
     let teague = Actor {
         name("Howard Teague")
         properName
         adjectives("howard", "mr", "mister")
         synonyms("teague", "howard", "boarder", "man")
-        description(
-            """
-            Fifty-six, Navy the first time around, in a jacket that was pressed this morning by somebody. He is the
-            most helpful person in this house, which is a thing worth noticing about a house where a man has just
-            died.
-            """)
         firstSight("Howard Teague is here, being helpful.")
     }
 
@@ -1450,23 +1448,28 @@ struct Fulminate: Game, GameMain {
                     """)
         }
 
-        // 6:20. A voice from the lab's night desk, for a player who happens to
-        // be standing near the telephone when it rings.
+        // 6:20. A voice from the lab's night desk for a player standing beside
+        // the telephone, and eleven rings for one who is only near enough to
+        // hear them. Near enough is the rooms off the hall and the three at the
+        // top of its stairs — not the cellar, which is under the kitchen behind
+        // a shut door, and not the yard or the carriage house, which are
+        // outside a closed house on a February evening. Written inline rather
+        // than hoisted into an `Earshot`: one sound, one sentence, one site.
         clock.at(TimeOfDay(18, 20), named: "clock.telephone") {
             say(
-                player.location == frontHall
-                    ? """
+                """
 
-                    The telephone rings. A man who does not give his name says he is the night desk up at the lab,
-                    that Dr. Pike signed out a car this afternoon and has not signed it back in, and that he would
-                    rather you heard it from him. Then he hangs up, having heard something in his own voice he did
-                    not care for.
-                    """
-                    : """
+                The telephone rings. A man who does not give his name says he is the night desk up at the lab,
+                that Dr. Pike signed out a car this afternoon and has not signed it back in, and that he would
+                rather you heard it from him. Then he hangs up, having heard something in his own voice he did
+                not care for.
+                """, from: frontHall)
+            say(
+                """
 
-                    The telephone starts ringing in the front hall. It rings eleven times. Nobody in this house is
-                    answering telephones tonight.
-                    """)
+                The telephone starts ringing in the front hall. It rings eleven times. Nobody in this house is
+                answering telephones tonight.
+                """, from: parlour, kitchen, landing, study, boardersRoom)
         }
 
         // 6:50. The deadline. The county man writes down what he is given,
@@ -1589,11 +1592,18 @@ struct Fulminate: Game, GameMain {
         // being helpful is a thing the player should have to decide to do, and
         // then not get to do. Both refusals are in the same voice as the
         // overcoat's, which is the house rule for other people's property.
+        // Where he is comes off the timetable, not off the sentence: he is out
+        // the front door at 5:46 and not back until ten past six, and the
+        // refusal used to put him in the house for the whole of it.
         suitcase.before(.take) {
+            let owner =
+                teague.isIn(street)
+                ? "a man who has stepped out and will want it when he gets back"
+                : "a man who is somewhere in this house"
             try refuse(
                 """
-                It is packed, it is heavy, and it belongs to a man who is somewhere in this house. Leave it where he
-                put it. That it is packed at all is the interesting part.
+                It is packed, it is heavy, and it belongs to \(owner). Leave it where he put it. That it is packed at
+                all is the interesting part.
                 """)
         }
 
@@ -1864,7 +1874,7 @@ struct Fulminate: Game, GameMain {
                 """
                 : """
                 A bulb in a tin shade over the side door, burning at half past five in June because the man inside
-                works to the bench and not to the window.
+                works to the bench and forgets the rest.
                 """
         }
 
@@ -1952,6 +1962,21 @@ struct Fulminate: Game, GameMain {
             case (true, true): "Delphine Marsh is on her feet with her arms at her sides, looking at the fire."
             case (true, false): "Delphine Marsh is here, not looking at you."
             }
+        }
+
+        // The helpfulness is the constant; the thing worth noticing about it is
+        // not. Before a quarter to six there is no death in this house to
+        // notice it against, and saying there is front-runs the game's own
+        // reveal — the telephone at twenty past six — by forty minutes.
+        teague.describe {
+            let tell =
+                blastHappened
+                ? "which is a thing worth noticing about a house where a man has just died"
+                : "and nobody this evening has given him anything to be helpful about"
+            return """
+                Fifty-six, Navy the first time around, in a jacket that was pressed this morning by somebody. He is
+                the most helpful person in this house, \(tell).
+                """
         }
 
         kettle.describe {
@@ -2268,7 +2293,7 @@ struct Fulminate: Game, GameMain {
                 knowing: .teagueRecanted, learning: .teagueLied,
                 reply: """
                     "I told the old lady he'd gone out. That's all I told her. I wanted half an hour in that lab and
-                    I didn't want her watching the yard while I had it." He looks at the window. "It wasn't a lie
+                    I didn't want her watching the yard while I had it." He looks past you. "It wasn't a lie
                     that was supposed to do anything."
                     """)
             topic(

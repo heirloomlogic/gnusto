@@ -129,7 +129,7 @@ struct DungeonHouse: GameContent {
         adjectives("clear", "glass")
         synonyms("bottle", "container")
         firstSight(Prose.bottleOnTable)
-        description(Prose.bottle)
+        // Described by a rule: the stopper is the `openable` trait.
         container
         openable
         transparent
@@ -468,6 +468,11 @@ struct DungeonHouse: GameContent {
         // matching rule for Behind House is the host's, since that room is
         // ``DungeonAboveGround``'s and this window is not.
         kitchen.describe { Prose.kitchen(windowOpen: window.isOpen) }
+
+        // `OPEN BOTTLE` answers "reveals a quantity of water" and the examine
+        // went on saying "stoppered" behind it. The stopper is the openable
+        // trait; the glass is the constant.
+        bottle.describe { bottle.isOpen ? Prose.bottleOpen : Prose.bottle }
 
         rug.before(.push) {
             guard !trapDoor.isRevealed else { try reply(Prose.rugAlreadyMoved) }

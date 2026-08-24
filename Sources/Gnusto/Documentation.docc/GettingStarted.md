@@ -40,7 +40,7 @@ let package = Package(
 )
 ```
 
-Gnusto needs a Swift 6.2 toolchain and the Swift 6 language mode. The `.macOS(.v15)` floor is `Synchronization.Mutex`; Linux is tested in CI and needs no platform line.
+Gnusto needs a Swift 6.2 toolchain and the Swift 6 language mode. The `.macOS(.v15)` floor above is `Synchronization.Mutex`; Linux is tested in CI and needs no platform line. iOS is supported too, at `.iOS(.v18)` for the same reason. Add that line if your game is an app rather than a terminal program, and give it an ``IOHandler`` of its own — see <doc:CustomFrontEnds>.
 
 ## Declare a game
 

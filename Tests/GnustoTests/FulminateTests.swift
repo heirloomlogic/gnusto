@@ -126,6 +126,32 @@ struct FulminateTests {
         #expect(transcript.contains("he is the night desk up at the lab"))
     }
 
+    /// **A telephone is heard from the rooms off the hall, and answered only in
+    /// it.** The parlour is one room away through a doorway; it gets the rings
+    /// and not the voice.
+    @Test func theTelephoneIsHeardFromTheRoomsOffTheHall() async throws {
+        let transcript = try await play(
+            Fulminate(), ["west"] + Array(repeating: "z", count: 25))
+        #expect(transcript.contains("It rings eleven times."))
+        #expect(!transcript.contains("he is the night desk up at the lab"))
+    }
+
+    /// **And not from the cellar, which is under the kitchen behind a shut
+    /// door.** #306: the else-branch had no gate on it at all, so a man sitting
+    /// in the dark two floors down was told a telephone was ringing eleven
+    /// times somewhere he could not have heard it.
+    ///
+    /// The coroner is the control. He arrives at ten to seven whatever the
+    /// player was told at twenty past six, which is the whole contract of a
+    /// gated `say`: the clock does not wait to be listened to.
+    @Test func theTelephoneIsNotHeardFromTheCellar() async throws {
+        let transcript = try await play(
+            Fulminate(), ["south", "down"] + Array(repeating: "z", count: 39))
+        #expect(!transcript.contains("It rings eleven times."))
+        #expect(!transcript.contains("he is the night desk up at the lab"))
+        #expect(transcript.contains("The county man comes up the path at ten to seven"))
+    }
+
     @Test func theCoronerClosesTheCaseAtTenToSeven() async throws {
         let transcript = try await play(Fulminate(), Array(repeating: "z", count: 41))
         #expect(transcript.contains("The county man comes up the path at ten to seven"))
@@ -681,6 +707,27 @@ struct FulminateTests {
             Fulminate(), ["south", "west"] + Array(repeating: "z", count: 8) + ["x lamp", "x wall"])
         #expect(turnOutput(of: "x lamp", in: after).contains("In the grass with everything else"))
         #expect(turnOutput(of: "x wall", in: after).contains("The ivy is holding up what is left"))
+    }
+
+    /// **`window` was printed by two declarations and known to no vocabulary.**
+    /// The lab lamp's pre-blast line put one in the carriage house and Teague's
+    /// confession put one in the Front Hall, a room that has none; neither is a
+    /// word this game answers. Both sentences say what they said without it.
+    /// (#280, C7)
+    @Test func nothingPrintsAWindowThisGameDoesNotHave() async throws {
+        let yard = try await play(Fulminate(), ["south", "west", "x lamp"])
+        let lamp = turnOutput(of: "x lamp", in: yard)
+        #expect(lamp.contains("works to the bench and forgets the rest"))
+        #expect(!lamp.contains("window"))
+
+        let hall = try await play(
+            Fulminate(),
+            Array(repeating: "z", count: 21)
+                + ["search coat", "take receipt", "show receipt to teague", "ask teague about mrs vane"])
+        let keystone = turnOutput(of: "ask teague about mrs vane", in: hall)
+        #expect(keystone.contains("I told the old lady he'd gone out."))
+        #expect(keystone.contains("He looks past you."))
+        #expect(!keystone.contains("window"))
     }
 
     /// And the lab from inside, which calls itself somebody's workshop and
@@ -1365,6 +1412,49 @@ struct FulminateTests {
         let late = try await play(
             Fulminate(), ["south", "west"] + Array(repeating: "z", count: 10) + ["x kettle"])
         #expect(turnOutput(of: "x kettle", in: late).contains("looked at the wreckage"))
+    }
+
+    /// Teague's was the one description in the household `7c92508` did not key
+    /// on the blast, so the clause that makes him — the most helpful man in a
+    /// house where somebody has died — printed from 5:38, six minutes before
+    /// there was a death, with Dr. Pike alive in the Parlour. It also front-ran
+    /// the 6:20 telephone, which is the game's own first word that Pike is
+    /// gone. (#280 C2)
+    @Test func teagueSaysNothingAboutADeathUntilThereHasBeenOne() async throws {
+        // He comes down the back stairs at 5:36 and is examinable in the
+        // kitchen at 5:38; he is off the map from 5:46 and back in the front
+        // hall at 6:10.
+        let transcript = try await play(
+            Fulminate(),
+            ["south", "z", "z", "z", "x teague", "north"]
+                + Array(repeating: "z", count: 15) + ["x howard"])
+
+        let early = turnOutput(of: "x teague", in: transcript)
+        #expect(early.contains("the most helpful person in this house"))
+        #expect(!early.contains("has just died"))
+
+        let late = turnOutput(of: "x howard", in: transcript)
+        #expect(late.contains("a house where a man has just died"))
+    }
+
+    /// And the refusal that guards his case put him in the house for the whole
+    /// evening, including the twenty-four minutes he spends on the far side of
+    /// the front door. Where he is comes off the same timetable that moved him.
+    /// (#280 C4)
+    @Test func theSuitcaseRefusalReadsItsOwnersTimetable() async throws {
+        let transcript = try await play(
+            Fulminate(),
+            ["up", "east", "take suitcase"] + Array(repeating: "z", count: 7) + ["take case"])
+
+        // 5:34, and he is two floors down being helpful.
+        #expect(
+            turnOutput(of: "take suitcase", in: transcript)
+                .contains("belongs to a man who is somewhere in this house"))
+
+        // 5:50, four minutes after the front door went behind him.
+        let late = turnOutput(of: "take case", in: transcript)
+        #expect(late.contains("a man who has stepped out and will want it when he gets back"))
+        #expect(!late.contains("somewhere in this house"))
     }
 
     /// She spends six minutes of the evening out of her chair, and a woman

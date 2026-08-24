@@ -192,6 +192,20 @@ with a positive control) plus additions to `DungeonTests` and `DungeonEndgameTes
   repairing it: the room paragraph is trilogy-verbatim and asserts nothing about entry.
   An argument is not a repair, so the row stands and a later round is free to test it.
 
+**2026-08-24 — ten rows of the 2026-08-18 round marked `fixed` by #286's Class 3.** D3
+and D5 together: `frigidRiverHere`, `whiteCliffsFromBelow`, `aragainFallsItself`,
+`rainbowItself` and `distantView` were catch-alls answering under nouns that belonged to
+the room's own exits and ground; `etchingsAbove` and `machineRoomWithButtons` were the
+same defect underground; `beachDigs` and `cageGas` printed nouns nothing modelled at all.
+`roundRoomCompass` is the one that could not be repaired with an item — the line named a
+compass and a needle this game does not have anywhere, so the sentence went instead, and
+the declaration is now `roundRoomTurning`. The key stays as the round recorded it.
+
+**The Viewing Room's sign stands `confirmed` on purpose.** It is `needs-human` and the
+open question is whether the rule reaches nouns a notice says are *absent*; declaring
+items for "the bank officer" and "all customers" would be inventing world, which is not a
+decision to take unsupervised.
+
 **2026-08-12 — the remaining fourteen `unanswerable-noun` rows marked `fixed` by the
 third pass.** Box 10 entire, and what was left of box 4: the volcano's catch-all synonym
 lists. The two are one piece of work and this is the reason, stated once — trimming a
@@ -391,28 +405,28 @@ before acting on any of the three; the claim alone points at the wrong line.
 |---|---|---|---|
 | `decl::Sources/Dungeon/Regions/Prose+House.swift::bottle` | confirmed | prose-untrue-of-state | major |
 | `decl::Sources/Dungeon/Regions/Prose+Alice.swift::sphere` | confirmed | prose-untrue-of-state | major |
-| `decl::Sources/Dungeon/Regions/Prose+Alice.swift::etchingsAbove` | confirmed | unanswerable-noun | major |
-| `decl::Sources/Dungeon/Regions/Prose+Alice.swift::cageGas` | confirmed | unanswerable-noun | minor |
-| `decl::Sources/Dungeon/Regions/Prose+Alice.swift::machineRoomWithButtons` | confirmed | unanswerable-noun | minor |
+| `decl::Sources/Dungeon/Regions/Prose+Alice.swift::etchingsAbove` | fixed | unanswerable-noun | major |
+| `decl::Sources/Dungeon/Regions/Prose+Alice.swift::cageGas` | fixed | unanswerable-noun | minor |
+| `decl::Sources/Dungeon/Regions/Prose+Alice.swift::machineRoomWithButtons` | fixed | unanswerable-noun | minor |
 | `decl::Sources/Dungeon/Regions/Prose+Dam.swift::reservoirWater` | confirmed | prose-untrue-of-state | major |
 | `decl::Sources/Dungeon/Regions/Prose+River.swift::buoy` | confirmed | presence-line-location-blind | major |
 | `decl::Sources/Dungeon/Regions/River.swift::barrel` | confirmed (needs-human) | mechanic-contradicts-prose | major |
 | `decl::Sources/Dungeon/Regions/Prose+River.swift::boatHissesFlat` | confirmed (needs-human) | gate-not-gating | major |
-| `decl::Sources/Dungeon/Regions/Prose+River.swift::beachDigs` | confirmed | unanswerable-noun | major |
-| `decl::Sources/Dungeon/Regions/Prose+River.swift::frigidRiverHere` | confirmed | prose-untrue-of-frame | major |
-| `decl::Sources/Dungeon/Regions/Prose+AboveGround.swift::distantView` | confirmed | prose-untrue-of-frame | major |
-| `decl::Sources/Dungeon/Regions/Prose+River.swift::whiteCliffsFromBelow` | confirmed | prose-untrue-of-frame | minor |
-| `decl::Sources/Dungeon/Regions/Prose+River.swift::aragainFallsItself` | confirmed | prose-untrue-of-frame | minor |
-| `decl::Sources/Dungeon/Regions/Prose+River.swift::rainbowItself` | confirmed | prose-untrue-of-frame | minor |
+| `decl::Sources/Dungeon/Regions/Prose+River.swift::beachDigs` | fixed | unanswerable-noun | major |
+| `decl::Sources/Dungeon/Regions/Prose+River.swift::frigidRiverHere` | fixed | prose-untrue-of-frame | major |
+| `decl::Sources/Dungeon/Regions/Prose+AboveGround.swift::distantView` | fixed | prose-untrue-of-frame | major |
+| `decl::Sources/Dungeon/Regions/Prose+River.swift::whiteCliffsFromBelow` | fixed | prose-untrue-of-frame | minor |
+| `decl::Sources/Dungeon/Regions/Prose+River.swift::aragainFallsItself` | fixed | prose-untrue-of-frame | minor |
+| `decl::Sources/Dungeon/Regions/Prose+River.swift::rainbowItself` | fixed | prose-untrue-of-frame | minor |
 | `decl::Sources/Dungeon/Regions/Prose+Temple.swift::torchNoRope` | confirmed | mechanic-contradicts-prose | major |
 | `decl::Sources/Dungeon/Regions/Prose+Temple.swift::spirits` | confirmed | prose-untrue-of-state | major |
 | `decl::Sources/Dungeon/Regions/Prose+Temple.swift::candles` | confirmed (needs-human) | prose-untrue-of-state | major |
-| `decl::Sources/Dungeon/Regions/Prose+RoundRoom.swift::roundRoomCompass` | confirmed | unanswerable-noun | major |
+| `decl::Sources/Dungeon/Regions/Prose+RoundRoom.swift::roundRoomCompass` | fixed | unanswerable-noun | major |
 | `decl::Sources/Gnusto/Actions/StubVerbs.swift::stubs` | confirmed (needs-human) | prose-untrue-of-frame | major |
 | `decl::Sources/Dungeon/Regions/Prose+Temple.swift::bellCools` | confirmed | prose-untrue-of-frame | minor |
 | `decl::Sources/Dungeon/Regions/Prose+Temple.swift::blackBook` | confirmed (needs-human) | mechanic-contradicts-prose | minor |
 | `decl::Sources/Dungeon/Prose+Stubs.swift::stubs.climb` | fixed | stock-line-not-reskinned | minor |
-| `decl::Sources/Dungeon/Regions/Prose+Alice.swift::blueIcingWriting` | confirmed | prose-untrue-of-state | major |
+| `decl::Sources/Dungeon/Regions/Prose+Alice.swift::blueIcingWriting` | fixed | prose-untrue-of-state | blocking |
 | `decl::Sources/Dungeon/Regions/Prose+Alice.swift::poolLeak` | confirmed | prose-untrue-of-state | major |
 | `decl::Sources/Dungeon/Regions/Prose+Alice.swift::robotSpringsTheCage` | confirmed | mechanic-contradicts-prose | major |
 | `decl::Sources/Dungeon/Regions/Prose+Alice.swift::robotIsOutOfEarshot` | confirmed (needs-human) | stock-line-not-reskinned | minor |
@@ -446,3 +460,33 @@ Pass the ten `refuted` keys above as `ledgerKeys` next round, alongside the thir
 2026-08-11. **Not the forty-two `confirmed` ones**, and not the thirty-nine `fixed` ones
 above them. The list is twenty-three keys long, and for the first time ten of them can
 actually match.
+
+## D1 was filed at `major` and is `blocking` — 2026-08-24
+
+`blueIcingWriting` is #286's **D1**, and the round sighted it as a narration fault: a
+resurrected player at full size, told the icing reads EVAPORATE. The sentence is the
+symptom. `Dungeon.onDeath()` restores the player's place, their score and their
+belongings and nothing about the wing they died in, and two separate things were left
+standing by that:
+
+- `DungeonAlice.shrunk`, which the cakes read — and which `eatMeCake.before(.eat)` guards
+  on, so the way back down was shut by the flag that says you are already there.
+- **The bucket**, which the round did not sight. It is the only way in or out of the well
+  and it only descends for a passenger who empties it, so a death in the wing left it at
+  the top with the water in it and nobody able to reach it. Walked by hand at seed 41:
+  `board bucket` in the Circular Room answered *"You can't see any such thing."* on the
+  second descent. `shrunk` alone would not have reopened the wing.
+
+The tin of rare spices (5+5) and the white crystal sphere (6+6) are both behind those
+seals, so a shrunken death did not narrate a wrong sentence, it made `maxScore`
+unreachable for the rest of the run. Re-rated `blocking`, which is what the round's own
+`unwinnable` category means.
+
+Both are reset in `onDeath()` now, and both are covered:
+`dyingSmallDoesNotLeaveYouReadingIcingLikeAMouse` and
+`aShrunkenDeathDoesNotSealTheSpicesInBehindIt` in `Tests/GnustoTests/DungeonTests.swift`.
+The second walks the whole second descent and comes out holding the spices.
+
+The shape worth looking for in the rest of #286: the round keys on the **sentence**, so a
+finding whose sentence is a symptom of lost state gets the sentence's severity. D1 read as
+`major` because a mouse-sized reading line is a `major` sort of wrong.

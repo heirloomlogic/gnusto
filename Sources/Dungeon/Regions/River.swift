@@ -196,7 +196,7 @@ struct DungeonRiver: GameContent {
         adjectives("red")
         synonyms("buoy")
         firstSight(Prose.buoy)
-        description(Prose.buoy)
+        description(Prose.buoyExamined)
         container
         openable
         capacity(20)
@@ -348,6 +348,35 @@ struct DungeonRiver: GameContent {
         }
     }
 
+    /// Six bank rooms name a path and not one of them modelled it, so `x path`
+    /// answered with the water, the cliffs or the falls — three different wrong
+    /// things for one word. Same shape as ``DungeonAboveGround``'s factory: the
+    /// nouns are fixed and the text is the parameter, because every one of them
+    /// is a path and the whole of what differs is where it goes. (#286)
+    private static func pathScenery(_ text: String) -> Item {
+        Item {
+            name("path")
+            adjectives("beaten", "narrow")
+            synonyms("path", "track", "trail")
+            description(text)
+            scenery
+        }
+    }
+
+    /// Aragain Falls, from the three rooms that name it — the lip you stand on
+    /// and the two that can see it from downstream and above. The rainbow was
+    /// answering for the water it crosses in both of the latter, which is the
+    /// near thing speaking for the far one. (#286)
+    private static func fallsScenery(_ nouns: ItemTrait) -> Item {
+        Item {
+            name("waterfall")
+            adjectives("enormous", "aragain")
+            nouns
+            description(Prose.aragainFallsItself)
+            scenery
+        }
+    }
+
     let riverAtOne = riverScenery("quiet", synonyms("water", "dam", "landing", "shore"))
     let riverAtTwo = riverScenery(
         "winding", synonyms("water", "dam", "corner", "rocks", "rock", "bank", "cliffs", "cliff"))
@@ -355,13 +384,12 @@ struct DungeonRiver: GameContent {
         "descending", synonyms("water", "valley", "beach", "shore", "cliffs", "cliff", "rumbling"))
     let riverAtFour = riverScenery("fast", synonyms("water", "beach", "shore", "cliffs", "cliff", "area"))
     let riverAtFive = riverScenery("rushing", synonyms("water", "shore", "landing", "area", "sound"))
-    let riverAtSandyBeach = riverScenery("flowing", synonyms("water", "path"))
-    let riverAtShore = riverScenery("treacherous", synonyms("water", "shore", "path", "corner"))
-    let riverAtRockyShore = riverScenery(
-        "rocky", synonyms("water", "shore", "rocks", "rock", "cave", "mouth", "entrance"))
+    let riverAtSandyBeach = riverScenery("flowing", synonyms("water"))
+    let riverAtShore = riverScenery("treacherous", synonyms("water", "shore", "corner"))
+    let riverAtRockyShore = riverScenery("rocky", synonyms("water", "shore", "rocks", "rock"))
 
-    let cliffsAtNorthBeach = cliffScenery("narrow", synonyms("cliff", "cliffs", "beach", "strip", "path", "base"))
-    let cliffsAtSouthBeach = cliffScenery("rocky", synonyms("cliff", "cliffs", "beach", "strip", "path", "shore"))
+    let cliffsAtNorthBeach = cliffScenery("narrow", synonyms("cliff", "cliffs", "beach", "strip", "base"))
+    let cliffsAtSouthBeach = cliffScenery("rocky", synonyms("cliff", "cliffs", "beach", "strip", "shore"))
 
     // The two White Cliffs beaches are `.waterSource` rooms whose only scenery
     // was the cliffs, so the river a bottle fills from had no noun in them at
@@ -372,20 +400,39 @@ struct DungeonRiver: GameContent {
     let riverAtSouthBeach = riverScenery("cold", synonyms("water", "river"))
 
     let rainbowAtFalls = rainbowScenery(synonyms("rainbow", "stairs", "bannister"))
-    let rainbowAtRainbowRoom = rainbowScenery(synonyms("rainbow", "view", "falls", "waterfall"))
-    let rainbowAtEndOfRainbow = rainbowScenery(
-        synonyms("rainbow", "falls", "waterfall", "beach", "cliffs", "cliff", "path"))
+    let rainbowAtRainbowRoom = rainbowScenery(synonyms("rainbow", "view"))
+    let rainbowAtEndOfRainbow = rainbowScenery(synonyms("rainbow"))
+
+    let pathAtNorthBeach = pathScenery(Prose.pathAtNorthBeach)
+    let pathAtSouthBeach = pathScenery(Prose.pathAtSouthBeach)
+    let pathAtSandyBeach = pathScenery(Prose.pathAtSandyBeach)
+    let pathAtShore = pathScenery(Prose.pathAtShore)
+    let pathAtFalls = pathScenery(Prose.pathAtFalls)
+    let pathAtEndOfRainbow = pathScenery(Prose.pathAtEndOfRainbow)
+
+    let fallsAtRainbowRoom = fallsScenery(synonyms("falls", "waterfall"))
+    let fallsAtEndOfRainbow = fallsScenery(synonyms("falls", "waterfall"))
 
     let wallAtChasmDeadEndNorth = deadEndScenery()
     let wallAtChasmDeadEndWest = deadEndScenery()
 
-    let fallsAtFalls = Item {
-        name("waterfall")
-        adjectives("enormous", "aragain")
-        synonyms("falls", "waterfall", "water", "drop", "path", "end")
-        description(Prose.aragainFallsItself)
+    let fallsAtFalls = fallsScenery(synonyms("falls", "waterfall", "water", "drop", "end"))
+
+    /// The ground the End of Rainbow stands you on, which its own first
+    /// sentence is about and which the rainbow overhead was answering for.
+    /// (#286)
+    let beachAtEndOfRainbow = Item {
+        name("beach")
+        adjectives("small", "rocky", "narrow")
+        synonyms("beach", "shore", "ground")
+        description(Prose.endOfRainbowBeach)
         scenery
     }
+
+    /// The White Cliffs from the third room that names them. The beach here is
+    /// narrow *because* of them, so the word had to answer for something.
+    /// (#286)
+    let cliffsAtEndOfRainbow = cliffScenery("pale", synonyms("cliff", "cliffs"))
 
     let canyonAtEndOfRainbow = Item {
         name("river canyon")
@@ -401,6 +448,26 @@ struct DungeonRiver: GameContent {
         synonyms("cave", "exits", "exit", "walls", "wall")
         description(Prose.caveMouth)
         scenery
+    }
+
+    /// The mouth Rocky Shore points at to the northwest. The river carried
+    /// `cave`, `mouth` and `entrance`, which put a description of the water on
+    /// the room's one working exit. (#286)
+    let caveAtRockyShore = Item {
+        name("cave")
+        adjectives("dark")
+        synonyms("cave", "mouth", "entrance", "opening")
+        description(Prose.caveMouthFromTheShore)
+        scenery
+    }
+
+    /// The hole the beach's dig progression starts printing on the first turn
+    /// of digging, and nothing modelled. Hidden until there is one. (#286)
+    let beachHole = Item {
+        name("hole")
+        synonyms("hole", "pit")
+        scenery
+        hidden
     }
 
     let chasmAtAncientChasm = Item {
@@ -589,6 +656,19 @@ struct DungeonRiver: GameContent {
         canyonAtEndOfRainbow.starts(in: endOfRainbow)
         riverAtRockyShore.starts(in: rockyShore)
         caveAtSmallCave.starts(in: smallCave)
+
+        pathAtNorthBeach.starts(in: whiteCliffsNorth)
+        pathAtSouthBeach.starts(in: whiteCliffsSouth)
+        pathAtSandyBeach.starts(in: sandyBeach)
+        pathAtShore.starts(in: shore)
+        pathAtFalls.starts(in: aragainFalls)
+        pathAtEndOfRainbow.starts(in: endOfRainbow)
+        beachAtEndOfRainbow.starts(in: endOfRainbow)
+        cliffsAtEndOfRainbow.starts(in: endOfRainbow)
+        fallsAtRainbowRoom.starts(in: rainbowRoom)
+        fallsAtEndOfRainbow.starts(in: endOfRainbow)
+        caveAtRockyShore.starts(in: rockyShore)
+        beachHole.starts(in: sandyBeach)
         chasmAtAncientChasm.starts(in: ancientChasm)
         wallAtChasmDeadEndNorth.starts(in: chasmDeadEndNorth)
         wallAtChasmDeadEndWest.starts(in: chasmDeadEndWest)
@@ -685,12 +765,21 @@ struct DungeonRiver: GameContent {
             say(Prose.buoyFeelsFunny)
         }
 
+        // The hole the digging leaves, which the progression has named from the
+        // first turn of it. A rule rather than a constant because the beach
+        // says how deep it has got, and that is the thing an examine is asking.
+        // (#286)
+        beachHole.describe {
+            beachDigs < Prose.beachDigs.count ? Prose.beachHoleShallow : Prose.beachHoleDeep
+        }
+
         // Digging the beach. The shovel is the only thing that gets anywhere;
         // the fourth dig bares the statue and the fifth buries you.
         sand.before(.dig) {
             try requireDiggingTool()
             let digs = beachDigs + 1
             beachDigs = digs
+            beachHole.reveal()
             if digs > Prose.beachDigs.count + 1 {
                 try die(Prose.digCollapses)
             }

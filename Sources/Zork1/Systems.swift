@@ -53,10 +53,6 @@ extension Intent {
     /// The Cyclops's magic word — inert until he's met (later).
     #verb("odysseus", ["odysseus"], ["ulysses"])
 
-    /// Say hello. The engine deliberately leaves the bare one-word forms to
-    /// games, so Zork owns them outright.
-    #verb("hello", ["hello"], ["hi"])
-
     /// Repair something (the punctured boat, sealed with the tube's gunk).
     #verb(
         "fix",
@@ -85,11 +81,41 @@ extension Intent {
 /// verbs are not that, and re-skinning one with a row costs the whole default
 /// it was standing on; their words live in ``Prose/stubFloor`` instead. (#242)
 struct ZorkSystems: GameContent {
+    /// This game's own verbs, plus the two bare greeting rows the engine leaves
+    /// to games. `hello` used to be an intent of Zork's, answering "Nobody here
+    /// returns your greeting." from a row that could not see who was in the
+    /// room. The engine's ``Intent/greet`` already owns `hello <object>` and
+    /// reads the frame both ways; it leaves the bare words out only so a game
+    /// may keep the *word* without a launch warning, not so it must keep a flat
+    /// line. Zork keeps the words and takes the branching. (#325, FIDELITY.md)
     var verbs: [SyntaxRule] {
         [
             .wind, .inflate, .deflate, .launch, .raise, .lower, .turnWith,
-            .ring, .echo, .odysseus, .hello, .fix, .diagnose,
+            .ring, .echo, .odysseus, .fix, .diagnose,
         ]
+        SyntaxRule("hello", intent: .greet)
+        SyntaxRule("hi", intent: .greet)
+    }
+
+    /// The two guards a stub **line** gets for free and an `action(…)` row does
+    /// not: `DefaultActions.run` answers `yourself` and `somebodyElse` before a
+    /// row is ever consulted, so a row that widened its sentence to name its
+    /// object will happily say "Playing in this way with yourself…". Every row
+    /// below that names what it was aimed at calls this first. (#325)
+    private func refuseIfPerson(_ object: Item) throws {
+        guard object.isActor else { return }
+        if object.isPlayer { try reply(gameText.stubs.yourself()) }
+        try reply(gameText.stubs.somebodyElse(object.definiteNoun))
+    }
+
+    /// `V-LOWER`'s `HACK-HACK` stem (`gverbs.zil:902`), which `V-RAISE` calls
+    /// outright (`:1131`). Both rows declare a direct object, so the `guard` is
+    /// the same safety net `MeleeCombat`'s `.attack` row writes and not a
+    /// player-facing path.
+    private func playWith(_ object: Item?) throws -> Never {
+        guard let object else { try reply(Prose.playingWithIt("it")) }
+        try refuseIfPerson(object)
+        try reply(Prose.playingWithIt("\(object.definiteNoun)"))
     }
 
     var actions: [IntentAction] {
@@ -97,14 +123,19 @@ struct ZorkSystems: GameContent {
         action(.inflate) { try reply(Prose.verbInflateNothing) }
         action(.deflate) { try reply(Prose.verbDeflateNothing) }
         action(.launch) { try reply(Prose.verbLaunchNothing) }
-        action(.raise) { try reply(Prose.verbRaiseNothing) }
-        action(.lower) { try reply(Prose.verbLowerNothing) }
-        action(.turnWith) { try reply(Prose.verbTurnWithNothing) }
+        // `V-RAISE` is `V-LOWER` (`gverbs.zil:1131`), which names the thing;
+        // both rows used to survey a room instead. (#325)
+        action(.raise) { try playWith(command.directObject) }
+        action(.lower) { try playWith(command.directObject) }
+        // `TURN OBJECT WITH OBJECT` routes to `V-TURN` in the source
+        // (`gsyntax.zil:505`), whose whole body is the line the stub floor's
+        // `turn` already carries (`gverbs.zil:1506`). (#325)
+        action(.turnWith) { try reply(Prose.verbTurnNoEffect) }
         action(.ring) { try reply(Prose.verbRingNothing) }
         action(.echo) { try reply(Prose.verbEcho) }
         action(.odysseus) { try reply(Prose.verbMagicWordInert) }
-        action(.hello) { try reply(Prose.verbHello) }
         action(.fix) { try reply(Prose.verbFixNothing) }
+
         // `.diagnose` has no stage-4 default here — the host answers it, since
         // the report reads the host's death counter (see ``Zork1.actions``).
         //

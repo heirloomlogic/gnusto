@@ -64,6 +64,14 @@ extension Prose {
             r a m p a n t l y m
         """
 
+    /// Written fresh. The Top of Well's last sentence puts a crack across the
+    /// floor at the east doorway, and the ring of letters was answering for
+    /// both words. (#286)
+    static let topOfWellCrack = """
+        A hairline in the stone, running the width of the doorway east. You
+        could step over it without noticing you had.
+        """
+
     /// Verbatim — `BUCKE` is `identical`.
     static let bucketFirstSight = """
         There is a wooden bucket here, 3 feet in diameter and 3 feet high.
@@ -261,6 +269,13 @@ extension Prose {
         a time and never quite stopping.
         """
 
+    /// The same crack once the steam has taken the leak with it, which is what
+    /// ``poolRoomDrained`` says the room now looks like.
+    static let poolLeakDry = """
+        A crack in the ceiling far overhead, dry now, with a brown stain
+        running away from it in both directions.
+        """
+
     static let poolLeakOutOfReach = """
         The ceiling here is a very long way up.
         """
@@ -387,6 +402,20 @@ extension Prose {
         "A \(shape) button, worn smooth in the middle."
     }
 
+    /// Written fresh. The room's one sentence names three things — a bank of
+    /// controls, the buttons in it, and the machinery behind them — and only
+    /// the buttons were declared, so the other two words were answered by
+    /// asking which button you meant. (#286)
+    static let controlBank = """
+        A plate of dull metal let into the wall with three buttons in a row on
+        it, and nothing written anywhere to say what any of them does.
+        """
+
+    static let machineRoomMachinery = """
+        Behind the plate, and going on with it. You can hear the size of it and
+        you cannot see a foot of it.
+        """
+
     static let triangularButtonStopsTheCarousel = """
         Click. Somewhere a long way off, a great deal of machinery slows and
         stops, and the silence afterwards is startling.
@@ -435,6 +464,14 @@ extension Prose {
         as if it had been put down a moment ago.
         """
 
+    /// The same sphere once the dish under it is empty. The placement clause is
+    /// a claim about the pedestal, and `cageSprung` is the pedestal having been
+    /// emptied — by whichever of you did it.
+    static let sphereOffThePedestal = """
+        A sphere of white crystal, cold to the eye, and lighter in the hand
+        than a thing that size has any business being.
+        """
+
     static let spherePedestal = """
         A low stone pedestal with a shallow dish cut in the top of it.
         """
@@ -480,6 +517,18 @@ extension Prose {
 
     static let cageGasKills = """
         The gas does what the gas was installed to do.
+        """
+
+    /// Written fresh. Both nouns of ``cageGas`` were printed and neither was
+    /// declared, so the sentence that starts the six-turn clock named two
+    /// things the parser then denied. (#286)
+    static let cageGasItself = """
+        There is nothing to look at. The alarm company thought about this.
+        """
+
+    static let cageVent = """
+        A slot in the floor plate, no wider than a finger, with the gas coming
+        up out of it.
         """
 
     static let robotLiftsTheCage = """

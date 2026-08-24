@@ -76,6 +76,13 @@ extension Prose {
         The cyclops yawns and stares at the thing that woke him up.
         """
 
+    /// `V-ALARM`'s sleeping-actor branch (`gverbs.zil:160`), which the source
+    /// follows with `AWAKEN`. (#325)
+    static let cyclopsRudelyAwakened = "The cyclops is rudely awakened."
+
+    /// `V-ALARM`'s awake-actor branch (`gverbs.zil:166`), ellipsis and all.
+    static let cyclopsWideAwake = "He's wide awake, or haven't you noticed..."
+
     /// Examining the cyclops while he sleeps off the drugged water.
     static let cyclopsSleepingExamine = """
         The cyclops is sleeping like a baby, albeit a very ugly one.

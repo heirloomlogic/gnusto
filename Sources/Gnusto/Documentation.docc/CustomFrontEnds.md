@@ -253,12 +253,14 @@ handler, the `isatty` check in ``GameMain``, the MCP play-test server and its
 stdio transport. Nothing in the parser, the turn pipeline, the rule table or the
 world state touches any of it.
 
-The library therefore compiles for iOS unchanged, which has been verified by
-declaring the platform and building against iOS 18. The package manifest does
-**not** currently declare `.iOS`, so that is a line somebody adding an iOS front
-end would have to add themselves, not a configuration this package supports and
-tests. The terminal handler compiles there and is useless there; a front end
-that never constructs one never pays for it.
+The library therefore compiles for iOS unchanged, and the manifest declares
+`.iOS(.v18)`, so that is a configuration this package supports and builds rather
+than a line you add yourself. The floor is `Synchronization.Mutex`, the same
+thing that sets the macOS 15 floor, and CI builds every product for
+`generic/platform=iOS` on each pull request. The terminal handler compiles there
+and is useless there; a front end that never constructs one never pays for it.
+That is all an iOS app does differently: it supplies its own handler, because
+``GameMain``'s `isatty` check would hand it a console nobody reads.
 
 ## Topics
 

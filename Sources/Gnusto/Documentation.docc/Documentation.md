@@ -101,6 +101,8 @@ Each has its own documentation in this archive. They are not linked from here: a
 - ``say(_:from:)-(String,Location...)``
 - ``say(_:from:)-(String,Item)``
 - ``say(_:from:)-(String,Actor)``
+- ``say(_:from:)-(String,Earshot)``
+- ``Earshot``
 - ``refuse(_:)``
 - ``reply(_:)``
 - ``require(_:else:)``

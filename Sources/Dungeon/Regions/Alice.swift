@@ -155,12 +155,25 @@ struct DungeonAlice: GameContent {
         scenery
     }
 
-    /// `ETCH2` and the same global at the top.
+    /// `ETCH2` and the same global at the top. The `crack` and the `floor` are
+    /// not the ring of letters and stopped being synonyms for it: the room puts
+    /// them across the doorway east, which is somewhere to walk and not
+    /// something to read. (#286)
     let etchingsAbove = Item {
         name("wall with etchings")
         adjectives("carved")
-        synonyms("etchings", "etching", "walls", "wall", "well", "crack", "floor")
+        synonyms("etchings", "etching", "walls", "wall", "well")
         description(Prose.etchingsAbove)
+        scenery
+    }
+
+    /// The crack the Top of Well's own last sentence is about, which the
+    /// etchings were answering for. (#286)
+    let crackAtTopOfWell = Item {
+        name("crack")
+        adjectives("small")
+        synonyms("crack", "floor")
+        description(Prose.topOfWellCrack)
         scenery
     }
 
@@ -260,7 +273,7 @@ struct DungeonAlice: GameContent {
         name("leak")
         adjectives("large")
         synonyms("ceiling", "crack", "drip")
-        description(Prose.poolLeak)
+        // Described by a rule: the steam takes the leak with it.
         scenery
     }
 
@@ -325,27 +338,47 @@ struct DungeonAlice: GameContent {
 
     /// `RNBUT`, `SQBUT`, `TRBUT`. Three objects in the source, three here, and
     /// only one of the three has an effect this project can establish.
-    let roundButton = Item {
-        name("round button")
-        adjectives("round")
-        synonyms("button", "buttons", "controls", "control", "machinery", "bank")
-        description(Prose.button("round"))
-        scenery
+    ///
+    /// All three used to carry `machinery`, `controls` and `bank`, so the
+    /// room's own sentence — a bank of controls with a great deal of machinery
+    /// *behind* them — could only be answered by asking which button you meant,
+    /// and none of the three was the answer. Those three words now belong to
+    /// the two things the sentence is actually about. (#286)
+    private static func buttonScenery(_ shape: String) -> Item {
+        Item {
+            name("\(shape) button")
+            adjectives(shape)
+            synonyms("button", "buttons")
+            description(Prose.button(shape))
+            scenery
+        }
     }
 
-    let squareButton = Item {
-        name("square button")
-        adjectives("square")
-        synonyms("button", "buttons", "controls", "control", "machinery")
-        description(Prose.button("square"))
+    let roundButton = buttonScenery("round")
+    let squareButton = buttonScenery("square")
+    let triangularButton = buttonScenery("triangular")
+
+    /// The bank the three buttons are set in. (#286)
+    let controlBank = Item {
+        name("controls")
+        adjectives("unlabelled")
+        synonyms("controls", "control", "bank", "panel")
+        description(Prose.controlBank)
         scenery
+        plural
     }
 
-    let triangularButton = Item {
-        name("triangular button")
-        adjectives("triangular")
-        synonyms("button", "buttons", "controls", "control", "machinery")
-        description(Prose.button("triangular"))
+    /// And what is running behind it, which is the half of the sentence no
+    /// button could ever have answered for. (#286)
+    let machineRoomMachinery = Item {
+        name("machinery")
+        adjectives("running")
+        // Not `machine`: the robot answers to that word and the puzzle walks it
+        // into this room, so claiming it here would re-open the disambiguation
+        // the trim above closes. The paragraph prints "machinery" and never
+        // "machine".
+        synonyms("machinery")
+        description(Prose.machineRoomMachinery)
         scenery
     }
 
@@ -366,7 +399,7 @@ struct DungeonAlice: GameContent {
         adjectives("white", "crystal", "beautiful")
         synonyms("sphere", "ball", "stone", "glass")
         firstSight(Prose.sphereFirstSight)
-        description(Prose.sphere)
+        // Described by a rule: the pedestal under it does not always hold it.
         trait(.weight, 10)
         trait(.takeValue, 6)
         trait(.depositValue, 6)
@@ -399,6 +432,27 @@ struct DungeonAlice: GameContent {
         description(Prose.cageBars)
         scenery
         plural
+    }
+
+    /// The gas the fuse announces on the turn the cage lands, and the vent it
+    /// comes in through. Both were words the game printed and the parser denied
+    /// — `x vent` did not even get as far as a refusal, it got *"I don't know
+    /// the word"*. Neither is hidden: the only frame in which a player can be
+    /// standing in this room is the frame in which the gas is arriving. (#286)
+    let gasInCage = Item {
+        name("colorless gas")
+        adjectives("colorless", "odorless")
+        synonyms("gas", "vapor", "fumes")
+        description(Prose.cageGasItself)
+        scenery
+    }
+
+    let ventInCage = Item {
+        name("vent")
+        adjectives("floor")
+        synonyms("vent", "grille", "grate")
+        description(Prose.cageVent)
+        scenery
     }
 
     /// `CAGE`. What is left once the robot has had it up off the floor.
@@ -489,11 +543,16 @@ struct DungeonAlice: GameContent {
         roundButton.starts(in: machineRoom)
         squareButton.starts(in: machineRoom)
         triangularButton.starts(in: machineRoom)
+        controlBank.starts(in: machineRoom)
+        machineRoomMachinery.starts(in: machineRoom)
+        crackAtTopOfWell.starts(in: topOfWell)
 
         alarmSticker.starts(in: dingyCloset)
         sphere.starts(in: dingyCloset)
         pedestal.starts(in: dingyCloset)
         cageBars.starts(in: cage)
+        gasInCage.starts(in: cage)
+        ventInCage.starts(in: cage)
     }
 
     // MARK: - Rules
@@ -546,6 +605,27 @@ struct DungeonAlice: GameContent {
     /// And send it back down again when the water goes.
     func lowerBucket() throws -> Never {
         try sendBucket(to: circularRoom, saying: Prose.bucketDescends)
+    }
+
+    /// What a resurrection owes this wing, over and above a place to stand.
+    /// Called by ``Dungeon/onDeath()``, which empties the bucket first for the
+    /// reason it calls ``raiseBucket()`` — the water is a ``DungeonHouse`` item.
+    ///
+    /// This is the one part of the map that keeps state about the player's own
+    /// *body*, and a death four inches high used to leave every bit of it
+    /// standing — with the tin of spices and the crystal sphere behind it, so
+    /// the run's `maxScore` went with them. Two things sealed it: ``shrunk``
+    /// stayed set, and `eatMeCake.before(.eat)` guards on `!shrunk`, so the way
+    /// back down was shut by the flag saying you were already there; and the
+    /// bucket, which descends only for a passenger who empties it, was left at
+    /// the top of a shaft with no other way up. Death is the only way to be
+    /// parted from it, so death is where it goes back. `FIDELITY.md`, "The
+    /// bucket does not travel", carries the clock the mainframe uses instead.
+    ///
+    /// No prose: the resurrection speaks for the whole turn.
+    func unsealAfterDeath() {
+        shrunk = false
+        bucket.move(to: circularRoom)
     }
 
     /// The move both ends of the trip make. Moving the bucket rather than the
@@ -610,6 +690,10 @@ struct DungeonAlice: GameContent {
 
     @RuleBuilder private var poolRoomRules: Rules {
         poolRoom.describe { poolEvaporated ? Prose.poolRoomDrained : Prose.poolRoom }
+
+        // And the leak itself, which the room's own paragraph already knows the
+        // steam took away. The item under it was left behind dripping.
+        leak.describe { poolEvaporated ? Prose.poolLeakDry : Prose.poolLeak }
 
         // The ceiling is a very long way up when you are four inches high, and
         // one reach rule says so to `take`, `open`, `plug` and the rest alike.
@@ -741,6 +825,10 @@ struct DungeonAlice: GameContent {
         // Ordered to fetch it, the robot springs the trap on itself, and a
         // steel cage is no more to a robot than weather. An order never reaches
         // stage 4, so this half has to be a `before` rule.
+        // "resting on a low pedestal" is where it was, not what it is, and the
+        // player reads it standing inside a steel cage with the sphere in hand.
+        sphere.describe { cageSprung ? Prose.sphereOffThePedestal : Prose.sphere }
+
         sphere.before(.take) {
             guard command.actor == robot else { return }
             try require(!cageSprung, else: Prose.cageAlreadySprung)
