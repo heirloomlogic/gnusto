@@ -203,7 +203,7 @@ stairs.before(.climb) {
 |  | ``arrive(at:withRoomName:)`` | ``enter(_:)`` |
 |---|---|---|
 | the destination's `onEnter` rules | don't run | **run**, before the room is described |
-| a boarded vehicle | stays where it was | **comes along**, cargo and all |
+| a boarded vehicle | stays where it was, and the player is on foot from then on | **comes along**, cargo and all |
 | the description | a full LOOK, every time | an **entry** — brief on a revisit |
 | ends the turn | no | no |
 

@@ -38,7 +38,11 @@ struct WorldState: Sendable, Codable {
     /// that also invalidates `containmentCache`; the `private(set)` makes the
     /// compiler reject any write that would skip that funnel.
     private(set) var placements: [EntityID: Placement] = [:]
-    var playerLocation: EntityID
+    /// The room the player is standing in. Written only through
+    /// `walkPlayer(to:)` and `teleportPlayer(to:)`, the two funnels that also
+    /// settle the boarding; the `private(set)` makes the compiler reject any
+    /// write that would skip them.
+    private(set) var playerLocation: EntityID
     var litRooms: Set<EntityID> = []
     /// `lightSource` items that are currently lit. Only light sources ever
     /// appear here; the `Item.isLit` setter and Bootstrap both guard on the
@@ -62,12 +66,12 @@ struct WorldState: Sendable, Codable {
     /// command expanded to.
     var pronounThem: [EntityID] = []
     /// The `enterable` the player has boarded, or nil on foot. The player
-    /// still never appears in `placements`; `playerLocation` stays the
-    /// room. Read through `Visibility.boardedVehicle`, which also demands
-    /// the vehicle be placed in the player's room — a rule that teleports
-    /// the player (or moves the vehicle without them) strands it, and the
-    /// player is simply on foot again.
-    var playerVehicle: EntityID?
+    /// still never appears in `placements`; `playerLocation` stays the room.
+    ///
+    /// This is the answer, not a claim to be re-checked: `strandIfSeparated()`
+    /// clears it at the instant the player and the vehicle stop sharing a room.
+    /// <doc:ActorsAndVehicles> states the rule the author sees.
+    private(set) var playerVehicle: EntityID?
     var score = 0
     var moves = 0
     var touched: Set<EntityID> = []
@@ -143,6 +147,59 @@ extension WorldState {
     mutating func place(_ id: EntityID, _ placement: Placement) {
         placements[id] = placement
         containmentCache = nil
+        if id == playerVehicle { strandIfSeparated() }
+    }
+
+    /// The player walks into `room`, and a boarded vehicle rides along — cargo
+    /// and all, since cargo placements (`.inside(vehicle)`) never mention the
+    /// room. Both halves land before anything can look, so the pair is never
+    /// observed apart and the boarding survives the move.
+    ///
+    /// - Parameter room: the room the player ends up in.
+    mutating func walkPlayer(to room: EntityID) {
+        playerLocation = room
+        if let playerVehicle { place(playerVehicle, .room(room)) }
+    }
+
+    /// The player is put down in `room` without walking there. A boarded
+    /// vehicle stays where it was, and the boarding goes with it.
+    ///
+    /// - Parameter room: the room the player ends up in.
+    mutating func teleportPlayer(to room: EntityID) {
+        playerLocation = room
+        strandIfSeparated()
+    }
+
+    /// Records that the player has boarded `vehicle`. A vehicle that isn't
+    /// underfoot doesn't take, so the invariant holds on this writer too and
+    /// no caller can seed a boarding the funnels could never settle.
+    mutating func board(_ vehicle: EntityID) {
+        playerVehicle = vehicle
+        strandIfSeparated()
+    }
+
+    /// Records that the player is back on foot.
+    mutating func disembark() {
+        playerVehicle = nil
+    }
+
+    /// Drops the boarding when the player and their vehicle no longer share a
+    /// room — the vehicle sank, was towed off, was pocketed, or the player was
+    /// teleported out of it.
+    ///
+    /// Run after every write that can separate the two, which is what makes the
+    /// stranding permanent. Deciding it at read time instead looks the same
+    /// while they are apart and silently re-boards the player the moment they
+    /// converge again (issue #321).
+    ///
+    /// Internal rather than private because decoding a save is the one write
+    /// that reaches these properties without passing a funnel — `SaveFile.read`
+    /// settles the boarding once on the way in.
+    mutating func strandIfSeparated() {
+        guard let vehicle = playerVehicle,
+            placements[vehicle] != .room(playerLocation)
+        else { return }
+        disembark()
     }
 
     /// The containment index for the current `placements`, built on first use

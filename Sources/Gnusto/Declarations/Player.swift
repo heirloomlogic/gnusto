@@ -46,7 +46,7 @@ public struct Player: Sendable {
         }
         nonmutating set {
             let id = newValue.id
-            Ctx.current.with { $0.state.playerLocation = id }
+            Ctx.current.with { $0.state.teleportPlayer(to: id) }
         }
     }
 
@@ -64,10 +64,7 @@ public struct Player: Sendable {
     /// ```
     public var vehicle: Item? {
         let frame = Ctx.current
-        let id = frame.with {
-            Visibility.boardedVehicle(definition: frame.definition, state: $0.state)
-        }
-        guard let id else { return nil }
+        guard let id = frame.with({ $0.state.playerVehicle }) else { return nil }
         return frame.definition.registry.items[id]
     }
 

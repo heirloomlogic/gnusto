@@ -54,6 +54,12 @@ struct SaveFile: Codable {
         else { throw .unreadable }
         guard file.title == definition.title else { throw .wrongGame }
         guard file.state.isConsistent(with: definition) else { throw .inconsistent }
-        return file.state
+        // Decoding writes every property at once, funnels included, so the one
+        // invariant the engine maintains by construction is settled here rather
+        // than taken on trust from the file: a boarding whose vehicle isn't in
+        // the player's room is dropped, exactly as a live stranding would.
+        var state = file.state
+        state.strandIfSeparated()
+        return state
     }
 }

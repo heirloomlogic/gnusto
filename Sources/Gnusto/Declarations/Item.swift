@@ -363,24 +363,20 @@ public struct Item: Sendable, Equatable {
     /// and `vanish()` deliberately do NOT carry the player: a vehicle that
     /// leaves the room any other way strands its passenger on foot.)
     ///
-    /// "Boarded" here is ``Player/vehicle``'s answer, not the raw flag — so a
-    /// player teleported out from under their vehicle stays where they are
-    /// rather than being dragged back in from another room.
+    /// A player teleported out from under their vehicle was stranded at the
+    /// moment they were moved, so this drags nobody: the boarding is already
+    /// gone by the time the hull sets off after them.
     ///
     /// - Parameter location: the room to move the item into.
     public func move(to location: Location) {
         let (frame, id) = resolved
         let locationID = location.id
         frame.with { scratch in
-            // Asked before `place`, which would otherwise satisfy the pairing
-            // itself. Through the same funnel every read uses, so there is one
-            // definition of "boarded" rather than a second copy here.
-            let carriesPassenger =
-                Visibility.boardedVehicle(
-                    definition: frame.definition, state: scratch.state) == id
-            scratch.state.place(id, .room(locationID))
-            if carriesPassenger {
-                scratch.state.playerLocation = locationID
+            if scratch.state.playerVehicle == id {
+                // The hull is the one carrying them, so this is their walk too.
+                scratch.state.walkPlayer(to: locationID)
+            } else {
+                scratch.state.place(id, .room(locationID))
             }
         }
     }

@@ -654,12 +654,13 @@ defect; the first is convenience, and the distinction matters for sizing M6:
    `Actions/StubVerbs.swift` for parity with `attack`, `dig` and `fill`, which all
    carry a `with` row already — not because M6 was blocked without it.
 2. **`Item.move(to:)` trusted a stale boarded flag.** It read
-   `state.playerVehicle` raw, while every *read* of the boarded state goes through
-   `Visibility.boardedVehicle` (`Engine/Visibility.swift:213`), which additionally
-   requires the vehicle to be in the player's room. So a player teleported out
-   from under their vehicle was correctly on foot by every read — and the
-   vehicle's next `move(to:)` dragged them back inside it from another room.
-   `move(to:)` now makes the same pairing test, pinned by
+   `state.playerVehicle` raw, while every *read* of the boarded state went
+   through a resolver that additionally required the vehicle to be in the
+   player's room. So a player teleported out from under their vehicle was
+   correctly on foot by every read — and the vehicle's next `move(to:)` dragged
+   them back inside it from another room. Issue #321 later retired that resolver
+   altogether: stranding now clears the flag at the moment the two part, so
+   `move(to:)` has nobody to drag. Pinned by
    `VehicleTests.aStrandedPassengerIsNotDraggedAlongByTheirOldVehicle`.
 
 Two notes for M6, both found by playing the fixture rather than by reading it:

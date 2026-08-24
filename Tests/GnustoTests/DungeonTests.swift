@@ -201,6 +201,15 @@ struct DungeonTests {
     /// The whole road to the Dam Base with the boat inflated and boarded.
     private static let afloatOnTheRiver = toTheBeachedBoat + castOff
 
+    /// The stick's road to the far end of the rainbow: fetch the broken sharp
+    /// stick from the Dam Base, come back up through the Troll Room and out by
+    /// the chimney, then across the clearing and down the canyon. The stick is
+    /// carried on foot the whole way because it punctures the boat.
+    private static let stickToTheEndOfRainbow =
+        pastTheTroll + ["drop sword"] + crossroadsToTheDam
+        + ["down", "take stick", "north"] + damBackToTheTrollRoom + outByTheChimney
+        + ["east", "east", "east", "southeast", "southeast", "down", "down", "north"]
+
     /// From the Dam Base back to the Troll Room, which is the road out once the
     /// trap door has barred itself: up the dam, east and south to the Loud
     /// Room, and west along the crossroads.
@@ -2252,10 +2261,7 @@ struct DungeonTests {
     @Test func theStickWavesTheRainbowSolidAndShowsThePotOfGold() async throws {
         let transcript = try await play(
             Dungeon(),
-            Self.pastTheTroll + ["drop sword"] + Self.crossroadsToTheDam
-                + ["down", "take stick", "north"] + Self.damBackToTheTrollRoom
-                + Self.outByTheChimney
-                + ["east", "east", "east", "southeast", "southeast", "down", "down", "north"]
+            Self.stickToTheEndOfRainbow
                 + ["wave stick", "look", "take pot", "score", "west", "wave stick"],
             seed: 18)
 
@@ -2355,6 +2361,43 @@ struct DungeonTests {
             seed: 18)
 
         expectEveryNounAnswered(onFoot, "the Ancient Chasm, the Small Cave and Rocky Shore")
+    }
+
+    /// Death takes you out of the barrel for good. Ride it over Aragain Falls,
+    /// come back to your senses in the forest, fetch the lamp and walk the long
+    /// way round to the falls again: the barrel is standing there and you are
+    /// standing beside it. The boarding used to be decided at read time, so the
+    /// moment the room matched again you were silently back inside a barrel you
+    /// had never re-entered — and GERONIMO killed you a second time from it.
+    @Test func aBarrelYouDiedInDoesNotTakeYouBackWhenYouReturn() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.stickToTheEndOfRainbow
+                + ["wave stick", "west", "west", "board barrel", "geronimo"]
+                + ["east", "west", "east", "open window", "enter window", "west"]
+                + ["take lamp", "east", "east", "east", "southeast"]
+                + ["southeast", "down", "down", "north", "west", "west"]
+                + ["look", "geronimo"],
+            seed: 18)
+
+        expectInOrder(
+            transcript,
+            [
+                "You are now in the wooden barrel.",
+                "the finest ride in the Great Underground Empire",
+                "you find yourself standing among the trees",
+                "End of Rainbow",
+                "Aragain Falls",
+                // The war cry, the second time, has nothing to leap from.
+                "A fine battle cry, but there is nothing here to leap from.",
+            ])
+
+        // Back at the falls on foot: the room titles itself plainly and the
+        // barrel is listed as furniture standing in it.
+        let look = turnOutput(of: "look", in: transcript)
+        #expect(look.contains("Aragain Falls"))
+        #expect(!look.contains("in the wooden barrel"))
+        #expect(look.contains("There is a wooden barrel here."))
     }
 
     @Test func everyNounTheRiverPrints() async throws {
