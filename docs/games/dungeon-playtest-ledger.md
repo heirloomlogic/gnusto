@@ -425,14 +425,14 @@ before acting on any of the three; the claim alone points at the wrong line.
 | `decl::Sources/Gnusto/Actions/StubVerbs.swift::stubs` | confirmed (needs-human) | prose-untrue-of-frame | major |
 | `decl::Sources/Dungeon/Regions/Prose+Temple.swift::bellCools` | confirmed | prose-untrue-of-frame | minor |
 | `decl::Sources/Dungeon/Regions/Prose+Temple.swift::blackBook` | confirmed (needs-human) | mechanic-contradicts-prose | minor |
-| `decl::Sources/Dungeon/Prose+Stubs.swift::stubs.climb` | confirmed (needs-human) | stock-line-not-reskinned | minor |
+| `decl::Sources/Dungeon/Prose+Stubs.swift::stubs.climb` | fixed | stock-line-not-reskinned | minor |
 | `decl::Sources/Dungeon/Regions/Prose+Alice.swift::blueIcingWriting` | fixed | prose-untrue-of-state | blocking |
 | `decl::Sources/Dungeon/Regions/Prose+Alice.swift::poolLeak` | confirmed | prose-untrue-of-state | major |
 | `decl::Sources/Dungeon/Regions/Prose+Alice.swift::robotSpringsTheCage` | confirmed | mechanic-contradicts-prose | major |
 | `decl::Sources/Dungeon/Regions/Prose+Alice.swift::robotIsOutOfEarshot` | confirmed (needs-human) | stock-line-not-reskinned | minor |
-| `decl::Sources/Dungeon/Regions/Prose+River.swift::geronimoNotInBarrel` | confirmed | prose-untrue-of-frame | major |
+| `decl::Sources/Dungeon/Regions/Prose+River.swift::geronimoNotInBarrel` | fixed | prose-untrue-of-frame | major |
 | `decl::Sources/Dungeon/Regions/Prose+River.swift::barrelInside` | confirmed (needs-human) | prose-untrue-of-state | minor |
-| `decl::Sources/Dungeon/Prose+Systems.swift::verbSmell` | confirmed (needs-human) | prose-untrue-of-frame | minor |
+| `decl::Sources/Dungeon/Prose+Systems.swift::verbSmell` | fixed | prose-untrue-of-frame | minor |
 | `decl::Sources/Dungeon/Regions/Prose+Temple.swift::exorcismLapses` | confirmed | prose-untrue-of-frame | major |
 | `decl::Sources/Dungeon/Regions/Prose+Temple.swift::bellRingRedHot` | confirmed | prose-untrue-of-state | major |
 | `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::pineEndOpen` | confirmed | prose-untrue-of-state | major |
@@ -441,7 +441,7 @@ before acting on any of the three; the claim alone points at the wrong line.
 | `decl::Sources/Dungeon/Prose+Systems.swift::toll` | confirmed | register-mismatch | note |
 | `decl::Sources/Dungeon/Regions/Prose+EndgameMechanics.swift::masterArrives` | confirmed (needs-human) | register-mismatch | note |
 | `decl::Sources/Dungeon/Regions/Prose+AboveGround.swift::gratingFromBelow` | confirmed | prose-untrue-of-state | major |
-| `decl::Sources/Dungeon/Regions/Prose+Cellar.swift::chimney` | confirmed | mechanic-contradicts-prose | major |
+| `decl::Sources/Dungeon/Regions/Prose+Cellar.swift::chimney` | fixed | mechanic-contradicts-prose | major |
 | `decl::Sources/Dungeon/Regions/Prose+Bank.swift::viewingRoom` | confirmed (needs-human) | unanswerable-noun | major |
 | `decl::Sources/Dungeon/Regions/AboveGround.swift::mailbox` | confirmed | mechanic-contradicts-prose | minor |
 | `decl::Sources/Gnusto/Actions/CoreVerbs.swift::cores` | confirmed (needs-human) | register-mismatch | minor |

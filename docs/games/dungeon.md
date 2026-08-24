@@ -1419,6 +1419,25 @@ what they scored. Three things are worth naming:
   rooms that are *about* a smell take the verb back with rules of their own;
   rewriting it here would re-open a decision for a channel that still could not
   name what it was asked about.
+
+  **Corrected 2026-08-24.** The ground under that decision is gone, and had
+  gone before the round that re-checked it. `SyntaxRule.stubTable`'s row for the
+  verb is `.optionallyNamed(.smell, …) { $0.stubs.smell($1) }` — it hands the
+  line the object — and `Sources/Zork1/Prose+Stubs.swift` had already written the
+  naming half. #245 is the widening; the Dungeon stub file's own comment on the
+  liquid lines records it. So `smell guano` answered "Nothing here smells of
+  anything in particular." while the player stood over a hunk of bat guano, and
+  the reason on file said the engine could not do better. It could. The naming
+  half is written — and the bare half moved with it. *"Nothing **here** smells
+  of anything in particular"* is the same defect one command shallower: `smell`
+  and `smell guano`, typed in one room a turn apart, cannot disagree about
+  whether anything in it has a smell. A bare command has no object to be about,
+  so it reports on the player. The Smelly Room and the Gas Room keep their own
+  rules either way.
+
+  The general shape is worth keeping: **a reason to leave a line alone ages
+  faster than the line does.** This one named an engine limit, and engine limits
+  are the kind of fact a later release quietly retires.
 - **`Sources/Zork1/` has the same shape and is not touched.** It re-skins
   thirteen stubs through the same `action(…)` idiom and constructs
   `MeleeCombat()` with the same stock text. Its floor should be Zork I's own
@@ -1561,3 +1580,35 @@ The Viewing Room's sign is the one box-5 site left open, and deliberately. It is
 officer" and "all customers", none of them a thing the room says is *present*,
 and one rater holds that the rule does not reach a notice about absent people.
 Declaring items for them would be inventing world.
+
+### Amendment: a flat line is a claim, and a verb the room advertises is a promise
+
+The 2026-08-18 round's D9 and one row of its D4 are the same defect wearing two
+faces, and both are answered here rather than in a numbered pass, because
+neither adds a rule the list above does not already carry.
+
+- **`smell`** is above, under the fifth pass it corrects.
+- **The battle cry.** `geronimo` off-barrel answered *"A fine battle cry, but
+  there is nothing here to leap from."* — from a game-wide `action(…)` row,
+  which means the sentence has to be true in all 196 rooms, and the room it was
+  most often read in is the one room in the game that is a 450-foot drop. The
+  place claim is gone and the joke is not: a cry is all it is. The mainframe's
+  own off-barrel line makes a joke about a historical person, which this game
+  does not do, so the replacement is written fresh rather than adopted.
+- **The Studio chimney.** `x chimney` says it "looks climbable" and `up` walks
+  it; `climb chimney` fell through to the stub floor. A room that names a way
+  through has promised the verb, and the stub floor is not where that promise
+  gets answered — CLIMB is already real on the great tree, the Royal Puzzle
+  ladder, the Palantir window and the mouse hole. The chimney takes the verb
+  through the **same load gate** `up` goes through, extracted so the two
+  spellings cannot drift; the Kitchen end refuses in the words `down` refuses in.
+- **The falls.** Swept rather than filed, and the same shape as the Loud Room's:
+  the floor's `listen` reports on the listener, which is right in 195 rooms and
+  wrong at the top of a waterfall. The room takes the verb back.
+
+**Both bare halves moved, and that is the part of this class that is easy to
+miss.** `stubs.climb`'s *"There is nothing here worth climbing"* would have been
+false in the Studio, at the foot of the great tree and under the Royal Puzzle's
+ladder; `stubs.smell`'s was false wherever anything smelled of anything. A
+naming half repairs the command the round typed and leaves the shallower one
+standing, so a repair here is not finished until both halves read nothing.

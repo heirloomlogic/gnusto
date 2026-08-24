@@ -201,6 +201,11 @@ struct DungeonTests {
     /// The whole road to the Dam Base with the boat inflated and boarded.
     private static let afloatOnTheRiver = toTheBeachedBoat + castOff
 
+    /// Down all five stretches, ashore on the west bank, and south to the top
+    /// of Aragain Falls on foot.
+    private static let toAragainFalls =
+        afloatOnTheRiver + ["down", "down", "down", "down", "land", "south", "get out"]
+
     /// The stick's road to the far end of the rainbow: fetch the broken sharp
     /// stick from the Dam Base, come back up through the Troll Room and out by
     /// the chimney, then across the clearing and down the canyon. The stick is
@@ -431,6 +436,63 @@ struct DungeonTests {
                 "The chimney is too narrow for you and all of your baggage.",
                 "Going up empty-handed is a bad idea.",
                 "Kitchen",
+            ])
+    }
+
+    /// **#286's D4, the Studio chimney row.** `x chimney` says it "looks
+    /// climbable" and `up` walks it; `climb chimney` fell to the stub floor and
+    /// answered "That is not something you could climb." — the room advertising
+    /// the verb its own answer denied. CLIMB is not a dead verb in this game,
+    /// so the chimney takes it, through the same load gate `up` goes through.
+    @Test func theChimneyIsClimbedByTheWordItsOwnDescriptionUses() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.intoTheKitchen + Self.downTheTrapDoor
+                + ["south", "south", "take painting", "south"]
+                + ["examine chimney", "climb chimney", "drop sword", "climb chimney"]
+                + ["climb chimney"],
+            seed: 18)
+
+        #expect(!transcript.contains("That is not something you could climb."))
+        expectInOrder(
+            transcript,
+            [
+                "Studio",
+                "The chimney leads upward, and looks climbable.",
+                // Sword, lamp and nothing else is still one thing too many.
+                "The chimney is too narrow for you and all of your baggage.",
+                "Kitchen",
+                // And from the Kitchen end the same chimney refuses in the
+                // words `down` refuses in, not in the floor's.
+                "Only Santa Claus climbs down chimneys.",
+            ])
+    }
+
+    /// **#286's D9, the battle cry.** The off-barrel answer is a game-wide
+    /// `action(…)` row, so its sentence has to be true in all 196 rooms — and
+    /// *"there is nothing here to leap from"* was printed at the top of a
+    /// 450-foot waterfall, beside a barrel with the word cut into its staves.
+    /// The joke was never about the place, so the place is gone.
+    ///
+    /// The falls go with it: the stub floor's `listen` reports on the listener,
+    /// which is the right sentence in 195 rooms and the wrong one here.
+    @Test func theFallsContradictNeitherTheBattleCryNorTheListener() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toAragainFalls + ["geronimo", "listen", "board barrel", "geronimo"],
+            seed: 18)
+
+        #expect(!transcript.contains("there is nothing here to leap from"))
+        #expect(!transcript.contains("learn nothing you did not already know"))
+        expectInOrder(
+            transcript,
+            [
+                "Aragain Falls",
+                // Out of the barrel: the cry, and nothing about the room.
+                "A fine battle cry, and that is the whole of it.",
+                "Four hundred and fifty feet of water arriving at the bottom",
+                // In it: the decision the room really does offer.
+                "the finest ride in the Great Underground",
             ])
     }
 
@@ -2282,8 +2344,7 @@ struct DungeonTests {
     @Test func aragainFallsReportsTheRainbowOnEveryLook() async throws {
         let transcript = try await play(
             Dungeon(),
-            Self.afloatOnTheRiver + ["down", "down", "down", "down", "land", "south"]
-                + ["get out", "look", "board barrel", "look", "geronimo"],
+            Self.toAragainFalls + ["look", "board barrel", "look", "geronimo"],
             seed: 18)
 
         expectInOrder(
@@ -2388,8 +2449,10 @@ struct DungeonTests {
                 "you find yourself standing among the trees",
                 "End of Rainbow",
                 "Aragain Falls",
-                // The war cry, the second time, has nothing to leap from.
-                "A fine battle cry, but there is nothing here to leap from.",
+                // The war cry, the second time, is answered off-barrel. The
+                // line makes no claim about the place, because the place it is
+                // most often shouted in is a 450-foot drop.
+                "A fine battle cry, and that is the whole of it.",
             ])
 
         // Back at the falls on foot: the room titles itself plainly and the

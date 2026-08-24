@@ -138,7 +138,19 @@ extension Prose {
         // MARK: Senses
 
         stubs.touch = .init(Prose.verbTouch)
-        stubs.smell = .init(Prose.verbSmell)
+        // Was `Prose.verbSmell` alone — "Nothing here smells of anything in
+        // particular.", a claim about the room, printed while standing over a
+        // hunk of bat guano. The fifth pass left it on the ground that `smell`
+        // was "a plain line the engine cannot hand an object to"; that stopped
+        // being true when #245 widened these slots, and
+        // `SyntaxRule.stubTable`'s `.optionallyNamed(.smell, …)` row hands over
+        // `$1`. `Prose.verbSmell` moved its subject in the same pass, off the
+        // room and onto the player — see its doc comment — and the two rooms
+        // that are *about* a smell still take the verb back for themselves in
+        // ``DungeonCoalMine``.
+        stubs.smell = .naming(orBare: Prose.verbSmell) {
+            "\($0.sentenceCased) \($0.verb("smells", "smell")) of exactly what \($0.verb("it is", "they are"))."
+        }
         // Was "You hear nothing out of the ordinary." — a claim about the room,
         // printed in the Loud Room, whose whole puzzle is that it is too loud to
         // hear in. `loudRoom.before(.listen)` in ``DungeonRoundRoom`` answers
@@ -175,7 +187,20 @@ extension Prose {
 
         // MARK: Motion
 
-        stubs.climb = "That is not something you could climb."
+        // Was one flat sentence for both halves, which made a flat claim about
+        // whatever the player had pointed at — including the Studio chimney,
+        // whose own description says it "looks climbable" and which `up` walks.
+        // CLIMB is not a dead verb in this game: the great tree, the Royal
+        // Puzzle ladder, the Palantir window, the mouse hole and now both
+        // chimneys all answer it, so the floor under them says only what is
+        // left over.
+        // The bare half names nothing on purpose. "There is nothing here worth
+        // climbing" would be the same defect one command shallower — it is
+        // false in the Studio, at the foot of the great tree, and under the
+        // Royal Puzzle's ladder.
+        stubs.climb = .naming(orBare: "You will have to say what you want to climb.") {
+            "\($0.sentenceCased) \($0.verb("is", "are")) not something you could climb."
+        }
         // `V-SKIP` picks one of four (`WHEEEEE`, `gverbs.zil:1272`); this is the
         // one the table is named for. Trilogy verbatim.
         stubs.jump = "Wheeeeeeeeee!!!!!"

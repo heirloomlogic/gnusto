@@ -589,6 +589,34 @@ credibility on the wrong name, and the stamp comes down anyway.
 **Out of time:**
 > The county man comes up the path at ten to seven and you have nothing to give him.
 
+### The stub floor
+
+A verb the game has no mechanic for still prints a line in this game's window, in
+this game's voice, on a turn the player chose. Those lines are `text.stubs.*`
+assignments and never `action(…)` rows: a row returns from `actionOverrides`
+before `requireReach`, which quietly trades away the reach guard, the object's
+rendered name, its number agreement and the `yourself`/`somebodyElse` guards.
+
+**A stub line may be about the thing named or about the player. It may not be
+about the house.** The same sentence prints in ten rooms, three of which are not
+in the house at all, and the evening moves the state under it. The 2026-08-17
+round found all three faces of that in one pass:
+
+- a claim about a **place** — CLIMB said "in this house" against a brick garden
+  wall in the back garden, in a room with no `up`;
+- a claim about a **time** — STAND said "and have been since the streetcar" to a
+  man the garden wall had come down on top of six minutes earlier;
+- **no claim at all, in the engine's voice** — TOUCH was never re-skinned, so a
+  lit cast-iron range answered "You feel nothing out of the ordinary."
+
+The repair is the same in all three. Where the line can name what the player
+pointed at, it does — `.naming(orBare:)` writes both halves, and the bare half
+is what the house at large may say. Where even that would be false, the frame
+answers for itself with a rule: the three flights walk their own exits, the hot
+things say they are hot, the carriage house is not the house, and STAND reads
+`wasInTheYardForTheBlast` rather than `knockedFlat`, because being knocked flat
+is one turn long and having been knocked flat lasts the evening.
+
 ---
 
 ## Content scope

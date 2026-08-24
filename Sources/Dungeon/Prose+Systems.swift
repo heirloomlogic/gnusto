@@ -35,7 +35,15 @@ extension Prose {
     /// re-voiced nothing at all while the survey counted `smell` as done. The
     /// two rooms in the game whose descriptions are *about* a smell answer for
     /// themselves in ``DungeonCoalMine``; this is what is left over. (#233)
-    static let verbSmell = "Nothing here smells of anything in particular."
+    ///
+    /// **Re-voiced again for the 2026-08-18 round's D9**, and this time the
+    /// subject moved. It used to read "Nothing here smells of anything in
+    /// particular." — a claim about the room, printed unchanged in ~194 of
+    /// them, so the two rooms with rules were the only two it could ever be
+    /// true of by inspection. A bare command has no object to be about, so the
+    /// line has to be about the player instead; that is the same move
+    /// `stubs.climb`'s bare half makes, and for the same reason.
+    static let verbSmell = "You smell nothing worth reporting."
 
     static let verbPray = "Nothing in particular answers."
 

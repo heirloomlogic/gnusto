@@ -841,30 +841,149 @@ struct FulminateTests {
     /// knocked flat, so there is exactly one turn on which "You're already
     /// standing." contradicts the sentence printed directly above it.
     @Test func theStubVerbsKnowWhatTheGameHasJustSaid() async throws {
+        // STAND's own three frames moved to
+        // `standReadsTheWholeEveningAndNotOneTurnOfIt`, which plays a superset
+        // of the route this used to. What is left is the engine's line never
+        // reaching the player at all.
         let flat = try await play(
-            Fulminate(), ["south", "west"] + Array(repeating: "z", count: 7) + ["stand", "stand"])
-        expectInOrder(
-            flat,
-            [
-                "the ground hits you in the back",
-                "You get an elbow under you and stop there.",
-                "You get up.",
-            ])
+            Fulminate(), ["south", "west"] + Array(repeating: "z", count: 7) + ["stand"])
         #expect(!flat.contains("You're already standing."))
-        // And once the fuse has stood him up, the ordinary line is true again.
-        #expect(
-            turnOutput(of: "stand", in: flat).contains("You get an elbow under you")
-                || flat.contains("You are on your feet, and have been since the streetcar."))
 
-        // `climb stairs` was disproved by `up` on the very next command.
-        let stairs = try await play(Fulminate(), ["climb stairs", "up"])
+        // `climb stairs` was disproved by `up` on the very next command; now it
+        // *is* `up`, so the flight the front hall names takes the verb.
+        let stairs = try await play(Fulminate(), ["climb stairs", "down", "up"])
         #expect(!stairs.contains("You can't climb that."))
-        expectInOrder(stairs, ["You go up in this house by going up.", "Upstairs Landing"])
+        #expect(!stairs.contains("You go up in this house by going up."))
+        expectInOrder(stairs, ["Upstairs Landing", "Front Hall", "Upstairs Landing"])
 
         // And the parlour is built out of armchairs with a woman sitting in one.
         let parlour = try await play(Fulminate(), ["west", "sit"])
         #expect(!parlour.contains("There's nothing comfortable to sit on."))
         #expect(turnOutput(of: "sit", in: parlour).contains("every person this house used to hold"))
+    }
+
+    /// **C10, as corrected.** The issue said `text.stubs.stand` was one string
+    /// with no read of the state the game set; there was a read, and its window
+    /// was one turn wide. `knockedFlat` is set by the 5:46 alarm and cleared by
+    /// the `blast.after` fuse on the next turn, so by 5:52 — the frame the round
+    /// actually reported — the stub's "and have been since the streetcar" was
+    /// getting through to a man the garden wall had come down on top of.
+    ///
+    /// Three frames, and the third is the one that used to lie.
+    @Test func standReadsTheWholeEveningAndNotOneTurnOfIt() async throws {
+        let yard = try await play(
+            Fulminate(),
+            ["south", "west", "stand"] + Array(repeating: "z", count: 6)
+                + ["stand", "z", "z", "stand"])
+
+        // 5:34, before anything has happened: the ordinary line is true.
+        #expect(
+            turnOutput(of: "stand", in: yard).contains("have been since the streetcar"))
+        // 5:48, flat on the grass: the one-turn arm, unchanged by this pass.
+        expectInOrder(
+            yard,
+            [
+                "the ground hits you in the back",
+                "You get an elbow under you and stop there.",
+                "You get up.",
+                // 5:56, several turns past the clear — where the flat literal used
+                // to reappear.
+                "when the carriage house put you on your back",
+            ])
+
+        // The control, and the reason the second arm reads
+        // `wasInTheYardForTheBlast` rather than the clock: a player who spent
+        // 5:46 on the landing was never put on his back, so nothing about his
+        // evening disproves the streetcar.
+        let indoors = try await play(
+            Fulminate(), ["up"] + Array(repeating: "z", count: 9) + ["stand"])
+        let upstairs = turnOutput(of: "stand", in: indoors)
+        #expect(upstairs.contains("have been since the streetcar"))
+        #expect(!upstairs.contains("put you down once already"))
+    }
+
+    /// **C11.** The CLIMB line said "in this house" while the player stood
+    /// outdoors against a brick garden wall, in a room with no `up` at all — and
+    /// it said it about whatever noun had been pointed at, since the line named
+    /// nothing. Both halves are answered: the naming half reports on the thing,
+    /// and the three flights the house does have walk their own exits.
+    @Test func climbIsAboutTheThingAndNotAboutTheHouse() async throws {
+        let outdoors = try await play(Fulminate(), ["south", "west", "climb wall", "climb"])
+        #expect(!outdoors.contains("You go up in this house by going up."))
+        #expect(
+            turnOutput(of: "climb wall", in: outdoors)
+                .contains("You put a hand on the garden wall and think better of it."))
+        #expect(
+            turnOutput(of: "climb", in: outdoors)
+                .contains("You would have to say what you meant to climb."))
+
+        // The back stairs refuse in the words `up` refuses in, and the cellar
+        // steps go down, which is what `climb down` means about a cellar.
+        let kitchen = try await play(
+            Fulminate(), ["south", "climb back stairs", "climb cellar steps"])
+        #expect(
+            turnOutput(of: "climb back stairs", in: kitchen)
+                .contains("The back stairs are the household's."))
+        // Down, and the cellar is unlit, so the proof it walked is the dark.
+        #expect(turnOutput(of: "climb cellar steps", in: kitchen).contains("It is pitch black."))
+    }
+
+    /// Swept rather than filed, and C11's defect one room over: the carriage
+    /// house is a detached outbuilding, so the stub floor's "The house is doing
+    /// what a house does" and "The stove, and the dust a house like this keeps
+    /// between the wars" were both being said by a man standing inside it. The
+    /// yard already had this pair of rules; its twin did not.
+    @Test func theCarriageHouseIsNotTheHouse() async throws {
+        let standing = try await play(
+            Fulminate(), ["south", "west", "listen", "smell", "north", "listen", "smell"])
+        #expect(standing.contains("Carriage House"))
+        #expect(!standing.contains("The house is doing what a house does"))
+        #expect(!standing.contains("the dust a house like this keeps between the wars"))
+        // Four outdoor frames, in order: the yard before the blast, then the lab.
+        expectInOrder(
+            standing,
+            [
+                "somebody at a bench in the carriage house",
+                "a thin chemical edge coming down the yard",
+                "The stove pipe ticks as the kitchen feeds it.",
+                "Vane works in here with the door shut.",
+            ])
+
+        // And the cellar, which has no stove in it and says so.
+        let below = try await play(Fulminate(), ["south", "down", "smell"])
+        #expect(
+            turnOutput(of: "smell", in: below).contains("Nothing has been cooked down here in fifty years."))
+        #expect(!below.contains("the dust a house like this keeps between the wars"))
+
+        // And afterwards, in the three turns before the patrolman clears it.
+        let wrecked = try await play(
+            Fulminate(),
+            ["south", "west"] + Array(repeating: "z", count: 7) + ["north", "listen", "smell"])
+        #expect(turnOutput(of: "listen", in: wrecked).contains("a piece of metal ticks as it lets go of the heat"))
+        #expect(turnOutput(of: "smell", in: wrecked).contains("That last is what a chemist would ask you about."))
+    }
+
+    /// **C12.** TOUCH was never re-skinned at all, so a lit cast-iron range
+    /// answered the engine's "You feel nothing out of the ordinary." — as did
+    /// the flue carrying its heat, and the fire in the wreckage afterwards.
+    @Test func touchKnowsWhichThingsInThisHouseAreHot() async throws {
+        let kitchen = try await play(Fulminate(), ["south", "touch stove", "touch drawer"])
+        #expect(!kitchen.contains("You feel nothing out of the ordinary."))
+        #expect(turnOutput(of: "touch stove", in: kitchen).contains("Cast iron with a fire under it."))
+        // And the floor under it still answers for an ordinary thing, naming it.
+        #expect(
+            turnOutput(of: "touch drawer", in: kitchen)
+                .contains("You put a hand on the kitchen drawer and learn nothing a hand can tell you."))
+
+        let yard = try await play(
+            Fulminate(),
+            ["south", "west", "north", "touch pipe", "south"] + Array(repeating: "z", count: 8)
+                + ["touch fire"])
+        #expect(!yard.contains("You feel nothing out of the ordinary."))
+        #expect(turnOutput(of: "touch pipe", in: yard).contains("all of it comes up this pipe"))
+        #expect(
+            turnOutput(of: "touch fire", in: yard)
+                .contains("Nobody is going to get closer to it tonight."))
     }
 
     /// Thirty feet from a building the game has just said took the hair off the
@@ -897,9 +1016,12 @@ struct FulminateTests {
                 turnOutput(of: command, in: transcript)
                     .contains("Mrs. Kettle is a person, and this is not 1948."))
         }
-        // A stove is still a stove.
+        // And a stove is not a witness. The line it gets is C12's business, and
+        // `touchKnowsWhichThingsInThisHouseAreHot` owns it; all this test wants
+        // is that the person guard did not spread to the furniture.
         #expect(
-            turnOutput(of: "touch stove", in: transcript).contains("You feel nothing out of the ordinary."))
+            !turnOutput(of: "touch stove", in: transcript)
+                .contains("is a person, and this is not 1948."))
     }
 
     /// Four faults on one object: `container` with nothing in it, so the stock

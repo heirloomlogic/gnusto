@@ -200,9 +200,9 @@ rather than a declaration — recorded as returned, and not expected to match.
 | `decl::Sources/Fulminate/Fulminate.swift::rules/labLamp.describe` | C7 window | confirmed | minor, solver, **introduced by `7c92508` while fixing C1 of the last round** |
 | `decl::Sources/Fulminate/Fulminate.swift::glove` | C8 glove placement | needs-human | major, explorer-2, the round's one true rater split |
 | `decl::Sources/Fulminate/Fulminate.swift::teagueDay` | C9 boarder's light | needs-human | major, explorer-2, introduced by `7c92508` |
-| `decl::Sources/Fulminate/Fulminate.swift::text/stubs.stand` | C10 stand stub | confirmed | major, wrong-footer, **line added by `7c92508`** |
-| `decl::Sources/Fulminate/Fulminate.swift::text/stubs.climb` | C11 climb stub | confirmed | major, wrong-footer, **line added by `7c92508`** |
-| `decl::Sources/Gnusto/Actions/GameText.swift::Stubs.touch` | C12 touch | confirmed | major, wrong-footer; site to change is Fulminate's `text.stubs.touch` |
+| `decl::Sources/Fulminate/Fulminate.swift::text/stubs.stand` | C10 stand stub | fixed | major, wrong-footer, **line added by `7c92508`**. The finding's own diagnosis was wrong and was corrected on #280 before the fix: there *was* a read of `knockedFlat`, one turn wide. Repaired by widening `world.before(.stand)` onto `wasInTheYardForTheBlast`, not by assigning the line |
+| `decl::Sources/Fulminate/Fulminate.swift::text/stubs.climb` | C11 climb stub | fixed | major, wrong-footer, **line added by `7c92508`**. `.naming(orBare:)`, plus the three flights taking CLIMB for themselves |
+| `decl::Sources/Gnusto/Actions/GameText.swift::Stubs.touch` | C12 touch | fixed | major, wrong-footer; site to change is Fulminate's `text.stubs.touch`, and that is where it changed. Stove, stove pipe and yard fire answer for themselves |
 | `Sources/Fulminate/Fulminate.swift::z time passes  z time passes  z time passes  z time passes  z time passes` | C15 back yard crossings | needs-human | minor, timekeeper; the one `unlocated` fallback key this round |
 
 ### Refuted this round — pass these as `ledgerKeys` next time

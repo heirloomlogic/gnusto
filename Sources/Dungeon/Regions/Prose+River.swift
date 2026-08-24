@@ -123,6 +123,16 @@ extension Prose {
         about 450 feet. The only path here is on the north end.
         """
 
+    /// Written fresh. The stub floor's `listen` reports on the listener — "You
+    /// listen, and learn nothing you did not already know." — which is the
+    /// right sentence in 195 rooms and the wrong one at the top of a 450-foot
+    /// waterfall. Same repair the Loud Room already has: where the room really
+    /// does own the answer, the room takes the verb back.
+    static let fallsSound = """
+        Four hundred and fifty feet of water arriving at the bottom. Anything else in this room would have to
+        shout.
+        """
+
     /// Trilogy verbatim.
     static let fallsRainbowSolid = "A solid rainbow spans the falls."
 
@@ -456,8 +466,15 @@ extension Prose {
 
     /// Written fresh. The mainframe's own line here names a historical person
     /// as a punchline; this one keeps the joke and drops the person.
+    ///
+    /// It also makes no claim about where it is being shouted. The `action(…)`
+    /// row that prints it is game-wide, so the sentence has to be true in all
+    /// 196 rooms — and the version that stood here said *"there is nothing here
+    /// to leap from"* in the one room in the game that is a 450-foot drop, with
+    /// the word cut into the staves of the barrel standing beside the player.
+    /// The joke is that a cry is all it is; the joke does not need a place.
     static let geronimoNotInBarrel = """
-        A fine battle cry, but there is nothing here to leap from.
+        A fine battle cry, and that is the whole of it.
         """
 
     /// Written fresh.

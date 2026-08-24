@@ -660,16 +660,19 @@ struct Dungeon: Game, GameMain {
         // item, so the host owns the gate.
         cellar.studio.before(.go) {
             guard command.direction == .up else { return }
-            let hands = player.inventory
-            try require(!hands.isEmpty, else: Prose.chimneyEmptyHanded)
-            // At most two things, and one of them the lamp — climbing into the
-            // dark without it is the softlock the mainframe declines to allow.
-            // This gate **counts** rather than weighing, deliberately: it is
-            // the one load rule in the game that ignores `burdenWeight(of:)`,
-            // because the mainframe's is a count (`FIDELITY.md`).
-            try require(
-                hands.count <= 2 && hands.contains(house.lantern),
-                else: Prose.chimneyTooBurdened)
+            try chimneyLoadGate()
+        }
+
+        // `climb chimney` reaches the Kitchen the same way `up` does — the
+        // chimney's own description says it "looks climbable", so a CLIMB that
+        // refused was the room advertising the verb its own answer denied.
+        // `enter(_:)` rather than `arrive(at:)`, for the reason the great tree
+        // gives: the exit describes the Kitchen as an entry, so the rule has to
+        // as well.
+        cellar.chimney.before(.climb) {
+            try chimneyLoadGate()
+            try enter(house.kitchen)
+            try handled()
         }
 
         // The troll, fought with the house's blades. Strength 2 is the
@@ -862,6 +865,23 @@ struct Dungeon: Game, GameMain {
             maze.gratingRoom.isLit = false
             try reply(Prose.gratingCloses)
         }
+    }
+
+    /// What the Studio chimney will carry, asked once for the two spellings
+    /// that reach it — `up` and `climb chimney`.
+    ///
+    /// The mainframe lets you up with the lamp and at most one other thing, and
+    /// refuses the climb empty-handed outright. This gate **counts** rather
+    /// than weighing, deliberately: it is the one load rule in the game that
+    /// ignores `burdenWeight(of:)`, because the mainframe's is a count
+    /// (`FIDELITY.md`). Climbing into the dark without the lamp is the softlock
+    /// the mainframe declines to allow.
+    private func chimneyLoadGate() throws {
+        let hands = player.inventory
+        try require(!hands.isEmpty, else: Prose.chimneyEmptyHanded)
+        try require(
+            hands.count <= 2 && hands.contains(house.lantern),
+            else: Prose.chimneyTooBurdened)
     }
 
     /// One turn of the grating's lock, in whichever direction. The two differ
