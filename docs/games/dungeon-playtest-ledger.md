@@ -426,7 +426,7 @@ before acting on any of the three; the claim alone points at the wrong line.
 | `decl::Sources/Dungeon/Regions/Prose+Temple.swift::bellCools` | confirmed | prose-untrue-of-frame | minor |
 | `decl::Sources/Dungeon/Regions/Prose+Temple.swift::blackBook` | confirmed (needs-human) | mechanic-contradicts-prose | minor |
 | `decl::Sources/Dungeon/Prose+Stubs.swift::stubs.climb` | confirmed (needs-human) | stock-line-not-reskinned | minor |
-| `decl::Sources/Dungeon/Regions/Prose+Alice.swift::blueIcingWriting` | confirmed | prose-untrue-of-state | major |
+| `decl::Sources/Dungeon/Regions/Prose+Alice.swift::blueIcingWriting` | fixed | prose-untrue-of-state | blocking |
 | `decl::Sources/Dungeon/Regions/Prose+Alice.swift::poolLeak` | confirmed | prose-untrue-of-state | major |
 | `decl::Sources/Dungeon/Regions/Prose+Alice.swift::robotSpringsTheCage` | confirmed | mechanic-contradicts-prose | major |
 | `decl::Sources/Dungeon/Regions/Prose+Alice.swift::robotIsOutOfEarshot` | confirmed (needs-human) | stock-line-not-reskinned | minor |
@@ -460,3 +460,33 @@ Pass the ten `refuted` keys above as `ledgerKeys` next round, alongside the thir
 2026-08-11. **Not the forty-two `confirmed` ones**, and not the thirty-nine `fixed` ones
 above them. The list is twenty-three keys long, and for the first time ten of them can
 actually match.
+
+## D1 was filed at `major` and is `blocking` — 2026-08-24
+
+`blueIcingWriting` is #286's **D1**, and the round sighted it as a narration fault: a
+resurrected player at full size, told the icing reads EVAPORATE. The sentence is the
+symptom. `Dungeon.onDeath()` restores the player's place, their score and their
+belongings and nothing about the wing they died in, and two separate things were left
+standing by that:
+
+- `DungeonAlice.shrunk`, which the cakes read — and which `eatMeCake.before(.eat)` guards
+  on, so the way back down was shut by the flag that says you are already there.
+- **The bucket**, which the round did not sight. It is the only way in or out of the well
+  and it only descends for a passenger who empties it, so a death in the wing left it at
+  the top with the water in it and nobody able to reach it. Walked by hand at seed 41:
+  `board bucket` in the Circular Room answered *"You can't see any such thing."* on the
+  second descent. `shrunk` alone would not have reopened the wing.
+
+The tin of rare spices (5+5) and the white crystal sphere (6+6) are both behind those
+seals, so a shrunken death did not narrate a wrong sentence, it made `maxScore`
+unreachable for the rest of the run. Re-rated `blocking`, which is what the round's own
+`unwinnable` category means.
+
+Both are reset in `onDeath()` now, and both are covered:
+`dyingSmallDoesNotLeaveYouReadingIcingLikeAMouse` and
+`aShrunkenDeathDoesNotSealTheSpicesInBehindIt` in `Tests/GnustoTests/DungeonTests.swift`.
+The second walks the whole second descent and comes out holding the spices.
+
+The shape worth looking for in the rest of #286: the round keys on the **sentence**, so a
+finding whose sentence is a symptom of lost state gets the sentence's severity. D1 read as
+`major` because a mouse-sized reading line is a `major` sort of wrong.

@@ -401,10 +401,12 @@ boarded vehicle carries the passenger; follow with
 vehicle that leaves the room any other way strands its passenger on foot,
 gracefully.
 
-"Boarded" means the same thing to `move(to:)` as it does to
-``Player/vehicle``: the flag is set *and* the vehicle is in the room the
-player is standing in. Once a rule has put the player somewhere their
-vehicle isn't, the vehicle's later travels leave them where they are.
+Stranding is permanent, and that is deliberate. The boarding is cleared at
+the instant the player and the vehicle stop sharing a room — whichever of
+the two moved — so the vehicle's later travels leave the player where they
+are, and walking back to where the vehicle is left standing leaves them on
+foot beside it. A player teleported out of a boat by a death, a spell or a
+trapdoor has to `board` it again to be in it again.
 
 Disembarking is worth one warning. `get out` carries no direct object, so
 a rule on the vehicle itself never sees it — a gate that has to hold

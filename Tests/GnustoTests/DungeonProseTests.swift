@@ -54,11 +54,16 @@ struct DungeonProseTests {
 
     private static let toTheDam = pastTheTroll + crossroadsToTheDam
 
-    /// Drain the reservoir, cross its bed, climb out through Atlantis — the
-    /// northern Mirror Room. Seed 18.
-    private static let toTheMirrors =
+    /// Open the sluice gates and come back to Reservoir South, at the edge of a
+    /// bed that is standable only while they are open — both ways onto it are
+    /// gated on `gatesOpen`. Seed 18.
+    private static let toTheReservoirShore =
         pastTheTroll + ["drop sword"] + crossroadsToTheDam + drainTheReservoir
-        + ["north", "north", "north", "up", "north"]
+
+    /// On across the bed and out through Atlantis — the northern Mirror Room.
+    /// Seed 18.
+    private static let toTheMirrors =
+        toTheReservoirShore + ["north", "north", "north", "up", "north"]
 
     /// From the top of the dam: charge the panel, open the gates, and come back
     /// down to the drained bed. The one leg two roads in this file share.
@@ -72,10 +77,15 @@ struct DungeonProseTests {
     private static let toTheSmellyRoom =
         toTheMirrors + ["west", "west", "north", "northeast", "north", "west"]
 
-    /// Into the maze as far as Maze-5, then on to the Cyclops Room. Seed 18.
-    private static let toTheCyclops =
-        pastTheTroll + ["south", "south", "east", "up"]
-        + ["southwest", "east", "south", "northeast"]
+    /// Into the maze as far as Maze-5, where the skeleton's keys are. Seed 18.
+    private static let toMazeFive = pastTheTroll + ["south", "south", "east", "up"]
+
+    /// And on from Maze-5 to the Cyclops Room. Seed 18.
+    private static let toTheCyclops = toMazeFive + ["southwest", "east", "south", "northeast"]
+
+    /// Maze-5 to the Grating Room with the keys that turn its lock. Seed 18.
+    private static let toTheGratingRoom =
+        toMazeFive + ["take keys"] + DungeonTests.mazeFiveToTheGrating
 
     /// The same, with the peppers and the bottle, and the giant asleep on the
     /// drugged water at the end of it — the one way to have a cyclops who is
@@ -99,8 +109,11 @@ struct DungeonProseTests {
         + ["southeast", "answer well", "east", "east"]
         + ["board bucket", "pour water in bucket", "get out"]
 
-    /// And on through the tea party to the three buttons. Seed 41.
-    private static let toTheButtons = toTheTopOfWell + ["east", "northwest", "north"]
+    /// And on east into the tea party. Seed 41.
+    private static let toTheTeaRoom = toTheTopOfWell + ["east"]
+
+    /// And on to the three buttons. Seed 41.
+    private static let toTheButtons = toTheTeaRoom + ["northwest", "north"]
 
     /// Out to Rocky Shore on foot, by the Loud Room's east door. Seed 18.
     private static let toRockyShore = toTheLoudRoom + ["east", "east", "south"]
@@ -1532,6 +1545,134 @@ struct DungeonProseTests {
         #expect(!transcript.lowercased().contains("compass"))
         // The control: the floor the line is about still answers.
         #expect(turnOutput(of: "x floor", in: transcript).contains("bedded too deep to see"))
+    }
+
+    // MARK: - A description is a constant and the state behind it moved
+
+    /// `OPEN BOTTLE` answers "reveals a quantity of water" and `X BOTTLE`
+    /// answered "stoppered" on the line under it. The stopper is the
+    /// `openable` trait; only the glass is a constant. (#286 D2)
+    @Test func theBottleSaysWhetherItIsStoppered() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.intoTheKitchen + ["take bottle", "x bottle", "open bottle", "examine glass bottle"],
+            seed: 18)
+
+        expectInOrder(
+            transcript,
+            [
+                "A clear glass bottle, stoppered and quite ordinary.",
+                "Opening the glass bottle reveals a quantity of water.",
+                "A clear glass bottle, unstoppered and quite ordinary.",
+            ])
+    }
+
+    /// "resting on a low pedestal" is where the sphere was, not what it is, and
+    /// the player reads it standing inside a steel cage with the sphere in
+    /// hand. `cageSprung` is the pedestal having been emptied. (#286 D2)
+    @Test func theSphereStopsRestingOnAPedestalItIsNoLongerOn() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheButtons + ["south", "examine sphere", "take sphere", "x sphere"],
+            seed: 41)
+
+        #expect(turnOutput(of: "examine sphere", in: transcript).contains("resting on a low pedestal"))
+
+        let held = turnOutput(of: "x sphere", in: transcript)
+        #expect(held.contains("lighter in the hand"))
+        #expect(!held.contains("resting on a low pedestal"))
+    }
+
+    /// The Pool Room's own paragraph already knows the steam took the leak with
+    /// it. The leak under it went on dripping "and never quite stopping" into a
+    /// depression the same paragraph calls bare and cracked and empty.
+    /// (#286 D2)
+    @Test func theLeakStopsDrippingWhenTheSteamHasTakenIt() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheTeaRoom
+                + ["take eat-me cake", "take red cake", "eat eat-me cake", "east"]
+                + ["examine leak", "throw red cake in pool", "x leak"],
+            seed: 41)
+
+        #expect(turnOutput(of: "examine leak", in: transcript).contains("never quite stopping"))
+
+        let after = turnOutput(of: "x leak", in: transcript)
+        #expect(after.contains("dry now"))
+        #expect(!after.contains("never quite stopping"))
+    }
+
+    /// The reservoir bed is standable only with the gates open — both ways in
+    /// are gated on it — so "a billion and a half cubic feet of it … between
+    /// you and the north shore" was the *only* answer `x water` ever gave, to a
+    /// player walking across the mud. The two shores already had the
+    /// state-aware line; the item on the bed did not. (#286 D2)
+    @Test func theReservoirsWaterIsTheMudThePlayerIsStandingOn() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheReservoirShore + ["examine water", "north", "examine reservoir"],
+            seed: 18)
+
+        // The control: the shore's own water line, which reads the bolt rather
+        // than the water and is true either way.
+        #expect(turnOutput(of: "examine water", in: transcript).contains("depends entirely on what the bolt"))
+
+        let onTheBed = turnOutput(of: "examine reservoir", in: transcript)
+        #expect(onTheBed.contains("Mud, and a great deal of it"))
+        #expect(!transcript.contains("A billion and a half cubic feet"))
+    }
+
+    /// The grating's two descriptions each fastened it with a heavy lock, from
+    /// both sides, for every turn of that lock and after it had been swung
+    /// open. Four frames, one transcript. (#286 D2)
+    @Test func theGratingReadsBothItsSidesAndBothTurnsOfItsLock() async throws {
+        // Four spellings of one command, because `turnOutput` matches the first
+        // occurrence of a prompt and this test needs four separate turns of it.
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheGratingRoom
+                + ["examine grating", "unlock grating with keys", "x grating"]
+                + ["open grating", "look at grating", "up", "examine iron grating"],
+            seed: 18)
+
+        #expect(turnOutput(of: "examine grating", in: transcript).contains("fastened on this side with a heavy lock"))
+        #expect(turnOutput(of: "x grating", in: transcript).contains("the heavy lock on this side of it standing open"))
+        #expect(turnOutput(of: "look at grating", in: transcript).contains("daylight coming down through the hole"))
+        #expect(turnOutput(of: "examine iron grating", in: transcript).contains("swung up out of the ground"))
+    }
+
+    /// The gate's paragraph branched on the end of the ceremony and on nothing
+    /// in between, so "evil spirits, who jeer at your attempts to pass" printed
+    /// through the whole of it — including the turns after the bell has stopped
+    /// their jeering and the candles have them cowering. The spirits' own
+    /// description had them enjoying this after they had gone through the
+    /// walls. (#286 D2)
+    @Test func theGateOfHadesReadsTheCeremonyAndNotOnlyItsEnd() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            DungeonTests.toTheGateOfHades
+                + ["examine spirits", "ring bell", "look", "take candles"]
+                + ["light match", "burn candles with match", "l", "read book"]
+                + ["look", "x ghosts"],
+            seed: 18)
+
+        expectInOrder(
+            transcript,
+            [
+                "who jeer at your attempts to pass",
+                "every one of them enjoying this",
+                "The bell suddenly becomes red hot",
+                "silent now, every one of them turned to face you",
+                "The candles are lighted.",
+                "who cower from the candle flames while they bar it",
+                "Begone, fiends!",
+            ])
+
+        // And once they are gone the gate stops reporting them at all.
+        let afterBanishing = output(after: "Begone, fiends!", in: transcript)
+        #expect(afterBanishing.contains("Entrance to Hades"))
+        #expect(!afterBanishing.contains("barred by evil spirits"))
+        #expect(turnOutput(of: "x ghosts", in: transcript).contains("Nothing of them is left to look at"))
     }
 
     // MARK: - Forms

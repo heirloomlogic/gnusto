@@ -118,8 +118,10 @@ extension Prose {
         // `pull` routes to `V-MOVE` in the source (`gsyntax.zil:368`), whose
         // immovable branch is `gverbs.zil:918`.
         stubs.pull = .naming { "You can't move \($0)." }
-        // `V-TURN` (`gverbs.zil:1506`).
-        stubs.turn = "This has no effect."
+        // `V-TURN` (`gverbs.zil:1506`). Shared with ``ZorkSystems``'s
+        // `turn … with …` row, which reaches the same routine in the source, so
+        // the two spellings cannot drift.
+        stubs.turn = .init(Prose.verbTurnNoEffect)
         // `V-SQUEEZE`'s other branch (`gverbs.zil:1291`).
         stubs.squeeze = "How singularly useless."
         // `V-SHAKE`'s un-takeable branch (`gverbs.zil:1217`).
@@ -197,15 +199,22 @@ extension Prose {
         stubs.wave = .naming(orBare: "Waving your hands about has no effect.") {
             "Waving \($0) has no effect."
         }
-        // Invented: no `POINT` in `gsyntax.zil`.
-        stubs.point = "Nobody is looking."
+        // Invented: no `POINT` in `gsyntax.zil`. About the gesture, not about
+        // who is watching it: "Nobody is looking." was the greeting defect one
+        // verb over, said in front of the troll, the thief and the cyclops.
+        // (#325)
+        stubs.point = "You point. The gesture goes nowhere."
 
         // MARK: Motion
 
         // `V-CLIMB-ON` (`gverbs.zil:298`). The bare `climb` is this game's own
-        // sentence, kept from the line that stood here before; the source's
-        // objectless climb walks an exit instead of answering.
-        stubs.climb = .naming(orBare: "There's nothing here worth climbing. Try up or down.") {
+        // sentence — the source's objectless climb walks an exit instead of
+        // answering — and it is about the player. It used to say "There's
+        // nothing here worth climbing. Try up or down.", which the Forest Path
+        // refutes in its own description (*one particularly large tree with
+        // some low branches*, and `tree.before(.climb)` climbs it) and which
+        // recommended two exits most of the 110 rooms do not have. (#325)
+        stubs.climb = .naming(orBare: "Not without something to climb.") {
             "You can't climb onto \($0)."
         }
         // `V-LEAP` sends an objectless jump to `V-SKIP` (`gverbs.zil:820`), which
@@ -214,17 +223,24 @@ extension Prose {
         stubs.jump = "Wheeeeeeeeee!!!!!"
         // `V-SWIM`'s last branch (`gverbs.zil:1345`).
         stubs.swim = "Go jump in a lake!"
-        // Invented: no `DIVE` in `gsyntax.zil`. Kept off the subject of the room,
-        // since this line prints in all of them.
-        stubs.dive = "That would take more water than you have."
+        // Invented: no `DIVE` in `gsyntax.zil`. "That would take more water than
+        // you have." reads as a claim about the water within reach, and this
+        // game has nine rooms with water in them — the reservoir, the dam's
+        // sources and the four Frigid River stretches. About the diver instead —
+        // and not about where he is standing either: the first replacement said
+        // "You did not come down here to get wet.", which is the same defect
+        // above ground. (#325)
+        stubs.dive = "You'd rather stay dry."
         // `V-STAND`'s standing branch (`gverbs.zil:1309`).
         stubs.stand = "You are already standing, I think."
         // Invented: no `SIT` in `gsyntax.zil`.
         stubs.sit = "You didn't come all this way to sit down!"
         // Invented: no `LIE` in `gsyntax.zil`.
         stubs.lie = "You'd only get up again filthy."
-        // Invented: no `KNEEL` in `gsyntax.zil`.
-        stubs.kneel = "Nobody is impressed."
+        // Invented: no `KNEEL` in `gsyntax.zil`. "Nobody is impressed." counted
+        // the room's occupants from a line that cannot see one, same as
+        // ``point``. (#325)
+        stubs.kneel = "You kneel, and get up again no better off."
 
         // MARK: Liquids and containers
 
@@ -263,8 +279,12 @@ extension Prose {
 
         // MARK: Commerce
 
-        // Invented: no `BUY` in `gsyntax.zil`.
-        stubs.buy = "This is a dungeon, not a bazaar!"
+        // Invented: no `BUY` in `gsyntax.zil`. Kept off the subject of the room:
+        // the line this replaces said "This is a dungeon, not a bazaar!" in the
+        // open field west of the white house, which is where the game starts.
+        // What is true in every room is that nobody in this empire is selling
+        // anything, so the sentence is about the narrator and the player. (#325)
+        stubs.buy = "You're not in a bazaar, and I'm not a merchant."
         // Invented: no `SELL` in `gsyntax.zil`.
         stubs.sell = "And who, exactly, would buy it?"
 

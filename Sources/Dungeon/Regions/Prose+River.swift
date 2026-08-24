@@ -347,9 +347,16 @@ extension Prose {
 
     // MARK: - The buoy and what is in it
 
-    /// Trilogy verbatim. One line for the listing and the examine both — in
-    /// the trilogy they are the same line.
+    /// Trilogy verbatim — the listing line, and only the listing line. It used
+    /// to be the examine channel too, which had `x buoy` answering "There is a
+    /// red buoy here" about a buoy in the player's hands.
     static let buoy = "There is a red buoy here (probably a warning)."
+
+    /// Written fresh, because the trilogy has no separate examine line to take.
+    static let buoyExamined = """
+        A red plastic buoy the size of a small barrel, of the kind that is
+        probably a warning about something.
+        """
 
     /// Trilogy verbatim — the nudge that stops the buoy being scenery.
     static let buoyFeelsFunny = "You notice something funny about the feel of the buoy."

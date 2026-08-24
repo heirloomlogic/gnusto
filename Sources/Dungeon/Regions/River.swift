@@ -196,7 +196,7 @@ struct DungeonRiver: GameContent {
         adjectives("red")
         synonyms("buoy")
         firstSight(Prose.buoy)
-        description(Prose.buoy)
+        description(Prose.buoyExamined)
         container
         openable
         capacity(20)

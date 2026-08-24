@@ -106,6 +106,41 @@ struct Zork1CoalMineTests {
         #expect(!transcript.contains("white roar"))
     }
 
+    /// The two rooms whose own descriptions are about a smell. The stub floor's
+    /// bare `smell` answers "You smell nothing you could put a name to." in all
+    /// 110 rooms — which is the room's claim to make, and these two refute it in
+    /// their own prose: *a foul odor can be detected*, *smells strongly of coal
+    /// gas*. Three frames here: the Shaft Room, where the floor's line is true;
+    /// the two rooms where it was not; and `smell bracelet` in the Gas Room,
+    /// which still gets `V-SMELL`'s joke about the thing named. (#325)
+    @Test func theTwoRoomsThatSmellSayWhatOfTheirOwnSmell() async throws {
+        let transcript = try await play(
+            Zork1(),
+            Self.toMineEntrance + [
+                "west", "north", "east",  // Squeaky → Bat → Shaft Room
+                "smell",
+                "north",  // Smelly Room
+                "smell",
+                "down",  // Gas Room
+                "smell",
+                "smell bracelet",
+            ],
+            seed: 2)
+        expectInOrder(
+            transcript,
+            [
+                "Shaft Room",
+                "You smell nothing you could put a name to.",
+                "Smelly Room",
+                "Whatever it is, it is down the staircase.",
+                "Gas Room",
+                "Coal gas, thick enough to taste.",
+                "It smells like the sapphire-encrusted bracelet.",
+            ])
+        // Once, in the one room where it was true.
+        #expect(occurrences(of: "You smell nothing", in: transcript) == 1)
+    }
+
     /// The vampire bat holds its nose while the garlic is in hand: the Bat Room
     /// is passed through to the Shaft Room ungrabbed. The basket there is
     /// fastened to its chain and can't be taken.

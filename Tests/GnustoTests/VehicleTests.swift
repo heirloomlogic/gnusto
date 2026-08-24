@@ -222,8 +222,8 @@ struct VehicleTests {
 
     /// The other half of stranding: once the player is standing somewhere the
     /// vehicle isn't, the vehicle's own travels must leave them where they are.
-    /// Nothing clears `playerVehicle`, so `move(to:)` has to ask
-    /// ``Player/vehicle``'s question rather than the raw flag's.
+    /// The teleport cleared the boarding on its way out, so `move(to:)` finds
+    /// nobody aboard to drag.
     @Test func aStrandedPassengerIsNotDraggedAlongByTheirOldVehicle() async throws {
         let transcript = try await play(
             HarborGame(),
@@ -240,6 +240,79 @@ struct VehicleTests {
         let look = turnOutput(of: "look", in: transcript)
         #expect(look.contains("Boathouse"))
         #expect(!look.contains("It is pitch black"))
+    }
+
+    /// And the return leg. Being stranded has to *clear* the boarding, not
+    /// defer the question to a read: walking back into the room the boat is
+    /// still sitting in must leave the player standing on the dock, not
+    /// silently back aboard a boat they never re-entered.
+    @Test func walkingBackToAStrandedVehicleDoesNotReboardYou() async throws {
+        let transcript = try await play(
+            HarborGame(),
+            ["enter boat", "hurl", "south", "look", "exit", "quit"])
+        expectInOrder(
+            transcript,
+            [
+                "You are now in the red boat.",
+                "A gull carries you off to the boathouse.",
+            ])
+        let look = turnOutput(of: "look", in: transcript)
+        #expect(look.contains("Dock"))
+        #expect(!look.contains("in the red boat"))
+        #expect(turnOutput(of: "exit", in: transcript).contains("You aren't in anything."))
+    }
+
+    /// The same return leg from the vehicle's side: the stranded boat is towed
+    /// into the room the player is now standing in, and finds them on foot.
+    @Test func aStrandedVehicleArrivingFindsYouOnFoot() async throws {
+        let transcript = try await play(
+            HarborGame(),
+            [
+                "take lantern", "turn on lantern", "enter boat",
+                "hurl", "east", "tow", "look", "row north", "quit",
+            ])
+        expectInOrder(
+            transcript,
+            [
+                "A gull carries you off to the boathouse.",
+                "Sea Cave",
+                "The boat is towed away into the cave.",
+            ])
+        let look = turnOutput(of: "look", in: transcript)
+        #expect(look.contains("Sea Cave"))
+        #expect(!look.contains("in the red boat"))
+        // And the boarding really is gone, not merely unprinted.
+        #expect(
+            turnOutput(of: "row north", in: transcript)
+                .contains("You'd want to be in the boat for that."))
+    }
+
+    /// Decoding a save is the one write that reaches the boarded flag without
+    /// passing a funnel, so the restore settles it once on the way in. Only a
+    /// hand-edited file can present the mismatch — no play can reach it — but a
+    /// crafted one must not smuggle a passenger into a boat two rooms away.
+    @Test func aRestoredSaveCannotSmuggleInABoardingItNeverEarned() async throws {
+        let path = FileManager.default.temporaryDirectory
+            .appendingPathComponent("gnusto-vehicle-\(UUID().uuidString).sav").path
+        defer { try? FileManager.default.removeItem(atPath: path) }
+        _ = try await play(HarborGame(), ["enter boat", "save", path, "quit"])
+
+        // Move the player out from under the boat in the file itself, leaving
+        // the boarding behind — the shape the old read-time resolver forgave.
+        let url = URL(fileURLWithPath: path)
+        var file =
+            try JSONSerialization.jsonObject(with: Data(contentsOf: url)) as! [String: Any]
+        var state = file["state"] as! [String: Any]
+        state["playerLocation"] = ["raw": "boathouse"]
+        file["state"] = state
+        try JSONSerialization.data(withJSONObject: file).write(to: url, options: .atomic)
+
+        let transcript = try await play(HarborGame(), ["restore", path, "look", "exit", "quit"])
+        expectInOrder(transcript, ["Restored."])
+        let look = turnOutput(of: "look", in: transcript)
+        #expect(look.contains("Boathouse"))
+        #expect(!look.contains("in the red boat"))
+        #expect(turnOutput(of: "exit", in: transcript).contains("You aren't in anything."))
     }
 
     @Test func boardedStateSurvivesSaveAndRestore() async throws {

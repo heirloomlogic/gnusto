@@ -120,6 +120,66 @@ struct Zork1ProseTests {
                 .contains("Why knock on the small mailbox?"))
     }
 
+    // MARK: - Lines that used to claim a frame they never read (#325)
+
+    /// `V-HELLO` (`gverbs.zil:724`) has three branches and this game had one: a
+    /// custom `hello` verb whose `action(…)` row answered "Nobody here returns
+    /// your greeting." from a table that could not see the room. The troll is
+    /// standing in it. The verb is the engine's `.greet` now — ``ZorkSystems``
+    /// contributes only the two bare words — so all four frames answer, and the
+    /// two that name somebody answer in the source's words.
+    @Test func helloReadsWhoIsInTheRoom() async throws {
+        let transcript = try await play(
+            Zork1(),
+            [
+                "hello",  // West of House: nobody about, so `HELLOS` answers
+                "hello mailbox",  // not a person
+                "south", "east", "open window", "west", "west",
+                "take sword", "take lantern", "turn on lantern",
+                "push rug", "open trap door", "down", "north",  // → Troll Room
+                "hi",  // bare, and the one person in the room is who it reaches
+                "hello troll",  // named, same branch
+            ],
+            seed: 39)
+        expectInOrder(
+            transcript,
+            [
+                // `HELLOS` (`gverbs.zil:2199`), first of four.
+                "Hello.",
+                // `V-HELLO`'s non-actor branch (`:731`).
+                "It's a well known fact that only schizophrenics say \"Hello\" to the small mailbox.",
+                "Troll Room",
+                // `V-HELLO`'s actor branch (`:727`), reached twice: the engine
+                // resolves a bare greeting to the one person in earshot, so the
+                // troll answers whether or not he is named.
+                "The troll bows his head to you in greeting.",
+                "The troll bows his head to you in greeting.",
+            ])
+        #expect(!transcript.contains("Nobody here returns your greeting"))
+        // And the engine's own stock greeting lines are gone with it.
+        #expect(!transcript.contains("nods, and says nothing"))
+        #expect(!transcript.contains("unlikely to answer"))
+    }
+
+    /// `buy` is an invention — `gsyntax.zil` has no such verb — and the line it
+    /// carried said "This is a dungeon, not a bazaar!" in the open field the
+    /// game starts in, four rooms above the nearest dungeon. Both frames: the
+    /// field, and the cellar the old line was written for.
+    @Test func buyingDoesNotAnnounceWhereYouAreStanding() async throws {
+        let transcript = try await play(
+            Zork1(),
+            [
+                "buy house",  // West of House, above ground
+                "south", "east", "open window", "west", "west",
+                "take lantern", "turn on lantern",
+                "push rug", "open trap door", "down",  // → Cellar
+                "buy lamp",
+            ])
+        #expect(!transcript.contains("This is a dungeon"))
+        #expect(
+            occurrences(of: "You're not in a bazaar, and I'm not a merchant.", in: transcript) == 2)
+    }
+
     // MARK: - Listing sentences that were standing in for examine texts
 
     /// `NEST`'s `FDESC`, `EGG`'s `FDESC` and `LEAVES`'s `LDESC` are all

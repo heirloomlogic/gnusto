@@ -654,12 +654,13 @@ defect; the first is convenience, and the distinction matters for sizing M6:
    `Actions/StubVerbs.swift` for parity with `attack`, `dig` and `fill`, which all
    carry a `with` row already — not because M6 was blocked without it.
 2. **`Item.move(to:)` trusted a stale boarded flag.** It read
-   `state.playerVehicle` raw, while every *read* of the boarded state goes through
-   `Visibility.boardedVehicle` (`Engine/Visibility.swift:213`), which additionally
-   requires the vehicle to be in the player's room. So a player teleported out
-   from under their vehicle was correctly on foot by every read — and the
-   vehicle's next `move(to:)` dragged them back inside it from another room.
-   `move(to:)` now makes the same pairing test, pinned by
+   `state.playerVehicle` raw, while every *read* of the boarded state went
+   through a resolver that additionally required the vehicle to be in the
+   player's room. So a player teleported out from under their vehicle was
+   correctly on foot by every read — and the vehicle's next `move(to:)` dragged
+   them back inside it from another room. Issue #321 later retired that resolver
+   altogether: stranding now clears the flag at the moment the two part, so
+   `move(to:)` has nobody to drag. Pinned by
    `VehicleTests.aStrandedPassengerIsNotDraggedAlongByTheirOldVehicle`.
 
 Two notes for M6, both found by playing the fixture rather than by reading it:
@@ -1069,6 +1070,12 @@ that a line *appears* and never asks whether it is *true*.
    worked examples, and both ask *before* the state change, because a lamp on
    the floor of the room you are standing in is the light in that room and
    putting it out takes the room's contents out of sight.
+   **A line about a noise names the neighbourhood it carries to**, as an
+   `Earshot` written once per source: `DungeonVolcano.insideTheVolcano` for the
+   blast, the rockfall and the ledge, and `DungeonAboveGround.theWood` for the
+   songbird — which asks `contains(_:)` rather than `say(_:from:)`, because it
+   has to guard before it draws or every pinned seed in the suite moves. The
+   brochure's knock is the deliberate exception, and `FIDELITY.md` says why.
 3. **A scenery item answers about the place the player is in.** One item
    answering for a far thing and a near thing under the same synonym is the
    Rocky Ledge's `x passage` bug: the noun belongs to whichever item is about the
@@ -1422,7 +1429,60 @@ Box 15, the harness room census, closed in the same branch — it is a change to
 `.claude/workflows/playtest.js` rather than to this game, so it has no rule here.
 With it, **#233 is closed**: fifteen boxes over five passes.
 
-### The sixth pass: the room's paragraph and the room's declarations
+### The sixth pass: rule 1 again, at nine sites the first pass did not reach
+
+The second round (#286, 2026-08-18) filed ten sites under one heading, and the
+heading is rule 1 verbatim: *a static `description(…)` never learns the state
+behind it moved*. Nine are repaired here; the tenth, the altar candles, is a
+`needs-human` box about a line the mainframe has (`CANDL`'s `ODESCO`) and this
+game dropped, which is a question about what the candles should say rather than
+about which channel says it.
+
+Nothing new is being decided. Every one of the nine takes one of the two repairs
+the game already ships:
+
+- **The flag the room's own describer already reads.** In four of them the room
+  branched and the item under it did not. The Pool Room says the steam took the
+  leak with it and `x leak` had it dripping *"and never quite stopping"*; the
+  Reservoir is a mud pile the player walks across and `x water` counted a billion
+  and a half cubic feet of it *"between you and the north shore"*; the Entrance
+  to Hades branched on the **end** of the ceremony and on nothing in between, so
+  the spirits went on jeering through the six turns in which the bell has
+  silenced them and the candles have them cowering; the grating fastened itself
+  *"with a heavy lock"* from both sides, through both turns of that lock and
+  after it had been swung open. The bottle said *"stoppered"* with the stopper
+  out, and the crystal sphere *"resting on a low pedestal"* to a player holding
+  it inside a steel cage.
+- **A separate constant per channel.** The red buoy passed one string to both
+  `firstSight(…)` and `description(…)`, so `x buoy` answered *"There is a red buoy
+  here"* about a buoy in the player's hands. The listing line is the trilogy's and
+  is unchanged; the examine line is this game's own, which is what the adaptation
+  rule allows and the verbatim rule would not.
+
+The tenth site is the mirror box, and it needed no new prose at all: *"The walls
+of the box are shut on every side of you."* is a claim, and two frames make it
+false — a named direction with the **other** end open, and a box standing on a
+diagonal, whose opening gives on the corner where two walls meet.
+`Prose.beyond(_:)` has said that since the fourth pass and `push pine` says it one
+turn earlier; only the refusal was still describing a shut box.
+
+### What the sixth pass changed, and what it did not
+
+The mechanics contract is untouched a sixth time and both walkthroughs score what
+they scored. Two notes:
+
+- **The Reservoir's water branch has one arm the map cannot reach today**, because
+  both ways onto the bed are gated on `gatesOpen` and the bolt is at the top of
+  the dam. That is exactly why the false line was the only line `x water` ever
+  gave, and why nothing caught it. The branch is kept rather than flattened to the
+  drained sentence: the room's own describer branches on the same flag, and the
+  thing that would make the unreachable arm reachable is a change to the map.
+- **The same class was fixed in `Sources/Fulminate/` in the same branch** (#280 C2
+  and C4). Ten of the twenty-eight boxes across the two rounds are five defects
+  seen twice, and this is the first of the five to be repaired against both games'
+  prose at once.
+
+### The seventh pass: the room's paragraph and the room's declarations
 
 The 2026-08-18 round's third and fifth boxes are one defect looked at from two
 sides: **a room's paragraph names things the declarations do not model.** In the
@@ -1464,9 +1524,9 @@ hand, and eleven sites were left standing — seven of them in one region.
     beat is unchanged — you cannot tell which mouth is which, and the reason is
     under the floor — and it is now said with the room's own two nouns.
 
-### What the sixth pass changed, and what it did not
+### What the seventh pass changed, and what it did not
 
-The mechanics contract is untouched a sixth time — no map, no puzzle, no
+The mechanics contract is untouched a seventh time — no map, no puzzle, no
 treasure value, no `maxScore` — and both walkthroughs score what they scored.
 Every new item is `scenery`, so no room listing gains a line. **Four of the
 fourteen items this pass adds are GOBJECT debt** in rule 12's sense — a ninth

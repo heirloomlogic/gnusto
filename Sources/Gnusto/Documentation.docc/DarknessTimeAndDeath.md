@@ -81,6 +81,29 @@ fuse("bellCools", after: 20) {
 
 - ``say(_:from:)-(String,Location...)`` takes one room or several — a reservoir emptying is visible from either shore and from the bed between them, so name all three. Darkness does **not** gate it: a bell rung in an unlit room is still heard from inside it.
 - ``say(_:from:)-(String,Item)`` (and its ``Actor`` twin) asks ``Item/isVisible``, which the dark *does* gate, and which what the player is carrying always passes. It is the one to reach for when the sentence is something you have to see to believe.
+- ``say(_:from:)-(String,Earshot)`` is the room list hoisted out of the call and given a name, for a sentence about a **noise**.
+
+### An earshot is a list, not a radius
+
+An explosion, a rockfall, a telephone, a knock at a door: each is audible across some neighbourhood of rooms and inaudible outside it, and the neighbourhood is usually the same one for every line about that source. Write it once, as an ``Earshot``, and every line about that source reads it:
+
+```swift
+/// Everywhere inside the volcano hears what happens inside the volcano.
+var insideTheVolcano: Earshot {
+    Earshot(shaft + [narrowLedge, library, volcanoView, wideLedge, dustyRoom])
+}
+
+fuse("dustyRoomFalls", after: 5) {
+    dustyRoomWrecked = true                              // the world moves…
+    say(Prose.ominousRumbling, from: insideTheVolcano)   // …the telling does not
+}
+```
+
+An ``Earshot`` takes a variadic list or an array, so a region that already keeps a roster of its own rooms builds one out of that roster plus the few that are not on it, rather than re-typing the roster and letting the two drift.
+
+The engine will not compute the list for you, and deliberately does not try. Distance over the exit graph is false of any map where two adjacent rooms are two hundred feet apart, or where four rooms are four heights of one shaft. What carries, and how far, is a question about the fiction — so the author answers it, once per source rather than once per line.
+
+A body that has to know the answer *before* it says anything asks ``Earshot/contains(_:)`` instead. A daemon that draws randomness is the usual case: guard on the room first and a turn spent out of earshot burns no randomness, which is what keeps a pinned seed pinned.
 
 Dropping the line changes nothing else, exactly as ``sayOnceThisTurn(_:)`` does. Put the state change above the `say` and the fuel still runs out, the window still shuts, the gates still open — the player is simply not told about a room they are not in. The one ordering trap is a change that puts its own subject out of sight: ask *before* you blow the candle out, or nobody standing over it will be told why the room went dark.
 

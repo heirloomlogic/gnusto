@@ -40,6 +40,22 @@ extension Prose {
         climb up some stairs and a narrow tunnel leading east.
         """
 
+    /// Bare `smell` in the Smelly Room. This game's own — Zork I has no
+    /// room-scoped `V-SMELL` branch — but the room's own description does have
+    /// the odor, and the floor's "You smell nothing you could put a name to."
+    /// contradicted it. (#325)
+    static let smellyRoomSmell = """
+        Whatever it is, it is down the staircase.
+        """
+
+    /// Bare `smell` in the Gas Room, for the same reason. The gas is what kills
+    /// you here, so a line saying you smell nothing was the worst place in the
+    /// game to say it.
+    static let gasRoomSmell = """
+        Coal gas, thick enough to taste. An open flame here would be the last
+        thing you smell.
+        """
+
     static let coalMine = """
         This is a nondescript part of a coal mine.
         """

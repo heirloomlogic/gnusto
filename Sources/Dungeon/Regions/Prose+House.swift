@@ -89,6 +89,10 @@ extension Prose {
 
     static let bottle = "A clear glass bottle, stoppered and quite ordinary."
 
+    /// The same bottle with the stopper out — the trait is `openable`, so
+    /// "stoppered" is a claim about state and not a fact about the glass.
+    static let bottleOpen = "A clear glass bottle, unstoppered and quite ordinary."
+
     static let water = "A quantity of ordinary water."
 
     // MARK: - Living room

@@ -22,8 +22,15 @@ extension Prose {
     // winds, the boat `inflate` inflates). Until then the verb parses and
     // answers politely instead of "I didn't understand that."
 
-    /// This game's own. `V-WIND` (`gverbs.zil:1608`) names the thing, and an
-    /// `action(…)` row is handed no name to put in it.
+    /// This game's own. `V-WIND` (`gverbs.zil:1608`) is "You cannot wind up a
+    /// X.", which a row **can** now name — ``ZorkSystems/playWith(_:)`` does
+    /// exactly that for `raise` and `lower` — but only at the cost of the
+    /// source's indefinite article, which no named line in the engine deals in.
+    /// `raise` and `lower` paid it because their lines were false in a room with
+    /// a rope in it; this one is about the thing already and the canary claims
+    /// the verb wherever winding is the puzzle, so the reproduction would buy a
+    /// departure and reach nobody. #325 corrected the reason, which used to be
+    /// that a row is handed no name.
     static let verbWindNothing = "That isn't something you can wind."
 
     /// `V-INFLATE` (`gverbs.zil:758`).
@@ -35,15 +42,24 @@ extension Prose {
     /// `V-LAUNCH` (`gverbs.zil:805`).
     static let verbLaunchNothing = "That's pretty weird."
 
-    /// This game's own: `V-RAISE` routes to `V-LOWER`'s `HACK-HACK`
-    /// (`gverbs.zil:1132`), which names the thing and draws one of three.
-    static let verbRaiseNothing = "Nothing here rises to the occasion."
+    /// `V-LOWER` (`gverbs.zil:902`), which `V-RAISE` calls outright (`:1131`):
+    /// `HACK-HACK "Playing in this way with the "`, finished by one of
+    /// `HO-HUM`'s three (`:2035`). This takes the third, as `touch` and `wave`
+    /// do in the stub floor; the draw is recorded in `FIDELITY.md`.
+    ///
+    /// A `raise`/`lower` row is handed the object, so the sentence is about the
+    /// thing rather than about the room — which is the whole repair. The two
+    /// invented lines it replaces claimed there was nothing here to raise or
+    /// lower while the rope hung over the Dome Room rail. (#325)
+    static func playingWithIt(_ name: String) -> String {
+        "Playing in this way with \(name) has no effect."
+    }
 
-    /// This game's own, for the same reason as ``verbRaiseNothing``.
-    static let verbLowerNothing = "There's nothing here to lower."
-
-    /// This game's own: the source folds `turn … with …` into `V-TURN`.
-    static let verbTurnWithNothing = "Nothing here turns with that."
+    /// `V-TURN` (`gverbs.zil:1506`). `TURN OBJECT WITH OBJECT` is one of the six
+    /// syntax rows that reach it (`gsyntax.zil:505`), so `turn bolt with wrench`
+    /// away from the dam answers in the source's words rather than in an
+    /// invented claim about the room. Also the stub floor's `turn`.
+    static let verbTurnNoEffect = "This has no effect."
 
     /// This game's own: `V-RING` (`gverbs.zil:1163`) is a bell puzzle branch
     /// with no general refusal.
@@ -62,10 +78,6 @@ extension Prose {
     /// the stub floor's bare half — so it is a constant rather than a literal
     /// in either.
     static let verbKnockDoor = "Nobody's home."
-
-    /// This game's own: `V-HELLO` (`gverbs.zil:734`) draws one of four
-    /// (`HELLOS`, `:2198`), which an `action(…)` row has no stream to draw from.
-    static let verbHello = "Nobody here returns your greeting."
 
     /// This game's own: the source has no `FIX`.
     static let verbFixNothing = "That doesn't need fixing, or can't be."

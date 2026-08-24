@@ -273,7 +273,7 @@ struct DungeonAlice: GameContent {
         name("leak")
         adjectives("large")
         synonyms("ceiling", "crack", "drip")
-        description(Prose.poolLeak)
+        // Described by a rule: the steam takes the leak with it.
         scenery
     }
 
@@ -399,7 +399,7 @@ struct DungeonAlice: GameContent {
         adjectives("white", "crystal", "beautiful")
         synonyms("sphere", "ball", "stone", "glass")
         firstSight(Prose.sphereFirstSight)
-        description(Prose.sphere)
+        // Described by a rule: the pedestal under it does not always hold it.
         trait(.weight, 10)
         trait(.takeValue, 6)
         trait(.depositValue, 6)
@@ -607,6 +607,27 @@ struct DungeonAlice: GameContent {
         try sendBucket(to: circularRoom, saying: Prose.bucketDescends)
     }
 
+    /// What a resurrection owes this wing, over and above a place to stand.
+    /// Called by ``Dungeon/onDeath()``, which empties the bucket first for the
+    /// reason it calls ``raiseBucket()`` — the water is a ``DungeonHouse`` item.
+    ///
+    /// This is the one part of the map that keeps state about the player's own
+    /// *body*, and a death four inches high used to leave every bit of it
+    /// standing — with the tin of spices and the crystal sphere behind it, so
+    /// the run's `maxScore` went with them. Two things sealed it: ``shrunk``
+    /// stayed set, and `eatMeCake.before(.eat)` guards on `!shrunk`, so the way
+    /// back down was shut by the flag saying you were already there; and the
+    /// bucket, which descends only for a passenger who empties it, was left at
+    /// the top of a shaft with no other way up. Death is the only way to be
+    /// parted from it, so death is where it goes back. `FIDELITY.md`, "The
+    /// bucket does not travel", carries the clock the mainframe uses instead.
+    ///
+    /// No prose: the resurrection speaks for the whole turn.
+    func unsealAfterDeath() {
+        shrunk = false
+        bucket.move(to: circularRoom)
+    }
+
     /// The move both ends of the trip make. Moving the bucket rather than the
     /// player is what carries a passenger — and their load — along with it.
     private func sendBucket(to room: Location, saying line: String) throws -> Never {
@@ -669,6 +690,10 @@ struct DungeonAlice: GameContent {
 
     @RuleBuilder private var poolRoomRules: Rules {
         poolRoom.describe { poolEvaporated ? Prose.poolRoomDrained : Prose.poolRoom }
+
+        // And the leak itself, which the room's own paragraph already knows the
+        // steam took away. The item under it was left behind dripping.
+        leak.describe { poolEvaporated ? Prose.poolLeakDry : Prose.poolLeak }
 
         // The ceiling is a very long way up when you are four inches high, and
         // one reach rule says so to `take`, `open`, `plug` and the rest alike.
@@ -800,6 +825,10 @@ struct DungeonAlice: GameContent {
         // Ordered to fetch it, the robot springs the trap on itself, and a
         // steel cage is no more to a robot than weather. An order never reaches
         // stage 4, so this half has to be a `before` rule.
+        // "resting on a low pedestal" is where it was, not what it is, and the
+        // player reads it standing inside a steel cage with the sphere in hand.
+        sphere.describe { cageSprung ? Prose.sphereOffThePedestal : Prose.sphere }
+
         sphere.before(.take) {
             guard command.actor == robot else { return }
             try require(!cageSprung, else: Prose.cageAlreadySprung)

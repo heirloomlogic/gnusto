@@ -315,6 +315,20 @@ struct ZorkRiver: GameContent {
             try die(Prose.overTheFalls)
         }
 
+        // `V-STAND` (`gverbs.zil:1305`) branches on `VEHBIT` before it says
+        // anything: aboard a vehicle it performs `V?DISEMBARK`, and only
+        // otherwise does it answer "You are already standing, I think." The stub
+        // floor carries the second branch and cannot see the first, so a man
+        // sitting in the magic boat halfway down the Frigid River was told he
+        // was already standing. ``Player/vehicle`` is read-only from a rule, so
+        // this cannot perform the disembark the source performs; it says where
+        // he actually is and names the word that gets him out. Recorded as a
+        // departure in `FIDELITY.md`. (#325)
+        world.before(.stand) {
+            guard let vehicle = player.vehicle else { return }
+            try reply(Prose.standingInTheBoat("\(vehicle.definiteNoun)"))
+        }
+
         // You can't step out of the boat onto open water — you'd be swept away.
         // Land on a bank first.
         world.before(.disembark) {

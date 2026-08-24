@@ -318,6 +318,12 @@ struct Dungeon: Game, GameMain {
             }
         }
 
+        // A resurrection restores the body, and the Alice wing is the one part
+        // of the map that keeps state about the body. The water half is the
+        // host's here as it is in ``bucketRules``; the wing puts back the rest.
+        if alice.bucket.holds(house.water) { house.water.vanish() }
+        alice.unsealAfterDeath()
+
         player.location = aboveGround.forestDeep
         say(Prose.resurrection)
         describeSurroundings()
@@ -710,11 +716,11 @@ struct Dungeon: Game, GameMain {
         // dropping a brass bauble — once, ever. Wound up the tree, the bauble
         // falls to the forest floor below. Canary and forest live in different
         // bundles, so the host owns the trick; the set of rooms the bird
-        // answers in is ``DungeonAboveGround/isInTheWood(_:)``, which the
-        // region's own ambience daemon shares.
+        // answers in is ``DungeonAboveGround/theWood``, which the region's own
+        // ambience daemon shares.
         house.canary.before(.wind) {
             let here = player.location
-            guard !house.baubleDropped, aboveGround.isInTheWood(here) else {
+            guard !house.baubleDropped, aboveGround.theWood.contains(here) else {
                 try reply(Prose.canaryChirps)
             }
             house.bauble.move(to: here == aboveGround.upATree ? aboveGround.forestTree : here)
@@ -809,9 +815,19 @@ struct Dungeon: Game, GameMain {
         maze.gratingRoom.onEnter { aboveGround.grating.reveal() }
 
         // The grating reads differently from the two sides of it, because from
-        // one of them you are the thing underneath.
+        // one of them you are the thing underneath — and differently again for
+        // each turn of its lock, which the description used to fasten with
+        // regardless, from both sides, after the player had opened it.
         aboveGround.grating.describe {
-            player.location == maze.gratingRoom ? Prose.gratingFromBelow : Prose.grating
+            let grating = aboveGround.grating
+            let fromBelow = player.location == maze.gratingRoom
+            return if grating.isOpen {
+                fromBelow ? Prose.gratingOpenFromBelow : Prose.gratingOpenFromAbove
+            } else if grating.isLocked {
+                fromBelow ? Prose.gratingFromBelow : Prose.grating
+            } else {
+                fromBelow ? Prose.gratingUnlockedFromBelow : Prose.gratingUnlockedFromAbove
+            }
         }
 
         // Both turns of the lock, which `GRATE-FUNCTION` answers itself for the

@@ -373,6 +373,15 @@ extension Prose {
         every one of them between you and the north shore.
         """
 
+    /// The same reservoir with the gates open, which is the only condition
+    /// under which anybody is standing here to look at it. See
+    /// ``reservoirFromShore``, which is this branch written once for the two
+    /// neighbouring rooms.
+    static let reservoirWaterDrained = """
+        Mud, and a great deal of it, with the north shore a short and
+        unpleasant walk away across the middle.
+        """
+
     static let reservoirFromShore = """
         Whether it is a reservoir or a mud flat depends entirely on what the
         bolt at the top of the dam was last told to do.
