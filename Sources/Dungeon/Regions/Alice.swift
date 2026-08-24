@@ -155,12 +155,25 @@ struct DungeonAlice: GameContent {
         scenery
     }
 
-    /// `ETCH2` and the same global at the top.
+    /// `ETCH2` and the same global at the top. The `crack` and the `floor` are
+    /// not the ring of letters and stopped being synonyms for it: the room puts
+    /// them across the doorway east, which is somewhere to walk and not
+    /// something to read. (#286)
     let etchingsAbove = Item {
         name("wall with etchings")
         adjectives("carved")
-        synonyms("etchings", "etching", "walls", "wall", "well", "crack", "floor")
+        synonyms("etchings", "etching", "walls", "wall", "well")
         description(Prose.etchingsAbove)
+        scenery
+    }
+
+    /// The crack the Top of Well's own last sentence is about, which the
+    /// etchings were answering for. (#286)
+    let crackAtTopOfWell = Item {
+        name("crack")
+        adjectives("small")
+        synonyms("crack", "floor")
+        description(Prose.topOfWellCrack)
         scenery
     }
 
@@ -325,27 +338,47 @@ struct DungeonAlice: GameContent {
 
     /// `RNBUT`, `SQBUT`, `TRBUT`. Three objects in the source, three here, and
     /// only one of the three has an effect this project can establish.
-    let roundButton = Item {
-        name("round button")
-        adjectives("round")
-        synonyms("button", "buttons", "controls", "control", "machinery", "bank")
-        description(Prose.button("round"))
-        scenery
+    ///
+    /// All three used to carry `machinery`, `controls` and `bank`, so the
+    /// room's own sentence — a bank of controls with a great deal of machinery
+    /// *behind* them — could only be answered by asking which button you meant,
+    /// and none of the three was the answer. Those three words now belong to
+    /// the two things the sentence is actually about. (#286)
+    private static func buttonScenery(_ shape: String) -> Item {
+        Item {
+            name("\(shape) button")
+            adjectives(shape)
+            synonyms("button", "buttons")
+            description(Prose.button(shape))
+            scenery
+        }
     }
 
-    let squareButton = Item {
-        name("square button")
-        adjectives("square")
-        synonyms("button", "buttons", "controls", "control", "machinery")
-        description(Prose.button("square"))
+    let roundButton = buttonScenery("round")
+    let squareButton = buttonScenery("square")
+    let triangularButton = buttonScenery("triangular")
+
+    /// The bank the three buttons are set in. (#286)
+    let controlBank = Item {
+        name("controls")
+        adjectives("unlabelled")
+        synonyms("controls", "control", "bank", "panel")
+        description(Prose.controlBank)
         scenery
+        plural
     }
 
-    let triangularButton = Item {
-        name("triangular button")
-        adjectives("triangular")
-        synonyms("button", "buttons", "controls", "control", "machinery")
-        description(Prose.button("triangular"))
+    /// And what is running behind it, which is the half of the sentence no
+    /// button could ever have answered for. (#286)
+    let machineRoomMachinery = Item {
+        name("machinery")
+        adjectives("running")
+        // Not `machine`: the robot answers to that word and the puzzle walks it
+        // into this room, so claiming it here would re-open the disambiguation
+        // the trim above closes. The paragraph prints "machinery" and never
+        // "machine".
+        synonyms("machinery")
+        description(Prose.machineRoomMachinery)
         scenery
     }
 
@@ -399,6 +432,27 @@ struct DungeonAlice: GameContent {
         description(Prose.cageBars)
         scenery
         plural
+    }
+
+    /// The gas the fuse announces on the turn the cage lands, and the vent it
+    /// comes in through. Both were words the game printed and the parser denied
+    /// — `x vent` did not even get as far as a refusal, it got *"I don't know
+    /// the word"*. Neither is hidden: the only frame in which a player can be
+    /// standing in this room is the frame in which the gas is arriving. (#286)
+    let gasInCage = Item {
+        name("colorless gas")
+        adjectives("colorless", "odorless")
+        synonyms("gas", "vapor", "fumes")
+        description(Prose.cageGasItself)
+        scenery
+    }
+
+    let ventInCage = Item {
+        name("vent")
+        adjectives("floor")
+        synonyms("vent", "grille", "grate")
+        description(Prose.cageVent)
+        scenery
     }
 
     /// `CAGE`. What is left once the robot has had it up off the floor.
@@ -489,11 +543,16 @@ struct DungeonAlice: GameContent {
         roundButton.starts(in: machineRoom)
         squareButton.starts(in: machineRoom)
         triangularButton.starts(in: machineRoom)
+        controlBank.starts(in: machineRoom)
+        machineRoomMachinery.starts(in: machineRoom)
+        crackAtTopOfWell.starts(in: topOfWell)
 
         alarmSticker.starts(in: dingyCloset)
         sphere.starts(in: dingyCloset)
         pedestal.starts(in: dingyCloset)
         cageBars.starts(in: cage)
+        gasInCage.starts(in: cage)
+        ventInCage.starts(in: cage)
     }
 
     // MARK: - Rules

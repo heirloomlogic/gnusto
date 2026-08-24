@@ -525,6 +525,65 @@ extension Prose {
         out of the rain.
         """
 
+    /// Written fresh. The same mouth from the shore below it, where the river
+    /// used to answer for the word. (#286)
+    static let caveMouthFromTheShore = """
+        A low opening at the top of the rocks, dark a foot inside and out of
+        the weather, which is more than the shore is.
+        """
+
+    /// Written fresh. The ground the End of Rainbow puts under the player, and
+    /// the reason there is so little of it. (#286)
+    static let endOfRainbowBeach = """
+        A rind of wet shingle between the water and the cliffs, wide enough to
+        stand on and not much wider.
+        """
+
+    /// The six bank paths, one line each. Every one of them is a beaten track
+    /// and the whole of what differs is where it goes, which is what an examine
+    /// of the word is asking. (#286)
+    static let pathAtNorthBeach = """
+        A single narrow track along the foot of the cliffs, going south. There
+        is no other way off this beach on foot.
+        """
+
+    static let pathAtSouthBeach = """
+        A single narrow track along the foot of the cliffs, going north above
+        the waterline.
+        """
+
+    static let pathAtSandyBeach = """
+        A track pressed into the sand beside the water, running south out of
+        the beach.
+        """
+
+    static let pathAtShore = """
+        A track along the shore, north to the sand and south around a corner
+        sharp enough to hide whatever is past it.
+        """
+
+    static let pathAtFalls = """
+        A track leaving by the north end of the ledge, which is the only way
+        off it that does not involve the falls.
+        """
+
+    static let pathAtEndOfRainbow = """
+        A narrow track leaving the shingle to the southeast, climbing as it
+        goes.
+        """
+
+    /// The hole in the beach, in its two states. Written fresh; the mainframe
+    /// prints the digging and models nothing to look at afterwards. (#286)
+    static let beachHoleShallow = """
+        A scoop out of the wet sand, and the sides of it coming back in almost
+        as fast as you take them out.
+        """
+
+    static let beachHoleDeep = """
+        Deep enough now that the sand stands over your head on every side, and
+        none of it looks like staying there.
+        """
+
     /// Written fresh.
     static let ancientChasmItself = """
         The chasm is deep, dry and old. Whatever cut it has been gone a long

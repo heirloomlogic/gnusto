@@ -545,8 +545,14 @@ could reach.)
 
 **Teague, on what he told Constance:**
 > "I told the old lady he'd gone out. That's all I told her. I wanted half an hour in
-> that lab and I didn't want her watching the yard while I had it." He looks at the
-> window. "It wasn't a lie that was supposed to do anything."
+> that lab and I didn't want her watching the yard while I had it." He looks past you.
+> "It wasn't a lie that was supposed to do anything."
+
+(The gesture names nobody's furniture, for the same reason his hands do above. He used to
+look at the window; the confession lands in the front hall, which has none, and `window`
+is not a word this game answers anywhere. The lab lamp's pre-blast line printed the noun
+too, and now the man inside works to the bench and forgets the rest — which names
+nothing the yard has to answer for either.)
 
 **Constance, shown the glove:**
 > She takes it out of your hand, which you were not expecting, and turns it over once.

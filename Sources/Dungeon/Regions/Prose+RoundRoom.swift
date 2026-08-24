@@ -44,9 +44,15 @@ extension Prose {
 
     /// Written fresh. The mainframe prints a second line while the carousel
     /// turns, and this is that beat in this game's own words.
-    static let roundRoomCompass = """
-        Your compass needle swings from one passage to the next and will not
-        settle on any of them.
+    ///
+    /// It used to be a compass needle swinging from one passage to the next,
+    /// which named two things at once that the game does not have: there is no
+    /// compass anywhere in it, and the player is not carrying one. The beat is
+    /// the same beat without them — you cannot tell which mouth is which, and
+    /// the reason is under the floor. (#286)
+    static let roundRoomTurning = """
+        Whichever passage you settle on, the floor has carried it somewhere
+        else by the time you look back.
         """
 
     /// The eight passages, in two states. This room's entire description is
