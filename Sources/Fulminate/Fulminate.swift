@@ -1722,7 +1722,7 @@ struct Fulminate: Game, GameMain {
                 """
                 : """
                 A bulb in a tin shade over the side door, burning at half past five in June because the man inside
-                works to the bench and not to the window.
+                works to the bench and forgets the rest.
                 """
         }
 
@@ -2126,7 +2126,7 @@ struct Fulminate: Game, GameMain {
                 knowing: .teagueRecanted, learning: .teagueLied,
                 reply: """
                     "I told the old lady he'd gone out. That's all I told her. I wanted half an hour in that lab and
-                    I didn't want her watching the yard while I had it." He looks at the window. "It wasn't a lie
+                    I didn't want her watching the yard while I had it." He looks past you. "It wasn't a lie
                     that was supposed to do anything."
                     """)
             topic(

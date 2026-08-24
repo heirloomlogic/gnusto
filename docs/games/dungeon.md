@@ -1421,3 +1421,83 @@ what they scored. Three things are worth naming:
 Box 15, the harness room census, closed in the same branch — it is a change to
 `.claude/workflows/playtest.js` rather than to this game, so it has no rule here.
 With it, **#233 is closed**: fifteen boxes over five passes.
+
+### The sixth pass: the room's paragraph and the room's declarations
+
+The 2026-08-18 round's third and fifth boxes are one defect looked at from two
+sides: **a room's paragraph names things the declarations do not model.** In the
+third box the printed noun resolves to the *wrong* item — a catch-all scenery
+blob that collected the word along with a dozen others. In the fifth it resolves
+to nothing, and the player is told "You can't see any such thing" about a
+sentence the game printed one line earlier.
+
+Rule 11 already had the first half of this and the third pass paid it in the
+volcano. What that pass did not do is read the *rest* of the map with the rule in
+hand, and eleven sites were left standing — seven of them in one region.
+
+17. **A noun that names a way out is never scenery about the view.** The habit
+    the round found is specific and it has a tell: the mis-answered noun is the
+    room's **working exit** in four of the seven sites. Rocky Shore's `cave` was
+    the Frigid River, the White Cliffs' `path` was a wall the room says cannot be
+    climbed, Aragain Falls' `path` was a 450-foot drop, and Canyon View's
+    `forest` was "too far off to make out more than the shape" about a wood the
+    player walked out of the turn before. Each of those answers tells the player
+    the way they are looking at is not a way, which is worse than an unanswered
+    noun and reads as a map bug rather than a prose one.
+
+    So: where a room's paragraph offers a route, the route gets the noun, and
+    whatever else the room can see gives it up. `pathScenery(_:)` is now declared
+    twice in this game, once above ground and once on the river, for the reason
+    rule 12 gives — six bank rooms name a path going six different places, and
+    one item cannot be in six rooms.
+
+18. **A sentence may not name a thing the player does not have.** The Round Room
+    printed *"Your compass needle swings from one passage to the next"* while the
+    carousel turned. The only compass in this game is the arrow on the mirror
+    box's wall in the endgame, four hundred turns and one death away, and the
+    player is carrying nothing of the kind here — so the line failed both halves
+    of rule 11 at once: the noun had no answer, and it could not be given one
+    without putting an object in the player's hands that no source and no puzzle
+    asks for.
+
+    That is the case in which the repair is the **sentence**, not an item. The
+    beat is unchanged — you cannot tell which mouth is which, and the reason is
+    under the floor — and it is now said with the room's own two nouns.
+
+### What the sixth pass changed, and what it did not
+
+The mechanics contract is untouched a sixth time — no map, no puzzle, no
+treasure value, no `maxScore` — and both walkthroughs score what they scored.
+Every new item is `scenery`, so no room listing gains a line. **Four of the
+fourteen items this pass adds are GOBJECT debt** in rule 12's sense — a ninth
+`forestStand()`, two more `fallsScenery(_:)` and a third `whiteCliffsFromBelow` —
+so the third pass's running count grows by four. The other ten have text written
+for their own room and would survive that feature intact. Three things are worth
+naming:
+
+- **Two of the seven sites were repaired by giving a word away, not by taking
+  one.** The Machine Room's `machinery`, `controls` and `bank` hung on all three
+  buttons, so the room's one sentence could only be answered by *"Which do you
+  mean: the round button or the square button or the triangular button?"* — and
+  the paragraph puts the machinery explicitly **behind** the buttons, so none of
+  the three offered objects was the answer. A disambiguation prompt is a right
+  answer where a room really holds two of a thing (rule 11 says so, and the
+  gnome's two doors are the case). It is a wrong answer where the room holds one
+  thing and three items were claiming its name.
+- **The cage's gas needed no `hidden` flag.** `x gas` and `x vent` were denied on
+  the turn the fuse printed both, and the obvious repair — items revealed when
+  the gas starts — is more machinery than the frame needs: the only state in
+  which a player can be standing in the Cage is the state in which the gas is
+  arriving. The Sandy Beach hole is the opposite case and does take `hidden`,
+  because the beach exists for a hundred turns before anybody digs it.
+- **Trimming without replacing is the same defect from the other side**, which
+  the third pass wrote down and this one paid again: `rainbowAtEndOfRainbow`
+  carried the beach, the cliffs, the falls and the path as well as the rainbow,
+  and dropping four synonyms without declaring four items would have turned one
+  wrong answer into four missing ones.
+
+The Viewing Room's sign is the one box-5 site left open, and deliberately. It is
+`needs-human`: the notice names "an advanced protective device", "the bank
+officer" and "all customers", none of them a thing the room says is *present*,
+and one rater holds that the rule does not reach a notice about absent people.
+Declaring items for them would be inventing world.

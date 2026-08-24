@@ -683,6 +683,27 @@ struct FulminateTests {
         #expect(turnOutput(of: "x wall", in: after).contains("The ivy is holding up what is left"))
     }
 
+    /// **`window` was printed by two declarations and known to no vocabulary.**
+    /// The lab lamp's pre-blast line put one in the carriage house and Teague's
+    /// confession put one in the Front Hall, a room that has none; neither is a
+    /// word this game answers. Both sentences say what they said without it.
+    /// (#280, C7)
+    @Test func nothingPrintsAWindowThisGameDoesNotHave() async throws {
+        let yard = try await play(Fulminate(), ["south", "west", "x lamp"])
+        let lamp = turnOutput(of: "x lamp", in: yard)
+        #expect(lamp.contains("works to the bench and forgets the rest"))
+        #expect(!lamp.contains("window"))
+
+        let hall = try await play(
+            Fulminate(),
+            Array(repeating: "z", count: 21)
+                + ["search coat", "take receipt", "show receipt to teague", "ask teague about mrs vane"])
+        let keystone = turnOutput(of: "ask teague about mrs vane", in: hall)
+        #expect(keystone.contains("I told the old lady he'd gone out."))
+        #expect(keystone.contains("He looks past you."))
+        #expect(!keystone.contains("window"))
+    }
+
     /// And the lab from inside, which calls itself somebody's workshop and
     /// somebody else's chapel and then puts its own roof in the yard.
     @Test func theCarriageHouseAnswersForTheWordsItCallsItselfBy() async throws {

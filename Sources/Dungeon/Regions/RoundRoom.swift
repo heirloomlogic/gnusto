@@ -44,8 +44,8 @@ struct DungeonRoundRoom: GameContent {
     }
 
     /// The carousel. Its description is a rule rather than a constant because
-    /// it carries state: the compass line prints only while the machinery
-    /// turns.
+    /// it carries state: the second paragraph, about not being able to hold a
+    /// passage still, prints only while the machinery turns.
     let roundRoom = Location {
         name("Round Room")
         dark
@@ -305,7 +305,7 @@ struct DungeonRoundRoom: GameContent {
         // a rule rather than a constant.
         roundRoom.describe {
             carouselSpinning
-                ? "\(Prose.roundRoom)\n\n\(Prose.roundRoomCompass)"
+                ? "\(Prose.roundRoom)\n\n\(Prose.roundRoomTurning)"
                 : Prose.roundRoomStilled
         }
 

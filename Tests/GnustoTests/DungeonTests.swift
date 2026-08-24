@@ -849,7 +849,7 @@ struct DungeonTests {
                 "Round Room",
                 "circular stone room with passages leading off in eight",
                 "machinery whirs",
-                "compass needle swings",
+                "the floor has carried it somewhere else",
                 "the room turns under you as you go",
             ])
         #expect(!transcript.contains("blocked by cave-ins"))
