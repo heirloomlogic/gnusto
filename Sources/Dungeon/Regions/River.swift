@@ -709,6 +709,29 @@ struct DungeonRiver: GameContent {
                 """
         }
 
+        // And what that paragraph says about the view, the outdoor scenery has
+        // to agree with. The falls, the rainbow over them and the path off the
+        // north end were plain `scenery` with no guard of any kind, so `x
+        // falls` answered in full on the turn after `look` said the falls could
+        // not be seen from inside the barrel. (#286)
+        //
+        // Two rules apiece, because one cannot do both jobs — the same split
+        // the mirror box's own guard is written in. `reach { }` runs at stage
+        // 0, ahead of every `before` rule, and covers every verb that has to
+        // *touch* the thing, gating `Item/isReachable` with it — including the
+        // `drink` row above, which is a river arriving at the bottom of a
+        // 450-foot drop and not something a man in a barrel is reaching. But
+        // EXAMINE is `reach: .notNeeded` in `CoreVerbs`, and rightly, because a
+        // thing you cannot lay a hand on is usually a thing you can still look
+        // at. Here it is exactly what you cannot, so the look gets its own
+        // guard and the two refuse in the same words.
+        for view in [fallsAtFalls, rainbowAtFalls, pathAtFalls] {
+            view.reach(otherwise: Prose.barrelBlocksTheView) { player.vehicle != barrel }
+            view.before(.examine) {
+                try require(player.vehicle != barrel, else: Prose.barrelBlocksTheView)
+            }
+        }
+
         // Paddling off the end of River-5. The mainframe drops you into a room
         // whose only job is to kill you; this says so in one move.
         river5.before(.go) {

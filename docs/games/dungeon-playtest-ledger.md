@@ -424,20 +424,20 @@ before acting on any of the three; the claim alone points at the wrong line.
 | `decl::Sources/Dungeon/Regions/Prose+RoundRoom.swift::roundRoomCompass` | fixed | unanswerable-noun | major |
 | `decl::Sources/Gnusto/Actions/StubVerbs.swift::stubs` | confirmed (needs-human) | prose-untrue-of-frame | major |
 | `decl::Sources/Dungeon/Regions/Prose+Temple.swift::bellCools` | confirmed | prose-untrue-of-frame | minor |
-| `decl::Sources/Dungeon/Regions/Prose+Temple.swift::blackBook` | confirmed (needs-human) | mechanic-contradicts-prose | minor |
+| `decl::Sources/Dungeon/Regions/Prose+Temple.swift::blackBook` | fixed | mechanic-contradicts-prose | minor |
 | `decl::Sources/Dungeon/Prose+Stubs.swift::stubs.climb` | fixed | stock-line-not-reskinned | minor |
 | `decl::Sources/Dungeon/Regions/Prose+Alice.swift::blueIcingWriting` | fixed | prose-untrue-of-state | blocking |
 | `decl::Sources/Dungeon/Regions/Prose+Alice.swift::poolLeak` | confirmed | prose-untrue-of-state | major |
 | `decl::Sources/Dungeon/Regions/Prose+Alice.swift::robotSpringsTheCage` | confirmed | mechanic-contradicts-prose | major |
 | `decl::Sources/Dungeon/Regions/Prose+Alice.swift::robotIsOutOfEarshot` | confirmed (needs-human) | stock-line-not-reskinned | minor |
 | `decl::Sources/Dungeon/Regions/Prose+River.swift::geronimoNotInBarrel` | fixed | prose-untrue-of-frame | major |
-| `decl::Sources/Dungeon/Regions/Prose+River.swift::barrelInside` | confirmed (needs-human) | prose-untrue-of-state | minor |
+| `decl::Sources/Dungeon/Regions/Prose+River.swift::barrelInside` | fixed | prose-untrue-of-state | minor |
 | `decl::Sources/Dungeon/Prose+Systems.swift::verbSmell` | fixed | prose-untrue-of-frame | minor |
 | `decl::Sources/Dungeon/Regions/Prose+Temple.swift::exorcismLapses` | confirmed | prose-untrue-of-frame | major |
 | `decl::Sources/Dungeon/Regions/Prose+Temple.swift::bellRingRedHot` | confirmed | prose-untrue-of-state | major |
 | `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::pineEndOpen` | confirmed | prose-untrue-of-state | major |
-| `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::guardians` | confirmed (needs-human) | prose-untrue-of-frame | major |
-| `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::cryptTransition` | confirmed | prose-untrue-of-state | minor |
+| `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::guardians` | fixed | prose-untrue-of-frame | major |
+| `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::cryptTransition` | fixed | prose-untrue-of-state | minor |
 | `decl::Sources/Dungeon/Prose+Systems.swift::toll` | confirmed | register-mismatch | note |
 | `decl::Sources/Dungeon/Regions/Prose+EndgameMechanics.swift::masterArrives` | confirmed (needs-human) | register-mismatch | note |
 | `decl::Sources/Dungeon/Regions/Prose+AboveGround.swift::gratingFromBelow` | confirmed | prose-untrue-of-state | major |
@@ -490,3 +490,57 @@ The second walks the whole second descent and comes out holding the spices.
 The shape worth looking for in the rest of #286: the round keys on the **sentence**, so a
 finding whose sentence is a symptom of lost state gets the sentence's severity. D1 read as
 `major` because a mouse-sized reading line is a `major` sort of wrong.
+
+## D7 and D10 are `fixed` — 2026-08-24
+
+Class 5, "a line asserts a position or a view the frame contradicts", is four sites and
+they are all closed. The class's tell is that the sentence is about **where the reader is
+standing relative to the thing**, so no amount of state-tracking repairs it: three of the
+four needed the words changed and the fourth needed the world narrowed to fit them.
+
+- **`guardians`** said *"Two statues stand in the hallway, one to either side of it"*,
+  which reads as a claim to be standing between them. The item is placed in `MRC` on
+  purpose, one room short of the statues, and `MRG` and the four narrow rooms beside the
+  last two berths are all `guardedRooms` — every one of them an `onEnter { try die(…) }`.
+  Verified in the code, not from the finding: a living player is never level with them,
+  ever. The three-way fork the round left open collapses once that is checked, because two
+  of its three branches are about a frame that does not exist. Reworded as a view from the
+  south; the room paragraph and the placement are untouched. No `describe { }`, because a
+  rule with one reachable frame only re-derives a constant.
+- **`cryptTransition`** promised *"one word will return you to it, and you have that word
+  now"*. `temple` and `treasure` are declared game-wide and answer `graniteWordInert`
+  everywhere past the crypt; the endgame map has no route back into the main dungeon at
+  all. The promise is cut. The doc comment on the constant used to justify naming no
+  typeable word, which was answering the wrong half of the objection — the defect was never
+  the missing word, it was the missing route.
+- **`blackBook`** is the round's `needs-human` that turns on a fact rather than a judgment.
+  `before(.read)` returned outside the ceremony, so `read book` fell to the default action
+  and printed the item's `description` — the *cover* of a book that same sentence
+  advertises as open at a marked page. The book has a page now. Both source families give
+  it a read text, so having one is fidelity-supported; the **words** are not, because in
+  both sources that text is the commandment, and this game prints the commandment on the
+  Temple's granite wall. The page is written fresh, and the test asserts #12592 never
+  appears in it so the two cannot converge later.
+
+  **A first draft of the page listed the ceremony's three steps in order** — ring the bell,
+  carry a light, read this aloud at the gate. It answered the box and moved a puzzle:
+  nothing else in this game states the ritual, and the source's own read text for this book
+  is a joke rather than a walkthrough. What is on the page now is the passage the ceremony
+  reads *aloud*, and it names neither the bell nor the candles nor the gate; two assertions
+  pin that. **A prose box is not a licence to move a puzzle**, and this class is going to
+  keep offering the chance — every one of its repairs is a rewrite of a sentence the player
+  reads for information.
+- **`barrelInside`** is the one repaired by narrowing rather than by rewriting, and the
+  round's objection — that narrowing scope silences the whole outdoor set — is correct and
+  is the right outcome. From inside a barrel there are three outdoor things at Aragain
+  Falls and the player can see none of them. `reach { }` alone does **not** do it: EXAMINE
+  is `reach: .notNeeded` in `CoreVerbs`, so the first attempt built and passed its build
+  and changed nothing at the keyboard. Each of the three carries a `reach` guard and an
+  `before(.examine)` guard refusing in the same words. What is deliberately not silenced:
+  the barrel itself, and `listen`, because a man in a barrel hears a waterfall perfectly
+  well.
+
+The pattern worth carrying forward, and it is the opposite of D1's: where D1's sentence was
+a symptom of lost state, three of these four sentences are the **whole** defect and the
+state behind them is correct. Checking which of the two a Class 5 finding is costs one read
+of the placement and is the difference between a prose edit and a mechanic.

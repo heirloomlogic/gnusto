@@ -1709,6 +1709,126 @@ struct DungeonProseTests {
         #expect(turnOutput(of: "x ghosts", in: transcript).contains("Nothing of them is left to look at"))
     }
 
+    // MARK: - #286's D10 — two one-off frame contradictions
+
+    /// **The black book's read fallback.** `blackBook.before(.read)` guards on
+    /// the ceremony — at the gate of Hades, with the bell rung and the candles
+    /// alight — and *returned* otherwise, so `read book` anywhere else fell
+    /// through to the default action and printed the item's `description`. That
+    /// description is the cover of a book the same sentence advertises as *open
+    /// at a page somebody has marked*, so the one command in the game that asks
+    /// what the page says answered with what the book looks like.
+    ///
+    /// Both source families give this book a read text, so having one at all is
+    /// fidelity-supported. Its **words** are not: in both sources that text is
+    /// the commandment, and this game prints the commandment on the Temple's
+    /// own wall instead. So the page is written fresh, and the assertion at the
+    /// end that #12592 never appears is what keeps the two from converging.
+    @Test func readingTheBlackBookAnswersWithThePageRatherThanTheCover() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            DungeonTests.toTheGateOfHades
+                + [
+                    "read book", "x book", "up", "read the black book", "down",
+                    "ring bell", "take candles", "light match",
+                    "burn candles with match", "read book",
+                ],
+            seed: 18)
+
+        // The page, at the gate.
+        let page = turnOutput(of: "read book", in: transcript)
+        #expect(page.contains("The marked page carries one passage"))
+        #expect(page.contains("Commandment #12593"))
+        #expect(page.contains("Ye who are dead and will not lie down,"))
+        #expect(page.contains("The rest of the book is a great deal less specific."))
+        // The page is the words the ceremony reads aloud, not a recipe for it:
+        // nothing else in this game states the ritual, and a page that listed
+        // the bell, the candles and the gate in order would answer the box by
+        // turning the hardest puzzle in the game into a set of instructions.
+        #expect(!page.contains("bell"))
+        #expect(!page.contains("candle"))
+        // Not the cover, which is what it used to answer with.
+        #expect(!page.contains("bound in something that was once an animal"))
+
+        // The cover is still the cover, and EXAMINE is still what asks for it.
+        let cover = turnOutput(of: "x book", in: transcript)
+        #expect(cover.contains("A black book, bound in something that was once an animal"))
+        #expect(!cover.contains("Commandment"))
+
+        // The page is the book's, not the room's: one room up the stairs it
+        // reads the same.
+        let elsewhere = turnOutput(of: "read the black book", in: transcript)
+        #expect(elsewhere.contains("Commandment #12593"))
+
+        // And the ceremony branch is untouched — the marked prayer read at the
+        // gate with the candles alight still banishes the spirits.
+        expectInOrder(
+            transcript,
+            [
+                "The bell suddenly becomes red hot",
+                "The candles are lighted.",
+                "Each word of the prayer reverberates",
+                "Begone, fiends!",
+            ])
+        // The Temple's wall keeps #12592, which is the trilogy's and MIT-
+        // licensed. The book's page must never become a copy of it.
+        #expect(!transcript.contains("Commandment #12592"))
+    }
+
+    /// **The barrel's closed view.** Aragain Falls' `describe` branch says
+    /// *"From where you are sitting you cannot see the falls at all"* to a
+    /// player in the barrel — and the falls, the rainbow over them and the path
+    /// off the north end were plain `scenery` with no guard of any kind, so
+    /// `x falls` answered in full on the very next turn.
+    ///
+    /// Two rules apiece close it, because one cannot: `reach { }` runs at stage
+    /// 0 and covers every verb that has to touch the thing, but EXAMINE is
+    /// `reach: .notNeeded` in `CoreVerbs` and would have walked straight past
+    /// it. What the barrel does **not** block is itself, or a noise: `listen`
+    /// still answers with the falls, because a man in a barrel can hear them
+    /// perfectly well.
+    @Test func theBarrelSilencesTheViewItSaysYouCannotSee() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toAragainFalls
+                + [
+                    "x falls", "x rainbow", "x path", "board barrel", "look",
+                    "examine falls", "examine rainbow", "examine path",
+                    "x barrel", "listen", "get out", "look at falls",
+                ],
+            seed: 18)
+
+        // Standing on the ledge, all three answer.
+        #expect(turnOutput(of: "x falls", in: transcript).contains("Four hundred and fifty feet of the Frigid River"))
+        #expect(turnOutput(of: "x rainbow", in: transcript).contains("A rainbow over the falls"))
+        #expect(turnOutput(of: "x path", in: transcript).contains("A track leaving by the north end"))
+
+        // In the barrel, the room says the view is gone.
+        let inside = turnOutput(of: "look", in: transcript)
+        #expect(inside.contains("You are inside a barrel. Congratulations."))
+        #expect(inside.contains("From where you are sitting you cannot see the falls at all."))
+
+        // And now the view agrees with it, in one voice.
+        let refusal = "Not from in here. There is a good deal of barrel between you"
+        #expect(turnOutput(of: "examine falls", in: transcript).contains(refusal))
+        #expect(turnOutput(of: "examine rainbow", in: transcript).contains(refusal))
+        #expect(turnOutput(of: "examine path", in: transcript).contains(refusal))
+        // Not by unanswering the nouns: this is a refusal, not a denial.
+        expectEveryNounAnswered(transcript, "Aragain Falls, from inside the barrel")
+
+        // The barrel is still there to be looked at, and the falls are still
+        // there to be heard.
+        #expect(turnOutput(of: "x barrel", in: transcript).contains("cut a word into the staves"))
+        #expect(
+            turnOutput(of: "listen", in: transcript).contains(
+                "Four hundred and fifty feet of water arriving at the bottom"))
+
+        // Climb out and the view comes back, which is what makes the three
+        // refusals above mean something.
+        #expect(
+            turnOutput(of: "look at falls", in: transcript).contains("Four hundred and fifty feet of the Frigid River"))
+    }
+
     // MARK: - Forms
 
     /// Three of this game's set pieces are *forms* rather than paragraphs, and
@@ -1737,5 +1857,14 @@ struct DungeonProseTests {
         // The prose around a form is still prose: the sentence introducing the
         // gate is folded and re-packed the way every other paragraph is.
         #expect(gate.contains("You are outside a large gateway, on which is inscribed"))
+
+        // The black book's marked page is the fourth, added with the page
+        // itself (#286): the commandment on it is verse and keeps its line
+        // endings, and the two sentences around it are packed.
+        let page = TextWrap.wrap(Prose.blackBookPage, width: 80)
+        #expect(page.contains("  Commandment #12593"))
+        #expect(page.contains("  Ye who are dead and will not lie down,"))
+        #expect(page.contains("  And thou art not the keeper of it."))
+        #expect(page.contains("The rest of the book is a great deal less specific."))
     }
 }

@@ -147,17 +147,21 @@ extension Prose {
         """
 
     /// The long paragraph three turns after the crypt is shut and dark. The
-    /// source hands the player a word here; this line hands over the knowledge
-    /// of one and names nothing typeable, because inventing a word the parser
-    /// does not answer would be a defect.
+    /// source hands the player a word here that will bring them back; **this
+    /// game has no way back at all.** The crypt is one-way, `temple` and
+    /// `treasure` answer ``Prose/graniteWordInert`` everywhere past it, and the
+    /// endgame's map has no route into the main dungeon — so the line used to
+    /// promise a return the game cannot keep, which is the same defect as
+    /// naming a word the parser does not answer. It now says the thing the
+    /// game does keep: the dungeon behind them is finished with. (#286)
     static let cryptTransition = """
         A voice that belongs to nobody speaks out of the dark. "You have passed
         the first test," it says. "The dungeon behind you has nothing further
-        to teach, and what remains is not kept there. Should you have need of
-        this place again, one word will return you to it, and you have that
-        word now." The floor is not under you for a moment. When it is again,
-        you are standing somewhere else entirely, with a lantern in one hand
-        and a sword in the other and nothing else about you at all.
+        to teach, and what remains is not kept there. You will not be going
+        back to it, and you will not want to." The floor is not under you for a
+        moment. When it is again, you are standing somewhere else entirely,
+        with a lantern in one hand and a sword in the other and nothing else
+        about you at all.
         """
 
     static let cryptFuseRearms = """
@@ -372,10 +376,18 @@ extension Prose {
 
     // MARK: - The Guardians of Zork
 
+    /// The view from one room south, which is the only frame this line can ever
+    /// print in. ``DungeonEndgame/guardians`` stands in `hallwayC`, the statues
+    /// themselves are a room further up, and `hallwayG` and the narrow rooms
+    /// beside it are all ``DungeonEndgame/guardedRooms`` — every one of them
+    /// kills on arrival. So a living player looks north at them and never once
+    /// stands between them, and the sentence says where they are rather than
+    /// putting the reader in the middle of them. (#286)
     static let guardians = """
-        Two statues stand in the hallway, one to either side of it, and each of
-        them is twice your height. Each holds a weapon. Neither is stone, and
-        neither is alive.
+        Two statues stand in the hallway to the north of you, one at either side
+        of it, and each of them is twice your height. Each holds a weapon.
+        Neither is stone and neither is alive, and from this far down the
+        hallway they have taken no notice of you at all.
         """
 
     static let guardiansKill = """

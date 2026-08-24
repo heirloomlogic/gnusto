@@ -556,6 +556,64 @@ struct DungeonEndgameTests {
         #expect(glowing.contains("A faint blue edge runs the length of it."))
     }
 
+    /// **#286's D7, the Guardians.** The `description` used to read *"Two
+    /// statues stand in the hallway, one to either side of it"* — a claim that
+    /// puts the reader between them, printed in the only frame it can ever
+    /// print in, which is a room short of them.
+    ///
+    /// ``DungeonEndgame/guardians`` stands in `MRC` on purpose
+    /// (`Endgame.swift`'s own doc comment calls it "the hallway room a player
+    /// can stand in and look north from"); the statues are in `MRG`, and `MRG`
+    /// and the four narrow rooms beside the last two berths are
+    /// ``DungeonEndgame/guardedRooms``, every one of which kills on arrival. So
+    /// the sentence is a view from the south, and the walk that reads it proves
+    /// there is no other: the next step north is the death.
+    @Test func theGuardiansAreDescribedFromTheOnlyRoomTheyCanBeSeenFrom() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.pastTheCrypt + Self.toTheGuardiansHallway + ["x guardians", "north"],
+            seed: Self.seed)
+
+        let seen = turnOutput(of: "x guardians", in: transcript)
+        #expect(seen.contains("Two statues stand in the hallway to the north of you"))
+        #expect(seen.contains("Neither is stone and neither is alive"))
+        #expect(seen.contains("they have taken no notice of you at all"))
+        // The between-them claim is gone, and no other constant reinstates it.
+        #expect(!transcript.contains("one to either side of it"))
+        // And the frame the old line was written for is unreachable: the room
+        // the statues are actually standing in is a death on arrival.
+        expectInOrder(transcript, ["the nearer statue moves", "*** You have died ***"])
+    }
+
+    /// **#286's D7, the crypt.** The transition promised *"Should you have need
+    /// of this place again, one word will return you to it, and you have that
+    /// word now"*, and the game keeps no part of that. `temple` and `treasure`
+    /// are both declared verbs and both answer ``Prose/graniteWordInert``
+    /// game-wide; the only rows that do anything are inside the main dungeon,
+    /// and the endgame's map has no exit into it at all. The paragraph now says
+    /// the thing the game does keep — that the dungeon behind them is finished
+    /// with — and the two words that could have been the promised one are typed
+    /// here to prove they are not.
+    @Test func theCryptPromisesNoWayBackBecauseThereIsNotOne() async throws {
+        let transcript = try await play(
+            Dungeon(), Self.pastTheCrypt + ["temple", "treasure"], seed: Self.seed)
+
+        #expect(!transcript.contains("one word will return you to it"))
+        expectInOrder(
+            transcript,
+            [
+                // The granite wall, on the far side of which the words work.
+                "The granite wall shivers",
+                "You have passed the first test",
+                "You will not be going back to it, and you will not want to.",
+                "Top of Stairs",
+            ])
+        // And past the crypt neither word is anything but a word.
+        let past = output(after: "Top of Stairs", in: transcript)
+        #expect(occurrences(of: "Nothing happens.", in: past) == 2)
+        #expect(!past.contains("The granite wall shivers"))
+    }
+
     /// Walking into the Guardians' reach on foot is fatal, and death in the
     /// endgame is final however many resurrections were left over.
     @Test func walkingIntoTheGuardiansKillsYouForGood() async throws {
@@ -801,6 +859,20 @@ struct DungeonEndgameTests {
         "raise pole", "push red panel", "push red panel", "push red panel",
         "push red panel", "lower pole", "push pine", "north",
     ]
+
+    /// The walk to `MRC`, the third hallway room, which is the one room in the
+    /// game the Guardians can be looked at from and lived through.
+    ///
+    /// It is not the ride: it is the box got **out of the way**. From the room
+    /// the open mirror faces, step in, turn the box a half circle so the
+    /// mahogany end points south, slide it one berth down the channel, and step
+    /// out of the pine end into the hallway above it. The channel from there
+    /// north is empty, so two ordinary steps reach `MRC` — and a third would be
+    /// ``DungeonEndgame/guardedRooms``.
+    static let toTheGuardiansHallway: [String] =
+        toTheOpenMirror + ["in", "raise pole"]
+        + Array(repeating: "push red panel", count: 6)
+        + ["lower pole", "push mahogany", "push pine", "north", "north"]
 
     /// Knocking, and seed 52's three answers. The voice draws its three from
     /// eight by rejection sampling (`Endgame+Master.swift`), so both which

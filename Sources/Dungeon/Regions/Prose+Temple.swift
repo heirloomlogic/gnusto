@@ -186,6 +186,37 @@ extension Prose {
         a page somebody has marked.
         """
 
+    /// Written fresh, and it has to be. `read book` outside the ceremony fell
+    /// through to the default action, which printed ``blackBook`` — the cover
+    /// of a book the same sentence advertises as *open at a page somebody has
+    /// marked*, so the one command that asks what the page says answered with
+    /// what the book looks like. Both source families give this book a read
+    /// text and in both it is the commandment; this game prints the trilogy's
+    /// commandment on the Temple's own wall (``prayerInscription``), so the
+    /// page is written fresh rather than repeating it. (#286)
+    ///
+    /// **It is the words, not the recipe.** The page is what the ceremony reads
+    /// aloud — it rhymes forward into ``spiritsBanished``'s "Begone, fiends!" —
+    /// and it deliberately names neither the bell, nor the candles, nor the
+    /// gate. A first draft of this line spelled the three steps out in order,
+    /// which answered the box and turned the hardest puzzle in the game into a
+    /// set of instructions. Nothing else in this game states the ritual, and
+    /// this page is not the place to start.
+    static let blackBookPage = """
+        The marked page carries one passage, set apart from the rest by a hand
+        that pressed hard enough to go through the paper:
+
+          Commandment #12593
+
+          Ye who are dead and will not lie down,
+          Ye who are finished and will not be told so:
+          The living have business beyond this place,
+          And thou art not the keeper of it.
+          Begone.
+
+        The rest of the book is a great deal less specific.
+        """
+
     static let prayerAnswered = """
         You bow your head at the altar, and the temple dissolves around you.
         When the world settles again you are standing in open forest, whatever

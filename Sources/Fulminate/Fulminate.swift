@@ -278,10 +278,22 @@ struct Fulminate: Game, GameMain {
         clock.location(of: day, at: time).name.lowercased()
     }
 
-    /// The three minutes Mrs. Kettle's testimony is anchored on, named once so
+    /// The four minutes Mrs. Kettle's testimony is anchored on, named once so
     /// that a row's gate and the minute it quotes cannot drift apart — the
     /// whole class of defect those gates exist to close. `static` for the same
     /// reason `streetRefusal` is: the reflection walk looks for entities.
+    ///
+    /// `teagueCameDown` and `sawTeague` are the two crossings she watches from
+    /// the stove, and they are not interchangeable: the back stairs and the hat
+    /// are the first, and the wordless return from the yard door is the second.
+    /// Her row used to describe the first and quote the minute of the second.
+    ///
+    /// Note what `teagueCameDown` does and does not buy. It gates nothing — it
+    /// feeds a room lookup — so it keeps her *room* honest against a schedule
+    /// edit and leaves "twenty-four minutes to six" hard-coded in the prose
+    /// beside it. That is the whole of C5: a lookup proves the noun it returns
+    /// and nothing else in the sentence.
+    static let teagueCameDown = TimeOfDay(17, 36)
     static let sawTeague = TimeOfDay(17, 42)
     static let blast = TimeOfDay(17, 46)
     static let afterBlast = TimeOfDay(17, 50)
@@ -604,14 +616,25 @@ struct Fulminate: Game, GameMain {
     /// A workman's glove with the fingers burned, in a cellar nobody has any
     /// business in. The evidence the case turns on, and the reason the
     /// flashlight exists.
+    ///
+    /// Two channels, because the clue is two facts. `description(…)` is what the
+    /// glove *is* and follows it into the player's hands; `firstSight(…)` is
+    /// where it was *found*, so it prints in the cellar listing until somebody
+    /// touches it and then stops claiming a coal bin the glove is no longer
+    /// behind. It used to be one constant, which meant the placement — the
+    /// whole of the clue that somebody hid it deliberately — was invisible to a
+    /// player who took it before examining it, and false for one who examined it
+    /// after.
     let glove = Item {
         name("scorched glove")
         adjectives("scorched", "burned", "canvas", "work")
         synonyms("glove")
+        firstSight(
+            "A scorched glove has been pushed in behind the coal bin, rather than dropped there.")
         description(
             """
             A canvas work glove, left-handed, with the fingertips burned back to the lining. It is a small hand's
-            glove. It has been pushed behind the coal bin rather than dropped there.
+            glove.
             """)
     }
 
@@ -958,6 +981,27 @@ struct Fulminate: Game, GameMain {
         scenery
     }
 
+    /// Named by Teague's half past six arrival — "sits on the end of the bed,
+    /// and does not put the light on" — and by nothing else in the house. The
+    /// room declared no lamp, so the word either failed outright or bound the
+    /// flashlight in the player's own pocket, and the second answer is the
+    /// worse of the two: it replies as though the room had one.
+    ///
+    /// It shares the word with the flashlight, which is the arrangement the
+    /// Back Yard has had all along — `labLamp` answers to `light` there while
+    /// the flashlight is in the player's hand — so the parser asks which, and
+    /// that is the right question rather than a defect.
+    let ceilingLight = Item {
+        name("ceiling light")
+        adjectives("ceiling", "electric", "bare")
+        synonyms("light", "bulb", "fixture", "cord")
+        description(
+            """
+            A bulb on a cord with a pull chain, and no shade on it. The chain has been wiped where a hand goes.
+            """)
+        scenery
+    }
+
     let bed = Item {
         name("bed")
         adjectives("iron", "made", "single")
@@ -1061,14 +1105,38 @@ struct Fulminate: Game, GameMain {
                 at: TimeOfDay(17, 36), in: kitchen,
                 departure: "Teague's door goes, and there are feet on the back stairs.",
                 arrival: "Teague comes down the back stairs with his hat already on."),
+            // The Back Yard lies between these two and narrated neither of
+            // them: the kitchen said he let himself out the yard door, the
+            // carriage house said he put his head round it, and the grass in
+            // between said nothing at all, twice. A player who follows him out
+            // of the kitchen stands in the one room on the route that did not
+            // know he went past.
+            //
+            // `perform:` with `say(_:from:)` rather than a `backYard` stop of
+            // its own. A stop is the documented idiom and is wrong here on
+            // arithmetic — the clock samples even minutes only, so a yard stop
+            // has to take one off either leg, and `sawTeague` is anchored on
+            // the end of the second. This way the crossing's third line sits
+            // beside the two it belongs to, fires on the same turn they do, and
+            // costs nothing on a turn nobody is watching.
             Stop(
                 at: TimeOfDay(17, 38), in: carriageHouse,
                 departure: "Teague lets himself out the yard door.",
-                arrival: "Teague puts his head round the carriage house door and says something short."),
+                arrival: "Teague puts his head round the carriage house door and says something short."
+            ) {
+                say(
+                    "Teague comes past you across the grass with his hat on and does not stop.",
+                    from: backYard)
+            },
             Stop(
                 at: TimeOfDay(17, 42), in: kitchen,
                 departure: "Teague comes back out of the carriage house, not hurrying.",
-                arrival: "Teague comes back through the kitchen and says nothing to anybody."),
+                arrival: "Teague comes back through the kitchen and says nothing to anybody."
+            ) {
+                say(
+                    "Teague comes back across the grass, not hurrying, and goes in past you.",
+                    from: backYard)
+            },
             // These two used to be one sentence in the wrong place: the 5:44
             // stop carried an *arrival* string whose content was a departure,
             // and the 5:46 stop that actually takes him off the map carried
@@ -1535,6 +1603,21 @@ struct Fulminate: Game, GameMain {
                 Dry grass and a low brick wall that used to be taller. The carriage house stands at the north end
                 with its lamp burning and its door ajar.
                 """
+        }
+
+        // The arrival line that named this fixture also advertises the verb —
+        // "does not put the light on" invites the player to — and the stock
+        // answer to that invitation is "You can't turn that on," which is a
+        // room denying what its own prose just offered.
+        //
+        // It refuses in the game's voice instead of becoming a `lightSource`.
+        // A switchable bulb would be state Teague's 6:30 arrival cannot read:
+        // `Stop(arrival:)` is one `String`, fixed where the timetable is
+        // written, so a player who had already pulled the chain would be told
+        // he did not put on a light that was on. That is this issue's own
+        // defect, installed while fixing it.
+        ceilingLight.before(.turnOn, .turnOff) {
+            try refuse("You leave Mr. Teague's light alone. It is his room, whatever else is true about him.")
         }
 
         carriageHouse.describe {
@@ -2120,13 +2203,24 @@ struct Fulminate: Game, GameMain {
                     woman reading a timetable.
                     """)
             }
+            // The confession is reachable in the back garden: `talk.shows` puts
+            // no room or time on the glove, so a player who lights the cellar
+            // early can break her on the step, where "in this chair since" is
+            // false of the sentence and of the woman saying it.
             topic(
                 "evening", "parlour", "alibi", "where",
-                knowing: .constanceBroke,
-                reply: """
+                knowing: .constanceBroke
+            ) {
+                let sinceThen =
+                    constance.isIn(parlour)
+                    ? "I have been in this chair since"
+                    : "I did not get out of it again until the noise"
+                try reply(
+                    """
                     "I went out before you came. He was in the house at his supper." Her hands are still. "I put it
-                    where the heat would find it and I came back to my chair, and I have been in this chair since."
+                    where the heat would find it and I came back to my chair, and \(sinceThen)."
                     """)
+            }
             // Before 5:46 the question means something else entirely, and the
             // row used to answer "My son is dead in the garden" from turn one.
             topic(
@@ -2136,22 +2230,43 @@ struct Fulminate: Game, GameMain {
                 reply: "\"Julian is in the shed.\" She says it the way you would say the weather.")
             // And afterwards she is allowed one moment before she settles into
             // the sentence she will use for the rest of the evening.
+            // `perform:` for the same reason the alibi row above is: the chair
+            // is in the parlour and she is on the back step for three turns of
+            // the evening, which is exactly when a player is most likely to
+            // ask her this.
             topic(
                 "julian", "son",
                 unless: .constanceBroke,
-                again: "\"My son is dead in the garden.\" That is all she has on the subject.",
-                reply: """
+                again: "\"My son is dead in the garden.\" That is all she has on the subject."
+            ) {
+                let hands =
+                    constance.isIn(parlour)
+                    ? "Her hands go back to the arms of the chair and stay there."
+                    : "Her hands close on each other and stay that way."
+                try reply(
+                    """
                     She takes a moment to find you, as though the question had come from another room. "My son," she
                     says. Then nothing, for long enough that you consider asking it again. "He is dead in the
-                    garden." Her hands go back to the arms of the chair and stay there.
+                    garden." \(hands)
                     """)
+            }
+            // The unlit lamp is the parlour's. In the back garden the only lamp
+            // is the one burning on the lab wall, so the gesture goes to the
+            // shed she has just named instead.
             topic(
                 "julian", "son",
-                knowing: .constanceBroke,
-                reply: """
-                    "That shed had him twenty years before it killed him." She looks at the lamp she has not lit. "I
-                    meant to take it back. I believed he had gone out."
+                knowing: .constanceBroke
+            ) {
+                let lookingAt =
+                    constance.isIn(parlour)
+                    ? "She looks at the lamp she has not lit."
+                    : "She looks at what is left of it."
+                try reply(
+                    """
+                    "That shed had him twenty years before it killed him." \(lookingAt) "I meant to take it back. I
+                    believed he had gone out."
                     """)
+            }
             topic(
                 "lab", "carriage house", "workshop", "shed",
                 unless: .constanceBroke,
@@ -2208,23 +2323,39 @@ struct Fulminate: Game, GameMain {
             // She was standing in the yard when it happened and had nothing to
             // say about it, so the question fell to her fallback and read like
             // the parser had failed.
+            // "Out here" is a word about the room it is said in. She is in the
+            // study from 6:02 and the cellar from 6:26, and the deixis has to
+            // follow her indoors.
             topic(
-                "yard", "garden", "outside", "evening", "where", "standing",
-                reply: """
-                    "I was out here." She lets that be the whole answer for a moment. "Looking at the light on the
-                    wall, if you want it written down somewhere."
+                "yard", "garden", "outside", "evening", "where", "standing"
+            ) {
+                try reply(
+                    """
+                    "I was out \(delphine.isIn(backYard) ? "here" : "in the yard")." She lets that be the whole
+                    answer for a moment. "Looking at the light on the wall, if you want it written down somewhere."
                     """)
+            }
+            // Her presence line was taught to stop watching the fire when she
+            // leaves it; this row was written the same evening and was missed.
+            // The wreckage is in the back garden and she is not, from 6:02 on.
             topic(
                 "julian", "vane",
                 when: { blastHappened },
                 again: """
                     "He wrote to somebody last week and slept better after." A beat. "That was you, I take it."
-                    """,
-                reply: """
+                    """
+            ) {
+                let lookingAway =
+                    delphine.isIn(backYard)
+                    ? "She looks at the wreckage."
+                    : "She stops looking at you."
+                try reply(
+                    """
                     "Don't." She says it quietly and without any heat in it. Then, after a while, in a voice she has
-                    had to go and find: "He wrote to somebody last week and slept better after. That was you." She
-                    looks at the wreckage. "You came out on the wrong Tuesday."
+                    had to go and find: "He wrote to somebody last week and slept better after. That was
+                    you." \(lookingAway) "You came out on the wrong Tuesday."
                     """)
+            }
             topic(
                 "julian", "vane",
                 reply: """
@@ -2277,12 +2408,17 @@ struct Fulminate: Game, GameMain {
                     "Tonight? Nothing to tell yet, friend. I want cigarettes and there's a drugstore on Colorado
                     that has them." He is pleased to be asked.
                     """)
+            // He does not sit down anywhere until half past six. The gesture was
+            // "He recrosses his legs", which is a chair he does not have for the
+            // hour this row is most often asked in — rewritten rather than
+            // branched, because a man can take his time over a sentence
+            // standing up.
             topic(
                 "drugstore", "alibi", "evening", "colorado", "where", "kitchen",
                 knowing: .kettleSawTeague, unless: .teagueRecanted,
                 reply: """
-                    "Mrs. Kettle keeps a good kitchen and a better clock." He recrosses his legs. "A man can pass
-                    through a kitchen on his way to the drugstore. I'd check her figures."
+                    "Mrs. Kettle keeps a good kitchen and a better clock." He takes his time over it. "A man can
+                    pass through a kitchen on his way to the drugstore. I'd check her figures."
                     """)
             topic(
                 "drugstore", "alibi", "evening", "colorado", "where", "kitchen",
@@ -2364,20 +2500,41 @@ struct Fulminate: Game, GameMain {
         // about a blast eight minutes off. The Teague row was worse than prose,
         // because it carries `learning:` and so taught a fact before the event
         // that teaches it. Constance's `julian` row is the precedent.
+        //
+        // A table-level `again:` is one `String`, evaluated where the rules are
+        // declared and not in the turn that prints it, so it cannot branch on
+        // the room the way a `perform:` row can. It has to be a sentence that
+        // is true everywhere she goes instead — and she is out in the back
+        // garden from 5:48 to six, where the pot is not.
+        //
+        // It retires `reply:` rows only, and every row below is now `perform:`
+        // or carries its own, so nothing reaches it today — corrected rather
+        // than left as it was, so the next `reply:` row here inherits a sentence
+        // that travels.
         talk.topics(
             of: kettle, fallback: "\"That I couldn't say.\"",
-            again: "\"I've said my piece on that one.\" The pot gets another stir."
+            again: "\"I've said my piece on that one.\" And she has."
         ) {
             topic(
                 "teague", "boarder", "howard",
                 learning: .kettleSawTeague,
                 when: { clock.now >= Fulminate.sawTeague }
             ) {
+                // Two crossings, two lookups. She is at the stove from half past
+                // until 5:48, so she watched both: the back stairs at 5:36 with
+                // the hat already on, and the wordless return from the yard door
+                // at 5:42. The row used to put the first event at the second
+                // minute — the timetable read only ever supplied the room, and
+                // both stops are the kitchen, so the lookup could not see it.
+                // One read of `teagueDay`: it is a computed `var` that rebuilds
+                // the whole stop list, and this row now asks it two questions.
+                let day = teagueDay
                 try reply(
                     """
-                    "Mr. Teague come down my back stairs into the \(room(teagueDay, at: Fulminate.sawTeague)) at
-                    eighteen minutes to six with his hat already on. I know because the pot goes on at a quarter to,
-                    and I was standing right there getting it ready."
+                    "Mr. Teague come down my back stairs into the \(room(day, at: Fulminate.teagueCameDown)) at
+                    twenty-four minutes to six with his hat already on, and he come back into the
+                    \(room(day, at: Fulminate.sawTeague)) at eighteen minutes to and never said a word. I know
+                    because the pot goes on at a quarter to, and I was standing right there getting it ready."
                     """)
             }
             // The present-tense halves. Each one declines the account rather
@@ -2439,13 +2596,28 @@ struct Fulminate: Game, GameMain {
                     since he come. Make of that what you like."
                     """)
             }
-            // Julian keeps no timetable, so this one is hers alone.
+            // Julian keeps no timetable, so this one is hers alone. It carries
+            // no time gate, and she is out on the grass from 5:48 to six, so
+            // the stirring has to know where she is standing — the same repair
+            // the table's `again:` above could not take.
+            //
+            // Its own `again:`, because a `perform:` row is not retired by the
+            // table's, and this row had been leaning on the table's to stop
+            // repeating. Frame-free for the same reason the table's is.
             topic(
                 "julian", "vane", "son",
-                reply: """
-                    "Mr. Julian had his supper at five and carried a plate of it out to the shed." The pot gets a
-                    stir it does not need. "I have fed that boy since he was eleven."
+                again: "\"He had his supper and he went out. That is the whole of it.\""
+            ) {
+                let busyHands =
+                    kettle.isIn(kitchen)
+                    ? "The pot gets a stir it does not need."
+                    : "She dries her hands again on the same apron."
+                try reply(
+                    """
+                    "Mr. Julian had his supper at five and carried a plate of it out to the shed." \(busyHands) "I
+                    have fed that boy since he was eleven."
                     """)
+            }
         }
 
         // He stands at the wreckage from 5:52 on. He knows exactly one useful
@@ -2671,5 +2843,6 @@ struct Fulminate: Game, GameMain {
         suitcase.starts(in: boardersRoom)
         sheet.starts(in: boardersRoom)
         bed.starts(in: boardersRoom)
+        ceilingLight.starts(in: boardersRoom)
     }
 }

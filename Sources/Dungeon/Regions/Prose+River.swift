@@ -464,6 +464,18 @@ extension Prose {
         cannot see the falls at all.
         """
 
+    /// Written fresh. What Aragain Falls answers about anything outside the
+    /// barrel while the player is down inside it. ``barrelInside`` says the
+    /// falls cannot be seen from in there and the falls, the rainbow over them
+    /// and the path off the ledge were plain scenery with no guard, so each of
+    /// them answered in full one command after the room said they could not be
+    /// seen. This is an ``Item/reach(otherwise:)`` refusal, which runs at stage
+    /// 0 and so arrives ahead of any verb's own complaint. (#286)
+    static let barrelBlocksTheView = """
+        Not from in here. There is a good deal of barrel between you and the
+        rest of Aragain Falls.
+        """
+
     /// Written fresh. The mainframe's own line here names a historical person
     /// as a punchline; this one keeps the joke and drops the person.
     ///

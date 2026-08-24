@@ -258,22 +258,34 @@ struct FulminateTests {
         #expect(!turnOutput(of: "ask teague about his alibi", in: transcript).contains("Coca-Cola"))
     }
 
-    /// Mrs. Kettle's testimony is not a written line: the room she names is
+    /// Mrs. Kettle's testimony is not a written line: the rooms she names are
     /// read out of Teague's timetable, so a schedule edit changes what she
     /// says with it. This is the demonstration the whole game exists to make.
+    ///
+    /// She watches two crossings from the stove and testifies to both. The row
+    /// used to describe the **first** — the back stairs, the hat already on —
+    /// and quote the minute of the **second**. Both stops are the kitchen, so
+    /// the timetable read could not see the error: it only ever supplied the
+    /// room.
     @Test func kettlesTestimonyIsReadFromTheTimetable() async throws {
         let game = Fulminate()
-        #expect(game.teagueDay.location(at: TimeOfDay(17, 42)) == game.kitchen)
+        #expect(game.teagueDay.location(at: Fulminate.teagueCameDown) == game.kitchen)
+        #expect(game.teagueDay.location(at: Fulminate.sawTeague) == game.kitchen)
 
-        // "kitchen" below is the name of the room the lookup returns,
+        // Both "kitchen"s below are the name of the room a lookup returns,
         // interpolated into her line — not a word anybody typed into it. Asked
-        // at 5:42, which is the minute she is quoting: the row used to answer
-        // in the past tense from 5:32, ten minutes before Teague came down.
+        // at 5:42, which is the later of the two minutes she is quoting: the
+        // row used to answer in the past tense from 5:32, ten minutes before
+        // Teague came down.
         let transcript = try await play(
             Fulminate(), ["south"] + Array(repeating: "z", count: 5) + ["ask kettle about teague"])
-        #expect(
-            turnOutput(of: "ask kettle about teague", in: transcript)
-                .contains("into the kitchen at eighteen minutes to six"))
+        let testimony = turnOutput(of: "ask kettle about teague", in: transcript)
+        #expect(testimony.contains("down my back stairs into the kitchen at twenty-four minutes to six"))
+        #expect(testimony.contains("come back into the kitchen at eighteen minutes to"))
+
+        // The defect, pinned: the descent and the hat belong to 5:36, and the
+        // row may not hang them on 5:42.
+        #expect(!testimony.contains("back stairs into the kitchen at eighteen minutes to six"))
     }
 
     /// The other half of the same mechanic. Her rows read a hard-coded minute
@@ -290,7 +302,10 @@ struct FulminateTests {
             ])
         #expect(turnOutput(of: "time", in: early).contains("5:40 pm"))
         #expect(!early.contains("when it went"))
-        #expect(!early.contains("at eighteen minutes to six"))
+        // Neither minute the testimony quotes, not just the later one — the row
+        // names 5:36 as well now, and 5:36 is also in the future at 5:32.
+        #expect(!early.contains("at eighteen minutes to"))
+        #expect(!early.contains("at twenty-four minutes to six"))
         #expect(
             turnOutput(of: "ask kettle about teague", in: early)
                 .contains("Ask me again once the pot's on"))
@@ -319,7 +334,7 @@ struct FulminateTests {
             ])
         #expect(askedTwice.contains("I'll not guess for you before then."))
         #expect(!askedTwice.contains("I've said my piece on that one."))
-        #expect(askedTwice.contains("at eighteen minutes to six"))
+        #expect(askedTwice.contains("come back into the kitchen at eighteen minutes to"))
 
         // Teague's own alibi has the same shape and the same repair: at 5:34,
         // standing in his own room, he used to say he had walked down and
@@ -1553,6 +1568,226 @@ struct FulminateTests {
         #expect(blocked.contains("Nobody past me till the county man's been."))
         #expect(!blocked.contains("can't go that way"))
         #expect(!blocked.contains("The roof is in the yard."))
+    }
+
+    // MARK: - Gestures the speaker does not have where they are standing
+
+    /// A topic reply prints wherever the actor happens to be, and these named
+    /// the furniture of the room the actor is *usually* in. Mrs. Vane spends
+    /// six minutes of the evening on the back step, and her chair does not go
+    /// with her.
+    @Test func mrsVanesGesturesLeaveTheChairInTheParlour() async throws {
+        // She reaches the step at the end of turn 10 and is back in the chair
+        // at the end of turn 13.
+        let yard = try await play(
+            Fulminate(),
+            ["south", "west"] + Array(repeating: "z", count: 8) + ["ask mrs. vane about julian"])
+        let onTheStep = turnOutput(of: "ask mrs. vane about julian", in: yard)
+        #expect(onTheStep.contains("He is dead in the garden."))
+        #expect(onTheStep.contains("Her hands close on each other and stay that way."))
+        #expect(!onTheStep.contains("arms of the chair"))
+
+        // And in the parlour, where the chair is, the gesture is the one it
+        // always was.
+        let parlour = try await play(
+            Fulminate(),
+            Array(repeating: "z", count: 13) + ["west", "ask mrs. vane about julian"])
+        #expect(
+            turnOutput(of: "ask mrs. vane about julian", in: parlour)
+                .contains("Her hands go back to the arms of the chair and stay there."))
+    }
+
+    /// The confession has the same problem one row over, and it is reachable in
+    /// the garden because `talk.shows` puts no room and no minute on the glove:
+    /// a player who lights the cellar early can break her on the step, where
+    /// "in this chair since" is false of the sentence and of the woman saying
+    /// it. The unlit lamp beside it is the parlour's; the only lamp in the back
+    /// garden is burning.
+    @Test func theBrokenConfessionKnowsWhichRoomItIsToldIn() async throws {
+        // The walk that breaks her on the back step: light the cellar, fetch
+        // the glove, and be standing on the grass when she comes out at 5:48.
+        let breakHerInTheGarden = [
+            "south", "open drawer", "take flashlight", "turn on flashlight", "down",
+            "take glove", "up", "west", "z", "z", "show glove to mrs. vane",
+        ]
+
+        let onTheStep = try await play(
+            Fulminate(),
+            breakHerInTheGarden + ["ask mrs. vane about evening", "ask mrs. vane about julian"])
+        #expect(onTheStep.contains("I did not get out of it again until the noise."))
+        #expect(onTheStep.contains("She looks at what is left of it."))
+        #expect(!onTheStep.contains("I have been in this chair since"))
+        #expect(!onTheStep.contains("the lamp she has not lit"))
+
+        // The same two rows in the parlour, after she has gone back in at 5:54.
+        let inTheChair = try await play(
+            Fulminate(),
+            breakHerInTheGarden
+                + [
+                    "east", "north", "west",
+                    "ask mrs. vane about evening", "ask mrs. vane about julian",
+                ])
+        #expect(inTheChair.contains("I have been in this chair since."))
+        #expect(inTheChair.contains("She looks at the lamp she has not lit."))
+    }
+
+    /// Delphine's presence line was taught to stop watching the fire when she
+    /// leaves it. Two of her topic rows were written the same evening and were
+    /// missed: one looks at wreckage she is two floors away from, and one says
+    /// "out here" from indoors and from the bottom of a dark cellar.
+    @Test func delphinesTopicRowsFollowHerIndoors() async throws {
+        let cellar = try await play(
+            Fulminate(),
+            ["south", "open drawer", "take flashlight", "turn on flashlight"]
+                + Array(repeating: "z", count: 26)
+                + ["down", "ask delphine about yard", "ask delphine about julian"])
+        #expect(cellar.contains("\"I was out in the yard.\""))
+        #expect(cellar.contains("She stops looking at you."))
+        #expect(!cellar.contains("\"I was out here.\""))
+        #expect(!cellar.contains("She looks at the wreckage."))
+
+        // In the garden, where the wreckage is and "here" means the yard, both
+        // rows say what they always said.
+        let yard = try await play(
+            Fulminate(),
+            ["south", "west"] + Array(repeating: "z", count: 8)
+                + ["ask delphine about yard", "ask delphine about julian"])
+        #expect(yard.contains("\"I was out here.\""))
+        #expect(yard.contains("She looks at the wreckage."))
+    }
+
+    /// Mrs. Kettle is at the stove until 5:48 and out on the grass until six.
+    /// Her Julian row stirred a pot from the garden, and the table's repeat line
+    /// stirred it again — a `String` fixed where the rules are declared, which
+    /// is why that one had to stop naming the pot rather than learn to read the
+    /// room.
+    @Test func mrsKettleStirsThePotOnlyWhereThePotIs() async throws {
+        let kitchen = try await play(
+            Fulminate(), ["south", "ask mrs. kettle about julian"])
+        #expect(
+            turnOutput(of: "ask mrs. kettle about julian", in: kitchen)
+                .contains("The pot gets a stir it does not need."))
+
+        let yard = try await play(
+            Fulminate(),
+            ["south"] + Array(repeating: "z", count: 8)
+                + ["west", "ask mrs. kettle about julian", "ask mrs. kettle about julian"])
+        let onTheGrass = turnOutput(of: "ask mrs. kettle about julian", in: yard)
+        #expect(onTheGrass.contains("She dries her hands again on the same apron."))
+        #expect(!onTheGrass.contains("The pot gets a stir"))
+
+        // The repeat has to travel too, and a table-level `again:` cannot read
+        // the room, so this row carries its own.
+        #expect(yard.contains("\"He had his supper and he went out. That is the whole of it.\""))
+        #expect(!yard.contains("The pot gets another stir."))
+    }
+
+    /// Teague does not sit down anywhere until half past six, and the alibi row
+    /// that recrossed his legs is most often asked while he is standing in a
+    /// kitchen. Rewritten rather than branched: a man can take his time over a
+    /// sentence on his feet.
+    @Test func teagueDoesNotSitDownToTellTheLie() async throws {
+        let transcript = try await play(
+            Fulminate(),
+            ["south"] + Array(repeating: "z", count: 5)
+                + ["ask kettle about teague"] + Array(repeating: "z", count: 13)
+                + ["north", "ask teague about drugstore"])
+        let lie = turnOutput(of: "ask teague about drugstore", in: transcript)
+        #expect(lie.contains("I'd check her figures."))
+        #expect(lie.contains("He takes his time over it."))
+        #expect(!transcript.contains("He recrosses his legs."))
+    }
+
+    // MARK: - The rooms a crossing passes through
+
+    /// The kitchen narrates him leaving and the carriage house narrates him
+    /// arriving, and the grass between them said nothing at all, twice. A
+    /// player who follows him out of the kitchen stands in the one room on the
+    /// route that did not know he went past.
+    ///
+    /// The third line rides on the two stops that already narrate the crossing,
+    /// as a `perform:` closure saying `say(_:from: backYard)` — so it fires on
+    /// the same turn its two neighbours do, prints in one room, and costs
+    /// nothing on a turn nobody is standing there. A `backYard` stop of its own
+    /// was the documented idiom and is wrong here on arithmetic: the clock
+    /// samples even minutes only, so a yard stop has to take one off either
+    /// leg, and `sawTeague` is anchored on the end of the second.
+    @Test func theBackYardNarratesTheCrossingsItIsTheMiddleOf() async throws {
+        let transcript = try await play(
+            Fulminate(), ["south", "west"] + Array(repeating: "z", count: 6))
+        expectInOrder(
+            transcript,
+            [
+                "Teague comes past you across the grass with his hat on and does not stop.",
+                "Teague comes back across the grass, not hurrying, and goes in past you.",
+            ])
+
+        // And the two ends still narrate their own halves, unchanged: the
+        // crossing is now told three times over three rooms, not moved.
+        let kitchen = try await play(
+            Fulminate(), ["south"] + Array(repeating: "z", count: 7))
+        expectInOrder(
+            kitchen,
+            [
+                "Teague comes down the back stairs with his hat already on.",
+                "Teague lets himself out the yard door.",
+                "Teague comes back through the kitchen and says nothing to anybody.",
+            ])
+        #expect(!kitchen.contains("across the grass"))
+    }
+
+    // MARK: - Two channels for two facts
+
+    /// The placement clause is the clue — somebody hid the glove rather than
+    /// dropping it — and it was the last sentence of a static `description`, so
+    /// it was invisible to a player who took the glove before examining it and
+    /// false for one who examined it after. `firstSight` is where it was found;
+    /// `description` is what it is.
+    @Test func theGloveStopsClaimingTheCoalBinOnceYouAreHoldingIt() async throws {
+        let transcript = try await play(
+            Fulminate(),
+            [
+                "south", "open drawer", "take flashlight", "turn on flashlight", "down",
+                "look", "x glove", "take glove", "x glove", "i",
+            ])
+        // The listing paragraph carries the clue, in place of the stock line,
+        // and every player who lights the cellar reads it.
+        let listed = turnOutput(of: "look", in: transcript)
+        #expect(listed.contains("A scorched glove has been pushed in behind the coal bin"))
+        #expect(!listed.contains("There is a scorched glove here"))
+
+        // And examining it names the glove rather than the bin, before and
+        // after it changes hands.
+        #expect(!turnOutput(of: "x glove", in: transcript).contains("coal bin"))
+        #expect(turnOutput(of: "x glove", in: transcript).contains("fingertips burned back to the lining"))
+        #expect(turnOutput(of: "i", in: transcript).contains("scorched glove"))
+    }
+
+    // MARK: - A noun the room prints and can answer
+
+    /// Teague's half past six arrival says he "does not put the light on", and
+    /// the room declared no lamp. The word either failed outright or bound the
+    /// flashlight in the player's own pocket, and the second answer is the
+    /// worse of the two: it replies as though the room had one.
+    @Test func theBoardersRoomHasTheLightItsOwnProseNames() async throws {
+        let transcript = try await play(
+            Fulminate(), ["up", "east", "x light", "turn on light", "x bulb"])
+        let examined = turnOutput(of: "x light", in: transcript)
+        #expect(examined.contains("A bulb on a cord with a pull chain"))
+        #expect(!examined.contains("can't see any such thing"))
+        #expect(!examined.contains("dented tin flashlight"))
+
+        // The same line advertises the verb, so the room answers it in its own
+        // voice rather than with the engine's flat refusal.
+        let switched = turnOutput(of: "turn on light", in: transcript)
+        #expect(switched.contains("You leave Mr. Teague's light alone."))
+        #expect(!switched.contains("You can't turn that on."))
+
+        // And it is still there to be named when the line that names it prints.
+        let evening = try await play(
+            Fulminate(), ["up", "east"] + Array(repeating: "z", count: 29) + ["x light"])
+        #expect(evening.contains("does not put the light on"))
+        #expect(turnOutput(of: "x light", in: evening).contains("pull chain"))
     }
 
     // MARK: - Following, and saying hello

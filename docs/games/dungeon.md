@@ -1612,3 +1612,98 @@ false in the Studio, at the foot of the great tree and under the Royal Puzzle's
 ladder; `stubs.smell`'s was false wherever anything smelled of anything. A
 naming half repairs the command the round typed and leaves the shallower one
 standing, so a repair here is not finished until both halves read nothing.
+
+### The eighth pass: a line that asserts a view, and a frame that cannot hold it
+
+The 2026-08-18 round's fifth class is the **distance** axis of the same habit the
+first pass paid on the state axis. The sentence says where a thing stands
+relative to the reader, or what the reader can see from where they are, and it
+prints in a frame that makes the claim false. Four sites, and what they have in
+common is that no amount of state-tracking would have caught any of them: the
+state behind three of the four was correct the whole time.
+
+19. **A line that says where something is has to be read from the one place it
+    can be read.** The Guardians of Zork are a static `description` on an item
+    the map places in `MRC`, one room short of the statues, so that a living
+    player can name them at all — and the text was written as though the reader
+    were standing between them: *"Two statues stand in the hallway, one to
+    either side of it."* Everything north of that room is
+    `DungeonEndgame.guardedRooms`, five rooms each carrying
+    `onEnter { try die(…) }`, so the between-them frame is not rare, it **does
+    not exist**. The line is now a view from the south.
+
+    The round left this as a three-way fork — reword the statues, reword the
+    five-room hallway paragraph, or decide that "the hallway" already means the
+    whole corridor. Reading the placement collapses it: two of the three branches
+    are about a frame no player reaches. And the repair stays a constant rather
+    than becoming a `describe { }`, because a rule with exactly one reachable
+    frame only re-derives the constant with more machinery around it.
+
+20. **A promise is a claim about the future, and the game has to be able to keep
+    it.** The crypt transition told the player *"Should you have need of this
+    place again, one word will return you to it, and you have that word now."*
+    `temple` and `treasure` are declared game-wide and answer *"Nothing
+    happens."* everywhere past the crypt; the endgame's map has no route into the
+    main dungeon at all. The constant's own doc comment defended itself on the
+    ground that it named nothing typeable — which answers the wrong objection.
+    The defect was never a missing word. It was a missing road.
+
+    This is the same shape as rule 15's promise-of-a-verb, one scale up: a room
+    that names a way through has promised the verb, and a voice that names a way
+    back has promised the map.
+
+### What the eighth pass changed, and what it did not
+
+The mechanics contract is untouched an eighth time — no map, no puzzle, no
+treasure value, no `maxScore` — both walkthroughs score what they scored, and no
+item is added or removed anywhere. Three of the four repairs are pure copy. Two
+things are worth naming:
+
+- **The black book had no page, and the fix is a fidelity restoration with fresh
+  words.** `blackBook.before(.read)` guards the exorcism and *returned* outside
+  it, so `read book` anywhere else fell through to the default action and printed
+  the item's `description` — the cover of a book that same sentence advertises as
+  *open at a page somebody has marked*. So the one command in the game that asks
+  what the page says answered with what the book looks like. Both source families
+  give this book a read text, which makes having one fidelity-supported; the
+  words are not, because in both of them that text is Commandment #12592, and
+  this game prints #12592 on the Temple's granite wall. The page is therefore
+  written fresh, as a second commandment, and a test asserts #12592 never appears
+  in it — a guard against the two quietly converging in some later edit.
+
+  **The page is the words, not the recipe**, and that is a decision rather than a
+  detail. A first draft of it set out the three steps of the ceremony in order —
+  ring the bell, carry a light, read this aloud at the gate. It answered the box
+  and it converted the hardest puzzle in the game into a set of instructions:
+  **nothing else in this game states the ritual**, and the source's own read text
+  for this book is a joke about saying "Hello sailor", not a walkthrough. What is
+  on the page now is what the ceremony reads *aloud* — it rhymes forward into
+  "Begone, fiends!" — and it names neither the bell, nor the candles, nor the
+  gate. Two assertions pin that. The general form: **a prose box is not a licence
+  to move a puzzle.**
+- **The barrel is the one site repaired by narrowing the world rather than the
+  words, and `reach { }` alone does not do it.** The room's paragraph from inside
+  the barrel says the falls cannot be seen, and the falls, the rainbow over them
+  and the path off the north end were plain `scenery` with no guard, so `x falls`
+  contradicted it one command later. `reach(otherwise:)` is the obvious answer
+  and is only half of one: EXAMINE is `reach: .notNeeded` in `CoreVerbs`, and
+  rightly, because a thing you cannot lay a hand on is usually a thing you can
+  still look at. The first attempt built, passed its build, and changed nothing
+  at the keyboard. Each of the three now carries a `reach` guard **and** a
+  `before(.examine)` guard, refusing in the same words — the same split
+  `Endgame+Rules.swift` already writes for the mirror box, for the same reason.
+
+  What is deliberately not silenced: the barrel itself, and `listen`. A man in a
+  barrel can see the barrel and can hear a 450-foot waterfall perfectly well.
+  Silencing the whole outdoor set is what the round's `needs-human` note warned
+  narrowing would do, and at this site it is the right outcome rather than the
+  cost — there are exactly three outdoor things here and the player can see none
+  of them.
+
+**The class's diagnostic, which is the part worth reusing.** D1 taught that a
+round keys on the sentence, so a finding whose sentence is a symptom of lost state
+arrives wearing the sentence's severity. Class 5 is the mirror image: three of its
+four sentences are the *whole* defect and the world behind them is already right.
+Telling the two apart costs one read of where the thing is placed, and it is the
+difference between a prose edit and a mechanic.
+
