@@ -2013,8 +2013,19 @@ the committed document rather than out of `dung.355`.
   rather than conjured: the source flips its visible bit, it does not create it.
   And the End of Rainbow is walkable from Canyon Bottom, so the pot never needs a
   boat.
-- **The barrel at Aragain Falls is a vehicle.** Climb into it and `look` shows the
-  inside of a barrel rather than the falls; say `geronimo` and it goes over.
+- **The barrel at Aragain Falls is a vehicle, and it shuts the view as well as the
+  room paragraph.** Climb into it and `look` shows the inside of a barrel rather
+  than the falls; say `geronimo` and it goes over. The line it shows says the
+  falls cannot be seen from in there, so the falls, the rainbow over them and the
+  path off the north end each carry a `reach(otherwise:)` guard and a
+  `before(.examine)` guard on `player.vehicle != barrel` and answer in the
+  barrel's voice instead of describing themselves (#286). **Neither source does
+  that**: the mainframe leaves the outdoor scenery in scope and relies on the
+  barrel's own `look`, so `x falls` from inside it answers in full. This is
+  therefore stricter than both, in the same way the cliff path below is — a case
+  the source did not think to forbid rather than one it meant to allow. The
+  barrel itself and `listen` are deliberately not shut: a man in a barrel can see
+  the barrel and hear the waterfall.
 - Values are the mainframe's, and two are not Zork I's: the silver chalice cases
   for **10** where the trilogy pays 5, and the statue (**10 and 13**) has no
   trilogy counterpart. The emerald (5+10), the pot of gold (10+10) and the bag of

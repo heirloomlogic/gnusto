@@ -12,11 +12,29 @@ extension Clock {
     /// coin flip has no alibi worth checking.
     ///
     /// Movement is a **teleport to the scheduled room, with no exit-graph
-    /// awareness**: a locked door on the route will not stop him. If the
-    /// physical journey matters, put the rooms he passes through in the
-    /// timetable as stops of their own. The contract a timetable is keeping is
-    /// that he *is* in the study at a quarter past — not that he plausibly got
-    /// there.
+    /// awareness**: a locked door on the route will not stop him. The contract
+    /// a timetable is keeping is that he *is* in the study at a quarter past —
+    /// not that he plausibly got there.
+    ///
+    /// If the physical journey matters, there are two ways to say so and they
+    /// are not interchangeable:
+    ///
+    /// - **Make the room he passes through a stop of its own.** He is really
+    ///   there, so `location(of:at:)` will say so and any testimony read off
+    ///   the timetable inherits it. Costs a tick: the stop has to land on a
+    ///   time the clock actually samples, which on a multi-minute turn means
+    ///   taking one off a neighbouring leg.
+    /// - **Say it from the stop that already moves him**, with a `perform:`
+    ///   closure and `say(_:from:)` naming the room passed through. The line
+    ///   prints on the same turn as that stop's own departure and arrival, and
+    ///   in that room only. The timetable does not learn anything — he is
+    ///   still a teleport, and a lookup will not place him on the grass — so
+    ///   take this one when the crossing is *narration* and the stop times are
+    ///   load-bearing elsewhere.
+    ///
+    /// `Sources/Fulminate` uses both: five actors on stops, and one crossing
+    /// whose middle leg is a `perform:` line because the minutes on either side
+    /// of it are quoted by a witness.
     ///
     /// An actor with no room — `vanish()`ed, shut in a chest, carried off —
     /// idles: the daemon does nothing and leaves the timetable's place

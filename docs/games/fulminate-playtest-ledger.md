@@ -191,19 +191,19 @@ rather than a declaration — recorded as returned, and not expected to match.
 |---|---|---|---|
 | `decl::Sources/Fulminate/Fulminate.swift::clock` | C1 status-clock | fixed | major, wrong-footer, **regression introduced by `7cec4aa`**; `ownerClass` engine, real site `Sources/GnustoClock/Clock.swift` + `GameWorld.statusFields()`. Repaired 2026-08-18 — see [Amendments](#amendments) |
 | `decl::Sources/Fulminate/Fulminate.swift::teague.description` | C2 teague death clause | confirmed | major, explorer-1, introduced by `ed8d377` |
-| `decl::Sources/Fulminate/Fulminate.swift::timers/clock.blast` | C3 blast deixis | confirmed | major, explorer-1, introduced by `7c92508` |
-| `decl::Sources/Fulminate/Fulminate.swift::timers/blast.after` | C3 blast deixis | confirmed | minor, explorer-1, introduced by `ed8d377` |
+| `decl::Sources/Fulminate/Fulminate.swift::timers/clock.blast` | C3 blast deixis | fixed | major, explorer-1, introduced by `7c92508`. Repaired under #305 — `playerStorey` branches `.cellar`/`.ground`/`.upstairs` |
+| `decl::Sources/Fulminate/Fulminate.swift::timers/blast.after` | C3 blast deixis | fixed | minor, explorer-1, introduced by `ed8d377`. Repaired under #305, same branch |
 | `decl::Sources/Fulminate/Fulminate.swift::rules/suitcase.before(.take)` | C4 suitcase owner | confirmed | major, explorer-1, introduced by `7c92508` |
-| `decl::Sources/Fulminate/Fulminate.swift::rules/kettle.topics/teague` | C5 kettle testimony | needs-human | major, interrogator, introduced by `7c92508` |
-| `decl::Sources/Fulminate/Fulminate.swift::rules/constance.topics/julian` | C6 constance chair | confirmed | major, interrogator, introduced by `ed8d377` |
+| `decl::Sources/Fulminate/Fulminate.swift::rules/kettle.topics/teague` | C5 kettle testimony | fixed | major, interrogator, introduced by `7c92508`. She testifies to **both** crossings, a lookup on each: 5:36 down the back stairs, 5:42 back in from the yard. The `needs-human` fork — which crossing the confession hangs on — was resolved as *both*, since she is at the stove until 5:48 and watched the pair |
+| `decl::Sources/Fulminate/Fulminate.swift::rules/constance.topics/julian` | C6 constance chair | fixed | major, interrogator, introduced by `ed8d377`. `perform:` + `constance.isIn(parlour)`. **Six further sites swept in the same PR**, none of them sighted by the round — see the Class 5 note below |
 | `decl::Sources/Fulminate/Fulminate.swift::rules/teague.topics/constance` | C7 window | confirmed | major, interrogator, introduced by `ed8d377` |
 | `decl::Sources/Fulminate/Fulminate.swift::rules/labLamp.describe` | C7 window | confirmed | minor, solver, **introduced by `7c92508` while fixing C1 of the last round** |
-| `decl::Sources/Fulminate/Fulminate.swift::glove` | C8 glove placement | needs-human | major, explorer-2, the round's one true rater split |
-| `decl::Sources/Fulminate/Fulminate.swift::teagueDay` | C9 boarder's light | needs-human | major, explorer-2, introduced by `7c92508` |
+| `decl::Sources/Fulminate/Fulminate.swift::glove` | C8 glove placement | fixed | major, explorer-2, the round's one true rater split. Split per channel: `firstSight(…)` carries where it was found, `description(…)` what it is. The split settles the disagreement in the direction of discoverability — the clue now prints for every player who lights the cellar, not only one who examines before taking |
+| `decl::Sources/Fulminate/Fulminate.swift::teagueDay` | C9 boarder's light | fixed | major, explorer-2, introduced by `7c92508`. A `ceilingLight` scenery item, not a prose deletion: the room prints the noun in exactly one line, so the item is placeable. It refuses ON in voice rather than becoming a `lightSource`, because `Stop(arrival:)` is a fixed `String` and could not read the switch |
 | `decl::Sources/Fulminate/Fulminate.swift::text/stubs.stand` | C10 stand stub | fixed | major, wrong-footer, **line added by `7c92508`**. The finding's own diagnosis was wrong and was corrected on #280 before the fix: there *was* a read of `knockedFlat`, one turn wide. Repaired by widening `world.before(.stand)` onto `wasInTheYardForTheBlast`, not by assigning the line |
 | `decl::Sources/Fulminate/Fulminate.swift::text/stubs.climb` | C11 climb stub | fixed | major, wrong-footer, **line added by `7c92508`**. `.naming(orBare:)`, plus the three flights taking CLIMB for themselves |
 | `decl::Sources/Gnusto/Actions/GameText.swift::Stubs.touch` | C12 touch | fixed | major, wrong-footer; site to change is Fulminate's `text.stubs.touch`, and that is where it changed. Stove, stove pipe and yard fire answer for themselves |
-| `Sources/Fulminate/Fulminate.swift::z time passes  z time passes  z time passes  z time passes  z time passes` | C15 back yard crossings | needs-human | minor, timekeeper; the one `unlocated` fallback key this round |
+| `Sources/Fulminate/Fulminate.swift::z time passes  z time passes  z time passes  z time passes  z time passes` | C15 back yard crossings | fixed | minor, timekeeper; the one `unlocated` fallback key this round. A `perform:` closure on each of the two stops that already narrate the crossing, saying `say(_:from: backYard)` — not a `backYard` stop on the timetable, because the clock samples even minutes only, so a yard stop has to take one off the kitchen or carriage-house leg and `sawTeague` is anchored on the end of the second |
 
 ### Refuted this round — pass these as `ledgerKeys` next time
 
@@ -275,3 +275,82 @@ default.
 
 **The other fifteen boxes of #280 are untouched by this.** They are Fulminate's own prose
 and stand as filed.
+
+---
+
+### 2026-08-24 — Class 5, and the four `needs-human` boxes
+
+#280's remaining bench, closed. Five boxes moved: **C6** (the sighted Class 5 site) and
+the four the round flagged `needs-human` — **C5**, **C8**, **C9**, **C15**. **C3** was
+ticked without work: it had already been repaired under #305 and nobody went back to the
+box.
+
+**C6 was one site of seven.** The round sighted Mrs. Vane's chair arms and nothing else,
+and the reason is worth recording: the reflex reading of that finding is "she named the
+parlour," and she did not — she named *a chair*. The parlour is not in the sentence, so a
+search for room names walks straight past it, and past the six others:
+
+| Site | Fragment | Frame that contradicted it |
+|---|---|---|
+| `constance.topics/julian` (C6) | "Her hands go back to the arms of the chair" | Back Yard, 5:48–5:52 |
+| `constance.topics/julian` (broke) | "She looks at the lamp she has not lit" | same; the only lamp in the garden is burning |
+| `constance.topics/evening` (broke) | "I have been in this chair since" | `talk.shows(glove,…)` carries no room or time gate |
+| `delphine.topics/julian` | "She looks at the wreckage" | Vane's Study from 6:02, Cellar from 6:26 |
+| `delphine.topics/yard` | "I was out here" | same — deixis, printed indoors and in the dark |
+| `kettle.topics/julian` + table `again:` | "The pot gets a stir it does not need" | Back Yard, 5:48–6:00 |
+| `teague.topics/drugstore` | "He recrosses his legs" | he stands until 6:30 — **sighted by the 2026-07-31 round** and left `needs-human` |
+
+The last row is the one that should sting: it was found a round earlier, filed, and never
+picked up, and it is the same defect the later round refound under a different actor.
+
+**Three findings that only appeared while repairing:**
+
+- **A table's `again:` retires `reply:` rows only.** Converting Mrs. Kettle's `julian` row
+  to `perform:` so its body could branch silently dropped it out of the table's repeat
+  handling, and the row began repeating itself verbatim. It carries its own `again:` now.
+  Anyone taking a site in this class should expect the same.
+- **Her table-level `again:` is now unreachable**, because every row below it is `perform:`
+  or carries its own. It was corrected rather than left as it was: the next `reply:` row
+  written there should inherit a sentence that travels.
+- **C5's row was true of the room and false of the minute.** The timetable read supplies
+  the *room*, and both of the crossings she watches resolve to the kitchen — so the lookup
+  could not see that the row described the 5:36 descent and quoted 5:42. The general form
+  is worth keeping: **a lookup proves the noun it returns and nothing else in the
+  sentence.**
+
+**The `needs-human` forks, and how each was decided.**
+
+- **C5** — *both* crossings, a lookup on each, rather than moving the anchor to 5:36 or
+  rewriting the event to the 5:42 return. She is at the stove until 5:48 and watched the
+  pair, so testifying to both is the version that makes the contract's demonstration
+  stronger, and it moves no gate: `sawTeague` stays at 5:42, because she cannot testify to
+  the second crossing before it happens.
+- **C8** — the placement clause moves to `firstSight(…)`. The round's one true rater split
+  was whether the clause is *what the glove is* or *where it was found*; it is the second,
+  and the split resolves in the direction of discoverability, since the clue now prints for
+  every player who lights the cellar rather than only for one who examines before taking.
+- **C9** — a `ceilingLight` item, against #319's precedent of losing the noun. #319 chose
+  deletion because those nouns could print in many rooms; this one prints in exactly one
+  line in exactly one room, so the item is placeable. It **refuses ON in the game's voice
+  rather than becoming a `lightSource`** — a switchable bulb would be state
+  `Stop(arrival:)` cannot read, and a player who had pulled the chain would be told Teague
+  did not put on a light that was on. That is this round's own defect, installed while
+  fixing it.
+- **C15** — a `perform:` closure on each of the two stops that already narrate the
+  crossing, saying `say(_:from: backYard)`. The documented idiom is a `backYard` stop of its
+  own, and it was rejected on arithmetic: the clock samples even minutes only, so a yard
+  stop has to take a minute off either the kitchen or the carriage-house leg, and C5's
+  testimony is anchored on the end of the second. The crossing is now told three times over
+  three rooms rather than moved.
+
+  **The first draft was a `backYard.afterEachTurn` diffing `teagueDay.location(at:)` across
+  two minutes**, and `/simplify` retired it: the clock already performs that transition, so
+  the rule was re-deriving an event rather than reacting to one, it re-read a computed
+  `Timetable` twice on every turn a player stood in the yard, and it filed the crossing's
+  third line away from the two it belongs to. `Stop`'s own `perform:` was the answer the
+  whole time — the argument written into that draft was against adding a *stop*, which is a
+  different proposal.
+
+Ten new transcript tests, each asserting the frame where the line is true *and* the frame
+where it lied. All ten were confirmed to **fail** against the old source rather than
+assumed to. Every site was also driven at the keyboard and read as prose.

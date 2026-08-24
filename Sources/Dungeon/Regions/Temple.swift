@@ -645,10 +645,16 @@ struct DungeonTemple: GameContent {
         }
 
         // Reading the marked prayer with the candles alight after the bell
-        // banishes the spirits. At any other time the default action prints
-        // the book and nothing happens.
+        // banishes the spirits. At any other time the book answers with the
+        // page rather than with the cover: falling through to the default
+        // action printed `Prose.blackBook`, which is a description of a book
+        // advertised as open at a marked page, so `read book` was the one
+        // command that asked what the page said and got what the book looked
+        // like. (#286)
         blackBook.before(.read) {
-            guard player.location == entranceToHades, exorcismStage == 2 else { return }
+            guard player.location == entranceToHades, exorcismStage == 2 else {
+                try reply(Prose.blackBookPage)
+            }
             exorcismStage = 3
             stopFuse("exorcismLapse")
             try reply(Prose.spiritsBanished)

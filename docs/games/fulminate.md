@@ -59,9 +59,9 @@ what has to remain true no matter how the story is rewritten.
 | `TIME` verb | Checking your watch — which is on the player's wrist, worn from turn one, and cannot be taken off. | Reachable from every room. The watch and the hall clock read from the same source and must never disagree. |
 | Alarms fire exactly once | The blast, the telephone, the coroner — plus an incidental radio car at 5:52. | **Three** load-bearing alarms, one of them a hard deadline that ends the game. (The two beats after the blast are *fuses*, relative to the event rather than to the clock. They are decorative by construction and are not part of this count.) |
 | Deterministic timetables | Five people on their evening rounds. | **Five** scheduled actors, with stops on *both sides* of the blast. |
-| Arrival / departure prose | Footsteps on the back stairs. A door in the yard. | At least one crossing the player can witness, and one they can miss. |
+| Arrival / departure prose | Footsteps on the back stairs. A door in the yard. Teague crossing the grass between the two, said from the stop that moves him. | At least one crossing the player can witness, and one they can miss. A crossing whose two ends both narrate it may not be silent in the middle. |
 | Movement is silent in the dark | Delphine goes down to the cellar at 6:26. | The cellar stays dark and stays on somebody's route. |
-| `location(of:at:)` lookup | Mrs. Kettle's testimony; the alibi check. | Past-tense truth is **read from the timetable**, never hand-written prose. |
+| `location(of:at:)` lookup | Mrs. Kettle's testimony, which quotes two crossings and reads both; the alibi check. | Past-tense truth is **read from the timetable**, never hand-written prose. The lookup supplies the **room**, not the minute and not the event — a row that describes one crossing and quotes another's minute reads as correct and is not, because both stops resolve to the same room. |
 | ASK / TELL about a topic | Every interrogation. | Topics stay abstract nouns, never takeable items. |
 | SHOW item to actor | Receipt, ledger, glove, letter. | At least three pieces of physical evidence that flip a story. |
 | A lie retired by evidence (`unless:`) | Teague's drugstore alibi dies when Kettle contradicts it. | At least two suspects lie first and talk second. |
@@ -70,6 +70,7 @@ what has to remain true no matter how the story is rewritten.
 | Per-actor fallback replies | "Mrs. Vane looks past you." | Everyone has a fallback. No dead air. |
 | Answers that land once | Every table carries an `again:` line in its own voice, and so does every `talk.shows` row. | Nobody recites an important paragraph twice. Mrs. Kettle is the deliberate exception: her rows read the timetable live, so they go on answering. |
 | Nothing speaks from a room it has left | Constance's greeting, alibi row and fallback branch on which of her two rooms she is in; both blast bodies branch on which of the house's three levels the player is standing on, not on where they were and not merely on indoors/outdoors. | A reply or a timed-event body either reads the frame it prints in or stops naming anything that room-specific. The house has levels, and a sentence about what is above or below the listener has to read them. |
+| Nobody makes a gesture they have not got | Every chair, pot, lamp and pose in a topic reply branches on the speaker's room, or is rewritten to something they carry. | The rule reaches **poses, gestures and furniture**, not only room names. A woman on the back step has no chair arms; a cook on the grass has no pot; a man who does not sit down until half past six does not recross his legs. |
 
 **Free to change:** every name, all prose, room descriptions, topic keywords, the tone, the
 title, and which suspect is guilty.
@@ -317,12 +318,12 @@ off it, which is why Mrs. Kettle sees everyone who crosses the house.
 | **Front Hall** | Start. The longcase clock. The telephone. Teague's coat on the hat stand. |
 | **Parlour** | Constance's chair. Heavy furniture, no lamp lit. |
 | **Kitchen** | Mrs. Kettle's ground. The back stairs pass through — this is how she sees things. The room names all three of its exits, and the drawer. Going **up** the back stairs is refused in the game's own words: they are the household's, not yours. |
-| **Cellar** | **Dark.** Needs the flashlight from the kitchen drawer; standing down there in the dark says where it lives, once. The scorched glove is here, behind the coal bin. |
-| **Back Yard** | Between the house and the carriage house. The garden wall. |
+| **Cellar** | **Dark.** Needs the flashlight from the kitchen drawer; standing down there in the dark says where it lives, once. The scorched glove is here, and the listing paragraph is where the room says it was pushed in behind the coal bin rather than dropped there. |
+| **Back Yard** | Between the house and the carriage house. The garden wall. Teague crosses it twice on his way to the lab and back, and the room says so. |
 | **Carriage House** | Julian's lab. Julian is alive in it until 5:46. Becomes **Wreckage**, and is sealed from 5:52 by the patrolman posted at the gap on the yard side. Reachable for three turns in between. |
 | **Landing** | Upstairs hall. |
 | **Vane's Study** | The desk. The ledger. The lodge letters. |
-| **Boarder's Room** | Teague's. A typewriter and a suitcase that is packed too early. |
+| **Boarder's Room** | Teague's. A typewriter, a suitcase that is packed too early, and the ceiling light he sits down at half past six without putting on. |
 | **Orange Grove Avenue** | Off the map — no exit leads here. Where Teague is from 5:44 to 6:10. |
 
 The dark cellar is not decoration. It is where the engine's "NPC movement is silent in an
@@ -527,12 +528,15 @@ The full topic tables go in the implementation. These are the beats that must su
 > walked back. Ask them, they know me."
 
 **Mrs. Kettle, on Teague:**
-> "Mr. Teague come down my back stairs into the kitchen at eighteen minutes to six with
-> his hat already on. I know because the pot goes on at a quarter to, and I was standing
+> "Mr. Teague come down my back stairs into the kitchen at twenty-four minutes to six
+> with his hat already on, and he come back into the kitchen at eighteen minutes to and
+> never said a word. I know because the pot goes on at a quarter to, and I was standing
 > right there getting it ready."
 
-("The kitchen" is not written in that line — it is read out of Teague's timetable at
-5:42, per the mechanics contract.)
+(Neither "kitchen" is written in that line — each is read out of Teague's timetable, at
+5:36 and at 5:42, per the mechanics contract. She is at the stove until 5:48, so she
+watched both crossings; the row used to describe the first and quote the minute of the
+second, and the lookup could not catch it because both stops are the same room.)
 
 **Teague, shown the receipt:**
 > He looks at it for a while. "Six-oh-five," he says. "Yeah." He hands it back and does
@@ -616,6 +620,74 @@ answers for itself with a rule: the three flights walk their own exits, the hot
 things say they are hot, the carriage house is not the house, and STAND reads
 `wasInTheYardForTheBlast` rather than `knockedFlat`, because being knocked flat
 is one turn long and having been knocked flat lasts the evening.
+
+### The gesture and the room it is made in
+
+A topic reply prints wherever the speaker is standing. The stub floor learned that
+lesson for the *player's* frame; this one is the same lesson for the **speaker's**,
+and it caught seven rows the 2026-08-17 round sighted only one of.
+
+**A gesture is furniture too.** The round's box was Mrs. Vane putting her hands back
+on the arms of her chair while standing on the back step, and the reflex reading of
+that is "she named the parlour." She did not. She named a chair. The parlour is not
+in the sentence at all, which is exactly why a search for room names walked past it,
+and past the pot Mrs. Kettle stirs from the grass, past the unlit lamp she looks at
+from a garden lit by a burning one, and past the legs Teague recrosses on his feet.
+
+Three repairs, in order of preference:
+
+- **Rewrite the gesture to one the speaker carries.** Teague takes his time over the
+  sentence instead of recrossing his legs, and the row stops needing to know
+  anything. This is the cheapest repair and the one that stays fixed.
+- **Branch on the speaker's room** with a `perform:` closure and `actor.isIn(_:)`,
+  the shape Constance's alibi row has used since the last round. Take this when the
+  gesture is worth keeping in the room that has the furniture.
+- **Make the sentence frame-free** when neither is available. A table-level `again:`
+  is one `String`, fixed where the rules are declared rather than in the turn that
+  prints it, so it cannot read a room — it has to be true everywhere the speaker
+  goes.
+
+Two things this pass turned up that are worth carrying forward:
+
+- **A table's `again:` retires `reply:` rows only.** Converting a row to `perform:`
+  to branch its body silently drops it out of the table's repeat handling, so the
+  row starts repeating itself verbatim. Give the row its own `again:` in the same
+  edit.
+- **Mrs. Kettle's testimony was true of the room and false of the minute.** The
+  timetable read supplies the room; both of the crossings she watches resolve to the
+  kitchen, so the lookup could not see that the row described the 5:36 descent and
+  quoted 5:42. She testifies to both crossings now, with a lookup on each. The
+  general form: a lookup proves the noun it returns and nothing else in the
+  sentence.
+
+### Two channels for two facts
+
+The scorched glove was one `description(…)` carrying two different kinds of fact:
+what the glove *is*, and where it was *found*. The second followed it into the
+player's hands and went on claiming a coal bin the glove was no longer behind — and
+was invisible to anyone who took it before examining it, which is most players.
+
+`firstSight(…)` carries the placement and prints in the cellar listing until somebody
+touches it. `description(…)` carries the glove. **The clue got more discoverable, not
+less**, which is the argument that settled the round's one true rater split: it now
+prints for every player who lights the cellar rather than only for one who examines
+before taking.
+
+### A noun the room prints and can answer
+
+Teague's half past six arrival says he "does not put the light on" in a room that
+declared no lamp. The failure mode here is not the parser refusing the word — it is
+the parser *accepting* it, because the player's own flashlight answers to `light`, so
+the room replied as though it had one.
+
+The room has a ceiling light now. It shares the word with the flashlight, which is
+the arrangement the Back Yard has had all along, so the parser asks which — and that
+is the right question rather than a defect. **It refuses ON in the game's voice
+rather than becoming a `lightSource`:** a switchable bulb would be state that
+arrival line cannot read, since `Stop(arrival:)` is one `String` fixed where the
+timetable is written, and a player who had already pulled the chain would be told he
+did not put on a light that was on. That is this section's own defect, installed
+while fixing the one above it.
 
 ---
 
