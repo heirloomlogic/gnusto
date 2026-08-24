@@ -383,7 +383,8 @@ struct DungeonDam: GameContent {
         name("reservoir")
         adjectives("large")
         synonyms("water", "lake", "mud", "bed", "shore", "shores", "dam")
-        description(Prose.reservoirWater)
+        // Described by a rule: the gates decide whether there is any water in
+        // it, and the room the player is standing in is the reservoir bed.
         scenery
     }
 
@@ -599,6 +600,13 @@ struct DungeonDam: GameContent {
         }
         reservoir.describe {
             gatesOpen ? Prose.reservoirDrained : Prose.reservoirFull
+        }
+        // The water the reservoir bed's own paragraph is a claim about. Its two
+        // neighbours already had the state-aware line; the item under them did
+        // not, so `x water` counted a billion and a half cubic feet of it while
+        // the player walked across the mud.
+        reservoirWater.describe {
+            gatesOpen ? Prose.reservoirWaterDrained : Prose.reservoirWater
         }
         reservoirNorth.describe {
             gatesOpen ? Prose.reservoirNorthDrained : Prose.reservoirNorthFull

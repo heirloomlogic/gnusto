@@ -809,9 +809,19 @@ struct Dungeon: Game, GameMain {
         maze.gratingRoom.onEnter { aboveGround.grating.reveal() }
 
         // The grating reads differently from the two sides of it, because from
-        // one of them you are the thing underneath.
+        // one of them you are the thing underneath — and differently again for
+        // each turn of its lock, which the description used to fasten with
+        // regardless, from both sides, after the player had opened it.
         aboveGround.grating.describe {
-            player.location == maze.gratingRoom ? Prose.gratingFromBelow : Prose.grating
+            let grating = aboveGround.grating
+            let fromBelow = player.location == maze.gratingRoom
+            return if grating.isOpen {
+                fromBelow ? Prose.gratingOpenFromBelow : Prose.gratingOpenFromAbove
+            } else if grating.isLocked {
+                fromBelow ? Prose.gratingFromBelow : Prose.grating
+            } else {
+                fromBelow ? Prose.gratingUnlockedFromBelow : Prose.gratingUnlockedFromAbove
+            }
         }
 
         // Both turns of the lock, which `GRATE-FUNCTION` answers itself for the

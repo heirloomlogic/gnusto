@@ -820,17 +820,15 @@ struct Fulminate: Game, GameMain {
             """)
     }
 
+    /// Described by a rule for the same reason Constance and Mrs. Kettle are:
+    /// the sentence that makes him — the most helpful man in a house where
+    /// somebody has died — is a claim about the blast, and he is examinable
+    /// from 5:38, six minutes before there is a death to notice.
     let teague = Actor {
         name("Howard Teague")
         properName
         adjectives("howard", "mr", "mister")
         synonyms("teague", "howard", "boarder", "man")
-        description(
-            """
-            Fifty-six, Navy the first time around, in a jacket that was pressed this morning by somebody. He is the
-            most helpful person in this house, which is a thing worth noticing about a house where a man has just
-            died.
-            """)
         firstSight("Howard Teague is here, being helpful.")
     }
 
@@ -1547,11 +1545,18 @@ struct Fulminate: Game, GameMain {
         // being helpful is a thing the player should have to decide to do, and
         // then not get to do. Both refusals are in the same voice as the
         // overcoat's, which is the house rule for other people's property.
+        // Where he is comes off the timetable, not off the sentence: he is out
+        // the front door at 5:46 and not back until ten past six, and the
+        // refusal used to put him in the house for the whole of it.
         suitcase.before(.take) {
+            let owner =
+                teague.isIn(street)
+                ? "a man who has stepped out and will want it when he gets back"
+                : "a man who is somewhere in this house"
             try refuse(
                 """
-                It is packed, it is heavy, and it belongs to a man who is somewhere in this house. Leave it where he
-                put it. That it is packed at all is the interesting part.
+                It is packed, it is heavy, and it belongs to \(owner). Leave it where he put it. That it is packed at
+                all is the interesting part.
                 """)
         }
 
@@ -1810,6 +1815,21 @@ struct Fulminate: Game, GameMain {
             case (true, true): "Delphine Marsh is on her feet with her arms at her sides, looking at the fire."
             case (true, false): "Delphine Marsh is here, not looking at you."
             }
+        }
+
+        // The helpfulness is the constant; the thing worth noticing about it is
+        // not. Before a quarter to six there is no death in this house to
+        // notice it against, and saying there is front-runs the game's own
+        // reveal — the telephone at twenty past six — by forty minutes.
+        teague.describe {
+            let tell =
+                blastHappened
+                ? "which is a thing worth noticing about a house where a man has just died"
+                : "and nobody this evening has given him anything to be helpful about"
+            return """
+                Fifty-six, Navy the first time around, in a jacket that was pressed this morning by somebody. He is
+                the most helpful person in this house, \(tell).
+                """
         }
 
         kettle.describe {

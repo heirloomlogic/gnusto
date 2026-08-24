@@ -124,7 +124,7 @@ struct DungeonTests {
     private static let toTheTemple = toTheMirrors + ["rub mirror", "north", "north", "up"]
 
     /// And down to the gate of Hades with the ceremony's three pieces in hand.
-    private static let toTheGateOfHades =
+    static let toTheGateOfHades =
         toTheTemple
         + [
             "take bell", "east", "take book", "take candles",
@@ -170,11 +170,11 @@ struct DungeonTests {
     private static let mazeFiveToTheCyclops = ["southwest", "east", "south", "northeast"]
 
     /// From Maze-5 to the Grating Room: southwest, up, east, northeast.
-    private static let mazeFiveToTheGrating = ["southwest", "up", "east", "northeast"]
+    static let mazeFiveToTheGrating = ["southwest", "up", "east", "northeast"]
 
     /// The whole descent, past the troll, and into the maze as far as the
     /// skeleton. Seed 18 throughout: the troll falls to the first blow.
-    private static let toMazeFive = pastTheTroll + trollRoomToMazeFive
+    static let toMazeFive = pastTheTroll + trollRoomToMazeFive
 
     /// From the Loud Room out to the west bank of the Frigid River on foot —
     /// the mainframe's own road, and the one Zork I replaced with a passage
@@ -3002,6 +3002,27 @@ struct DungeonTests {
     }
 
     /// The buoy is the same shape, three bends down the Frigid River.
+    /// **The buoy's two channels are two lines.** One constant was passed to
+    /// both `firstSight(…)` and `description(…)`, so `x buoy` answered "There
+    /// is a red buoy here" about a buoy in the player's hands. The listing line
+    /// is the trilogy's and stays; the examine line is this game's own.
+    /// (#286 D2)
+    @Test func theBuoyExaminesAsAThingAndListsAsAPlace() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.afloatOnTheRiver + ["down", "down", "down", "take buoy", "examine buoy"],
+            seed: 18)
+
+        expectInOrder(
+            transcript,
+            [
+                "There is a red buoy here (probably a warning).",
+                "Taken.",
+                "A red plastic buoy the size of a small barrel",
+            ])
+        #expect(!turnOutput(of: "examine buoy", in: transcript).contains("There is a red buoy here"))
+    }
+
     @Test func theOpenedBuoyPrintsTheEmeraldsOwnLine() async throws {
         let transcript = try await play(
             Dungeon(),

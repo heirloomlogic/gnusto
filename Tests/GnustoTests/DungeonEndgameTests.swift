@@ -420,6 +420,29 @@ struct DungeonEndgameTests {
         #expect(!transcript.contains("There is no opening in the side facing you"))
     }
 
+    /// **"The walls of the box are shut on every side of you." is a claim, and
+    /// two frames make it false.** A named direction with the other end open is
+    /// a wall that is shut, not a box that is; and a box standing on a diagonal
+    /// has its opening on the corner where two walls meet, which `push pine`
+    /// and `push mahogany` both say for themselves one turn earlier. `out` said
+    /// the box was shut on every side, with a mirror standing open in it.
+    /// (#280/#286 class 1)
+    @Test func aBoxWithAWayOutSaysWhichWayIsShutAndWhereItGives() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.pastTheCrypt + Self.toTheOpenMirror
+                + ["in", "north", "raise pole", "push red panel", "lower pole"]
+                + ["push pine", "out"],
+            seed: Self.seed)
+
+        // The route is the 716-point walkthrough, so every short command has
+        // been typed before it: split on the box's own unique lines instead.
+        let inside = output(after: "Inside Mirror", in: transcript)
+        #expect(inside.contains("That wall of the box is shut."))
+        #expect(inside.contains("The opening gives on the corner where two walls meet"))
+        #expect(!inside.contains("The walls of the box are shut on every side of you."))
+    }
+
     /// **With both ends open, you leave by the door you asked for.** The two
     /// tests were written as separate `if`s rather than a choice, so the pine end
     /// shadowed the mirror: `south` out of a box whose mirror stood open to the

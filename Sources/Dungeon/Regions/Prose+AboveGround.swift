@@ -434,9 +434,24 @@ extension Prose {
 
     static let leavesAlreadyMoved = "The leaves have already been pushed aside."
 
+    /// The forest side, locked — which is how it is found, and how it stays
+    /// until somebody turns the lock from underneath.
     static let grating = """
         A sturdy iron grating, set into the ground and fastened with a heavy
         lock. Cool air drifts up from whatever lies beneath it.
+        """
+
+    /// The forest side once the lock has been turned back and the grating is
+    /// still lying flat in the ground.
+    static let gratingUnlockedFromAbove = """
+        A sturdy iron grating, set into the ground, with its heavy lock hanging
+        open on the underside. Cool air drifts up from whatever lies beneath it.
+        """
+
+    /// The forest side with the grating standing up on its hinge.
+    static let gratingOpenFromAbove = """
+        A sturdy iron grating, swung up out of the ground it was set into, and
+        a hole under it going down into the dark.
         """
 
     /// The same grating, seen from the room it is the ceiling of. Milestone 4
@@ -445,6 +460,20 @@ extension Prose {
     static let gratingFromBelow = """
         A sturdy iron grating overhead, set into the roof of the room and
         fastened on this side with a heavy lock.
+        """
+
+    /// From below, unlocked and still shut. The lock is on this side, so this
+    /// is the side that can see it has been turned.
+    static let gratingUnlockedFromBelow = """
+        A sturdy iron grating overhead, set into the roof of the room, with the
+        heavy lock on this side of it standing open.
+        """
+
+    /// From below, open — which is the one state in which this room is not
+    /// dark.
+    static let gratingOpenFromBelow = """
+        A sturdy iron grating overhead, swung back off its opening, and daylight
+        coming down through the hole where it was.
         """
 
     /// Trilogy verbatim — what the Clearing says once the leaves are off.
