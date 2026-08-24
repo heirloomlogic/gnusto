@@ -1271,6 +1271,49 @@ struct FulminateTests {
         #expect(turnOutput(of: "x kettle", in: late).contains("looked at the wreckage"))
     }
 
+    /// Teague's was the one description in the household `7c92508` did not key
+    /// on the blast, so the clause that makes him — the most helpful man in a
+    /// house where somebody has died — printed from 5:38, six minutes before
+    /// there was a death, with Dr. Pike alive in the Parlour. It also front-ran
+    /// the 6:20 telephone, which is the game's own first word that Pike is
+    /// gone. (#280 C2)
+    @Test func teagueSaysNothingAboutADeathUntilThereHasBeenOne() async throws {
+        // He comes down the back stairs at 5:36 and is examinable in the
+        // kitchen at 5:38; he is off the map from 5:46 and back in the front
+        // hall at 6:10.
+        let transcript = try await play(
+            Fulminate(),
+            ["south", "z", "z", "z", "x teague", "north"]
+                + Array(repeating: "z", count: 15) + ["x howard"])
+
+        let early = turnOutput(of: "x teague", in: transcript)
+        #expect(early.contains("the most helpful person in this house"))
+        #expect(!early.contains("has just died"))
+
+        let late = turnOutput(of: "x howard", in: transcript)
+        #expect(late.contains("a house where a man has just died"))
+    }
+
+    /// And the refusal that guards his case put him in the house for the whole
+    /// evening, including the twenty-four minutes he spends on the far side of
+    /// the front door. Where he is comes off the same timetable that moved him.
+    /// (#280 C4)
+    @Test func theSuitcaseRefusalReadsItsOwnersTimetable() async throws {
+        let transcript = try await play(
+            Fulminate(),
+            ["up", "east", "take suitcase"] + Array(repeating: "z", count: 7) + ["take case"])
+
+        // 5:34, and he is two floors down being helpful.
+        #expect(
+            turnOutput(of: "take suitcase", in: transcript)
+                .contains("belongs to a man who is somewhere in this house"))
+
+        // 5:50, four minutes after the front door went behind him.
+        let late = turnOutput(of: "take case", in: transcript)
+        #expect(late.contains("a man who has stepped out and will want it when he gets back"))
+        #expect(!late.contains("somewhere in this house"))
+    }
+
     /// She spends six minutes of the evening out of her chair, and a woman
     /// standing in the back garden is not in her chair with the lamp unlit.
     @Test func mrsVaneIsDescribedByTheRoomSheIsStandingIn() async throws {

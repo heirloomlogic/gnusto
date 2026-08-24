@@ -420,7 +420,7 @@ struct DungeonTemple: GameContent {
         name("number of ghosts")
         adjectives("evil")
         synonyms("spirits", "spirit", "ghosts", "ghost", "fiends", "fiend", "wraiths", "wraith")
-        description(Prose.spirits)
+        // Described by a rule: the exorcism sends them through the walls.
         scenery
         plural
     }
@@ -564,11 +564,27 @@ struct DungeonTemple: GameContent {
             if glacierScarred { return "\(Prose.glacierRoom)\n\n\(Prose.glacierPartlyMelted)" }
             return Prose.glacierRoom
         }
+        // The gate's paragraph reads the ceremony, not just its end. The bell
+        // stops the jeering at stage 1 and the candles have them cowering at
+        // stage 2, and the room went on saying "who jeer at your attempts to
+        // pass" through both of them.
         entranceToHades.describe {
-            spiritsBanished
-                ? Prose.entranceToHades
-                : "\(Prose.entranceToHades)\n\n\(Prose.spiritsBarTheGate)"
+            let atTheGate: String? =
+                if spiritsBanished {
+                    nil
+                } else {
+                    switch exorcismStage {
+                    case 1: Prose.spiritsBarTheGateSilent
+                    case 2: Prose.spiritsBarTheGateCowering
+                    default: Prose.spiritsBarTheGate
+                    }
+                }
+            return atTheGate.map { "\(Prose.entranceToHades)\n\n\($0)" } ?? Prose.entranceToHades
         }
+
+        // And the spirits themselves, who flee through the walls at stage 3 and
+        // went on being examined as a wall of them enjoying this.
+        spirits.describe { spiritsBanished ? Prose.spiritsFled : Prose.spirits }
 
         railing.describe { ropeTiedToRailing ? Prose.railingTied : Prose.railingBare }
         glacier.describe { glacierMelted ? Prose.glacierRemains : Prose.glacierExamined }

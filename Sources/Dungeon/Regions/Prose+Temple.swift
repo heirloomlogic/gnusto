@@ -416,6 +416,21 @@ extension Prose {
         attempts to pass.
         """
 
+    /// Stage 1 of the ceremony. The bell has stopped the jeering — see
+    /// ``bellRingRedHot`` — and the gate's paragraph went on reporting it for
+    /// the whole six turns the ceremony lasts.
+    static let spiritsBarTheGateSilent = """
+        The way through the gate is barred by evil spirits, silent now, every
+        one of them turned to face you.
+        """
+
+    /// Stage 2. The candles are lit, the spirits cower — see
+    /// ``candlesLitForRitual`` — and the gate is still shut to you.
+    static let spiritsBarTheGateCowering = """
+        The way through the gate is barred by evil spirits, who cower from the
+        candle flames while they bar it.
+        """
+
     static let hadesGateBlocked = """
         Some invisible force prevents you from passing through the gate.
         """
@@ -428,6 +443,14 @@ extension Prose {
     static let spirits = """
         A wall of spirits, thin as smoke and packed as close as a crowd, and
         every one of them enjoying this.
+        """
+
+    /// The same noun once they have gone through the walls. The item stays in
+    /// the room because the player may still name it, and what it answers is
+    /// that there is nothing there.
+    static let spiritsFled = """
+        Nothing of them is left to look at, and the cold they were standing in
+        is going out of the air.
         """
 
     static let spiritsUnaffected = "You seem unable to affect these spirits."

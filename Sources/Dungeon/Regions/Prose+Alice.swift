@@ -261,6 +261,13 @@ extension Prose {
         a time and never quite stopping.
         """
 
+    /// The same crack once the steam has taken the leak with it, which is what
+    /// ``poolRoomDrained`` says the room now looks like.
+    static let poolLeakDry = """
+        A crack in the ceiling far overhead, dry now, with a brown stain
+        running away from it in both directions.
+        """
+
     static let poolLeakOutOfReach = """
         The ceiling here is a very long way up.
         """
@@ -433,6 +440,14 @@ extension Prose {
     static let sphere = """
         A sphere of white crystal, cold to the eye, resting on a low pedestal
         as if it had been put down a moment ago.
+        """
+
+    /// The same sphere once the dish under it is empty. The placement clause is
+    /// a claim about the pedestal, and `cageSprung` is the pedestal having been
+    /// emptied — by whichever of you did it.
+    static let sphereOffThePedestal = """
+        A sphere of white crystal, cold to the eye, and lighter in the hand
+        than a thing that size has any business being.
         """
 
     static let spherePedestal = """

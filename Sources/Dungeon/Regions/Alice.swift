@@ -260,7 +260,7 @@ struct DungeonAlice: GameContent {
         name("leak")
         adjectives("large")
         synonyms("ceiling", "crack", "drip")
-        description(Prose.poolLeak)
+        // Described by a rule: the steam takes the leak with it.
         scenery
     }
 
@@ -366,7 +366,7 @@ struct DungeonAlice: GameContent {
         adjectives("white", "crystal", "beautiful")
         synonyms("sphere", "ball", "stone", "glass")
         firstSight(Prose.sphereFirstSight)
-        description(Prose.sphere)
+        // Described by a rule: the pedestal under it does not always hold it.
         trait(.weight, 10)
         trait(.takeValue, 6)
         trait(.depositValue, 6)
@@ -611,6 +611,10 @@ struct DungeonAlice: GameContent {
     @RuleBuilder private var poolRoomRules: Rules {
         poolRoom.describe { poolEvaporated ? Prose.poolRoomDrained : Prose.poolRoom }
 
+        // And the leak itself, which the room's own paragraph already knows the
+        // steam took away. The item under it was left behind dripping.
+        leak.describe { poolEvaporated ? Prose.poolLeakDry : Prose.poolLeak }
+
         // The ceiling is a very long way up when you are four inches high, and
         // one reach rule says so to `take`, `open`, `plug` and the rest alike.
         leak.reach(otherwise: Prose.poolLeakOutOfReach) { false }
@@ -741,6 +745,10 @@ struct DungeonAlice: GameContent {
         // Ordered to fetch it, the robot springs the trap on itself, and a
         // steel cage is no more to a robot than weather. An order never reaches
         // stage 4, so this half has to be a `before` rule.
+        // "resting on a low pedestal" is where it was, not what it is, and the
+        // player reads it standing inside a steel cage with the sphere in hand.
+        sphere.describe { cageSprung ? Prose.sphereOffThePedestal : Prose.sphere }
+
         sphere.before(.take) {
             guard command.actor == robot else { return }
             try require(!cageSprung, else: Prose.cageAlreadySprung)

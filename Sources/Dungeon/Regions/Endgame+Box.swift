@@ -185,14 +185,20 @@ extension DungeonEndgame {
         // the pine end was open too.
         let unqualified = direction == .out || direction == .in
         let asked = MirrorBox.angle(of: direction)
-        guard
-            let opening = [state.angle(of: .mirror), state.angle(of: .pine)].first(where: {
-                state.openFace(at: $0) != nil && (unqualified || asked == $0)
-            })
-        else { try refuse(Prose.boxNoWayOut) }
+        let openings = [state.angle(of: .mirror), state.angle(of: .pine)]
+            .filter { state.openFace(at: $0) != nil }
+        guard let opening = openings.first(where: { unqualified || asked == $0 }) else {
+            // "Shut on every side of you" is only true when nothing stands
+            // open. With one end open and the other asked for, the box has a
+            // way out and it is not this one.
+            try refuse(openings.isEmpty ? Prose.boxNoWayOut : Prose.boxThatSideIsShut)
+        }
 
         guard let landing = roomOutside(state.berth, at: opening) else {
-            try refuse(Prose.boxNoWayOut)
+            // The wall is open — the box is standing on a diagonal, so what the
+            // opening faces is a corner rather than a room. `push pine` said so
+            // one turn earlier and this said the walls were shut.
+            try refuse(Prose.boxOpensOnACorner)
         }
         if state.face(at: opening) == .pine {
             var next = state
