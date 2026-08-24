@@ -1658,6 +1658,16 @@ map, taken from `dung.355` and checked room by room against the exit counts in
   D4. Both spellings go through one load gate (`Dungeon.chimneyLoadGate()`), so
   the count rule above holds whichever the player types, and the Kitchen end
   refuses in the same words `down` does.
+- **The small mailbox is a fitting, and its line stops at the first touch.**
+  `MAILB` (`dung.355:5083`) is `<+ ,OVISON ,CONTBIT>` with no `TAKEBIT` — a
+  container bolted to the field — and this game had left `scenery` off it, so
+  `take all` on turn one walked away with the mailbox and the brochure fuse
+  posted into wherever it had last been set down (the 2026-08-18 round's D4). The
+  trait is on now, and the *listing* line survives it: a fitting the author gave
+  a line of its own still earns one. It also survives in practice as `ODESC1`
+  does, on every look — `firstSight` stops at the first touch, and `touched` is
+  set by TAKE, which is the one thing the trait refuses. Examining, opening and
+  posting into the box all leave it alone.
 - Values are the mainframe's, and two are not Zork I's: the painting cases for
   **7** where the trilogy pays 6, and the clockwork canary for **2** where it pays
   4. The egg is 5/5 and the bauble 1/1 in both.
@@ -1910,6 +1920,19 @@ Wooden Tunnel, and the two gas-explosion endings.
 - **The exorcism's clock is the source's**: six turns after the bell, three after
   the candles, twenty before the bell cools. `EXORCISE` is the source's own hint
   verb and never performs the ceremony.
+- **The rope tied to the railing is two fixtures, where the source is one flag.**
+  `ROPE-AWAY` (`act3.199:1287`) takes the coil out of your hands, drops it into
+  the Dome Room and sets `NDESCBIT` on it, so one object is both the thing you
+  carried in and the thing hanging through the dome. Gnusto cannot switch a
+  static trait on at runtime, so the coil goes offstage when the knot is tied and
+  a `scenery` fitting stands in for it at each end — one at the rim, one twenty
+  feet below on the floor of the Torch Room, because a rope hung through a dome
+  is in two rooms at once and an item is in one. It is the `steelCage`/`cageBars`
+  shape. **Where this game is gentler:** the source refuses `TAKE` outright while
+  the knot holds (*"The rope is tied to the railing."*) and makes you `UNTIE`
+  first; here `take rope` at the rim does both in one move. Both ends of the trip
+  are the source's otherwise — the knot can only be reached from the rim, and
+  undoing it shuts the Dome Room's drop. (#286)
 
 **Also landed here.** Four rooms are ``alwaysDescribed`` — the Dome Room, the
 Torch Room, the Glacier Room, the Entrance to Hades, the two Mirror Rooms, the
@@ -2211,6 +2234,18 @@ structure; neither says it in the source's characters.
   says one room, plus the cage you are standing in while the robot is outside
   it. Without it you can order the robot to lift a cage in the Dingy Closet
   while standing in a forest two hundred rooms above it.
+- **`robot, take sphere` costs nothing, where the source charges everything.**
+  `SPHERE-FUNCTION` (`act3.199:231`) gives the ordered branch to `JIGS-UP` with
+  `ROBOT-CRUSH`: the cage traps the robot, the robot short-circuits, and it
+  *crushes the sphere beneath him as he falls*. So in the mainframe the second
+  answer to this puzzle destroys the robot, the treasure and six of the
+  available points, and only the first answer — spring the trap yourself, then
+  `robot, lift the cage` — wins. This game keeps the trap and drops the
+  punishment: the cage lands on a machine that does not mind, and the sphere is
+  left loose on the closet floor. The two answers are equal here and they are
+  not in the source. `Prose.robotSpringsTheCage` is the sentence that says so,
+  and it says the sphere is *set down*, because a sphere in an actor's hand is
+  a sphere outside the player's scope — see the note on that constant. (#286)
 
 **Also landed here.** The Round Room's description stopped being permanent:
 until this milestone nothing could stop the machinery under its floor, and a
@@ -2926,11 +2961,17 @@ the object. Every framing sentence around it is this game's.
 - **`SROPE` is not reproduced as a separate object.** The source needs a second
   rope because its `ROPEBIT` rooms have no way to name the coil tied at the top;
   this engine does, because the coil is in the player's hands the whole way down
-  and a held item is always in scope. The coil stays in hand while it is tied,
-  exactly as it already does at the Dome Room's railing — milestone 3's
-  behaviour, matched rather than revisited. Four more scenery objects would also
-  have cost more bootstrap stack than the seventeenth bundle had left; see the
-  hazard note below.
+  and a held item is always in scope. Four more scenery objects would also have
+  cost more bootstrap stack than the seventeenth bundle had left; see the hazard
+  note below.
+
+  **Corrected 2026-08-24.** This entry used to add that the coil stays in hand
+  while it is tied *"exactly as it already does at the Dome Room's railing"*, and
+  the railing's half of that was a defect rather than a policy — see the
+  milestone 3 entry. The chute's half stands and is not the same fact: you are
+  hanging on that rope, `ropeSuspendsYou` refuses to let go of it, and letting go
+  deliberately drops you into the Cellar. A rope you are hanging from is in your
+  hands. A rope tied to a railing twenty feet over your head is not. (#286)
 - **One rope, one knot.** Milestone 8 gives the rope a second place to be tied,
   and the two are mutually exclusive: rigging the chute refuses while the Dome
   Room's railing still holds it, and vice versa. The source needs no such rule

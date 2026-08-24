@@ -1707,3 +1707,93 @@ four sentences are the *whole* defect and the world behind them is already right
 Telling the two apart costs one read of where the thing is placed, and it is the
 difference between a prose edit and a mechanic.
 
+
+### The ninth pass: the mechanic and the sentence disagree, and the mechanic is usually wrong
+
+The 2026-08-18 round's D4 is the same habit read from the other end. In the eight
+passes above a sentence was written for a frame and then asked to hold in frames
+it was never written for; here a sentence is true of the game the author had in
+mind and false of the game the rules build. Three sites, and the tell is that
+each one reads perfectly until you type the next command.
+
+21. **Where a thing ends up is a claim the rules have to make, or the sentence
+    has to stop making it.** `robot, take sphere` narrated the alarm, the cage,
+    and *"the sphere is still in its hand"*, over a rule that ends in `reply` and
+    therefore transfers nothing. Both halves of the obvious repair are traps. The
+    mechanical half — `sphere.move(heldBy: robot)` — would make the sentence true
+    and the treasure unobtainable, because `Visibility.collect` keeps what other
+    people are holding out of the player's scope deliberately, so `x sphere`
+    would then deny a noun the same paragraph had just printed and 6+6 would come
+    off `maxScore`. The prose half is the right one *here* only because
+    `FIDELITY.md` had already written down what this puzzle does — *"ordered, the
+    cage lands on the robot, which does not mind, and the sphere is free"* — and
+    the rule was doing exactly that. **Read the fidelity entry before choosing
+    which side to move.** One of the two is usually already documented, and the
+    other one is the mistake.
+
+22. **A thing the fiction fixes in place has to stop being luggage.** Two sites,
+    one shape. The rope tied to the Dome Room's railing stayed a loose takeable
+    coil, so it rode down into the Torch Room in a pocket and could be set on the
+    floor there — under a paragraph about a rope hanging five feet above the
+    player's head, beside an exit refusing *"You cannot reach the rope."* The
+    mailbox at West of House was a portable openable container from turn one, so
+    `take all` walked off with it and the brochure fuse posted into wherever it
+    had been set down.
+
+    Both sources say otherwise and say it the same way: `MAILB`
+    (`dung.355:5083`) is `<+ ,OVISON ,CONTBIT>` with no `TAKEBIT`, and
+    `ROPE-AWAY` (`act3.199:1287`) takes the coil out of your hands and gives it
+    `NDESCBIT` the moment the knot is tied. The mailbox is one word, `scenery`.
+    The rope is not, and the reason is worth stating carefully, because the
+    obvious reading of it sends the next reader at the engine. Gnusto has no
+    runtime way to withhold a listing line — a static trait cannot be switched
+    on mid-game, `reveal()` is one-way, `isTouched` is read-only — but adding
+    one would not have been the repair. **A rope hung through a dome is in two
+    rooms at once, and an item is in one.** So it is a **fitting** per room,
+    offstage until the knot is tied, each taking as its examine line the
+    paragraph its own room already prints: the `steelCage`/`cageBars` shape,
+    one thing seen from two sides. A runtime flag would have saved the first of
+    the two items and not the second.
+
+    Two things fall out of the pair that a flag would not have given. The knot
+    stops being stored at all — `ropeTiedToRailing` is now
+    `ropeOnTheRailing.isIn(domeRoom)`, `cageSprung`'s shape, so the fact has one
+    representation instead of two. And the far end takes
+    `reach(otherwise:) { false }` rather than a list of verbs, which settles at
+    stage 0 and so answers `touch`, `tie` and `attack` as well as the four the
+    round happened to type, while leaving EXAMINE — `reach: .notNeeded` — to
+    answer the noun.
+
+### What the ninth pass changed, and what it did not
+
+The mechanics contract is untouched a ninth time — no map, no treasure value, no
+`maxScore`, and both walkthroughs still score 616 and 716. The puzzle *moved
+toward* the MDL rather than away from it, which is what the contract's second row
+asks for. Three things are worth naming:
+
+- **The winning route changed, and that is the finding rather than a cost of it.**
+  Line 99 of the committed route was `drop rope`, in the Torch Room, and line 659
+  was `take rope`, in the same room — the route depended on the coil being in a
+  pocket, which is the defect written down as a script. With the knot holding the
+  rope where the knot is, stage 4 has nothing to drop and stage 15 collects the
+  rope from the **rim** instead, on a five-move detour off the Deep Ravine after
+  the wing is done. That ordering is forced and it is the source's: taking the
+  rope unties it, untying it shuts the drop, and everything west of the Torch Room
+  is behind that drop. A route that could not be walked in the fixed game was a
+  route walking through the bug.
+- **The mailbox keeps its listing line, and `scenery` does not take it away.**
+  `RoomDescriber.sayListing` withholds only the *stock* sentence from a fitting;
+  a fitting the author gave a line of its own still earns it, until the thing is
+  touched. Here that is every look, which is `ODESC1` exactly, and the reason is
+  a small joke at the trait's expense: `touched` is set by TAKE, and TAKE is what
+  the trait now refuses. Examining, opening and posting into the box leave it
+  untouched forever.
+- **The sphere's sentence moved and its rule did not.** Worth saying plainly
+  because the round's own sketch proposed the opposite, and the opposite is the
+  version that strands a treasure.
+
+**The class's diagnostic.** Class 5 could be told apart from D1 by one read of
+where a thing is placed. This one is told apart by one read of what the sentence
+would cost if it were true. Make the claim true and see what the world looks like
+afterwards: if the answer is a noun that stops answering, or a room that stops
+being reachable, the sentence is what moves.
