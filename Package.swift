@@ -47,8 +47,15 @@ let exitTests: [SwiftSetting] = [
 
 let package = Package(
     name: "Gnusto",
+    // The iOS floor is `Synchronization.Mutex`, the same thing that sets the
+    // macOS one; nothing else in the engine is platform-bound. Why an iOS front
+    // end works and what it has to supply instead of `GameMain` is the
+    // CustomFrontEnds article. `.github/workflows/ios.yml` builds the package
+    // for iOS on every PR, so the claim cannot rot unseen — that job and this
+    // line are a matched pair.
     platforms: [
-        .macOS(.v15)  // Synchronization.Mutex
+        .macOS(.v15),  // Synchronization.Mutex
+        .iOS(.v18),  // Synchronization.Mutex
     ],
     products: [
         .library(name: "Gnusto", targets: ["Gnusto"]),
