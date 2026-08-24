@@ -204,7 +204,8 @@ computed `static var`, which rebuilds it on every read.
   `describeSurroundings(withRoomName: false)`.
 - **A rule that moves the player between rooms picks one of two moves.**
   `arrive(at:)` is the `player.location = ` + `describeSurroundings()` pair
-  written once: a teleport, so it fires no `onEnter`, carries no boarded vehicle,
+  written once: a teleport, so it fires no `onEnter`, strands a boarded vehicle
+  for good (the player is on foot from then on, even if they walk back to it),
   and describes as a full LOOK every time. `try enter(_:)` is the walk — it runs
   the destination's `onEnter` rules, brings a boarded vehicle and its cargo, and
   describes as an *entry* (brief on a revisit, so a room whose description is its

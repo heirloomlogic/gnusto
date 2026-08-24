@@ -34,7 +34,7 @@ enum RoomDescriber {
             }
             return (
                 id, dark, visited,
-                Visibility.boardedVehicle(definition: definition, state: scratch.state),
+                scratch.state.playerVehicle,
                 scratch.state.containment(),
                 scratch.state.touched,
                 scratch.state

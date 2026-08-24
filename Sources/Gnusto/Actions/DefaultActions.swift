@@ -59,9 +59,7 @@ enum DefaultActions {
         }
         // The one default that could relocate the thing the player is
         // sitting in.
-        let boarded = frame.with {
-            Visibility.boardedVehicle(definition: frame.definition, state: $0.state)
-        }
+        let boarded = frame.with { $0.state.playerVehicle }
         if id == boarded {
             try refuse(frame.definition.text.notWhileInside(item.definiteNoun))
         }
@@ -100,8 +98,7 @@ enum DefaultActions {
             // Dropped while boarded in a cargo vehicle, things land in the
             // hull, not on the ground sliding past below. Capacity is not
             // enforced on this implicit path — `putIn` remains the gate.
-            let vehicle = Visibility.boardedVehicle(
-                definition: frame.definition, state: scratch.state)
+            let vehicle = scratch.state.playerVehicle
             if let vehicle, frame.definition.items[vehicle]?.isContainer == true {
                 scratch.state.place(id, .inside(vehicle))
             } else {
@@ -527,14 +524,7 @@ enum DefaultActions {
         // the stack: see `TurnFrame.nested(_:within:_:)`, issue #223.
         try frame.nested(.walk, within: destination) {
             if let aside { frame.say(aside) }
-            frame.with { scratch in
-                let vehicle = Visibility.boardedVehicle(
-                    definition: frame.definition, state: scratch.state)
-                scratch.state.playerLocation = destination
-                if let vehicle {
-                    scratch.state.place(vehicle, .room(destination))
-                }
-            }
+            frame.with { $0.state.walkPlayer(to: destination) }
             for rule in frame.definition.rules.locationOnEnter[destination] ?? [] {
                 try rule.body()
             }
@@ -665,11 +655,7 @@ enum DefaultActions {
             try refuse(frame.definition.text.cantEnterThat(item.definiteNoun))
         }
         let (currentVehicle, placement) = frame.with {
-            scratch -> (EntityID?, Placement?) in
-            (
-                Visibility.boardedVehicle(definition: frame.definition, state: scratch.state),
-                scratch.state.placements[id]
-            )
+            ($0.state.playerVehicle, $0.state.placements[id])
         }
         if currentVehicle == id {
             try refuse(frame.definition.text.alreadyInVehicle(item.definiteNoun))
@@ -684,7 +670,7 @@ enum DefaultActions {
             try refuse(frame.definition.text.cantReach(item.definiteNoun))
         }
         frame.with { scratch in
-            scratch.state.playerVehicle = id
+            scratch.state.board(id)
             scratch.state.touched.insert(id)
         }
         frame.say(frame.definition.text.boarded(item.definiteNoun))
@@ -709,16 +695,14 @@ enum DefaultActions {
     }
 
     static func disembark(_ command: Command, frame: TurnFrame) throws {
-        let vehicle = frame.with {
-            Visibility.boardedVehicle(definition: frame.definition, state: $0.state)
-        }
+        let vehicle = frame.with { $0.state.playerVehicle }
         guard let vehicle else {
             try refuse(frame.definition.text.notInVehicle())
         }
         if let named = command.directObject, named.id != vehicle {
             try refuse(frame.definition.text.notInThat(named.definiteNoun))
         }
-        frame.with { $0.state.playerVehicle = nil }
+        frame.with { $0.state.disembark() }
         frame.say(frame.definition.text.disembarked(frame.definiteNoun(of: vehicle)))
     }
 

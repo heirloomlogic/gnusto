@@ -1129,8 +1129,8 @@ extension DungeonVolcano {
     }
 
     /// Take the basket out of the world and leave the wreck on the floor. The
-    /// player stops being a passenger the moment the hull is gone, because
-    /// `Visibility.boardedVehicle` asks where the vehicle is.
+    /// player stops being a passenger the moment the hull is gone: taking a
+    /// boarded vehicle out of the room strands whoever was sitting in it.
     private func wreckTheBalloon() {
         stopFuse("balloonDrifts")
         stopFuse("burnerBurnsOut")
