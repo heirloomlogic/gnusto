@@ -349,6 +349,21 @@ struct ZorkCoalMine: GameContent {
 
         // The machine is far too large to carry.
         machine.before(.take) { try refuse(Prose.machineTooBig) }
+
+        // The two rooms whose own descriptions are about a smell. The stub
+        // floor's bare `smell` answers "You smell nothing you could put a name
+        // to." in all 110 rooms, which is the room's claim to make and not the
+        // floor's — and these are the two that refute it in their own prose:
+        // *a foul odor can be detected*, *smells strongly of coal gas*. A named
+        // `smell X` still gets `V-SMELL`'s joke about the thing. (#325)
+        for (room, line) in [
+            (smellyRoom, Prose.smellyRoomSmell), (gasRoom, Prose.gasRoomSmell),
+        ] {
+            room.before(.smell) {
+                guard command.directObject == nil else { return }
+                try reply(line)
+            }
+        }
     }
 
     // MARK: - Basket mechanism

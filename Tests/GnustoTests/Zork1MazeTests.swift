@@ -154,6 +154,41 @@ struct Zork1MazeTests {
             ])
     }
 
+    /// `V-ALARM`'s actor branch (`gverbs.zil:157-166`), which the stub floor
+    /// could not reach. Both frames, one transcript: `wake cyclops` at a giant
+    /// who is upright answers that he is wide awake, and at the drugged sleeper
+    /// it rouses him — where the old line said "The cyclops isn't sleeping." to
+    /// a man watching him snore. Bare `wake` in the same room said "Nothing here
+    /// is asleep." for the same reason, and is asserted against here. (#325)
+    @Test func wakingTheCyclopsReadsWhetherHeIsAsleep() async throws {
+        let transcript = try await play(
+            Zork1(),
+            Self.toMaze5 + [
+                "southwest", "east", "south", "southeast",  // → Cyclops Room
+                "wake cyclops",  // named, upright: wide awake
+                "wake",  // bare, upright: the same answer, from the room
+                "give lunch to cyclops",
+                "open bottle",
+                "give bottle to cyclops",  // he drinks himself to sleep
+                "wake",  // bare, and asleep: rudely awakened all the same
+                "examine cyclops",  // and back on his feet
+                "wake cyclops",  // named, upright again
+            ],
+            seed: 39)
+        expectInOrder(
+            transcript,
+            [
+                "He's wide awake, or haven't you noticed...",
+                "He's wide awake, or haven't you noticed...",
+                "fast asleep",
+                "The cyclops is rudely awakened.",
+                "hungry cyclops is standing",
+                "He's wide awake, or haven't you noticed...",
+            ])
+        #expect(!transcript.contains("The cyclops isn't sleeping."))
+        #expect(!transcript.contains("Nothing here is asleep."))
+    }
+
     @Test func theMazeThreadsPastItsDeadEnds() async throws {
         // A short draw-free walk from Maze-5: east into a dead end, back, and
         // southwest onward — proving the tangle's landmarks by name (every maze

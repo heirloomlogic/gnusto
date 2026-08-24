@@ -56,7 +56,7 @@ struct Zork1SystemsTests {
         // `text.stubs` now, and `Zork1ProseTests` covers them. (#242)
         let transcript = try await play(
             Zork1(),
-            ["wind mailbox", "inflate mailbox", "launch mailbox", "echo", "hello", "fix mailbox"])
+            ["wind mailbox", "inflate mailbox", "launch mailbox", "echo", "fix mailbox"])
         expectInOrder(
             transcript,
             [
@@ -64,9 +64,33 @@ struct Zork1SystemsTests {
                 "How can you inflate that?",
                 "That's pretty weird.",
                 "Your voice comes back to you",
-                "Nobody here returns your greeting",
                 "doesn't need fixing",
             ])
+    }
+
+    /// `raise` and `lower` are `V-LOWER`'s one routine (`gverbs.zil:902`,
+    /// `:1131`), which names the thing. They used to answer "Nothing here rises
+    /// to the occasion." and "There's nothing here to lower." — a claim about
+    /// the room from a row that never read one, and false in the Dome Room with
+    /// the rope over the rail. Both frames are here: the mailbox in an open
+    /// field, and the rope that is the room's whole mechanism. (#325)
+    @Test func raiseAndLowerNameWhatTheyAreAimedAt() async throws {
+        let transcript = try await play(
+            Zork1(), ["raise mailbox", "lower mailbox", "raise me"])
+        expectInOrder(
+            transcript,
+            [
+                "Playing in this way with the small mailbox has no effect.",
+                "Playing in this way with the small mailbox has no effect.",
+                // And the guard a row skips, written back: `DefaultActions.run`
+                // answers `yourself` before an override is consulted, so a row
+                // that widened its sentence to name its object would otherwise
+                // say "Playing in this way with yourself…". (#325)
+                "Do that to something else!",
+            ])
+        #expect(!transcript.contains("Nothing here rises to the occasion."))
+        #expect(!transcript.contains("There's nothing here to lower."))
+        #expect(!transcript.contains("with yourself"))
     }
 
     @Test func turnWithOutspecifiesTurnOn() async throws {
@@ -84,9 +108,14 @@ struct Zork1SystemsTests {
         expectInOrder(
             transcript,
             [
-                "Nothing here turns with that.",
+                // `V-TURN` (`gverbs.zil:1506`), which `TURN OBJECT WITH OBJECT`
+                // reaches in the source (`gsyntax.zil:505`). The invented
+                // "Nothing here turns with that." went with #325 — it was a
+                // claim about the room, and the bolt is in one of them.
+                "This has no effect.",
                 "The brass lantern is now on.",
             ])
+        #expect(!transcript.contains("Nothing here turns with that."))
     }
 
     // MARK: - Burden & the chimney gate
@@ -194,7 +223,25 @@ struct Zork1SystemsTests {
         let transcript = try await play(Zork1(), ["climb mailbox", "climb"])
         expectInOrder(
             transcript,
-            ["You can't climb onto the small mailbox.", "nothing here worth climbing"])
+            [
+                "You can't climb onto the small mailbox.",
+                "Not without something to climb.",
+            ])
+    }
+
+    /// The bare half of `climb`, in the frame that refuted it. It used to say
+    /// "There's nothing here worth climbing. Try up or down." everywhere,
+    /// including the Forest Path — whose own description is *one particularly
+    /// large tree with some low branches*, and whose tree
+    /// ``climbingTheTreeReachesThePerch`` proves you can climb. It also
+    /// recommended two exits that West of House does not have. The line is about
+    /// the player now, so both frames get the same true sentence. (#325)
+    @Test func bareClimbDoesNotSurveyARoomItNeverRead() async throws {
+        let transcript = try await play(Zork1(), ["climb", "north", "north", "climb"])
+        #expect(!transcript.contains("nothing here worth climbing"))
+        #expect(!transcript.contains("Try up or down"))
+        expectInOrder(transcript, ["West of House", "Forest Path"])
+        #expect(occurrences(of: "Not without something to climb.", in: transcript) == 2)
     }
 
     // MARK: - Diagnose

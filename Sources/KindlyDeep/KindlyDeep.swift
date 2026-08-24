@@ -112,7 +112,11 @@ struct KindlyDeep: Game, GameMain {
         // where the stock line is merely in the wrong century.
         text.stubs.listen = "Rock, doing what rock does, at the volume it does it."
         text.stubs.smell = "Coal, damp, and the particular flat cold of air that has stopped moving."
-        text.stubs.climb = "There is nothing here worth going up, and one thing worth going out."
+        // Not "There is nothing here worth going up": the shelter hole has an
+        // `up` exit and the Shaft Bottom has four hundred feet of ladderway,
+        // which its own rule answers for. About the man, and true in all seven
+        // rooms. (#325)
+        text.stubs.climb = "There is no climbing your way out of these workings, and you know it."
         text.stubs.dig = "You are four hundred feet into a hole somebody else dug. Enough."
         text.stubs.jump = "A man who jumps about in low workings finds out where the roof is."
         text.stubs.sing =
@@ -712,6 +716,17 @@ struct KindlyDeep: Game, GameMain {
 
     // MARK: - Default actions for the custom verbs
 
+    /// The two guards a stub **line** gets for free and an `action(…)` row does
+    /// not: `DefaultActions.run` answers `yourself` and `somebodyElse` before a
+    /// row is consulted, so a row whose sentence names its object will otherwise
+    /// say "Yourself does not ring." Biscuit is claimed by his own rules long
+    /// before either row, so what this actually catches is `ring me`. (#325)
+    private func refuseIfPerson(_ object: Item?) throws {
+        guard let object, object.isActor else { return }
+        if object.isPlayer { try reply(gameText.stubs.yourself()) }
+        try reply(gameText.stubs.somebodyElse(object.definiteNoun))
+    }
+
     var actions: [IntentAction] {
         action(.drink) {
             try reply(
@@ -774,8 +789,20 @@ struct KindlyDeep: Game, GameMain {
         action(.talk) {
             try reply("You say a few words into the dark. The dark, professionally, keeps its own counsel.")
         }
+        // Both of these used to claim the room was empty of anything to do it
+        // to, from a row that never read a room — and the room they are most
+        // often typed in is the Shaft Bottom, which has the signal bell on its
+        // wall and Biscuit standing in his collar beside it. The bell and the
+        // mule claim their own nouns in `rules`, so the row only ever fired for
+        // something *else* in that room, and then denied the two things the room
+        // is for. Both name the thing instead. Every phrasing of both verbs
+        // declares a direct object, so `?? GameText.Noun("that")` is the safety
+        // net `MeleeCombat`'s `.attack` row uses and not a player-facing path.
+        // (#325)
         action(.ring) {
-            try reply("There is nothing here worth ringing.")
+            try refuseIfPerson(command.directObject)
+            let named = command.directObject?.definiteNoun ?? GameText.Noun("that")
+            try reply("\(named.sentenceCased) \(named.verb("does", "do")) not ring.")
         }
         action(.pull) {
             try reply("It does not want pulling, and you do not have pulling to spare.")
@@ -797,7 +824,9 @@ struct KindlyDeep: Game, GameMain {
             try reply(Self.theScratch)
         }
         action(.harness) {
-            try reply("There is nothing here to harness.")
+            try refuseIfPerson(command.directObject)
+            let named = command.directObject?.definiteNoun ?? GameText.Noun("that")
+            try reply("\(named.sentenceCased) \(named.verb("does", "do")) not take a harness.")
         }
     }
 

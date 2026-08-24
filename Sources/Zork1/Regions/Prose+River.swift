@@ -228,6 +228,15 @@ extension Prose {
         You realize that getting out here would be fatal.
         """
 
+    /// What `stand` and `get up` answer to a man who is sitting in a boat.
+    ///
+    /// This game's own. `V-STAND` disembarks instead of speaking, and the rule
+    /// that reads this cannot; see the comment at its assignment in ``ZorkRiver``
+    /// and the departure in `FIDELITY.md`. (#325)
+    static func standingInTheBoat(_ vessel: String) -> String {
+        "You are sitting in \(vessel). Get out of it first."
+    }
+
     // MARK: - White Cliffs
 
     static let cliffPathTooNarrow = """

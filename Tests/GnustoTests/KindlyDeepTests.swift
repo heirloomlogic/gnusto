@@ -478,6 +478,38 @@ struct KindlyDeepTests {
         #expect(output(after: "Flint, sparks, and the wick takes", in: transcript).contains("The Fresh Fall"))
     }
 
+    /// `ring` and `harness` are this game's verbs, and their stage-4 rows used
+    /// to answer "There is nothing here worth ringing." and "There is nothing
+    /// here to harness." — flat claims from rows that never read a room. The
+    /// room they are most often typed in is the Shaft Bottom, which has the
+    /// signal bell in it and Biscuit standing in his collar beside it. Both
+    /// frames: the thing that does answer, and the thing that does not. (#325)
+    @Test func ringingAndHarnessingNameWhatTheyWereAimedAt() async throws {
+        let transcript = try await play(
+            KindlyDeep(),
+            Self.toShaftBottomTogether + [
+                "ring beam",  // not a bell — but the bell is right here
+                "harness beam",  // not a mule — but the mule is right here
+                "ring me",  // the guard a row skips, written back
+                "harness biscuit",  // and this is what they are both for
+            ])
+        expectInOrder(
+            transcript,
+            [
+                "The beam does not ring.",
+                "The beam does not take a harness.",
+                // `DefaultActions.run` answers `yourself` before an override is
+                // consulted, so a row whose sentence names its object has to
+                // write that guard back or say "Yourself does not ring." (#325)
+                "Best leave yourself out of it.",
+                // The mule answers for himself, in the room both flat lines
+                // called empty.
+                "Biscuit",
+            ])
+        #expect(!transcript.contains("nothing here worth ringing"))
+        #expect(!transcript.contains("nothing here to harness"))
+    }
+
     // MARK: - The two endings
 
     /// Ring with the mule on the wrong side of a crawl he cannot use and the
