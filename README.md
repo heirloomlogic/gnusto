@@ -171,9 +171,9 @@ Write to `.docs-build`, never to `docs/`. The plugin deletes its output path bef
 ## Requirements
 
 - Swift 6.2 toolchain, Swift 6 language mode
-- macOS 15 or newer (the engine uses `Synchronization.Mutex`), or Linux
+- macOS 15 or newer, iOS 18 or newer, or Linux. Both Apple floors are `Synchronization.Mutex`.
 
-CI tests on Linux and the release workflow builds for both. Beyond Foundation the engine imports `Synchronization` and `Dispatch` and nothing else; every platform-specific call sits behind `#if canImport(Darwin)` in four files, all of them the terminal front end or the play-test transport. So a game can run wherever you can supply an `IOHandler`.
+CI tests on Linux and builds every product for iOS; the release workflow ships macOS and Linux binaries. Beyond Foundation the engine imports `Synchronization` and `Dispatch` and nothing else; every platform-specific call sits behind `#if canImport(Darwin)` in five files, four of them the terminal front end or the play-test transport and the fifth a thread-priority hint. So a game can run wherever you can supply an `IOHandler`. On iOS you supply one rather than let `GameMain` pick; see [Custom Front Ends](https://heirloomlogic.github.io/gnusto/documentation/gnusto/customfrontends).
 
 ## Licence
 

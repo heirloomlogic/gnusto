@@ -1,0 +1,59 @@
+name: iOS
+
+# Builds the package for iOS, which is the only thing holding `Package.swift`'s
+# `.iOS(.v18)` honest. The engine has no iOS-only code, so the way it breaks on
+# iOS is a *new* call whose iOS availability is later than its macOS one — green
+# in every other workflow. Deleting this file and deleting the platform line are
+# a matched pair.
+#
+# Its own file, not a job in `test.yml`, for harness.yml's reasons: `test.yml`
+# runs in `swift:6.3.3-noble`, and a Linux container has no iOS SDK.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# See test.yml for why pushes get a singleton group rather than sharing one.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  build-ios:
+    runs-on: macos-26
+
+    # Generous on purpose: a timeout is here to bound a hang, not to police
+    # minutes, which are free on a public repo. Revisit against an observed run.
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Builds only, and xcodebuild resolves the package (running plugin
+          # code) — don't leave the token in .git/config for it.
+          persist-credentials: false
+
+      # No `paths:` filter above, for the reason harness.yml gives: a filtered
+      # job becomes a permanently pending check the day branch protection is
+      # turned on.
+      #
+      # The `Gnusto-Package` scheme rather than `Gnusto`: it covers the optional
+      # libraries, GnustoTestSupport and the seven demo games, which are the
+      # corpus that would notice an author-facing API going iOS-unavailable.
+      # `.dev-tooling` is deliberately not touched, so Persnicket and the DocC
+      # plugin stay out of the graph. `-skipMacroValidation` because the #verb
+      # macro is a source dependency and xcodebuild otherwise wants an
+      # interactive trust decision for it. The version is logged so a rolled
+      # image is diagnosable in one look.
+      - name: Build for iOS
+        run: |
+          xcodebuild -version
+          xcodebuild \
+            -scheme Gnusto-Package \
+            -destination 'generic/platform=iOS' \
+            -skipMacroValidation \
+            -derivedDataPath .build/ios \
+            build
