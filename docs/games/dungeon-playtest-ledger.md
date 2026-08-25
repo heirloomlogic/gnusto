@@ -589,3 +589,128 @@ The pattern worth carrying forward: this class is told apart by asking what the 
 would cost if it were made true. Make the claim true and look at the world afterwards — if
 the answer is a noun that stops answering or a room that stops being reachable, the
 sentence is the thing that moves, not the mechanic.
+
+## 2026-08-24 — third round, `9caa400` (`fix: none`, nothing applied)
+
+Ran at **seed 52**, read from `DungeonWalkthroughTests.seed` rather than from any number
+written down in this file. `verifyEffort: medium`, turned down to afford a three-region split
+with a proven route prefix in every region. Oracle tiers T0–T4, all five.
+
+**Every `confirmed` row below is an open defect in the game as it ships, filed as #329.** The
+one `held` row is not: see below. Nothing was fixed in the round itself.
+
+**The 23 `refuted` keys from the two previous rounds were passed as `ledgerKeys`**, and the
+`fixed` and `confirmed` ones were withheld. Seven further suppression strings went with them:
+three standing for the fixes in unmerged PR #328 (the sphere/robot prose, the mailbox `scenery`
+trait, the tied-rope floor listing) and four for #286's still-unticked boxes. #286 was also
+passed as the round's one `routedIssue`; **nothing routed to it**, which is a real result — the
+three regions this round was built to reach are regions #286's round never entered.
+
+**This round was #291's charter and it discharged it. Every one of the nine targets was
+reached, and eleven timers that had never fired in any session of this harness fired and were
+read**: the six thief timers, `damLeak`, `gnomeArrives`, `gnomeLeaves`, `slideGrip`, both
+blast-death branches and `lanternDim`. The mechanism was nine route prefixes cut out of the
+committed 744-command route and **replayed, with their landing rooms read off the `[status]`
+footer, before a single charter was dispatched**. The novel one is `route[0:40]` — the
+committed route with index 41, `attack thief with sword`, and everything after it dropped.
+
+**#291's target 1 was half right and the half matters.** Lifting an underground treasure puts
+the thief onstage (`Dungeon+Thief.swift:161-167`) but puts him in his *lair*; being met is a
+separate per-turn coin flip at about 0.46% (`Dungeon+Thief.swift:267-273` into
+`GnustoActors/ActorBehaviors.swift:62-91`). A charter told only to wait meets him about three
+times in five. What is reliable is re-entering the lair, which re-summons him every time
+(`:239-241`). Any future thief charter should be told the second thing, not the first.
+
+**The completeness critic rates this round `round-is-thin` too — and it is a different
+thinness.** Six regions have no charter-typed command in them at all, the 32-room Endgame was
+entered by zero live sessions, and the harness's own coverage arithmetic overstates the round
+by a factor of five because a room is credited when the only commands in it came from a pasted
+route prefix. That last one is a **harness** defect this round created the conditions to see:
+a long proven prefix bought the nine targets and a coverage number that is not coverage. Both
+are true. It is box 8 of #329.
+
+**One row is `held`, not filed.** `decl::Sources/Dungeon/Regions/Prose+Temple.swift::torchRoomRope`
+sits inside the class unmerged PR #328 is restructuring (`Regions/Temple.swift` and
+`Prose+Temple.swift` are both in that diff). Filing off an unmerged PR is filing a consequence
+of a change nobody has reviewed. It is confirmed, its reproducer is in the round report, and it
+becomes an ordinary candidate the day #328 lands or closes — at which point it is either
+already fixed or a live defect with the work already done. **A `held` key is not passed as a
+`ledgerKey` either**, for the same reason a `fixed` one is not: suppression would hide it.
+
+**Settled on the merge, and it came out `fixed`.** #328 landed as `38e27b8` and this branch
+merged it, which is the day the row said to look. The doubled listing has no way back: `tie
+rope to railing` now takes the coil out of your hands and moves two `scenery` fittings
+onstage, one per room (`Dungeon.swift:900-901`, `Temple.swift:224-238`), so there is no coil
+in a pocket to drop under a paragraph about a rope overhead. Read at the keyboard on the
+merged tree at seed 18, down the route `DungeonTests.toTheTorchRoom` walks: the Torch Room
+says *"A large piece of rope descends from the railing above, ending some five feet above
+your head."* once and says nothing else about a rope, `i` answers *"You are carrying a brass
+lantern and an elvish sword."*, `x rope` answers with the hanging sentence rather than the
+coil's, and `take rope` refuses *"You cannot reach the rope."* — the words `up` uses. At the
+rim, `untie rope` puts *"There is a coil of rope here."* back and stops the hanging
+sentence, so the two states never print together in either direction. The row below reads
+`fixed` and is withheld from `ledgerKeys` for the reason every `fixed` row is: a regression
+has to be allowed to come back.
+
+**The reason it was held is the part worth carrying.** A finding whose repair sits inside a
+diff nobody has reviewed is not a finding yet, and holding it costs one row and one merge —
+after which it is either free or already reproduced. The round already did the same thing
+the coarse way for the rest of that PR: three of its seven hand-written suppression strings
+stood for #328's three fixes. The `held` row is that instinct with a key attached, and the
+key is why this one could be settled by reading rather than by re-running.
+
+| Key (full) | Verdict | Category | Severity |
+|---|---|---|---|
+| `decl::Sources/Dungeon/Regions/Prose+House.swift::livingRoom` | confirmed | prose-untrue-of-state | major |
+| `decl::Sources/Dungeon/Regions/Prose+House.swift::woodenDoor` | confirmed | prose-untrue-of-state | major |
+| `decl::Sources/Dungeon/Regions/Prose+Maze.swift::cyclopsStaircase` | confirmed | prose-untrue-of-state | major |
+| `decl::Sources/Dungeon/Regions/Prose+AboveGround.swift::egg` | confirmed | prose-untrue-of-state | major |
+| `decl::Sources/Dungeon/Prose+Thief.swift::thief` | confirmed (needs-human) | unanswerable-noun | minor |
+| `decl::Sources/Dungeon/Prose+Thief.swift::thiefTakesEgg` | confirmed | mechanic-contradicts-prose | minor |
+| `decl::Sources/Dungeon/Regions/Prose+Dam.swift::damReservoirView` | confirmed | prose-untrue-of-state | major |
+| `decl::Sources/Dungeon/Regions/Prose+Dam.swift::blueButtonPush` | confirmed | unanswerable-noun | major |
+| `decl::Sources/Dungeon/Regions/Prose+Dam.swift::trunk` | confirmed (needs-human) | mechanic-contradicts-prose | minor |
+| `decl::Sources/Dungeon/Regions/Prose+Dam.swift::reservoirFromShore` | confirmed | unanswerable-noun | minor |
+| `decl::Sources/Dungeon/Regions/Prose+Temple.swift::ivoryTorch` | confirmed (needs-human) | prose-untrue-of-state | minor |
+| `decl::Sources/Dungeon/Regions/Prose+CoalMine.swift::ironChain` | confirmed (needs-human) | unanswerable-noun | minor |
+| `decl::Sources/Dungeon/Regions/Prose+Mirror.swift::slideRoomRopeRigged` | confirmed | prose-untrue-of-state | major |
+| `decl::Sources/Dungeon/Regions/Prose+Palantir.swift::slideStretch` | confirmed | unanswerable-noun | major |
+| `decl::Sources/Dungeon/Regions/Prose+Volcano.swift::gnomePaid` | confirmed | exit-prose-mismatch | major |
+| `decl::Sources/Dungeon/Regions/Prose+Volcano.swift::rustyBox` | confirmed | prose-untrue-of-state | major |
+| `decl::Sources/Dungeon/Regions/Prose+Temple.swift::torchRoomRope` | fixed (by #328) | prose-untrue-of-state | minor |
+| `decl::Sources/Dungeon/Regions/Prose+River.swift::launchNotAboard` | confirmed | stock-line-not-reskinned | minor |
+| `decl::Sources/Dungeon/Prose+Thief.swift::thiefPresence` | confirmed | presence-line-location-blind | major |
+| `decl::Sources/Dungeon/Prose+Thief.swift::thiefSwipeWound` | confirmed (needs-human) | mechanic-contradicts-prose | minor |
+| `decl::Sources/Dungeon/Regions/Prose+Dam.swift::blueButtonJammed` | confirmed (needs-human) | prose-untrue-of-state | major |
+| `decl::Sources/Gnusto/Actions/GameText.swift::alreadyOn` | confirmed (needs-human) | stock-line-not-reskinned | minor |
+| `decl::Sources/Dungeon/Regions/Prose+Volcano.swift::balloonExplodesHeard` | confirmed | prose-untrue-of-frame | major |
+| `decl::Sources/Dungeon/Regions/Prose+Volcano.swift::balloonInPlace` | confirmed (needs-human) | mechanic-contradicts-prose | minor |
+| `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::winningCell` | confirmed | prose-untrue-of-state | major |
+| `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::tombHeadsCurse` | confirmed | mechanic-contradicts-prose | major |
+| `decl::Sources/Dungeon/Prose+Stubs.swift::stubFloor` | confirmed | mechanic-contradicts-prose | minor |
+| `decl::Sources/Dungeon/Regions/Prose+CoalMine.swift::itIsNowPitchBlack` | confirmed (needs-human) | repeat-behavior | minor |
+| `decl::Sources/Gnusto/Actions/GameText.swift::selfDescription` | confirmed (needs-human) | prose-untrue-of-frame | minor |
+| `decl::Sources/Dungeon/Regions/Prose+Cellar.swift::gallery` | confirmed (needs-human) | unanswerable-noun | minor |
+| `decl::Sources/Dungeon/Prose+Thief.swift::thiefKillsYou` | refuted | prose-untrue-of-state | major |
+| `decl::Sources/Dungeon/Prose+Thief.swift::thiefLeaves` | refuted | presence-line-location-blind | major |
+| `decl::Sources/Gnusto/Actions/GameText.swift::cantReach` | refuted | prose-untrue-of-state | minor |
+| `decl::Sources/Dungeon/Prose+Thief.swift::thiefSteals` | refuted | prose-untrue-of-frame | minor |
+| `decl::Sources/Dungeon/Regions/Prose+CoalMine.swift::gasRoomSmelled` | refuted | mechanic-contradicts-prose | minor |
+| `decl::Sources/Dungeon/Regions/Prose+Volcano.swift::gnomeArrives` | refuted | mechanic-contradicts-prose | minor |
+| `decl::Sources/Dungeon/Regions/Prose+House.swift::brick` | refuted | prose-untrue-of-state | minor |
+| `decl::Sources/Dungeon/Regions/Prose+Volcano.swift::volcanoBottom` | refuted | prose-untrue-of-frame | note |
+| `decl::Sources/Dungeon/Regions/Prose+House.swift::lanternDies` | refuted | prose-untrue-of-frame | major |
+| `decl::Sources/Dungeon/Regions/Prose+Volcano.swift::ledgeCollapsesElsewhere` | refuted | prose-untrue-of-frame | minor |
+
+Pass the ten `refuted` keys above as `ledgerKeys` next round, alongside the ten from
+2026-08-18 and the thirteen from 2026-08-11 — **thirty-three keys, twenty of which can
+actually match**, since the 2026-08-11 rows are display-truncated and `normalize()` can never
+emit an ellipsis. Not the twenty-nine `confirmed` ones, and not the one #328 closed.
+
+**All ten refutations turn on one distinction**, which is worth carrying rather than
+re-deriving: *a line that is silent, awkward or incongruous is not a line that is false.* Six
+were refuted as "judged in a frame it does not print in" or "restated the line more strongly
+than it reads", and two blind explorers own seven of the ten. The fix is not a brief rewrite —
+doc-licensed refutations were 4 of 40, well under the two-in-five threshold — but one line
+requiring a second frame, or an explicit "this is the only frame", before a finding may claim a
+mechanism rather than a sentence.
