@@ -632,10 +632,24 @@ extension Prose {
         past. The cell turns for a while, and slows, and comes to a stop.
         """
 
+    /// Reworded. This was written for the source's arrangement, where the
+    /// bronze door appears only after the ride, and it announced as a
+    /// revelation — *"where there was stone before"* — a door the game had
+    /// been describing in that same wall for as long as cell four sat in the
+    /// slot. It also called the north doorway "the doorway you came in by",
+    /// and the player may well have come in through the bronze one.
+    ///
+    /// The **door** is where the source puts it and stays there: `ODOOR`
+    /// starts in `SCORR` with `CELL SOUTH → SCORR` and `SCORR NORTH → CELL`
+    /// both running through it (`dungeon-atlas.md`), and
+    /// ``throughTheSouthDoorway``'s bronze branch is the prison's only clue
+    /// for which of the eight cells is cell four. Gating the door on the ride
+    /// would have contradicted the atlas twice and deleted the puzzle's one
+    /// hint to make a sentence true. The sentence is what moves. (#329)
     static let winningCell = """
-        The cell has come to rest. The doorway you came in by is a locked door
-        now, with the rock of the shaft hard against the back of it. In the far
-        wall, where there was stone before, there is a door of bronze.
+        The cell has come to rest. The north doorway is a locked door now, with
+        the rock of the shaft hard against the back of it, and the only way out
+        of here is the door of bronze in the south wall.
         """
 
     /// The losing rest position. It says what is true and leaves the player to

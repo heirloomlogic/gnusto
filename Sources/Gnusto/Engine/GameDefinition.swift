@@ -72,6 +72,8 @@ struct ItemDefinition: Sendable {
     /// rules instead of the parser's stock refusal. Only meaningful on an
     /// actor; the bootstrap warns about it anywhere else.
     var takesOrders = false
+    /// The listing paragraph survives the first touch. See ``alwaysListed``.
+    var isAlwaysListed = false
     var customTraits: [String: StateValue] = [:]
     /// True when this entity was declared as an `Actor`. Set by Bootstrap
     /// after trait evaluation — actors share the item trait vocabulary, so
@@ -110,6 +112,7 @@ struct ItemDefinition: Sendable {
             case .startsLit: startsLit = true
             case .enterable: isEnterable = true
             case .takesOrders: takesOrders = true
+            case .alwaysListed: isAlwaysListed = true
             case .custom(let key, let value): customTraits[key] = value
             }
         }

@@ -209,28 +209,9 @@ struct DungeonTemple: GameContent {
         scenery
     }
 
-    /// The rope while the knot is tied: not a coil anybody is carrying any
-    /// more, but a fitting of the two rooms it hangs through. Offstage until
-    /// ``ropeTiedToRailing``.
-    ///
-    /// **Two of them for one rope**, because a rope hung through a dome is in
-    /// two rooms at once and an item is in one — the ``steelCage``/``cageBars``
-    /// shape, a thing seen from two sides. Each takes the paragraph its own
-    /// room prints as its examine line, exactly as that pair takes one
-    /// constant between them. `ROPE-AWAY` (`act3.199:1287`) needs neither,
-    /// because MDL can set `NDESCBIT` on the coil at runtime and a Gnusto game
-    /// cannot; but the runtime flag would not have saved the second item, only
-    /// the first. (#286)
-    private static func hangingRope(_ text: String) -> Item {
-        Item {
-            name("rope")
-            adjectives("large", "hemp", "stout")
-            synonyms("rope", "hemp")
-            description(text)
-            scenery
-        }
-    }
-
+    /// The railing end of the knot, offstage until ``ropeTiedToRailing``. The
+    /// Torch Room's end is ``ropeAboveTheTorchRoom``; why one rope needs two
+    /// items is on ``hangingRope(_:)``. (#286)
     let ropeOnTheRailing = hangingRope(Prose.ropeOverTheRailing)
 
     // MARK: - The Torch Room
@@ -243,7 +224,6 @@ struct DungeonTemple: GameContent {
         name("ivory torch")
         adjectives("ivory")
         synonyms("torch")
-        firstSight(Prose.ivoryTorchInPlace)
         lightSource
         startsLit
         trait(.openFlame, true)
@@ -628,7 +608,9 @@ struct DungeonTemple: GameContent {
         // here. The refusal is the one `torchRoom.up(blocked:)` already uses.
         ropeAboveTheTorchRoom.reach(otherwise: Prose.torchNoRope) { false }
         glacier.describe { glacierMelted ? Prose.glacierRemains : Prose.glacierExamined }
-        ivoryTorch.describe { torchBurnedOut ? Prose.burnedOutTorch : Prose.ivoryTorch }
+        // Its two other channels are the host's: what the torch says about
+        // itself depends on how deep the water in the Maintenance Room is, and
+        // that is a ``DungeonDam`` number. See ``Dungeon/torchRules``. (#329)
 
         // The torch never goes out by hand, and once the ice has had it there
         // is nothing to put out.

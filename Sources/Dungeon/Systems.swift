@@ -27,6 +27,55 @@ extension TraitKey<Bool> {
     public static let keyholeTool = Self("keyholeTool", default: false)
 }
 
+/// A stand-in for the one coil of rope, minted per room it is seen from.
+///
+/// The rope is a single ``DungeonHouse`` item and a tied rope is in two rooms
+/// at once — over the Dome Room's railing and five feet above the Torch Room's
+/// floor, or at the head of the coal chute and in every stretch of chute below
+/// it. An item is in one place, so a knot puts the coil offstage and stands
+/// one of these in each room instead, taking as its examine line the paragraph
+/// that room already prints. `ROPE-AWAY` (`act3.199:1287`) needs none of this
+/// because MDL can set `NDESCBIT` on the coil at runtime and a Gnusto game
+/// cannot — but a runtime flag would have saved only the first of the rooms.
+///
+/// Declared here rather than on either wing because both knots want it: #286's
+/// railing built it, and #329's chute is the same repair one room over.
+///
+/// - Parameter text: what `x rope` answers in the room this one stands in.
+/// - Returns: a scenery rope answering every word the coil answers to.
+func hangingRope(_ text: String) -> Item {
+    Item {
+        name("rope")
+        adjectives("large", "hemp", "stout")
+        synonyms("rope", "hemp")
+        description(text)
+        scenery
+    }
+}
+
+extension Item {
+    /// Whether the thing is worth anything to anybody who counts — the
+    /// source's `OVALUE`/`OTVALUE` pair, asked as one question.
+    ///
+    /// Two mechanisms confiscate on this test and they used to spell it out
+    /// separately: the gnome, who crushes what is not a treasure and sells the
+    /// chimney for what is, and the Tomb heads, whose curse takes every
+    /// valuable in reach. Written once, so the two cannot come to disagree
+    /// about what a treasure is. (#329)
+    ///
+    /// The optional subscript and `?? 0`, which is what `Scoring` itself uses
+    /// (`Scoring.swift:176`, `:216`). `item[default: .takeValue]` reads as the
+    /// safe spelling and is the opposite: neither key is declared with a
+    /// default, so that form **traps** on any item without the trait — which
+    /// is every item in the game that is not a treasure. The gnome carried
+    /// that expression and never fired it, because the one non-treasure
+    /// anybody hands him is the brick and the brick is refused by name one
+    /// branch earlier.
+    var isWorthSomething: Bool {
+        (self[.takeValue] ?? 0) + (self[.depositValue] ?? 0) > 0
+    }
+}
+
 extension Player {
     /// The lit flame in your hands, if there is one — the flame you named, or
     /// the first one you have. The mainframe's `BURN` syntax demands a

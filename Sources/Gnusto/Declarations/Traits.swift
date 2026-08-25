@@ -36,6 +36,7 @@ public struct ItemTrait: Sendable {
         case startsLit
         case enterable
         case takesOrders
+        case alwaysListed
         case custom(key: String, value: StateValue)
     }
 
@@ -202,6 +203,34 @@ public let wearable = ItemTrait(kind: .wearable)
 /// when the fitting is a puzzle (Dungeon's balloon receptacle is `scenery`, and
 /// is where the newspaper burns). The two are meant to differ.
 public let scenery = ItemTrait(kind: .scenery)
+
+/// The item's listing paragraph keeps printing after the player has touched
+/// it — the item-side twin of ``alwaysDescribed``.
+///
+/// An item's listing line normally stops at the first touch, and that is right
+/// for a thing whose entrance is news exactly once. It is wrong for a mobile
+/// thing whose paragraph *is* its state. Dungeon's balloon is the worked
+/// example: its `presence { }` rule reports the bag, the fire and the wire,
+/// all three of which change — and `board` marks the basket touched, so from
+/// the first time the player climbed in, an inflated burning balloon and a
+/// cold wrecked one printed the same stock sentence.
+///
+/// ```swift
+/// let balloon = Item {
+///     name("wicker basket")
+///     enterable
+///     alwaysListed
+/// }
+/// ```
+///
+/// Opt-in, one item at a time, and only useful beside a `presence { }` rule or
+/// a `firstSight(…)` trait — declaring it on an item with no listing line of
+/// its own is a bootstrap warning, since there is nothing for it to keep.
+///
+/// An actor needs none of this: an actor's listing line is ungated already,
+/// because people are not props and handling one does not wear off their
+/// entrance.
+public let alwaysListed = ItemTrait(kind: .alwaysListed)
 
 /// Other items can be put on this item.
 public let surface = ItemTrait(kind: .surface)

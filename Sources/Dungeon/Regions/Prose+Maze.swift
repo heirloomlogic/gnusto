@@ -232,10 +232,19 @@ extension Prose {
         The cyclops ignores all injury to his body with a shrug.
         """
 
-    /// Written fresh.
+    /// Written fresh. The second clause is a claim about a giant, and he
+    /// leaves — asleep on the drugged water, or gone through the wall for
+    /// good. Read one turn after he fled, with the parser already denying that
+    /// he exists, it was the room insisting on him. (#329)
     static let cyclopsStaircase = """
         A broad stone staircase going up, and a cyclops in front of it more
         often than not.
+        """
+
+    /// The same stair with nobody on it.
+    static let cyclopsStaircaseClear = """
+        A broad stone staircase going up, and nothing on it now to argue the
+        point with you.
         """
 
     /// Trilogy verbatim.

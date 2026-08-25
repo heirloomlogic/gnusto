@@ -67,11 +67,12 @@ struct DungeonCellar: GameContent {
 
     // MARK: - The troll
 
+    /// Both channels are rules, for the reason the thief's listing line is
+    /// one: an actor's listing line prints on every look forever, and this
+    /// one claims he blocks every way out. (#329)
     let troll = Actor {
         name("troll")
         adjectives("nasty")
-        description(Prose.troll)
-        firstSight(Prose.troll)
     }
 
     /// The troll's axe. It starts in his hands — offstage — and clatters to
@@ -102,6 +103,19 @@ struct DungeonCellar: GameContent {
         troll.before(.greet) {
             try reply(troll.isUnconscious ? Prose.trollGreetedOnTheFloor : Prose.trollGreeted)
         }
+
+        // The two description channels, reading the same flag the greeting
+        // does. The listing line is the one that mattered: it says he blocks
+        // all passages, and it printed every look for the two turns he was
+        // face down and they were not blocked. (#329)
+        troll.presence { trollStance }
+        troll.describe { trollStance }
+    }
+
+    /// What the troll is doing, said once for both channels — the shape
+    /// ``DungeonMaze/cyclopsMood`` already uses one region over.
+    private var trollStance: String {
+        troll.isUnconscious ? Prose.trollOnTheFloor : Prose.troll
     }
 
     // MARK: - Items
@@ -119,6 +133,26 @@ struct DungeonCellar: GameContent {
         synonyms("hole")
         description(Prose.crawlwayHole)
         scenery
+    }
+
+    /// The people the Gallery's paragraph names twice and the painting's
+    /// listing line a third time. (#329)
+    let galleryVandals = Item {
+        name("vandals")
+        adjectives("tasteful")
+        synonyms("vandal", "vandals", "thieves", "thief")
+        description(Prose.galleryVandals)
+        scenery
+        plural
+    }
+
+    /// And the three ways out the same sentence says they used. (#329)
+    let galleryExits = Item {
+        name("exits")
+        synonyms("exit", "exits")
+        description(Prose.galleryExits)
+        scenery
+        plural
     }
 
     /// The mainframe's values: 4 to find, **7** to case, where Zork I pays 6.
@@ -213,6 +247,8 @@ struct DungeonCellar: GameContent {
         chasm.starts(in: westOfChasm)
         crawlwayHole.starts(in: crawlway)
         painting.starts(in: gallery)
+        galleryVandals.starts(in: gallery)
+        galleryExits.starts(in: gallery)
         chimney.starts(in: studio)
         fireplace.starts(in: studio)
         troll.starts(in: trollRoom)

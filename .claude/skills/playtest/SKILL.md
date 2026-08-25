@@ -326,7 +326,7 @@ finish  session: <id>, summary: checking the binary
 ```
 
 A current server returns `roomsVisited` — one `{id, name}` row per room — plus
-`unknownWords` and `firedTimers` in the result
+`roomsWorked`, `unknownWords` and `firedTimers` in the result
 and leaves a `closing.json` in the probe directory. A stale one returns none of them and writes no file
 — and a round dispatched against it collates nothing, reports every session as never
 having finished, and looks exactly like a round where the testers all crashed.

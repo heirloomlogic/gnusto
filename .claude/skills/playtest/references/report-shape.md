@@ -84,34 +84,47 @@ Four things, none of them optional:
 
 - **Which charters found nothing, and why.** "Not run — budget" and "run, found
   nothing in its own class" are very different results and must not look the same.
-- **Rooms entered, as a count and a list, with the never-entered ones named.** The
-  count comes from `coverage.rooms`, and it is **read off the `closing.json` each
-  session wrote at `finish`**, never from what a tester said: `visited` is the union
-  of every session's `roomsVisited`, `neverVisited` is the survey's roster minus
-  that, rendered `Name (id)`, and `offRoster` is a room id the roster does not
-  hold. Both sides are room **ids**, because a display name is prose and two rooms
-  may share one — so an `offRoster` entry no longer means somebody retyped a name,
-  it means the artifacts and the roster describe different builds, and that is
-  worth a sentence of its own. The gap that used to
+- **Rooms entered *and* rooms worked, each as a count and a list, with the
+  never-entered ones named.** Both come from `coverage.rooms`, and both are **read
+  off the `closing.json` each session wrote at `finish`**, never from what a tester
+  said: `visited` is the union of every session's `roomsVisited`, `worked` the union
+  of every session's `roomsWorked`, `neverVisited` and `neverWorked` the roster minus
+  each, rendered `Name (id)`, and `offRoster` a room id the roster does not hold.
+  Both sides are room **ids**, because a display name is prose and two rooms may
+  share one — so an `offRoster` entry no longer means somebody retyped a name, it
+  means the artifacts and the roster describe different builds, and that is worth a
+  sentence of its own. `total` is **every declared room**, `ruleEntered` of them
+  reachable only through a rule rather than an exit: a balloon flight or a trapdoor
+  lands the player in a room the static exit table does not point at, and scoring
+  those out of the roster reported the same rooms as simultaneously off-roster and
+  never-entered. The gap that used to
   live in this bullet is now `coverage.sessionsUnfinished` — a probe holding a
   transcript with no closing record beside it, which is a session that played and
   left no account of itself. **Name those.** A coverage figure computed without them
   is a floor and has to say so. The 2026-08-11 Dungeon round published "112 of 195"
   against a real 155 because this number used to be asked rather than counted.
-- **Turns, from `coverage.turns`, and never from what anybody said they spent.** Four
-  numbers: `sessions` (the testers' transcripts), `branches` (turns a `rewind` wrote
-  out of a transcript — really played, so really counted), `replays` (the verifiers'
-  probes, usually the largest), and `total`. Report the total and the tester/verifier
-  split; a round whose verifiers outspend its testers many times over played less than
-  it argued, and that belongs in the coverage section rather than being averaged away.
-  The 2026-08-17 round published 295 against artifacts holding about 1,493, because
-  this number used to be asked.
+- **Turns, from `coverage.turns`, and never from what anybody said they spent.**
+  `sessions` (the testers' transcripts), `branches` (turns a `rewind` wrote out of a
+  transcript — really played, so really counted), `replays` (the `.replays/` tree —
+  **the testers'**, because `replay` is an MCP tool and only a live play session can
+  call it), `playReplays` and `verifyReplays` (`bin/playtest-replay` under a play or a
+  verify label), `harnessReplays` (the round's own errands, under every other label),
+  and `total`. Report the total and the tester/verifier split; a round whose verifiers
+  outspend its testers many times over played less than it argued, and that belongs in
+  the coverage section rather than being averaged away. The 2026-08-17 round published
+  295 against artifacts holding about 1,493, because this number used to be asked; the
+  2026-08-24 round reported 3:1 verifier-to-tester against a real 1.2:1, because
+  `replays` was added to the wrong side.
 - **Entered is not covered, and the two must not be one number.** A room the harness
   only walked through while replaying a committed route from
   `.context/playtest/routes/` is reach, not coverage — 21 of Dungeon's were exactly
-  that, and the rule is **count them blank**. The grid is where the distinction
-  lives: `X` for a room a charter typed its own commands in, `.` for one it only
-  passed through, `-` for never reached.
+  that, and the rule is **count them blank**. `coverage.rooms.worked` is the engine's
+  own attempt at that line and an upper bound on it: it counts a room a session typed
+  a non-travel, non-meta command in, which a route file's own `take lamp` also
+  satisfies. The grid is where the distinction really lives: `X` for a room a charter
+  typed its own commands in, `.` for one it only passed through, `-` for never
+  reached. Where the grid and `worked` disagree, the grid wins and the gap is worth
+  naming.
 - **The state cross-product as an actual grid** — hours × rooms, or events × rooms.
   Ticks and blanks.
 - **Findings dropped, and why** — unverified for budget, or not reproducible. A

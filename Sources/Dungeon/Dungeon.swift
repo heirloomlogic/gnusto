@@ -143,9 +143,18 @@ struct Dungeon: Game, GameMain {
         text.alreadyHave = "You already have that!"
         text.didntUnderstand = "That sentence isn't one I recognize."
         text.nothingToTakeHere = "There's nothing here you can take."
-        // The basket carrying the only light down the shaft darkens a room the
-        // way turning a lamp off does, so the two say the same sentence.
-        text.nowDark = .init(Prose.itIsNowPitchBlack)
+        // The dark says one sentence, whichever way it arrives.
+        //
+        // `TurnFrame.sayOnceThisTurn` dedupes on the exact text and on nothing
+        // else, and this game used to point `nowDark` at "It is now pitch
+        // black." while `pitchBlack` and the grue's own warning both said "It
+        // is pitch black. You are likely to be eaten by a grue." So *walking*
+        // into a dark room printed one sentence and *turning the lamp off*
+        // printed two, back to back, saying the same thing twice. The dark is
+        // the same dark either way. The word "now" is what this costs, and the
+        // engine's fixture for it — `GrueVoicedDarkGame` — is built on
+        // exactly this setting. (#329)
+        text.nowDark = .init(Prose.grueWarning)
         // `enter`/`go through` on a thing that is neither doorway nor vehicle.
         // The Bank's walls and the curtain answer for themselves at stage 2.
         text.cantEnterThat = .naming(Prose.cantEnterThat)
@@ -389,6 +398,8 @@ struct Dungeon: Game, GameMain {
         boatRules
         gratingRules
         cyclopsRules
+        livingRoomRules
+        torchRules
         mazeFindRules
         graniteRules
         bucketRules
@@ -531,7 +542,7 @@ struct Dungeon: Game, GameMain {
             // fitting that stands in for it answers that case below.
             // One rope, one knot: milestone 8 gave it a second place to be
             // tied, and it may not be tied in both at once.
-            try require(!palantirWing.chuteRopeRigged, else: Prose.ropeAlreadyTied)
+            try require(!chuteRopeRigged, else: Prose.ropeAlreadyTied)
             tieTheRopeToTheRailing()
             try reply(Prose.ropeTiedToRailing)
         }
@@ -783,8 +794,23 @@ struct Dungeon: Game, GameMain {
             // as a word for the boat, so the vehicle decides which table gets
             // read. Milestone 6.
             if player.vehicle == volcano.balloon { try volcano.launchBalloon() }
-            try require(player.vehicle == river.magicBoat, else: Prose.launchNotAboard)
+            // On foot, the refusal has to be about something the player can
+            // see. `LAUNC` is a word for the balloon as well as for the boat,
+            // and standing beside the basket on the Wide Ledge this answered
+            // "You're not in the boat!" — a boat several hundred moves and one
+            // river away, which the player may never have found. The balloon's
+            // own refusals live behind `launchBalloon()` and are only reachable
+            // from inside the basket. (#329)
             let here = player.location
+            guard player.vehicle == river.magicBoat else {
+                let refusal =
+                    switch here {
+                    case volcano.balloonPlace: Prose.launchNotAboardBalloon
+                    case river.magicBoat.location: Prose.launchNotAboard
+                    default: Prose.nothingToLaunch
+                    }
+                try reply(refusal)
+            }
             try require(here != river.endOfRainbow, else: Prose.launchRocksTooSharp)
             guard let water = moorings.first(where: { $0.shore == here })?.water else {
                 try reply(Prose.launchNoWater)
@@ -810,6 +836,39 @@ struct Dungeon: Game, GameMain {
             describeSurroundings()
             try handled()
         }
+    }
+
+    /// The ivory torch's two description channels.
+    ///
+    /// The host's rather than ``DungeonTemple``'s, because the state that
+    /// falsifies them is how deep the water stands in the Maintenance Room,
+    /// and that is a ``DungeonDam`` number. Three branches, not two: burned
+    /// out, burning, and burning under water. (#329)
+    @RuleBuilder private var torchRules: Rules {
+        let torch = templeQuarter.ivoryTorch
+        torch.describe { torchLine(dry: Prose.ivoryTorch, wet: Prose.ivoryTorchUnderWater) }
+        torch.presence {
+            torchLine(dry: Prose.ivoryTorchInPlace, wet: Prose.ivoryTorchInPlaceUnderWater)
+        }
+    }
+
+    /// One of the torch's three states, for whichever channel is asking. Both
+    /// channels share the burned-out branch, so it is written once — the shape
+    /// ``DungeonCellar``'s `trollStance` uses one region over.
+    ///
+    /// - Parameters:
+    ///   - dry: what to say about a torch burning in the air.
+    ///   - wet: what to say about one burning under water.
+    /// - Returns: whichever is true of where the reader is standing.
+    private func torchLine(dry: String, wet: String) -> String {
+        if templeQuarter.torchBurnedOut { return Prose.burnedOutTorch }
+        return underWater ? wet : dry
+    }
+
+    /// Whether the reader is in over their head. The threshold is
+    /// ``DungeonDam/waterOverYourHead``'s, because the ladder is that bundle's.
+    private var underWater: Bool {
+        player.location == dam.maintenanceRoom && dam.waterOverYourHead
     }
 
     /// Milestone 4 — the grating
@@ -977,6 +1036,41 @@ struct Dungeon: Game, GameMain {
             default:
                 try reply(Prose.cyclopsWontEatThat)
             }
+        }
+    }
+
+    /// The Living Room's paragraph and the door in its west wall.
+    ///
+    /// The host's for rule 4's reason: the rug's flag is ``DungeonHouse``'s and
+    /// the west door's is ``DungeonMaze``'s, so neither bundle could have
+    /// branched the sentence and both had to stop trying. Its own group rather
+    /// than a tail on ``cyclopsRules``, so a reader looking for the game's most
+    /// walked-through room finds it under its own name. (#329)
+    @RuleBuilder private var livingRoomRules: Rules {
+        // The Living Room, whose paragraph is a claim about two things that
+        // move: the rug PUSH RUG rolls aside, and the west door the cyclops
+        // breaks through from the far side. One flag is ``DungeonHouse``'s and
+        // the other ``DungeonMaze``'s, which is why the sentence is the host's.
+        //
+        // Four moves from the front door, and it went on reporting a rug in
+        // the center of the room and a door nailed shut through both. (#329)
+        house.livingRoom.describe {
+            Prose.livingRoom(
+                westBroken: maze.northWallOpen,
+                rugMoved: house.trapDoor.isRevealed)
+        }
+
+        // The same door, examined. The Strange Passage on the other side has
+        // called it holed since milestone 4, so the two sides of one door were
+        // disagreeing about whether it was a door. (#329)
+        house.woodenDoor.describe {
+            maze.northWallOpen ? Prose.woodenDoorBroken : Prose.woodenDoor
+        }
+        // And it stops being nailed shut when there is no door left to nail.
+        house.woodenDoor.before(.open) {
+            try refuse(
+                maze.northWallOpen
+                    ? Prose.woodenDoorAlreadyBroken : Prose.woodenDoorNailedShut)
         }
     }
 

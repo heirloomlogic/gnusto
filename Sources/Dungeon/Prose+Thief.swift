@@ -32,6 +32,33 @@ extension Prose {
         against one wall. He is armed with a deadly stiletto.
         """
 
+    /// The same listing line with him face down on it. Written fresh: neither
+    /// source prints a listing paragraph for an unconscious thief, because
+    /// `ROBBER-FUNCTION` swaps his whole description out for one. The clause
+    /// about the stiletto goes, because the stiletto is under him. (#329)
+    static let thiefOnTheFloor = """
+        The suspicious-looking individual is face down against the wall he was
+        leaning on, his bag beside him and one hand still on the stiletto.
+        """
+
+    /// `LARGE-BAG`. Written fresh — the sources give it no description at all,
+    /// because in neither of them is it a separate object the parser will
+    /// admit to. Here it is, so it says something. (#329)
+    static let thiefBag = """
+        A large canvas bag, slung over his shoulder and pulled shut, with
+        corners in it that are not the corners of anything he came in with.
+        """
+
+    static let thiefBagHeld = """
+        The bag is over his shoulder, and he is watching the hand you reached
+        for it with.
+        """
+
+    static let thiefBagUnderHim = """
+        The bag is under his arm, and his arm is not letting go of it merely
+        because the rest of him has stopped paying attention.
+        """
+
     static let thiefArrives = "A shadowy figure slips into the room."
     static let thiefLeaves = "The shadowy figure melts away into the dark."
 

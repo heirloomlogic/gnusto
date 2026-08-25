@@ -48,6 +48,16 @@ extension Prose {
         and there is a great deal more of it than the dam looks equal to.
         """
 
+    /// The same view with the bolt turned. Its four neighbours in this file
+    /// have branched on ``DungeonDam/gatesOpen`` since the sixth pass; the one
+    /// item that reads the water *from the top of the dam* — the one place the
+    /// player is standing when they turn the bolt — did not. (#329)
+    static let damReservoirViewDrained = """
+        From up here the reservoir bed is a long streak of mud reaching back
+        into the dark, with a stream threading down the middle of what the dam
+        was built to hold.
+        """
+
     static let privateDoorways = """
         Two doorways marked "Private", standing open, and nobody left to mind
         either of them.
@@ -165,6 +175,14 @@ extension Prose {
     static let matchesGone = "I'm afraid that you have run out of matches."
 
     static let matchIsOut = "The match is out."
+
+    /// A second `light match` used to fall past the rule and reach the
+    /// engine's switch language — "It's already on." — about a matchbook. The
+    /// stock line cannot be re-skinned out of this frame, because it takes no
+    /// subject and one wording would have to be true of the brass lantern, the
+    /// candles and the ivory torch at once. So the book answers for
+    /// itself. (#329)
+    static let matchAlreadyBurning = "You already have a match burning."
 
     static let matchBurnsOut = "The match has gone out."
 
@@ -298,6 +316,34 @@ extension Prose {
         "The water level here is now \(level)"
     }
 
+    /// What the room looks like once the pipe has gone. The daemon announces
+    /// each rung as the water reaches it and then stops — and after it stops,
+    /// the room's own paragraph was the only channel still speaking, and it
+    /// described a dry room to a player standing in it up to the hips. Which
+    /// is also the state that jams the button. (#329)
+    ///
+    /// - Parameters:
+    ///   - level: the rung of ``floodLadder`` the water is standing at.
+    ///   - stillRunning: whether the leak is unplugged.
+    /// - Returns: the paragraph the room prints under its own.
+    static func maintenanceRoomWater(_ level: String, stillRunning: Bool) -> String {
+        stillRunning
+            ? "Water bursts from the split pipe in the east wall, and it stands \(level)"
+            : "A grey plug holds the east wall, and the water it let in stands \(level)"
+    }
+
+    /// The water itself, which the room prints every turn the daemon runs and
+    /// which nothing in the room answered to. Not a synonym on ``leak``: once
+    /// the gunk is in the wall, `x water` would have answered "not a drop
+    /// getting past it" to a player wading through what already got past
+    /// it. (#329)
+    static func floodWater(_ level: String?, stillRunning: Bool) -> String {
+        let depth = level.map { " It is \($0)" } ?? ""
+        return stillRunning
+            ? "Cold, and still coming.\(depth)"
+            : "Cold, and going nowhere now that the wall is plugged.\(depth)"
+    }
+
     static let floodDrowns = """
         I'm afraid you have done drowned yourself.
         """
@@ -387,6 +433,16 @@ extension Prose {
         bolt at the top of the dam was last told to do.
         """
 
+    /// Reservoir South's third sentence names a steep path climbing along the
+    /// edge of a cliff, and both nouns went to ``reservoirFromShore`` — a
+    /// sentence about the water, which is in the other direction. The path is
+    /// the `up` exit to Deep Canyon, so it is a way through as well as a
+    /// noun. (#329)
+    static let reservoirSouthPath = """
+        The path climbs the cliff at the room's south edge in a series of
+        awkward steps, and goes on up out of sight.
+        """
+
     /// Verbatim as above, except that the mainframe's way north is a tunnel
     /// rather than the trilogy's slimy stairway.
     static let reservoirNorthFull = """
@@ -412,6 +468,18 @@ extension Prose {
     static let trunk = """
         An old trunk, bulging with assorted jewels, and heavy enough that you
         will be making the climb home in one trip and one trip only.
+        """
+
+    /// SEARCH on a thing that is not a `container` refuses with the stock
+    /// "You find nothing of interest in the …", which reads as a denial about
+    /// a trunk the room has just called *bulging with jewels*. Declaring it a
+    /// container is worse: it could then be neither opened nor closed, `put`
+    /// would make it a bottomless sack with a treasure value, and an empty one
+    /// would answer that it was empty. So the trunk answers for itself. (#329)
+    static let trunkSearched = """
+        You turn a few of the topmost jewels over. Under them are more jewels,
+        which is the whole of what an old trunk bulging with jewels has to
+        tell you.
         """
 
     // MARK: - Stream View and the stream

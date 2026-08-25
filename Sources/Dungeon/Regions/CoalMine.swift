@@ -224,8 +224,19 @@ struct DungeonCoalMine: GameContent {
     let ironChain = Item {
         name("iron chain")
         adjectives("heavy", "iron", "metal")
-        synonyms("chain", "framework", "shaft")
+        synonyms("chain", "framework")
         description(Prose.ironChain)
+        scenery
+    }
+
+    /// The hole the chain hangs in, which is not the chain. Both chains
+    /// carried `shaft` as a synonym, so `x shaft` in the room the word names
+    /// answered with a sentence about the ironmongery over it. (#329)
+    let mineShaft = Item {
+        name("shaft")
+        adjectives("small", "square")
+        synonyms("shaft", "hole")
+        description(Prose.shaftFromAbove)
         scenery
     }
 
@@ -238,8 +249,17 @@ struct DungeonCoalMine: GameContent {
         // that is the description's business.
         name("iron chain")
         adjectives("heavy", "iron", "metal")
-        synonyms("chain", "framework", "shaft")
+        synonyms("chain", "framework")
         description(Prose.lowerShaftChain)
+        scenery
+    }
+
+    /// And the same shaft from the bottom of it. (#329)
+    let lowerShaftHole = Item {
+        name("shaft")
+        adjectives("long", "square")
+        synonyms("shaft", "hole")
+        description(Prose.shaftFromBelow)
         scenery
     }
 
@@ -567,9 +587,11 @@ struct DungeonCoalMine: GameContent {
         jade.starts(in: batRoom)
 
         ironChain.starts(in: shaftRoom)
+        mineShaft.starts(in: shaftRoom)
         basket.starts(in: shaftRoom)
         basketFarEnd.starts(in: lowerShaft)
         lowerShaftChain.starts(in: lowerShaft)
+        lowerShaftHole.starts(in: lowerShaft)
         lowerShaftPassages.starts(in: lowerShaft)
 
         woodenBeams.starts(in: woodenTunnel)
@@ -683,6 +705,12 @@ struct DungeonCoalMine: GameContent {
 
         let done = down ? Prose.basketLowered : Prose.basketRaised
         guard wasLit, !player.location.isLit else { try reply(done) }
-        try reply("\(done)\n\n\(Prose.itIsNowPitchBlack)")
+        // The basket carrying the only light down the shaft darkens a room the
+        // way turning a lamp off does, so it says the sentence turning a lamp
+        // off says — through the same channel, so the grue's warning on this
+        // same turn is deduped against it rather than printed under it. (#329)
+        say(done)
+        sayOnceThisTurn(gameText.nowDark())
+        try handled()
     }
 }

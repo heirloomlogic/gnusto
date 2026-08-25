@@ -1581,6 +1581,17 @@ contract).
 
 ### Known divergences
 
+**Two lines this project writes where the sources write none, added by #329.**
+The ivory torch's examine text has a third state — burning **under water**,
+which is what it does when the reader is standing in a Maintenance Room flooded
+over their head. Neither source has the frame, because neither source lets that
+room flood with a torch in it; and neither source douses the torch, which is why
+the repair is a sentence rather than a mechanic. It is written fresh, and it
+names the torch as the supernatural object both sources make it: the one light
+in this game that needs no tending. The Wide Ledge's second exit clause is the
+same shape as the Narrow Ledge's, which #233 already wrote, and takes its noun
+from `Prose.gnomePaid`'s own *"the west end of the ledge"*.
+
 - **`maxScore` is 716 — one ceiling where the original keeps two.** The mainframe
   carries `SCORE-MAX` 616 (main dungeon) and `EG-SCORE-MAX` 100 (endgame), and
   `score` reports whichever region the player is standing in (`rooms.394`,
@@ -3199,6 +3210,17 @@ observation about the Royal Puzzle.
   are no numerals, and the death line does not name one — a line that promised a
   case would send a resurrected player to look for something that is not there.
   What is kept is that the valuables go.
+
+  **And they went, from #329 onward.** Between the entry above and that issue
+  this paragraph described an intention rather than the code:
+  `robTheAdventurer()` was `try die(…)` and nothing else, so `die` fell through
+  to `Dungeon.onDeath()` and the ordinary resurrection scatter put everything
+  back on the lawn — the 2026-08-24 round found the red crystal sphere lying on
+  the grass four moves after a curse that said it was gone. The sweep now runs
+  **before** the death, over the player's hands and the Tomb's floor, on the
+  `takeValue + depositValue > 0` test `Item.isWorthSomething` writes once for
+  this and for the gnome. The lamp and the sword survive it by carrying no
+  value, which is the same guarantee `onDeath` makes for an ordinary death.
 - **The cell carousel is modeled as three rooms and two numbers**, which is what
   the atlas already carries: `CELL` docked, `NCELL` cell four riding away,
   `PCELL` any other cell riding away. The source shuffles per-cell object lists

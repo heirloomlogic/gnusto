@@ -82,4 +82,30 @@ struct AlwaysDescribedTests {
                 "standing at notch 2",
             ])
     }
+
+    // MARK: - The item-side twin
+
+    /// **``alwaysListed`` keeps a listing paragraph printing past the first
+    /// touch.** Both braziers report their own state; only the one with the
+    /// trait goes on doing it once it has been handled. Without it, the room
+    /// falls back to the stock "There is a … here." — which is the sentence
+    /// Dungeon's balloon printed for an inflated burning bag and a cold
+    /// deflated one alike, from the first time anybody climbed in. (#329)
+    @Test func onlyTheItemThatDeclaresItKeepsItsListingLine() async throws {
+        let transcript = try await play(
+            BrazierRoomGame(),
+            ["look", "turn on iron brazier", "turn on stone brazier", "look"])
+
+        // Untouched, both speak for themselves — which is the ordinary
+        // behaviour and the control for the second half.
+        let first = turnOutput(of: "look", in: transcript)
+        #expect(first.contains("The iron brazier stands cold."))
+        #expect(first.contains("The stone brazier stands cold."))
+
+        // Touched, only the one with the trait does.
+        let after = try #require(transcript.components(separatedBy: "> look").last)
+        #expect(after.contains("The iron brazier is burning."))
+        #expect(!after.contains("The stone brazier is burning."))
+        #expect(!after.contains("The stone brazier stands cold."))
+    }
 }

@@ -42,7 +42,7 @@ extension Dungeon {
         // destinations.
         mirrors.slideRoom.exit(
             .down,
-            toward: { palantirWing.chuteRopeRigged ? palantirWing.slideOne : house.cellar })
+            toward: { chuteRopeRigged ? palantirWing.slideOne : house.cellar })
 
         // Up out of the top stretch is the Slide Room again; down out of the
         // bottom stretch and off the ledge is the Cellar, both one-way.
@@ -90,7 +90,7 @@ extension Dungeon {
         // mutually exclusive — so ``DungeonMirror`` declares the room
         // `alwaysDescribed` and this supplies the text.
         mirrors.slideRoom.describe {
-            guard palantirWing.chuteRopeRigged else { return Prose.slideRoom }
+            guard chuteRopeRigged else { return Prose.slideRoom }
             return "\(Prose.slideRoom)\n\n\(Prose.slideRoomRopeRigged)"
         }
 
@@ -98,7 +98,7 @@ extension Dungeon {
         // arrival: climbing back up into the top stretch from below must not
         // re-arm it.
         mirrors.slideRoom.before(.go) {
-            guard command.direction == .down, palantirWing.chuteRopeRigged else { return }
+            guard command.direction == .down, chuteRopeRigged else { return }
             startFuse("slideGrip", after: palantirWing.gripTurns)
         }
 
@@ -111,13 +111,23 @@ extension Dungeon {
             guard player.location == mirrors.slideRoom else { return }
             try rigTheChute()
         }
-        house.rope.before(.untie) {
-            guard palantirWing.chuteRopeRigged, player.location == mirrors.slideRoom else {
-                return
-            }
-            palantirWing.chuteRopeRigged = false
+        // Coming off again. `take` hands the coil back; `untie` leaves it on
+        // the floor of the Slide Room, which is the split
+        // ``DungeonTemple/ropeOnTheRailing`` already writes at the other knot.
+        // No arm on `house.rope` any more: while the knot is tied the coil is
+        // offstage, so it cannot be the object of either command.
+        palantirWing.chuteHeadRope.before(.take) {
+            unrigTheChute()
+            house.rope.moveToPlayer()
+            say(Prose.chuteUnrigged)
+            try reply(gameText.taken())
+        }
+        palantirWing.chuteHeadRope.before(.untie) {
+            unrigTheChute()
+            house.rope.move(to: mirrors.slideRoom)
             try reply(Prose.chuteUnrigged)
         }
+        palantirWing.chuteHeadRope.before(.tie) { try refuse(Prose.chuteAlreadyRigged) }
 
         // Lifting the anchor unties the knot. `rigTheChute()` refuses to tie
         // the rope to something in your hands because "a rope tied to something
@@ -128,7 +138,8 @@ extension Dungeon {
         for anchor in [mine.brokenTimber, templeQuarter.coffin] {
             anchor.after(.take) {
                 guard command.directObject == anchor, chuteAnchor == anchor else { return }
-                palantirWing.chuteRopeRigged = false
+                unrigTheChute()
+                house.rope.move(to: mirrors.slideRoom)
                 say(Prose.chuteKnotComesUndone)
             }
         }
@@ -137,12 +148,23 @@ extension Dungeon {
         // decision rather than an accident.
         let chute = palantirWing.chuteRooms
         for room in chute {
+            // This guard used to name only the coil, and the coil was never
+            // down here to be named — so it never fired, and neither did the
+            // let-go branch below it. Both read the fitting now. (#329)
             room.before(.take) {
-                guard command.directObject == house.rope else { return }
+                guard let named = command.directObject, palantirWing.isChuteRope(named)
+                else { return }
                 try refuse(Prose.ropeSuspendsYou)
             }
             room.before(.drop) { try loseDownTheChute() }
         }
+
+        // On the ledge the player is standing on rock rather than hanging, so
+        // the rope is simply out of reach over the lip. `reach` settles at
+        // stage 0, so it answers `tie`, `touch` and `pull` as well as `take`,
+        // and leaves EXAMINE — `reach: .notNeeded` — to answer the noun. The
+        // shape ``DungeonTemple/ropeAboveTheTorchRoom`` already uses.
+        palantirWing.slideLedgeRope.reach(otherwise: Prose.ropeOutOfReachFromTheLedge) { false }
     }
 
     /// The one-way cycle blue → red → white → blue. Nothing else happens: no
@@ -167,7 +189,7 @@ extension Dungeon {
     /// anchor be on the ground rather than in your hands, because a rope tied
     /// to something you are carrying holds nothing at all.
     private func rigTheChute() throws -> Never {
-        try require(!palantirWing.chuteRopeRigged, else: Prose.chuteAlreadyRigged)
+        try require(!chuteRopeRigged, else: Prose.chuteAlreadyRigged)
         guard let anchor = command.indirectObject else { try reply(Prose.chuteNeedsAnAnchor) }
         try require(
             anchor == mine.brokenTimber || anchor == templeQuarter.coffin,
@@ -178,14 +200,39 @@ extension Dungeon {
         // order the map already forces: down the rope to the Tiny Room, and
         // only then round to the chute.
         try require(!templeQuarter.ropeTiedToRailing, else: Prose.ropeAlreadyTied)
-        palantirWing.chuteRopeRigged = true
         palantirWing.chuteAnchorIsTheCoffin = anchor == templeQuarter.coffin
+        // The coil goes offstage and five fittings come on, one per room the
+        // rope is now in — which is the whole of the repair. A rope hung down
+        // a chute is in five rooms at once and an item is in one. (#329)
+        house.rope.vanish()
+        palantirWing.chuteHeadRope.move(to: mirrors.slideRoom)
+        for (fitting, room) in palantirWing.chuteRopeFittings { fitting.move(to: room) }
         try reply(Prose.chuteRigged)
     }
 
+    /// Taking the knot out of the chute: every fitting offstage, and the
+    /// caller says where the coil lands.
+    private func unrigTheChute() {
+        for fitting in palantirWing.chuteRopeFittings.map(\.0) + [palantirWing.chuteHeadRope] {
+            fitting.vanish()
+        }
+    }
+
+    /// Whether a rope has been rigged at the head of the chute.
+    ///
+    /// Not a flag: the knot *is* ``DungeonPalantir/chuteHeadRope`` standing in
+    /// the Slide Room, so the fact has one representation instead of two — the
+    /// shape #286 gave ``DungeonTemple/ropeTiedToRailing`` for the other knot.
+    /// The host's, because the room the fitting stands in is
+    /// ``DungeonMirror``'s and `isIn(_:)` is one placement read where
+    /// `location != nil` is a containment walk — and this is read from an
+    /// `alwaysDescribed` room's describer and from a dynamic exit, so it is
+    /// asked on every entry. (#329)
+    var chuteRopeRigged: Bool { palantirWing.chuteHeadRope.isIn(mirrors.slideRoom) }
+
     /// The thing the chute's rope is tied to, while it is tied to anything.
     var chuteAnchor: Item? {
-        guard palantirWing.chuteRopeRigged else { return nil }
+        guard chuteRopeRigged else { return nil }
         return palantirWing.chuteAnchorIsTheCoffin ? templeQuarter.coffin : mine.brokenTimber
     }
 
@@ -194,7 +241,11 @@ extension Dungeon {
     /// in the Cellar with the rest of what the chute has swallowed.
     private func loseDownTheChute() throws {
         guard let dropped = command.directObject else { return }
-        if dropped == house.rope {
+        // The coil is offstage while the knot is tied, so `drop rope` in the
+        // chute names the stretch's fitting. This branch tested the coil and
+        // could never have fired — the let-go-and-fall mechanic was
+        // unreachable for as long as the rope was a flag. (#329)
+        if palantirWing.isChuteRope(dropped) {
             stopFuse("slideGrip")
             say(Prose.ropeReleased)
             arrive(at: house.cellar)

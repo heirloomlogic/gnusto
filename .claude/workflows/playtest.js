@@ -139,13 +139,21 @@ const SESSION_GLOB = `${game}-r*-${SESSION_SEGMENT}-*`
 // The rule is that the *turn count* may name every tree and *session
 // accounting* may name only one, and the dry run asserts both halves.
 //
-// Deliberately not counted: the labels the round's own machinery replays under —
-// `<game>-survey`, `-r<n>-cluster`, `-critic`, `-collator`. Those agents get a
-// replay how-to so they can check something, not so they can play, and turns
-// spent there are neither a tester's coverage nor a verifier's checking. The
-// exclusion is not silent, though: `countedTurns`' residual surfaces whatever
-// they spend, so one that starts spending a real budget asks for its own row
-// instead of being noticed a round later.
+// There is no third constant for the labels the round's own machinery replays
+// under — `<game>-survey`, `-r<n>-cluster`, `-critic`, `-collator`, and whatever
+// an operator invents to check a route prefix before dispatching anybody — and
+// that is the point: an operator's label cannot be enumerated in advance, so the
+// harness tree is defined as every probe that is none of the three above. See
+// `countedTurns`, which is where that exclusion is spent.
+//
+// It used to be left out of the count entirely, on the reasoning that turns
+// spent there are neither a tester's coverage nor a verifier's checking, and on
+// the promise that `countedTurns`' residual would surface a tree that started
+// spending a real budget. It did surface one — 8,095 turns on 2026-08-24 — and
+// the round then had to hand the critic a mystery and ask it to name the
+// directories. A tree that is *known* to exist and *known* not to be coverage
+// wants a named row, not a residual; the residual is for the tree nobody has
+// thought of yet.
 const PLAY_SEGMENT = 'play'
 const playLabelFor = (round, key) => labelFor(`r${round}`, PLAY_SEGMENT, key)
 const PLAY_GLOB = `${game}-r*-${PLAY_SEGMENT}-*`
@@ -634,11 +642,16 @@ const CLUSTER_SCHEMA = {
 const COLLATOR_SCHEMA = {
   type: 'object',
   additionalProperties: false,
-  required: ['rooms', 'words', 'turns', 'sessionsFinished', 'sessionsUnfinished'],
+  required: ['rooms', 'roomsWorked', 'words', 'turns', 'sessionsFinished', 'sessionsUnfinished'],
   properties: {
     rooms: {
       type: 'array',
       description: 'Every distinct room `id` appearing in any closing.json `roomsVisited`, copied exactly. The id, not the name: two rooms may share a display name, and the survey roster this is scored against is keyed by id.',
+      items: { type: 'string' },
+    },
+    roomsWorked: {
+      type: 'array',
+      description: 'Every distinct room `id` appearing in any closing.json `roomsWorked`, copied exactly and in the same key space as `rooms`. The engine\'s own subset: a room a session typed something in that was neither travel nor a meta command. Entered is not worked — a pasted routes/*.txt prefix walks dozens of rooms and reads a line of none of them — and the round reports both counts. A file with no `roomsWorked` key at all was written by a server older than the field: it contributes nothing, and if that is every file you read, say so in `note` rather than reporting an empty list as "nothing was worked".',
       items: { type: 'string' },
     },
     words: {
@@ -677,19 +690,22 @@ const COLLATOR_SCHEMA = {
       additionalProperties: false,
       required: [
         'sessions', 'branches', 'replays', 'replayProbes',
-        'playReplays', 'playProbes', 'verifyReplays', 'verifyProbes', 'all',
+        'playReplays', 'playProbes', 'verifyReplays', 'verifyProbes',
+        'harnessReplays', 'harnessProbes', 'all',
       ],
       description:
         'World turns counted off the `[status]` footers — every `turn=cost` is one turn the game charged, and every `turn=free` is a parse failure or a meta command that charged nothing. Counted, never asked: the 2026-08-17 round reported 295 against artifacts holding about 1,493, and the 2026-08-18 round reported 11,238 while 32,987 typed commands sat in trees nothing globbed.',
       properties: {
         sessions: { type: 'integer', description: 'In the testers\' canonical transcripts.' },
         branches: { type: 'integer', description: 'In branch-NNN.txt files — turns really played, then rewound out of the transcript.' },
-        replays: { type: 'integer', description: 'In the replay probes the session server writes under `.replays/`. Mostly the verifiers.' },
+        replays: { type: 'integer', description: 'In the replay probes the session server writes under `.replays/`. These are the TESTERS\': `replay` is an MCP tool and only a live play session can call it. A verifier has no session and replays through the CLI, which lands under its verify label instead.' },
         replayProbes: { type: 'integer', description: 'How many `.replays/` probe directories exist.' },
         playReplays: { type: 'integer', description: 'In the testers\' own `bin/playtest-replay` probes, under their play labels.' },
         playProbes: { type: 'integer', description: 'How many probe directories exist under the play labels.' },
         verifyReplays: { type: 'integer', description: 'In the verifiers\' `bin/playtest-replay` probes, under their verify labels. Usually the largest single number here.' },
         verifyProbes: { type: 'integer', description: 'How many probe directories exist under the verify labels.' },
+        harnessReplays: { type: 'integer', description: 'In every other probe transcript under the scratch tree: the round\'s own machinery — the cartographer\'s survey session, and whatever ad-hoc label an operator replayed under to check a route prefix or a random rate before dispatching anybody. Counted by exclusion, because an operator\'s label cannot be listed in advance. This used to land in the residual and be handed to the critic as a mystery: 8,095 turns on 2026-08-24.' },
+        harnessProbes: { type: 'integer', description: 'How many probe directories that count belongs to.' },
         all: { type: 'integer', description: 'Every `turn=cost` anywhere under `.context/playtest`, with no glob applied — the residual against the five turn counts above is how a label tree nobody globs for announces itself instead of reading as zero.' },
       },
     },
@@ -994,17 +1010,48 @@ Read \`Sources/${game}/\` and ${docPath ? `\`${docPath}\`` : 'the game type\'s d
 
 if (!survey) throw new Error('survey failed; a round without a denominator cannot report coverage honestly')
 
+// Every room the game declares — the denominator, and *not* `survey.rooms`.
+//
+// `isReachable` is `definition.reachableRooms.contains(id)`, which walks the
+// static exit table and nothing else. A room a rule moves the player into is
+// declared, entered and playable, and it is `isReachable: false`: Dungeon has
+// eight of them — the balloon's four air rooms, the bank curtain's two, the
+// river current, the cage drop. Scoring against `survey.rooms` alone charged the
+// 2026-08-24 round twice for that. The eight failed `reconcile` and were
+// reported as ids "on no roster", which fired the critic's line about a
+// `closing.json` written by an older build; and they were missing from the
+// denominator, so the fraction was over the wrong total.
+//
+// Reachability stays as an annotation, because it is a real distinction — a room
+// only a rule can reach is one no walker will find by trying exits, and that is
+// worth a next-round planner knowing. What it is not is a roster.
+//
+// Deliberately not the union with the rooms anybody entered: that would make the
+// denominator depend on the numerator, and a room nobody entered could then
+// never be reported as missed, which is the one thing this fraction is for.
+const ruleEnteredRooms = survey.unreachableRooms || []
+const declaredRooms = [...survey.rooms, ...ruleEnteredRooms]
+
 // A room as a reader should see it: `Name (id)`. Every room list a person reads
 // goes through this, because the roster is keyed by id and a display name is not
 // unique — a list that printed the name alone would say "Coal Mine" seven times
 // and name nothing. An id on no roster prints alone rather than being dressed up
 // as a room.
-const roomNames = new Map(survey.rooms.map((r) => [r.id, r.name]))
+const roomNames = new Map(declaredRooms.map((r) => [r.id, r.name]))
 const roomLabel = (id) => (roomNames.has(id) ? `${roomNames.get(id)} (${id})` : id)
 
 // The whole roster, rendered once. It is an invariant of the round and it used
 // to be rebuilt per non-blind charter per round.
-const roomRoster = survey.rooms.map((r) => roomLabel(r.id)).join(', ')
+//
+// The rule-entered rooms are named separately rather than folded in, because
+// what a sighted charter does with this list is plan a walk: a room reached only
+// by pulling a lever cannot be routed to, and a charter told it is on the map
+// with the rest spends turns hunting for an exit that is not there.
+const roomRoster =
+  survey.rooms.map((r) => roomLabel(r.id)).join(', ') +
+  (ruleEnteredRooms.length
+    ? `. Reached by a rule and not by any exit, so no walk will find them — ${ruleEnteredRooms.map((r) => roomLabel(r.id)).join(', ')}`
+    : '')
 
 // Each charter decides for itself whether this game gives it anything to do,
 // reading the survey and the manifest capabilities directly. A predicate rather
@@ -1043,7 +1090,7 @@ const playRoster = chosen.flatMap((charter) => {
 })
 
 log(
-  `${game}: ${survey.rooms.length} rooms, ${(survey.timers || []).length} timers, tiers ${survey.tiers.join('+')}. ` +
+  `${game}: ${declaredRooms.length} rooms, ${(survey.timers || []).length} timers, tiers ${survey.tiers.join('+')}. ` +
     `Testers: ${playRoster.map((r) => `${r.key}${r.charter.blind ? `/${r.divergence}` : ''}`).join(', ')}` +
     `${skipped.length ? ` — not run: ${skipped.map((c) => c.key).join(', ')}` : ''}.`
 )
@@ -1699,8 +1746,17 @@ function firedTimers(rows) {
 //
 // Both sides are room ids now. `names` is carried alongside so the report can
 // say "Coal Mine (mine3)" rather than making a reader resolve an id.
+//
+// The roster is `declaredRooms` and not `survey.rooms` — see the note there. It
+// took a second round to see that scoring against the reachable half made the
+// eight rooms Dungeon enters by rule look simultaneously off-roster and
+// never-entered, which are contradictory complaints about the same eight rooms.
+//
+// Called twice, over the two numerators the closing records carry: `roomsVisited`
+// (stood in) and `roomsWorked` (did something in). One function, because the join
+// is identical and the difference is entirely in what is handed to it.
 function visitedRooms(ids) {
-  const roster = survey.rooms.map((r) => r.id)
+  const roster = declaredRooms.map((r) => r.id)
   const { matched, offRoster, missing } = reconcile(ids, roster)
   // `neverVisited` comes out rendered — `Name (id)` — because both its readers,
   // the critic's prompt and the returned `coverage.rooms`, want it that way and
@@ -1712,10 +1768,20 @@ function visitedRooms(ids) {
 // The round's turn count, off the artifacts, split by who spent it rather than
 // by how the turn was driven. A tester spends turns in its session transcript,
 // in branches a rewind wrote off — a room worked for ten turns and then rewound
-// out was still worked — and in its own `bin/playtest-replay` probes. A verifier
-// spends them replaying reproducers, through the server's `replay` tool or the
-// CLI. Nothing here is asked of an agent that played: see the note on COVERAGE's
-// dropped `turnsSpent`.
+// out was still worked — in its own `bin/playtest-replay` probes, and through
+// the server's `replay` tool. A verifier spends them replaying reproducers from
+// the CLI. The harness spends them on its own errands before and around the
+// dispatch. Nothing here is asked of an agent that played: see the note on
+// COVERAGE's dropped `turnsSpent`.
+//
+// **`replays` is the testers', and used to be added to the verifiers'.** `replay`
+// is an MCP tool on the play session, granted to the play-phase agent and to
+// nobody else; a verifier has no session and is told to use
+// `bin/playtest-replay --label <verify label>`, which is what `verifyReplays`
+// counts. Crediting the `.replays/` tree to the verifiers reported the
+// 2026-08-24 Dungeon round at a 3:1 verifier:tester ratio when it was 1.2:1, and
+// tripped the "this round argued more than it played" warning on a number that
+// was not real. All 63 of that round's `.replays/` probes were testers'.
 //
 // `unattributed` is the residual, and it is there because this number has now
 // been quietly short three times — the branch files, then `.replays`, then both
@@ -1726,12 +1792,32 @@ function visitedRooms(ids) {
 // `total`, because the honest reading of a large residual is "some tree is
 // uncounted, or another game's artifacts share this checkout" and those want
 // different answers.
+//
+// The residual's fourth reader is `harness`, which is the tree the round's own
+// machinery replays under — the cartographer's survey session, and whatever
+// ad-hoc label an operator uses to check a route prefix or a random rate before
+// dispatching anybody. That was 8,095 turns on 2026-08-24, resolving to
+// `prefix-check`, `thief-rate`, `thief-prefix` and `Dungeon-survey`, and it
+// arrived as an unattributed residual the critic was asked to explain from
+// scratch. It is counted by exclusion rather than by enumeration, because an
+// operator's label cannot be enumerated in advance; that is also what keeps
+// `unattributed` meaning what it says, since a genuinely foreign tree still has
+// no probe transcript under this scratch directory.
 function countedTurns(turns) {
   const t = turns || {}
-  const testers = (t.sessions || 0) + (t.branches || 0) + (t.playReplays || 0)
-  const verifiers = (t.replays || 0) + (t.verifyReplays || 0)
-  const total = testers + verifiers
-  return { ...t, testers, verifiers, total, unattributed: Math.max(0, (t.all || 0) - total) }
+  const testers =
+    (t.sessions || 0) + (t.branches || 0) + (t.playReplays || 0) + (t.replays || 0)
+  const verifiers = t.verifyReplays || 0
+  const harness = t.harnessReplays || 0
+  const total = testers + verifiers + harness
+  return {
+    ...t,
+    testers,
+    verifiers,
+    harness,
+    total,
+    unattributed: Math.max(0, (t.all || 0) - total),
+  }
 }
 
 // What the sessions wrote down, gathered off disk.
@@ -1758,6 +1844,8 @@ calls \`finish\`. From \`${pkg}\`, list them:
 
 Read every one. Each holds \`roomsVisited\` (one row per room, each with an \`id\`
 and a \`name\`, in the order the session first stood in them),
+\`roomsWorked\` (a bare list of ids, the subset of those the session did something
+in rather than only stood in),
 \`unknownWords\` (token → how many times it was typed),
 \`forks\` (each with an \`id\`, a \`command\`, a \`room\` and a \`taken\` flag) and
 \`firedTimers\` (timer name → how many times the engine ran its body).
@@ -1768,6 +1856,15 @@ Report:
   The \`id\`, not the \`name\` — a name is prose and two rooms may carry the same
   one, so a list of names cannot be scored against a room roster. Do not tidy an
   id, expand it, or turn it back into the name beside it.
+- \`roomsWorked\`: every distinct \`id\` appearing in any \`roomsWorked\`, copied
+  exactly and by the same rules. This is the engine's own subset of the list
+  above and the two are reported side by side, because entered is not worked: a
+  session that pastes a \`${SCRATCH}/routes/\` walkthrough as a prefix walks
+  dozens of rooms and reads a line of none of them, and only this list can tell
+  the round which was which. A file with no \`roomsWorked\` key was written by a
+  server older than the field: it contributes nothing, and if that is every file
+  you read, say so in \`note\` rather than reporting an empty list as "nothing was
+  worked".
 - \`words\`: one row per distinct token, with its count summed across all files.
 - \`forksNobodyTook\`: the \`id\` of every fork appearing with \`taken: false\` and
   never with \`taken: true\`. A fork no session took is a branch the whole round
@@ -1783,9 +1880,9 @@ Report:
 - \`turns\`: the round's world turns, counted off the \`[status]\` footers. Every
   footer says \`turn=cost\` or \`turn=free\`, and only the first is a turn the game
   charged — a parse failure and a meta command both print \`turn=free\` and cost
-  nothing, which is why counting \`> \` lines instead would be wrong. Nine numbers,
+  nothing, which is why counting \`> \` lines instead would be wrong. Eleven numbers,
   run from \`${pkg}\`. Run them exactly as written; one shell invocation holding all
-  nine lines is fine and cheaper, since they print in the order below:
+  eleven lines is fine and cheaper, since they print in the order below:
 
       find ${SCRATCH} -path "*/${SESSION_GLOB}/*/${TRANSCRIPT}" -exec grep -h 'turn=cost' {} + | wc -l
       find ${SCRATCH} -path "*/${SESSION_GLOB}/*/${BRANCH}" -exec grep -h 'turn=cost' {} + | wc -l
@@ -1795,14 +1892,17 @@ Report:
       find ${SCRATCH} -path "*/${PLAY_GLOB}/*/${TRANSCRIPT}" | wc -l
       find ${SCRATCH} -path "*/${VERIFY_GLOB}/*/${TRANSCRIPT}" -exec grep -h 'turn=cost' {} + | wc -l
       find ${SCRATCH} -path "*/${VERIFY_GLOB}/*/${TRANSCRIPT}" | wc -l
+      find ${SCRATCH} -path "*/${PROBE}/${TRANSCRIPT}" ! -path "*/${SESSION_GLOB}/*" ! -path "*/${PLAY_GLOB}/*" ! -path "*/${VERIFY_GLOB}/*" ! -path "*/${REPLAY_TREE}/*" -exec grep -h 'turn=cost' {} + | wc -l
+      find ${SCRATCH} -path "*/${PROBE}/${TRANSCRIPT}" ! -path "*/${SESSION_GLOB}/*" ! -path "*/${PLAY_GLOB}/*" ! -path "*/${VERIFY_GLOB}/*" ! -path "*/${REPLAY_TREE}/*" | wc -l
       find ${SCRATCH} \\( -name ${TRANSCRIPT} -o -name '${BRANCH}' \\) -exec grep -h 'turn=cost' {} + | wc -l
 
   In order: \`sessions\`, \`branches\`, \`replays\`, \`replayProbes\`, \`playReplays\`,
-  \`playProbes\`, \`verifyReplays\`, \`verifyProbes\`, \`all\`. Use \`find\` and
+  \`playProbes\`, \`verifyReplays\`, \`verifyProbes\`, \`harnessReplays\`,
+  \`harnessProbes\`, \`all\`. Use \`find\` and
   not a bare shell glob: \`find\` does its own matching, so a pattern that matches
   nothing prints \`0\` in every shell, where an unmatched glob **aborts the whole
   command** under zsh and would hand you a shell error to interpret as a count.
-  A genuine zero is a real answer; say in \`note\` which of the nine it was.
+  A genuine zero is a real answer; say in \`note\` which of the eleven it was.
 
   For the same reason every one of them starts at \`${SCRATCH}\` and nowhere
   narrower. A start directory \`find\` cannot open is the one thing the pattern
@@ -1816,12 +1916,20 @@ Report:
   here is meaningless too.
 
   None of them is a rounding error. One round held 102 real turns in six branch
-  files. The four in the middle are \`bin/playtest-replay\` runs — a tester probing
-  something it saw, a verifier replaying a reproducer — and on the round that found
-  this they held 32,987 typed commands against a reported total of 11,238.
+  files. The \`play\` and \`verify\` four are \`bin/playtest-replay\` runs — a tester
+  probing something it saw, a verifier replaying a reproducer — and on the round that
+  found this they held 32,987 typed commands against a reported total of 11,238.
+
+  The \`harness\` pair is the only one written as an exclusion, and that is
+  deliberate: it is every other probe transcript under \`${SCRATCH}\`, which is the
+  round's own machinery — the cartographer's survey session, plus whatever label an
+  operator replayed under to check a route prefix or a random rate before dispatching
+  anybody. Those labels cannot be listed in advance, so they are caught by what they
+  are *not*. Type both lines exactly as written, negations and all; dropping one of
+  the four \`!\` clauses double-counts a tree that already has its own row.
 
   \`all\` is the one number with no glob in it: every \`turn=cost\` anywhere under
-  \`${SCRATCH}\`, which is what the eight above are a breakdown *of*. Report it
+  \`${SCRATCH}\`, which is what the ten above are a breakdown *of*. Report it
   exactly as \`find\` gives it, even when it exceeds their sum — that difference is
   the point of asking, and the critic is the one who judges it.
 - \`sessionsFinished\`: how many \`closing.json\` files you read.
@@ -1844,9 +1952,10 @@ with no \`closing.json\` beside it, so a wider session glob would report the
 round's own machinery as 150-odd testers who never finished.
 
 So the rule has two halves, and they pull opposite ways. **The turn count names
-every tree** — it is the one thing all four are read for, and every one of them is
-named explicitly above. **Session accounting names only \`${SESSION_GLOB}\`** —
-\`rooms\`, \`words\`, \`forksNobodyTook\`, \`sessionsFinished\` and
+every tree** — it is the one thing they are all read for, and every one of them is
+named above, the harness tree by exclusion. **Session accounting names only
+\`${SESSION_GLOB}\`** —
+\`rooms\`, \`roomsWorked\`, \`words\`, \`forksNobodyTook\`, \`sessionsFinished\` and
 \`sessionsUnfinished\` are all about \`closing.json\`, which nothing outside a
 session writes. Do not widen the session globs, and do not narrow the turn count
 back to them. If you think a session is missing, say so in \`note\`.
@@ -1862,6 +1971,11 @@ That is a real answer and it means the round wrote no sessions.`,
 // coverage cannot disagree about what was walked.
 const roomTallyPromise = collatorPromise.then((collated) => ({
   ...visitedRooms((collated && collated.rooms) || []),
+  // The same join over the stricter numerator. Its `offRoster` is thrown away
+  // deliberately: `roomsWorked` is a subset of `roomsVisited` by construction,
+  // so anything foreign in it is already reported once by the line above and
+  // saying it twice would read as two faults.
+  worked: visitedRooms((collated && collated.roomsWorked) || []),
   timers: firedTimers(collated && collated.timers),
   forksNobodyTook: (collated && collated.forksNobodyTook) || [],
   sessionsFinished: (collated && collated.sessionsFinished) || 0,
@@ -1872,7 +1986,7 @@ const roomTallyPromise = collatorPromise.then((collated) => ({
 
 const criticThunk = async () => {
   const {
-    visited, offRoster, neverVisited, forksNobodyTook, sessionsFinished,
+    visited, worked, offRoster, neverVisited, forksNobodyTook, sessionsFinished,
     sessionsUnfinished, words, turns, timers,
   } = await roomTallyPromise
   const unknownWordTotal = words.reduce((n, w) => n + (w.count || 0), 0)
@@ -1945,17 +2059,25 @@ and the unknown words are read from the \`closing.json\` each session wrote at \
 so they are counted rather than recalled; the prose notes below them are still self-report
 and can be flattering. The transcripts under \`${pkg}/${SCRATCH}/\` are the ground
 truth and they win over anything here.
-- Rooms: ${visited.size} of ${survey.rooms.length} entered, counted by room id rather than by display name — a name is prose and this game's rooms need not carry distinct ones. Never entered: ${neverVisited.join(', ') || 'none'}.${offRoster.length ? ` ${offRoster.length} room id(s) in the closing records are on no roster (${offRoster.slice(0, 12).join(', ')}). Both sides come from the engine now, so this is not a transcription slip: it means a \`closing.json\` was written by an older or a different build, another game's probes are in the scratch tree, or the game names a room at runtime. Say which, and treat the fraction above as approximate until you have.` : ''}
-- **Entered is not covered, and the report must not conflate them.** The count above is
-  every room a session stood in, which includes rooms that only flashed past inside a
-  replayed prefix from \`${SCRATCH}/routes/\` while the harness typed somebody
-  else's walkthrough. A room nobody typed their own command in is blank, however many
-  times its name printed. Only the transcripts can tell the two apart — do that, and give
-  the grid \`X\` for a room a charter worked in and \`.\` for one it only passed through.
+- Rooms: **${visited.size} of ${declaredRooms.length} entered, ${worked.visited.size} of ${declaredRooms.length} worked.** Both counted by room id rather than by display name — a name is prose and this game's rooms need not carry distinct ones. The denominator is every room the game declares${ruleEnteredRooms.length ? `, including the ${ruleEnteredRooms.length} the engine reports as unreachable: those are entered by a rule rather than through an exit, so a walker will never find one and a round that dropped them from the roster reported the same rooms as both off-roster and never-entered` : ''}. Never entered — a real gap, not a map artifact: ${neverVisited.join(', ') || 'none'}. Entered but never worked: ${worked.neverVisited.filter((r) => !neverVisited.includes(r)).join(', ') || 'none'}.${offRoster.length ? ` ${offRoster.length} room id(s) in the closing records are on no roster (${offRoster.slice(0, 12).join(', ')}). Both sides come from the engine and the roster now holds every declared room, so this is neither a transcription slip nor a rule-entered room: it means a \`closing.json\` was written by an older or a different build, another game's probes are in the scratch tree, or the game names a room at runtime. Say which, and treat the fractions above as approximate until you have.` : ''}
+- **Entered is not covered, and the report must not conflate them.** The first count
+  above is every room a session stood in, which includes rooms that only flashed past
+  inside a replayed prefix from \`${SCRATCH}/routes/\` while the harness typed
+  somebody else's walkthrough. The 2026-08-24 round published 128 of 181 entered while
+  two explorers had typed 717 of 734 and 596 of 618 of their commands verbatim out of a
+  route file, and between them contributed half that count for nine commands of their
+  own. The **worked** count is the engine's own answer to that: a room a session typed
+  something in that was neither travel nor a meta command. It is an upper bound rather
+  than a measurement — the session cannot tell a pasted command from a composed one, so
+  a route file's own \`take lamp\` still credits its room — so where the two counts are
+  close, read the transcripts before believing the second one. Give the grid \`X\` for a
+  room a charter worked in and \`.\` for one it only passed through, and where a
+  transcript disagrees with the worked count, the transcript wins and the disagreement
+  is worth a sentence.
 - Sessions that wrote a closing record: ${sessionsFinished}.${sessionsUnfinished.length ? ` **${sessionsUnfinished.length} session(s) never called \`finish\`** (${sessionsUnfinished.slice(0, 8).join(', ')}) — their rooms and words are missing from every count above, so the coverage figure is a floor and you should say so in as many words.` : ''}
 - Forks no session took: ${forksNobodyTook.length ? forksNobodyTook.join(', ') : 'none'}. Each is an irreversible action the whole round declined, which is a coverage gap nothing else in the harness can see. Name them in the coverage section and make one a target for next round.
-- Turns: **${turns.total} world turns**, counted off the \`[status]\` footers rather than asked of anybody. Testers spent ${turns.testers} of ~${turnBudget * playRoster.length} budgeted (${turns.sessions} in their session transcripts, ${turns.branches} in branches a rewind wrote off but that were really played, ${turns.playReplays} across ${turns.playProbes} \`bin/playtest-replay\` probes of their own); the verifiers spent ${turns.verifiers} (${turns.replays} across ${turns.replayProbes} probes under \`${SCRATCH}/${REPLAY_TREE}/\`, ${turns.verifyReplays} across ${turns.verifyProbes} \`bin/playtest-replay\` probes). A round whose verifiers outspend its testers several times over is normal and not by itself a problem — but if \`${turns.testers}\` is far under budget while \`${turns.verifiers}\` is large, the round argued more than it played, and that is worth a sentence. This field used to be the sum of the testers' self-reports and was wrong by a factor of five; then it was counted off two trees out of four and wrong by a factor of three.${turns.unattributed ? ` **${turns.unattributed} further \`turn=cost\` lines sit under \`${SCRATCH}/\` and are attributed to none of the trees above.** That is either a label tree this round counts for nobody — which is exactly how the two numbers above went wrong the last two times — or another game's artifacts sharing this checkout. Say which, name the directories, and treat the total as a floor until somebody does.` : ' The residual against an unglobbed count of the whole scratch tree is zero, so nothing was played under a label this round does not attribute.'}
-- There is deliberately no "cells probed" count: free-text cell labels are not comparable between charters, so any total would be a number that means nothing. Build the real cross-product yourself from the transcripts, against the ${survey.rooms.length}-room roster and the timers above.
+- Turns: **${turns.total} world turns**, counted off the \`[status]\` footers rather than asked of anybody. Testers spent ${turns.testers} of ~${turnBudget * playRoster.length} budgeted (${turns.sessions} in their session transcripts, ${turns.branches} in branches a rewind wrote off but that were really played, ${turns.replays} across ${turns.replayProbes} probes under \`${SCRATCH}/${REPLAY_TREE}/\`, ${turns.playReplays} across ${turns.playProbes} \`bin/playtest-replay\` probes of their own); the verifiers spent ${turns.verifiers} across ${turns.verifyProbes} \`bin/playtest-replay\` probes; the round's own machinery spent ${turns.harness} across ${turns.harnessProbes} probes under every other label. **The \`${REPLAY_TREE}/\` tree is the testers'**, and used to be credited to the verifiers: \`replay\` is an MCP tool on a play session and a verifier has no session, so it replays through the CLI under its verify label. That one term reported the 2026-08-24 round at 3:1 verifier-to-tester when it was 1.2:1. A round whose verifiers outspend its testers several times over is normal and not by itself a problem — but if \`${turns.testers}\` is far under budget while \`${turns.verifiers}\` is large, the round argued more than it played, and that is worth a sentence. This field used to be the sum of the testers' self-reports and was wrong by a factor of five; then it was counted off two trees out of four and wrong by a factor of three.${turns.unattributed ? ` **${turns.unattributed} further \`turn=cost\` lines sit under \`${SCRATCH}/\` and are attributed to none of the four trees above.** The harness row already absorbs the round's own errands, so this is a tree nobody has thought of — or another game's artifacts sharing this checkout. Say which, name the directories, and treat the total as a floor until somebody does.` : ' The residual against an unglobbed count of the whole scratch tree is zero, so nothing was played under a label this round does not attribute.'}
+- There is deliberately no "cells probed" count: free-text cell labels are not comparable between charters, so any total would be a number that means nothing. Build the real cross-product yourself from the transcripts, against the ${declaredRooms.length}-room roster and the timers above.
 - Testers run: ${playRoster.map((r) => `${r.key}${r.charter.blind ? ` (${r.divergence}${r.region ? `, ${r.region}` : ''})` : ''}`).join(', ')}. Charters NOT run: ${skipped.map((c) => c.key).join(', ') || 'none'}.
 - The blind charters were given no room list, no timer list and no design doc, deliberately. A finding of theirs that the doc licenses is the expected cost of that, not a harness failure — but if more than about two in five are refuted that way, say so: the brief needs tightening, not the doc handing back.
 - Confirmed ${confirmed.length}, refuted ${refuted.length}, findings routed to another issue ${routed.length}. Every confirmed finding is filed; this round edits nothing.
@@ -2029,12 +2151,18 @@ return {
     disagreements,
   },
   coverage: {
-    // Room ids on both sides — the survey tool's roster against the ids the
-    // sessions' own `roomsVisited` carried.
+    // Room ids on both sides — every room the game declares, against the ids the
+    // sessions' own `roomsVisited` and `roomsWorked` carried. `total` counts the
+    // rule-entered rooms too, and `ruleEntered` says how many of it they are: a
+    // room only a lever reaches is playable and reportable, and scoring it out
+    // of the roster reported the same rooms as both off-roster and never-entered.
     rooms: {
       visited: roomTally.visited.size,
-      total: survey.rooms.length,
+      worked: roomTally.worked.visited.size,
+      total: declaredRooms.length,
+      ruleEntered: ruleEnteredRooms.length,
       neverVisited: roomTally.neverVisited,
+      neverWorked: roomTally.worked.neverVisited,
       offRoster: roomTally.offRoster,
     },
     // Declared against fired, both counted rather than asked. `neverFired` is

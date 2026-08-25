@@ -140,6 +140,7 @@ Each one describes a declaration that compiles, reads as live, and does nothing.
 | `a rule watches intent "accuse", but no verb row produces it; if it was declared with #verb, list .accuse in a verbs block.` | Usually the forgotten `verbs` entry. The rule is fine; nothing typed can reach it. |
 | `a verb row produces intent "accuse", but nothing answers it; give it an action(.accuse) or a rule, or the verb just prints the engine's fall-back line.` | The mirror of the above. A rule that answers one noun and leaves the rest to the fall-back is the documented pattern and warns nothing, and a catch-all rule with empty `intents` names no intent, so `world.beforeEachTurn` cannot switch this check off. |
 | `location "cellar" declares alwaysDescribed but has no description(…) trait and no describe { … } rule; the flag has nothing to print.` | The flag un-hides a long description on revisits. With no long description, the transcript reads identically with the flag and without it. |
+| `item "brazier" declares alwaysListed but has no firstSight(…) trait and no presence { … } rule; the flag has nothing to keep.` | The item-side twin of the row above. The flag keeps a listing paragraph printing past the first touch, so an item with no listing paragraph reads identically with the flag and without it. |
 | `item "gem" declares firstSight(…) but the map places it 2 levels below the room — inside "box", inside "chest"; a room description lists what stands in the room and what those things hold, and goes no deeper, so the line has nowhere to print.` | Also `a presence { … } rule`, and `actor "…"`. Only a chain that reaches a room is judged: an item starting offstage or in somebody's hands has no static position for the map to be wrong about. |
 | `the game's maxScore is 350, but its scoring content declares awards totalling 340; 10 point(s) of the maximum are unreachable.` | The other direction reads `10 point(s) can be scored past the maximum`. Content conforming to ``ScoreDeclaring`` knows its own award table; content that totals nothing returns `nil` and the check is skipped, so a deliberately unreachable ceiling stays shippable by opting out. |
 
@@ -195,6 +196,7 @@ See <doc:SplittingAGameAcrossFiles>.
 - ``firstSight(_:)``
 - ``properName``
 - ``alwaysDescribed``
+- ``alwaysListed``
 - ``lightSource``
 - ``startsLit``
 - ``startsUnlocked``

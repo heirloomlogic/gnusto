@@ -96,9 +96,19 @@ struct DungeonProseTests {
         + ["south", "south", "east", "up", "southwest", "east", "south", "northeast"]
         + ["give water to cyclops", "give lunch to cyclops", "give water to cyclops"]
 
+    /// The Wide Ledge with the basket gone: stepping out of an untied balloon
+    /// strands the player and lets it climb away, which is what starts the
+    /// gnome's ten-turn clock and what makes the wreck something this room
+    /// watches rather than hears. Seed 18.
+    private static let strandedOnTheWideLedge = DungeonTests.toTheWideLedge + ["get out"]
+
     /// Through the wall the shout opens, and up into the thief's Treasure Room.
     /// Arriving is what puts him into play. Seed 18.
     private static let toTheHoard = toTheCyclops + ["odysseus", "up"]
+
+    /// The same road from the Troll Room on, for a test that has to reach him
+    /// with a different prefix — the troll takes three blows at seed 1.
+    private static let trollRoomToTheHoard = Array(toTheHoard.dropFirst(pastTheTroll.count))
 
     /// The road up the well, stopping on the lip of it. Seed 41 throughout, as
     /// in `DungeonTests`: the carousel is a lottery until the triangular button
@@ -1838,6 +1848,543 @@ struct DungeonProseTests {
     /// indented inside its literal, which is what `TextWrap` now reads as a
     /// literal block.
     ///
+    // MARK: - Rule 1 again, in six regions no charter had ever worked
+
+    /// **The Living Room, four moves from the front door.** Its paragraph is a
+    /// claim about two things that move — the rug PUSH RUG rolls aside, and
+    /// the west door the cyclops breaks through from the far side — and it
+    /// reported neither. One flag is `DungeonHouse`'s and the other
+    /// `DungeonMaze`'s, which is why the sentence is the host's. (#329)
+    @Test func theLivingRoomReadsTheRugAndTheDoorBesideIt() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.intoTheKitchen + ["west", "look", "push rug", "look"],
+            seed: 18)
+
+        let before = turnOutput(of: "look", in: transcript)
+        #expect(before.contains("a large oriental rug in the center of the room"))
+        #expect(before.contains("which appears to be nailed shut"))
+
+        // The rug half, which is seven moves from a cold start.
+        let after = transcript.components(separatedBy: "> look").last ?? ""
+        #expect(after.contains("rolled back off the dusty cover of a trap door"))
+        #expect(!after.contains("rug in the center of the room"))
+    }
+
+    /// And the west half, which needs the cyclops to have been through it. The
+    /// Strange Passage on the far side has described the same door as holed
+    /// since milestone 4, so the two sides of one door disagreed. (#329)
+    @Test func theWoodenDoorReadsTheSameFromBothSidesOfIt() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.intoTheKitchen + ["west", "x wooden door", "east"]
+                + Self.toTheCyclops.dropFirst(Self.intoTheKitchen.count)
+                + ["odysseus", "north", "east", "look", "examine wooden door", "open wooden door"],
+            seed: 18)
+
+        // The far side's paragraph, which is the control: it has said this all
+        // along, and it is what the near side was contradicting.
+        #expect(transcript.contains("with a large hole in it (about cyclops sized)"))
+
+        #expect(turnOutput(of: "x wooden door", in: transcript).contains("nailed fast"))
+
+        let door = turnOutput(of: "examine wooden door", in: transcript)
+        #expect(door.contains("most of the door gone from around them"))
+        #expect(!door.contains("nailed fast"))
+
+        let room = turnOutput(of: "look", in: transcript)
+        #expect(room.contains("with a hole broken clean through it"))
+        #expect(!room.contains("appears to be nailed shut"))
+
+        #expect(
+            turnOutput(of: "open wooden door", in: transcript)
+                .contains("There is no door left to open"))
+    }
+
+    /// **The stair the cyclops was standing in front of.** Read one turn after
+    /// he fled through the wall, with the parser already denying that he
+    /// exists, the description was the room insisting on him. It reads the
+    /// flag the `up` exit reads, so the two cannot disagree. (#329)
+    @Test func theCyclopsStaircaseStopsAdvertisingHim() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheCyclops + ["x staircase", "odysseus", "examine stairs"],
+            seed: 18)
+
+        #expect(
+            turnOutput(of: "x staircase", in: transcript)
+                .contains("a cyclops in front of it more often than not"))
+
+        let cleared = turnOutput(of: "examine stairs", in: transcript)
+        #expect(cleared.contains("nothing on it now to argue the point"))
+        #expect(!cleared.contains("more often than not"))
+    }
+
+    /// **The egg's clasp.** Only the thief ever gets it undone, which is why
+    /// the constant outlived every test: the frame that falsifies it is a
+    /// treasure handed to a man and taken back, with the listing beside it
+    /// already printing what is inside. Both channels carried the clause and
+    /// both are rules now. (#329)
+    @Test func theEggSaysWhetherItsClaspIsStillDone() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            // The egg out of the tree, in at the window, and down to his lair.
+            ["north", "north", "up", "take egg", "x egg", "down"]
+                + ["east", "southwest", "open window", "west"] + Self.downTheTrapDoor
+                + ["east"] + Array(repeating: "attack troll with sword", count: 3)
+                + Self.trollRoomToTheHoard
+                // Hand it over, step out of his reach, and let him work.
+                + ["give egg to thief", "down"] + Array(repeating: "wait", count: 4)
+                + ["up"] + Array(repeating: "attack thief with sword", count: 6)
+                + ["take egg", "examine egg"],
+            seed: 1)
+
+        #expect(turnOutput(of: "x egg", in: transcript).contains("closed with a delicate looking clasp"))
+
+        let opened = turnOutput(of: "examine egg", in: transcript)
+        #expect(opened.contains("Its hinged lid stands open"))
+        #expect(!opened.contains("closed with a delicate looking clasp"))
+    }
+
+    /// **The reservoir, read from the room that holds the bolt.** Its four
+    /// neighbours have branched on `gatesOpen` since the sixth pass; the one
+    /// item a player reads while standing at the control panel did not, so
+    /// turning the bolt changed everything about the water except the sentence
+    /// the turner was looking at. (#329)
+    @Test func theReservoirSeenFromTheDamReadsTheBolt() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheDam
+                + ["x reservoir"] + Array(Self.drainTheReservoir.dropLast(3))
+                + ["examine reservoir"],
+            seed: 18)
+
+        #expect(turnOutput(of: "x reservoir", in: transcript).contains("a grey sheet reaching back"))
+
+        let drained = turnOutput(of: "examine reservoir", in: transcript)
+        #expect(drained.contains("a long streak of mud"))
+        #expect(!drained.contains("grey sheet"))
+    }
+
+    /// **The Maintenance Room and the water in it.** The daemon calls each
+    /// rung as the water reaches it and then stops; after it stops the room's
+    /// own paragraph is the only channel left speaking, and it described a dry
+    /// room to a player standing in it up to the hips — which is also the state
+    /// that jams the button. And the water itself, which the room prints every
+    /// turn and nothing answered to. (#329)
+    @Test func theMaintenanceRoomStandsInTheWaterItLetIn() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheDam
+                + ["north", "north", "push red button", "look", "push blue button"]
+                + ["wait", "wait", "look", "x water"],
+            seed: 18)
+
+        // The control: dry, and no water paragraph at all.
+        let dry = turnOutput(of: "look", in: transcript)
+        #expect(dry.contains("this room has been ransacked recently"))
+        #expect(!dry.contains("split pipe in the east wall"))
+
+        let flooded = transcript.components(separatedBy: "> look").last ?? ""
+        #expect(flooded.contains("Water bursts from the split pipe in the east wall"))
+        #expect(flooded.contains("it stands up to your"))
+
+        let water = turnOutput(of: "x water", in: transcript)
+        #expect(water.contains("Cold, and still coming."))
+        #expect(!water.contains("can't see any such thing"))
+    }
+
+    /// **The rusty box after the charge.** The Dusty Room's own paragraph has
+    /// branched on the box's `isOpen` since milestone 6, twelve lines from the
+    /// constant that did not: `x safe` called it intact and stronger than
+    /// anything you carry while the listing beside it described the hole in it.
+    /// (#329)
+    @Test func theRustyBoxStopsBeingIntactAfterTheCharge() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            DungeonTests.toTheWideLedge + ["south", "x safe", "north"]
+                + DungeonTests.lightTheCharge + ["south", "examine box"],
+            seed: 18)
+
+        #expect(turnOutput(of: "x safe", in: transcript).contains("still a great deal stronger"))
+
+        let blown = turnOutput(of: "examine box", in: transcript)
+        #expect(blown.contains("front peeled back off the stonework"))
+        #expect(!blown.contains("still a great deal stronger"))
+    }
+
+    // MARK: - A listing line that prints on every look, forever
+
+    /// **The thief, read for the first time.** `firstSight` is a static trait
+    /// on an actor, and an actor's listing line prints on every look forever —
+    /// so the turn after "The thief is battered into unconsciousness" the room
+    /// went on standing him against a wall with his blade out, while the
+    /// greeting rule two lines away already knew he could not hear. One reader
+    /// of `isUnconscious` where two channels needed it. Seed 9: the second
+    /// blow puts him down without killing him. (#329)
+    @Test func theThiefsListingLineReadsWhetherHeIsStanding() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheHoard
+                + ["attack thief with sword", "attack thief with sword"]
+                + ["look", "thief, hello"],
+            seed: 9)
+
+        // On his feet — arriving in the lair lists him, and that line is the
+        // trilogy's and is untouched.
+        #expect(
+            transcript.contains("There is a suspicious-looking individual, holding a large bag"))
+
+        // Everything after the blow that put him down.
+        let down = output(after: "battered into unconsciousness", in: transcript)
+        #expect(down.contains("face down against the wall he was leaning on"))
+        #expect(!down.contains("leaning against one wall. He is armed"))
+
+        // The channel that always knew, printing beside the one that now does.
+        #expect(
+            turnOutput(of: "thief, hello", in: transcript)
+                .contains("temporarily unable to hear anything at all"))
+    }
+
+    /// The troll had the identical fault and is not in the round's list — the
+    /// charter met him standing up. His one constant served both channels and
+    /// it claims he *blocks all passages*, which is not what a man face down in
+    /// the dirt is doing, as his own greeting branch has known since #237.
+    /// Seed 8: the first blow knocks him down instead of killing him. (#329)
+    @Test func theTrollsListingLineReadsWhetherHeIsStanding() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.intoTheKitchen + Self.downTheTrapDoor
+                + ["east", "attack troll with sword", "look", "x troll"],
+            seed: 8)
+
+        let down = output(after: "battered into unconsciousness", in: transcript)
+        #expect(down.contains("face down in the dirt"))
+        #expect(!down.contains("blocks all passages"))
+        #expect(turnOutput(of: "x troll", in: transcript).contains("every way out of the room clear"))
+
+        // The control, from a run in which he stays on his feet: the listing
+        // line is the one both sources print, and it is unchanged.
+        let standing = try await play(
+            Dungeon(), Self.intoTheKitchen + Self.downTheTrapDoor + ["east"], seed: 18)
+        #expect(standing.contains("brandishing a bloody axe, blocks all passages"))
+    }
+
+    /// **The balloon's paragraph is its state**, and `board` marks it touched —
+    /// so from the first time anybody climbed in, an inflated burning balloon
+    /// and a cold deflated one printed the same stock sentence. The rule was
+    /// right all along; the channel was gated. `alwaysListed` is the opt-out,
+    /// and it is the item-side twin of `alwaysDescribed`. (#329)
+    @Test func theBalloonKeepsReportingItsBagAndItsFire() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.strandedOnTheWideLedge + ["look"],
+            seed: 18)
+
+        // The basket has been boarded and left, so `touched` is set and the
+        // stock sentence is what the room used to fall back to. The last
+        // heading in the transcript is the LOOK after stepping out.
+        let listing = try #require(transcript.components(separatedBy: "Wide Ledge").last)
+        #expect(listing.contains("The cloth bag over it is inflated"))
+        #expect(listing.contains("is burning"))
+        #expect(!listing.contains("There is a wicker basket here."))
+    }
+
+    // MARK: - Nouns the prose prints and the parser denied
+
+    /// **The Gallery says "vandals" twice in three sentences** and the
+    /// painting's own listing line says it a third time, and the parser did not
+    /// know the word — the round's one game-printed *"I don't know the word"*,
+    /// which is the harsher of the two failures. Not a synonym on the painting:
+    /// the vandals are the people who took the others. (#329)
+    @Test func theGallerysVandalsAndItsExitsAnswer() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.intoTheKitchen + Self.downTheTrapDoor
+                + ["south", "south", "x vandals", "x exits", "x painting"],
+            seed: 18)
+
+        #expect(transcript.contains("stolen by vandals with exceptional taste"))
+        #expect(turnOutput(of: "x vandals", in: transcript).contains("Long gone, and thorough"))
+        #expect(turnOutput(of: "x exits", in: transcript).contains("Three ways out"))
+        // The control: the painting still answers to its own nouns.
+        #expect(turnOutput(of: "x painting", in: transcript).contains("A masterpiece"))
+        expectEveryNounAnswered(transcript, "The Gallery's vandals and exits.")
+    }
+
+    /// **The shaft is the hole the chain hangs in**, and both chains carried
+    /// `shaft` as a synonym — so `x shaft`, in the room whose name is the word,
+    /// answered with a sentence about the ironmongery over it. #233 taught that
+    /// one object seen from two ends is two items; this is two objects wearing
+    /// one noun, which is the other half of it. (#329)
+    @Test func theShaftIsNotTheChainHangingInIt() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheSmellyRoom.dropLast(2) + ["x shaft", "x chain", "x framework"],
+            seed: 18)
+
+        let shaft = turnOutput(of: "x shaft", in: transcript)
+        #expect(shaft.contains("wide enough for the basket"))
+        #expect(!shaft.contains("with a basket made fast to the end of it"))
+
+        // The controls: the chain still answers to both its own words.
+        #expect(turnOutput(of: "x chain", in: transcript).contains("running over the framework"))
+        #expect(turnOutput(of: "x framework", in: transcript).contains("running over the framework"))
+    }
+
+    /// **Reservoir South's third sentence names a steep path climbing along
+    /// the edge of a cliff**, and both nouns went to the reservoir — a sentence
+    /// about the water, which is in the other direction. The path is also the
+    /// `up` exit to Deep Canyon, so it is a way through as well as a noun.
+    /// (#329)
+    @Test func theCliffAtReservoirSouthIsNotTheReservoir() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheDam + ["south", "northwest", "x cliff", "x path", "x reservoir"],
+            seed: 18)
+
+        #expect(transcript.contains("a steep path climbing up along the edge of a cliff"))
+
+        let cliff = turnOutput(of: "x cliff", in: transcript)
+        #expect(cliff.contains("climbs the cliff at the room's south edge"))
+        #expect(!cliff.contains("depends entirely on what the bolt"))
+
+        #expect(turnOutput(of: "x path", in: transcript).contains("out of sight"))
+        // The control: the water still answers about the water.
+        #expect(
+            turnOutput(of: "x reservoir", in: transcript)
+                .contains("depends entirely on what the bolt"))
+    }
+
+    // MARK: - Stock lines in frames the game could not re-skin them out of
+
+    /// **`launch` beside the balloon named a boat.** LAUNCH is a word for the
+    /// balloon as well as for the magic boat, and standing on the ledge with
+    /// the basket in front of you the refusal was "You're not in the boat!" —
+    /// about a boat several hundred moves and one river away, which the player
+    /// may never have found. `landNoBoat` one rule below has always been
+    /// vehicle-neutral and is the model this line should have followed. (#329)
+    @Test func launchBesideTheBalloonDoesNotNameABoat() async throws {
+        let transcript = try await play(
+            Dungeon(), Self.strandedOnTheWideLedge + ["launch"], seed: 18)
+
+        let refusal = turnOutput(of: "launch", in: transcript)
+        #expect(refusal.contains("standing beside the basket and not in it"))
+        #expect(!refusal.contains("You're not in the boat!"))
+    }
+
+    /// And the third branch, which was declared and wired to nothing: away
+    /// from both vehicles, LAUNCH has nothing to be about.
+    @Test func launchWithNothingToLaunchSaysSo() async throws {
+        let transcript = try await play(Dungeon(), ["launch"], seed: 18)
+
+        let refusal = turnOutput(of: "launch", in: transcript)
+        #expect(refusal.contains("You have nothing here that floats."))
+        #expect(!refusal.contains("You're not in the boat!"))
+    }
+
+    /// **A second `light match` fell through to the engine's switch language**
+    /// — "It's already on.", about a matchbook. The rule *returned* instead of
+    /// refusing, so the turn reached `turnOn`'s own complaint. `alreadyOn`
+    /// takes no subject, so no re-skinning could have fixed it here without
+    /// lying about the lantern, the candles and the torch. (#329)
+    @Test func aSecondMatchIsRefusedInTheGamesVoice() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheDam + ["north", "take matchbook", "light match", "light match"],
+            seed: 18)
+
+        #expect(turnOutput(of: "light match", in: transcript).contains("One of the matches starts to burn."))
+
+        let second = output(after: "One of the matches starts to burn.", in: transcript)
+        #expect(second.contains("You already have a match burning."))
+        #expect(!second.contains("It's already on."))
+    }
+
+    /// **`search trunk` found nothing of interest in a trunk bulging with
+    /// jewels.** That is the documented stock `.lookIn` path for anything not
+    /// declared a `container`, and the trait is not the answer here: a
+    /// container trunk could be neither opened nor closed, `put` would make it
+    /// a bottomless sack with a treasure value on it, and an empty one would
+    /// answer that it was empty. The trunk answers for itself instead. (#329)
+    @Test func searchingTheTrunkFindsTheJewelsItIsBulgingWith() async throws {
+        let transcript = try await play(
+            Dungeon(), Self.toTheReservoirShore + ["north", "search trunk"], seed: 18)
+
+        #expect(transcript.contains("bulging with jewels"))
+
+        let searched = turnOutput(of: "search trunk", in: transcript)
+        #expect(searched.contains("Under them are more jewels"))
+        #expect(!searched.contains("nothing of interest"))
+    }
+
+    /// **Turning the lamp off printed the darkness twice.**
+    /// `sayOnceThisTurn` dedupes on the exact text and on nothing else, and
+    /// this game pointed `nowDark` at one sentence while `pitchBlack` and the
+    /// grue's own warning said another — so *walking into* a dark room printed
+    /// one line and *dousing the lamp* printed two, back to back, saying the
+    /// same thing. The dark is the same dark either way. (#329)
+    @Test func theDoubledDarknessSentenceIsOneSentence() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.intoTheKitchen + Self.downTheTrapDoor + ["turn off lamp"],
+            seed: 18)
+
+        let doused = turnOutput(of: "turn off lamp", in: transcript)
+        #expect(doused.contains("It is pitch black. You are likely to be eaten by a grue."))
+        #expect(!doused.contains("It is now pitch black."))
+
+        // Said once, not twice: the count is the whole assertion.
+        #expect(occurrences(of: "It is pitch black", in: doused) == 1)
+    }
+
+    /// And the control, one door along: walking into the dark says the same
+    /// sentence, once, exactly as it always did.
+    @Test func walkingIntoTheDarkSaysTheSameSentenceOnce() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.intoTheKitchen + ["west", "push rug", "open trap door", "down"],
+            seed: 18)
+
+        let arrived = turnOutput(of: "down", in: transcript)
+        #expect(arrived.contains("It is pitch black. You are likely to be eaten by a grue."))
+        #expect(occurrences(of: "It is pitch black", in: arrived) == 1)
+    }
+
+    // MARK: - The volcano's air half, and the chute
+
+    /// **Paying the gnome opens a west door out of whichever ledge he was paid
+    /// on, and the Wide Ledge's paragraph named only the door to the south.**
+    /// The Narrow Ledge got this repair in the first round; this ledge had
+    /// never been stood on by a charter. Paying him is the whole of how a
+    /// stranded player gets down, and the room unsaid it. (#329)
+    @Test func theWideLedgeCountsTheDoorTheGnomePaidFor() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            // Stepping out of an untied basket strands the player, which is
+            // what starts his clock; the charge buys the one treasure on this
+            // ledge to pay him with, and the two races — his ten turns and the
+            // ledge's thirteen — leave exactly enough room.
+            Self.strandedOnTheWideLedge + Array(DungeonTests.lightTheCharge.dropFirst())
+                + ["south", "take crown", "north", "wait", "give crown to gnome", "look"],
+            seed: 18)
+
+        // The control: before the fee, one exit and it is the south door.
+        #expect(transcript.contains("There is a small door to the south."))
+        #expect(transcript.contains("a door appears on the west end of the ledge"))
+
+        let paid = output(after: "The gnome moves quickly", in: transcript)
+        #expect(paid.contains("A door stands open at the west end of the ledge"))
+        #expect(paid.contains("narrow chimney beyond it sloping steeply down"))
+    }
+
+    /// **The rope in the chute, which is the one thing holding the player up.**
+    /// `rigTheChute()` set a flag and never moved the coil, so the rope was in
+    /// the Slide Room and the player was three rooms below it: `x rope`
+    /// answered "You can't see any such thing." under a paragraph beginning
+    /// "You are hanging on a rope." Five fittings now, one per room the rope is
+    /// in — the `ropeOnTheRailing` shape at the other knot. (#329)
+    @Test func theRopeInTheChuteAnswersToTheWordTheRoomPrints() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            DungeonTests.toTheChuteWithTheTimber
+                + ["drop timber", "tie rope to timber", "x rope", "down", "x rope", "x chute"],
+            seed: 18)
+
+        #expect(transcript.contains("You are hanging on a rope in a chute of sheet metal"))
+
+        // At the head of the chute, where the knot is.
+        #expect(turnOutput(of: "x rope", in: transcript).contains("made fast here"))
+
+        // And in the chute, where it is load-bearing.
+        let below = output(after: "You are hanging on a rope", in: transcript)
+        #expect(below.contains("Stout hemp, taut under your weight"))
+        #expect(!below.contains("can\u{27}t see any such thing"))
+
+        // The control: the chute's own scenery still answers, as it always did.
+        #expect(turnOutput(of: "x chute", in: transcript).contains("Sheet metal"))
+    }
+
+    /// **The Wide Ledge watched the balloon climb away over its head, and was
+    /// then told about the tear as a sound in the distance.** `rise(_:…)` is
+    /// handed a `watched` flag and re-derived a narrower answer —
+    /// `player.location == volcanoBottom` — which is true in one of the four
+    /// rooms that can see the shaft. It is three-way now, because the wreck
+    /// lands on the volcano floor and "by your feet" is a claim about a place.
+    /// (#329)
+    @Test func theBalloonWreckIsReadFromWhereItIsWatched() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.strandedOnTheWideLedge + Array(repeating: "wait", count: 10),
+            seed: 18)
+
+        expectInOrder(
+            transcript,
+            [
+                "You watch as the balloon slowly floats away",
+                "what is left of it falls past the ledge",
+            ])
+        // Not heard at a distance, by a room that had just watched it go.
+        #expect(!transcript.contains("You hear a distant tearing sound"))
+        // And not the floor's line, which is true only on the floor.
+        #expect(!transcript.contains("lands on the ground by your feet"))
+    }
+
+    /// And the control, from the one room where "by your feet" is true.
+    @Test func theBalloonWreckLandsAtTheFeetOfSomebodyOnTheFloor() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            // Light it, step straight back out on the volcano floor, and
+            // watch the whole flight from under it.
+            DungeonTests.toTheVolcano
+                + Array(DungeonTests.liftOff.prefix(4)) + ["get out"]
+                + Array(repeating: "wait", count: 16),
+            seed: 18)
+
+        #expect(transcript.contains("lands on the ground by your feet"))
+        #expect(!transcript.contains("falls past the ledge"))
+    }
+
+    /// **"The torch is burning." on the turn after "The water level here is
+    /// now high in your lungs."** Two consecutive lines, one of which is a
+    /// flame and the other of which is a drowning.
+    ///
+    /// The **mechanic** does not move here, and that is a decision rather than
+    /// an oversight: dousing the torch would take a fourteen-point treasure out
+    /// of a game with no way to relight it, which is a scoring change, and the
+    /// room kills the reader either way one turn later. What the sentence stops
+    /// doing is reporting an ordinary flame in a frame where a flame is not
+    /// ordinary — and the mainframe's torch is a supernatural object, the one
+    /// light in the game that needs no tending, so naming that is fidelity
+    /// rather than a dodge.
+    ///
+    /// The state it reads is `DungeonDam`'s flood level and the torch is a
+    /// `DungeonTemple` item, so both of its channels are the host's. (#329)
+    @Test func theTorchSaysWhereItIsBurning() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            DungeonTests.fetchTheTorch + ["x torch"]
+                // The Troll Room, the crossroads, the dam, and down into the
+                // Maintenance Room to break the pipe.
+                + ["east"] + Self.crossroadsToTheDam
+                + ["north", "north", "push blue button"]
+                + Array(repeating: "wait", count: 7)
+                + ["examine torch"],
+            seed: 18)
+
+        // The control, in the room it was made for.
+        #expect(turnOutput(of: "x torch", in: transcript).contains("The torch is burning."))
+
+        expectInOrder(
+            transcript,
+            [
+                "The water level here is now over your head.",
+                "burning under water, which it has no business doing",
+            ])
+        let drowning = turnOutput(of: "examine torch", in: transcript)
+        #expect(!drowning.hasPrefix("The torch is burning."))
+    }
+
     /// Pinned against the real prose rather than a fixture, because the defect
     /// was that the engine and the game disagreed about which of the two this
     /// text is.

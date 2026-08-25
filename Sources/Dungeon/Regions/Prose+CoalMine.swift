@@ -119,8 +119,6 @@ extension Prose {
         The basket is already here at the top of the shaft.
         """
 
-    static let itIsNowPitchBlack = "It is now pitch black."
-
     // MARK: - The Wooden Tunnel and the Gas Room
 
     /// Written fresh. `TUNNE` has no trilogy counterpart at all — Zork I runs
@@ -304,6 +302,23 @@ extension Prose {
 
     static let lowerShaftPassages = """
         Two ways out of the bottom of the shaft, and neither of them wide.
+        """
+
+    /// The shaft, which is the hole the chain hangs *in* and which both
+    /// chains carried as a synonym. `x shaft` in the Shaft Room answered with
+    /// a sentence about the chain, in a room whose own paragraph puts the two
+    /// nouns four words apart and makes them different things. The chain's
+    /// repair in #233 taught that one object seen from two ends is two items;
+    /// this is two objects wearing one noun, which is the other half. (#329)
+    static let shaftFromAbove = """
+        A small square shaft dropping straight through the floor, wide enough
+        for the basket and for nothing else that would come back up.
+        """
+
+    static let shaftFromBelow = """
+        The shaft goes up a hundred feet and more, square-cut the whole way,
+        and the daylight it must once have had at the top of it is long
+        gone.
         """
 
     // MARK: - The Machine Room

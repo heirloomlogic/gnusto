@@ -536,6 +536,23 @@ public struct GameText: Sendable {
     /// `player.item` nor given it a `describe { }` rule.
     public var selfDescription: Line<Nothing> = "You look much as you always do."
 
+    /// Examining yourself in the dark, where the line above would assert a
+    /// look that could not have happened.
+    ///
+    /// An observer is always in their own scope, dark or light — that is the
+    /// first line of ``Visibility/collect(for:definition:state:)`` and it is
+    /// not a thing the darkness gate could be moved above or below. So `x me`
+    /// reached ``selfDescription`` in a room where `x <anything on the floor>`
+    /// answers ``cantSeeAnySuchThing``, and a game that has just printed
+    /// ``pitchBlack`` cannot re-skin its way out of the contradiction, because
+    /// the sentence is true everywhere else. The verb answers for it instead.
+    ///
+    /// Deliberately not ``pitchBlack``: that line is the room's, a game is
+    /// free to point it at a threat rather than a description, and printing it
+    /// again here would answer a question about the player with a sentence
+    /// about the dark.
+    public var tooDarkToSeeSelf: Line<Nothing> = "It is too dark to see yourself."
+
     /// Taking yourself. The stock person's refusal reads as though somebody
     /// else were involved, so the player gets their own line.
     public var cantTakeSelf: Line<Nothing> = "You have yourself well in hand already."

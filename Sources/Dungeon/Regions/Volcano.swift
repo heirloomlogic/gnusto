@@ -146,7 +146,8 @@ struct DungeonVolcano: GameContent {
     /// `BALLO`. An open-topped basket you climb into and ride, and the only
     /// thing in the game that goes up. Its listing line and its description are
     /// rules rather than traits, because both report the state of the bag, the
-    /// fire and the wire.
+    /// fire and the wire — and it is ``alwaysListed``, because `board` marks it
+    /// touched and that used to stop the listing line for good. (#329)
     let balloon = Item {
         name("wicker basket")
         adjectives("wicker", "large", "heavy")
@@ -154,6 +155,7 @@ struct DungeonVolcano: GameContent {
         enterable
         container
         capacity(100)
+        alwaysListed
         trait(.weight, 70)
     }
 
@@ -327,7 +329,6 @@ struct DungeonVolcano: GameContent {
         name("rusty box")
         adjectives("rusty", "steel", "old")
         synonyms("box", "safe")
-        description(Prose.rustyBox)
         container
         openable
         capacity(15)
@@ -901,9 +902,14 @@ extension DungeonVolcano {
                 : Prose.narrowLedge
         }
 
+        // And the same repair on this ledge, which the first round did not
+        // reach because nobody had ever been paid off standing on it. Paying
+        // the gnome is the whole of how a stranded player gets down, and the
+        // paragraph named only the door to the south. (#329)
         wideLedge.describe {
             let south = dustyRoomWrecked ? Prose.wideLedgeRubble : Prose.wideLedgeDoor
-            return "\(Prose.wideLedge) \(south)"
+            let west = gnomeDoorOpen ? " \(Prose.wideLedgeChimneyOpen)" : ""
+            return "\(Prose.wideLedge) \(south)\(west)"
         }
 
         // The examine channel, saying what the room's paragraph directly above
@@ -916,6 +922,13 @@ extension DungeonVolcano {
         dustyRoom.describe {
             let box = rustyBox.isOpen ? Prose.dustyRoomBoxOpen : Prose.dustyRoomBoxShut
             return "\(Prose.dustyRoom)\n\n\(box)"
+        }
+        // The box itself, branching on the flag the paragraph directly above
+        // has branched on all along. `x safe` called it intact and stronger
+        // than anything you carry, one line under a listing that had already
+        // said the charge went off. (#329)
+        rustyBox.describe {
+            rustyBox.isOpen ? Prose.rustyBoxBlown : Prose.rustyBox
         }
 
         for hook in [narrowLedgeHook, wideLedgeHook] {
@@ -985,9 +998,9 @@ extension DungeonVolcano {
     /// - Throws: always — every branch answers.
     func offerTheGnome(_ offered: Item) throws -> Never {
         let named = offered.name
-        let worth = offered[default: .takeValue] + offered[default: .depositValue]
+        let worthKeeping = offered.isWorthSomething
         offered.vanish()
-        guard worth > 0 else { try reply(Prose.gnomeCrunches(named)) }
+        guard worthKeeping else { try reply(Prose.gnomeCrunches(named)) }
         gnome.replace(with: gnomeChimney)
         stopFuse("gnomeLeaves")
         try reply(Prose.gnomePaid(named))
@@ -1102,15 +1115,19 @@ extension DungeonVolcano {
             // The rim is fifteen feet across, and the bag is a great deal
             // wider. The mainframe's ending, not the trilogy's: Zork II flies
             // the balloon out of the volcano and kills you in the mountains.
-            let seenFromTheFloor = player.location == volcanoBottom
+            let seen = balloonWreckWatched
             wreckTheBalloon()
             guard aboard else {
-                // Watched from the floor, which is the one room with the rim
-                // overhead; heard anywhere else in the quarter, and — a tearing
-                // sound and something falling a long way being a claim about a
-                // shaft you are standing in — nowhere else at all.
-                if seenFromTheFloor {
-                    say(Prose.balloonExplodesWatched)
+                // Watched from any room with the shaft overhead — which is
+                // what `watched` was handed here to mean, and what this branch
+                // used to re-derive as "standing on the floor". The Wide Ledge
+                // watched the balloon climb away and was then told about the
+                // tear as a sound in the distance. Heard everywhere else in
+                // the quarter, and — a tearing sound and something falling a
+                // long way being a claim about a shaft you are standing in —
+                // nowhere else at all. (#329)
+                if watched {
+                    say(seen)
                 } else {
                     say(Prose.balloonExplodesHeard, from: insideTheVolcano)
                 }
@@ -1145,11 +1162,22 @@ extension DungeonVolcano {
                 pilot: Prose.balloonHasLanded, onlooker: Prose.balloonWatchedLanding)
             return
         }
+        let seen = balloonWreckWatched
         if aboard { player.location = volcanoBottom }
         wreckTheBalloon()
         announce(
             aboard: aboard, watched: watched,
-            pilot: Prose.balloonDidNotSurvive, onlooker: Prose.balloonExplodesWatched)
+            pilot: Prose.balloonDidNotSurvive, onlooker: seen)
+    }
+
+    /// Which of the two watched wreck lines is true where the reader is
+    /// standing. The wreck lands at ``volcanoBottom``, so "by your feet" is
+    /// true in one of the four rooms that can see the shaft and false in the
+    /// other three. Both wrecks — the rim and the cold landing — pick from
+    /// here, because both leave the same wreck in the same room. (#329)
+    private var balloonWreckWatched: String {
+        player.location == volcanoBottom
+            ? Prose.balloonExplodesWatched : Prose.balloonExplodesSeenFromLedge
     }
 
     /// Take the basket out of the world and leave the wreck on the floor. The

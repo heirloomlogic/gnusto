@@ -55,10 +55,14 @@ struct DungeonDam: GameContent {
     }
 
     /// Dark until the red button turns the room's own lights on.
+    ///
+    /// ``alwaysDescribed`` because the water is part of the paragraph and a
+    /// re-entry would print the room name over it — and this is a room the
+    /// player walks in and out of while the level climbs.
     let maintenanceRoom = Location {
         name("Maintenance Room")
-        description(Prose.maintenanceRoom)
         dark
+        alwaysDescribed
     }
 
     /// Lit, as in the mainframe. The river runs past it, and the boat that
@@ -138,6 +142,24 @@ struct DungeonDam: GameContent {
     /// Whether the water won: the room is full and cannot be entered again.
     /// Derived, because it is exactly the state the daemon stops in.
     var maintenanceRoomFlooded: Bool { floodLevel > Prose.floodLadder.count }
+
+    /// The rung of ``Prose/floodLadder`` the water is standing at, or `nil`
+    /// while the room is dry. Clamped at the top rung rather than running off
+    /// the end: past the last one the room is full, and nobody is left in it
+    /// to read a description. (#329)
+    var floodRung: String? {
+        guard floodLevel > 0 else { return nil }
+        return Prose.floodLadder[min(floodLevel, Prose.floodLadder.count) - 1]
+    }
+
+    /// Whether a reader standing in the Maintenance Room is under the water —
+    /// the last two rungs of the ladder, which are the two the room can be
+    /// read from before it kills whoever is in it.
+    ///
+    /// Published here rather than derived by the caller, because the ladder is
+    /// this bundle's and a second reading of its length is a second place for
+    /// an off-by-one to live. ``Dungeon/torchRules`` is the caller. (#329)
+    var waterOverYourHead: Bool { floodLevel >= Prose.floodLadder.count - 1 }
 
     // MARK: - Dam controls
 
@@ -299,6 +321,17 @@ struct DungeonDam: GameContent {
         hidden
     }
 
+    /// The water on the floor, which is a different thing from the hole it
+    /// comes out of. Revealed by the same button, and described off
+    /// ``floodLevel``, because how deep it is *is* the examine. (#329)
+    let floodWater = Item {
+        name("water")
+        adjectives("rising", "cold")
+        synonyms("water", "flood", "stream")
+        scenery
+        hidden
+    }
+
     let wrench = Item {
         name("wrench")
         synonyms("tool")
@@ -391,8 +424,21 @@ struct DungeonDam: GameContent {
     let reservoirFromSouth = Item {
         name("reservoir")
         adjectives("large")
-        synonyms("water", "lake", "stream", "mud", "cliff")
+        synonyms("water", "lake", "stream", "mud")
         description(Prose.reservoirFromShore)
+        scenery
+    }
+
+    /// The path and the cliff it climbs — one fitting, because the room's own
+    /// sentence treats them as one feature and the path is the `up` exit to
+    /// Deep Canyon. `cliff` used to sit on ``reservoirFromSouth``, so the
+    /// wall at the player's back answered with a sentence about the water
+    /// behind them. (#329)
+    let reservoirSouthPath = Item {
+        name("steep path")
+        adjectives("steep")
+        synonyms("path", "cliff", "edge", "ledge")
+        description(Prose.reservoirSouthPath)
         scenery
     }
 
@@ -432,11 +478,12 @@ struct DungeonDam: GameContent {
         scenery
     }
 
+    /// Described by a rule: the bolt this room's own control panel carries is
+    /// what decides whether there is any water out there to look at.
     let damView = Item {
         name("reservoir")
         adjectives("wide")
         synonyms("water", "lake", "path", "paths")
-        description(Prose.damReservoirView)
         scenery
     }
 
@@ -541,6 +588,7 @@ struct DungeonDam: GameContent {
         maintenanceWreckage.starts(in: maintenanceRoom)
         maintenanceDoorways.starts(in: maintenanceRoom)
         leak.starts(in: maintenanceRoom)
+        floodWater.starts(in: maintenanceRoom)
         wrench.starts(in: maintenanceRoom)
         screwdriver.starts(in: maintenanceRoom)
         tube.starts(in: maintenanceRoom)
@@ -552,6 +600,7 @@ struct DungeonDam: GameContent {
 
         reservoirWater.starts(in: reservoir)
         reservoirFromSouth.starts(in: reservoirSouth)
+        reservoirSouthPath.starts(in: reservoirSouth)
         reservoirFromNorth.starts(in: reservoirNorth)
         streamWater.starts(in: streamView)
         streamViewBank.starts(in: streamView)
@@ -611,7 +660,26 @@ struct DungeonDam: GameContent {
         reservoirNorth.describe {
             gatesOpen ? Prose.reservoirNorthDrained : Prose.reservoirNorthFull
         }
+        // The fifth. `x reservoir` from the top of the dam is the one reading
+        // of the water taken from the room that holds the bolt, and it was the
+        // one that never moved. (#329)
+        damView.describe {
+            gatesOpen ? Prose.damReservoirViewDrained : Prose.damReservoirView
+        }
         leak.describe { leakRunning ? Prose.leak : Prose.leakStopped }
+
+        // The Maintenance Room and the water standing in it. The daemon calls
+        // each rung as the water reaches it and then stops; after it stops,
+        // the room's paragraph and this item are the only channels left, and
+        // both used to describe a dry room. (#329)
+        maintenanceRoom.describe {
+            guard let rung = floodRung else { return Prose.maintenanceRoom }
+            let water = Prose.maintenanceRoomWater(rung, stillRunning: leakRunning)
+            return "\(Prose.maintenanceRoom)\n\n\(water)"
+        }
+        floodWater.describe {
+            Prose.floodWater(floodRung, stillRunning: leakRunning)
+        }
 
         // Bare `turn bolt`. The bolt is the one fixture in the game that needs
         // a tool named, so pointing at one beats "The bolt doesn't turn."
@@ -673,6 +741,7 @@ struct DungeonDam: GameContent {
             guard floodLevel == 0 else { try reply(Prose.blueButtonJammed) }
 
             leak.reveal()
+            floodWater.reveal()
             startDaemon("damLeak")
             try reply(Prose.blueButtonPush)
         }
@@ -684,7 +753,11 @@ struct DungeonDam: GameContent {
             // An item rule fires for the indirect object too, and the whole
             // point of a match is to be named as one — so `burn candles with
             // match` must reach the candles rather than light a second match.
-            guard command.directObject == matchbook, !matchbook.isLit else { return }
+            guard command.directObject == matchbook else { return }
+            // Struck twice, this used to *return* rather than refuse, and the
+            // turn fell through to the engine's switch language: "It's already
+            // on.", about a matchbook. (#329)
+            try require(!matchbook.isLit, else: Prose.matchAlreadyBurning)
             try require(matchesLeft > 0, else: Prose.matchesGone)
             matchesLeft -= 1
             matchbook.isLit = true
@@ -697,6 +770,12 @@ struct DungeonDam: GameContent {
             stopFuse("matchBurnsOut")
             try reply(Prose.matchIsOut)
         }
+
+        // SEARCH lands on the stock `.lookIn` path, which refuses anything not
+        // declared a `container` with "You find nothing of interest in the …"
+        // — a denial about a trunk this room's own listing calls *bulging with
+        // jewels*. The trait is not the answer here; the line is. (#329)
+        trunk.before(.lookIn) { try reply(Prose.trunkSearched) }
 
         // The tube gives up its gunk when squeezed — the mainframe's own verb
         // for it, and the only way to get the putty into your hand.
@@ -746,7 +825,7 @@ struct DungeonDam: GameContent {
                 if player.location == maintenanceRoom { try die(Prose.floodDrowns) }
                 return
             }
-            say(Prose.floodRises(Prose.floodLadder[floodLevel - 1]), from: maintenanceRoom)
+            say(Prose.floodRises(floodRung ?? ""), from: maintenanceRoom)
         }
     }
 }
