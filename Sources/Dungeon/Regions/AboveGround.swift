@@ -125,6 +125,11 @@ struct DungeonAboveGround: GameContent {
         door
     }
 
+    /// `scenery` because `MAILB` (`dung.355:5083`) has no `TAKEBIT` and a
+    /// mailbox is a fitting of the field rather than luggage; `firstSight`
+    /// survives it, and in fact prints on every look, because `touched` is set
+    /// by TAKE and TAKE is what the trait refuses. See `FIDELITY.md`'s
+    /// milestone 1. (#286)
     let mailbox = Item {
         name("small mailbox")
         adjectives("small")
@@ -133,6 +138,7 @@ struct DungeonAboveGround: GameContent {
         description(Prose.mailbox)
         container
         openable
+        scenery
     }
 
     let leaflet = Item {

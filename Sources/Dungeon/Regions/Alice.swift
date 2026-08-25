@@ -829,6 +829,10 @@ struct DungeonAlice: GameContent {
         // player reads it standing inside a steel cage with the sphere in hand.
         sphere.describe { cageSprung ? Prose.sphereOffThePedestal : Prose.sphere }
 
+        // `reply` abandons the take, so the sphere stays where the closet has
+        // always kept it: loose on the floor, off a pedestal `cageSprung` has
+        // just emptied. Deliberate, and the reason the sentence rather than the
+        // rule moved — see `Prose.robotSpringsTheCage`. (#286)
         sphere.before(.take) {
             guard command.actor == robot else { return }
             try require(!cageSprung, else: Prose.cageAlreadySprung)

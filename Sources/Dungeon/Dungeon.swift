@@ -526,26 +526,42 @@ struct Dungeon: Game, GameMain {
                     && (command.indirectObject == nil
                         || command.indirectObject == templeQuarter.railing),
                 else: Prose.ropeNeedsRailing)
-            try require(!templeQuarter.ropeTiedToRailing, else: Prose.ropeCarriesNothing)
+            // No `ropeTiedToRailing` guard: the coil is offstage while the knot
+            // is tied, so it cannot be this command's object at all. The
+            // fitting that stands in for it answers that case below.
             // One rope, one knot: milestone 8 gave it a second place to be
             // tied, and it may not be tied in both at once.
             try require(!palantirWing.chuteRopeRigged, else: Prose.ropeAlreadyTied)
-            templeQuarter.ropeTiedToRailing = true
+            tieTheRopeToTheRailing()
             try reply(Prose.ropeTiedToRailing)
         }
-        house.rope.before(.untie) {
-            guard templeQuarter.ropeTiedToRailing else { return }
-            templeQuarter.ropeTiedToRailing = false
+
+        // Coming off again, which can only be done from the rim — the far end
+        // is five feet over your head in the Torch Room, which is the whole
+        // reason `up` is blocked down there. `take` hands the coil straight
+        // back, as the old single-object rule did by falling through to the
+        // default take; `untie` leaves it on the floor of the Dome Room, where
+        // `ROPE-AWAY` (`act3.199:1287`) put it.
+        templeQuarter.ropeOnTheRailing.before(.take) {
+            untieTheRopeFromTheRailing()
+            house.rope.moveToPlayer()
+            say(Prose.ropeUntiedFromRailing)
+            try reply(gameText.taken())
+        }
+        templeQuarter.ropeOnTheRailing.before(.untie) {
+            untieTheRopeFromTheRailing()
+            house.rope.move(to: templeQuarter.domeRoom)
             try reply(Prose.ropeUntiedFromRailing)
         }
-        house.rope.before(.take) {
-            guard templeQuarter.ropeTiedToRailing else { return }
-            templeQuarter.ropeTiedToRailing = false
-            say(Prose.ropeUntiedFromRailing)
-        }
+        templeQuarter.ropeOnTheRailing.before(.tie) { try refuse(Prose.ropeAlreadyOnTheRailing) }
+
+        // `tie railing to rope` needs no arm here: the fitting's own rule above
+        // runs first, because an indirect object's rules are dispatched ahead
+        // of a direct object's.
         templeQuarter.railing.before(.tie) {
             try require(
-                command.indirectObject == house.rope || command.directObject == house.rope,
+                command.directObject == house.rope || command.indirectObject == house.rope
+                    || command.directObject == templeQuarter.ropeOnTheRailing,
                 else: Prose.ropeCarriesNothing)
         }
 
@@ -865,6 +881,31 @@ struct Dungeon: Game, GameMain {
             maze.gratingRoom.isLit = false
             try reply(Prose.gratingCloses)
         }
+    }
+
+    /// The knot going on at the Dome Room's railing, and coming off again.
+    ///
+    /// A flag alone used to be the whole of it, so the coil stayed in your
+    /// hands, rode down into the Torch Room and could be put on the floor
+    /// there — under a paragraph about a rope hanging five feet over your head,
+    /// beside an exit refusing "You cannot reach the rope". One rope, two
+    /// places, and the golden route depended on the second one. `ROPE-AWAY`
+    /// (`act3.199:1287`) is what the source does instead: the coil leaves your
+    /// hands and stops being room news. Here that is a fitting per room, since
+    /// a rope hung through a dome is in two rooms and an item is in one — and
+    /// where they stand *is* `ropeTiedToRailing`, so these two are the only
+    /// writers of that fact. (#286)
+    private func tieTheRopeToTheRailing() {
+        house.rope.vanish()
+        templeQuarter.ropeOnTheRailing.move(to: templeQuarter.domeRoom)
+        templeQuarter.ropeAboveTheTorchRoom.move(to: templeQuarter.torchRoom)
+    }
+
+    /// The caller says where the coil lands, because `take` and `untie`
+    /// disagree about that and about nothing else.
+    private func untieTheRopeFromTheRailing() {
+        templeQuarter.ropeOnTheRailing.vanish()
+        templeQuarter.ropeAboveTheTorchRoom.vanish()
     }
 
     /// What the Studio chimney will carry, asked once for the two spellings

@@ -546,11 +546,19 @@ extension Prose {
         opinion about it.
         """
 
+    /// The last clause used to read *"and the sphere is still in its hand"*,
+    /// which nothing in the game could make true: `Visibility.collect` keeps
+    /// what other people are holding out of the player's scope on purpose, so a
+    /// sphere in the robot's hand is a sphere `x sphere` denies and 6+6 off
+    /// `maxScore`. What the rule actually leaves behind is a sphere loose in the
+    /// closet — which is what `FIDELITY.md` has said this puzzle does since
+    /// milestone 5 — so the sentence says that instead. (#286)
     static let robotSpringsTheCage = """
         The robot lifts the sphere from its dish. The alarm shrieks, the cage
         falls — and lands on the robot, which does not appear to have noticed.
-        The robot straightens up, the ruined cage slides off it, and the sphere
-        is still in its hand.
+        The robot straightens up, the ruined cage slides off it, and it sets the
+        sphere down on the floor, unhurried, as though the whole business had
+        been on the sheet of instructions.
         """
 
     static let cageAlreadySprung = """

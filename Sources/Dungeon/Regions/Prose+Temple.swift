@@ -63,6 +63,11 @@ extension Prose {
 
     static let ropeUntiedFromRailing = "The rope is now untied."
 
+    /// Tying the knot that is already tied. `Prose.ropeAlreadyTied` is the coal
+    /// chute's line — *"tied at the other end of it"* — and says the wrong
+    /// thing about the end you are standing at. (#286)
+    static let ropeAlreadyOnTheRailing = "The rope is already made fast to it."
+
     static let ropeNeedsRailing = """
         You would have to find something worth tying it to first.
         """

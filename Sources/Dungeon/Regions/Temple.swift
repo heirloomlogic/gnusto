@@ -133,9 +133,14 @@ struct DungeonTemple: GameContent {
     /// is not, and every one of them asks here.
     var coffinIsStowed: Bool { !coffin.isHeld }
 
-    /// Whether the rope is made fast to the dome's railing. Set by the host's
-    /// `tie` rule, because the rope is a ``DungeonHouse`` item.
-    @Global var ropeTiedToRailing = false
+    /// Whether the rope is made fast to the dome's railing. Read off the
+    /// fitting rather than saved beside it — ``ropeOnTheRailing`` standing in
+    /// the Dome Room *is* the knot holding — for `cageSprung`'s reason: two
+    /// representations of one fact are two things a later edit can put out of
+    /// step, and this one is read by an exit gate and three describers. The
+    /// host's `tie` rule is what places it, because the coil it replaces is a
+    /// ``DungeonHouse`` item.
+    var ropeTiedToRailing: Bool { ropeOnTheRailing.isIn(domeRoom) }
 
     /// Whether the torch has been quenched in the melting glacier. One-way:
     /// nothing in the game relights it.
@@ -204,7 +209,33 @@ struct DungeonTemple: GameContent {
         scenery
     }
 
+    /// The rope while the knot is tied: not a coil anybody is carrying any
+    /// more, but a fitting of the two rooms it hangs through. Offstage until
+    /// ``ropeTiedToRailing``.
+    ///
+    /// **Two of them for one rope**, because a rope hung through a dome is in
+    /// two rooms at once and an item is in one — the ``steelCage``/``cageBars``
+    /// shape, a thing seen from two sides. Each takes the paragraph its own
+    /// room prints as its examine line, exactly as that pair takes one
+    /// constant between them. `ROPE-AWAY` (`act3.199:1287`) needs neither,
+    /// because MDL can set `NDESCBIT` on the coil at runtime and a Gnusto game
+    /// cannot; but the runtime flag would not have saved the second item, only
+    /// the first. (#286)
+    private static func hangingRope(_ text: String) -> Item {
+        Item {
+            name("rope")
+            adjectives("large", "hemp", "stout")
+            synonyms("rope", "hemp")
+            description(text)
+            scenery
+        }
+    }
+
+    let ropeOnTheRailing = hangingRope(Prose.ropeOverTheRailing)
+
     // MARK: - The Torch Room
+
+    let ropeAboveTheTorchRoom = hangingRope(Prose.torchRoomRope)
 
     /// The ivory torch: fourteen to find and six to case, and the game's only
     /// light that needs no tending — until the glacier takes it.
@@ -587,6 +618,15 @@ struct DungeonTemple: GameContent {
         spirits.describe { spiritsBanished ? Prose.spiritsFled : Prose.spirits }
 
         railing.describe { ropeTiedToRailing ? Prose.railingTied : Prose.railingBare }
+
+        // The far end of the rope, five feet over the head of anybody standing
+        // in the Torch Room. A `reach` rule rather than a list of verbs: it
+        // settles at stage 0, ahead of every complaint a verb would make for
+        // itself, and it answers `touch`, `tie` and `attack` as well as the
+        // four the round happened to type. EXAMINE is `reach: .notNeeded`, so
+        // the noun still answers — which is the whole reason the fitting is
+        // here. The refusal is the one `torchRoom.up(blocked:)` already uses.
+        ropeAboveTheTorchRoom.reach(otherwise: Prose.torchNoRope) { false }
         glacier.describe { glacierMelted ? Prose.glacierRemains : Prose.glacierExamined }
         ivoryTorch.describe { torchBurnedOut ? Prose.burnedOutTorch : Prose.ivoryTorch }
 

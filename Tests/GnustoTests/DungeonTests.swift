@@ -79,12 +79,16 @@ struct DungeonTests {
         "north", "down", "west", "east",
     ]
 
-    /// Down the rope into the Torch Room, torch in hand.
-    private static let toTheTorchRoom =
+    /// The rim of the dome with the coil still in hand and the knot not yet
+    /// tied, which is the last frame in which the rope is luggage.
+    private static let toTheDomeRoom =
         intoTheCellarWithTheRope
         + ["east", "attack troll with sword"]
         + trollRoomToTheDome
-        + ["tie rope to railing", "down", "take torch"]
+
+    /// Down the rope into the Torch Room, torch in hand.
+    private static let toTheTorchRoom =
+        toTheDomeRoom + ["tie rope to railing", "down", "take torch"]
 
     /// And out of it the only way there is: the staircase into milestone 1's
     /// North-South Crawlway.
@@ -346,6 +350,26 @@ struct DungeonTests {
                 "WELCOME TO ZORK",
                 "WELCOME TO ZORK",
             ])
+    }
+
+    /// And it is a fitting of the field rather than luggage: `take all` on turn
+    /// one used to walk off with it, and the brochure fuse three turns later
+    /// posted into wherever it had been set down. The listing line survives the
+    /// repair. (#286)
+    @Test func theMailboxIsAFittingAndTakeAllLeavesItStanding() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            ["take all", "inventory", "take mailbox", "look"])
+
+        expectInOrder(
+            transcript,
+            [
+                "welcome mat: Taken.",
+                "You are carrying a welcome mat.",
+                "You can't take that.",
+                "There is a small mailbox here.",
+            ])
+        #expect(!transcript.contains("small mailbox: Taken."))
     }
 
     // MARK: - The house
@@ -1333,6 +1357,67 @@ struct DungeonTests {
                 "You cannot reach the rope.",
                 "North-South Crawlway",
                 "Not even a human fly could get up it.",
+            ])
+    }
+
+    /// **Tying the rope takes it out of your hands**, which is what `ROPE-AWAY`
+    /// (`act3.199:1287`) does with `NDESCBIT` and a move into the Dome Room.
+    ///
+    /// Without it the coil rode down in a pocket and could be put on the floor
+    /// of the Torch Room, so the room printed a rope hanging five feet over the
+    /// player's head *and* a coil of rope at their feet, and `up` refused "You
+    /// cannot reach the rope" over the second one. One rope, two places. (#286)
+    @Test func theTiedRopeHangsFromTheRailingRatherThanRidingDownInAPocket() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheTorchRoom
+                + ["inventory", "examine rope", "touch rope", "take rope", "drop rope", "look"],
+            seed: 18)
+
+        expectInOrder(
+            transcript,
+            [
+                "The rope drops over the side and comes within ten feet of the floor.",
+                "Torch Room",
+                "A large piece of rope descends from the railing above",
+                "You are carrying a brass lantern, an elvish sword, and an ivory torch.",
+                "You cannot reach the rope.",
+                "You cannot reach the rope.",
+                "You aren't carrying that.",
+                "A large piece of rope descends from the railing above",
+            ])
+        #expect(!transcript.contains("There is a coil of rope here."))
+        // The noun still answers, which is what the fitting is for, and the
+        // `reach` rule leaves EXAMINE alone to make that possible.
+        #expect(
+            turnOutput(of: "examine rope", in: transcript)
+                .contains("descends from the railing above"))
+    }
+
+    /// And the knot comes off at the rim, where the hands that tied it are.
+    /// `take` hands the coil straight back and `untie` leaves it on the floor
+    /// of the Dome Room — either way the drop shuts, which is the source's
+    /// bargain and the reason the winning route collects the rope last. (#286)
+    @Test func theRopeComesOffTheRailingFromTheRimAndShutsTheDrop() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheDomeRoom
+                + [
+                    "tie rope to railing", "tie rope to railing", "examine railing",
+                    "untie rope", "look", "take rope", "down",
+                ],
+            seed: 18)
+
+        expectInOrder(
+            transcript,
+            [
+                "The rope drops over the side and comes within ten feet of the floor.",
+                "The rope is already made fast to it.",
+                "The rope is knotted to it, and hangs away down into the dark.",
+                "The rope is now untied.",
+                "There is a coil of rope here.",
+                "Taken.",
+                "You cannot go down without fracturing many bones.",
             ])
     }
 
@@ -2888,13 +2973,18 @@ struct DungeonTests {
     /// Ordered to fetch it instead, the robot springs the trap on itself and
     /// does not mind. An order never reaches stage 4, so that half of the trap
     /// has to be a `before` rule where the player's half is an `after` one.
+    ///
+    /// And the sentence says where the sphere ends up. It used to close *"and
+    /// the sphere is still in its hand"* over a rule that transfers nothing —
+    /// a claim the engine could not have made true either, since what somebody
+    /// else is holding is out of the player's scope on purpose. (#286)
     @Test func theRobotOrderedToTakeTheSphereWearsTheCageInstead() async throws {
         let transcript = try await play(
             Dungeon(),
             Self.toTheTeaRoom
                 + [
                     "northwest", "robot, north", "north", "robot, south", "south",
-                    "robot, take sphere", "look", "take sphere",
+                    "robot, take sphere", "look", "examine sphere", "take sphere",
                 ],
             seed: 41)
 
@@ -2902,9 +2992,13 @@ struct DungeonTests {
             transcript,
             [
                 "lands on the robot, which does not appear",
+                "it sets the sphere down on the floor",
                 "There is a mangled steel cage here.",
+                "There is a beautiful white crystal sphere here.",
+                "lighter in the hand than a thing that size has any business being",
                 "Taken.",
             ])
+        #expect(!transcript.contains("still in its hand"))
     }
 
     // MARK: - Milestone 5: the three buttons
