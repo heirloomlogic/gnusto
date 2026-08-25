@@ -660,8 +660,8 @@ stood for #328's three fixes. The `held` row is that instinct with a key attache
 key is why this one could be settled by reading rather than by re-running.
 
 **Twenty-eight of these rows read `fixed` and were not fixed by the round.** The
-round finds and files; #329 is the issue it filed, and the branch that closed it
-walked all eight of its boxes. The verdicts below were rewritten there, in the
+round finds and files; #329 is the issue it filed, and PR #331 closed it by
+walking all eight of its boxes. The verdicts below were rewritten there, in the
 commit that landed the repairs, which is why a `confirmed` row and a `fixed` row
 in this table can both be true statements about the same key at different times.
 Every `fixed` key is withheld from `ledgerKeys` next round, for the reason every
@@ -676,36 +676,36 @@ It stays open and it stays suppressible.
 
 | Key (full) | Verdict | Category | Severity |
 |---|---|---|---|
-| `decl::Sources/Dungeon/Regions/Prose+House.swift::livingRoom` | fixed (by #329) | prose-untrue-of-state | major |
-| `decl::Sources/Dungeon/Regions/Prose+House.swift::woodenDoor` | fixed (by #329) | prose-untrue-of-state | major |
-| `decl::Sources/Dungeon/Regions/Prose+Maze.swift::cyclopsStaircase` | fixed (by #329) | prose-untrue-of-state | major |
-| `decl::Sources/Dungeon/Regions/Prose+AboveGround.swift::egg` | fixed (by #329) | prose-untrue-of-state | major |
-| `decl::Sources/Dungeon/Prose+Thief.swift::thief` | fixed (by #329) | unanswerable-noun | minor |
-| `decl::Sources/Dungeon/Prose+Thief.swift::thiefTakesEgg` | fixed (by #329) | mechanic-contradicts-prose | minor |
-| `decl::Sources/Dungeon/Regions/Prose+Dam.swift::damReservoirView` | fixed (by #329) | prose-untrue-of-state | major |
-| `decl::Sources/Dungeon/Regions/Prose+Dam.swift::blueButtonPush` | fixed (by #329) | unanswerable-noun | major |
-| `decl::Sources/Dungeon/Regions/Prose+Dam.swift::trunk` | fixed (by #329) | mechanic-contradicts-prose | minor |
-| `decl::Sources/Dungeon/Regions/Prose+Dam.swift::reservoirFromShore` | fixed (by #329) | unanswerable-noun | minor |
-| `decl::Sources/Dungeon/Regions/Prose+Temple.swift::ivoryTorch` | fixed (by #329) | prose-untrue-of-state | minor |
-| `decl::Sources/Dungeon/Regions/Prose+CoalMine.swift::ironChain` | fixed (by #329) | unanswerable-noun | minor |
-| `decl::Sources/Dungeon/Regions/Prose+Mirror.swift::slideRoomRopeRigged` | fixed (by #329) | prose-untrue-of-state | major |
-| `decl::Sources/Dungeon/Regions/Prose+Palantir.swift::slideStretch` | fixed (by #329) | unanswerable-noun | major |
-| `decl::Sources/Dungeon/Regions/Prose+Volcano.swift::gnomePaid` | fixed (by #329) | exit-prose-mismatch | major |
-| `decl::Sources/Dungeon/Regions/Prose+Volcano.swift::rustyBox` | fixed (by #329) | prose-untrue-of-state | major |
+| `decl::Sources/Dungeon/Regions/Prose+House.swift::livingRoom` | fixed (by #331) | prose-untrue-of-state | major |
+| `decl::Sources/Dungeon/Regions/Prose+House.swift::woodenDoor` | fixed (by #331) | prose-untrue-of-state | major |
+| `decl::Sources/Dungeon/Regions/Prose+Maze.swift::cyclopsStaircase` | fixed (by #331) | prose-untrue-of-state | major |
+| `decl::Sources/Dungeon/Regions/Prose+AboveGround.swift::egg` | fixed (by #331) | prose-untrue-of-state | major |
+| `decl::Sources/Dungeon/Prose+Thief.swift::thief` | fixed (by #331) | unanswerable-noun | minor |
+| `decl::Sources/Dungeon/Prose+Thief.swift::thiefTakesEgg` | fixed (by #331) | mechanic-contradicts-prose | minor |
+| `decl::Sources/Dungeon/Regions/Prose+Dam.swift::damReservoirView` | fixed (by #331) | prose-untrue-of-state | major |
+| `decl::Sources/Dungeon/Regions/Prose+Dam.swift::blueButtonPush` | fixed (by #331) | unanswerable-noun | major |
+| `decl::Sources/Dungeon/Regions/Prose+Dam.swift::trunk` | fixed (by #331) | mechanic-contradicts-prose | minor |
+| `decl::Sources/Dungeon/Regions/Prose+Dam.swift::reservoirFromShore` | fixed (by #331) | unanswerable-noun | minor |
+| `decl::Sources/Dungeon/Regions/Prose+Temple.swift::ivoryTorch` | fixed (by #331) | prose-untrue-of-state | minor |
+| `decl::Sources/Dungeon/Regions/Prose+CoalMine.swift::ironChain` | fixed (by #331) | unanswerable-noun | minor |
+| `decl::Sources/Dungeon/Regions/Prose+Mirror.swift::slideRoomRopeRigged` | fixed (by #331) | prose-untrue-of-state | major |
+| `decl::Sources/Dungeon/Regions/Prose+Palantir.swift::slideStretch` | fixed (by #331) | unanswerable-noun | major |
+| `decl::Sources/Dungeon/Regions/Prose+Volcano.swift::gnomePaid` | fixed (by #331) | exit-prose-mismatch | major |
+| `decl::Sources/Dungeon/Regions/Prose+Volcano.swift::rustyBox` | fixed (by #331) | prose-untrue-of-state | major |
 | `decl::Sources/Dungeon/Regions/Prose+Temple.swift::torchRoomRope` | fixed (by #328) | prose-untrue-of-state | minor |
-| `decl::Sources/Dungeon/Regions/Prose+River.swift::launchNotAboard` | fixed (by #329) | stock-line-not-reskinned | minor |
-| `decl::Sources/Dungeon/Prose+Thief.swift::thiefPresence` | fixed (by #329) | presence-line-location-blind | major |
+| `decl::Sources/Dungeon/Regions/Prose+River.swift::launchNotAboard` | fixed (by #331) | stock-line-not-reskinned | minor |
+| `decl::Sources/Dungeon/Prose+Thief.swift::thiefPresence` | fixed (by #331) | presence-line-location-blind | major |
 | `decl::Sources/Dungeon/Prose+Thief.swift::thiefSwipeWound` | confirmed (needs-human) | mechanic-contradicts-prose | minor |
-| `decl::Sources/Dungeon/Regions/Prose+Dam.swift::blueButtonJammed` | fixed (by #329) | prose-untrue-of-state | major |
-| `decl::Sources/Gnusto/Actions/GameText.swift::alreadyOn` | fixed (by #329) | stock-line-not-reskinned | minor |
-| `decl::Sources/Dungeon/Regions/Prose+Volcano.swift::balloonExplodesHeard` | fixed (by #329) | prose-untrue-of-frame | major |
-| `decl::Sources/Dungeon/Regions/Prose+Volcano.swift::balloonInPlace` | fixed (by #329) | mechanic-contradicts-prose | minor |
-| `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::winningCell` | fixed (by #329) | prose-untrue-of-state | major |
-| `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::tombHeadsCurse` | fixed (by #329) | mechanic-contradicts-prose | major |
-| `decl::Sources/Dungeon/Prose+Stubs.swift::stubFloor` | fixed (by #329) | mechanic-contradicts-prose | minor |
-| `decl::Sources/Dungeon/Regions/Prose+CoalMine.swift::itIsNowPitchBlack` | fixed (by #329) | repeat-behavior | minor |
-| `decl::Sources/Gnusto/Actions/GameText.swift::selfDescription` | fixed (by #329) | prose-untrue-of-frame | minor |
-| `decl::Sources/Dungeon/Regions/Prose+Cellar.swift::gallery` | fixed (by #329) | unanswerable-noun | minor |
+| `decl::Sources/Dungeon/Regions/Prose+Dam.swift::blueButtonJammed` | fixed (by #331) | prose-untrue-of-state | major |
+| `decl::Sources/Gnusto/Actions/GameText.swift::alreadyOn` | fixed (by #331) | stock-line-not-reskinned | minor |
+| `decl::Sources/Dungeon/Regions/Prose+Volcano.swift::balloonExplodesHeard` | fixed (by #331) | prose-untrue-of-frame | major |
+| `decl::Sources/Dungeon/Regions/Prose+Volcano.swift::balloonInPlace` | fixed (by #331) | mechanic-contradicts-prose | minor |
+| `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::winningCell` | fixed (by #331) | prose-untrue-of-state | major |
+| `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::tombHeadsCurse` | fixed (by #331) | mechanic-contradicts-prose | major |
+| `decl::Sources/Dungeon/Prose+Stubs.swift::stubFloor` | fixed (by #331) | mechanic-contradicts-prose | minor |
+| `decl::Sources/Dungeon/Regions/Prose+CoalMine.swift::itIsNowPitchBlack` | fixed (by #331) | repeat-behavior | minor |
+| `decl::Sources/Gnusto/Actions/GameText.swift::selfDescription` | fixed (by #331) | prose-untrue-of-frame | minor |
+| `decl::Sources/Dungeon/Regions/Prose+Cellar.swift::gallery` | fixed (by #331) | unanswerable-noun | minor |
 | `decl::Sources/Dungeon/Prose+Thief.swift::thiefKillsYou` | refuted | prose-untrue-of-state | major |
 | `decl::Sources/Dungeon/Prose+Thief.swift::thiefLeaves` | refuted | presence-line-location-blind | major |
 | `decl::Sources/Gnusto/Actions/GameText.swift::cantReach` | refuted | prose-untrue-of-state | minor |
