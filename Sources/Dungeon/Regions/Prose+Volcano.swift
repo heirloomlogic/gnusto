@@ -379,6 +379,18 @@ extension Prose {
 
     static let wideLedgeDoor = "There is a small door to the south."
 
+    /// The Narrow Ledge got this repair in the first round and the Wide Ledge,
+    /// which nobody had ever stood on, did not. The gnome's fee opens a west
+    /// door and a chimney out of *whichever* ledge he was paid on, and this
+    /// room's paragraph named only the door to the south — to a player whose
+    /// balloon is gone and whose only way off is the exit the paragraph does
+    /// not mention. ``Prose/gnomePaid(_:)`` hands them "the west end of the
+    /// ledge", so that is the phrase this answers to. (#329)
+    static let wideLedgeChimneyOpen = """
+        A door stands open at the west end of the ledge, with a narrow chimney
+        beyond it sloping steeply down.
+        """
+
     static let wideLedgeRubble = "The way to the south is blocked by rubble."
 
     static let wideLedgeNoJumping = "It's a long way down."
@@ -441,6 +453,16 @@ extension Prose {
     static let rustyBox = """
         A steel box set into the stone, rusted through in places and still a
         great deal stronger than anything you are carrying.
+        """
+
+    /// The same box after the charge. The Dusty Room's own paragraph has
+    /// branched on ``DungeonVolcano/rustyBox``'s `isOpen` since milestone 6,
+    /// twelve lines from this constant, and `x safe` went on calling the box
+    /// intact and unbeatable while the listing beside it described the hole in
+    /// it. (#329)
+    static let rustyBoxBlown = """
+        A steel box set into the stone, with its front peeled back off the
+        stonework and a good deal of the stonework peeled back with it.
         """
 
     static let safeIsEmbedded = "The box is imbedded in the wall."
@@ -688,9 +710,23 @@ extension Prose {
         arrives very quickly indeed.
         """
 
+    /// True on the floor of the volcano and nowhere else: the wreck lands at
+    /// ``DungeonVolcano/volcanoBottom``, so "by your feet" is a claim about
+    /// one of the four rooms that can watch it happen. See
+    /// ``balloonExplodesSeenFromLedge`` for the other three. (#329)
     static let balloonExplodesWatched = """
         You watch the balloon strike the rim and come apart; what is left of it
         lands on the ground by your feet.
+        """
+
+    /// Watched from a ledge, where the wreck goes past you rather than to you.
+    /// This is the line the Wide Ledge needed: the room narrated watching the
+    /// balloon float away overhead, and three turns later reported the tearing
+    /// as a distant sound, because the branch asked whether the player was on
+    /// the floor when it had already been handed `watched`. (#329)
+    static let balloonExplodesSeenFromLedge = """
+        You watch the balloon strike the rim and come apart, and what is left
+        of it falls past the ledge on its way to the floor of the volcano.
         """
 
     static let balloonExplodesHeard = """

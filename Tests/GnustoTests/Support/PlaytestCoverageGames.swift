@@ -175,3 +175,46 @@ struct CoalMineGame: Game {
         player.starts(in: upperMine)
     }
 }
+
+/// A room reached by a verb rather than by an exit.
+///
+/// Dungeon has eight of these — the balloon flight, the bank curtain, the river
+/// current, the cage drop — and they are why the coverage record credits work
+/// to the room a line was *typed* in rather than the room it ended in. Crediting
+/// the destination files the climb under the branch and leaves the ground it was
+/// climbed from looking untouched.
+///
+/// `perch` is on no exit table, so it is also this suite's one declared room
+/// nothing leads to, which is the other half of the same fault.
+struct ClimbGame: Game {
+    let title = "Climb"
+    let intro = "There is a way up that is not a direction."
+
+    let ground = Location {
+        name("Ground")
+        description("Beaten earth under a broad beech. Nothing leads anywhere.")
+    }
+
+    let perch = Location {
+        name("Perch")
+        description("A fork in the beech, high enough to see over the wall.")
+    }
+
+    let beech = Item {
+        name("beech")
+        synonyms("tree")
+        scenery
+    }
+
+    var rules: Rules {
+        beech.before(.climb) {
+            arrive(at: perch)
+            try handled()
+        }
+    }
+
+    var map: WorldMap {
+        player.starts(in: ground)
+        beech.starts(in: ground)
+    }
+}

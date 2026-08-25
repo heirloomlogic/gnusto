@@ -1324,6 +1324,20 @@ enum PlaytestTools {
                     "required": ["id", "name"],
                 ],
             ],
+            "roomsWorked": [
+                "type": "array",
+                "description": .string(
+                    "The ids of the rooms above you did something in, as against merely "
+                        + "stood in: a line typed while standing there parsed to an "
+                        + "intent that was neither go nor meta. Entered is not worked — a "
+                        + "pasted routes/*.txt prefix walks dozens of rooms without "
+                        + "reading a line of any of them, and every one of them appears "
+                        + "in roomsVisited. This is an upper bound rather than a "
+                        + "measurement: the session cannot tell a pasted command from a "
+                        + "composed one, so a route file's own 'take lamp' credits its "
+                        + "room here too."),
+                "items": ["type": "string"],
+            ],
             "roomsOnlyInBranches": [
                 "type": "array",
                 "description": .string(
@@ -1358,8 +1372,8 @@ enum PlaytestTools {
         ],
         "required": [
             "accepted", "open", "items", "signals", "forks", "roomsVisited",
-            "roomsOnlyInBranches", "firedTimers", "unknownWords", "transcript",
-            "message",
+            "roomsWorked", "roomsOnlyInBranches", "firedTimers", "unknownWords",
+            "transcript", "message",
         ],
     ]
 
@@ -1682,6 +1696,7 @@ extension PlaytestSession.Closing {
             "roomsVisited": .array(
                 roomsVisited.map { .object(["id": .string($0.id.raw), "name": .string($0.name)]) }
             ),
+            "roomsWorked": .array(roomsWorked.map { .string($0.raw) }),
             "roomsOnlyInBranches": .array(roomsOnlyInBranches.map { .string($0.raw) }),
             "firedTimers": .object(firedTimers.mapValues { .integer($0) }),
             "unknownWords": .object(

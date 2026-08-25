@@ -198,13 +198,31 @@ struct DungeonEndgameTests {
     /// There is no shorter way in and there is not meant to be: `SCORE-BLESS`
     /// arms the herald on the score alone, and the herald is what makes the
     /// marble door open instead of killing you.
-    static let intoTheEndgame: [String] =
+    static let intoTheEndgame: [String] = toTheTrophyCase + trophyCaseToTheTomb
+
+    /// The 616-point route and the fifteen turns the herald takes, ending in
+    /// the Living Room with the lamp lit and every treasure in the case.
+    static let toTheTrophyCase: [String] =
         Array(DungeonWalkthroughTests.route.dropLast(2))
         + Array(repeating: "wait", count: 15)
-        + [
-            "turn on lamp", "west", "south", "up", "temple",
-            "west", "east", "south", "down", "east", "east",
-        ]
+        + ["turn on lamp"]
+
+    /// And the walk from there to the Tomb, by the granite wall and the gate of
+    /// Hades.
+    static let trophyCaseToTheTomb: [String] = [
+        "west", "south", "up", "temple",
+        "west", "east", "south", "down", "east", "east",
+    ]
+
+    /// The same road with one treasure back out of the case and in your hands,
+    /// which is the frame the heads' curse is about.
+    ///
+    /// Spelled `get silver chalice` rather than `take chalice`: the walkthrough
+    /// takes the chalice by name in the Treasure Room and the trophy case holds
+    /// a grail as well, so both the verb and the adjective are there to keep
+    /// `turnOutput(of:in:)` pointed at this command. (#329)
+    static let withAChaliceInHand: [String] =
+        toTheTrophyCase + ["open trophy case", "get silver chalice"] + trophyCaseToTheTomb
 
     /// The same, plus the crypt: shut the door, put the lamp out, and wait for
     /// the voice.
@@ -246,6 +264,76 @@ struct DungeonEndgameTests {
         // ordinary one: the mainframe's ten points and the walk back from the
         // forest. Only past the crypt is it final.
         #expect(transcript.contains("you find yourself standing among the trees"))
+    }
+
+    /// **And the curse takes what it says it takes.** `robTheAdventurer()` was
+    /// `try die(…)` and one line, so the sentence promised that everything of
+    /// worth was *"lifted quietly away and gone"* and then `onDeath`'s ordinary
+    /// resurrection scatter strewed the lot across the lawn — the red crystal
+    /// sphere findable on the grass four moves later. `FIDELITY.md` had already
+    /// settled what should happen: the mainframe sweeps the valuables into a
+    /// case in the Living Room, this game declares no case, and *"what is kept
+    /// is that the valuables go"*. Kept. (#329)
+    ///
+    /// The lamp and the sword are spared by arithmetic rather than by name:
+    /// neither carries a value, so neither is worth anything to the heads. That
+    /// also means light is never lost to this death, which is the guarantee
+    /// `onDeath` makes for the ordinary one.
+    @Test func theHeadsCurseTakesTheValuablesItSaysItTakes() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.withAChaliceInHand + ["x silver chalice", "touch heads"]
+                // The lawn, which is where the scatter used to put it: the
+                // Clearing, Behind House, and the three sides of the house.
+                + ["east", "east", "southwest", "north", "west", "south"],
+            seed: Self.seed)
+
+        // The control: out of the case, in your hands, and answering in the
+        // Tomb.
+        #expect(turnOutput(of: "get silver chalice", in: transcript).contains("Taken."))
+        #expect(
+            turnOutput(of: "x silver chalice", in: transcript)
+                .contains("It looks pretty much like a chalice."))
+        #expect(transcript.contains("is lifted quietly away and gone"))
+
+        // And it is out of the world, not lying on the grass. `onDeath` strews
+        // a dead adventurer's belongings across exactly these rooms, which is
+        // why the round found the red crystal sphere on the lawn four moves
+        // after a curse that said it was gone.
+        let lawn = output(after: "standing among the trees", in: transcript)
+        #expect(!lawn.contains("chalice"))
+
+        // The lamp is spared, and by arithmetic rather than by name: it carries
+        // no value, so it is worth nothing to the heads. That is the same
+        // guarantee `onDeath` makes for an ordinary death — light is never lost
+        // to one — and the two mechanisms compose without either knowing about
+        // the other.
+        #expect(transcript.contains("West of House"))
+    }
+
+    /// **The winning cell announced as a revelation a door it had been
+    /// describing all along.** ``Prose/winningCell`` was written for the
+    /// source's arrangement, where the bronze door appears only after the ride.
+    /// This port shows it in the slot, because that is where `ODOOR` starts —
+    /// `CELL SOUTH → SCORR` and `SCORR NORTH → CELL` both run through it — and
+    /// because the slot's own view of it is the prison's only clue to which of
+    /// the eight cells is cell four. Gating the door on the ride would have
+    /// contradicted the atlas twice and deleted that clue to make a sentence
+    /// true, so the sentence is what moves. (#329)
+    @Test func theWinningCellStopsAnnouncingADoorItHasBeenShowing() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.pastTheCrypt + Self.throughTheBox + Self.theQuiz + Self.thePrison.dropLast(2),
+            seed: Self.seed)
+
+        // The control: the cell showed the door while it was still docked,
+        // which is what made the old sentence false.
+        #expect(transcript.contains("set into the wall to the south is a door of bronze"))
+
+        let ridden = output(after: "The cell has come to rest", in: transcript)
+        #expect(ridden.contains("the only way out of here is the door of bronze"))
+        #expect(!ridden.contains("where there was stone before"))
+        #expect(!ridden.contains("doorway you came in by"))
     }
 
     /// The transition. Three turns of a shut, dark crypt and you are somewhere

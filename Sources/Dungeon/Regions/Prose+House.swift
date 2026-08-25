@@ -97,15 +97,31 @@ extension Prose {
 
     // MARK: - Living room
 
-    /// Verbatim Zork I. The mainframe living room has exactly these three
-    /// ways out: the doorway east, the gothic door west (nailed shut until
-    /// the cyclops opens it), and the trap door under the rug.
-    static let livingRoom = """
-        You are in the living room. There is a doorway to the east, a
-        wooden door with strange gothic lettering to the west, which
-        appears to be nailed shut, a trophy case, and a large oriental rug
-        in the center of the room.
-        """
+    /// Zork I's sentence, with its two state clauses cut out and put back by
+    /// rule. The mainframe living room has exactly these three ways out: the
+    /// doorway east, the gothic door west, and the trap door under the rug —
+    /// and **both** of the last two move. PUSH RUG rolls the rug aside on move
+    /// seven, and the cyclops breaks the west door open on move thirty-two;
+    /// the constant went on reporting a rug in the center of the room and a
+    /// door nailed shut through both. Four moves from the front door, and no
+    /// charter had ever looked. (#329)
+    ///
+    /// - Parameters:
+    ///   - westBroken: whether the cyclops has been through the west door.
+    ///   - rugMoved: whether the rug is off the trap door.
+    /// - Returns: the room's paragraph, true of both.
+    static func livingRoom(westBroken: Bool, rugMoved: Bool) -> String {
+        let state =
+            westBroken ? "with a hole broken clean through it" : "which appears to be nailed shut"
+        let west = "a wooden door with strange gothic lettering to the west, \(state)"
+        let rug =
+            rugMoved
+            ? "a large oriental rug rolled back off the dusty cover of a trap door"
+            : "a large oriental rug in the center of the room"
+        return """
+            You are in the living room. There is a doorway to the east, \(west), a trophy case, and \(rug).
+            """
+    }
 
     /// Written fresh, and the *doorway* east rather than a door: the living
     /// room's first noun, and the parser did not know it. No `door` on the item
@@ -118,6 +134,22 @@ extension Prose {
     static let woodenDoor = """
         A heavy wooden door in the west wall, lettered over in a cramped
         gothic hand and nailed fast.
+        """
+
+    /// The same door read from this side after the cyclops has been through
+    /// it. The Strange Passage on the far side has described it as holed since
+    /// milestone 4 — ``Prose/strangePassage``, *"an old wooden door, with a
+    /// large hole in it (about cyclops sized)"* — and the two sides of one
+    /// door disagreed. (#329)
+    static let woodenDoorBroken = """
+        A heavy wooden door in the west wall, lettered over in a cramped
+        gothic hand, with the nails still in the frame and most of the door
+        gone from around them.
+        """
+
+    /// Nothing about it is shut any more, so OPEN stops being a refusal.
+    static let woodenDoorAlreadyBroken = """
+        There is no door left to open — only the hole the cyclops made of it.
         """
 
     /// Written fresh. The mainframe's engraving is a joke at the reader's

@@ -128,14 +128,9 @@ struct DungeonPalantir: GameContent {
     /// the near lid stood open. The second one shuts it.
     @Global var keyholeToolTakes = 0
 
-    /// Whether a rope has been rigged at the head of the chute. Set and cleared
-    /// by ``Dungeon``, which owns both the rope and the anchors; read here and
-    /// by the Slide Room's `down`.
-    @Global var chuteRopeRigged = false
-
     /// Which of the two anchors took the knot. There are only two — the broken
     /// timber and the gold coffin — so one flag says which, and it is read only
-    /// while ``chuteRopeRigged``. A `Bool` rather than the anchor's `EntityID`
+    /// while ``Dungeon/chuteRopeRigged``. A `Bool` rather than the anchor's `EntityID`
     /// because `GlobalValue` covers the scalars.
     @Global var chuteAnchorIsTheCoffin = false
 
@@ -273,12 +268,50 @@ struct DungeonPalantir: GameContent {
     let slideThreeChute = chuteWall()
     let slideLedgeChute = chuteWall()
 
-    /// `SROPE` is **not** here, and the omission is deliberate. The source
-    /// needs a second rope object because its `ROPEBIT` rooms have no way to
-    /// name the coil tied at the top; this engine does, because the coil is in
-    /// your hands the whole way down and a held item is always in scope. See
-    /// `FIDELITY.md`. Four objects saying what one already says would be four
-    /// objects too many whatever the budget.
+    /// `SROPE`, and it **is** here now. It used to be left out on the ground
+    /// that "the coil is in your hands the whole way down and a held item is
+    /// always in scope" — and the premise was false: ``Dungeon/rigTheChute()``
+    /// set a flag and never moved ``DungeonHouse/rope``, so the coil stayed
+    /// wherever it had been dropped in the Slide Room and `x rope` in the
+    /// chute answered *"You can't see any such thing."* under a paragraph
+    /// beginning *"You are hanging on a rope."* Two rules that assumed the
+    /// rope was down here were dead for the same reason — the `take` guard
+    /// and the let-go-and-fall branch. (#329)
+    ///
+    /// Five fittings, offstage until the knot is tied: one per stretch, one on
+    /// the ledge, and one at the head of the chute in the Slide Room, which is
+    /// where the knot actually is and so is where the state lives.
+    let slideOneRope = hangingRope(Prose.ropeInTheChute)
+    let slideTwoRope = hangingRope(Prose.ropeInTheChute)
+    let slideThreeRope = hangingRope(Prose.ropeInTheChute)
+    let slideLedgeRope = hangingRope(Prose.ropeFromTheLedge)
+    let chuteHeadRope = hangingRope(Prose.ropeAtTheChuteHead)
+
+    /// The three stretches' fittings, beside the rooms they stand in. These are
+    /// the ones a player can be hanging on, which is what ``isChuteRope(_:)``
+    /// asks and what the let-go-and-fall branch answers.
+    var chuteStretchRopes: [(Item, Location)] {
+        [(slideOneRope, slideOne), (slideTwoRope, slideTwo), (slideThreeRope, slideThree)]
+    }
+
+    /// Every fitting the knot puts onstage, beside the room each stands in.
+    /// Derived from ``chuteStretchRopes`` rather than written out again, so a
+    /// fourth stretch cannot be added to one list and forgotten in the other —
+    /// which is the failure this whole repair exists to stop.
+    var chuteRopeFittings: [(Item, Location)] {
+        chuteStretchRopes + [(slideLedgeRope, slideLedge)]
+    }
+
+    /// Whether the named thing is the rope in a stretch of chute — which is
+    /// what a player who types `take rope` while hanging on it has named.
+    ///
+    /// - Parameter named: what the command's direct object resolved to.
+    /// - Returns: `true` for a stretch's fitting; the ledge's is out of reach
+    ///   and answers at stage 0 instead.
+    func isChuteRope(_ named: Item) -> Bool {
+        chuteStretchRopes.contains { $0.0 == named }
+    }
+
     let slideLedgeOpening = Item {
         name("low opening")
         adjectives("low", "narrow")

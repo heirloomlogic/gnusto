@@ -950,6 +950,20 @@ enum Bootstrap {
                     + "trait and no describe { … } rule; the flag has nothing to print.")
         }
 
+        // `alwaysListed` is the same trade one channel over: it keeps a
+        // listing paragraph printing past the first touch, so an item with no
+        // listing paragraph of its own has nothing for it to keep, and the
+        // author finds out from a transcript that reads the same either way.
+        let mutelyAlwaysListed = items.compactMap { id, item in
+            item.isAlwaysListed && item.firstSight == nil
+                && table.itemPresence[id] == nil ? id : nil
+        }
+        for id in mutelyAlwaysListed.sorted() {
+            definition.warnings.append(
+                "item \"\(id)\" declares alwaysListed but has no firstSight(…) trait "
+                    + "and no presence { … } rule; the flag has nothing to keep.")
+        }
+
         // A room description lists what stands in the room and what those
         // things hold, and goes no deeper — one level, deliberately, because a
         // recursive listing reads as a manifest rather than a scene. So a

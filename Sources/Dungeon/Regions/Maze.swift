@@ -288,16 +288,21 @@ struct DungeonMaze: GameContent {
 
     let cyclopsSizedHole = Item {
         name("hole")
-        adjectives("large", "cyclops-sized")
+        // `wooden` and `old` because the room's own paragraph calls it "an old
+        // wooden door" — the same door ``DungeonHouse/woodenDoor`` answers for
+        // on the near side, and the two phrasings have to reach the item that
+        // is about the room the reader is standing in. (#329)
+        adjectives("large", "cyclops-sized", "wooden", "old")
         synonyms("hole", "door", "opening")
         description(Prose.cyclopsSizedHole)
         scenery
     }
 
+    /// Described by a rule, and it answers CLIMB: it is the room's only way
+    /// up, and a room that names a way through has promised the verb.
     let cyclopsStaircase = Item {
         name("staircase")
         synonyms("staircase", "stairs", "stair", "exit")
-        description(Prose.cyclopsStaircase)
         scenery
     }
 
@@ -534,6 +539,26 @@ struct DungeonMaze: GameContent {
         cyclops.describe { cyclopsMood }
         cyclopsNorthWall.describe {
             northWallOpen ? Prose.northWallBroken : Prose.northWallExamined
+        }
+        // The stair the cyclops stands in front of, until he does not. Read
+        // off the same flag the `up` exit reads, so the description and the
+        // way through cannot disagree. (#329)
+        cyclopsStaircase.describe {
+            cyclopsSubdued ? Prose.cyclopsStaircaseClear : Prose.cyclopsStaircase
+        }
+
+        // `climb staircase` used to fall through to the stub floor — "The
+        // staircase is not something you could climb." — about the broad stone
+        // staircase that is this room's only way up and that `up` walks. The
+        // stub line is right as a floor and cannot be reworded into being
+        // right here, so the stair takes the verb, through the same gate the
+        // exit goes through and refusing in the same words. The Studio
+        // chimney, the great tree and the Royal Puzzle ladder are the three
+        // standing precedents. (#329)
+        cyclopsStaircase.before(.climb) {
+            try require(cyclopsSubdued, else: Prose.cyclopsWontLetYouPast)
+            try enter(treasureRoom)
+            try handled()
         }
 
         // Shout the name of his father's nemesis and he goes through the north

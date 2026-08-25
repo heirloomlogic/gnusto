@@ -1,3 +1,5 @@
+import Gnusto
+
 /// Prose for the above-ground region (``DungeonAboveGround``): the white house
 /// exterior, the forest and its clearing, and the Great Canyon.
 ///
@@ -305,15 +307,27 @@ extension Prose {
         Whatever built it has been gone a long while.
         """
 
+    /// The four sentences every reading of the egg shares — Zork I's, and the
+    /// same in the mainframe. Written once because there are four readings: two
+    /// channels times two states, and until #329 the two states were one, so
+    /// the duplication was invisible. What varies between them is the clause
+    /// about the clasp and nothing else.
+    ///
+    /// Lower-cased, because the listing line puts it after "In the bird's nest
+    /// is" and the examine line opens on it.
+    private static let eggBody = """
+        a large egg encrusted with precious jewels, apparently scavenged by
+        a childless songbird. The egg is covered with fine gold inlay, and
+        ornamented in lapis lazuli and mother-of-pearl.
+        """
+
     /// The egg as the nest holds it — the source's `FDESC`, the room-listing
     /// paragraph, printed in place of a stock "On the birds nest is…" line.
     /// Verbatim Zork I.
     static let eggInNest = """
-        In the bird's nest is a large egg encrusted with precious jewels,
-        apparently scavenged by a childless songbird. The egg is covered
-        with fine gold inlay, and ornamented in lapis lazuli and
-        mother-of-pearl. Unlike most eggs, this one is hinged and closed
-        with a delicate looking clasp. The egg appears extremely fragile.
+        In the bird's nest is \(eggBody) Unlike most eggs, this one is hinged
+        and closed with a delicate looking clasp. The egg appears extremely
+        fragile.
         """
 
     /// The egg in the hand: Zork I's paragraph with its opening clause
@@ -321,11 +335,23 @@ extension Prose {
     /// business, and saying it here told a player holding the egg that it was
     /// still in a nest they had just emptied.
     static let egg = """
-        A large egg encrusted with precious jewels, apparently scavenged by
-        a childless songbird. The egg is covered with fine gold inlay, and
-        ornamented in lapis lazuli and mother-of-pearl. Unlike most eggs,
-        this one is hinged and closed with a delicate looking clasp. The egg
-        appears extremely fragile.
+        \(GameText.sentenceCase(eggBody)) Unlike most eggs, this one is hinged
+        and closed with a delicate looking clasp. The egg appears extremely
+        fragile.
+        """
+
+    /// The egg once the thief's fingers have got the clasp undone — which is
+    /// the *only* way it opens, and which is why nobody noticed. Both the
+    /// examine and the listing line went on calling it closed on the same
+    /// screen where the listing printed what was inside it. (#329)
+    static let eggOpen = """
+        \(GameText.sentenceCase(eggBody)) Its hinged lid stands open, the
+        delicate clasp beside it sprung by a defter hand than yours.
+        """
+
+    /// The same, as the nest holds it.
+    static let eggOpenInNest = """
+        In the bird's nest is \(eggBody) Its hinged lid stands open.
         """
 
     /// Verbatim Zork I.

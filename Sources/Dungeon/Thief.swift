@@ -46,35 +46,48 @@ import GnustoMeleeCombat
 struct DungeonThief: GameContent {
     // MARK: - The thief
 
-    /// The vocabulary is the two lines he prints. `bag` is a synonym and
-    /// `large` an adjective because his presence line says "holding a large
-    /// bag", and every noun a room description prints has to answer; `suspicious`
-    /// and `looking` are written apart because that is how the tokenizer splits
-    /// the hyphen on both sides.
+    /// The vocabulary is the two lines he prints. `suspicious` and `looking`
+    /// are written apart because that is how the tokenizer splits the hyphen
+    /// on both sides.
     ///
-    /// In the Treasure Room `bag` collides with the discarded bags on the floor,
-    /// and the parser's own question is the right answer to that: the room
-    /// really does contain two things a player could mean by it.
+    /// `bag` used to be a synonym here and `large` an adjective, on the ground
+    /// that his listing line says "holding a large bag" and every noun the
+    /// prose prints has to answer. It has to answer *about the right thing*:
+    /// `x large bag` returned a paragraph about beady eyes and a stiletto, and
+    /// the bare noun opened a disambiguation between the discarded bags and a
+    /// man. A question is only the right answer when two different things
+    /// answer, and one of these two was a person. The bag is ``thiefBag``
+    /// now. (#329)
+    ///
+    /// His listing line is a rule, not a trait: an actor's listing line prints
+    /// on every look forever, so a constant cannot know he is face down.
     let thief = Actor {
         name("thief")
-        adjectives("shadowy", "suspicious", "looking", "seedy", "large")
-        synonyms("robber", "figure", "individual", "man", "bandit", "bag")
+        adjectives("shadowy", "suspicious", "looking", "seedy")
+        synonyms("robber", "figure", "individual", "man", "bandit")
         description(Prose.thief)
-        firstSight(Prose.thiefPresence)
     }
 
     /// Set the moment he falls. Read by every rule that has to know whether the
     /// dungeon still has a thief in it — the summons, the gift, the egg fuse.
     @Global var thiefDefeated = false
 
-    /// Set while he is turning a gift over in his hands, and read by the
-    /// aggression daemon's gate: a man appraising a jewel-encrusted egg is not
-    /// also stabbing you.
+    /// The move count he stops appraising a gift at, and `-1` before he has
+    /// been given anything. Read by the aggression daemon's gate: a man
+    /// appraising a jewel-encrusted egg is not also stabbing you.
     ///
-    /// The line he answers a gift with says he "stops to admire its beauty",
-    /// and until this flag existed he said it and stabbed you in the same turn.
-    /// Found by playing. Two turns, cleared by the `thief.admires` fuse.
-    @Global var thiefAdmiring = false
+    /// A deadline rather than a flag, and that is the repair. The flag was
+    /// cleared by a `fuse("thief.admires", after: 2)`, and `tickTimers` runs
+    /// **every fuse, then every daemon** — so the fuse cleared it on the same
+    /// tick the daemon read it, and the two turns the line promises came to
+    /// one, which was the turn the player spent giving. He said "stops to
+    /// admire its beauty" and stabbed you on the next command. A count cannot
+    /// be raced by a reordering of the tick. (#329)
+    @Global var thiefAdmiringUntil = -1
+
+    /// Whether he is still turning a gift over. `moves` is incremented after
+    /// the timer tick, so the gift turn and the two after it all read true.
+    var thiefAdmiring: Bool { player.moves <= thiefAdmiringUntil }
 
     // MARK: - Items
 
@@ -92,6 +105,18 @@ struct DungeonThief: GameContent {
         trait(.weaponStrength, 1)  // a clumsy thing in anyone's hand but his
     }
 
+    /// `LARGE-BAG`. What he is holding, and what his listing line names in
+    /// every room he walks into. It travels with him, so it leaves scope when
+    /// he does, and it is not loot anybody takes off him while he is standing
+    /// up. (#329)
+    let thiefBag = Item {
+        name("large bag")
+        adjectives("large")
+        synonyms("bag", "sack")
+        description(Prose.thiefBag)
+        scenery
+    }
+
     // MARK: - Rules
 
     /// The one thing he does that is not theft or a knife. Everything else
@@ -106,12 +131,29 @@ struct DungeonThief: GameContent {
         thief.before(.greet) {
             try reply(thief.isUnconscious ? Prose.thiefGreetedOnTheFloor : Prose.thiefGreeted)
         }
+
+        // His listing line, which is the same question one channel over. It
+        // was a `firstSight` constant, and an actor's listing line prints on
+        // every look forever — so the turn after "The thief is battered into
+        // unconsciousness" the room went on standing him against a wall with
+        // his blade out, while the greeting two lines below already knew he
+        // could not hear. One reader of ``Actor/isUnconscious`` where there
+        // were two channels needing it. (#329)
+        thief.presence {
+            thief.isUnconscious ? Prose.thiefOnTheFloor : Prose.thiefPresence
+        }
+
+        // The bag is his and stays his while he is on his feet.
+        thiefBag.before(.take) {
+            try refuse(thief.isUnconscious ? Prose.thiefBagUnderHim : Prose.thiefBagHeld)
+        }
     }
 
     // MARK: - Map
 
     var map: WorldMap {
         stiletto.starts(heldBy: thief)
+        thiefBag.starts(heldBy: thief)
         // The thief himself is placed by code, which is what the atlas records
         // for him. ``Dungeon/thiefRules`` puts him in the Treasure Room the
         // first time a treasure comes off the dungeon floor.

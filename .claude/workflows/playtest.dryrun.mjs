@@ -37,6 +37,16 @@ const survey = {
     { id: 'frontStair', name: 'Stair' },
     { id: 'backStair', name: 'Stair' },
   ],
+  // Declared, playable, and on no exit table: the boiler room is reached by
+  // pulling the dumbwaiter rope and by nothing else. `definition.reachableRooms`
+  // walks the static exits, so the survey tool reports it `isReachable: false`
+  // and the cartographer files it here — and it is still a room the round must
+  // score, which is what the collator below exercises by entering it. Scoring it
+  // out of the roster reported Dungeon's eight rule-entered rooms as
+  // simultaneously off-roster and never-entered.
+  unreachableRooms: [
+    { id: 'boilerRoom', name: 'Boiler Room' },
+  ],
   // Two, deliberately: the stub collator below reports a fire for one of them
   // and nothing for the other, so the critic's "declared and never fired" line
   // has both a positive and a negative to get right.
@@ -95,12 +105,16 @@ const findings = (charter) => ({
 // class of turn", which is the exact bug the assertions exist to catch.
 //
 // The figures are the 2026-08-18 Dungeon round's, which is the round that
-// discovered the two CLI trees were invisible. `all` deliberately exceeds the
-// eight globbed numbers, so the residual path is the one under test.
+// discovered the two CLI trees were invisible, plus the 2026-08-24 round's
+// harness residual — 8,095 turns that resolved to `prefix-check`, `thief-rate`,
+// `thief-prefix` and `Dungeon-survey` and were handed to the critic as a
+// mystery. `all` deliberately exceeds the ten globbed numbers, so the residual
+// path is still the one under test with a fourth tree named.
 const stubTurns = {
   sessions: 252, branches: 102, replays: 1139, replayProbes: 71,
   playReplays: 7646, playProbes: 39, verifyReplays: 25341, verifyProbes: 119,
-  all: 34_600,
+  harnessReplays: 8095, harnessProbes: 27,
+  all: 44_000,
 }
 
 const stub = async (prompt, opts = {}) => {
@@ -145,10 +159,18 @@ const stub = async (prompt, opts = {}) => {
   if (l === 'collator') {
     return {
       // Room ids, as a `closing.json` carries them. `frontStair` and not
-      // `backStair`, so the twin under the same display name has to come back
-      // as never entered; `boilerRoom` is on no roster at all, which is the
-      // branch that says the artifacts and the roster describe different builds.
-      rooms: ['frontHall', 'cellar', 'frontStair', 'boilerRoom'],
+      // `backStair`, so the twin under the same display name has to come back as
+      // never entered; `boilerRoom` is the rule-entered room, which is on the
+      // roster and must NOT come back off it; and `shipsHold` belongs to no
+      // declared room of this game at all, which is the branch that says the
+      // artifacts and the roster describe different builds.
+      rooms: ['frontHall', 'cellar', 'frontStair', 'boilerRoom', 'shipsHold'],
+      // The stricter half. Two of the four rooms on the roster were typed in;
+      // `cellar` and `frontStair` were only stood in, which is what a pasted
+      // route prefix leaves behind. `shipsHold` is deliberately absent: a subset
+      // by construction, so the off-roster complaint is made once by `rooms` and
+      // not twice.
+      roomsWorked: ['frontHall', 'boilerRoom'],
       words: [{ word: 'grout', count: 2 }],
       forksNobodyTook: ['fork:burn-the-letter@Parlour'],
       // One roster timer that fired, one roster timer that did not, and one
@@ -469,10 +491,13 @@ for (const label of openLabels.filter(Boolean)) {
 // mechanism and guarding the two trees already known to be broken.
 //
 // Each label is then in exactly one of two states, and both are asserted:
-// *counted* by a `turn=cost` recipe, or listed in UNCOUNTED. Until #288 the
-// testers' and the verifiers' were in neither, which is not a state a reader can
-// see — 32,987 typed commands reported as 11,238.
-const UNCOUNTED = ['Fulminate-survey', 'Fulminate-r1-cluster', 'Fulminate-critic', 'Fulminate-collator']
+// *counted* by a `turn=cost` recipe with a glob in it, or one of the round's own,
+// which the harness recipe counts by exclusion and so contributes no glob to
+// match against. Until #288 the testers' and the verifiers' were in neither,
+// which is not a state a reader can see — 32,987 typed commands reported as
+// 11,238. These four are no longer uncounted either; they are the named fourth
+// tree, and the harness recipe asserted below is what counts them.
+const HARNESS_LABELS = ['Fulminate-survey', 'Fulminate-r1-cluster', 'Fulminate-critic', 'Fulminate-collator']
 const collatorLines = collator ? collator.prompt.split('\n') : []
 const turnGlobs = extractGlobs(
   collatorLines.filter((l) => /-exec grep -h 'turn=cost'/.test(l)).join('\n')
@@ -487,8 +512,8 @@ check(turnGlobs.length > 0, 'no collator recipe counts turn=cost under a label g
 for (const label of cliLabels) {
   const counted = turnGlobs.some((g) => globToRe(g).test(label))
   check(
-    counted || UNCOUNTED.includes(label),
-    `"${label}" is replayed under, counted by no turn=cost recipe (${turnGlobs.join(', ')}), and not declared uncounted`
+    counted || HARNESS_LABELS.includes(label),
+    `"${label}" is replayed under, matched by no turn=cost glob (${turnGlobs.join(', ')}), and not one of the round's own labels the harness recipe sweeps up`
   )
   check(
     !closingGlobs.some((g) => globToRe(g).test(label)),
@@ -510,12 +535,51 @@ for (const label of cliLabels) {
 const promptFor = (match) =>
   (prompts.find((p) => (typeof match === 'function' ? match(p) : p.label === match)) || {}).prompt || ''
 const criticPrompt = () => promptFor('critic')
-const stubTotal =
-  stubTurns.sessions + stubTurns.branches + stubTurns.playReplays
-  + stubTurns.replays + stubTurns.verifyReplays
+const stubTesters =
+  stubTurns.sessions + stubTurns.branches + stubTurns.playReplays + stubTurns.replays
+const stubVerifiers = stubTurns.verifyReplays
+const stubHarness = stubTurns.harnessReplays
+const stubTotal = stubTesters + stubVerifiers + stubHarness
 check(
   criticPrompt().includes(`**${stubTotal} world turns**`),
-  'the critic was not given the counted turn total over all five turn counts'
+  'the critic was not given the counted turn total over all six turn counts'
+)
+// The split, which the total is invariant under. That is exactly why the
+// `.replays/` misattribution survived three rounds: moving a term from one side
+// to the other changes neither `total` nor any assertion written on it, and the
+// only thing that reads differently is the ratio the critic is asked to judge.
+// The 2026-08-24 round was reported at 3:1 verifier-to-tester against a real
+// 1.2:1, and its header fired the "argued more than it played" warning on that.
+//
+// `replays` is the TESTERS': the `.replays/` tree is written by the MCP `replay`
+// tool, which is granted to the play-phase agent and to nobody else. A verifier
+// has no session and replays through `bin/playtest-replay` under its verify
+// label, which is what `verifyReplays` counts.
+check(
+  criticPrompt().includes(`Testers spent ${stubTesters} of ~`),
+  `the critic's tester turn total is not ${stubTesters} — the .replays/ tree is on the wrong side of the split`
+)
+check(
+  criticPrompt().includes(`the verifiers spent ${stubVerifiers} across ${stubTurns.verifyProbes}`),
+  `the critic's verifier turn total is not ${stubVerifiers} — a tree that is not theirs is being credited to them`
+)
+check(
+  result.coverage && result.coverage.turns
+    && result.coverage.turns.testers === stubTesters
+    && result.coverage.turns.verifiers === stubVerifiers,
+  `coverage.turns splits testers/verifiers wrongly: ${JSON.stringify(result.coverage && result.coverage.turns)}`
+)
+// The fourth tree. Before it had a name, the round's own pre-dispatch errands —
+// a route-prefix check, a random-rate measurement, the cartographer's own survey
+// session — arrived as an unattributed residual and the critic was asked to
+// resolve it from scratch, every round.
+check(
+  criticPrompt().includes(`machinery spent ${stubHarness} across ${stubTurns.harnessProbes}`),
+  'the critic is not told what the round\'s own machinery spent, so it lands in the residual again'
+)
+check(
+  result.coverage && result.coverage.turns && result.coverage.turns.harness === stubHarness,
+  `coverage.turns has no named harness tree: ${JSON.stringify(result.coverage && result.coverage.turns)}`
 )
 // The residual against an unglobbed count of the whole scratch tree. It is the
 // one number that cannot be short, and its whole job is to make the *next*
@@ -553,8 +617,26 @@ const replayRecipe = new RegExp(
 )
 check(
   collator ? replayRecipe.test(collator.prompt) : false,
-  'the collator never reads the replay probes, so verifier turns are invisible again'
+  'the collator never reads the .replays/ probes, so a chunk of the testers\' replaying is invisible again'
 )
+// The round's own trees, counted by exclusion. An operator's ad-hoc label —
+// `prefix-check`, `thief-rate` — cannot be enumerated in advance, so the recipe
+// says what the tree is *not*: a probe transcript under none of the three label
+// globs and not under `.replays/`. All four negations have to be there; dropping
+// one double-counts a tree that already has its own row.
+const harnessRecipe = collatorLines.find(
+  (l) => /-exec grep -h 'turn=cost'/.test(l) && /! -path/.test(l)
+)
+check(
+  Boolean(harnessRecipe),
+  'no collator recipe counts the round\'s own pre-dispatch trees, so 8,000-odd turns land in the residual again'
+)
+for (const excluded of [...new Set(turnGlobs), LAYOUT.REPLAY_TREE]) {
+  check(
+    harnessRecipe ? harnessRecipe.includes(`! -path "*/${excluded}/`) : false,
+    `the harness turn recipe does not exclude "${excluded}", so that tree is counted twice`
+  )
+}
 // The unglobbed count that `unattributed` is measured against. Without it the
 // residual is always zero and the check above passes on a harness that can no
 // longer see a whole tree.
@@ -785,30 +867,71 @@ check(
 // The collision, end to end. `frontStair` was entered and `backStair` was not,
 // and they share the display name "Stair" — so a round that had gone back to
 // keying on the name would report neither or both.
+// Both lists come off one line, so the split has to be on the sentence rather
+// than on the newline: `frontStair` appears in the second of them, and a
+// greedy `[^\n]*` would read it as belonging to the first and pass a harness
+// that had gone back to keying on the display name.
+const roomLists = (critic ? critic.prompt : '')
+  .match(/Never entered[^:]*: ([^\n]*?)\. Entered but never worked: ([^\n]*?)\./)
+const neverEntered = roomLists ? [roomLists[0], roomLists[1]] : null
 check(
-  /Never entered:[^\n]*Stair \(backStair\)/.test(critic ? critic.prompt : ''),
+  /Stair \(backStair\)/.test(neverEntered ? neverEntered[1] : ''),
   "the critic's never-entered list cannot name one of two rooms that share a display name"
 )
 check(
-  !/Never entered:[^\n]*Stair \(frontStair\)/.test(critic ? critic.prompt : ''),
+  !/Stair \(frontStair\)/.test(neverEntered ? neverEntered[1] : ''),
   'a room a session stood in is listed as never entered — the join is not on the id'
 )
+// The denominator is every DECLARED room, not every statically reachable one.
+// `boilerRoom` is on the survey's `unreachableRooms` and a session stood in it:
+// scored against `survey.rooms` alone it was missing from the total AND reported
+// as an id on no roster, which are contradictory complaints about one room. Both
+// fractions are stated, because entered is not worked.
 check(
-  /- Rooms: 3 of 12 entered/.test(critic ? critic.prompt : ''),
-  'the room fraction is not the roster minus the ids the sessions recorded'
+  /- Rooms: \*\*4 of 13 entered, 2 of 13 worked\.\*\*/.test(critic ? critic.prompt : ''),
+  'the room fraction is not the whole declared roster against the ids the sessions recorded, both ways'
 )
-// A room id on no roster is news now that both sides are the engine's, so the
-// critic is told what it actually means rather than "the survey is short".
 check(
-  /1 room id\(s\) in the closing records are on no roster \(boilerRoom\)/.test(critic ? critic.prompt : ''),
+  /1 the engine reports as unreachable/.test(critic ? critic.prompt : ''),
+  'the critic is not told how many of the roster are entered by a rule rather than through an exit'
+)
+check(
+  !/on no roster \([^)]*boilerRoom/.test(critic ? critic.prompt : ''),
+  'a rule-entered room is still being reported as an id on no roster'
+)
+// A room id on no roster is news now that both sides are the engine's and the
+// roster holds every declared room, so the critic is told what it actually means
+// rather than "the survey is short". `shipsHold` is nothing this game declares.
+check(
+  /1 room id\(s\) in the closing records are on no roster \(shipsHold\)/.test(critic ? critic.prompt : ''),
   'an off-roster room id was dropped instead of reported'
 )
 check(
   result.coverage && result.coverage.rooms
     && JSON.stringify(result.coverage.rooms.neverVisited).includes('Stair (backStair)')
-    && result.coverage.rooms.total === 12
-    && result.coverage.rooms.visited === 3,
-  `coverage.rooms is not id-keyed: ${JSON.stringify(result.coverage && result.coverage.rooms)}`
+    && result.coverage.rooms.total === 13
+    && result.coverage.rooms.ruleEntered === 1
+    && result.coverage.rooms.visited === 4
+    && result.coverage.rooms.worked === 2,
+  `coverage.rooms is not id-keyed over the whole declared roster: ${JSON.stringify(result.coverage && result.coverage.rooms)}`
+)
+// Entered is not worked, and the round now reports both. `cellar` and
+// `frontStair` were stood in and never typed in — which is all a pasted
+// `routes/*.txt` prefix ever does — so they are entered and unworked, and the
+// critic has to be able to say so without reading a transcript first.
+check(
+  collator ? /every distinct .id. appearing in any .roomsWorked./.test(collator.prompt) : false,
+  'the collator has no recipe for roomsWorked, so the round cannot tell entered from worked'
+)
+check(
+  /Entered but never worked: [^\n]*Cellar \(cellar\)[^\n]*Stair \(frontStair\)/.test(critic ? critic.prompt : ''),
+  'the critic is not told which rooms were entered and never worked'
+)
+check(
+  result.coverage && result.coverage.rooms
+    && !JSON.stringify(result.coverage.rooms.neverVisited).includes('(cellar)')
+    && JSON.stringify(result.coverage.rooms.neverWorked).includes('Cellar (cellar)'),
+  `coverage.rooms.neverWorked is not the stricter half: ${JSON.stringify(result.coverage && result.coverage.rooms)}`
 )
 // One join for both rosters. Rooms and timers ask the same question of two
 // lists, and answering it twice is how the two halves of #287 drifted apart in

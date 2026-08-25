@@ -384,12 +384,12 @@ struct DungeonAboveGround: GameContent {
     ///
     /// `clasp` is a synonym because the paragraph names one, and a noun the
     /// prose names is a noun the parser owes an answer for.
+    /// Both channels are rules: the clasp is the whole of what the paragraph
+    /// says about it, and the thief undoes the clasp. (#329)
     let egg = Item {
         name("jewel-encrusted egg")
         adjectives("jewel", "encrusted", "jeweled", "birds")
         synonyms("clasp")
-        description(Prose.egg)
-        firstSight(Prose.eggInNest)
         trait(.takeValue, 5)
         trait(.depositValue, 5)
         container
@@ -814,6 +814,14 @@ struct DungeonAboveGround: GameContent {
             let underfoot = grating.isOpen ? Prose.gratingOpenInClearing : Prose.gratingInClearing
             return "\(Prose.clearing)\n\n\(underfoot)"
         }
+
+        // The egg's clasp, on both channels. Only the thief ever gets it
+        // undone, which is why the constants outlived every test: the frame
+        // that falsifies them is a treasure handed to a man and taken back
+        // eighty moves later, with the listing beside it already printing what
+        // was inside. (#329)
+        egg.describe { egg.isOpen ? Prose.eggOpen : Prose.egg }
+        egg.presence { egg.isOpen ? Prose.eggOpenInNest : Prose.eggInNest }
 
         frontDoor.before(.open) {
             try refuse(Prose.frontDoorRefusal)

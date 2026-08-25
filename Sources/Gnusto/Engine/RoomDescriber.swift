@@ -108,10 +108,16 @@ enum RoomDescriber {
         // It is *this* sentence `scenery` withholds, not every mention. OPEN and
         // SEARCH ask what is inside a thing rather than composing prose about
         // it, and name its fittings — see `DefaultActions.perceivableContents`.
+        //
+        // `alwaysListed` is the opt-out of the touch gate, for a mobile thing
+        // whose paragraph is its state — see the trait. An actor needs no such
+        // flag; the loop below never gates one.
         func sayListing(of id: EntityID, stock: () -> String) {
-            if !touched.contains(id), let presence = frame.presenceText(of: id) {
+            let item = definition.items[id]
+            let stillNews = !touched.contains(id) || item?.isAlwaysListed == true
+            if stillNews, let presence = frame.presenceText(of: id) {
                 frame.say(presence)
-            } else if definition.items[id]?.isScenery != true {
+            } else if item?.isScenery != true {
                 frame.say(stock())
             }
         }

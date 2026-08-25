@@ -565,6 +565,27 @@ extension Prose {
 
     static let ivoryTorch = "The torch is burning."
 
+    /// The torch read while the reader is under water.
+    ///
+    /// "The torch is burning." printed on the turn after "The water level here
+    /// is now high in your lungs." — two consecutive lines, one of which is a
+    /// flame and the other of which is a drowning. The **mechanic** is not the
+    /// thing that moves here, and that is a decision rather than an oversight:
+    /// dousing the torch would take a fourteen-point treasure out of a game
+    /// that has no way to relight it, which is a scoring change, and the room
+    /// kills the reader either way one turn later. What the sentence stops
+    /// doing is reporting an ordinary flame in a frame where a flame is not
+    /// ordinary. The mainframe's torch is a supernatural object — it is the
+    /// one light in the game that needs no tending, and only the glacier has
+    /// ever touched it — so naming that is fidelity rather than a dodge.
+    /// (#329)
+    static let ivoryTorchUnderWater = """
+        The torch is burning under water, which it has no business doing and
+        shows no sign of stopping.
+        """
+
+    static let ivoryTorchInPlaceUnderWater = "An ivory torch is burning under the water here."
+
     static let burnedOutTorch = """
         A burned out ivory torch, black along one side where the ice took it,
         and no more use for light than a stick.

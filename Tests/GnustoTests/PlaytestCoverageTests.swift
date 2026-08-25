@@ -818,6 +818,51 @@ struct PlaytestCoverageTests {
                 == session.transcriptURL.deletingLastPathComponent())
     }
 
+    /// Entered is not worked, and the record says which is which.
+    ///
+    /// The 2026-08-24 Dungeon round published 128 of 181 rooms entered while 26
+    /// had been worked by a charter's own hand: two explorers pasted a
+    /// `routes/*.txt` walkthrough as a prefix and between them contributed half
+    /// the round's room count for nine commands of their own. `roomsVisited`
+    /// cannot tell those apart, because standing in a room is all a prefix does.
+    /// So the three cases are asserted together here: a room worked, a room only
+    /// walked through, and a room whose only command talked to the program.
+    @Test func theClosingRecordSeparatesRoomsWorkedFromRoomsWalkedThrough() async throws {
+        let session = try await session(AviaryGame())
+        // `x oak` works the Yard; `north` only leaves it; `score` is meta, so
+        // the Shed is entered and never worked.
+        _ = try await session.move(
+            commands: ["x oak", "north", "score"], allowPrompts: false)
+
+        let closing = try await session.finish(
+            summary: "looked at the oak, walked to the shed", leaving: nil, limit: 3)
+
+        #expect(closing.roomsVisited.map(\.id.raw) == ["yard", "shed"])
+        #expect(closing.roomsWorked.map(\.raw) == ["yard"])
+        #expect(try text(at: session.closingURL).contains("\"roomsWorked\":[\"yard\"]"))
+    }
+
+    /// Work is credited to the room the line was typed in, not the room it
+    /// ended in.
+    ///
+    /// The status line a turn ends on is the wrong room whenever the turn moved
+    /// the player, and moving under a verb that is not `go` is how eight of
+    /// Dungeon's rooms are reached — the balloon, the bank curtain, the river
+    /// current. Crediting the destination would file the launch under the room
+    /// the balloon arrived in and leave the room it left looking untouched.
+    @Test func workIsCreditedToTheRoomTheCommandWasTypedIn() async throws {
+        let session = try await session(ClimbGame())
+        // `climb beech` is not `go`, and it moves: the Ground earns it, the
+        // Perch does not.
+        _ = try await session.move(commands: ["climb beech"], allowPrompts: false)
+
+        let closing = try await session.finish(
+            summary: "went up the beech", leaving: nil, limit: 3)
+
+        #expect(closing.roomsVisited.map(\.id.raw) == ["ground", "perch"])
+        #expect(closing.roomsWorked.map(\.raw) == ["ground"])
+    }
+
     /// Two rooms sharing a display name are two rooms in the record.
     ///
     /// This is the fault that made the 2026-08-18 Dungeon round's "119 of 195

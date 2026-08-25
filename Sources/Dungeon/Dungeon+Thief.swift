@@ -182,8 +182,11 @@ extension Dungeon {
             guard let offered = command.directObject else { return }
             guard offered.isHeld else { try refuse(gameText.notHolding()) }
             offered.move(heldBy: thief.thief)
-            thief.thiefAdmiring = true
-            startFuse("thief.admires")
+            // Two turns of appraisal, counted rather than fused. `moves` is
+            // incremented after the timer tick, so this turn and the two after
+            // it all read as admiring — which is the two turns the line
+            // promises, where the fuse it replaces delivered one. (#329)
+            thief.thiefAdmiringUntil = player.moves + 2
             if offered == aboveGround.egg {
                 startFuse("thief.opensEgg")
                 try reply(Prose.thiefTakesEgg)
@@ -218,6 +221,12 @@ extension Dungeon {
                 // The hoard, the stiletto and anything he was still holding —
                 // the opened egg among it, if you paid him for the service.
                 // Named before it is dropped, because the line says what fell.
+                //
+                // The bag is not loot: it is the thing the loot was in, and it
+                // goes out of the world with him. Without this it turned up in
+                // the list of treasures reappearing, and then in the room as a
+                // bag nobody could pick up. (#329)
+                thief.thiefBag.vanish()
                 let spoils = thief.thief.inventory
                     .filter { $0 != thief.stiletto }
                     .map(\.definiteName)
@@ -321,13 +330,12 @@ extension Dungeon {
             aboveGround.egg.isOpen = true
         }
 
-        // The end of the appraisal. Two turns of a gift held up to the lamp is
-        // two turns he is not stabbing anybody, which is what buys you the room
-        // to hand him the egg and get back down the stairs. Silent: he could be
-        // anywhere by now, and a line saying he has looked up would print in a
-        // room the player is not standing in.
-        fuse("thief.admires", after: 2) {
-            thief.thiefAdmiring = false
-        }
+        // The end of the appraisal used to be a fuse here. It is a move count
+        // now — ``DungeonThief/thiefAdmiringUntil`` — because a fuse and a
+        // daemon that read each other resolve in the order `tickTimers` runs
+        // them, and this pair resolved the wrong way round. Nothing is said
+        // when it lapses, for the reason the fuse said nothing: he could be
+        // anywhere by then, and the line would print in a room the player is
+        // not standing in. (#329)
     }
 }

@@ -85,7 +85,7 @@ player.item.describe {
 }
 ```
 
-Without a rule, examining yourself prints ``GameText/selfDescription``, alongside the other stock lines a game can re-skin — ``GameText/cantTakeSelf``, ``GameText/cantSearchSelf``, ``GameText/cantGreetSelf``, ``GameText/cantFollowSelf``.
+Without a rule, examining yourself prints ``GameText/selfDescription``, alongside the other stock lines a game can re-skin — ``GameText/cantTakeSelf``, ``GameText/cantSearchSelf``, ``GameText/cantGreetSelf``, ``GameText/cantFollowSelf``. In the dark it prints ``GameText/tooDarkToSeeSelf`` instead: an observer is always in their own scope, dark or light, so `x me` is answerable in a room where every noun on the floor answers ``GameText/cantSeeAnySuchThing`` — and the ordinary line would assert a look the room has just said was impossible.
 
 The command being performed is available as `command` (``Command``): its ``Command/intent``, ``Command/directObject``, ``Command/indirectObject``, ``Command/direction``, ``Command/preposition``, and the raw ``Command/verbPhrase`` the player typed.
 
@@ -163,6 +163,22 @@ let puzzle = Location {
 ```
 
 It is opt-in, one room at a time; every other room keeps the brief revisit. The three paths it fixes are UNDO, RESTORE, and walking back in through an exit — all of which re-describe as an entry rather than as a LOOK. On a room with nothing to print — no `description(…)` and no `describe { … }` — the trait is a bootstrap warning, since it has no text to un-hide.
+
+## When the item's listing line *is* the state
+
+The same trade, one channel over. An item's listing paragraph — its `firstSight(…)` trait or its `presence { … }` rule — prints until the player touches the thing, and then stops: an entrance is news exactly once, and a room that goes on introducing a lamp the player has been carrying for an hour reads as a stutter.
+
+It is wrong for a **mobile** thing whose paragraph *is* its state. Dungeon's hot-air balloon is the worked example: its `presence { … }` reports the bag, the fire and the wire, all three of which change — and `board` sets `touched`, so from the first time the player climbed in, an inflated burning balloon and a cold wrecked one printed the same stock sentence. Declare ``alwaysListed`` and the paragraph survives the touch:
+
+```swift
+let balloon = Item {
+    name("wicker basket")
+    enterable
+    alwaysListed
+}
+```
+
+Opt-in, one item at a time, and only useful beside a listing line — on an item with neither trait nor rule it is a bootstrap warning, since it has nothing to keep. An **actor** needs none of this: an actor's listing line is ungated already, because people are not props and handling one does not wear off their entrance.
 
 The other half of the same problem is a rule that moves the player *within* one room. ``describeSurroundings(withRoomName:)`` re-describes from a rule body, and by default it is a full LOOK, heading included — so a step-by-step puzzle that re-describes on every move announces the same arrival nineteen times. Pass `withRoomName: false` and everything but the heading prints:
 

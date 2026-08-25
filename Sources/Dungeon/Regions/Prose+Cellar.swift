@@ -26,6 +26,16 @@ extension Prose {
         out of the room.
         """
 
+    /// The same troll knocked down. Both his channels were one constant, and
+    /// that constant claims he *blocks all passages* — which he does not do
+    /// face down in the dirt, as the greeting two screens below has known all
+    /// along. The thief's listing line had the identical fault and is the
+    /// reason this one was looked at. (#329)
+    static let trollOnTheFloor = """
+        The nasty-looking troll is face down in the dirt, the bloody axe still
+        in his fist and every way out of the room clear.
+        """
+
     static let trollBlocksTheWay = """
         The troll fends you off with a menacing gesture.
         """
@@ -140,6 +150,24 @@ extension Prose {
         This is an art gallery. Most of the paintings have been stolen by
         vandals with exceptional taste. The vandals left through the north,
         south, or west exits.
+        """
+
+    /// The room says "vandals" twice in three sentences and the painting's
+    /// own listing line says it a third time, and the parser did not know the
+    /// word — the round's one game-printed *"I don't know the word"*, which is
+    /// the harsher of the two failures. Not a synonym on ``painting``: the
+    /// vandals are the people who took the others. This is
+    /// ``maintenanceWreckage``'s shape, an item for what is gone. (#329)
+    static let galleryVandals = """
+        Long gone, and thorough while they were here. Whoever they were, they
+        left the one painting on the far wall, which tells you rather more
+        about their taste than about their haste.
+        """
+
+    /// The three the same sentence names, and the third of them is a bank.
+    static let galleryExits = """
+        Three ways out, and the vandals are said to have used all of them:
+        north, south, and west.
         """
 
     static let paintingFirstSight = """

@@ -22,10 +22,26 @@ struct PlayerItemTests {
         #expect(!transcript.contains("I don't know the word"))
     }
 
+    /// The nouns still resolve in the dark — held items are perceivable
+    /// without light, and so is the player — but what they resolve *to* is a
+    /// different sentence. This test used to assert "much as you always do",
+    /// which is the whole of the defect: the player is inserted into scope
+    /// above the darkness gate, so `x me` was answering with a look in a room
+    /// where every noun on the floor answers "You can't see any such thing."
+    /// A game cannot re-skin its way out of that, because the line is true
+    /// everywhere else. (#329)
     @Test func theSelfNounsSurviveTheDark() async throws {
-        // Held items are perceivable without light, and so is the player.
-        let transcript = try await play(MiniGame(), ["down", "x me"])
-        #expect(turnOutput(of: "x me", in: transcript).contains("much as you always do"))
+        let transcript = try await play(MiniGame(), ["down", "x me", "x self"])
+
+        for command in ["x me", "x self"] {
+            let answer = turnOutput(of: command, in: transcript)
+            #expect(answer.contains("It is too dark to see yourself."))
+            #expect(!answer.contains("much as you always do"))
+        }
+        // Still the noun, not a parse failure — which is what this test was
+        // written to prove and still proves.
+        #expect(!transcript.contains("I don't know the word"))
+        #expect(!transcript.contains("can't see any such thing"))
     }
 
     @Test func aDemoGameAnswersXMe() async throws {

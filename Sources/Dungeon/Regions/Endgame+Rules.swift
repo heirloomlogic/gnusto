@@ -131,12 +131,30 @@ extension DungeonEndgame {
         }
     }
 
-    /// Everything the heads take, and what taking it costs. The case they put
-    /// it in appears in the Living Room, which is a ``DungeonHouse`` room — so
-    /// the host owns the case and this calls out to it.
+    /// Everything the heads take, and what taking it costs.
+    ///
+    /// The curse says every valuable you carry and every valuable loose in the
+    /// Tomb is *"lifted quietly away and gone"*, and until now it said it and
+    /// took nothing: the body of this was `try die(…)` and one line, so `die`
+    /// fell through to ``Dungeon/onDeath()`` and the ordinary resurrection
+    /// scatter strewed the lot across the lawn. The red crystal sphere was
+    /// findable four moves later, on the grass.
+    ///
+    /// `FIDELITY.md` had already decided what should happen — the mainframe
+    /// sweeps the valuables into a large case in the Living Room, this game
+    /// declares no such case, and *"what is kept is that the valuables go"*.
+    /// Kept, now. Worth is `takeValue + depositValue`, which is the test
+    /// ``DungeonVolcano/offerTheGnome(_:)`` already uses for the same
+    /// question, and it spares the lamp and the sword by arithmetic rather
+    /// than by name. Done **before** `die`, so `onDeath`'s scatter finds only
+    /// what is left and the two mechanisms need know nothing about each
+    /// other. (#329)
     ///
     /// - Throws: always. The last thing it does is kill you.
     func robTheAdventurer() throws -> Never {
+        for item in player.inventory + tomb.contents where item.isWorthSomething {
+            item.vanish()
+        }
         try die(Prose.tombHeadsCurse)
     }
 

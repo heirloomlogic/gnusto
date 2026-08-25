@@ -317,8 +317,18 @@ extension Prose {
         This boat will not inflate since some moron put a hole in it.
         """
 
-    /// Trilogy verbatim.
+    /// Trilogy verbatim, and true only where there is a boat. LAUNCH is a word
+    /// for the balloon too, so on the Wide Ledge this named a boat the player
+    /// might never have seen; see ``launchNotAboardBalloon`` and
+    /// ``nothingToLaunch``, which is the third of the three and was declared
+    /// and never wired up. (#329)
     static let launchNotAboard = "You're not in the boat!"
+
+    /// Written fresh, and shaped after ``landNoBoat``, which has always been
+    /// vehicle-neutral and was the model this line should have followed.
+    static let launchNotAboardBalloon = """
+        You are standing beside the basket and not in it.
+        """
 
     /// Written fresh.
     static let launchNoWater = "There is no water here to launch it into."

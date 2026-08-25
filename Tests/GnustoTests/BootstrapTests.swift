@@ -71,6 +71,19 @@ struct BootstrapTests {
         #expect(!report.contains("landing"))
     }
 
+    /// The item-side twin. ``alwaysListed`` keeps a listing paragraph printing
+    /// past the first touch, so an item with no listing paragraph has nothing
+    /// for it to keep — and the transcript reads the same with the trait and
+    /// without it, which is the silence the warning exists to break. (#329)
+    @Test func alwaysListedWithNothingToKeepWarns() throws {
+        let (definition, _) = try Bootstrap.build(MuteAlwaysListedGame())
+        let report = try #require(definition.warningReport)
+        #expect(report.contains("\"sconce\" declares alwaysListed"))
+        #expect(report.contains("nothing to keep"))
+        // The lantern has a `firstSight` line, so it is not implicated.
+        #expect(!report.contains("lantern"))
+    }
+
     /// A room description lists what stands in it and what those things hold,
     /// and goes no deeper. `NestedListingGame` declares a line below that on
     /// purpose — the thimble, inside a sack that is itself on the bench — and

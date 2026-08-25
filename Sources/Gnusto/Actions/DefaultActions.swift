@@ -710,9 +710,33 @@ enum DefaultActions {
         // The player's own item carries no `description(…)` trait, so that a
         // game is free to give it a `describe { }` rule; its stock text is a
         // `GameText` line instead of the generic "nothing special" shrug.
+        //
+        // And it is the one branch here that has to ask about the light. An
+        // observer is always in their own scope, in the dark as much as in the
+        // light — exactly like the things they are carrying — so `x me` is
+        // answerable in a room where every noun on the floor is not, and the
+        // stock line claimed a look the room had just said was impossible.
+        // What you can lay a hand on you can still account for; what is lying
+        // on the floor you cannot.
+        //
+        // The read is hoisted out of the closure below rather than taken
+        // inside it, because `describeItem` calls that closure from within the
+        // call producing the text and a `Line` may be `.live`; it is also
+        // guarded on the noun, so the lock is taken for `x me` and for nothing
+        // else.
+        let dark =
+            command.directObject?.id == .player
+            && frame.with { scratch in
+                Visibility.isDark(
+                    at: scratch.state.playerLocation,
+                    definition: frame.definition,
+                    state: scratch.state)
+            }
         try describeItem(command, frame: frame) { item in
             item.id == .player
-                ? frame.definition.text.selfDescription()
+                ? (dark
+                    ? frame.definition.text.tooDarkToSeeSelf()
+                    : frame.definition.text.selfDescription())
                 : frame.definition.text.nothingSpecial(item.definiteNoun)
         }
     }

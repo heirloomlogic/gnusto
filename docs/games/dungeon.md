@@ -1080,10 +1080,17 @@ that a line *appears* and never asks whether it is *true*.
    answering for a far thing and a near thing under the same synonym is the
    Rocky Ledge's `x passage` bug: the noun belongs to whichever item is about the
    right place, and the other one gets its own.
-4. **State that lives in another bundle is published by the host.**
-   `Dungeon.whirringRules` and `Dungeon.palantirRules` are the two of these:
-   a `DungeonMirror` room reporting a `DungeonRoundRoom` machine, and a
-   `DungeonMirror` room reporting a `DungeonPalantir` rope.
+4. **State that lives in another bundle is published by the host.** Four of
+   these now, one per `@RuleBuilder` group so a reader can find the sentence
+   under the name of the thing it describes: `Dungeon.whirringRules` (a
+   `DungeonMirror` room reporting a `DungeonRoundRoom` machine),
+   `Dungeon.palantirRules` (a `DungeonMirror` room reporting a
+   `DungeonPalantir` rope), `Dungeon.livingRoomRules` (a `DungeonHouse` room
+   whose paragraph reads a `DungeonMaze` flag) and `Dungeon.torchRules` (a
+   `DungeonTemple` item that has to know how deep the water in a `DungeonDam`
+   room has got). **The sentence is the host's; the predicate is not** — the
+   bundle publishes the question in its own vocabulary, as
+   `DungeonDam.waterOverYourHead` does, and the host asks it.
 5. **A room whose paragraph carries state is `alwaysDescribed`.** Otherwise the
    change is invisible on a re-entry, which prints the bare room name over it.
 
@@ -1797,3 +1804,151 @@ where a thing is placed. This one is told apart by one read of what the sentence
 would cost if it were true. Make the claim true and see what the world looks like
 afterwards: if the answer is a noun that stops answering, or a room that stops
 being reachable, the sentence is what moves.
+
+### The tenth pass: rule 1 in six regions no charter had ever worked
+
+The third round (#329, 2026-08-24) is the round #291 chartered, and its headline
+is not new — that is the point of it. Nine more sites of *a static
+`description(…)` never learns the state behind it moved*, in six regions no
+previous charter had entered, **including the Living Room, four moves from the
+front door**. The first pass fixed thirteen, the sixth nine, and this one nine
+more; what changed between them is not the class but the map. A round finds the
+class wherever it is standing.
+
+Six of the nine are the two repairs the game already ships — a flag the room's
+own describer already reads, or a second constant per channel. Three are worth
+writing down:
+
+23. **A sentence whose two halves belong to two bundles is the host's.** The
+    Living Room's paragraph is a claim about the rug PUSH RUG rolls aside and
+    about the west door the cyclops breaks through from the far side. One flag
+    is `DungeonHouse`'s and the other `DungeonMaze`'s, so neither bundle could
+    have branched it and both had to stop trying. `Dungeon.cyclopsRules` owns
+    the sentence now, and the room takes `alwaysDescribed` with it, because a
+    walk back in through the Strange Passage is an *entry* and would have
+    printed the heading over both halves. The wooden door goes the same way —
+    and the Strange Passage on the far side has described that door as holed
+    since milestone 4, so the two sides of one door had been disagreeing about
+    whether it was a door.
+
+24. **A rule with a live channel can still have a dead one.** `ivoryTorch`
+    already had a `describe { }`, and it was branching on the wrong axis: the
+    thing that falsifies *"The torch is burning."* is not the glacier, it is a
+    Maintenance Room flooded over the reader's head, and that is a `DungeonDam`
+    number. So the rule moved to the host and grew a third branch. The
+    **mechanic did not move**, and that is a decision: dousing the torch takes a
+    fourteen-point treasure out of a game with no way to relight it, which is a
+    scoring change to answer a prose finding, and the room kills the reader
+    either way one turn later. What the sentence stops doing is calling a flame
+    ordinary in a frame where a flame is not ordinary. The mainframe's torch is
+    the one light in the game that needs no tending; naming that is fidelity.
+
+25. **The `needs-human` band on this class is a copy question, not a channel
+    question.** The Maintenance Room's paragraph gets three bands — dry, and
+    wading with the leak running, and wading with the plug in — and the water it
+    names is read off the same ladder the daemon calls the rungs from. That the
+    room should branch was never in doubt; how many sentences it should own was,
+    and it is one.
+
+### What the tenth pass changed, and what it did not
+
+The mechanics contract is untouched a tenth time — no map, no puzzle, no
+treasure value, no `maxScore` — and both walkthroughs still score 616 and 716.
+One repair is not prose at all and is described under the eleventh pass below,
+because it is the same defect the ninth pass named: the chute's rope was a flag,
+so the coil never left the player's hands.
+
+### The eleventh pass: a noun the parser denies, and a knot that is a flag
+
+The round's second and seventh classes are rules 3 and 11 again, and its sixth
+is a rule the list did not have.
+
+26. **A scenery item that owns a neighbour's noun is a bug even when both
+    nouns are answered.** Three sites, all three the shape the Rocky Ledge's
+    `x passage` taught: `shaft` sat on both iron chains, so the room named for
+    the hole answered with a sentence about the ironmongery hanging in it;
+    `cliff` sat on Reservoir South's reservoir, so the wall at the reader's
+    back answered about the water in front of them; and `bag` sat on the
+    **thief**, so `x large bag` returned a paragraph about beady eyes and a
+    stiletto. That last one had a written defence — the Treasure Room really
+    does hold two things a player could mean by "bag", so the parser's
+    disambiguation is the right answer — and the defence answers the wrong
+    objection. **A question is only the right answer when two different things
+    answer it, and one of these two was a person.**
+
+27. **A thing the fiction fixes in place has to stop being luggage — and the
+    chute is the second knot.** The ninth pass said this about the Dome Room's
+    railing and built `ropeOnTheRailing` for it. `rigTheChute()` had the same
+    defect and was not in that diff: it set a `@Global` and moved nothing, so
+    the coil stayed a takeable item in the Slide Room while the room's own
+    paragraph said the rope was tied off at the head of the slide, and the
+    player rode down three rooms that all say *"You are hanging on a rope"* with
+    the rope in a pocket behind them.
+
+    Two rules were **unreachable in consequence** and nobody had noticed: the
+    `before(.take)` guard that answers *"And what do you imagine is holding you
+    up?"*, and the let-go-and-fall branch under it, which is a whole mechanic.
+    Both named `house.rope`, and `house.rope` was never down there to be named.
+    That is the general form worth keeping: **a flag that stands in for a
+    placement leaves every rule that reads the placement dead, and a dead rule
+    is silent.**
+
+    Five fittings now — one per stretch, one on the ledge, one at the head —
+    and `chuteRopeRigged` is `chuteHeadRope.location != nil`, so the knot has
+    one representation instead of two. The factory that mints them was
+    `private static` on `DungeonTemple` and is now module-level, because two
+    knots want it.
+
+28. **A stock line in a frame the game cannot re-skin it out of is the
+    engine's problem, not the game's — unless the game owns the verb.** Three
+    sites, and they split two ways. `launch` is Dungeon's own verb and its
+    refusal named a boat from a ledge with a balloon on it, so the game fixed
+    it, and the third branch it needed had been declared and wired to nothing
+    for two milestones. The other two are the engine's: `x me` in a room the
+    game has just called pitch black asserted a look the room said was
+    impossible, and `alreadyOn` answered a second `light match` in switch
+    language about a matchbook. The first is an engine line, because the player
+    enters scope above the darkness gate and no game can re-word its way out of
+    that. The second is **not**: `alreadyOn` takes no subject, so one wording
+    would have to be true of the lantern, the candles and the torch at once —
+    the matchbook's own rule answers for the matchbook now, which is where a
+    line about a matchbook belongs.
+
+### What the eleventh pass changed, and what it did not
+
+The map, the puzzles, the treasure values and `maxScore` are untouched, and both
+walkthroughs score what they scored. Three things are worth naming:
+
+- **The Tomb heads' curse is a mechanic change, and it is the one in this
+  branch.** *"Everything of any worth you were carrying … is lifted quietly away
+  and gone"* took nothing: `robTheAdventurer()` was `try die(…)` and one line,
+  so `Dungeon.onDeath()`'s ordinary resurrection scatter strewed the lot across
+  the lawn, and the round found the red crystal sphere on the grass four moves
+  later. `FIDELITY.md` had already decided what should happen — *"What is kept
+  is that the valuables go"* — and the implementation never landed. It has
+  landed. The lamp and the sword are spared by arithmetic rather than by name,
+  because neither carries a value; `maxScore` does not move, because a treasure
+  taken out of the world by a death was never going to be cased by that
+  playthrough either.
+- **A shared test hoisted a latent trap.** Both the gnome and the heads ask
+  *is this worth anything*, and the gnome spelled it `offered[default: .takeValue]`
+  — which reads as the safe subscript and is the opposite: neither scoring key
+  is declared with a default, so that form **traps** on any item without the
+  trait. It never fired, because the one non-treasure anybody hands the gnome is
+  the brick and the brick is refused by name one branch earlier. `Item.isWorthSomething`
+  is the question written once, in the spelling `Scoring` itself uses.
+- **The engine grew one trait and one line, and both are opt-in.**
+  ``alwaysListed`` is the item-side twin of ``alwaysDescribed`` — the balloon's
+  `presence { }` rule was correct all along and the *channel* was gated on
+  `touched`, which `board` sets — and `tooDarkToSeeSelf` is the answer `x me`
+  gives in the dark. Neither changes behaviour for any existing caller.
+
+**The class's diagnostic.** The ninth pass could tell a prose defect from a
+mechanic by asking what the sentence would cost if it were true. This round adds
+the cheaper half of the same question: **ask what the game already knows.** Six
+of these sites had the state modelled in another channel and read by another
+rule — the thief's greeting knew he was unconscious, the Dusty Room's paragraph
+knew the box was open, the Narrow Ledge knew the gnome had been paid, the
+Strange Passage knew the door was holed. A finding whose repair is *"read the
+flag the rule next door reads"* is not a design question at all, and telling
+those apart from the ones that are costs one grep.

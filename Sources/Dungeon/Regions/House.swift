@@ -24,9 +24,14 @@ struct DungeonHouse: GameContent {
         name("Kitchen")
     }
 
+    /// Described by a host rule, and ``alwaysDescribed`` because the paragraph
+    /// carries two pieces of state — the rug and the west door — and a
+    /// re-entry would print the room name over both. The rule lives in
+    /// ``Dungeon`` rather than here: the rug's flag is this bundle's and the
+    /// west door's is ``DungeonMaze``'s, so the host owns the sentence. (#329)
     let livingRoom = Location {
         name("Living Room")
-        description(Prose.livingRoom)
+        alwaysDescribed
     }
 
     /// Dark, as in the mainframe.
@@ -239,11 +244,12 @@ struct DungeonHouse: GameContent {
     /// The gothic door west, nailed shut. It opens only when the cyclops
     /// smashes his way through from the maze — a later milestone — so this
     /// bundle declares the door and the host will declare the exit.
+    /// Described by a host rule, for the reason ``livingRoom`` is: the state
+    /// that breaks this door open is ``DungeonMaze``'s. (#329)
     let woodenDoor = Item {
         name("wooden door")
         adjectives("wooden", "west", "western", "gothic")
         synonyms("door", "lettering", "letters")
-        description(Prose.woodenDoor)
         scenery
         // Nailed shut and read rather than opened, so no exit hangs on it.
         door
@@ -504,11 +510,6 @@ struct DungeonHouse: GameContent {
             try reply(Prose.brokenCanaryWinds)
         }
 
-        // Nailed shut until the cyclops comes through the wall beside it, and
-        // then permanently a hole rather than a door.
-        woodenDoor.before(.open) {
-            try refuse(Prose.woodenDoorNailedShut)
-        }
         // Reading the gothic lettering is the joke, so it gets its own answer
         // rather than the door's description.
         woodenDoor.before(.read) {

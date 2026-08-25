@@ -92,7 +92,9 @@ struct DungeonTests {
 
     /// And out of it the only way there is: the staircase into milestone 1's
     /// North-South Crawlway.
-    private static let fetchTheTorch = toTheTorchRoom + ["down"]
+    /// Not `private`: `DungeonProseTests` carries the torch to the dam from
+    /// here, which is the one road on which it can be read under water.
+    static let fetchTheTorch = toTheTorchRoom + ["down"]
 
     /// Charge the panel, pocket both tools, open the gates.
     private static let openTheSluiceGates =
@@ -3377,7 +3379,8 @@ struct DungeonTests {
     /// Fuel in the pan, a match to it, and the four turns that carry the basket
     /// from the floor to the level of the Narrow Ledge. The drift clock runs on
     /// threes, and `look` costs a turn like anything else.
-    private static let liftOff = [
+    /// Not `private`: `DungeonProseTests` watches the flight from the floor.
+    static let liftOff = [
         "board basket", "put newspaper in receptacle",
         "burn match", "burn newspaper with match",
         "look", "wait", "wait", "wait", "wait",
@@ -4878,7 +4881,9 @@ struct DungeonTests {
     /// `SLIDE-EXIT` reads, and there is no other way to the red sphere.
     ///
     /// Seed 18 throughout, recorded: the troll falls to the first blow.
-    private static let toTheChuteWithTheTimber =
+    /// Not `private`: `DungeonProseTests` reads the rope in the chute off the
+    /// same road.
+    static let toTheChuteWithTheTimber =
         intoTheCellarWithTheRope
         + ["east", "attack troll with sword", "drop sword"]
         + crossroadsToTheDam + damToTheMirrors + mirrorsToTheShaft
@@ -5291,6 +5296,70 @@ struct DungeonTests {
                 "You let go, and the chute has you.",
                 "Cellar",
             ])
+    }
+
+    /// **`climb staircase` in the Cyclops Room fell through to the stub
+    /// floor** — "The staircase is not something you could climb." — about the
+    /// broad stone staircase that is the room's only way up and that `up`
+    /// walks. A room that names a way through has promised the verb, and the
+    /// stub floor is not where that promise gets answered: CLIMB is already
+    /// real on the great tree, the Studio chimney and the Royal Puzzle ladder.
+    /// The stair takes the verb through the same gate the exit goes through
+    /// and refuses in the same words. (#329)
+    @Test func climbingTheCyclopsStaircaseWalksTheStairUpWalks() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toMazeFive + Self.mazeFiveToTheCyclops
+                + ["climb staircase", "odysseus", "climb stairs"],
+            seed: 18)
+
+        // Blocked, and in the words the exit is blocked in — not the floor's.
+        let refused = turnOutput(of: "climb staircase", in: transcript)
+        #expect(refused.contains("doesn\u{27}t look like he\u{27}ll let you past"))
+        #expect(!refused.contains("not something you could climb"))
+
+        // And once he has gone, it walks.
+        #expect(turnOutput(of: "climb stairs", in: transcript).contains("Treasure Room"))
+    }
+
+    /// **The chute's rope was a flag, so the coil never left your hands.**
+    /// `rigTheChute()` set `chuteRopeRigged` and moved nothing, which left the
+    /// rope a takeable item lying in the Slide Room while the room's paragraph
+    /// said it was tied off at the head of the slide — and left two rules
+    /// unreachable, the `take` guard in the chute and the let-go-and-fall
+    /// branch under it, because both named a coil that was never down there.
+    ///
+    /// The repair is #328's at the other knot: the coil goes offstage and a
+    /// fitting stands in each room the rope is now in, so the knot has one
+    /// representation instead of two. (#329)
+    @Test func theChutesRopeStaysWhereItIsTied() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheChuteWithTheTimber
+                // `get`/`i`, not `take`/`inventory`: the road here already
+                // takes the rope and reads the inventory by those names, and
+                // `turnOutput(of:in:)` matches the first occurrence.
+                + ["drop timber", "tie rope to timber", "i", "look"]
+                + ["get rope", "inventory", "tie rope to timber", "untie rope", "look"],
+            seed: 18)
+
+        // Tied: the coil is out of your hands and the room reports the knot.
+        expectInOrder(
+            transcript,
+            [
+                "The rope is tied fast",
+                "You are carrying a brass lantern.",
+                "A rope is tied off at the head of the slide",
+            ])
+
+        // Taking it back unties the knot and hands the coil over.
+        #expect(turnOutput(of: "get rope", in: transcript).contains("what was a way down is a hole"))
+        #expect(turnOutput(of: "inventory", in: transcript).contains("coil of rope"))
+
+        // And untying leaves it on the floor, where `ROPE-AWAY` puts it.
+        #expect(turnOutput(of: "untie rope", in: transcript).contains("a hole again"))
+        let end = try #require(transcript.components(separatedBy: "> look").last)
+        #expect(!end.contains("tied off at the head of the slide"))
     }
 
     /// **Lifting the anchor unties the knot.** `rigTheChute()` refuses to tie

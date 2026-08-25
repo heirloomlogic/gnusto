@@ -63,6 +63,7 @@ Each has its own documentation in this archive. They are not linked from here: a
 - ``firstSight(_:)``
 - ``dark``
 - ``alwaysDescribed``
+- ``alwaysListed``
 - ``lightSource``
 - ``startsLit``
 - ``wearable``

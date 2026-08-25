@@ -302,6 +302,26 @@ actor PlaytestSession {
     /// fraction whose denominator is a roster of declared rooms.
     private var roomsEverVisited: [Closing.VisitedRoom] = []
 
+    /// Every room this session ever did something in, in first-worked order,
+    /// and on the same terms as ``roomsEverVisited``: appended from `run`,
+    /// which a rewind cannot reach, so a room worked for ten turns and then
+    /// rewound out of stays worked.
+    ///
+    /// ``Closing/roomsWorked`` states what "worked" means and what it cannot
+    /// see. It is the stricter half of a pair, and the pair is the point — a
+    /// round that reports only the entered count reports a prefix's mileage as
+    /// its own coverage.
+    private var roomsWorkedEver: [EntityID] = []
+
+    /// The room the *next* line will be typed in.
+    ///
+    /// The status line a turn ends on says where the player finished, which is
+    /// the wrong room to credit the work to whenever the turn moved them: the
+    /// balloon is launched from the room the balloon leaves. So the room is
+    /// carried forward from the previous status reading, which is the one that
+    /// was on screen when the tester chose the command.
+    private var standingIn: EntityID?
+
     /// Every timer that has ever fired in this session, by name, and how many
     /// times — **including fires inside a branch a rewind wrote off**.
     ///
@@ -700,6 +720,40 @@ actor PlaytestSession {
         /// ``roomsEverVisited`` for why the two are allowed to disagree.
         let roomsVisited: [VisitedRoom]
 
+        /// The IDs of the rooms in ``roomsVisited`` the session did something
+        /// in, as against merely stood in.
+        ///
+        /// ``roomsVisited`` is entered, and entered is not worked. A tester who
+        /// pastes a `routes/*.txt` walkthrough as a prefix walks fifty rooms
+        /// without reading a line of any of them, and every one of those rooms
+        /// lands in ``roomsVisited`` looking exactly like a room somebody
+        /// probed. The 2026-08-24 Dungeon round published 128 of 181 rooms
+        /// entered on that arithmetic while 26 had been worked by a charter's
+        /// own hand: two explorers typed 717 of 734 and 596 of 618 session
+        /// commands verbatim out of a route file, and between them contributed
+        /// half the round's room count for nine commands of their own.
+        ///
+        /// **A room is worked when a line typed while standing in it parsed to
+        /// an intent that is neither `go` nor meta.** Travel is what a prefix
+        /// is made of, and a meta intent (`score`, `save`, `undo`, …) talks to
+        /// the program rather than to the room. Everything else — `examine`,
+        /// `take`, `open`, `wait`, `look` — is the tester's attention landing
+        /// somewhere, so it counts.
+        ///
+        /// **This is an upper bound on hand-worked rooms, not a measurement of
+        /// them.** The session cannot see where a line came from: a `move` call
+        /// carrying a pasted route is indistinguishable from one the agent
+        /// composed, so a route file's own `take lamp` credits its room here.
+        /// The bound is still worth having, because the gap between the two
+        /// counts is where a round's coverage claim is soft, and a prefix is
+        /// overwhelmingly travel. A parse failure credits nothing — it names no
+        /// intent, and what it does tell us is already in ``unknownWords``.
+        ///
+        /// Credited to the room the line was typed in rather than the room it
+        /// ended in, so that the command which launches the balloon counts for
+        /// the room the balloon left.
+        let roomsWorked: [EntityID]
+
         /// The IDs of the rooms in ``roomsVisited`` whose evidence is in a
         /// branch file rather than in the transcript, because a rewind wrote
         /// those turns off.
@@ -809,6 +863,7 @@ actor PlaytestSession {
                 ForkOutcome(id: $0.id, command: $0.command, room: $0.room, taken: $0.taken)
             },
             roomsVisited: roomsEverVisited,
+            roomsWorked: roomsWorkedEver,
             roomsOnlyInBranches: roomsEverVisited.compactMap {
                 ledgerRooms.contains($0.name) ? nil : $0.id
             },
@@ -1236,10 +1291,33 @@ actor PlaytestSession {
     /// - Parameter status: the status line this turn ended on.
     private func visit(_ status: StatusLine) {
         let id = status.locationID
+        // Carried forward whether or not the room is new, because this is where
+        // the *next* line will be typed, not a record of anything.
+        standingIn = id.raw.isEmpty ? nil : id
         guard !id.raw.isEmpty, !roomsEverVisited.contains(where: { $0.id == id }) else {
             return
         }
         roomsEverVisited.append(Closing.VisitedRoom(id: id, name: status.locationName))
+    }
+
+    /// Records that the session did something in the room it was standing in.
+    ///
+    /// Called from `run` for every line, and it decides for itself whether the
+    /// line counts — see ``Closing/roomsWorked`` for the rule and for what the
+    /// rule cannot see. Kept beside ``visit(_:)`` and out of the ledger for the
+    /// same reason ``roomsEverVisited`` is: a rewind must not be able to take
+    /// it back, and the ledger's rooms are display names, which cannot key a
+    /// coverage answer.
+    ///
+    /// - Parameter audit: what the parser made of the line.
+    private func work(_ audit: TurnAudit) {
+        guard let room = standingIn,
+            let intent = audit.intent,
+            intent != .go,
+            !intent.isMeta,
+            !roomsWorkedEver.contains(room)
+        else { return }
+        roomsWorkedEver.append(room)
     }
 
     /// Reopens the transcript and writes back the blocks the session is holding.
@@ -1476,6 +1554,9 @@ actor PlaytestSession {
             moves: result.status.moves,
             line: index,
             turnCost: turnCost)
+        // Before `visit`, which moves `standingIn` on: the work belongs to the
+        // room the line was typed in.
+        work(audit)
         visit(result.status)
 
         statusLine = footer.line(result.status, turnCost: turnCost, fields: fields)

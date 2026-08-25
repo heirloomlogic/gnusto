@@ -233,6 +233,36 @@ extension Prose {
         climbed, and polished by a century of coal.
         """
 
+    /// The rope, read in the chute, where it is the one thing holding the
+    /// player up — and where `x rope` used to answer *"You can't see any such
+    /// thing."* under a paragraph whose first clause is *"You are hanging on a
+    /// rope."* The room had scenery vocabulary already (`x chute` answered);
+    /// the omission was the load-bearing noun. (#329)
+    static let ropeInTheChute = """
+        Stout hemp, taut under your weight, going up into the dark and down
+        into more of it.
+        """
+
+    /// And from the ledge, where the player is standing on rock and the rope
+    /// is over the lip and out of reach.
+    static let ropeFromTheLedge = """
+        The rope hangs down the middle of the chute, past the lip of the ledge
+        and on into the dark below it.
+        """
+
+    static let ropeOutOfReachFromTheLedge = """
+        The rope hangs clear of the ledge, and it is a long way down to
+        whatever you would land on if you missed.
+        """
+
+    /// The head of the chute, from the Slide Room, once the knot is in it.
+    /// This is the coil's stand-in up top — the ``ropeOnTheRailing`` shape, at
+    /// the other knot. (#329)
+    static let ropeAtTheChuteHead = """
+        The rope is made fast here and drops over the lip of the chute, and
+        there is no telling from up here how far down it goes.
+        """
+
     /// One rope, one knot. Said at whichever end the second knot was tried at.
     static let ropeAlreadyTied = """
         It is tied at the other end of it, and there is only so much rope.
