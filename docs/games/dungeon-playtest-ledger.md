@@ -637,6 +637,28 @@ becomes an ordinary candidate the day #328 lands or closes — at which point it
 already fixed or a live defect with the work already done. **A `held` key is not passed as a
 `ledgerKey` either**, for the same reason a `fixed` one is not: suppression would hide it.
 
+**Settled on the merge, and it came out `fixed`.** #328 landed as `38e27b8` and this branch
+merged it, which is the day the row said to look. The doubled listing has no way back: `tie
+rope to railing` now takes the coil out of your hands and moves two `scenery` fittings
+onstage, one per room (`Dungeon.swift:900-901`, `Temple.swift:224-238`), so there is no coil
+in a pocket to drop under a paragraph about a rope overhead. Read at the keyboard on the
+merged tree at seed 18, down the route `DungeonTests.toTheTorchRoom` walks: the Torch Room
+says *"A large piece of rope descends from the railing above, ending some five feet above
+your head."* once and says nothing else about a rope, `i` answers *"You are carrying a brass
+lantern and an elvish sword."*, `x rope` answers with the hanging sentence rather than the
+coil's, and `take rope` refuses *"You cannot reach the rope."* — the words `up` uses. At the
+rim, `untie rope` puts *"There is a coil of rope here."* back and stops the hanging
+sentence, so the two states never print together in either direction. The row below reads
+`fixed` and is withheld from `ledgerKeys` for the reason every `fixed` row is: a regression
+has to be allowed to come back.
+
+**The reason it was held is the part worth carrying.** A finding whose repair sits inside a
+diff nobody has reviewed is not a finding yet, and holding it costs one row and one merge —
+after which it is either free or already reproduced. The round already did the same thing
+the coarse way for the rest of that PR: three of its seven hand-written suppression strings
+stood for #328's three fixes. The `held` row is that instinct with a key attached, and the
+key is why this one could be settled by reading rather than by re-running.
+
 | Key (full) | Verdict | Category | Severity |
 |---|---|---|---|
 | `decl::Sources/Dungeon/Regions/Prose+House.swift::livingRoom` | confirmed | prose-untrue-of-state | major |
@@ -655,7 +677,7 @@ already fixed or a live defect with the work already done. **A `held` key is not
 | `decl::Sources/Dungeon/Regions/Prose+Palantir.swift::slideStretch` | confirmed | unanswerable-noun | major |
 | `decl::Sources/Dungeon/Regions/Prose+Volcano.swift::gnomePaid` | confirmed | exit-prose-mismatch | major |
 | `decl::Sources/Dungeon/Regions/Prose+Volcano.swift::rustyBox` | confirmed | prose-untrue-of-state | major |
-| `decl::Sources/Dungeon/Regions/Prose+Temple.swift::torchRoomRope` | **held** (PR #328) | prose-untrue-of-state | minor |
+| `decl::Sources/Dungeon/Regions/Prose+Temple.swift::torchRoomRope` | fixed (by #328) | prose-untrue-of-state | minor |
 | `decl::Sources/Dungeon/Regions/Prose+River.swift::launchNotAboard` | confirmed | stock-line-not-reskinned | minor |
 | `decl::Sources/Dungeon/Prose+Thief.swift::thiefPresence` | confirmed | presence-line-location-blind | major |
 | `decl::Sources/Dungeon/Prose+Thief.swift::thiefSwipeWound` | confirmed (needs-human) | mechanic-contradicts-prose | minor |
@@ -683,7 +705,7 @@ already fixed or a live defect with the work already done. **A `held` key is not
 Pass the ten `refuted` keys above as `ledgerKeys` next round, alongside the ten from
 2026-08-18 and the thirteen from 2026-08-11 — **thirty-three keys, twenty of which can
 actually match**, since the 2026-08-11 rows are display-truncated and `normalize()` can never
-emit an ellipsis. Not the twenty-nine `confirmed` ones, and not the `held` one.
+emit an ellipsis. Not the twenty-nine `confirmed` ones, and not the one #328 closed.
 
 **All ten refutations turn on one distinction**, which is worth carrying rather than
 re-deriving: *a line that is silent, awkward or incongruous is not a line that is false.* Six
