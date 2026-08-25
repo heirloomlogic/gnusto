@@ -540,8 +540,8 @@ public struct GameText: Sendable {
     /// look that could not have happened.
     ///
     /// An observer is always in their own scope, dark or light — that is the
-    /// first line of ``Visibility/collect(for:definition:state:)`` and it is
-    /// not a thing the darkness gate could be moved above or below. So `x me`
+    /// first thing the engine's scope walk puts in the set, and it is not a
+    /// thing the darkness gate could be moved above or below. So `x me`
     /// reached ``selfDescription`` in a room where `x <anything on the floor>`
     /// answers ``cantSeeAnySuchThing``, and a game that has just printed
     /// ``pitchBlack`` cannot re-skin its way out of the contradiction, because
