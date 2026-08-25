@@ -418,7 +418,7 @@ before acting on any of the three; the claim alone points at the wrong line.
 | `decl::Sources/Dungeon/Regions/Prose+River.swift::whiteCliffsFromBelow` | fixed | prose-untrue-of-frame | minor |
 | `decl::Sources/Dungeon/Regions/Prose+River.swift::aragainFallsItself` | fixed | prose-untrue-of-frame | minor |
 | `decl::Sources/Dungeon/Regions/Prose+River.swift::rainbowItself` | fixed | prose-untrue-of-frame | minor |
-| `decl::Sources/Dungeon/Regions/Prose+Temple.swift::torchNoRope` | confirmed | mechanic-contradicts-prose | major |
+| `decl::Sources/Dungeon/Regions/Prose+Temple.swift::torchNoRope` | fixed | mechanic-contradicts-prose | major |
 | `decl::Sources/Dungeon/Regions/Prose+Temple.swift::spirits` | confirmed | prose-untrue-of-state | major |
 | `decl::Sources/Dungeon/Regions/Prose+Temple.swift::candles` | confirmed (needs-human) | prose-untrue-of-state | major |
 | `decl::Sources/Dungeon/Regions/Prose+RoundRoom.swift::roundRoomCompass` | fixed | unanswerable-noun | major |
@@ -428,7 +428,7 @@ before acting on any of the three; the claim alone points at the wrong line.
 | `decl::Sources/Dungeon/Prose+Stubs.swift::stubs.climb` | fixed | stock-line-not-reskinned | minor |
 | `decl::Sources/Dungeon/Regions/Prose+Alice.swift::blueIcingWriting` | fixed | prose-untrue-of-state | blocking |
 | `decl::Sources/Dungeon/Regions/Prose+Alice.swift::poolLeak` | confirmed | prose-untrue-of-state | major |
-| `decl::Sources/Dungeon/Regions/Prose+Alice.swift::robotSpringsTheCage` | confirmed | mechanic-contradicts-prose | major |
+| `decl::Sources/Dungeon/Regions/Prose+Alice.swift::robotSpringsTheCage` | fixed | mechanic-contradicts-prose | major |
 | `decl::Sources/Dungeon/Regions/Prose+Alice.swift::robotIsOutOfEarshot` | confirmed (needs-human) | stock-line-not-reskinned | minor |
 | `decl::Sources/Dungeon/Regions/Prose+River.swift::geronimoNotInBarrel` | fixed | prose-untrue-of-frame | major |
 | `decl::Sources/Dungeon/Regions/Prose+River.swift::barrelInside` | fixed | prose-untrue-of-state | minor |
@@ -443,7 +443,7 @@ before acting on any of the three; the claim alone points at the wrong line.
 | `decl::Sources/Dungeon/Regions/Prose+AboveGround.swift::gratingFromBelow` | confirmed | prose-untrue-of-state | major |
 | `decl::Sources/Dungeon/Regions/Prose+Cellar.swift::chimney` | fixed | mechanic-contradicts-prose | major |
 | `decl::Sources/Dungeon/Regions/Prose+Bank.swift::viewingRoom` | confirmed (needs-human) | unanswerable-noun | major |
-| `decl::Sources/Dungeon/Regions/AboveGround.swift::mailbox` | confirmed | mechanic-contradicts-prose | minor |
+| `decl::Sources/Dungeon/Regions/AboveGround.swift::mailbox` | fixed | mechanic-contradicts-prose | minor |
 | `decl::Sources/Gnusto/Actions/CoreVerbs.swift::cores` | confirmed (needs-human) | register-mismatch | minor |
 | `decl::Sources/Dungeon/Regions/Prose+Alice.swift::bucketGoesNowhereElse` | refuted | mechanic-contradicts-prose | major |
 | `decl::Sources/Dungeon/Regions/Prose+River.swift::river2` | refuted | mechanic-contradicts-prose | major |
@@ -544,3 +544,48 @@ The pattern worth carrying forward, and it is the opposite of D1's: where D1's s
 a symptom of lost state, three of these four sentences are the **whole** defect and the
 state behind them is correct. Checking which of the two a Class 5 finding is costs one read
 of the placement and is the difference between a prose edit and a mechanic.
+
+## Three of D4's six rows are `fixed` — 2026-08-24
+
+D4 is "a mechanic that contradicts its own prose", and it is the round's only class where
+the sentence may be the innocent party. Six rows: the Studio chimney closed under #324, the
+barrel and the boat label are `needs-human` and stay open, and these three close here.
+
+- **`robotSpringsTheCage`** ended *"and the sphere is still in its hand"* over a rule that
+  ends in `reply` and transfers nothing. The round's sketch was to move the sphere to the
+  robot, and that is the wrong half: `Visibility.collect` keeps what other people are
+  holding out of the player's scope deliberately, so a sphere in the robot's hand is a
+  sphere `x sphere` denies, and 6+6 comes off `maxScore` — D1's failure, freshly minted.
+  What the rule actually leaves behind is a sphere loose in the closet, which is what
+  `FIDELITY.md` has said this puzzle does since milestone 5, so the **sentence** moved.
+  The general form: read the fidelity entry before choosing which side to move; one of
+  the two is usually already written down.
+- **`torchNoRope`** was the rope, and the key is the refusal rather than the doubled
+  paragraph because that is the line the round typed at. `tie rope to railing` set a flag
+  and moved nothing, so the coil rode down into the Torch Room in a pocket and could be
+  dropped there, under a paragraph about a rope five feet above the player's head. The
+  repair is `ROPE-AWAY` (`act3.199:1287`): the coil goes offstage when the knot is tied and
+  two scenery fittings stand in for it, one per room, because a rope hung through a dome is
+  in two rooms and an item is in one. **The committed winning route changed**, and that is
+  the finding rather than a cost of it — line 99 was `drop rope` and line 659 was
+  `take rope`, both in rooms the fixed game does not put a coil in. Stage 15 collects the
+  rope from the rim now, after the wing, which is the order the source forces.
+- **`mailbox`** was `needs-human` and the flag was right for the reason the verifier gave:
+  the finder led with a prose contradiction and the real fault is object-property fidelity.
+  `MAILB` (`dung.355:5083`) is `<+ ,OVISON ,CONTBIT>` with no `TAKEBIT`, and
+  `Sources/Zork1/AboveGround.swift:77` already declares the identical item `scenery`. One
+  word. The `firstSight` line survives it — `RoomDescriber.sayListing` withholds only the
+  *stock* sentence from a fitting — so West of House goes on saying there is a mailbox in
+  it. On every look, as it happens: `touched` is set by TAKE, and TAKE is the one thing the
+  trait refuses, so examining, opening and posting into the box never spend the line.
+
+Covered by `theMailboxIsAFittingAndTakeAllLeavesItStanding`,
+`theTiedRopeHangsFromTheRailingRatherThanRidingDownInAPocket`,
+`theRopeComesOffTheRailingFromTheRimAndShutsTheDrop` and two new assertions on
+`theRobotOrderedToTakeTheSphereWearsTheCageInstead`, all in
+`Tests/GnustoTests/DungeonTests.swift`.
+
+The pattern worth carrying forward: this class is told apart by asking what the sentence
+would cost if it were made true. Make the claim true and look at the world afterwards — if
+the answer is a noun that stops answering or a room that stops being reachable, the
+sentence is the thing that moves, not the mechanic.

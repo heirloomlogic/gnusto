@@ -42,10 +42,13 @@ import Testing
 ///
 /// **The rope is why the appendix works at all.** Stage 4 ties it to the Dome
 /// Room's railing and never unties it, so the drop into the Torch Room stays
-/// open for the rest of the game. Stage 15 walks back down it, picks the rope
-/// up off the floor where stage 4 left it, and takes it to the head of the coal
-/// chute — where it is tied to the broken timber and dropped, because the grip
-/// clock is `100 / carried weight` and the descent is four moves.
+/// open for the rest of the game. Stage 15 walks back down it, does the wing,
+/// leaves the Torch Room the one way there is, and collects the rope on the
+/// way past — from the **rim**, on a five-move detour off the Deep Ravine,
+/// because a knot at the railing is not something you can reach from the floor
+/// below (#286). Then to the head of the coal chute, where it is tied to the
+/// broken timber and dropped, because the grip clock is `100 / carried weight`
+/// and the descent is four moves.
 ///
 /// A copy of the same script, playable by hand, is
 /// `.context/walkthrough/route-616.txt` (gitignored working state); this file
@@ -186,10 +189,13 @@ struct DungeonWalkthroughTests {
         "east", "north", "down", "west", "east",
         "tie rope to railing", "down", "take torch", "turn off lamp",
 
-        // The rope stays here, tied to the railing above. The knot is never
-        // undone, so the Dome Room's drop stays open — which is what lets
-        // stage 15 come back down for it and for the room west of here.
-        "drop rope", "score",
+        // The rope stays up at the railing, and there is nothing to put down:
+        // tying it is what takes it out of your hands. This line used to be
+        // `drop rope`, which only worked because the coil rode down here in a
+        // pocket while the room described it hanging overhead (#286). The knot
+        // is never undone here, so the Dome Room's drop stays open — which is
+        // what lets stage 15 come back down for the room west of here.
+        "score",
 
         // Stage 4b: the Loud Room, Flood Control Dam #3 and the reservoir
         "down", "east", "north", "down", "east", "east", "northeast",
@@ -366,7 +372,7 @@ struct DungeonWalkthroughTests {
         // does not need to have. Everything else is cased; the lamp is lit
         // and the hands are otherwise empty.
         "take mat", "take skeleton keys", "open trap door", "down",
-        "east", "north", "down", "west", "east", "down", "take rope",
+        "east", "north", "down", "west", "east", "down",
 
         // The oak door. Open the near lid, slide the mat under the door, and
         // punch the key out of the far keyhole with the skeleton keys —
@@ -381,7 +387,16 @@ struct DungeonWalkthroughTests {
         // Out of the Torch Room the only way there is, and round to the coal
         // mine for the broken timber. The reservoir has been drained since
         // stage 4b.
-        "down", "east", "north", "down", "east", "east", "northeast",
+        //
+        // The five-move detour off the Deep Ravine is where the rope is
+        // collected. It cannot be picked up in the Torch Room: the knot is at
+        // the railing twenty feet overhead, which is what the room's own
+        // paragraph and its blocked `up` have always said (#286). So the wing
+        // is walked first and the rope taken afterwards, from the rim — which
+        // unties it and shuts the drop behind the last visit that needed it.
+        "down", "east", "north", "down",
+        "west", "east", "take rope", "east", "west",
+        "east", "east", "northeast",
         "up", "east", "south", "northwest", "north", "north",
         "north", "up", "north", "west", "west", "north", "northeast",
         "north", "northeast", "north", "northeast", "northwest",
