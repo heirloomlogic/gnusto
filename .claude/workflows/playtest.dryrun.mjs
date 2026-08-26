@@ -120,6 +120,13 @@ const stubTurns = {
 const stub = async (prompt, opts = {}) => {
   prompts.push({ label: opts.label, phase: opts.phase, prompt })
   const l = String(opts.label || '')
+  // The preflight agent answers first, and answers yes. The no branch returns
+  // early out of the whole script, so it gets its own run at the bottom of this
+  // file rather than a flag here — a stub that could go either way would make
+  // every assertion below conditional on which way it went.
+  if (l.startsWith('preflight')) {
+    return { toolsResolved: true, toolNames: ['mcp__fulminate__open', 'mcp__fulminate__finish'] }
+  }
   if (l.startsWith('survey')) return survey
   if (l.startsWith('play:')) return findings(l.slice(5))
   if (l.startsWith('cluster')) return { assignments: [{ index: 1, declaration: 'Sources/Fulminate/Prose.swift::vaneHere' }] }
@@ -206,9 +213,13 @@ const dryLedgerKeys = [
   'Sources/Dungeon/Regions/AboveGround.swift::up up a tree you are about 10 feet above the ground nestled among some large branches',
   'Sources/Fulminate/Fulminate.swift::the dr pike would take exception to that',
 ]
+// Fixed, never derived: a workflow script cannot call `Date.now()`, and a dry run
+// that stamped itself with today's date would make every label assertion below
+// depend on the day it ran.
+const dryRoundId = '2026-08-26'
 const dryArgs = {
   game: 'Fulminate', packagePath: '.', docPath: 'docs/games/fulminate.md',
-  capabilities: ['clock','talk'], seed: 0, turns: 60,
+  capabilities: ['clock','talk'], seed: 0, turns: 60, roundId: dryRoundId,
   // Deliberately written in affordances rather than room names, because a region
   // is pasted verbatim into a blind explorer's prompt. This fixture used to read
   // "ground floor: Front Hall, Parlour, Kitchen | upstairs: Landing, Boarder's
@@ -549,7 +560,8 @@ for (const label of openLabels.filter(Boolean)) {
 // which is not a state a reader can see — 32,987 typed commands reported as
 // 11,238. These four are no longer uncounted either; they are the named fourth
 // tree, and the harness recipe asserted below is what counts them.
-const HARNESS_LABELS = ['Fulminate-survey', 'Fulminate-r1-cluster', 'Fulminate-critic', 'Fulminate-collator']
+const HARNESS_LABELS = ['preflight', 'survey', 'r1-cluster', 'critic', 'collator']
+  .map((segment) => `Fulminate-${dryRoundId}-${segment}`)
 const collatorLines = collator ? collator.prompt.split('\n') : []
 const turnGlobs = extractGlobs(
   collatorLines.filter((l) => /-exec grep -h 'turn=cost'/.test(l)).join('\n')
@@ -698,7 +710,30 @@ check(
   Boolean(harnessRecipe),
   'no collator recipe counts the round\'s own pre-dispatch trees, so 8,000-odd turns land in the residual again'
 )
+// The round's own scope, which is a POSITIVE filter and not one of the rows. Once
+// the three label globs carry the round's date, a previous round of the same game
+// in the same checkout stops matching any of them — and a catch-all with no round
+// in it would sweep all of last month's testers into a row labelled "this round's
+// own machinery". So the harness recipe is scoped first and negated second, and the
+// glob doing the scoping is exempt from the exclusion loop below: excluding it
+// would exclude everything.
+//
+// Identified by the role it plays in the recipe — the glob that appears as a
+// positive `-path` rather than behind a `!` — and not by what its characters look
+// like. Sniffing the shape (`/^\w+-[\d-]+-\*$/`) made this assertion depend on the
+// round id staying digits-and-dashes: give it a same-day suffix and the regex stops
+// matching, `roundScope` goes undefined, and the loop below starts demanding the
+// scope glob be excluded from itself.
+const roundScope = turnGlobs.find(
+  (g) => harnessRecipe && harnessRecipe.includes(`-path "*/${g}/`) && !harnessRecipe.includes(`! -path "*/${g}/`)
+)
+check(
+  Boolean(roundScope) && harnessRecipe && harnessRecipe.includes(`-path "*/${roundScope}/`),
+  'the harness turn recipe is not scoped to this round, so a previous round of the same '
+  + 'game in this checkout is counted as this round\'s own machinery'
+)
 for (const excluded of [...new Set(turnGlobs), LAYOUT.REPLAY_TREE]) {
+  if (excluded === roundScope) continue
   check(
     harnessRecipe ? harnessRecipe.includes(`! -path "*/${excluded}/`) : false,
     `the harness turn recipe does not exclude "${excluded}", so that tree is counted twice`
@@ -746,6 +781,8 @@ const SOURCES = {
   sessionServer: 'Sources/Gnusto/Playtest/PlaytestSession.swift',
   sessionDirectories: 'Sources/Gnusto/Playtest/PlaytestSessions.swift',
   measurer: 'bin/playtest-measure',
+  tools: 'Sources/Gnusto/Playtest/PlaytestTools.swift',
+  preflight: 'bin/playtest-preflight',
 }
 const SOURCE = Object.fromEntries(Object.entries(SOURCES).map(([k, path]) => [k, code(path)]))
 const PRODUCERS = ['replayScript', 'replayTool', 'sessionServer']
@@ -797,6 +834,41 @@ check(
 check(
   /"savesFrom"/.test(code(SOURCES.replayTool.replace('PlaytestReplay', 'PlaytestTools'))),
   'the replay tool takes no savesFrom argument, so a tester cannot re-verify its own restore reproducer'
+)
+
+// The tool table, which has three copies and just cost a round. `PlaytestTools.swift`
+// declares the names, `bin/playtest-preflight` lists them so it can fail loudly on a
+// server that declares fewer, and every tester prompt names the subset it will call.
+// `rewind` and `export` were missing from the prompt list while the collator counted
+// what `rewind` writes — 102 real turns in six branch files, uncounted — and adding
+// them meant remembering the preflight copy separately. Nothing checked either.
+//
+// Two assertions, because they catch different mistakes. The first is a new tool the
+// server declares and preflight does not know to demand; the second is a prompt that
+// tells an agent to fetch a tool that does not exist, which fails at `ToolSearch` and
+// looks exactly like an unreachable server.
+const declaredTools = new Set(
+  [...SOURCE.tools.matchAll(/PlaytestTool\(\s*\n\s*name: "([^"]+)"/g)].map((m) => m[1])
+)
+const expectedTools = new Set(
+  ((SOURCE.preflight.match(/const EXPECTED_TOOLS = \[([\s\S]*?)\]/) || [])[1] || '')
+    .split(',').map((t) => t.trim().replace(/^'|'$/g, '')).filter(Boolean)
+)
+check(
+  declaredTools.size > 0 && expectedTools.size > 0
+    && [...declaredTools].every((t) => expectedTools.has(t))
+    && [...expectedTools].every((t) => declaredTools.has(t)),
+  `${SOURCES.preflight}'s EXPECTED_TOOLS and ${SOURCES.tools}'s declarations disagree `
+  + `(declared: ${[...declaredTools].sort().join(' ') || 'none parsed'}; expected: `
+  + `${[...expectedTools].sort().join(' ') || 'none parsed'}) — preflight goes green on a server the round cannot drive`
+)
+const promptedTools = new Set(
+  prompts.flatMap((p) => [...p.prompt.matchAll(/mcp__\w+__(\w+)/g)].map((m) => m[1]))
+)
+check(
+  [...promptedTools].every((t) => declaredTools.has(t)),
+  'a generated prompt names an MCP tool the server does not declare: '
+  + `${[...promptedTools].filter((t) => !declaredTools.has(t)).join(', ')} — that agent fails at ToolSearch`
 )
 
 // `saves-in/` is the one probe artifact outside the `artifacts` cross-check
@@ -1056,6 +1128,139 @@ check(
   /function reconcile\(/.test(src) && !/function rosterMatch\(/.test(src),
   'rooms and timers have gone back to hand-rolling the same roster join twice'
 )
+
+// ---------------------------------------------------------------------------
+// Getting the round started at all
+// ---------------------------------------------------------------------------
+//
+// Everything above this line assumes a round that is running. These are about the
+// step that kept failing before one: a round that dies at `ToolSearch` for every
+// tester, because the game's MCP server never connected in the dispatching session.
+
+// The round has an identity, and every label tree carries it. Without this a second
+// round of the same game in the same checkout is globbed by the first one's recipes
+// — which is not hypothetical: three rounds running reported coverage arithmetic
+// with a previous round's sessions folded in.
+for (const [name, globs] of [['session', closingGlobs], ['turn', turnGlobs]]) {
+  const unscoped = globs.filter((g) => !g.includes(dryRoundId) && !g.startsWith('.'))
+  check(
+    unscoped.length === 0,
+    `${name} glob(s) carry no roundId, so a previous round of this game is collated `
+    + `into this one: ${unscoped.join(', ')}`
+  )
+}
+
+const preflightPrompt = prompts.find((p) => String(p.label || '').startsWith('preflight'))
+
+// A failed `ToolSearch` has somewhere to go. The tools are deferred, so a tester's
+// first act is a search; when it returned nothing the prompt used to end there, and
+// the agent improvised a report about not knowing how to use MCP. Eight of those is
+// what a failed round looked like from the outside.
+// The preflight agent is exempt: reporting the empty result IS its job, and it is
+// given a schema field for it rather than a sentence. Every OTHER agent that
+// searches has to be told, because for them an empty result is a dead end.
+for (const p of prompts.filter((p) => /ToolSearch/.test(p.prompt))
+  .filter((p) => !String(p.label || '').startsWith('preflight'))) {
+  check(
+    /returns nothing, \*\*stop and report that\*\*/.test(p.prompt),
+    `"${p.label}" is told to fetch MCP tools with ToolSearch and given no branch for an empty result`
+  )
+  check(
+    /playtest-preflight/.test(p.prompt),
+    `"${p.label}" is not told what fixes an empty ToolSearch, so the failure reads as its own`
+  )
+}
+check(
+  preflightPrompt ? /toolsResolved: false/.test(preflightPrompt.prompt) : false,
+  'the preflight agent is not told how to report a search that found nothing, which is the '
+  + 'one answer it exists to give'
+)
+
+// The preflight agent runs before anything expensive, and is a phase of its own so
+// the progress tree shows where a round died.
+check(Boolean(preflightPrompt), 'nothing checks the MCP server before the round fans out')
+check(
+  preflightPrompt ? prompts.indexOf(preflightPrompt) === 0 : false,
+  'the preflight check is not the first agent, so something expensive runs before the round knows it can play'
+)
+check(
+  metaPhases.includes('Preflight') && phases.includes('Preflight'),
+  'Preflight is not both declared in meta.phases and entered with phase(), so its agent '
+  + 'lands in an unnamed progress group and a round that died there does not say where'
+)
+
+// A tool the harness MEASURES is a tool the prompt has to hand over. `rewind`
+// writes the `branch-*.txt` files the collator counts as a named turn row, and was
+// missing from the query for as long as that row existed.
+const playPrompt = prompts.find((p) => String(p.label || '').startsWith('play:'))
+for (const tool of ['rewind', 'replay', 'coverage', 'note']) {
+  check(
+    playPrompt ? playPrompt.prompt.includes(`__${tool}`) : false,
+    `testers are never handed the \`${tool}\` tool, though the round is written as if they have it`
+  )
+}
+
+// The tool namespace and the server registration are two halves of one fact that
+// nothing compiles together. Get them out of step and every tester fails
+// identically, with `ToolSearch` matching nothing and no diagnostic anywhere.
+{
+  const mcp = JSON.parse(readFileSync('.mcp.json', 'utf8'))
+  const settings = JSON.parse(readFileSync('.claude/settings.json', 'utf8'))
+  for (const key of settings.enabledMcpjsonServers || []) {
+    check(
+      Boolean((mcp.mcpServers || {})[key]),
+      `.claude/settings.json enables the MCP server "${key}", which .mcp.json does not register`
+    )
+  }
+  for (const [key, server] of Object.entries(mcp.mcpServers || {})) {
+    check(
+      (settings.enabledMcpjsonServers || []).includes(key),
+      `.mcp.json registers "${key}" but .claude/settings.json does not enable it, so it never connects`
+    )
+    check(
+      (server.args || []).some((a) => a.toLowerCase() === key),
+      `.mcp.json keys "${key}" against args ${JSON.stringify(server.args)} — the workflow's `
+      + 'fallback namespace is the lowercased product name, so this game resolves no tools'
+    )
+  }
+  // Both remedies the round reports found the expensive way, set where a session
+  // reads them rather than remembered by an operator.
+  for (const v of ['MCP_TIMEOUT', 'CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS']) {
+    check(
+      Boolean(settings.env && settings.env[v] !== undefined),
+      `.claude/settings.json sets no ${v}, so a round depends on whoever dispatched it remembering to`
+    )
+  }
+}
+
+// And the other half of the preflight phase: when the tools do NOT resolve, the
+// round stops instead of fanning out. Re-run the whole script with a stub that says
+// no, and check that nothing past the first agent ever ran.
+{
+  const noPrompts = []
+  const noStub = async (prompt, opts = {}) => {
+    noPrompts.push(opts.label)
+    if (String(opts.label || '').startsWith('preflight')) {
+      return { toolsResolved: false, toolNames: [], note: 'ToolSearch returned nothing' }
+    }
+    throw new Error(`agent "${opts.label}" ran after preflight failed`)
+  }
+  const noLogs = []
+  const fn2 = new Function('__stub', '__phases', '__logs', '__args', body)
+  const outcome = await fn2(noStub, [], noLogs, dryArgs)
+  check(
+    noPrompts.length === 1,
+    `preflight failed and the round dispatched anyway: ${noPrompts.join(', ')}`
+  )
+  check(
+    outcome && outcome.dispatched === false && outcome.reason === 'mcp-unreachable',
+    `a round that cannot reach its server does not say so in its result: ${JSON.stringify(outcome)}`
+  )
+  check(
+    noLogs.some((l) => /playtest-preflight/.test(l)) && noLogs.some((l) => /restart the session/.test(l)),
+    'a round that cannot reach its server does not log the remedy, so the operator gets a mystery'
+  )
+}
 
 console.log('\nASSERTIONS:', failures.length ? `${failures.length} FAILED` : 'all passed')
 for (const f of failures) console.log('   ✗', f)

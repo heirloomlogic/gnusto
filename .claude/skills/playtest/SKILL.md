@@ -1,6 +1,6 @@
 ---
 name: playtest
-description: Run an automated play-test round against a Gnusto demo game — Claude subagents play it, read the transcripts as prose, and report lines that are not true of the frame they printed in. Use when asked to playtest, play-test, or find prose defects in a game (Fulminate, Lighthouse, Gramarye, Zork1, CloakOfDarkness); when asked to check whether a game's writing is true of where the player is standing; or after changing a game's copy, timers, or actor scheduling. Also use to reproduce a reported transcript defect, or to calibrate the harness against a historical commit.
+description: Run an automated play-test round against a Gnusto game — Claude subagents play it, read the transcripts as prose, and report lines that are not true of the frame they printed in. Use when asked to playtest or play-test any game this package builds, named in whatever words the user typed; when asked to find prose defects, or to check whether a game's writing is true of where the player is standing; or after changing a game's copy, timers, or actor scheduling. Also use to reproduce a reported transcript defect, or to calibrate the harness against a historical commit.
 ---
 
 # Play-testing a Gnusto game
@@ -21,21 +21,47 @@ followed up, every item a command to paste.
 ## Run a round
 
 ```sh
-bin/playtest-replay --build <Game>        # once, before dispatch
+bin/playtest-preflight <Game>
 ```
 
-Then work out the arguments and invoke the workflow **by path**:
+One command, and it is not optional. It builds, then proves the game's MCP server
+answers by speaking JSON-RPC at it over a pipe of its own — which is the only way to
+check when the session's own registration has failed, because then the client is
+exactly the wrong thing to ask. It exits non-zero and names the remedy when the round
+is not dispatchable. It takes the game in whatever words you have: `Zork1`, `zork1`
+and `Zork 1` all resolve against the package's executable products.
+
+It then **writes the round's arguments** to `.context/playtest-round-args.json`,
+derived rather than retyped — capabilities off the manifest, `docPath` and the ledger
+and the focus split off `docs/games/`, the seed off the game's walkthrough test, and
+`roundId` from today's date. The six paragraphs below explain what each one means and
+what it costs to get wrong; none of them is yours to assemble by hand any more.
+
+Then invoke the workflow **by path**, handing it that JSON:
 
 ```
 Workflow({ scriptPath: ".claude/workflows/playtest.js", args: {
   game: "Fulminate",
   packagePath: ".",
+  roundId: "2026-08-26",                // required: the round's own identity
+  mcpServer: "fulminate",               // the .mcp.json key, read rather than assumed
   docPath: "docs/games/fulminate.md",   // null when the game has no design doc
   capabilities: ["clock", "talk"],
   seed: 0,
   turns: 60
 }})
 ```
+
+**`roundId` is required and has no default.** It is what keeps one round's artifacts
+out of the next round's arithmetic: every label the harness generates leads with it,
+and the collator's globs match on it. A default would be a collision that happens
+silently, which is what three rounds running did — each reporting turn and session
+counts with a previous round's sessions folded in, because the only "round" in a label
+was the retry round, `r1`, which Tuesday and Thursday both use. Preflight fills it in.
+
+**Nothing needs clearing between rounds.** `.context/playtest/` may hold every round
+this checkout has ever run and the arithmetic stays right. What a previous round left
+now lands in the unglobbed residual, which the critic is told to name.
 
 `scriptPath` rather than `{name: "playtest"}` because the workflow registry is read
 when the session starts: a checkout that gained `.claude/workflows/` after the session
@@ -248,6 +274,7 @@ which the harness writes and no game can re-voice, is the acceptable middle.
     fixer-brief.md                     the rules a fixer is bound by
     report-shape.md                    the round report and the ledger
     issue-shape.md                     the one issue a round files
+bin/playtest-preflight                 the front door — run this first, always
 bin/playtest-replay                    the replay helper
 .claude/workflows/playtest.dryrun.mjs  zero-agent dry run — a CI gate, not a suggestion
 bin/playtest-measure                   how curiously a session played, off its artifacts
@@ -307,52 +334,61 @@ a round trip. A deliberate change to an asserted property means changing the ass
 in the same commit, which is the point — these are invariants somebody wrote down, not
 incidental facts about the text.
 
-**Two things it cannot tell you**, both about the servers rather than the script.
+**What it cannot tell you is anything about the servers**, and that is
+`bin/playtest-preflight`'s half of the job. Run both; they overlap nowhere.
 
-*Whether the game's MCP server is reachable.* Two ways it isn't, and the round fails at
-`ToolSearch` for every tester either way, so confirm the tools resolve before dispatching.
+Preflight performs, and now owns, the two checks this section used to describe as
+rituals. Both used to fail quietly, which is why they were worth a check rather than a
+memory — and why a check performed from memory was the wrong shape for them.
 
-A `.mcp.json` added mid-session is not picked up until the session restarts. And
-`bin/gnusto-mcp` runs `swift build` before it `exec`s — so on a tree whose engine has just
-changed, every registered game attempts a cold rebuild at once, and they can all pass the
-client's startup timeout together. Seven servers vanishing looks exactly like a broken
-`.mcp.json` and is nothing of the kind. **Run `swift build` to completion in the session
-before the one that dispatches**; the script's own header says the same thing, and it is
-cheaper to obey than to diagnose.
+*Whether the game's MCP server is reachable.* The round fails at `ToolSearch` for every
+tester when it isn't, and there are two ways. A `.mcp.json` added mid-session is not
+picked up until the session restarts. And `bin/gnusto-mcp` used to run `swift build`
+before it `exec`ed, so every registered game attempted a rebuild at once and they
+queued on SwiftPM's `.build` lock — seven servers taking **46 seconds** to answer on a
+fully warm tree, which is past the default startup timeout, and far worse on a cold one.
+Seven servers vanishing at once looks exactly like a broken `.mcp.json` and is nothing
+of the kind.
 
-*Whether the server is the code you just wrote.* `bin/gnusto-mcp` builds and then
-`exec`s, once, when the client connects — so a server is frozen at the commit its
-session started on. Edit the engine mid-session and every tester goes on playing the
-old binary, silently and successfully. **Restart the session after any change under
-`Sources/Gnusto/Playtest/`.**
+The script now skips the build when no source has been touched since its last one, so
+the steady state is **~150ms** for all seven. **The exception is the first connect after
+an edit**: one changed source invalidates every game's stamp at once and they queue for
+the lock exactly as before, 46 seconds again. That is why `MCP_TIMEOUT` is set to
+180000 in `.claude/settings.json` rather than left to whoever dispatches, and why
+preflight builds serially ahead of any client. Run it after editing the engine and no
+server pays that cost at all.
 
-This one fails quietly, which is why it is worth a check rather than a memory. Open a
-throwaway session and call `finish` on it:
+*Whether the server is the code you just wrote.* `bin/gnusto-mcp` builds and `exec`s
+once, when the client connects — so a server is frozen at the commit its session
+started on. Edit the engine mid-session and every tester goes on playing the old
+binary, silently and successfully. **Restart the session after any change under
+`Sources/Gnusto/Playtest/`.** No retry fixes this one; it is the one condition where
+restarting really is the answer.
 
-```
-open  label: staleness-check, role: explorer
-finish  session: <id>, summary: checking the binary
-```
+Preflight proves the binary is current by opening a session, finishing it, and reading
+the result: a current server returns `roomsVisited` — one `{id, name}` row per room —
+plus `roomsWorked`, `unknownWords` and `firedTimers`, and leaves a `closing.json` in
+the probe directory. A stale one returns none of them and writes no file, and a round
+dispatched against it collates nothing, reports every session as never having finished,
+and looks exactly like a round where the testers all crashed. It checks the other half
+in the same breath, because the round's turn count depends on it: a `replay` that
+answers `[playtest] replay lines=1 …` and leaves a probe under
+`.context/playtest/.replays/`. A server predating that writes nothing, and the
+collator's replay glob comes back empty — which reads as a round whose verifiers never
+checked anything rather than as a stale binary. It deletes its own scratch afterwards.
 
-A current server returns `roomsVisited` — one `{id, name}` row per room — plus
-`roomsWorked`, `unknownWords` and `firedTimers` in the result
-and leaves a `closing.json` in the probe directory. A stale one returns none of them and writes no file
-— and a round dispatched against it collates nothing, reports every session as never
-having finished, and looks exactly like a round where the testers all crashed.
+**The round checks once more, from the inside.** Preflight drives the server over a
+pipe of its own, which is what makes it work when registration has failed — and what
+stops it proving that *this session's* MCP client ever connected. So `playtest.js`
+opens with a `Preflight` phase: one agent, `ToolSearch`, open, finish. If the tools do
+not resolve it logs the remedy and returns without dispatching, rather than fanning
+eight testers into the same wall and collecting eight reports saying they could not
+find the tools.
 
-Check the other half in the same breath, because the round's turn count now depends
-on it:
-
-```
-replay  commands: ["look"]
-```
-
-A current server answers `[playtest] replay lines=1 finished=false transcript=…` and
-leaves that file under `.context/playtest/.replays/probe-001/`. A server predating
-that writes nothing, and the collator's replay glob comes back empty — which reads as
-a round whose verifiers never checked anything rather than as a stale binary.
-
-Delete the scratch directory afterwards, `.replays` included.
+**An empty `ToolSearch` is always the server and never the prompt.** Every tester is
+told so in as many words, and told to stop rather than improvise — a blind charter has
+no CLI fallback by design, and handing it one to route around an operator's mistake
+would breach the firewall to fix the wrong problem.
 
 **A reproducer that starts with `restore` needs a save door, and both harnesses have
 one.** The MCP `replay` tool takes `savesFrom: "<label>"`; `bin/playtest-replay` takes

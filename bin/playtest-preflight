@@ -1,0 +1,576 @@
+#!/usr/bin/env node
+//
+// Make a play-test round dispatchable, and say so — or exit non-zero and say why.
+//
+//   bin/playtest-preflight <Game>              one game
+//   bin/playtest-preflight --all               every game .mcp.json registers
+//   bin/playtest-preflight <Game> --headless   dispatch the round through `claude -p`
+//
+// This is the front door. `.claude/skills/playtest/SKILL.md` is the operator's
+// manual and `.claude/workflows/playtest.js` is the round itself; this is the one
+// command that has to run before either means anything.
+//
+// **Why it exists.** A round fails at `ToolSearch` for every tester when the game's
+// MCP server did not connect, and the two ways that happens were both prose
+// warnings nobody read at dispatch time. Rounds died before a tester typed a
+// command, and the reports said "I don't know how to use MCP" — which is what an
+// agent says when `ToolSearch` returns nothing and its prompt has no branch for it.
+//
+// **What it can check that nothing else can.** It speaks JSON-RPC at
+// `bin/gnusto-mcp` over a pipe, so it never asks the session's MCP client anything.
+// That is the whole point: when registration has already failed, the client is
+// exactly the wrong thing to ask. `node .claude/workflows/playtest.dryrun.mjs` is
+// the other half of the pre-dispatch check and covers the orchestration; between
+// them, SKILL.md's "two things it cannot tell you" are both told.
+//
+// It also automates the staleness ritual SKILL.md used to ask an operator to
+// perform by hand — open a session, finish it, read four field names off the
+// result — because a check performed from memory is a check that gets skipped.
+
+'use strict'
+
+const { spawn, spawnSync } = require('node:child_process')
+const fs = require('node:fs')
+const path = require('node:path')
+
+const ROOT = path.resolve(__dirname, '..')
+process.chdir(ROOT)
+
+const SCRATCH = '.context/playtest'
+const REPLAY_TREE = path.join(SCRATCH, '.replays')
+const ARGS_OUT = '.context/playtest-round-args.json'
+
+const GREEN = '\x1b[32m'
+const RED = '\x1b[31m'
+const DIM = '\x1b[2m'
+const OFF = '\x1b[0m'
+
+// Every tool the session server declares. A server listing fewer is older than the
+// harness about to drive it, and the round would fail at whichever call reached the
+// gap first rather than here.
+const EXPECTED_TOOLS = [
+  'survey', 'vocabulary', 'open', 'move', 'recall', 'coverage',
+  'note', 'checkpoint', 'restore', 'rewind', 'finish', 'export', 'replay',
+]
+
+// What a current `finish` folds into closing.json. Each is a number some later
+// phase reports, so a server predating any of them makes the round's coverage
+// arithmetic silently wrong rather than absent — the worse failure, and the reason
+// this is checked rather than assumed.
+const CLOSING_FIELDS = ['roomsVisited', 'roomsWorked', 'unknownWords', 'firedTimers']
+
+const sh = (cmd, args, opts = {}) =>
+  spawnSync(cmd, args, { encoding: 'utf8', cwd: ROOT, ...opts })
+
+const exists = fs.existsSync
+
+const readJSON = (p, fallback = null) => {
+  try { return JSON.parse(fs.readFileSync(p, 'utf8')) } catch { return fallback }
+}
+
+const rmrf = (p) => fs.rmSync(p, { recursive: true, force: true })
+
+// A name as somebody typed it, reduced to what a product name could be. This is
+// what lets `play-test Zork IV` find the `ZorkIV` product: the words are a phrase,
+// the product is an identifier, and the only honest mapping between them drops
+// everything that cannot appear in both.
+const fold = (s) => String(s).toLowerCase().replace(/[^a-z0-9]/g, '')
+
+// ---------------------------------------------------------------------------
+// One conversation with one server
+// ---------------------------------------------------------------------------
+
+// The calls have to share a process: `finish` names the session `open` returned,
+// and a session lives in the server that created it. So this is a live connection
+// with an awaitable `call`, not a batch of frames fired at a pipe — the first
+// draft of this script batched them, and asked a second server to finish a session
+// it had never opened.
+class Server {
+  constructor(game) {
+    this.proc = spawn('bin/gnusto-mcp', [game], { cwd: ROOT, stdio: ['pipe', 'pipe', 'pipe'] })
+    this.pending = new Map()
+    this.stderr = ''
+    this.buf = ''
+    this.nextId = 1
+    this.dead = null
+
+    this.proc.stderr.on('data', (d) => { this.stderr += d })
+    this.proc.on('error', (e) => this.die(e.message))
+    this.proc.on('exit', (code) => this.die(`server exited (${code})`))
+    this.proc.stdout.on('data', (d) => {
+      this.buf += d
+      let i
+      while ((i = this.buf.indexOf('\n')) >= 0) {
+        const line = this.buf.slice(0, i)
+        this.buf = this.buf.slice(i + 1)
+        if (!line.trim()) continue
+        let msg
+        try { msg = JSON.parse(line) } catch { continue }
+        const waiter = this.pending.get(msg.id)
+        if (waiter) { this.pending.delete(msg.id); waiter.resolve(msg) }
+      }
+    })
+  }
+
+  die(reason) {
+    if (this.dead) return
+    this.dead = reason
+    for (const w of this.pending.values()) w.resolve({ error: { message: reason } })
+    this.pending.clear()
+  }
+
+  send(method, params, timeoutMs = 240000) {
+    if (this.dead) return Promise.resolve({ error: { message: this.dead } })
+    const id = this.nextId++
+    return new Promise((resolve) => {
+      const timer = setTimeout(
+        () => { this.pending.delete(id); resolve({ error: { message: `timed out after ${timeoutMs / 1000}s` } }) },
+        timeoutMs
+      )
+      this.pending.set(id, { resolve: (m) => { clearTimeout(timer); resolve(m) } })
+      this.proc.stdin.write(JSON.stringify({ jsonrpc: '2.0', id, method, params }) + '\n')
+    })
+  }
+
+  handshake() {
+    return this.send('initialize', {
+      protocolVersion: '2024-11-05',
+      capabilities: {},
+      clientInfo: { name: 'playtest-preflight', version: '1' },
+    })
+  }
+
+  callTool(name, args) { return this.send('tools/call', { name, arguments: args }) }
+
+  close() { try { this.proc.kill() } catch { /* already gone */ } }
+}
+
+// Where every one of these tools actually answers.
+const textOf = (msg) => (msg?.result?.content || []).map((c) => c.text || '').join('\n')
+
+// Every play-test tool answers with a JSON object encoded in that text. Parsing it
+// is how `open`'s `session` is read — the first draft scraped the text with a
+// regex and matched the label instead, so `finish` named a session that did not
+// exist and the closing record this script exists to check was never written.
+const payloadOf = (msg) => { try { return JSON.parse(textOf(msg)) } catch { return null } }
+
+// ---------------------------------------------------------------------------
+// The checks
+// ---------------------------------------------------------------------------
+
+async function checkGame(game, mcpKey) {
+  const rows = []
+  const add = (name, ok, detail, remedy) => rows.push({ game, name, ok, detail, remedy })
+
+  // 1. Build once, serially, holding the package lock alone. This is the step that
+  //    keeps `bin/gnusto-mcp` from having to build at connect — which is what used
+  //    to put seven servers in a queue for a lock, to perform seven no-ops.
+  const build = sh('bin/playtest-replay', ['--build', game])
+  if (build.status !== 0) {
+    // The compiler's own line if there is one. swiftpm's last two lines are
+    // usually "error: fatalError" and a path, which says nothing an operator can
+    // act on; the line carrying `error:` is the one worth the width.
+    const out = `${build.stderr || ''}\n${build.stdout || ''}`.split('\n').map((l) => l.trim())
+    const detail = out.find((l) => /error:/.test(l)) || out.filter(Boolean).slice(-1)[0] || ''
+    add('build', false, detail.slice(0, 100), `swift build --product ${game}`)
+    return rows // nothing below could mean anything
+  }
+  add('build', true, path.basename(String(build.stdout).trim()))
+
+  const label = `preflight-${game}`
+  const server = new Server(game)
+  let replayProbe = null
+  try {
+    // 2. The server answers, and declares every tool the round will call.
+    const init = await server.handshake()
+    if (init.error) {
+      // Surface the server's own stderr, which is where the interesting half is.
+      // A game whose bootstrap fails writes its diagnostic there and exits 1, and
+      // the engine's diagnostics name the entity and the conflict — so reporting
+      // only "server exited (1)" throws away the one line that says what to fix.
+      const said = server.stderr.trim().split('\n').filter(Boolean).slice(-1)[0] || ''
+      add('server', false, said ? `${init.error.message}: ${said.slice(0, 80)}` : init.error.message,
+        `bin/gnusto-mcp ${game}  # run it and read its stderr in full`)
+      return rows
+    }
+    const listed = await server.send('tools/list', {})
+    const tools = (listed.result?.tools || []).map((t) => t.name)
+    const missingTools = EXPECTED_TOOLS.filter((t) => !tools.includes(t))
+    add('tools', missingTools.length === 0, `${tools.length} declared`,
+      missingTools.length
+        ? `missing ${missingTools.join(', ')} — the binary predates this harness`
+        : null)
+
+    // 3. The staleness check SKILL.md used to ask for by hand. A server frozen at
+    //    an older commit answers every call successfully and writes none of this,
+    //    and a round dispatched against it collates nothing and reports every
+    //    session as never having finished — indistinguishable from a round where
+    //    the testers all crashed.
+    const opened = await server.callTool('open', { label, seed: 0 })
+    const sessionId = payloadOf(opened)?.session
+    if (!sessionId) {
+      add('open', false, textOf(opened).split('\n')[0].slice(0, 80) || 'no session in the reply', null)
+    } else {
+      add('open', true, sessionId)
+      await server.callTool('finish', { session: sessionId, summary: 'preflight staleness check' })
+    }
+
+    // Read the fields off disk rather than off the reply: the file is what the
+    // collator globs, so the file existing is the thing worth proving.
+    const closingFile = findFile(path.join(SCRATCH, label), 'closing.json')
+    const closing = closingFile ? readJSON(closingFile, {}) : null
+    const missingFields = closing ? CLOSING_FIELDS.filter((f) => !(f in closing)) : CLOSING_FIELDS
+    add('closing.json', !!closing && missingFields.length === 0,
+      closing
+        ? `${CLOSING_FIELDS.length - missingFields.length}/${CLOSING_FIELDS.length} fields`
+        : 'not written',
+      missingFields.length
+        ? 'stale server — restart the session so it re-execs at this commit'
+        : null)
+
+    // 4. The other half, because the round's turn count depends on it: a server
+    //    predating the sessionless replay tool writes nothing under `.replays/`,
+    //    and the collator's glob comes back empty — which reads as verifiers who
+    //    checked nothing rather than as a stale binary.
+    //
+    //    `.replays` is the ONE tree every sessionless replay in the checkout
+    //    writes to (`PlaytestSessions.replayLabel`), so it is shared with every
+    //    round this checkout has ever run. Two consequences, and the first draft
+    //    got both wrong. Asking `exists(REPLAY_TREE)` is satisfied by any probe
+    //    any previous round left, so a stale server passed the check on somebody
+    //    else's evidence. And cleaning up by removing the tree deleted that
+    //    evidence — it ran once against a finished round and destroyed the 29
+    //    probes its report cited, which is the opposite of the invariant CLAUDE.md
+    //    states, that `.context/playtest/` may hold every round the checkout ever
+    //    ran. So: name the probe this call wrote, prove *it* appeared, and remove
+    //    only that one.
+    const before = new Set(probeDirsIn(REPLAY_TREE))
+    const replayed = await server.callTool('replay', { commands: ['look'] })
+    const replayText = textOf(replayed)
+    replayProbe = probeDirsIn(REPLAY_TREE).find((d) => !before.has(d)) || null
+    add('replay', !!replayProbe && /lines=/.test(replayText),
+      replayProbe ? (replayText.split('\n')[0] || '').slice(0, 60) : 'wrote no probe directory',
+      replayProbe ? null : 'server predates the replay tool — restart the session')
+  } finally {
+    server.close()
+    rmrf(path.join(SCRATCH, label))
+    // Only this call's own probe. Never the tree.
+    if (replayProbe) rmrf(replayProbe)
+  }
+
+  // 5. The convention `playtest.js` falls back on when nothing hands it a key,
+  //    checked rather than trusted. Get this wrong and every tester fails
+  //    identically, with no diagnostic anywhere.
+  const enabled = (readJSON('.claude/settings.json', {}) || {}).enabledMcpjsonServers || []
+  add('mcp key', !!mcpKey && enabled.includes(mcpKey),
+    mcpKey ? `${mcpKey}${enabled.includes(mcpKey) ? '' : ' — registered but not enabled'}` : 'no .mcp.json entry',
+    !mcpKey
+      ? `add a .mcp.json server whose args are ["${game}"]`
+      : (enabled.includes(mcpKey) ? null : `add "${mcpKey}" to enabledMcpjsonServers`))
+
+  return rows
+}
+
+function findFile(dir, name) {
+  if (!exists(dir)) return null
+  const hit = fs.readdirSync(dir, { recursive: true }).find((p) => path.basename(p) === name)
+  return hit ? path.join(dir, hit) : null
+}
+
+// The probe directories under a label, as full paths. Used to name the one probe a
+// single `replay` call wrote, by diffing the set across it — `.replays` is shared
+// with every round in the checkout, so "a probe exists" and "this call wrote a
+// probe" are very different questions.
+function probeDirsIn(dir) {
+  if (!exists(dir)) return []
+  return fs.readdirSync(dir, { withFileTypes: true })
+    .filter((e) => e.isDirectory() && e.name.startsWith('probe-'))
+    .map((e) => path.join(dir, e.name))
+}
+
+// ---------------------------------------------------------------------------
+// The round's arguments, derived
+// ---------------------------------------------------------------------------
+
+// `docs/games/` is named for the game, but not by a rule a `toLowerCase()` can
+// reproduce: the doc for `KindlyDeep` is `kindly-deep.md`. Assuming the naming
+// made `bin/playtest-preflight KindlyDeep` derive `docPath: null` and
+// `ledgerKeys: []` in silence, at which point `ground()` takes its "there is NO
+// design doc" branch and the round loses the mechanics contract AND re-finds
+// everything ever refuted. So match the directory rather than predict it, with the
+// same `fold` that already lets `Zork IV` reach the `ZorkIV` product.
+function gameDoc(game, suffix) {
+  const dir = 'docs/games'
+  if (!exists(dir)) return null
+  const want = fold(game) + fold(suffix)
+  const hit = fs.readdirSync(dir)
+    .filter((f) => f.endsWith('.md'))
+    .find((f) => fold(path.basename(f, '.md')) === want)
+  return hit ? path.join(dir, hit) : null
+}
+
+const localDate = () => {
+  const d = new Date()
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
+// Six paragraphs of SKILL.md an operator used to re-derive by hand every round.
+// SKILL.md's own rule is "don't work from a list, here or anywhere" — which is an
+// argument for computing these, not for remembering to.
+function roundArgs(game, mcpKey) {
+  const docPath = gameDoc(game, '')
+  const ledgerPath = gameDoc(game, '-playtest-ledger')
+  const focusPath = gameDoc(game, '-playtest-focus')
+
+  return {
+    game,
+    packagePath: '.',
+    // Derived, not assumed — see the `mcp key` check above for what assuming costs.
+    mcpServer: mcpKey || null,
+    docPath,
+    capabilities: capabilitiesOf(game),
+    seed: seedFor(game),
+    turns: 60,
+    // Workflow scripts cannot call Date.now(), so the round's identity has to
+    // arrive in args. It is also the date the report will be filed under — which
+    // is why it is the LOCAL date: `toISOString()` is UTC, so a round dispatched
+    // after about five in the afternoon in the Americas filed itself, and named
+    // its report file, under tomorrow.
+    roundId: localDate(),
+    focus: focusPath ? focusOf(focusPath) : '',
+    ledgerKeys: ledgerPath ? ledgerKeysFrom(ledgerPath) : [],
+    // Issues that OWN a defect class the round should forward rather than judge.
+    // Ownership is a judgement and not a query, so this stays empty — the safe
+    // default SKILL.md names — and the operator adds a number when one applies.
+    // The harness once shipped three baked in; all were fixed within days, and
+    // until the list was corrected the briefs were telling testers to forward the
+    // exact symptoms that had just become regressions.
+    routedIssues: [],
+  }
+}
+
+// Off the manifest, never a table here: a game with no clock must get no
+// clock-watcher, and the manifest is the only thing that knows which it is.
+function capabilitiesOf(game) {
+  const byProduct = {
+    GnustoClock: 'clock',
+    GnustoConversation: 'talk',
+    GnustoScoring: 'score',
+    GnustoSpellcasting: 'magic',
+  }
+  const targets = describePackage()?.targets || []
+  const seen = new Set()
+  const walk = (name) => {
+    if (!name || seen.has(name)) return
+    seen.add(name)
+    const t = targets.find((x) => x.name === name)
+    if (!t) return
+    for (const d of t.product_dependencies || []) seen.add(d)
+    for (const d of t.target_dependencies || []) walk(d)
+  }
+  walk(game)
+  const caps = []
+  for (const name of seen) {
+    const cap = byProduct[name]
+    if (cap && !caps.includes(cap)) caps.push(cap)
+  }
+  return caps
+}
+
+// A finding without a seed is not reproducible, and a game with a pinned
+// walkthrough has already chosen one. Read it rather than defaulting past it.
+function seedFor(game) {
+  const found = sh('grep', ['-rl', '--include=*.swift', `${game}Walkthrough`, 'Tests'])
+    .stdout.trim().split('\n').filter(Boolean)
+  // The walkthrough file first when there is one: several suites pin the same
+  // seed, and the walkthrough is the one whose route the round is measured against.
+  found.sort((a, b) => (b.includes('Walkthrough') ? 1 : 0) - (a.includes('Walkthrough') ? 1 : 0))
+  for (const file of found) {
+    // Any annotation, not just `Int`. Dungeon's is `static let seed: UInt64 = 52`,
+    // and a regex that named the type read it as 0 — which is a different round.
+    const m = fs.readFileSync(file, 'utf8').match(/\bstatic\s+let\s+seed\b[^=\n]*=\s*([0-9]+)/)
+    if (m) return Number(m[1])
+  }
+  return 0
+}
+
+// The split, and only the split. Committed rather than re-authored each round: a
+// game whose map outruns a round's budget and gets no split produces a report
+// describing wherever the charters happened to wash up.
+//
+// Everything above the first `---` rule is the file's explanation of itself, for a
+// person editing it, and must not travel: the focus string is pasted **verbatim**
+// into a blind explorer's prompt, so anything in it that is not the split is a
+// paragraph the firewall did not intend to hand over. The header of the Dungeon
+// file alone would have added a thousand characters of harness talk to every
+// blind seat.
+function focusOf(p) {
+  const text = fs.readFileSync(p, 'utf8')
+  const rule = text.match(/^---[ \t]*$/m)
+  return (rule ? text.slice(rule.index + rule[0].length) : text).trim()
+}
+
+// `ledgerKeys` means **rejections**, and only rejections: `playtest.js` folds them
+// into `seen`, and `seen.has(key)` drops a finding unreported. So the verdict column
+// decides, and every other row in the file has to stay out.
+//
+// The first draft scraped every backticked `a::b` string in the whole markdown, and
+// the cost was not cosmetic. On Dungeon's ledger that is 220 keys against 44 real
+// refutations: it swallowed 61 `fixed` rows — which the ledger's own preamble says
+// must come back, at raised severity, because a `fixed` key that reappears is a
+// **regression** — and 48 still-open `confirmed` rows, telling testers that live
+// defects were already rejected. It also swept up the prose placeholders, so
+// `"a::b"` and `"<ownerFile>::<normalized offending text>"` led the list, and
+// `playtest.js`'s 60-key prompt cap was spent on them.
+//
+// The columns are right there. The ledger's rows are `| key | class | verdict | note |`
+// — a human reading record that is already machine-readable — so this reads the
+// verdict rather than guessing from the shape of the key.
+function ledgerKeysFrom(p) {
+  return fs.readFileSync(p, 'utf8')
+    .split('\n')
+    .map((line) => {
+      if (!line.trimStart().startsWith('|')) return null
+      const cells = line.split('|').slice(1, -1).map((c) => c.trim())
+      if (cells.length < 3) return null
+      // Column 2 either way. A confirmed table is `| key | class | verdict | note |`
+      // and a refuted one is `| key | charter | kind |`, where a kind such as
+      // `licensed-by-doc` is the refutation's reason — the row is a refutation by
+      // virtue of the table it is in rather than by a word in it.
+      const verdict = cells[2]
+      const key = (cells[0].match(/^`([^`]+::[^`]+)`$/) || [])[1]
+      if (!key) return null
+      const refutedTable = cells.length === 3 && !/^(confirmed|fixed|needs-human)$/.test(verdict)
+      return verdict === 'refuted' || refutedTable ? key : null
+    })
+    .filter(Boolean)
+}
+
+function readJSONFrom(cmd, args) {
+  const r = sh(cmd, args)
+  if (r.status !== 0) return null
+  try { return JSON.parse(r.stdout) } catch { return null }
+}
+
+// One manifest read per invocation. `capabilitiesOf` and `executableProducts` both
+// want it, and each swiftpm launch takes the package lock for about a second — the
+// very cost `bin/gnusto-mcp`'s mtime gate exists to stop paying.
+let describedPackage
+const describePackage = () =>
+  (describedPackage ??= readJSONFrom('swift', ['package', 'describe', '--type', 'json']))
+
+// ---------------------------------------------------------------------------
+// Main
+// ---------------------------------------------------------------------------
+
+function executableProducts() {
+  return (describePackage()?.products || [])
+    .filter((p) => p.type === 'executable' || (p.type && 'executable' in p.type))
+    .map((p) => p.name)
+}
+
+function mcpKeyFor(game) {
+  const cfg = readJSON('.mcp.json', { mcpServers: {} })
+  for (const [key, server] of Object.entries(cfg.mcpServers || {})) {
+    if ((server.args || []).includes(game)) return key
+  }
+  return null
+}
+
+async function main() {
+  const argv = process.argv.slice(2)
+  const headless = argv.includes('--headless')
+  const all = argv.includes('--all')
+  const words = argv.filter((a) => !a.startsWith('--')).join(' ')
+
+  let games
+  if (all) {
+    const cfg = readJSON('.mcp.json', { mcpServers: {} })
+    games = Object.values(cfg.mcpServers || {}).flatMap((s) => s.args || [])
+  } else {
+    if (!words) {
+      console.error('usage: bin/playtest-preflight <Game> | --all   [--headless]')
+      process.exit(2)
+    }
+    const products = executableProducts()
+    // Fold both sides so the words somebody typed can find the identifier they
+    // meant: `Zork IV` and `zork-iv` both reach `ZorkIV`.
+    const product = products.find((p) => fold(p) === fold(words))
+    if (!product) {
+      console.error(`playtest-preflight: no executable product matches "${words}"`)
+      console.error(`  this package builds: ${products.join(', ') || '(none)'}`)
+      process.exit(2)
+    }
+    games = [product]
+  }
+
+  const keys = new Map(games.map((g) => [g, mcpKeyFor(g)]))
+  const rows = []
+  for (const game of games) rows.push(...await checkGame(game, keys.get(game)))
+
+  const width = Math.max(...rows.map((r) => `${r.game} ${r.name}`.length)) + 2
+  console.log('')
+  for (const r of rows) {
+    const mark = r.ok ? `${GREEN}ok  ${OFF}` : `${RED}FAIL${OFF}`
+    console.log(`  ${mark} ${`${r.game} ${r.name}`.padEnd(width)} ${DIM}${r.detail || ''}${OFF}`)
+    if (!r.ok && r.remedy) console.log(`       ${' '.repeat(width)} ${RED}->${OFF} ${r.remedy}`)
+  }
+
+  // What is sitting in the scratch tree. With a round-scoped label this is no
+  // longer something an operator has to clear, but a surprising number is still
+  // worth seeing before a round rather than inside its arithmetic afterwards.
+  const labels = exists(SCRATCH) ? fs.readdirSync(SCRATCH).filter((d) => !d.startsWith('.')) : []
+  const shown = labels.slice(0, 4).join(', ') + (labels.length > 4 ? ', ...' : '')
+  console.log(`\n  ${DIM}${SCRATCH}: ${labels.length} label director${labels.length === 1 ? 'y' : 'ies'}`
+    + `${labels.length ? ` (${shown})` : ''}${OFF}`)
+
+  const failed = rows.filter((r) => !r.ok)
+  if (failed.length) {
+    console.log(`\n  ${RED}${failed.length} check${failed.length === 1 ? '' : 's'} failed`
+      + `${OFF} — the round is not dispatchable.\n`)
+    process.exit(1)
+  }
+
+  if (all) { console.log(''); return }
+
+  const game = games[0]
+  const args = roundArgs(game, keys.get(game))
+  fs.writeFileSync(ARGS_OUT, JSON.stringify(args, null, 2) + '\n')
+  console.log(`\n  Round args -> ${ARGS_OUT}`)
+  console.log(`    ${DIM}seed ${args.seed} | roundId ${args.roundId}`
+    + ` | capabilities [${args.capabilities.join(', ')}]${OFF}`)
+  console.log(`    ${DIM}docPath ${args.docPath || 'null'} | ledgerKeys ${args.ledgerKeys.length}`
+    + ` | focus ${args.focus ? args.focus.length + ' chars' : 'none'}${OFF}`)
+
+  if (headless) {
+    // The fallback two of the last three rounds needed by hand: the `Workflow`
+    // tool is not on every agent's tool surface, and a headless session in this
+    // checkout has it. Two environment variables have to be set for it, and
+    // `.claude/settings.json` is where they live — `MCP_TIMEOUT` past the 46
+    // seconds a first-connect-after-an-edit costs, and
+    // `CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS: 0` because without it the session
+    // terminates its own background tasks after 600 seconds and the round dies
+    // silently at whatever phase it had reached.
+    //
+    // They are spread from the settings file rather than repeated here. Repeating
+    // them made two owners of one pair of values, kept in sync by hand, with the
+    // dry run asserting only that the settings copy exists — so raising the
+    // timeout there would have left this path on the old number.
+    console.log('\n  Dispatching through `claude -p` ...\n')
+    const prompt = 'Run the play-test round, and write the report it returns:'
+      + ` Workflow({scriptPath: ".claude/workflows/playtest.js", args: ${JSON.stringify(args)}})`
+    const r = spawnSync('claude', ['-p', prompt], {
+      cwd: ROOT,
+      stdio: 'inherit',
+      env: { ...process.env, ...(readJSON('.claude/settings.json', {}) || {}).env },
+    })
+    process.exit(r.status === null ? 1 : r.status)
+  }
+
+  console.log('\n  Dispatch with:\n')
+  console.log('    Workflow({ scriptPath: ".claude/workflows/playtest.js",')
+  console.log(`               args: <the JSON at ${ARGS_OUT}> })\n`)
+}
+
+main().catch((e) => { console.error(e); process.exit(2) })
