@@ -413,6 +413,14 @@ later, and two seats filed without leaving one.
 
 ## What the next round should take
 
+> **Disposition, 2026-08-26.** Items 1, 5, 6 and 7 were harness defects and are fixed —
+> `replay` and `bin/playtest-replay` both take a save door now (`savesFrom` / `--saves-from`),
+> a region list longer than the copy cap is split across the seats instead of truncated, the
+> tester prompt states the budget against all four of its turn trees, and the fork queue no
+> longer calls a free refusal a divergence. Items 2, 3 and 4 are round-preparation work that
+> no code change can do, and are **#333**.
+
+
 1. **Fix `replay` so a reproducer can restore.** The sessionless `replay` tool boots into
    `.replays/` and cannot see the session's saves, which cost this round four findings and
    produced four false `not-reproducible` verdicts. Either give `replay` the calling session's

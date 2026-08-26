@@ -284,9 +284,10 @@ struct CoverageItem: Sendable {
 
     /// True for a matrix cell asking for something that cannot be taken back.
     ///
-    /// The set is small and named in ``CoverageLedger/irreversibleIntents``:
-    /// opening, burning, eating, drinking. It is what a
-    /// ``DivergencePolicy`` acts on.
+    /// Each repertoire row declares its own answer — see
+    /// ``CoverageLedger/Commitment`` — and it is what a ``DivergencePolicy``
+    /// acts on. **A precaution, not a verdict**: the flag is raised before the
+    /// command is typed, so read a count of these as an upper bound.
     ///
     /// **A one-way passage is not marked**, though the plan for this names one
     /// alongside the objects. It cannot be: the ledger reads printed text, and
@@ -484,6 +485,26 @@ struct CoverageLedger: Sendable {
     }
 
     private var objects: [EntityID: ObjectRecord] = [:]
+
+    /// Whether the tester is holding anything the game has called a source of
+    /// fire — the one piece of *inventory* state a fork test needs.
+    ///
+    /// **Cached, and recomputed only where it can change.** It was a scan of
+    /// every bound object, run inside ``refreshMatrix(for:line:)``, which is the
+    /// hot path that method's own comment is written to defend: up to three
+    /// calls a turn, each walking the object table and prefix-matching eight
+    /// stems against every held thing's whole vocabulary. Measured against the
+    /// 0.87 ms/turn Dungeon baseline, that came to a tenth of the turn at a
+    /// modest inventory and a third at a full one — paid on every call, and on
+    /// the many calls where no `burn` cell is reached at all.
+    ///
+    /// It is also the fix for a shallower bug. `refreshMatrix` runs for the
+    /// turn's own objects, so a flag read there is only re-read when the tester
+    /// next *names* a thing: pick up a torch and the twenty things already
+    /// examined would keep their old answer. The flag is a property of the
+    /// inventory, so it is maintained where the inventory moves, and the turn it
+    /// turns true is the turn every open `burn` cell is promoted.
+    private var carryingFlame = false
 
     /// The last output of each do-nothing probe, by `<room>|look` /
     /// `<room>|wait`, and the move counter it printed at.
@@ -694,6 +715,9 @@ struct CoverageLedger: Sendable {
 
         if audit.intent == .examine, let subject = audit.directObject {
             objects[subject]?.vocabulary.formUnion(Self.words(in: output))
+            // The one other way the answer moves: examining a thing already in
+            // hand is how the game gets to say *lit* about it.
+            if objects[subject]?.held == true { refreshCarriedFlame() }
             refreshMatrix(for: subject, line: line)
         }
     }
@@ -873,9 +897,11 @@ struct CoverageLedger: Sendable {
             }
             if intent == .take && turnCost {
                 objects[subject]?.held = true
+                refreshCarriedFlame()
             }
             if Self.releasingIntents.contains(intent) && turnCost {
                 objects[subject]?.held = false
+                refreshCarriedFlame()
             }
             if intent != .examine, Self.changingIntents.contains(intent), turnCost {
                 enqueueRestate(subject, room: departed, line: line, verb: intent.raw)
@@ -1128,20 +1154,10 @@ struct CoverageLedger: Sendable {
                     line: line,
                     depth: record.depth,
                     bornOfExamine: false,
-                    fork: Self.irreversibleIntents.contains(probe.intent)))
+                    fork: probe.commits(
+                        to: vocabulary, carryingFlame: carryingFlame)))
         }
     }
-
-    /// The intents a ``DivergencePolicy`` has an opinion about: the ones whose
-    /// effect a later turn cannot put back.
-    ///
-    /// Deliberately short. `take` is not here — dropping it restores the world,
-    /// near enough, and a policy that withheld `take` would withhold most of the
-    /// game. `close` is not here either, which is what makes `open` worth
-    /// listing: the pair is only reversible in the *world*, and the prose
-    /// channel it exposes is not. Opening the egg and closing it again does not
-    /// un-print the sentence that was wrong while it was open.
-    private static let irreversibleIntents: Set<Intent> = [.open, .burn, .eat, .drink]
 
     /// Every fork this session met, and what became of it.
     ///
@@ -1195,6 +1211,8 @@ struct CoverageLedger: Sendable {
         /// Words that have to appear in what the game said about the object, or
         /// `nil` for a cell every object gets.
         let triggers: [String]?
+        /// When taking this cell is a move the session cannot take back.
+        let commitment: Commitment
 
         /// Whether this cell fits what the game has said about a thing.
         ///
@@ -1208,17 +1226,96 @@ struct CoverageLedger: Sendable {
             return CoverageLedger.matches(triggers, in: vocabulary)
         }
 
+        /// Whether this cell, on this thing, right now, is a fork.
+        ///
+        /// - Parameters:
+        ///   - vocabulary: every word the game has used about the thing.
+        ///   - carryingFlame: whether the tester holds a source of fire.
+        /// - Returns: whether to flag the cell.
+        func commits(to vocabulary: Set<String>, carryingFlame: Bool) -> Bool {
+            switch commitment {
+            case .never: return false
+            case .always: return true
+            case .whenCalled(let words): return !vocabulary.isDisjoint(with: words)
+            case .whileCarryingFlame: return carryingFlame
+            }
+        }
+
         init(
             _ intent: Intent, _ verb: String, takesObject: Bool = true,
-            needsHolding: Bool = false, _ triggers: [String]? = nil
+            needsHolding: Bool = false, _ triggers: [String]? = nil,
+            commits commitment: Commitment = .never
         ) {
             self.intent = intent
             self.verb = verb
             self.takesObject = takesObject
             self.needsHolding = needsHolding
             self.triggers = triggers
+            self.commitment = commitment
         }
     }
+
+    /// When a repertoire cell asks for something a later turn cannot put back.
+    ///
+    /// **Declared on the row, not in a second list of intents.** The fork rule
+    /// used to be a `Set<Intent>` ninety lines from the repertoire, and it was
+    /// wrong in two directions at once: a fifth member added to the set became
+    /// unconditional in silence, and the four already in it were unconditional
+    /// when three of them are not. The 2026-08-25 Dungeon round reported *"37
+    /// irreversible forks declined"*; its critic closed five in eighteen turns —
+    /// `burn nest`, `burn tree`, `burn trees`, `open trees`, `open forest` — and
+    /// not one was irreversible.
+    ///
+    /// **It is a precaution, not a verdict.** The cell is flagged *before* the
+    /// command is typed, and it can only ever be flagged then: under
+    /// ``DivergencePolicy/abstain`` an item is recorded and closed at raise time
+    /// with nothing typed and nothing printed, so there is no output to
+    /// reclassify from afterwards. `turn=cost` is no help either — the engine
+    /// advances the clock on refused turns by design. So the test uses what the
+    /// ledger already holds, which is what the tester is carrying and what the
+    /// game has said, and never anything about the game's definition.
+    private enum Commitment {
+        /// Reversible enough, which is almost everything. `take` is here:
+        /// dropping it restores the world, near enough, and a policy that
+        /// withheld `take` would withhold most of the game.
+        case never
+        /// Always committing. `eat` and `drink`, whose trigger lists are
+        /// specific enough — *bread*, *cake*, *wine* — that the verb carries
+        /// the class on its own. **Holding is the wrong test for these**: the
+        /// one fork the 2026-08-25 round named as genuinely committing was
+        /// `object:cake:eat`, and Dungeon's `blueCake.before(.eat)` kills the
+        /// player whether or not the cake is in their hands.
+        case always
+        /// Committing once the game has used one of these words about the
+        /// thing, matched **whole**. `open`, against ``shut``.
+        ///
+        /// Whole-word where a trigger is a prefix, and the two are not the same
+        /// test: `clos` has to reach *closing* to offer the cell at all, and
+        /// *close-grown* trees are not a container. That is why the Forest was
+        /// queued for `open` — correctly — and called a divergence, wrongly.
+        case whenCalled(Set<String>)
+        /// Committing only while the tester holds something the game has called
+        /// a source of fire. `burn`, which is a stub verb: with empty hands it
+        /// is a printed refusal that changes nothing, and the nest was only
+        /// offered the cell because its description says *branch*.
+        case whileCarryingFlame
+    }
+
+    /// Words that mean a thing is shut, for ``Commitment/whenCalled(_:)``.
+    ///
+    /// A `Set` rather than an array, which is the type saying which kind of list
+    /// it is: every prefix-matched trigger table below is an array read through
+    /// ``matches(_:in:)``, and passing this one to that would put *close-grown*
+    /// back. It overlaps ``openable`` on purpose — same idea, two match
+    /// strengths, and only one of them is a claim about state.
+    private static let shut: Set<String> = ["closed", "shut", "locked", "sealed", "latched"]
+
+    /// What a source of fire is called, prefix-matched like the trigger tables
+    /// so that *lit*, *lighted* and *torches* all count. Read only by
+    /// ``refreshCarriedFlame()``.
+    private static let flame = [
+        "torch", "match", "candle", "flame", "fire", "lit", "tinder", "lantern",
+    ]
 
     /// The repertoire, in the order the cells are offered.
     ///
@@ -1234,7 +1331,7 @@ struct CoverageLedger: Sendable {
         Probe(.take, "take"),
         Probe(.touch, "touch"),
         Probe(.lookIn, "look in", concealing),
-        Probe(.open, "open", openable),
+        Probe(.open, "open", openable, commits: .whenCalled(shut)),
         Probe(.close, "close", openable),
         Probe(.read, "read", written),
         Probe(.push, "push", movable),
@@ -1242,10 +1339,10 @@ struct CoverageLedger: Sendable {
         Probe(.turn, "turn", turnable),
         Probe(.climb, "climb", climbable),
         Probe(.board, "enter", enterable),
-        Probe(.burn, "burn", burnable),
-        Probe(.drink, "drink", liquid),
+        Probe(.burn, "burn", burnable, commits: .whileCarryingFlame),
+        Probe(.drink, "drink", liquid, commits: .always),
         Probe(.swim, "swim", takesObject: false, swimmable),
-        Probe(.eat, "eat", edible),
+        Probe(.eat, "eat", edible, commits: .always),
         Probe(.smell, "smell", fragrant),
         Probe(.listen, "listen to", sonorous),
         Probe(.drop, "drop", needsHolding: true, nil),
@@ -1323,6 +1420,53 @@ struct CoverageLedger: Sendable {
 
     // MARK: - Bookkeeping
 
+    /// Recomputes ``carryingFlame`` and, when it has just turned true,
+    /// promotes every `burn` cell already on the queue.
+    ///
+    /// The sweep is the half that matters. A cell is raised the moment the game
+    /// describes the thing, which is usually many turns before there is any way
+    /// to burn it, so without this an `abstain` tester who picks up a torch is
+    /// still offered `burn rope` on twenty things it examined first — and takes
+    /// it, because it was told to.
+    ///
+    /// **Promotion only, in both directions.** It never turns a fork back into
+    /// ordinary work: a tester who puts the torch down keeps the precaution,
+    /// which is the safe way to be wrong and the one that keeps `abstained`
+    /// meaning what ``forks()`` reports it to mean.
+    private mutating func refreshCarriedFlame() {
+        let carrying = objects.values.contains {
+            $0.held && Self.matches(Self.flame, in: $0.vocabulary)
+        }
+        guard carrying, !carryingFlame else {
+            carryingFlame = carrying || carryingFlame
+            return
+        }
+        carryingFlame = true
+        let suffix = ":\(Intent.burn.raw)"
+        for index in items.indices
+        where !items[index].fork && !items[index].discharged
+            && items[index].kind == .object && items[index].id.hasSuffix(suffix)
+        {
+            markFork(at: index)
+        }
+    }
+
+    /// Flags an item a fork, and applies ``DivergencePolicy/abstain`` to it.
+    ///
+    /// One function because the decision is one decision, reached from two
+    /// directions: a cell raised as a fork, and a cell promoted into one when
+    /// the tester picked up a match. Under `abstain` both are recorded and
+    /// closed in the same breath — *recorded* rather than dropped, because the
+    /// round report has to be able to say that this tester met the egg and was
+    /// under orders to leave it. A fork nobody was offered and a fork nobody
+    /// took are different gaps, and only the ledger knows which happened.
+    private mutating func markFork(at position: Int) {
+        items[position].fork = true
+        guard divergence == .abstain else { return }
+        items[position].abstained = true
+        items[position].discharged = true
+    }
+
     /// Adds an item, or leaves an existing one alone.
     ///
     /// A fork raised under ``DivergencePolicy/abstain`` is recorded and closed
@@ -1331,14 +1475,24 @@ struct CoverageLedger: Sendable {
     /// under orders to leave it — a fork nobody was even offered is a different
     /// gap from a fork nobody took, and only the ledger knows which happened.
     private mutating func raise(_ item: CoverageItem) {
-        guard positions[item.id] == nil, items.count < Self.itemCap else { return }
-        var item = item
-        if item.fork && divergence == .abstain {
-            item.abstained = true
-            item.discharged = true
+        if let position = positions[item.id] {
+            // `refreshMatrix` re-offers every untried cell on every turn, and a
+            // cell's fork answer can move under it — the `open` half is fixed
+            // once the game has said *closed*, but the `burn` half turns on
+            // what the tester is carrying. Left a pure no-op this branch would
+            // freeze the first answer, so it reconciles the one field that is
+            // allowed to change and freezes the rest: `line`, `room`, `why` and
+            // `depth` all still describe where the cell was *found*, which is
+            // what they are for.
+            if item.fork, !items[position].fork, !items[position].discharged {
+                markFork(at: position)
+            }
+            return
         }
+        guard items.count < Self.itemCap else { return }
         positions[item.id] = items.count
         items.append(item)
+        if item.fork { markFork(at: items.count - 1) }
     }
 
     /// Marks an item followed up, if this was the verb that does it.

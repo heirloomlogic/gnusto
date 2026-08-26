@@ -38,6 +38,16 @@
 #                       a deep state without replaying its prologue.
 #   --save SLOT         Epilogue: save to SLOT before quitting, so a later probe
 #                       can --restore it.
+#   --saves-from LABEL  Copy another label's *.gnusto slots into this run's saves
+#                       before it starts, so --restore can reach a save this run
+#                       never wrote. One way: the copy lands in THIS label's saves
+#                       directory, so a --save here cannot reach back into LABEL.
+#                       This is what a verifier needs to replay a reproducer that
+#                       begins `restore`; without it the game answers "Restore
+#                       failed." and the verdict is about the harness rather than
+#                       about the finding. The transcript is then reproducible only
+#                       while LABEL still holds those slots, so the probe keeps its
+#                       own copy in saves-in/ and summary.txt records the label.
 #   --max-turns N       Refuse a command list longer than N engine commands
 #                       (default 250). A runaway probe is a token fire.
 #   --timeout SECS      Wall-clock kill (default 60).
@@ -105,7 +115,7 @@ plain_name() { [[ "$1" =~ ^[A-Za-z0-9_-][A-Za-z0-9._-]*$ ]]; }
 
 game=""; commands=""; seed=0; tail_lines=0; restore_slot=""; save_slot=""
 max_turns=250; timeout_secs=60; label=""; probe=""; pkg="$PWD"; build_only=0
-keep_blanks=0
+keep_blanks=0; saves_from=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -117,6 +127,7 @@ while [[ $# -gt 0 ]]; do
     --probe)        probe="${2:-}"; shift 2 ;;
     --restore)      restore_slot="${2:-}"; shift 2 ;;
     --save)         save_slot="${2:-}"; shift 2 ;;
+    --saves-from)   saves_from="${2:-}"; shift 2 ;;
     --max-turns)    max_turns="${2:-}"; shift 2 ;;
     --timeout)      timeout_secs="${2:-}"; shift 2 ;;
     --package-path) pkg="${2:-}"; shift 2 ;;
@@ -138,9 +149,14 @@ need_number --timeout "$timeout_secs"
 [[ -d "$pkg" ]] || die "--package-path '$pkg' is not a directory"
 pkg="$(cd "$pkg" && pwd)"
 
+# One spelling of the tree every label, save and probe hangs off. It is also
+# `GNUSTO_PLAYTEST_DIR`'s default in the session server, which is what makes a
+# save written here readable by the MCP `replay` tool's `savesFrom`.
+playtest_root="$pkg/.context/playtest"
+
 # Where --build records the binary it resolved. Keyed by game, kept inside the
 # checkout it belongs to, so a worktree at an old commit gets its own.
-binpath_cache="$pkg/.context/playtest/.bin/$game.path"
+binpath_cache="$playtest_root/.bin/$game.path"
 
 # --- build mode ---------------------------------------------------------------
 # A one-shot, not a lazy build. A dozen concurrent `swift build` calls serialize
@@ -173,8 +189,28 @@ read -r binary < "$binpath_cache"
 
 [[ -n "$label" ]] || label="$game-adhoc"
 plain_name "$label" || die "bad --label '$label'"
-scratch="$pkg/.context/playtest/$label"
+scratch="$playtest_root/$label"
 mkdir -p "$scratch/saves"
+
+# --saves-from stages another label's slots into this run's saves. One way: the
+# destination is this label's own directory, so --restore reads the other tester's
+# save while a --save here still cannot touch it. Only *.gnusto — the extension
+# SaveStore.existingSaveNames filters on, so the game's restore prompt lists
+# exactly what was copied and the .history sidecar stays behind.
+staged_slots=()
+if [[ -n "$saves_from" ]]; then
+  plain_name "$saves_from" || die "bad --saves-from '$saves_from'"
+  [[ "$saves_from" != "$label" ]] \
+    || die "--saves-from '$saves_from' is this run's own label; it already reads those slots"
+  from_dir="$playtest_root/$saves_from/saves"
+  # bash 3.2 ships no nullglob, so an unmatched pattern comes back literal and
+  # has to be tested rather than counted.
+  staged_slots=("$from_dir"/*.gnusto)
+  [[ -e "${staged_slots[0]}" ]] \
+    || die "--saves-from '$saves_from' holds no .gnusto slots in $from_dir"
+  cp "${staged_slots[@]}" "$scratch/saves/"
+  echo "[playtest] staged ${#staged_slots[@]} slot(s) from label '$saves_from'" >&2
+fi
 
 # One directory per run. A label is a tester's namespace, and re-using one — either
 # on purpose, replaying an appended command list, or by two testers picking the same
@@ -202,6 +238,14 @@ else
   done
   [[ -n "$probe_dir" ]] || die "999 probes under $scratch already — start a fresh --label"
   probe="${probe_dir##*/}"
+fi
+
+# The probe keeps its own copy of whatever was staged. Labels get cleaned between
+# rounds and probe directories are the durable evidence, so without this a cited
+# probe becomes permanently unreproducible the moment the other tester's label goes.
+if [[ -n "$saves_from" ]]; then
+  mkdir -p "$probe_dir/saves-in"
+  cp "${staged_slots[@]}" "$probe_dir/saves-in/"
 fi
 
 # The cap counts engine commands only. Neither a comment (the REPL skips it) nor
@@ -291,6 +335,12 @@ summary="$probe_dir/summary.txt"
   echo "[playtest] game=$game seed=$seed label=$label probe=$probe commands=$engine_lines exit=$status"
   echo "[playtest] transcript=$transcript"
   echo "[playtest] commands=$fed"
+  # Only when there was one, so an ordinary probe's summary reads as it always
+  # has — and a staged one says in the receipt that its command list alone will
+  # not reproduce it, which is the one claim this file otherwise always makes.
+  if [[ -n "$saves_from" ]]; then
+    echo "[playtest] saves-from=$saves_from slots=${#staged_slots[@]} copy=$probe_dir/saves-in"
+  fi
   # perl's alarm kills with SIGALRM (14); the shell reports 128+14.
   if [[ "$status" -eq 142 || "$status" -eq 14 ]]; then
     echo "[playtest] TIMEOUT after ${timeout_secs}s — the game never reached quit. Report this."

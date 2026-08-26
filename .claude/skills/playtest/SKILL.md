@@ -106,7 +106,7 @@ whoever remembered the rule.
 | Argument | Default | Notes |
 |---|---|---|
 | `seed` | `0` | Pins the stream via `GNUSTO_SEED`. Record it; a finding without a seed isn't reproducible. |
-| `turns` | `60` | Engine turns per charter. Token cost, not CPU cost, is the real budget. |
+| `turns` | `60` | Engine turns per charter. Token cost, not CPU cost, is the real budget. **It is scored against all four of a tester's turn trees** — its session, the branches a rewind wrote off, its `replay` probes and its `bin/playtest-replay` probes — while the `[status]` move counter shows only the first. Testers spent 8x their budget without feeling it on 2026-08-25; the tester prompt now says so in as many words. |
 | `charters` | all applicable | Comma-separated subset, e.g. `"tourist,clock-watcher"`. |
 | `focus` | none | The coverage split, as **one string** with regions separated by `\|` — an array is silently read as a single region. Each region becomes one `explorer` *and* one `timekeeper`, up to three of each; the explorers are handed different divergence policies. Say how each region is reached, and **name no room**. See below. |
 | `verifyEffort` | inherit | Reasoning effort for the verifiers — the round's largest fan-out, and so its cost. Turn it down to buy a bigger round; read the warning below first. |
@@ -166,6 +166,15 @@ round the timekeeper owned the whole cross-product, read two unlabelled time win
 spent three quarters of its probes on the first one. `explorer` and `timekeeper` both
 instantiate per region now, so the number of regions you declare is the number of copies
 of each you get, capped at three.
+
+**A list longer than the cap is doubled up, not dropped.** Declare four regions against a
+cap of three and the seating splits them 2/1/1 rather than handing the fourth to nobody;
+the dispatch log prints every seat's chunk and names how many took more than one, and the
+dry run fails if any declared region reaches no blind explorer. It used to truncate in
+silence, and a region nobody was seated on reads afterwards exactly like a region nobody
+found anything in — that is 60 of Dungeon's rooms on 2026-08-25. A doubled seat still
+costs that seat's attention, so **declare at most three regions when you can**, and split
+the rest across a second round.
 
 **`verifyEffort` is the cost dial, and it is sharp.** The verifiers are the round's
 largest fan-out — two independent raters over each batch of 25 findings — so they set its
@@ -344,6 +353,24 @@ that writes nothing, and the collator's replay glob comes back empty — which r
 a round whose verifiers never checked anything rather than as a stale binary.
 
 Delete the scratch directory afterwards, `.replays` included.
+
+**A reproducer that starts with `restore` needs a save door, and both harnesses have
+one.** The MCP `replay` tool takes `savesFrom: "<label>"`; `bin/playtest-replay` takes
+`--saves-from LABEL`. Either copies that label's `*.gnusto` slots in before the game
+boots — one way, so a `save` inside the replay lands in a throwaway and can never reach
+the label. Without it the game answers *"Restore failed."*, and **that answer is about
+the harness, not about the finding**: it produced four false `not-reproducible` verdicts
+on 2026-08-25, two of which reproduce in seven commands. A staged replay says so on its
+header line and in `summary.txt`, because it reproduces from its command list only while
+that label still holds the slot — weaker evidence than a clean start, and labelled as
+such. The CLI keeps its own copy of what it staged in the probe's `saves-in/`.
+
+**Ship at least one save the round can actually use.** A slot is chosen by *route state*,
+not by the room name the `[status]` footer reports: `wf-1` on 2026-08-25 was cut three
+hundred commands past `take trunk`, so `object:trunk:open` was offered to nobody while
+the footer said the right room. And check who is alive in it — every slot that round
+shipped was cut past `attack thief with sword`, which silently removed the thief from
+three of four regions.
 
 ## Measuring a change to the harness
 

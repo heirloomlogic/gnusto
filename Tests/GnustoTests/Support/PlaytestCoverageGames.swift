@@ -87,6 +87,18 @@ struct AviaryGame: Game {
         scenery
     }
 
+    /// A flame the tester has to walk for.
+    ///
+    /// In the Shed and not the Yard, deliberately: the Yard's opening queue and
+    /// its interaction matrix are both asserted as exact sets, and a match on
+    /// the ground there would change both while proving nothing. Here it makes
+    /// the one distinction the fork test needs — `burn oak` with empty hands is
+    /// a printed refusal, and `burn oak` with this in your pocket is not.
+    let match = Item {
+        name("match")
+        description("A single kitchen match, unstruck.")
+    }
+
     var rules: Rules {
         pebble.describe { "A smooth pebble, pale as an egg. It is tucked into the nest." }
     }
@@ -102,6 +114,7 @@ struct AviaryGame: Game {
         nest.starts(in: yard)
         pebble.starts(inside: nest)
         bench.starts(in: shed)
+        match.starts(in: shed)
     }
 
     var timers: [TimedEvent] {
@@ -216,5 +229,80 @@ struct ClimbGame: Game {
     var map: WorldMap {
         player.starts(in: ground)
         beech.starts(in: ground)
+    }
+}
+
+/// Two things the repertoire offers `open`, only one of which is shut.
+///
+/// Both descriptions are Dungeon's own, verbatim. The forest was queued for
+/// `open` because *"trees standing close on every side"* holds the token
+/// `close`, and the `clos` stem in the openable trigger list is there to reach
+/// *closed* and *closing* — so the coverage cell is right and calling it a
+/// divergence is not. The egg is the counterpart: the game says *closed*, and
+/// opening it really does print a sentence closing it again cannot un-print.
+struct ThicketGame: Game {
+    let title = "Thicket"
+    let intro = "Two things to open, and only one of them shut."
+
+    let clearing = Location {
+        name("Clearing")
+        description("A clearing with a forest around it and an egg on the ground.")
+    }
+
+    let forest = Item {
+        name("forest")
+        synonyms("trees")
+        description(
+            "This is a forest, with trees standing close on every side and no way through.")
+        scenery
+    }
+
+    let egg = Item {
+        name("egg")
+        description(
+            """
+            The egg is covered with fine gold inlay, hinged and closed with a
+            delicate looking clasp.
+            """)
+        container
+    }
+
+    var map: WorldMap {
+        player.starts(in: clearing)
+        forest.starts(in: clearing)
+        egg.starts(in: clearing)
+    }
+}
+
+/// Something edible the player is not carrying.
+///
+/// Dungeon's blue cake in miniature: it sits on a surface, `eat` on it is a
+/// committing move, and nothing in the engine asks the player to pick it up
+/// first. The fixture exists so the fork narrowing cannot quietly acquire a
+/// `held` test for `eat`.
+struct OrchardGame: Game {
+    let title = "Orchard"
+    let intro = "One apple, and it is not in your hands."
+
+    let orchard = Location {
+        name("Orchard")
+        description("Rows of low trees. A wooden crate stands at the end of the nearest row.")
+    }
+
+    let crate = Item {
+        name("crate")
+        description("A slatted wooden crate, open to the sky.")
+        surface
+    }
+
+    let apple = Item {
+        name("apple")
+        description("A windfall apple, bruised on one side but sound enough to eat.")
+    }
+
+    var map: WorldMap {
+        player.starts(in: orchard)
+        crate.starts(in: orchard)
+        apple.starts(on: crate)
     }
 }

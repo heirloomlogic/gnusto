@@ -114,8 +114,8 @@ actor PlaytestSessions {
                 sharing one share its save slots.
                 """)
         }
-        let labelDirectory = root.appendingPathComponent(label, isDirectory: true)
-        let saveDirectory = labelDirectory.appendingPathComponent("saves", isDirectory: true)
+        let labelDirectory = Self.directory(forLabel: label, under: root)
+        let saveDirectory = Self.savesDirectory(under: labelDirectory)
         do {
             try FileManager.default.createDirectory(
                 at: saveDirectory, withIntermediateDirectories: true)
@@ -219,6 +219,81 @@ actor PlaytestSessions {
                 at: labelDirectory, withIntermediateDirectories: true)) != nil
         else { return nil }
         return try? Self.allocateProbe(in: labelDirectory).1
+    }
+
+    /// The saves directory of an existing label, for a sessionless `replay` to
+    /// read.
+    ///
+    /// **Read-only by the shape of the answer.** This hands back a path and
+    /// joins no session; the caller copies *out* of it into a throwaway of its
+    /// own (``PlaytestReplay/stage(_:into:)``), so a `save` inside the replay
+    /// can never reach the label. Nothing here creates the directory: a label
+    /// that does not exist is the caller's mistake, not a directory to make.
+    ///
+    /// It goes through the registry for the reason ``replayProbe()`` does —
+    /// one type owns the disk layout — and it is the reason a replay can
+    /// finally answer a reproducer whose first command is `restore`.
+    ///
+    /// - Parameter label: the label the tester passed to `open`, or the CLI's
+    ///   `--label`.
+    /// - Throws: ``PlaytestError`` for a malformed name or a label with no
+    ///   directory under the root.
+    /// - Returns: `<root>/<label>/saves/`.
+    func savesDirectory(forLabel label: String) throws -> URL {
+        guard Self.isPlainName(label) else {
+            throw PlaytestError(
+                """
+                Bad savesFrom "\(label)". It names a play label, which is a directory \
+                name under \(root.path), so it must start with a letter, digit, \
+                underscore or hyphen and hold nothing but those and dots. Nothing ran.
+                """)
+        }
+        let labelDirectory = Self.directory(forLabel: label, under: root)
+        var isDirectory: ObjCBool = false
+        guard
+            FileManager.default.fileExists(atPath: labelDirectory.path, isDirectory: &isDirectory),
+            isDirectory.boolValue
+        else {
+            throw PlaytestError(
+                """
+                No label "\(label)" under \(root.path). savesFrom names the label whose \
+                saves you want to read — the name the tester passed to `open`, or \
+                `bin/playtest-replay --label`. \(Self.labelsOnDisk(under: root)) Nothing ran.
+                """)
+        }
+        return Self.savesDirectory(under: labelDirectory)
+    }
+
+    /// A label's own directory under the root.
+    private static func directory(forLabel label: String, under root: URL) -> URL {
+        root.appendingPathComponent(label, isDirectory: true)
+    }
+
+    /// Where a label's saves live: beside its probes, not inside one.
+    ///
+    /// Two readers — `open`, which creates it, and ``savesDirectory(forLabel:)``,
+    /// which hands it to a replay — and one spelling, because this actor's whole
+    /// documented job is that one type owns the disk layout.
+    private static func savesDirectory(under labelDirectory: URL) -> URL {
+        labelDirectory.appendingPathComponent("saves", isDirectory: true)
+    }
+
+    /// A sentence naming the labels that do exist, for the refusal above.
+    ///
+    /// The same courtesy ``session(_:)`` pays a mistyped session id: the caller
+    /// is a language model that got a name slightly wrong, and the list is
+    /// usually enough for it to fix that without another round trip.
+    ///
+    /// - Parameter root: the play-test root.
+    /// - Returns: one sentence, always terminated.
+    private static func labelsOnDisk(under root: URL) -> String {
+        let labels =
+            ((try? FileManager.default.contentsOfDirectory(atPath: root.path)) ?? [])
+            .filter { isPlainName($0) }
+            .sorted()
+        return labels.isEmpty
+            ? "Nothing is labelled there yet."
+            : "Labels there now: \(labels.joined(separator: ", "))."
     }
 
     // MARK: - Eviction

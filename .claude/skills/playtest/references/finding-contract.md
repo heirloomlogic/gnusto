@@ -23,6 +23,14 @@ Plus, for routing:
 | `routedTo` | An issue number from the set your prompt named, or empty. Set it and the finding leaves the pipeline. **Only an issue your prompt listed belongs here** — never one you remember, because a closed issue turns its replies back into regressions, and that has already happened three times. |
 | `alsoSeenIn` | Other frames where the same sentence was also false. One sentence wrong at two hours is **one** defect with two frames, not two defects. |
 
+**A word the game printed and then refused is `unanswerable-noun`, and it is a finding.**
+Not a line in your coverage note, not a row in the round's unknown-word tally — that count
+is a symptom, it names no file and no room, and nothing downstream can act on it. File one
+finding per noun, quoting the line that printed the word, with the command that was
+refused as the reproducer. Six such nouns arrived as tally entries on 2026-08-25 and were
+never filed; the rule is CLAUDE.md's and unqualified: *every noun a room description prints
+must be answerable*.
+
 ## The two rules that keep the loop honest
 
 **One sentence, one finding.** Dedup is keyed on the **declaration that printed the

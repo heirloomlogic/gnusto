@@ -218,11 +218,18 @@ const dryArgs = {
   // Space is expressible without the roster: the game's opening paragraph itself
   // says "the stairs go up", so "the floor above" leaks nothing the player has
   // not already been shown, exactly as an hour leaks nothing the watch does not.
+  //
+  // **Four regions against a copy cap of three, deliberately.** That is the
+  // shape the seating used to drop silently — `regions[i % regions.length]` ran
+  // 0, 1, 2 and handed the fourth to nobody — and the assertions below are the
+  // regression test for it, so the count must stay above the cap.
   focus:
     'the first hour, 5:30 to 6:20, on the floor you start on and outside the house'
     + ' | the last half hour, 6:20 to 6:50, on the floor you start on and outside'
     + ' | the whole evening on the floor above: the opening tells you the stairs go'
-    + ' up, so go up early and stay up, waiting rather than coming down',
+    + ' up, so go up early and stay up, waiting rather than coming down'
+    + ' | the last ten minutes, 6:40 to 6:50: stop moving, pick one place and watch'
+    + ' it to the end rather than covering ground',
   ledgerKeys: dryLedgerKeys,
 }
 const fn = new Function('__stub','__phases','__logs','__args', body)
@@ -364,6 +371,14 @@ check(!/gamePrintedIt/.test(src), 'the tester-reported unknown-word census is ba
 const blind = prompts.filter((p) => /^play:explorer/.test(String(p.label || '')))
 check(blind.length > 0, 'no blind charters ran, so the firewall is untested')
 const regions = String(dryArgs.focus || '').split('|').map((r) => r.trim()).filter(Boolean)
+// The copy cap the per-region charters share, and the chunk it implies.
+const regionCopies = Math.min(Math.max(regions.length, 1), 3)
+const chunkCap = Math.ceil(regions.length / regionCopies)
+const seatedRegions = new Set()
+check(
+  regions.length > regionCopies,
+  'the fixture declares no more regions than seats, so the chunking path is untested'
+)
 for (const p of blind) {
   check(!p.prompt.includes('docs/games/'), `${p.label} was handed the design doc path`)
   check(!p.prompt.includes('playtester-brief'), `${p.label} was handed the judgement kernel`)
@@ -388,8 +403,18 @@ for (const p of blind) {
   // region is the map, and pasting the whole coverage plan is how a blind
   // explorer once got nine of Fulminate's ten rooms three lines above being
   // told it had no room list.
+  //
+  // The bound is the seat's chunk, not one. A list longer than the copy cap is
+  // now split across the seats rather than truncated, so the last seat legally
+  // holds two — what must never happen is a blind prompt holding the *whole*
+  // plan, which is the leak this check exists for.
   const mine = regions.filter((r) => p.prompt.includes(r))
-  check(mine.length <= 1, `${p.label} was handed ${mine.length} regions, not just its own`)
+  for (const r of mine) seatedRegions.add(r)
+  check(
+    mine.length <= chunkCap,
+    `${p.label} was handed ${mine.length} regions — more than its chunk of ${chunkCap}, and `
+      + `for any list of two or more that is the whole coverage plan`
+  )
   // Counting regions is not the same as reading one. A single region naming
   // three rooms passes the count and is still the map, which is how this file's
   // own fixture handed a blind explorer eight of Fulminate's ten rooms for as
@@ -429,6 +454,20 @@ for (const p of blind) {
     check(!p.prompt.includes(owner), `${p.label} was handed the ledger's source map (${owner})`)
     check(!p.prompt.includes(prose), `${p.label} was handed a ledger excerpt: "${prose.slice(0, 48)}…"`)
   }
+}
+
+// **Every declared region reaches a seat.** The counterpart to the bound inside
+// the loop, filled by the same `mine` it is computed from — asking "was this
+// seat handed this region" twice, over long prompt strings, is how the two
+// halves of one seating check drift apart.
+//
+// This is the assertion that would have caught the 2026-08-25 Dungeon round:
+// with four regions and a copy cap of three, the old modulo seating ran 0, 1, 2
+// and handed the fourth region to nobody without saying so. A region nobody was
+// seated on reads afterwards exactly like a region nobody found anything in,
+// which is why it is asserted and not logged.
+for (const r of regions) {
+  check(seatedRegions.has(r), `no blind explorer was seated on region "${r.slice(0, 48)}…"`)
 }
 
 // Sessions must write where the collator looks. `open` names the directory the
@@ -555,6 +594,21 @@ check(
 // tool, which is granted to the play-phase agent and to nobody else. A verifier
 // has no session and replays through `bin/playtest-replay` under its verify
 // label, which is what `verifyReplays` counts.
+// The fork count is an upper bound and the critic has to be told so. The ledger
+// flags a fork before the command is typed, from what the tester holds and what
+// the game has said about the thing, so a row here can still turn out to be a
+// free refusal — the 2026-08-25 Dungeon round reported "37 irreversible forks
+// declined" when three of them committed to anything. The claim lives only in
+// generated prose, so grepping it is the only place it can be pinned.
+check(
+  !/irreversible action the whole round declined/.test(criticPrompt()),
+  'the critic is still told every untaken fork was an irreversible action'
+)
+check(
+  /Forks no session took:[^\n]*\*\*Read it as an upper bound\.\*\*/.test(criticPrompt()),
+  'the critic was not told the fork count is an upper bound'
+)
+
 check(
   criticPrompt().includes(`Testers spent ${stubTesters} of ~`),
   `the critic's tester turn total is not ${stubTesters} — the .replays/ tree is on the wrong side of the split`
@@ -755,6 +809,27 @@ const verifierPrompt = promptFor((p) => /^verify:/.test(String(p.label || '')))
 check(
   /no .?\[status\].? line at all/.test(verifierPrompt) && /needs-human/.test(verifierPrompt),
   'the verifier brief says nothing about a transcript with no [status] footer, so a stale binary reads as a refutation'
+)
+
+// The save door, end to end: the brief tells the verifier to pass
+// `--saves-from <the finding's Saves: label>`, and the finding block has to
+// actually print a `Saves:` row for it to read. The two live ninety lines apart
+// in `playtest.js` with nothing between them, and they were shipped apart once
+// already — the instruction naming a field the listing did not emit. A
+// reproducer that begins `restore` and cannot reach its slot is recorded
+// `not-reproducible`, which is the harness scoring itself as a defeated
+// finding; that cost four real defects on 2026-08-25.
+check(
+  /--saves-from/.test(verifierPrompt),
+  'the verifier brief never mentions --saves-from, so a `restore` reproducer cannot be replayed'
+)
+check(
+  /^ {2}Saves: +\S/m.test(verifierPrompt),
+  'the finding block prints no `Saves:` row, so the --saves-from instruction names a field the verifier cannot see'
+)
+check(
+  /never refute .?not-reproducible.? on it/.test(verifierPrompt),
+  'the verifier is not told that a failed restore is a harness miss rather than a refutation'
 )
 
 // The critic gets the agreement figure and is told not to read a high one as
