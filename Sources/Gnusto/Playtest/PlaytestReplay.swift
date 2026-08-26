@@ -91,21 +91,34 @@ enum PlaytestReplay {
         /// cite. `nil` when no directory was offered or the write failed.
         let probe: URL?
 
-        /// The save slots copied in before the game booted, and where from —
-        /// or `nil` for the ordinary clean start.
-        ///
-        /// **A staged replay is weaker evidence than an unstaged one**, and the
-        /// receipt has to say which it was. Every other probe in this tree
-        /// replays from `commands.txt` and a seed alone; one that begins
-        /// `restore` reproduces only while that label still holds the slot it
-        /// named. That is worth having — four findings in the 2026-08-25
-        /// Dungeon round were recorded `not-reproducible` for want of it — but
-        /// it is not the same claim, so it is not reported as the same claim.
-        ///
-        /// One optional rather than a pair, because ``stage(_:into:)`` refuses
-        /// an empty source: there is no such thing as a staging that copied
-        /// nothing, and two fields would let a later edit invent one.
-        let staged: (from: URL, slots: [String])?
+        /// The save slots copied in before the game booted, or `nil` for the
+        /// ordinary clean start. See ``Staged``.
+        let staged: Staged?
+    }
+
+    /// What a replay was given to restore from, and where it came from.
+    ///
+    /// **A staged replay is weaker evidence than an unstaged one**, and the
+    /// receipt has to say which it was. Every other probe in this tree replays
+    /// from `commands.txt` and a seed alone; one that begins `restore`
+    /// reproduces only while that label still holds the slot it named. That is
+    /// worth having — four findings in the 2026-08-25 Dungeon round were
+    /// recorded `not-reproducible` for want of it — but it is not the same
+    /// claim, so it is not reported as the same claim.
+    ///
+    /// A type rather than a pair of fields, so that "there is no such thing as
+    /// a staging that copied nothing" is a property of the thing rather than a
+    /// comment: ``stage(_:into:)`` refuses an empty source, and one optional
+    /// leaves a later edit nowhere to invent the case.
+    struct Staged: Sendable {
+        /// The label's `saves/` directory the slots were copied out of.
+        let from: URL
+        /// What was copied, sorted.
+        let slots: [String]
+
+        /// The label itself, which is what a reader greps a probe tree for and
+        /// what `bin/playtest-replay` records — `from` is one level below it.
+        var label: String { from.deletingLastPathComponent().lastPathComponent }
     }
 
     /// Plays a command list into a fresh world and reports what happened.
@@ -164,7 +177,7 @@ enum PlaytestReplay {
         // the only directory this world is ever told about is still the
         // throwaway above, so the paragraph before this one stays literally
         // true while a reproducer beginning `restore` finally finds its slot.
-        let staged = try savesFrom.map { (from: $0, slots: try Self.stage($0, into: saves)) }
+        let staged = try savesFrom.map { Staged(from: $0, slots: try Self.stage($0, into: saves)) }
 
         let world = GameWorld(prepared: prepared, seed: seed, saveDirectory: saves)
         let io = ScriptedIOHandler(lines: commands)
@@ -256,7 +269,7 @@ enum PlaytestReplay {
     /// - Returns: the directory when both files landed, `nil` otherwise.
     private static func write(
         _ commands: [String], _ transcript: String, seed: UInt64,
-        staged: (from: URL, slots: [String])?, to directory: URL
+        staged: Staged?, to directory: URL
     ) -> URL? {
         let transcriptURL = directory.appendingPathComponent("transcript.txt")
         let commandsURL = directory.appendingPathComponent("commands.txt")
@@ -273,12 +286,12 @@ enum PlaytestReplay {
         // reproducing the moment that label went. Best effort like the summary
         // below: losing it costs the guarantee, not the verdict.
         if let staged {
-            let copies = directory.appendingPathComponent("saves-in", isDirectory: true)
-            for slot in staged.slots {
-                try? FileManager.default.copyItem(
-                    at: SaveStore.resolve(slot, in: staged.from),
-                    to: try SaveStore.resolveForWrite(slot, in: copies))
-            }
+            // The same copy `stage` made into the throwaway, made again into
+            // the probe. `try?` rather than `try` is the whole difference: a
+            // non-empty source is already proven, so the throw cannot fire, and
+            // losing the receipt must not lose the verdict.
+            _ = try? Self.stage(
+                staged.from, into: directory.appendingPathComponent("saves-in", isDirectory: true))
         }
 
         // A fourth line only when there was one, so an ordinary probe's summary
@@ -287,7 +300,8 @@ enum PlaytestReplay {
         // key matches the CLI's trailer so one grep reads every probe in a tree.
         let provenance =
             staged.map {
-                "[playtest] saves-from=\($0.from.path) slots=\($0.slots.joined(separator: ","))\n"
+                "[playtest] saves-from=\($0.label) slots=\($0.slots.count) "
+                    + "copy=\(directory.appendingPathComponent("saves-in").path)\n"
             } ?? ""
         let summary = """
             [playtest] replay seed=\(seed) commands=\(commands.count)

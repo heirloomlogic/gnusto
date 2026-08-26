@@ -717,7 +717,7 @@ struct CoverageLedger: Sendable {
             objects[subject]?.vocabulary.formUnion(Self.words(in: output))
             // The one other way the answer moves: examining a thing already in
             // hand is how the game gets to say *lit* about it.
-            if objects[subject]?.held == true { refreshCarriedFlame() }
+            if objects[subject]?.held == true { refreshCarriedFlame(subject) }
             refreshMatrix(for: subject, line: line)
         }
     }
@@ -897,11 +897,14 @@ struct CoverageLedger: Sendable {
             }
             if intent == .take && turnCost {
                 objects[subject]?.held = true
-                refreshCarriedFlame()
+                refreshCarriedFlame(subject)
             }
             if Self.releasingIntents.contains(intent) && turnCost {
                 objects[subject]?.held = false
-                refreshCarriedFlame()
+                // No refresh here, on purpose. Putting a thing down can only
+                // make the test go true → false, and the flag never goes back:
+                // a tester who drops the torch keeps the precaution. The call
+                // would be a scan that cannot change anything.
             }
             if intent != .examine, Self.changingIntents.contains(intent), turnCost {
                 enqueueRestate(subject, room: departed, line: line, verb: intent.raw)
@@ -1299,6 +1302,23 @@ struct CoverageLedger: Sendable {
         /// is a printed refusal that changes nothing, and the nest was only
         /// offered the cell because its description says *branch*.
         case whileCarryingFlame
+
+        /// Whether this answer can change without the thing itself changing.
+        ///
+        /// What ``CoverageLedger/refreshCarriedFlame(_:)`` sweeps on. Exhaustive
+        /// on purpose: the sweep used to pick its cells by string-matching
+        /// `:burn` onto the end of an item id, which is this enum's own failure
+        /// mode one layer down — a second carried-state case would be handled
+        /// by ``commits(to:carryingFlame:)`` and ignored by the sweep, so every
+        /// cell raised before the tester picked the thing up would keep a stale
+        /// answer, in silence. Now it is a compile error to add one and not
+        /// decide.
+        var dependsOnCarriedState: Bool {
+            switch self {
+            case .whileCarryingFlame: true
+            case .never, .always, .whenCalled: false
+            }
+        }
     }
 
     /// Words that mean a thing is shut, for ``Commitment/whenCalled(_:)``.
@@ -1312,7 +1332,7 @@ struct CoverageLedger: Sendable {
 
     /// What a source of fire is called, prefix-matched like the trigger tables
     /// so that *lit*, *lighted* and *torches* all count. Read only by
-    /// ``refreshCarriedFlame()``.
+    /// ``refreshCarriedFlame(_:)``.
     private static let flame = [
         "torch", "match", "candle", "flame", "fire", "lit", "tinder", "lantern",
     ]
@@ -1433,19 +1453,27 @@ struct CoverageLedger: Sendable {
     /// ordinary work: a tester who puts the torch down keeps the precaution,
     /// which is the safe way to be wrong and the one that keeps `abstained`
     /// meaning what ``forks()`` reports it to mean.
-    private mutating func refreshCarriedFlame() {
-        let carrying = objects.values.contains {
-            $0.held && Self.matches(Self.flame, in: $0.vocabulary)
-        }
-        guard carrying, !carryingFlame else {
-            carryingFlame = carrying || carryingFlame
-            return
-        }
+    private mutating func refreshCarriedFlame(_ id: EntityID) {
+        // Monotone, so once it has latched this is the whole of the work — and
+        // it has to be the first line, or a scan is paid on every take for the
+        // rest of a session that picked the lantern up in its first ten turns.
+        guard !carryingFlame else { return }
+        // Only the object this turn touched can newly satisfy the test: `held`
+        // is set in one place and a vocabulary grows in one other, both of them
+        // about `id`. Nothing else in the table can have moved.
+        guard let record = objects[id], record.held,
+            Self.matches(Self.flame, in: record.vocabulary)
+        else { return }
+
         carryingFlame = true
-        let suffix = ":\(Intent.burn.raw)"
+        // Selected by what the repertoire says depends on carried state, never
+        // by the shape of an id. See ``Commitment/dependsOnCarriedState``.
+        let promoted = Set(
+            Self.repertoire.filter(\.commitment.dependsOnCarriedState).map(\.intent))
         for index in items.indices
         where !items[index].fork && !items[index].discharged
-            && items[index].kind == .object && items[index].id.hasSuffix(suffix)
+            && items[index].kind == .object
+            && promoted.contains(where: { items[index].id.hasSuffix(":\($0.raw)") })
         {
             markFork(at: index)
         }
@@ -1467,13 +1495,9 @@ struct CoverageLedger: Sendable {
         items[position].discharged = true
     }
 
-    /// Adds an item, or leaves an existing one alone.
+    /// Adds an item, or reconciles the one field an existing item may change.
     ///
-    /// A fork raised under ``DivergencePolicy/abstain`` is recorded and closed
-    /// in the same breath. It is *recorded* rather than dropped because the
-    /// round report has to be able to say that this tester met the egg and was
-    /// under orders to leave it — a fork nobody was even offered is a different
-    /// gap from a fork nobody took, and only the ledger knows which happened.
+    /// What a fork then costs its session is ``markFork(at:)``'s.
     private mutating func raise(_ item: CoverageItem) {
         if let position = positions[item.id] {
             // `refreshMatrix` re-offers every untried cell on every turn, and a

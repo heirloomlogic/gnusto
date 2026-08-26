@@ -371,12 +371,16 @@ check(!/gamePrintedIt/.test(src), 'the tester-reported unknown-word census is ba
 const blind = prompts.filter((p) => /^play:explorer/.test(String(p.label || '')))
 check(blind.length > 0, 'no blind charters ran, so the firewall is untested')
 const regions = String(dryArgs.focus || '').split('|').map((r) => r.trim()).filter(Boolean)
-// The copy cap the per-region charters share, and the chunk it implies.
-const regionCopies = Math.min(Math.max(regions.length, 1), 3)
-const chunkCap = Math.ceil(regions.length / regionCopies)
+// The seat count, OBSERVED rather than re-derived. `blind.length` is how many
+// blind seats the workflow actually made; restating `Math.min(Math.max(n,1),3)`
+// here would copy `REGION_SEATS` across the `new Function` boundary, and then
+// raising the cap to 4 would leave `chunkCap` computed against a stale 3 while
+// the guard below read `4 > 3` and passed — the assertion that exists to
+// guarantee the chunking path is exercised, silently no longer guaranteeing it.
+const chunkCap = Math.ceil(regions.length / blind.length)
 const seatedRegions = new Set()
 check(
-  regions.length > regionCopies,
+  regions.length > blind.length,
   'the fixture declares no more regions than seats, so the chunking path is untested'
 )
 for (const p of blind) {
@@ -466,8 +470,17 @@ for (const p of blind) {
 // and handed the fourth region to nobody without saying so. A region nobody was
 // seated on reads afterwards exactly like a region nobody found anything in,
 // which is why it is asserted and not logged.
-for (const r of regions) {
-  check(seatedRegions.has(r), `no blind explorer was seated on region "${r.slice(0, 48)}…"`)
+//
+// Stated at the altitude it is true at. With exactly one declared region the
+// seating deliberately hands it to nobody — `copies > 1` — on the ground that a
+// lone region IS the whole coverage plan and a blind explorer must not be given
+// that. So the invariant is "every region reaches a seat once there is more
+// than one", and asserting it unconditionally would be asserting a rule the
+// harness does not hold.
+if (regions.length > 1) {
+  for (const r of regions) {
+    check(seatedRegions.has(r), `no blind explorer was seated on region "${r.slice(0, 48)}…"`)
+  }
 }
 
 // Sessions must write where the collator looks. `open` names the directory the
@@ -594,6 +607,15 @@ check(
 // tool, which is granted to the play-phase agent and to nobody else. A verifier
 // has no session and replays through `bin/playtest-replay` under its verify
 // label, which is what `verifyReplays` counts.
+check(
+  criticPrompt().includes(`Testers spent ${stubTesters} of ~`),
+  `the critic's tester turn total is not ${stubTesters} — the .replays/ tree is on the wrong side of the split`
+)
+check(
+  criticPrompt().includes(`the verifiers spent ${stubVerifiers} across ${stubTurns.verifyProbes}`),
+  `the critic's verifier turn total is not ${stubVerifiers} — a tree that is not theirs is being credited to them`
+)
+
 // The fork count is an upper bound and the critic has to be told so. The ledger
 // flags a fork before the command is typed, from what the tester holds and what
 // the game has said about the thing, so a row here can still turn out to be a
@@ -607,15 +629,6 @@ check(
 check(
   /Forks no session took:[^\n]*\*\*Read it as an upper bound\.\*\*/.test(criticPrompt()),
   'the critic was not told the fork count is an upper bound'
-)
-
-check(
-  criticPrompt().includes(`Testers spent ${stubTesters} of ~`),
-  `the critic's tester turn total is not ${stubTesters} — the .replays/ tree is on the wrong side of the split`
-)
-check(
-  criticPrompt().includes(`the verifiers spent ${stubVerifiers} across ${stubTurns.verifyProbes}`),
-  `the critic's verifier turn total is not ${stubVerifiers} — a tree that is not theirs is being credited to them`
 )
 check(
   result.coverage && result.coverage.turns
@@ -771,6 +784,34 @@ check(
   replayLabel === LAYOUT.REPLAY_TREE,
   `the session server writes sessionless replays under "${replayLabel}" and the collator globs "${LAYOUT.REPLAY_TREE}"`
 )
+// The save door, pinned across all three of its pieces. The brief telling a
+// verifier to pass `--saves-from` is checked below, against the generated
+// prompt; these check that the thing it names exists. Both harnesses grew the
+// door at once and either could lose it alone — a CLI without the flag makes
+// the instruction a lie, and a `replay` tool without `savesFrom` leaves the
+// tester unable to verify its own `restore` reproducer before filing it.
+check(
+  SOURCE.replayScript.includes('--saves-from'),
+  `${SOURCES.replayScript} has no --saves-from, so a verifier cannot replay a reproducer that begins \`restore\``
+)
+check(
+  /"savesFrom"/.test(code(SOURCES.replayTool.replace('PlaytestReplay', 'PlaytestTools'))),
+  'the replay tool takes no savesFrom argument, so a tester cannot re-verify its own restore reproducer'
+)
+
+// `saves-in/` is the one probe artifact outside the `artifacts` cross-check
+// above, because that list is derived from what `bin/playtest-measure` opens and
+// the measurer never reads a save. It still has two independent minters, and a
+// probe that kept only the *path* of a staged label stops reproducing the moment
+// that label is cleaned — so the name gets its own check, in the shape of the
+// replay-tree one below.
+for (const key of ['replayScript', 'replayTool']) {
+  check(
+    new RegExp(`(?:/|\\(")${literal('saves-in')}`).test(SOURCE[key]),
+    `${SOURCES[key]} builds no path ending in saves-in, so a staged probe keeps only the label's path and not its bytes`
+  )
+}
+
 const probeStem = LAYOUT.PROBE.replace(/\*+$/, '')
 for (const key of ['replayScript', 'sessionDirectories']) {
   check(

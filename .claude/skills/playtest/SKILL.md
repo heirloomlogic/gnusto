@@ -357,13 +357,23 @@ Delete the scratch directory afterwards, `.replays` included.
 **A reproducer that starts with `restore` needs a save door, and both harnesses have
 one.** The MCP `replay` tool takes `savesFrom: "<label>"`; `bin/playtest-replay` takes
 `--saves-from LABEL`. Either copies that label's `*.gnusto` slots in before the game
-boots — one way, so a `save` inside the replay lands in a throwaway and can never reach
-the label. Without it the game answers *"Restore failed."*, and **that answer is about
-the harness, not about the finding**: it produced four false `not-reproducible` verdicts
-on 2026-08-25, two of which reproduce in seven commands. A staged replay says so on its
-header line and in `summary.txt`, because it reproduces from its command list only while
-that label still holds the slot — weaker evidence than a clean start, and labelled as
-such. The CLI keeps its own copy of what it staged in the probe's `saves-in/`.
+boots, and **neither can write back into the label it read**. Without it the game answers
+*"Restore failed."*, and **that answer is about the harness, not about the finding**: it
+produced four false `not-reproducible` verdicts on 2026-08-25, two of which reproduce in
+seven commands.
+
+**The two differ in where the copy lands, and it matters.** `replay` stages into a
+throwaway it deletes, so the staging lasts one call. The script has no per-run save
+directory — saves belong to the label, which is what makes `--save`/`--restore` work
+across two runs — so its copy **joins that label permanently**, and every later probe
+under the same label restores those slots without passing the flag. It records a
+`.staged-from` marker for exactly that reason, and reads the receipt off the marker, so an
+inheriting run says so too. Give each replay its own label suffix and the question does
+not arise.
+
+Either way a staged probe says so on its header line and in `summary.txt` and keeps the
+staged bytes in its own `saves-in/`: it reproduces from its command list only while those
+slots exist, which is weaker evidence than a clean start and is labelled as such.
 
 **Ship at least one save the round can actually use.** A slot is chosen by *route state*,
 not by the room name the `[status]` footer reports: `wf-1` on 2026-08-25 was cut three

@@ -45,9 +45,20 @@
 #                       This is what a verifier needs to replay a reproducer that
 #                       begins `restore`; without it the game answers "Restore
 #                       failed." and the verdict is about the harness rather than
-#                       about the finding. The transcript is then reproducible only
-#                       while LABEL still holds those slots, so the probe keeps its
-#                       own copy in saves-in/ and summary.txt records the label.
+#                       about the finding.
+#
+#                       **The slots join this label permanently.** Saves belong to
+#                       the label here (see below), so there is nowhere per-run to
+#                       stage into — which means every later probe under this label
+#                       can restore them without passing the flag. That is why the
+#                       trailer is read off a `.staged-from` marker rather than off
+#                       this argument: a run that inherits staged slots says so too.
+#                       The MCP `replay` tool's `savesFrom` differs here, and only
+#                       here: it stages into a throwaway it deletes.
+#
+#                       Either way the transcript reproduces only while LABEL still
+#                       holds those slots, so the probe keeps its own copy of the
+#                       bytes in saves-in/ and summary.txt records the label.
 #   --max-turns N       Refuse a command list longer than N engine commands
 #                       (default 250). A runaway probe is a token fire.
 #   --timeout SECS      Wall-clock kill (default 60).
@@ -192,11 +203,12 @@ plain_name "$label" || die "bad --label '$label'"
 scratch="$playtest_root/$label"
 mkdir -p "$scratch/saves"
 
-# --saves-from stages another label's slots into this run's saves. One way: the
-# destination is this label's own directory, so --restore reads the other tester's
-# save while a --save here still cannot touch it. Only *.gnusto — the extension
-# SaveStore.existingSaveNames filters on, so the game's restore prompt lists
-# exactly what was copied and the .history sidecar stays behind.
+# --saves-from: resolve and check the source, but copy nothing yet. Staging is a
+# side effect on the LABEL — the destination is this label's shared saves
+# directory, because the script has no per-run save directory to use — so it must
+# not happen before the probe directory is allocated, or a --probe collision or
+# the 999-probe die leaves another tester's slots behind in a label the run never
+# wrote a transcript into.
 staged_slots=()
 if [[ -n "$saves_from" ]]; then
   plain_name "$saves_from" || die "bad --saves-from '$saves_from'"
@@ -208,8 +220,6 @@ if [[ -n "$saves_from" ]]; then
   staged_slots=("$from_dir"/*.gnusto)
   [[ -e "${staged_slots[0]}" ]] \
     || die "--saves-from '$saves_from' holds no .gnusto slots in $from_dir"
-  cp "${staged_slots[@]}" "$scratch/saves/"
-  echo "[playtest] staged ${#staged_slots[@]} slot(s) from label '$saves_from'" >&2
 fi
 
 # One directory per run. A label is a tester's namespace, and re-using one — either
@@ -240,12 +250,42 @@ else
   probe="${probe_dir##*/}"
 fi
 
-# The probe keeps its own copy of whatever was staged. Labels get cleaned between
-# rounds and probe directories are the durable evidence, so without this a cited
-# probe becomes permanently unreproducible the moment the other tester's label goes.
+# Now stage, with somewhere to record it. Two copies: one into the label, which
+# is what --restore reads, and one into the probe, which is what a reader follows
+# a year later — labels get cleaned between rounds and probe directories are the
+# durable evidence, so a probe holding only the label's *path* stops reproducing
+# the moment that label goes. Only *.gnusto, the extension
+# SaveStore.existingSaveNames filters on, so the game's restore prompt lists
+# exactly what was copied and the .history sidecar stays behind.
+#
+# The marker is what makes the receipt honest for the runs that follow. Staged
+# slots join the label PERMANENTLY — unlike the MCP side, which stages into a
+# throwaway it deletes — so a later probe under the same label restores them
+# without passing the flag, and would otherwise write a summary claiming the
+# strong "reproduces from its command list alone" that every other probe makes.
+# Reading the trailer off the marker rather than off $saves_from means every
+# probe under a staged label says so.
 if [[ -n "$saves_from" ]]; then
-  mkdir -p "$probe_dir/saves-in"
-  cp "${staged_slots[@]}" "$probe_dir/saves-in/"
+  cp "${staged_slots[@]}" "$scratch/saves/"
+  printf '%s\n' "$saves_from" > "$scratch/saves/.staged-from"
+  echo "[playtest] staged ${#staged_slots[@]} slot(s) from label '$saves_from'" >&2
+fi
+
+# The probe copy is keyed off the MARKER, not off this run's argument, so a run
+# that merely inherited staged slots keeps the bytes too — it restores from them
+# just as much as the run that staged them did, and its receipt has to be worth
+# as much. Keyed off the argument, a later probe named a saves-in/ it had never
+# written.
+staged_from_marker=""
+[[ -f "$scratch/saves/.staged-from" ]] \
+  && read -r staged_from_marker < "$scratch/saves/.staged-from"
+staged_here=()
+if [[ -n "$staged_from_marker" ]]; then
+  staged_here=("$scratch"/saves/*.gnusto)
+  if [[ -e "${staged_here[0]}" ]]; then
+    mkdir -p "$probe_dir/saves-in"
+    cp "${staged_here[@]}" "$probe_dir/saves-in/"
+  fi
 fi
 
 # The cap counts engine commands only. Neither a comment (the REPL skips it) nor
@@ -338,8 +378,8 @@ summary="$probe_dir/summary.txt"
   # Only when there was one, so an ordinary probe's summary reads as it always
   # has — and a staged one says in the receipt that its command list alone will
   # not reproduce it, which is the one claim this file otherwise always makes.
-  if [[ -n "$saves_from" ]]; then
-    echo "[playtest] saves-from=$saves_from slots=${#staged_slots[@]} copy=$probe_dir/saves-in"
+  if [[ -n "$staged_from_marker" ]]; then
+    echo "[playtest] saves-from=$staged_from_marker slots=${#staged_here[@]} copy=$probe_dir/saves-in"
   fi
   # perl's alarm kills with SIGALRM (14); the shell reports 128+14.
   if [[ "$status" -eq 142 || "$status" -eq 14 ]]; then

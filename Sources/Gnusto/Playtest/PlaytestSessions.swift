@@ -212,8 +212,7 @@ actor PlaytestSessions {
     ///
     /// - Returns: the fresh probe directory, or `nil` if one could not be made.
     func replayProbe() -> URL? {
-        let labelDirectory = root.appendingPathComponent(
-            Self.replayLabel, isDirectory: true)
+        let labelDirectory = Self.directory(forLabel: Self.replayLabel, under: root)
         guard
             (try? FileManager.default.createDirectory(
                 at: labelDirectory, withIntermediateDirectories: true)) != nil

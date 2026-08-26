@@ -1828,7 +1828,7 @@ extension PlaytestReplay.Outcome {
                 // caller is about to cite, so it cannot be somewhere they might
                 // not look.
                 + (staged.map {
-                    " saves-from=\($0.from.path) slots=\($0.slots.joined(separator: ","))"
+                    " saves-from=\($0.label) slots=\($0.slots.joined(separator: ","))"
                 } ?? "")
         ]
         guard let verdict else {

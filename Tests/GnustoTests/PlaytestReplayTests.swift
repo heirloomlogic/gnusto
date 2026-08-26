@@ -47,6 +47,13 @@ struct PlaytestReplayTests {
         String(decoding: try Data(contentsOf: url), as: UTF8.self)
     }
 
+    /// A probe directory in the sessionless replay tree, which is where every
+    /// `replay` receipt lands. Four rows build this path.
+    private func replayProbe(_ root: URL, _ n: Int = 1) -> URL {
+        root.appendingPathComponent(PlaytestSessions.replayLabel)
+            .appendingPathComponent(String(format: "probe-%03d", n))
+    }
+
     /// A tool table over a root the test can then read, for the rows whose
     /// subject is what they left on disk.
     private func table(_ game: some Game) throws -> (root: URL, tools: [PlaytestTool]) {
@@ -235,8 +242,7 @@ struct PlaytestReplayTests {
 
         let result = try await replay.call(["commands": ["look", "west"]])
 
-        let probe = root.appendingPathComponent(PlaytestSessions.replayLabel)
-            .appendingPathComponent("probe-001")
+        let probe = replayProbe(root)
         let transcript = probe.appendingPathComponent("transcript.txt")
         #expect(result.text.hasPrefix("[playtest] replay lines=2 finished=false transcript="))
         #expect(result.text.contains(transcript.path))
@@ -268,8 +274,7 @@ struct PlaytestReplayTests {
         _ = try await replay.call(
             ["commands": ["look", "// the cloak is the point", "x cloak", "west"]])
 
-        let probe = root.appendingPathComponent(PlaytestSessions.replayLabel)
-            .appendingPathComponent("probe-001")
+        let probe = replayProbe(root)
         let commands = try text(at: probe.appendingPathComponent("commands.txt"))
             .split(separator: "\n", omittingEmptySubsequences: false)
             .dropLast()
@@ -447,8 +452,7 @@ struct PlaytestReplayTests {
         #expect(result.text.contains("slots=deep"))
         let structured = try #require(result.structured)
         #expect(structured["savesStaged"] == .array([.string("deep")]))
-        let probe = root.appendingPathComponent(PlaytestSessions.replayLabel)
-            .appendingPathComponent("probe-001")
+        let probe = replayProbe(root)
         #expect(
             try text(at: probe.appendingPathComponent("summary.txt"))
                 .contains("[playtest] saves-from=") == true)

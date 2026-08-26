@@ -785,11 +785,12 @@ Look in each reply for \`the \` immediately before a capitalized name or an hono
 // decides it. Past three the regions get too thin to be worth a whole agent and
 // the divergence cycle stops covering forks and starts duplicating them.
 //
-// One constant because the number reaches four places — both per-region
-// charters, the operator advice in the dispatch log, and the dry run's own
-// derivation — and a cap that is four literals is a cap that goes stale in three
-// of them. Declaring MORE regions than this is not an error: they are split
-// across the seats by `chunkRegions`, never dropped.
+// One constant because the number reaches three places — both per-region
+// charters and the operator advice in the dispatch log — and a cap that is three
+// literals is a cap that goes stale in two of them. The dry run deliberately
+// holds no copy: it counts the seats the workflow actually made. Declaring MORE
+// regions than this is not an error, they are split across the seats by
+// `chunkRegions` and never dropped.
 const REGION_SEATS = 3
 const seatsFor = (regions) => Math.min(Math.max(regions.length, 1), REGION_SEATS)
 
@@ -828,13 +829,10 @@ You own: a printed noun the parser then denies, a description that contradicts w
 were just told, a line that describes a state the world is no longer in, and an exit the
 prose names that does not exist.
 
-**A word the game printed and then refused is a finding, and you file it as one.** Type
-the nouns a description hands you. When one comes back "I don't know the word" or "You
-can't see any such thing", that is the defect — \`note\` it at the turn that printed the
-word, then report it as an ordinary finding with category \`unanswerable-noun\`. Do not
-leave it to the round's unknown-word tally: that count is a symptom, it names no file and
-no room, and six such nouns went unfiled that way in the 2026-08-25 Dungeon round. The
-count is never the filing.`,
+**Type the nouns a description hands you.** When one comes back "I don't know the word"
+or "You can't see any such thing", that is the defect: \`note\` it at the turn that printed
+the word and file it as \`unanswerable-noun\`. Your contract says why the round's
+unknown-word tally is not a substitute.`,
   },
   {
     key: 'timekeeper',
@@ -1127,12 +1125,25 @@ const chunkRegions = (list, seats) => {
 const renderRegions = (chunk) =>
   chunk.length > 1 ? chunk.map((r, n) => `(${n + 1}) ${r}`).join('; ') : (chunk[0] ?? null)
 
+// The seat's assignment as the tester reads it. Here rather than inline in the
+// prompt because the plural case has to say how many, and a template that
+// counted them in three separate ternaries said "two" whatever the number was.
+const regionBanner = (chunk) => {
+  if (!chunk.length) return ''
+  if (chunk.length === 1) return `\n**Your region is ${renderRegions(chunk)}.**\n`
+  return (
+    `\n**You have ${chunk.length} regions: ${renderRegions(chunk)}.** More regions than `
+    + `seats were declared, so yours is ${chunk.length} of them. Split your budget between `
+    + `them; do not spend it all on the first.\n`
+  )
+}
+
 // One charter can run more than once. Only `explorer` does today, and the
 // assignment it carries — a region and a divergence policy — is the reason: two
 // explorers with the same policy in the same region are one explorer run twice.
 const playRoster = chosen.flatMap((charter) => {
   const copies = charter.copies ? charter.copies(regions) : 1
-  const chunks = chunkRegions(regions, copies)
+  const chunks = charter.copies ? chunkRegions(regions, copies) : []
   return Array.from({ length: copies }, (_, i) => ({
     charter,
     key: copies > 1 ? `${charter.key}-${i + 1}` : charter.key,
@@ -1162,12 +1173,21 @@ log(
 // one agent reads two. It is printed even when nothing doubled: silence here is
 // what let four regions go unseated for a whole round.
 if (regions.length) {
-  const seated = playRoster.filter((r) => r.regions.length)
-  const doubled = seated.filter((r) => r.regions.length > 1)
+  // Grouped by chunk, not listed per seat. Explorers and timekeepers are handed
+  // identical chunks, so a per-seat listing prints the whole plan twice and
+  // reports "2 seats took more than one" where one chunk is doubled and seated
+  // twice — a number the operator would act on, and it would be wrong.
+  const bySeat = new Map()
+  for (const r of playRoster.filter((seat) => seat.regions.length)) {
+    const key = renderRegions(r.regions)
+    if (!bySeat.has(key)) bySeat.set(key, { keys: [], size: r.regions.length })
+    bySeat.get(key).keys.push(r.key)
+  }
+  const doubled = [...bySeat.values()].filter((c) => c.size > 1)
   log(
-    `Regions (${regions.length} declared): ` +
-      `${seated.map((r) => `${r.key} → ${renderRegions(r.regions)}`).join('; ') || 'none seated — no charter runs per region'}` +
-      `${doubled.length ? `. ${doubled.length} seat(s) took more than one; declare at most ${REGION_SEATS} regions to give each its own.` : '.'}`
+    `Regions (${regions.length} declared over ${bySeat.size} chunk(s)): ` +
+      `${[...bySeat].map(([text, c]) => `${c.keys.join('+')} → ${text}`).join('; ') || 'none seated — no charter runs per region'}` +
+      `${doubled.length ? `. ${doubled.length} chunk(s) hold more than one region; declare at most ${REGION_SEATS} to give each its own.` : '.'}`
   )
 }
 
@@ -1257,7 +1277,7 @@ Every turn's output ends with a \`[status]\` line naming the room, the move coun
 whether the command cost a turn. \`note\` writes a comment into your transcript at the
 current turn and costs nothing — use it the moment a line reads wrong, not forty turns
 later from memory. \`finish\` ends the session.
-${mine.length ? `\n**${mine.length > 1 ? `You have ${mine.length} regions` : 'Your region is'} ${renderRegions(mine)}.**${mine.length > 1 ? ` More regions than seats were declared, so yours is ${mine.length} of them. Split your budget between them; do not spend it all on the first.` : ''}\n` : ''}
+${regionBanner(mine)}
 ${charter.brief}
 
 Your turn budget is about ${turnBudget} engine turns, and it counts **every turn you
