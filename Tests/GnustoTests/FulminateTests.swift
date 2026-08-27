@@ -1880,11 +1880,12 @@ struct FulminateTests {
         let transcript = try await play(
             Fulminate(),
             [
-                "up", "west", "x desk", "x papers", "x drawers", "x lamp", "x shade",
-                "east", "east", "x light", "x chain", "x cord", "x bulb",
+                "up", "west", "x desk", "x papers", "x paper", "x drawers", "x lamp", "x shade",
+                "east", "east", "x light", "x chain", "x cord", "x bulb", "x shade", "x strap",
             ])
         expectEveryNounAnswered(transcript)
         #expect(turnOutput(of: "x papers", in: transcript).contains("square to the fronts"))
+        #expect(turnOutput(of: "x paper", in: transcript).contains("square to the fronts"))
         #expect(turnOutput(of: "x chain", in: transcript).contains("wiped where a hand goes"))
     }
 
@@ -1895,7 +1896,7 @@ struct FulminateTests {
         let after = try await play(
             Fulminate(),
             ["south", "west"] + Array(repeating: "z", count: 7)
-                + ["x grass", "x half-circle", "x wall", "x mortar"])
+                + ["x grass", "x half-circle", "x wall", "x mortar", "search wreckage", "x soot"])
         expectEveryNounAnswered(after)
 
         // The shell is only enterable in the six minutes between the blast and
@@ -1919,6 +1920,12 @@ struct FulminateTests {
         let hall = try await play(Fulminate(), Array(repeating: "z", count: 11) + ["x dust"])
         #expect(hall.contains("settles on everything with a flat top"))
         #expect(turnOutput(of: "x dust", in: hall).contains("eighty years of ceiling"))
+
+        // And it is on every flat top in the *house*, which is what the
+        // paragraph claims, so it is still there one room over.
+        let parlour = try await play(
+            Fulminate(), Array(repeating: "z", count: 11) + ["west", "x dust"])
+        #expect(turnOutput(of: "x dust", in: parlour).contains("eighty years of ceiling"))
 
         // Before the blast there is no such thing to look at, and the word
         // still belongs to the coal bin downstairs.

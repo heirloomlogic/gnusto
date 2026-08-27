@@ -427,7 +427,10 @@ struct Fulminate: Game, GameMain {
     let watch = Item {
         name("wristwatch")
         adjectives("wrist", "steel", "own")
-        synonyms("watch", "wristwatch", "timepiece")
+        // `strap` because the describe says you have replaced it twice. It is
+        // also the suitcase's word upstairs, so in that one room the parser
+        // asks which, which is the right question. (#334)
+        synonyms("watch", "wristwatch", "timepiece", "strap")
         wearable
     }
 
@@ -866,7 +869,9 @@ struct Fulminate: Game, GameMain {
         adjectives("burned", "burnt", "charred")
         synonyms(
             "wreckage", "debris", "rubble", "ruins", "roof", "slates", "slate",
-            "timber", "timbers", "body")
+            // `soot` is what the search refusal says you get to the elbow for
+            // your trouble, and the wreckage is the thing it comes off. (#334)
+            "timber", "timbers", "body", "soot")
         description(
             """
             Roof slates, black timber, and a smell with chemistry in it. If the evening has an answer, some of it is
@@ -1055,8 +1060,10 @@ struct Fulminate: Game, GameMain {
         name("ceiling light")
         adjectives("ceiling", "electric", "bare")
         // `cord` was added by `9caa400` and `chain` was not, in the commit whose
-        // job was closing an unanswerable noun on this same object. (#334)
-        synonyms("light", "bulb", "fixture", "cord", "chain")
+        // job was closing an unanswerable noun on this same object. `shade`
+        // because the description says there is none, and that sentence is the
+        // right answer to somebody asking. (#334)
+        synonyms("light", "bulb", "fixture", "cord", "chain", "shade")
         description(
             """
             A bulb on a cord with a pull chain, and no shade on it. The chain has been wiped where a hand goes.
@@ -1085,8 +1092,10 @@ struct Fulminate: Game, GameMain {
         name("desk")
         adjectives("writing", "oak")
         // The arrangement is the clue, so the noun cannot simply be deleted from
-        // the description; the desk answers for what is lying in it. (#334)
-        synonyms("desk", "drawer", "drawers", "papers")
+        // the description; the desk answers for what is lying in it. Both
+        // numbers, because the splitter is exact and a player types either.
+        // (#334)
+        synonyms("desk", "drawer", "drawers", "paper", "papers")
         description(
             """
             Oak, and too good for the room it ended up in. Every drawer is standing open
@@ -1819,6 +1828,16 @@ struct Fulminate: Game, GameMain {
         // three turns between the blast and the radio car.
         world.afterEachTurn {
             if blastHappened, playerIsOutBack { sawTheWreckage = true }
+
+            // The aftermath says the dust is on every flat top, which is a claim
+            // about the house and not about one room, so the item has to be
+            // wherever the claim is being read. Placing it once in the room the
+            // fuse fired in answered the noun there and nowhere else, which is
+            // the same defect one room over. It is `scenery`, so no listing
+            // changes as it goes. (#334)
+            if blastDust.isRevealed, !blastDust.isIn(player.location) {
+                blastDust.move(to: player.location)
+            }
         }
 
         // Being knocked flat is one turn long; having been knocked flat lasts
