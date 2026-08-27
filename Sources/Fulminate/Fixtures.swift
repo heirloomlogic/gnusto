@@ -81,7 +81,7 @@ struct Fixtures: GameContent {
 
     // MARK: - Worn and carried
 
-    /// Named in Dr. Pike's `firstSight`, in his description, in his arrival in
+    /// Named in Dr. Pike's listing line, in his description, in his arrival in
     /// the yard and in Mrs. Kettle's testimony — five sentences across three
     /// rooms, and until now not a word any of those rooms knew.
     ///

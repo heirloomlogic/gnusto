@@ -156,14 +156,10 @@ struct Fulminate: Game, GameMain {
             "\($0.sentenceCased) \($0.verb("hears", "hear")) you out and \($0.verb("goes", "go")) on doing exactly what \($0) \($0.verb("was", "were")) doing."
         }
         // X ME is the first thing a player types, and this player has a past.
-        //
-        // The deictic is gone. It printed in all ten rooms and was true in one,
-        // and it was worst on the Upstairs Landing, which the design doc's own
-        // map calls "Upstairs hall": there it read as a positive claim that the
-        // 1948 statements were taken on that landing. Reading the player's room
-        // is not on the table — a `Line<Nothing>` is handed its subject and
-        // nothing else, with no turn frame to ask — so the fix is to name the
-        // room instead of pointing at it, which is true from all ten. (#334)
+        // It names the front hall rather than pointing at it, because the line
+        // prints in all ten rooms and `text.selfDescription` is a
+        // `Line<Nothing>` — handed its subject and nothing else, with no frame
+        // to ask which room it is being read in. (#334)
         text.selfDescription =
             "The same man who took statements in that front hall in 1948, four years older."
         // A house of suspects is a house somebody will try to search, or grab.
@@ -270,6 +266,22 @@ struct Fulminate: Game, GameMain {
         default: .ground
         }
     }
+
+    /// Whether Dr. Pike's hat has come off his head. Showing him the ledger is
+    /// what does it — `talk.shows(ledger, to: pike, learning: .notebooksSold)`
+    /// — and five sentences turn on it: his description, his listing line, the
+    /// hat's own description, its `take` refusal, and Mrs. Kettle's line about
+    /// him. Named once so that none of the five can be repaired without the
+    /// others, and so that the fact reads as what it is about the man rather
+    /// than as what the player has learned.
+    ///
+    /// The two `again:` strings that mention the hat cannot read it: `again:`
+    /// is a `String?` and has no frame to ask in. They are written to a gesture
+    /// he has in both halves of the evening instead.
+    ///
+    /// Computed, like ``playerIsOutBack``, so the bootstrap's reflection walk
+    /// doesn't take it for an entity, and legal only inside a rule body.
+    var hatIsOff: Bool { talk.knows(.notebooksSold) }
 
     /// Where somebody was at a given minute, as Mrs. Kettle would say it.
     ///
@@ -673,8 +685,6 @@ struct Fulminate: Game, GameMain {
         scenery
     }
 
-    /// Shares the word "stairs" with the back stairs on purpose. A room with
-    /// two flights in it should ask which one you meant.
     /// The same staircase, from the bottom. Delphine's 6:26 arrival names it in
     /// the cellar — "comes down the cellar steps" — and ``cellarSteps`` is
     /// declared in the Kitchen, so the word left scope at the exact moment the
@@ -711,6 +721,8 @@ struct Fulminate: Game, GameMain {
         hidden
     }
 
+    /// Shares the word "stairs" with the back stairs on purpose. A room with
+    /// two flights in it should ask which one you meant.
     let cellarSteps = Item {
         name("cellar steps")
         // `switch` because the description says there isn't one, and a player
@@ -1153,14 +1165,10 @@ struct Fulminate: Game, GameMain {
     var teagueDay: Timetable {
         Timetable(stops: [
             Stop(at: TimeOfDay(17, 30), in: boardersRoom),
-            // A `Stop(departure:)` prints in one room and one room only — the
-            // one being left — so the co-located frame is not one frame among
-            // several, it is the only frame the sentence will ever have. This
-            // one narrated his door and the stairs beyond it as sounds heard
-            // through a wall, to a player standing in the room with the man who
-            // was leaving. The overheard version is not lost: it is the
-            // `arrival:` below, which prints in the kitchen, which is the room
-            // it was always true in. (#334)
+            // A `Stop(departure:)` prints in the room being left and nowhere
+            // else, so it is written for somebody watching him go rather than
+            // for somebody hearing him through a wall. The overheard version is
+            // the `arrival:` beside it, which prints in the kitchen. (#334)
             Stop(
                 at: TimeOfDay(17, 36), in: kitchen,
                 departure: "Teague puts his hat on and goes out to the back stairs.",
@@ -1289,13 +1297,10 @@ struct Fulminate: Game, GameMain {
             Stop(
                 at: TimeOfDay(18, 26), in: cellar,
                 // Her 6:02 stop pins the printing room to the study for the
-                // rest of the evening, so this one can only ever be read
-                // upstairs, in a room whose description names a desk, drawers
-                // and a lamp and no stair — and it named the fixture "cellar
-                // stairs", which is not what this game calls it anywhere else.
-                // The gesture is rewritten to one the speaker carries out of
-                // the room she is being watched leave. The `arrival:` keeps the
-                // steps, because the cellar has them. (#334)
+                // rest of the evening, and the study has a desk, drawers and a
+                // lamp in it and no stair, so the gesture is one she carries
+                // out of the room. The `arrival:` keeps the steps, because the
+                // cellar has them. (#334)
                 departure: "Delphine goes out and down, and does not take a light.",
                 arrival: "Delphine comes down the cellar steps and stops when she sees you."),
         ])
@@ -1503,10 +1508,8 @@ struct Fulminate: Game, GameMain {
                     it and settles on everything with a flat top.
                     """)
 
-                // And it is a thing, in the room the sentence was read in. The
-                // paragraph declares dust on every flat top in the house and the
-                // word answered in one room, where it belongs to the coal bin
-                // and has nothing to do with tonight. (#334)
+                // And it is a thing, in the room the sentence was read in.
+                // `blastDust` says why it is one and where it goes. (#334)
                 blastDust.reveal()
                 blastDust.move(to: player.location)
             }
@@ -2150,14 +2153,9 @@ struct Fulminate: Game, GameMain {
         }
 
         // The hat is the whole of him until the ledger, and then it is the
-        // whole of him the other way round: `talk.shows(ledger, to: pike, …)`
-        // takes it off his head, and seven sentences went on saying it had
-        // never been off — this one, the listing line below it, the hat's own
-        // description, three conversation rows and Mrs. Kettle's. The fact to
-        // branch on was already in the file, and already used one row over:
-        // the show sets `learning: .notebooksSold`. (#334)
+        // whole of him the other way round. See `hatIsOff`. (#334)
         pike.describe {
-            talk.knows(.notebooksSold)
+            hatIsOff
                 ? """
                 Fifty, with the hat in his hand at last, which is its own admission: he kept it on all evening on the
                 reasoning that taking it off would mean he had arrived somewhere. He would like very much to be back
@@ -2173,7 +2171,7 @@ struct Fulminate: Game, GameMain {
         // sentence a player sees most often and the last one anybody thought to
         // check. A verifier named it and nobody filed it.
         pike.presence {
-            talk.knows(.notebooksSold)
+            hatIsOff
                 ? "Dr. Pike is standing about with the hat in his hand."
                 : "Dr. Pike is standing about with his hat on."
         }
@@ -2184,7 +2182,7 @@ struct Fulminate: Game, GameMain {
         // the only one of the three that reads a fact. (#334)
         fixtures.pikeHat.before(.take) {
             try refuse(
-                talk.knows(.notebooksSold)
+                hatIsOff
                     ? """
                     It is in his hands, and he has neither put it down nor offered it to anybody, which are the only
                     two things that would make it yours.
@@ -2198,7 +2196,7 @@ struct Fulminate: Game, GameMain {
         // The band is a thing you can only see once the hat is off, so the
         // examine text gains a detail at the same minute it loses a claim.
         fixtures.pikeHat.describe {
-            talk.knows(.notebooksSold)
+            hatIsOff
                 ? """
                 Grey felt, blocked stiff, and a size that was right for him some years ago. It is in his hand now,
                 and the band has gone dark where it sat.
@@ -2590,12 +2588,9 @@ struct Fulminate: Game, GameMain {
         }
 
         // Pike's lie has a second floor — the earlier visit was not about
-        // notebooks — and the ledger only opens the first one.
-        // The table's `again:` is a `String?` and has no turn frame to read a
-        // fact out of, so it cannot be branched the way the rows below it can.
-        // The repair is the one the mechanics contract already prescribes for a
-        // gesture the speaker may not have: write one he has in both halves of
-        // the evening. (#334)
+        // notebooks — and the ledger only opens the first one. The table's
+        // `again:` cannot read `hatIsOff` — see there — so it is written to a
+        // gesture he has in both halves of the evening. (#334)
         talk.topics(
             of: pike, fallback: "\"I don't see how that concerns me.\"",
             again: "\"I've given you that.\" Nothing in his face moves."
@@ -2741,15 +2736,14 @@ struct Fulminate: Game, GameMain {
                     """)
             }
             // She misses nothing, which includes the one thing that changes
-            // about him all evening. The ledger starts in the study drawer and
-            // Pike is in the parlour from half past five, so a player can take
-            // it up, show it and be back in this kitchen inside ten turns — and
-            // was met by a cook still saying he had never had it off. The
-            // lookup is untouched: it proves the room and nothing else in the
-            // sentence. (#334)
+            // about him all evening — and hers is the one of the five reachable
+            // before the blast, since a player can take the ledger up, show it
+            // and be back in this kitchen inside ten turns. The lookup is
+            // untouched: it proves the room and nothing else in the sentence.
+            // (#334)
             topic("pike", "doctor", "visitor") {
                 let hat =
-                    talk.knows(.notebooksSold)
+                    hatIsOff
                     ? "with his hat in his hand, which is new"
                     : "with his hat on, and he has not had it off since he come"
                 try reply(

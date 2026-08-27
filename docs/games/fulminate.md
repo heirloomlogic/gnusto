@@ -262,14 +262,6 @@ Fifty. From the lab that fired Julian, here to collect notebooks that the lab's 
 believes are the lab's. Wears his hat indoors. Wants very badly to be somewhere else.
 
 **His apparatus:** the new regime. Behind the counsel stand the men who arrived after the
-**The hat is the character, and it comes off exactly once.** He wears it indoors all
-evening on the reasoning that taking it off would mean he had arrived somewhere, and
-showing him the ledger takes it off his head — so every sentence that mentions it reads
-`talk.knows(.notebooksSold)`: his description, his listing line, the hat's own description,
-his `julian` reply, and Mrs. Kettle's line about him. The two `again:` strings cannot read
-it — `again:` is a `String?` with no frame — so they are written to a gesture he has in
-both halves of the evening instead.
-
 war and took the program out from under its founders. Pike never names them; he says
 things like *"the men we have now prefer the notebooks in order,"* and once, carefully,
 does not pronounce a name that would want an umlaut. His lie has a second floor: the
@@ -277,6 +269,15 @@ earlier visit was not about notebooks, and you may recognize the visit report, b
 you filed one shaped like it once.
 **His lie:** that this is his first visit to the house.
 **His fallback:** *"I don't see how that concerns me."*
+
+**The hat is the character, and it comes off exactly once.** He wears it indoors all
+evening on the reasoning that taking it off would mean he had arrived somewhere, and
+showing him the ledger takes it off his head — so every sentence that mentions it reads
+`hatIsOff`, the one place the fact is written down: his description, his listing line, the
+hat's own description, its `take` refusal, and Mrs. Kettle's line about him. His `julian`
+reply splits the same way, as a pair of `unless:`/`knowing:` rows. The two `again:` strings
+cannot read it — `again:` is a `String?` with no frame — so they are written to a gesture
+he has in both halves of the evening instead.
 
 ### Mrs. Iris Kettle — the cook
 

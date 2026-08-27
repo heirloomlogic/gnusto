@@ -2080,23 +2080,3 @@ struct FulminateTests {
 private func occurrencesInFulminate(of needle: String, in haystack: String) -> Int {
     haystack.components(separatedBy: needle).count - 1
 }
-
-/// The two ways this house can fail to know a word it printed, asserted
-/// together because they are one defect wearing two replies: the parser says
-/// *I don't know the word* for a word in no vocabulary at all, and *You can't
-/// see any such thing* for one that resolves somewhere else — to an item in
-/// another room, or to a word declared as an adjective, which can never be the
-/// last token of a phrase. A noun walk that checked only the first would pass
-/// while the second went on answering words the room printed one line earlier.
-///
-/// - Parameters:
-///   - transcript: the play to check.
-///   - sourceLocation: filled in by the compiler, so a failure points at the
-///     walk rather than at this line.
-private func expectEveryNounAnswered(
-    _ transcript: String,
-    sourceLocation: SourceLocation = #_sourceLocation
-) {
-    #expect(!transcript.contains("I don't know the word"), sourceLocation: sourceLocation)
-    #expect(!transcript.contains("can't see any such thing"), sourceLocation: sourceLocation)
-}
