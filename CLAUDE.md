@@ -18,7 +18,7 @@ that covers your task before writing code.
 | `Tests/GnustoTests/` | one suite per subject; `Support/` holds the fixture games |
 | `docs/games/*.md` | per-game design docs — **story-and-copy source of truth**, iterated separately from code. Not every game has one; alongside each, its play-test round reports and ledger |
 | `docs/playtesting.md` | how to play a game by hand and read the transcript as prose, plus the calibration answer key |
-| `.claude/skills/playtest/`, `.claude/workflows/playtest.js` | the automated play-test harness: subagents play, read prose, and report lines untrue of their frame |
+| `.claude/skills/playtest/`, `.claude/workflows/playtest.js` | the automated play-test harness: subagents play, read prose, and report lines untrue of their frame. `bin/playtest-preflight` is its front door — see "Kicking off a play-test round" |
 | `bin/playtest-replay` | one-line non-interactive replay of any game, seed pinned |
 | `bin/gnusto-mcp`, `.mcp.json` | every demo game as an MCP play-test server — an agent opens a session, takes turns, and is told what it was shown and never followed up. One binary is one game, so no tool takes a game name |
 | `FIDELITY.md` | Zork 1 and Dungeon only: where their content departs from the original. Nothing else uses it. The two do **not** share a prose rule: Zork 1 reproduces verbatim, Dungeon adapts, and the Dungeon section states its rule before any region entry |
@@ -41,11 +41,63 @@ bin/playtest-replay --build Fulminate                              # once
 bin/playtest-replay Fulminate --commands probe.txt --seed 0 --label mine --tail 60
 
 bin/gnusto-mcp Fulminate                       # what an MCP client runs; stdout is the protocol
-                                               # builds then execs ONCE, at connect: a running
-                                               # server is frozen at its session's commit, so
-                                               # restart the session after editing the engine
+                                               # execs at connect, and a running server is frozen
+                                               # at its session's commit — so restart the session
+                                               # after editing anything under Sources/Gnusto/Playtest/
 bin/playtest-measure .context/playtest/mine/probe-*   # rooms, verbs, objects — off the artifacts
 ```
+
+## Kicking off a play-test round
+
+Three steps, in order. There is no fourth, and skipping the first is what killed the
+last several rounds.
+
+```sh
+bin/playtest-preflight Dungeon     # builds; proves the server answers; non-zero if not
+```
+
+1. **Run preflight.** It takes the game in whatever words you have — `Dungeon`,
+   `dungeon`, `cloak of darkness` — and resolves them against the package's executable
+   products. It builds once, drives the game's MCP server over a pipe of its own, and
+   checks the things a dry run structurally cannot: that the server answers, that all
+   13 tools are there, that it is not frozen at an older commit, and that the
+   `.mcp.json` key matches what the workflow will look for. Green means dispatchable.
+2. **If it reports the tools unregistered, try again, then restart.** The MCP client
+   re-attempts a server that failed, so a session that has just warmed the tree can
+   reach one it could not a minute earlier. Restart only if that doesn't take — and
+   always after editing `Sources/Gnusto/Playtest/`, where no retry helps.
+3. **Dispatch** with the args preflight wrote to `.context/playtest-round-args.json`:
+   `Workflow({scriptPath: ".claude/workflows/playtest.js", args: <that JSON>})`.
+   `bin/playtest-preflight <Game> --headless` does it for you through `claude -p`,
+   which is the fallback for an agent whose tool surface has no `Workflow`.
+
+Three facts that bite and are not guessable from the code:
+
+- **`ToolSearch` finding no `mcp__<game>__*` tools is always the server, never the
+  prompt.** Every tester is told to stop and say so rather than improvise; a report
+  that reads "I don't know how to use MCP" is this, and it is an operator's problem.
+- **A server is frozen at the commit its session connected on.** Edit the engine
+  mid-session and every tester goes on playing last week's binary, silently and
+  successfully.
+- **`roundId` is required, and nothing needs clearing between rounds.** Every label
+  leads with it, so `.context/playtest/` can hold every round this checkout ever ran
+  without one round's turns landing in another's arithmetic. That used to be wrong
+  three rounds running.
+
+`bin/gnusto-mcp` does **not** build unless a source is newer than its last build.
+That is load-bearing rather than an optimization: a client starts all seven servers at
+once, and when each ran `swift build` unconditionally they serialized on SwiftPM's
+`.build` lock and took **46 seconds apiece on a fully warm tree** — past the default
+startup timeout, all seven together, looking exactly like a broken `.mcp.json`. Skipping
+the no-op build takes that to **~150ms**. `GNUSTO_MCP_BUILD=1` forces the old behavior.
+
+**The one case that still costs 46 seconds is the first connect after any source
+edit**, because a changed source invalidates all seven stamps at once and they queue
+for the lock exactly as before. That is the case SKILL.md always warned about, and it
+is why two things are set rather than remembered: `MCP_TIMEOUT` in
+`.claude/settings.json` is 180000, which is comfortably past it, and
+`bin/playtest-preflight` does the building serially, ahead of any client. Run preflight
+after editing the engine and no server ever pays it.
 
 Measuring a harness change wants a **control binary run through the same dispatch**,
 never a comparison against numbers recorded in an earlier round, and only Dungeon has

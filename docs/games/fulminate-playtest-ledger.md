@@ -236,6 +236,100 @@ the Back Yard in front of a burning building, and the Boarder's Room bed describ
 made with squared corners while Teague sits on it. Both were raised as unprobed cells by
 explorer-2 rather than as claims, and neither has a verified frame.
 
+## 2026-08-26 — third round against `main`, `da3e623` (`fix: none`, nothing applied)
+
+Every `confirmed` row below is an **open defect in the game as it ships**, filed as
+**#334**. Full keys, frames, reproducers, coverage grids, the rater-independence audit and
+the refutations: `docs/games/fulminate-playtest-2026-08-26.md`. Seed `0`, 9 charters
+(explorer ×3, timekeeper ×3, interrogator, solver, wrong-footer), 9 sessions, 1,288 engine
+turns counted off the footers. 22 raised → 16 confirmed (12 unanimous `confirmed-defect`,
+4 `needs-human`), 6 refuted, 0 routed. Verifier agreement 81.8% over 22 double-rated
+findings, 0 single-rated. Deduplicating the 16 by declaration gives 15 and by root cause 6
+classes; the critic added 3 more that no tester raised, for the 9 checklist boxes in #334.
+The last two boxes are the harness's and have no rows here.
+
+**This round wrote the game its first focus file.** `docs/games/fulminate-playtest-focus.md`
+is new, three regions, split on the vertical *and* clock axes — the fix for the 2026-08-17
+round's own diagnosis that a clock-only split left the second storey owned by nobody. It
+worked: 13 of the 16 confirmed findings are in rooms the previous round reached with one
+charter or none, both scheduled arrival lines that had printed in zero transcripts of any
+round printed in tester transcripts, and all four `show` surfaces fired including the two
+that never had. **It also produced the round's largest hole** — the split is floor × hour,
+six of nine seats drew the upstairs floor, and the Carriage House (which exists only before
+5:44) got zero commands in 1,288 turns, taking the victim, a death ending and an unread
+`clock.blast` branch with it. Both halves are in #334.
+
+**`ledgerKeys` was overridden by hand, 109 → 15, and the reason was a preflight defect
+that has since been fixed on this branch — `ledgerKeysFrom` now reads the verdict column
+and returns refutations only, so Fulminate derives 31 rather than 109 and no `confirmed`
+or `fixed` row reaches a tester. The paragraph below is kept as the record of why.**
+`ledgerKeysFrom()` (`bin/playtest-preflight:371-376`) scrapes *every* backticked `a::b`
+string in this file, `confirmed` rows included. The 2026-08-17 rows are full untruncated
+`decl::` keys, so unlike every earlier row they match dedup exactly — and four of them
+(C2, C4, and both C7s) are still open and unrepaired. Passing them would have told testers
+those were already rejected. What was passed instead: the 2026-08-17 and 2026-07-31
+**refuted** tables only, minus the `licensed-by-doc` ones, on the reason the 2026-08-17
+entry gives for withholding six of the same kind. That was a box in #334 and it is now closed: the
+function reads the verdict column, so the three tables of refutations in this file are
+what travels and nothing else does. The remaining judgement — whether to withhold the
+`licensed-by-doc` refutations — stays the operator's, because it is a reading of the
+design doc rather than a column in a table.
+
+**Dedup did not catch C1 and C9, which are one line.** Two testers reached
+`Stop(at: TimeOfDay(17, 36), …, departure:)` in `teagueDay` (`Fulminate.swift:1106`) by
+different routes; the clusterer located one against the room the frame printed in
+(`boardersRoom`) and the other against the timetable (`teagueDay`), so they carry different
+keys and were verified twice. Both keys are recorded, and the second is the real site.
+
+**C16 has no confirming vote and is recorded as such.** A split verdict reconciles to
+`needs-human` (`playtest.js:1799`) and `needs-human` counts into `confirmed`, so a finding
+that drew `needs-human` + `refuted` — no rater confirming it — reached the confirmed list.
+It is a scope question for a person, not a defect, and #334 says so in its own box.
+
+| Key | Class | Verdict | Note |
+|---|---|---|---|
+| `decl::Sources/Fulminate/Fulminate.swift::boardersRoom` | departure-names-wrong-frame | needs-human | major, explorer-1. **Same line as the `teagueDay` row below** — dedup missed it; the real site is `Fulminate.swift:1106`. Raters split: rater 1 refuted on "the engine only prints a departure in the room being left", rater 2 confirmed on the ground that this makes the co-located frame the *only* frame the line will ever have. Preexisting, `60179c4` |
+| `decl::Sources/Fulminate/Fulminate.swift::teagueDay` | departure-names-wrong-frame | needs-human | major, explorer-2, the sharper reproducer: the listing line and the offstage-sound departure land in one turn's output. Same declaration as the row above. Preexisting, `60179c4` |
+| `decl::Sources/Fulminate/Fulminate.swift::delphineDay` | departure-names-wrong-frame | confirmed | major, timekeeper-2. "Delphine takes the cellar stairs down" printed in Vane's Study; her previous stop pins the printing room upstairs, so it can never print anywhere else. `Fulminate.swift:1230`. Preexisting, `60179c4` |
+| `decl::Sources/Fulminate/Fulminate.swift::pike` | pike-hat-state-unread | confirmed | major, explorer-2. Static `description` at `:911`; the show row sets `learning: .notebooksSold`, so the state to branch on already exists. Preexisting, `ed8d377` |
+| `decl::Sources/Fulminate/Fixtures.swift::pikeHat` | pike-hat-state-unread | confirmed | major, explorer-2. A second, independent declaration (`Fixtures.swift:96`) carrying the same now-false claim. Fixing Pike's describer leaves this standing. Preexisting, `7c92508` |
+| `decl::Sources/Fulminate/Fulminate.swift::talk.topics(of: pike)` | pike-hat-state-unread | confirmed | minor, interrogator. Three sibling strings (`:2461`, `:2485`, `:2687`) stage him under a brim he is not wearing; `:2687` is the `again:` of the row that removed the hat. Preexisting, `ed8d377` |
+| `decl::Sources/Fulminate/Fulminate.swift::desk` | unanswerable-noun | confirmed | major, explorer-1. `papers` — the arrangement is the clue, so the noun cannot be deleted. **Introduced by `7c92508`**, the commit whose job was closing this class |
+| `decl::Sources/Fulminate/Fulminate.swift::ceilingLight` | unanswerable-noun | confirmed | major, explorer-1. `chain`, named twice and carrying the evidence. **Introduced by `9caa400`** (2026-08-24), which added this object to close an unanswerable-noun defect on it and printed two new nouns, declaring one |
+| `decl::Sources/Fulminate/Fulminate.swift::timers.fuse("blast.after")` | unanswerable-noun | confirmed | minor, explorer-1. `dust`, declared settled on every flat top in six rooms; the word exists only as a synonym on the cellar's coal bin. Preexisting, `ed8d377` |
+| `decl::Sources/Fulminate/Fulminate.swift::dryGrass.describe` | unanswerable-noun | confirmed | major, explorer-3. `circle` — *"a scorched half-circle"*, absent from the vocabulary entirely. Preexisting, `ed8d377` |
+| `decl::Sources/Fulminate/Fulminate.swift::cellarSteps` | unanswerable-noun | confirmed | minor, timekeeper-3. Declared in the Kitchen only, so the noun leaves scope the moment the player walks down it — and the Cellar's own 6:26 arrival line prints it. Preexisting, `60179c4` |
+| `decl::Sources/Gnusto/Actions/GameText.swift::cantTurnOnThat` | prose-offers-what-the-mechanic-refuses | confirmed | minor, explorer-1. `studyLamp` (`:960`) has no device trait after two sentences about its switch. `ownerClass` game; the site to change is Fulminate's, not the engine's. Preexisting, `ed8d377` |
+| `decl::Sources/Gnusto/Actions/GameText.swift::stubs.pull` | prose-offers-what-the-mechanic-refuses | confirmed | minor, explorer-1. `pull light` on a pull chain. One-token repair: add `.pull` to the existing `ceilingLight.before(.turnOn, .turnOff)`. **Introduced by `9caa400`** |
+| `decl::Sources/Fulminate/Fulminate.swift::carriageHouse.describe` | prose-offers-what-the-mechanic-refuses | confirmed | minor, explorer-3. `enter wreckage` refuses during the three turns the doc says the lab is open, while `north` walks in — wrong in both directions. Preexisting, `ed8d377` |
+| `decl::Sources/Fulminate/Fulminate.swift::text` | player-description-deixis | needs-human | major, wrong-footer. `text.selfDescription` (`:158`) says "in this hall" from a rented bedroom, and worse on the Landing, which the doc's map table calls "Upstairs hall". Raters split on present-tense claim vs. past-tense clause. Preexisting, `0cf1325` |
+| `decl::Sources/Gnusto/Actions/GameText.swift::stubs` | stub-register | needs-human | minor, wrong-footer. Eight stubs at the engine default against seven the game re-skinned. **No rater confirmed this** — one `needs-human`, one `refuted`. Recorded as a scope question, not a defect. `a800ac4` is the pass that set the house voice for the other seven |
+
+### Refuted this round — pass these as `ledgerKeys` next time
+
+| Key | Charter | Refutation kind |
+|---|---|---|
+| `decl::Sources/Fulminate/Fulminate.swift::timers.clock.at("clock.radioCar")` | explorer-3 | stock-behavior-by-design |
+| `decl::Sources/Fulminate/Fulminate.swift::timers.fuse("blast.settling")` | explorer-3 | licensed-by-doc |
+| `decl::Sources/Fulminate/Fulminate.swift::landing` | explorer-1 | licensed-by-doc |
+| `decl::Sources/Fulminate/Fulminate.swift::constance.before(.accuse)` | solver | licensed-by-doc |
+| `decl::Sources/Gnusto/Actions/DefaultActions.swift::examine` | explorer-3 | stock-behavior-by-design |
+| `decl::Sources/Gnusto/Actions/GameText.swift::lostThem` | explorer-1 | stock-behavior-by-design |
+
+**Three of the six are `licensed-by-doc`, which is the clause the 2026-08-17 entry warned
+was load-bearing and worth watching. It still is.** One of the three should be withheld
+next round on a narrower ground than the clause itself: `constance.before(.accuse)` was
+refuted against an *indoor* ending frame, and the completeness critic found a
+**carriage-house death** frame where the same line says "in that house" after the building
+it names has stopped existing. That is a different frame and is fair to file, not a
+re-find.
+
+**Never argued at all, and therefore neither confirmed nor cleared:** `arroyo` (printed by
+`x pike`), `lining` (`x glove`), `stoop` (the Cellar description). All three are the same
+printed-then-refused class as `papers` and `chain`, both of which the raters confirmed
+unanimously. They sat in the round's unknown-word tally and reached no report. Carried as
+**unexamined**, not as covered, and not passed as `ledgerKeys`.
+
 ## Amendments
 
 **2026-08-18 — the `C1 status-clock` row marked `fixed`.** The `[status]` footer box of

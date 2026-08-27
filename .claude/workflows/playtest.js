@@ -5,6 +5,7 @@ export const meta = {
   whenToUse:
     'Invoked by /playtest <game>. Needs args {game, packagePath, docPath, capabilities, turns, charters, rounds}. The calling session builds the binary first (bin/playtest-replay --build <Game>) and writes the returned report; this script has no filesystem access of its own.',
   phases: [
+    { title: 'Preflight', detail: 'one agent proves this session can reach the game’s MCP server, before eight testers find out it cannot' },
     { title: 'Survey', detail: 'one cartographer: rooms, timers, vocabulary, and which oracle tiers exist' },
     { title: 'Play', detail: 'one playtester per charter, each replaying its own reproducers' },
     { title: 'Cluster', detail: 'one agent maps each excerpt to the declaration that printed it' },
@@ -32,6 +33,26 @@ const ARGS =
 const game = ARGS.game
 if (!game || !/^[A-Za-z][A-Za-z0-9]*$/.test(game)) {
   throw new Error('playtest needs args like {game: "Fulminate", packagePath: ".", docPath: "docs/games/fulminate.md"}')
+}
+
+// The round's own identity, and the thing that keeps one round's arithmetic out of
+// the next one's. Required rather than defaulted: a default is a collision that
+// happens silently, which is the failure this exists to end — three rounds running
+// reported turn and session counts that had a previous round's artifacts folded in,
+// because every label the harness generates was keyed on the game and the *retry*
+// round (r1, r2) and on nothing that distinguished Tuesday from Thursday.
+//
+// It arrives in args because a workflow script cannot call `Date.now()` — that would
+// break resume — so the caller supplies it. `bin/playtest-preflight` derives today's
+// date and writes it into the round args, which is also the date the report is filed
+// under, so the label tree and `docs/games/<game>-playtest-<date>.md` agree by
+// construction rather than by an operator typing the same string twice.
+const roundId = String(ARGS.roundId || '').trim()
+if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(roundId)) {
+  throw new Error(
+    'playtest needs a roundId — the round\'s date, e.g. roundId: "2026-08-26". '
+    + 'Run `bin/playtest-preflight ' + game + '`, which derives it along with the rest of the args.'
+  )
 }
 
 const EFFORTS = ['low', 'medium', 'high', 'xhigh', 'max']
@@ -90,19 +111,67 @@ const REF = '.claude/skills/playtest/references'
 // existed that meant three sessions written to one path — so a refutation cited a
 // transcript that was by then somebody else's. Probe directories make the loss
 // impossible; a label per agent is what keeps the *saves* separate, which is the
-// other thing a label is for. Game and round are in the name so two rounds of the
-// same game do not interleave either.
+// other thing a label is for.
+//
+// **The game and the `roundId` both lead**, and the second of those is newer than
+// the bug it fixes. This comment used to say "game and round are in the name so two
+// rounds of the same game do not interleave either", and the `round` it meant was
+// the *retry* round — r1, r2 — which distinguishes nothing between Tuesday's round
+// and Thursday's. Both wrote `<Game>-r1-session-*`, both were caught by the same
+// glob, and three rounds running reported coverage arithmetic with a previous
+// round's sessions folded in. The date in front is what makes the globs below say
+// what they always claimed to.
 //
 // `:` is not in the label alphabet the tool accepts, which is why an agent given a
 // display label like `verify:frame` had to make one up. Sanitize instead.
 const labelFor = (...parts) =>
-  [game, ...parts].join('-').replace(/[^A-Za-z0-9._-]+/g, '-').replace(/^[.-]+/, '')
+  [game, roundId, ...parts].join('-').replace(/[^A-Za-z0-9._-]+/g, '-').replace(/^[.-]+/, '')
 
-// The game's own MCP server, as the tool namespace spells it. `.mcp.json` keys
-// one server per game by the lowercased name, and both the cartographer and
-// every tester have to name its tools to fetch them — so the convention is
-// stated once here rather than re-derived at each call site.
-const mcpTools = (...names) => names.map((n) => `mcp__${game.toLowerCase()}__${n}`).join(',')
+// The game's own MCP server, as the tool namespace spells it. `.mcp.json` keys one
+// server per game, and both the cartographer and every tester have to name its
+// tools to fetch them — so the convention is stated once here rather than
+// re-derived at each call site.
+//
+// **Derived when the caller knows, assumed only when it doesn't.** The lowercased
+// game name is the convention every game in this repo follows and the one
+// `Templates/NewGame` ships, but nothing enforces it, and a repo that spells its key
+// differently gets no error at all: `ToolSearch` matches nothing and every tester
+// fails identically, which is indistinguishable from the server being down. So
+// `bin/playtest-preflight` reads the real key out of `.mcp.json` — matching on the
+// `args` entry that names the product, because the server itself cannot be asked
+// (`MCPServer.swift` reports the constant `gnusto-playtest` for every game) — and
+// passes it here. The fallback keeps every existing caller working.
+// Not lowercased again on the way out: the fallback already is, so the extra call
+// could only ever change a key an operator passed in — and a repo whose `.mcp.json`
+// key is not the lowercased product name is the single case this derivation exists
+// to carry.
+const mcpServer = ARGS.mcpServer || game.toLowerCase()
+const mcpTools = (...names) => names.map((n) => `mcp__${mcpServer}__${n}`).join(',')
+
+// What to do when the query comes back empty, said once and pasted wherever the
+// query is. This is the single most expensive gap the harness has had: the tools
+// are deferred, so a tester's first act is a `ToolSearch`, and when the server did
+// not connect that search returns nothing and the prompt used to end there. The
+// agent has a schema it cannot fill and no branch to take, so it improvises — and
+// what it improvises is a report saying it does not know how to use MCP, which
+// reads as a confused tester rather than as a dead server. Eight of those is what a
+// failed round looked like.
+//
+// A blind charter cannot be given the CLI as a fallback: `groundBlind` withholds the
+// replay how-to on purpose, and handing it over to route around a connection problem
+// would breach the firewall to fix an operator's mistake. So the instruction is to
+// stop, not to improvise — a round that reports one clear cause beats a round that
+// reports eight confused symptoms of it.
+const toolsOrStop = `
+If that \`ToolSearch\` returns nothing, **stop and report that** — do not improvise,
+do not look for another way to play the game, and do not describe the search itself as
+a finding. Empty means the game's MCP server is not connected in this session, which is
+an operator problem and never yours: it is fixed by \`bin/playtest-preflight ${game}\`
+and, if that passes, by restarting the session. Try the search twice more before you
+conclude it, because a server that was still starting can answer a later attempt. Then
+return your normal result shape with no findings and say in one sentence that the tools
+did not resolve.
+`.trim()
 
 // Where a *session* writes, as against a replay, and the glob that finds it
 // again. The server makes `.context/playtest/<label>/<probe>/` out of whatever
@@ -122,9 +191,16 @@ const mcpTools = (...names) => names.map((n) => `mcp__${game.toLowerCase()}__${n
 // `transcript.txt` and never a `closing.json`, so a glob loose enough to catch
 // `<game>-r1-play-…` or `<game>-r1-verify-…` reports the round's own replays as
 // testers who played and never accounted for it.
+// The round's identity, written once. The three label globs below and the
+// round-wide catch-all all lead with it, and they have to agree or the harness
+// recipe's exclusions stop lining up with its scope — which is the exact class of
+// bug adding `roundId` to the labels was fixing. Spelling it out four times left
+// four places to get that wrong.
+const ROUND_PREFIX = `${game}-${roundId}`
+
 const SESSION_SEGMENT = 'session'
 const sessionLabelFor = (round, key) => labelFor(`r${round}`, SESSION_SEGMENT, key)
-const SESSION_GLOB = `${game}-r*-${SESSION_SEGMENT}-*`
+const SESSION_GLOB = `${ROUND_PREFIX}-r*-${SESSION_SEGMENT}-*`
 
 // The other two label trees, derived the same way and for the same reason. A
 // tester replaying from the command line writes under its `play` label and a
@@ -156,7 +232,7 @@ const SESSION_GLOB = `${game}-r*-${SESSION_SEGMENT}-*`
 // thought of yet.
 const PLAY_SEGMENT = 'play'
 const playLabelFor = (round, key) => labelFor(`r${round}`, PLAY_SEGMENT, key)
-const PLAY_GLOB = `${game}-r*-${PLAY_SEGMENT}-*`
+const PLAY_GLOB = `${ROUND_PREFIX}-r*-${PLAY_SEGMENT}-*`
 
 const VERIFY_SEGMENT = 'verify'
 const verifyLabelFor = (round, batch, rater) =>
@@ -166,7 +242,21 @@ const verifyLabelFor = (round, batch, rater) =>
     `b${String(batch).padStart(2, '0')}`,
     `r${rater}`
   )
-const VERIFY_GLOB = `${game}-r*-${VERIFY_SEGMENT}-*`
+const VERIFY_GLOB = `${ROUND_PREFIX}-r*-${VERIFY_SEGMENT}-*`
+
+// Everything this round wrote, under any label, which is what makes the harness
+// pair below an exclusion *within a round* rather than an exclusion within the
+// whole tree. It matters more than it looks: once the three globs above carry the
+// round's date, a PREVIOUS round's sessions stop matching them — and a catch-all
+// with no round in it would sweep every one of those into this round's "own
+// machinery" row. The harness row is for the cartographer's survey and the labels
+// an operator replayed under before dispatching; last month's testers are neither.
+//
+// They are not lost by being excluded here. `all` is still counted over the whole
+// scratch tree with no glob at all, so a previous round's turns show up in the
+// residual — which is exactly what the residual is for, and what the critic is
+// told to name rather than absorb.
+const ROUND_GLOB = `${ROUND_PREFIX}-*`
 
 // The probe layout, declared once. Everything below that names a directory or a
 // file under the scratch tree is built from these, and `playtest.dryrun.mjs`
@@ -669,7 +759,7 @@ const COLLATOR_SCHEMA = {
     },
     forksNobodyTook: {
       type: 'array',
-      description: 'Forks that appear in some closing.json with taken:false and in none with taken:true — a branch the whole round left alone.',
+      description: 'Forks that appear in some closing.json with taken:false and in none with taken:true — a branch the whole round left alone. The ledger flags a fork BEFORE the command is typed, from what the tester holds and what the game has said, so read this as an upper bound on what was really committing.',
       items: { type: 'string' },
     },
     timers: {
@@ -704,7 +794,7 @@ const COLLATOR_SCHEMA = {
         playProbes: { type: 'integer', description: 'How many probe directories exist under the play labels.' },
         verifyReplays: { type: 'integer', description: 'In the verifiers\' `bin/playtest-replay` probes, under their verify labels. Usually the largest single number here.' },
         verifyProbes: { type: 'integer', description: 'How many probe directories exist under the verify labels.' },
-        harnessReplays: { type: 'integer', description: 'In every other probe transcript under the scratch tree: the round\'s own machinery — the cartographer\'s survey session, and whatever ad-hoc label an operator replayed under to check a route prefix or a random rate before dispatching anybody. Counted by exclusion, because an operator\'s label cannot be listed in advance. This used to land in the residual and be handed to the critic as a mystery: 8,095 turns on 2026-08-24.' },
+        harnessReplays: { type: 'integer', description: 'In every other probe transcript this round wrote: the round\'s own machinery — the cartographer\'s survey session, and whatever ad-hoc label an operator replayed under to check a route prefix or a random rate before dispatching anybody. Counted by exclusion, because an operator\'s label cannot be listed in advance. This used to land in the residual and be handed to the critic as a mystery: 8,095 turns on 2026-08-24.' },
         harnessProbes: { type: 'integer', description: 'How many probe directories that count belongs to.' },
         all: { type: 'integer', description: 'Every `turn=cost` anywhere under `.context/playtest`, with no glob applied — the residual against the five turn counts above is how a label tree nobody globs for announces itself instead of reading as zero.' },
       },
@@ -781,14 +871,25 @@ Look in each reply for \`the \` immediately before a capitalized name or an hono
 
 // Each is drawn from a defect this repo actually shipped. Diversity is the whole
 // point: N identical testers find one bug N times.
+// How many copies of a per-region charter one round runs, and the function that
+// decides it. Past three the regions get too thin to be worth a whole agent and
+// the divergence cycle stops covering forks and starts duplicating them.
+//
+// One constant because the number reaches three places — both per-region
+// charters and the operator advice in the dispatch log — and a cap that is three
+// literals is a cap that goes stale in two of them. The dry run deliberately
+// holds no copy: it counts the seats the workflow actually made. Declaring MORE
+// regions than this is not an error, they are split across the seats by
+// `chunkRegions` and never dropped.
+const REGION_SEATS = 3
+const seatsFor = (regions) => Math.min(Math.max(regions.length, 1), REGION_SEATS)
+
 const CHARTERS = [
   {
     key: 'explorer',
     // The only charter that plays blind, and the only one that instantiates more
-    // than once. `copies` is capped at 3: past that the regions get too thin to
-    // be worth a whole agent, and the divergence cycle stops covering forks and
-    // starts duplicating them.
-    copies: (regions) => Math.min(Math.max(regions.length, 1), 3),
+    // than once. The cap and its reasoning are `REGION_SEATS`.
+    copies: seatsFor,
     blind: true,
     brief: `Walk the map and burn the queue. You are the charter that finds the egg.
 
@@ -816,7 +917,12 @@ the line. A note costs no turn.
 
 You own: a printed noun the parser then denies, a description that contradicts what you
 were just told, a line that describes a state the world is no longer in, and an exit the
-prose names that does not exist.`,
+prose names that does not exist.
+
+**Type the nouns a description hands you.** When one comes back "I don't know the word"
+or "You can't see any such thing", that is the defect: \`note\` it at the turn that printed
+the word and file it as \`unanswerable-noun\`. Your contract says why the round's
+unknown-word tally is not a substitute.`,
   },
   {
     key: 'timekeeper',
@@ -828,7 +934,7 @@ prose names that does not exist.`,
     // and left 6:30-6:50 unprobed in five of nine rooms — the one band the round
     // was dispatched to read. Splitting it is not about buying turns, it is
     // about the seat that owns the cross-product not choosing its own coverage.
-    copies: (regions) => Math.min(Math.max(regions.length, 1), 3),
+    copies: seatsFor,
     brief: `A line has to know the room AND the moment. Only a cross-product finds the cell
 where it does not. You are the charter that catches an NPC watching a fire from the
 bottom of a dark cellar, and every marquee defect this harness has ever found was yours.
@@ -942,7 +1048,10 @@ search that never occurred; (d) prose claiming a mechanic the game does not enfo
 
 \`frotz\` is the reserved non-word and the only guaranteed parse error. Any *other*
 "I don't know the word" is a noun the game printed and cannot answer, or a verb with no
-stub yet. Collect them in one list with counts.
+stub yet. Collect them in one list with counts — **and file the printed nouns among them
+as ordinary findings**, category \`unanswerable-noun\`, one per noun, each quoting the line
+that printed it. The list with counts is your coverage note; it is not a substitute for a
+finding, and a noun that only ever appears in it has not been reported.
 
 Do not report an actor's presence line repeating. It is the most likely false positive
 here and it is the exact opposite of a bug.`,
@@ -953,6 +1062,95 @@ here and it is the exact opposite of a bug.`,
 // plan made concrete: three explorers left to chance can all draw `abstain`, and
 // then nobody opens the egg and the round reports a fork it never tested.
 const DIVERGENCE_CYCLE = ['commit', 'abstain', 'defer']
+
+// ---------------------------------------------------------------------------
+// Phase 0 — Preflight
+// ---------------------------------------------------------------------------
+
+// One agent, to answer one question: can THIS SESSION reach the game's server?
+//
+// `bin/playtest-preflight` cannot answer it. That script drives `bin/gnusto-mcp`
+// over a pipe of its own, which is exactly why it works when registration has
+// failed — and exactly why a pass there does not prove the session's MCP client
+// ever connected. The two checks look alike and are not: one proves the server
+// works, this proves the round can talk to it.
+//
+// It costs one agent. What it replaces is eight testers walking into the same wall
+// and filing eight reports that say they could not find the tools, which is a
+// mystery an operator then has to diagnose from the far end. A round that fails
+// here fails in one place, with the remedy printed.
+phase('Preflight')
+
+const preflight = await agent(
+  `${groundMin(labelFor('preflight'))}
+
+You are checking one thing before this round dispatches: that the game's own MCP
+server is reachable from this session. Do not play, do not read prose, do not report
+findings.
+
+1. \`ToolSearch\`, query \`select:${mcpTools('open', 'finish')}\`.
+2. If it returns nothing, try twice more — a server that was still starting when the
+   session began can answer a later attempt, and on one recorded round the tools
+   arrived on the fourth try once the build tree was warm.
+3. If they resolve, \`open\` a session with \`label: "${labelFor('preflight')}"\`,
+   \`seed: ${seed}\`, then \`finish\` it immediately with a one-line summary.
+
+Report \`toolsResolved: false\` if the search never returned the tools, and
+\`toolsResolved: true\` only if you opened and finished a session. Put the tool names
+you actually got in \`toolNames\`. If \`finish\` returned no \`roomsVisited\`, say so in
+\`note\` — that is a server frozen at an older commit, and a round dispatched against
+one collates nothing.`,
+  {
+    // The display label, which is what the progress tree and the dry run's stub
+    // key on — `labelFor('preflight')` above is the replay label, a different
+    // thing that happens to name the same agent.
+    label: `preflight:${game}`,
+    phase: 'Preflight',
+    schema: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['toolsResolved', 'toolNames'],
+      properties: {
+        toolsResolved: {
+          type: 'boolean',
+          description: 'True only if you opened AND finished a session through the server. A ToolSearch that returned names but a call that failed is false.',
+        },
+        toolNames: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'The tool names ToolSearch actually returned, copied exactly. Empty if it returned nothing.',
+        },
+        note: { type: 'string', description: 'Only if something needs saying: an empty search, a finish with no roomsVisited, an error message.' },
+      },
+    },
+  }
+)
+
+if (!preflight || !preflight.toolsResolved) {
+  // Stop here rather than fanning out. Every later phase is downstream of a
+  // working server, so dispatching eight testers past this point spends the
+  // round's whole budget to rediscover what one agent already established.
+  const note = (preflight && preflight.note) || 'the Preflight agent returned nothing'
+  log(`Preflight FAILED: the game's MCP server is not reachable from this session. ${note}`)
+  log(`Remedy, in order: run \`bin/playtest-preflight ${game}\` — it builds, and proves the`)
+  log('server answers over a pipe of its own. If it passes and ToolSearch still finds')
+  log('nothing, restart the session: a `.mcp.json` server is registered at session start,')
+  log('and a server already running is frozen at the commit it started on.')
+  return {
+    dispatched: false,
+    reason: 'mcp-unreachable',
+    note,
+    toolNames: (preflight && preflight.toolNames) || [],
+    remedy: `bin/playtest-preflight ${game}, then restart the session if it passes`,
+  }
+}
+
+// The tools resolved, so the round goes on — but the agent was also asked to say
+// in `note` whether `finish` came back without `roomsVisited`, which is a server
+// frozen at an older commit. That is the cheapest staleness signal the round has
+// and it used to be read only on the failure path, so a preflight that reached a
+// stale-but-answering server reported it into a field nothing looked at.
+if (preflight.note) log(`Preflight note: ${preflight.note}`)
 
 // ---------------------------------------------------------------------------
 // Phase 1 — Survey
@@ -970,8 +1168,11 @@ and the docs and produce the denominator every later phase measures itself again
 own MCP server will hand you both, exactly as the engine declared them, and the round's
 numerators are counted in that same key space — so a name you retype, tidy or infer
 scores as a room nobody entered and a timer that never fired. Fetch the tools with
-\`ToolSearch\`, query \`select:${mcpTools('open', 'survey', 'finish')}\`,
-then:
+\`ToolSearch\`, query \`select:${mcpTools('open', 'survey', 'finish')}\`.
+
+${toolsOrStop}
+
+Then:
 
     open  → label: "${labelFor('survey')}", seed: ${seed}   (take the default role: you are
                                                               the one agent this round that
@@ -1069,11 +1270,62 @@ const regions = String(ARGS.focus || '')
   .map((r) => r.trim())
   .filter(Boolean)
 
+// Splits the declared regions into `seats` contiguous chunks, every region in
+// exactly one of them.
+//
+// The seating used to be `regions[i % regions.length]`, which is wrong the
+// moment the operator declares more regions than the copy cap allows: with four
+// regions and three copies the modulo runs 0, 1, 2 and **region four is handed
+// to nobody, silently**. That is what happened to the 2026-08-25 Dungeon round,
+// and a region nobody was seated on reads afterwards exactly like a region
+// nobody found anything in.
+//
+// Chunking rather than raising the cap, because the cap's own reasoning still
+// holds — past three copies the regions get too thin to be worth a whole agent
+// and the divergence cycle starts duplicating forks rather than covering them.
+// Doubling a seat up costs that seat's attention; dropping a region costs all of
+// it. The dispatch log says which seat took two.
+// Balanced, not `ceil`-and-slice: four regions over three seats must be 2/1/1,
+// and a flat `Math.ceil(4/3)` chunk of two makes it 2/2/0 — which leaves a seat
+// with no assignment at all and is the bug this replaced wearing a hat.
+const chunkRegions = (list, seats) => {
+  const out = []
+  const base = Math.floor(list.length / seats)
+  const extra = list.length % seats
+  let at = 0
+  for (let i = 0; i < seats; i += 1) {
+    const take = base + (i < extra ? 1 : 0)
+    out.push(list.slice(at, at + take))
+    at += take
+  }
+  return out
+}
+
+// A seat's chunk as one line of prose. Numbered only when there is more than
+// one, because a region's own text says "and" often enough that a bare join
+// reads as a single sentence.
+const renderRegions = (chunk) =>
+  chunk.length > 1 ? chunk.map((r, n) => `(${n + 1}) ${r}`).join('; ') : (chunk[0] ?? null)
+
+// The seat's assignment as the tester reads it. Here rather than inline in the
+// prompt because the plural case has to say how many, and a template that
+// counted them in three separate ternaries said "two" whatever the number was.
+const regionBanner = (chunk) => {
+  if (!chunk.length) return ''
+  if (chunk.length === 1) return `\n**Your region is ${renderRegions(chunk)}.**\n`
+  return (
+    `\n**You have ${chunk.length} regions: ${renderRegions(chunk)}.** More regions than `
+    + `seats were declared, so yours is ${chunk.length} of them. Split your budget between `
+    + `them; do not spend it all on the first.\n`
+  )
+}
+
 // One charter can run more than once. Only `explorer` does today, and the
 // assignment it carries — a region and a divergence policy — is the reason: two
 // explorers with the same policy in the same region are one explorer run twice.
 const playRoster = chosen.flatMap((charter) => {
   const copies = charter.copies ? charter.copies(regions) : 1
+  const chunks = charter.copies ? chunkRegions(regions, copies) : []
   return Array.from({ length: copies }, (_, i) => ({
     charter,
     key: copies > 1 ? `${charter.key}-${i + 1}` : charter.key,
@@ -1081,7 +1333,10 @@ const playRoster = chosen.flatMap((charter) => {
     // charter handed `regions[0]` would be told its region is whichever the
     // operator happened to name first, which is worse than being told nothing:
     // the timekeeper would have skipped every clock cell outside it.
-    region: copies > 1 && regions.length ? regions[i % regions.length] : null,
+    // The chunk itself and nothing derived from it. Anything that has to count
+    // a seat's regions counts them; anything that has to print them calls
+    // `renderRegions`. A second stored field would be an invariant to keep.
+    regions: copies > 1 ? chunks[i] : [],
     // Only the blind charters take a policy. The others are running fixed
     // rosters or a known route, so withholding a move from them would just make
     // their own job incomplete.
@@ -1094,6 +1349,29 @@ log(
     `Testers: ${playRoster.map((r) => `${r.key}${r.charter.blind ? `/${r.divergence}` : ''}`).join(', ')}` +
     `${skipped.length ? ` — not run: ${skipped.map((c) => c.key).join(', ')}` : ''}.`
 )
+
+// The seating, spelled out, because a doubled-up seat is the one thing about the
+// split the operator can still act on — declare fewer regions, or accept that
+// one agent reads two. It is printed even when nothing doubled: silence here is
+// what let four regions go unseated for a whole round.
+if (regions.length) {
+  // Grouped by chunk, not listed per seat. Explorers and timekeepers are handed
+  // identical chunks, so a per-seat listing prints the whole plan twice and
+  // reports "2 seats took more than one" where one chunk is doubled and seated
+  // twice — a number the operator would act on, and it would be wrong.
+  const bySeat = new Map()
+  for (const r of playRoster.filter((seat) => seat.regions.length)) {
+    const key = renderRegions(r.regions)
+    if (!bySeat.has(key)) bySeat.set(key, { keys: [], size: r.regions.length })
+    bySeat.get(key).keys.push(r.key)
+  }
+  const doubled = [...bySeat.values()].filter((c) => c.size > 1)
+  log(
+    `Regions (${regions.length} declared over ${bySeat.size} chunk(s)): ` +
+      `${[...bySeat].map(([text, c]) => `${c.keys.join('+')} → ${text}`).join('; ') || 'none seated — no charter runs per region'}` +
+      `${doubled.length ? `. ${doubled.length} chunk(s) hold more than one region; declare at most ${REGION_SEATS} to give each its own.` : '.'}`
+  )
+}
 
 // ---------------------------------------------------------------------------
 // Phase 2 + 3 — Play, then Triage
@@ -1154,6 +1432,7 @@ for (let round = 1; round <= maxRounds && dryRounds < dryTarget; round++) {
         // Rule 2: a blind charter is told nothing the game has not printed to
         // it. The survey still runs — the critic needs a denominator — it just
         // stops reaching the testers who are supposed to be discovering it.
+        const mine = assignment.regions
         const oracle = charter.blind
           ? ''
           : `
@@ -1164,8 +1443,13 @@ The survey found:
 - Stub-verb replies the game re-skinned: ${(survey.reskinnedStubs || []).join(', ') || 'NONE — every stub answers in the engine voice'}
 - Proper-named actors: ${(survey.properNamedActors || []).join(', ') || 'none'}
 `
+        // `rewind` and `export` were missing from this list while the collator
+        // counted the `branch-*.txt` files a rewind writes as a named turn row —
+        // one round found 102 real turns in six of them. A tool the harness
+        // measures is a tool the prompt has to hand over.
         const tools = mcpTools(
-          'open', 'move', 'recall', 'coverage', 'note', 'finish', 'checkpoint', 'restore', 'replay')
+          'open', 'move', 'recall', 'coverage', 'note', 'finish',
+          'checkpoint', 'restore', 'rewind', 'export', 'replay')
         return agent(
           `${(charter.blind ? groundBlind : ground)(playLabelFor(round, assignment.key))}
 
@@ -1174,31 +1458,47 @@ Your charter is **${charter.key}**. Round ${round} of at most ${maxRounds}.
 You play through the game's own MCP server. Its tools are deferred, so fetch them first
 with \`ToolSearch\`, query \`select:${tools}\`.
 
+${toolsOrStop}
+
 Open with \`label: "${sessionLabelFor(round, assignment.key)}"\`, \`seed: ${seed}\`, \`role: "${charter.blind ? 'explorer' : 'unrestricted'}"\`${charter.blind ? `, \`divergence: "${assignment.divergence}"\`` : ''}.
 ${charter.blind ? `**Read the \`instruction\` your open returns and follow it for the whole session.** It tells you what to do the first time the game offers you something you cannot take back. Another tester has been given the opposite orders, so the branch you leave alone is covered and the one you take is yours to describe.\n` : ''}
 Every turn's output ends with a \`[status]\` line naming the room, the move counter and
 whether the command cost a turn. \`note\` writes a comment into your transcript at the
 current turn and costs nothing — use it the moment a line reads wrong, not forty turns
 later from memory. \`finish\` ends the session.
-${assignment.region ? `\n**Your region is ${assignment.region}.**\n` : ''}
+${regionBanner(mine)}
 ${charter.brief}
 
-Your turn budget is about ${turnBudget} engine turns. Spend it on breadth first, then
-depth on whatever looked wrong.
+Your turn budget is about ${turnBudget} engine turns, and it counts **every turn you
+cause**, not just the ones in this session: the moves in your own transcript, the turns
+inside any branch you rewind away from, and every turn of every \`replay\` probe and every
+\`bin/playtest-replay\` probe you run. The \`[status]\` move counter shows you only the
+first of those four, so a dozen forty-command replays will spend your budget several
+times over without the counter moving. Add them up yourself. Spend the budget on breadth
+first, then depth on whatever looked wrong.
 ${oracle}${charter.checklist ? `\nYOUR GENERATED CHECKLIST:\n${charter.checklist(survey)}\n` : ''}
 ${!charter.blind && seen.size ? `\nAlready seen in earlier rounds or the ledger — do NOT report these again:\n${[...seen].slice(0, 60).join('\n')}` : ''}
 
 The session records to disk from the moment you open it, so the evidence is already
 attached: carry the transcript path your \`open\` returned into \`transcriptPath\`. Use
 \`replay\` to re-run a trimmed reproducer from a clean start before you report it — it
-boots a fresh world and touches nothing, so it cannot disturb your session. Set
+boots a fresh world and touches nothing, so it cannot disturb your session. If your
+reproducer begins \`restore\`, pass \`savesFrom: "${sessionLabelFor(round, assignment.key)}"\`
+so the replay can read the slot you wrote; without it the game answers "Restore failed."
+and the verdict is about the harness rather than about your finding. Set
 \`replayedCleanly\` honestly; a finding whose reproducer you did not re-verify is dropped
 at triage, so guessing gains you nothing.
 
 Your coverage note is not a formality. Name what you did not reach. A charter that
 reports findings and hides its gaps makes the round look thorough when it was not.`,
           { label: `play:${assignment.key}`, phase: 'Play', schema: FINDINGS_SCHEMA }
-        )
+        // The label the tester actually opened under, attached here rather than
+        // derived downstream from `report.charter` — which is the agent's own
+        // free-text string and not a directory name. A verifier replaying a
+        // reproducer that begins `restore` needs this exact label to reach the
+        // slot, and having to guess it is what turned four real defects into
+        // `not-reproducible` verdicts in the 2026-08-25 Dungeon round.
+        ).then((out) => out && { ...out, sessionLabel: sessionLabelFor(round, assignment.key) })
       })
     )
   ).filter(Boolean)
@@ -1213,6 +1513,7 @@ reports findings and hides its gaps makes the round look thorough when it was no
   for (const report of reports) {
     for (const f of report.findings || []) {
       f.charter = report.charter
+      f.sessionLabel = report.sessionLabel
       if (f.routedTo) {
         record(routed, f)
         continue
@@ -1356,7 +1657,8 @@ ${batch
   Frame:      ${f.frame.room}${f.frame.hour ? ' @ ' + f.frame.hour : ''} — ${f.frame.state}
   Reproducer: ${JSON.stringify(f.reproducer)}
   Fault:      ${f.fault}
-  Owner file: ${f.ownerFile}`
+  Owner file: ${f.ownerFile}
+  Saves:      ${f.sessionLabel || 'unknown'}`
   )
   .join('\n')}
 
@@ -1377,6 +1679,15 @@ repo's testers have actually been wrong, most frequent first.
    check the claimed frame against that line rather than against a command count — meta
    commands and parse failures cost no turn. If the quoted text is not in the tree, or
    the frame does not match the footer, refute and say which.
+
+   **A reproducer whose first command is \`restore\` needs the tester's save slots.**
+   Add \`--saves-from <the finding's \`Saves:\` label>\` and those slots are copied into your
+   own label before the run, so \`restore\` reaches the slot the tester wrote. The copy is
+   one way and cannot touch their label. **A \`restore\` that fails is a fact about the
+   harness, not about the finding** — never refute \`not-reproducible\` on it. If the
+   label reads \`unknown\` or holds no slot, judge the excerpt alone and answer
+   \`needs-human\` with a \`reason\` saying the save was unreachable. Four real defects
+   were discarded this way in the 2026-08-25 Dungeon round.
 
    **A transcript with no \`[status]\` line at all means the check did not run** — a
    stale build or an older checkout, since \`bin/playtest-replay\` has set
@@ -1738,9 +2049,12 @@ function firedTimers(rows) {
 // numerator was display names off the status line and the denominator was an
 // agent's transcription of `Sources/<Game>/`, which is two key spaces — and the
 // numerator's could not represent the answer, because a display name is prose
-// and nothing stops two rooms sharing one. Dungeon declares 143 rooms under 126
+// and nothing stops two rooms sharing one. Dungeon declares 195 rooms under 138
 // distinct names, seven of them "Coal Mine": a tester who walked all seven
-// contributed one entry, and seventeen rooms could never be counted at all. The
+// contributed one entry, and fifty-seven rooms could never be counted at all.
+// (This pair used to read "143 rooms under 126 names", which counted only the
+// literal `Location { }` declarations and missed the 52 that `Maze.swift` and
+// `Palantir.swift` build from factory functions.) The
 // 2026-08-18 round published "119 of 195 rooms visited" off that arithmetic and
 // listed as never-entered five Frigid River stretches two charters had stood in.
 //
@@ -1868,7 +2182,9 @@ Report:
 - \`words\`: one row per distinct token, with its count summed across all files.
 - \`forksNobodyTook\`: the \`id\` of every fork appearing with \`taken: false\` and
   never with \`taken: true\`. A fork no session took is a branch the whole round
-  left alone, and nothing else in the harness can see it.
+  left alone, and nothing else in the harness can see it. The flag is raised
+  before the command is typed, so it is a precaution and not a verdict: copy the
+  ids and do not editorialise about how irreversible any of them was.
 - \`timers\`: one row per distinct name in any \`firedTimers\`, with its count
   summed across all files. Copy the names exactly; do not tidy them, and do not
   add a row for a timer you know about but no file mentions — the whole use of
@@ -1892,8 +2208,8 @@ Report:
       find ${SCRATCH} -path "*/${PLAY_GLOB}/*/${TRANSCRIPT}" | wc -l
       find ${SCRATCH} -path "*/${VERIFY_GLOB}/*/${TRANSCRIPT}" -exec grep -h 'turn=cost' {} + | wc -l
       find ${SCRATCH} -path "*/${VERIFY_GLOB}/*/${TRANSCRIPT}" | wc -l
-      find ${SCRATCH} -path "*/${PROBE}/${TRANSCRIPT}" ! -path "*/${SESSION_GLOB}/*" ! -path "*/${PLAY_GLOB}/*" ! -path "*/${VERIFY_GLOB}/*" ! -path "*/${REPLAY_TREE}/*" -exec grep -h 'turn=cost' {} + | wc -l
-      find ${SCRATCH} -path "*/${PROBE}/${TRANSCRIPT}" ! -path "*/${SESSION_GLOB}/*" ! -path "*/${PLAY_GLOB}/*" ! -path "*/${VERIFY_GLOB}/*" ! -path "*/${REPLAY_TREE}/*" | wc -l
+      find ${SCRATCH} -path "*/${ROUND_GLOB}/${PROBE}/${TRANSCRIPT}" ! -path "*/${SESSION_GLOB}/*" ! -path "*/${PLAY_GLOB}/*" ! -path "*/${VERIFY_GLOB}/*" ! -path "*/${REPLAY_TREE}/*" -exec grep -h 'turn=cost' {} + | wc -l
+      find ${SCRATCH} -path "*/${ROUND_GLOB}/${PROBE}/${TRANSCRIPT}" ! -path "*/${SESSION_GLOB}/*" ! -path "*/${PLAY_GLOB}/*" ! -path "*/${VERIFY_GLOB}/*" ! -path "*/${REPLAY_TREE}/*" | wc -l
       find ${SCRATCH} \\( -name ${TRANSCRIPT} -o -name '${BRANCH}' \\) -exec grep -h 'turn=cost' {} + | wc -l
 
   In order: \`sessions\`, \`branches\`, \`replays\`, \`replayProbes\`, \`playReplays\`,
@@ -1921,12 +2237,18 @@ Report:
   found this they held 32,987 typed commands against a reported total of 11,238.
 
   The \`harness\` pair is the only one written as an exclusion, and that is
-  deliberate: it is every other probe transcript under \`${SCRATCH}\`, which is the
-  round's own machinery — the cartographer's survey session, plus whatever label an
-  operator replayed under to check a route prefix or a random rate before dispatching
-  anybody. Those labels cannot be listed in advance, so they are caught by what they
-  are *not*. Type both lines exactly as written, negations and all; dropping one of
-  the four \`!\` clauses double-counts a tree that already has its own row.
+  deliberate: it is every other probe transcript **this round** wrote — the
+  cartographer's survey session, plus whatever label an operator replayed under to
+  check a route prefix or a random rate before dispatching anybody. Those labels
+  cannot be listed in advance, so they are caught by what they are *not*. Type both
+  lines exactly as written, negations and all; dropping one of the first three
+  \`!\` clauses double-counts a tree that already has its own row, and dropping the
+  \`${ROUND_GLOB}\` prefix sweeps every previous round of this game in the checkout
+  into a row that says "this round's own machinery". The fourth,
+  \`${REPLAY_TREE}\`, is belt-and-braces rather than load-bearing — that tree is a
+  sibling of the label directories, so it cannot match the \`${ROUND_GLOB}\` scope
+  in front of it — and it is kept because this recipe is meant to be pasted
+  verbatim and a reader should not have to prove that to himself.
 
   \`all\` is the one number with no glob in it: every \`turn=cost\` anywhere under
   \`${SCRATCH}\`, which is what the ten above are a breakdown *of*. Report it
@@ -2075,10 +2397,10 @@ truth and they win over anything here.
   transcript disagrees with the worked count, the transcript wins and the disagreement
   is worth a sentence.
 - Sessions that wrote a closing record: ${sessionsFinished}.${sessionsUnfinished.length ? ` **${sessionsUnfinished.length} session(s) never called \`finish\`** (${sessionsUnfinished.slice(0, 8).join(', ')}) — their rooms and words are missing from every count above, so the coverage figure is a floor and you should say so in as many words.` : ''}
-- Forks no session took: ${forksNobodyTook.length ? forksNobodyTook.join(', ') : 'none'}. Each is an irreversible action the whole round declined, which is a coverage gap nothing else in the harness can see. Name them in the coverage section and make one a target for next round.
+- Forks no session took: ${forksNobodyTook.length ? forksNobodyTook.join(', ') : 'none'}. Each is an action the ledger judged committing and every session declined, which is a coverage gap nothing else in the harness can see. **Read it as an upper bound.** The flag is raised before the command is typed, from what the tester was holding and what the game had said about the thing — so a row here may turn out to be a free refusal. Name the ones you believe, say which you do not, and make one a target for next round.
 - Turns: **${turns.total} world turns**, counted off the \`[status]\` footers rather than asked of anybody. Testers spent ${turns.testers} of ~${turnBudget * playRoster.length} budgeted (${turns.sessions} in their session transcripts, ${turns.branches} in branches a rewind wrote off but that were really played, ${turns.replays} across ${turns.replayProbes} probes under \`${SCRATCH}/${REPLAY_TREE}/\`, ${turns.playReplays} across ${turns.playProbes} \`bin/playtest-replay\` probes of their own); the verifiers spent ${turns.verifiers} across ${turns.verifyProbes} \`bin/playtest-replay\` probes; the round's own machinery spent ${turns.harness} across ${turns.harnessProbes} probes under every other label. **The \`${REPLAY_TREE}/\` tree is the testers'**, and used to be credited to the verifiers: \`replay\` is an MCP tool on a play session and a verifier has no session, so it replays through the CLI under its verify label. That one term reported the 2026-08-24 round at 3:1 verifier-to-tester when it was 1.2:1. A round whose verifiers outspend its testers several times over is normal and not by itself a problem — but if \`${turns.testers}\` is far under budget while \`${turns.verifiers}\` is large, the round argued more than it played, and that is worth a sentence. This field used to be the sum of the testers' self-reports and was wrong by a factor of five; then it was counted off two trees out of four and wrong by a factor of three.${turns.unattributed ? ` **${turns.unattributed} further \`turn=cost\` lines sit under \`${SCRATCH}/\` and are attributed to none of the four trees above.** The harness row already absorbs the round's own errands, so this is a tree nobody has thought of — or another game's artifacts sharing this checkout. Say which, name the directories, and treat the total as a floor until somebody does.` : ' The residual against an unglobbed count of the whole scratch tree is zero, so nothing was played under a label this round does not attribute.'}
 - There is deliberately no "cells probed" count: free-text cell labels are not comparable between charters, so any total would be a number that means nothing. Build the real cross-product yourself from the transcripts, against the ${declaredRooms.length}-room roster and the timers above.
-- Testers run: ${playRoster.map((r) => `${r.key}${r.charter.blind ? ` (${r.divergence}${r.region ? `, ${r.region}` : ''})` : ''}`).join(', ')}. Charters NOT run: ${skipped.map((c) => c.key).join(', ') || 'none'}.
+- Testers run: ${playRoster.map((r) => `${r.key}${r.charter.blind ? ` (${r.divergence}${r.regions.length ? `, ${renderRegions(r.regions)}` : ''})` : ''}`).join(', ')}. Charters NOT run: ${skipped.map((c) => c.key).join(', ') || 'none'}.
 - The blind charters were given no room list, no timer list and no design doc, deliberately. A finding of theirs that the doc licenses is the expected cost of that, not a harness failure — but if more than about two in five are refuted that way, say so: the brief needs tightening, not the doc handing back.
 - Confirmed ${confirmed.length}, refuted ${refuted.length}, findings routed to another issue ${routed.length}. Every confirmed finding is filed; this round edits nothing.
 - **Verifier agreement: ${agreementTotal ? `${Math.round((agreementMatched / agreementTotal) * 100)}% (${agreementMatched} of ${agreementTotal} findings judged the same way by both raters)` : 'not measurable — no finding got two raters'}.**${singleRated ? ` ${singleRated} finding(s) got only one rater, so the denominator is thinner than the finding count.` : ''} Verification is batched now — up to ${VERIFY_BATCH_SIZE} findings per verifier, ${VERIFY_RATERS} raters each — and this number is the check on that. Near-total agreement is not automatically good news: it is what both careful raters and two rubber-stampers produce. **Read the paired refutation attempts printed below** and say whether the two raters reasoned separately or interchangeably. That judgement is yours and nothing else in the round makes it.
@@ -2128,7 +2450,7 @@ return {
   seed,
   tiers: survey.tiers,
   charters: {
-    run: playRoster.map((r) => ({ key: r.key, charter: r.charter.key, region: r.region, divergence: r.charter.blind ? r.divergence : null })),
+    run: playRoster.map((r) => ({ key: r.key, charter: r.charter.key, region: renderRegions(r.regions), divergence: r.charter.blind ? r.divergence : null })),
     skipped: skipped.map((c) => c.key),
   },
   confirmed,

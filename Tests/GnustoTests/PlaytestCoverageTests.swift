@@ -431,12 +431,18 @@ struct PlaytestCoverageTests {
     /// discharge; the item is closed on sight, and the fork record says it was
     /// left rather than taken.
     @Test func abstainIsNotEvenAskedForTheIrreversibleMove() async throws {
+        // The match first, and it is not scenery. `burn` is a fork only once
+        // there is a flame to do it with — an empty-handed `burn oak` is a
+        // printed refusal and commits to nothing, and treating it as a
+        // divergence is what reported 37 declined forks over three real ones.
+        let flame = ["north", "take match", "south", "x oak"]
+
         let committed = try await session(AviaryGame(), divergence: .commit)
-        _ = try await committed.move(commands: ["x oak"], allowPrompts: false)
+        _ = try await committed.move(commands: flame, allowPrompts: false)
         #expect(try await ids(committed).contains("object:oak:burn"))
 
         let abstained = try await session(AviaryGame(), divergence: .abstain)
-        _ = try await abstained.move(commands: ["x oak"], allowPrompts: false)
+        _ = try await abstained.move(commands: flame, allowPrompts: false)
         #expect(!(try await ids(abstained).contains("object:oak:burn")))
 
         // Closed, but recorded: a fork nobody was offered and a fork somebody
@@ -448,6 +454,111 @@ struct PlaytestCoverageTests {
         #expect(fork.command == "burn oak")
     }
 
+    /// `burn` with nothing to burn it with is not a fork.
+    ///
+    /// The coverage cell is right — the oak's description says *branch*, and
+    /// trying to burn a tree is exactly the kind of thing that finds a defect.
+    /// What is wrong is calling it a divergence: with no flame in hand the game
+    /// prints a refusal and the world is unchanged, so an `abstain` tester that
+    /// was never even offered it lost real coverage for nothing, and the round
+    /// counted a branch as untested that nothing could have tested.
+    ///
+    /// The 2026-08-25 Dungeon round reported *"37 irreversible forks declined"*.
+    /// Its critic closed five of them in eighteen turns — `burn nest`,
+    /// `burn tree`, `burn trees`, `open trees`, `open forest` — and not one was
+    /// irreversible.
+    @Test func burningWithNoFlameIsNotAFork() async throws {
+        let session = try await session(AviaryGame(), divergence: .abstain)
+        _ = try await session.move(commands: ["x oak"], allowPrompts: false)
+
+        // Offered, and offered to an abstaining tester: the flag changed, the
+        // coverage did not.
+        #expect(try await ids(session).contains("object:oak:burn"))
+
+        let closing = try await session.finish(
+            summary: "looked at the oak", leaving: nil, limit: 200)
+        #expect(!closing.forks.contains { $0.id == "object:oak:burn" })
+    }
+
+    /// The same cell becomes a fork once the tester picks up a match.
+    ///
+    /// Which is why ``CoverageLedger`` has to *promote* rather than answer once:
+    /// the cell is raised the moment the game describes the oak, usually turns
+    /// before there is any way to burn it, and a `raise` that stayed a pure
+    /// no-op on an id it had seen would freeze that first answer forever.
+    @Test func burnBecomesAForkOnceYouCarryAFlame() async throws {
+        let session = try await session(AviaryGame(), divergence: .abstain)
+        _ = try await session.move(commands: ["x oak"], allowPrompts: false)
+        #expect(try await ids(session).contains("object:oak:burn"))
+
+        _ = try await session.move(
+            commands: ["north", "take match", "south", "x oak"], allowPrompts: false)
+
+        // Withheld now, because it commits now.
+        #expect(!(try await ids(session).contains("object:oak:burn")))
+        let closing = try await session.finish(
+            summary: "fetched the match", leaving: nil, limit: 200)
+        let fork = try #require(closing.forks.first { $0.id == "object:oak:burn" })
+        #expect(fork.taken == false)
+    }
+
+    /// Picking up the match promotes a `burn` cell the tester met turns ago and
+    /// has not mentioned since.
+    ///
+    /// The deeper half of ``burnBecomesAForkOnceYouCarryAFlame``. A cell is
+    /// re-assessed when the tester next *names* the thing, but carrying a flame
+    /// is a fact about the inventory, not about the oak — so an `abstain` tester
+    /// who examines twenty things and then finds a match must not still be
+    /// offered `burn` on all twenty. Here the oak is never named again after the
+    /// match is picked up, and the cell is withheld anyway.
+    @Test func pickingUpAFlamePromotesEveryBurnCellAlreadyOnTheQueue() async throws {
+        let session = try await session(AviaryGame(), divergence: .abstain)
+        _ = try await session.move(commands: ["x oak"], allowPrompts: false)
+        #expect(try await ids(session).contains("object:oak:burn"))
+
+        _ = try await session.move(commands: ["north", "take match"], allowPrompts: false)
+
+        #expect(!(try await ids(session).contains("object:oak:burn")))
+    }
+
+    /// `eat` is a fork whether or not the thing is in your hands.
+    ///
+    /// The counterpart to ``burningWithNoFlameIsNotAFork``, and the line the
+    /// narrowing must not cross. Nothing in this engine requires a thing be
+    /// held before it can be eaten — `blueCake.before(.eat)` in Dungeon's
+    /// `Regions/Alice.swift` kills the player outright, and the cake starts on
+    /// the tea table. `object:cake:eat` was the one fork the 2026-08-25 round
+    /// named as genuinely committing, so a `held` test would have withheld the
+    /// precaution from exactly the cell that most needed it.
+    @Test func eatingIsAForkEvenWithEmptyHands() async throws {
+        let session = try await session(OrchardGame(), divergence: .abstain)
+        _ = try await session.move(commands: ["x apple"], allowPrompts: false)
+
+        #expect(!(try await ids(session).contains("object:apple:eat")))
+        let closing = try await session.finish(
+            summary: "left the apple alone", leaving: nil, limit: 200)
+        let fork = try #require(closing.forks.first { $0.id == "object:apple:eat" })
+        #expect(fork.taken == false)
+    }
+
+    /// `open` is a fork only once the game has said the thing is shut.
+    ///
+    /// Both objects here get the `open` cell and both should: the trigger list
+    /// matches prefixes, which is what lets `clos` reach *closed* and *closing*.
+    /// But *"trees standing close on every side"* is not a container, and the
+    /// state test is therefore whole-word where the trigger test is prefixed.
+    /// Both descriptions are Dungeon's own.
+    @Test func openIsAForkOnlyOnceTheGameSaidTheThingWasShut() async throws {
+        let session = try await session(ThicketGame(), divergence: .commit)
+        _ = try await session.move(commands: ["x forest", "x egg"], allowPrompts: false)
+
+        let queue = try await session.coverage(limit: 200).items
+        let forest = try #require(queue.first { $0.id == "object:forest:open" })
+        let egg = try #require(queue.first { $0.id == "object:egg:open" })
+        #expect(!forest.fork)
+        #expect(egg.fork)
+    }
+
     /// A fork the session actually took comes back `taken`.
     ///
     /// Which is the half that makes the round's arithmetic work: a fork reported
@@ -455,7 +566,9 @@ struct PlaytestCoverageTests {
     /// claim is only worth making if a taken one says so.
     @Test func aForkTheSessionTookIsReportedTaken() async throws {
         let session = try await session(AviaryGame(), divergence: .commit)
-        _ = try await session.move(commands: ["x oak", "burn oak"], allowPrompts: false)
+        _ = try await session.move(
+            commands: ["north", "take match", "south", "x oak", "burn oak"],
+            allowPrompts: false)
 
         let closing = try await session.finish(
             summary: "burned it", leaving: nil, limit: 200)
@@ -472,11 +585,17 @@ struct PlaytestCoverageTests {
     @Test func deferSinksAForkBelowEvenAnotherRoomsWork() async throws {
         let session = try await session(AviaryGame(), divergence: .defer)
         _ = try await session.move(
-            commands: ["x oak", "north", "x bench"], allowPrompts: false)
+            commands: ["north", "take match", "x bench", "south", "x oak"],
+            allowPrompts: false)
 
         let queue = try await session.coverage(limit: 200).items
         let burn = try #require(queue.firstIndex { $0.id == "object:oak:burn" })
-        #expect(burn == queue.count - 1)
+        // Below every piece of ordinary work, rather than dead last: the match
+        // in the tester's pocket is itself burnable and itself a flame, so it
+        // raises a second fork, and "the forks are at the bottom" is the claim
+        // this row is actually making.
+        #expect(queue[..<burn].allSatisfy { !$0.fork })
+        #expect(queue[(burn + 1)...].allSatisfy { $0.fork })
         // And it really is competing against work elsewhere, or the assertion
         // above would hold for a one-room queue by default.
         #expect(Set(queue.map(\.room)).count > 1)
@@ -556,7 +675,8 @@ struct PlaytestCoverageTests {
     /// session actually took must never come back as one it left alone.
     @Test func anAbstainSessionThatTakesTheForkAnywaySaysSo() async throws {
         let session = try await session(AviaryGame(), divergence: .abstain)
-        _ = try await session.move(commands: ["x oak"], allowPrompts: false)
+        _ = try await session.move(
+            commands: ["north", "take match", "south", "x oak"], allowPrompts: false)
         #expect(!(try await ids(session).contains("object:oak:burn")))
 
         _ = try await session.move(commands: ["burn oak"], allowPrompts: false)

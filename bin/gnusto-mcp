@@ -7,8 +7,8 @@
 #
 # Every Gnusto game is `@main struct Game: Game, GameMain {}`, and `GameMain`
 # answers `--mcp` by serving the play-test protocol instead of playing. So this
-# script is only ever three steps: build the game, ask where the binary landed,
-# and hand the process over to it.
+# script is only ever three steps: find the game's binary, make sure it is
+# current, and hand the process over to it.
 #
 # **Stdout is the protocol.** Every byte this script writes before the exec would
 # be read by the client as JSON-RPC, so the build's progress goes to stderr and
@@ -16,10 +16,42 @@
 # MCP client shows a failing server's stderr, and a compile error is the one
 # thing worth seeing there.
 #
-# **Cold starts.** The first run for a game builds it, which can take longer than
-# the client's startup timeout — raise it with MCP_TIMEOUT (milliseconds), or get
-# the build out of the way once with `swift build`. Later runs are a no-op build
-# and start immediately.
+# **It does not build unless it has to, and that is the point.** A client starts
+# every server in .mcp.json at once — seven of them in the Gnusto repo. This
+# script used to run `swift build` unconditionally, plus a second swiftpm call
+# for `--show-bin-path`, so seven copies raced for SwiftPM's exclusive `.build`
+# lock to perform seven no-ops: *"Another instance of SwiftPM (PID: …) is already
+# running using '.build', waiting…"*. On a tree whose engine had just changed
+# they missed the client's startup timeout together, and seven servers vanishing
+# at once looks exactly like a broken .mcp.json. It is nothing of the kind, and
+# it cost two play-test rounds before anybody diagnosed it.
+#
+# So the build is gated on whether it would do anything: it runs when no source
+# has been touched since the last build this script performed, and otherwise the
+# binary is exec'd straight away. The gate is mtimes rather than swiftpm's own
+# answer because asking swiftpm takes the very lock we are trying not to queue
+# for. It errs the safe way — it never skips a build that is needed — so the
+# alternative failure, a server silently serving last week's binary, is not
+# traded away for the race.
+#
+# **The stamp is the record file, not the binary.** A no-op `swift build` does
+# not relink, so a binary keeps the mtime of the last build that changed it: any
+# source touched since then stays newer than it forever, and a gate reading the
+# binary would rebuild on every connect having decided nothing. The record file
+# is touched on every successful build instead, no-op included, so it means what
+# the gate needs it to mean — the last moment swiftpm confirmed this product was
+# up to date.
+#
+# `bin/playtest-replay --build <Game>` writes that same record, so a preflight
+# build satisfies this gate and nothing here has to know where swiftpm puts
+# things.
+#
+# **Cold starts.** With no recorded binary the first run still builds, which can
+# take longer than the client's startup timeout. `bin/playtest-preflight <Game>`
+# gets that out of the way and proves the server answers; raising MCP_TIMEOUT
+# (milliseconds) buys time instead.
+#
+# GNUSTO_MCP_BUILD=1 forces the build, whatever the mtimes say.
 
 set -euo pipefail
 
@@ -33,13 +65,49 @@ cd "$(dirname "$0")/.."
 game="${1:-}"
 [[ -n "$game" ]] || die "usage: bin/gnusto-mcp <Game>"
 
-swift build --product "$game" >&2 || die "could not build $game"
+# The same path `bin/playtest-replay --build` writes, so the two agree about
+# where a resolved binary is recorded rather than each keeping its own idea.
+binpath_cache=".context/playtest/.bin/$game.path"
 
-# Ask for the bin path, never guess it. Under the swiftbuild build system it is
-# .build/out/Products/Debug, not .build/debug — and a stale .build/debug copy
-# from an earlier `swift run` may also exist, so guessing is a coin flip between
-# the binary just built and one from last week.
-bindir="$(swift build --product "$game" --show-bin-path)"
-[[ -x "$bindir/$game" ]] || die "built $game but found no executable at $bindir/$game"
+binary=""
+if [[ -f "$binpath_cache" ]]; then
+  read -r binary < "$binpath_cache" || binary=""
+  [[ -x "$binary" ]] || binary=""
+fi
 
-exec "$bindir/$game" --mcp
+# Would a build do anything? Only if we have no binary, or something it is built
+# from has been touched since the last build. `find -newer` answers that without
+# taking the package lock. `-quit` stops at the first hit: this is a yes/no
+# question and a large Sources tree is no reason to walk all of it.
+needs_build=0
+if [[ -z "$binary" || -n "${GNUSTO_MCP_BUILD:-}" ]]; then
+  needs_build=1
+else
+  inputs=()
+  for path in Sources Package.swift Package.resolved; do
+    [[ -e "$path" ]] && inputs+=("$path")
+  done
+  if [[ ${#inputs[@]} -gt 0 ]] \
+    && [[ -n "$(find "${inputs[@]}" -newer "$binpath_cache" -print -quit 2>/dev/null)" ]]; then
+    needs_build=1
+  fi
+fi
+
+if [[ $needs_build -eq 1 ]]; then
+  swift build --product "$game" >&2 || die "could not build $game"
+
+  # Ask for the bin path, never guess it. Under the swiftbuild build system it is
+  # .build/out/Products/Debug, not .build/debug — and a stale .build/debug copy
+  # from an earlier `swift run` may also exist, so guessing is a coin flip between
+  # the binary just built and one from last week.
+  bindir="$(swift build --product "$game" --show-bin-path)"
+  binary="$bindir/$game"
+  [[ -x "$binary" ]] || die "built $game but found no executable at $binary"
+
+  # Record it, so the next client to start this server skips all of the above.
+  # Writing the file is also what stamps it: the gate above reads this mtime.
+  mkdir -p "$(dirname "$binpath_cache")"
+  printf '%s\n' "$binary" > "$binpath_cache"
+fi
+
+exec "$binary" --mcp

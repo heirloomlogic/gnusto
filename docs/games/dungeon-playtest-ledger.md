@@ -729,3 +729,89 @@ than it reads", and two blind explorers own seven of the ten. The fix is not a b
 doc-licensed refutations were 4 of 40, well under the two-in-five threshold — but one line
 requiring a second frame, or an explicit "this is the only frame", before a finding may claim a
 mechanism rather than a sentence.
+
+## 2026-08-25 — fourth round, `3a3b3e3` (`fix: none`, nothing applied)
+
+Every `confirmed` row below is an open defect in the game as it ships, filed as **#332**.
+Round report: `docs/games/dungeon-playtest-2026-08-25.md`. Seed 52, `verifyEffort: medium`,
+33 confirmed / 11 refuted / 4 dropped / 0 routed over 48 verified. Rater agreement 31 of
+44 = 70.5%. Completeness critic: `verifier-suspect`.
+
+**The four dropped findings have no keys and are therefore in no table.** All four carry the
+identical verdict `not-reproducible: The tester did not re-verify the trimmed reproducer from
+a clean start.`, which names a defect in the tester's process rather than in the claim, and
+the cause is a harness gap: the sessionless MCP `replay` tool boots into `.replays/`, which
+holds no save files, so it answers `Restore failed.` to every slot. Two of the four were
+re-run from a clean start with the slot restored and **both reproduce in seven commands**.
+They are carried into the next round's dedupe set by claim text, not by key, and none is
+counted as covered:
+
+1. explorer-3 — river stretch 1 says the water flows quietly; `x river` says the same water is in a hurry.
+2. explorer-3 — the boat never drifts: turns afloat including explicit WAITs leave it in the same stretch.
+3. explorer-3 — inside the barrel, `x rainbow` refuses because it cannot be seen, but `east` still refuses by reasoning about that rainbow.
+4. wrong-footer — the Dungeon Master renders two ways in adjacent turns.
+
+**33 `refuted` keys from the three previous rounds were passed as `ledgerKeys`; every `fixed`
+and `confirmed` key was withheld**, because a `fixed` key feeds `seen` and would make the
+harness drop a regression in silence — and `3a3b3e3` had just rewritten 28 of those sites.
+None of the withheld keys came back.
+
+| key | verdict | class | severity |
+|---|---|---|---|
+| `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::endgameSmallRoom` | confirmed | exit-prose-mismatch | major |
+| `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::dungeonEntrance` | confirmed | exit-prose-mismatch | major |
+| `decl::Sources/Dungeon/Regions/Prose+EndgameMechanics.swift::quizBegins` | confirmed | gate-not-gating | major |
+| `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::redBeamBroken` | confirmed | prose-untrue-of-state | major |
+| `decl::Sources/Dungeon/Regions/Prose+EndgameMechanics.swift::masterArrives` | confirmed | prose-untrue-of-state | major |
+| `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::dungeonMaster` | confirmed | unanswerable-noun | minor |
+| `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::stoneRoom` | confirmed | unanswerable-noun | minor |
+| `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::topOfStairs` | confirmed | unanswerable-noun | minor |
+| `decl::Sources/Dungeon/Regions/Prose+Bank.swift::safetyDepository` | confirmed | unwinnable | blocking |
+| `decl::Sources/Dungeon/Regions/Prose+Alice.swift::cageRobotOutside` | confirmed | unanswerable-noun | major |
+| `decl::Sources/Dungeon/Regions/Prose+Bank.swift::curtainOfLight` | confirmed | exit-prose-mismatch | major |
+| `decl::Sources/Dungeon/Regions/Prose+Bank.swift::tellerRoom` | confirmed | unanswerable-noun | major |
+| `decl::Sources/Dungeon/Regions/Prose+Temple.swift::engravings` | confirmed | prose-taste | minor |
+| `decl::Sources/Dungeon/Regions/Prose+Alice.swift::machineRoomMachinery` | confirmed | unanswerable-noun | minor |
+| `decl::Sources/Dungeon/Regions/Prose+Temple.swift::engravingsCave` | confirmed | prose-untrue-of-frame | note |
+| `decl::Sources/Gnusto/Actions/CoreVerbs.swift::cores` | confirmed | unanswerable-noun | major |
+| `decl::Sources/Dungeon/Regions/Prose+Volcano.swift::clothBag` | confirmed | prose-untrue-of-state | major |
+| `decl::Sources/Dungeon/Regions/Prose+River.swift::buoyFeelsFunny` | confirmed | mechanic-contradicts-prose | major |
+| `decl::Sources/Dungeon/Regions/Prose+River.swift::frigidRiverHere` | confirmed | unanswerable-noun | major |
+| `decl::Sources/Dungeon/Regions/Prose+EndgameMechanics.swift::boxPineSwingsShut` | confirmed | prose-untrue-of-frame | major |
+| `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::parapet` | confirmed | exit-prose-mismatch | minor |
+| `decl::Sources/Dungeon/Regions/Prose+Alice.swift::poolRoomDrained` | confirmed | unanswerable-noun | minor |
+| `decl::Sources/Dungeon/Regions/Prose+Alice.swift::cageGas` | confirmed | prose-taste | note |
+| `decl::Sources/Dungeon/Regions/Prose+Volcano.swift::wideLedge` | confirmed | unwinnable | major |
+| `decl::Sources/Dungeon/Regions/Prose+Volcano.swift::gnome` | confirmed | unanswerable-noun | minor |
+| `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::winningCell` | confirmed | exit-prose-mismatch | major |
+| `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::cellSlotFilled` | confirmed | prose-untrue-of-state | major |
+| `decl::Sources/Dungeon/Regions/Prose+EndgameMechanics.swift::masterWalksOff` | confirmed | prose-untrue-of-frame | major |
+| `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::tomb` | confirmed | repeat-behavior | minor |
+| `decl::Sources/Dungeon/Regions/Prose+EndgameMechanics.swift::masterFollows` | confirmed | prose-untrue-of-frame | major |
+| `decl::Sources/Dungeon/Prose+Stubs.swift::stubFloor` | confirmed | prose-untrue-of-state | major |
+| `decl::Sources/Dungeon/Regions/Prose+AboveGround.swift::forestDeep` | confirmed | unanswerable-noun | minor |
+| `decl::Sources/Gnusto/Actions/GameText.swift::lostThem` | confirmed | prose-untrue-of-frame | minor |
+| `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::bronzeDoorClosed` | refuted | mechanic-contradicts-prose | major |
+| `decl::Sources/Dungeon/Regions/Prose+EndgameMechanics.swift::quizAsksAgain` | refuted | mechanic-contradicts-prose | minor |
+| `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::woodenDoorOpen` | refuted | prose-untrue-of-state | minor |
+| `decl::Sources/Dungeon/Regions/Prose+Bank.swift::bankSigns` | refuted | exit-prose-mismatch | minor |
+| `decl::Sources/Dungeon/Regions/Prose+Alice.swift::etchingsAbove` | refuted | prose-untrue-of-state | minor |
+| `decl::Sources/Dungeon/Regions/Prose+Alice.swift::cageRoom` | refuted | prose-untrue-of-state | minor |
+| `decl::Sources/Dungeon/Regions/Prose+Alice.swift::teaRoom` | refuted | prose-untrue-of-frame | note |
+| `decl::Sources/Dungeon/Regions/Prose+River.swift::beachHoleDeep` | refuted | prose-untrue-of-state | major |
+| `decl::Sources/Dungeon/Regions/Prose+RoyalPuzzle.swift::puzzleWallExamined` | refuted | mechanic-contradicts-prose | minor |
+| `decl::Sources/Dungeon/Regions/Prose+Bank.swift::wallGivesWay` | refuted | prose-untrue-of-state | major |
+| `decl::Sources/Dungeon/Regions/Prose+Alice.swift::robotIsOutOfEarshot` | refuted | prose-untrue-of-frame | minor |
+
+Pass the eleven `refuted` keys above as `ledgerKeys` next round, alongside the ten from
+2026-08-24, the ten from 2026-08-18 and the thirteen from 2026-08-11 — **forty-four keys,
+thirty-one of which can actually match**, since the 2026-08-11 rows are display-truncated and
+`normalize()` can never emit an ellipsis. Not the thirty-three `confirmed` ones, and not the
+four dropped, which have no keys and must be carried as claims.
+
+**Seven of the eleven refutations turn on the source rather than the sentence** —
+`required-by-contract` ×2, `licensed-by-doc` ×1, `stock-behavior-by-design` ×4, so 47%, just
+over the brief's two-in-five line. That is not alarming for a first blind round on mainframe
+Zork, where the mechanics contract is unusually load-bearing, but it is the number to watch.
+If the next blind round is also near half, the brief needs one line telling testers that
+reproduced MDL puzzle structure is not a prose defect — without handing them the doc.

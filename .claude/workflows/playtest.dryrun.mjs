@@ -120,6 +120,13 @@ const stubTurns = {
 const stub = async (prompt, opts = {}) => {
   prompts.push({ label: opts.label, phase: opts.phase, prompt })
   const l = String(opts.label || '')
+  // The preflight agent answers first, and answers yes. The no branch returns
+  // early out of the whole script, so it gets its own run at the bottom of this
+  // file rather than a flag here — a stub that could go either way would make
+  // every assertion below conditional on which way it went.
+  if (l.startsWith('preflight')) {
+    return { toolsResolved: true, toolNames: ['mcp__fulminate__open', 'mcp__fulminate__finish'] }
+  }
   if (l.startsWith('survey')) return survey
   if (l.startsWith('play:')) return findings(l.slice(5))
   if (l.startsWith('cluster')) return { assignments: [{ index: 1, declaration: 'Sources/Fulminate/Prose.swift::vaneHere' }] }
@@ -206,9 +213,13 @@ const dryLedgerKeys = [
   'Sources/Dungeon/Regions/AboveGround.swift::up up a tree you are about 10 feet above the ground nestled among some large branches',
   'Sources/Fulminate/Fulminate.swift::the dr pike would take exception to that',
 ]
+// Fixed, never derived: a workflow script cannot call `Date.now()`, and a dry run
+// that stamped itself with today's date would make every label assertion below
+// depend on the day it ran.
+const dryRoundId = '2026-08-26'
 const dryArgs = {
   game: 'Fulminate', packagePath: '.', docPath: 'docs/games/fulminate.md',
-  capabilities: ['clock','talk'], seed: 0, turns: 60,
+  capabilities: ['clock','talk'], seed: 0, turns: 60, roundId: dryRoundId,
   // Deliberately written in affordances rather than room names, because a region
   // is pasted verbatim into a blind explorer's prompt. This fixture used to read
   // "ground floor: Front Hall, Parlour, Kitchen | upstairs: Landing, Boarder's
@@ -218,11 +229,18 @@ const dryArgs = {
   // Space is expressible without the roster: the game's opening paragraph itself
   // says "the stairs go up", so "the floor above" leaks nothing the player has
   // not already been shown, exactly as an hour leaks nothing the watch does not.
+  //
+  // **Four regions against a copy cap of three, deliberately.** That is the
+  // shape the seating used to drop silently — `regions[i % regions.length]` ran
+  // 0, 1, 2 and handed the fourth to nobody — and the assertions below are the
+  // regression test for it, so the count must stay above the cap.
   focus:
     'the first hour, 5:30 to 6:20, on the floor you start on and outside the house'
     + ' | the last half hour, 6:20 to 6:50, on the floor you start on and outside'
     + ' | the whole evening on the floor above: the opening tells you the stairs go'
-    + ' up, so go up early and stay up, waiting rather than coming down',
+    + ' up, so go up early and stay up, waiting rather than coming down'
+    + ' | the last ten minutes, 6:40 to 6:50: stop moving, pick one place and watch'
+    + ' it to the end rather than covering ground',
   ledgerKeys: dryLedgerKeys,
 }
 const fn = new Function('__stub','__phases','__logs','__args', body)
@@ -364,6 +382,18 @@ check(!/gamePrintedIt/.test(src), 'the tester-reported unknown-word census is ba
 const blind = prompts.filter((p) => /^play:explorer/.test(String(p.label || '')))
 check(blind.length > 0, 'no blind charters ran, so the firewall is untested')
 const regions = String(dryArgs.focus || '').split('|').map((r) => r.trim()).filter(Boolean)
+// The seat count, OBSERVED rather than re-derived. `blind.length` is how many
+// blind seats the workflow actually made; restating `Math.min(Math.max(n,1),3)`
+// here would copy `REGION_SEATS` across the `new Function` boundary, and then
+// raising the cap to 4 would leave `chunkCap` computed against a stale 3 while
+// the guard below read `4 > 3` and passed — the assertion that exists to
+// guarantee the chunking path is exercised, silently no longer guaranteeing it.
+const chunkCap = Math.ceil(regions.length / blind.length)
+const seatedRegions = new Set()
+check(
+  regions.length > blind.length,
+  'the fixture declares no more regions than seats, so the chunking path is untested'
+)
 for (const p of blind) {
   check(!p.prompt.includes('docs/games/'), `${p.label} was handed the design doc path`)
   check(!p.prompt.includes('playtester-brief'), `${p.label} was handed the judgement kernel`)
@@ -388,8 +418,18 @@ for (const p of blind) {
   // region is the map, and pasting the whole coverage plan is how a blind
   // explorer once got nine of Fulminate's ten rooms three lines above being
   // told it had no room list.
+  //
+  // The bound is the seat's chunk, not one. A list longer than the copy cap is
+  // now split across the seats rather than truncated, so the last seat legally
+  // holds two — what must never happen is a blind prompt holding the *whole*
+  // plan, which is the leak this check exists for.
   const mine = regions.filter((r) => p.prompt.includes(r))
-  check(mine.length <= 1, `${p.label} was handed ${mine.length} regions, not just its own`)
+  for (const r of mine) seatedRegions.add(r)
+  check(
+    mine.length <= chunkCap,
+    `${p.label} was handed ${mine.length} regions — more than its chunk of ${chunkCap}, and `
+      + `for any list of two or more that is the whole coverage plan`
+  )
   // Counting regions is not the same as reading one. A single region naming
   // three rooms passes the count and is still the map, which is how this file's
   // own fixture handed a blind explorer eight of Fulminate's ten rooms for as
@@ -428,6 +468,29 @@ for (const p of blind) {
     const [owner, prose] = key.split('::')
     check(!p.prompt.includes(owner), `${p.label} was handed the ledger's source map (${owner})`)
     check(!p.prompt.includes(prose), `${p.label} was handed a ledger excerpt: "${prose.slice(0, 48)}…"`)
+  }
+}
+
+// **Every declared region reaches a seat.** The counterpart to the bound inside
+// the loop, filled by the same `mine` it is computed from — asking "was this
+// seat handed this region" twice, over long prompt strings, is how the two
+// halves of one seating check drift apart.
+//
+// This is the assertion that would have caught the 2026-08-25 Dungeon round:
+// with four regions and a copy cap of three, the old modulo seating ran 0, 1, 2
+// and handed the fourth region to nobody without saying so. A region nobody was
+// seated on reads afterwards exactly like a region nobody found anything in,
+// which is why it is asserted and not logged.
+//
+// Stated at the altitude it is true at. With exactly one declared region the
+// seating deliberately hands it to nobody — `copies > 1` — on the ground that a
+// lone region IS the whole coverage plan and a blind explorer must not be given
+// that. So the invariant is "every region reaches a seat once there is more
+// than one", and asserting it unconditionally would be asserting a rule the
+// harness does not hold.
+if (regions.length > 1) {
+  for (const r of regions) {
+    check(seatedRegions.has(r), `no blind explorer was seated on region "${r.slice(0, 48)}…"`)
   }
 }
 
@@ -497,7 +560,8 @@ for (const label of openLabels.filter(Boolean)) {
 // which is not a state a reader can see — 32,987 typed commands reported as
 // 11,238. These four are no longer uncounted either; they are the named fourth
 // tree, and the harness recipe asserted below is what counts them.
-const HARNESS_LABELS = ['Fulminate-survey', 'Fulminate-r1-cluster', 'Fulminate-critic', 'Fulminate-collator']
+const HARNESS_LABELS = ['preflight', 'survey', 'r1-cluster', 'critic', 'collator']
+  .map((segment) => `Fulminate-${dryRoundId}-${segment}`)
 const collatorLines = collator ? collator.prompt.split('\n') : []
 const turnGlobs = extractGlobs(
   collatorLines.filter((l) => /-exec grep -h 'turn=cost'/.test(l)).join('\n')
@@ -562,6 +626,21 @@ check(
 check(
   criticPrompt().includes(`the verifiers spent ${stubVerifiers} across ${stubTurns.verifyProbes}`),
   `the critic's verifier turn total is not ${stubVerifiers} — a tree that is not theirs is being credited to them`
+)
+
+// The fork count is an upper bound and the critic has to be told so. The ledger
+// flags a fork before the command is typed, from what the tester holds and what
+// the game has said about the thing, so a row here can still turn out to be a
+// free refusal — the 2026-08-25 Dungeon round reported "37 irreversible forks
+// declined" when three of them committed to anything. The claim lives only in
+// generated prose, so grepping it is the only place it can be pinned.
+check(
+  !/irreversible action the whole round declined/.test(criticPrompt()),
+  'the critic is still told every untaken fork was an irreversible action'
+)
+check(
+  /Forks no session took:[^\n]*\*\*Read it as an upper bound\.\*\*/.test(criticPrompt()),
+  'the critic was not told the fork count is an upper bound'
 )
 check(
   result.coverage && result.coverage.turns
@@ -631,7 +710,30 @@ check(
   Boolean(harnessRecipe),
   'no collator recipe counts the round\'s own pre-dispatch trees, so 8,000-odd turns land in the residual again'
 )
+// The round's own scope, which is a POSITIVE filter and not one of the rows. Once
+// the three label globs carry the round's date, a previous round of the same game
+// in the same checkout stops matching any of them — and a catch-all with no round
+// in it would sweep all of last month's testers into a row labelled "this round's
+// own machinery". So the harness recipe is scoped first and negated second, and the
+// glob doing the scoping is exempt from the exclusion loop below: excluding it
+// would exclude everything.
+//
+// Identified by the role it plays in the recipe — the glob that appears as a
+// positive `-path` rather than behind a `!` — and not by what its characters look
+// like. Sniffing the shape (`/^\w+-[\d-]+-\*$/`) made this assertion depend on the
+// round id staying digits-and-dashes: give it a same-day suffix and the regex stops
+// matching, `roundScope` goes undefined, and the loop below starts demanding the
+// scope glob be excluded from itself.
+const roundScope = turnGlobs.find(
+  (g) => harnessRecipe && harnessRecipe.includes(`-path "*/${g}/`) && !harnessRecipe.includes(`! -path "*/${g}/`)
+)
+check(
+  Boolean(roundScope) && harnessRecipe && harnessRecipe.includes(`-path "*/${roundScope}/`),
+  'the harness turn recipe is not scoped to this round, so a previous round of the same '
+  + 'game in this checkout is counted as this round\'s own machinery'
+)
 for (const excluded of [...new Set(turnGlobs), LAYOUT.REPLAY_TREE]) {
+  if (excluded === roundScope) continue
   check(
     harnessRecipe ? harnessRecipe.includes(`! -path "*/${excluded}/`) : false,
     `the harness turn recipe does not exclude "${excluded}", so that tree is counted twice`
@@ -679,6 +781,8 @@ const SOURCES = {
   sessionServer: 'Sources/Gnusto/Playtest/PlaytestSession.swift',
   sessionDirectories: 'Sources/Gnusto/Playtest/PlaytestSessions.swift',
   measurer: 'bin/playtest-measure',
+  tools: 'Sources/Gnusto/Playtest/PlaytestTools.swift',
+  preflight: 'bin/playtest-preflight',
 }
 const SOURCE = Object.fromEntries(Object.entries(SOURCES).map(([k, path]) => [k, code(path)]))
 const PRODUCERS = ['replayScript', 'replayTool', 'sessionServer']
@@ -717,6 +821,69 @@ check(
   replayLabel === LAYOUT.REPLAY_TREE,
   `the session server writes sessionless replays under "${replayLabel}" and the collator globs "${LAYOUT.REPLAY_TREE}"`
 )
+// The save door, pinned across all three of its pieces. The brief telling a
+// verifier to pass `--saves-from` is checked below, against the generated
+// prompt; these check that the thing it names exists. Both harnesses grew the
+// door at once and either could lose it alone — a CLI without the flag makes
+// the instruction a lie, and a `replay` tool without `savesFrom` leaves the
+// tester unable to verify its own `restore` reproducer before filing it.
+check(
+  SOURCE.replayScript.includes('--saves-from'),
+  `${SOURCES.replayScript} has no --saves-from, so a verifier cannot replay a reproducer that begins \`restore\``
+)
+check(
+  /"savesFrom"/.test(code(SOURCES.replayTool.replace('PlaytestReplay', 'PlaytestTools'))),
+  'the replay tool takes no savesFrom argument, so a tester cannot re-verify its own restore reproducer'
+)
+
+// The tool table, which has three copies and just cost a round. `PlaytestTools.swift`
+// declares the names, `bin/playtest-preflight` lists them so it can fail loudly on a
+// server that declares fewer, and every tester prompt names the subset it will call.
+// `rewind` and `export` were missing from the prompt list while the collator counted
+// what `rewind` writes — 102 real turns in six branch files, uncounted — and adding
+// them meant remembering the preflight copy separately. Nothing checked either.
+//
+// Two assertions, because they catch different mistakes. The first is a new tool the
+// server declares and preflight does not know to demand; the second is a prompt that
+// tells an agent to fetch a tool that does not exist, which fails at `ToolSearch` and
+// looks exactly like an unreachable server.
+const declaredTools = new Set(
+  [...SOURCE.tools.matchAll(/PlaytestTool\(\s*\n\s*name: "([^"]+)"/g)].map((m) => m[1])
+)
+const expectedTools = new Set(
+  ((SOURCE.preflight.match(/const EXPECTED_TOOLS = \[([\s\S]*?)\]/) || [])[1] || '')
+    .split(',').map((t) => t.trim().replace(/^'|'$/g, '')).filter(Boolean)
+)
+check(
+  declaredTools.size > 0 && expectedTools.size > 0
+    && [...declaredTools].every((t) => expectedTools.has(t))
+    && [...expectedTools].every((t) => declaredTools.has(t)),
+  `${SOURCES.preflight}'s EXPECTED_TOOLS and ${SOURCES.tools}'s declarations disagree `
+  + `(declared: ${[...declaredTools].sort().join(' ') || 'none parsed'}; expected: `
+  + `${[...expectedTools].sort().join(' ') || 'none parsed'}) — preflight goes green on a server the round cannot drive`
+)
+const promptedTools = new Set(
+  prompts.flatMap((p) => [...p.prompt.matchAll(/mcp__\w+__(\w+)/g)].map((m) => m[1]))
+)
+check(
+  [...promptedTools].every((t) => declaredTools.has(t)),
+  'a generated prompt names an MCP tool the server does not declare: '
+  + `${[...promptedTools].filter((t) => !declaredTools.has(t)).join(', ')} — that agent fails at ToolSearch`
+)
+
+// `saves-in/` is the one probe artifact outside the `artifacts` cross-check
+// above, because that list is derived from what `bin/playtest-measure` opens and
+// the measurer never reads a save. It still has two independent minters, and a
+// probe that kept only the *path* of a staged label stops reproducing the moment
+// that label is cleaned — so the name gets its own check, in the shape of the
+// replay-tree one below.
+for (const key of ['replayScript', 'replayTool']) {
+  check(
+    new RegExp(`(?:/|\\(")${literal('saves-in')}`).test(SOURCE[key]),
+    `${SOURCES[key]} builds no path ending in saves-in, so a staged probe keeps only the label's path and not its bytes`
+  )
+}
+
 const probeStem = LAYOUT.PROBE.replace(/\*+$/, '')
 for (const key of ['replayScript', 'sessionDirectories']) {
   check(
@@ -755,6 +922,27 @@ const verifierPrompt = promptFor((p) => /^verify:/.test(String(p.label || '')))
 check(
   /no .?\[status\].? line at all/.test(verifierPrompt) && /needs-human/.test(verifierPrompt),
   'the verifier brief says nothing about a transcript with no [status] footer, so a stale binary reads as a refutation'
+)
+
+// The save door, end to end: the brief tells the verifier to pass
+// `--saves-from <the finding's Saves: label>`, and the finding block has to
+// actually print a `Saves:` row for it to read. The two live ninety lines apart
+// in `playtest.js` with nothing between them, and they were shipped apart once
+// already — the instruction naming a field the listing did not emit. A
+// reproducer that begins `restore` and cannot reach its slot is recorded
+// `not-reproducible`, which is the harness scoring itself as a defeated
+// finding; that cost four real defects on 2026-08-25.
+check(
+  /--saves-from/.test(verifierPrompt),
+  'the verifier brief never mentions --saves-from, so a `restore` reproducer cannot be replayed'
+)
+check(
+  /^ {2}Saves: +\S/m.test(verifierPrompt),
+  'the finding block prints no `Saves:` row, so the --saves-from instruction names a field the verifier cannot see'
+)
+check(
+  /never refute .?not-reproducible.? on it/.test(verifierPrompt),
+  'the verifier is not told that a failed restore is a harness miss rather than a refutation'
 )
 
 // The critic gets the agreement figure and is told not to read a high one as
@@ -940,6 +1128,139 @@ check(
   /function reconcile\(/.test(src) && !/function rosterMatch\(/.test(src),
   'rooms and timers have gone back to hand-rolling the same roster join twice'
 )
+
+// ---------------------------------------------------------------------------
+// Getting the round started at all
+// ---------------------------------------------------------------------------
+//
+// Everything above this line assumes a round that is running. These are about the
+// step that kept failing before one: a round that dies at `ToolSearch` for every
+// tester, because the game's MCP server never connected in the dispatching session.
+
+// The round has an identity, and every label tree carries it. Without this a second
+// round of the same game in the same checkout is globbed by the first one's recipes
+// — which is not hypothetical: three rounds running reported coverage arithmetic
+// with a previous round's sessions folded in.
+for (const [name, globs] of [['session', closingGlobs], ['turn', turnGlobs]]) {
+  const unscoped = globs.filter((g) => !g.includes(dryRoundId) && !g.startsWith('.'))
+  check(
+    unscoped.length === 0,
+    `${name} glob(s) carry no roundId, so a previous round of this game is collated `
+    + `into this one: ${unscoped.join(', ')}`
+  )
+}
+
+const preflightPrompt = prompts.find((p) => String(p.label || '').startsWith('preflight'))
+
+// A failed `ToolSearch` has somewhere to go. The tools are deferred, so a tester's
+// first act is a search; when it returned nothing the prompt used to end there, and
+// the agent improvised a report about not knowing how to use MCP. Eight of those is
+// what a failed round looked like from the outside.
+// The preflight agent is exempt: reporting the empty result IS its job, and it is
+// given a schema field for it rather than a sentence. Every OTHER agent that
+// searches has to be told, because for them an empty result is a dead end.
+for (const p of prompts.filter((p) => /ToolSearch/.test(p.prompt))
+  .filter((p) => !String(p.label || '').startsWith('preflight'))) {
+  check(
+    /returns nothing, \*\*stop and report that\*\*/.test(p.prompt),
+    `"${p.label}" is told to fetch MCP tools with ToolSearch and given no branch for an empty result`
+  )
+  check(
+    /playtest-preflight/.test(p.prompt),
+    `"${p.label}" is not told what fixes an empty ToolSearch, so the failure reads as its own`
+  )
+}
+check(
+  preflightPrompt ? /toolsResolved: false/.test(preflightPrompt.prompt) : false,
+  'the preflight agent is not told how to report a search that found nothing, which is the '
+  + 'one answer it exists to give'
+)
+
+// The preflight agent runs before anything expensive, and is a phase of its own so
+// the progress tree shows where a round died.
+check(Boolean(preflightPrompt), 'nothing checks the MCP server before the round fans out')
+check(
+  preflightPrompt ? prompts.indexOf(preflightPrompt) === 0 : false,
+  'the preflight check is not the first agent, so something expensive runs before the round knows it can play'
+)
+check(
+  metaPhases.includes('Preflight') && phases.includes('Preflight'),
+  'Preflight is not both declared in meta.phases and entered with phase(), so its agent '
+  + 'lands in an unnamed progress group and a round that died there does not say where'
+)
+
+// A tool the harness MEASURES is a tool the prompt has to hand over. `rewind`
+// writes the `branch-*.txt` files the collator counts as a named turn row, and was
+// missing from the query for as long as that row existed.
+const playPrompt = prompts.find((p) => String(p.label || '').startsWith('play:'))
+for (const tool of ['rewind', 'replay', 'coverage', 'note']) {
+  check(
+    playPrompt ? playPrompt.prompt.includes(`__${tool}`) : false,
+    `testers are never handed the \`${tool}\` tool, though the round is written as if they have it`
+  )
+}
+
+// The tool namespace and the server registration are two halves of one fact that
+// nothing compiles together. Get them out of step and every tester fails
+// identically, with `ToolSearch` matching nothing and no diagnostic anywhere.
+{
+  const mcp = JSON.parse(readFileSync('.mcp.json', 'utf8'))
+  const settings = JSON.parse(readFileSync('.claude/settings.json', 'utf8'))
+  for (const key of settings.enabledMcpjsonServers || []) {
+    check(
+      Boolean((mcp.mcpServers || {})[key]),
+      `.claude/settings.json enables the MCP server "${key}", which .mcp.json does not register`
+    )
+  }
+  for (const [key, server] of Object.entries(mcp.mcpServers || {})) {
+    check(
+      (settings.enabledMcpjsonServers || []).includes(key),
+      `.mcp.json registers "${key}" but .claude/settings.json does not enable it, so it never connects`
+    )
+    check(
+      (server.args || []).some((a) => a.toLowerCase() === key),
+      `.mcp.json keys "${key}" against args ${JSON.stringify(server.args)} — the workflow's `
+      + 'fallback namespace is the lowercased product name, so this game resolves no tools'
+    )
+  }
+  // Both remedies the round reports found the expensive way, set where a session
+  // reads them rather than remembered by an operator.
+  for (const v of ['MCP_TIMEOUT', 'CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS']) {
+    check(
+      Boolean(settings.env && settings.env[v] !== undefined),
+      `.claude/settings.json sets no ${v}, so a round depends on whoever dispatched it remembering to`
+    )
+  }
+}
+
+// And the other half of the preflight phase: when the tools do NOT resolve, the
+// round stops instead of fanning out. Re-run the whole script with a stub that says
+// no, and check that nothing past the first agent ever ran.
+{
+  const noPrompts = []
+  const noStub = async (prompt, opts = {}) => {
+    noPrompts.push(opts.label)
+    if (String(opts.label || '').startsWith('preflight')) {
+      return { toolsResolved: false, toolNames: [], note: 'ToolSearch returned nothing' }
+    }
+    throw new Error(`agent "${opts.label}" ran after preflight failed`)
+  }
+  const noLogs = []
+  const fn2 = new Function('__stub', '__phases', '__logs', '__args', body)
+  const outcome = await fn2(noStub, [], noLogs, dryArgs)
+  check(
+    noPrompts.length === 1,
+    `preflight failed and the round dispatched anyway: ${noPrompts.join(', ')}`
+  )
+  check(
+    outcome && outcome.dispatched === false && outcome.reason === 'mcp-unreachable',
+    `a round that cannot reach its server does not say so in its result: ${JSON.stringify(outcome)}`
+  )
+  check(
+    noLogs.some((l) => /playtest-preflight/.test(l)) && noLogs.some((l) => /restart the session/.test(l)),
+    'a round that cannot reach its server does not log the remedy, so the operator gets a mystery'
+  )
+}
 
 console.log('\nASSERTIONS:', failures.length ? `${failures.length} FAILED` : 'all passed')
 for (const f of failures) console.log('   ✗', f)

@@ -21,9 +21,10 @@ struct PlaytestReplayTests {
 
     /// A session registry writing into a directory of its own, on the same
     /// `GNUSTO_PLAYTEST_DIR` precedent as the rest of these suites.
-    private func sessions(_ game: some Game) throws -> PlaytestSessions {
-        let root = FileManager.default.temporaryDirectory
-            .appendingPathComponent(UUID().uuidString)
+    private func sessions(_ game: some Game, root: URL? = nil) throws -> PlaytestSessions {
+        let root =
+            root
+            ?? FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         return PlaytestSessions(
             prepared: try PreparedGame(game),
             environment: ["GNUSTO_PLAYTEST_DIR": root.path])
@@ -44,6 +45,13 @@ struct PlaytestReplayTests {
     /// A file's contents as text.
     private func text(at url: URL) throws -> String {
         String(decoding: try Data(contentsOf: url), as: UTF8.self)
+    }
+
+    /// A probe directory in the sessionless replay tree, which is where every
+    /// `replay` receipt lands. Four rows build this path.
+    private func replayProbe(_ root: URL, _ n: Int = 1) -> URL {
+        root.appendingPathComponent(PlaytestSessions.replayLabel)
+            .appendingPathComponent(String(format: "probe-%03d", n))
     }
 
     /// A tool table over a root the test can then read, for the rows whose
@@ -234,8 +242,7 @@ struct PlaytestReplayTests {
 
         let result = try await replay.call(["commands": ["look", "west"]])
 
-        let probe = root.appendingPathComponent(PlaytestSessions.replayLabel)
-            .appendingPathComponent("probe-001")
+        let probe = replayProbe(root)
         let transcript = probe.appendingPathComponent("transcript.txt")
         #expect(result.text.hasPrefix("[playtest] replay lines=2 finished=false transcript="))
         #expect(result.text.contains(transcript.path))
@@ -267,8 +274,7 @@ struct PlaytestReplayTests {
         _ = try await replay.call(
             ["commands": ["look", "// the cloak is the point", "x cloak", "west"]])
 
-        let probe = root.appendingPathComponent(PlaytestSessions.replayLabel)
-            .appendingPathComponent("probe-001")
+        let probe = replayProbe(root)
         let commands = try text(at: probe.appendingPathComponent("commands.txt"))
             .split(separator: "\n", omittingEmptySubsequences: false)
             .dropLast()
@@ -332,6 +338,158 @@ struct PlaytestReplayTests {
                 seed: 0, expect: nil)
         }
         #expect(endless?.description.contains("runs at most") == true)
+    }
+
+    // MARK: - Restoring somebody else's save
+
+    /// A session under one label, walked somewhere and saved, for the rows
+    /// below to reach back into.
+    ///
+    /// The idiom is `PlaytestSessionTests.twoSessionsDoNotSeeEachOthersSaveSlots`'s:
+    /// the player's own `save` verb, through `move`, because the point being
+    /// tested is what the *game* can read and not what a fixture wrote.
+    private func keeper(
+        _ registry: PlaytestSessions, label: String = "keeper", slot: String = "deep"
+    ) async throws -> PlaytestSession {
+        let session = try await registry.open(label: label, seed: 0)
+        _ = try await session.opening()
+        _ = try await session.move(commands: ["west"], allowPrompts: false)
+        _ = try await session.move(commands: ["save", slot], allowPrompts: true)
+        return session
+    }
+
+    /// `savesFrom` lets a reproducer that begins `restore` reach the slot the
+    /// tester wrote.
+    ///
+    /// Without it the game answers *"Restore failed."* to every slot name,
+    /// because a replay boots into a throwaway directory that holds nothing.
+    /// Four findings in the 2026-08-25 Dungeon round were recorded
+    /// `not-reproducible` on exactly that answer, and two of them reproduce in
+    /// seven commands once the slot is there.
+    @Test func aReplayCanRestoreASlotAnotherLabelWrote() async throws {
+        let registry = try sessions(OperaHouse())
+        let keeper = try await keeper(registry)
+
+        let outcome = try await PlaytestReplay.run(
+            prepared: try PreparedGame(OperaHouse()),
+            commands: ["restore", "deep", "look"],
+            seed: 0, expect: nil,
+            savesFrom: try await registry.savesDirectory(forLabel: keeper.label))
+
+        #expect(!outcome.transcript.contains("Restore failed"))
+        #expect(outcome.transcript.contains("Cloakroom"))
+        #expect(outcome.staged?.slots == ["deep"])
+
+        // The control, and the whole reason this row exists: the identical list
+        // with no `savesFrom` is the answer four findings were discarded on.
+        let unstaged = try await PlaytestReplay.run(
+            prepared: try PreparedGame(OperaHouse()),
+            commands: ["restore", "deep", "look"], seed: 0, expect: nil)
+        #expect(unstaged.transcript.contains("Restore failed"))
+        #expect(unstaged.staged == nil)
+    }
+
+    /// The load-bearing half: staging is one way.
+    ///
+    /// A replayed reproducer may itself type `save`, and the whole reason the
+    /// replay boots into a throwaway is that such a save must not land in
+    /// anybody's slots. Copying *in* keeps that literally true — so this asserts
+    /// the source label after a replay that both restored from it and saved over
+    /// the same name.
+    @Test func aReplayThatRestoresStillCannotWriteIntoTheLabel() async throws {
+        let registry = try sessions(OperaHouse())
+        let keeper = try await keeper(registry)
+        let saves = keeper.saveDirectory
+        let slot = saves.appendingPathComponent("deep.gnusto")
+        let before = try Data(contentsOf: slot)
+
+        _ = try await PlaytestReplay.run(
+            prepared: try PreparedGame(OperaHouse()),
+            commands: ["restore", "deep", "north", "save", "deep", "save", "intruder"],
+            seed: 0, expect: nil, savesFrom: saves)
+
+        #expect(SaveStore.existingSaveNames(in: saves) == ["deep"])
+        #expect(try Data(contentsOf: slot) == before)
+    }
+
+    /// Only `.gnusto` is staged.
+    ///
+    /// The extension `SaveStore.existingSaveNames` filters on, so the game's own
+    /// restore prompt lists exactly what was copied. The `.history` sidecar is a
+    /// tester's typing and a replay is driven by `ScriptedIOHandler`, which
+    /// reads none of it.
+    @Test func onlyGnustoSlotsAreStaged() async throws {
+        let registry = try sessions(OperaHouse())
+        let keeper = try await keeper(registry)
+        let saves = keeper.saveDirectory
+        try Data("not a save\n".utf8).write(to: saves.appendingPathComponent("notes.txt"))
+        try Data("look\n".utf8).write(to: saves.appendingPathComponent(".history"))
+
+        let outcome = try await PlaytestReplay.run(
+            prepared: try PreparedGame(OperaHouse()),
+            commands: ["restore"], seed: 0, expect: nil, savesFrom: saves)
+
+        #expect(outcome.staged?.slots == ["deep"])
+        #expect(!outcome.transcript.contains("notes"))
+    }
+
+    /// A staged replay says so on its header line, in its structured answer and
+    /// in `summary.txt`.
+    ///
+    /// It has to. Every other probe in the tree reproduces from `commands.txt`
+    /// and a seed alone; this one reproduces only while the label still holds
+    /// the slot it named, which is a weaker claim and must not be citable as the
+    /// stronger one.
+    @Test func aStagedReplaySaysWhereTheSaveCameFrom() async throws {
+        let (root, tools) = try table(OperaHouse())
+        let registry = try sessions(OperaHouse(), root: root)
+        _ = try await keeper(registry)
+        let replay = try #require(tools.first { $0.name == "replay" })
+
+        let result = try await replay.call(
+            ["commands": ["restore", "deep", "look"], "savesFrom": "keeper"])
+
+        #expect(result.text.contains("slots=deep"))
+        let structured = try #require(result.structured)
+        #expect(structured["savesStaged"] == .array([.string("deep")]))
+        let probe = replayProbe(root)
+        #expect(
+            try text(at: probe.appendingPathComponent("summary.txt"))
+                .contains("[playtest] saves-from=") == true)
+
+        // The bytes, not only the path. A label is cleaned between rounds and
+        // the probe is the durable evidence, so a probe that recorded only
+        // where the slot *had been* would stop reproducing when that went.
+        #expect(
+            SaveStore.existingSaveNames(in: probe.appendingPathComponent("saves-in"))
+                == ["deep"])
+    }
+
+    /// The three ways `savesFrom` is refused, each a sentence the caller can act
+    /// on rather than a trap.
+    ///
+    /// `.replays` is among them and is refused as *malformed*: `isPlainName`
+    /// bars a leading dot, which is what keeps the reserved replay tree from
+    /// being addressable as a label at all.
+    @Test func savesFromIsRefusedWhenItIsMalformedMissingOrEmpty() async throws {
+        let (root, tools) = try table(OperaHouse())
+        let registry = try sessions(OperaHouse(), root: root)
+        _ = try await registry.open(label: "empty-handed", seed: 0)
+        let replay = try #require(tools.first { $0.name == "replay" })
+
+        func refusal(_ label: String) async -> String {
+            do {
+                _ = try await replay.call(["commands": ["look"], "savesFrom": .string(label)])
+                return "no refusal"
+            } catch { return "\(error)" }
+        }
+
+        #expect(await refusal(PlaytestSessions.replayLabel).contains("Bad savesFrom"))
+        #expect(await refusal("../escape").contains("Bad savesFrom"))
+        let missing = await refusal("never-opened")
+        #expect(missing.contains(#"No label "never-opened""#))
+        #expect(missing.contains("empty-handed"))
+        #expect(await refusal("empty-handed").contains("holds no saved games"))
     }
 
     // MARK: - Over the wire

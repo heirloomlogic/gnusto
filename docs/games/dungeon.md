@@ -946,7 +946,7 @@ an `RVAL`, so the `Scoring` award table did not move at all.
 **Two things this unblocks.** The endgame's entry gate is a score test, so #187
 was blocked by arithmetic rather than by convention and is not any more. And the
 716-point walkthrough (#189) now has 616 of its 716 points on a committed,
-pinned script: `Tests/GnustoTests/DungeonWalkthroughTests.swift`, seed 2, 728
+pinned script: `Tests/GnustoTests/DungeonWalkthroughTests.swift`, seed 52, 728
 turns, ending *"Your score is 616 of a possible 616"*. It is the 585-point route
 with three commands added to its middle and one appendix on the end, so the
 remaining work for #189 is the endgame's hundred rather than a route from
@@ -986,7 +986,7 @@ Milestone 8 is what made milestone 9 possible.
 
 ### The 716-point walkthrough, which is what #189 asked for
 
-`Tests/GnustoTests/DungeonWalkthroughTests.swift`, seed 2, **815 turns**, ending
+`Tests/GnustoTests/DungeonWalkthroughTests.swift`, seed 52, **815 turns**, ending
 *"Your score is 716 of a possible 716"*. It is milestone 8's 616-point route with
 an appendix and nothing else changed, and the appendix is assembled from the
 four segments `DungeonEndgameTests` keeps rather than written out a second time:

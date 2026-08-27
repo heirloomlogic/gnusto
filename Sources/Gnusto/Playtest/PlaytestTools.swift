@@ -1,3 +1,5 @@
+import Foundation
+
 /// The tools the play-test server offers, as one table.
 ///
 /// A table rather than a switch, and one entry per row rather than a name here
@@ -734,9 +736,13 @@ enum PlaytestTools {
             "fork": [
                 "type": "boolean",
                 "description": .string(
-                    "True for something you cannot take back. Your divergence policy "
-                        + "already decided what to do with these, so they are here only "
-                        + "if it wants you to take them."),
+                    "True for something this session has reason to think you cannot take "
+                        + "back: anything to eat or drink, a thing the game called closed, "
+                        + "something burnable while you carry a flame. A precaution, not a "
+                        + "verdict — the queue raises it before the action is tried and "
+                        + "never learns what the game would have said. Your divergence "
+                        + "policy already decided what to do with these, so they are here "
+                        + "only if it wants you to take them."),
             ],
         ],
         "required": [
@@ -1158,7 +1164,10 @@ enum PlaytestTools {
                 is collapsed before matching, so an excerpt re-wrapped by a report \
                 still matches the line it came from, and the [status] footers are \
                 not searched. This is how you check a reproducer without playing \
-                the game yourself. Every call writes its own probe directory and \
+                the game yourself. A reproducer that begins `restore` needs \
+                `savesFrom` set to the label that wrote the slot — without it the \
+                game answers "Restore failed." and the verdict you get back is \
+                about the harness, not about the finding. Every call writes its own probe directory and \
                 answers with `transcript=<path>`: quote that path in whatever you \
                 file, because a frame you read here and cited nowhere is a claim \
                 the next reader cannot check.
@@ -1186,6 +1195,20 @@ enum PlaytestTools {
                             "An excerpt to look for. Given one, the result is a verdict "
                                 + "rather than the transcript."),
                     ],
+                    "savesFrom": [
+                        "type": "string",
+                        "description": .string(
+                            "A play label whose saved games this replay may read. Its "
+                                + ".gnusto slots are copied into the replay's throwaway "
+                                + "save directory before the game boots, so a reproducer "
+                                + "whose first command is `restore` finds the slot the "
+                                + "tester wrote instead of \"Restore failed.\" The copy is "
+                                + "one way: a `save` in the replay lands in the throwaway "
+                                + "and can never reach the label. A transcript produced "
+                                + "this way reproduces from its command list only while "
+                                + "that label still holds those slots, so name the label "
+                                + "wherever you cite the probe."),
+                    ],
                 ],
                 "required": ["commands"],
                 "additionalProperties": false,
@@ -1193,12 +1216,17 @@ enum PlaytestTools {
             outputSchema: replaySchema,
             handler: { arguments in
                 let commands = try strings(arguments, "commands")
+                var savesFrom: URL?
+                if let label = arguments["savesFrom"]?.stringValue {
+                    savesFrom = try await sessions.savesDirectory(forLabel: label)
+                }
                 let outcome = try await PlaytestReplay.run(
                     prepared: game,
                     commands: commands,
                     seed: try seed(arguments),
                     expect: arguments["expect"]?.stringValue,
-                    probe: await sessions.replayProbe())
+                    probe: await sessions.replayProbe(),
+                    savesFrom: savesFrom)
                 return PlaytestToolResult(
                     text: outcome.rendered, structured: outcome.json)
             })
@@ -1256,6 +1284,19 @@ enum PlaytestTools {
                     "The command list beside it, which replays to that transcript "
                         + "exactly. The seed that produced both is in summary.txt in the "
                         + "same directory."),
+            ],
+            "savesStaged": [
+                "type": "array",
+                "items": ["type": "string"],
+                "description": .string(
+                    "The slots copied in from savesFrom. Absent when the replay ran from "
+                        + "a clean start, which is the ordinary case and the stronger "
+                        + "evidence: a staged replay reproduces from its command list only "
+                        + "while that label still holds those slots."),
+            ],
+            "savesFrom": [
+                "type": "string",
+                "description": "The label directory they came from. Absent with savesStaged.",
             ],
         ],
         "required": ["lines", "finished"],
@@ -1782,6 +1823,13 @@ extension PlaytestReplay.Outcome {
             "[playtest] replay lines=\(self.lines) finished=\(finished)"
                 + (probe.map { " transcript=\($0.appendingPathComponent("transcript.txt").path)" }
                     ?? "")
+                // On the header line too, and for the same reason the path is:
+                // this is the one fact about the run that weakens what the
+                // caller is about to cite, so it cannot be somewhere they might
+                // not look.
+                + (staged.map {
+                    " saves-from=\($0.label) slots=\($0.slots.joined(separator: ","))"
+                } ?? "")
         ]
         guard let verdict else {
             return lines[0] + "\n" + Self.clipped(transcript)
@@ -1813,6 +1861,10 @@ extension PlaytestReplay.Outcome {
                 .string(probe.appendingPathComponent("transcript.txt").path)
             entry["commandsPath"] =
                 .string(probe.appendingPathComponent("commands.txt").path)
+        }
+        if let staged {
+            entry["savesStaged"] = .array(staged.slots.map { .string($0) })
+            entry["savesFrom"] = .string(staged.from.path)
         }
         guard let verdict else {
             entry["transcript"] = .string(Self.clipped(transcript))
