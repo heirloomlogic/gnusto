@@ -1868,6 +1868,108 @@ struct FulminateTests {
         #expect(!study.contains("takes the cellar stairs down"))
     }
 
+    // MARK: - Nouns the prose prints and the parser has to know
+
+    /// The rule is CLAUDE.md's, unqualified: every noun the prose prints must be
+    /// answerable. These walks type each room's own words back at it, upstairs
+    /// and out back, where no previous walk went. The two the round named are
+    /// here — `papers`, which the study desk's arrangement clue depends on, and
+    /// `chain`, which `9caa400` introduced while closing an unanswerable-noun
+    /// defect on the very same object.
+    @Test func theUpstairsRoomsAnswerToEveryNounTheyPrint() async throws {
+        let transcript = try await play(
+            Fulminate(),
+            [
+                "up", "west", "x desk", "x papers", "x drawers", "x lamp", "x shade",
+                "east", "east", "x light", "x chain", "x cord", "x bulb",
+            ])
+        expectEveryNounAnswered(transcript)
+        #expect(turnOutput(of: "x papers", in: transcript).contains("square to the fronts"))
+        #expect(turnOutput(of: "x chain", in: transcript).contains("wiped where a hand goes"))
+    }
+
+    /// The yard rewrites itself at a quarter to six and prints four nouns it
+    /// then denied: the scorch the grass describes, the path worn across it,
+    /// the mortar the wall is losing to the ivy, and the sky the lab is open to.
+    @Test func theYardAnswersToWhatTheBlastLeftInIt() async throws {
+        let after = try await play(
+            Fulminate(),
+            ["south", "west"] + Array(repeating: "z", count: 7)
+                + ["x grass", "x half-circle", "x wall", "x mortar"])
+        expectEveryNounAnswered(after)
+
+        // The shell is only enterable in the six minutes between the blast and
+        // the patrolman posting himself at the gap.
+        let shell = try await play(
+            Fulminate(),
+            ["south", "west"] + Array(repeating: "z", count: 7) + ["north", "x shell", "x sky"])
+        expectEveryNounAnswered(shell)
+
+        // And before it, the same grass names the path and answers for it.
+        let before = try await play(Fulminate(), ["south", "west", "x grass", "x path"])
+        expectEveryNounAnswered(before)
+        #expect(turnOutput(of: "x path", in: before).contains("from the kitchen door to the carriage house"))
+    }
+
+    /// The aftermath declares dust settled on every flat top in the house, and
+    /// the word answered in exactly one room — the cellar, where it is a coal
+    /// bin synonym and has nothing to do with the blast. It is a real thing now,
+    /// and it arrives in the room the sentence is read in.
+    @Test func theDustTheBlastBringsDownIsAThingYouCanLookAt() async throws {
+        let hall = try await play(Fulminate(), Array(repeating: "z", count: 11) + ["x dust"])
+        #expect(hall.contains("settles on everything with a flat top"))
+        #expect(turnOutput(of: "x dust", in: hall).contains("eighty years of ceiling"))
+
+        // Before the blast there is no such thing to look at, and the word
+        // still belongs to the coal bin downstairs.
+        let early = try await play(Fulminate(), ["x dust"])
+        #expect(!turnOutput(of: "x dust", in: early).contains("eighty years of ceiling"))
+    }
+
+    /// Delphine's 6:26 arrival names the cellar steps in the cellar, and the
+    /// steps were declared in the kitchen — so the word left scope at the exact
+    /// moment the prose used it. A staircase is a thing in both rooms it joins.
+    @Test func theCellarStepsAnswerFromTheBottomAsWellAsTheTop() async throws {
+        let transcript = try await play(
+            Fulminate(),
+            [
+                "south", "x cellar steps", "open drawer", "take flashlight", "turn on flashlight",
+                "down", "x cellar steps", "x stairs",
+            ])
+        expectEveryNounAnswered(transcript)
+        #expect(turnOutput(of: "x stairs", in: transcript).contains("Eight of them"))
+    }
+
+    /// A word that travels with a person goes `heldBy` them — the design doc's
+    /// rule, written for Dr. Pike's hat and never applied to the jacket Teague's
+    /// own description dresses him in, or the apron Mrs. Kettle dries her hands
+    /// on twice. The glove's lining and Julian's clamp and file are the same
+    /// defect on things that do not move.
+    @Test func thePeopleAnswerForTheClothesTheirOwnProseGivesThem() async throws {
+        // She is at her stove all evening; he is in his own room until 5:36 and
+        // then on the move for the rest of it, so the sleeve is asked for where
+        // he starts.
+        let kitchen = try await play(Fulminate(), ["south", "x kettle", "x apron"])
+        expectEveryNounAnswered(kitchen)
+        #expect(turnOutput(of: "x apron", in: kitchen).contains("damp across the front"))
+
+        let boarder = try await play(Fulminate(), ["up", "east", "x teague", "x sleeve"])
+        expectEveryNounAnswered(boarder)
+        #expect(turnOutput(of: "x sleeve", in: boarder).contains("There is nothing on the sleeve"))
+
+        let lab = try await play(
+            Fulminate(), ["south", "west", "north", "x julian", "x bench", "x clamp", "x file"])
+        expectEveryNounAnswered(lab)
+
+        let cellar = try await play(
+            Fulminate(),
+            [
+                "south", "open drawer", "take flashlight", "turn on flashlight", "down",
+                "x glove", "x lining",
+            ])
+        expectEveryNounAnswered(cellar)
+    }
+
     // MARK: - Two channels for two facts
 
     /// The placement clause is the clue — somebody hid the glove rather than

@@ -636,7 +636,8 @@ struct Fulminate: Game, GameMain {
     let glove = Item {
         name("scorched glove")
         adjectives("scorched", "burned", "canvas", "work")
-        synonyms("glove")
+        // The lining is where the burn stops, which is the whole of the clue. (#334)
+        synonyms("glove", "lining", "fingertips")
         firstSight(
             "A scorched glove has been pushed in behind the coal bin, rather than dropped there.")
         description(
@@ -674,6 +675,42 @@ struct Fulminate: Game, GameMain {
 
     /// Shares the word "stairs" with the back stairs on purpose. A room with
     /// two flights in it should ask which one you meant.
+    /// The same staircase, from the bottom. Delphine's 6:26 arrival names it in
+    /// the cellar — "comes down the cellar steps" — and ``cellarSteps`` is
+    /// declared in the Kitchen, so the word left scope at the exact moment the
+    /// prose used it. An item is in one room and a staircase joins two, so the
+    /// two ends are two declarations. (#334)
+    let cellarStepsBelow = Item {
+        name("cellar steps")
+        adjectives("cellar", "stone", "worn")
+        synonyms("steps", "stairs", "stair")
+        description(
+            """
+            Eight of them, stone, going up into the light from the kitchen. From down here you can see the dish worn
+            into each one, and that nobody has swept them in a while.
+            """)
+        scenery
+    }
+
+    /// What comes down when the carriage house goes up. The aftermath declares
+    /// it settled on every flat top in the house, and the word answered in one
+    /// room — the cellar, where it belongs to the coal bin and has nothing to do
+    /// with tonight. It arrives in the room the sentence is read in, and where
+    /// that room is the cellar the parser asks which dust is meant, which is the
+    /// right question rather than a defect. (#334)
+    let blastDust = Item {
+        name("fallen plaster")
+        adjectives("fallen", "fine", "grey", "gray")
+        synonyms("plaster", "dust", "ceiling")
+        description(
+            """
+            Plaster and eighty years of ceiling, come down as a powder and lying now on every flat top in the room.
+            You can write in it with a finger, and somebody will, before the night is out.
+            """)
+        scenery
+        hidden
+    }
+
     let cellarSteps = Item {
         name("cellar steps")
         // `switch` because the description says there isn't one, and a player
@@ -720,8 +757,11 @@ struct Fulminate: Game, GameMain {
 
     let dryGrass = Item {
         name("dry grass")
-        adjectives("dry", "brown", "long")
-        synonyms("grass", "lawn", "yard", "ground")
+        // The scorch and the worn path are both things the grass describes, and
+        // both are read off it. `half-circle` tokenizes to `half` + `circle`,
+        // so the adjective is what makes the printed phrase typeable. (#334)
+        adjectives("dry", "brown", "long", "scorched", "half")
+        synonyms("grass", "lawn", "yard", "ground", "path", "circle", "scorch")
         scenery
     }
 
@@ -776,14 +816,16 @@ struct Fulminate: Game, GameMain {
     let gardenWall = Item {
         name("garden wall")
         adjectives("garden", "low")
-        synonyms("wall", "walls", "brick", "bricks", "ivy", "courses")
+        // The wall's own post-blast line names what the ivy is out-performing. (#334)
+        synonyms("wall", "walls", "brick", "bricks", "ivy", "courses", "mortar")
         scenery
     }
 
     let workbench = Item {
         name("workbench")
         adjectives("long", "scarred")
-        synonyms("bench", "workbench", "vice", "vise", "scorch", "stub")
+        // Julian works at it while he talks, and his replies name both tools. (#334)
+        synonyms("bench", "workbench", "vice", "vise", "scorch", "stub", "clamp", "file")
         scenery
     }
 
@@ -849,7 +891,9 @@ struct Fulminate: Game, GameMain {
     let labShell = Item {
         name("walls")
         adjectives("brick", "bare", "scorched")
-        synonyms("wall", "workshop", "chapel", "roof", "rafters", "shell", "beams")
+        // Post-blast it is "open sky above all of it", and the shell is what the
+        // sky is being seen through. (#334)
+        synonyms("wall", "workshop", "chapel", "roof", "rafters", "shell", "beams", "sky")
         scenery
     }
 
@@ -998,7 +1042,9 @@ struct Fulminate: Game, GameMain {
     let ceilingLight = Item {
         name("ceiling light")
         adjectives("ceiling", "electric", "bare")
-        synonyms("light", "bulb", "fixture", "cord")
+        // `cord` was added by `9caa400` and `chain` was not, in the commit whose
+        // job was closing an unanswerable noun on this same object. (#334)
+        synonyms("light", "bulb", "fixture", "cord", "chain")
         description(
             """
             A bulb on a cord with a pull chain, and no shade on it. The chain has been wiped where a hand goes.
@@ -1026,7 +1072,9 @@ struct Fulminate: Game, GameMain {
     let desk = Item {
         name("desk")
         adjectives("writing", "oak")
-        synonyms("desk", "drawer", "drawers")
+        // The arrangement is the clue, so the noun cannot simply be deleted from
+        // the description; the desk answers for what is lying in it. (#334)
+        synonyms("desk", "drawer", "drawers", "papers")
         description(
             """
             Oak, and too good for the room it ended up in. Every drawer is standing open
@@ -1454,6 +1502,13 @@ struct Fulminate: Game, GameMain {
                     hear are empty and everybody who was in them is out on the grass. Dust comes along behind all of
                     it and settles on everything with a flat top.
                     """)
+
+                // And it is a thing, in the room the sentence was read in. The
+                // paragraph declares dust on every flat top in the house and the
+                // word answered in one room, where it belongs to the coal bin
+                // and has nothing to do with tonight. (#334)
+                blastDust.reveal()
+                blastDust.move(to: player.location)
             }
 
             // The one thing only this turn can say about her: she did not go
@@ -2121,6 +2176,23 @@ struct Fulminate: Game, GameMain {
             talk.knows(.notebooksSold)
                 ? "Dr. Pike is standing about with the hat in his hand."
                 : "Dr. Pike is standing about with his hat on."
+        }
+
+        // A `refuse` string is a constant in exactly the way a `description` is,
+        // and this one asserted where the hat was: *It is on his head*. It lives
+        // here rather than beside its two siblings in `Fixtures` because it is
+        // the only one of the three that reads a fact. (#334)
+        fixtures.pikeHat.before(.take) {
+            try refuse(
+                talk.knows(.notebooksSold)
+                    ? """
+                    It is in his hands, and he has neither put it down nor offered it to anybody, which are the only
+                    two things that would make it yours.
+                    """
+                    : """
+                    It is on his head, and nothing about the way he is wearing it suggests he is waiting to be asked
+                    for it.
+                    """)
         }
 
         // The band is a thing you can only see once the hat is off, so the
@@ -2887,6 +2959,7 @@ struct Fulminate: Game, GameMain {
         pineTable.starts(in: kitchen)
         backStairs.starts(in: kitchen)
         cellarSteps.starts(in: kitchen)
+        cellarStepsBelow.starts(in: cellar)
         yardDoor.starts(in: kitchen)
         fixtures.pot.starts(in: kitchen)
 
@@ -2909,6 +2982,7 @@ struct Fulminate: Game, GameMain {
         workbench.starts(in: carriageHouse)
         can.starts(in: carriageHouse)
         debris.starts(in: carriageHouse)
+        blastDust.starts(in: carriageHouse)
         julian.starts(in: carriageHouse)
 
         // Off the map until the radio car brings him at 5:52.
@@ -2917,6 +2991,8 @@ struct Fulminate: Game, GameMain {
         // Carried rather than placed, so the words travel with the men who
         // never put them down. Neither is listed in a room.
         fixtures.pikeHat.starts(heldBy: pike)
+        fixtures.teagueJacket.starts(heldBy: teague)
+        fixtures.kettleApron.starts(heldBy: kettle)
         fixtures.policeNotebook.starts(heldBy: patrolman)
 
         // Everyone starts where their own timetable says they are at 5:30, so

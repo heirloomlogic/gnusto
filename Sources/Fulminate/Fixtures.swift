@@ -97,6 +97,33 @@ struct Fixtures: GameContent {
         // second sentence stops being true at that minute. (#334)
     }
 
+    /// The same rule, applied to the two garments it was never applied to.
+    /// Teague's own description dresses him in a jacket and two of his replies
+    /// find something on its sleeve; Mrs. Kettle dries her hands on the apron
+    /// twice. Neither word was in the game, and both travel, so both go
+    /// `heldBy` rather than into a room. (#334)
+    let teagueJacket = Item {
+        name("jacket")
+        adjectives("pressed", "navy", "blue")
+        synonyms("sleeve", "sleeves", "lapel")
+        description(
+            """
+            Pressed this morning by somebody, and worn since by a man who has been up and down two staircases and
+            across a garden in it. There is nothing on the sleeve. He keeps finding something anyway.
+            """)
+    }
+
+    let kettleApron = Item {
+        name("apron")
+        adjectives("cotton", "damp", "print")
+        synonyms("pinafore")
+        description(
+            """
+            Cotton print, damp across the front from the number of times her hands have gone down it this evening.
+            It is the gesture she makes instead of saying what she thinks.
+            """)
+    }
+
     /// The patrolman's one instrument, and the thing he taps instead of opening
     /// when the player asks him for a statement.
     let policeNotebook = Item {
@@ -111,16 +138,18 @@ struct Fixtures: GameContent {
             """)
     }
 
-    /// Neither of the two is going to be handed over, and both refusals are in
-    /// the voice of the man holding it. Declared here rather than in the host
-    /// because neither reads a global.
+    /// None of these is going to be handed over, and each refusal is in the
+    /// voice of the person holding it. Declared here rather than in the host
+    /// because none of them reads a global — the hat's own `take` refusal does,
+    /// since the ledger moves it from his head to his hands, so that one lives
+    /// next to the fact it reads. (#334)
     var rules: Rules {
-        pikeHat.before(.take) {
-            try refuse(
-                """
-                It is on his head, and nothing about the way he is wearing it suggests he
-                is waiting to be asked for it.
-                """)
+        teagueJacket.before(.take) {
+            try refuse("He is wearing it, and he is being helpful, but not that helpful.")
+        }
+
+        kettleApron.before(.take) {
+            try refuse("\"You'll want to ask for something else,\" she says, and goes on with what she was doing.")
         }
 
         policeNotebook.before(.take) {

@@ -495,8 +495,28 @@ fired a timed event. Three things close that class, and a rewrite has all three:
   by", never "the roof" or "the landing", because no room upstairs owns either word.
 
 A word that travels with a person goes `heldBy` them — Dr. Pike's hat, the patrolman's
-notebook. Held items are in scope wherever their owner is standing and are not listed, so
-the word answers in three rooms and no room listing changes.
+notebook, Teague's jacket, Mrs. Kettle's apron. Held items are in scope wherever their
+owner is standing and are not listed, so the word answers in three rooms and no room
+listing changes.
+
+**Where the class ends.** The rule is that a noun the prose offers as a thing in the room
+must answer in the room that printed it, and four kinds of word are outside it. They are
+written down because each has cost a round an argument:
+
+- **Places off the map.** `arroyo`, `Colorado`, `Pasadena` — somewhere a person would
+  rather be, or walked to and back from. There is no room, so there is nothing to look at,
+  and all three answer alike. The conversation layer owns `arroyo` as a topic, which is the
+  right home for it.
+- **Odours.** A `before(.smell)` reply names what the air smells of, not what is standing
+  in the room. The cellar's *cold earth and whitewash* introduces no object.
+- **Manner.** *You walk it at a stoop* is adverbial. So is *at a run*.
+- **The story inside the story.** The typed sheet's destroyer, weather and man on a bridge
+  are on the page in the typewriter, and the sheet itself answers.
+
+The front walk is the one borderline case, and it goes the same way: the street refusal
+and the coroner's arrival both say *the path*, and there is no room on that side of the
+front door. The back-yard path is a different path, is worn across grass the player can
+stand on, and answers there.
 
 **Front Hall** — *Black and white tile, worn through to the grout along the line people
 walk. A hat stand with one coat on it. A longcase clock in the corner keeps better time
