@@ -434,6 +434,39 @@ struct DungeonBank: GameContent {
             try handled()
         }
 
+        // And the counterpart of that move: the curtain comes home. It is the
+        // only door the Small Room and the Vault have, and every way out of an
+        // inner room other than the curtain itself used to leave it standing
+        // there — the twelve unpaired walls, the four paired ones, and a
+        // viewing room's own door south. Strand it in the Vault and those two
+        // rooms are shut for the rest of the game, which the shipped bills
+        // route does every time: the alarm on the Depository's doorways forces
+        // the last departure to be a wall. (#332)
+        //
+        // The source has no such state to lose. `SCOL` sits in `BKBOX`'s object
+        // list permanently and never moves (`dung.355:6177`), and a global says
+        // which inner room it is *live* in — `SCOL-ACTIVE`, `act3.199:350`,
+        // cleared by a six-turn fuse that kills you in the Vault and sends the
+        // Gnome of Zurich to the Small Room. This engine gives us the item's
+        // location where the source has the global, so the same fact is written
+        // as an invariant over that location instead: the curtain stands where
+        // the player can see it, or it stands in the Depository. There is no
+        // third legal state, and this is the rule that says so.
+        //
+        // `world` and not the six rooms it can be observed from, deliberately.
+        // The narrower form covers every *mapped* way out and none of the
+        // others — a death in the Vault, a RESTORE, any later teleport — which
+        // is the same class of hole the bug came from. The guard costs two
+        // reads and short-circuits on the first, which is true on all but the
+        // handful of turns spent inside the wing.
+        //
+        // Deliberately not the fuse: the deadline, the drowning voice and the
+        // gnome are three mechanics this box did not ask for.
+        world.afterEachTurn {
+            guard !curtain.isIn(safetyDepository), !curtain.isIn(player.location) else { return }
+            curtain.move(to: safetyDepository)
+        }
+
         // The four inner rooms say whether the curtain is standing in them,
         // because it is their only door and a brief re-entry would hide it.
         for room in innerRooms {

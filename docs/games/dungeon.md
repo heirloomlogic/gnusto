@@ -1952,3 +1952,128 @@ knew the box was open, the Narrow Ledge knew the gnome had been paid, the
 Strange Passage knew the door was holed. A finding whose repair is *"read the
 flag the rule next door reads"* is not a design question at all, and telling
 those apart from the ones that are costs one grep.
+
+### The twelfth pass: the sentence and the state machine, and the object that never came home
+
+The 2026-08-25 round's blocking finding and two of its major classes are one
+root cause between them: **a sentence that states a fact the room does not
+check.** Twelve sites, and the interesting half is that one of them was not a
+sentence at all.
+
+29. **A puzzle object that leaves and never returns is rule 1 written into the
+    state machine instead of the prose.** The Bank's curtain of light was one
+    movable item and the transit rule relocated it to whichever inner room it
+    opened on; the only thing that ever brought it back was boarding it a
+    second time *from that room*. Every other departure stranded it — the
+    twelve unpaired walls, the four paired ones, and a viewing room's own door
+    south — and {Small Room, Vault} is a closed component whose only external
+    door is the curtain, so stranding it there shut two rooms and a
+    200-zorkmid treasure for the rest of the game.
+
+    It fires on the intended route. The alarm forbids carrying bank property
+    out through the Depository's doorways, so the last departure from an inner
+    room is always a wall, and the shipped 716-point walkthrough leaves the
+    curtain in the Vault every single time.
+
+    **The source does not have the state to lose.** `SCOL` sits in `BKBOX`'s
+    object list permanently and never moves (`dung.355:6177`); a global,
+    `SCOL-ACTIVE` (`act3.199:350`), says which inner room it is *live* in, and
+    a six-turn fuse clears it — killing you in the Vault, and sending the Gnome
+    of Zurich to the Small Room. This engine gives the item's location where
+    the source has the global, so the same fact is now written as an invariant
+    over that location: **the curtain stands where the player can see it, or it
+    stands in the Safety Depository, and there is no third legal state.** One
+    `world.afterEachTurn` says so, and the Depository's paragraph and its
+    `north(blocked:)` refusal are true again as a side effect — which retired
+    the round's separate `curtainOfLight` finding without a line of prose being
+    written.
+
+    Deliberately not the fuse. The deadline, the drowning voice and the gnome
+    are three mechanics this finding did not ask for, and the wing is solvable
+    without them.
+
+    **The general form: rule 1 is not only about sentences.** A room that
+    claims a thing is here is wrong in exactly the same way whether the claim
+    is a constant string or a placement nothing maintains. When the repair for
+    a prose defect is "the prose should branch", ask first whether the *world*
+    should have been the thing that could not lie.
+
+30. **An exit sentence copied between two rooms carries the exits of the room
+    it came from.** The Small Room lifted the Stone Room's *"A passage leads
+    north, and the stairs go up to the south"* one definite article apart, and
+    `MREYE` has no `UP` at all: `dung.355:3521` gives it `NORTH|NW|NE` and
+    `SOUTH`, and it is `MRANT` next door that declares `UP` and `SOUTH` both to
+    `TSTRS`. Three more of the same shape — the Dungeon Entrance promising
+    passages south while the mirror box's pine end filled them, the Parapet
+    promising a stair down where the map has one level row south and the source
+    names no exit at all, and the winning cell putting its bronze door in the
+    south wall when `NCELL` runs `NORTH|EXIT → ND` and blocks south.
+
+    The winning cell is worth naming twice, because **#329 already moved that
+    sentence and moved it to the wrong compass.** That decision was about the
+    *docked* cell, `CELL`, where the bronze door genuinely is south; `NCELL` is
+    a different room with its own exit row, and the cell turns as it rides —
+    its own prose says so. A written decision scoped to one room is not
+    evidence about the room next to it.
+
+31. **Two branches where the state has three.** The prison's south doorway
+    already answered three ways — empty shaft, the blank back of one of the
+    seven ordinary cells, cell four's bronze door — and the north doorway
+    answered two, so with cell four in the slot it reported the far wall as
+    *"dressed stone, with nothing in it"* while the cell's own paragraph named
+    the bronze door set in that same wall. The North Corridor also withheld the
+    view unless the slot was empty, where the South Corridor always shows it.
+    The same shape accounts for the beam that both crossed the Small Room and
+    stopped short of its far wall, and for the cloth bag that called itself
+    empty while it held the balloon in the air.
+
+    **A line with two callers in opposite states is this class at its
+    sharpest.** *"The Dungeon Master comes in and waits"* was printed by the
+    follow daemon, which is gated `while: { !masterStaying }` — so the only
+    frame it ever had was the one where he does not wait. The ordered walk,
+    which sets `masterStaying = true` before it moves him, is the caller the
+    sentence was written for. Two constants, and the source had them apart all
+    along: `FOLLOW` (`act4.231:831`) is *"The dungeon master follows you."*
+
+### What the twelfth pass changed, and what it did not
+
+The map, the puzzles, the treasure values and `maxScore` are untouched, and both
+walkthroughs score what they scored. Three things are worth naming:
+
+- **The Bank is the one behaviour change, and it only ever adds routes.** No
+  exit moved and no puzzle step changed; a wing that could be entered once can
+  now be entered again. The 716-point walkthrough is unaffected because it
+  never needed to go back.
+- **Two static traits became rules, and the Dungeon Entrance gained
+  `alwaysDescribed`.** It now reports whether its door is open and what is
+  standing in the passages south — both of which the source prints, from
+  `<DPR <SFIND-OBJ "QDOOR">>` and `LOOK-TO … "MRD"` respectively — and the
+  cloth bag reports whether it is inflated. The room's revisit behaviour
+  matters to neither walkthrough.
+- **The channel had eleven vantage points on the mirror box and nine items for
+  them.** Writing the box into the Dungeon Entrance's paragraph turned up the
+  gap: `angleOnTheBox` has always answered for the two rooms at the ends of the
+  channel — `roomNorth(of:)` returns the Dungeon Entrance past the last berth
+  and `roomSouth(of:)` the Small Room below the first — and only the
+  `boxSeenFrom*` items were missing, so those two rooms could describe a box the
+  parser had never heard of. Two items and two rows in `boxesSeenFromOutside`
+  close it, and both rooms now take their box clause from
+  `Prose.boxInTheHallway(…)`, the same sentence the five hallway rooms use.
+  **A room's paragraph is one of eleven vantage points or it is a special
+  case; writing a twelfth sentence is how you find out which.**
+- **The `eat` floor line stopped ruling on the object.** It said *"The clove of
+  garlic is not something you could eat"* of the clove that answers the bat,
+  and the same of the hot pepper sandwich that puts the cyclops to sleep; both
+  carry `FOODBIT` in the source. The floor line reports the appetite now, and
+  the two items that really are food answer for themselves — which is
+  `Prose+Stubs.swift`'s own rule, that a game-wide sentence may be a claim
+  about the player but not about the thing it is pointed at.
+
+**The class's diagnostic.** The eleventh pass asked *what does the game already
+know*. This one adds the question one level down: **what does the game already
+know how to get wrong?** Nine of these twelve sites are a two-branch answer to a
+three-state world, or a no-branch answer to a two-state one — and in seven of
+them the correct branch was already written a few lines away, in the sibling
+channel, the sibling doorway or the sibling caller. The Bank is the twelfth
+site's answer to the same question, arrived at from the other end: there the
+state machine had a fourth state nobody had named, and naming it was the fix.

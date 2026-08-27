@@ -160,9 +160,12 @@ extension Prose {
 
         // MARK: Body
 
-        stubs.eat = .naming {
-            "\($0.sentenceCased) \($0.verb("is", "are")) not something you could eat."
-        }
+        // A claim about the appetite and not about the object: this line is
+        // printed for anything the game has not answered for, and two of the
+        // things it was printed for are food. The garlic and the lunch both
+        // carry `FOODBIT` in the source and both have a puzzle to feed; they
+        // answer for themselves in ``DungeonHouse``. (#332)
+        stubs.eat = .naming { "You have no appetite for \($0)." }
         stubs.drink = .init(Prose.cantDrinkThat)
         stubs.sleep = "You have not come all this way to sleep."
         // Bare `wake` and `wake up` parse too, so the line has to be true with

@@ -74,6 +74,26 @@ public func output(before marker: String, in transcript: String) -> String {
     return String(transcript[..<range.lowerBound])
 }
 
+/// The paragraph a room heading introduces the **last** time the transcript
+/// printed it: from that heading to the next prompt, and nothing after it.
+///
+/// `output(after:)` is the tail of the whole transcript, which is the wrong
+/// slice for "what did this room just say" — and room names are not unique
+/// across a long route either. The Bank of Zork has a Small Room and so does
+/// Dungeon's Endgame, and a route that walks the Bank first makes the *first*
+/// match reliably the wrong one. The last match is the room being stood in.
+///
+/// - Parameters:
+///   - name: the room heading to slice at.
+///   - transcript: the transcript to search.
+/// - Returns: that room's paragraph, or "" when the heading never appears.
+public func frame(headed name: String, in transcript: String) -> String {
+    guard let heading = transcript.range(of: "\n\(name)\n", options: .backwards) else {
+        return ""
+    }
+    return output(before: "\n> ", in: String(transcript[heading.upperBound...]))
+}
+
 /// How many times `needle` occurs in `haystack` — the count assertions in
 /// transcript tests are usually about ("this beat fires exactly once").
 ///

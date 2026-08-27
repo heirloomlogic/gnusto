@@ -161,8 +161,10 @@ extension DungeonEndgame {
         treasuryDesk.starts(in: treasury)
     }
 
-    /// The box as it is seen from each of the nine rooms it can be seen from —
-    /// every hallway and narrow room a living player can stand in.
+    /// The box as it is seen from each of the eleven rooms it can be seen from
+    /// — every hallway and narrow room a living player can stand in, plus the
+    /// two rooms at the ends of the channel, whose paragraphs name it and whose
+    /// nouns went unanswered until #332.
     var boxesSeenFromOutside: [(Item, Location)] {
         [
             (boxSeenFromA, hallwayA), (boxSeenFromB, hallwayB),
@@ -170,6 +172,7 @@ extension DungeonEndgame {
             (boxSeenFromAEast, narrowAEast), (boxSeenFromAWest, narrowAWest),
             (boxSeenFromBEast, narrowBEast), (boxSeenFromBWest, narrowBWest),
             (boxSeenFromCEast, narrowCEast), (boxSeenFromCWest, narrowCWest),
+            (boxSeenFromEntrance, dungeonEntrance), (boxSeenFromSmallRoom, smallRoom),
         ]
     }
 }

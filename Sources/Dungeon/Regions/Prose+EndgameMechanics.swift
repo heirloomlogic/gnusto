@@ -419,9 +419,21 @@ extension Prose {
 
     // MARK: - The prison
 
+    /// Cell four seen from the **South** Corridor, whose north wall the cell
+    /// is standing against — so the bronze door is in the near wall of it.
     static let bronzeDoorInTheSlot = """
         Set in the north wall, where the cell stands against it, is a door of
         bronze.
+        """
+
+    /// And seen from the **North** Corridor, which looks the other way down
+    /// the same cell: the bronze door is in the far wall. This doorway used to
+    /// report the far wall as bare in every case but an empty shaft, which
+    /// made it the one thing in the prison that could not tell you which cell
+    /// was cell four. (#332)
+    static let bronzeDoorAcrossTheSlot = """
+        Through the doorway is a cell, and set in the far wall of it is a door
+        of bronze.
         """
 
     static let cellSlotEmptyRefusal = """
@@ -447,8 +459,19 @@ extension Prose {
         The Dungeon Master nods and falls in behind you.
         """
 
+    /// The ordered walk's arrival, and only that one: ``DungeonEndgame``'s
+    /// `dungeonMaster.before(.go)` sets `masterStaying` before it moves him,
+    /// so waiting is what he then does. The follow daemon has
+    /// ``masterFollowsYouIn``, because it is gated on the opposite state and
+    /// he moves again next turn. One sentence used to serve both. (#332)
     static let masterArrives = """
         The Dungeon Master comes in and waits.
+        """
+
+    /// The follow daemon's arrival. `FOLLOW` (`act4.231:831`) is *"The dungeon
+    /// master follows you."*, which says nothing about stopping.
+    static let masterFollowsYouIn = """
+        The Dungeon Master follows you in.
         """
 
     static let masterWalksOff = """

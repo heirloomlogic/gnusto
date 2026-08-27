@@ -148,9 +148,12 @@ struct DungeonEndgame: GameContent {
     // MARK: - The Dungeon Master's end
 
     /// `FDOOR`. Fifteen points. The wooden door in its north wall is the quiz.
+    ///
+    /// Described by a rule, and `alwaysDescribed` because of it: most of its
+    /// paragraph is state. See ``Prose/dungeonEntrance(doorOpen:)``. (#332)
     let dungeonEntrance = Location {
         name("Dungeon Entrance")
-        description(Prose.dungeonEntrance)
+        alwaysDescribed
     }
 
     /// `BDOOR`. Twenty points, and where the Dungeon Master is standing when
@@ -364,6 +367,15 @@ struct DungeonEndgame: GameContent {
     let boxSeenFromBWest = boxFromOutside()
     let boxSeenFromCEast = boxFromOutside()
     let boxSeenFromCWest = boxFromOutside()
+
+    /// The two rooms at the ends of the channel, which are not hallway rooms
+    /// and see the box exactly as one. `angleOnTheBox` has always answered for
+    /// both — `roomNorth(of:)` returns the Dungeon Entrance past the last berth
+    /// and `roomSouth(of:)` the Small Room below the first — and only the item
+    /// was missing, so the box was a thing the room could describe and the
+    /// parser could not find. (#332)
+    let boxSeenFromEntrance = boxFromOutside()
+    let boxSeenFromSmallRoom = boxFromOutside()
 
     // MARK: - The box, from inside
 

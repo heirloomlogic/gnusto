@@ -82,6 +82,14 @@ extension Prose {
 
     static let lunch = "A hot pepper sandwich, and a generous one."
 
+    /// The two things in this game that really are food, answering for
+    /// themselves. (#332)
+    static let eatGarlic = "A whole clove, raw. You are not that hungry."
+
+    static let eatLunch = """
+        Hot peppers, and nothing to drink afterwards. You think better of it.
+        """
+
     /// Verbatim Zork I — the listing line.
     static let bottleOnTable = """
         A bottle is sitting on the table.

@@ -206,10 +206,34 @@ extension Prose {
     /// `MREYE`. Named `endgameSmallRoom` rather than `smallRoom` because the
     /// Bank of Zork has a Small Room too, and ``Prose/smallRoom`` is already
     /// that one.
+    ///
+    /// **The staircase was never this room's.** `MREYE` declares
+    /// `NORTH|NW|NE` to the hallway and `SOUTH` to `MRANT`, and no `UP` at all
+    /// (`dung.355:3521`); it is `MRANT` next door that declares `UP` and
+    /// `SOUTH` both to `TSTRS`, which is why it is the room whose paragraph
+    /// mentions stairs. The sentence was copied here from ``stoneRoom`` one
+    /// definite article apart, and with it an exit that answered "You can't go
+    /// that way." The source's own wording is *"narrow passages exiting to the
+    /// north and south"* (`MREYE-ROOM`, `act4.231:430`). (#332)
+    ///
+    /// **The beam is not in here either.** It used to be, unconditionally, and
+    /// one LOOK with something on the floor printed both that the beam crossed
+    /// from one wall to the other and that it stopped short of the far wall.
+    /// The source has the same contradiction — `MREYE-ROOM` appends its
+    /// interruption to an unconditional crossing — and `docs/games/dungeon.md`
+    /// rule 1 is what stops us keeping it: *a sentence that is a claim about
+    /// state is a rule, not a constant*. See ``redBeamCrosses`` and
+    /// ``redBeamBroken``, which the room's `describe` chooses between.
     static let endgameSmallRoom = """
-        This is a small room, bare to the walls. A red beam of light crosses it
-        just above the floor, from one wall to the other. A passage leads
-        north, and stairs go up to the south.
+        This is a small room, bare to the walls, with narrow passages leaving it
+        north and south.
+        """
+
+    /// The beam as the room finds it: uninterrupted. Paired with
+    /// ``redBeamBroken``, which is the other half of the same sentence.
+    static let redBeamCrosses = """
+        A red beam of light crosses the room at the north end, a hand's breadth
+        above the floor.
         """
 
     static let redBeam = """
@@ -435,10 +459,29 @@ extension Prose {
 
     // MARK: - The Dungeon Entrance and the Narrow Corridor
 
-    static let dungeonEntrance = """
-        This is a large room, bare and square. In the north wall is a massive
-        wooden door. Passages lead away to the south.
+    /// `FDOOR`. Three facts, and two of them move: whether the door in the
+    /// north wall is open, and whether the mirror box is standing in the
+    /// passages south. The room used to state the second as a constant —
+    /// *"Passages lead away to the south"* — and the box's pine end is in
+    /// those passages for most of the ride, answering "A wall of wood blocks
+    /// your way."
+    ///
+    /// The source reports both. `FDOOR-FUNCTION` (`act4.231`) hands the
+    /// southward view to `LOOK-TO … "MRD"`, which is the box-aware machinery,
+    /// and prints the door's state outright from `<DPR <SFIND-OBJ "QDOOR">>`.
+    /// The box clause is ``boxInTheHallway(northward:face:open:intact:)``, the
+    /// same sentence the five hallway rooms add; only the door is this room's
+    /// own. (#332)
+    ///
+    /// - Parameter doorOpen: whether the wooden door stands open.
+    /// - Returns: the room's paragraph, without the box.
+    static func dungeonEntrance(doorOpen: Bool) -> String {
         """
+        This is a large room, bare and square. In the north wall is a massive
+        wooden door, \(doorOpen ? "standing open" : "shut fast"). Passages lead
+        away to the south.
+        """
+    }
 
     static let woodenDoorClosed = """
         A door of heavy wooden planks, shut fast. There is no lock on it that
@@ -522,10 +565,16 @@ extension Prose {
 
     // MARK: - The parapet and the machinery under it
 
+    /// `PARAP`. The stair was this project's, not the source's:
+    /// `PARAPET-DESC` (`dung.355:874`) names no exit at all, and the room's
+    /// one row is `SOUTH → NCORR`, level. `down` answered "You can't go that
+    /// way." The neighbour already calls the same link a passage — see
+    /// ``northCorridor``, *"A passage leads north to a parapet"* — so this
+    /// takes its word for it. (#332)
     static let parapet = """
         This is a ledge over a great pit, and nothing shows at the bottom of
         it. Set into a block of stone at the edge is a sundial, and beside the
-        sundial a large button. A stair leads down to the south.
+        sundial a large button. A passage leads away to the south.
         """
 
     static let parapetPit = """
@@ -646,10 +695,21 @@ extension Prose {
     /// for which of the eight cells is cell four. Gating the door on the ride
     /// would have contradicted the atlas twice and deleted the puzzle's one
     /// hint to make a sentence true. The sentence is what moves. (#329)
+    ///
+    /// **And it moved again, because it was pointing the wrong way.** #329
+    /// ruled on the *docked* cell, `CELL`, where the bronze door genuinely is
+    /// in the south wall: `CELL` declares `NORTH|EXIT → CD` and `SOUTH → OD`
+    /// (`dung.355`). This is `NCELL`, a different room with its own row, and
+    /// the source has it the other way about — `SOUTH → FOUT`, which is
+    /// `#NEXIT "The door is securely fastened."`, and `NORTH|EXIT → ND` to
+    /// `NIRVA`. So does this game's map: ``DungeonEndgame/winningCell`` runs
+    /// `north` and `out` through the bronze door and declares nothing south.
+    /// The cell turns as it rides — ``ridingCell`` says so in as many words —
+    /// and it comes to rest reversed. (#332)
     static let winningCell = """
-        The cell has come to rest. The north doorway is a locked door now, with
-        the rock of the shaft hard against the back of it, and the only way out
-        of here is the door of bronze in the south wall.
+        The cell has come to rest. The doorway in the south wall is a locked
+        door now, with the rock of the shaft hard against the back of it, and
+        the only way out of here is the door of bronze to the north.
         """
 
     /// The losing rest position. It says what is true and leaves the player to

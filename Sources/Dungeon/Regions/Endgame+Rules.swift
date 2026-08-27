@@ -92,7 +92,7 @@ extension DungeonEndgame {
             daemonName: "endgame.master",
             rooms: masterRoams,
             while: { !masterStaying },
-            arrivals: [Prose.masterArrives])
+            arrivals: [Prose.masterFollowsYouIn])
     }
 
     @RuleBuilder var rules: Rules {
@@ -197,10 +197,14 @@ extension DungeonEndgame {
     @RuleBuilder var beamRules: Rules {
         // `Prose.smallRoom` is the Bank of Zork's, which was declared first and
         // keeps the name; this room's is `endgameSmallRoom`.
+        // The room, the beam, and — when the box has been driven down to the
+        // bottom of the channel — the box, in the same sentence the hallway
+        // rooms and the Dungeon Entrance use for it. (#332)
         smallRoom.describe {
-            beamIsBroken
-                ? "\(Prose.endgameSmallRoom)\n\n\(Prose.redBeamBroken)"
-                : Prose.endgameSmallRoom
+            let beam = beamIsBroken ? Prose.redBeamBroken : Prose.redBeamCrosses
+            let paragraph = "\(Prose.endgameSmallRoom)\n\n\(beam)"
+            guard let box = boxUpTheChannel else { return paragraph }
+            return "\(paragraph)\n\n\(box)"
         }
 
         redBeam.describe { beamIsBroken ? Prose.redBeamBroken : Prose.redBeam }
@@ -336,6 +340,16 @@ extension DungeonEndgame {
         // and both directions of travel, and neither is true here. From the
         // Small Room only north is the box's business — south is the declared
         // stairs, and would aim at berth −2.
+        // The two rooms at the ends of the channel see the box exactly as a
+        // hallway room does, and say so with the same sentence. The Dungeon
+        // Entrance adds one fact of its own — whether the wooden door in its
+        // north wall is open, which the source prints too. (#332)
+        dungeonEntrance.describe {
+            let paragraph = Prose.dungeonEntrance(doorOpen: woodenDoor.isOpen)
+            guard let box = boxUpTheChannel else { return paragraph }
+            return "\(paragraph)\n\n\(box)"
+        }
+
         smallRoom.before(.go) {
             guard let step = hallwayStep(command.direction), step.northward else { return }
             try walkTowardTheBox(into: 0, northward: true, diagonal: step.diagonal)
@@ -346,6 +360,23 @@ extension DungeonEndgame {
             try walkTowardTheBox(
                 into: MirrorBox.berthCount - 1, northward: false, diagonal: step.diagonal)
         }
+    }
+
+    /// The box's paragraph as a room at either end of the channel adds it, or
+    /// `nil` when the box is not in the berth next door.
+    ///
+    /// `angleOnTheBox` already answers for both of those rooms — `roomNorth(of:)`
+    /// gives the Dungeon Entrance past the last berth and `roomSouth(of:)` the
+    /// Small Room below the first — so this is the hallway rooms' own clause
+    /// read through that, rather than a second way of asking. (#332)
+    var boxUpTheChannel: String? {
+        let state = box
+        guard let side = angleOnTheBox(state), side == 0 || side == 180 else { return nil }
+        return Prose.boxInTheHallway(
+            northward: side == 180,
+            face: state.face(at: side),
+            open: state.openFace(at: side) != nil,
+            intact: state.mirrorIntact && state.farMirrorIntact)
     }
 
     /// Which way along the hallway a direction takes the walker, and whether it

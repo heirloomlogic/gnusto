@@ -536,6 +536,11 @@ struct DungeonHouse: GameContent {
     /// The second half of the same list. Split when hazard #174 was thought to
     /// be a limit on body size; kept because it reads better in two.
     @RuleBuilder private var moreHouseRules: Rules {
+        // The two things in this game that are food. See `stubs.eat` in
+        // ``Prose/stubFloor`` for why the game-wide line may not rule on them.
+        garlic.before(.eat) { try reply(Prose.eatGarlic) }
+        lunch.before(.eat) { try reply(Prose.eatLunch) }
+
         // The classic moment, and in this game it is permanent: the first
         // descent throws the bar, and nothing in this milestone lifts it. The
         // Studio chimney is the way back up.

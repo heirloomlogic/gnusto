@@ -164,7 +164,6 @@ struct DungeonVolcano: GameContent {
         name("cloth bag")
         adjectives("cloth", "enormous")
         synonyms("bag", "envelope")
-        description(Prose.clothBag)
         scenery
     }
 
@@ -843,6 +842,10 @@ extension DungeonVolcano {
     }
 
     @RuleBuilder fileprivate var balloonPartRules: Rules {
+        // The bag is the balloon's state as much as the basket's paragraph is,
+        // and both of its own channels used to describe it slack. (#332)
+        clothBag.describe { bagInflated ? Prose.clothBagInflated : Prose.clothBagSlack }
+
         for part in [clothBag, receptacle] {
             part.before(.take, .pull) { try reply(Prose.balloonPartIsFixed(part.name)) }
         }
@@ -853,7 +856,9 @@ extension DungeonVolcano {
         braidedWire.before(.take, .pull) { try reply(Prose.wireIsFixed(braidedWire.name)) }
 
         clothBag.before(.open) { try reply(Prose.clothBagWontOpen) }
-        clothBag.before(.lookIn) { try reply(Prose.clothBagIsEmpty) }
+        clothBag.before(.lookIn) {
+            try reply(bagInflated ? Prose.clothBagHotAir : Prose.clothBagIsEmpty)
+        }
 
         // One fire at a time. The engine's own capacity check keeps anything
         // heavier than the source's `OCAPAC 6` out of the pan.
