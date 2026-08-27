@@ -2090,6 +2090,71 @@ struct DungeonProseTests {
         #expect(!listing.contains("There is a wicker basket here."))
     }
 
+    /// **The bag says it is empty while it is holding the balloon up.** Both
+    /// its examine text and its `search` reply were constants: *"big enough to
+    /// swallow the basket twice over when there is anything in it"* and *"It
+    /// doesn't appear that there's anything inside."* — printed with the bag
+    /// swollen taut and a burning fuel in the receptacle beneath it. The flag
+    /// was already there, and the two rules next door already read it. (#332)
+    ///
+    /// Neither line is the source's: `CBAG` carries no description at all and
+    /// `BCONTENTS` (`act2.92:574`) answers TAKE, FIND and EXAMINE alike with
+    /// *"part of the basket"*, so both sentences are this project's own.
+    @Test func theClothBagStopsCallingItselfEmptyWhileItIsInflated() async throws {
+        // Aboard, on the way up: the bag is holding the basket in the air.
+        let inflated = try await play(
+            Dungeon(),
+            DungeonTests.toTheWideLedge + ["examine cloth bag", "search cloth bag"],
+            seed: 18)
+
+        let examined = turnOutput(of: "examine cloth bag", in: inflated)
+        #expect(!examined.contains("when there is anything in it"))
+        #expect(examined.contains("swollen taut with hot air"))
+
+        let searched = turnOutput(of: "search cloth bag", in: inflated)
+        #expect(!searched.contains("doesn't appear that there's anything inside"))
+        #expect(searched.contains("Hot air"))
+
+        // The positive control: on the ground with no fire lit, both lines
+        // still say what they always said.
+        let slack = try await play(
+            Dungeon(),
+            DungeonTests.toTheVolcano + ["examine cloth bag", "search cloth bag"],
+            seed: 18)
+        #expect(turnOutput(of: "examine cloth bag", in: slack).contains("slack over the side"))
+        #expect(
+            turnOutput(of: "search cloth bag", in: slack)
+                .contains("doesn't appear that there's anything inside"))
+    }
+
+    /// **The stub floor told the player that food is not food.** `eat garlic`
+    /// answered *"The clove of garlic is not something you could eat"* — of the
+    /// clove that answers the bat — and `eat lunch` said the same of the hot
+    /// pepper sandwich that puts the cyclops to sleep. Both carry `FOODBIT` in
+    /// the source (`dung.355:4289`, `:4655`).
+    ///
+    /// Two repairs, and the file's own rule (`Prose+Stubs.swift`) picks them:
+    /// a game-wide line may be a claim about the player but not about the
+    /// thing named, so the floor line stops ruling on the object; and the two
+    /// items that really are food answer for themselves. (#332)
+    @Test func theFoodStopsBeingToldThatItIsNotFood() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.intoTheKitchen
+                + ["open sack", "take garlic", "take lunch"]
+                + ["eat garlic", "eat lunch", "eat bottle"],
+            seed: 41)
+
+        for command in ["eat garlic", "eat lunch", "eat bottle"] {
+            #expect(!turnOutput(of: command, in: transcript).contains("not something you could eat"))
+        }
+        #expect(turnOutput(of: "eat garlic", in: transcript).contains("not that hungry"))
+        #expect(turnOutput(of: "eat lunch", in: transcript).contains("Hot peppers"))
+        // The positive control: something that genuinely is not food still
+        // gets an answer, and it is about the player rather than the bottle.
+        #expect(turnOutput(of: "eat bottle", in: transcript).contains("no appetite"))
+    }
+
     // MARK: - Nouns the prose prints and the parser denied
 
     /// **The Gallery says "vandals" twice in three sentences** and the

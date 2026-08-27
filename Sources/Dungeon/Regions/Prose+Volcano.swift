@@ -584,9 +584,19 @@ extension Prose {
         return "\(bag) \(wire)"
     }
 
-    static let clothBag = """
+    /// The bag with nothing in it, slack over the side of the basket. Paired
+    /// with ``clothBagInflated``: neither sentence is the source's, since
+    /// `CBAG` carries no description and `BCONTENTS` (`act2.92:574`) answers
+    /// TAKE, FIND and EXAMINE alike with *"part of the basket"*. (#332)
+    static let clothBagSlack = """
         A great envelope of oiled cloth, big enough to swallow the basket twice
-        over when there is anything in it.
+        over when there is anything in it. At the moment it is slack over the
+        side.
+        """
+
+    static let clothBagInflated = """
+        A great envelope of oiled cloth, swollen taut with hot air and pulling
+        hard at the basket beneath it.
         """
 
     static let receptacle = """
@@ -616,6 +626,10 @@ extension Prose {
     }
 
     static let clothBagIsEmpty = "It doesn't appear that there's anything inside."
+
+    /// And what it holds when it is holding the balloon up, which the line
+    /// above used to be printed for as well. (#332)
+    static let clothBagHotAir = "Hot air, and a great deal of it."
 
     static let clothBagWontOpen = """
         The bag is enormous. The concept of opening it here is ludicrous.

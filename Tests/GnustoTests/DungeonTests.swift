@@ -2594,6 +2594,15 @@ struct DungeonTests {
     /// and needs no fight and no seed.
     private static let toTheBank = intoTheCellar + ["south", "south", "west"]
 
+    /// In by the West Teller's Room and through the curtain three times, which
+    /// is the only bearing that opens the Vault, then the bills in hand. The
+    /// tail four tests were spelling out letter for letter.
+    private static let toTheBills =
+        toTheBank + [
+            "northwest", "west", "walk through curtain", "walk through curtain",
+            "walk through curtain", "take bills",
+        ]
+
     // MARK: - Milestone 5: the riddle
 
     /// The Engravings Cave's second passage. Zork I's cave has two exits too,
@@ -3049,11 +3058,7 @@ struct DungeonTests {
     @Test func theCurtainAnswersToTheBearingYouCameInOn() async throws {
         let transcript = try await play(
             Dungeon(),
-            Self.toTheBank
-                + [
-                    "northwest", "west", "walk through curtain", "walk through curtain",
-                    "walk through curtain", "take bills", "score",
-                ],
+            Self.toTheBills + ["score"],
             seed: 41)
 
         expectInOrder(
@@ -3119,6 +3124,59 @@ struct DungeonTests {
                 "Bank Entrance",
                 "Your score is 55 of a possible 716",
             ])
+    }
+
+    /// #332, the blocking box. The curtain is the only door the Vault and the
+    /// Small Room have, and the bills cannot be carried out through the
+    /// Depository's own doorways — the alarm sees to that — so the last
+    /// departure from an inner room is always a wall. Before this fix the wall
+    /// left the curtain behind, and the two rooms it opens on were shut for the
+    /// rest of the game.
+    ///
+    /// The route is the shipped bills run, then straight back in.
+    @Test func theCurtainComesHomeWhenYouLeaveByAWall() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheBills
+                + [
+                    "walk through east wall",
+                    // Back in through a teller's room, heading west.
+                    "northwest", "west", "examine curtain", "walk through curtain",
+                    "walk through curtain", "walk through curtain", "look",
+                ],
+            seed: 41)
+
+        // The negative: the Depository stops promising a curtain that is gone.
+        #expect(!transcript.contains("You can't see any such thing"))
+
+        // The positive control: the Vault is reachable a second time.
+        expectInOrder(
+            transcript,
+            [
+                "On the floor sit 200 neatly stacked zorkmid bills.",
+                "Bank Entrance",
+                "Safety Depository",
+                "hanging where the north wall ought to be",
+                "This is the Vault of the Bank of Zork, in which there are no doors.",
+            ])
+    }
+
+    /// The same stranding by the other route the wall rule does not cover: a
+    /// viewing room has a real map exit south, so the player can simply walk
+    /// out of it and leave the curtain standing there.
+    @Test func theCurtainComesHomeWhenYouWalkOutOfAViewingRoom() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheBank
+                + [
+                    "northwest", "west", "walk through curtain",
+                    // Out by the viewing room's own door, not by the curtain.
+                    "south", "northwest", "west", "examine curtain",
+                ],
+            seed: 41)
+
+        #expect(!transcript.contains("You can't see any such thing"))
+        #expect(transcript.contains("hanging where the north wall ought to be"))
     }
 
     // MARK: - Milestone 5: every printed noun answers

@@ -918,6 +918,179 @@ struct DungeonEndgameTests {
         #expect(occurrences(of: "You knock, and nobody answers.", in: transcript) == 1)
     }
 
+    // MARK: - #332: a room checks what it claims
+
+    /// The Small Room borrowed the Stone Room's exit sentence, staircase and
+    /// all. `MREYE` has no `UP` — `dung.355:3521` gives it `NORTH|NW|NE` to
+    /// the hallway and `SOUTH` to `MRANT`, and it is `MRANT` next door that
+    /// declares `UP` and `SOUTH` both to `TSTRS`.
+    @Test func theSmallRoomStopsLendingItselfTheStoneRoomsStaircase() async throws {
+        let transcript = try await play(
+            Dungeon(), Self.pastTheCrypt + ["down", "north", "up"], seed: Self.seed)
+
+        let room = frame(headed: "Small Room", in: transcript)
+        #expect(room.contains("narrow passages leaving it north and south"))
+        #expect(!room.contains("stairs go up"))
+        // The positive control: the room that does have the staircase keeps it.
+        #expect(transcript.contains("A passage leads north, and the stairs go up to the south."))
+        // And the exit the sentence used to promise is still refused.
+        #expect(transcript.contains("You can't go that way."))
+    }
+
+    /// One LOOK used to say the beam crossed from one wall to the other *and*
+    /// that it stopped short of the far wall. The source has the same shape
+    /// (`act4.231:430` appends its interruption to an unconditional crossing),
+    /// and `docs/games/dungeon.md` rule 1 does not let us keep it: a sentence
+    /// that is a claim about state is a rule, not a constant.
+    @Test func theBeamDoesNotBothCrossTheRoomAndStopShort() async throws {
+        // Two runs rather than two slices of one. Both markers a single
+        // transcript offers are ambiguous: "Small Room" is a Bank room too, and
+        // the 616-point route this walk opens with drops things and reaches the
+        // Bank's one first.
+        let intact = frame(
+            headed: "Small Room",
+            in: try await play(
+                Dungeon(), Self.pastTheCrypt + ["down", "north"], seed: Self.seed))
+        #expect(intact.contains("crosses the room"))
+        #expect(!intact.contains("stops short"))
+
+        let broken = frame(
+            headed: "Small Room",
+            in: try await play(
+                Dungeon(), Self.pastTheCrypt + ["down", "north", "drop lamp", "look"],
+                seed: Self.seed))
+        #expect(broken.contains("The beam stops short"))
+        #expect(!broken.contains("from one wall to the other"))
+    }
+
+    /// The Parapet's only row is `PARAP SOUTH → NCORR`, level — the source
+    /// names no exit at all in `PARAPET-DESC` (`dung.355:874`), and the stair
+    /// was this project's invention. Its neighbour already calls the same link
+    /// a passage.
+    @Test func theParapetStopsPromisingAStairDown() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.pastTheCrypt + Self.throughTheBox + Self.theQuiz
+                + ["north", "north", "west", "north", "north", "down", "south"],
+            seed: Self.seed)
+
+        let parapet = frame(headed: "Parapet", in: transcript)
+        #expect(!parapet.contains("A stair leads down to the south."))
+        // Positive control: the exit that is real still works, and the one the
+        // sentence promised is still refused.
+        expectInOrder(transcript, ["Parapet", "You can't go that way.", "North Corridor"])
+    }
+
+    /// The cell turns as it rides — its own prose says so — and it comes to
+    /// rest the other way round. `NCELL` puts the fastened door south
+    /// (`FOUT`, *"The door is securely fastened."*) and the bronze door north,
+    /// where `CELL` had them the other way about. #329 moved this sentence for
+    /// the **docked** cell, which is a different room with its own exit row;
+    /// this is the ridden one, and it was left pointing 180° out. (#332)
+    @Test func theWinningCellPutsItsBronzeDoorWhereTheMapDoes() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.pastTheCrypt + Self.throughTheBox + Self.theQuiz + Self.thePrison,
+            seed: Self.seed)
+
+        let ridden = output(after: "The cell has come to rest", in: transcript)
+        #expect(!ridden.contains("door of bronze in the south wall"))
+        #expect(!ridden.contains("The north doorway is a locked door"))
+        #expect(ridden.contains("the only way out of here is the door of bronze to the north"))
+
+        // The positive control: the docked cell, which #329 ruled on, is
+        // untouched — its bronze door really is in the south wall.
+        #expect(transcript.contains("set into the wall to the south is a door of bronze"))
+    }
+
+    /// The Dungeon Entrance promised passages south while the box's pine end
+    /// stood in them, and named a door without ever saying whether it was
+    /// open. The source says both: `FDOOR-FUNCTION` (`act4.231`) hands the
+    /// southward view to `LOOK-TO … "MRD"` and prints the door's state from
+    /// `<DPR <SFIND-OBJ "QDOOR">>`.
+    @Test func theDungeonEntranceAgreesWithWhatIsSouthOfIt() async throws {
+        let transcript = try await play(
+            Dungeon(), Self.pastTheCrypt + Self.throughTheBox + ["look", "south", "examine box"],
+            seed: Self.seed)
+
+        let entrance = frame(headed: "Dungeon Entrance", in: transcript)
+
+        // The door's state is part of the room now, as it is in the source.
+        #expect(entrance.contains("wooden door, shut fast"))
+
+        // The box is standing in the passages south at this point in the
+        // route, and the room says so in the hallway rooms' own sentence —
+        // naming the face that is about to refuse the player.
+        #expect(entrance.contains("fills the hallway to the south"))
+        #expect(entrance.contains("a wall of pale pine"))
+        #expect(transcript.contains("A wall of wood blocks your way."))
+
+        // And the noun the paragraph prints now answers, which is the whole
+        // rule this pass is applying. It did not before: the room described
+        // the box and the parser had never heard of it.
+        #expect(!turnOutput(of: "examine box", in: transcript).contains("any such thing"))
+        #expect(turnOutput(of: "examine box", in: transcript).contains("pale pine"))
+    }
+
+    /// **"The Dungeon Master comes in and waits" was printed by the one caller
+    /// where he does not wait.** The follow daemon is gated `while:
+    /// { !masterStaying }`, so the line fired only while he was following and
+    /// about to move again next turn; the ordered walk, which sets
+    /// `masterStaying = true` first, is where waiting is the true word. One
+    /// string, two opposite states.
+    ///
+    /// The source separates them: `FOLLOW` (`act4.231:831`) prints *"The
+    /// dungeon master follows you."* — no waiting anywhere in it. (#332)
+    @Test func theDungeonMasterDoesNotWaitWhileHeIsFollowingYou() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.pastTheCrypt + Self.throughTheBox + Self.theQuiz
+                + ["north", "north", "west", "north", "north"]
+                + ["dungeon master, stay", "south", "dungeon master, south"],
+            seed: Self.seed)
+
+        // Following: he is here, and he is not stopping.
+        let following = output(before: "dungeon master, stay", in: transcript)
+        #expect(following.contains("The Dungeon Master follows you in."))
+        #expect(!following.contains("comes in and waits"))
+
+        // The positive control: told to walk to the room you are standing in,
+        // he does wait, and that is the frame the sentence was written for.
+        #expect(
+            turnOutput(of: "dungeon master, south", in: transcript)
+                .contains("The Dungeon Master comes in and waits."))
+    }
+
+    /// **The two doorways onto the slot had two answers and three states.**
+    /// The south one already branched three ways — empty shaft, the blank back
+    /// of one of the seven, and cell four's bronze door — and the north one
+    /// branched twice, so with cell four docked it reported the far wall as
+    /// *"dressed stone, with nothing in it"* while the cell's own paragraph
+    /// two feet away named the bronze door set in that same wall.
+    ///
+    /// The North Corridor also withheld the view unless the slot was empty,
+    /// where the South Corridor always shows it. Same fact, same room, same
+    /// root cause. (#332)
+    @Test func bothDoorwaysOntoTheSlotReportTheCellThatIsInIt() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.pastTheCrypt + Self.throughTheBox + Self.theQuiz
+                + ["north", "north", "west", "north", "north"]
+                + ["turn dial", "turn dial", "turn dial", "push button"]
+                + ["dungeon master, stay", "south", "look", "examine doorway"],
+            seed: Self.seed)
+
+        // Cell four is in the slot. The corridor says so without being asked,
+        // as the South Corridor does...
+        let corridor = frame(headed: "North Corridor", in: transcript)
+        #expect(corridor.contains("bronze"))
+
+        // ...and the doorway itself stops calling the far wall bare.
+        let doorway = turnOutput(of: "examine doorway", in: transcript)
+        #expect(doorway.contains("bronze"))
+        #expect(!doorway.contains("with nothing in it"))
+    }
+
     // MARK: - The route, in pieces
 
     /// The mirror box, from the Top of Stairs to the Dungeon Entrance.

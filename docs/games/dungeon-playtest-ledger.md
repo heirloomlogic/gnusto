@@ -758,37 +758,37 @@ None of the withheld keys came back.
 
 | key | verdict | class | severity |
 |---|---|---|---|
-| `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::endgameSmallRoom` | confirmed | exit-prose-mismatch | major |
-| `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::dungeonEntrance` | confirmed | exit-prose-mismatch | major |
+| `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::endgameSmallRoom` | fixed (by #332) | exit-prose-mismatch | major |
+| `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::dungeonEntrance` | fixed (by #332) | exit-prose-mismatch | major |
 | `decl::Sources/Dungeon/Regions/Prose+EndgameMechanics.swift::quizBegins` | confirmed | gate-not-gating | major |
-| `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::redBeamBroken` | confirmed | prose-untrue-of-state | major |
-| `decl::Sources/Dungeon/Regions/Prose+EndgameMechanics.swift::masterArrives` | confirmed | prose-untrue-of-state | major |
+| `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::redBeamBroken` | fixed (by #332) | prose-untrue-of-state | major |
+| `decl::Sources/Dungeon/Regions/Prose+EndgameMechanics.swift::masterArrives` | fixed (by #332) | prose-untrue-of-state | major |
 | `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::dungeonMaster` | confirmed | unanswerable-noun | minor |
 | `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::stoneRoom` | confirmed | unanswerable-noun | minor |
 | `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::topOfStairs` | confirmed | unanswerable-noun | minor |
-| `decl::Sources/Dungeon/Regions/Prose+Bank.swift::safetyDepository` | confirmed | unwinnable | blocking |
+| `decl::Sources/Dungeon/Regions/Prose+Bank.swift::safetyDepository` | fixed (by #332) | unwinnable | blocking |
 | `decl::Sources/Dungeon/Regions/Prose+Alice.swift::cageRobotOutside` | confirmed | unanswerable-noun | major |
-| `decl::Sources/Dungeon/Regions/Prose+Bank.swift::curtainOfLight` | confirmed | exit-prose-mismatch | major |
+| `decl::Sources/Dungeon/Regions/Prose+Bank.swift::curtainOfLight` | fixed (by #332) | exit-prose-mismatch | major |
 | `decl::Sources/Dungeon/Regions/Prose+Bank.swift::tellerRoom` | confirmed | unanswerable-noun | major |
 | `decl::Sources/Dungeon/Regions/Prose+Temple.swift::engravings` | confirmed | prose-taste | minor |
 | `decl::Sources/Dungeon/Regions/Prose+Alice.swift::machineRoomMachinery` | confirmed | unanswerable-noun | minor |
 | `decl::Sources/Dungeon/Regions/Prose+Temple.swift::engravingsCave` | confirmed | prose-untrue-of-frame | note |
 | `decl::Sources/Gnusto/Actions/CoreVerbs.swift::cores` | confirmed | unanswerable-noun | major |
-| `decl::Sources/Dungeon/Regions/Prose+Volcano.swift::clothBag` | confirmed | prose-untrue-of-state | major |
+| `decl::Sources/Dungeon/Regions/Prose+Volcano.swift::clothBag` | fixed (by #332) | prose-untrue-of-state | major |
 | `decl::Sources/Dungeon/Regions/Prose+River.swift::buoyFeelsFunny` | confirmed | mechanic-contradicts-prose | major |
 | `decl::Sources/Dungeon/Regions/Prose+River.swift::frigidRiverHere` | confirmed | unanswerable-noun | major |
 | `decl::Sources/Dungeon/Regions/Prose+EndgameMechanics.swift::boxPineSwingsShut` | confirmed | prose-untrue-of-frame | major |
-| `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::parapet` | confirmed | exit-prose-mismatch | minor |
+| `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::parapet` | fixed (by #332) | exit-prose-mismatch | minor |
 | `decl::Sources/Dungeon/Regions/Prose+Alice.swift::poolRoomDrained` | confirmed | unanswerable-noun | minor |
 | `decl::Sources/Dungeon/Regions/Prose+Alice.swift::cageGas` | confirmed | prose-taste | note |
 | `decl::Sources/Dungeon/Regions/Prose+Volcano.swift::wideLedge` | confirmed | unwinnable | major |
 | `decl::Sources/Dungeon/Regions/Prose+Volcano.swift::gnome` | confirmed | unanswerable-noun | minor |
-| `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::winningCell` | confirmed | exit-prose-mismatch | major |
-| `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::cellSlotFilled` | confirmed | prose-untrue-of-state | major |
+| `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::winningCell` | fixed (by #332) | exit-prose-mismatch | major |
+| `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::cellSlotFilled` | fixed (by #332) | prose-untrue-of-state | major |
 | `decl::Sources/Dungeon/Regions/Prose+EndgameMechanics.swift::masterWalksOff` | confirmed | prose-untrue-of-frame | major |
 | `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::tomb` | confirmed | repeat-behavior | minor |
 | `decl::Sources/Dungeon/Regions/Prose+EndgameMechanics.swift::masterFollows` | confirmed | prose-untrue-of-frame | major |
-| `decl::Sources/Dungeon/Prose+Stubs.swift::stubFloor` | confirmed | prose-untrue-of-state | major |
+| `decl::Sources/Dungeon/Prose+Stubs.swift::stubFloor` | fixed (by #332) | prose-untrue-of-state | major |
 | `decl::Sources/Dungeon/Regions/Prose+AboveGround.swift::forestDeep` | confirmed | unanswerable-noun | minor |
 | `decl::Sources/Gnusto/Actions/GameText.swift::lostThem` | confirmed | prose-untrue-of-frame | minor |
 | `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::bronzeDoorClosed` | refuted | mechanic-contradicts-prose | major |

@@ -186,19 +186,13 @@ extension DungeonEndgame {
     /// The sundial, the button, the slot, and the ride out of it.
     @RuleBuilder var prisonRules: Rules {
         southCorridor.describe { "\(Prose.southCorridor)\n\n\(throughTheSouthDoorway)" }
-        northCorridor.describe {
-            dockedCell == 0
-                ? "\(Prose.northCorridor)\n\n\(Prose.cellSlotEmpty)"
-                : Prose.northCorridor
-        }
+        northCorridor.describe { "\(Prose.northCorridor)\n\n\(throughTheNorthDoorway)" }
         prisonCell.describe {
             dockedCell == Self.cellWithTheBronzeDoor ? Prose.prisonCellBronze : Prose.prisonCell
         }
 
         southSlot.describe { throughTheSouthDoorway }
-        northSlot.describe {
-            dockedCell == 0 ? Prose.cellSlotEmpty : Prose.cellSlotFilled
-        }
+        northSlot.describe { throughTheNorthDoorway }
         sundial.describe { Prose.sundialReading(Self.numberWord(dialSetting)) }
         bronzeDoor.describe { bronzeDoor.isOpen ? Prose.bronzeDoorOpen : Prose.bronzeDoorClosed }
 
@@ -217,15 +211,36 @@ extension DungeonEndgame {
         }
     }
 
-    /// What the South Corridor's doorway shows. Three answers, not two: the
-    /// shaft with no cell in it at all, the blank back of one of the seven
-    /// ordinary cells, and cell four's bronze door.
-    var throughTheSouthDoorway: String {
+    /// What a corridor's doorway onto the slot shows. **Three answers, not
+    /// two**: the shaft with no cell in it at all, the blank back of one of
+    /// the seven ordinary cells, and cell four's bronze door.
+    ///
+    /// One function and not one per corridor, because the two corridors differ
+    /// in exactly one of the three arms — they look at the same cell from
+    /// opposite ends, so cell four's door is in the near wall from the south
+    /// and the far wall from the north. Two switches is the shape that let
+    /// them drift apart: the north one carried two branches for three states
+    /// and called the far wall bare with the bronze door set in it. (#332)
+    ///
+    /// - Parameter bronzeDoor: how cell four reads from this side.
+    /// - Returns: the paragraph the doorway shows.
+    func throughTheDoorway(bronzeDoor: String) -> String {
         switch dockedCell {
         case 0: Prose.cellSlotEmpty
-        case Self.cellWithTheBronzeDoor: Prose.bronzeDoorInTheSlot
+        case Self.cellWithTheBronzeDoor: bronzeDoor
         default: Prose.cellSlotFilled
         }
+    }
+
+    /// Seen from the South Corridor, whose north wall the cell stands against.
+    var throughTheSouthDoorway: String {
+        throughTheDoorway(bronzeDoor: Prose.bronzeDoorInTheSlot)
+    }
+
+    /// And from the North Corridor, which looks down the same cell the other
+    /// way, so cell four's door is in the far wall of it.
+    var throughTheNorthDoorway: String {
+        throughTheDoorway(bronzeDoor: Prose.bronzeDoorAcrossTheSlot)
     }
 
     /// The word for a dial setting, so the sundial reads in English.
