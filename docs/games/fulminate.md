@@ -59,7 +59,7 @@ what has to remain true no matter how the story is rewritten.
 | `TIME` verb | Checking your watch — which is on the player's wrist, worn from turn one, and cannot be taken off. | Reachable from every room. The watch and the hall clock read from the same source and must never disagree. |
 | Alarms fire exactly once | The blast, the telephone, the coroner — plus an incidental radio car at 5:52. | **Three** load-bearing alarms, one of them a hard deadline that ends the game. (The two beats after the blast are *fuses*, relative to the event rather than to the clock. They are decorative by construction and are not part of this count.) |
 | Deterministic timetables | Five people on their evening rounds. | **Five** scheduled actors, with stops on *both sides* of the blast. |
-| Arrival / departure prose | Footsteps on the back stairs. A door in the yard. Teague crossing the grass between the two, said from the stop that moves him. | At least one crossing the player can witness, and one they can miss. A crossing whose two ends both narrate it may not be silent in the middle. |
+| Arrival / departure prose | Footsteps on the back stairs. A door in the yard. Teague crossing the grass between the two, said from the stop that moves him. | At least one crossing the player can witness, and one they can miss. A crossing whose two ends both narrate it may not be silent in the middle. **A `departure:` prints in the room being left and nowhere else, so it is written for somebody watching the person go — never for somebody hearing it through a wall. That is what the paired `arrival:` is for.** |
 | Movement is silent in the dark | Delphine goes down to the cellar at 6:26. | The cellar stays dark and stays on somebody's route. |
 | `location(of:at:)` lookup | Mrs. Kettle's testimony, which quotes two crossings and reads both; the alibi check. | Past-tense truth is **read from the timetable**, never hand-written prose. The lookup supplies the **room**, not the minute and not the event — a row that describes one crossing and quotes another's minute reads as correct and is not, because both stops resolve to the same room. |
 | ASK / TELL about a topic | Every interrogation. | Topics stay abstract nouns, never takeable items. |
@@ -165,8 +165,13 @@ What the history buys, structurally:
   none of it is the answer. Your expertise opens every door and points at the wrong ones.
   The player's arc is learning to stop reading the file and look at the household.
 
-`X ME` answers *The same man who took statements in this hall in 1948, four years older.* —
-the history, in one line, on the turn a player is most likely to ask for it. Accusing
+`X ME` answers *The same man who took statements in that front hall in 1948, four years
+older.* — the history, in one line, on the turn a player is most likely to ask for it. It
+names the room rather than pointing at it, because the line prints in all ten and used to
+say *this hall*: true in the front hall, and on the Upstairs Landing — which the map table
+below calls "Upstairs hall" — a positive claim that the 1948 statements were taken on that
+landing. `text.selfDescription` is a `Line<Nothing>`, handed its subject and nothing else,
+so there is no frame for it to read and the deictic had to go rather than branch. Accusing
 yourself is refused rather than taken down: *The coroner would take the name down. Give
 him a better one.* The accusation is the deadline's teeth, and it will not be spent on a
 joke.
@@ -257,6 +262,14 @@ Fifty. From the lab that fired Julian, here to collect notebooks that the lab's 
 believes are the lab's. Wears his hat indoors. Wants very badly to be somewhere else.
 
 **His apparatus:** the new regime. Behind the counsel stand the men who arrived after the
+**The hat is the character, and it comes off exactly once.** He wears it indoors all
+evening on the reasoning that taking it off would mean he had arrived somewhere, and
+showing him the ledger takes it off his head — so every sentence that mentions it reads
+`talk.knows(.notebooksSold)`: his description, his listing line, the hat's own description,
+his `julian` reply, and Mrs. Kettle's line about him. The two `again:` strings cannot read
+it — `again:` is a `String?` with no frame — so they are written to a gesture he has in
+both halves of the evening instead.
+
 war and took the program out from under its founders. Pike never names them; he says
 things like *"the men we have now prefer the notebooks in order,"* and once, carefully,
 does not pronounce a name that would want an umlaut. His lie has a second floor: the

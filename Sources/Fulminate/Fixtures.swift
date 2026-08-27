@@ -93,12 +93,8 @@ struct Fixtures: GameContent {
         name("hat")
         adjectives("grey", "gray", "felt", "stiff")
         synonyms("fedora", "brim", "hatband")
-        description(
-            """
-            Grey felt, blocked stiff, and a size that was right for him some years ago.
-            It has not been off his head since he came, on the reasoning that taking it
-            off would mean he had arrived somewhere.
-            """)
+        // Described by a rule, because the ledger takes it off his head and the
+        // second sentence stops being true at that minute. (#334)
     }
 
     /// The patrolman's one instrument, and the thing he taps instead of opening
