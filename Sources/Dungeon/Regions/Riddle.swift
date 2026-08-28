@@ -1,18 +1,5 @@
 import Gnusto
 
-extension Intent {
-    /// The answer to the riddle cut over the stone door. One room is listening
-    /// for it; everywhere else it is a shrug. Declared here rather than in
-    /// ``DungeonSystems`` because a verb lives with the region that answers it.
-    ///
-    /// The word is spelled into the rows rather than parsed as a free noun,
-    /// which is the same shape `odysseus` and `geronimo` already have: this
-    /// engine's syntax rows match literals and objects, and a riddle wants
-    /// neither an object in scope nor a wrong answer that reads as a missing
-    /// noun.
-    #verb("answerWell", ["answer", "well"], ["say", "well"])
-}
-
 /// The two rooms between the Engravings Cave and the well: the Riddle Room,
 /// whose stone door will not open for anything but the right word, and the
 /// Pearl Room behind it.
@@ -99,16 +86,6 @@ struct DungeonRiddle: GameContent {
         plural
     }
 
-    // MARK: - Verbs
-
-    var verbs: [SyntaxRule] { [.answerWell] }
-
-    /// Said anywhere but at the door. The word is in the game's vocabulary
-    /// everywhere, so it has to answer everywhere.
-    var actions: [IntentAction] {
-        action(.answerWell) { try reply(Prose.riddleNothingListening) }
-    }
-
     // MARK: - Map
 
     var map: WorldMap {
@@ -141,10 +118,16 @@ struct DungeonRiddle: GameContent {
         // prints the item's description, which is the inscription.
         stoneDoor.before(.read) { try reply(Prose.riddleInscription) }
 
-        // The one word the door is listening for. Promoted above the region's
-        // own default with `reply`, so the shrug never prints underneath it.
-        riddleRoom.before(.answerWell) {
+        // The one word the door is listening for. ``Intent/answer`` takes a
+        // topic slot, so every word reaches this rule and the door does the
+        // rejecting — which is the point: a wrong word costs the same turn the
+        // right one does, and the parser gives nothing away. Promoted above
+        // ``DungeonSystems``'s game-wide default with `reply`, so the shrug for
+        // rooms that are not listening never prints in the one that is.
+        riddleRoom.before(.answer) {
+            guard let topic = command.topic else { return }
             try require(!riddleAnswered, else: Prose.riddleAlreadyAnswered)
+            try require(topic.text == Prose.riddleWord, else: Prose.riddleWrongWord)
             riddleAnswered = true
             try reply(Prose.riddleAnswered)
         }

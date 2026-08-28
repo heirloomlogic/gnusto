@@ -335,9 +335,24 @@ struct ZorkTemple: GameContent {
         // Done at the gate during the window (stage 1) it advances the ritual;
         // anywhere else it's just light. The candles are lit by hand here so
         // the reply is ours, not the default turn-on line.
-        candles.before(.turnOn) {
+        //
+        // Both intents, as `CANDLES-FCN` dispatches on `<VERB? LAMP-ON BURN>`
+        // (`1actions.zil:2348`); which spelling lands on which is
+        // ``Intent/burn``'s business, not this rule's. An item rule fires for
+        // the indirect object too, so it checks these are the candles being
+        // lit and not the candles being lit *with*.
+        candles.before(.turnOn, .burn) {
+            guard command.directObject == candles else { return }
             try require(!candlesBurnedOut, else: Prose.candlesSpent)
-            try require(player.inventory.contains(burningMatch), else: Prose.candlesNeedFlame)
+            // Both branches ask the same question — is a struck match in your
+            // hand — because a named instrument is not a looser test than an
+            // unnamed one. Without the possession half, `light candles with
+            // match` would light them off a match lying on the floor that
+            // `light candles` in the same state refuses.
+            let flame = command.indirectObject ?? burningMatch
+            try require(
+                flame == burningMatch && player.inventory.contains(burningMatch),
+                else: Prose.candlesNeedFlame)
             candles.isLit = true
             if candlesDimIn > 0 { startFuse("candlesDim", after: candlesDimIn) }
             startFuse("candlesDie", after: candlesDieIn)

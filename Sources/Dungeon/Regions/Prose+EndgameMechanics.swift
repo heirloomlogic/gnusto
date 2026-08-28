@@ -387,10 +387,6 @@ extension Prose {
         "That is not the answer," says the voice.
         """
 
-    static let quizNobodyAsked = """
-        Nobody has asked you anything.
-        """
-
     static let quizFailedForGood = """
         "You have had answers enough," says the voice, and does not speak again.
         The door stays shut, and nothing you do to it after this will matter.

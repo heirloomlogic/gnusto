@@ -102,6 +102,7 @@ extension DungeonEndgame {
     @MapBuilder var endgamePlacements: WorldMap {
         cryptDoor.starts(in: tomb)
         heads.starts(in: tomb)
+        tombFloor.starts(in: tomb)
         cokeBottles.starts(in: tomb)
         listings.starts(in: tomb)
 

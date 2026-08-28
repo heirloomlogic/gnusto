@@ -1,38 +1,5 @@
 import Gnusto
 
-extension Intent {
-    /// The eight answers to the Dungeon Master's eight questions, one intent
-    /// apiece.
-    ///
-    /// **They are `answer X` and `say X`, not bare words**, which is
-    /// ``Intent/answerWell``'s shape exactly and is a deliberate narrowing of
-    /// what the issue proposed. A bare `["skeleton"]` row would put *skeleton*
-    /// into the verb vocabulary, where the maze already has a skeleton and the
-    /// forest above ground a set of skeleton keys; `["forest"]`, `["flask"]`
-    /// and `["knife"]` are the same problem. The riddle at the Riddle Room
-    /// already answers to `answer well`, so this is the game's own established
-    /// spelling rather than a concession.
-    ///
-    /// The cost the issue names is real and unchanged: an answer outside the
-    /// eight is a **parse failure** rather than a wrong answer, and a parse
-    /// failure costs no turn. It is recorded in `FIDELITY.md` rather than left
-    /// to be discovered.
-    #verb("quizTemple", ["answer", "temple"], ["say", "temple"])
-    #verb("quizForest", ["answer", "forest"], ["say", "forest"])
-    #verb("quizZorkmids", ["answer", "30003"], ["say", "30003"])
-    #verb("quizFlask", ["answer", "flask"], ["say", "flask"])
-    #verb("quizRub", ["answer", "rub"], ["say", "rub"])
-    #verb("quizSkeleton", ["answer", "skeleton"], ["say", "skeleton"])
-    #verb(
-        "quizKnife",
-        ["answer", "knife"], ["say", "knife"],
-        ["answer", "rusty", "knife"], ["say", "rusty", "knife"])
-    #verb(
-        "quizNowhere",
-        ["answer", "nowhere"], ["say", "nowhere"],
-        ["answer", "none"], ["say", "none"])
-}
-
 /// The three questions this run drew, in the order they will be asked.
 ///
 /// A wrapper struct rather than a bare `[Int]` so the `GlobalValue`
@@ -58,14 +25,17 @@ extension DungeonEndgame {
     static let quizQuestionsAsked = 3
     static let quizWrongAnswersAllowed = 5
 
-    /// Each question against the intent that answers it, indexed the way
-    /// ``Prose/quizQuestion(_:)`` indexes them.
-    var quizAnswers: [Intent] {
-        [
-            .quizTemple, .quizForest, .quizZorkmids, .quizFlask,
-            .quizRub, .quizSkeleton, .quizKnife, .quizNowhere,
-        ]
-    }
+    /// Each question against the words that answer it, indexed the way
+    /// ``Prose/quizQuestion(_:)`` indexes them. A question with two acceptable
+    /// spellings lists both.
+    ///
+    /// **Words, not intents.** This table is the only thing that knows the
+    /// answers, and it is read after the turn is already spent — see
+    /// ``Intent/answer``, which says what it used to be and why.
+    static let quizAnswers: [[String]] = [
+        ["temple"], ["forest"], ["30003"], ["flask"],
+        ["rub"], ["skeleton"], ["knife", "rusty knife"], ["nowhere", "none"],
+    ]
 
     /// Knocking at the wooden door, the questions behind it, and the eight
     /// answers.
@@ -90,8 +60,14 @@ extension DungeonEndgame {
         }
         woodenDoor.before(.close) { try refuse(Prose.woodenDoorWillNotBeShut) }
 
-        for (index, answer) in quizAnswers.enumerated() {
-            world.before(answer) { try answerTheQuestion(with: index) }
+        // One rule for all eight, because there is one verb for all eight (see
+        // ``Intent/answer``). It stands *aside* when no examination is running
+        // rather than answering itself, because `world.before` fires ahead of
+        // every location rule and the Riddle Room's door is listening for its
+        // own word one scope down.
+        world.before(.answer) {
+            guard let topic = command.topic, currentQuestion >= 0 else { return }
+            try answerTheQuestion(with: topic)
         }
     }
 
@@ -138,14 +114,18 @@ extension DungeonEndgame {
         return paper[quizAsked]
     }
 
-    /// One answer, right or wrong.
+    /// One answer, right or wrong — and a word that answers nothing is wrong,
+    /// which is the source's behaviour and was not this game's until
+    /// ``Intent/answer`` stopped spelling the answers into its rows.
     ///
-    /// - Parameter given: which of the eight answers was spoken.
+    /// - Parameter topic: the words the player typed after `answer`, matched
+    ///   against ``quizAnswers`` here — after the turn is already spent, which
+    ///   is the whole of the fix.
     /// - Throws: always.
-    func answerTheQuestion(with given: Int) throws -> Never {
+    func answerTheQuestion(with topic: Topic) throws -> Never {
         let asked = currentQuestion
-        guard asked >= 0 else { try reply(Prose.quizNobodyAsked) }
-        guard given == asked else {
+        guard Self.quizAnswers.firstIndex(where: { $0.contains(topic.text) }) == asked
+        else {
             quizWrong += 1
             guard !quizIsLost else {
                 quizAsked = -1

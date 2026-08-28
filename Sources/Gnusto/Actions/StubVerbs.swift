@@ -380,11 +380,24 @@ extension DefaultActions {
         // instrument is half the command. Without it `burn paper with match` is
         // a parse error, and every game that gates a fire on the right tinder
         // re-declares the identical row.
+        //
+        // `light X with Y` is the same verb, and the source says so:
+        // `gsyntax.zil:286-289` gives bare `LIGHT OBJECT` to `V-LAMP-ON` and
+        // `LIGHT OBJECT WITH OBJECT` to `V-BURN`. So the row belongs here and
+        // not beside `["light", .directObject]` on ``Intent/turnOn``, where the
+        // handler would refuse a newspaper for not being a light source. Until
+        // it was written, `light newspaper with match` had no row to match at
+        // all: the object slot ends its pattern, so `fit` swallowed
+        // `newspaper with match` whole and the turn died as
+        // `cantSeeAnySuchThing` about a thing the player was holding — while
+        // two games printed *"You have to light them with something that's
+        // burning, you know."* and meant it literally.
         .named(
             .burn,
             [
                 ["burn", .directObject],
                 ["burn", .directObject, "with", .indirectObject],
+                ["light", .directObject, "with", .indirectObject],
             ],
             reach: .directObject
         ) { $0.stubs.burn($1) },

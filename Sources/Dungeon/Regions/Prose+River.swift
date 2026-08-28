@@ -381,6 +381,20 @@ extension Prose {
     /// Trilogy verbatim — the nudge that stops the buoy being scenery.
     static let buoyFeelsFunny = "You notice something funny about the feel of the buoy."
 
+    /// Written fresh, because the trilogy has no touch response for the buoy
+    /// and the stock one — *"You feel nothing unexpected."* — flatly denies
+    /// ``buoyFeelsFunny`` one turn after it is printed.
+    static let buoyFeelsHeavy = """
+        The plastic is cold and slick, and the buoy is heavier at one end than
+        anything meant to float has any business being.
+        """
+
+    /// Written fresh — the same hand, once there is nothing left in it to feel.
+    static let buoyFeelsEmpty = """
+        Cold, slick, and light as a lantern now. Whatever was throwing it off
+        balance, you are carrying it.
+        """
+
     /// Written fresh.
     static let emerald = """
         The emerald is enormous and deep green, and it has been cut by somebody

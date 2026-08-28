@@ -32,11 +32,25 @@
 extension Prose {
     // MARK: - The Tomb of the Unknown Implementer
 
+    /// The sentence about the bottles and the listings used to be the third
+    /// one here, and both of those are loose, takable, non-`scenery` items — so
+    /// the room listed them again underneath, and `alwaysDescribed` did it on
+    /// every LOOK. The room now says what stands in it and the two items say
+    /// themselves; see ``tombCokeBottlesFirstSight`` and
+    /// ``tombListingsFirstSight``.
     static let tomb = """
         This is a tomb. Four poles stand upright in the floor of it, and on the
-        top of each pole a head has been mounted. A bunch of empty Coke bottles
-        and a stack of line-printer listings lie about the floor between them.
-        A passage leads west.
+        top of each pole a head has been mounted. A passage leads west.
+        """
+
+    /// The listing line, which now carries the clause the room used to.
+    static let tombCokeBottlesFirstSight = """
+        A bunch of empty Coke bottles lies about the floor between the poles.
+        """
+
+    static let tombListingsFirstSight = """
+        A stack of line-printer listings lies about the floor, fanfold and
+        unburst.
         """
 
     /// The Tomb's one changing sentence. The crypt to the north is the whole
@@ -49,6 +63,11 @@ extension Prose {
 
     static let tombCryptOpen = """
         To the north is a crypt, and the marble door of it stands open.
+        """
+
+    static let tombFloor = """
+        Rock, worn smooth, with four holes cut in it to take the poles. The
+        bottles have left rings.
         """
 
     static let tombHeads = """

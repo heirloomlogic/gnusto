@@ -21,6 +21,12 @@ extension Prose {
         into the lintel above it.
         """
 
+    /// The word the door is listening for, written once. Compared against
+    /// what the player typed, so the answer lives here as a string and never
+    /// as a row in the verb table — which is what stopped the parser knowing
+    /// it. See ``Intent/answer``.
+    static let riddleWord = "well"
+
     /// The lintel. Fresh verse, and the answer is the same object the
     /// mainframe's riddle names — which is the whole of what the source
     /// settles here, since the room east of it is the well.
@@ -59,10 +65,12 @@ extension Prose {
         The door is open. You have already had the better of it once.
         """
 
-    /// Said anywhere the riddle is not being asked. The word is a real word in
-    /// this game's vocabulary, so it has to answer everywhere.
-    static let riddleNothingListening = """
-        Nothing here is waiting on an answer.
+    /// Said in the Riddle Room to any word but the one cut over the door.
+    /// Not a parse error: since ``Intent/answer`` took a topic slot, every
+    /// word costs the same turn, and the door's silence has to be the answer
+    /// rather than the vocabulary's.
+    static let riddleWrongWord = """
+        Nothing happens. Whatever the door is waiting for, that was not it.
         """
 
     // MARK: - The Pearl Room
