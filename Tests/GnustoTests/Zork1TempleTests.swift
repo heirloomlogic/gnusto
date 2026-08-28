@@ -199,6 +199,31 @@ struct Zork1TempleTests {
         #expect(!transcript.contains("The flame is extinguished."))
     }
 
+    /// **`light candles with match` is a sentence this game invites and could
+    /// not read.** Its own refusal is *"You have to light them with something
+    /// that's burning, you know."*, and typing that back answered "You can't
+    /// see any such thing" about a match in the player's hand: `.turnOn`
+    /// carried only `["light", .directObject]`, so the object slot ended the
+    /// pattern and swallowed `candles with match` whole. The row is on
+    /// ``Intent/burn`` now, because `gsyntax.zil:288` sends `LIGHT X WITH Y` to
+    /// `V-BURN`, and `CANDLES-FCN` answers both verbs as one case. (#332)
+    @Test func theCandlesLightWithANamedFlameAndRefuseAColdOne() async throws {
+        let transcript = try await play(
+            Zork1(),
+            Self.toHadesWithKit + [
+                "light candles with bell", "light matches", "light candles with match",
+            ],
+            seed: 0)
+
+        let cold = turnOutput(of: "light candles with bell", in: transcript)
+        #expect(cold.contains("You have to light them with something that's burning, you know."))
+        #expect(!cold.contains("You can't see any such thing."))
+
+        let lit = turnOutput(of: "light candles with match", in: transcript)
+        #expect(lit.contains("The candles are lit."))
+        #expect(!lit.contains("You can't see any such thing."))
+    }
+
     /// The control: carried, the candles report both rungs.
     @Test func theCandlesAnnounceEveryRungToAPlayerHoldingThem() async throws {
         let transcript = try await play(

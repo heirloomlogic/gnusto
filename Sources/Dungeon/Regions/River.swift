@@ -918,6 +918,14 @@ struct DungeonRiver: GameContent {
             say(Prose.buoyFeelsFunny)
         }
 
+        // And it answers for what it just said. `touch`, `feel` and `rub` are
+        // one intent, so the promise above is kept in whichever of the three
+        // the player reaches for — and it reads the emerald, because a buoy
+        // that has been emptied has nothing funny about its feel any more.
+        buoy.before(.touch) {
+            try reply(buoy.holds(emerald) ? Prose.buoyFeelsHeavy : Prose.buoyFeelsEmpty)
+        }
+
         // The hole the digging leaves, which the progression has named from the
         // first turn of it. A rule rather than a constant because the beach
         // says how deep it has got, and that is the thing an examine is asking.

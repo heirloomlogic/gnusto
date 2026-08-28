@@ -609,20 +609,36 @@ struct Dungeon: Game, GameMain {
         // Lighting the candles. They need a live flame named, and the two the
         // game has are a struck match — which lights them — and the ivory
         // torch, which does not: it vaporises them.
+        //
+        // Both intents, as `CANDLES-FCN`'s `<VERB? LAMP-ON BURN>` does. Which
+        // one a command lands on is the grammar's business, not this rule's:
+        // `light candles` and `turn on candles` are ``Intent/turnOn`` and reach
+        // the `flame == nil` branch, while `burn candles with match` and
+        // `light candles with match` are ``Intent/burn`` and name their flame.
+        // Until the `light X with Y` row was added to ``Intent/burn`` the
+        // second spelling had no row anywhere, so half of this rule — the
+        // torch, which only a named instrument can reach — answered to one
+        // sentence out of the two the game's own refusal invites.
         templeQuarter.candles.before(.burn, .turnOn) {
             guard command.directObject == templeQuarter.candles else { return }
             try require(!templeQuarter.candlesBurnedOut, else: Prose.candlesSpent)
-            let flame = command.indirectObject
-            if flame == templeQuarter.ivoryTorch, !templeQuarter.torchBurnedOut {
+            // Naming an instrument is not a looser test than not naming one, so
+            // both readings go through ``Player/heldFlame(named:)``: the source
+            // asks for a `FLAMEBIT` object with `TAKE` implied, and a flame you
+            // are not holding neither lights the candles nor destroys them.
+            let match = dam.matchbook
+            let flame = command.indirectObject ?? match
+            if flame == templeQuarter.ivoryTorch, !templeQuarter.torchBurnedOut,
+                player.heldFlame(named: templeQuarter.ivoryTorch) != nil
+            {
                 try require(
                     !templeQuarter.candles.isLit, else: Prose.candlesAlreadyLitNearTorch)
                 templeQuarter.candles.vanish()
                 try reply(Prose.candlesVaporised)
             }
             guard !templeQuarter.candles.isLit else { try reply(Prose.candlesAlreadyLit) }
-            let match = dam.matchbook
             try require(
-                flame == nil ? match.isLit : flame == match && match.isLit,
+                flame == match && player.heldFlame(named: match) != nil,
                 else: Prose.candlesNeedFlame)
             templeQuarter.lightCandles()
             try reply(Prose.candlesLit)

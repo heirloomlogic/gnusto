@@ -760,7 +760,7 @@ None of the withheld keys came back.
 |---|---|---|---|
 | `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::endgameSmallRoom` | fixed (by #332) | exit-prose-mismatch | major |
 | `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::dungeonEntrance` | fixed (by #332) | exit-prose-mismatch | major |
-| `decl::Sources/Dungeon/Regions/Prose+EndgameMechanics.swift::quizBegins` | confirmed | gate-not-gating | major |
+| `decl::Sources/Dungeon/Regions/Prose+EndgameMechanics.swift::quizBegins` | fixed (by #332) | gate-not-gating | major |
 | `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::redBeamBroken` | fixed (by #332) | prose-untrue-of-state | major |
 | `decl::Sources/Dungeon/Regions/Prose+EndgameMechanics.swift::masterArrives` | fixed (by #332) | prose-untrue-of-state | major |
 | `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::dungeonMaster` | fixed (by #332) | unanswerable-noun | minor |
@@ -770,23 +770,23 @@ None of the withheld keys came back.
 | `decl::Sources/Dungeon/Regions/Prose+Alice.swift::cageRobotOutside` | fixed (by #332) | unanswerable-noun | major |
 | `decl::Sources/Dungeon/Regions/Prose+Bank.swift::curtainOfLight` | fixed (by #332) | exit-prose-mismatch | major |
 | `decl::Sources/Dungeon/Regions/Prose+Bank.swift::tellerRoom` | fixed (by #332) | unanswerable-noun | major |
-| `decl::Sources/Dungeon/Regions/Prose+Temple.swift::engravings` | confirmed | prose-taste | minor |
+| `decl::Sources/Dungeon/Regions/Prose+Temple.swift::engravings` | fixed (by #332) | prose-taste | minor |
 | `decl::Sources/Dungeon/Regions/Prose+Alice.swift::machineRoomMachinery` | fixed (by #332) | unanswerable-noun | minor |
 | `decl::Sources/Dungeon/Regions/Prose+Temple.swift::engravingsCave` | confirmed | prose-untrue-of-frame | note |
-| `decl::Sources/Gnusto/Actions/CoreVerbs.swift::cores` | confirmed | unanswerable-noun | major |
+| `decl::Sources/Gnusto/Actions/CoreVerbs.swift::cores` | fixed (by #332) | unanswerable-noun | major |
 | `decl::Sources/Dungeon/Regions/Prose+Volcano.swift::clothBag` | fixed (by #332) | prose-untrue-of-state | major |
-| `decl::Sources/Dungeon/Regions/Prose+River.swift::buoyFeelsFunny` | confirmed | mechanic-contradicts-prose | major |
+| `decl::Sources/Dungeon/Regions/Prose+River.swift::buoyFeelsFunny` | fixed (by #332) | mechanic-contradicts-prose | major |
 | `decl::Sources/Dungeon/Regions/Prose+River.swift::frigidRiverHere` | fixed (by #332) | unanswerable-noun | major |
 | `decl::Sources/Dungeon/Regions/Prose+EndgameMechanics.swift::boxPineSwingsShut` | fixed (by #332) | prose-untrue-of-frame | major |
 | `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::parapet` | fixed (by #332) | exit-prose-mismatch | minor |
 | `decl::Sources/Dungeon/Regions/Prose+Alice.swift::poolRoomDrained` | fixed (by #332) | unanswerable-noun | minor |
-| `decl::Sources/Dungeon/Regions/Prose+Alice.swift::cageGas` | confirmed | prose-taste | note |
+| `decl::Sources/Dungeon/Regions/Prose+Alice.swift::cageGas` | fixed (by #332) | prose-taste | note |
 | `decl::Sources/Dungeon/Regions/Prose+Volcano.swift::wideLedge` | fixed (by #332) | unwinnable | major |
 | `decl::Sources/Dungeon/Regions/Prose+Volcano.swift::gnome` | fixed (by #332) | unanswerable-noun | minor |
 | `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::winningCell` | fixed (by #332) | exit-prose-mismatch | major |
 | `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::cellSlotFilled` | fixed (by #332) | prose-untrue-of-state | major |
 | `decl::Sources/Dungeon/Regions/Prose+EndgameMechanics.swift::masterWalksOff` | fixed (by #332) | prose-untrue-of-frame | major |
-| `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::tomb` | confirmed | repeat-behavior | minor |
+| `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::tomb` | fixed (by #332) | repeat-behavior | minor |
 | `decl::Sources/Dungeon/Regions/Prose+EndgameMechanics.swift::masterFollows` | fixed (by #332) | prose-untrue-of-frame | major |
 | `decl::Sources/Dungeon/Prose+Stubs.swift::stubFloor` | fixed (by #332) | prose-untrue-of-state | major |
 | `decl::Sources/Dungeon/Regions/Prose+AboveGround.swift::forestDeep` | fixed (by #332) | unanswerable-noun | minor |

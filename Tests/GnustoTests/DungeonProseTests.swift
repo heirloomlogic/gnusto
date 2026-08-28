@@ -1736,7 +1736,18 @@ struct DungeonProseTests {
         let transcript = try await play(
             Dungeon(), Self.toTheButtons + ["south", "take sphere", "x gas", "x vent"], seed: 41)
 
-        expectInOrder(transcript, ["Cage", "A colorless gas begins to enter the cage"])
+        expectInOrder(
+            transcript,
+            [
+                "Cage",
+                // Both sentences, because the second one used to be *"It has no
+                // smell, which is somehow worse."* — the one line in the cage
+                // that told the player what to feel rather than what was there.
+                // (#332)
+                "A colorless gas begins to enter the cage through a vent in the floor.",
+                "There is no smell to it and no hurry about it.",
+            ])
+        #expect(!transcript.contains("which is somehow worse"))
         #expect(turnOutput(of: "x gas", in: transcript).contains("There is nothing to look at."))
         #expect(turnOutput(of: "x vent", in: transcript).contains("A slot in the floor plate"))
         expectEveryNounAnswered(transcript, "The cage's gas and vent.")

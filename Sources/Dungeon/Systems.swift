@@ -142,6 +142,40 @@ extension Intent {
     /// this one word settles it.
     #verb("echo", ["echo"])
 
+    /// Answer a question that has been put to you. Two things in this game ask
+    /// one — the riddle cut over the Riddle Room's stone door, and the Dungeon
+    /// Master's examination — so the word crosses two bundles and lives here.
+    ///
+    /// **The slot is a `.topic`, and that is the whole point.** This used to be
+    /// nine intents with the answers spelled into their rows —
+    /// `["answer", "skeleton"]`, `["answer", "flask"]`, and so on — which meant
+    /// the parser's own accept/reject boundary *was* the answer key. A player
+    /// standing in an open field on turn one could read the eight answers off
+    /// the game by typing words at it: `answer skeleton` cost a turn and got a
+    /// sentence, `answer banana` was free and got "I don't know the word". The
+    /// answer set was enumerable before the endgame existed.
+    ///
+    /// The reason it was written that way is recorded in `FIDELITY.md`, and it
+    /// was a real one: a bare `["skeleton"]` row would put *skeleton* into the
+    /// verb vocabulary, where the maze already has a skeleton and the forest
+    /// above ground a set of skeleton keys. What the note missed is that a
+    /// ``SyntaxElement/topic`` slot takes the rest of the line **without
+    /// looking any of it up**, so `answer <anything>` parses, costs a turn, and
+    /// hands the raw words to a rule — and nothing enters the vocabulary at
+    /// all. A wrong answer and a non-answer are now the same turn, which is
+    /// what the source does.
+    ///
+    /// **`say X` is gone, deliberately.** `say` is an engine verb word
+    /// (`["say", "hello", "to", .directObject]`), and a topic row always
+    /// matches, so `["say", .topic]` would swallow that row's scope failures:
+    /// `say hello to troll` with no troll would stop answering "You can't see
+    /// any such thing" and start answering the quiz. `StubVerbs.md` warns about
+    /// exactly this. `answer` is claimed by no engine verb, so it collides with
+    /// nothing — and with the `say` spelling withdrawn, every `say X` is a
+    /// uniform parse error and every `answer X` a uniform turn, which is what
+    /// closes the leak rather than narrowing it.
+    #verb("answer", ["answer", .topic])
+
     /// Turn a thing with a tool. The engine's `turn` takes no instrument, and
     /// the dam's great bolt is the whole reason the wrench exists.
     #verb("turnWith", ["turn", .directObject, "with", .indirectObject])
@@ -204,15 +238,19 @@ extension Intent {
 struct DungeonSystems: GameContent {
     var verbs: [SyntaxRule] {
         [
-            .wind, .diagnose, .echo, .turnWith, .plug, .ring, .melt, .exorcise,
-            .raise, .lower, .inflate, .deflate, .launch, .land, .temple,
-            .treasure,
+            .wind, .diagnose, .echo, .answer, .turnWith, .plug, .ring, .melt,
+            .exorcise, .raise, .lower, .inflate, .deflate, .launch, .land,
+            .temple, .treasure,
         ]
     }
 
     var actions: [IntentAction] {
         action(.wind) { try reply(Prose.verbWindNothing) }
         action(.echo) { try reply(Prose.verbEcho) }
+        // The one line for a word spoken where nothing is listening for one.
+        // The riddle's door and the Dungeon Master both promote themselves
+        // above it with `reply`, so it prints only when neither is asking.
+        action(.answer) { try reply(Prose.verbAnswerNothingListening) }
         action(.turnWith) { try reply(Prose.verbTurnWithNothing) }
         action(.plug) { try reply(Prose.verbPlugNothing) }
         action(.ring) { try reply(Prose.verbRingNothing) }

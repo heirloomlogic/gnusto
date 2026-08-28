@@ -2995,7 +2995,9 @@ the object. Every framing sentence around it is this game's.
   The source carries a global "free brochure" object that gives the noun scope in
   every room; Gnusto has no such facility, and an item that is nowhere is not in
   scope. `send for brochure` is therefore a literal syntax row rather than a verb
-  with an object slot — `Intent/answerWell`'s shape exactly, and for its reason.
+  with an object slot. (That sentence used to cite `Intent/answerWell` as its
+  precedent; #332 retired that verb, and for a reason that does not apply here —
+  a riddle has an answer to keep secret and a brochure has nothing to hide.)
   The cost is that `examine brochure`, typed after reading the leaflet and before
   the brochure has come, answers "You can't see any such thing." That is true of
   the world, and it is not the noun-answering defect it resembles: the leaflet is
@@ -3189,21 +3191,47 @@ observation about the Royal Puzzle.
   hashed word pair keyed to the player's login name. This engine has no login
   name and no analogue; the transition's own paragraph says the knowledge is
   given rather than naming a word the player could type and find inert.
-- **The quiz answers are `answer X` and `say X`, not bare words.** This is
-  `Intent/answerWell`'s shape and a deliberate narrowing of what #187 proposed. A
+- **The quiz answers are `answer X`, not bare words — but `X` is now any word
+  at all.** The source takes a bare `TEMPLE`; this engine's syntax rows need a
+  leading literal, so the spelling is narrowed by one word and no further. **A
+  word outside the eight is a wrong answer, as it is in the source**, and costs
+  the same turn.
+
+  This entry used to say the opposite, and to defend it. Until #332 there were
+  eight `#verb`s with the answers spelled into their rows —
+  `["answer", "skeleton"]`, `["answer", "flask"]` — on the reasoning that a
   bare `["skeleton"]` row would put *skeleton* into the verb vocabulary, where
-  the maze already has a skeleton and the forest a set of skeleton keys; `forest`,
-  `flask` and `knife` are the same problem. The cost the issue names is real and
-  unchanged: **an answer outside the eight is a parse failure rather than a wrong
-  answer, and a parse failure costs no turn.**
-- **`set dial to four` is not reproduced; the dial steps.** Naming a number
-  needs one object per number, because this engine hands a rule the *item* a
-  noun resolved to and never the word the player typed — and eight more objects
-  is more than the eighteenth bundle had, which is the hazard note below rather
-  than a design preference. `turn dial` advances it one and reads out where it
-  stands, so choosing cell four is three turns of the dial instead of one
-  sentence. The puzzle is unchanged: choose a cell, dock it, be inside it when
-  it leaves.
+  the maze already has a skeleton and the forest a set of skeleton keys. That
+  reasoning was sound and the conclusion was wrong: it left the parser holding
+  the answer key. `answer skeleton` cost a turn and got a sentence, `answer
+  banana` was free and got *"I don't know the word"*, so a player standing in
+  an open field on turn one could read the eight answers off the game by typing
+  words at it.
+
+  **The third option the entry missed is a `.topic` slot**, which takes the
+  rest of the line without looking any of it up. One row —
+  `#verb("answer", ["answer", .topic])`, declared in `Systems.swift` because
+  the riddle at the Riddle Room shares it — parses every word, costs a turn for
+  every word, and adds nothing whatever to the vocabulary. The eight answers
+  now live in a Swift table (`DungeonEndgame.quizAnswers`) that is consulted
+  after the turn is already spent.
+
+  The one thing genuinely given up is the `say X` spelling. `say` is an engine
+  verb word, and a topic row always matches, so `["say", .topic]` would swallow
+  the scope failures of `say hello to <somebody>`. `answer` is claimed by no
+  engine verb, so it collides with nothing — and with `say` withdrawn, every
+  `say X` is a uniform parse error and every `answer X` a uniform turn, which
+  is what closes the leak rather than moving it.
+- **`set dial to four` is reproduced.** This entry used to say it was not, on
+  the ground that naming a number needs one object per number and that "this
+  engine hands a rule the *item* a noun resolved to and never the word the
+  player typed". Both halves are stale: `Endgame.swift` declares the eight
+  numerals, `Endgame+Rules.swift` declares `setTo` (`set`/`turn`/`spin X to Y`),
+  and `DungeonEndgameTests.theDialTakesANumberByNameAndByDigit` types both
+  `set dial to four` and `set dial to 7`. `turn dial` still advances it one and
+  reads out where it stands, so the stepping form is kept beside the naming
+  one. The puzzle is unchanged either way: choose a cell, dock it, be inside it
+  when it leaves.
 - **The heads' large case is not reproduced either.** The mainframe sweeps every
   valuable you carry and every valuable loose in the Tomb into a case that
   appears in the Living Room. There is no case here for the same reason there

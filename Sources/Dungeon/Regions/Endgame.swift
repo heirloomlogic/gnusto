@@ -240,11 +240,24 @@ struct DungeonEndgame: GameContent {
         scenery
     }
 
+    /// The floor the poles stand in and the bottles lie about. Its own item
+    /// rather than a synonym of ``heads``, because any liberty taken with the
+    /// heads is fatal and touching the floor is not a liberty.
+    let tombFloor = Item {
+        name("tomb floor")
+        synonyms("floor", "ground")
+        description(Prose.tombFloor)
+        scenery
+    }
+
     /// `COKES`. `OSIZE 15`, and takable — the one thing in the Tomb that is.
+    /// Carries its own listing line, because the room's description used to
+    /// name it and then let the room list it a second time underneath.
     let cokeBottles = Item {
         name("bunch of Coke bottles")
         adjectives("empty", "coke")
         synonyms("bottles", "bottle", "coke", "cokes", "bunch")
+        firstSight(Prose.tombCokeBottlesFirstSight)
         description(Prose.tombCokeBottles)
         trait(.weight, 15)
     }
@@ -254,6 +267,7 @@ struct DungeonEndgame: GameContent {
         name("stack of listings")
         adjectives("line-printer", "fanfold")
         synonyms("listings", "listing", "stack", "output", "paper")
+        firstSight(Prose.tombListingsFirstSight)
         description(Prose.tombListings)
         trait(.weight, 70)
         trait(.burnable, true)

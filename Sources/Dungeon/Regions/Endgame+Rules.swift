@@ -23,11 +23,7 @@ extension Intent {
 
 extension DungeonEndgame {
     @VerbBuilder var verbs: [SyntaxRule] {
-        [
-            .setTo, .stay,
-            .quizTemple, .quizForest, .quizZorkmids, .quizFlask,
-            .quizRub, .quizSkeleton, .quizKnife, .quizNowhere,
-        ]
+        [.setTo, .stay]
     }
 
     /// The two clocks the box runs on, and the two daemons the Dungeon Master

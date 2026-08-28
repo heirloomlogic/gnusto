@@ -548,9 +548,14 @@ extension Prose {
         There is no way out of the cage. There is barely a way to turn round.
         """
 
+    /// The second sentence used to be *"It has no smell, which is somehow
+    /// worse."* — the one line in this block that told the player what to feel
+    /// instead of what was there. The rest of the cage speaks in flat material
+    /// fact (*"The gas does what the gas was installed to do."*), and the
+    /// six-turn fuse is frightening enough without being pointed at.
     static let cageGas = """
         A colorless gas begins to enter the cage through a vent in the floor.
-        It has no smell, which is somehow worse.
+        There is no smell to it and no hurry about it.
         """
 
     static let cageGasKills = """

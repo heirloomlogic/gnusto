@@ -94,6 +94,15 @@ voice:
 
 1. Where the trilogy line is **identical or near-identical** to the mainframe's,
    take the trilogy line verbatim. Its typography is cleaner.
+
+   *Typography* is the load-bearing word, and it cuts both ways. A fixed-column
+   break through the middle of a word is not part of a line — it is an artifact
+   of the file the line was transcribed out of, and this engine re-packs
+   paragraphs, so it lands mid-sentence instead of at a margin. The engravings
+   carried `Unfor- tunately` into 2026 on the strength of "verbatim"; #332 took
+   the hyphen out. A form — an inscription, a legend, a scrap of verse — is the
+   opposite case and keeps every break it was written with, because it is
+   indented and `TextWrap` never touches it.
 2. Where the trilogy line **differs substantially**, check it against the room's
    exit table first. The trilogy often changed the prose because it had changed
    the room. Keep the voice; fix the facts.
@@ -2309,3 +2318,124 @@ This one asks the question underneath it: **who is close enough to be told at
 all?** Both sites here are the engine answering a question about distance that
 it was never asked — and in both, the region had already written the narrower
 answer down and been overruled by a default.
+
+### The sixteenth pass: four boxes that had each been ruled out once
+
+The fifteenth pass closed the round's tenth box and left four. All four had a
+written reason for being left, and three of the four reasons were wrong.
+
+22. **The riddle gate leaked its own answer set, and `FIDELITY.md` defended the
+    leak.** The Dungeon Master's eight answers and the riddle's `well` were nine
+    `#verb`s with the words spelled into their syntax rows, so the parser's
+    accept/reject boundary *was* the answer key. `answer skeleton` cost a turn
+    and got a sentence; `answer banana` was free and got *"I don't know the
+    word"*. Standing in an open field on turn one, before the endgame exists, a
+    player could read the eight answers off the game by typing words at it.
+
+    The note that recorded this as a permanent trade gave a real reason — a
+    bare `["skeleton"]` row would put *skeleton* into the verb vocabulary,
+    where the maze already has a skeleton and the forest a set of skeleton keys
+    — and then stopped at two options. The third was a **`.topic` slot**, which
+    takes the rest of the line and looks none of it up, and which the DocC has
+    documented for exactly this since it was written. One row —
+    `#verb("answer", ["answer", .topic])` — and every word parses, every word
+    costs a turn, and nothing enters the vocabulary. A word that answers
+    nothing is now a wrong answer, which is what the source does and what the
+    five-wrong-answers rule was always counting.
+
+    The `say X` spelling is gone, deliberately. `say` is an engine verb word
+    and a topic row always matches, so `["say", .topic]` would have swallowed
+    the scope failures of `say hello to <somebody>` — trading one wrong line for
+    another. `answer` is claimed by no engine verb.
+
+23. **A sentence the game tells the player to type, the parser could not
+    read.** Both this game and Zork 1 refuse a bare `light candles` with *"You
+    have to light them with something that's burning, you know."* Typing that
+    back answered *"You can't see any such thing"* about a matchbook in hand:
+    `.turnOn` carried only `["light", .directObject]`, the object slot ended
+    the pattern, and the parser swallowed `candles with match` whole.
+
+    The round filed it against `.turnOn`, and that is the wrong verb.
+    `gsyntax.zil:286-289` gives bare `LIGHT OBJECT` to `V-LAMP-ON` and
+    `LIGHT OBJECT WITH OBJECT` to **`V-BURN`** — so on `.turnOn` the row would
+    have reached a handler that refuses a newspaper for not being a light
+    source, which is a different wrong answer. The row is on `.burn`, where it
+    needs no handler change at all and where this game's candles rule was
+    already listening. Zork 1's candles rule now answers both intents too, as
+    `CANDLES-FCN`'s own `<VERB? LAMP-ON BURN>` does.
+
+    Half of this game's candle rule had been unreachable through one of the two
+    verbs it names: the ivory torch vaporises the candles, and only a *named*
+    instrument gets there.
+
+24. **The buoy promised a feel and then denied it.** Holding it on the fourth
+    stretch prints *"You notice something funny about the feel of the buoy"*;
+    `feel buoy` on the next turn answered the stock stub, *"You feel nothing
+    unexpected."* There was no `buoy.before(.touch)` anywhere. There is one
+    now, and it reads the emerald — a buoy that has been emptied has nothing
+    funny about its feel and says so.
+
+25. **The Tomb listed its own floor twice.** Its description hard-coded an
+    inventory of two loose, takable, non-`scenery` items with no listing line,
+    so `RoomDescriber` printed them again underneath — and `alwaysDescribed`
+    did it on every LOOK, forever. The clause is the items' `firstSight` now,
+    which is the one channel that prints wherever the room lists the thing. The
+    floor those poles stand in answers as well, as its own item and not as a
+    synonym of the heads: every hand laid on those is fatal and a hand on the
+    floor is not.
+
+    Two smaller ones with it. The engravings' `Unfor- tunately` was a 1977
+    fixed-column break carried in under "verbatim" — see the note on rule 1
+    above. And the cage's gas closed on *"It has no smell, which is somehow
+    worse."*, the one line in that room that told the player what to feel
+    instead of what was there; the six-turn fuse does not need pointing at.
+
+26. **A flame you were not holding lit the candles, and destroyed them.**
+    Not a round finding — the simplify pass over the four boxes above turned it
+    up, in code the `light X with Y` row had just made reachable by a second
+    spelling. The candle rule's *named*-instrument branch asked only whether
+    the match was lit; its unnamed branch asked whether it was in hand. So
+    `light match` / `drop matchbook` / `burn candles with match` lit them off
+    the floor, while `burn candles` in the same state refused — and the torch
+    branch vaporised them for a torch merely visible across the room, with no
+    possession or reach test at all. The source asks for a `FLAMEBIT` object
+    with `TAKE` implied on both readings. Both branches now go through
+    `Player.heldFlame(named:)`, which is the helper this game already wrote for
+    the question, and the identical asymmetry in Zork 1's rule is closed in the
+    same commit.
+
+### What the sixteenth pass changed, and what it did not
+
+The map, the puzzles, the treasure values and `maxScore` are untouched, and both
+walkthroughs score what they scored. Three notes:
+
+- **Two entries in `FIDELITY.md` were rewritten because they were false, not
+  because the code moved under them.** The quiz bullet defended a leak; the
+  dial bullet said `set dial to four` was not reproduced, which stopped being
+  true when the eight numerals and the `setTo` verb were declared and a test
+  started typing both spellings. A fidelity note that has gone stale reads
+  exactly like one that is still load-bearing, which is why the pass that
+  finds one should rewrite it rather than work around it.
+- **The general parse question the round raised is still open, and on
+  purpose.** `open mailbox with mat` answers "You can't see any such thing" for
+  the same reason `light candles with match` did — an unmatched trailing
+  prepositional phrase is swallowed into the noun slot for *every* verb whose
+  only rows are single-object. Whether that residue should be a parse error is
+  one decision affecting every verb at once. What #332 fixed is the two
+  commands the source actually declares. `TURN ON X WITH Y` (`gsyntax.zil:509`)
+  is a real third row and is the one that would need `DefaultActions.turnOn`
+  taught about indirect objects.
+- **`answer` is `DungeonSystems`'s, not a region's.** The convention is that a
+  verb lives with the region that answers it, and two regions answer this one —
+  the Riddle Room's door and the Dungeon Master's examination. The game-wide
+  shrug for a word nobody is waiting on is that bundle's `action(.answer)`, one
+  line for the whole game, and both askers promote themselves above it with
+  `reply`.
+
+**The class's diagnostic.** The fifteenth pass asked *who is close enough to be
+told at all?* This one asks a question about the record rather than the code:
+**what does the game already say it decided?** Three of these four sites had a
+written note saying they were settled, and the note was the thing that was
+wrong — twice because a better mechanism had arrived since, and once because
+the fix had been filed against the wrong verb by somebody reading the symptom
+rather than the grammar.

@@ -30,6 +30,14 @@ extension Prose {
 
     static let verbTouch = "You feel nothing unexpected."
 
+    /// Said anywhere nothing is asking a question — which, until the endgame,
+    /// is everywhere. It is the same line for every word, so `answer skeleton`
+    /// and `answer banana` are indistinguishable and the Dungeon Master's
+    /// answer key cannot be read off the parser.
+    static let verbAnswerNothingListening = """
+        Nothing here is waiting on an answer.
+        """
+
     /// Re-voiced. This constant used to be the engine's `GameText.stubs.smell`
     /// character for character, so the row installing it in ``DungeonSystems``
     /// re-voiced nothing at all while the survey counted `smell` as done. The

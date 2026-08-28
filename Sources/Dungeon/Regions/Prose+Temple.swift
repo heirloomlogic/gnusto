@@ -421,14 +421,22 @@ extension Prose {
         You have entered a low cave with passages leading north and southeast.
         """
 
-    /// Verbatim — `ENGRA` is in the comparison's `identical` bucket.
+    /// Verbatim — `ENGRA` is in the comparison's `identical` bucket — **except
+    /// for one hyphen**, which was never a word of it. The 1977 text file
+    /// broke `Unfortunately` across a fixed column, and this engine re-packs a
+    /// paragraph, so the break landed mid-line as *"Unfor- tunately"*. The rule
+    /// `docs/games/dungeon.md` takes the trilogy line under is *"its typography
+    /// is cleaner"*; keeping a column artifact from a teletype nobody is
+    /// reading this on would be the one place that rule argues against itself.
+    /// Not made a form — this is a description, not an inscription, and the
+    /// Hades gate below is what indentation is for.
     static let engravings = """
         The engravings were incised in the living rock of the cave wall by an
         unknown hand. They depict, in symbolic form, the beliefs of the
         ancient Zorkers. Skillfully interwoven with the bas reliefs are
-        excerpts illustrating the major religious tenets of that time. Unfor-
-        tunately, a later age seems to have considered them blasphemous and
-        just as skillfully excised them.
+        excerpts illustrating the major religious tenets of that time.
+        Unfortunately, a later age seems to have considered them blasphemous
+        and just as skillfully excised them.
         """
 
     // MARK: - The gate of Hades

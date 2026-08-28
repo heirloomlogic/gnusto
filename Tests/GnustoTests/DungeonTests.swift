@@ -1547,6 +1547,68 @@ struct DungeonTests {
             ])
     }
 
+    /// **The sentence the game's own refusal invites.** Both this game and
+    /// Zork 1 answer a bare `light candles` with *"You have to light them with
+    /// something that's burning, you know."*, and until #332 typing that back
+    /// got "You can't see any such thing" about a matchbook in hand: the only
+    /// `light` row was `["light", .directObject]`, so the object slot ended the
+    /// pattern and swallowed `candles with match` whole. The row now sits on
+    /// ``Intent/burn``, where `gsyntax.zil:288` puts it — which also means the
+    /// ivory torch branch of this rule, reachable only through a *named*
+    /// instrument, answers to both spellings instead of one.
+    @Test func lightingWithANamedFlameReadsTheSameAsBurningWithIt() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheGateOfHades
+                + ["east", "turn off candles", "light match", "light candles with match"],
+            seed: 18)
+
+        let turn = turnOutput(of: "light candles with match", in: transcript)
+        #expect(turn.contains("The candles are lighted."))
+        #expect(!turn.contains("You can't see any such thing."))
+    }
+
+    /// And the new row does not shadow the bare one. It is the more specific
+    /// of the two and so is tried first on every `light` command, so this is
+    /// the control that says a lamp still goes on by itself.
+    @Test func aBareLightStillTurnsAThingOn() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            ["north", "east", "open window", "enter window", "west", "light lamp"],
+            seed: 18)
+
+        let turn = turnOutput(of: "light lamp", in: transcript)
+        #expect(turn.contains("The brass lantern is now on."))
+        #expect(!turn.contains("You can't see any such thing."))
+    }
+
+    /// A flame you are not holding lights nothing and destroys nothing. The
+    /// named-instrument branch of the candle rule used to ask only whether the
+    /// match was *lit*, where the unnamed branch asked whether it was in hand
+    /// — so `light match` / `drop matchbook` / `burn candles with match` lit
+    /// them off the floor, and the same rule's torch branch vaporised them for
+    /// a torch merely visible across the room. Found by the simplify pass over
+    /// #332, and fixed in both games in the same commit.
+    @Test func aFlameOnTheFloorLightsNothing() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheGateOfHades
+                + [
+                    "east", "turn off candles", "light match", "drop matchbook",
+                    "burn candles with match", "take matchbook", "light match",
+                    "light candles with match",
+                ],
+            seed: 18)
+
+        let dropped = turnOutput(of: "burn candles with match", in: transcript)
+        #expect(
+            dropped.contains("You have to light them with something that's burning, you know."))
+        // The control, on the same run: picked up and struck again, it works.
+        #expect(
+            turnOutput(of: "light candles with match", in: transcript)
+                .contains("The candles are lighted."))
+    }
+
     /// **The exorcism, and the thirty points behind the gate.** Ring the bell,
     /// relight the candles it made you drop, read the marked prayer. The Land of
     /// the Living Dead carries a room value of 30 in the mainframe and holds
@@ -2630,6 +2692,22 @@ struct DungeonTests {
             ["Engravings Cave", "Riddle Room", "great door of dressed stone"])
     }
 
+    /// The engravings read as one paragraph, with no column break in the
+    /// middle of a word. The trilogy's line was transcribed from a 1977 text
+    /// file that hard-wrapped `Unfortunately` across a fixed column, and
+    /// `TextWrap` folds a single newline to a space — so the artifact rendered
+    /// as *"Unfor- tunately"* mid-line. Repairing it is what `dungeon.md`'s
+    /// own rule for taking the trilogy line asks for: *its typography is
+    /// cleaner*. (#332)
+    @Test func theEngravingsCarryNoColumnBreakThroughAWord() async throws {
+        let transcript = try await play(
+            Dungeon(), Self.toTheEngravingsCave + ["read engravings"], seed: 41)
+
+        let turn = turnOutput(of: "read engravings", in: transcript)
+        #expect(turn.contains("Unfortunately, a later age"))
+        #expect(!turn.contains("Unfor-"))
+    }
+
     /// The door opens for one word and for nothing else. The riddle is written
     /// fresh — `RIDDL`'s trilogy column in the comparison document is empty,
     /// because no trilogy room answers to it — but the **answer** is the
@@ -2652,12 +2730,52 @@ struct DungeonTests {
             ])
     }
 
-    /// And the word is inert everywhere else, because it is a word in the
-    /// game's vocabulary everywhere.
+    /// And the word is inert everywhere else — **and so is every other word**,
+    /// which is the half of this that used to be false. The riddle's answer
+    /// was a literal in a syntax row, so `answer well` cost a turn and got a
+    /// sentence while `answer banana` was a free parse error, and the same was
+    /// true of the Dungeon Master's eight. ``Intent/answer`` takes a topic now,
+    /// so the two are indistinguishable and neither the door's word nor the
+    /// examination's answer key can be read off the parser. (#332)
     @Test func theRiddleWordIsInertEverywhereElse() async throws {
-        let transcript = try await play(Dungeon(), ["answer well"], seed: 41)
+        let transcript = try await play(
+            Dungeon(), ["answer well", "answer banana", "answer skeleton"], seed: 41)
 
-        #expect(transcript.contains("Nothing here is waiting on an answer."))
+        #expect(
+            transcript.components(separatedBy: "Nothing here is waiting on an answer.")
+                .count == 4)
+        #expect(!transcript.contains("I don't know the word"))
+        #expect(!transcript.contains("That sentence isn't one I recognize"))
+    }
+
+    /// And all three cost a turn. A parse error is free, so a leaking answer
+    /// key is legible from the move counter even with the wording identical —
+    /// this is the assertion that would catch a re-narrowed row.
+    @Test func aWordNobodyIsWaitingOnStillCostsATurn() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            ["answer well", "answer banana", "answer rusty knife", "score"],
+            seed: 41)
+
+        #expect(transcript.contains("in 3 turns"))
+    }
+
+    /// In the room that *is* listening, a wrong word is answered by the door
+    /// rather than by the vocabulary — and the door stays shut.
+    @Test func theStoneDoorRefusesAWordThatIsNotTheAnswer() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheEngravingsCave + ["southeast", "answer bucket", "east"],
+            seed: 41)
+
+        expectInOrder(
+            transcript,
+            [
+                "Riddle Room",
+                "Whatever the door is waiting for, that was not it",
+                "Something you cannot see stands between you and the doorway",
+            ])
+        #expect(!transcript.contains("Pearl Room"))
     }
 
     /// `MPEAR` is an `identical` entry, so the room is the trilogy's line
@@ -3380,6 +3498,36 @@ struct DungeonTests {
                 "A red plastic buoy the size of a small barrel",
             ])
         #expect(!turnOutput(of: "examine buoy", in: transcript).contains("There is a red buoy here"))
+    }
+
+    /// The buoy answers for the promise it makes. Holding it on the fourth
+    /// stretch prints *"You notice something funny about the feel of the
+    /// buoy"*, and until #332 the next turn's `feel buoy` answered *"You feel
+    /// nothing unexpected."* — the stock stub line, flatly contradicting the
+    /// sentence above it. `touch`, `feel` and `rub` are one intent, so one
+    /// rule keeps the promise in all three; and once the emerald is out there
+    /// is nothing funny about the feel of it any more.
+    @Test func feelingTheBuoyKeepsThePromiseTakingItMade() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.afloatOnTheRiver + [
+                "down", "down", "down", "take buoy", "feel buoy", "rub buoy",
+                "open buoy", "take emerald", "touch buoy",
+            ],
+            seed: 18)
+
+        expectInOrder(
+            transcript,
+            [
+                "You notice something funny about the feel of the buoy.",
+                "heavier at one end than anything meant to float",
+            ])
+        #expect(turnOutput(of: "rub buoy", in: transcript).contains("heavier at one end"))
+
+        let emptied = turnOutput(of: "touch buoy", in: transcript)
+        #expect(emptied.contains("light as a lantern now"))
+        #expect(!emptied.contains("heavier at one end"))
+        #expect(!transcript.contains("You feel nothing unexpected."))
     }
 
     @Test func theOpenedBuoyPrintsTheEmeraldsOwnLine() async throws {

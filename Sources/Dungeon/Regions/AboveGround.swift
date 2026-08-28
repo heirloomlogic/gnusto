@@ -2,10 +2,15 @@ import Gnusto
 
 extension Intent {
     /// Order the free brochure by post. The word is spelled into its rows
-    /// rather than parsed as a free noun, which is ``Intent/answerWell``'s
-    /// shape exactly and for its reason: the brochure is nowhere at all until
+    /// rather than parsed as a free noun: the brochure is nowhere at all until
     /// it is asked for, so an object slot would answer the one sentence that
     /// starts the whole business with "You can't see any such thing."
+    ///
+    /// This used to cite ``Intent/answerWell`` as the precedent, and #332
+    /// retired that verb for putting its answer in the vocabulary. The two are
+    /// not the same case: a riddle has a **secret** to keep and this does not,
+    /// so a literal row here costs nothing. If the brochure ever wants a
+    /// second spelling, ``Intent/answer``'s topic slot is the shape to copy.
     ///
     /// Declared here because this bundle owns the mailbox it arrives in and the
     /// leaflet that advertises it, and a verb lives with the region that

@@ -252,6 +252,40 @@ struct DungeonEndgameTests {
         expectEveryNounAnswered(transcript, "the Tomb of the Unknown Implementer")
     }
 
+    /// **The Tomb names each of its things once.** Its description used to
+    /// hard-code *"A bunch of empty Coke bottles and a stack of line-printer
+    /// listings lie about the floor between them"* while both of those are
+    /// loose, takable, non-`scenery` items with no listing line — so the room
+    /// listed them a second time underneath, and `alwaysDescribed` did it again
+    /// on every LOOK. The clause is the items' `firstSight` now, which is the
+    /// one channel that prints wherever the room lists the thing. (#332)
+    @Test func theTombListsItsBottlesAndListingsOnceEachPerLook() async throws {
+        let transcript = try await play(
+            Dungeon(), Self.intoTheEndgame + ["look"], seed: Self.seed)
+
+        // Two printings of the room — the arrival and the LOOK — so each item
+        // says itself twice and no more. It used to be four: the description
+        // named both, and then the room listed both underneath it.
+        #expect(transcript.components(separatedBy: "This is a tomb.").count == 3)
+        #expect(transcript.components(separatedBy: "Coke bottles").count == 3)
+        #expect(transcript.components(separatedBy: "line-printer listings").count == 3)
+        #expect(!transcript.contains("lie about the floor between them"))
+    }
+
+    /// And the floor the poles stand in answers, which nothing in this room
+    /// used to. Its own item rather than a synonym of the heads, because every
+    /// hand laid on those is fatal and a hand on the floor is not.
+    @Test func theTombsFloorAnswersWithoutKillingYou() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.intoTheEndgame + ["examine floor", "touch floor", "examine poles"],
+            seed: Self.seed)
+
+        #expect(turnOutput(of: "examine floor", in: transcript).contains("four holes cut in it"))
+        #expect(!turnOutput(of: "touch floor", in: transcript).contains("heads turn on their poles"))
+        expectEveryNounAnswered(transcript, "the Tomb's floor and poles")
+    }
+
     /// The heads. Touching, taking, attacking, burning, opening or rubbing them
     /// is fatal — and `rub` is a synonym of `touch` in this engine as in the
     /// source, so `touch heads` is the trap without ever being spelled out.
@@ -813,6 +847,43 @@ struct DungeonEndgameTests {
 
         #expect(transcript.contains("You have had answers enough"))
         #expect(transcript.contains("has finished with you"))
+    }
+
+    /// And five words that are not answers at all end it just the same, which
+    /// is the source's behaviour and was not this game's. The eight answers
+    /// used to be eight ``Intent``s with the words spelled into their syntax
+    /// rows, so only a member of the answer set could be *wrong* — anything
+    /// else was a free parse error, and the set was therefore readable off the
+    /// parser from turn one. (#332)
+    @Test func fiveNonAnswersEndTheExaminationJustAsDead() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.pastTheCrypt + Self.throughTheBox + [
+                "knock on door", "answer banana", "answer trombone",
+                "answer wednesday", "answer bucket", "answer nothing at all",
+                "knock on door",
+            ],
+            seed: Self.seed)
+
+        #expect(transcript.contains("You have had answers enough"))
+        #expect(transcript.contains("has finished with you"))
+        #expect(!transcript.contains("I don't know the word"))
+    }
+
+    /// The examination still opens for the right word, so the fix above did
+    /// not simply stop the quiz working. Seed 52 puts the robber's hideaway
+    /// first, and its answer is *temple*.
+    @Test func theRightWordStillAdvancesTheExamination() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.pastTheCrypt + Self.throughTheBox + [
+                "knock on door", "answer banana", "answer temple",
+            ],
+            seed: Self.seed)
+
+        expectInOrder(
+            transcript,
+            ["That is not the answer", "\"Correct,\" says the voice"])
     }
 
     // MARK: - The prison, and the end of it
