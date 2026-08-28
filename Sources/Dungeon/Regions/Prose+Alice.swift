@@ -416,6 +416,21 @@ extension Prose {
         you cannot see a foot of it.
         """
 
+    /// Written fresh. The hollow the Pool Room is half made of, which is there
+    /// whether or not there is anything in it — and which used to be a synonym
+    /// on the pool, so evaporating the pool took the word away while the drained
+    /// paragraph went on printing it. (#332)
+    static let poolDepression = """
+        Half the floor of the room, a good foot lower than the other half and
+        stained to the rim.
+        """
+
+    /// The same hollow with the goop still falling into it.
+    static let poolDepressionFull = """
+        Half the floor of the room, a good foot lower than the other half, and
+        the goop has found it and settled.
+        """
+
     static let triangularButtonStopsTheCarousel = """
         Click. Somewhere a long way off, a great deal of machinery slows and
         stops, and the silence afterwards is startling.
@@ -474,6 +489,24 @@ extension Prose {
 
     static let spherePedestal = """
         A low stone pedestal with a shallow dish cut in the top of it.
+        """
+
+    /// Written fresh. What the cage's own paragraph names, from inside it. All
+    /// four words were printed through the bars and denied: the cage is its own
+    /// room, and nothing in the closet is in scope from it. (#332)
+    static let closetThroughTheBars = """
+        The closet you were standing in a moment ago, four inches of steel and
+        a great deal of bad luck away.
+        """
+
+    static let pedestalThroughTheBars = """
+        The low stone pedestal, its dish empty, exactly as far out of reach as
+        everything else out there.
+        """
+
+    static let stickerThroughTheBars = """
+        The alarm company's sticker, too far off to read from in here and no
+        longer telling you anything you did not just find out.
         """
 
     static let cageFallsOnYou = """

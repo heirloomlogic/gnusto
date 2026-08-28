@@ -317,9 +317,14 @@ fi
 # `GameText.restoreFailed` and any game may re-skin it; a `save` earlier in the
 # list closes the question, since that run wrote its own slot.
 if [[ -z "$staged_from_marker" && -z "$restore_slot" ]]; then
+  # `|| true` because a list that types neither word is the ordinary case, and
+  # under `set -euo pipefail` grep's exit 1 would abort the run with no transcript.
+  # It also covers the other half: with `pipefail`, a list holding more than one
+  # of these lines propagates grep's SIGPIPE when `head` closes the pipe early.
+  # So do not tighten this to `|| [[ $? -eq 1 ]]`.
   first_save_or_restore="$(
     grep -oiE '^[[:space:]]*(save|restore)\b' "$commands" | head -1 | tr -d '[:space:]' \
-      | tr '[:upper:]' '[:lower:]'
+      | tr '[:upper:]' '[:lower:]' || true
   )"
   if [[ "$first_save_or_restore" == "restore" ]]; then
     echo "[playtest] restore-unreachable — this list types 'restore' and nothing was staged," >&2

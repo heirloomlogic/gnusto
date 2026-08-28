@@ -276,6 +276,71 @@ struct DungeonEndgame: GameContent {
     let stairsAtTheBottom = steps()
     let stairsToTheParapet = steps()
 
+    /// The Stone Room's masonry, which its paragraph spends two of its three
+    /// sentences on. (#332)
+    let stoneRoomMasonry = Item {
+        name("dressed stone")
+        adjectives("dressed", "large")
+        synonyms("stone", "stones", "joints", "joint", "masonry", "wall", "walls", "block", "blocks")
+        description(Prose.stoneRoomMasonry)
+        scenery
+    }
+
+    /// And the landing the room one flight above it is named for. (#332)
+    let topOfStairsLanding = Item {
+        name("landing")
+        adjectives("rough")
+        synonyms("landing", "shelf", "head")
+        description(Prose.topOfStairsLanding)
+        scenery
+    }
+
+    /// The hallway, from every room that is in it or opens off it. Five hallway
+    /// rooms and six narrow rooms — all eleven print the word, and it belonged
+    /// to nothing. A factory rather than twelve declarations,
+    /// for ``steps()``' reason: an item lives in one room. (#332)
+    private static func hallwayScenery() -> Item {
+        Item {
+            name("hallway")
+            adjectives("long", "narrow")
+            synonyms("hallway", "hall", "corridor", "passage")
+            description(Prose.hallwayItself)
+            scenery
+        }
+    }
+
+    let hallwayAtA = hallwayScenery()
+    let hallwayAtB = hallwayScenery()
+    let hallwayAtC = hallwayScenery()
+    let hallwayAtG = hallwayScenery()
+    let hallwayAtD = hallwayScenery()
+    let hallwayAtNarrowAEast = hallwayScenery()
+    let hallwayAtNarrowAWest = hallwayScenery()
+    let hallwayAtNarrowBEast = hallwayScenery()
+    let hallwayAtNarrowBWest = hallwayScenery()
+    let hallwayAtNarrowCEast = hallwayScenery()
+    let hallwayAtNarrowCWest = hallwayScenery()
+
+    /// The staff his listing line puts in his hand, and the robe his own
+    /// description names. Both were words the endgame printed and neither
+    /// answered about itself: `staff` was a synonym on the man, so `x staff`
+    /// described the man. (#332)
+    let dungeonMasterStaff = Item {
+        name("staff")
+        adjectives("long", "dark", "wooden")
+        synonyms("staff", "stick", "rod")
+        description(Prose.dungeonMasterStaff)
+        scenery
+    }
+
+    let dungeonMasterRobe = Item {
+        name("robe")
+        adjectives("old", "colourless")
+        synonyms("robe", "robes", "gown")
+        description(Prose.dungeonMasterRobe)
+        scenery
+    }
+
     // MARK: - The beam and the button
 
     /// `RBEAM`. Broken by anything left lying on the floor of the Small Room.
@@ -473,7 +538,11 @@ struct DungeonEndgame: GameContent {
     let woodenDoor = Item {
         name("massive wooden door")
         adjectives("massive", "wooden", "oaken")
-        synonyms("door", "doors")
+        // `planks` and `wood`: its own description calls it *a door of heavy
+        // wooden planks* and the room north of it answers a blocked move with
+        // *a wall of wood*, and neither word was known to the parser at all.
+        // What the door is made of, not a second thing beside it. (#332)
+        synonyms("door", "doors", "planks", "plank", "wood")
         openable
         scenery
     }
@@ -669,7 +738,10 @@ struct DungeonEndgame: GameContent {
     let dungeonMaster = Actor {
         name("dungeon master")
         adjectives("old", "robed")
-        synonyms("master", "man", "dungeonmaster", "wizard", "staff")
+        // Not `staff`: he carries one, and a thing somebody is holding is not a
+        // spelling of the person holding it. ``dungeonMasterStaff`` is the item
+        // about it. (#332)
+        synonyms("master", "man", "dungeonmaster", "wizard")
         firstSight(Prose.dungeonMasterFirstSight)
         description(Prose.dungeonMaster)
         // He is the second actor in the game to take an order and the first to

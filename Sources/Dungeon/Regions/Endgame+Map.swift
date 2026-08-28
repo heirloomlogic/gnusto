@@ -110,6 +110,23 @@ extension DungeonEndgame {
         stairsAtTheTop.starts(in: topOfStairs)
         stairsAtTheBottom.starts(in: stoneRoom)
         stairsToTheParapet.starts(in: parapet)
+        stoneRoomMasonry.starts(in: stoneRoom)
+        topOfStairsLanding.starts(in: topOfStairs)
+
+        hallwayAtA.starts(in: hallwayA)
+        hallwayAtB.starts(in: hallwayB)
+        hallwayAtC.starts(in: hallwayC)
+        hallwayAtG.starts(in: hallwayG)
+        hallwayAtD.starts(in: hallwayD)
+        hallwayAtNarrowAEast.starts(in: narrowAEast)
+        hallwayAtNarrowAWest.starts(in: narrowAWest)
+        hallwayAtNarrowBEast.starts(in: narrowBEast)
+        hallwayAtNarrowBWest.starts(in: narrowBWest)
+        hallwayAtNarrowCEast.starts(in: narrowCEast)
+        hallwayAtNarrowCWest.starts(in: narrowCWest)
+
+        dungeonMasterStaff.starts(heldBy: dungeonMaster)
+        dungeonMasterRobe.starts(heldBy: dungeonMaster)
 
         channelA.starts(in: hallwayA)
         channelB.starts(in: hallwayB)

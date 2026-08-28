@@ -529,6 +529,68 @@ extension Prose {
         The Frigid River lives up to its name, and it is in a hurry.
         """
 
+    // MARK: - What the five stretches name and are not
+    //
+    // Written fresh, all of it. Every noun below used to be a synonym on the
+    // stretch's own river item, so `x dam`, `x cliffs`, `x beach` and `x valley`
+    // all answered `frigidRiverHere` — the water speaking for everything it runs
+    // past. One thing, one answer. (#332)
+
+    /// Two stretches name the dam, and both of them name it as
+    /// something behind you rather than something you are standing on.
+    static let damFromTheWater = """
+        Flood Control Dam #3, upstream and getting no closer, holding back
+        rather less than it was built to.
+        """
+
+    /// Written fresh. The one on River-1, small; the one on River-5, large.
+    static func riverLanding(_ size: String) -> String {
+        """
+        A \(size) landing on the west shore, built for boats with somewhere to
+        be. The water is doing all the deciding about whether you reach it.
+        """
+    }
+
+    /// Written fresh. The west bank, from a boat that is not stopping at it.
+    static let westBankFromTheWater = """
+        The west bank goes by at the speed the river has chosen, low and stony
+        and offering nothing to hold on to.
+        """
+
+    /// Written fresh. River-2's rocks are the reason the west bank is no landing
+    /// there, so the sentence has to be about the refusal and not about geology.
+    static let riverRocks = """
+        Rocks enough, and big enough, that the west bank here is a thing to be
+        carried past rather than landed on.
+        """
+
+    /// Written fresh. The valley River-3 descends into.
+    static let riverValley = """
+        The land opens out and drops away on both sides, and the river has
+        clearly been doing this to it for a very long time.
+        """
+
+    /// Written fresh. The beach under the cliffs, seen from the water rather
+    /// than stood on — the east strip on River-3 and River-4.
+    static let beachFromTheWater = """
+        A strip of beach at the foot of the cliffs, narrow enough that you would
+        want to be sure before you committed the boat to it.
+        """
+
+    /// Written fresh. River-4's sandy beach on the west, from the water.
+    static let sandyBeachFromTheWater = """
+        A broad reach of sand on the west shore, the first thing in miles that
+        looks like it would let a boat stop.
+        """
+
+    /// Written fresh. The White Cliffs from a boat. ``whiteCliffsFromBelow``
+    /// says there is no climbing them, which is true from the strip of beach at
+    /// their foot; from the water the point is that they are the bank.
+    static let cliffsFromTheWater = """
+        The White Cliffs stand up out of the east bank, pale and sheer, and go
+        on doing it for as far downstream as you can see.
+        """
+
     /// Written fresh.
     static let whiteCliffsFromBelow = """
         The White Cliffs go up and up, pale as bone, and there is no climbing

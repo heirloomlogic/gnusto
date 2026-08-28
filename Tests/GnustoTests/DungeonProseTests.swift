@@ -1445,6 +1445,155 @@ struct DungeonProseTests {
         #expect(turnOutput(of: "x cliffs", in: transcript).contains("no climbing them from here"))
     }
 
+    /// **Every noun the five river stretches print answered with the river.**
+    /// `dam`, `landing`, `shore`, `bank`, `cliffs`, `rocks`, `valley` and
+    /// `beach` were all synonyms of the water the player is floating on, so
+    /// eight questions about eight things got one answer: *"The Frigid River
+    /// lives up to its name, and it is in a hurry."* The round filed this as
+    /// the nouns being denied. They were not denied — which is worse, because a
+    /// denial says something is wrong and this said something false. (#332)
+    @Test func theRiverStretchesNameThingsThatAreNotTheRiver() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.afloatWithTheShovel
+                + ["x dam", "x landing", "x shore", "x river"]
+                + ["down", "x cliffs", "x rocks", "x bank"]
+                + ["down", "x valley", "x beach"],
+            seed: 18)
+
+        expectEveryNounAnswered(transcript, "the five stretches of the Frigid River")
+        // Not one of the eight is the water any more. Only the four with no
+        // positive of their own below: the other four are ruled out by it.
+        for noun in ["x shore", "x cliffs", "x bank", "x beach"] {
+            #expect(!turnOutput(of: noun, in: transcript).contains("lives up to its name"))
+        }
+        // And each is about itself.
+        #expect(turnOutput(of: "x dam", in: transcript).contains("upstream and getting no closer"))
+        #expect(turnOutput(of: "x landing", in: transcript).contains("A small landing on the west shore"))
+        #expect(turnOutput(of: "x rocks", in: transcript).contains("carried past rather than landed on"))
+        #expect(turnOutput(of: "x valley", in: transcript).contains("drops away on both sides"))
+        // The control: the water is still the water, and `vicinity` — which is
+        // the stretch you are on and not a thing beside it — still answers with
+        // it.
+        #expect(turnOutput(of: "x river", in: transcript).contains("lives up to its name"))
+    }
+
+    /// **A teller's station names a depository and three doorways, and neither
+    /// word answered.** `depository` was not in the game's vocabulary at all,
+    /// which is the harsher of the two failures: the Bank printed it ninety-nine
+    /// times in one round's transcripts and answered *"I don't know the word"*
+    /// to every player who typed it back. (#332)
+    @Test func theTellersStationAnswersForItsDoorwayAndItsDepository() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            // One short of the Depository, which is to say standing in the
+            // West Teller's Room, whose paragraph names both words.
+            Array(Self.toTheDepository.dropLast()) + ["x doorway", "x depository", "x counter"],
+            seed: 41)
+
+        #expect(transcript.contains("Teller's Room"))
+        expectEveryNounAnswered(transcript, "the West Teller's Room")
+        let doorway = turnOutput(of: "x doorway", in: transcript)
+        #expect(doorway.contains("Three ways out of this station"))
+        #expect(!doorway.contains("A stone counter"))
+        let depository = turnOutput(of: "x depository", in: transcript)
+        #expect(depository.contains("The strongroom the whole building is arranged around"))
+        // The control: the counter is still the counter.
+        #expect(turnOutput(of: "x counter", in: transcript).contains("A stone counter"))
+    }
+
+    /// **The forest room with a tree in it had no forest.** Its paragraph opens
+    /// *This is a dimly lit forest, with large trees all around* and then names
+    /// the climbable one — and because the great tree was the only tree item
+    /// there, it had taken the plural and `forest` answered nothing. Three
+    /// words, two things. (#332)
+    @Test func theForestAroundTheGreatTreeIsNotTheGreatTree() async throws {
+        let transcript = try await play(
+            Dungeon(), ["north", "north", "x forest", "x wood", "x trees", "x tree"], seed: 18)
+
+        #expect(transcript.contains("Forest"))
+        expectEveryNounAnswered(transcript, "the Forest with the great tree in it")
+        for wall in ["x forest", "x wood", "x trees"] {
+            #expect(!turnOutput(of: wall, in: transcript).contains("Something pale is tucked into a nest"))
+        }
+        // The control: the one worth climbing is still the one `tree` means, and
+        // the parser is not asked to choose.
+        expectNoAmbiguity(transcript, "the Forest with the great tree in it")
+        #expect(turnOutput(of: "x tree", in: transcript).contains("Something pale is tucked into a nest"))
+    }
+
+    /// **Drying the pool took the depression with it.** `depression` was a
+    /// synonym on the pool of sewage, and the red cake makes the pool
+    /// `vanish()` — so the drained paragraph went on saying *the depression
+    /// under the dry crack in the ceiling is bare and cracked and empty* about
+    /// a word that had stopped answering one turn earlier. The hollow is there
+    /// in both states, which is the whole reason the drained line can name it.
+    /// (#332)
+    @Test func theDepressionOutlivesThePoolThatFilledIt() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheTeaRoom
+                + ["take eat-me cake", "take red cake", "eat eat-me cake", "east"]
+                + ["x depression", "throw red cake in pool", "look", "examine the depression"],
+            seed: 41)
+
+        #expect(transcript.contains("Pool Room"))
+        expectEveryNounAnswered(transcript, "the Pool Room, wet and dry")
+        // Full: the goop has found it.
+        #expect(turnOutput(of: "x depression", in: transcript).contains("the goop has found it"))
+        // Dry, and still there — the negative the round actually filed.
+        #expect(turnOutput(of: "examine the depression", in: transcript).contains("stained to the rim"))
+    }
+
+    /// **The cage is its own room, and everything its paragraph names is in the
+    /// next one.** From inside it the room says *Through the bars you can see
+    /// the closet, the pedestal and the sticker*, and all three words were
+    /// denied, because nothing in the Dingy Closet is in scope from a location
+    /// with no exits.
+    ///
+    /// The fourth word its other line prints, `robot`, stays denied on purpose —
+    /// see ``DungeonAlice/closetThroughTheBars``. Asserted here, negatively, so
+    /// that a later pass that "finishes" this one finds out why before it ships:
+    /// naming the robot in this room costs the player the cage. (#332)
+    @Test func theCageAnswersForWhatItCanSeeThroughItsBars() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheButtons
+                + ["south", "take sphere"]
+                + ["x closet", "x pedestal", "x sticker", "x robot", "x bars"],
+            seed: 41)
+
+        #expect(transcript.contains("You are trapped inside a solid steel cage."))
+        for through in ["x pedestal", "x sticker"] {
+            #expect(!turnOutput(of: through, in: transcript).contains("You can't see any such thing"))
+        }
+        #expect(turnOutput(of: "x closet", in: transcript).contains("four inches of steel"))
+        // And the one that cannot be fixed here, pinned: `robot` names the
+        // order-taker in the next room and nothing in this one, because the
+        // addressing pass runs second and a room-local noun beats it.
+        #expect(turnOutput(of: "x robot", in: transcript).contains("You can't see any such thing"))
+        // The control: the bars are still the bars.
+        #expect(turnOutput(of: "x bars", in: transcript).contains("Steel bars, an inch thick"))
+    }
+
+    /// **Both of the gnome's own lines end on a watch the parser had never
+    /// heard of.** He arrives *nervously glancing at his watch* and leaves
+    /// *glancing at his watch*, and `x watch` answered "I don't know the word".
+    /// (#332)
+    @Test func theGnomeConsultsAWatchThatAnswers() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.strandedOnTheWideLedge + Array(repeating: "wait", count: 11)
+                + ["x gnome", "x watch"],
+            seed: 18)
+
+        #expect(transcript.contains("A volcano gnome seems to walk straight out of the wall"))
+        expectEveryNounAnswered(transcript, "the Wide Ledge, with the gnome on it")
+        #expect(turnOutput(of: "x watch", in: transcript).contains("A pocket watch on a chain"))
+        // The control: the man is still the man.
+        #expect(turnOutput(of: "x gnome", in: transcript).contains("grey as the rock he walked out of"))
+    }
+
     /// **Aragain Falls has a path on its north end and the waterfall answered
     /// for it**, which put a 450-foot drop on the one way off the ledge that is
     /// not one. (#286, D3)

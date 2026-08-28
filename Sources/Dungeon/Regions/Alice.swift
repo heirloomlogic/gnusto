@@ -262,8 +262,22 @@ struct DungeonAlice: GameContent {
     let poolOfSewage = Item {
         name("pool of sewage")
         adjectives("large", "brown")
-        synonyms("pool", "sewage", "goop", "depression")
+        // Not `depression`: the hollow is there when the pool is not, and this
+        // item vanishes when the cake dries it. ``poolDepression`` owns the
+        // word. (#332)
+        synonyms("pool", "sewage", "goop")
         description(Prose.poolOfSewage)
+        scenery
+    }
+
+    /// The hollow itself, in both of the room's states. `depression` was a
+    /// synonym on ``poolOfSewage`` and the pool `vanish()`es when the red cake
+    /// dries it, so the drained paragraph printed the word with nothing left to
+    /// answer it. (#332)
+    let poolDepression = Item {
+        name("depression")
+        adjectives("depressed", "stained")
+        synonyms("depression", "hollow", "half")
         scenery
     }
 
@@ -362,7 +376,11 @@ struct DungeonAlice: GameContent {
     let controlBank = Item {
         name("controls")
         adjectives("unlabelled")
-        synonyms("controls", "control", "bank", "panel")
+        // `plate`: this item's own description opens with "A plate of dull
+        // metal" and the machinery's says it is *behind the plate*, so the word
+        // is printed twice in one room and named nothing. It is what the
+        // control bank is, not a second thing beside it. (#332)
+        synonyms("controls", "control", "bank", "panel", "plate")
         description(Prose.controlBank)
         scenery
         plural
@@ -405,11 +423,49 @@ struct DungeonAlice: GameContent {
         trait(.depositValue, 6)
     }
 
-    let pedestal = Item {
-        name("low pedestal")
-        adjectives("low", "stone")
-        synonyms("pedestal", "dish", "stand")
-        description(Prose.spherePedestal)
+    let pedestal = Self.pedestalScenery(Prose.spherePedestal)
+
+    /// The same stone twice: once from the closet and once through the bars of
+    /// the cage standing on it. Only the sentence differs.
+    private static func pedestalScenery(_ text: String) -> Item {
+        Item {
+            name("low pedestal")
+            adjectives("low", "stone")
+            synonyms("pedestal", "dish", "stand")
+            description(text)
+            scenery
+        }
+    }
+
+    /// What the cage's paragraph names on the other side of the bars. The cage
+    /// is its own room, so nothing standing in the Dingy Closet is in scope from
+    /// inside it — and the room's own two lines print `closet`, `pedestal`,
+    /// `sticker` and `robot` regardless. Three items rather than one paragraph
+    /// answering to three words, which is the fault this pass is about.
+    ///
+    /// **`robot` is the fourth word and it deliberately stays unanswered.** The
+    /// parser's addressing pass is a *second* pass, so a noun that resolves in
+    /// the room always beats an order-taker's name — which is what makes
+    /// `robot, lift cage` reach a robot standing where the player cannot see it.
+    /// A `robot` item in this room would shadow him and take away the only way
+    /// out of the cage; both walkthroughs fail on it. The room prints a noun it
+    /// cannot answer for, and the reason is the engine's, not this region's.
+    /// (#332)
+    let closetThroughTheBars = Item {
+        name("closet")
+        adjectives("dingy")
+        synonyms("closet", "room")
+        description(Prose.closetThroughTheBars)
+        scenery
+    }
+
+    let pedestalThroughTheBars = Self.pedestalScenery(Prose.pedestalThroughTheBars)
+
+    let stickerThroughTheBars = Item {
+        name("small sticker")
+        adjectives("small", "alarm")
+        synonyms("sticker", "label")
+        description(Prose.stickerThroughTheBars)
         scenery
     }
 
@@ -532,6 +588,7 @@ struct DungeonAlice: GameContent {
         posts.starts(in: postsRoom)
         postsChasm.starts(in: postsRoom)
         poolOfSewage.starts(in: poolRoom)
+        poolDepression.starts(in: poolRoom)
         leak.starts(in: poolRoom)
         flask.starts(in: poolRoom)
         spices.starts(in: poolRoom)
@@ -551,6 +608,9 @@ struct DungeonAlice: GameContent {
         sphere.starts(in: dingyCloset)
         pedestal.starts(in: dingyCloset)
         cageBars.starts(in: cage)
+        closetThroughTheBars.starts(in: cage)
+        pedestalThroughTheBars.starts(in: cage)
+        stickerThroughTheBars.starts(in: cage)
         gasInCage.starts(in: cage)
         ventInCage.starts(in: cage)
     }
@@ -690,6 +750,9 @@ struct DungeonAlice: GameContent {
 
     @RuleBuilder private var poolRoomRules: Rules {
         poolRoom.describe { poolEvaporated ? Prose.poolRoomDrained : Prose.poolRoom }
+        poolDepression.describe {
+            poolEvaporated ? Prose.poolDepression : Prose.poolDepressionFull
+        }
 
         // And the leak itself, which the room's own paragraph already knows the
         // steam took away. The item under it was left behind dripping.

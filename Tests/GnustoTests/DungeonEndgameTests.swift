@@ -1091,6 +1091,63 @@ struct DungeonEndgameTests {
         #expect(!doorway.contains("with nothing in it"))
     }
 
+    // MARK: - Every printed noun answers
+
+    /// The sweep the rest of the game has one of per region, for the region no
+    /// live tester had reached until the 2026-08-25 round. Five words the
+    /// endgame prints and could not answer for: the Stone Room's `joints` and
+    /// the `stone` and `wall` around them, the `landing` the room above it is
+    /// named for, the `hallway` all eleven of its rooms stand in or open off,
+    /// and the wooden door's `planks`. (#332)
+    @Test func everyNounTheEndgamePrintsAnswers() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.pastTheCrypt
+                + ["x landing", "x stairs", "down"]
+                + ["x joints", "x stone", "x wall", "x button", "north", "north"]
+                + ["x hallway", "x channel"],
+            seed: Self.seed)
+
+        expectEveryNounAnswered(transcript, "the endgame")
+        expectNoAmbiguity(transcript, "the endgame")
+
+        // And each is about itself rather than about the nearest thing that
+        // already had the word.
+        #expect(turnOutput(of: "x landing", in: transcript).contains("A rough shelf of rock"))
+        #expect(turnOutput(of: "x joints", in: transcript).contains("Blocks of dressed stone"))
+        #expect(turnOutput(of: "x hallway", in: transcript).contains("A long straight run of stone"))
+        // The controls: the three things these rooms already modelled still
+        // answer for themselves.
+        #expect(turnOutput(of: "x stairs", in: transcript).contains("A long flight of stone steps"))
+        #expect(turnOutput(of: "x button", in: transcript).contains("A large button of red enamel"))
+        #expect(turnOutput(of: "x channel", in: transcript).contains("A groove cut in the stone"))
+    }
+
+    /// **`x staff` described the Dungeon Master.** The word was a synonym on the
+    /// man, and his listing line puts a staff in his hand — so the one thing in
+    /// the endgame a player is most likely to ask about answered with a
+    /// paragraph about somebody else. His robe, which his own description
+    /// names, answered nothing at all. (#332)
+    @Test func theDungeonMastersStaffAndRobeAreNotTheDungeonMaster() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            // He opens the door and follows you through it; north of it is the
+            // first frame he is standing in.
+            Self.pastTheCrypt + Self.throughTheBox + Self.theQuiz
+                + ["north", "x master", "x staff", "x robe"],
+            seed: Self.seed)
+
+        let staff = turnOutput(of: "x staff", in: transcript)
+        #expect(staff.contains("A length of dark wood"))
+        #expect(!staff.contains("An old man in a robe"))
+        expectEveryNounAnswered(transcript, "the Dungeon Master, his staff and his robe")
+        #expect(
+            turnOutput(of: "x robe", in: transcript)
+                .contains("which is a harder thing to arrange than it sounds"))
+        // The control: the man is still the man.
+        #expect(turnOutput(of: "x master", in: transcript).contains("An old man in a robe"))
+    }
+
     // MARK: - The route, in pieces
 
     /// The mirror box, from the Top of Stairs to the Dungeon Entrance.
