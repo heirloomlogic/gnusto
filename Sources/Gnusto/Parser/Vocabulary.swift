@@ -155,6 +155,28 @@ struct Vocabulary: Sendable {
         allKnownWords.contains(word)
     }
 
+    /// The entity's display name, or its raw id when nothing declared one.
+    ///
+    /// - Parameter id: the entity to name.
+    /// - Returns: the bare name, no article.
+    func displayName(of id: EntityID) -> String {
+        displayNames[id] ?? id.raw
+    }
+
+    /// The entity's name behind its definite article, or bare if it is a proper
+    /// name — "the troll", "Mrs. Vane".
+    ///
+    /// Here rather than on each caller for the reason ``properNames`` gives:
+    /// the article rule travels with the lexicon or it does not travel at all.
+    /// The parser writes lines that name entities and has no frame to ask, and
+    /// so does the play-test seam that reports which entity answered.
+    ///
+    /// - Parameter id: the entity to name.
+    /// - Returns: the rendered noun phrase.
+    func definiteName(of id: EntityID) -> String {
+        GameText.definite(displayName(of: id), proper: properNames.contains(id))
+    }
+
     /// Splits a phrase into words, the one way this engine splits anything:
     /// lowercased, a trailing possessive dropped, every other non-alphanumeric
     /// character a separator. `"Master's Spellbook"` yields

@@ -1194,7 +1194,71 @@ struct PlaytestCoverageTests {
             ])
         #expect(
             Set(table.filter { !$0.mutatesState }.map(\.name)) == [
-                "survey", "vocabulary", "recall", "coverage", "replay",
+                "survey", "vocabulary", "resolve", "recall", "coverage", "replay",
             ])
+    }
+
+    /// `resolve` is the sharper half of the answer key and is gated exactly like
+    /// `vocabulary`, for a sharper version of the same reason: a tester who can
+    /// ask *which thing answers to this noun* has been handed the defect instead
+    /// of finding it. Over the wire, because the gate lives in the session
+    /// lookup and not in the handler.
+    @Test func resolvingIsRefusedByRoleAndAllowedForAHuman() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        let server = MCPServer(
+            name: "gnusto-playtest", version: "test", instructions: nil,
+            tools: PlaytestTools.table(
+                for: try PreparedGame(RiverGame()),
+                environment: ["GNUSTO_PLAYTEST_DIR": root.path]))
+
+        func open(_ label: String, role: String) async throws -> String {
+            let response = try JSONValue(
+                text: try #require(
+                    await server.handle(
+                        line: """
+                            {"jsonrpc":"2.0","id":1,"method":"tools/call","params":\
+                            {"name":"open","arguments":{"label":"\(label)",\
+                            "role":"\(role)"}}}
+                            """)))
+            return try #require(
+                response["result"]?["structuredContent"]?["session"]?.stringValue)
+        }
+
+        func resolve(_ id: String) async throws -> JSONValue {
+            try JSONValue(
+                text: try #require(
+                    await server.handle(
+                        line: """
+                            {"jsonrpc":"2.0","id":2,"method":"tools/call","params":\
+                            {"name":"resolve","arguments":{"session":"\(id)",\
+                            "words":["dam","cliffs","barrel"]}}}
+                            """)))
+        }
+
+        let blind = try await open("blind", role: "explorer")
+        let refused = try await resolve(blind)
+        #expect(refused["error"] == nil)
+        #expect(refused["result"]?["isError"] == .bool(true))
+        let complaint = try #require(
+            refused["result"]?["content"]?.arrayValue?.first?["text"]?.stringValue)
+        #expect(complaint.contains("oracle data"))
+        #expect(complaint.contains("explorer"))
+        // The refusal must not itself answer the question it refuses.
+        #expect(!complaint.contains("river"))
+
+        let author = try await open("author", role: "unrestricted")
+        let allowed = try await resolve(author)
+        #expect(allowed["result"]?["isError"] == .bool(false))
+        let structured = try #require(allowed["result"]?["structuredContent"])
+        let words = try #require(structured["words"]?.arrayValue)
+        #expect(words.compactMap { $0["answeredBy"]?.stringValue } == ["the river", "the river"])
+        // The short list a caller checking twenty nouns reads first.
+        #expect(structured["unanswered"] == .array([.string("barrel")]))
+        // Both channels, as every other row has.
+        let listing = try #require(
+            allowed["result"]?["content"]?.arrayValue?.first?["text"]?.stringValue)
+        #expect(listing.contains("dam"))
+        #expect(listing.contains("the river"))
     }
 }

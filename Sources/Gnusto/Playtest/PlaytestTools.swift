@@ -186,6 +186,7 @@ enum PlaytestTools {
         return [
             survey(for: game, sessions),
             vocabulary(for: game, sessions),
+            resolve(sessions),
             open(sessions),
             move(sessions),
             recall(sessions),
@@ -375,6 +376,176 @@ enum PlaytestTools {
             ],
         ],
         "required": ["words", "unknown"],
+    ]
+
+    /// `resolve` — and *what* answers to these words, standing where you are?
+    ///
+    /// The sibling `vocabulary` should always have had. `vocabulary` is
+    /// definition-level and boolean, and two whole defect classes live inside a
+    /// `known: true`: a noun declared in some other room, which the vocabulary
+    /// says yes to and the room denies; and a noun that answers about the wrong
+    /// thing, where eight words all turn out to be synonyms of one item and
+    /// eight questions get one sentence. The second of those is invisible to
+    /// every other instrument here — the word is known, the turn carries no
+    /// refusal, and the reply is plausible prose.
+    ///
+    /// **Oracle data, gated identically to `vocabulary`,** and for a sharper
+    /// version of its argument: a tester who can ask which entity answers to a
+    /// noun has been handed the defect rather than finding it. The callers are
+    /// the ones not being measured — a **verifier** adjudicating such a finding,
+    /// where "which thing replied" is exact and matching prose against itself is
+    /// not, and an **author** driving their own game at `role=unrestricted`.
+    ///
+    /// It needs a live world where `vocabulary` does not, because the answer is
+    /// a fact about a *place*. That is the whole distinction, and it is why this
+    /// is a second tool rather than a flag on the first.
+    ///
+    /// - Parameter sessions: the registry the session is looked up in, for its
+    ///   role and for the world it stands in.
+    /// - Returns: the row.
+    private static func resolve(_ sessions: PlaytestSessions) -> PlaytestTool {
+        PlaytestTool(
+            name: "resolve",
+            mutatesState: false,
+            description: """
+                Ask what each of a list of words actually names in the room the \
+                session is standing in — not whether the game knows the word, \
+                which is what vocabulary answers, but which thing replies to it \
+                from here. Answer-key data: a play-testing role is refused it, \
+                because a tester who can ask this has been handed two defect \
+                classes instead of finding them. Lift the nouns straight out of \
+                a room description and hand over the lot: a word answered by \
+                nothing is a noun the prose prints and the player cannot use, \
+                and several words all answered by the SAME thing is the harder \
+                defect — one item wearing every noun in the paragraph as a \
+                synonym, so every question about the room gets the same sentence \
+                back. Costs no turns and changes nothing. Words are split the \
+                way the parser splits them.
+                """,
+            inputSchema: [
+                "type": "object",
+                "properties": [
+                    "session": [
+                        "type": "string",
+                        "description": .string(
+                            "The id open returned. Required twice over: it says whether "
+                                + "you may read the answer key, and it says which room "
+                                + "the question is being asked from."),
+                    ],
+                    "words": [
+                        "type": "array",
+                        "items": ["type": "string"],
+                        "minItems": 1,
+                        "description": "The words to ask about, as you would type them.",
+                    ],
+                ],
+                "required": ["session", "words"],
+                "additionalProperties": false,
+            ],
+            outputSchema: resolveSchema,
+            handler: { arguments in
+                let session = try await sessions.session(arguments, oracle: true)
+                let words = try strings(arguments, "words")
+                let answers = try await session.resolve(words)
+                // Aligned into a column deliberately: the defect this tool is
+                // for is several words answering with the SAME name, and a
+                // ragged left edge is what let a round read past eight of them.
+                let width = answers.map { DisplayWidth.columns(of: $0.word) }.max() ?? 0
+                let listing = answers.map { answer in
+                    let pad = String(
+                        repeating: " ", count: width - DisplayWidth.columns(of: answer.word))
+                    return "\(answer.word)\(pad) → \(rendered(answer))"
+                }.joined(separator: "\n")
+                return PlaytestToolResult(
+                    text: "\(listing)\n",
+                    structured: [
+                        "words": .array(
+                            answers.map { answer in
+                                var row: [String: JSONValue] = [
+                                    "word": .string(answer.word),
+                                    "known": .bool(answer.known),
+                                    "answeredBy": answer.answeredBy.map(JSONValue.string)
+                                        ?? .null,
+                                ]
+                                // Absent rather than empty when the word names
+                                // one thing: a key that is always there stops
+                                // being read, and this one is the difference
+                                // between a hole and a question.
+                                if !answer.ambiguous.isEmpty {
+                                    row["ambiguous"] = .array(
+                                        answer.ambiguous.map(JSONValue.string))
+                                }
+                                return .object(row)
+                            }),
+                        "unanswered": .array(
+                            answers.filter { $0.answeredBy == nil }.map { .string($0.word) }),
+                    ])
+            })
+    }
+
+    /// One resolution as a line, in the caller's words rather than the schema's.
+    ///
+    /// - Parameter answer: what the word resolved to.
+    /// - Returns: the right-hand side of its arrow.
+    private static func rendered(_ answer: PlaytestResolution) -> String {
+        guard answer.known else { return "NOT KNOWN — the parser has never heard the word" }
+        if let answeredBy = answer.answeredBy { return answeredBy }
+        if !answer.ambiguous.isEmpty {
+            // Joined as `GameText.ambiguous` joins them, so this line and the
+            // question the player would be asked name the same things the same
+            // way.
+            return "ambiguous here — \(answer.ambiguous.joined(separator: " or "))"
+        }
+        return "nothing here answers to it"
+    }
+
+    /// The shape of a `resolve` result.
+    private static let resolveSchema: JSONValue = [
+        "type": "object",
+        "properties": [
+            "words": [
+                "type": "array",
+                "items": [
+                    "type": "object",
+                    "properties": [
+                        "word": ["type": "string"],
+                        "known": [
+                            "type": "boolean",
+                            "description": .string(
+                                "Whether the vocabulary knows it at all — what the "
+                                    + "vocabulary tool answers, carried here so one call "
+                                    + "tells an unknown word from an absent thing."),
+                        ],
+                        "answeredBy": [
+                            "type": ["string", "null"],
+                            "description": .string(
+                                "The articled name of the one thing here that answers to "
+                                    + "it. Null when nothing does, and null when several "
+                                    + "do — see ambiguous."),
+                        ],
+                        "ambiguous": [
+                            "type": "array",
+                            "items": ["type": "string"],
+                            "description": .string(
+                                "Present only when the word names more than one thing "
+                                    + "here, and so names none of them: the player would "
+                                    + "be asked which they meant."),
+                        ],
+                    ],
+                    "required": ["word", "known", "answeredBy"],
+                ],
+            ],
+            "unanswered": [
+                "type": "array",
+                "items": ["type": "string"],
+                "description": .string(
+                    "Just the words nothing here answers to, so a caller checking twenty "
+                        + "nouns from one paragraph reads one short list. Repeated names "
+                        + "in `answeredBy` are the other half of the class and this list "
+                        + "cannot show them."),
+            ],
+        ],
+        "required": ["words", "unanswered"],
     ]
 
     // MARK: - Sessions

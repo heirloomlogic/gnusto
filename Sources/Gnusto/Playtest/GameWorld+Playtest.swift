@@ -223,6 +223,78 @@ extension GameWorld {
         definition.knows(words)
     }
 
+    /// Which entity answers to each of these words **from where the player is
+    /// standing**, batched and for no turns.
+    ///
+    /// The sharper sibling of ``knows(_:)``, and the reason it exists is that
+    /// "does the game know this word" is the wrong question. Two whole defect
+    /// classes live entirely inside a `known: true`:
+    ///
+    /// - **The word declared one room over.** The vocabulary is global, so it
+    ///   says yes to a noun whose only item is three rooms away, while the room
+    ///   the prose printed it in says *"You can't see any such thing"*. Seven of
+    ///   the sixteen sites the 2026-08-25 Dungeon round filed as *"nouns the
+    ///   parser does not know"* were this, and being filed under the wrong
+    ///   heading is how they stayed unfixed.
+    /// - **The word that answers about the wrong thing.** Each Frigid River
+    ///   stretch carried `dam`, `landing`, `shore`, `bank`, `cliffs`, `rocks`,
+    ///   `valley` and `beach` as synonyms of the water, so eight questions about
+    ///   eight things all replied *"The Frigid River lives up to its name."*
+    ///   Nothing in the harness could see it: the vocabulary says yes, the turn
+    ///   holds no refusal, and the tester reads a plausible sentence. Asked
+    ///   here, the eight lines say `→ the Frigid River` eight times and the
+    ///   defect is legible without a human comparing paragraphs.
+    ///
+    /// **It asks the parser, rather than answering for it.** The scope is
+    /// `currentScope(orders: false)`, the split is `StandardParser.tokenize`
+    /// and the naming reach is `StandardParser.resolve(_:in:alsoConsidering:)`
+    /// — so these are the answers the player would get and not an
+    /// approximation of them, and a later change to any of the three rules
+    /// reaches this tool too. A copy here would have been wrong on the day it
+    /// was written: `it` is a reserved word the vocabulary knows and no lexicon
+    /// holds, so a reimplementation over `itemLexicons` reports that nothing
+    /// answers to the commonest word a player types.
+    ///
+    /// `orders: false` because the far-sighted second pass is FOLLOW's alone:
+    /// an actor two rooms off is never what a room's printed noun meant, and
+    /// widening to them here would report a word as answered that the player
+    /// cannot use.
+    ///
+    /// - Parameter words: the words to ask about, as they would be typed.
+    /// - Returns: one ``PlaytestResolution`` per word, in order.
+    func resolve(_ words: [String]) -> [PlaytestResolution] {
+        let scope = currentScope(orders: false)
+        return words.map { word in
+            // Both halves are the parser's own, called rather than copied.
+            // `tokenize` splits and drops the filler, so a caller pasting "the
+            // barrel" straight out of a room description gets the answer they
+            // would get by typing it; `resolve` is the naming reach itself,
+            // pronoun branch included, and its outcomes are the ones reported
+            // here.
+            let tokens = parser.tokenize(word)
+            // The one case the parser has no answer for, because it never sees
+            // it: a line that is nothing but filler is never offered as a noun
+            // phrase at all, where `resolve` would call it merely out of scope.
+            guard !tokens.isEmpty else {
+                return PlaytestResolution(word: word, known: false)
+            }
+            switch parser.resolve(tokens, in: scope) {
+            case .success(let id):
+                return PlaytestResolution(
+                    word: word, known: true, answeredBy: parser.definiteName(of: id))
+            case .failure(.unknownWord):
+                return PlaytestResolution(word: word, known: false)
+            case .failure(.ambiguous(let names, _, _)):
+                // Already sorted and articled, in the order the game itself
+                // would list them — so a caller comparing this against a
+                // transcript reads the same names in the same order.
+                return PlaytestResolution(word: word, known: true, ambiguous: names)
+            case .failure:
+                return PlaytestResolution(word: word, known: true)
+            }
+        }
+    }
+
     /// The extra status-footer fields the game's bundles and plugins
     /// contribute, evaluated now.
     ///
@@ -284,6 +356,43 @@ extension GameDefinition {
             let known = !tokens.isEmpty && tokens.allSatisfy { vocabulary.knows($0) }
             return (word, known)
         }
+    }
+}
+
+// MARK: - Resolution
+
+/// What one word resolves to in the room the player is standing in.
+///
+/// Three states, and they are the parser's three, not a simplification of them:
+/// a word the game has never heard of (`known: false`), a word it knows that
+/// nothing here answers to (`answeredBy` nil, `ambiguous` empty), and a word
+/// that names more than one thing here (`ambiguous` listing them, and so naming
+/// none of them). Flattening the last two into "no" would report a
+/// disambiguation as a hole in the vocabulary, which is the reporting mistake
+/// this whole seam exists to stop.
+struct PlaytestResolution: Sendable, Equatable {
+    /// The word, as it was handed over.
+    let word: String
+
+    /// Whether the game's vocabulary knows it at all — the question
+    /// ``GameWorld/knows(_:)`` answers, carried alongside so one call settles
+    /// both and a caller can tell an unknown word from an absent thing.
+    let known: Bool
+
+    /// The definite, articled name of the one thing here that answers to it —
+    /// *"the river"*, *"Mrs. Vane"* — or nil when nothing does, or when more
+    /// than one thing does.
+    let answeredBy: String?
+
+    /// The things that answer to it when several do, articled and sorted as the
+    /// parser sorts a disambiguation. Empty otherwise.
+    let ambiguous: [String]
+
+    init(word: String, known: Bool, answeredBy: String? = nil, ambiguous: [String] = []) {
+        self.word = word
+        self.known = known
+        self.answeredBy = answeredBy
+        self.ambiguous = ambiguous
     }
 }
 

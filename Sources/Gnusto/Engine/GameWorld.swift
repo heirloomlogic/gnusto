@@ -40,7 +40,7 @@ public struct TurnResult: Sendable {
 public actor GameWorld {
     let definition: GameDefinition
     var state: WorldState
-    private let parser: StandardParser
+    let parser: StandardParser
     /// An open clarifying question ("Which do you mean…?", "What do you want
     /// to take?"): the next input line is first tried as its answer,
     /// re-parsed as `prefix + answer + suffix`.
@@ -823,8 +823,14 @@ public actor GameWorld {
     ///   Only a parse needs either; `completionCandidates()` reads
     ///   `visibleItems` alone, and offering an absent actor's nouns to Tab
     ///   completion would be a spoiler leak besides.
+    /// Internal rather than private because the play-test seam asks the same
+    /// question: `resolve(_:)` reports *which entity answers to this noun,
+    /// standing here*, and it has to be the parser's own scope it asks. A
+    /// second walk built beside this one would agree on the day it was written
+    /// and drift afterwards, which is the failure the tool exists to catch.
+    ///
     /// - Returns: what the parser may resolve a noun phrase against this turn.
-    private func currentScope(orders: Bool = true) -> Scope {
+    func currentScope(orders: Bool = true) -> Scope {
         let here = state.playerLocation
         let index = state.containment()
         let visible = Visibility.visibleItems(

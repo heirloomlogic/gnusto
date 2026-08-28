@@ -306,3 +306,81 @@ struct OrchardGame: Game {
         apple.starts(on: crate)
     }
 }
+
+/// The Frigid River in miniature — both halves of the class `vocabulary` cannot
+/// see.
+///
+/// `vocabulary` answers *does this game know this word*, of the game type. Two
+/// defects live entirely inside a `known: true`, and this fixture is one of each:
+///
+/// - **The word that answers about the wrong thing.** `dam`, `landing`, `cliffs`
+///   and `beach` are all synonyms of the water, so four questions about four
+///   things get one sentence back. Nothing in the harness could see this: the
+///   vocabulary says yes, the turn carries no refusal, and the tester reads a
+///   plausible reply four times without noticing it is the same one. Eight of
+///   these, one per Frigid River stretch, are what the 2026-08-25 Dungeon round
+///   read past.
+/// - **The word declared one room over.** The Bank's description names a
+///   `barrel`, and the barrel is in the Boathouse — so standing on the bank the
+///   parser says *"You can't see any such thing"* while the vocabulary says the
+///   word is known. Seven of that round's sixteen filed sites were this shape,
+///   and every one of them was filed under the wrong heading.
+///
+/// The two oars are the third outcome: a phrase that names more than one thing
+/// here is not an answer, and a tool that reported the first match would say a
+/// noun resolves when the player is about to be asked which one they meant.
+struct RiverGame: Game {
+    let title = "River"
+    let intro = "The water is doing all the talking."
+
+    let bank = Location {
+        name("River Bank")
+        description(
+            """
+            The river runs fast here. The dam is a grey line upstream, cliffs
+            rise from the far shore, and a sandy beach carries on south past an
+            abandoned barrel.
+            """)
+    }
+
+    let boathouse = Location {
+        name("Boathouse")
+        description("A shed of tarred boards, open to the water.")
+    }
+
+    /// Everything the bank's paragraph names, collapsed into one thing that
+    /// answers about itself.
+    let river = Item {
+        name("river")
+        synonyms("dam", "landing", "cliffs", "beach", "water")
+        description("The Frigid River lives up to its name, and it is in a hurry.")
+        scenery
+    }
+
+    /// Named by the bank and standing in the boathouse.
+    let barrel = Item {
+        name("barrel")
+        description("A staved barrel with the hoops gone soft.")
+    }
+
+    let leftOar = Item {
+        name("left oar")
+        description("A oar for the left hand, if oars had hands.")
+    }
+
+    let rightOar = Item {
+        name("right oar")
+        description("Its twin, worn the same.")
+    }
+
+    var map: WorldMap {
+        bank.south(boathouse)
+        boathouse.north(bank)
+
+        player.starts(in: bank)
+        river.starts(in: bank)
+        leftOar.starts(in: bank)
+        rightOar.starts(in: bank)
+        barrel.starts(in: boathouse)
+    }
+}
