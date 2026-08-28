@@ -2243,3 +2243,69 @@ asks the question those two leave standing: **who else is being told?** Every
 site here is a true sentence with no list attached — and in three of the four,
 the list the region needed was one it had already written down for something
 else.
+
+### The fifteenth pass: the sentence was the engine's, and so was the fix
+
+Fourteen passes fixed lines this game had written. This one fixes a line it had
+not, and takes back a noun it had given up on.
+
+20. **An actor was in scope from anywhere on the map.** `Scope.orderTakers` and
+    `Visibility.actorsElsewhere` were built from every cast member standing in
+    every reachable room, with no adjacency and no acquaintance test, so
+    `follow troll` on turn one — standing in an open field, forty moves from
+    the Troll Room — answered *"You have no idea which way the troll went."*
+    That is not a refusal; it is the game asserting a departure the player
+    never watched, about a man they have not met. The Dungeon Master answered
+    from West of House by the same route, and the fourteenth pass patched that
+    one region-side while saying in as many words that the engine was wrong.
+
+    The reach is now **met, or next door**, and both halves are load-bearing:
+    acquaintance alone loses `follow porter` on the turn you first walk after
+    somebody, and adjacency alone loses the quarry two rooms off that FOLLOW
+    exists to admit it has lost. A phrase is still judged against the *whole*
+    off-room cast before the reach is applied, so narrowing who can be followed
+    does not turn a description into a name — `follow man` in a house with
+    three of them still answers nobody.
+
+21. **A noun the room printed was answered by nothing, and the reason was a
+    resolution order.** The parser resolved the words to the left of a comma
+    against every visible *item* and only then asked whether the winner was a
+    person. So a scenery item sharing an order-taker's noun won the match,
+    failed the test, and took the whole addressing reading down with it,
+    silently and with no diagnostic — which is why the steel cage could not
+    answer `x robot` without costing the player `robot, lift cage`, the only
+    way out of the room. The eleventh pass tried the noun, watched both
+    walkthroughs fail, and pinned the denial with a negative test asking the
+    next pass to justify itself.
+
+    The address slot matches **people**, from the start. The cage has its
+    fourth noun back, and the negative test is now a positive one standing
+    beside the order it used to break.
+
+### What the fifteenth pass changed, and what it did not
+
+The map, the puzzles, the treasure values and `maxScore` are untouched, and both
+walkthroughs score what they scored. Three notes:
+
+- **Neither region-side patch is retired, and neither was going to be.**
+  `masterEarshot` widens the engine's reach to three cells he will not walk
+  into, which no engine could derive; `robotIsWithinEarshot` narrows it from
+  met-forever to one room. Both doc comments say which of the two they are
+  doing — and both are `world.before` guards rather than declarations, because
+  the declaration does not exist: `Earshot` gates sound, and `reach { }` never
+  sees an addressed order. Two regions hand-rolling one axis in two directions
+  is what a missing API looks like.
+- **`master, stay` at West of House is now a parse failure, not a refusal.**
+  Nobody of that name is addressable, so the comma falls back to the
+  conjunction reading and the line names no verb. The region's own sentence is
+  still what answers from the Dungeon Entrance, one door south of the corridor
+  he stands in, and that is where it is pinned now.
+- **Two suite fixtures gained a way back.** `NamedCastGame`'s attic had no
+  downward exit and `FollowLab` had no unmet actor, because until now neither
+  distinction existed. The tests that turned on it say why in their own words.
+
+**The class's diagnostic.** The fourteenth pass asked *who else is being told?*
+This one asks the question underneath it: **who is close enough to be told at
+all?** Both sites here are the engine answering a question about distance that
+it was never asked — and in both, the region had already written the narrower
+answer down and been overruled by a default.

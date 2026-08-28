@@ -361,11 +361,21 @@ extension DungeonEndgame {
     ///
     /// It is the prison rather than his own room, because being heard from a
     /// cell he will not walk into is the solve — so this list **widens** what
-    /// the engine ought to allow, and is not an argument for what it allows
-    /// today. The engine's default reaching the whole map is the root cause of
-    /// the round's `follow troll` finding as well, and is filed separately
-    /// against `GameText.lostThem`; when it narrows to same-room-or-adjacent,
-    /// this list is still the three cells. (#332)
+    /// the engine allows, and narrows it in the same breath.
+    ///
+    /// The engine's default no longer reaches the whole map: it reaches the
+    /// people the player has met and whoever is next door, which is what stops
+    /// `follow master` and `master, stay` being answered at West of House. That
+    /// fix does not retire this list and was never going to, because once he
+    /// *has* been met he is nameable from anywhere, and no engine could derive
+    /// *these three cells*. The split is the one the fix was designed around:
+    /// the engine says who is far enough away to be nobody, and the game says
+    /// "and also from in here."
+    ///
+    /// The second half is a guard rather than a declaration because there is no
+    /// declaration to make — ``Earshot`` is the shape of one and gates sound
+    /// only, and `reach { }` cannot carry it because an addressed order never
+    /// reaches stage 0. A missing API, not a law. (#332)
     var masterEarshot: Earshot {
         Earshot(masterRoams + [prisonCell, winningCell, lostCell])
     }

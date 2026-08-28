@@ -195,10 +195,16 @@ public struct Location: Sendable, Equatable {
     ///   a destination that isn't a stored property of the game surfaces on
     ///   the turn the player takes the exit, not at launch.
     /// - **It contributes nothing to the reachable-room set**, which is built
-    ///   from declared destinations. A room reachable *only* this way reads to
-    ///   the engine as off-map, so FOLLOW will not name somebody standing
-    ///   there. For a room the map doesn't admit to, that is usually what you
-    ///   want; when it isn't, give the room an ordinary exit as well.
+    ///   from declared destinations, and nothing to the adjacency the naming
+    ///   reach is drawn from. A room reachable *only* this way reads to the
+    ///   engine as off-map, so FOLLOW will not name somebody standing there;
+    ///   and standing on this side of a dynamic exit does not make the far
+    ///   side "next door", so somebody over there is nameable once they have
+    ///   been met and not before. Both are the same reason — the destination
+    ///   is code, and scope is computed on every parse rather than on every
+    ///   move. For a room the map doesn't admit to, that is usually what you
+    ///   want; when it isn't, declare an ordinary exit as well, from whichever
+    ///   room you want the adjacency to hold from.
     ///
     /// - Parameters:
     ///   - direction: the direction the exit lies in.

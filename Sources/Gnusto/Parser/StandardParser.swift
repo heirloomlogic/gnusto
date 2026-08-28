@@ -65,33 +65,51 @@ struct Scope: Sendable {
     /// The people among ``visibleItems``. The parser needs to tell
     /// `delphine, hello` from `lamp, hello`.
     let visibleActors: Set<EntityID>
-    /// Actors standing in some *other* room. Consulted only by a far-sighted
+    /// Actors standing in some *other* room that the player may name: the ones
+    /// they have met, and whoever is next door. Consulted only by a far-sighted
     /// intent (FOLLOW), and only after the visible set has failed, so a phrase
     /// that already names something here can never change meaning.
     let distantActors: Set<EntityID>
+    /// Every actor standing in another room, in reach or not — the superset
+    /// ``distantActors`` is drawn from.
+    ///
+    /// A phrase is judged against this and answered from that, so narrowing
+    /// who can be followed never turns a description into a name: `follow man`
+    /// in a house with three of them still picks out three, and so names
+    /// nobody, even when only the one next door could have been the answer.
+    /// (#332)
+    let elsewhereActors: Set<EntityID>
     /// What "it" currently refers to, if anything.
     var pronounIt: EntityID?
-    /// For each actor declared `takesOrders` who is standing in a room, what
-    /// *that* actor could name from where it stands. The parser has no world
+    /// For each actor declared `takesOrders` the player could make hear them —
+    /// here, met, or next door — what *that* actor could name from where it
+    /// stands, keyed by the ones the player could make hear them. The parser has no world
     /// to walk, so `GameWorld` hands these down alongside the player's own set
     /// and the parser stays a pure function of its inputs. Item sets rather
     /// than whole scopes, so `Scope` doesn't become a type that contains
     /// itself: an order is never an order to somebody else, and the scope the
     /// order is read in is built at the one place that needs it.
     let orderTakers: [EntityID: Set<EntityID>]
+    /// Every order-taker standing in a room, in reach or not. The same job
+    /// ``elsewhereActors`` does, for the address slot.
+    let allOrderTakers: Set<EntityID>
 
     init(
         visibleItems: Set<EntityID>,
         visibleActors: Set<EntityID> = [],
         distantActors: Set<EntityID> = [],
+        elsewhereActors: Set<EntityID> = [],
         pronounIt: EntityID? = nil,
-        orderTakers: [EntityID: Set<EntityID>] = [:]
+        orderTakers: [EntityID: Set<EntityID>] = [:],
+        allOrderTakers: Set<EntityID> = []
     ) {
         self.visibleItems = visibleItems
         self.visibleActors = visibleActors
         self.distantActors = distantActors
+        self.elsewhereActors = elsewhereActors
         self.pronounIt = pronounIt
         self.orderTakers = orderTakers
+        self.allOrderTakers = allOrderTakers
     }
 }
 
@@ -138,9 +156,7 @@ struct StandardParser {
         if let comma = tokens.firstIndex(of: ","), comma > 0 {
             let address = Array(tokens[..<comma])
             let rest = Array(tokens[(comma + 1)...])
-            if case .success(let addressee) = resolve(address, in: scope),
-                scope.visibleActors.contains(addressee)
-            {
+            if case .success(let addressee) = resolveAddressee(address, in: scope) {
                 if rest.isEmpty || isGreeting(rest, at: addressee, address: address, scope: scope) {
                     return .success(
                         ParsedCommand(
@@ -159,7 +175,7 @@ struct StandardParser {
             // go. Second pass, so no phrase that already resolves in the room
             // can change meaning.
             if !scope.orderTakers.isEmpty,
-                case .success(let addressee) = resolve(
+                case .success(let addressee) = resolveAddressee(
                     address, in: scope, alsoConsidering: Set(scope.orderTakers.keys)),
                 let theirs = scope.orderTakers[addressee]
             {
@@ -951,13 +967,62 @@ struct StandardParser {
 
         let first = matches(tokens, among: scope.visibleItems)
         guard case .failure(.notInScope) = first, !distant.isEmpty else { return first }
-        let second = matches(tokens, among: distant)
-        // The far-sighted pass answers a *name*, never a description. A phrase
-        // that picks out several people out of sight has named nobody, and
-        // listing them would hand the player a cast they haven't met — `follow
-        // man` in an empty hall must not enumerate everyone in the house.
-        if case .failure(.ambiguous) = second { return .failure(.notInScope) }
-        return second
+        return outOfSight(tokens, among: scope.elsewhereActors, answerableIn: distant)
+    }
+
+    /// Resolves the words to the left of a comma — which can only ever name a
+    /// person, and so are matched against people alone.
+    ///
+    /// It is a separate entry rather than `resolve` with a filter after it.
+    /// Resolving the address against every visible *item* and only then asking
+    /// whether the winner is an actor meant a scenery noun that happened to
+    /// share somebody's name won the match, failed the test, and took the whole
+    /// addressing reading down with it — silently, and with the second pass
+    /// shadowed too. Matching people from the start costs nothing and cannot
+    /// shadow anybody. (#332)
+    ///
+    /// The `it` pronoun branch is deliberately absent: "it, take the sword" is
+    /// not a sentence, and `pronounIt` names a thing far more often than a
+    /// person.
+    ///
+    /// - Parameters:
+    ///   - tokens: the words before the comma.
+    ///   - scope: what the player can refer to this turn.
+    ///   - distant: the addressable order-takers standing out of sight.
+    /// - Returns: the person addressed, or why nobody was.
+    private func resolveAddressee(
+        _ tokens: [String], in scope: Scope, alsoConsidering distant: Set<EntityID> = []
+    ) -> Result<EntityID, ParseError> {
+        let first = matches(tokens, among: scope.visibleActors)
+        guard case .failure(.notInScope) = first, !distant.isEmpty else { return first }
+        return outOfSight(tokens, among: scope.allOrderTakers, answerableIn: distant)
+    }
+
+    /// The second pass both naming reaches make: judge the phrase over everyone
+    /// it could possibly have meant, and answer only from those within reach.
+    ///
+    /// **Calling somebody out of sight answers a *name*, never a description.**
+    /// A phrase that picks out several people the player cannot see has named
+    /// nobody, and listing them would hand over a cast they have not met —
+    /// `follow man` in an empty hall must not enumerate everyone in the house.
+    /// Which is why the two sets are separate: judging over `reach` alone, one
+    /// man next door out of three in the house would stop being a description
+    /// and start being his name. (#332)
+    ///
+    /// - Parameters:
+    ///   - tokens: the noun phrase.
+    ///   - candidates: everybody the phrase could have meant.
+    ///   - reach: the ones close enough to be an answer.
+    /// - Returns: the person named, or why nobody was.
+    private func outOfSight(
+        _ tokens: [String], among candidates: Set<EntityID>, answerableIn reach: Set<EntityID>
+    ) -> Result<EntityID, ParseError> {
+        let match = matches(tokens, among: candidates)
+        if case .failure(.ambiguous) = match { return .failure(.notInScope) }
+        // Unambiguous, but out of reach: never met and not next door, so the
+        // player has named somebody the story has not put in front of them.
+        if case .success(let id) = match, !reach.contains(id) { return .failure(.notInScope) }
+        return match
     }
 
     /// The lexicon match itself, over one candidate set.

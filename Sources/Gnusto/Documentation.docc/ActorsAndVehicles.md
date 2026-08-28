@@ -298,6 +298,23 @@ an order and not a greeting. It reaches only actors that opted in. A question
 an incomplete order raises stays an order: `robot, push` asks "What do you want
 to push?", and the answer completes the robot's command, not yours.
 
+**Out of sight, not out of the world.** The reach is whoever the player has
+*met*, plus whoever is standing next door: a person the story has not put in
+front of them cannot be shouted at from two hundred rooms away. Having met
+somebody is recorded state, readable as ``Actor/hasBeenMet`` and carried by a
+save like any other, so it survives a RESTORE and rolls back with an UNDO.
+
+A game narrows the reach further with a rule of its own — Dungeon's robot
+answers from one room and no further — and today it can only narrow. Widening
+it takes a `world.before` guard that refuses everything *outside* the rooms the
+game means, which is what a game does when an order has to carry somewhere the
+engine would not put it. That is a gap rather than a principle: the declaration
+that would say it once does not exist yet.
+
+The words to the left of the comma name a **person**, and are matched against
+people alone. A scenery item that happens to share an order-taker's noun does
+not shadow them, and does not have to be renamed to keep the order working.
+
 Two things an order deliberately isn't. `robot, take all` is refused: the
 multi-object loop expands against what the *player* can get at and runs stage 4
 per object. And an order-taker who is in no room at all — held, contained,
@@ -327,6 +344,20 @@ The target is *nameable* while out of sight even though it is not *visible*:
 "You can't see any such thing" is the wrong answer to `follow him` on the turn
 after he walked out. That widening reaches FOLLOW's noun phrase and nothing
 else, so every other verb still tells the truth about what is in view.
+
+It reaches the people the player has **met**, and whoever is standing **next
+door** — the first because following somebody is a thing you do to somebody you
+have seen, the second because the turn you first walk after them is the turn
+before you have met them. Somebody further off and never introduced is not a
+name the line contains, and `follow <them>` answers "You can't see any such
+thing" rather than claiming a departure the player never watched. So is
+somebody parked in a room no exit leads to, the off-map holding pen a game
+keeps a character in until their entrance.
+
+A phrase is judged against the **whole** off-room cast before the reach is
+applied, so narrowing who can be followed never turns a description into a
+name: `follow man` with three men in the house and one of them next door still
+answers nobody, rather than reading out the one the player has not met.
 
 A game that wants a longer pursuit buys it explicitly. FOLLOW puts its target
 in the direct-object slot, so the actor's own rules run first:

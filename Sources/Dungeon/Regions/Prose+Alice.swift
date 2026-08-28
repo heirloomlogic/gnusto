@@ -504,6 +504,11 @@ extension Prose {
         everything else out there.
         """
 
+    static let robotThroughTheBars = """
+        The robot, standing where it was left, a foot away and a world out of
+        reach. It is waiting to be told something.
+        """
+
     static let stickerThroughTheBars = """
         The alarm company's sticker, too far off to read from in here and no
         longer telling you anything you did not just find out.

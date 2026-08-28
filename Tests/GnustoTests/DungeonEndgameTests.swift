@@ -1124,7 +1124,14 @@ struct DungeonEndgameTests {
     /// turn one.** He stands in the Narrow Corridor from the first turn of the
     /// game, and two engine paths reach an actor who is not in the room —
     /// `.follow` is the one far-sighted intent, and `takesOrders` makes him
-    /// nameable out of sight. Neither asks *how far*. (#332)
+    /// nameable out of sight. Neither asked *how far*. (#332)
+    ///
+    /// The engine asks now, so the answer is the parser's rather than this
+    /// region's: a man the player has never met, two hundred rooms away, is not
+    /// a name the line contains. ``theDungeonMasterIsRefusedFromOutsideHis
+    /// Earshot`` is where the game's own sentence is pinned — it is what the
+    /// region adds *on top of* the engine's reach, and the engine narrowing
+    /// does not retire it.
     @Test func theDungeonMasterIsNotAnsweredFromTheOtherEndOfTheGame() async throws {
         let transcript = try await play(
             Dungeon(),
@@ -1133,15 +1140,41 @@ struct DungeonEndgameTests {
 
         #expect(transcript.contains("West of House"))
         // `cut` is in the list because it was the one that killed you: his staff
-        // resolves in *his* scope, so the object bound and the `die` rule fired
+        // resolved in *his* scope, so the object bound and the `die` rule fired
         // from the opening room of the game.
         #expect(!transcript.contains("You are dead"))
-        for order in ["follow master", "master, stay", "master, north", "master, cut staff"] {
+        #expect(
+            turnOutput(of: "follow master", in: transcript)
+                .contains("You can't see any such thing."))
+        for order in ["master, stay", "master, north", "master, cut staff"] {
             let answer = turnOutput(of: order, in: transcript)
-            #expect(answer.contains("within a great many miles"))
+            // Nobody of that name is addressable, so the comma is read as the
+            // conjunction it is elsewhere and the line names no verb at all.
+            #expect(answer.contains("That sentence isn't one I recognize."))
             #expect(!answer.contains("The Dungeon Master nods"))
             #expect(!answer.contains("waits to be told which way"))
         }
+    }
+
+    /// And the region's own guard, which the engine fix narrows *around* rather
+    /// than away. Once he has been met he is nameable from anywhere; the
+    /// Dungeon Entrance is one door south of the corridor he stands in, and
+    /// still not somewhere he can be spoken to — being heard in the prison and
+    /// nowhere else is what ``DungeonEndgame/masterEarshot`` is for. (#332)
+    @Test func theDungeonMasterIsRefusedFromOutsideHisEarshot() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.pastTheCrypt + Self.throughTheBox + Self.theQuiz + [
+                "north", "south", "master, stay", "follow master",
+            ],
+            seed: Self.seed)
+
+        #expect(
+            turnOutput(of: "master, stay", in: transcript)
+                .contains("within a great many miles"))
+        #expect(
+            turnOutput(of: "follow master", in: transcript)
+                .contains("within a great many miles"))
     }
 
     /// **He walked away and was gone, to a player shut in a cell who could not

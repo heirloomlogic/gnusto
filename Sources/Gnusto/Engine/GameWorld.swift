@@ -818,26 +818,39 @@ public actor GameWorld {
     /// can see, even through a shut glass jar; the actions enforce
     /// reachability.
     ///
-    /// - Parameter orders: whether to walk each order-taking actor's own scope
-    ///   too. Only a parse needs them; Tab completion reads `visibleItems`
-    ///   alone, and would be paying for a walk per robot on every keystroke.
+    /// - Parameter orders: whether to reach outside the room at all — each
+    ///   order-taking actor's own scope, and the actors standing elsewhere.
+    ///   Only a parse needs either; `completionCandidates()` reads
+    ///   `visibleItems` alone, and offering an absent actor's nouns to Tab
+    ///   completion would be a spoiler leak besides.
     /// - Returns: what the parser may resolve a noun phrase against this turn.
     private func currentScope(orders: Bool = true) -> Scope {
         let here = state.playerLocation
         let index = state.containment()
         let visible = Visibility.visibleItems(
             at: here, definition: definition, state: state, index: index)
+        guard orders else {
+            return Scope(
+                visibleItems: visible,
+                visibleActors: visible.intersection(definition.castIDs),
+                pronounIt: state.pronounIt)
+        }
+        // Walked once and handed to both reaches: FOLLOW's quarry and an
+        // order-taker's name ask the same question about distance.
+        let nextDoor = Visibility.adjacentRooms(to: here, definition: definition, state: state)
+        let elsewhere = Visibility.actorsElsewhere(
+            excluding: here, nextDoor: nextDoor, definition: definition, state: state)
+        let orderTakers = orderTakerScopes(index: index, nextDoor: nextDoor)
         return Scope(
             visibleItems: visible,
             visibleActors: visible.intersection(definition.castIDs),
-            // Not visibility: the naming reach of FOLLOW alone. Note
-            // `completionCandidates()` below deliberately stays on
-            // `visibleItems`, since offering an offstage actor's nouns to Tab
-            // completion would be a spoiler leak.
-            distantActors: Visibility.actorsElsewhere(
-                excluding: here, definition: definition, state: state),
+            // Not visibility: the naming reach of FOLLOW alone, and bounded by
+            // acquaintance or by being next door.
+            distantActors: elsewhere.withinReach,
+            elsewhereActors: elsewhere.all,
             pronounIt: state.pronounIt,
-            orderTakers: orders ? orderTakerScopes(index: index) : [:])
+            orderTakers: orderTakers,
+            allOrderTakers: orderTakersStandingSomewhere())
     }
 
     /// What each order-taking actor could name from where *it* is standing —
@@ -848,15 +861,46 @@ public actor GameWorld {
     /// An actor who is in nobody's room — held, contained, `vanish()`ed — gets
     /// no entry, and so falls back to the stock refusal: there is nowhere for
     /// the order to be carried out.
-    private func orderTakerScopes(index: ContainmentIndex) -> [EntityID: Set<EntityID>] {
+    ///
+    /// Neither does one the player could not make hear them. The keys are the
+    /// *addressable* order-takers — here, or within
+    /// ``Visibility/isNameable(_:standingIn:nextDoor:state:)`` — for the reason
+    /// `Visibility.actorsElsewhere` gives at length: shouting at somebody two
+    /// hundred rooms away, whom the story has not introduced, is not a
+    /// widening any game asked for. A game narrows this further with a rule of
+    /// its own, and can never widen it. (#332)
+    ///
+    /// The narrowing pays for itself: an order-taker out of reach also skips
+    /// the scope walk, which is a whole visibility descent per robot per parse.
+    /// ``orderTakersStandingSomewhere()`` is the cheap set that keeps the
+    /// parser able to tell "nobody" from "one of several".
+    private func orderTakerScopes(
+        index: ContainmentIndex, nextDoor: Set<EntityID>
+    ) -> [EntityID: Set<EntityID>] {
         guard !definition.orderTakerIDs.isEmpty else { return [:] }
+        let here = state.playerLocation
         var scopes: [EntityID: Set<EntityID>] = [:]
         for id in definition.orderTakerIDs {
             guard let there = Visibility.standing(id, in: state) else { continue }
+            guard
+                there == here
+                    || Visibility.isNameable(id, standingIn: there, nextDoor: nextDoor, state: state)
+            else { continue }
             scopes[id] = Visibility.visibleItems(
                 for: id, at: there, definition: definition, state: state, index: index)
         }
         return scopes
+    }
+
+    /// Every order-taker standing in a room at all, in reach or not — no scope
+    /// walk, just the placements.
+    ///
+    /// It is what stops the reach turning a description into a name: two
+    /// order-takers answering to `robot`, one met and one not, must still be
+    /// two, or narrowing the reach would quietly pick one of them. Same
+    /// argument as ``Visibility/ActorsElsewhere``'s `all`. (#332)
+    private func orderTakersStandingSomewhere() -> Set<EntityID> {
+        definition.orderTakerIDs.filter { Visibility.standing($0, in: state) != nil }
     }
 
     /// The one person in the room, or nil for nobody and nil for a crowd.
@@ -865,11 +909,19 @@ public actor GameWorld {
     ///
     /// - Returns: the sole visible actor, if there is exactly one.
     private func soleVisibleActor() -> EntityID? {
-        let actors = Visibility.visibleItems(
+        let actors = visibleActorsHere()
+        return actors.count == 1 ? actors.first : nil
+    }
+
+    /// The cast the player can currently see. Darkness gates it, because
+    /// `visibleItems` does: you do not meet somebody in an unlit room.
+    ///
+    /// - Returns: the actors visible from where the player is standing.
+    private func visibleActorsHere() -> Set<EntityID> {
+        Visibility.visibleItems(
             at: state.playerLocation, definition: definition, state: state,
             index: state.containment()
         ).intersection(definition.castIDs)
-        return actors.count == 1 ? actors.first : nil
     }
 
     /// Where this game's persistent command history lives — the history
@@ -913,6 +965,12 @@ public actor GameWorld {
     func commit(_ frame: TurnFrame) -> TurnResult {
         let scratch = frame.retire()
         state = scratch.state
+        // Whoever the player can see has now been met. This is the only place
+        // it is sampled, and it is enough: `commit` is the single exit of
+        // every turn, so `begin()` records the opening room before the first
+        // command is typed and nothing changes state between one turn's close
+        // and the next turn's parse. (#332)
+        state.metActors.formUnion(visibleActorsHere())
         // Adopted, never merged — and taking a nil *is* the invalidation.
         // The opening, UNDO, RESTART, RESTORE and every meta or unhandled
         // command arrive here with a frame that never ran the capture, so

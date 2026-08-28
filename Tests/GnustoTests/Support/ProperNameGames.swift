@@ -92,7 +92,12 @@ struct NamedCastGame: Game {
 
     var map: WorldMap {
         hall.north(landing)
+        landing.south(hall)
         landing.up(attic)
+        // The way back down, so the player can go and meet Mordred and return.
+        // FOLLOW names the people it has been introduced to; two rooms off and
+        // never seen, he is nobody. (#332)
+        attic.down(landing)
         player.starts(in: hall)
         arthur.starts(in: hall)
         troll.starts(in: hall)
