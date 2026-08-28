@@ -84,7 +84,13 @@ reads as half done instead of open.
 - a paragraph naming the mechanism at fault — an unbranched fuse body, a barrier gated
   on `.open` with no rule on `.close` — with the offending declaration quoted where
   that's shorter than describing it;
-- the shortest reproducer, as commands.
+- the shortest reproducer, as commands — and, when it begins `restore`, **where the
+  save came from**, taken from the finding's `savesFrom`. A reproducer that needs a
+  slot and names none cannot be replayed by anybody, and the issue is where that
+  provenance has to survive: the labels it points at are cleaned between rounds, and
+  the fixer picks the class up afterwards. Name the label *and* the `saves-in/`
+  directory beside the probe you cited, which holds the same bytes and outlives it —
+  `bin/playtest-replay --saves-from` takes either.
 
 Where several sites share one branch, say so in a `## One root cause` section rather
 than repeating the diagnosis three times.

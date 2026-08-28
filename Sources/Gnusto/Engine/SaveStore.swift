@@ -75,8 +75,16 @@ enum SaveStore {
     }
 
     /// Whether `answer` names an explicit filesystem path — it contains a `/`
-    /// or starts with `~` — rather than a bare save slot.
-    private static func isExplicitPath(_ answer: String) -> Bool {
+    /// or starts with `~` — rather than a bare slot.
+    ///
+    /// **The one spelling of that question in the package.** Three callers ask
+    /// it of three different kinds of name — a save slot here, a transcript slot
+    /// in ``TranscriptRecorder``, a play label in ``PlaytestSessions`` — and
+    /// they have to agree, because a name the player types at the save prompt is
+    /// the same name a harness passes back to reach the file it wrote. It lived
+    /// here first and stays here; the others call it rather than re-typing four
+    /// characters that have drifted before.
+    static func isExplicitPath(_ answer: String) -> Bool {
         answer.hasPrefix("~") || answer.contains("/")
     }
 

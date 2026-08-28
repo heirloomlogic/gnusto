@@ -570,12 +570,16 @@ const FINDINGS_SCHEMA = {
           },
           reproducer: {
             type: 'array',
-            description: 'Shortest command list from a clean start. Replayed before reporting.',
+            description: 'Shortest command list from a clean start — or, when it begins `restore`, from the save slots named in `savesFrom`. Replayed before reporting.',
             items: { type: 'string' },
+          },
+          savesFrom: {
+            type: 'string',
+            description: 'Set ONLY when the reproducer begins `restore`: the play label whose slot it restores, which is the label you opened under. A reproducer that needs a save is a legitimate reproducer, and this field is how it says so — without it the replay answers "Restore failed." and the finding is dropped as not-reproducible, which is how four real defects were lost in the 2026-08-25 Dungeon round.',
           },
           replayedCleanly: {
             type: 'boolean',
-            description: 'True only if the trimmed reproducer was re-run from clean and produced the excerpt.',
+            description: 'True only if the trimmed reproducer was re-run and produced the excerpt — from a clean start, or from the slots named in `savesFrom`. A staged re-run counts; a re-run you did not do does not.',
           },
           transcriptPath: {
             type: 'string',
@@ -1485,9 +1489,14 @@ attached: carry the transcript path your \`open\` returned into \`transcriptPath
 boots a fresh world and touches nothing, so it cannot disturb your session. If your
 reproducer begins \`restore\`, pass \`savesFrom: "${sessionLabelFor(round, assignment.key)}"\`
 so the replay can read the slot you wrote; without it the game answers "Restore failed."
-and the verdict is about the harness rather than about your finding. Set
-\`replayedCleanly\` honestly; a finding whose reproducer you did not re-verify is dropped
-at triage, so guessing gains you nothing.
+and the verdict is about the harness rather than about your finding — and the answer says
+so, on a \`restore-unreachable\` line. **Put that same label in the finding's own
+\`savesFrom\` field.** A reproducer that needs a save is a legitimate reproducer, and that
+field is the only way it can say so; a staged reproducer filed without it reaches the
+verifier looking like one that starts clean, and is refuted for a reason that is about the
+harness. Set \`replayedCleanly\` honestly either way — it means you re-ran the trimmed list
+and saw the excerpt, from clean or from those slots. A finding whose reproducer you did not
+re-verify is dropped at triage, so guessing gains you nothing.
 
 Your coverage note is not a formality. Name what you did not reach. A charter that
 reports findings and hides its gaps makes the round look thorough when it was not.`,
@@ -1513,13 +1522,16 @@ reports findings and hides its gaps makes the round look thorough when it was no
   for (const report of reports) {
     for (const f of report.findings || []) {
       f.charter = report.charter
-      f.sessionLabel = report.sessionLabel
+      // The tester's own `savesFrom` wins over the label they opened under: a
+      // reproducer may restore a slot written under a different label, and the
+      // session label is only the fallback for one that named none.
+      f.sessionLabel = f.savesFrom || report.sessionLabel
       if (f.routedTo) {
         record(routed, f)
         continue
       }
       if (!f.replayedCleanly) {
-        record(refuted, { ...f, refutationKind: 'not-reproducible', reason: 'The tester did not re-verify the trimmed reproducer from a clean start.' })
+        record(refuted, { ...f, refutationKind: 'not-reproducible', reason: 'The tester did not re-verify the trimmed reproducer — from a clean start, or from the slots its `savesFrom` named.' })
         continue
       }
       candidates.push(f)
@@ -1683,7 +1695,9 @@ repo's testers have actually been wrong, most frequent first.
    **A reproducer whose first command is \`restore\` needs the tester's save slots.**
    Add \`--saves-from <the finding's \`Saves:\` label>\` and those slots are copied into your
    own label before the run, so \`restore\` reaches the slot the tester wrote. The copy is
-   one way and cannot touch their label. **A \`restore\` that fails is a fact about the
+   one way and cannot touch their label. \`--saves-from\` also takes a **path** — anything
+   holding a slash — so if the label is gone, the \`saves-in/\` directory beside any earlier
+   staged probe's transcript holds the same bytes and works in its place. **A \`restore\` that fails is a fact about the
    harness, not about the finding** — never refute \`not-reproducible\` on it. If the
    label reads \`unknown\` or holds no slot, judge the excerpt alone and answer
    \`needs-human\` with a \`reason\` saying the save was unreachable. Four real defects

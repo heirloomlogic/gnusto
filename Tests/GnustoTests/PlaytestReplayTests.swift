@@ -465,12 +465,161 @@ struct PlaytestReplayTests {
                 == ["deep"])
     }
 
-    /// The three ways `savesFrom` is refused, each a sentence the caller can act
-    /// on rather than a trap.
+    /// The path form: a probe's own `saves-in/` restores a finding after the
+    /// label that wrote it is gone.
+    ///
+    /// This is the case the label form cannot serve and the one a *fixer* is
+    /// always in. Labels are cleaned between rounds; a fixer picks up a
+    /// confirmed finding after that, so the label the report names has usually
+    /// stopped existing by the time anybody replays it. The bytes survive
+    /// anyway — every staged probe keeps a copy in `saves-in/` beside its
+    /// transcript, written for exactly this — and until `savesFrom` read a path
+    /// they survived somewhere nothing could read them back. So the round's
+    /// receipt documented a run nobody could repeat, which is the defect this
+    /// whole tree is about, moved one round downstream.
+    ///
+    /// The label is deleted here rather than merely ignored, because a test that
+    /// left it standing would pass on a path form that silently resolved to the
+    /// label.
+    @Test func aProbesOwnSavesRestoreAfterItsLabelIsGone() async throws {
+        let (root, tools) = try table(OperaHouse())
+        let registry = try sessions(OperaHouse(), root: root)
+        let keeper = try await keeper(registry)
+        let replay = try #require(tools.first { $0.name == "replay" })
+
+        _ = try await replay.call(["commands": ["restore", "deep", "look"], "savesFrom": "keeper"])
+        let savesIn = replayProbe(root).appendingPathComponent("saves-in")
+        #expect(SaveStore.existingSaveNames(in: savesIn) == ["deep"])
+
+        // The round is over and the scratch was cleaned. Nothing under the label
+        // survives; the probe is all a fixer has.
+        try FileManager.default.removeItem(
+            at: keeper.saveDirectory.deletingLastPathComponent())
+
+        let result = try await replay.call(
+            ["commands": ["restore", "deep", "look"], "savesFrom": .string(savesIn.path)])
+
+        #expect(!result.text.contains("Restore failed"))
+        #expect(result.text.contains("Cloakroom"))
+        #expect(result.text.contains("slots=deep"))
+        // And the receipt names something that resolves. A path outside the
+        // `<label>/saves/` layout prints whole: rendered as its parent it would
+        // read `saves-from=probe-001`, a name every label in the tree has one
+        // of, which is the un-replayable citation this form exists to fix.
+        #expect(result.text.contains("saves-from=\(savesIn.path)"))
+    }
+
+    /// A path that is not a directory is refused as a path, and says which
+    /// reading it got.
+    ///
+    /// The two spellings are told apart by a slash, so a mistyped label
+    /// containing one lands here rather than in the label refusal, and the
+    /// sentence has to say so or the caller re-reads the wrong rule.
+    @Test func aSavesFromPathThatIsNotADirectoryIsRefusedAsAPath() async throws {
+        let (root, tools) = try table(OperaHouse())
+        let registry = try sessions(OperaHouse(), root: root)
+        _ = try await keeper(registry)
+        let replay = try #require(tools.first { $0.name == "replay" })
+
+        let refusal: String
+        do {
+            _ = try await replay.call(
+                ["commands": ["look"], "savesFrom": .string(root.path + "/keeper/nope")])
+            refusal = "no refusal"
+        } catch { refusal = "\(error)" }
+
+        #expect(refusal.contains("read as a path"))
+        #expect(refusal.contains("is not a directory"))
+        #expect(refusal.contains("saves-in/"))
+    }
+
+    /// Staging and a verdict together — the call a verifier actually makes.
+    ///
+    /// Every other staged row here reads the transcript back. The verifier does
+    /// not: it passes `expect` and reads a verdict, and that pairing had no row
+    /// at all, so nothing proved the turn numbering or the frame survived the
+    /// restore. They have to: a restored world reports the room it was saved in,
+    /// and a verdict that named the wrong one would refute a true finding.
+    @Test func aStagedReplayAdjudicatesAClaimInTheRestoredFrame() async throws {
+        let registry = try sessions(OperaHouse())
+        let keeper = try await keeper(registry)
+
+        let outcome = try await PlaytestReplay.run(
+            prepared: try PreparedGame(OperaHouse()),
+            commands: ["restore", "deep", "look"],
+            seed: 0, expect: "Cloakroom",
+            savesFrom: keeper.saveDirectory)
+
+        let verdict = try #require(outcome.verdict)
+        #expect(verdict.found)
+        #expect(verdict.room == "Cloakroom")
+        #expect(!outcome.restoreWasUnreachable)
+        #expect(!outcome.rendered.contains("restore-unreachable"))
+
+        // The control. The keeper walked west before saving, so a replay that
+        // never restored is standing in the Foyer and the same claim is false —
+        // and the answer says which of the two facts it is reporting.
+        let unstaged = try await PlaytestReplay.run(
+            prepared: try PreparedGame(OperaHouse()),
+            commands: ["restore", "deep", "look"], seed: 0, expect: "Cloakroom")
+        #expect(try #require(unstaged.verdict).found == false)
+        #expect(unstaged.rendered.contains("restore-unreachable"))
+    }
+
+    /// A `restore` with nothing staged says the refusal was the harness's, on
+    /// the answer itself.
+    ///
+    /// The hint existed only in the tool's *description*, and the reader who
+    /// needs it is reading a bad verdict rather than re-reading the schema that
+    /// produced it. Four findings in the 2026-08-25 Dungeon round were recorded
+    /// `not-reproducible` on precisely this turn.
+    ///
+    /// Read off the command list rather than off the transcript, because the
+    /// refusal is `GameText.restoreFailed` and any game may re-skin it. So the
+    /// third leg is the one that matters: a list that saves *before* it restores
+    /// is reaching its own slot in the throwaway and is not this case.
+    @Test func anUnstagedRestoreSaysTheRefusalWasTheHarnesss() async throws {
+        func run(
+            _ commands: [String], staged: Bool = false
+        ) async throws
+            -> PlaytestReplay.Outcome
+        {
+            let registry = try sessions(OperaHouse())
+            return try await PlaytestReplay.run(
+                prepared: try PreparedGame(OperaHouse()),
+                commands: commands, seed: 0, expect: nil,
+                savesFrom: staged ? try await keeper(registry).saveDirectory : nil)
+        }
+
+        let bare = try await run(["restore", "deep", "look"])
+        #expect(bare.restoreWasUnreachable)
+        #expect(bare.rendered.contains("restore-unreachable"))
+        #expect(bare.rendered.contains("`savesFrom`"))
+
+        let staged = try await run(["restore", "deep", "look"], staged: true)
+        #expect(!staged.restoreWasUnreachable)
+
+        let savedFirst = try await run(["west", "save", "own", "restore", "own", "look"])
+        #expect(!savedFirst.restoreWasUnreachable)
+        #expect(!savedFirst.rendered.contains("restore-unreachable"))
+
+        let never = try await run(["west", "look"])
+        #expect(!never.restoreWasUnreachable)
+    }
+
+    /// The three ways a `savesFrom` *label* is refused, each a sentence the
+    /// caller can act on rather than a trap.
     ///
     /// `.replays` is among them and is refused as *malformed*: `isPlainName`
     /// bars a leading dot, which is what keeps the reserved replay tree from
     /// being addressable as a label at all.
+    ///
+    /// The label alphabet is what guards the label form, and it still does: a
+    /// name holding no slash is read as a label and `..` never becomes one. A
+    /// name holding a slash is a path and is honored verbatim, which is the
+    /// point of the path form — see ``PlaytestSessions/savesSource(_:)`` for
+    /// why that is not an escape to guard against, and the row below for how it
+    /// is refused instead.
     @Test func savesFromIsRefusedWhenItIsMalformedMissingOrEmpty() async throws {
         let (root, tools) = try table(OperaHouse())
         let registry = try sessions(OperaHouse(), root: root)
@@ -485,7 +634,7 @@ struct PlaytestReplayTests {
         }
 
         #expect(await refusal(PlaytestSessions.replayLabel).contains("Bad savesFrom"))
-        #expect(await refusal("../escape").contains("Bad savesFrom"))
+        #expect(await refusal("..").contains("Bad savesFrom"))
         let missing = await refusal("never-opened")
         #expect(missing.contains(#"No label "never-opened""#))
         #expect(missing.contains("empty-handed"))

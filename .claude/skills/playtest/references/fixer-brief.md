@@ -9,6 +9,23 @@ were given rather than one you invent. That path is a probe directory, written o
 and never rewritten; a label on its own holds every probe a tester ran and tells you
 nothing about which one the finding is about.
 
+**If the reproducer begins `restore`, it needs the slot it restores** — without it the
+game answers *"Restore failed."*, every turn after that line is the wrong game, and you
+will "fix" prose you never actually saw. Pass `--saves-from`, which takes either the
+label the finding's `savesFrom` names, or a **path**:
+
+```sh
+bin/playtest-replay <Game> --commands repro.txt --seed <n> --label fix-<n> \
+  --saves-from .context/playtest/<label>/probe-004/saves-in
+```
+
+Prefer the path. You are picking this up after the round that filed it, and a round's
+labels are cleaned between rounds — but every staged probe keeps a copy of the bytes it
+ran on in `saves-in/`, beside the transcript you were told to read. That directory is
+usually the only thing left. If the finding names no source at all and no `saves-in/`
+survives, say so in your report rather than fixing on a transcript you could not
+reproduce.
+
 ## Test first, always
 
 Write the failing transcript test **before** the fix. The reproducer is already the

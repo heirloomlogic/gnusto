@@ -8,6 +8,7 @@ isn't committed.
 | `.context/playtest/<label>/<probe>/` | no | one run: `transcript.txt` with the `//` annotations, `commands.txt` — every line actually fed — its stderr, and a summary naming the game, seed and label. A session and a `bin/playtest-replay` probe hold the same two names, which is what lets `bin/playtest-measure` read either |
 | `.context/playtest/<label>/<probe>/branch-NNN.txt` | no | turns a `rewind` wrote out of the transcript. Really played, so they count toward coverage; not canonical, so the reproducer beside them does not produce them |
 | `.context/playtest/.replays/<probe>/` | no | one sessionless `replay` — the same `commands.txt` and `transcript.txt`, plus a `summary.txt` naming the seed. The leading dot reserves it: no tester label can start with one |
+| `<probe>/saves-in/` | no | the `.gnusto` slots a **staged** probe was run against, copied in beside its transcript. Present only when the run passed `savesFrom` / `--saves-from`, and the reason a staged finding still replays after its label is cleaned |
 | `docs/games/<game>-playtest-<YYYY-MM-DD>.md` | **yes** | the round report below |
 | `docs/games/<game>-playtest-ledger.md` | **yes** | append-only: every dedupe key ever seen, with its verdict |
 | one GitHub issue | — | every confirmed class as a checklist — see `issue-shape.md` |
@@ -19,6 +20,15 @@ in order to pick up one class goes in the issue. `issue-shape.md` owns the secon
 made; the probe directory under it is one run, written once and never rewritten. So a
 citation is `.context/playtest/<label>/probe-004/transcript.txt` — the path the tool
 printed — and a citation ending at the label points at a directory, not at evidence.
+
+**A staged probe is weaker evidence, and the citation has to say so.** Most probes
+reproduce from `commands.txt` and a seed alone. One whose list begins `restore` does
+not: it reproduces only while the slots it was staged from survive. So cite the source
+with it — the label from the finding's `savesFrom`, and the `saves-in/` directory in the
+probe, which holds the same bytes and is the one that still exists after the round's
+labels are cleaned. `bin/playtest-replay --saves-from` and the `replay` tool's
+`savesFrom` both take either spelling. A staged probe cited as though it were an
+ordinary one claims the stronger thing, and the next reader finds out the hard way.
 
 **A frame read from `replay` is citable too, and citing it is not optional.** Every
 `replay` call now answers with `transcript=<path>` on its first line and writes that

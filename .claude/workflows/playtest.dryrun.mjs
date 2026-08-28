@@ -783,6 +783,9 @@ const SOURCES = {
   measurer: 'bin/playtest-measure',
   tools: 'Sources/Gnusto/Playtest/PlaytestTools.swift',
   preflight: 'bin/playtest-preflight',
+  fixerBrief: '.claude/skills/playtest/references/fixer-brief.md',
+  findingContract: '.claude/skills/playtest/references/finding-contract.md',
+  issueShape: '.claude/skills/playtest/references/issue-shape.md',
 }
 const SOURCE = Object.fromEntries(Object.entries(SOURCES).map(([k, path]) => [k, code(path)]))
 const PRODUCERS = ['replayScript', 'replayTool', 'sessionServer']
@@ -943,6 +946,44 @@ check(
 check(
   /never refute .?not-reproducible.? on it/.test(verifierPrompt),
   'the verifier is not told that a failed restore is a harness miss rather than a refutation'
+)
+
+// The rest of the door, which is every hop the label has to survive. Verify was
+// wired first and alone, and that left three ways for a staged reproducer to die
+// anyway: a tester with no field to declare one in, a report with nowhere to
+// record it, and a fixer never told the flag exists. Each is the same defect as
+// #332's — a `restore` that cannot reach its slot — moved one stage downstream,
+// and each is invisible from the stage before it.
+check(
+  /savesFrom:\s*\{/.test(src),
+  'the finding schema has no savesFrom field, so a tester with a `restore` reproducer can only file it as though it started clean'
+)
+const testerPrompt = promptFor((p) => /^play:/.test(String(p.label || '')))
+check(
+  /savesFrom/.test(testerPrompt),
+  'the tester brief never names savesFrom, so a staged reproducer reaches the verifier looking like a clean one'
+)
+check(
+  /--saves-from/.test(SOURCE.fixerBrief),
+  `${SOURCES.fixerBrief} never mentions --saves-from, so a fixer replays a \`restore\` reproducer into the wrong game`
+)
+check(
+  /saves-in/.test(SOURCE.fixerBrief),
+  `${SOURCES.fixerBrief} does not name saves-in, and by the time a fixer runs the label the report named is usually cleaned`
+)
+check(
+  /savesFrom/.test(SOURCE.findingContract),
+  `${SOURCES.findingContract} does not carry savesFrom, so the contract still says every reproducer starts clean`
+)
+check(
+  /saves-in/.test(SOURCE.issueShape),
+  `${SOURCES.issueShape} does not require the save source beside a reproducer, so the provenance dies at the round boundary`
+)
+// Read off the answer rather than off the description: the reader who needs this
+// is holding a bad verdict, not re-reading the schema that produced it.
+check(
+  /restore-unreachable/.test(SOURCE.tools),
+  `${SOURCES.tools} never says restore-unreachable on a replay's answer, so an unstaged \`restore\` reads as a fact about the game`
 )
 
 // The critic gets the agreement figure and is told not to read a high one as
