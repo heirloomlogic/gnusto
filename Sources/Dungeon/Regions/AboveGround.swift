@@ -248,16 +248,30 @@ struct DungeonAboveGround: GameContent {
     /// scenery stand of trees. A factory rather than eight copies of one
     /// declaration: presence is room-granular and an `Item` lives in one place,
     /// so the wood is paid for a room at a time.
-    private static func forestStand() -> Item {
+    private static func forestStand(
+        _ nouns: ItemTrait = synonyms("tree", "forest", "woods", "wood")
+    ) -> Item {
         Item {
             name("trees")
             adjectives("large", "tall")
-            synonyms("tree", "forest", "woods")
+            // `wood` as well as `woods`: the Clearing's paragraph calls the
+            // wall of trees around it *the wood*, and the parser splits a
+            // declared phrase exactly as it splits input, so the plural does
+            // not answer for the singular. (#332)
+            nouns
             description(Prose.forestTrees)
             scenery
             plural
         }
     }
+
+    /// The same stand without the singular `tree`, for the one forest room that
+    /// has a particular tree standing in it. Its paragraph says *large trees all
+    /// around* and then names the climbable one, so `trees`, `forest` and `wood`
+    /// belong to the wall and `tree` has to keep going to ``greatTree``. Without
+    /// this the room printed *forest* in its first four words and denied it.
+    /// (#332)
+    let treesAtGreatTree = forestStand(synonyms("forest", "woods", "wood"))
 
     let treesDeep = forestStand()
     let treesSouth = forestStand()
@@ -333,7 +347,11 @@ struct DungeonAboveGround: GameContent {
     let greatTree = Item {
         name("large tree")
         adjectives("large", "gnarled", "particularly")
-        synonyms("tree", "trees", "branches", "branch")
+        // Not `trees`: it carried the plural only because it was the one tree
+        // item in its room, and the room's paragraph says *large trees all
+        // around* before it says *one particularly large tree*. The stand beside
+        // it owns the plural now, and `tree` still means this one. (#332)
+        synonyms("tree", "branches", "branch")
         description(Prose.greatTree)
         scenery
     }
@@ -773,6 +791,7 @@ struct DungeonAboveGround: GameContent {
         pathAtClearing.starts(in: clearing)
         pathAtCanyonBottom.starts(in: canyonBottom)
         greatTree.starts(in: forestTree)
+        treesAtGreatTree.starts(in: forestTree)
         treeFromAbove.starts(in: upATree)
         nest.starts(in: upATree)
         egg.starts(on: nest)

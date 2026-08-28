@@ -804,9 +804,16 @@ struct DungeonTests {
                 "examine field",
                 "north", "examine house", "examine windows", "examine forest",
                 "north", "examine trees", "examine tree", "examine songbird",
+                // The room opens on the word *forest* and then names one
+                // particular tree, so the plural, the wood and the singular are
+                // three answers and not one. (#332)
+                "examine forest", "examine wood",
                 "up", "examine nest", "examine egg", "examine branches",
                 "down", "east", "examine leaves", "push leaves", "examine grating",
                 "examine forest", "examine clearing", "examine path",
+                // The Clearing's paragraph calls the wall of trees *the wood*.
+                // (#332)
+                "examine wood",
                 "south", "examine trees",
                 "north", "examine house", "examine windows", "examine path",
                 "examine trees",
@@ -1277,7 +1284,7 @@ struct DungeonTests {
             Dungeon(),
             Self.toTheDam
                 + [
-                    "examine dam", "examine bolt", "examine bubble",
+                    "examine dam", "examine concrete", "examine bolt", "examine bubble",
                     "examine control panel", "examine reservoir",
                     "north", "examine desk", "examine doorways",
                     "examine guidebook", "examine matchbook",
@@ -2555,7 +2562,12 @@ struct DungeonTests {
             Dungeon(),
             Self.afloatOnTheRiver
                 + ["examine river", "examine label", "examine boat"]
-                + ["down", "examine river", "down", "examine river", "examine beach"]
+                // River-1 names the dam behind it, the landing on the west
+                // shore and the shore itself. (#332)
+                + ["examine dam", "examine landing", "examine shore", "examine vicinity"]
+                + ["down", "examine river", "examine cliffs", "examine rocks", "examine bank"]
+                + ["down", "examine river", "examine beach"]
+                + ["examine valley", "examine shore"]
                 + ["east", "examine cliffs", "examine path", "launch"]
                 + ["down", "examine buoy", "west", "examine river", "examine sand"]
                 + ["south", "examine shore", "south", "examine falls", "examine rainbow"]
@@ -3200,7 +3212,10 @@ struct DungeonTests {
             Self.toTheTeaRoom
                 + ["examine table", "examine hole", "examine eat-me cake", "examine blue cake"]
                 + ["northwest", "examine robot", "examine paper", "examine ceiling"]
-                + ["north", "examine round button", "examine square button"]
+                // The Machine Room prints `plate` twice — in the control
+                // bank's own line and in the machinery's — and named it
+                // nothing. (#332)
+                + ["north", "examine plate", "examine round button", "examine square button"]
                 + ["examine triangular button", "south", "examine sphere", "examine pedestal"]
                 + ["examine sticker"],
             seed: 41)
@@ -3212,7 +3227,12 @@ struct DungeonTests {
         let transcript = try await play(
             Dungeon(),
             Self.toTheBank
-                + ["examine signs", "northwest", "examine counter", "west"]
+                + ["examine signs", "northwest", "examine counter"]
+                // Both stations end by naming three doorways and the room the
+                // largest of them opens into. The Bank printed `depository`
+                // ninety-nine times in one round and denied it every time.
+                // (#332)
+                + ["examine doorway", "examine depository", "west"]
                 + ["examine cube", "read cube", "examine curtain", "examine walls"]
                 + ["examine boxes", "examine doorways", "south"]
                 + ["examine wreckage", "examine portrait", "north", "walk through curtain"]

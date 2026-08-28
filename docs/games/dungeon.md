@@ -2077,3 +2077,83 @@ them the correct branch was already written a few lines away, in the sibling
 channel, the sibling doorway or the sibling caller. The Bank is the twelfth
 site's answer to the same question, arrived at from the other end: there the
 state machine had a fourth state nobody had named, and naming it was the fix.
+
+### The thirteenth pass: a printed noun that is answered by the wrong thing
+
+The third pass took rule 3's first half — a noun the parser does not know — and
+its own text names the second half as the harder one: *a printed noun is answered
+by an item about that noun, and by exactly one.* The 2026-08-25 round filed
+sixteen more sites, in the words the round had for them: *nouns the prose prints
+that the parser does not know.* Nine of the sixteen were that. **Seven were not,
+and the round could not see the difference from outside**, because a player
+typing `x dam` on the Frigid River gets an answer either way.
+
+13. **A word the vocabulary knows is not a word this room can answer.** `forest`,
+    `landing`, `staff`, `plate`, `doorway`, `depression` and the whole set the
+    river stretches print were all in the game's vocabulary, declared on some
+    item in some other room, and every one of them failed where it was printed.
+    A vocabulary check cannot find this class and is the wrong instrument: the
+    only test is to stand in the room and type the word. Both halves are one
+    defect and the fix is the same item; what differs is that half of them look
+    fine from the answer key.
+
+14. **A synonym is a claim that two words mean one thing.** Each of the five
+    river stretches carried every noun its paragraph printed as a synonym of the
+    water — `dam`, `landing`, `shore`, `bank`, `cliffs`, `rocks`, `valley`,
+    `beach` — so eight questions about eight things got *"The Frigid River lives
+    up to its name, and it is in a hurry."* That is the third pass's own
+    diagnosis, *the near thing speaking for the far one*, and this region had
+    written it down about the rainbow four passes earlier without checking the
+    water beside it. **A denial is a better failure than a wrong answer**, and it
+    is the reason this class outlived a round that was looking straight at it.
+
+    The rule that follows: a synonym is right when the word names *what the thing
+    is made of or is* — `concrete` on the dam, `planks` on the wooden door,
+    `plate` on the control bank — and wrong when it names something the thing is
+    merely near. The dam is two hundred and fifty-six feet of concrete; it is not
+    the river running away from it.
+
+15. **Trimming a hoarded noun and declaring its owner land together.** Third-pass
+    rule 11, restated because this pass had to apply it four times: taking `trees`
+    off the great tree, `depression` off the pool of sewage, `staff` off the
+    Dungeon Master and eight nouns off the river all make a printed noun
+    unanswerable on their own. The stand of trees beside the great tree, the
+    hollow that outlives the pool, the staff in the man's hand and the sixteen
+    river items are the other half of the same commit.
+
+### What the thirteenth pass changed, and what it did not
+
+The map, the puzzles, the treasure values and `maxScore` are untouched, and both
+walkthroughs score what they scored. No prose the player was already being shown
+changed a word: this pass is forty-one new scenery items — sixteen of them on the
+river — four kinds of synonym trim, five synonyms added at four sites, and the
+text those items say. Four notes:
+
+- **The depression is the one item with two states**, because the Pool Room's
+  two paragraphs both name it and the pool between them `vanish()`es. It is a
+  `describe` rule for the reason the twelfth pass gives: a room that has two
+  states needs an item that has two, and the hollow is there in both.
+- **The Dungeon Master's staff and robe are `starts(heldBy:)`**, the thief's
+  stiletto's shape. He roams the prison, and a thing somebody is carrying is the
+  only kind of scenery that can follow them.
+- **`x tree` and `x trees` are two answers in one room now**, and deliberately.
+  The Forest with the climbable tree in it says *large trees all around* and then
+  names one of them; the singular keeps going to the one with the nest in it and
+  the plural means the wood. Third-pass rule 11's *where a room really does hold
+  two of a thing* — except here the two are a thing and the crowd it stands in.
+- **One printed noun in this pass stays unanswered, and it is the engine's
+  doing.** Inside the steel cage the room says the robot is standing a foot away
+  through the bars, and `x robot` denies him. It has to: the parser's addressing
+  pass runs *second*, so a noun that resolves in the room beats an order-taker's
+  name — which is exactly what lets `robot, lift cage` reach a machine the
+  player cannot see, and that order is the only way out of the cage. Declaring
+  the noun costs the player the game, and both walkthroughs say so. The other
+  three words the cage prints are fixed; this one is pinned by a negative test
+  with the reason attached, so the next pass finds out before it ships rather
+  than after.
+
+**The class's diagnostic.** The third pass asked *is this noun in the
+vocabulary*. This one asks the question that survives a yes: **stand where the
+sentence prints and type the word — is the answer about the thing you asked
+about?** Sixteen sites, and the seven the vocabulary would have cleared are the
+seven that had been wrong the longest.

@@ -763,33 +763,33 @@ None of the withheld keys came back.
 | `decl::Sources/Dungeon/Regions/Prose+EndgameMechanics.swift::quizBegins` | confirmed | gate-not-gating | major |
 | `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::redBeamBroken` | fixed (by #332) | prose-untrue-of-state | major |
 | `decl::Sources/Dungeon/Regions/Prose+EndgameMechanics.swift::masterArrives` | fixed (by #332) | prose-untrue-of-state | major |
-| `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::dungeonMaster` | confirmed | unanswerable-noun | minor |
-| `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::stoneRoom` | confirmed | unanswerable-noun | minor |
-| `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::topOfStairs` | confirmed | unanswerable-noun | minor |
+| `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::dungeonMaster` | fixed (by #332) | unanswerable-noun | minor |
+| `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::stoneRoom` | fixed (by #332) | unanswerable-noun | minor |
+| `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::topOfStairs` | fixed (by #332) | unanswerable-noun | minor |
 | `decl::Sources/Dungeon/Regions/Prose+Bank.swift::safetyDepository` | fixed (by #332) | unwinnable | blocking |
 | `decl::Sources/Dungeon/Regions/Prose+Alice.swift::cageRobotOutside` | confirmed | unanswerable-noun | major |
 | `decl::Sources/Dungeon/Regions/Prose+Bank.swift::curtainOfLight` | fixed (by #332) | exit-prose-mismatch | major |
-| `decl::Sources/Dungeon/Regions/Prose+Bank.swift::tellerRoom` | confirmed | unanswerable-noun | major |
+| `decl::Sources/Dungeon/Regions/Prose+Bank.swift::tellerRoom` | fixed (by #332) | unanswerable-noun | major |
 | `decl::Sources/Dungeon/Regions/Prose+Temple.swift::engravings` | confirmed | prose-taste | minor |
-| `decl::Sources/Dungeon/Regions/Prose+Alice.swift::machineRoomMachinery` | confirmed | unanswerable-noun | minor |
+| `decl::Sources/Dungeon/Regions/Prose+Alice.swift::machineRoomMachinery` | fixed (by #332) | unanswerable-noun | minor |
 | `decl::Sources/Dungeon/Regions/Prose+Temple.swift::engravingsCave` | confirmed | prose-untrue-of-frame | note |
 | `decl::Sources/Gnusto/Actions/CoreVerbs.swift::cores` | confirmed | unanswerable-noun | major |
 | `decl::Sources/Dungeon/Regions/Prose+Volcano.swift::clothBag` | fixed (by #332) | prose-untrue-of-state | major |
 | `decl::Sources/Dungeon/Regions/Prose+River.swift::buoyFeelsFunny` | confirmed | mechanic-contradicts-prose | major |
-| `decl::Sources/Dungeon/Regions/Prose+River.swift::frigidRiverHere` | confirmed | unanswerable-noun | major |
+| `decl::Sources/Dungeon/Regions/Prose+River.swift::frigidRiverHere` | fixed (by #332) | unanswerable-noun | major |
 | `decl::Sources/Dungeon/Regions/Prose+EndgameMechanics.swift::boxPineSwingsShut` | confirmed | prose-untrue-of-frame | major |
 | `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::parapet` | fixed (by #332) | exit-prose-mismatch | minor |
-| `decl::Sources/Dungeon/Regions/Prose+Alice.swift::poolRoomDrained` | confirmed | unanswerable-noun | minor |
+| `decl::Sources/Dungeon/Regions/Prose+Alice.swift::poolRoomDrained` | fixed (by #332) | unanswerable-noun | minor |
 | `decl::Sources/Dungeon/Regions/Prose+Alice.swift::cageGas` | confirmed | prose-taste | note |
 | `decl::Sources/Dungeon/Regions/Prose+Volcano.swift::wideLedge` | confirmed | unwinnable | major |
-| `decl::Sources/Dungeon/Regions/Prose+Volcano.swift::gnome` | confirmed | unanswerable-noun | minor |
+| `decl::Sources/Dungeon/Regions/Prose+Volcano.swift::gnome` | fixed (by #332) | unanswerable-noun | minor |
 | `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::winningCell` | fixed (by #332) | exit-prose-mismatch | major |
 | `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::cellSlotFilled` | fixed (by #332) | prose-untrue-of-state | major |
 | `decl::Sources/Dungeon/Regions/Prose+EndgameMechanics.swift::masterWalksOff` | confirmed | prose-untrue-of-frame | major |
 | `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::tomb` | confirmed | repeat-behavior | minor |
 | `decl::Sources/Dungeon/Regions/Prose+EndgameMechanics.swift::masterFollows` | confirmed | prose-untrue-of-frame | major |
 | `decl::Sources/Dungeon/Prose+Stubs.swift::stubFloor` | fixed (by #332) | prose-untrue-of-state | major |
-| `decl::Sources/Dungeon/Regions/Prose+AboveGround.swift::forestDeep` | confirmed | unanswerable-noun | minor |
+| `decl::Sources/Dungeon/Regions/Prose+AboveGround.swift::forestDeep` | fixed (by #332) | unanswerable-noun | minor |
 | `decl::Sources/Gnusto/Actions/GameText.swift::lostThem` | confirmed | prose-untrue-of-frame | minor |
 | `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::bronzeDoorClosed` | refuted | mechanic-contradicts-prose | major |
 | `decl::Sources/Dungeon/Regions/Prose+EndgameMechanics.swift::quizAsksAgain` | refuted | mechanic-contradicts-prose | minor |
@@ -815,3 +815,21 @@ over the brief's two-in-five line. That is not alarming for a first blind round 
 Zork, where the mechanics contract is unusually load-bearing, but it is the number to watch.
 If the next blind round is also near half, the brief needs one line telling testers that
 reproduced MDL puzzle structure is not a prose defect — without handing them the doc.
+
+## Amendment, 2026-08-28 — ten `unanswerable-noun` rows fixed, and the one that cannot be
+
+The ten rows above marked `fixed (by #332)` are the thirteenth prose pass; see
+`docs/games/dungeon.md`, "The thirteenth pass". Seven of the sixteen sites were not
+what the round called them: the word **was** in the vocabulary and answered about
+something in another room, which no vocabulary check can find and which the round's
+own answer-key tooling would have cleared. That is now a rule in the game doc.
+
+**`cageRobotOutside` stays `confirmed`, and deliberately.** Three of its four printed
+nouns — `closet`, `pedestal`, `sticker` — are fixed. The fourth is `robot`, and it
+cannot be fixed in this region: the parser's addressing pass runs *second*, so a noun
+that resolves in the room beats an order-taker's name, and `robot, lift cage` is the
+only way out of the cage. Declaring a `robot` item there fails both walkthroughs — this
+was tried, and it does. `DungeonProseTests.theCageAnswersForWhatItCanSeeThroughItsBars`
+pins the denial with the reason, so the next pass finds out before it ships rather than
+after. The row is left open because it **is** open, and because a `fixed` key is one the
+harness is told to swallow.

@@ -165,7 +165,11 @@ struct DungeonDam: GameContent {
 
     let dam = Item {
         name("dam")
-        synonyms("gate", "gates", "fcd", "sluice")
+        // `concrete`: both paragraphs about this dam count its concrete by the
+        // foot, and the word answered nowhere. It is what the dam is made of
+        // rather than a second thing standing beside it, so it is a synonym and
+        // not an item. (#332)
+        synonyms("gate", "gates", "fcd", "sluice", "concrete")
         description(Prose.damItem)
         scenery
     }
@@ -489,7 +493,11 @@ struct DungeonDam: GameContent {
 
     let damFromBelow = Item {
         name("dam")
-        synonyms("gate", "gates", "fcd", "sluice")
+        // `concrete`: both paragraphs about this dam count its concrete by the
+        // foot, and the word answered nowhere. It is what the dam is made of
+        // rather than a second thing standing beside it, so it is a synonym and
+        // not an item. (#332)
+        synonyms("gate", "gates", "fcd", "sluice", "concrete")
         description(Prose.damItem)
         scenery
     }

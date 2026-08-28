@@ -187,6 +187,43 @@ extension Prose {
         feet that are not yours.
         """
 
+    /// Written fresh. The Stone Room turns on its masonry — *dressed stone,
+    /// laid so well that the joints hardly show* — and neither the stone, the
+    /// joints nor the wall the button is set into answered to anything. (#332)
+    static let stoneRoomMasonry = """
+        Blocks of dressed stone, squared and set so close that the joints are a
+        line you can see and not a gap you could get a nail into.
+        """
+
+    /// Written fresh. The landing at the head of the stairs, which the room's
+    /// own first four words name. (#332)
+    static let topOfStairsLanding = """
+        A rough shelf of rock at the head of the flight, wide enough to stand on
+        and no wider.
+        """
+
+    /// Written fresh. The hallway itself, from the eleven rooms that are in it
+    /// or open off it. Every one of them prints the word and none of them could
+    /// answer for it. (#332)
+    static let hallwayItself = """
+        A long straight run of stone, north and south, wide enough for the thing
+        that rides the channel down the middle of it and for very little else.
+        """
+
+    /// Written fresh. The staff the Dungeon Master's listing puts in his hand.
+    /// `staff` was a synonym on the man, so asking about it described him.
+    /// (#332)
+    static let dungeonMasterStaff = """
+        A length of dark wood, taller than the man holding it, with no carving
+        on it anywhere and a good deal of wear where his hand goes.
+        """
+
+    /// Written fresh. And the robe his own description names. (#332)
+    static let dungeonMasterRobe = """
+        A robe of no particular colour, which is a harder thing to arrange than
+        it sounds, and it has been arranged for a very long time.
+        """
+
     static let stoneRoomButton = """
         A large button of red enamel, set flush into the stone and worn smooth
         in the middle.

@@ -372,6 +372,15 @@ struct DungeonVolcano: GameContent {
         properName
     }
 
+    /// The watch he arrives glancing at and leaves glancing at. (#332)
+    let gnomeWatch = Item {
+        name("watch")
+        adjectives("pocket", "gold")
+        synonyms("watch", "chain", "timepiece")
+        description(Prose.gnomeWatch)
+        scenery
+    }
+
     // MARK: - Scenery
 
     /// Takes its nouns as a builder result, the way ``DungeonRiver``'s three
@@ -688,6 +697,7 @@ struct DungeonVolcano: GameContent {
         braidedWire.starts(inside: balloon)
 
         narrowLedgeHook.starts(in: narrowLedge)
+        gnomeWatch.starts(heldBy: gnome)
         wideLedgeHook.starts(in: wideLedge)
         zorkmid.starts(in: narrowLedge)
 

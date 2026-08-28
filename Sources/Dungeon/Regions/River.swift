@@ -315,12 +315,21 @@ struct DungeonRiver: GameContent {
     }
 
     /// The White Cliffs from the two beaches under them.
-    private static func cliffScenery(_ adjective: String, _ nouns: ItemTrait) -> Item {
+    /// The White Cliffs from the rooms that name them. The default text is the
+    /// view from the beach at their foot, which says there is no climbing them;
+    /// a boat wants told that they are the bank, so the three stretches pass
+    /// their own. ``pathScenery(_:)``'s shape — the nouns stay at the call site
+    /// and the text is the parameter.
+    private static func cliffScenery(
+        _ adjective: String,
+        _ nouns: ItemTrait,
+        _ text: String = Prose.whiteCliffsFromBelow
+    ) -> Item {
         Item {
             name("white cliffs")
             adjectives("white", adjective)
             nouns
-            description(Prose.whiteCliffsFromBelow)
+            description(text)
             scenery
             plural
         }
@@ -377,13 +386,117 @@ struct DungeonRiver: GameContent {
         }
     }
 
-    let riverAtOne = riverScenery("quiet", synonyms("water", "dam", "landing", "shore"))
-    let riverAtTwo = riverScenery(
-        "winding", synonyms("water", "dam", "corner", "rocks", "rock", "bank", "cliffs", "cliff"))
-    let riverAtThree = riverScenery(
-        "descending", synonyms("water", "valley", "beach", "shore", "cliffs", "cliff", "rumbling"))
-    let riverAtFour = riverScenery("fast", synonyms("water", "beach", "shore", "cliffs", "cliff", "area"))
-    let riverAtFive = riverScenery("rushing", synonyms("water", "shore", "landing", "area", "sound"))
+    // Each stretch used to carry every noun its paragraph printed — `dam`,
+    // `landing`, `shore`, `cliffs`, `rocks`, `bank`, `valley`, `beach` — as a
+    // synonym of the water, so all eight answered "The Frigid River lives up to
+    // its name". Not a denial, which is what the round filed, but the same fault
+    // one turn later: the near thing speaking for the far one, eight times in
+    // one room. The stretches keep only what means the water; everything they
+    // name from the water is declared below. (#332)
+    let riverAtOne = riverScenery("quiet", synonyms("water", "vicinity"))
+    let riverAtTwo = riverScenery("winding", synonyms("water", "corner"))
+    let riverAtThree = riverScenery("descending", synonyms("water", "rumbling"))
+    let riverAtFour = riverScenery("fast", synonyms("water", "sound"))
+    let riverAtFive = riverScenery("rushing", synonyms("water", "sound"))
+
+    /// Flood Control Dam #3 from the two stretches that name it, both of which
+    /// name it as something upstream. ``DungeonDam``'s own dam is the one you
+    /// stand on; this is the one you are being carried away from.
+    private static func damFromTheWater() -> Item {
+        Item {
+            name("dam")
+            adjectives("flood", "control", "abandoned")
+            description(Prose.damFromTheWater)
+            scenery
+        }
+    }
+
+    /// The landing on the west shore — small on River-1, large on River-5, and
+    /// the only two stretches that print the word.
+    private static func landingScenery(
+        _ size: String, _ nouns: ItemTrait = synonyms("landing")
+    ) -> Item {
+        Item {
+            name("landing")
+            adjectives(size)
+            nouns
+            description(Prose.riverLanding(size))
+            scenery
+        }
+    }
+
+    /// The west bank, from a boat going past it. Four stretches print `shore`
+    /// or `bank` and none of them modelled either.
+    private static func westBankScenery() -> Item {
+        Item {
+            name("shore")
+            adjectives("west", "western")
+            synonyms("shore", "bank")
+            description(Prose.westBankFromTheWater)
+            scenery
+        }
+    }
+
+    let damAtRiverOne = damFromTheWater()
+    let damAtRiverTwo = damFromTheWater()
+
+    let landingAtRiverOne = landingScenery("small")
+    let landingAtRiverFive = landingScenery("large", synonyms("landing", "area"))
+
+    let bankAtRiverOne = westBankScenery()
+    let bankAtRiverTwo = westBankScenery()
+    let bankAtRiverThree = westBankScenery()
+    let bankAtRiverFive = westBankScenery()
+
+    /// The rocks that are River-2's reason the west bank is no landing.
+    let rocksAtRiverTwo = Item {
+        name("rocks")
+        adjectives("large")
+        synonyms("rocks", "rock")
+        description(Prose.riverRocks)
+        scenery
+        plural
+    }
+
+    /// The valley River-3 descends into.
+    let valleyAtRiverThree = Item {
+        name("valley")
+        description(Prose.riverValley)
+        scenery
+    }
+
+    /// The strip of beach under the east cliffs, from the water. River-3 calls
+    /// it narrow and River-4 calls it a small area; it is the same sand.
+    private static func eastBeachScenery(_ nouns: ItemTrait = synonyms("beach")) -> Item {
+        Item {
+            name("beach")
+            adjectives("narrow", "east", "eastern", "small")
+            nouns
+            description(Prose.beachFromTheWater)
+            scenery
+        }
+    }
+
+    let beachAtRiverThree = eastBeachScenery()
+    let beachAtRiverFour = eastBeachScenery(synonyms("beach", "area"))
+
+    /// And River-4's other one, which is the sand you can actually land on.
+    let sandyBeachAtRiverFour = Item {
+        name("sandy beach")
+        adjectives("sandy", "west", "western")
+        synonyms("beach", "sand", "shore")
+        description(Prose.sandyBeachFromTheWater)
+        scenery
+    }
+
+    private static func cliffsFromTheWater() -> Item {
+        cliffScenery("sheer", synonyms("cliffs", "cliff"), Prose.cliffsFromTheWater)
+    }
+
+    let cliffsAtRiverTwo = cliffsFromTheWater()
+    let cliffsAtRiverThree = cliffsFromTheWater()
+    let cliffsAtRiverFour = cliffsFromTheWater()
+
     let riverAtSandyBeach = riverScenery("flowing", synonyms("water"))
     let riverAtShore = riverScenery("treacherous", synonyms("water", "shore", "corner"))
     let riverAtRockyShore = riverScenery("rocky", synonyms("water", "shore", "rocks", "rock"))
@@ -643,6 +756,23 @@ struct DungeonRiver: GameContent {
         riverAtThree.starts(in: river3)
         riverAtFour.starts(in: river4)
         riverAtFive.starts(in: river5)
+
+        damAtRiverOne.starts(in: river1)
+        damAtRiverTwo.starts(in: river2)
+        landingAtRiverOne.starts(in: river1)
+        landingAtRiverFive.starts(in: river5)
+        bankAtRiverOne.starts(in: river1)
+        bankAtRiverTwo.starts(in: river2)
+        bankAtRiverThree.starts(in: river3)
+        bankAtRiverFive.starts(in: river5)
+        rocksAtRiverTwo.starts(in: river2)
+        valleyAtRiverThree.starts(in: river3)
+        beachAtRiverThree.starts(in: river3)
+        beachAtRiverFour.starts(in: river4)
+        sandyBeachAtRiverFour.starts(in: river4)
+        cliffsAtRiverTwo.starts(in: river2)
+        cliffsAtRiverThree.starts(in: river3)
+        cliffsAtRiverFour.starts(in: river4)
         cliffsAtNorthBeach.starts(in: whiteCliffsNorth)
         cliffsAtSouthBeach.starts(in: whiteCliffsSouth)
         riverAtNorthBeach.starts(in: whiteCliffsNorth)

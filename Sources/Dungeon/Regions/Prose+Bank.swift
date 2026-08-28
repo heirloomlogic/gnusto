@@ -52,6 +52,25 @@ extension Prose {
         worn smooth by a great many hands.
         """
 
+    /// Written fresh. Both teller's stations end by naming three doorways and
+    /// the room the largest of them opens into, and neither word answered — the
+    /// Bank printed `depository` ninety-nine times in one round of transcripts
+    /// and denied it every time. (#332)
+    static func tellerDoorways(_ side: String) -> String {
+        """
+        Three ways out of this station: north to the viewing room, south to the
+        lobby, and the wide one \(side) that the bank's own traffic used.
+        """
+    }
+
+    /// Written fresh. The Safety Depository from a teller's station — named
+    /// from the doorway rather than stood in, so this is what you can see of it
+    /// and not what ``safetyDepository`` says. (#332)
+    static let depositoryFromTheTeller = """
+        The strongroom the whole building is arranged around. From here it is a
+        wide doorway and a great deal of stone, and no light of its own.
+        """
+
     // MARK: - The Viewing Rooms
 
     /// Adapted. `BKVE` and `BKVW` are `substantial`, and the difference is the

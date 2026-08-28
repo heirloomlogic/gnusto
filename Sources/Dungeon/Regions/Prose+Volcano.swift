@@ -818,6 +818,14 @@ extension Prose {
         nervously glancing at his watch.
         """
 
+    /// Written fresh. Both of the gnome's own lines end on his watch — he
+    /// arrives *nervously glancing* at it and leaves *glancing* at it — and the
+    /// word was not in the game's vocabulary at all. (#332)
+    static let gnomeWatch = """
+        A pocket watch on a chain, which he consults about twice as often as
+        anybody with a real appointment would.
+        """
+
     static let gnomeIsNervous = "The gnome appears increasingly nervous."
 
     /// Verbatim; the trilogy's `I-NERVOUS`.

@@ -148,6 +148,39 @@ struct DungeonBank: GameContent {
         }
     }
 
+    let westTellerDoorways = Self.tellerDoorways("west")
+    let eastTellerDoorways = Self.tellerDoorways("east")
+
+    /// The station's own three doorways. `doorway` was a word this game knew —
+    /// ``DungeonDam`` declares a pair of them — and knowing it somewhere else is
+    /// what made the denial here read as a bug rather than as a missing word.
+    /// (#332)
+    private static func tellerDoorways(_ side: String) -> Item {
+        Item {
+            name("doorways")
+            adjectives("large", "wide")
+            synonyms("doorway", "doorways", "door", "doors")
+            description(Prose.tellerDoorways(side))
+            scenery
+            plural
+        }
+    }
+
+    let westTellerDepository = Self.depositoryFromTheTeller()
+    let eastTellerDepository = Self.depositoryFromTheTeller()
+
+    /// And the room the large one opens into, which both stations name and
+    /// neither could answer for.
+    private static func depositoryFromTheTeller() -> Item {
+        Item {
+            name("depository")
+            adjectives("safety")
+            synonyms("depository", "strongroom")
+            description(Prose.depositoryFromTheTeller)
+            scenery
+        }
+    }
+
     let westViewingSign = Self.viewingSign()
     let eastViewingSign = Self.viewingSign()
 
@@ -320,6 +353,10 @@ struct DungeonBank: GameContent {
         bankSigns.starts(in: bankEntrance)
         westTellerCounter.starts(in: westTellersRoom)
         eastTellerCounter.starts(in: eastTellersRoom)
+        westTellerDoorways.starts(in: westTellersRoom)
+        eastTellerDoorways.starts(in: eastTellersRoom)
+        westTellerDepository.starts(in: westTellersRoom)
+        eastTellerDepository.starts(in: eastTellersRoom)
         westViewingSign.starts(in: westViewingRoom)
         eastViewingSign.starts(in: eastViewingRoom)
 
