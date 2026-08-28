@@ -1091,6 +1091,80 @@ struct DungeonEndgameTests {
         #expect(!doorway.contains("with nothing in it"))
     }
 
+    // MARK: - A line reads the frame it prints in
+
+    /// **The box has four sides and told all four rooms about one of them.**
+    /// Both timed faces guarded on `angleOnTheBox(state) != nil`, which is true
+    /// of *any* room around the berth — so a face swinging shut announced itself
+    /// to the three rooms it is a wall to as readily as to the one it is a
+    /// doorway to. Here the mirror faces south and the pine faces east, and the
+    /// player is standing south. (#332)
+    @Test func aFaceOfTheBoxIsOnlyReportedToTheRoomItFaces() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.pastTheCrypt + Self.toTheOpenMirror
+                // Open the pine end, then leave through the mirror rather than
+                // through it: stepping out *through* the pine shuts it and stops
+                // its clock, so the end left open behind you is what the fuse has
+                // left to answer.
+                + ["in", "push pine", "south"]
+                + Array(repeating: "wait", count: 6),
+            seed: Self.seed)
+
+        // It really did open eastward, into a room the player is not in.
+        #expect(transcript.contains("The pine wall swings out on its hinges. Beyond it is the Narrow Room."))
+        // And it shuts where it opened, not where the player is standing.
+        #expect(!transcript.contains("The pine wall swings to"))
+        // The control, same helper and the same turn: the mirror *does* face
+        // this room, and the player is told it has gone.
+        #expect(transcript.contains("The open mirror swings quietly back into line"))
+    }
+
+    /// **`follow master` and `master, stay` were answered from West of House on
+    /// turn one.** He stands in the Narrow Corridor from the first turn of the
+    /// game, and two engine paths reach an actor who is not in the room —
+    /// `.follow` is the one far-sighted intent, and `takesOrders` makes him
+    /// nameable out of sight. Neither asks *how far*. (#332)
+    @Test func theDungeonMasterIsNotAnsweredFromTheOtherEndOfTheGame() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            ["follow master", "master, stay", "master, north", "master, cut staff"],
+            seed: Self.seed)
+
+        #expect(transcript.contains("West of House"))
+        // `cut` is in the list because it was the one that killed you: his staff
+        // resolves in *his* scope, so the object bound and the `die` rule fired
+        // from the opening room of the game.
+        #expect(!transcript.contains("You are dead"))
+        for order in ["follow master", "master, stay", "master, north", "master, cut staff"] {
+            let answer = turnOutput(of: order, in: transcript)
+            #expect(answer.contains("within a great many miles"))
+            #expect(!answer.contains("The Dungeon Master nods"))
+            #expect(!answer.contains("waits to be told which way"))
+        }
+    }
+
+    /// **He walked away and was gone, to a player shut in a cell who could not
+    /// see the corridor he was standing in.** Being heard from a cell he will
+    /// not enter is the solve, so the order has to report something — but
+    /// *"walks away and is gone"* is a thing you watched. Three frames, not the
+    /// two #336 left: he arrives where you are, he leaves the room you are in,
+    /// or you hear him go. (#332)
+    @Test func theMasterWalkingOffIsHeardAndNotWatchedFromInsideACell() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.pastTheCrypt + Self.throughTheBox + Self.theQuiz
+                // He is left on the parapet; the player walks down into the
+                // cell. South is the one step he has from up there.
+                + Array(Self.thePrison.prefix(13)) + ["dungeon master, south"],
+            seed: Self.seed)
+
+        #expect(transcript.contains("Prison Cell"))
+        let order = turnOutput(of: "dungeon master, south", in: transcript)
+        #expect(order.contains("unhurried footsteps go away from you"))
+        #expect(!order.contains("walks away and is gone"))
+    }
+
     // MARK: - Every printed noun answers
 
     /// The sweep the rest of the game has one of per region, for the region no

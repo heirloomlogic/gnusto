@@ -1576,6 +1576,40 @@ struct DungeonProseTests {
         #expect(turnOutput(of: "x bars", in: transcript).contains("Steel bars, an inch thick"))
     }
 
+    /// **The gnome's five-turn watch expires against a count, not against the
+    /// player.** Walk one room off the ledge and the fuse took him off the board
+    /// in silence: an empty ledge, and no sentence ever printed. Its own line is
+    /// trilogy-verbatim and ends *leaving you alone on the ledge*, which is a
+    /// claim about where the player is standing, so it could not simply be
+    /// hoisted out of the guard — the room next door needs a departure it can
+    /// hear. (#332)
+    @Test func theGnomeDoesNotLeaveInSilenceARoomAway() async throws {
+        let heard = try await play(
+            Dungeon(),
+            Self.strandedOnTheWideLedge + Array(repeating: "wait", count: 11)
+                // Speaking to him arms the watch; the Dusty Room is one room off
+                // the ledge and inside the volcano, which is what he is heard
+                // from.
+                + ["greet gnome", "south"] + Array(repeating: "wait", count: 6),
+            seed: 18)
+
+        #expect(heard.contains("Dusty Room"))
+        #expect(heard.contains("something about an appointment"))
+        // Not the on-ledge line, which claims a ledge the player has left.
+        #expect(!heard.contains("leaving you alone on the ledge"))
+
+        // The control: stand where he is standing and the verbatim line is
+        // exactly what still prints.
+        let watched = try await play(
+            Dungeon(),
+            Self.strandedOnTheWideLedge + Array(repeating: "wait", count: 11)
+                + ["greet gnome"] + Array(repeating: "wait", count: 6),
+            seed: 18)
+
+        #expect(watched.contains("leaving you alone on the ledge"))
+        #expect(!watched.contains("something about an appointment"))
+    }
+
     /// **Both of the gnome's own lines end on a watch the parser had never
     /// heard of.** He arrives *nervously glancing at his watch* and leaves
     /// *glancing at his watch*, and `x watch` answered "I don't know the word".

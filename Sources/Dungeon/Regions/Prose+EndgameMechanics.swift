@@ -478,6 +478,22 @@ extension Prose {
         The Dungeon Master walks away and is gone.
         """
 
+    /// The same walk from a room that cannot see the corridor he was standing
+    /// in. Being heard from a cell he will not enter is the solve, so the order
+    /// has to report *something* — and "walks away and is gone" is a thing you
+    /// watched, which from behind a cell door you did not. (#332)
+    static let masterWalksOffHeard = """
+        Somewhere out in the corridors, unhurried footsteps go away from you.
+        """
+
+    /// Written fresh. He is on stage from the first turn of the game and two
+    /// engine paths reach an actor who is not in the room, so without a guard
+    /// he answered `follow master` and `master, stay` from West of House. This
+    /// is what the endgame says instead. (#332)
+    static let masterIsNotHere = """
+        Nobody of that description is within a great many miles of you.
+        """
+
     static let masterNeedsADirection = """
         The Dungeon Master waits to be told which way.
         """

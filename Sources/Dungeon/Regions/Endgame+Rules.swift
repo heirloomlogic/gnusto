@@ -42,9 +42,7 @@ extension DungeonEndgame {
             guard state.mirrorOpen else { return }
             state.mirrorOpen = false
             box = state
-            if player.location == insideMirror || angleOnTheBox(state) != nil {
-                say(Prose.boxMirrorSwingsShut)
-            }
+            if canWatch(state, close: .mirror) { say(Prose.boxMirrorSwingsShut) }
         }
 
         // Five turns of an open pine end. Reported to anybody who can see it
@@ -58,9 +56,7 @@ extension DungeonEndgame {
             guard state.pineOpen else { return }
             state.pineOpen = false
             box = state
-            if player.location == insideMirror || angleOnTheBox(state) != nil {
-                say(Prose.boxPineSwingsShut)
-            }
+            if canWatch(state, close: .pine) { say(Prose.boxPineSwingsShut) }
         }
 
         // He asks again every second turn until he is answered, which is the
