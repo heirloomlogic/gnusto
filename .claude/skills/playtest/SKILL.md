@@ -391,12 +391,23 @@ no CLI fallback by design, and handing it one to route around an operator's mist
 would breach the firewall to fix the wrong problem.
 
 **A reproducer that starts with `restore` needs a save door, and both harnesses have
-one.** The MCP `replay` tool takes `savesFrom: "<label>"`; `bin/playtest-replay` takes
-`--saves-from LABEL`. Either copies that label's `*.gnusto` slots in before the game
-boots, and **neither can write back into the label it read**. Without it the game answers
-*"Restore failed."*, and **that answer is about the harness, not about the finding**: it
-produced four false `not-reproducible` verdicts on 2026-08-25, two of which reproduce in
-seven commands.
+one.** The MCP `replay` tool takes `savesFrom`; `bin/playtest-replay` takes
+`--saves-from`. Either copies `*.gnusto` slots in before the game boots, and **neither
+can write back into the source it read**. Without it the game answers *"Restore
+failed."*, and **that answer is about the harness, not about the finding**: it produced
+four false `not-reproducible` verdicts on 2026-08-25, two of which reproduce in seven
+commands. The `replay` tool now says so on its own answer, on a `restore-unreachable`
+line, so a verifier reading a bad verdict is told which of the two facts it is holding.
+
+**Both take a label or a path, and after the round it has to be a path.** A bare name is
+a play label; anything holding a slash is a directory of slots. The path form exists
+because the label form expires: labels are cleaned between rounds and a fixer picks the
+class up afterwards, so the label a report names is usually gone by the time anybody
+replays it. Every staged probe keeps the bytes it ran on in `saves-in/` beside its
+transcript for exactly this, and `--saves-from <probe>/saves-in` reproduces a reported
+finding with nothing else surviving. Which means the finding has to *carry* its source:
+`savesFrom` is a field on the finding contract, the round prints it to the verifier as
+`Saves:`, and `issue-shape.md` requires it beside any reproducer that restores.
 
 **The two differ in where the copy lands, and it matters.** `replay` stages into a
 throwaway it deletes, so the staging lasts one call. The script has no per-run save

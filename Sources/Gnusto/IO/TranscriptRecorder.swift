@@ -56,7 +56,7 @@ enum TranscriptStore {
         now: Date = Date(),
         environment: [String: String] = ProcessInfo.processInfo.environment
     ) -> URL {
-        if let name, isExplicitPath(name) {
+        if let name, SaveStore.isExplicitPath(name) {
             return URL(fileURLWithPath: (name as NSString).expandingTildeInPath)
         }
         let base = name.map(sanitize) ?? "\(sanitize(title))-\(timestamp(now))"
@@ -64,12 +64,6 @@ enum TranscriptStore {
             defaultDirectory(forGameTitled: title, environment: environment)
             .appendingPathComponent(base)
             .appendingPathExtension(fileExtension)
-    }
-
-    /// Whether `name` names an explicit filesystem path — it contains a `/` or
-    /// starts with `~` — rather than a bare transcript slot.
-    private static func isExplicitPath(_ name: String) -> Bool {
-        name.hasPrefix("~") || name.contains("/")
     }
 
     /// The characters kept verbatim in a slot name; every other run collapses to

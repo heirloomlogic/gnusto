@@ -94,6 +94,11 @@ enum PlaytestReplay {
         /// The save slots copied in before the game booted, or `nil` for the
         /// ordinary clean start. See ``Staged``.
         let staged: Staged?
+
+        /// Whether this replay typed `restore` with nothing staged to restore
+        /// from — the harness answer, not a game answer. See
+        /// ``restoreWasUnreachable(_:staged:)``.
+        let restoreWasUnreachable: Bool
     }
 
     /// What a replay was given to restore from, and where it came from.
@@ -116,9 +121,20 @@ enum PlaytestReplay {
         /// What was copied, sorted.
         let slots: [String]
 
-        /// The label itself, which is what a reader greps a probe tree for and
-        /// what `bin/playtest-replay` records — `from` is one level below it.
-        var label: String { from.deletingLastPathComponent().lastPathComponent }
+        /// What a reader greps a probe tree for, and what `bin/playtest-replay`
+        /// records: the shortest name that resolves back to these bytes.
+        ///
+        /// A label's saves live in `<label>/saves/`, so for that layout the
+        /// directory one level up **is** the label and is the right thing to
+        /// print. Nothing else is: a probe's own `saves-in/` — the path form,
+        /// which is how a round is re-run after its labels are cleaned — would
+        /// render as a bare `probe-002`, a name every label in the tree has one
+        /// of. That is the un-replayable receipt the path form exists to fix, so
+        /// anything not in the label layout prints whole.
+        var label: String {
+            let parent = from.deletingLastPathComponent()
+            return from.lastPathComponent == "saves" ? parent.lastPathComponent : from.path
+        }
     }
 
     /// Plays a command list into a fresh world and reports what happened.
@@ -134,9 +150,9 @@ enum PlaytestReplay {
     ///     in, or `nil` to run without leaving a receipt. The server always
     ///     passes one; the suite passes `nil` where the files are not the
     ///     subject.
-    ///   - savesFrom: a label's `saves/` directory whose slots this replay may
-    ///     read, or `nil` for a clean start. Copied in, never written back —
-    ///     see ``stage(_:into:)``.
+    ///   - savesFrom: a directory of `.gnusto` slots this replay may read — a
+    ///     label's `saves/`, or a probe's `saves-in/` — or `nil` for a clean
+    ///     start. Copied in, never written back — see ``stage(_:into:)``.
     /// - Throws: ``PlaytestError`` for a list that is too long, for one that
     ///   holds a `script`/`unscript` line — neither of which runs anything —
     ///   or for a `savesFrom` directory holding no slots.
@@ -193,7 +209,43 @@ enum PlaytestReplay {
             probe: probe.flatMap {
                 Self.write(commands, transcript, seed: seed, staged: staged, to: $0)
             },
-            staged: staged)
+            staged: staged,
+            restoreWasUnreachable: Self.restoreWasUnreachable(commands, staged: staged))
+    }
+
+    /// Whether a replay typed `restore` before it could have written anything to
+    /// restore, with no slots staged in — which is the one failure in this tree
+    /// that is a fact about the harness and never about the game.
+    ///
+    /// **Read off the command list, not off the transcript.** The refusal is
+    /// ``GameText/restoreFailed``, which any game may re-skin, so matching its
+    /// words would answer for the stock voice and quietly stop answering for a
+    /// game that changed it. What the harness actually knows is the pair this
+    /// reads: a `restore` was asked for, and the directory it asked of was
+    /// empty by construction.
+    ///
+    /// A `save` earlier in the list closes it: that replay wrote its own slot in
+    /// the throwaway and its `restore` is reaching a real file. The first of the
+    /// two verbs wins, so a list that saves and then restores is clean and one
+    /// that restores and then saves is not.
+    ///
+    /// - Parameters:
+    ///   - commands: the lines fed, in order.
+    ///   - staged: what was copied in first, or `nil` for a clean start.
+    /// - Returns: true when a `restore` in this list had nothing to find.
+    private static func restoreWasUnreachable(_ commands: [String], staged: Staged?) -> Bool {
+        guard staged == nil else { return false }
+        for line in commands where !TesterInput.isComment(line) {
+            switch line.trimmingCharacters(in: .whitespaces)
+                .split(separator: " ", omittingEmptySubsequences: true)
+                .first?.lowercased()
+            {
+            case "save": return false
+            case "restore": return true
+            default: continue
+            }
+        }
+        return false
     }
 
     /// Copies a label's saved games into this replay's throwaway directory.
@@ -214,7 +266,8 @@ enum PlaytestReplay {
     /// file or the whole of the new one.
     ///
     /// - Parameters:
-    ///   - source: a label's `saves/` directory.
+    ///   - source: a directory of saved games — a label's `saves/`, or the
+    ///     `saves-in/` an earlier staged probe kept.
     ///   - destination: the throwaway, which may not exist yet.
     /// - Throws: ``PlaytestError`` when the source holds no slots.
     /// - Returns: the slot names copied, sorted.

@@ -248,11 +248,7 @@ actor PlaytestSessions {
                 """)
         }
         let labelDirectory = Self.directory(forLabel: label, under: root)
-        var isDirectory: ObjCBool = false
-        guard
-            FileManager.default.fileExists(atPath: labelDirectory.path, isDirectory: &isDirectory),
-            isDirectory.boolValue
-        else {
+        guard Self.isDirectory(labelDirectory) else {
             throw PlaytestError(
                 """
                 No label "\(label)" under \(root.path). savesFrom names the label whose \
@@ -261,6 +257,68 @@ actor PlaytestSessions {
                 """)
         }
         return Self.savesDirectory(under: labelDirectory)
+    }
+
+    /// Where one sessionless `replay` may read saved games from: a play label,
+    /// or a path to a saves directory.
+    ///
+    /// **Two spellings because the evidence outlives the label.** A round's
+    /// labels are cleaned between rounds, and the durable copy of a staged
+    /// replay's slots is the `saves-in/` directory ``PlaytestReplay`` leaves
+    /// inside the probe — written precisely so a probe cited a year later still
+    /// holds the bytes it ran on. A `savesFrom` that took only a label could
+    /// name that directory in a receipt and never read it back, so the receipt
+    /// documented a run nobody could repeat. A fixer picking up a confirmed
+    /// finding is the ordinary case of that: by the time they replay, the
+    /// tester's label is usually gone and the probe is all that is left.
+    ///
+    /// The rule for telling them apart is ``SaveStore/isExplicitPath(_:)``,
+    /// called rather than restated — a `/` anywhere, or a leading `~`, means a
+    /// path, and anything else is a bare name. It is the one spelling of that
+    /// question in the package, so a caller who knows how the save prompt reads
+    /// an answer knows how this reads one, and it stays true when the rule
+    /// moves.
+    ///
+    /// A path is honored verbatim, which is the whole point: it names a
+    /// directory outside the play-test root. That is not an escape to guard
+    /// against — the copy is one way (``PlaytestReplay/stage(_:into:)``), the
+    /// caller drives this process from inside the checkout, and
+    /// `bin/playtest-replay --package-path` has always taken an arbitrary
+    /// directory for the same reason.
+    ///
+    /// - Parameter named: a label, or a path to a directory holding `.gnusto`
+    ///   slots.
+    /// - Throws: ``PlaytestError`` for a malformed label, a label with no
+    ///   directory under the root, or a path that is not a directory.
+    /// - Returns: the directory to stage out of.
+    func savesSource(_ named: String) throws -> URL {
+        let trimmed = named.trimmingCharacters(in: .whitespaces)
+        guard SaveStore.isExplicitPath(trimmed) else {
+            return try savesDirectory(forLabel: named)
+        }
+        let url = URL(
+            fileURLWithPath: (trimmed as NSString).expandingTildeInPath, isDirectory: true)
+        guard Self.isDirectory(url) else {
+            throw PlaytestError(
+                """
+                savesFrom "\(named)" holds a slash, so it was read as a path, and \
+                \(url.path) is not a directory. Nothing ran. Pass a play label — the name \
+                the tester gave `open`, or `bin/playtest-replay --label` — or the path of \
+                a directory holding `.gnusto` slots, which for a round already reported is \
+                the `saves-in/` directory beside the probe's transcript.
+                """)
+        }
+        return url
+    }
+
+    /// Whether a URL names a directory that exists.
+    ///
+    /// The `ObjCBool` dance written once. Both callers here are guards on a name
+    /// a caller supplied, and neither wants five lines of ceremony to say so.
+    private static func isDirectory(_ url: URL) -> Bool {
+        var isDirectory: ObjCBool = false
+        return FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory)
+            && isDirectory.boolValue
     }
 
     /// A label's own directory under the root.

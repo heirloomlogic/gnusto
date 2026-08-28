@@ -192,6 +192,26 @@ Note the division: saves belong to the **label**, which is what lets the second 
 restore what the first saved, while transcripts belong to the **probe**, so the two runs
 above leave two transcripts rather than one.
 
+**To restore a slot somebody else wrote, stage it in with `--saves-from`:**
+
+```sh
+bin/playtest-replay Fulminate --commands probe.txt --label mine --saves-from deep
+bin/playtest-replay Fulminate --commands probe.txt --label mine \
+  --saves-from .context/playtest/deep/probe-002/saves-in
+```
+
+Either a label or — anything holding a slash — a path to a directory of `.gnusto`
+slots. The copy is one way: it lands in *your* label, so a `--save` of yours can never
+reach back into theirs. This is what a verifier needs to replay a reproducer that begins
+`restore`; without it the game answers "Restore failed." and the transcript is about the
+harness rather than about the finding. The MCP `replay` tool takes the same thing as
+`savesFrom`, and says `restore-unreachable` on its answer when a list types `restore`
+with nothing staged.
+
+The path form is the one that keeps working. Labels are cleaned between rounds, so a
+staged run keeps a copy of the slots it used in `saves-in/` beside its own transcript —
+point `--saves-from` at that and a finding still replays with its label long gone.
+
 ## What to look for
 
 `.claude/skills/playtest/references/playtester-brief.md` has the full judgement kernel
@@ -218,6 +238,7 @@ actually ringing.
 |---|---|---|
 | `.context/playtest/<label>/<probe>/` | no | one run: transcript, effective command list, stderr, summary |
 | `.context/playtest/<label>/saves/` | no | the label's save slots, shared by its probes |
+| `.context/playtest/<label>/<probe>/saves-in/` | no | the slots a `--saves-from` run was staged with, kept where they outlive the label |
 | `docs/games/<game>-playtest-<date>.md` | yes | the round report |
 | `docs/games/<game>-playtest-ledger.md` | yes | append-only dedupe keys and verdicts |
 | one GitHub issue | — | every confirmed class as a checklist — see `.claude/skills/playtest/references/issue-shape.md` |

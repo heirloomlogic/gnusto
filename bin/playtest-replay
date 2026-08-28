@@ -38,14 +38,23 @@
 #                       a deep state without replaying its prologue.
 #   --save SLOT         Epilogue: save to SLOT before quitting, so a later probe
 #                       can --restore it.
-#   --saves-from LABEL  Copy another label's *.gnusto slots into this run's saves
-#                       before it starts, so --restore can reach a save this run
-#                       never wrote. One way: the copy lands in THIS label's saves
-#                       directory, so a --save here cannot reach back into LABEL.
-#                       This is what a verifier needs to replay a reproducer that
-#                       begins `restore`; without it the game answers "Restore
-#                       failed." and the verdict is about the harness rather than
-#                       about the finding.
+#   --saves-from SRC    Copy *.gnusto slots into this run's saves before it starts,
+#                       so --restore can reach a save this run never wrote. SRC is
+#                       another LABEL, or — anything holding a slash — the PATH of
+#                       a directory of slots. One way: the copy lands in THIS
+#                       label's saves directory, so a --save here cannot reach back
+#                       into SRC. This is what a verifier needs to replay a
+#                       reproducer that begins `restore`; without it the game
+#                       answers "Restore failed." and the verdict is about the
+#                       harness rather than about the finding.
+#
+#                       **The path form is what a fixer uses.** Labels are cleaned
+#                       between rounds and a fixer picks up a finding after that,
+#                       so the label named in the report is usually gone by then.
+#                       Every staged probe keeps the bytes it ran on in saves-in/
+#                       beside its transcript, and that directory is the durable
+#                       source: --saves-from <probe>/saves-in reproduces a
+#                       reported finding with nothing else surviving.
 #
 #                       **The slots join this label permanently.** Saves belong to
 #                       the label here (see below), so there is nowhere per-run to
@@ -211,10 +220,22 @@ mkdir -p "$scratch/saves"
 # wrote a transcript into.
 staged_slots=()
 if [[ -n "$saves_from" ]]; then
-  plain_name "$saves_from" || die "bad --saves-from '$saves_from'"
-  [[ "$saves_from" != "$label" ]] \
-    || die "--saves-from '$saves_from' is this run's own label; it already reads those slots"
-  from_dir="$playtest_root/$saves_from/saves"
+  # A slash means a path, exactly as it does at the game's own save prompt and in
+  # the MCP tool's `savesFrom` — one rule for "bare name or path" in the package.
+  # The path form is the one that still works after a round's labels are cleaned:
+  # it names a probe's own saves-in/, which is where the bytes durably live.
+  if [[ "$saves_from" == */* || "$saves_from" == "~"* ]]; then
+    from_dir="${saves_from/#\~/$HOME}"
+    [[ -d "$from_dir" ]] \
+      || die "--saves-from '$saves_from' was read as a path, and '$from_dir' is not a directory"
+    [[ "$(cd "$from_dir" && pwd)" != "$(cd "$scratch/saves" && pwd)" ]] \
+      || die "--saves-from '$saves_from' is this run's own saves directory; it already reads those slots"
+  else
+    plain_name "$saves_from" || die "bad --saves-from '$saves_from'"
+    [[ "$saves_from" != "$label" ]] \
+      || die "--saves-from '$saves_from' is this run's own label; it already reads those slots"
+    from_dir="$playtest_root/$saves_from/saves"
+  fi
   # bash 3.2 ships no nullglob, so an unmatched pattern comes back literal and
   # has to be tested rather than counted.
   staged_slots=("$from_dir"/*.gnusto)
@@ -268,7 +289,7 @@ fi
 if [[ -n "$saves_from" ]]; then
   cp "${staged_slots[@]}" "$scratch/saves/"
   printf '%s\n' "$saves_from" > "$scratch/saves/.staged-from"
-  echo "[playtest] staged ${#staged_slots[@]} slot(s) from label '$saves_from'" >&2
+  echo "[playtest] staged ${#staged_slots[@]} slot(s) from '$saves_from' ($from_dir)" >&2
 fi
 
 # The probe copy is keyed off the MARKER, not off this run's argument, so a run
@@ -285,6 +306,26 @@ if [[ -n "$staged_from_marker" ]]; then
   if [[ -e "${staged_here[0]}" ]]; then
     mkdir -p "$probe_dir/saves-in"
     cp "${staged_here[@]}" "$probe_dir/saves-in/"
+  fi
+fi
+
+# The same warning the MCP `replay` tool prints, for the harness that a fixer
+# actually drives. A `restore` with nothing staged meets a refusal that is a fact
+# about this script and not about the game, and every turn after it is the wrong
+# game — which is how four real defects were discarded on 2026-08-25. Read off
+# the command list rather than off the transcript, because the refusal is
+# `GameText.restoreFailed` and any game may re-skin it; a `save` earlier in the
+# list closes the question, since that run wrote its own slot.
+if [[ -z "$staged_from_marker" && -z "$restore_slot" ]]; then
+  first_save_or_restore="$(
+    grep -oiE '^[[:space:]]*(save|restore)\b' "$commands" | head -1 | tr -d '[:space:]' \
+      | tr '[:upper:]' '[:lower:]'
+  )"
+  if [[ "$first_save_or_restore" == "restore" ]]; then
+    echo "[playtest] restore-unreachable — this list types 'restore' and nothing was staged," >&2
+    echo "[playtest]   so the save it asked for cannot exist and every turn after it is the" >&2
+    echo "[playtest]   wrong game. Re-run with --saves-from <label>, or with the path of a" >&2
+    echo "[playtest]   saves-in directory beside an earlier probe's transcript." >&2
   fi
 fi
 

@@ -39,6 +39,11 @@ node .claude/workflows/playtest.dryrun.mjs     # CI gate on the play-test harnes
 
 bin/playtest-replay --build Fulminate                              # once
 bin/playtest-replay Fulminate --commands probe.txt --seed 0 --label mine --tail 60
+bin/playtest-replay Fulminate --commands repro.txt --label mine --saves-from deep
+                                               # a reproducer that begins `restore` needs
+                                               # the slot: --saves-from takes a label, or
+                                               # the path of a <probe>/saves-in directory,
+                                               # which outlives the label it came from
 
 bin/gnusto-mcp Fulminate                       # what an MCP client runs; stdout is the protocol
                                                # execs at connect, and a running server is frozen

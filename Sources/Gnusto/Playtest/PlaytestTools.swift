@@ -1165,9 +1165,10 @@ enum PlaytestTools {
                 still matches the line it came from, and the [status] footers are \
                 not searched. This is how you check a reproducer without playing \
                 the game yourself. A reproducer that begins `restore` needs \
-                `savesFrom` set to the label that wrote the slot — without it the \
-                game answers "Restore failed." and the verdict you get back is \
-                about the harness, not about the finding. Every call writes its own probe directory and \
+                `savesFrom` set to the label that wrote the slot, or to the path of \
+                a `saves-in/` directory beside an earlier probe's transcript — \
+                without it the game answers "Restore failed." and the verdict you \
+                get back is about the harness, not about the finding. Every call writes its own probe directory and \
                 answers with `transcript=<path>`: quote that path in whatever you \
                 file, because a frame you read here and cited nowhere is a claim \
                 the next reader cannot check.
@@ -1198,16 +1199,20 @@ enum PlaytestTools {
                     "savesFrom": [
                         "type": "string",
                         "description": .string(
-                            "A play label whose saved games this replay may read. Its "
-                                + ".gnusto slots are copied into the replay's throwaway "
-                                + "save directory before the game boots, so a reproducer "
-                                + "whose first command is `restore` finds the slot the "
-                                + "tester wrote instead of \"Restore failed.\" The copy is "
-                                + "one way: a `save` in the replay lands in the throwaway "
-                                + "and can never reach the label. A transcript produced "
-                                + "this way reproduces from its command list only while "
-                                + "that label still holds those slots, so name the label "
-                                + "wherever you cite the probe."),
+                            "Where this replay may read saved games from: a play label, "
+                                + "or — anything holding a slash — the path of a directory "
+                                + "of .gnusto slots. They are copied into the replay's "
+                                + "throwaway save directory before the game boots, so a "
+                                + "reproducer whose first command is `restore` finds the "
+                                + "slot the tester wrote instead of \"Restore failed.\" The "
+                                + "copy is one way: a `save` in the replay lands in the "
+                                + "throwaway and can never reach the source. A transcript "
+                                + "produced this way reproduces only while those slots "
+                                + "survive, so name the source wherever you cite the probe "
+                                + "— and prefer the path form once a round's labels have "
+                                + "been cleaned, because every staged probe keeps the bytes "
+                                + "it ran on in a saves-in/ directory beside its "
+                                + "transcript."),
                     ],
                 ],
                 "required": ["commands"],
@@ -1217,8 +1222,8 @@ enum PlaytestTools {
             handler: { arguments in
                 let commands = try strings(arguments, "commands")
                 var savesFrom: URL?
-                if let label = arguments["savesFrom"]?.stringValue {
-                    savesFrom = try await sessions.savesDirectory(forLabel: label)
+                if let named = arguments["savesFrom"]?.stringValue {
+                    savesFrom = try await sessions.savesSource(named)
                 }
                 let outcome = try await PlaytestReplay.run(
                     prepared: game,
@@ -1296,7 +1301,15 @@ enum PlaytestTools {
             ],
             "savesFrom": [
                 "type": "string",
-                "description": "The label directory they came from. Absent with savesStaged.",
+                "description": "The directory they came from. Absent with savesStaged.",
+            ],
+            "restoreUnreachable": [
+                "type": "boolean",
+                "description": .string(
+                    "True when this replay typed `restore` with nothing staged to restore "
+                        + "from, so the refusal it met is a fact about the harness and not "
+                        + "about the game. Re-run with savesFrom before you believe "
+                        + "anything downstream of that turn. Absent otherwise."),
             ],
         ],
         "required": ["lines", "finished"],
@@ -1831,8 +1844,23 @@ extension PlaytestReplay.Outcome {
                     " saves-from=\($0.label) slots=\($0.slots.joined(separator: ","))"
                 } ?? "")
         ]
+        // Said here as well as in the tool description, because the reader who
+        // needs it is reading a bad answer rather than re-reading the schema
+        // that produced it. This is the one refusal in the tree that is about
+        // the harness rather than about the game, and four real defects were
+        // discarded in the 2026-08-25 Dungeon round for not knowing that.
+        if restoreWasUnreachable {
+            lines.append(
+                """
+                restore-unreachable — this list types `restore` and nothing was staged, so \
+                the save it asked for could not exist and every turn after it is the wrong \
+                game. Re-run with `savesFrom` set to the label that wrote the slot, or to \
+                the path of a `saves-in/` directory beside an earlier probe's transcript. \
+                Do not judge the finding on this run.
+                """)
+        }
         guard let verdict else {
-            return lines[0] + "\n" + Self.clipped(transcript)
+            return (lines + [Self.clipped(transcript)]).joined(separator: "\n")
         }
         lines.append(
             verdict.found
@@ -1865,6 +1893,9 @@ extension PlaytestReplay.Outcome {
         if let staged {
             entry["savesStaged"] = .array(staged.slots.map { .string($0) })
             entry["savesFrom"] = .string(staged.from.path)
+        }
+        if restoreWasUnreachable {
+            entry["restoreUnreachable"] = .bool(true)
         }
         guard let verdict else {
             entry["transcript"] = .string(Self.clipped(transcript))
