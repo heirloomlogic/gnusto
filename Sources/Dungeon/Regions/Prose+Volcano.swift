@@ -834,6 +834,16 @@ extension Prose {
         disappears, leaving you alone on the ledge.
         """
 
+    /// Written fresh. ``gnomeLeaves`` is trilogy-verbatim and ends *leaving you
+    /// alone on the ledge*, which is a claim about where the player is standing
+    /// — so it cannot simply be hoisted out of the guard that used to remove him
+    /// in silence. This is the same departure from the next room along: heard,
+    /// not watched. (#332)
+    static let gnomeLeavesHeard = """
+        Somewhere off along the rock a small voice says something about an
+        appointment, and then there is nobody saying anything at all.
+        """
+
     /// Verbatim; the trilogy's `GNOME-FCN`.
     static func gnomePaid(_ treasure: String) -> String {
         """

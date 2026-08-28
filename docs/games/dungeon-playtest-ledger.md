@@ -777,17 +777,17 @@ None of the withheld keys came back.
 | `decl::Sources/Dungeon/Regions/Prose+Volcano.swift::clothBag` | fixed (by #332) | prose-untrue-of-state | major |
 | `decl::Sources/Dungeon/Regions/Prose+River.swift::buoyFeelsFunny` | confirmed | mechanic-contradicts-prose | major |
 | `decl::Sources/Dungeon/Regions/Prose+River.swift::frigidRiverHere` | fixed (by #332) | unanswerable-noun | major |
-| `decl::Sources/Dungeon/Regions/Prose+EndgameMechanics.swift::boxPineSwingsShut` | confirmed | prose-untrue-of-frame | major |
+| `decl::Sources/Dungeon/Regions/Prose+EndgameMechanics.swift::boxPineSwingsShut` | fixed (by #332) | prose-untrue-of-frame | major |
 | `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::parapet` | fixed (by #332) | exit-prose-mismatch | minor |
 | `decl::Sources/Dungeon/Regions/Prose+Alice.swift::poolRoomDrained` | fixed (by #332) | unanswerable-noun | minor |
 | `decl::Sources/Dungeon/Regions/Prose+Alice.swift::cageGas` | confirmed | prose-taste | note |
-| `decl::Sources/Dungeon/Regions/Prose+Volcano.swift::wideLedge` | confirmed | unwinnable | major |
+| `decl::Sources/Dungeon/Regions/Prose+Volcano.swift::wideLedge` | fixed (by #332) | unwinnable | major |
 | `decl::Sources/Dungeon/Regions/Prose+Volcano.swift::gnome` | fixed (by #332) | unanswerable-noun | minor |
 | `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::winningCell` | fixed (by #332) | exit-prose-mismatch | major |
 | `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::cellSlotFilled` | fixed (by #332) | prose-untrue-of-state | major |
-| `decl::Sources/Dungeon/Regions/Prose+EndgameMechanics.swift::masterWalksOff` | confirmed | prose-untrue-of-frame | major |
+| `decl::Sources/Dungeon/Regions/Prose+EndgameMechanics.swift::masterWalksOff` | fixed (by #332) | prose-untrue-of-frame | major |
 | `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::tomb` | confirmed | repeat-behavior | minor |
-| `decl::Sources/Dungeon/Regions/Prose+EndgameMechanics.swift::masterFollows` | confirmed | prose-untrue-of-frame | major |
+| `decl::Sources/Dungeon/Regions/Prose+EndgameMechanics.swift::masterFollows` | fixed (by #332) | prose-untrue-of-frame | major |
 | `decl::Sources/Dungeon/Prose+Stubs.swift::stubFloor` | fixed (by #332) | prose-untrue-of-state | major |
 | `decl::Sources/Dungeon/Regions/Prose+AboveGround.swift::forestDeep` | fixed (by #332) | unanswerable-noun | minor |
 | `decl::Sources/Gnusto/Actions/GameText.swift::lostThem` | confirmed | prose-untrue-of-frame | minor |
@@ -833,3 +833,17 @@ was tried, and it does. `DungeonProseTests.theCageAnswersForWhatItCanSeeThroughI
 pins the denial with the reason, so the next pass finds out before it ships rather than
 after. The row is left open because it **is** open, and because a `fixed` key is one the
 harness is told to swallow.
+
+## Amendment, 2026-08-28 — four `prose-untrue-of-frame` rows, and the engine row beneath two of them
+
+The fourteenth pass; see `docs/games/dungeon.md`. `boxPineSwingsShut` takes the mirror
+fuse with it — the same nil-check on the same helper, as wrong and not filed — and
+`masterFollows` covers `masterStays` and the `.go` order, which are the same guard.
+
+**`GameText.swift::lostThem` stays `confirmed`, and it is the root cause of half of
+this.** `scope.orderTakers` and `Visibility.actorsElsewhere` are built from every actor
+in every reachable room, with no adjacency and no recency test, so an order-taker is
+addressable from anywhere on the map and `.follow` resolves a quarry the player has
+never met. The Dungeon Master answering from West of House and the round's `follow troll`
+finding on turn one are one defect seen twice. The game side is fixed here with a
+declared earshot; the engine side is box 10 and is not this PR's.

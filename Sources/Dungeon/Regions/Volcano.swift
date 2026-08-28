@@ -789,14 +789,26 @@ struct DungeonVolcano: GameContent {
         }
 
         // `GNOIN`. Five turns from the moment you first speak to him.
+        //
+        // The clock runs against the count and not against the player, so the
+        // five turns can expire while they are one room away — and this used to
+        // take him off the board in total silence, leaving an empty ledge and no
+        // sentence ever printed. Two things were wrong with the early return and
+        // both are fixed here: he goes without a word, and `gnomeIsWatching` was
+        // left `true` on that branch only, so the flag outlived the actor and the
+        // next gnome to walk out of the wall answered his first `greet` with the
+        // already-nervous line instead of arming a new watch. (#332)
         fuse("gnomeLeaves", after: 5) {
-            guard gnome.isIn(player.location) else {
-                gnome.vanish()
-                return
-            }
-            say(Prose.gnomeLeaves)
-            gnome.vanish()
+            let ledge = gnome.location
             gnomeIsWatching = false
+            gnome.vanish()
+            // Said after he is gone, because both lines are about his going, and
+            // before the room can be asked about a gnome who is no longer in it.
+            if player.location == ledge {
+                say(Prose.gnomeLeaves)
+            } else {
+                say(Prose.gnomeLeavesHeard, from: insideTheVolcano)
+            }
         }
 
         // `SAFIN`, five turns after the blast, and `LEDIN`, eight after that.

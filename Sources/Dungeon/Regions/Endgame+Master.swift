@@ -348,8 +348,57 @@ extension DungeonEndgame {
         [narrowCorridor, southCorridor, northCorridor, eastCorridor, westCorridor, parapet]
     }
 
+    /// Where he can be spoken to from: the prison, and only the prison.
+    ///
+    /// He stands in the Narrow Corridor from the first turn of the game, because
+    /// the prison is built around him and he has to be somewhere. Two engine
+    /// paths then reach an actor who is not in the player's room — `.follow` is
+    /// the engine's one far-sighted intent, and `takesOrders` makes him nameable
+    /// out of sight, the way you call after the robot through a doorway — and
+    /// **neither of them asks how far away he is**. So `follow master` and
+    /// `master, stay` were answered from West of House on turn one, about a man
+    /// two hundred rooms and one whole game away.
+    ///
+    /// It is the prison rather than his own room, because being heard from a
+    /// cell he will not walk into is the solve — so this list **widens** what
+    /// the engine ought to allow, and is not an argument for what it allows
+    /// today. The engine's default reaching the whole map is the root cause of
+    /// the round's `follow troll` finding as well, and is filed separately
+    /// against `GameText.lostThem`; when it narrows to same-room-or-adjacent,
+    /// this list is still the three cells. (#332)
+    var masterEarshot: Earshot {
+        Earshot(masterRoams + [prisonCell, winningCell, lostCell])
+    }
+
+    /// And whether he is close enough to be spoken to. He never leaves
+    /// ``masterRoams`` — `masterStep` returns nothing else, the follow daemon is
+    /// given the same list, and nothing takes him off the board — so where *he*
+    /// is standing is not a question worth asking twice.
+    var masterCanBeAddressed: Bool { masterEarshot.contains(player.location) }
+
     /// What he does, and the two things he will not do.
     @RuleBuilder var masterRules: Rules {
+        // One guard for every verb that reaches him, declared first: `runBefore`
+        // runs matching rules in declaration order and a plain return falls
+        // through, so this is the whole of the distance test and the rules below
+        // are about what he does.
+        //
+        // **It cannot be a `reach { }` rule**, which is where a distance guard
+        // would otherwise belong: `DefaultActions.requireReachRules` bails when
+        // `command.actor != nil`, so an addressed order never reaches stage 0 —
+        // and `.follow`, `.greet` and `.go` are `reach: .notNeeded` in `cores`
+        // besides.
+        //
+        // `.attack`/`.smash`/`.cut` are in the list for the reason the others
+        // are, and are the reason to write it once: his staff resolves in *his*
+        // scope, so `dungeon master, cut staff` bound its object and reached the
+        // `die` rule from West of House on turn one. (#332)
+        dungeonMaster.before(
+            .attack, .smash, .cut, .stay, .follow, .go, .greet, .give, .lookIn
+        ) {
+            try require(masterCanBeAddressed, else: Prose.masterIsNotHere)
+        }
+
         dungeonMaster.before(.attack, .smash, .cut) { try die(Prose.masterKillsYou) }
 
         dungeonMaster.before(.stay) {
@@ -368,8 +417,19 @@ extension DungeonEndgame {
             }
             masterStaying = true
             let watching = player.location
+            let from = dungeonMaster.location
             dungeonMaster.move(to: destination)
-            try reply(watching == destination ? Prose.masterArrives : Prose.masterWalksOff)
+            // Three frames, not two. #336 split off the arrival and left the
+            // other branch claiming a walk the player watched — which from
+            // inside a cell, the one room this order exists to be given from,
+            // they did not. (#332)
+            let departure =
+                switch watching {
+                case destination: Prose.masterArrives
+                case from: Prose.masterWalksOff
+                default: Prose.masterWalksOffHeard
+                }
+            try reply(departure)
         }
 
         dungeonMaster.before(.greet, .give, .lookIn) { try reply(Prose.masterSaysNothing) }

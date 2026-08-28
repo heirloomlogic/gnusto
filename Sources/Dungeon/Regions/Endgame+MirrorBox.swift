@@ -271,6 +271,27 @@ extension DungeonEndgame {
         berth > 0 ? channelRooms[berth - 1] : smallRoom
     }
 
+    /// Whether the player is somewhere a named face of the box swinging shut is
+    /// a thing they can watch happen.
+    ///
+    /// Both timed faces used to ask `angleOnTheBox(state) != nil`, which is true
+    /// of **any** of the four rooms around the berth — so three of the four were
+    /// told about a wall they were standing behind or beside. The box has four
+    /// sides and a player stands at one of them; throwing the angle away and
+    /// keeping only the fact that there *was* one is what made the line carry to
+    /// rooms it is false in. Inside the box every face is in view, which is the
+    /// disjunct that was already right. (#332)
+    ///
+    /// - Parameters:
+    ///   - state: the box, already decoded by the caller — and read *before* the
+    ///     flag is cleared, since the bearing is what says which way a face
+    ///     points.
+    ///   - face: the part of the box that has just shut.
+    /// - Returns: whether to say so.
+    func canWatch(_ state: MirrorBox, close face: BoxFace) -> Bool {
+        player.location == insideMirror || angleOnTheBox(state) == state.angle(of: face)
+    }
+
     /// Where the player is standing relative to the box, as a compass angle
     /// from the box, or `nil` when they are not beside it at all.
     ///

@@ -2157,3 +2157,89 @@ vocabulary*. This one asks the question that survives a yes: **stand where the
 sentence prints and type the word — is the answer about the thing you asked
 about?** Sixteen sites, and the seven the vocabulary would have cleared are the
 seven that had been wrong the longest.
+
+### The fourteenth pass: a line that carries further than its subject
+
+The first pass took the sentence untrue of the room; the second, the sentence
+untrue of the turn. This one takes the third member of that family and the one
+the previous thirteen kept half-fixing: **a line that is true of somewhere, said
+to somebody who is somewhere else.** Four sites, three mechanisms, and in two of
+them the correct branch had been written a few lines away and not reached.
+
+16. **A guard that asks *whether* there is an angle has thrown away *which*.**
+    Both of the mirror box's timed faces read
+    `angleOnTheBox(state) != nil` — true in **any** of the four rooms around the
+    berth. The box has four sides and a player stands at one of them, so three
+    rooms in four were told about a wall they were standing behind. The fix is
+    one comparison, `angleOnTheBox(state) == state.angle(of: face)`, and the two
+    fuses take it together: the mirror's was as wrong as the pine's and only the
+    pine's was filed. **A nil-check on an optional that carries a value is a
+    guard with the answer thrown away** — worth grepping for as a shape.
+
+17. **An actor who takes orders is in scope from everywhere, and the game has to
+    say how far.** The Dungeon Master stands in the Narrow Corridor from the
+    first turn of the game, because the prison is built around him and he has to
+    be somewhere. Two engine paths then reach an actor who is not in the room:
+    `.follow` is the engine's one far-sighted intent, and `takesOrders` makes a
+    person nameable out of sight — the way you call after the robot through a
+    doorway. **Neither of them asks how far away he is.** So `follow master` and
+    `master, stay` were answered at West of House on turn one, about a man two
+    hundred rooms and one whole game away.
+
+    The region declares the list: `masterEarshot` is the prison — his corridors
+    *and* the cells, because being heard from a cell he will not walk into is the
+    solve. Say plainly what that is: **the engine's default is wrong and this is
+    a game-side patch over it.** It is the same root cause as the round's `follow
+    troll` finding, filed against the engine, and only an engine fix retires it
+    for every game. But the list survives that fix, because no engine could
+    derive *these three cells* — so the split is right: the engine should stop
+    making an actor addressable from two hundred rooms away, and only the game
+    can say "and also from in here."
+
+    **Write the guard once, over every verb that reaches him.** Guarding the five
+    conversational orders and leaving `attack`/`smash`/`cut` out cost the player
+    the game on turn one: his staff resolves in *his* scope, so `dungeon master,
+    cut staff` bound its object at West of House and reached the rule that kills
+    you. A distance test that lists verbs will be short one, and the one it is
+    short of is the one nobody tried.
+
+18. **Two branches where the frame has three, again — and the pass before this
+    one made it two.** The twelfth pass split `masterArrives` off from
+    `masterWalksOff` and stopped there, so the remaining branch went on claiming
+    a walk the player had watched. From inside a cell — the one room the order
+    exists to be given from — they had not. Arrives where you are, leaves the
+    room you are in, or is heard going: three.
+
+19. **A fuse that reports a departure needs a second line for the room next
+    door.** The gnome's five-turn watch expires against a count, so a player who
+    steps off the ledge finds him gone with no sentence ever printed. His line is
+    trilogy-verbatim and ends *leaving you alone on the ledge*, which is a claim
+    about where the player is standing — so it cannot be hoisted out of the guard
+    that used to remove him in silence. `say(_:from:)` over the region's existing
+    `insideTheVolcano` earshot carries the other one. **The rule the eleventh pass
+    wrote for the lantern, applied to an actor:** the silent branch is a bug,
+    not a fix, and what it wants is not the same sentence louder.
+
+### What the fourteenth pass changed, and what it did not
+
+The map, the puzzles, the treasure values and `maxScore` are untouched, and both
+walkthroughs score what they scored. Two notes:
+
+- **`follow master`, `master, stay` and `master, <direction>` now refuse outside
+  the prison.** Nothing inside it changes: every order the 716-point walkthrough
+  gives is given from a room in `masterEarshot`, which is why the suite did not
+  move. The refusal is the game's own sentence rather than the engine's
+  out-of-scope line, because a rule cannot produce a parse error and a wrong
+  sentence is worse than a blunt one.
+- **The gnome's `gnomeIsWatching` is cleared on both branches now**, not only the
+  one where he was seen to go. Today no second gnome arrives to notice — the
+  arrival fuse does not re-arm once he has walked out of the wall — so this is a
+  tidy rather than an observable fix, and it is recorded here rather than pinned
+  by a contrived test.
+
+**The class's diagnostic.** The eleventh pass asked *what does the game already
+know*, and the twelfth *what does it already know how to get wrong*. This one
+asks the question those two leave standing: **who else is being told?** Every
+site here is a true sentence with no list attached — and in three of the four,
+the list the region needed was one it had already written down for something
+else.
