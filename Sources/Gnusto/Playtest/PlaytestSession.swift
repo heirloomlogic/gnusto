@@ -576,6 +576,23 @@ actor PlaytestSession {
             note: ledger.signals().note)
     }
 
+    /// What each of these words resolves to in the room this session's player
+    /// is standing in right now. See ``GameWorld/resolve(_:)``.
+    ///
+    /// Answer-key data, and gated one level up: the tool passes `oracle: true`
+    /// to ``PlaytestSessions/session(_:oracle:)``, exactly as `survey` and
+    /// `vocabulary` do. Unlike those two it needs a live world — the answer is a
+    /// fact about a *place*, not about the game type — so an evicted session
+    /// replays itself to be asked, which is what `liveWorld()` is for.
+    ///
+    /// - Parameter words: the words to ask about, as they would be typed.
+    /// - Throws: ``PlaytestError`` when a session that had been evicted cannot
+    ///   reopen its transcript to replay itself.
+    /// - Returns: one resolution per word, in order. No turn passes.
+    func resolve(_ words: [String]) async throws -> [PlaytestResolution] {
+        await (try liveWorld()).resolve(words)
+    }
+
     /// The measured signals. See ``PlaytestSignals``.
     ///
     /// - Returns: the numbers, off this session's own record.

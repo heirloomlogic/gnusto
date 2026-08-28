@@ -950,7 +950,16 @@ struct StandardParser {
     /// here answers to that" falls through to it, so an ambiguity in the room
     /// is still an ambiguity and no phrase that already resolves can change
     /// meaning.
-    private func resolve(
+    /// Internal rather than private because the play-test seam asks exactly
+    /// this question and must not answer it twice: ``GameWorld/resolve(_:)``
+    /// reports *which entity answers to this noun from where the player is
+    /// standing*, and a copy of this body beside it would agree on the day it
+    /// was written and drift afterwards — silently, since that tool's whole
+    /// job is to agree with the parser. It is this reach and not
+    /// ``matches(_:among:)`` because the pronoun branch below is part of the
+    /// answer: `it` is a reserved word the vocabulary knows and no lexicon
+    /// holds, so a seam one level down reports that nothing answers to it.
+    func resolve(
         _ tokens: [String], in scope: Scope, alsoConsidering distant: Set<EntityID> = []
     ) -> Result<EntityID, ParseError> {
         // Pronouns resolve ahead of any item lexicon: "it" is whatever the
@@ -1055,13 +1064,13 @@ struct StandardParser {
     }
 
     private func displayName(of id: EntityID) -> String {
-        vocabulary.displayNames[id] ?? id.raw
+        vocabulary.displayName(of: id)
     }
 
     /// The entity's name behind its definite article, or bare if it is a
     /// proper name. The parser's counterpart to `TurnFrame.definiteName(of:)`.
-    private func definiteName(of id: EntityID) -> String {
-        GameText.definite(displayName(of: id), proper: vocabulary.properNames.contains(id))
+    func definiteName(of id: EntityID) -> String {
+        vocabulary.definiteName(of: id)
     }
 
     /// The same phrase, carrying its number, for the one parser line whose verb

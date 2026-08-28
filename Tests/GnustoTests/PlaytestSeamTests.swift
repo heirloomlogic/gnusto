@@ -207,4 +207,115 @@ struct PlaytestSeamTests {
         #expect(answers[2].known)
         #expect(await world.snapshot().moves == 0)
     }
+
+    // MARK: - What answered
+
+    /// The river fixture, opened. Five tests want the same two lines.
+    private func riverWorld() async throws -> GameWorld {
+        let world = try GameWorld(game: RiverGame(), seed: 1, saveDirectory: tempDirectory())
+        _ = await world.begin()
+        return world
+    }
+
+    /// The half of the class `knows(_:)` is blind to, both shapes, in one
+    /// fixture.
+    ///
+    /// `knows` is definition-level and boolean, so both of these are `true` to
+    /// it and neither is a word the player can use where they are standing.
+    /// This is not a nicety: the 2026-08-25 Dungeon round filed sixteen sites as
+    /// "nouns the prose prints that the parser does not know" and only nine were
+    /// that. (#341)
+    @Test func resolvingSaysWhatAnsweredAndNotMerelyThatSomethingDid() async throws {
+        let world = try await riverWorld()
+
+        let answers = await world.resolve(["dam", "cliffs", "beach", "barrel", "river"])
+        #expect(answers.map(\.word) == ["dam", "cliffs", "beach", "barrel", "river"])
+        // Every word the vocabulary knows, which is the whole point: the
+        // instrument that stops here reports no defect at all.
+        #expect(answers.allSatisfy { $0.known })
+
+        // Four questions about four things, one thing answering. The tester
+        // reads a plausible sentence four times and cannot tell.
+        #expect(answers[0].answeredBy == "the river")
+        #expect(answers[1].answeredBy == "the river")
+        #expect(answers[2].answeredBy == "the river")
+        #expect(answers[4].answeredBy == "the river")
+
+        // Named by the bank's description, declared in the boathouse. Known,
+        // and unusable from here.
+        #expect(answers[3].answeredBy == nil)
+        #expect(answers[3].ambiguous.isEmpty)
+
+        // Twenty nouns from one paragraph in one call, and no turn spent — the
+        // same bargain `vocabulary` makes, kept by a tool that has to touch a
+        // live world to answer at all.
+        #expect(await world.snapshot().moves == 0)
+    }
+
+    /// A word the game has never heard of and a word that names two things here
+    /// are different answers, and a tool that flattened either into "nothing"
+    /// would send a verifier to the wrong verdict.
+    @Test func resolvingTellsAnUnknownWordFromAnAmbiguousOne() async throws {
+        let world = try await riverWorld()
+
+        let answers = await world.resolve(["kayak", "oar", "left oar"])
+
+        #expect(!answers[0].known)
+        #expect(answers[0].answeredBy == nil)
+
+        // Two things here answer to it, so it names neither — the parse the
+        // player would get is the disambiguation question, not a reply.
+        #expect(answers[1].known)
+        #expect(answers[1].answeredBy == nil)
+        #expect(answers[1].ambiguous == ["the left oar", "the right oar"])
+
+        // The adjective settles it, exactly as it would at the prompt.
+        #expect(answers[2].answeredBy == "the left oar")
+        #expect(answers[2].ambiguous.isEmpty)
+    }
+
+    /// It is a question about *here*, so walking changes the answer — which is
+    /// the entire difference from `knows(_:)`, asserted rather than described.
+    @Test func resolvingIsAskedOfTheRoomThePlayerIsStandingIn() async throws {
+        let world = try await riverWorld()
+
+        #expect(await world.resolve(["barrel"])[0].answeredBy == nil)
+        _ = await world.performAudited("south")
+        #expect(await world.resolve(["barrel"])[0].answeredBy == "the barrel")
+        // And the water, which was the whole room a moment ago, is gone.
+        #expect(await world.resolve(["dam"])[0].answeredBy == nil)
+    }
+
+    /// One splitter, both sides — and the filler goes, which is where this
+    /// parts company with `knows(_:)` deliberately.
+    ///
+    /// `knows` looks words up one at a time and "the" is a word the game knows.
+    /// Here they are a *phrase* offered to a lexicon, and the caller this tool
+    /// is for pastes nouns straight out of a room description, articles and all.
+    /// A phrase that is nothing but filler names nothing.
+    @Test func resolvingSplitsAPhraseTheWayTheParserSplitsIt() async throws {
+        let world = try await riverWorld()
+
+        let answers = await world.resolve(["the left oar", "a dam", "the", ""])
+
+        #expect(answers[0].answeredBy == "the left oar")
+        #expect(answers[1].answeredBy == "the river")
+        #expect(!answers[2].known)
+        #expect(!answers[3].known)
+    }
+
+    /// It is the parser that answers, not a copy of it — so the parser's own
+    /// rules reach the tool, pronouns included.
+    ///
+    /// `it` is a reserved word, which means the vocabulary knows it and any
+    /// reimplementation built on `itemLexicons` alone reports that nothing
+    /// answers to it. The parser answers from what the player last named. This
+    /// is the drift a second walk would have shipped with on day one.
+    @Test func resolvingAnswersAPronounBecauseTheParserDoes() async throws {
+        let world = try await riverWorld()
+
+        #expect(await world.resolve(["it"])[0].answeredBy == nil)
+        _ = await world.performAudited("examine the dam")
+        #expect(await world.resolve(["it"])[0].answeredBy == "the river")
+    }
 }

@@ -49,7 +49,7 @@ const OFF = '\x1b[0m'
 // harness about to drive it, and the round would fail at whichever call reached the
 // gap first rather than here.
 const EXPECTED_TOOLS = [
-  'survey', 'vocabulary', 'open', 'move', 'recall', 'coverage',
+  'survey', 'vocabulary', 'resolve', 'open', 'move', 'recall', 'coverage',
   'note', 'checkpoint', 'restore', 'rewind', 'finish', 'export', 'replay',
 ]
 
