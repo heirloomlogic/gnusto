@@ -75,6 +75,16 @@ struct FollowLab: Game {
         description("The porter.")
     }
 
+    /// Two rooms off and never met: the case the naming reach exists to
+    /// exclude. He answers to `person` as well, so a phrase can pick out one
+    /// person within reach and one beyond it — which is what proves the
+    /// ambiguity is judged over everybody and answered from those in reach.
+    let stranger = Actor {
+        name("stranger")
+        synonyms("stranger", "person")
+        description("The stranger.")
+    }
+
     let statue = Item {
         name("statue")
         description("A statue.")
@@ -158,6 +168,7 @@ struct FollowLab: Game {
         player.starts(in: hall)
         walker.starts(in: hall)
         porter.starts(in: study)
+        stranger.starts(in: attic)
         statue.starts(in: hall)
 
         studyMarker.startsHeld

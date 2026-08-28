@@ -158,9 +158,9 @@ and the whole line completes against the save names already on disk, so Tab
 finds the slot the player wrote last week instead of offering them `take`.
 
 Scope is recomputed each turn, so the noun pool follows the player from room to
-room. It reads the visible set only: an actor who has wandered off is nameable
-by FOLLOW but is deliberately kept out of Tab completion, since offering their
-nouns would be a spoiler.
+room. It reads the visible set only: an actor the player has met and who has
+since wandered off is nameable by FOLLOW but is deliberately kept out of Tab
+completion, since offering their nouns would be a spoiler.
 
 The candidate assembly runs on the `GameWorld` actor and ``REPL`` is what calls
 it. A front end driving the world directly gets no completions and does not

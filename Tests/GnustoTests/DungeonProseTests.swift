@@ -1551,29 +1551,32 @@ struct DungeonProseTests {
     /// denied, because nothing in the Dingy Closet is in scope from a location
     /// with no exits.
     ///
-    /// The fourth word its other line prints, `robot`, stays denied on purpose —
-    /// see ``DungeonAlice/closetThroughTheBars``. Asserted here, negatively, so
-    /// that a later pass that "finishes" this one finds out why before it ships:
-    /// naming the robot in this room costs the player the cage. (#332)
+    /// The fourth word its other line prints, `robot`, was denied for a whole
+    /// pass and is answered now: the parser used to resolve the phrase left of
+    /// a comma against every *item* in the room, so a `robot` here shadowed the
+    /// machine outside and cost the player `robot, lift cage`. It matches
+    /// people from the start, so the noun is safe — and the order is asserted
+    /// on the very next line, because that is the property the noun used to
+    /// break. (#332)
     @Test func theCageAnswersForWhatItCanSeeThroughItsBars() async throws {
         let transcript = try await play(
             Dungeon(),
             Self.toTheButtons
                 + ["south", "take sphere"]
-                + ["x closet", "x pedestal", "x sticker", "x robot", "x bars"],
+                + ["x closet", "x pedestal", "x sticker", "x robot", "x bars"]
+                + ["robot, lift cage"],
             seed: 41)
 
         #expect(transcript.contains("You are trapped inside a solid steel cage."))
-        for through in ["x pedestal", "x sticker"] {
+        for through in ["x pedestal", "x sticker", "x robot"] {
             #expect(!turnOutput(of: through, in: transcript).contains("You can't see any such thing"))
         }
         #expect(turnOutput(of: "x closet", in: transcript).contains("four inches of steel"))
-        // And the one that cannot be fixed here, pinned: `robot` names the
-        // order-taker in the next room and nothing in this one, because the
-        // addressing pass runs second and a room-local noun beats it.
-        #expect(turnOutput(of: "x robot", in: transcript).contains("You can't see any such thing"))
+        #expect(turnOutput(of: "x robot", in: transcript).contains("a foot away and a world out of"))
         // The control: the bars are still the bars.
         #expect(turnOutput(of: "x bars", in: transcript).contains("Steel bars, an inch thick"))
+        // And the noun has not taken the order with it.
+        #expect(!turnOutput(of: "robot, lift cage", in: transcript).contains("isn't one I recognize"))
     }
 
     /// **The gnome's five-turn watch expires against a count, not against the

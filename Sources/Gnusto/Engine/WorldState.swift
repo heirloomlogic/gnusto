@@ -76,6 +76,17 @@ struct WorldState: Sendable, Codable {
     var moves = 0
     var touched: Set<EntityID> = []
     var visited: Set<EntityID> = []
+    /// The actors the player has laid eyes on. Sampled once per turn in
+    /// `GameWorld.commit` and never cleared within a timeline — though it is
+    /// saved state like any other, so UNDO and RESTORE roll it back with
+    /// everything else, and the next turn's sampling re-adds whoever is still
+    /// in the room.
+    ///
+    /// This is what bounds the two naming reaches that are not visibility —
+    /// FOLLOW's quarry and an order-taker's name — so that a person two
+    /// hundred rooms away, whom the story has not introduced, cannot be
+    /// followed or shouted at. See `Visibility.actorsElsewhere`.
+    var metActors: Set<EntityID> = []
     var descriptionOverrides: [EntityID: String] = [:]
     var globals: [EntityID: StateValue] = [:]
     /// Running fuses: name → end-of-turn ticks left before firing. Names
@@ -115,6 +126,7 @@ struct WorldState: Sendable, Codable {
         case moves
         case touched
         case visited
+        case metActors
         case descriptionOverrides
         case globals
         case activeFuses
@@ -355,6 +367,7 @@ extension WorldState {
         guard unconsciousActors.allSatisfy({ items[$0]?.isActor == true }) else { return false }
         guard visited.allSatisfy(isLocation) else { return false }
         guard touched.allSatisfy(isEntity) else { return false }
+        guard metActors.allSatisfy({ items[$0]?.isActor == true }) else { return false }
         guard descriptionOverrides.keys.allSatisfy(isEntity) else { return false }
 
         // Pronouns name items; a boarded vehicle is an enterable item.

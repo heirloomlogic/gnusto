@@ -88,8 +88,13 @@ struct ProperNameTests {
         #expect(transcript.contains("The troll has no intention of taking orders from you."))
     }
 
+    /// He has to be *met* before he can be lost: the naming reach is what the
+    /// player has been introduced to, plus whoever is next door, so the walk up
+    /// and back is the introduction and the two rooms are what leaves FOLLOW
+    /// with nothing to say. (#332)
     @Test func followingSomebodyOutOfSightNamesThemBare() async throws {
-        let transcript = try await play(NamedCastGame(), ["follow mordred"])
+        let transcript = try await play(
+            NamedCastGame(), ["north", "up", "down", "south", "follow mordred"])
         #expect(transcript.contains("You have no idea which way Mordred went."))
     }
 

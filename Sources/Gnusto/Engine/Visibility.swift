@@ -261,7 +261,8 @@ enum Visibility {
         return result
     }
 
-    /// Every actor currently standing in a room other than `location`.
+    /// The actors standing in some other room, and which of them the player may
+    /// still *name*: the ones they have met, plus whoever is next door.
     ///
     /// **This is not a visibility set.** Nobody can see these people. It is
     /// the naming reach of FOLLOW and nothing else: the verb has to be able to
@@ -270,31 +271,135 @@ enum Visibility {
     /// only for a far-sighted intent, and only after the visible set has
     /// failed — see `Intent.farSightedIntents`.
     ///
+    /// **Both terms of the reach are load-bearing, and neither carries it
+    /// alone.** Acquaintance alone is too narrow: the person who is one room
+    /// off has not been met on the turn the player first walks after them, and
+    /// `follow porter` on turn one is a reasonable thing to type. Adjacency
+    /// alone is too narrow the other way: FOLLOW's whole job is naming
+    /// somebody who has *gone*, and a quarry two rooms away must still be
+    /// nameable so the verb can admit it has lost them. Without the reach the
+    /// set was every actor in every reachable room, which on a map the size of
+    /// Dungeon meant `follow troll` on turn one, standing in an open field,
+    /// answered with a departure that never happened. (#332)
+    ///
     /// Actors held or contained by something (a familiar in a pocket, a body
-    /// in a crate) are deliberately excluded: you cannot walk to a placement
-    /// that isn't a room. So are actors standing in a room no exit leads to —
-    /// a game's off-map holding pen. Naming those would be a spoiler: an
-    /// unmet character's own name coming back in a refusal is how a player
-    /// learns there is a policeman in this story before one arrives.
+    /// in a crate) are excluded from both halves: you cannot walk to a
+    /// placement that isn't a room. So are actors standing in a room no exit
+    /// leads to — a game's off-map holding pen. Naming those would be a
+    /// spoiler: an unmet character's own name coming back in a refusal is how
+    /// a player learns there is a policeman in this story before one arrives.
+    /// The reach is the same argument carried the rest of the way.
     ///
     /// - Parameters:
     ///   - location: the room to exclude — where the player is standing.
+    ///   - nextDoor: the rooms one exit of `location` leads to, from
+    ///     ``adjacentRooms(to:definition:state:)``. Passed in rather than
+    ///     recomputed: the caller needs it for the order-takers too.
     ///   - definition: the static game definition.
     ///   - state: the current world state.
-    /// - Returns: the perceivable actors standing elsewhere.
+    /// - Returns: the perceivable actors standing elsewhere, and the subset the
+    ///   player may name.
     static func actorsElsewhere(
         excluding location: EntityID,
+        nextDoor: Set<EntityID>,
+        definition: GameDefinition,
+        state: WorldState
+    ) -> ActorsElsewhere {
+        guard !definition.castIDs.isEmpty else { return ActorsElsewhere(all: [], withinReach: []) }
+        var all: Set<EntityID> = []
+        var withinReach: Set<EntityID> = []
+        for id in definition.castIDs {
+            guard case .room(let room)? = state.placements[id], room != location,
+                definition.reachableRooms.contains(room),
+                isPerceivable(id, definition: definition, state: state)
+            else {
+                continue
+            }
+            all.insert(id)
+            if isNameable(id, standingIn: room, nextDoor: nextDoor, state: state) {
+                withinReach.insert(id)
+            }
+        }
+        return ActorsElsewhere(all: all, withinReach: withinReach)
+    }
+
+    /// The off-room cast, and the part of it the player may name.
+    ///
+    /// `all` is not dead weight: the phrase is judged over it and answered from
+    /// `withinReach`, so narrowing the reach cannot turn a description into a
+    /// name. `StandardParser.outOfSight(_:among:answerableIn:)` is where that
+    /// argument is made. (#332)
+    struct ActorsElsewhere: Sendable {
+        /// Everybody standing in another room the player could walk to.
+        let all: Set<EntityID>
+        /// Met, or standing next door: the people FOLLOW may resolve.
+        let withinReach: Set<EntityID>
+    }
+
+    /// Whether somebody standing in `there` is close enough for the player to
+    /// name: met, or next door.
+    ///
+    /// **The one place the rule is written.** Both naming reaches consult it —
+    /// FOLLOW's quarry through ``actorsElsewhere(excluding:nextDoor:definition:state:)``
+    /// and an order-taker's name through `GameWorld.orderTakerScopes` — and a
+    /// rule spelled out twice is a rule that will be narrowed once. (#332)
+    ///
+    /// - Parameters:
+    ///   - id: the actor in question.
+    ///   - there: the room they are standing in.
+    ///   - nextDoor: the rooms one exit of the player's room leads to.
+    ///   - state: the current world state.
+    /// - Returns: whether the player may name them from where they stand.
+    static func isNameable(
+        _ id: EntityID,
+        standingIn there: EntityID,
+        nextDoor: Set<EntityID>,
+        state: WorldState
+    ) -> Bool {
+        state.metActors.contains(id) || nextDoor.contains(there)
+    }
+
+    /// The rooms one exit of `location` leads to.
+    ///
+    /// Used for the naming reaches, never for movement: `travel` reads the
+    /// exit table itself and a gate that is shut still refuses. A conditional
+    /// exit counts here even when its gate is closed, because a shut gate is
+    /// something you can be heard through and something you can walk up to;
+    /// what it stops is the walking, and FOLLOW refuses in the gate's own
+    /// words a moment later.
+    ///
+    /// **A `.dynamic` exit is deliberately not walked.** Its destination is
+    /// author code, and this runs on every parse rather than on every FOLLOW —
+    /// so consulting it would turn a closure the author wrote to be asked once
+    /// a turn into one asked on every line the player types. A dynamic exit
+    /// therefore widens nothing: whoever stands at the far end of it is
+    /// nameable if they have been met, and not otherwise.
+    ///
+    /// - Parameters:
+    ///   - location: the room to look out of.
+    ///   - definition: the static game definition.
+    ///   - state: the current world state.
+    /// - Returns: the rooms next door.
+    static func adjacentRooms(
+        to location: EntityID,
         definition: GameDefinition,
         state: WorldState
     ) -> Set<EntityID> {
-        definition.castIDs.filter { id in
-            guard case .room(let room)? = state.placements[id], room != location,
-                definition.reachableRooms.contains(room)
-            else {
-                return false
+        guard let exits = definition.exits[location] else { return [] }
+        var rooms: Set<EntityID> = []
+        for target in exits.values {
+            switch target {
+            case .to(let destination), .conditional(let destination, _, _):
+                rooms.insert(destination)
+            case .door(let destination, let doorID):
+                // A hidden door is not an exit yet, exactly as `go` sees it.
+                guard isPerceivable(doorID, definition: definition, state: state) else { continue }
+                rooms.insert(destination)
+            case .blocked, .dynamic:
+                continue
             }
-            return isPerceivable(id, definition: definition, state: state)
         }
+        return rooms
     }
 
     /// Whether an item should be included in any visibility/description walk

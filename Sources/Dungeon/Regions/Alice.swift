@@ -440,17 +440,17 @@ struct DungeonAlice: GameContent {
     /// What the cage's paragraph names on the other side of the bars. The cage
     /// is its own room, so nothing standing in the Dingy Closet is in scope from
     /// inside it — and the room's own two lines print `closet`, `pedestal`,
-    /// `sticker` and `robot` regardless. Three items rather than one paragraph
-    /// answering to three words, which is the fault this pass is about.
+    /// `sticker` and `robot` regardless. Four items rather than one paragraph
+    /// answering to four words, which is the fault this pass is about.
     ///
-    /// **`robot` is the fourth word and it deliberately stays unanswered.** The
-    /// parser's addressing pass is a *second* pass, so a noun that resolves in
-    /// the room always beats an order-taker's name — which is what makes
-    /// `robot, lift cage` reach a robot standing where the player cannot see it.
-    /// A `robot` item in this room would shadow him and take away the only way
-    /// out of the cage; both walkthroughs fail on it. The room prints a noun it
-    /// cannot answer for, and the reason is the engine's, not this region's.
-    /// (#332)
+    /// **`robot` was the fourth word and went unanswered for a whole pass.**
+    /// The parser resolved the phrase to the left of a comma against every
+    /// *item* in the room and only then asked whether it was a person, so a
+    /// `robot` item here shadowed the machine outside and took `robot, lift
+    /// cage` — the only way out of this room — down with it. Both walkthroughs
+    /// failed on it, which is how it was found. The engine matches people from
+    /// the start now, so the noun is safe and the room answers for everything
+    /// it prints. (#332)
     let closetThroughTheBars = Item {
         name("closet")
         adjectives("dingy")
@@ -460,6 +460,17 @@ struct DungeonAlice: GameContent {
     }
 
     let pedestalThroughTheBars = Self.pedestalScenery(Prose.pedestalThroughTheBars)
+
+    /// The machine itself, seen through the bars. It answers to the noun the
+    /// room prints; the actor it names is still the one an order reaches, and
+    /// the two no longer compete — see ``closetThroughTheBars``.
+    let robotThroughTheBars = Item {
+        name("robot")
+        adjectives("dented")
+        synonyms("robot", "robby", "machine")
+        description(Prose.robotThroughTheBars)
+        scenery
+    }
 
     let stickerThroughTheBars = Item {
         name("small sticker")
@@ -611,6 +622,7 @@ struct DungeonAlice: GameContent {
         closetThroughTheBars.starts(in: cage)
         pedestalThroughTheBars.starts(in: cage)
         stickerThroughTheBars.starts(in: cage)
+        robotThroughTheBars.starts(in: cage)
         gasInCage.starts(in: cage)
         ventInCage.starts(in: cage)
     }
@@ -813,10 +825,10 @@ struct DungeonAlice: GameContent {
         robotPaper.before(.read) { try reply(Prose.robotPaperText) }
 
         // The engine lets an order-taker be *named* out of sight, which is the
-        // whole point of this puzzle — the robot goes where you cannot. What
-        // the engine deliberately does not decide is how far out of sight, so
-        // the game does: one room. A world rule, because it has to catch an
-        // order aimed at anything at all, and world rules run first.
+        // whole point of this puzzle — the robot goes where you cannot. The engine
+        // bounds that at met-or-next-door; how much tighter than that is the
+        // game's call, and here it is one room. A world rule, because it has to
+        // catch an order aimed at anything at all, and world rules run first.
         world.before {
             guard command.actor == robot, !robotIsWithinEarshot else { return }
             try refuse(Prose.robotIsOutOfEarshot)

@@ -767,7 +767,7 @@ None of the withheld keys came back.
 | `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::stoneRoom` | fixed (by #332) | unanswerable-noun | minor |
 | `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::topOfStairs` | fixed (by #332) | unanswerable-noun | minor |
 | `decl::Sources/Dungeon/Regions/Prose+Bank.swift::safetyDepository` | fixed (by #332) | unwinnable | blocking |
-| `decl::Sources/Dungeon/Regions/Prose+Alice.swift::cageRobotOutside` | confirmed | unanswerable-noun | major |
+| `decl::Sources/Dungeon/Regions/Prose+Alice.swift::cageRobotOutside` | fixed (by #332) | unanswerable-noun | major |
 | `decl::Sources/Dungeon/Regions/Prose+Bank.swift::curtainOfLight` | fixed (by #332) | exit-prose-mismatch | major |
 | `decl::Sources/Dungeon/Regions/Prose+Bank.swift::tellerRoom` | fixed (by #332) | unanswerable-noun | major |
 | `decl::Sources/Dungeon/Regions/Prose+Temple.swift::engravings` | confirmed | prose-taste | minor |
@@ -790,7 +790,7 @@ None of the withheld keys came back.
 | `decl::Sources/Dungeon/Regions/Prose+EndgameMechanics.swift::masterFollows` | fixed (by #332) | prose-untrue-of-frame | major |
 | `decl::Sources/Dungeon/Prose+Stubs.swift::stubFloor` | fixed (by #332) | prose-untrue-of-state | major |
 | `decl::Sources/Dungeon/Regions/Prose+AboveGround.swift::forestDeep` | fixed (by #332) | unanswerable-noun | minor |
-| `decl::Sources/Gnusto/Actions/GameText.swift::lostThem` | confirmed | prose-untrue-of-frame | minor |
+| `decl::Sources/Gnusto/Actions/GameText.swift::lostThem` | fixed (by #332) | prose-untrue-of-frame | minor |
 | `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::bronzeDoorClosed` | refuted | mechanic-contradicts-prose | major |
 | `decl::Sources/Dungeon/Regions/Prose+EndgameMechanics.swift::quizAsksAgain` | refuted | mechanic-contradicts-prose | minor |
 | `decl::Sources/Dungeon/Regions/Prose+Endgame.swift::woodenDoorOpen` | refuted | prose-untrue-of-state | minor |
@@ -847,3 +847,25 @@ addressable from anywhere on the map and `.follow` resolves a quarry the player 
 never met. The Dungeon Master answering from West of House and the round's `follow troll`
 finding on turn one are one defect seen twice. The game side is fixed here with a
 declared earshot; the engine side is box 10 and is not this PR's.
+
+## Amendment, 2026-08-28 — the engine row, and the noun that could not be declared
+
+The fifteenth pass; see `docs/games/dungeon.md`. Both rows above are engine fixes
+rather than prose edits, and one of them retires an amendment written the same day.
+
+**`GameText.swift::lostThem` is fixed, and it was the root cause under half of the
+fourteenth pass.** `Scope.orderTakers` and `Visibility.actorsElsewhere` no longer
+reach every actor in every reachable room: the naming reach is whoever the player
+has met, plus whoever is next door. `follow troll` on turn one now answers *"You
+can't see any such thing"* rather than reporting a departure, and the Dungeon
+Master is unaddressable from West of House at the parser rather than by a
+region-side refusal. `masterEarshot` survives the fix and still does the job the
+engine cannot — being heard from three cells he will not enter.
+
+**`Prose+Alice.swift::cageRobotOutside` is fixed, and the amendment above it was
+right about why it could not be.** The parser resolved a left-of-comma address
+against every visible item before asking whether it was a person, so a `robot`
+item in the cage shadowed the machine outside and cost the player `robot, lift
+cage`. The address slot matches people now. `DungeonProseTests.theCageAnswersFor
+WhatItCanSeeThroughItsBars` asserts the noun *and* the order on the same
+transcript, so the property the noun used to break is pinned beside it.

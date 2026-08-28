@@ -150,6 +150,19 @@ public struct Actor: Sendable, Equatable {
         }
     }
 
+    /// True once the player has laid eyes on this actor, and true from then on.
+    ///
+    /// The engine records it for its own reasons — it is what bounds FOLLOW's
+    /// quarry and an order-taker's name to people the story has introduced —
+    /// and reads it out here so a game that wants "the guard recognizes you"
+    /// or a greeting that changes after the first meeting has the fact rather
+    /// than a second copy of it. Read-only: meeting somebody is something the
+    /// player does, not something a rule declares. (#332)
+    public var hasBeenMet: Bool {
+        let (frame, id) = asItem.resolved
+        return frame.with { $0.state.metActors.contains(id) }
+    }
+
     /// True if a `hidden` actor has been revealed. Always true for an actor
     /// that was never declared `hidden`.
     public var isRevealed: Bool {
