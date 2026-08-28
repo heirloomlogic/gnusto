@@ -59,7 +59,7 @@ what has to remain true no matter how the story is rewritten.
 | `TIME` verb | Checking your watch — which is on the player's wrist, worn from turn one, and cannot be taken off. | Reachable from every room. The watch and the hall clock read from the same source and must never disagree. |
 | Alarms fire exactly once | The blast, the telephone, the coroner — plus an incidental radio car at 5:52. | **Three** load-bearing alarms, one of them a hard deadline that ends the game. (The two beats after the blast are *fuses*, relative to the event rather than to the clock. They are decorative by construction and are not part of this count.) |
 | Deterministic timetables | Five people on their evening rounds. | **Five** scheduled actors, with stops on *both sides* of the blast. |
-| Arrival / departure prose | Footsteps on the back stairs. A door in the yard. Teague crossing the grass between the two, said from the stop that moves him. | At least one crossing the player can witness, and one they can miss. A crossing whose two ends both narrate it may not be silent in the middle. |
+| Arrival / departure prose | Footsteps on the back stairs. A door in the yard. Teague crossing the grass between the two, said from the stop that moves him. | At least one crossing the player can witness, and one they can miss. A crossing whose two ends both narrate it may not be silent in the middle. **A `departure:` prints in the room being left and nowhere else, so it is written for somebody watching the person go — never for somebody hearing it through a wall. That is what the paired `arrival:` is for.** |
 | Movement is silent in the dark | Delphine goes down to the cellar at 6:26. | The cellar stays dark and stays on somebody's route. |
 | `location(of:at:)` lookup | Mrs. Kettle's testimony, which quotes two crossings and reads both; the alibi check. | Past-tense truth is **read from the timetable**, never hand-written prose. The lookup supplies the **room**, not the minute and not the event — a row that describes one crossing and quotes another's minute reads as correct and is not, because both stops resolve to the same room. |
 | ASK / TELL about a topic | Every interrogation. | Topics stay abstract nouns, never takeable items. |
@@ -165,8 +165,13 @@ What the history buys, structurally:
   none of it is the answer. Your expertise opens every door and points at the wrong ones.
   The player's arc is learning to stop reading the file and look at the household.
 
-`X ME` answers *The same man who took statements in this hall in 1948, four years older.* —
-the history, in one line, on the turn a player is most likely to ask for it. Accusing
+`X ME` answers *The same man who took statements in that front hall in 1948, four years
+older.* — the history, in one line, on the turn a player is most likely to ask for it. It
+names the room rather than pointing at it, because the line prints in all ten and used to
+say *this hall*: true in the front hall, and on the Upstairs Landing — which the map table
+below calls "Upstairs hall" — a positive claim that the 1948 statements were taken on that
+landing. `text.selfDescription` is a `Line<Nothing>`, handed its subject and nothing else,
+so there is no frame for it to read and the deictic had to go rather than branch. Accusing
 yourself is refused rather than taken down: *The coroner would take the name down. Give
 him a better one.* The accusation is the deadline's teeth, and it will not be spent on a
 joke.
@@ -264,6 +269,15 @@ earlier visit was not about notebooks, and you may recognize the visit report, b
 you filed one shaped like it once.
 **His lie:** that this is his first visit to the house.
 **His fallback:** *"I don't see how that concerns me."*
+
+**The hat is the character, and it comes off exactly once.** He wears it indoors all
+evening on the reasoning that taking it off would mean he had arrived somewhere, and
+showing him the ledger takes it off his head — so every sentence that mentions it reads
+`hatIsOff`, the one place the fact is written down: his description, his listing line, the
+hat's own description, its `take` refusal, and Mrs. Kettle's line about him. His `julian`
+reply splits the same way, as a pair of `unless:`/`knowing:` rows. The two `again:` strings
+cannot read it — `again:` is a `String?` with no frame — so they are written to a gesture
+he has in both halves of the evening instead.
 
 ### Mrs. Iris Kettle — the cook
 
@@ -482,8 +496,28 @@ fired a timed event. Three things close that class, and a rewrite has all three:
   by", never "the roof" or "the landing", because no room upstairs owns either word.
 
 A word that travels with a person goes `heldBy` them — Dr. Pike's hat, the patrolman's
-notebook. Held items are in scope wherever their owner is standing and are not listed, so
-the word answers in three rooms and no room listing changes.
+notebook, Teague's jacket, Mrs. Kettle's apron. Held items are in scope wherever their
+owner is standing and are not listed, so the word answers in three rooms and no room
+listing changes.
+
+**Where the class ends.** The rule is that a noun the prose offers as a thing in the room
+must answer in the room that printed it, and four kinds of word are outside it. They are
+written down because each has cost a round an argument:
+
+- **Places off the map.** `arroyo`, `Colorado`, `Pasadena` — somewhere a person would
+  rather be, or walked to and back from. There is no room, so there is nothing to look at,
+  and all three answer alike. The conversation layer owns `arroyo` as a topic, which is the
+  right home for it.
+- **Odours.** A `before(.smell)` reply names what the air smells of, not what is standing
+  in the room. The cellar's *cold earth and whitewash* introduces no object.
+- **Manner.** *You walk it at a stoop* is adverbial. So is *at a run*.
+- **The story inside the story.** The typed sheet's destroyer, weather and man on a bridge
+  are on the page in the typewriter, and the sheet itself answers.
+
+The front walk is the one borderline case, and it goes the same way: the street refusal
+and the coroner's arrival both say *the path*, and there is no room on that side of the
+front door. The back-yard path is a different path, is worn across grass the player can
+stand on, and answers there.
 
 **Front Hall** — *Black and white tile, worn through to the grout along the line people
 walk. A hat stand with one coat on it. A longcase clock in the corner keeps better time

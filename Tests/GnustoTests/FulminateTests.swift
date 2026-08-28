@@ -493,7 +493,7 @@ struct FulminateTests {
         let transcript = try await play(Fulminate(), ["x me"])
         #expect(
             turnOutput(of: "x me", in: transcript)
-                .contains("The same man who took statements in this hall in 1948, four years older."))
+                .contains("The same man who took statements in that front hall in 1948, four years older."))
     }
 
     // MARK: - The house
@@ -1316,7 +1316,7 @@ struct FulminateTests {
             transcript,
             [
                 "Capable stopped being a defence some years ago.",
-                "\"I've given you that.\" The hat brim does not move.",
+                "\"I've given you that.\" Nothing in his face moves.",
                 "He does not give you the hat, the hand, or the rest of the name.",
                 "The hat comes down a degree, which is the whole of it.",
             ])
@@ -1698,6 +1698,103 @@ struct FulminateTests {
         #expect(!transcript.contains("He recrosses his legs."))
     }
 
+    /// Showing Dr. Pike the ledger takes his hat off — and seven sentences went
+    /// on saying it had never been off, one of them the `again:` of the very
+    /// reply that removed it. The state to branch on was already in the file:
+    /// the show sets `learning: .notebooksSold`, and the row two above the
+    /// julian topic is already gated `unless:` it.
+    ///
+    /// The two `again:` lines are not gated, because `again:` is a `String?`
+    /// and has nowhere to read state from. They are rewritten to a gesture the
+    /// man has in both halves of the evening instead.
+    @Test func theHatIsOffInEverySentenceThatNamesItAfterTheLedger() async throws {
+        // He is in the study from 6:14; the ledger is in its desk from the
+        // start. Show, then ask everything that has ever mentioned the hat.
+        let shown = try await play(
+            Fulminate(),
+            ["up", "west", "take ledger"] + Array(repeating: "z", count: 20)
+                + [
+                    "show ledger to pike", "x pike", "x hat", "look",
+                    "ask pike about julian", "ask pike about julian",
+                    "show ledger to pike",
+                ])
+
+        #expect(turnOutput(of: "show ledger to pike", in: shown).contains("takes his hat off at last"))
+        #expect(turnOutput(of: "x pike", in: shown).contains("with the hat in his hand"))
+        #expect(turnOutput(of: "x hat", in: shown).contains("the band has gone dark where it sat"))
+        #expect(turnOutput(of: "look", in: shown).contains("Dr. Pike is standing about with the hat in his hand."))
+        #expect(turnOutput(of: "ask pike about julian", in: shown).contains("He turns the hat once by its brim"))
+
+        // Nothing anywhere in that play may put it back on his head.
+        #expect(!shown.contains("has not had the hat off"))
+        #expect(!shown.contains("has not been off his head"))
+        #expect(!shown.contains("with his hat on"))
+        #expect(!shown.contains("The hat brim comes down a degree"))
+        #expect(!shown.contains("The hat brim does not move"))
+        #expect(!shown.contains("from under the brim"))
+    }
+
+    /// And before the ledger, every one of those sentences is the one it always
+    /// was. The fix is a branch, not a deletion: a man who has not taken his hat
+    /// off is the whole of Pike's characterisation until the moment he does.
+    @Test func theHatIsStillOnUntilTheLedgerTakesItOff() async throws {
+        let parlour = try await play(
+            Fulminate(),
+            [
+                "west", "x pike", "x hat", "look",
+                "ask pike about julian", "ask pike about julian",
+                "ask pike about visit",
+            ])
+
+        #expect(turnOutput(of: "x pike", in: parlour).contains("he has not had the hat off since he came"))
+        #expect(turnOutput(of: "x hat", in: parlour).contains("It has not been off his head since he came"))
+        #expect(turnOutput(of: "look", in: parlour).contains("Dr. Pike is standing about with his hat on."))
+        #expect(turnOutput(of: "ask pike about julian", in: parlour).contains("The hat brim comes down a degree"))
+        #expect(turnOutput(of: "ask pike about visit", in: parlour).contains("He adjusts the hat he has not taken off"))
+        #expect(!parlour.contains("the hat in his hand"))
+    }
+
+    /// Mrs. Kettle's own line about the doctor carried the claim too, and hers
+    /// is reachable before the blast: the ledger starts in the study drawer and
+    /// Pike is in the parlour from half past five, so a player can take it up,
+    /// show it, and come down to a cook still saying he has never had it off.
+    /// The `room(pikeDay, at:)` lookup is untouched — it proves the room and
+    /// nothing else in the sentence.
+    @Test func theCookDoesNotPutTheHatBackOn() async throws {
+        let told = try await play(
+            Fulminate(),
+            ["up", "west", "take ledger", "east", "down", "west", "show ledger to pike"]
+                + ["east", "south", "ask kettle about pike"])
+        let row = turnOutput(of: "ask kettle about pike", in: told)
+        #expect(row.contains("with his hat in his hand, which is new"))
+        #expect(!row.contains("he has not had it off since he come"))
+
+        // And before the ledger, she says what she always said.
+        let early = try await play(Fulminate(), ["south", "ask kettle about pike"])
+        #expect(
+            turnOutput(of: "ask kettle about pike", in: early)
+                .contains("with his hat on, and he has not had it off since he come"))
+    }
+
+    // MARK: - A deictic with no frame to read
+
+    /// `X ME` prints in all ten rooms and said the player took statements "in
+    /// this hall", which is true in exactly one of them and worst on the
+    /// Upstairs Landing — the map table's "Upstairs hall" — where it reads as a
+    /// positive claim that the 1948 statements were taken on that landing.
+    ///
+    /// The engine forecloses the branch the round's first repair suggested:
+    /// `text.selfDescription` is a `Line<Nothing>`, whose body is
+    /// `@Sendable (Object) -> String` with no turn frame, so it cannot read the
+    /// player's room. The deictic goes instead, which fixes all ten rooms at
+    /// once rather than the one.
+    @Test func theSelfDescriptionNamesNoRoomItMightBeReadIn() async throws {
+        let transcript = try await play(
+            Fulminate(), ["x me", "up", "x me", "east", "x me", "down", "south", "x me"])
+        #expect(transcript.contains("took statements in that front hall in 1948"))
+        #expect(!transcript.contains("in this hall"))
+    }
+
     // MARK: - The rooms a crossing passes through
 
     /// The kitchen narrates him leaving and the carriage house narrates him
@@ -1734,6 +1831,150 @@ struct FulminateTests {
                 "Teague comes back through the kitchen and says nothing to anybody.",
             ])
         #expect(!kitchen.contains("across the grass"))
+    }
+
+    /// A `Stop(departure:)` prints in exactly one room — the one being left,
+    /// read off `actor.location` before the move — so the co-located frame is
+    /// not one frame among several, it is the *only* frame the sentence will
+    /// ever have. Both of these were written for a listener somewhere else.
+    ///
+    /// Teague's 5:36 narrated his own door and the stairs beyond it to a player
+    /// standing in the room with him. The overheard version was never lost: it
+    /// is the paired `arrival:`, which prints in the kitchen, which is where it
+    /// was always true.
+    @Test func aDepartureIsWrittenForTheOneRoomItCanPrintIn() async throws {
+        // He leaves the boarder's room at the end of turn 3.
+        let hisRoom = try await play(Fulminate(), ["up", "east", "z", "look"])
+        #expect(hisRoom.contains("Teague puts his hat on and goes out to the back stairs."))
+        #expect(!hisRoom.contains("Teague's door goes"))
+        #expect(!hisRoom.contains("feet on the back stairs"))
+
+        // And the kitchen, one floor down, still hears him arrive.
+        let kitchen = try await play(Fulminate(), ["south", "z", "z", "z"])
+        #expect(kitchen.contains("Teague comes down the back stairs with his hat already on."))
+    }
+
+    /// Delphine's 6:26 is the plainer of the two. Her 6:02 stop pins the
+    /// printing room to Vane's Study for the rest of the evening, so this
+    /// sentence can only ever print upstairs, in a room whose description names
+    /// a desk, drawers and a lamp and no stair — and it named the fixture
+    /// "cellar stairs", which is not what this game calls it anywhere else. The
+    /// arrival line keeps the steps, because the cellar has them.
+    @Test func sheGoesOutAndDownFromARoomWithNoStairInIt() async throws {
+        // She leaves the study at the end of turn 28.
+        let study = try await play(
+            Fulminate(), ["up", "west"] + Array(repeating: "z", count: 26) + ["look"])
+        #expect(study.contains("Delphine goes out and down, and does not take a light."))
+        #expect(!study.contains("takes the cellar stairs down"))
+    }
+
+    // MARK: - Nouns the prose prints and the parser has to know
+
+    /// The rule is CLAUDE.md's, unqualified: every noun the prose prints must be
+    /// answerable. These walks type each room's own words back at it, upstairs
+    /// and out back, where no previous walk went. The two the round named are
+    /// here — `papers`, which the study desk's arrangement clue depends on, and
+    /// `chain`, which `9caa400` introduced while closing an unanswerable-noun
+    /// defect on the very same object.
+    @Test func theUpstairsRoomsAnswerToEveryNounTheyPrint() async throws {
+        let transcript = try await play(
+            Fulminate(),
+            [
+                "up", "west", "x desk", "x papers", "x paper", "x drawers", "x lamp", "x shade",
+                "east", "east", "x light", "x chain", "x cord", "x bulb", "x shade", "x strap",
+            ])
+        expectEveryNounAnswered(transcript)
+        #expect(turnOutput(of: "x papers", in: transcript).contains("square to the fronts"))
+        #expect(turnOutput(of: "x paper", in: transcript).contains("square to the fronts"))
+        #expect(turnOutput(of: "x chain", in: transcript).contains("wiped where a hand goes"))
+    }
+
+    /// The yard rewrites itself at a quarter to six and prints four nouns it
+    /// then denied: the scorch the grass describes, the path worn across it,
+    /// the mortar the wall is losing to the ivy, and the sky the lab is open to.
+    @Test func theYardAnswersToWhatTheBlastLeftInIt() async throws {
+        let after = try await play(
+            Fulminate(),
+            ["south", "west"] + Array(repeating: "z", count: 7)
+                + ["x grass", "x half-circle", "x wall", "x mortar", "search wreckage", "x soot"])
+        expectEveryNounAnswered(after)
+
+        // The shell is only enterable in the six minutes between the blast and
+        // the patrolman posting himself at the gap.
+        let shell = try await play(
+            Fulminate(),
+            ["south", "west"] + Array(repeating: "z", count: 7) + ["north", "x shell", "x sky"])
+        expectEveryNounAnswered(shell)
+
+        // And before it, the same grass names the path and answers for it.
+        let before = try await play(Fulminate(), ["south", "west", "x grass", "x path"])
+        expectEveryNounAnswered(before)
+        #expect(turnOutput(of: "x path", in: before).contains("from the kitchen door to the carriage house"))
+    }
+
+    /// The aftermath declares dust settled on every flat top in the house, and
+    /// the word answered in exactly one room — the cellar, where it is a coal
+    /// bin synonym and has nothing to do with the blast. It is a real thing now,
+    /// and it arrives in the room the sentence is read in.
+    @Test func theDustTheBlastBringsDownIsAThingYouCanLookAt() async throws {
+        let hall = try await play(Fulminate(), Array(repeating: "z", count: 11) + ["x dust"])
+        #expect(hall.contains("settles on everything with a flat top"))
+        #expect(turnOutput(of: "x dust", in: hall).contains("eighty years of ceiling"))
+
+        // And it is on every flat top in the *house*, which is what the
+        // paragraph claims, so it is still there one room over.
+        let parlour = try await play(
+            Fulminate(), Array(repeating: "z", count: 11) + ["west", "x dust"])
+        #expect(turnOutput(of: "x dust", in: parlour).contains("eighty years of ceiling"))
+
+        // Before the blast there is no such thing to look at, and the word
+        // still belongs to the coal bin downstairs.
+        let early = try await play(Fulminate(), ["x dust"])
+        #expect(!turnOutput(of: "x dust", in: early).contains("eighty years of ceiling"))
+    }
+
+    /// Delphine's 6:26 arrival names the cellar steps in the cellar, and the
+    /// steps were declared in the kitchen — so the word left scope at the exact
+    /// moment the prose used it. A staircase is a thing in both rooms it joins.
+    @Test func theCellarStepsAnswerFromTheBottomAsWellAsTheTop() async throws {
+        let transcript = try await play(
+            Fulminate(),
+            [
+                "south", "x cellar steps", "open drawer", "take flashlight", "turn on flashlight",
+                "down", "x cellar steps", "x stairs",
+            ])
+        expectEveryNounAnswered(transcript)
+        #expect(turnOutput(of: "x stairs", in: transcript).contains("Eight of them"))
+    }
+
+    /// A word that travels with a person goes `heldBy` them — the design doc's
+    /// rule, written for Dr. Pike's hat and never applied to the jacket Teague's
+    /// own description dresses him in, or the apron Mrs. Kettle dries her hands
+    /// on twice. The glove's lining and Julian's clamp and file are the same
+    /// defect on things that do not move.
+    @Test func thePeopleAnswerForTheClothesTheirOwnProseGivesThem() async throws {
+        // She is at her stove all evening; he is in his own room until 5:36 and
+        // then on the move for the rest of it, so the sleeve is asked for where
+        // he starts.
+        let kitchen = try await play(Fulminate(), ["south", "x kettle", "x apron"])
+        expectEveryNounAnswered(kitchen)
+        #expect(turnOutput(of: "x apron", in: kitchen).contains("damp across the front"))
+
+        let boarder = try await play(Fulminate(), ["up", "east", "x teague", "x sleeve"])
+        expectEveryNounAnswered(boarder)
+        #expect(turnOutput(of: "x sleeve", in: boarder).contains("There is nothing on the sleeve"))
+
+        let lab = try await play(
+            Fulminate(), ["south", "west", "north", "x julian", "x bench", "x clamp", "x file"])
+        expectEveryNounAnswered(lab)
+
+        let cellar = try await play(
+            Fulminate(),
+            [
+                "south", "open drawer", "take flashlight", "turn on flashlight", "down",
+                "x glove", "x lining",
+            ])
+        expectEveryNounAnswered(cellar)
     }
 
     // MARK: - Two channels for two facts
@@ -1845,24 +2086,4 @@ struct FulminateTests {
 /// `expectInOrder` for sequence, but "exactly twice" needs a count.
 private func occurrencesInFulminate(of needle: String, in haystack: String) -> Int {
     haystack.components(separatedBy: needle).count - 1
-}
-
-/// The two ways this house can fail to know a word it printed, asserted
-/// together because they are one defect wearing two replies: the parser says
-/// *I don't know the word* for a word in no vocabulary at all, and *You can't
-/// see any such thing* for one that resolves somewhere else — to an item in
-/// another room, or to a word declared as an adjective, which can never be the
-/// last token of a phrase. A noun walk that checked only the first would pass
-/// while the second went on answering words the room printed one line earlier.
-///
-/// - Parameters:
-///   - transcript: the play to check.
-///   - sourceLocation: filled in by the compiler, so a failure points at the
-///     walk rather than at this line.
-private func expectEveryNounAnswered(
-    _ transcript: String,
-    sourceLocation: SourceLocation = #_sourceLocation
-) {
-    #expect(!transcript.contains("I don't know the word"), sourceLocation: sourceLocation)
-    #expect(!transcript.contains("can't see any such thing"), sourceLocation: sourceLocation)
 }
