@@ -280,6 +280,28 @@ const VERIFY_GLOB = `${ROUND_PREFIX}-r*-${VERIFY_SEGMENT}-*`
 // told to name rather than absorb.
 const ROUND_GLOB = `${ROUND_PREFIX}-*`
 
+// The fifth tree, and the newest. `bin/playtest-slots` cuts the round's saved games
+// by walking the committed walkthrough, and it verifies each cut by restoring it —
+// real world turns, hundreds of them, under a label of the tool's own choosing.
+//
+// That label is deliberately *not* round-scoped: slots are cut once and reused by
+// every round the route has not moved under, so `${ROUND_GLOB}` cannot see them and
+// they landed in `unattributed`. On 2026-08-29 that was 758 turns — 704 in the cut
+// and 54 in its checks — handed to the critic as a mystery it had to reconcile by
+// hand. `playtest.js:247` already says what to do about a tree that is *known* to
+// exist and known not to be coverage: give it a named row, because the residual is
+// for the tree nobody has thought of yet.
+//
+// The trailing `*` catches the `-check` sibling the verification pass writes.
+const SLOTS_GLOB = slotsFrom ? `${slotsFrom}*` : null
+
+// The harness row is counted by exclusion, so every tree with a row of its own has
+// to be negated out of it or it is counted twice. Today the two cannot overlap —
+// the harness recipe is scoped to `ROUND_GLOB` and the slots label is not round
+// scoped — but that is a coincidence of two naming schemes, and the day somebody
+// round-scopes the slots label the double count arrives silently.
+const SLOTS_EXCLUDE = SLOTS_GLOB ? ` ! -path "*/${SLOTS_GLOB}/*"` : ''
+
 // The probe layout, declared once. Everything below that names a directory or a
 // file under the scratch tree is built from these, and `playtest.dryrun.mjs`
 // reads the three producers' own source — `bin/playtest-replay`, and the session
@@ -813,7 +835,9 @@ const COLLATOR_SCHEMA = {
       required: [
         'sessions', 'branches', 'replays', 'replayProbes',
         'playReplays', 'playProbes', 'verifyReplays', 'verifyProbes',
-        'harnessReplays', 'harnessProbes', 'all',
+        'harnessReplays', 'harnessProbes',
+        ...(SLOTS_GLOB ? ['slotsReplays', 'slotsProbes'] : []),
+        'all',
       ],
       description:
         'World turns counted off the `[status]` footers — every `turn=cost` is one turn the game charged, and every `turn=free` is a parse failure or a meta command that charged nothing. Counted, never asked: the 2026-08-17 round reported 295 against artifacts holding about 1,493, and the 2026-08-18 round reported 11,238 while 32,987 typed commands sat in trees nothing globbed.',
@@ -828,6 +852,8 @@ const COLLATOR_SCHEMA = {
         verifyProbes: { type: 'integer', description: 'How many probe directories exist under the verify labels.' },
         harnessReplays: { type: 'integer', description: 'In every other probe transcript this round wrote: the round\'s own machinery — the cartographer\'s survey session, and whatever ad-hoc label an operator replayed under to check a route prefix or a random rate before dispatching anybody. Counted by exclusion, because an operator\'s label cannot be listed in advance. This used to land in the residual and be handed to the critic as a mystery: 8,095 turns on 2026-08-24.' },
         harnessProbes: { type: 'integer', description: 'How many probe directories that count belongs to.' },
+        slotsReplays: { type: 'integer', description: 'In the probes `bin/playtest-slots` wrote cutting and verifying this round\'s saved games. Real turns — the cut walks the committed walkthrough — but neither coverage nor checking, so they get a row of their own rather than inflating the testers\'. The label is not round-scoped, because slots outlive the round that cut them, so no round glob can see it: 758 of these arrived as an unexplained residual on 2026-08-29.' },
+        slotsProbes: { type: 'integer', description: 'How many probe directories that count belongs to — the cut is one, and each verification restore is another.' },
         all: { type: 'integer', description: 'Every `turn=cost` anywhere under `.context/playtest`, with no glob applied — the residual against the five turn counts above is how a label tree nobody globs for announces itself instead of reading as zero.' },
       },
     },
@@ -2167,14 +2193,23 @@ function countedTurns(turns) {
     (t.sessions || 0) + (t.branches || 0) + (t.playReplays || 0) + (t.replays || 0)
   const verifiers = t.verifyReplays || 0
   const harness = t.harnessReplays || 0
+  // Counted and named, but deliberately **not** in `total`. The slots label carries
+  // no `roundId` — slots are cut once and reused by every round the route has not
+  // moved under — so a second round in the same checkout would charge itself the
+  // first one's cutting, which is the exact arithmetic the round id was added to
+  // labels to stop. What these turns are owed is an explanation, not a column in
+  // somebody's spend: they are subtracted from the residual instead, so
+  // `unattributed` goes back to meaning "a tree nobody has thought of".
+  const slots = t.slotsReplays || 0
   const total = testers + verifiers + harness
   return {
     ...t,
     testers,
     verifiers,
     harness,
+    slots,
     total,
-    unattributed: Math.max(0, (t.all || 0) - total),
+    unattributed: Math.max(0, (t.all || 0) - total - slots),
   }
 }
 
@@ -2242,7 +2277,7 @@ Report:
   charged — a parse failure and a meta command both print \`turn=free\` and cost
   nothing, which is why counting \`> \` lines instead would be wrong. Eleven numbers,
   run from \`${pkg}\`. Run them exactly as written; one shell invocation holding all
-  eleven lines is fine and cheaper, since they print in the order below:
+  ${SLOTS_GLOB ? 'thirteen' : 'eleven'} lines is fine and cheaper, since they print in the order below:
 
       find ${SCRATCH} -path "*/${SESSION_GLOB}/*/${TRANSCRIPT}" -exec grep -h 'turn=cost' {} + | wc -l
       find ${SCRATCH} -path "*/${SESSION_GLOB}/*/${BRANCH}" -exec grep -h 'turn=cost' {} + | wc -l
@@ -2252,13 +2287,15 @@ Report:
       find ${SCRATCH} -path "*/${PLAY_GLOB}/*/${TRANSCRIPT}" | wc -l
       find ${SCRATCH} -path "*/${VERIFY_GLOB}/*/${TRANSCRIPT}" -exec grep -h 'turn=cost' {} + | wc -l
       find ${SCRATCH} -path "*/${VERIFY_GLOB}/*/${TRANSCRIPT}" | wc -l
-      find ${SCRATCH} -path "*/${ROUND_GLOB}/${PROBE}/${TRANSCRIPT}" ! -path "*/${SESSION_GLOB}/*" ! -path "*/${PLAY_GLOB}/*" ! -path "*/${VERIFY_GLOB}/*" ! -path "*/${REPLAY_TREE}/*" -exec grep -h 'turn=cost' {} + | wc -l
-      find ${SCRATCH} -path "*/${ROUND_GLOB}/${PROBE}/${TRANSCRIPT}" ! -path "*/${SESSION_GLOB}/*" ! -path "*/${PLAY_GLOB}/*" ! -path "*/${VERIFY_GLOB}/*" ! -path "*/${REPLAY_TREE}/*" | wc -l
-      find ${SCRATCH} \\( -name ${TRANSCRIPT} -o -name '${BRANCH}' \\) -exec grep -h 'turn=cost' {} + | wc -l
+      find ${SCRATCH} -path "*/${ROUND_GLOB}/${PROBE}/${TRANSCRIPT}" ! -path "*/${SESSION_GLOB}/*" ! -path "*/${PLAY_GLOB}/*" ! -path "*/${VERIFY_GLOB}/*" ! -path "*/${REPLAY_TREE}/*"${SLOTS_EXCLUDE} -exec grep -h 'turn=cost' {} + | wc -l
+      find ${SCRATCH} -path "*/${ROUND_GLOB}/${PROBE}/${TRANSCRIPT}" ! -path "*/${SESSION_GLOB}/*" ! -path "*/${PLAY_GLOB}/*" ! -path "*/${VERIFY_GLOB}/*" ! -path "*/${REPLAY_TREE}/*"${SLOTS_EXCLUDE} | wc -l
+${SLOTS_GLOB ? `      find ${SCRATCH} -path "*/${SLOTS_GLOB}/*/${TRANSCRIPT}" -exec grep -h 'turn=cost' {} + | wc -l
+      find ${SCRATCH} -path "*/${SLOTS_GLOB}/*/${TRANSCRIPT}" | wc -l
+` : ''}      find ${SCRATCH} \\( -name ${TRANSCRIPT} -o -name '${BRANCH}' \\) -exec grep -h 'turn=cost' {} + | wc -l
 
   In order: \`sessions\`, \`branches\`, \`replays\`, \`replayProbes\`, \`playReplays\`,
   \`playProbes\`, \`verifyReplays\`, \`verifyProbes\`, \`harnessReplays\`,
-  \`harnessProbes\`, \`all\`. Use \`find\` and
+  \`harnessProbes\`, ${SLOTS_GLOB ? '\`slotsReplays\`, \`slotsProbes\`, ' : ''}\`all\`. Use \`find\` and
   not a bare shell glob: \`find\` does its own matching, so a pattern that matches
   nothing prints \`0\` in every shell, where an unmatched glob **aborts the whole
   command** under zsh and would hand you a shell error to interpret as a count.
@@ -2442,7 +2479,7 @@ truth and they win over anything here.
   is worth a sentence.
 - Sessions that wrote a closing record: ${sessionsFinished}.${sessionsUnfinished.length ? ` **${sessionsUnfinished.length} session(s) never called \`finish\`** (${sessionsUnfinished.slice(0, 8).join(', ')}) — their rooms and words are missing from every count above, so the coverage figure is a floor and you should say so in as many words.` : ''}
 - Forks no session took: ${forksNobodyTook.length ? forksNobodyTook.join(', ') : 'none'}. Each is an action the ledger judged committing and every session declined, which is a coverage gap nothing else in the harness can see. **Read it as an upper bound.** The flag is raised before the command is typed, from what the tester was holding and what the game had said about the thing — so a row here may turn out to be a free refusal. Name the ones you believe, say which you do not, and make one a target for next round.
-- Turns: **${turns.total} world turns**, counted off the \`[status]\` footers rather than asked of anybody. Testers spent ${turns.testers} of ~${turnBudget * playRoster.length} budgeted (${turns.sessions} in their session transcripts, ${turns.branches} in branches a rewind wrote off but that were really played, ${turns.replays} across ${turns.replayProbes} probes under \`${SCRATCH}/${REPLAY_TREE}/\`, ${turns.playReplays} across ${turns.playProbes} \`bin/playtest-replay\` probes of their own); the verifiers spent ${turns.verifiers} across ${turns.verifyProbes} \`bin/playtest-replay\` probes; the round's own machinery spent ${turns.harness} across ${turns.harnessProbes} probes under every other label. **The \`${REPLAY_TREE}/\` tree is the testers'**, and used to be credited to the verifiers: \`replay\` is an MCP tool on a play session and a verifier has no session, so it replays through the CLI under its verify label. That one term reported the 2026-08-24 round at 3:1 verifier-to-tester when it was 1.2:1. A round whose verifiers outspend its testers several times over is normal and not by itself a problem — but if \`${turns.testers}\` is far under budget while \`${turns.verifiers}\` is large, the round argued more than it played, and that is worth a sentence. This field used to be the sum of the testers' self-reports and was wrong by a factor of five; then it was counted off two trees out of four and wrong by a factor of three.${turns.unattributed ? ` **${turns.unattributed} further \`turn=cost\` lines sit under \`${SCRATCH}/\` and are attributed to none of the four trees above.** The harness row already absorbs the round's own errands, so this is a tree nobody has thought of — or another game's artifacts sharing this checkout. Say which, name the directories, and treat the total as a floor until somebody does.` : ' The residual against an unglobbed count of the whole scratch tree is zero, so nothing was played under a label this round does not attribute.'}
+- Turns: **${turns.total} world turns**, counted off the \`[status]\` footers rather than asked of anybody. Testers spent ${turns.testers} of ~${turnBudget * playRoster.length} budgeted (${turns.sessions} in their session transcripts, ${turns.branches} in branches a rewind wrote off but that were really played, ${turns.replays} across ${turns.replayProbes} probes under \`${SCRATCH}/${REPLAY_TREE}/\`, ${turns.playReplays} across ${turns.playProbes} \`bin/playtest-replay\` probes of their own); the verifiers spent ${turns.verifiers} across ${turns.verifyProbes} \`bin/playtest-replay\` probes; the round's own machinery spent ${turns.harness} across ${turns.harnessProbes} probes under every other label.${turns.slots ? ` Beside all of that and counted into none of it, \`bin/playtest-slots\` spent ${turns.slots} turns across ${turns.slotsProbes} probes cutting and verifying the round's saved games — real turns, but neither coverage nor checking, and under a label with no round id in it because slots outlive the round that cut them.` : ''} **The \`${REPLAY_TREE}/\` tree is the testers'**, and used to be credited to the verifiers: \`replay\` is an MCP tool on a play session and a verifier has no session, so it replays through the CLI under its verify label. That one term reported the 2026-08-24 round at 3:1 verifier-to-tester when it was 1.2:1. A round whose verifiers outspend its testers several times over is normal and not by itself a problem — but if \`${turns.testers}\` is far under budget while \`${turns.verifiers}\` is large, the round argued more than it played, and that is worth a sentence. This field used to be the sum of the testers' self-reports and was wrong by a factor of five; then it was counted off two trees out of four and wrong by a factor of three.${turns.unattributed ? ` **${turns.unattributed} further \`turn=cost\` lines sit under \`${SCRATCH}/\` and are attributed to none of the trees above.** The harness row already absorbs the round's own errands, so this is a tree nobody has thought of — or another game's artifacts sharing this checkout. Say which, name the directories, and treat the total as a floor until somebody does.` : ' The residual against an unglobbed count of the whole scratch tree is zero, so nothing was played under a label this round does not attribute.'}
 - There is deliberately no "cells probed" count: free-text cell labels are not comparable between charters, so any total would be a number that means nothing. Build the real cross-product yourself from the transcripts, against the ${declaredRooms.length}-room roster and the timers above.
 - Testers run: ${playRoster.map((r) => `${r.key}${r.charter.blind ? ` (${r.divergence}${r.regions.length ? `, ${renderRegions(r.regions)}` : ''})` : ''}`).join(', ')}. Charters NOT run: ${skipped.map((c) => c.key).join(', ') || 'none'}.
 - The blind charters were given no room list, no timer list and no design doc, deliberately. A finding of theirs that the doc licenses is the expected cost of that, not a harness failure — but if more than about two in five are refuted that way, say so: the brief needs tightening, not the doc handing back.

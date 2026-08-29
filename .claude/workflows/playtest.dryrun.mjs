@@ -1246,14 +1246,34 @@ check(
 // round of the same game in the same checkout is globbed by the first one's recipes
 // — which is not hypothetical: three rounds running reported coverage arithmetic
 // with a previous round's sessions folded in.
+//
+// **One tree is legitimately round-agnostic, and it is exempt because it is not
+// summed.** `bin/playtest-slots` cuts a round's saved games under a label with no
+// round id in it, on purpose: slots are cut once and reused by every round the
+// walkthrough has not moved under, so round-scoping the label would mean re-cutting
+// them every round and would make two rounds' bytes two directories. Its turns are
+// counted and given a named row, but `countedTurns` deliberately keeps them out of
+// `total` and subtracts them from the residual instead — so a previous round's
+// cutting being swept in changes no number anybody spends. The rule this assertion
+// enforces is about *spend*; the exemption is only ever safe while that holds, which
+// is why it is keyed to the args field rather than to a name that looks harmless.
+const unscopedExempt = dryArgs.slots ? [`${dryArgs.slots}*`] : []
 for (const [name, globs] of [['session', closingGlobs], ['turn', turnGlobs]]) {
-  const unscoped = globs.filter((g) => !g.includes(dryRoundId) && !g.startsWith('.'))
+  const unscoped = globs.filter(
+    (g) => !g.includes(dryRoundId) && !g.startsWith('.') && !unscopedExempt.includes(g)
+  )
   check(
     unscoped.length === 0,
     `${name} glob(s) carry no roundId, so a previous round of this game is collated `
     + `into this one: ${unscoped.join(', ')}`
   )
 }
+// The exemption is only as good as the promise it rests on, so check the promise.
+check(
+  !/const total = testers \+ verifiers \+ harness \+ slots/.test(src),
+  'the slots tree is summed into `total` while its glob is exempt from the roundId '
+  + 'rule, so a previous round of this game is charged to this one'
+)
 
 const preflightPrompt = prompts.find((p) => String(p.label || '').startsWith('preflight'))
 
