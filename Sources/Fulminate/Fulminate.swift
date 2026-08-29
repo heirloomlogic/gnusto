@@ -228,6 +228,27 @@ struct Fulminate: Game, GameMain {
         text.stubs.somebodyElse = .naming {
             "\($0.sentenceCased) \($0.verb("is", "are")) a person, and this is not 1948."
         }
+
+        // The 2026-08-26 round's scope question, answered in the design doc and
+        // spent here: the floor covers the verbs a **body in a room** has, and
+        // these six are what was left of that list. Every one is about the
+        // player — his voice, his legs, his suit, his deadline — because a line
+        // about the house is the thing the floor may not say, and a line about
+        // a mechanic this game has not got is the invited-act defect running
+        // backwards. `dig` and `xyzzy` ask for a mechanic and keep the engine's
+        // flat refusal, which for those two is the honest answer. (#334)
+        text.stubs.sing = "You keep the singing for the drive home."
+        text.stubs.jump = """
+            A grown man jumping on the spot is a thing witnesses remember, and you came out here to be the one doing
+            the remembering.
+            """
+        text.stubs.sleep = "You have until ten to seven. After that you can sleep for a week."
+        text.stubs.swim = "You have one suit with you and it is the one you are standing in."
+        text.stubs.yell = """
+            Raise your voice and everybody in earshot starts arranging their story. You do this quietly or you do
+            not do it.
+            """
+        text.stubs.wave = "You keep your hands where people can see them, and still."
         return text
     }
 
@@ -332,6 +353,15 @@ struct Fulminate: Game, GameMain {
     private static let backStairsRefusal = """
         The back stairs are the household's. A man who came here on a letter goes up the front way, where everybody
         can see him do it.
+        """
+
+    /// The patrolman's one rule, in his own words. Two spellings reach it —
+    /// `north` out of the yard, and `enter wreckage` or `enter carriage house`
+    /// by name — and a way one man has shut refuses in one set of words however
+    /// it was asked for. (#334)
+    private static let gapRefusal = """
+        The patrolman puts an arm across the gap without any particular force in it. "Nobody past me till the
+        county man's been."
         """
 
     // MARK: - Rooms
@@ -1703,8 +1733,36 @@ struct Fulminate: Game, GameMain {
         // written, so a player who had already pulled the chain would be told
         // he did not put on a light that was on. That is this issue's own
         // defect, installed while fixing it.
-        ceilingLight.before(.turnOn, .turnOff) {
+        // PULL is on the list because the description hands the player a pull
+        // chain and then the stub floor answered "The ceiling light doesn't
+        // budge." — the same room denying its own prose, one verb over. (#334)
+        ceilingLight.before(.turnOn, .turnOff, .pull) {
             try refuse("You leave Mr. Teague's light alone. It is his room, whatever else is true about him.")
+        }
+
+        // The study lamp's own description asserts a switch state and then
+        // draws a deduction from it, so TURN ON is the next thing typed. It
+        // refuses rather than works: how the room was lit while it was being
+        // searched is evidence, and evidence the player changed is not
+        // evidence. (#334)
+        studyLamp.before(.turnOn, .turnOff) {
+            try refuse(
+                """
+                You leave the switch where you found it. How this room was lit while somebody went through it is one
+                of the few things the room still has to say, and a man who works the switch has taken that away from
+                himself.
+                """)
+        }
+
+        // Both the parlour's description and the lamp's own say it is not lit
+        // and say who decides when it will be. Neither of them says the player
+        // may. (#334)
+        parlourLamp.before(.turnOn, .turnOff) {
+            try refuse(
+                """
+                It is not your lamp and it is not your idea of properly dark. In this house that decision belongs to
+                Mrs. Vane, and she has not made it yet.
+                """)
         }
 
         carriageHouse.describe {
@@ -1718,6 +1776,16 @@ struct Fulminate: Game, GameMain {
                 tools, a cot down the other, and the stove pipe from the house running up through the corner, which
                 is a thing you notice and then stop noticing.
                 """
+        }
+
+        // The one noun in the house that is making a sound you could take
+        // down, answering the re-skinned stub line that says it isn't. (#334)
+        hallClock.before(.listen) {
+            try reply(
+                """
+                It ticks the way a clock ticks when the same person has wound it on the same day of the week for
+                thirty years. You could time a statement by it, and before the evening is out you may have to.
+                """)
         }
 
         hallClock.describe {
@@ -1799,10 +1867,83 @@ struct Fulminate: Game, GameMain {
                 """)
         }
 
+        // The description's point is the count, and SEARCH answered "You find
+        // nothing of interest in the pot." over the top of it. (#334)
+        fixtures.pot.before(.lookIn) {
+            try reply(
+                """
+                Supper, and a lot of it, with a ladle standing up in the middle. The interesting part of this pot is
+                the arithmetic, and you have that already.
+                """)
+        }
+
+        // Unsealing it is the more obvious move than pocketing it, and it
+        // answered "You can't open that." to a description whose last sentence
+        // is about what is inside. (#334)
+        can.before(.open) {
+            try refuse(
+                """
+                It is sealed, and it is sealed by somebody who meant it to stay that way. Ask him about it at six,
+                and try not to be holding it when he tells you.
+                """)
+        }
+
         // Not a container — the glove stays loose on the cellar floor — but
         // looking behind it is the obvious move and deserves an answer.
+        //
+        // MOVE and PUSH are the other obvious move, and two separate sentences
+        // in this room say something went in behind it, so the stock "You can't
+        // move that." was the cellar denying its own clue. It answers where the
+        // clue is rather than repeating the search. (#334)
         coalBin.before(.lookIn) {
             try reply("Nothing in it but the dust, and the dust is the interesting part.")
+        }
+        coalBin.before(.push) {
+            try reply(
+                """
+                It comes off the wall an inch and no further, and everything worth knowing about it is on the floor
+                behind it rather than in it.
+                """)
+        }
+
+        // Left-handed, burned to the lining, and cut for a hand smaller than
+        // the player's — so trying it on is the first thing a man who takes
+        // statements does with it, and "You can't wear that." threw the
+        // deduction away. (#334)
+        glove.before(.wear) {
+            // Stage 4's `notHolding` never runs once a `before` rule has
+            // answered, and "you get two fingers of it on" is false of a glove
+            // still on the cellar floor. Falling through keeps the line honest.
+            guard glove.isHeld else { return }
+            try refuse(
+                """
+                You get two fingers of it on and stop. It was cut for a smaller hand than yours, which is the one
+                thing about it you did not have to put it on to learn.
+                """)
+        }
+
+        // The kitchen's description names it, its own names the worn place
+        // where it gets pushed, and both answered in the engine's voice. It is
+        // scenery on an open way, not a door with a state. (#334)
+        yardDoor.before(.open, .close, .push) {
+            try reply(
+                """
+                The door is not what is in your way tonight. It goes when somebody goes west through it carrying
+                something, which is what the worn place at knee height is.
+                """)
+        }
+        // And ENTER walks, because a description entirely about people going
+        // through a door should not answer "You can't get into the yard door."
+        //
+        // A rule rather than the `door` trait and `kitchen.west(backYard, via:)`,
+        // which is the deeper spelling and the wrong one here: it would give
+        // this door an open and a shut state, and the evening is written around
+        // a door nobody shuts — Teague lets himself out of it, Mrs. Kettle goes
+        // out of it, and the blast bangs it. A gate no prose can close is a
+        // gate the fiction has to keep explaining.
+        yardDoor.before(.board) {
+            try enter(backYard)
+            try handled()
         }
 
         // The play-tester went down in the dark, got the pitch-black line, and
@@ -1898,6 +2039,43 @@ struct Fulminate: Game, GameMain {
                 """
                 You get near enough to find out you do not want to be. Nobody is going to get closer to it tonight.
                 """)
+        }
+
+        // Its own description ends "Nobody has thought to put it out and nobody
+        // is going to", which is a sentence that names the act in order to
+        // refuse it — and then the engine refused it again, in its own voice.
+        // (#334)
+        yardFire.before(.turnOff) {
+            try refuse(
+                """
+                With what? There is nothing out here to fight it with and nobody who wants the job. It goes out when
+                it has finished, and not before.
+                """)
+        }
+
+        // A lit range is the first thing the kitchen says about itself, and the
+        // flue off it is how the evening's heat reaches a sealed can sixty feet
+        // away — so every verb a lit stove invites landed on the stock line.
+        // (#334)
+        stove.before(.turnOff, .turnOn, .open) {
+            try refuse(
+                """
+                You leave the range where it is. It has been lit since somebody started supper, it is Mrs. Kettle's
+                to manage, and a man who damps down a cook's fire learns nothing and is shown the path.
+                """)
+        }
+
+        // Only the pre-blast half is an invitation: "forgets the rest" is the
+        // description asking somebody to do it for him. Afterwards the sentence
+        // has to say why there is no switch left to work.
+        labLamp.before(.turnOff, .turnOn) {
+            try refuse(
+                blastHappened
+                    ? "It went out when the wall it was screwed to stopped being a wall."
+                    : """
+                    It is burning over a door across sixty feet of grass with a man working under it. You are not
+                    going to walk over there and reach past him to save a bulb.
+                    """)
         }
 
         // The room is built out of armchairs and has a seventy-one-year-old
@@ -2095,7 +2273,10 @@ struct Fulminate: Game, GameMain {
         // debris, which is why nobody gets to sift it. Before he arrives you
         // get six minutes with it and it gives you nothing, which is the more
         // useful lesson.
-        debris.before(.lookIn) {
+        // MOVE is on the list because the reply below advertises turning it
+        // over — so "You can't move that." was the wreckage refusing the exact
+        // act its own answer to SEARCH describes. (#334)
+        debris.before(.lookIn, .push) {
             if wreckageSealed {
                 try reply(
                     "\"Best keep back from there,\" the patrolman says, and puts a shoulder where you were going.")
@@ -2105,6 +2286,17 @@ struct Fulminate: Game, GameMain {
                 You turn over what the heat will let you touch and get soot to the elbow for it. Whatever the answer
                 is, it is not the kind you sift out.
                 """)
+        }
+
+        // Both nouns for the building take the exit `north` takes, and refuse
+        // in the patrolman's own words once he has it. Why, on `gapRefusal`.
+        // (#334)
+        for way in [carriageHouseOutside, debris] {
+            way.before(.board) {
+                if wreckageSealed { try refuse(Fulminate.gapRefusal) }
+                try enter(carriageHouse)
+                try handled()
+            }
         }
 
         // MARK: The household, described
@@ -2922,10 +3114,7 @@ struct Fulminate: Game, GameMain {
         backYard.north(
             carriageHouse,
             when: { !wreckageSealed },
-            otherwise: """
-                The patrolman puts an arm across the gap without any particular force in it. "Nobody past me till the
-                county man's been."
-                """)
+            otherwise: Fulminate.gapRefusal)
         carriageHouse.south(backYard)
 
         frontHall.up(landing)

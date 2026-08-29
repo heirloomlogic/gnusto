@@ -655,6 +655,81 @@ things say they are hot, the carriage house is not the house, and STAND reads
 `wasInTheYardForTheBlast` rather than `knockedFlat`, because being knocked flat
 is one turn long and having been knocked flat lasts the evening.
 
+**Which verbs the floor covers: the ones a body in a room has.** The 2026-08-26
+round filed eight stubs still at the engine default and no rater confirmed it,
+because the box was never a copy defect — it was the scope question underneath
+one. Of the engine's forty-odd stubs, which does this game mean to voice? The
+answer is the verbs the player performs with **his own body, senses and voice**,
+because those are the ones whose stock line is about the player, and the player
+is a man this game has a voice for. `sing`, `jump`, `sleep`, `swim`, `yell` and
+`wave` joined the seven already assigned on that ground.
+
+**A verb that asks for a mechanic this game has not got keeps the engine's line.**
+`dig` wants a hole and `xyzzy` wants a magic word, and a refusal in the house's
+voice is a refusal the house had standing to give — which is *the invited act*
+below, running backwards. The flat "You have nothing to dig with." is the honest
+answer to a verb this game was never built to take, and those two are the only
+place in the sweep where the stock line is the correct one.
+
+The set is pinned by `theStubFloorCoversTheVerbsABodyInARoomHas`, which reflects
+over the engine's own table rather than listing the words, so a stub added to the
+engine tomorrow fails the test until somebody has adjudicated it.
+
+### The invited act
+
+**A sentence that names an act invites it, and the room has to be able to answer
+in its own voice.** This is the stub floor's rule pointed the other way. There it
+is a verb with nothing to say for itself; here it is a verb the prose has just
+gone out of its way to hand the player, answered by a narrator who has never been
+in the room.
+
+The principle was already written in this game, in a comment above
+`ceilingLight.before(.turnOn, .turnOff)` — *"the stock answer to that invitation
+is 'You can't turn that on,' which is a room denying what its own prose just
+offered"* — and the 2026-08-26 round found the game breaking it in fifteen
+places while the comment stood. Three were filed. A sweep of the target, verified
+by running the binary and reading the line, found eleven more, and the review of
+the fix found the last: three lamps whose
+descriptions assert a switch state, a fire whose description names putting it out
+in order to say nobody will, a glove whose whole clue is whose hand it fits, a
+coal bin two separate sentences say something went in behind, a sealed can, a
+lit range, a door described by the worn place where it gets pushed, a pot filled
+for a count that is the evidence, and a longcase clock the game's own re-voiced
+LISTEN line said was making no sound.
+
+Five things the pass settled:
+
+- **The repair is a refusal in the game's voice, not a mechanic.** None of the
+  three lamps became a device. The study's switch state is evidence of how the
+  room was searched and a player who works it has destroyed it; the parlour's is
+  Mrs. Vane's decision and the joke is that she has not made it; and the boarder's
+  room already carried a comment saying why a switchable bulb would put Teague's
+  arrival line in the wrong.
+- **Except where the engine is contradicting the map.** `north` walks into the lab
+  for the three turns it is open, so ENTER answering "You can't get into the
+  wreckage" was not a missing sentence — it was the parser and the map disagreeing
+  about one doorway, forbidding while the way was open and permissive in different
+  words once it was shut. Both nouns for the building take the exit now, and both
+  refuse in the patrolman's own words, hoisted to `gapRefusal` so the two spellings
+  cannot drift apart.
+- **A refusal that already exists in two voices wants the sibling verb on the same
+  rule, not a second rule.** MOVE went onto `debris.before(.lookIn)` and PULL onto
+  `ceilingLight.before(.turnOn, .turnOff)`, each a one-token repair that inherits
+  the branch it needed.
+- **The sweep has to include ENTER, and a verb list is why it nearly didn't.**
+  `yardDoor` was fixed for OPEN, CLOSE and PUSH, and `enter yard door` went on
+  answering *"You can't get into the yard door"* — on the one item in the house
+  whose description is entirely about people going through it. It walks now. The
+  deeper spelling, the `door` trait and `kitchen.west(backYard, via: yardDoor)`,
+  is the wrong one here: it would give the door an open and a shut state, and the
+  evening is written around a door nobody shuts.
+- **A `before` rule pre-empts stage 4, so it inherits none of stage 4's guards.**
+  `glove.before(.wear)` put two fingers into a glove still lying on the cellar
+  floor, because the engine's `notHolding` check never ran. Where the rule's
+  sentence assumes a state the default would have checked, the rule has to check
+  it — `guard glove.isHeld else { return }` — and fall through when it does not
+  hold. The same trade CLAUDE.md states for `action(…)` rows, one scope down.
+
 ### The gesture and the room it is made in
 
 A topic reply prints wherever the speaker is standing. The stub floor learned that

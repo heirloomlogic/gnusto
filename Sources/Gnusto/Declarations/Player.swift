@@ -46,7 +46,7 @@ public struct Player: Sendable {
         }
         nonmutating set {
             let id = newValue.id
-            Ctx.current.with { $0.state.teleportPlayer(to: id) }
+            Ctx.current.with { $0.teleportPlayer(to: id) }
         }
     }
 

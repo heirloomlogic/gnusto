@@ -220,6 +220,24 @@ found anything in — that is 60 of Dungeon's rooms on 2026-08-25. A doubled sea
 costs that seat's attention, so **declare at most three regions when you can**, and split
 the rest across a second round.
 
+**The rooms outside every region are told to the testers, because they cannot be
+checked.** A split is a plan for the rooms it names, and *"name no room"* means nothing
+here can compare a split against the roster and report the gap. So **every seat that
+plays** is handed the standing residual — rooms no region describes are owned by nobody,
+and are yours when your own assignment runs dry — and the dry run asserts every one of
+them got it. Every seat, not only the two charters that instantiate per region: the
+interrogator and the solver read the whole focus file, which makes them the seats most
+able to notice a room that is in none of it.
+
+Two rounds are why. The 2026-08-17 Fulminate round split by clock alone and lost the
+storey above; the 2026-08-26 round fixed the vertical axis and lost the early ground
+floor and the outbuilding instead. Both times the unowned rooms produced **zero
+findings**, and both times that reads afterwards like rooms nobody found anything in. On
+the second, one of them had taken zero commands in 1,288 turns and held the victim, a
+death ending nobody had ever produced, and a scheduled branch that fired eighty-one times
+and never once took it. **Declaring another region closes the hole the last round found;
+the residual is what covers the next one.**
+
 **`verifyEffort` is the cost dial, and it is sharp.** The verifiers are the round's
 largest fan-out — two independent raters over each batch of 25 findings — so they set its
 cost. They are also the layer whose failure is invisible: a fixer misled by a bad finding

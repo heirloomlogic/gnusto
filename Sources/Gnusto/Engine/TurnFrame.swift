@@ -50,6 +50,48 @@ struct Scratch: Sendable {
     /// *clears the previous sample by committing*. There is no list of entry
     /// points for a later turn path to fall off the end of.
     var statusFieldState: WorldState?
+
+    /// Every room this turn put the player in, in the order it put them there.
+    ///
+    /// A turn is free to stand the player in a room and move them out of it
+    /// again before the status line is next read, and the status line is what
+    /// the play-test session records — so a room occupied only *inside* a turn
+    /// was invisible to coverage. ``GameWorld/roomsOccupied`` is where this is
+    /// merged, in ``GameWorld/commit(_:)``, and carries the account of why the
+    /// tally exists and why it does not live on `WorldState`.
+    ///
+    /// Filled only by ``walkPlayer(to:)`` and ``teleportPlayer(to:)`` below,
+    /// which are the two moves a turn has, and not deduped: a turn's list runs
+    /// to a couple of entries and `commit` dedupes against the session-long
+    /// tally anyway, so a second check here would only be the same check twice.
+    /// A turn that never moved the player leaves this empty rather than naming
+    /// the room they stood in throughout; that room is on every status line the
+    /// session already reads.
+    var roomsOccupied: [EntityID] = []
+
+    /// The player walks into `room` — ``WorldState/setPlayerLocation(walkingTo:)``,
+    /// with the occupancy noted.
+    ///
+    /// Turn-scoped code moves the player through this pair rather than through
+    /// the state's own funnels, which is what lets ``roomsOccupied`` be
+    /// complete without `WorldState` carrying anything it would then have to
+    /// serialize.
+    ///
+    /// - Parameter room: the room the player ends up in.
+    mutating func walkPlayer(to room: EntityID) {
+        state.setPlayerLocation(walkingTo: room)
+        roomsOccupied.append(room)
+    }
+
+    /// The player is put down in `room` —
+    /// ``WorldState/setPlayerLocation(placingAt:)``, with the occupancy noted.
+    /// The walk's twin; see ``walkPlayer(to:)``.
+    ///
+    /// - Parameter room: the room the player ends up in.
+    mutating func teleportPlayer(to room: EntityID) {
+        state.setPlayerLocation(placingAt: room)
+        roomsOccupied.append(room)
+    }
 }
 
 /// The two seams at which the engine calls code the author wrote, and so the
@@ -217,9 +259,7 @@ final class TurnFrame: Sendable {
 
     /// The declared display name of any entity.
     func displayName(of id: EntityID) -> String {
-        definition.items[id]?.name
-            ?? definition.locations[id]?.name
-            ?? id.raw
+        definition.items[id]?.name ?? definition.locationName(of: id)
     }
 
     /// The entity's name behind its definite article — "the troll", or

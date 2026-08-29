@@ -481,7 +481,7 @@ struct PlaytestSurvey: Sendable {
         self.rooms = definition.locations.keys.sorted().map { id in
             Room(
                 id: id,
-                name: definition.locations[id]?.name ?? id.raw,
+                name: definition.locationName(of: id),
                 isReachable: definition.reachableRooms.contains(id),
                 exits: (definition.exits[id] ?? [:])
                     .sorted { $0.key.rawValue < $1.key.rawValue }

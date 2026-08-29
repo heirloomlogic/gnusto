@@ -39,9 +39,15 @@ struct WorldState: Sendable, Codable {
     /// compiler reject any write that would skip that funnel.
     private(set) var placements: [EntityID: Placement] = [:]
     /// The room the player is standing in. Written only through
-    /// `walkPlayer(to:)` and `teleportPlayer(to:)`, the two funnels that also
-    /// settle the boarding; the `private(set)` makes the compiler reject any
-    /// write that would skip them.
+    /// `setPlayerLocation(walkingTo:)` and `setPlayerLocation(placingAt:)`, the
+    /// two funnels that also settle the boarding; the `private(set)` makes the
+    /// compiler reject any write that would skip them.
+    ///
+    /// Turn-scoped code calls `Scratch.walkPlayer(to:)` and
+    /// `Scratch.teleportPlayer(to:)` instead, which call through to these and
+    /// also record the occupancy. They hold those two names on purpose: a
+    /// `$0.state.walkPlayer(…)` inside a turn would skip the tally silently, so
+    /// the spelling that would skip it does not exist.
     private(set) var playerLocation: EntityID
     var litRooms: Set<EntityID> = []
     /// `lightSource` items that are currently lit. Only light sources ever
@@ -168,7 +174,7 @@ extension WorldState {
     /// observed apart and the boarding survives the move.
     ///
     /// - Parameter room: the room the player ends up in.
-    mutating func walkPlayer(to room: EntityID) {
+    mutating func setPlayerLocation(walkingTo room: EntityID) {
         playerLocation = room
         if let playerVehicle { place(playerVehicle, .room(room)) }
     }
@@ -177,7 +183,7 @@ extension WorldState {
     /// vehicle stays where it was, and the boarding goes with it.
     ///
     /// - Parameter room: the room the player ends up in.
-    mutating func teleportPlayer(to room: EntityID) {
+    mutating func setPlayerLocation(placingAt room: EntityID) {
         playerLocation = room
         strandIfSeparated()
     }

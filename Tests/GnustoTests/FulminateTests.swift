@@ -2080,6 +2080,195 @@ struct FulminateTests {
             turnOutput(of: "delphine, take the glove", in: transcript)
                 .contains("hears you out and goes on doing exactly what"))
     }
+
+    // MARK: - The acts the prose offers
+
+    /// Every stock refusal the engine has for an act this game's own prose
+    /// invites. A room that describes a switch and then answers "You can't turn
+    /// that on." is denying what it just offered, and the principle was already
+    /// written in the file — above `ceilingLight.before(.turnOn, .turnOff)` —
+    /// against a game that broke it in fourteen places. (#334)
+    ///
+    /// The lines rather than their words: `expectNoStockRefusal` renders each
+    /// one, so rewording the engine cannot quietly turn this guard green.
+    static let engineRefusals: [any StockLine] = {
+        let text = GameText()
+        return [
+            text.cantTurnOnThat, text.cantTurnOffThat, text.cantOpenThat, text.cantCloseThat,
+            text.cantMoveThat, text.cantWear, text.cantEnterThat, text.nothingToSearch,
+            text.stubs.pull,
+        ]
+    }()
+
+    /// The longcase clock is the one noun in the house that is making a sound
+    /// you could take down, and the game's own re-voiced LISTEN line said it was
+    /// not. Not the engine's voice, but the same sentence-denies-its-own-prose
+    /// shape, and one line to fix.
+    @Test func theHallClockIsHeardSayingWhatItsDescriptionClaims() async throws {
+        let transcript = try await play(Fulminate(), ["listen to clock"])
+        expectNoStockRefusal(transcript, Self.engineRefusals, "Front Hall.")
+        #expect(transcript.contains("time a statement by it"))
+    }
+
+    /// A lit range, a pot filled for a count that is the evidence, and a door
+    /// described entirely by the worn place where people push it open.
+    @Test func theKitchenAnswersTheActsItsProseOffers() async throws {
+        let transcript = try await play(
+            Fulminate(),
+            [
+                "south", "turn off stove", "open stove", "search pot", "open yard door",
+                "close yard door", "push door", "enter yard door",
+            ])
+        expectNoStockRefusal(transcript, Self.engineRefusals, "Kitchen.")
+        #expect(turnOutput(of: "turn off stove", in: transcript).contains("damps down a cook's fire"))
+        #expect(turnOutput(of: "search pot", in: transcript).contains("the arithmetic"))
+        #expect(turnOutput(of: "open yard door", in: transcript).contains("worn place at knee height"))
+
+        // ENTER on the yard door is the one act on this list that works: a door
+        // whose whole description is people going through it should go through.
+        #expect(turnOutput(of: "enter yard door", in: transcript).contains("Back Yard"))
+    }
+
+    /// The coal bin two separate sentences say something went in behind, and
+    /// the glove whose entire clue is whose hand it fits.
+    @Test func theCellarAnswersTheActsItsProseOffers() async throws {
+        let transcript = try await play(
+            Fulminate(),
+            [
+                "south", "open drawer", "take flashlight", "turn on flashlight", "down",
+                "push bin", "wear glove", "take glove", "wear it",
+            ])
+        expectNoStockRefusal(transcript, Self.engineRefusals, "Cellar.")
+        #expect(turnOutput(of: "push bin", in: transcript).contains("on the floor behind it"))
+        #expect(turnOutput(of: "wear it", in: transcript).contains("cut for a smaller hand than yours"))
+
+        // A `before` rule pre-empts stage 4, so the refusal had quietly taken
+        // over the engine's `notHolding` guard and put two fingers into a glove
+        // still lying on the floor.
+        #expect(!turnOutput(of: "wear glove", in: transcript).contains("two fingers"))
+    }
+
+    /// Three lamps, three rooms, and the same defect on each: a description that
+    /// asserts a switch state and then draws a deduction from it, over an engine
+    /// that says the switch isn't there. None of the three becomes a device —
+    /// the study's is evidence of how the room was searched, the parlour's is
+    /// Mrs. Vane's to decide, and the comment above the boarder's room's says
+    /// why a switchable bulb would put Teague's arrival line in the wrong.
+    @Test func everyLampInTheHouseRefusesInTheHousesVoice() async throws {
+        let parlour = try await play(Fulminate(), ["west", "turn on lamp"])
+        expectNoStockRefusal(parlour, Self.engineRefusals, "Parlour.")
+        #expect(turnOutput(of: "turn on lamp", in: parlour).contains("belongs to Mrs. Vane"))
+
+        let study = try await play(Fulminate(), ["up", "west", "turn on lamp"])
+        expectNoStockRefusal(study, Self.engineRefusals, "Vane's Study.")
+        #expect(turnOutput(of: "turn on lamp", in: study).contains("leave the switch where you found it"))
+
+        // PULL was the filed site: the description hands the player a chain and
+        // the stub floor answered that the light doesn't budge.
+        let boarders = try await play(Fulminate(), ["up", "east", "pull chain", "turn on light"])
+        expectNoStockRefusal(boarders, Self.engineRefusals, "Boarder's Room.")
+        #expect(turnOutput(of: "pull chain", in: boarders).contains("leave Mr. Teague's light alone"))
+    }
+
+    /// The yard's two lamps and its fire, on both sides of the blast. The lab
+    /// lamp is only an invitation while it is burning, so the sentence has to
+    /// change when the wall it was screwed to does.
+    @Test func theYardsLightsAndItsFireAnswerForTheirOwnFrame() async throws {
+        let before = try await play(
+            Fulminate(), ["south", "west", "turn off yard lamp", "north", "open can"])
+        expectNoStockRefusal(before, Self.engineRefusals, "Back Yard and lab, before.")
+        #expect(turnOutput(of: "turn off yard lamp", in: before).contains("reach past him to save a bulb"))
+
+        // The can is the coroner's answer sitting sealed on a bench, and OPEN is
+        // the move its last sentence asks for. It refuses in the same voice the
+        // existing TAKE refusal uses, and for the same reason.
+        #expect(turnOutput(of: "open can", in: before).contains("Ask him about it at six"))
+
+        let after = try await play(
+            Fulminate(),
+            ["south", "west"] + Array(repeating: "z", count: 7)
+                + ["turn off yard lamp", "extinguish fire"])
+        expectNoStockRefusal(after, Self.engineRefusals, "Back Yard, after.")
+        #expect(turnOutput(of: "turn off yard lamp", in: after).contains("stopped being a wall"))
+        #expect(turnOutput(of: "extinguish fire", in: after).contains("goes out when it has finished"))
+    }
+
+    /// `north` walks into the lab until the patrolman closes it, so ENTER
+    /// refusing in the engine's voice had the map and the parser disagreeing
+    /// about one doorway — forbidding while the way was open, and permissive in
+    /// a different set of words once it was shut. Both nouns for the building
+    /// take the exit now, and both refuse in the patrolman's own words.
+    ///
+    /// MOVE rides the same two voices: the wreckage's own answer to SEARCH
+    /// advertises turning it over, and the engine answered "You can't move
+    /// that." to the exact act it describes.
+    @Test func theBuildingIsAWayInByNameForExactlyAsLongAsTheMapSaysItIs() async throws {
+        let before = try await play(Fulminate(), ["south", "west", "enter carriage house"])
+        expectNoStockRefusal(before, Self.engineRefusals, "Back Yard, before the blast.")
+        #expect(before.contains("Somebody's workshop and somebody else's chapel."))
+
+        // The three turns between the blast and the radio car, entered by the
+        // word the blast itself put in the yard.
+        let open = try await play(
+            Fulminate(),
+            ["south", "west"] + Array(repeating: "z", count: 8) + ["move wreckage", "enter wreckage"])
+        expectNoStockRefusal(open, Self.engineRefusals, "Back Yard, lab open.")
+        #expect(turnOutput(of: "move wreckage", in: open).contains("soot to the elbow"))
+        #expect(turnOutput(of: "enter wreckage", in: open).contains("The roof is in the yard."))
+
+        // And once he is posted, every spelling refuses in the words `north`
+        // already uses, rather than in three different voices.
+        let sealed = try await play(
+            Fulminate(),
+            ["south", "west"] + Array(repeating: "z", count: 10)
+                + ["move wreckage", "enter wreckage", "enter carriage house", "north"])
+        expectNoStockRefusal(sealed, Self.engineRefusals, "Back Yard, sealed.")
+        #expect(turnOutput(of: "move wreckage", in: sealed).contains("Best keep back from there"))
+        #expect(occurrences(of: "Nobody past me till the county man's been.", in: sealed) == 3)
+    }
+
+    // MARK: - The stub floor
+
+    /// The scope question the 2026-08-26 round asked and no rater answered:
+    /// which of the engine's stubs does this game mean to voice? The design doc
+    /// carries the rule — **the verbs a body in a room has** — and this pins the
+    /// set it produces, in both directions.
+    ///
+    /// Fulminate does not claim the whole floor the way Zork 1 and Dungeon do,
+    /// so `expectNoEngineStubLineSurvives` is the wrong assertion for it: `dig`
+    /// wants a hole and `xyzzy` wants a magic word, and a house-voiced refusal
+    /// of a mechanic implies the mechanic exists — which is the invited-act
+    /// defect above, running backwards. Naming the set instead means a stub
+    /// re-voiced without the doc rule fails here, and so does a stub the engine
+    /// adds tomorrow, until somebody adjudicates it.
+    static let voicedStubs: Set<String> = [
+        "listen", "smell", "touch", "climb", "stand", "sit", "somebodyElse",
+        "sing", "jump", "sleep", "swim", "yell", "wave",
+    ]
+
+    @Test func theStubFloorCoversTheVerbsABodyInARoomHas() throws {
+        let stubs = Fulminate().text.stubs
+        let everyLine = Set(Mirror(reflecting: stubs).children.compactMap(\.label))
+        let engineVoiced = Set(engineVoicedStubLines(in: stubs))
+        #expect(everyLine.subtracting(engineVoiced) == Self.voicedStubs)
+    }
+
+    /// And the six new ones actually reach the player, in a room that holds
+    /// none of the things they might otherwise have bound to.
+    @Test func theSixBodyVerbsAnswerInTheHousesVoice() async throws {
+        let transcript = try await play(
+            Fulminate(), ["sing", "jump", "sleep", "swim", "yell", "wave"])
+        expectInOrder(
+            transcript,
+            [
+                "singing for the drive home",
+                "jumping on the spot",
+                "sleep for a week",
+                "one suit with you",
+                "arranging their story",
+                "hands where people can see them",
+            ])
+    }
 }
 
 /// How many times `needle` appears in `haystack` — the suite has
