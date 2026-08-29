@@ -442,7 +442,7 @@ locates the verdict column from each table's own header, honours the older
 abbreviated keys as inert. Dungeon's real dedupe set is **44 keys**, Fulminate's is 18.
 Gramarye, The Kindly Deep and Lighthouse come back **0**: their ledgers have only ever stored
 abbreviated keys, so those three games have never had a working dedupe set and this round is the
-first thing to say so.
+first thing to say so. Filed as #351.
 
 **The tester/verifier split is 1,379 : 289, about 4.8:1** — the right way round. But 805 of the
 tester figure is solver's single full-walkthrough replay, which is a route file being typed

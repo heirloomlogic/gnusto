@@ -872,8 +872,8 @@ transcript, so the property the noun used to break is pinned beside it.
 
 ## 2026-08-29 — fifth round, `daee513` (no `fix` stage; nothing applied)
 
-Every `confirmed` row below is an open defect in the game as it ships, filed as **#TBD** — the
-round's single issue, whose body is `/tmp/round-issue.md` at the time of writing. Round report:
+Every `confirmed` row below is an open defect in the game as it ships, filed as **#350** — the
+round's single issue. Round report:
 `docs/games/dungeon-playtest-2026-08-29.md`. Seed 52, 60 turns per charter over 8 seats,
 12 confirmed / 14 refuted / 0 routed / 0 dropped over 26 verified (29 filed, three merged
 into a class already seen). Rater agreement 23 of 26 =
