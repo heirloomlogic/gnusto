@@ -528,4 +528,30 @@ struct GameVoiceTests {
         #expect(!transcript.contains("That's already open."))
         #expect(!transcript.contains("That's already closed."))
     }
+
+    /// `stockFragment` is the other half of the same idea, for the lines a game
+    /// asserts it never falls through to. A fragment that matched nothing would
+    /// make every caller pass silently, so the two shapes are pinned by hand:
+    /// a line about nothing is its own sentence, and a line that names its
+    /// subject keeps whichever end the noun does not eat.
+    @Test func aStockLineRendersToTheWordsNoSubjectCanVary() {
+        let text = GameText()
+
+        // `Line<Nothing>` — one sample, and the fragment is all of it.
+        #expect(stockFragment(of: text.cantTurnOnThat) == "You can't turn that on.")
+
+        // `Line<Noun>` with the noun at the end: the prefix survives.
+        #expect(stockFragment(of: text.cantEnterThat) == "You can't get into the ")
+
+        // And with the noun at the front, where number agreement eats the
+        // prefix down to "The ", the suffix is the longer invariant.
+        #expect(stockFragment(of: text.stubs.pull) == "n't budge.")
+
+        // Every fragment is non-empty, or a caller naming that line asserts
+        // nothing at all.
+        for (label, line) in Mirror(reflecting: text).children
+        where line is any StockLine {
+            #expect(!stockFragment(of: line as! any StockLine).isEmpty, "\(label ?? "?")")
+        }
+    }
 }

@@ -299,11 +299,39 @@ It is a scope question for a person, not a defect, and #334 says so in its own b
 | `decl::Sources/Fulminate/Fulminate.swift::timers.fuse("blast.after")` | unanswerable-noun | confirmed | minor, explorer-1. `dust`, declared settled on every flat top in six rooms; the word exists only as a synonym on the cellar's coal bin. Preexisting, `ed8d377` |
 | `decl::Sources/Fulminate/Fulminate.swift::dryGrass.describe` | unanswerable-noun | confirmed | major, explorer-3. `circle` — *"a scorched half-circle"*, absent from the vocabulary entirely. Preexisting, `ed8d377` |
 | `decl::Sources/Fulminate/Fulminate.swift::cellarSteps` | unanswerable-noun | confirmed | minor, timekeeper-3. Declared in the Kitchen only, so the noun leaves scope the moment the player walks down it — and the Cellar's own 6:26 arrival line prints it. Preexisting, `60179c4` |
-| `decl::Sources/Gnusto/Actions/GameText.swift::cantTurnOnThat` | prose-offers-what-the-mechanic-refuses | confirmed | minor, explorer-1. `studyLamp` (`:960`) has no device trait after two sentences about its switch. `ownerClass` game; the site to change is Fulminate's, not the engine's. Preexisting, `ed8d377` |
-| `decl::Sources/Gnusto/Actions/GameText.swift::stubs.pull` | prose-offers-what-the-mechanic-refuses | confirmed | minor, explorer-1. `pull light` on a pull chain. One-token repair: add `.pull` to the existing `ceilingLight.before(.turnOn, .turnOff)`. **Introduced by `9caa400`** |
-| `decl::Sources/Fulminate/Fulminate.swift::carriageHouse.describe` | prose-offers-what-the-mechanic-refuses | confirmed | minor, explorer-3. `enter wreckage` refuses during the three turns the doc says the lab is open, while `north` walks in — wrong in both directions. Preexisting, `ed8d377` |
+| `decl::Sources/Gnusto/Actions/GameText.swift::cantTurnOnThat` | prose-offers-what-the-mechanic-refuses | fixed | minor, explorer-1. `studyLamp` (`:960`) has no device trait after two sentences about its switch. `ownerClass` game; the site to change is Fulminate's, not the engine's. Preexisting, `ed8d377` |
+| `decl::Sources/Gnusto/Actions/GameText.swift::stubs.pull` | prose-offers-what-the-mechanic-refuses | fixed | minor, explorer-1. `pull light` on a pull chain. One-token repair: add `.pull` to the existing `ceilingLight.before(.turnOn, .turnOff)`. **Introduced by `9caa400`** |
+| `decl::Sources/Fulminate/Fulminate.swift::carriageHouse.describe` | prose-offers-what-the-mechanic-refuses | fixed | minor, explorer-3. `enter wreckage` refuses during the three turns the doc says the lab is open, while `north` walks in — wrong in both directions. Preexisting, `ed8d377` |
 | `decl::Sources/Fulminate/Fulminate.swift::text` | player-description-deixis | needs-human | major, wrong-footer. `text.selfDescription` (`:158`) says "in this hall" from a rented bedroom, and worse on the Landing, which the doc's map table calls "Upstairs hall". Raters split on present-tense claim vs. past-tense clause. Preexisting, `0cf1325` |
-| `decl::Sources/Gnusto/Actions/GameText.swift::stubs` | stub-register | needs-human | minor, wrong-footer. Eight stubs at the engine default against seven the game re-skinned. **No rater confirmed this** — one `needs-human`, one `refuted`. Recorded as a scope question, not a defect. `a800ac4` is the pass that set the house voice for the other seven |
+| `decl::Sources/Gnusto/Actions/GameText.swift::stubs` | stub-register | fixed | minor, wrong-footer. Eight stubs at the engine default against seven the game re-skinned. **No rater confirmed this** — one `needs-human`, one `refuted`. Recorded as a scope question, not a defect. `a800ac4` is the pass that set the house voice for the other seven |
+
+### Widened by the fix, 2026-08-29 — filed by nobody, found by the sweep behind the class
+
+The three `prose-offers-what-the-mechanic-refuses` rows above are one class, and the
+sweep behind them found eleven more instances in the same target. Each was verified by
+running the binary and reading the stock line it printed, and all fourteen close in one
+pass. Recorded here because a site nobody filed is invisible to the next round's
+`ledgerKeys` otherwise.
+
+| Site | Command | Was |
+|---|---|---|
+| `decl::Sources/Fulminate/Fulminate.swift::parlourLamp` | `turn on lamp` | `You can't turn that on.` — and the *room* description names the lamp too, so this invites harder than the filed `studyLamp` |
+| `decl::Sources/Fulminate/Fulminate.swift::carriageHouseOutside` | `enter carriage house` | `You can't get into the carriage house.` while `north` walked in |
+| `decl::Sources/Fulminate/Fulminate.swift::yardDoor` | `open yard door` | `You can't open that.` |
+| `decl::Sources/Fulminate/Fulminate.swift::yardDoor` | `enter yard door` | `You can't get into the yard door.` — found reviewing the fix, on the one item whose description is entirely about people going through it |
+| `decl::Sources/Fulminate/Fulminate.swift::glove` | `wear glove` | `You can't wear that.` — the clue is whose hand it fits |
+| `decl::Sources/Fulminate/Fulminate.swift::yardFire` | `extinguish fire` | `You can't turn that off.` over a description that names the act in order to refuse it |
+| `decl::Sources/Fulminate/Fulminate.swift::can` | `open can` | `You can't open that.` |
+| `decl::Sources/Fulminate/Fulminate.swift::debris.before(.lookIn)` | `move wreckage` | `You can't move that.`, against a SEARCH reply advertising turning it over |
+| `decl::Sources/Fulminate/Fulminate.swift::coalBin` | `push bin` | `You can't move that.`, against two sentences saying something went in behind it |
+| `decl::Sources/Fulminate/Fulminate.swift::labLamp` | `turn off yard lamp` | `You can't turn that off.` |
+| `decl::Sources/Fulminate/Fulminate.swift::stove` | `turn off stove` | `You can't turn that off.` |
+| `decl::Sources/Fulminate/Fixtures.swift::pot` | `search pot` | `You find nothing of interest in the pot.` over a description whose point is the count |
+
+One near-miss is in the class by shape and not by voice, and is fixed with them:
+`listen to clock` answered the game's *own* re-voiced stub line saying the longcase
+clock is not making a sound you could take down. It is the one noun in the house that
+is.
 
 ### Refuted this round — pass these as `ledgerKeys` next time
 
