@@ -260,7 +260,7 @@ struct SaveRestoreTests {
 
     @Test func tamperedUnknownPlayerLocationIsRejected() async throws {
         try await expectTamperedSaveRejected("bad-loc") {
-            $0.teleportPlayer(to: EntityID("phantom-room"))
+            $0.setPlayerLocation(placingAt: EntityID("phantom-room"))
         }
     }
 

@@ -1314,6 +1314,15 @@ const renderRegions = (chunk) =>
 // The seat's assignment as the tester reads it. Here rather than inline in the
 // prompt because the plural case has to say how many, and a template that
 // counted them in three separate ternaries said "two" whatever the number was.
+// A room outside every declared region is owned by nobody, and reads afterwards
+// exactly like a room nobody found anything in. Nothing here can catch that:
+// `SKILL.md` forbids a region from naming rooms, so no code can compare a split
+// against the roster. So the testers are told instead — one sentence, true of
+// every split, turning "nobody was assigned this" into "whoever runs out of
+// region first". `SKILL.md`, "A region is an assignment", has the two rounds
+// that paid for it.
+const REGION_RESIDUAL = '**Rooms this game has that no region describes are owned by nobody. If your own assignment runs dry before your budget does, they are yours — go there, and say in your report that that is where you went.**'
+
 const regionBanner = (chunk) => {
   if (!chunk.length) return ''
   if (chunk.length === 1) return `\n**Your region is ${renderRegions(chunk)}.**\n`
@@ -1470,7 +1479,7 @@ Every turn's output ends with a \`[status]\` line naming the room, the move coun
 whether the command cost a turn. \`note\` writes a comment into your transcript at the
 current turn and costs nothing — use it the moment a line reads wrong, not forty turns
 later from memory. \`finish\` ends the session.
-${regionBanner(mine)}
+${regionBanner(mine)}${regions.length ? `\n${REGION_RESIDUAL}\n` : ''}
 ${charter.brief}
 
 Your turn budget is about ${turnBudget} engine turns, and it counts **every turn you

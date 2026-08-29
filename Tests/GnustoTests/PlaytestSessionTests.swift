@@ -2,6 +2,7 @@ import Foundation
 import Testing
 
 @testable import CloakOfDarkness
+@testable import Fulminate
 @testable import Gnusto
 
 /// Play-test sessions: the driver that plays a game on an agent's behalf, and
@@ -351,6 +352,49 @@ struct PlaytestSessionTests {
         #expect(afterReplay.roomsVisited.map(\.id.raw) == ["foyer", "cloakroom"])
         #expect(afterReplay.roomsOnlyInBranches.map(\.raw) == ["cloakroom"])
         #expect(afterReplay.signals.roomsVisited == 1)
+    }
+
+    /// A turn can put the player in a room and take them out of it again, and
+    /// the room is still one the tester read.
+    ///
+    /// Fulminate's 5:52 clock is the case in the wild, and the reason this test
+    /// plays a real game rather than a fixture: walk north into the wreckage on
+    /// the turn the radio car arrives and the patrolman walks you straight back
+    /// out of it, so the transcript carries the whole Carriage House
+    /// description under a status line that says Back Yard. The status line was
+    /// the session's only record of where it had been, so the room could not be
+    /// represented at all — the 2026-08-26 round duly reported the Carriage
+    /// House as having taken zero commands in 1,288 turns, about a room three
+    /// moves from the start that holds the victim.
+    ///
+    /// The room is entered and not *worked*, and both halves are asserted: a
+    /// player who is walked out of a room never gets to type a line in it, so
+    /// the stricter count is right to leave it out.
+    @Test func coverageKeepsARoomTheTurnItselfWalkedThePlayerOutOf() async throws {
+        let harness = try Harness(Fulminate())
+        let session = try await harness.sessions.open(label: "evicted", seed: 0)
+        _ = try await session.opening()
+
+        // Two minutes to the turn from 5:30 pm, and an alarm fires at the end of
+        // the first turn on or after its time, so the radio car ends turn 12 —
+        // which is the turn this walks north on.
+        let played = try await session.move(
+            commands: ["south", "west"] + Array(repeating: "wait", count: 9) + ["north"],
+            allowPrompts: false)
+        #expect(played.contains("The roof is in the yard."))
+        #expect(played.contains("walks you out of the wreckage"))
+        #expect(played.contains("room=Back Yard | moves=12"))
+
+        let closing = try await session.finish(
+            summary: "walked in as the police arrived", leaving: nil, limit: 3)
+        #expect(
+            closing.roomsVisited.contains(
+                .init(id: EntityID("carriageHouse"), name: "Carriage House")))
+        // Its prose is in `transcript.txt`, and nothing here rewound, so the
+        // pointer to the branch files must stay empty.
+        #expect(closing.roomsOnlyInBranches.isEmpty)
+        #expect(try text(at: session.transcriptURL).contains("The roof is in the yard."))
+        #expect(!closing.roomsWorked.map(\.raw).contains("carriageHouse"))
     }
 
     /// A rewind does not unhappen a timer either, and the replay path is the

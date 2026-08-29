@@ -244,4 +244,19 @@ extension GameDefinition {
             \(warnings.map { "  • \($0)" }.joined(separator: "\n"))
             """
     }
+
+    /// The declared display name of a room, or its raw id if the roster has no
+    /// such room.
+    ///
+    /// The roster is the only source that can answer for a room **no status
+    /// line ever named** — a turn is free to move the player on before it ends,
+    /// and the play-test session learns about those rooms from
+    /// ``GameWorld/roomsOccupied`` with nothing but an id. Three readers wanted
+    /// the same fallback, so it is written once and they agree by construction.
+    ///
+    /// - Parameter id: the room to name.
+    /// - Returns: the room's display name, or `id.raw`.
+    func locationName(of id: EntityID) -> String {
+        locations[id]?.name ?? id.raw
+    }
 }

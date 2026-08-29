@@ -524,7 +524,7 @@ enum DefaultActions {
         // the stack: see `TurnFrame.nested(_:within:_:)`, issue #223.
         try frame.nested(.walk, within: destination) {
             if let aside { frame.say(aside) }
-            frame.with { $0.state.walkPlayer(to: destination) }
+            frame.with { $0.walkPlayer(to: destination) }
             for rule in frame.definition.rules.locationOnEnter[destination] ?? [] {
                 try rule.body()
             }
