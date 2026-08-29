@@ -374,7 +374,7 @@ public struct Item: Sendable, Equatable {
         frame.with { scratch in
             if scratch.state.playerVehicle == id {
                 // The hull is the one carrying them, so this is their walk too.
-                scratch.state.walkPlayer(to: locationID)
+                scratch.walkPlayer(to: locationID)
             } else {
                 scratch.state.place(id, .room(locationID))
             }

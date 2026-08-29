@@ -494,6 +494,36 @@ if (regions.length > 1) {
   }
 }
 
+
+// **And every seat that plays is told who owns the rooms outside every region.**
+// The counterpart to the assertion above, one altitude up: that one proves no
+// *declared* region went unseated, and this one proves the rooms nobody
+// declared went to somebody too.
+//
+// It is asserted rather than trusted because the sentence in the prompt is the
+// only thing standing between a hole in the plan and a set of rooms that read
+// afterwards as "nobody found anything there" — `SKILL.md`, "A region is an
+// assignment", says why no code can check it structurally and names the two
+// rounds that paid for it.
+//
+// Over **every** play seat, not the ones holding a region chunk. Only
+// `explorer` and `timekeeper` instantiate per region, so a residual that lived
+// in the region banner would never reach the interrogator or the solver — who
+// are handed the whole focus file and are exactly the seats able to notice a
+// room that is in none of it. Filtering on the seats rather than on the banner
+// is also what stops this asserting a sentence over the prompts selected for
+// having it.
+const RESIDUAL = layoutConst('REGION_RESIDUAL')
+check(!!RESIDUAL, 'playtest.js no longer declares REGION_RESIDUAL as one line, so this is unchecked')
+const playSeats = prompts.filter((p) => String(p.label || '').startsWith('play:'))
+check(playSeats.length > 0, 'no play seats in the dispatch, so the residual check ran over nothing')
+for (const p of playSeats) {
+  check(
+    p.prompt.includes(RESIDUAL),
+    `${p.label} was never told who owns the rooms no region describes`
+  )
+}
+
 // Sessions must write where the collator looks. `open` names the directory the
 // server creates (`.context/playtest/<label>/<probe>/`) and the collator globs
 // for it, and the two are in different files with no compiler between them.

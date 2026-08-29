@@ -302,6 +302,37 @@ actor PlaytestSession {
     /// fraction whose denominator is a roster of declared rooms.
     private var roomsEverVisited: [Closing.VisitedRoom] = []
 
+    /// ``roomsEverVisited``'s membership, as a set.
+    ///
+    /// The list is ordered and carries a display name, so asking it "have I
+    /// been here?" is a linear scan of a structure that exists to be read back
+    /// in order. That scan runs once per recorded line against every room the
+    /// world has occupied, which on a long session in a large game is the only
+    /// quadratic thing in this file. The two are written in one place —
+    /// ``visit(_:)`` — so they cannot disagree.
+    private var visitedIDs: Set<EntityID> = []
+
+    /// The rooms in ``roomsEverVisited`` that no line ever *ended* in — the
+    /// ones a turn stood the session in and moved it out of again, which reach
+    /// the list from ``GameWorld/roomsOccupied`` rather than from a status
+    /// line.
+    ///
+    /// Kept for one job: ``Closing/roomsOnlyInBranches`` decides where a room's
+    /// evidence is by asking whether the ledger names it, and the ledger is
+    /// told the room each line *finished* in. A room only passed through is
+    /// therefore missing from the ledger while its prose sits in
+    /// `transcript.txt` in plain sight, and the hint would send a reader to
+    /// grep the branch files for a room that was never in one. Excluding these
+    /// keeps that pointer true for a session that never rewound, which is most
+    /// of them.
+    ///
+    /// After a rewind the pointer can be stale either way — a room passed
+    /// through on a line that was written off stays here and loses its hint —
+    /// and that is the imprecision ``Closing/roomsOnlyInBranches`` already
+    /// states it tolerates: nothing is counted off the hint, and a missed one
+    /// costs a reader a second `grep`.
+    private var roomsPassedThrough: Set<EntityID> = []
+
     /// Every room this session ever did something in, in first-worked order,
     /// and on the same terms as ``roomsEverVisited``: appended from `run`,
     /// which a rewind cannot reach, so a room worked for ten turns and then
@@ -711,7 +742,7 @@ actor PlaytestSession {
         /// `taken: false` from every session is a branch the whole round left
         /// alone, which is a coverage gap nothing else in the harness can see.
         let forks: [ForkOutcome]
-        /// The rooms the status line named, in first-seen order, each with the
+        /// The rooms the session stood in, in first-seen order, each with the
         /// ID the game declared it under.
         ///
         /// Counted, not asked. A round that asks a tester which rooms it saw
@@ -735,6 +766,21 @@ actor PlaytestSession {
         /// in a `branch-NNN.txt` rather than in `transcript.txt`, and
         /// `signals.roomsVisited` stays the canonical count — see
         /// ``roomsEverVisited`` for why the two are allowed to disagree.
+        ///
+        /// **Including a room the session was only in part-way through a
+        /// turn.** A status line reports where a turn *ended*, and a turn is
+        /// free to move the player on before it does: Fulminate's 5:52 clock
+        /// walks a tester out of the carriage house on the turn they walk into
+        /// it, so the room's whole description is read under a status line that
+        /// says Back Yard. Counted off a status line alone, such a room is
+        /// invisible: the 2026-08-26 round reported the Carriage House as
+        /// having taken zero commands in 1,288 turns. `GameWorld.roomsOccupied`
+        /// is the engine's own answer and is what this is folded from.
+        ///
+        /// ``roomsWorked`` is deliberately *not* widened to match. A room the
+        /// player was walked out of is a room they never got to type a line in,
+        /// so the stricter half of the pair is right to leave it out; the gap
+        /// between the two counts is the point of having both.
         let roomsVisited: [VisitedRoom]
 
         /// The IDs of the rooms in ``roomsVisited`` the session did something
@@ -882,7 +928,8 @@ actor PlaytestSession {
             roomsVisited: roomsEverVisited,
             roomsWorked: roomsWorkedEver,
             roomsOnlyInBranches: roomsEverVisited.compactMap {
-                ledgerRooms.contains($0.name) ? nil : $0.id
+                ledgerRooms.contains($0.name) || roomsPassedThrough.contains($0.id)
+                    ? nil : $0.id
             },
             firedTimers: firedTimersEver,
             unknownWords: ledger.unknownWords,
@@ -1295,15 +1342,15 @@ actor PlaytestSession {
         return url
     }
 
-    /// Records that the session stood in a room, for good.
+    /// Records where the session finished a line, and that it stood there.
     ///
     /// Called from the two places the ledger is told a room — the opening and
     /// every line after it — and from nowhere that a rewind reaches. See
     /// ``roomsEverVisited``.
     ///
-    /// Takes the whole status line rather than a room string, because the two
-    /// halves it records have to come from one reading of it: an ID paired with
-    /// some other turn's name would be a record nothing could check.
+    /// Takes the whole status line rather than a room string because of the
+    /// half it keeps for itself: ``standingIn`` is where the *next* line will
+    /// be typed, and only the reading a turn ended on can say that.
     ///
     /// - Parameter status: the status line this turn ended on.
     private func visit(_ status: StatusLine) {
@@ -1311,10 +1358,27 @@ actor PlaytestSession {
         // Carried forward whether or not the room is new, because this is where
         // the *next* line will be typed, not a record of anything.
         standingIn = id.raw.isEmpty ? nil : id
-        guard !id.raw.isEmpty, !roomsEverVisited.contains(where: { $0.id == id }) else {
-            return
-        }
-        roomsEverVisited.append(Closing.VisitedRoom(id: id, name: status.locationName))
+        visit(id)
+    }
+
+    /// Records that the session stood in a room, for good.
+    ///
+    /// The name comes from the declared location roster rather than from
+    /// whatever printed the room, because the roster is the only source that
+    /// can answer for a room **no status line ever named** — those arrive from
+    /// ``GameWorld/roomsOccupied`` with nothing but an id. See that property
+    /// for why such rooms exist.
+    ///
+    /// - Parameter id: the room the session stood in.
+    /// - Returns: whether this was the first time, so a caller that has
+    ///   something else to record about a *new* room asks once rather than
+    ///   repeating the membership test it just did.
+    @discardableResult
+    private func visit(_ id: EntityID) -> Bool {
+        guard !id.raw.isEmpty, visitedIDs.insert(id).inserted else { return false }
+        roomsEverVisited.append(
+            Closing.VisitedRoom(id: id, name: prepared.definition.locationName(of: id)))
+        return true
     }
 
     /// Records that the session did something in the room it was standing in.
@@ -1607,11 +1671,30 @@ actor PlaytestSession {
     /// of by an argument that has to be re-derived the next time one is added.
     /// See ``firedTimersEver``.
     ///
+    /// The rooms the world occupied are folded here for the same reason and on
+    /// the same terms. Both are unions with what the session already holds —
+    /// `max` for a count, "append if new" for a room — so a fresh world that
+    /// replays a retained prefix contributes what it re-walked and takes
+    /// nothing back, which is exactly what an eviction and a rewind past the
+    /// ring both need.
+    ///
     /// - Parameters:
     ///   - line: the recorded-line index this snapshot stands at.
     ///   - world: the live world.
     private func remember(line: Int, in world: GameWorld) async {
         firedTimersEver.merge(await world.firedTimers, uniquingKeysWith: max)
+        // Rooms the status line could not report, because the turn moved the
+        // player on before it ended. The room a line *finished* in is already
+        // held — `visit(_:)` ran on the status line a moment ago — so a room
+        // still new here is one no line has ever ended in, which is exactly
+        // ``roomsPassedThrough``'s definition and why nothing more has to be
+        // asked to fill it. The order of the two readings can put a turn's
+        // final room ahead of a room it only passed through; nothing is counted
+        // off the order, and the alternative is reading the world's tally
+        // before the turn that filled it has been applied.
+        for room in await world.roomsOccupied where visit(room) {
+            roomsPassedThrough.insert(room)
+        }
         ring.append(
             Snapshot(
                 line: line,

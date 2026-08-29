@@ -77,6 +77,33 @@ public actor GameWorld {
     /// round can name the declared timers nothing exercised.
     var firedTimers: [String: Int] = [:]
 
+    /// Every room a move has put the player in this session, in first-arrival
+    /// order — **including a room they were in only part-way through a turn**.
+    ///
+    /// The play-test harness's answer to "was this room ever entered?", and the
+    /// same kind of answer as `firedTimers` above: something no reading of the
+    /// status line can settle. A turn is free to stand the player somewhere and
+    /// move them on before it ends, and the status line only ever reports where
+    /// it ended. Fulminate's 5:52 clock walks a player out of the carriage
+    /// house on the turn they walk into it, so a tester reads the room's whole
+    /// description and closes a session that says the room was never entered —
+    /// and a round planning off that count sends the next tester to walk it
+    /// again. See ``Scratch/roomsOccupied``, which is where a turn collects
+    /// these, and ``commit(_:)``, which is where they arrive.
+    ///
+    /// Actor state, never serialized, for the reason `firedTimers` states: it
+    /// is a fact about *this run of the program*, not about the world, so it
+    /// must not reach `WorldState`, `SaveFile` or `isConsistent`. A restore, an
+    /// UNDO or a play-test rewind therefore leaves it alone, which is right —
+    /// the player really did stand there, and the tester really did read it.
+    ///
+    /// Not a complete record of where the player has been, and it does not have
+    /// to be: a state swapped in wholesale by RESTART, RESTORE or UNDO passes
+    /// no move funnel, and the room it lands in is on the status line the turn
+    /// ends with, which is what ``PlaytestSession`` was already recording. This
+    /// is the part that reading was missing.
+    var roomsOccupied: [EntityID] = []
+
     /// The world as the last turn that *cost* a move stood at its close,
     /// before its counter advanced — or nil, meaning "read the fields live".
     ///
@@ -977,6 +1004,15 @@ public actor GameWorld {
         // command is typed and nothing changes state between one turn's close
         // and the next turn's parse. (#332)
         state.metActors.formUnion(visibleActorsHere())
+        // Merged rather than adopted, and merged *here* for the reason the line
+        // above is here: `commit` is the single exit of every turn, so a room
+        // the turn stood the player in cannot be lost by a path that forgot to
+        // hand its frame over. Appended rather than unioned into a set because
+        // first-arrival order is the order a coverage report reads them back
+        // in. See `roomsOccupied`.
+        for room in scratch.roomsOccupied where !roomsOccupied.contains(room) {
+            roomsOccupied.append(room)
+        }
         // Adopted, never merged — and taking a nil *is* the invalidation.
         // The opening, UNDO, RESTART, RESTORE and every meta or unhandled
         // command arrive here with a frame that never ran the capture, so
