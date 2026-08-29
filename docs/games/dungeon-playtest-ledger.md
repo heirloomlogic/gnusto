@@ -869,3 +869,91 @@ item in the cage shadowed the machine outside and cost the player `robot, lift
 cage`. The address slot matches people now. `DungeonProseTests.theCageAnswersFor
 WhatItCanSeeThroughItsBars` asserts the noun *and* the order on the same
 transcript, so the property the noun used to break is pinned beside it.
+
+## 2026-08-29 — fifth round, `daee513` (no `fix` stage; nothing applied)
+
+Every `confirmed` row below is an open defect in the game as it ships, filed as **#TBD** — the
+round's single issue, whose body is `/tmp/round-issue.md` at the time of writing. Round report:
+`docs/games/dungeon-playtest-2026-08-29.md`. Seed 52, 60 turns per charter over 8 seats,
+12 confirmed / 14 refuted / 0 routed / 0 dropped over 26 verified (29 filed, three merged
+into a class already seen). Rater agreement 23 of 26 =
+88.5%, with all three disagreements resolved to `needs-human`. Completeness critic:
+**`round-is-thin`** — 17 rooms of 195 had their prose read, against a published `worked` of 22.
+
+`.claude/workflows/playtest.js` no longer takes a `fix` argument, so there is no fix mode to
+declare: the round found and filed and edited nothing.
+
+**The `ledgerKeys` argument was built wrong, and it did no damage because every key in it was
+inert.** 55 keys were passed. Sorted against this file's own verdict column: **39 `fixed`, 3
+`confirmed`, 13 `refuted`.** That is the inversion the preamble above warns about — `ledgerKeys`
+feeds `seen`, a matching finding is dropped unverified and unreported, and a `fixed` key
+therefore instructs the harness to swallow the regression this file exists to catch. What saved
+the round is the 2026-08-18 correction, already recorded above: **all 55 are the display-truncated
+2026-08-11 rows, every one ending in `…`**, and `normalize()` can never emit an ellipsis, so none
+of the 55 could match anything a round produces. The set worked as prompt deterrence and as
+nothing else — and the 31 full-form `decl::` refuted keys from 2026-08-18, 2026-08-24 and
+2026-08-25, which were the whole working dedupe set, were passed as none of it. **Build next round's
+argument by filtering the `decl::` rows on `verdict == refuted`, not by pasting this file's
+reading column.** `bin/playtest-preflight` now does exactly that: `ledgerKeysFrom` locates the
+verdict column from each table's own header rather than from a fixed index, and drops
+abbreviated keys as inert. This file's real dedupe set is **44 keys**. `routedIssues` was empty: no open issue owned a class this round found.
+
+One class on the deterrence list came back anyway, and correctly.
+`Sources/Dungeon/Regions/Dam.swift::light match one of the matches starts to b…` names the
+*dry-frame* spelling of the matchbook line; the round filed the **wet** frame, as
+`Prose+Dam.swift::floodRises`. Same declaration, different claim — the fault is the missing
+underwater branch, not the sentence, which in a dry room is correct — and the tester said so in
+the finding rather than filing quietly over the top of it.
+
+**Three rows are `confirmed (needs-human)`.** The verifier confirmed a false clause in each and
+declined to let a fixer near it, because in all three the repair is a source-policy or plugin-API
+trade rather than a wording change. They carry the `question` label on the issue.
+
+**Two findings never reached the table.** Both were withheld by their own testers as unverifiable
+inside the budget, both have no key, and both are carried into the next round's dedupe set by
+claim text rather than by key, and neither is counted as covered:
+
+1. explorer-2 — the Grail Room prints "a small round chamber… A flight of stairs rises from one side" and both `x chamber` and `x flight` answer "You can't see any such thing." Correct reproducer: `restore` / `m-2` / `touch mirror` / `north` / `north` / `x chamber` / `x flight`.
+2. timekeeper-3 — "You suddenly notice that the golden clockwork canary vanished." prints in a lit room with the thief who took it in plain sight, and `ActorBehaviors.steals` suppresses it in the dark, where it would be true.
+
+| key | verdict | class | severity |
+|---|---|---|---|
+| `decl::Sources/Dungeon/Regions/Prose+Palantir.swift::keyholeDark` | confirmed | prose-untrue-of-frame | major |
+| `decl::Sources/Dungeon/Regions/Prose+Mirror.swift::metalSlide` | confirmed | prose-untrue-of-frame | major |
+| `decl::Sources/Dungeon/Regions/Prose+Mirror.swift::mirrorRoomCeiling` | confirmed | unanswerable-noun | major |
+| `decl::Sources/Dungeon/Regions/Prose+AboveGround.swift::brokenEgg` | confirmed | prose-untrue-of-frame | major |
+| `decl::Sources/Dungeon/Regions/Prose+Maze.swift::burnedOutLantern` | confirmed (needs-human) | presence-line-location-blind | major |
+| `decl::Sources/Dungeon/Prose+Thief.swift::thiefLootScatters` | confirmed (needs-human) | unanswerable-noun | major |
+| `decl::Sources/Dungeon/Prose+Systems.swift::resurrection` | confirmed (needs-human) | prose-untrue-of-frame | major |
+| `decl::Sources/Dungeon/Regions/Prose+Dam.swift::floodRises` | confirmed | prose-untrue-of-frame | major |
+| `decl::Sources/Dungeon/Prose+Thief.swift::thief` | confirmed | prose-untrue-of-state | major |
+| `decl::Sources/Gnusto/Actions/GameText.swift::nothingToSearch` | confirmed | prose-untrue-of-state | major |
+| `decl::Sources/Dungeon/Regions/Prose+Dam.swift::maintenanceWreckage` | confirmed | prose-untrue-of-state | major |
+| `decl::Sources/Gnusto/Engine/GameWorld+Prompts.swift::restorePromptText` | confirmed | contract-violation | minor |
+| `decl::Sources/Dungeon/Prose+Stubs.swift::stubFloor` | refuted | mechanic-contradicts-prose | major |
+| `decl::Sources/Dungeon/Regions/Prose+Palantir.swift::tinyRoom` | refuted | presence-line-location-blind | major |
+| `decl::Sources/Dungeon/Regions/Prose+Palantir.swift::tinyRoomWalls` | refuted | prose-untrue-of-frame | minor |
+| `decl::Sources/Dungeon/Regions/Prose+CoalMine.swift::machineDoesNothing` | refuted | mechanic-contradicts-prose | minor |
+| `decl::Sources/Dungeon/Regions/Prose+CoalMine.swift::machineSwitch` | refuted | register-mismatch | note |
+| `decl::Sources/Dungeon/Regions/Prose+Dam.swift::trunkSearched` | refuted | stock-line-not-reskinned | minor |
+| `decl::Sources/Dungeon/Regions/Prose+Mirror.swift::mirror` | refuted | stock-line-not-reskinned | minor |
+| `decl::Sources/Dungeon/Prose+Thief.swift::stiletto` | refuted | prose-untrue-of-state | minor |
+| `decl::Sources/Dungeon/Regions/Prose+AboveGround.swift::eggBody` | refuted | mechanic-contradicts-prose | minor |
+| `decl::Sources/Dungeon/Regions/Prose+CoalMine.swift::machineRoom` | refuted | presence-line-location-blind | minor |
+| `decl::Sources/Dungeon/Regions/Prose+CoalMine.swift::basketLowered` | refuted | prose-untrue-of-state | minor |
+| `decl::Sources/Dungeon/Prose+Thief.swift::thiefSwipeWound` | refuted | mechanic-contradicts-prose | minor |
+| `decl::Sources/Gnusto/Actions/GameText.swift::cantReach` | refuted | stock-line-not-reskinned | minor |
+| `decl::Sources/Dungeon/Regions/Prose+Dam.swift::buttonLabels` | refuted | prose-taste | minor |
+
+Pass the fourteen `refuted` keys above as `ledgerKeys` next round, alongside every other
+`refuted` row in this file — **fifty-eight keys, forty-five of which can actually match**, the
+other thirteen being the display-truncated 2026-08-11 rows. Not the `confirmed` ones, not the
+`fixed` ones, and not the two withheld findings, which have no keys and must be carried as
+claims.
+
+**Thirteen of the fourteen refutations turn on a rule rather than on the sentence** —
+`stock-behavior-by-design` ×8, `licensed-by-doc` ×5, `characterization` ×1. The doc-licensed
+share is 5/14 = 36%, which clears the brief's two-in-five line. The larger number is the eight
+that died on **documented engine behaviour** — `.lookIn`/`nothingToSearch`, `cantReach`, actor
+scope, the stub-verb floor — four of them on rules written in CLAUDE.md in plain language. That
+is the T0 kernel, which no charter is blind to on purpose, and withholding it is buying nothing.

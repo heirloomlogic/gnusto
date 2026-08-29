@@ -469,23 +469,58 @@ function capabilitiesOf(game) {
 // — a human reading record that is already machine-readable — so this reads the
 // verdict rather than guessing from the shape of the key.
 function ledgerKeysFrom(p) {
-  return fs.readFileSync(p, 'utf8')
-    .split('\n')
-    .map((line) => {
-      if (!line.trimStart().startsWith('|')) return null
-      const cells = line.split('|').slice(1, -1).map((c) => c.trim())
-      if (cells.length < 3) return null
-      // Column 2 either way. A confirmed table is `| key | class | verdict | note |`
-      // and a refuted one is `| key | charter | kind |`, where a kind such as
-      // `licensed-by-doc` is the refutation's reason — the row is a refutation by
-      // virtue of the table it is in rather than by a word in it.
-      const verdict = cells[2]
-      const key = (cells[0].match(/^`([^`]+::[^`]+)`$/) || [])[1]
-      if (!key) return null
-      const refutedTable = cells.length === 3 && !/^(confirmed|fixed|needs-human)$/.test(verdict)
-      return verdict === 'refuted' || refutedTable ? key : null
-    })
-    .filter(Boolean)
+  // **Read the header, never an index.** Five ledgers have put the verdict in three
+  // different places — `| Key | Verdict | Category |`, `| key | verdict | class |
+  // severity |`, and Fulminate's `| Key (abbreviated) | Tree | Verdict | Note |` —
+  // and a fixed column is wrong for at least one of them whichever one you pick.
+  // Reading `cells[2]` picked the *category* out of every Dungeon table, so no row
+  // ever matched `refuted`; a fallback heuristic then let the whole of the one
+  // three-column table through instead, and the round of 2026-08-29 was handed 55
+  // keys of which the true useful count was zero.
+  //
+  // Both mistakes are silent, which is why this is parsed rather than assumed: a
+  // round handed the wrong keys re-finds everything it should skip, and a round
+  // handed a `fixed` key drops the regression this file exists to catch, unverified
+  // and unreported.
+  let verdictAt = null
+  let wholeTableIsRefuted = false
+  const keys = []
+  for (const line of fs.readFileSync(p, 'utf8').split('\n')) {
+    if (!line.trimStart().startsWith('|')) {
+      // A table ends at the first line that is not a row. Forgetting this carried
+      // one table's column layout into the next one down the file.
+      verdictAt = null
+      wholeTableIsRefuted = false
+      continue
+    }
+    const cells = line.split('|').slice(1, -1).map((c) => c.trim())
+    if (cells.length < 3) continue
+    const key = (cells[0].match(/^`([^`]+::[^`]+)`$/) || [])[1]
+
+    if (!key) {
+      // A header, a separator, or a table with no key column at all. Only the first
+      // teaches us anything.
+      const lower = cells.map((c) => c.toLowerCase())
+      if (!/^key$/.test(lower[0]) && !/^key \(/.test(lower[0])) continue
+      verdictAt = lower.findIndex((c) => c === 'verdict')
+      if (verdictAt < 0) verdictAt = null
+      // The older shape, where the row is a refutation by virtue of the table it is
+      // in rather than by a word in it: its third column is the refutation's reason.
+      wholeTableIsRefuted = lower.includes('refutation kind')
+      continue
+    }
+    // A key the ledger stored abbreviated can never match one a round produces:
+    // `normalize()` emits nothing but `[a-z0-9 ]`, so an ellipsis is inert by
+    // construction. Dropping them is what makes the count preflight prints the
+    // number of keys that can actually do something.
+    if (key.includes('\u2026')) continue
+    if (wholeTableIsRefuted) { keys.push(key); continue }
+    if (verdictAt === null) continue
+    // The suffixed spellings are deliberate — `fixed (by #331)`,
+    // `confirmed (needs-human)` — so match the leading word, not the whole cell.
+    if (/^refuted\b/.test(cells[verdictAt] || '')) keys.push(key)
+  }
+  return [...new Set(keys)]
 }
 
 // ---------------------------------------------------------------------------
