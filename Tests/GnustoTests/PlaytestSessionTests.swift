@@ -30,6 +30,13 @@ struct PlaytestSessionTests {
         let sessions: PlaytestSessions
         let root: URL
 
+        /// The tool table over the same root, for the rows whose subject is
+        /// what a *client* meets. Its registry is a second one — a table always
+        /// builds its own — which costs nothing and is safe: the disk layout is
+        /// the shared state, and probe allocation is a `mkdir` lock precisely so
+        /// that two registries under one root cannot take the same directory.
+        let tools: [PlaytestTool]
+
         init(_ game: some Game, maxSessions: Int? = nil) throws {
             root = FileManager.default.temporaryDirectory
                 .appendingPathComponent(UUID().uuidString)
@@ -37,8 +44,9 @@ struct PlaytestSessionTests {
             if let maxSessions {
                 environment["GNUSTO_MCP_MAX_SESSIONS"] = "\(maxSessions)"
             }
-            sessions = PlaytestSessions(
-                prepared: try PreparedGame(game), environment: environment)
+            let prepared = try PreparedGame(game)
+            sessions = PlaytestSessions(prepared: prepared, environment: environment)
+            tools = PlaytestTools.table(for: prepared, environment: environment)
         }
     }
 
@@ -764,6 +772,163 @@ struct PlaytestSessionTests {
         // Probes under one label share the label's saves, which is what makes a
         // save in one probe restorable in the next.
         #expect(first.saveDirectory == second.saveDirectory)
+    }
+
+    // MARK: - Opening onto somebody else's saves
+
+    /// A session under its own label, walked into the Cloakroom and saved
+    /// there, for the staging rows below to copy out of.
+    ///
+    /// The player's own `save` verb through `move`, as in
+    /// `PlaytestReplayTests.keeper`: what these rows are about is what the
+    /// *game* can read back, not what a fixture wrote.
+    private func keeper(
+        _ registry: PlaytestSessions, label: String = "keeper", slot: String = "deep"
+    ) async throws -> PlaytestSession {
+        let session = try await registry.open(label: label, seed: 0)
+        _ = try await session.opening()
+        _ = try await session.move(commands: ["west"], allowPrompts: false)
+        _ = try await session.move(commands: ["save", slot], allowPrompts: true)
+        return session
+    }
+
+    /// `savesFrom` names a label, and the slots arrive in the opener's own
+    /// label — with a receipt that says so.
+    ///
+    /// This is the door the sessionless `replay` has had all along and the
+    /// session path had not. Without it a round shipping a pre-cut save had to
+    /// have its operator hand-copy each `.gnusto` into every session's saves
+    /// directory before dispatch, which means knowing the workflow's label
+    /// scheme in advance; the 2026-08-25 Dungeon round did exactly that.
+    @Test func openingWithASavesFromLabelStagesItsSlotsUnderTheNewLabel() async throws {
+        let harness = try Harness(OperaHouse())
+        let keeper = try await keeper(harness.sessions)
+        let open = try #require(harness.tools.first { $0.name == "open" })
+
+        let result = try await open.call(["label": "reader", "savesFrom": "keeper"])
+
+        // The receipt is the point: a tester told to `restore deep` has to see
+        // that `deep` arrived, or the only way to find out costs a turn.
+        let structured = try #require(result.structured)
+        #expect(structured["savesStaged"] == .array([.string("deep")]))
+        #expect(structured["savesFrom"]?.stringValue == keeper.saveDirectory.path)
+
+        // Under the reader's label, not the keeper's: probes under one label
+        // share its saves, so every later probe the tester opens can restore
+        // these too.
+        #expect(
+            SaveStore.existingSaveNames(
+                in: harness.root.appendingPathComponent("reader/saves")) == ["deep"])
+        #expect(SaveStore.existingSaveNames(in: keeper.saveDirectory) == ["deep"])
+    }
+
+    /// `savesFrom` naming a path stages a directory that is no label at all.
+    ///
+    /// The branch `SaveStore.isExplicitPath` picks, and the one a round
+    /// actually uses: a cut save is a directory somebody kept, outside the
+    /// play-test root, and by the time it is handed out the label that wrote it
+    /// is usually gone.
+    @Test func aSavesFromPathStagesADirectoryThatIsNoLabel() async throws {
+        let harness = try Harness(OperaHouse())
+        let keeper = try await keeper(harness.sessions)
+        let open = try #require(harness.tools.first { $0.name == "open" })
+
+        // The round's cut save, under the name its brief will tell the tester
+        // to ask for, in a directory nothing could reach as a label.
+        let cut = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: cut, withIntermediateDirectories: true)
+        try FileManager.default.copyItem(
+            at: keeper.saveDirectory.appendingPathComponent("deep.gnusto"),
+            to: cut.appendingPathComponent("z-1.gnusto"))
+
+        let result = try await open.call(
+            ["label": "reader", "savesFrom": .string(cut.path)])
+
+        let structured = try #require(result.structured)
+        #expect(structured["savesStaged"] == .array([.string("z-1")]))
+        #expect(structured["savesFrom"]?.stringValue == cut.path)
+        #expect(
+            SaveStore.existingSaveNames(
+                in: harness.root.appendingPathComponent("reader/saves")) == ["z-1"])
+    }
+
+    /// The whole point, played out: a session opened onto a staged slot
+    /// restores it and stands where the save was written.
+    ///
+    /// The rows above prove the bytes moved. This one proves the game can read
+    /// them — the keeper saved in the Cloakroom, so a reader that answers the
+    /// restore prompt with `deep` is looking at the Cloakroom and not at the
+    /// Foyer it opened in.
+    @Test func aSessionRestoresTheSlotItWasOpenedWith() async throws {
+        let harness = try Harness(OperaHouse())
+        let keeper = try await keeper(harness.sessions)
+
+        let reader = try await harness.sessions.open(
+            label: "reader", seed: 0, savesFrom: keeper.saveDirectory)
+        _ = try await reader.opening()
+        let restored = try await reader.move(
+            commands: ["restore", "deep", "look"], allowPrompts: true)
+
+        #expect(!restored.contains("Restore failed"))
+        #expect(restored.contains("Cloakroom"))
+        #expect(reader.staged?.copied == ["deep"])
+        #expect(reader.staged?.from == keeper.saveDirectory)
+    }
+
+    /// A `savesFrom` holding no slots refuses in the sentence the replay path
+    /// has always used, and opens nothing.
+    ///
+    /// The refusal comes before the probe is allocated, so a mistyped or
+    /// already-cleaned source leaves no directory pretending to be a session
+    /// that never opened.
+    @Test func aSavesFromWithNoSlotsRefusesAndLeavesNoSession() async throws {
+        let harness = try Harness(OperaHouse())
+        let empty = try await harness.sessions.open(label: "empty-handed", seed: 0)
+
+        let refusal = await #expect(throws: PlaytestError.self) {
+            try await harness.sessions.open(
+                label: "reader", seed: 0, savesFrom: empty.saveDirectory)
+        }
+
+        #expect(refusal?.description.contains("holds no saved games") == true)
+        let opened = await harness.sessions.count()
+        #expect(opened == 1)
+        #expect(
+            !FileManager.default.fileExists(
+                atPath: harness.root.appendingPathComponent("reader/probe-001").path))
+    }
+
+    /// A second `open` under one label with the same `savesFrom` succeeds, and
+    /// leaves the tester's own slot exactly where it was.
+    ///
+    /// A label's `saves/` outlives every probe under it, so the second probe
+    /// stages onto a directory that already holds those names — where the
+    /// replay path, staging into a fresh throwaway every time, could never
+    /// collide. Copying over the name would be worse than failing: by the
+    /// second `open` the slot standing there may be the tester's own game,
+    /// saved under the name the round happened to choose.
+    @Test func aSecondOpenUnderOneLabelKeepsTheTestersOwnSlot() async throws {
+        let harness = try Harness(OperaHouse())
+        let keeper = try await keeper(harness.sessions)
+
+        let first = try await harness.sessions.open(
+            label: "reader", seed: 0, savesFrom: keeper.saveDirectory)
+        _ = try await first.opening()
+        // The tester saves over the staged name from the room it opened in, so
+        // `deep` under `reader` is now the reader's game and not the round's.
+        _ = try await first.move(commands: ["save", "deep"], allowPrompts: true)
+        let slot = first.saveDirectory.appendingPathComponent("deep.gnusto")
+        let mine = try Data(contentsOf: slot)
+
+        let second = try await harness.sessions.open(
+            label: "reader", seed: 0, savesFrom: keeper.saveDirectory)
+
+        #expect(second.staged?.copied.isEmpty == true)
+        #expect(second.staged?.kept == ["deep"])
+        // Still restorable, which is the only thing the receipt promises.
+        #expect(second.staged?.restorable == ["deep"])
+        #expect(try Data(contentsOf: slot) == mine)
     }
 
     // MARK: - Durability

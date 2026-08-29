@@ -575,9 +575,13 @@ enum PlaytestTools {
                 in the process leaves the evidence behind and the session can \
                 be replayed. One label per tester: probes under a label share \
                 its save slots, and two testers sharing a label share each \
-                other's saves. The queue of things the game has already shown \
-                you comes back with the opening, so you can plan from it \
-                before spending a turn.
+                other's saves. Pass `savesFrom` when the round has cut you a \
+                save to start from: the slots are copied into your label's \
+                saves before the game boots, so `restore` reaches them from \
+                this session and from every later probe under the same label. \
+                The queue of things the game has already shown you comes back \
+                with the opening, so you can plan from it before spending a \
+                turn.
                 """,
             inputSchema: [
                 "type": "object",
@@ -623,6 +627,24 @@ enum PlaytestTools {
                                 + "move it is under orders not to make. Defaults to "
                                 + "commit, which is the queue this tool has always given."),
                     ],
+                    "savesFrom": [
+                        "type": "string",
+                        "description": .string(
+                            "Where this session's first saved games come from: a play "
+                                + "label, or — anything holding a slash — the path of a "
+                                + "directory of .gnusto slots. They are copied into your "
+                                + "own label's saves before the game boots, so `restore` "
+                                + "finds them by name here and in every later probe under "
+                                + "the label. Without it a round that cut you a save to "
+                                + "start from cannot hand it over, and the game answers "
+                                + "\"Restore failed.\" to the slot you were told to ask "
+                                + "for. The copy is one way and never overwrites: a slot "
+                                + "your label already holds under the same name is left "
+                                + "exactly as it is, and a `save` here lands in your label "
+                                + "and can never reach the source. The result lists what "
+                                + "you can now restore — check the name you were given is "
+                                + "in it before you spend a turn on it."),
+                    ],
                 ],
                 "required": ["label"],
                 "additionalProperties": false,
@@ -633,11 +655,16 @@ enum PlaytestTools {
                 let seed = try seed(arguments)
                 let role = try role(arguments)
                 let divergence = try divergence(arguments)
+                var savesFrom: URL?
+                if let named = arguments["savesFrom"]?.stringValue {
+                    savesFrom = try await sessions.savesSource(named)
+                }
                 let session = try await sessions.open(
-                    label: label, seed: seed, role: role, divergence: divergence)
+                    label: label, seed: seed, role: role, divergence: divergence,
+                    savesFrom: savesFrom)
                 let opening = try await session.opening()
                 let coverage = try await session.coverage(limit: queueLimit)
-                return PlaytestToolResult([
+                var fields: [String: JSONValue] = [
                     "session": .string(session.id),
                     "seed": .integer(Int(bitPattern: UInt(seed))),
                     "role": .string(role.rawValue),
@@ -650,7 +677,18 @@ enum PlaytestTools {
                     "queue": .array(coverage.items.map(\.json)),
                     "transcript": .string(session.transcriptURL.path),
                     "commands": .string(session.commandsURL.path),
-                ])
+                ]
+                // Only when there was a staging, matching `replay`'s receipt:
+                // an ordinary `open` answers with exactly the fields it always
+                // has. `restorable` rather than `copied`, because the tester's
+                // question is "can I restore the slot I was told about?" and a
+                // name this call skipped because the label already held it is
+                // as restorable as one it wrote.
+                if let staged = session.staged {
+                    fields["savesStaged"] = .array(staged.restorable.map { .string($0) })
+                    fields["savesFrom"] = .string(staged.from.path)
+                }
+                return PlaytestToolResult(.object(fields))
             })
     }
 
@@ -700,6 +738,23 @@ enum PlaytestTools {
             ],
             "transcript": ["type": "string"],
             "commands": ["type": "string"],
+            "savesStaged": [
+                "type": "array",
+                "items": ["type": "string"],
+                "description": .string(
+                    "Every slot this session can now restore by name, staged in from "
+                        + "savesFrom. A name the label already held is in here too, left "
+                        + "as it was rather than overwritten. Absent when the session "
+                        + "started clean, which is the ordinary case."),
+            ],
+            "savesFrom": [
+                "type": "string",
+                "description": .string(
+                    "The directory they were copied out of. Absent with savesStaged; "
+                        + "name it wherever you cite this session, because a transcript "
+                        + "that begins with a restore reproduces only while those slots "
+                        + "survive."),
+            ],
         ],
         "required": [
             "session", "seed", "role", "divergence", "instruction", "opening", "status",
@@ -2003,18 +2058,21 @@ extension PlaytestReplay.Outcome {
     var rendered: String {
         // The path goes on the header line, before anything the caller came for,
         // because the one thing it reliably forgets to do is cite it.
-        var lines = [
-            "[playtest] replay lines=\(self.lines) finished=\(finished)"
-                + (probe.map { " transcript=\($0.appendingPathComponent("transcript.txt").path)" }
-                    ?? "")
-                // On the header line too, and for the same reason the path is:
-                // this is the one fact about the run that weakens what the
-                // caller is about to cite, so it cannot be somewhere they might
-                // not look.
-                + (staged.map {
-                    " saves-from=\($0.label) slots=\($0.slots.joined(separator: ","))"
-                } ?? "")
-        ]
+        let headline = "[playtest] replay lines=\(self.lines) finished=\(finished)"
+        let transcriptTrailer =
+            probe.map { " transcript=\($0.appendingPathComponent("transcript.txt").path)" } ?? ""
+        // On the header line too, and for the same reason the path is: this is the
+        // one fact about the run that weakens what the caller is about to cite, so
+        // it cannot be somewhere they might not look.
+        //
+        // Three locals rather than one expression because the type-checker gives up
+        // on the concatenation of an interpolation, two `Optional.map`s and a
+        // `joined` — "unable to type-check this expression in reasonable time",
+        // which is a compile error and not a warning.
+        let stagedTrailer =
+            staged.map { " saves-from=\($0.label) slots=\($0.restorable.joined(separator: ","))" }
+            ?? ""
+        var lines = [headline + transcriptTrailer + stagedTrailer]
         // Said here as well as in the tool description, because the reader who
         // needs it is reading a bad answer rather than re-reading the schema
         // that produced it. This is the one refusal in the tree that is about
@@ -2062,7 +2120,7 @@ extension PlaytestReplay.Outcome {
                 .string(probe.appendingPathComponent("commands.txt").path)
         }
         if let staged {
-            entry["savesStaged"] = .array(staged.slots.map { .string($0) })
+            entry["savesStaged"] = .array(staged.restorable.map { .string($0) })
             entry["savesFrom"] = .string(staged.from.path)
         }
         if restoreWasUnreachable {

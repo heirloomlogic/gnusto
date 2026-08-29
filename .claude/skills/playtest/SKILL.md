@@ -22,9 +22,10 @@ followed up, every item a command to paste.
 
 ```sh
 bin/playtest-preflight <Game>
+bin/playtest-slots <Game>      # only when preflight's `slots` row is red
 ```
 
-One command, and it is not optional. It builds, then proves the game's MCP server
+The first is one command, and it is not optional. It builds, then proves the game's MCP server
 answers by speaking JSON-RPC at it over a pipe of its own — which is the only way to
 check when the session's own registration has failed, because then the client is
 exactly the wrong thing to ask. It exits non-zero and names the remedy when the round
@@ -36,6 +37,21 @@ derived rather than retyped — capabilities off the manifest, `docPath` and the
 and the focus split off `docs/games/`, the seed off the game's walkthrough test, and
 `roundId` from today's date. The six paragraphs below explain what each one means and
 what it costs to get wrong; none of them is yours to assemble by hand any more.
+
+**`bin/playtest-slots <Game>` cuts the round's saved games**, and preflight's `slots`
+row is what tells you it needs to. A game whose map outruns a round's budget reaches its
+far side by `restore` rather than on foot, so its focus file declares slots — a name and
+a depth, `` `d-1` (cut at `route[0:113]`) `` — and the script plays that prefix of the
+committed walkthrough, saves, then restores each slot and prints the room, the moves, the
+score and what the player is holding. Read those lines against the region's own sentence;
+that is the check, because **a slot is chosen by route state and never by the room the
+`[status]` footer names**. `wf-1` on 2026-08-25 was cut three hundred commands past `take
+trunk`, so the footer said the right room while the trunk was already in the trophy case
+and the pairing the round existed to judge was offered to nobody.
+
+The bytes live under `.context/`, which is gitignored — so a focus file describing nine
+saved games and a checkout holding none of them look exactly alike, and until #333 the
+only thing that noticed was eight testers all answering `Restore failed.`
 
 Then invoke the workflow **by path**, handing it that JSON:
 
@@ -135,6 +151,8 @@ whoever remembered the rule.
 | `turns` | `60` | Engine turns per charter. Token cost, not CPU cost, is the real budget. **It is scored against all four of a tester's turn trees** — its session, the branches a rewind wrote off, its `replay` probes and its `bin/playtest-replay` probes — while the `[status]` move counter shows only the first. Testers spent 8x their budget without feeling it on 2026-08-25; the tester prompt now says so in as many words. |
 | `charters` | all applicable | Comma-separated subset, e.g. `"tourist,clock-watcher"`. |
 | `focus` | none | The coverage split, as **one string** with regions separated by `\|` — an array is silently read as a single region. Each region becomes one `explorer` *and* one `timekeeper`, up to three of each; the explorers are handed different divergence policies. Say how each region is reached, and **name no room**. See below. |
+| `focusSighted` | none | The half of the split a blind seat may not have — a row keyed to a sighted charter, or one naming the walkthrough by type, the ledger, or a slot's contents. **Not** every mention of a route index: a region must tell its tester how deep a slot stands. Never chunked, never seated, appended to the sighted charters' plan. It is everything below the focus file's **second** `---` rule. See below. |
+| `slots` | none | The label `bin/playtest-slots` wrote the round's saved games to. Every session stages from it, so a region that says "restore `d-1`" can be obeyed. |
 | `verifyEffort` | inherit | Reasoning effort for the verifiers — the round's largest fan-out, and so its cost. Turn it down to buy a bigger round; read the warning below first. |
 | `rounds` / `dryRounds` | `1` / `2` | Loop until N consecutive rounds surface nothing new. |
 | `packagePath` | `"."` | Drive another checkout — a worktree at an older commit, for calibration. |
@@ -294,6 +312,8 @@ which the harness writes and no game can re-voice, is the acceptable middle.
     issue-shape.md                     the one issue a round files
 bin/playtest-preflight                 the front door — run this first, always
 bin/playtest-replay                    the replay helper
+bin/playtest-slots                     cuts the round's saved games, and verifies each
+bin/lib/playtest-focus.js              what a focus file declares; read by both scripts
 .claude/workflows/playtest.dryrun.mjs  zero-agent dry run — a CI gate, not a suggestion
 bin/playtest-measure                   how curiously a session played, off its artifacts
 bin/gnusto-mcp, .mcp.json              every game as a live play-test server
@@ -440,12 +460,19 @@ Either way a staged probe says so on its header line and in `summary.txt` and ke
 staged bytes in its own `saves-in/`: it reproduces from its command list only while those
 slots exist, which is weaker evidence than a clean start and is labelled as such.
 
-**Ship at least one save the round can actually use.** A slot is chosen by *route state*,
-not by the room name the `[status]` footer reports: `wf-1` on 2026-08-25 was cut three
-hundred commands past `take trunk`, so `object:trunk:open` was offered to nobody while
-the footer said the right room. And check who is alive in it — every slot that round
-shipped was cut past `attack thief with sword`, which silently removed the thief from
-three of four regions.
+**Ship at least one save the round can actually use**, and let `bin/playtest-slots` cut
+it. A slot is chosen by *route state*, not by the room name the `[status]` footer
+reports: `wf-1` on 2026-08-25 was cut three hundred commands past `take trunk`, so
+`object:trunk:open` was offered to nobody while the footer said the right room. And check
+who is alive in it — every slot that round shipped was cut past `attack thief with
+sword`, which silently removed the thief from three of four regions. Both of those are
+read off the script's own verification line, which prints the landing room, the move
+count, the score and the inventory for exactly this.
+
+**The session door is `savesFrom` on `open`**, which the round passes for you when `slots`
+is set. Before #333 there was none: the slots had to be hand-copied into every
+`<sessionLabel>/saves/` directory before dispatch, which meant knowing the workflow's
+label scheme in advance, and the 2026-08-25 operator did it eight times by hand.
 
 ## Measuring a change to the harness
 

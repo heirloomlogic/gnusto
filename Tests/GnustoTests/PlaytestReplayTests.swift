@@ -378,7 +378,7 @@ struct PlaytestReplayTests {
 
         #expect(!outcome.transcript.contains("Restore failed"))
         #expect(outcome.transcript.contains("Cloakroom"))
-        #expect(outcome.staged?.slots == ["deep"])
+        #expect(outcome.staged?.restorable == ["deep"])
 
         // The control, and the whole reason this row exists: the identical list
         // with no `savesFrom` is the answer four findings were discarded on.
@@ -429,7 +429,7 @@ struct PlaytestReplayTests {
             prepared: try PreparedGame(OperaHouse()),
             commands: ["restore"], seed: 0, expect: nil, savesFrom: saves)
 
-        #expect(outcome.staged?.slots == ["deep"])
+        #expect(outcome.staged?.restorable == ["deep"])
         #expect(!outcome.transcript.contains("notes"))
     }
 

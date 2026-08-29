@@ -92,49 +92,13 @@ enum PlaytestReplay {
         let probe: URL?
 
         /// The save slots copied in before the game booted, or `nil` for the
-        /// ordinary clean start. See ``Staged``.
-        let staged: Staged?
+        /// ordinary clean start. See ``PlaytestSessions/StagedSlots``.
+        let staged: PlaytestSessions.StagedSlots?
 
         /// Whether this replay typed `restore` with nothing staged to restore
         /// from — the harness answer, not a game answer. See
         /// ``restoreWasUnreachable(_:staged:)``.
         let restoreWasUnreachable: Bool
-    }
-
-    /// What a replay was given to restore from, and where it came from.
-    ///
-    /// **A staged replay is weaker evidence than an unstaged one**, and the
-    /// receipt has to say which it was. Every other probe in this tree replays
-    /// from `commands.txt` and a seed alone; one that begins `restore`
-    /// reproduces only while that label still holds the slot it named. That is
-    /// worth having — four findings in the 2026-08-25 Dungeon round were
-    /// recorded `not-reproducible` for want of it — but it is not the same
-    /// claim, so it is not reported as the same claim.
-    ///
-    /// A type rather than a pair of fields, so that "there is no such thing as
-    /// a staging that copied nothing" is a property of the thing rather than a
-    /// comment: ``stage(_:into:)`` refuses an empty source, and one optional
-    /// leaves a later edit nowhere to invent the case.
-    struct Staged: Sendable {
-        /// The label's `saves/` directory the slots were copied out of.
-        let from: URL
-        /// What was copied, sorted.
-        let slots: [String]
-
-        /// What a reader greps a probe tree for, and what `bin/playtest-replay`
-        /// records: the shortest name that resolves back to these bytes.
-        ///
-        /// A label's saves live in `<label>/saves/`, so for that layout the
-        /// directory one level up **is** the label and is the right thing to
-        /// print. Nothing else is: a probe's own `saves-in/` — the path form,
-        /// which is how a round is re-run after its labels are cleaned — would
-        /// render as a bare `probe-002`, a name every label in the tree has one
-        /// of. That is the un-replayable receipt the path form exists to fix, so
-        /// anything not in the label layout prints whole.
-        var label: String {
-            let parent = from.deletingLastPathComponent()
-            return from.lastPathComponent == "saves" ? parent.lastPathComponent : from.path
-        }
     }
 
     /// Plays a command list into a fresh world and reports what happened.
@@ -152,7 +116,8 @@ enum PlaytestReplay {
     ///     subject.
     ///   - savesFrom: a directory of `.gnusto` slots this replay may read — a
     ///     label's `saves/`, or a probe's `saves-in/` — or `nil` for a clean
-    ///     start. Copied in, never written back — see ``stage(_:into:)``.
+    ///     start. Copied in, never written back — see
+    ///     ``PlaytestSessions/stageSlots(from:into:)``.
     /// - Throws: ``PlaytestError`` for a list that is too long, for one that
     ///   holds a `script`/`unscript` line — neither of which runs anything —
     ///   or for a `savesFrom` directory holding no slots.
@@ -193,7 +158,7 @@ enum PlaytestReplay {
         // the only directory this world is ever told about is still the
         // throwaway above, so the paragraph before this one stays literally
         // true while a reproducer beginning `restore` finally finds its slot.
-        let staged = try savesFrom.map { Staged(from: $0, slots: try Self.stage($0, into: saves)) }
+        let staged = try savesFrom.map { try PlaytestSessions.stageSlots(from: $0, into: saves) }
 
         let world = GameWorld(prepared: prepared, seed: seed, saveDirectory: saves)
         let io = ScriptedIOHandler(lines: commands)
@@ -233,7 +198,9 @@ enum PlaytestReplay {
     ///   - commands: the lines fed, in order.
     ///   - staged: what was copied in first, or `nil` for a clean start.
     /// - Returns: true when a `restore` in this list had nothing to find.
-    private static func restoreWasUnreachable(_ commands: [String], staged: Staged?) -> Bool {
+    private static func restoreWasUnreachable(
+        _ commands: [String], staged: PlaytestSessions.StagedSlots?
+    ) -> Bool {
         guard staged == nil else { return false }
         for line in commands where !TesterInput.isComment(line) {
             switch line.trimmingCharacters(in: .whitespaces)
@@ -246,52 +213,6 @@ enum PlaytestReplay {
             }
         }
         return false
-    }
-
-    /// Copies a label's saved games into this replay's throwaway directory.
-    ///
-    /// **One way, by construction.** The destination is the temp directory the
-    /// caller is about to hand the world and then delete, so a `save` inside the
-    /// replay lands there and can never reach back into the label. Nothing in
-    /// this function writes to `source`.
-    ///
-    /// Only `*.gnusto` — the extension ``SaveStore/existingSaveNames(in:)``
-    /// filters on, so the game's own restore prompt lists exactly what was
-    /// staged and nothing else. The `.history` sidecar stays behind: it is a
-    /// tester's typing, and a replay is driven by `ScriptedIOHandler`, which
-    /// reads no history.
-    ///
-    /// Safe against a live session. ``SaveFile`` writes atomically, so a
-    /// concurrent `save` is a rename and this copy sees the whole of the old
-    /// file or the whole of the new one.
-    ///
-    /// - Parameters:
-    ///   - source: a directory of saved games — a label's `saves/`, or the
-    ///     `saves-in/` an earlier staged probe kept.
-    ///   - destination: the throwaway, which may not exist yet.
-    /// - Throws: ``PlaytestError`` when the source holds no slots.
-    /// - Returns: the slot names copied, sorted.
-    private static func stage(_ source: URL, into destination: URL) throws -> [String] {
-        let slots = SaveStore.existingSaveNames(in: source)
-        guard !slots.isEmpty else {
-            throw PlaytestError(
-                """
-                savesFrom names \(source.path), which holds no saved games. Nothing ran. \
-                A reproducer whose first command is `restore` needs the slot the tester \
-                wrote, and nothing wrote one there — check the label, or judge the \
-                finding from a clean-start reproducer instead.
-                """)
-        }
-        // Through the save store both ways, so the extension and the 0700 the
-        // throwaway is created with stay in the one file that owns them:
-        // `resolveForWrite` *is* the make-the-directory-then-resolve pair, and
-        // the names came out of `resolve`'s own sanitizer to begin with.
-        for slot in slots {
-            try FileManager.default.copyItem(
-                at: SaveStore.resolve(slot, in: source),
-                to: try SaveStore.resolveForWrite(slot, in: destination))
-        }
-        return slots
     }
 
     /// Writes a replay's two files, and reports where.
@@ -322,7 +243,7 @@ enum PlaytestReplay {
     /// - Returns: the directory when both files landed, `nil` otherwise.
     private static func write(
         _ commands: [String], _ transcript: String, seed: UInt64,
-        staged: Staged?, to directory: URL
+        staged: PlaytestSessions.StagedSlots?, to directory: URL
     ) -> URL? {
         let transcriptURL = directory.appendingPathComponent("transcript.txt")
         let commandsURL = directory.appendingPathComponent("commands.txt")
@@ -339,12 +260,13 @@ enum PlaytestReplay {
         // reproducing the moment that label went. Best effort like the summary
         // below: losing it costs the guarantee, not the verdict.
         if let staged {
-            // The same copy `stage` made into the throwaway, made again into
-            // the probe. `try?` rather than `try` is the whole difference: a
-            // non-empty source is already proven, so the throw cannot fire, and
-            // losing the receipt must not lose the verdict.
-            _ = try? Self.stage(
-                staged.from, into: directory.appendingPathComponent("saves-in", isDirectory: true))
+            // The same copy `stageSlots` made into the throwaway, made again
+            // into the probe. `try?` rather than `try` is the whole difference:
+            // a non-empty source is already proven, so the throw cannot fire,
+            // and losing the receipt must not lose the verdict.
+            _ = try? PlaytestSessions.stageSlots(
+                from: staged.from,
+                into: directory.appendingPathComponent("saves-in", isDirectory: true))
         }
 
         // A fourth line only when there was one, so an ordinary probe's summary
@@ -353,7 +275,7 @@ enum PlaytestReplay {
         // key matches the CLI's trailer so one grep reads every probe in a tree.
         let provenance =
             staged.map {
-                "[playtest] saves-from=\($0.label) slots=\($0.slots.count) "
+                "[playtest] saves-from=\($0.label) slots=\($0.restorable.count) "
                     + "copy=\(directory.appendingPathComponent("saves-in").path)\n"
             } ?? ""
         let summary = """

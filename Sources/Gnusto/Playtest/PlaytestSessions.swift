@@ -98,12 +98,20 @@ actor PlaytestSessions {
     ///     it. See ``PlaytestRole``; the default is the human case.
     ///   - divergence: what the session does at an irreversible action.
     ///     Defaults to ``DivergencePolicy/commit``, the historical behaviour.
-    /// - Throws: ``PlaytestError`` for an unusable label or a directory that
-    ///   can't be made.
+    ///   - savesFrom: a directory of `.gnusto` slots to copy into this label's
+    ///     `saves/` before the session exists, or `nil` for the ordinary clean
+    ///     start. Resolve it with ``savesSource(_:)``. The slots land in the
+    ///     label rather than the probe, so every probe under it can `restore`
+    ///     them — which is the point: a round that ships pre-cut saves names
+    ///     one source and each tester's own `open` stages it, where before an
+    ///     operator had to hand-copy the files into directories whose names
+    ///     the workflow had not chosen yet.
+    /// - Throws: ``PlaytestError`` for an unusable label, a directory that
+    ///   can't be made, or a `savesFrom` holding no slots.
     /// - Returns: the new session.
     func open(
         label: String, seed: UInt64, role: PlaytestRole = .unrestricted,
-        divergence: DivergencePolicy = .commit
+        divergence: DivergencePolicy = .commit, savesFrom: URL? = nil
     ) async throws -> PlaytestSession {
         guard Self.isPlainName(label) else {
             throw PlaytestError(
@@ -123,6 +131,13 @@ actor PlaytestSessions {
             throw PlaytestError("Couldn't create \(saveDirectory.path): \(error)")
         }
 
+        // Staged here — after the saves directory exists and before anything
+        // else does — so a `savesFrom` that names an empty or missing source
+        // refuses while the only thing on disk is a directory this label was
+        // going to have anyway. Staged after the probe was allocated, it would
+        // leave a probe directory belonging to a session that never opened.
+        let staged = try savesFrom.map { try Self.stageSlots(from: $0, into: saveDirectory) }
+
         let (probe, directory) = try Self.allocateProbe(in: labelDirectory)
         let id = "\(label)/\(probe)"
         let session = PlaytestSession(
@@ -134,7 +149,8 @@ actor PlaytestSessions {
             divergence: divergence,
             prepared: prepared,
             directory: directory,
-            saveDirectory: saveDirectory)
+            saveDirectory: saveDirectory,
+            staged: staged)
         sessions[id] = session
         touch(id)
         await evictIfNeeded()
@@ -220,18 +236,19 @@ actor PlaytestSessions {
         return try? Self.allocateProbe(in: labelDirectory).1
     }
 
-    /// The saves directory of an existing label, for a sessionless `replay` to
-    /// read.
+    /// The saves directory of an existing label, for a `replay` or an `open`
+    /// to stage out of.
     ///
     /// **Read-only by the shape of the answer.** This hands back a path and
-    /// joins no session; the caller copies *out* of it into a throwaway of its
-    /// own (``PlaytestReplay/stage(_:into:)``), so a `save` inside the replay
-    /// can never reach the label. Nothing here creates the directory: a label
-    /// that does not exist is the caller's mistake, not a directory to make.
+    /// joins no session; the caller copies *out* of it into a directory of its
+    /// own (``stageSlots(from:into:)``), so a `save` on the far side can never
+    /// reach the label. Nothing here creates the directory: a label that does
+    /// not exist is the caller's mistake, not a directory to make.
     ///
     /// It goes through the registry for the reason ``replayProbe()`` does —
-    /// one type owns the disk layout — and it is the reason a replay can
-    /// finally answer a reproducer whose first command is `restore`.
+    /// one type owns the disk layout — and it is the reason a replay, or a
+    /// session, can finally answer a reproducer whose first command is
+    /// `restore`.
     ///
     /// - Parameter label: the label the tester passed to `open`, or the CLI's
     ///   `--label`.
@@ -259,8 +276,8 @@ actor PlaytestSessions {
         return Self.savesDirectory(under: labelDirectory)
     }
 
-    /// Where one sessionless `replay` may read saved games from: a play label,
-    /// or a path to a saves directory.
+    /// Where a `replay` or a freshly opened session may read saved games from:
+    /// a play label, or a path to a saves directory.
     ///
     /// **Two spellings because the evidence outlives the label.** A round's
     /// labels are cleaned between rounds, and the durable copy of a staged
@@ -281,7 +298,7 @@ actor PlaytestSessions {
     ///
     /// A path is honored verbatim, which is the whole point: it names a
     /// directory outside the play-test root. That is not an escape to guard
-    /// against — the copy is one way (``PlaytestReplay/stage(_:into:)``), the
+    /// against — the copy is one way (``stageSlots(from:into:)``), the
     /// caller drives this process from inside the checkout, and
     /// `bin/playtest-replay --package-path` has always taken an arbitrary
     /// directory for the same reason.
@@ -309,6 +326,116 @@ actor PlaytestSessions {
                 """)
         }
         return url
+    }
+
+    /// What one staging copied in, and what it found already standing there.
+    ///
+    /// Two lists rather than one, because they answer two different questions.
+    /// `copied` is what this call wrote; ``restorable`` is what the destination
+    /// can now be told to `restore` by name, and a slot the destination already
+    /// held is in the second and not the first. A replay stages into a fresh
+    /// throwaway and the two are always the same list, but a label's `saves/`
+    /// outlives every probe under it — so the second `open` under one label
+    /// stages onto a directory that already holds those names, and a receipt
+    /// reading only `copied` would tell that tester its slots had not arrived.
+    struct StagedSlots: Sendable {
+        /// The directory the slots were read out of.
+        let from: URL
+
+        /// What a reader greps a probe tree for, and what `bin/playtest-replay`
+        /// records: the shortest name that resolves back to these bytes.
+        ///
+        /// A label's saves live in `<label>/saves/`, so for that layout the
+        /// directory one level up **is** the label and is the right thing to
+        /// print. Nothing else is: a probe's own `saves-in/` — the path form,
+        /// which is how a round is re-run after its labels are cleaned — would
+        /// render as a bare `probe-002`, a name every label in the tree has one
+        /// of. That is the un-replayable receipt the path form exists to fix, so
+        /// anything not in the label layout prints whole.
+        var label: String {
+            let parent = from.deletingLastPathComponent()
+            return from.lastPathComponent == "saves" ? parent.lastPathComponent : from.path
+        }
+
+        /// The names this staging wrote, sorted.
+        let copied: [String]
+
+        /// Everything the destination can restore by name, sorted.
+        ///
+        /// The source's whole list, not a sum of two accumulators: every slot in
+        /// the source is either copied or already there, so this *is* what the
+        /// destination can restore, and deriving it by adding up the two halves
+        /// would be re-deriving a value the staging already held.
+        let restorable: [String]
+
+        /// The names the staging left alone because the destination already had
+        /// one, sorted. See ``PlaytestSessions/stageSlots(from:into:)`` for why
+        /// those are kept rather than replaced.
+        var kept: [String] { restorable.filter { !copied.contains($0) } }
+    }
+
+    /// Copies a directory of saved games into the save directory a world is
+    /// about to be played out of.
+    ///
+    /// **One way, by construction.** The destination is the directory the
+    /// caller is about to hand the world — a replay's throwaway, or the label's
+    /// `saves/` the session will write its own slots into — and nothing in this
+    /// function writes to `source`.
+    ///
+    /// **An existing destination slot wins and is never overwritten.** For a
+    /// replay this cannot arise, because the throwaway is new; for a session it
+    /// arises the second time a label is opened with the same `savesFrom`, and
+    /// the slot standing there may by then be the tester's own `save` under a
+    /// name the source happens to share. Losing that to a staging the tester
+    /// did not ask for is worse than staging nothing, so the copy yields and
+    /// the name comes back in ``StagedSlots/kept`` — restorable either way,
+    /// which is the only thing the caller has to report.
+    ///
+    /// Only `*.gnusto` — the extension ``SaveStore/existingSaveNames(in:)``
+    /// filters on, so the game's own restore prompt lists exactly what was
+    /// staged and nothing else. The `.history` sidecar stays behind: it is a
+    /// tester's typing, and a replay is driven by `ScriptedIOHandler`, which
+    /// reads no history.
+    ///
+    /// Safe against a live session. ``SaveFile`` writes atomically, so a
+    /// concurrent `save` is a rename and this copy sees the whole of the old
+    /// file or the whole of the new one.
+    ///
+    /// - Parameters:
+    ///   - source: a directory of saved games — a label's `saves/`, or the
+    ///     `saves-in/` an earlier staged probe kept.
+    ///   - destination: the save directory to stage into, which may not exist
+    ///     yet.
+    /// - Throws: ``PlaytestError`` when the source holds no slots.
+    /// - Returns: what was copied and what was already there.
+    static func stageSlots(from source: URL, into destination: URL) throws -> StagedSlots {
+        let slots = SaveStore.existingSaveNames(in: source)
+        guard !slots.isEmpty else {
+            throw PlaytestError(
+                """
+                savesFrom names \(source.path), which holds no saved games. Nothing ran. \
+                A session opened onto a round's slots, and a reproducer whose first \
+                command is `restore`, both need a slot somebody wrote — and nothing \
+                wrote one there. Check the label; for a round, `bin/playtest-slots \
+                <Game>` is what cuts them, and `bin/playtest-preflight` says when it \
+                needs to.
+                """)
+        }
+        // Through the save store both ways, so the extension and the 0700 the
+        // destination is created with stay in the one file that owns them:
+        // `resolveForWrite` *is* the make-the-directory-then-resolve pair, and
+        // the names came out of `resolve`'s own sanitizer to begin with.
+        // One `readdir` of the destination rather than a `stat` per slot, which on
+        // a round's eight staged sessions is eight calls where it was seventy-two.
+        let already = Set(SaveStore.existingSaveNames(in: destination))
+        var copied: [String] = []
+        for slot in slots where !already.contains(slot) {
+            try FileManager.default.copyItem(
+                at: SaveStore.resolve(slot, in: source),
+                to: try SaveStore.resolveForWrite(slot, in: destination))
+            copied.append(slot)
+        }
+        return StagedSlots(from: source, copied: copied, restorable: slots)
     }
 
     /// Whether a URL names a directory that exists.

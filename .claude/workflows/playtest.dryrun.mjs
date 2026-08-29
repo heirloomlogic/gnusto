@@ -241,6 +241,20 @@ const dryArgs = {
     + ' up, so go up early and stay up, waiting rather than coming down'
     + ' | the last ten minutes, 6:40 to 6:50: stop moving, pick one place and watch'
     + ' it to the end rather than covering ground',
+  // The half of the coverage plan the blind seats may not have. It carries the
+  // material that used to ride in region four back when `regions[i % length]`
+  // handed region four to nobody: the walkthrough's type name and its route
+  // indices. `chunkRegions` fixed the seating and that paragraph then reached a
+  // blind explorer, so it moved below the focus file's second `---` rule instead.
+  // The assertions below are the regression test for the move.
+  focusSighted:
+    'solver: the winning chain is `FulminateWalkthroughTests.route`, and this round'
+    + " slots are cuts of it at indices 12 and 40."
+    + ' | wrong-footer: run your generated rows at the boarder from slot `b-1`.',
+  // A round that ships pre-cut saves names the label they live under, and every
+  // session stages from it. Without this the region text tells testers to
+  // `restore` a slot their session has never been given.
+  slots: 'Fulminate-r1-slots',
   ledgerKeys: dryLedgerKeys,
 }
 const fn = new Function('__stub','__phases','__logs','__args', body)
@@ -379,8 +393,16 @@ check(!/gamePrintedIt/.test(src), 'the tester-reported unknown-word census is ba
 // is blind — the others read the doc by design and adjudicate against it. This
 // is a property of the generated *text*, and grepping it is the only cheap way
 // to know.
+const play = prompts.filter((p) => /^play:/.test(String(p.label || '')))
 const blind = prompts.filter((p) => /^play:explorer/.test(String(p.label || '')))
 check(blind.length > 0, 'no blind charters ran, so the firewall is untested')
+// The sighted-only half of the coverage plan, row by row. Both directions are checked
+// against the same list: absent from every blind prompt, and present somewhere among
+// the sighted ones. Asserting the presence half against the whole concatenated string
+// instead would stop meaning anything the day `playtest.js` reflows it — which is the
+// drift this block exists to catch.
+const sightedRows = String(dryArgs.focusSighted || '')
+  .split('|').map((r) => r.trim()).filter(Boolean)
 const regions = String(dryArgs.focus || '').split('|').map((r) => r.trim()).filter(Boolean)
 // The seat count, OBSERVED rather than re-derived. `blind.length` is how many
 // blind seats the workflow actually made; restating `Math.min(Math.max(n,1),3)`
@@ -469,6 +491,18 @@ for (const p of blind) {
     check(!p.prompt.includes(owner), `${p.label} was handed the ledger's source map (${owner})`)
     check(!p.prompt.includes(prose), `${p.label} was handed a ledger excerpt: "${prose.slice(0, 48)}…"`)
   }
+  // The sighted-only half of the coverage plan, which is where a row naming the
+  // walkthrough, a route index or a slot's contents belongs. This is the check
+  // that makes the focus file's second `---` rule mean something: before it, the
+  // solver's and the wrong-footer's rows were region four, withheld from blind
+  // seats only by a seating bug, and they went into a blind prompt the day the
+  // bug was fixed. Nothing caught it — none of that text is a room name.
+  for (const row of sightedRows) {
+    check(
+      !p.prompt.includes(row),
+      `${p.label} was handed a sighted-only row: "${row.slice(0, 48)}…"`
+    )
+  }
 }
 
 // **Every declared region reaches a seat.** The counterpart to the bound inside
@@ -494,6 +528,35 @@ if (regions.length > 1) {
   }
 }
 
+// **The sighted half reaches the sighted seats.** The firewall assertion above is
+// only half a rule: text nobody receives also passes it. A round whose solver row
+// went into the sighted preamble and then out again through a typo would look
+// identical from the blind side, and the seat that owns the walkthrough would be
+// dispatched with no assignment at all.
+const sighted = play.filter((p) => !blind.includes(p))
+check(sighted.length > 0, 'no sighted charters ran, so the sighted half is untested')
+for (const row of sightedRows) {
+  check(
+    sighted.some((p) => p.prompt.includes(row)),
+    `no sighted charter was handed the row "${row.slice(0, 48)}…"`
+  )
+}
+
+// **A round that ships saved games says so on every session.** The slots live under
+// one label and each tester stages them into its own; a session that never asks
+// answers `Restore failed.` to the region text telling it to restore, and SKILL.md
+// records that reply producing four false `not-reproducible` verdicts in one round.
+// It is checked on the `open` line rather than anywhere in the prose, because the
+// prose is advice and the argument is the thing that works.
+if (dryArgs.slots) {
+  const wants = `savesFrom: "${dryArgs.slots}"`
+  for (const p of play) {
+    check(
+      p.prompt.split('\n').some((l) => l.startsWith('Open with') && l.includes(wants)),
+      `${p.label} opens without savesFrom, so every restore in its region will fail`
+    )
+  }
+}
 
 // **And every seat that plays is told who owns the rooms outside every region.**
 // The counterpart to the assertion above, one altitude up: that one proves no
@@ -512,12 +575,12 @@ if (regions.length > 1) {
 // are handed the whole focus file and are exactly the seats able to notice a
 // room that is in none of it. Filtering on the seats rather than on the banner
 // is also what stops this asserting a sentence over the prompts selected for
-// having it.
+// having it. `play` is that set of seats, hoisted beside `blind` above so this
+// file derives it once rather than three times.
 const RESIDUAL = layoutConst('REGION_RESIDUAL')
 check(!!RESIDUAL, 'playtest.js no longer declares REGION_RESIDUAL as one line, so this is unchecked')
-const playSeats = prompts.filter((p) => String(p.label || '').startsWith('play:'))
-check(playSeats.length > 0, 'no play seats in the dispatch, so the residual check ran over nothing')
-for (const p of playSeats) {
+check(play.length > 0, 'no play seats in the dispatch, so the residual check ran over nothing')
+for (const p of play) {
   check(
     p.prompt.includes(RESIDUAL),
     `${p.label} was never told who owns the rooms no region describes`
@@ -1212,14 +1275,34 @@ check(
 // round of the same game in the same checkout is globbed by the first one's recipes
 // — which is not hypothetical: three rounds running reported coverage arithmetic
 // with a previous round's sessions folded in.
+//
+// **One tree is legitimately round-agnostic, and it is exempt because it is not
+// summed.** `bin/playtest-slots` cuts a round's saved games under a label with no
+// round id in it, on purpose: slots are cut once and reused by every round the
+// walkthrough has not moved under, so round-scoping the label would mean re-cutting
+// them every round and would make two rounds' bytes two directories. Its turns are
+// counted and given a named row, but `countedTurns` deliberately keeps them out of
+// `total` and subtracts them from the residual instead — so a previous round's
+// cutting being swept in changes no number anybody spends. The rule this assertion
+// enforces is about *spend*; the exemption is only ever safe while that holds, which
+// is why it is keyed to the args field rather than to a name that looks harmless.
+const unscopedExempt = dryArgs.slots ? [`${dryArgs.slots}*`] : []
 for (const [name, globs] of [['session', closingGlobs], ['turn', turnGlobs]]) {
-  const unscoped = globs.filter((g) => !g.includes(dryRoundId) && !g.startsWith('.'))
+  const unscoped = globs.filter(
+    (g) => !g.includes(dryRoundId) && !g.startsWith('.') && !unscopedExempt.includes(g)
+  )
   check(
     unscoped.length === 0,
     `${name} glob(s) carry no roundId, so a previous round of this game is collated `
     + `into this one: ${unscoped.join(', ')}`
   )
 }
+// The exemption is only as good as the promise it rests on, so check the promise.
+check(
+  !/const total = testers \+ verifiers \+ harness \+ slots/.test(src),
+  'the slots tree is summed into `total` while its glob is exempt from the roundId '
+  + 'rule, so a previous round of this game is charged to this one'
+)
 
 const preflightPrompt = prompts.find((p) => String(p.label || '').startsWith('preflight'))
 

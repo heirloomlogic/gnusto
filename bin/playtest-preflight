@@ -33,17 +33,21 @@ const { spawn, spawnSync } = require('node:child_process')
 const fs = require('node:fs')
 const path = require('node:path')
 
-const ROOT = path.resolve(__dirname, '..')
+// What the game's focus file declares — the coverage split, the sighted-only half
+// of it, and the round's saved games. Shared with `bin/playtest-slots`, which cuts
+// the slots this checks for: one declaration, two readers, and neither with a list
+// of its own.
+const {
+  ROOT, SCRATCH, GREEN, RED, DIM, OFF,
+  gameDoc, focusParts, slotPlan, slotStatus, seedFor, savesDir,
+  routeCommands, slotFingerprint, fingerprintOf,
+  describePackage, executableProducts, resolveGame,
+} = require('./lib/playtest-focus')
+
 process.chdir(ROOT)
 
-const SCRATCH = '.context/playtest'
 const REPLAY_TREE = path.join(SCRATCH, '.replays')
 const ARGS_OUT = '.context/playtest-round-args.json'
-
-const GREEN = '\x1b[32m'
-const RED = '\x1b[31m'
-const DIM = '\x1b[2m'
-const OFF = '\x1b[0m'
 
 // Every tool the session server declares. A server listing fewer is older than the
 // harness about to drive it, and the round would fail at whichever call reached the
@@ -69,12 +73,6 @@ const readJSON = (p, fallback = null) => {
 }
 
 const rmrf = (p) => fs.rmSync(p, { recursive: true, force: true })
-
-// A name as somebody typed it, reduced to what a product name could be. This is
-// what lets `play-test Zork IV` find the `ZorkIV` product: the words are a phrase,
-// the product is an identifier, and the only honest mapping between them drops
-// everything that cannot appear in both.
-const fold = (s) => String(s).toLowerCase().replace(/[^a-z0-9]/g, '')
 
 // ---------------------------------------------------------------------------
 // One conversation with one server
@@ -161,6 +159,7 @@ const payloadOf = (msg) => { try { return JSON.parse(textOf(msg)) } catch { retu
 async function checkGame(game, mcpKey) {
   const rows = []
   const add = (name, ok, detail, remedy) => rows.push({ game, name, ok, detail, remedy })
+  let roster = []
 
   // 1. Build once, serially, holding the package lock alone. This is the step that
   //    keeps `bin/gnusto-mcp` from having to build at connect — which is what used
@@ -212,6 +211,18 @@ async function checkGame(game, mcpKey) {
       add('open', false, textOf(opened).split('\n')[0].slice(0, 80) || 'no session in the reply', null)
     } else {
       add('open', true, sessionId)
+      // The room roster, while a session is open to ask. This is the only place in
+      // the whole pre-dispatch path where it is available: the dry run has no game
+      // binary, so its firewall check runs against a fixture and proves the check
+      // exists rather than that this game's focus file passes it. See the `focus`
+      // row below, which is the half only this script can perform.
+      //
+      // Asked only when there is a focus file to check it against. Five of the seven
+      // games this package builds declare no split, and `--all` would otherwise pull
+      // five whole surveys across the wire for nobody to read.
+      if (gameDoc(game, '-playtest-focus')) {
+        roster = payloadOf(await server.callTool('survey', { session: sessionId }))?.rooms || []
+      }
       await server.callTool('finish', { session: sessionId, summary: 'preflight staleness check' })
     }
 
@@ -268,6 +279,72 @@ async function checkGame(game, mcpKey) {
       ? `add a .mcp.json server whose args are ["${game}"]`
       : (enabled.includes(mcpKey) ? null : `add "${mcpKey}" to enabledMcpjsonServers`))
 
+  rows.push(...focusRows(game, roster))
+  return rows
+}
+
+// ---------------------------------------------------------------------------
+// What the focus file promises, checked against what is actually there
+// ---------------------------------------------------------------------------
+
+// Both of these are checks only this script can perform, and both are failures that
+// used to be invisible at dispatch time.
+//
+// *The rooms.* A region between the two `---` rules is pasted verbatim into a blind
+// explorer's prompt, and the room roster is the answer key that charter exists to
+// reconstruct. `playtest.dryrun.mjs` asserts the property, but against its own
+// fixture — it has no game binary and so no roster to check a real file against. The
+// 2026-08-25 Dungeon operator did this by hand, against 129 display names, and wrote
+// in the report that it had been done. A check performed from memory is a check that
+// gets skipped.
+//
+// *The slots.* `.context/` is gitignored, so a focus file describing nine saved games
+// and a checkout holding none of them look exactly alike. Every tester's `restore`
+// then answers `Restore failed.` — which SKILL.md records producing four false
+// `not-reproducible` verdicts in one round, because that answer is about the harness
+// and reads like a finding about the game.
+function focusRows(game, roster) {
+  const rows = []
+  const add = (name, ok, detail, remedy) => rows.push({ game, name, ok, detail, remedy })
+  const focusPath = gameDoc(game, '-playtest-focus')
+  if (!focusPath) return rows // a game small enough to need no split declares nothing
+
+  const { blind } = focusParts(focusPath)
+  // Whole names and whole ids, the same rule the dry run uses: it catches the
+  // copy-paste version of breaking the firewall and not an operator who writes
+  // "Landing" for "Upstairs Landing". The rule stays a person's to keep.
+  const leaks = [...new Set(roster.flatMap((r) => [r.name, r.id]))]
+    .filter((word) => word && blind.includes(word))
+  // A roster arrives only if the session above opened. Reporting green on an empty
+  // one would let the check that exists *because* the manual version got skipped be
+  // skipped itself, silently, in the run where the server was broken.
+  add('focus rooms', roster.length > 0 && leaks.length === 0,
+    roster.length ? `${leaks.length ? leaks.slice(0, 3).join(', ') : 'none'} of ${roster.length} named` : 'no roster to check against',
+    !roster.length
+      ? 'the session never opened, so the firewall went unchecked — fix the row above'
+      : (leaks.length
+        ? `${focusPath} names a room a blind explorer is meant to find; say the affordance instead`
+        : null))
+
+  const plan = slotPlan(focusPath)
+  if (!plan) return rows // no `Slots:` line: this round ships no saves, which is fine
+  const status = slotStatus(plan)
+  const missing = status.filter((s) => !s.exists)
+  // Current, not merely present. A slot is `route[0:N]` of a route whose indices move
+  // between commits, so bytes on disk prove only that somebody once cut something.
+  const route = routeCommands(plan.routeType, plan.routeName)
+  const want = route ? slotFingerprint(plan, route, seedFor(game)) : null
+  const have = fingerprintOf(plan.label)
+  const stale = !missing.length && want !== null && have !== want
+  add('slots', missing.length === 0 && !stale,
+    stale
+      ? `${status.length} on disk, cut from ${have || 'an unrecorded route'} — the route is now ${want}`
+      : `${status.length - missing.length}/${status.length} in ${savesDir(plan.label)}`,
+    stale
+      ? `bin/playtest-slots ${game} --force   # the walkthrough moved under them`
+      : (missing.length
+        ? `bin/playtest-slots ${game}   # ${missing.map((s) => s.name).join(', ')}`
+        : null))
   return rows
 }
 
@@ -292,23 +369,6 @@ function probeDirsIn(dir) {
 // The round's arguments, derived
 // ---------------------------------------------------------------------------
 
-// `docs/games/` is named for the game, but not by a rule a `toLowerCase()` can
-// reproduce: the doc for `KindlyDeep` is `kindly-deep.md`. Assuming the naming
-// made `bin/playtest-preflight KindlyDeep` derive `docPath: null` and
-// `ledgerKeys: []` in silence, at which point `ground()` takes its "there is NO
-// design doc" branch and the round loses the mechanics contract AND re-finds
-// everything ever refuted. So match the directory rather than predict it, with the
-// same `fold` that already lets `Zork IV` reach the `ZorkIV` product.
-function gameDoc(game, suffix) {
-  const dir = 'docs/games'
-  if (!exists(dir)) return null
-  const want = fold(game) + fold(suffix)
-  const hit = fs.readdirSync(dir)
-    .filter((f) => f.endsWith('.md'))
-    .find((f) => fold(path.basename(f, '.md')) === want)
-  return hit ? path.join(dir, hit) : null
-}
-
 const localDate = () => {
   const d = new Date()
   const pad = (n) => String(n).padStart(2, '0')
@@ -322,6 +382,9 @@ function roundArgs(game, mcpKey) {
   const docPath = gameDoc(game, '')
   const ledgerPath = gameDoc(game, '-playtest-ledger')
   const focusPath = gameDoc(game, '-playtest-focus')
+  // One read, so the two halves cannot come from two different states of the file.
+  const split = focusPath ? focusParts(focusPath) : { blind: '', sighted: '' }
+  const slots = focusPath ? slotPlan(focusPath) : null
 
   return {
     game,
@@ -338,7 +401,18 @@ function roundArgs(game, mcpKey) {
     // after about five in the afternoon in the Americas filed itself, and named
     // its report file, under tomorrow.
     roundId: localDate(),
-    focus: focusPath ? focusOf(focusPath) : '',
+    // The split the blind seats are chunked across, and the half of it they may
+    // not have. A row that names the walkthrough, a route index or a ledger
+    // verdict goes below the focus file's second `---` rule and reaches the
+    // sighted charters only — which is a rule the file can state and only this
+    // pair of fields can enforce.
+    focus: split.blind,
+    focusSighted: split.sighted,
+    // The label `bin/playtest-slots` wrote this round's saved games to. Each
+    // tester stages it into its own session, so a region that says "restore
+    // `d-1`" can be obeyed. Null when the focus file declares no slots, which is
+    // the right answer for a game whose whole map is walkable in a round.
+    slots: slots ? slots.label : null,
     ledgerKeys: ledgerPath ? ledgerKeysFrom(ledgerPath) : [],
     // Issues that OWN a defect class the round should forward rather than judge.
     // Ownership is a judgement and not a query, so this stays empty — the safe
@@ -378,39 +452,6 @@ function capabilitiesOf(game) {
   return caps
 }
 
-// A finding without a seed is not reproducible, and a game with a pinned
-// walkthrough has already chosen one. Read it rather than defaulting past it.
-function seedFor(game) {
-  const found = sh('grep', ['-rl', '--include=*.swift', `${game}Walkthrough`, 'Tests'])
-    .stdout.trim().split('\n').filter(Boolean)
-  // The walkthrough file first when there is one: several suites pin the same
-  // seed, and the walkthrough is the one whose route the round is measured against.
-  found.sort((a, b) => (b.includes('Walkthrough') ? 1 : 0) - (a.includes('Walkthrough') ? 1 : 0))
-  for (const file of found) {
-    // Any annotation, not just `Int`. Dungeon's is `static let seed: UInt64 = 52`,
-    // and a regex that named the type read it as 0 — which is a different round.
-    const m = fs.readFileSync(file, 'utf8').match(/\bstatic\s+let\s+seed\b[^=\n]*=\s*([0-9]+)/)
-    if (m) return Number(m[1])
-  }
-  return 0
-}
-
-// The split, and only the split. Committed rather than re-authored each round: a
-// game whose map outruns a round's budget and gets no split produces a report
-// describing wherever the charters happened to wash up.
-//
-// Everything above the first `---` rule is the file's explanation of itself, for a
-// person editing it, and must not travel: the focus string is pasted **verbatim**
-// into a blind explorer's prompt, so anything in it that is not the split is a
-// paragraph the firewall did not intend to hand over. The header of the Dungeon
-// file alone would have added a thousand characters of harness talk to every
-// blind seat.
-function focusOf(p) {
-  const text = fs.readFileSync(p, 'utf8')
-  const rule = text.match(/^---[ \t]*$/m)
-  return (rule ? text.slice(rule.index + rule[0].length) : text).trim()
-}
-
 // `ledgerKeys` means **rejections**, and only rejections: `playtest.js` folds them
 // into `seen`, and `seen.has(key)` drops a finding unreported. So the verdict column
 // decides, and every other row in the file has to stay out.
@@ -428,47 +469,63 @@ function focusOf(p) {
 // — a human reading record that is already machine-readable — so this reads the
 // verdict rather than guessing from the shape of the key.
 function ledgerKeysFrom(p) {
-  return fs.readFileSync(p, 'utf8')
-    .split('\n')
-    .map((line) => {
-      if (!line.trimStart().startsWith('|')) return null
-      const cells = line.split('|').slice(1, -1).map((c) => c.trim())
-      if (cells.length < 3) return null
-      // Column 2 either way. A confirmed table is `| key | class | verdict | note |`
-      // and a refuted one is `| key | charter | kind |`, where a kind such as
-      // `licensed-by-doc` is the refutation's reason — the row is a refutation by
-      // virtue of the table it is in rather than by a word in it.
-      const verdict = cells[2]
-      const key = (cells[0].match(/^`([^`]+::[^`]+)`$/) || [])[1]
-      if (!key) return null
-      const refutedTable = cells.length === 3 && !/^(confirmed|fixed|needs-human)$/.test(verdict)
-      return verdict === 'refuted' || refutedTable ? key : null
-    })
-    .filter(Boolean)
-}
+  // **Read the header, never an index.** Five ledgers have put the verdict in three
+  // different places — `| Key | Verdict | Category |`, `| key | verdict | class |
+  // severity |`, and Fulminate's `| Key (abbreviated) | Tree | Verdict | Note |` —
+  // and a fixed column is wrong for at least one of them whichever one you pick.
+  // Reading `cells[2]` picked the *category* out of every Dungeon table, so no row
+  // ever matched `refuted`; a fallback heuristic then let the whole of the one
+  // three-column table through instead, and the round of 2026-08-29 was handed 55
+  // keys of which the true useful count was zero.
+  //
+  // Both mistakes are silent, which is why this is parsed rather than assumed: a
+  // round handed the wrong keys re-finds everything it should skip, and a round
+  // handed a `fixed` key drops the regression this file exists to catch, unverified
+  // and unreported.
+  let verdictAt = null
+  let wholeTableIsRefuted = false
+  const keys = []
+  for (const line of fs.readFileSync(p, 'utf8').split('\n')) {
+    if (!line.trimStart().startsWith('|')) {
+      // A table ends at the first line that is not a row. Forgetting this carried
+      // one table's column layout into the next one down the file.
+      verdictAt = null
+      wholeTableIsRefuted = false
+      continue
+    }
+    const cells = line.split('|').slice(1, -1).map((c) => c.trim())
+    if (cells.length < 3) continue
+    const key = (cells[0].match(/^`([^`]+::[^`]+)`$/) || [])[1]
 
-function readJSONFrom(cmd, args) {
-  const r = sh(cmd, args)
-  if (r.status !== 0) return null
-  try { return JSON.parse(r.stdout) } catch { return null }
+    if (!key) {
+      // A header, a separator, or a table with no key column at all. Only the first
+      // teaches us anything.
+      const lower = cells.map((c) => c.toLowerCase())
+      if (!/^key$/.test(lower[0]) && !/^key \(/.test(lower[0])) continue
+      verdictAt = lower.findIndex((c) => c === 'verdict')
+      if (verdictAt < 0) verdictAt = null
+      // The older shape, where the row is a refutation by virtue of the table it is
+      // in rather than by a word in it: its third column is the refutation's reason.
+      wholeTableIsRefuted = lower.includes('refutation kind')
+      continue
+    }
+    // A key the ledger stored abbreviated can never match one a round produces:
+    // `normalize()` emits nothing but `[a-z0-9 ]`, so an ellipsis is inert by
+    // construction. Dropping them is what makes the count preflight prints the
+    // number of keys that can actually do something.
+    if (key.includes('\u2026')) continue
+    if (wholeTableIsRefuted) { keys.push(key); continue }
+    if (verdictAt === null) continue
+    // The suffixed spellings are deliberate — `fixed (by #331)`,
+    // `confirmed (needs-human)` — so match the leading word, not the whole cell.
+    if (/^refuted\b/.test(cells[verdictAt] || '')) keys.push(key)
+  }
+  return [...new Set(keys)]
 }
-
-// One manifest read per invocation. `capabilitiesOf` and `executableProducts` both
-// want it, and each swiftpm launch takes the package lock for about a second — the
-// very cost `bin/gnusto-mcp`'s mtime gate exists to stop paying.
-let describedPackage
-const describePackage = () =>
-  (describedPackage ??= readJSONFrom('swift', ['package', 'describe', '--type', 'json']))
 
 // ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
-
-function executableProducts() {
-  return (describePackage()?.products || [])
-    .filter((p) => p.type === 'executable' || (p.type && 'executable' in p.type))
-    .map((p) => p.name)
-}
 
 function mcpKeyFor(game) {
   const cfg = readJSON('.mcp.json', { mcpServers: {} })
@@ -493,10 +550,7 @@ async function main() {
       console.error('usage: bin/playtest-preflight <Game> | --all   [--headless]')
       process.exit(2)
     }
-    const products = executableProducts()
-    // Fold both sides so the words somebody typed can find the identifier they
-    // meant: `Zork IV` and `zork-iv` both reach `ZorkIV`.
-    const product = products.find((p) => fold(p) === fold(words))
+    const { game: product, products } = resolveGame(words)
     if (!product) {
       console.error(`playtest-preflight: no executable product matches "${words}"`)
       console.error(`  this package builds: ${products.join(', ') || '(none)'}`)
@@ -541,7 +595,9 @@ async function main() {
   console.log(`    ${DIM}seed ${args.seed} | roundId ${args.roundId}`
     + ` | capabilities [${args.capabilities.join(', ')}]${OFF}`)
   console.log(`    ${DIM}docPath ${args.docPath || 'null'} | ledgerKeys ${args.ledgerKeys.length}`
-    + ` | focus ${args.focus ? args.focus.length + ' chars' : 'none'}${OFF}`)
+    + ` | focus ${args.focus ? args.focus.length + ' chars' : 'none'}`
+    + ` | sighted-only ${args.focusSighted ? args.focusSighted.length + ' chars' : 'none'}`
+    + ` | slots ${args.slots || 'none'}${OFF}`)
 
   if (headless) {
     // The fallback two of the last three rounds needed by hand: the `Workflow`
