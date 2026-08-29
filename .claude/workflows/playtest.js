@@ -82,6 +82,28 @@ const turnBudget = clamp(ARGS.turns, 20, 250, 60)
 // rather than a region schema because what a split needs to say differs per game
 // — a route prefix here, an hour there — and a schema would only be guessed at.
 const focus = typeof ARGS.focus === 'string' ? ARGS.focus.trim() : ''
+
+// The half of the coverage plan the blind seats may not have, and the label the
+// round's pre-cut saved games live under. Both come off the focus file, which
+// `bin/playtest-preflight` reads; see `bin/lib/playtest-focus.js`.
+//
+// `focusSighted` exists because closing one firewall hole opened another. Regions
+// used to be seated `regions[i % length]`, so with four regions and three copies
+// the fourth reached nobody — and the Dungeon operator put the solver's and the
+// wrong-footer's assignments there and relied on the bug to withhold them.
+// `chunkRegions` fixed the seating and that paragraph, naming the walkthrough type
+// and nine route indices, went straight into a blind explorer's prompt. A segment
+// below the focus file's second `---` rule now reaches the sighted charters only:
+// it is never chunked, never seated, and asserted absent from every blind prompt.
+const focusSighted = typeof ARGS.focusSighted === 'string' ? ARGS.focusSighted.trim() : ''
+
+// `slots` is the label a round's pre-cut saves were written to by
+// `bin/playtest-slots`. A tester's `open` stages them into its own label, so a
+// region that says "restore `d-1`" can be obeyed. Without it the game answers
+// `Restore failed.`, and SKILL.md records that answer producing four false
+// `not-reproducible` verdicts in one round: it is about the harness, and it reads
+// like a finding about the game.
+const slotsFrom = typeof ARGS.slots === 'string' ? ARGS.slots.trim() : ''
 // Reasoning effort for the verifiers, which are the round's largest fan-out: two
 // independent raters over each batch of 25, so they set its cost. Left inheriting
 // by default. Turning it down is a budget call and belongs to the operator, not to
@@ -379,6 +401,12 @@ charter in it and treat that row as your assignment; the rest is context for rea
 somebody else's finding.
 
 ${focus}
+` : ''}${focusSighted ? `
+**Rows for the sighted seats only.** These name the walkthrough, route indices, ledger
+verdicts or what a slot is holding — answer-key material a blind charter is not given.
+Find your own charter here too.
+
+${focusSighted}
 ` : ''}
 ${routedIssues.length ? `**Owned elsewhere this round.** These issues are open and own a defect class. A
 symptom that belongs to one of them is routed, not reported:
@@ -1464,7 +1492,9 @@ with \`ToolSearch\`, query \`select:${tools}\`.
 
 ${toolsOrStop}
 
-Open with \`label: "${sessionLabelFor(round, assignment.key)}"\`, \`seed: ${seed}\`, \`role: "${charter.blind ? 'explorer' : 'unrestricted'}"\`${charter.blind ? `, \`divergence: "${assignment.divergence}"\`` : ''}.
+Open with \`label: "${sessionLabelFor(round, assignment.key)}"\`, \`seed: ${seed}\`, \`role: "${charter.blind ? 'explorer' : 'unrestricted'}"\`${charter.blind ? `, \`divergence: "${assignment.divergence}"\`` : ''}${slotsFrom ? `, \`savesFrom: "${slotsFrom}"\`` : ''}.
+${slotsFrom ? `\`savesFrom\` copies this round's pre-cut saved games into your label, and your \`open\` reply lists them under \`savesStaged\`. They are what your assignment means by "restore \`x-1\`": a slot is a state hundreds of moves deep that you are not expected to walk to. \`restore\` asks for a file name, so send it and the slot name in ONE \`move\` call with \`allowPrompts: true\` — \`commands: ["restore", "<slot>", "look"], allowPrompts: true\` — or the batch stops at the prompt and the rest of your commands are thrown away.
+` : ''}
 ${charter.blind ? `**Read the \`instruction\` your open returns and follow it for the whole session.** It tells you what to do the first time the game offers you something you cannot take back. Another tester has been given the opposite orders, so the branch you leave alone is covered and the one you take is yours to describe.\n` : ''}
 Every turn's output ends with a \`[status]\` line naming the room, the move counter and
 whether the command cost a turn. \`note\` writes a comment into your transcript at the

@@ -37,6 +37,9 @@ xcrun swift-format lint --strict --parallel --recursive --configuration .swift-f
 
 node .claude/workflows/playtest.dryrun.mjs     # CI gate on the play-test harness
 
+bin/playtest-slots Dungeon                     # cut the round's saves; verify each landing
+bin/playtest-slots Dungeon --verify            # check what's on disk, cut nothing
+
 bin/playtest-replay --build Fulminate                              # once
 bin/playtest-replay Fulminate --commands probe.txt --seed 0 --label mine --tail 60
 bin/playtest-replay Fulminate --commands repro.txt --label mine --saves-from deep
@@ -59,6 +62,7 @@ last several rounds.
 
 ```sh
 bin/playtest-preflight Dungeon     # builds; proves the server answers; non-zero if not
+bin/playtest-slots Dungeon         # only when preflight's `slots` row is red
 ```
 
 1. **Run preflight.** It takes the game in whatever words you have — `Dungeon`,
@@ -71,12 +75,20 @@ bin/playtest-preflight Dungeon     # builds; proves the server answers; non-zero
    re-attempts a server that failed, so a session that has just warmed the tree can
    reach one it could not a minute earlier. Restart only if that doesn't take — and
    always after editing `Sources/Gnusto/Playtest/`, where no retry helps.
-3. **Dispatch** with the args preflight wrote to `.context/playtest-round-args.json`:
+3. **Cut the slots if preflight says to.** A game whose map outruns a round's budget
+   declares saved games in `docs/games/<game>-playtest-focus.md` — a name and a depth,
+   `` `d-1` (cut at `route[0:113]`) `` — and `bin/playtest-slots` plays that prefix of
+   the committed walkthrough, saves, then restores each and prints where it landed and
+   what the player is holding. **Read those against the region's own sentence**: a slot
+   is chosen by route state, never by the room the `[status]` footer names. The bytes
+   live under `.context/`, which is gitignored, so a fresh checkout has none of them
+   however carefully the focus file describes them.
+4. **Dispatch** with the args preflight wrote to `.context/playtest-round-args.json`:
    `Workflow({scriptPath: ".claude/workflows/playtest.js", args: <that JSON>})`.
    `bin/playtest-preflight <Game> --headless` does it for you through `claude -p`,
    which is the fallback for an agent whose tool surface has no `Workflow`.
 
-Three facts that bite and are not guessable from the code:
+Four facts that bite and are not guessable from the code:
 
 - **`ToolSearch` finding no `mcp__<game>__*` tools is always the server, never the
   prompt.** Every tester is told to stop and say so rather than improvise; a report
@@ -84,6 +96,16 @@ Three facts that bite and are not guessable from the code:
 - **A server is frozen at the commit its session connected on.** Edit the engine
   mid-session and every tester goes on playing last week's binary, silently and
   successfully.
+- **A focus file has two `---` rules, and the second one is a firewall.** Everything
+  between them is chunked across the blind seats and pasted into their prompts
+  verbatim; everything below the second reaches the *sighted* charters only. That is
+  where a row belongs if it is keyed to a sighted charter — `solver:`, `wrong-footer:`
+  — or names the walkthrough by type, the ledger, or a slot's contents. Not "anything
+  with a route index in it": a region has to tell its tester how deep a slot stands,
+  so `` `d-1` (cut at `route[0:113]`) `` stays in the blind half and is the one place
+  slots are declared. It used to be "region four", which worked only because the
+  old modulo seating handed region four to nobody — and the day `chunkRegions` fixed
+  the seating, the same paragraph went straight into a blind explorer's prompt.
 - **`roundId` is required, and nothing needs clearing between rounds.** Every label
   leads with it, so `.context/playtest/` can hold every round this checkout ever ran
   without one round's turns landing in another's arithmetic. That used to be wrong

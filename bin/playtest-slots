@@ -1,0 +1,317 @@
+#!/usr/bin/env node
+//
+// Cut the saved games a play-test round ships, and prove each one stands where its
+// region says it does.
+//
+//   bin/playtest-slots <Game>                  cut what is missing, verify all
+//   bin/playtest-slots <Game> --force          re-cut every slot
+//   bin/playtest-slots <Game> --only=z-1,z-2   just these
+//   bin/playtest-slots <Game> --verify         verify what exists; cut nothing
+//
+// **Why a script and not a paragraph.** A round's slots are named, and their depths
+// are named, in `docs/games/<game>-playtest-focus.md`. Their *bytes* live under
+// `.context/`, which is gitignored — so the file describing nine saved games and the
+// checkout holding none of them look identical, and `bin/playtest-preflight` used to
+// report green while that was true. The 2026-08-25 Dungeon round cut its ten slots by
+// hand and copied them into eight session directories by hand; nothing recorded the
+// commands, so the next round started from prose.
+//
+// **Why it reads the focus file rather than a table of its own.** The regions already
+// have to tell a tester how deep it is standing — "`d-1` (cut at `route[0:113]`)" — so
+// a second list would be a copy to keep in step, and the copy is what goes stale. The
+// route is read out of the committed walkthrough test for the same reason: indices
+// drift between commits, and a depth is only meaningful against the route as it is now.
+//
+// **Why every cut is verified.** A slot is chosen by *route state*, never by the room
+// the `[status]` footer reports. `wf-1` on 2026-08-25 was cut three hundred commands
+// past `take trunk`, so the trunk was already in the trophy case while the footer named
+// the right room, and the pairing the round was dispatched to judge was offered to
+// nobody. The check that catches that is not "which room" — it is "what is in your
+// hands, and what has already happened". So each slot is restored after it is cut and
+// its landing room, move count, score and inventory are printed for a person to read
+// against the region's own sentence.
+
+'use strict'
+
+const { spawnSync } = require('node:child_process')
+const fs = require('node:fs')
+const os = require('node:os')
+const path = require('node:path')
+
+const focus = require('./lib/playtest-focus')
+const { GREEN, RED, DIM, OFF } = focus
+
+process.chdir(focus.ROOT)
+
+// ---------------------------------------------------------------------------
+// Driving bin/playtest-replay
+// ---------------------------------------------------------------------------
+
+// The replay script is the one thing that knows how to boot the game with a pinned
+// seed, a save directory of its own and a transcript beside it. Cutting a slot is
+// `--save` and reading one back is `--restore`; neither is reimplemented here.
+function replay(args) {
+  const r = spawnSync('bin/playtest-replay', args, { encoding: 'utf8' })
+  return { status: r.status, out: `${r.stdout || ''}${r.stderr || ''}` }
+}
+
+// `--max-turns` refuses a list longer than 250 by default, which is a runaway guard
+// and not a budget: a 719-command prefix is exactly the case it is not for. Same for
+// the 60-second wall clock, which a seven-hundred-turn replay outgrows on a cold page
+// cache. Both are raised from the work rather than from a constant, so a longer route
+// needs no edit here.
+const turnCap = (n) => String(n + 50)
+const timeoutFor = (n) => String(Math.max(120, Math.ceil(n / 2)))
+
+/// The last `[status]` footer in a transcript, as its fields.
+///
+/// The footer is the harness's own line, not the game's, so it is the one thing in a
+/// transcript no game can re-voice — which is what makes reading it safe across seven
+/// games that share nothing else.
+function lastStatus(text) {
+  const hits = [...text.matchAll(/^\[status\] (.+)$/gm)]
+  if (!hits.length) return null
+  const fields = {}
+  for (const pair of hits[hits.length - 1][1].split('|')) {
+    const [k, ...v] = pair.trim().split('=')
+    fields[k.trim()] = v.join('=').trim()
+  }
+  return fields
+}
+
+/// The reply to one command, read out of a transcript by its prompt line.
+function answerTo(text, command) {
+  const needle = `\n> ${command}\n`
+  const at = text.indexOf(needle)
+  if (at < 0) return null
+  const rest = text.slice(at + needle.length)
+  const end = rest.search(/\n\[status\]/)
+  return (end < 0 ? rest : rest.slice(0, end)).trim()
+}
+
+// ---------------------------------------------------------------------------
+// Cutting and verifying one slot
+// ---------------------------------------------------------------------------
+
+// One command list, one replay, one temp file cleaned up either way. Both jobs below
+// are this plus their own arguments, so the scaffold is written once — the failure
+// detail included, which is the replay script's own last words and is the only thing
+// worth showing when a cut of seven hundred commands stops early.
+function runReplay(name, commands, args) {
+  const list = path.join(os.tmpdir(), `playtest-slots-${process.pid}-${name}.txt`)
+  fs.writeFileSync(list, `${commands.join('\n')}\n`)
+  try {
+    const r = replay(['--commands', list, ...args])
+    return r.status === 0
+      ? { ok: true, out: r.out }
+      : { ok: false, detail: r.out.trim().split('\n').slice(-3).join(' / ') }
+  } finally {
+    fs.rmSync(list, { force: true })
+  }
+}
+
+// **One walk, all the slots.** Every slot is a cut of the *same* route, so the depths
+// are nested prefixes of one another and re-walking each from the start is pure
+// repetition: Dungeon's nine are 29, 35, 113, 123, 128, 184, 224, 659 and 719, which
+// walked separately is 2,214 commands to cover 719.
+//
+// `save` is not a flag the script has to own — `--save` is implemented as two lines
+// appended to the fed stdin, and the same two lines work anywhere in the list. So the
+// route is walked once with a `save`/`<name>` pair spliced in at each depth. Both
+// lines are `turn=free`, so they cost no move and draw nothing from the seeded stream,
+// and the bytes are identical to what nine separate walks produced.
+//
+// It is also the more honest construction: nine slots off one stream cannot disagree
+// with each other about what happened at a shared depth, and nine walks could.
+function cutAll(game, plan, route, seed, slots) {
+  const deepest = slots[slots.length - 1]
+  if (deepest.cut > route.commands.length) {
+    return {
+      ok: false,
+      detail: `route[0:${deepest.cut}] is past the route's ${route.commands.length} commands`,
+    }
+  }
+  const commands = []
+  let walked = 0
+  for (const slot of slots) {
+    commands.push(...route.commands.slice(walked, slot.cut), 'save', slot.name)
+    walked = slot.cut
+  }
+  return runReplay('cut', commands, [
+    game,
+    '--seed', String(seed),
+    '--label', plan.label,
+    '--max-turns', turnCap(commands.length),
+    '--timeout', timeoutFor(commands.length),
+    '--tail', '4',
+  ])
+}
+
+// Restore it under a label of its own and read what the player is holding. A separate
+// label because `--saves-from` copies one way and joins the destination permanently:
+// verifying inside the slot label would leave the check's own probes among the bytes
+// the round ships.
+function verify(game, plan, seed, slot, stage) {
+  const r = runReplay(`check-${slot.name}`, ['look', 'inventory'], [
+    game,
+    '--seed', String(seed),
+    '--label', `${plan.label}-check`,
+    // Only the first check of a run asks. `--saves-from` copies into the label, not
+    // into the probe, so every later probe under it restores without the flag — and
+    // asking nine times copies all nine slots nine times over to no effect.
+    ...(stage ? ['--saves-from', plan.label] : []),
+    '--restore', slot.name,
+    '--timeout', '120',
+    '--tail', '400',
+  ])
+  if (!r.ok) return r
+  if (/Restore failed/.test(r.out)) return { ok: false, detail: 'the slot did not restore' }
+  const status = lastStatus(r.out) || {}
+  return {
+    ok: true,
+    room: status.room || '?',
+    moves: status.moves || '?',
+    score: status.score || '?',
+    carrying: (answerTo(r.out, 'inventory') || '').replace(/\s+/g, ' ').trim(),
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Main
+// ---------------------------------------------------------------------------
+
+function main() {
+  const argv = process.argv.slice(2)
+  const force = argv.includes('--force')
+  const verifyOnly = argv.includes('--verify')
+  // `--only=a,b` rather than `--only a,b`, so a flag's value is never a positional
+  // that has to be filtered back out by index — which is how the game name ends up
+  // silently swallowed the first time somebody reorders this.
+  const onlyArg = argv.find((a) => a.startsWith('--only='))
+  const only = onlyArg ? new Set(onlyArg.slice('--only='.length).split(',').filter(Boolean)) : null
+  const words = argv.filter((a) => !a.startsWith('--')).join(' ')
+
+  if (!words) {
+    console.error('usage: bin/playtest-slots <Game> [--force] [--verify] [--only=a,b]')
+    process.exit(2)
+  }
+  const { game, products } = focus.resolveGame(words)
+  if (!game) {
+    console.error(`playtest-slots: no executable product matches "${words}"`)
+    console.error(`  this package builds: ${products.join(', ') || '(none)'}`)
+    process.exit(2)
+  }
+
+  const focusPath = focus.gameDoc(game, '-playtest-focus')
+  if (!focusPath) {
+    console.error(`playtest-slots: ${game} has no docs/games/<game>-playtest-focus.md,`
+      + ' so it declares no regions and no slots.')
+    process.exit(2)
+  }
+  const plan = focus.slotPlan(focusPath)
+  if (!plan) {
+    console.error(`playtest-slots: ${focusPath} declares no slots.`)
+    console.error('  Add a header line above the first `---` rule, in this shape:')
+    console.error('    Slots: `<Game>-r1-slots`, cut from `<Game>WalkthroughTests.route`')
+    process.exit(2)
+  }
+  if (!plan.slots.length) {
+    console.error(`playtest-slots: ${focusPath} names a slot label but no slots.`)
+    console.error('  A region reaches its slot by saying so: `z-1` (cut at `route[0:29]`).')
+    process.exit(2)
+  }
+
+  const route = focus.routeCommands(plan.routeType, plan.routeName)
+  if (!route) {
+    console.error(`playtest-slots: no \`static let ${plan.routeName}: [String]\``
+      + ` in a Tests file declaring \`struct ${plan.routeType}\`.`)
+    process.exit(2)
+  }
+  const seed = focus.seedFor(game)
+
+  console.log('')
+  console.log(`  ${game}: ${plan.slots.length} slot(s) into ${DIM}${focus.savesDir(plan.label)}${OFF}`)
+  console.log(`  ${DIM}route ${plan.routeType}.${plan.routeName} — ${route.commands.length}`
+    + ` commands at seed ${seed}, from ${route.file}${OFF}`)
+  console.log('')
+
+  // Building here rather than letting the first cut pay for it: seven servers
+  // queueing on SwiftPM's lock is the cost `bin/gnusto-mcp`'s mtime gate exists to
+  // avoid, and a build inside a timed replay looks like a slow route.
+  const built = replay(['--build', game])
+  if (built.status !== 0) {
+    console.error(built.out)
+    process.exit(1)
+  }
+
+  const wanted = focus.slotStatus(plan).filter((slot) => !only || only.has(slot.name))
+  const cutting = verifyOnly ? [] : wanted.filter((slot) => force || !slot.exists)
+  const uncut = wanted.filter((slot) => !slot.exists && !cutting.includes(slot))
+
+  let cutFailure = null
+  if (cutting.length) {
+    const depths = cutting.map((x) => `route[0:${x.cut}]`).join(', ')
+    process.stdout.write(`  ${DIM}walking the route once, saving at ${depths} …${OFF}\r`)
+    const r = cutAll(game, plan, route, seed, cutting)
+    if (!r.ok) cutFailure = r.detail
+  }
+
+  const rows = []
+  let staged = false
+  for (const slot of wanted) {
+    if (uncut.includes(slot)) {
+      rows.push({ slot, ok: false, detail: 'not cut, and --verify cuts nothing' })
+      continue
+    }
+    if (cutFailure && cutting.includes(slot)) {
+      rows.push({ slot, ok: false, detail: cutFailure })
+      continue
+    }
+    const action = cutting.includes(slot) ? (slot.exists ? 're-cut' : 'cut') : 'kept'
+    rows.push({ slot, action, ...verify(game, plan, seed, slot, !staged) })
+    staged = true
+  }
+
+  // An `--only` that matched nothing must not read as a clean run. Without this the
+  // loop leaves `rows` empty, the render skips, `failed.length` is 0, and the script
+  // signs off with its "read each line" footer having cut and verified nothing — a
+  // typo answering exactly like a dispatchable round.
+  if (!rows.length) {
+    console.error(`  ${RED}no slot matched${OFF}`
+      + `${only ? ` --only=${[...only].join(',')}` : ''} — ${focusPath} declares`
+      + ` ${plan.slots.map((x) => x.name).join(', ')}.\n`)
+    process.exit(2)
+  }
+
+  // The receipt, written only when everything the plan asks for is on disk and
+  // current. A partial run must not stamp the label as cut from this route, or the
+  // next preflight reads green over slots it never made.
+  const fingerprint = focus.slotFingerprint(plan, route, seed)
+  const whole = rows.length === plan.slots.length && rows.every((r) => r.ok)
+  if (whole) fs.writeFileSync(focus.fingerprintFile(plan.label), `${fingerprint}\n`)
+
+  const width = Math.max(...rows.map((r) => r.slot.name.length)) + 2
+  for (const r of rows) {
+    const mark = r.ok ? `${GREEN}ok  ${OFF}` : `${RED}FAIL${OFF}`
+    const where = r.ok
+      ? `${r.action} · route[0:${r.slot.cut}] · ${r.room} · moves=${r.moves} score=${r.score}`
+      : r.detail
+    console.log(`  ${mark} ${r.slot.name.padEnd(width)} ${where}`)
+    if (r.ok && r.carrying) console.log(`       ${' '.repeat(width)} ${DIM}${r.carrying}${OFF}`)
+  }
+
+  const failed = rows.filter((r) => !r.ok)
+  console.log('')
+  if (failed.length) {
+    console.log(`  ${RED}${failed.length} slot(s) failed${OFF} — the round is not dispatchable.\n`)
+    process.exit(1)
+  }
+  if (!whole) {
+    console.log(`  ${DIM}Partial run — no receipt written, so preflight still asks for a`
+      + ` whole cut.${OFF}\n`)
+  }
+  console.log(`  ${DIM}Read each line against its region's own sentence in ${focusPath}:`
+    + ` a slot is chosen by route state, never by the room the footer names.${OFF}\n`)
+}
+
+main()

@@ -241,6 +241,20 @@ const dryArgs = {
     + ' up, so go up early and stay up, waiting rather than coming down'
     + ' | the last ten minutes, 6:40 to 6:50: stop moving, pick one place and watch'
     + ' it to the end rather than covering ground',
+  // The half of the coverage plan the blind seats may not have. It carries the
+  // material that used to ride in region four back when `regions[i % length]`
+  // handed region four to nobody: the walkthrough's type name and its route
+  // indices. `chunkRegions` fixed the seating and that paragraph then reached a
+  // blind explorer, so it moved below the focus file's second `---` rule instead.
+  // The assertions below are the regression test for the move.
+  focusSighted:
+    'solver: the winning chain is `FulminateWalkthroughTests.route`, and this round'
+    + " slots are cuts of it at indices 12 and 40."
+    + ' | wrong-footer: run your generated rows at the boarder from slot `b-1`.',
+  // A round that ships pre-cut saves names the label they live under, and every
+  // session stages from it. Without this the region text tells testers to
+  // `restore` a slot their session has never been given.
+  slots: 'Fulminate-r1-slots',
   ledgerKeys: dryLedgerKeys,
 }
 const fn = new Function('__stub','__phases','__logs','__args', body)
@@ -379,8 +393,16 @@ check(!/gamePrintedIt/.test(src), 'the tester-reported unknown-word census is ba
 // is blind — the others read the doc by design and adjudicate against it. This
 // is a property of the generated *text*, and grepping it is the only cheap way
 // to know.
+const play = prompts.filter((p) => /^play:/.test(String(p.label || '')))
 const blind = prompts.filter((p) => /^play:explorer/.test(String(p.label || '')))
 check(blind.length > 0, 'no blind charters ran, so the firewall is untested')
+// The sighted-only half of the coverage plan, row by row. Both directions are checked
+// against the same list: absent from every blind prompt, and present somewhere among
+// the sighted ones. Asserting the presence half against the whole concatenated string
+// instead would stop meaning anything the day `playtest.js` reflows it — which is the
+// drift this block exists to catch.
+const sightedRows = String(dryArgs.focusSighted || '')
+  .split('|').map((r) => r.trim()).filter(Boolean)
 const regions = String(dryArgs.focus || '').split('|').map((r) => r.trim()).filter(Boolean)
 // The seat count, OBSERVED rather than re-derived. `blind.length` is how many
 // blind seats the workflow actually made; restating `Math.min(Math.max(n,1),3)`
@@ -469,6 +491,18 @@ for (const p of blind) {
     check(!p.prompt.includes(owner), `${p.label} was handed the ledger's source map (${owner})`)
     check(!p.prompt.includes(prose), `${p.label} was handed a ledger excerpt: "${prose.slice(0, 48)}…"`)
   }
+  // The sighted-only half of the coverage plan, which is where a row naming the
+  // walkthrough, a route index or a slot's contents belongs. This is the check
+  // that makes the focus file's second `---` rule mean something: before it, the
+  // solver's and the wrong-footer's rows were region four, withheld from blind
+  // seats only by a seating bug, and they went into a blind prompt the day the
+  // bug was fixed. Nothing caught it — none of that text is a room name.
+  for (const row of sightedRows) {
+    check(
+      !p.prompt.includes(row),
+      `${p.label} was handed a sighted-only row: "${row.slice(0, 48)}…"`
+    )
+  }
 }
 
 // **Every declared region reaches a seat.** The counterpart to the bound inside
@@ -491,6 +525,36 @@ for (const p of blind) {
 if (regions.length > 1) {
   for (const r of regions) {
     check(seatedRegions.has(r), `no blind explorer was seated on region "${r.slice(0, 48)}…"`)
+  }
+}
+
+// **The sighted half reaches the sighted seats.** The firewall assertion above is
+// only half a rule: text nobody receives also passes it. A round whose solver row
+// went into the sighted preamble and then out again through a typo would look
+// identical from the blind side, and the seat that owns the walkthrough would be
+// dispatched with no assignment at all.
+const sighted = play.filter((p) => !blind.includes(p))
+check(sighted.length > 0, 'no sighted charters ran, so the sighted half is untested')
+for (const row of sightedRows) {
+  check(
+    sighted.some((p) => p.prompt.includes(row)),
+    `no sighted charter was handed the row "${row.slice(0, 48)}…"`
+  )
+}
+
+// **A round that ships saved games says so on every session.** The slots live under
+// one label and each tester stages them into its own; a session that never asks
+// answers `Restore failed.` to the region text telling it to restore, and SKILL.md
+// records that reply producing four false `not-reproducible` verdicts in one round.
+// It is checked on the `open` line rather than anywhere in the prose, because the
+// prose is advice and the argument is the thing that works.
+if (dryArgs.slots) {
+  const wants = `savesFrom: "${dryArgs.slots}"`
+  for (const p of play) {
+    check(
+      p.prompt.split('\n').some((l) => l.startsWith('Open with') && l.includes(wants)),
+      `${p.label} opens without savesFrom, so every restore in its region will fail`
+    )
   }
 }
 

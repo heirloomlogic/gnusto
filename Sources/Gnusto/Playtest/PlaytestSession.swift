@@ -138,6 +138,20 @@ actor PlaytestSession {
     /// described there as one tester's namespace rather than one run's.
     nonisolated let saveDirectory: URL
 
+    /// What `open` copied into ``saveDirectory`` before this session existed,
+    /// or `nil` for the ordinary clean start.
+    ///
+    /// Carried on the session so the `open` result can name it: a tester told
+    /// to `restore z-1` has to be shown that `z-1` arrived, and staging that
+    /// went unreported would be indistinguishable from staging that never ran
+    /// until a turn was spent finding out. `nonisolated` for the reason
+    /// ``role`` is — the receipt is written in the same breath as the opening,
+    /// and there is nothing to await for a fact fixed at construction.
+    ///
+    /// The slots belong to the *label*, not to this probe, so a second session
+    /// under the same label sees them whether it asked for staging or not.
+    nonisolated let staged: PlaytestSessions.StagedSlots?
+
     /// The recorded transcript.
     nonisolated let transcriptURL: URL
 
@@ -365,6 +379,7 @@ actor PlaytestSession {
     ///   - prepared: the game, booted once by the server.
     ///   - directory: this probe's directory.
     ///   - saveDirectory: the label's saves directory.
+    ///   - staged: the slots `open` copied into that directory, or `nil`.
     init(
         id: String,
         label: String,
@@ -374,7 +389,8 @@ actor PlaytestSession {
         divergence: DivergencePolicy,
         prepared: PreparedGame,
         directory: URL,
-        saveDirectory: URL
+        saveDirectory: URL,
+        staged: PlaytestSessions.StagedSlots? = nil
     ) {
         self.id = id
         self.label = label
@@ -386,6 +402,7 @@ actor PlaytestSession {
         self.prepared = prepared
         self.directory = directory
         self.saveDirectory = saveDirectory
+        self.staged = staged
         self.transcriptURL = directory.appendingPathComponent("transcript.txt")
         self.commandsURL = directory.appendingPathComponent("commands.txt")
         self.transcriptWithoutStatusURL =
