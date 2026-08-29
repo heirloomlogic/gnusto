@@ -98,6 +98,82 @@ public func expectNoAmbiguity(
         sourceLocation: sourceLocation)
 }
 
+/// The part of a stock line no subject can vary — the engine's own wording,
+/// with the noun taken out.
+///
+/// A `Line<Nothing>` has one sample and *is* its fragment. A line that names
+/// what it is about has several, differing only where the noun goes, so the
+/// invariant is whichever of the common prefix and the common suffix is longer:
+/// `cantEnter` keeps *"You can't get into the "* at the front, and `stubs.pull`
+/// keeps *" budge."* at the back, where the number agreement swallows the front.
+///
+/// This exists so a test that asserts a game never falls through to the engine
+/// can name the *line* rather than retype its words. A hand-copied sentence
+/// stops matching the day somebody rewords the engine, and a guard that matches
+/// nothing passes — green for the wrong reason, which is the failure the guard
+/// was written to catch.
+///
+/// - Parameter line: the stock line to render.
+/// - Returns: the longest fragment every sentence that line can print contains.
+public func stockFragment(of line: any StockLine) -> String {
+    let samples = line.samples
+    guard let first = samples.first else { return "" }
+    guard samples.count > 1 else { return first }
+
+    func common(_ pick: (String) -> [Character]) -> Int {
+        var length = 0
+        let reference = pick(first)
+        while length < reference.count {
+            let next = reference[length]
+            guard
+                samples.allSatisfy({
+                    let s = pick($0)
+                    return length < s.count && s[length] == next
+                })
+            else { break }
+            length += 1
+        }
+        return length
+    }
+
+    let prefix = common { Array($0) }
+    let suffix = common { Array($0.reversed()) }
+    return prefix >= suffix ? String(first.prefix(prefix)) : String(first.suffix(suffix))
+}
+
+/// Records a Swift Testing issue for every engine stock line that survives in a
+/// transcript.
+///
+/// The assertion behind *"a sentence that names an act invites it, and the room
+/// has to answer in its own voice"*: a game whose prose describes a switch and
+/// then answers `You can't turn that on.` is denying what it just offered. Pass
+/// the lines whose acts the walked prose invites — `GameText().cantTurnOnThat`
+/// and friends — rather than their words, so the guard tracks the engine.
+///
+/// - Parameters:
+///   - transcript: the transcript to search.
+///   - refusals: the stock lines none of the walked commands should reach.
+///   - note: optional context for the failure message, e.g. the room walked.
+///   - sourceLocation: the caller's source location, for issue reporting.
+public func expectNoStockRefusal(
+    _ transcript: String,
+    _ refusals: [any StockLine],
+    _ note: String = "",
+    sourceLocation: SourceLocation = #_sourceLocation
+) {
+    for refusal in refusals {
+        let fragment = stockFragment(of: refusal)
+        guard !fragment.isEmpty, transcript.contains(fragment) else { continue }
+        Issue.record(
+            """
+            The engine answered an act the prose offered: "\(fragment)".\(note.isEmpty ? "" : " \(note)")
+            Transcript:
+            \(transcript)
+            """,
+            sourceLocation: sourceLocation)
+    }
+}
+
 /// Every stub-verb line a game still answers in the engine's voice, by property
 /// name.
 ///
