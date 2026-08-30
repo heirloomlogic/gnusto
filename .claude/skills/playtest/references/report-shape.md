@@ -46,6 +46,15 @@ The ledger is the loop's memory. Refuted keys suppress re-finding, so the loop
 doesn't rediscover its own rejections forever. A key marked `fixed` that reappears
 is not a new finding — it is a **regression**, and it goes back at raised severity.
 
+**Write every key in full.** A key is matched against `normalize()`, which emits nothing
+but `[a-z0-9 ]`, so a key stored with an ellipsis in it can never equal one a round
+produces — it is inert, and a file full of them reads exactly like a game nothing has
+ever been refuted about. Three ledgers were written that way from their first round, so
+every round since was handed nothing; `bin/playtest-preflight`'s `ledger` row and
+`playtest.dryrun.mjs` both fail on it now rather than reporting zero.
+Prefer `decl::<file>::<declaration>`, which is short enough that abbreviating it never
+tempts anybody.
+
 A ledger section's preamble names the one issue its `confirmed` rows were filed as, so
 a key traces to a ticket without a column per row: *"Every `confirmed` row is an open
 defect in the game as it ships, filed as #<N>."* Which is why the ledger is appended

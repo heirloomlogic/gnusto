@@ -7,13 +7,22 @@ rediscovers everything a previous round already rejected, forever — the harnes
 with itself instead of converging. And with it, a key marked `fixed` that shows up again
 is not a new finding, it is a **regression**, and it goes back at raised severity.
 
-Pass `ledgerKeys` into the workflow with every key below whose verdict is `refuted` or
-`fixed`.
+Pass `ledgerKeys` into the workflow with every key below whose verdict is `refuted`,
+and only those. A `fixed` key carries the opposite instruction: it is meant to come
+back, at raised severity, so passing it suppresses the regression this file exists to
+catch. `ledgerScan` in `bin/lib/playtest-focus.js` reads the verdict column and enforces
+that.
 
-The key is `<ownerFile>::<normalized offending text>`, with the frame deliberately
-excluded — one untrue sentence seen in two frames is one defect, so keying on the frame
-would dispatch two fixers at one branch. Keys are abbreviated here for reading; the
-full ones are in the round reports.
+The key is the declaration that emits the offending prose — `decl::<file>::<name>` —
+with the frame deliberately excluded, because one untrue sentence seen in two frames is
+one defect and keying on the frame would dispatch two fixers at one branch. A finding
+the round cannot locate falls back to `<ownerFile>::<normalized excerpt>`.
+
+**Never write a key abbreviated.** A round matches keys against `normalize()`, which
+emits nothing but `[a-z0-9 ]`, so a stored key holding an ellipsis can never equal a
+produced one. It is inert, and a file full of them looks exactly like a game nothing has
+ever been refuted about. Every key below was once written that way; preflight's `ledger`
+row now fails rather than quietly reporting zero.
 
 ## 2026-07-30 — first round, `4aae966` (`fix: none`, nothing applied)
 
@@ -64,18 +73,18 @@ on the fact, so it is filed as the design call #95 rather than as a defect.
 | `Lighthouse.swift::talk to me i didnt understand that sentence cold water sluices between the…` | fixed | mechanic-contradicts-prose |
 | `Lighthouse.swift::take brass key taken look base of the lighthouse the round stone room at the…` | confirmed | prose-untrue-of-state |
 | `Lighthouse.swift::the old keeper stands by the window favoring one leg the keeper limps away up…` | confirmed | unanswerable-noun |
-| `Lighthouse.swift::the keeper climbs stiffly into the room x keeper you see nothing special…` | refuted | unanswerable-noun |
-| `Lighthouse.swift::lamp room glass walls wrap the top of the tower open to the night on every…` | refuted | presence-line-location-blind |
-| `Lighthouse.swift::x me you look much as you always do the keeper climbs stiffly into the room…` | refuted | mechanic-contradicts-prose |
-| `Lighthouse.swift::z time passes the keeper climbs stiffly into the room score your score is 0…` | refuted | prose-untrue-of-frame |
-| `Lighthouse.swift::sing your singing is better kept to yourself jump you jump on the spot…` | refuted | register-mismatch |
-| `Lighthouse.swift::relight the beacon before the tide comes in light her again before the tides…` | refuted | mechanic-contradicts-prose |
-| `Lighthouse.swift::the old keeper stands by the window favoring one leg x keeper you see nothing…` | refuted | stock-line-not-reskinned |
-| `Lighthouse.swift::south jetty the sea closes over the jetty and over you you have died your…` | refuted | mechanic-contradicts-prose |
-| `Tower.swift::source sourceslighthousetowerswift beacondescribe beaconislit the beacon…` | refuted | mechanic-contradicts-prose |
-| `DefaultActions.swift::a brass key lies on the stone shelf on the stone shelf is a brass key the old…` | refuted | mechanic-contradicts-prose |
-| `Tower.swift::turn on beacon you tip the last of the oil into the beacons reservoir and…` | refuted | mechanic-contradicts-prose |
-| `Lighthouse.swift::x keeper you see nothing special about the lighthouse keeper attack keeper…` | refuted | register-mismatch |
+| ~~`Lighthouse.swift::the keeper climbs stiffly into the room x keeper you see nothing special…`~~ | refuted | unanswerable-noun |
+| ~~`Lighthouse.swift::lamp room glass walls wrap the top of the tower open to the night on every…`~~ | refuted | presence-line-location-blind |
+| ~~`Lighthouse.swift::x me you look much as you always do the keeper climbs stiffly into the room…`~~ | refuted | mechanic-contradicts-prose |
+| ~~`Lighthouse.swift::z time passes the keeper climbs stiffly into the room score your score is 0…`~~ | refuted | prose-untrue-of-frame |
+| `decl::Sources/Gnusto/Actions/GameText.swift::stubs.sing` | refuted | register-mismatch |
+| ~~`Lighthouse.swift::relight the beacon before the tide comes in light her again before the tides…`~~ | refuted | mechanic-contradicts-prose |
+| ~~`Lighthouse.swift::the old keeper stands by the window favoring one leg x keeper you see nothing…`~~ | refuted | stock-line-not-reskinned |
+| `decl::Sources/Lighthouse/Lighthouse.swift::jetty` | refuted | mechanic-contradicts-prose |
+| `decl::Sources/Lighthouse/Tower.swift::beacon` | refuted | mechanic-contradicts-prose |
+| `decl::Sources/Gnusto/Actions/GameText.swift::nothingToSearch` | refuted | mechanic-contradicts-prose |
+| `decl::Sources/Lighthouse/Tower.swift::beacon` | refuted | mechanic-contradicts-prose |
+| ~~`Lighthouse.swift::x keeper you see nothing special about the lighthouse keeper attack keeper…`~~ | refuted | register-mismatch |
 39 distinct keys from 42 findings — the dedupe key is the normalized excerpt, so the
 same defect quoted with a different surrounding line survives as a separate key. Five
 refutations in this round were the same claim re-argued from scratch for a second or
@@ -134,3 +143,24 @@ doc retired the tagline on its own terms.
 The `refuted` rows on register (`sing`, `jump`, `attack keeper`) stand refuted, and the
 design doc now says so in writing, so the next round can cite it rather than re-argue
 it.
+
+**2026-08-30 — the twelve `refuted` rows re-keyed on their declarations.** Every key in
+the round above was written in the abbreviated display form, and an abbreviated key is
+inert: a round matches against `normalize()`, which emits nothing but `[a-z0-9 ]`, so
+none of these could ever equal a key a round produced. Lighthouse's dedupe set has been
+empty since the day it was written. See
+[#351](https://github.com/heirloomlogic/gnusto/issues/351).
+
+The full excerpts are not recoverable — the round report quotes claims, not transcripts —
+so the rows are re-keyed on the declaration that emits the line, the form the harness has
+produced since declaration clustering landed. Five were re-keyed, onto four distinct
+declarations, each checked against the current source and against a replay. Seven are
+struck: a struck row keeps its reading record and hands the round nothing.
+
+Every one of the seven is struck for the same reason, and it is the 2026-07-31 pass
+rather than a gap in the archaeology. The keeper's stock "You see nothing special" cannot
+print any more — #92 needed `leg` to answer, so she has a description of her own. Her
+stair lines are direction-neutral, so "the keeper climbs stiffly into the room" is gone
+and takes three rows with it. And the tagline that promised a tide deadline was retired
+on the design doc's own terms. A row whose sentence no longer exists has nothing to key
+on and nothing to suppress.

@@ -7,13 +7,22 @@ rediscovers everything a previous round already rejected, forever — the harnes
 with itself instead of converging. And with it, a key marked `fixed` that shows up again
 is not a new finding, it is a **regression**, and it goes back at raised severity.
 
-Pass `ledgerKeys` into the workflow with every key below whose verdict is `refuted` or
-`fixed`.
+Pass `ledgerKeys` into the workflow with every key below whose verdict is `refuted`,
+and only those. A `fixed` key carries the opposite instruction: it is meant to come
+back, at raised severity, so passing it suppresses the regression this file exists to
+catch. `ledgerScan` in `bin/lib/playtest-focus.js` reads the verdict column and enforces
+that.
 
-The key is `<ownerFile>::<normalized offending text>`, with the frame deliberately
-excluded — one untrue sentence seen in two frames is one defect, so keying on the frame
-would dispatch two fixers at one branch. Keys are abbreviated here for reading; the
-full ones are in the round reports.
+The key is the declaration that emits the offending prose — `decl::<file>::<name>` —
+with the frame deliberately excluded, because one untrue sentence seen in two frames is
+one defect and keying on the frame would dispatch two fixers at one branch. A finding
+the round cannot locate falls back to `<ownerFile>::<normalized excerpt>`.
+
+**Never write a key abbreviated.** A round matches keys against `normalize()`, which
+emits nothing but `[a-z0-9 ]`, so a stored key holding an ellipsis can never equal a
+produced one. It is inert, and a file full of them looks exactly like a game nothing has
+ever been refuted about. Every key below was once written that way; preflight's `ledger`
+row now fails rather than quietly reporting zero.
 
 ## 2026-07-30 — first round, `4aae966` (`fix: none`, nothing applied)
 
@@ -59,16 +68,16 @@ audited.
 | `Gramarye.swift::x desk i dont know the word desk` | confirmed | unanswerable-noun |
 | `Gramarye.swift::firebolt me the firebolt washes over the yourself and leaves it untouched` | confirmed | stock-line-not-reskinned |
 | `playtest-replay::tool doc a blank line or a line whose first nonspace characters are or is a…` | fixed | doc-drift |
-| `Gramarye.swift::close door closed look the long gallery a cold stone gallery the way east…` | refuted | exit-prose-mismatch |
-| `Gramarye.swift::north the undercroft a low vaulted cellar the air chalky with old magic a…` | refuted | exit-prose-mismatch |
-| `Gramarye.swift::close door closed open door the wardingmarks hold the door fast no amount…` | refuted | mechanic-contradicts-prose |
-| `Gramarye.swift::close window you cant close that and at the win…` | refuted | mechanic-contradicts-prose |
-| `Gramarye.swift::xyzzy nothing happens sing your singing is better kept to yourself pray…` | refuted | register-mismatch |
-| `Gramarye.swift::a cold stone gallery the way east runs back to the study to the north the…` | refuted | exit-prose-mismatch |
-| `Gramarye.swift::x window the study window stands open to the morning a pleasant draught…` | refuted | mechanic-contradicts-prose |
-| `Gramarye.swift::north the granite wall is closed x wall a wall of dressed granite seamless…` | refuted | exit-prose-mismatch |
-| `Gramarye.swift::read book you search the book for anything on warded doors what your…` | refuted | repeat-behavior |
-| `Gramarye.swift::down you were left to mind the tower a tower cannot be minded from the road…` | refuted | exit-prose-mismatch |
+| `decl::Sources/Gramarye/Gramarye.swift::gallery` | refuted | exit-prose-mismatch |
+| `decl::Sources/Gramarye/Gramarye.swift::undercroft` | refuted | exit-prose-mismatch |
+| `decl::Sources/Gramarye/Gramarye.swift::wardedDoor` | refuted | mechanic-contradicts-prose |
+| `decl::Sources/Gnusto/Actions/GameText.swift::cantCloseThat` | refuted | mechanic-contradicts-prose |
+| `decl::Sources/Gnusto/Actions/GameText.swift::stubs.xyzzy` | refuted | register-mismatch |
+| `decl::Sources/Gramarye/Gramarye.swift::gallery` | refuted | exit-prose-mismatch |
+| `decl::Sources/Gramarye/Gramarye.swift::window` | refuted | mechanic-contradicts-prose |
+| `decl::Sources/Gnusto/Actions/GameText.swift::closedContainer` | refuted | exit-prose-mismatch |
+| `decl::Sources/Gramarye/Gramarye.swift::spellbook` | refuted | repeat-behavior |
+| `decl::Sources/Gramarye/Gramarye.swift::map` | refuted | exit-prose-mismatch |
 36 distinct keys from 45 findings. The dedupe key is the normalized excerpt, so one
 defect quoted with a different surrounding line survives as a separate key — the
 `close door` softlock was filed three times and the `doorSeals` "You touched nothing"
@@ -121,6 +130,32 @@ epilogue (`z` + `save` → `zsave`), losing the command and the save both. No
 regression test — the change is in a bash script, and the suite has no shell
 harness; the reproducer is in the issue. See
 [#103](https://github.com/heirloomlogic/gnusto/issues/103).
+
+**2026-08-30 — the ten `refuted` rows re-keyed on their declarations.** Every key in the
+round above was written in the abbreviated display form, and an abbreviated key is inert:
+a round matches against `normalize()`, which emits nothing but `[a-z0-9 ]`, so none of
+these could ever equal a key a round produced. Gramarye's dedupe set has been empty since
+the day it was written, and no round since has been told that any of this was already
+rejected. See [#351](https://github.com/heirloomlogic/gnusto/issues/351).
+
+The full excerpts are not recoverable — the round report quotes claims, not transcripts —
+so the rows are re-keyed on the declaration that emits the line instead. That is the form
+the harness has produced since declaration clustering landed, and the form Dungeon's
+working keys are in. Every one was checked against the current source and against a
+replay before it was written down. Nothing was dropped, because every sentence these rows
+objected to still prints.
+
+Two rows collapsed onto `gallery`. `close door` / *Closed.* / `look` and the bare gallery
+description were two excerpts of one sentence, and the declaration says so where the
+excerpt could not — which is the point of the move. The stock `Closed.` those rows open
+with is gone, the door having grown its own `.close` answer in the 07-31 pass, but that
+was the frame, and the key deliberately excludes the frame.
+
+Three rows key on the engine rather than on Gramarye — `close window`, the magic-word
+stubs, and "The granite wall is closed" — because that is where those sentences are
+declared and the game overrides none of them. One more is odd in a different way: the
+`down`/`out` refusal is a literal inside `var map`, declared on no entity at all, so it
+keys on `map`.
 
 ## Provenance
 

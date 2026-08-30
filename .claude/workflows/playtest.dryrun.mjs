@@ -10,7 +10,10 @@
 //
 // Prompts land in /tmp/prompts.txt. Grep them: the firewall is a property of the
 // generated text, and this is the only place it can be asserted cheaply.
-import { readFileSync, writeFileSync } from 'node:fs'
+import { readdirSync, readFileSync, writeFileSync } from 'node:fs'
+// The round's own ledger parser, imported rather than re-implemented. Node reads
+// the CommonJS module's static `module.exports` and gives ESM the named binding.
+import { ledgerScan } from '../../bin/lib/playtest-focus.js'
 const src = readFileSync('.claude/workflows/playtest.js', 'utf8').replace('export const meta =', 'const meta =')
 
 const prompts = []
@@ -985,6 +988,36 @@ for (const key of ['replayScript', 'sessionDirectories']) {
   check(
     SOURCE[key].includes(`${probeStem}%03d`),
     `${SOURCES[key]} names its probe directories something other than ${LAYOUT.PROBE}`
+  )
+}
+
+// ---------------------------------------------------------------------------
+// The ledgers, scanned by the real scanner
+// ---------------------------------------------------------------------------
+
+// `ledgerKeys` is the loop's memory, and a ledger that holds refutations it cannot
+// hand over is indistinguishable, at every level above this one, from a game
+// nothing has ever been refuted about. Three of them were in that state for
+// months: every key written in the abbreviated display form, and `normalize()`
+// emits nothing but `[a-z0-9 ]`, so not one could equal a key a round produced.
+// The rounds went on re-refuting what they had already rejected and no report
+// could say so.
+//
+// `bin/playtest-preflight` now fails on it, but preflight is an operator's command
+// and this is the gate CI runs, so the ledgers are checked here too — against the
+// real files on disk, and with the round's own parser rather than a copy of it.
+// `ledgerScan` lives in `bin/lib/playtest-focus.js` for exactly that reason, and
+// the verdict ships with the parse so this file writes down no rule of its own.
+const ledgers = readdirSync('docs/games')
+  .filter((f) => f.endsWith('-playtest-ledger.md'))
+  .map((f) => `docs/games/${f}`)
+check(ledgers.length > 0, 'no ledger found under docs/games; the scan below proves nothing')
+for (const p of ledgers) {
+  const { inert, ok } = ledgerScan(p)
+  check(
+    ok,
+    `${p} holds ${inert} refutation(s) and no usable key — every one is abbreviated, `
+    + 'so the round is handed an empty dedupe set and re-refutes all of them'
   )
 }
 
