@@ -99,6 +99,38 @@ public struct StatusFooter: Sendable {
             """
     }
 
+    /// Whether a line that has just run cost the world a turn.
+    ///
+    /// The move counter's delta is the engine's own definition of whether world
+    /// time passed, and it is right for every line the parser reads — but a
+    /// **meta** line is not one of those. RESTORE replaces the whole world
+    /// including its move counter, so the delta stops being a delta and becomes
+    /// the sign of a difference between two unrelated counters: restoring from
+    /// a slot at move 644 into one at move 29 read `turn=free`, and restoring
+    /// the other way read `turn=cost`. Both are arithmetic about nothing.
+    ///
+    /// So the two questions are asked in order. Did the engine answer this line
+    /// off the meta path — a verb in ``Intent/metaIntents``, or a line consumed
+    /// as the answer to an engine prompt (a save or restore filename, the
+    /// post-death choice), none of which the parser ever read as a command? If
+    /// so it is free, whatever the counters did. Only then is the delta
+    /// consulted.
+    ///
+    /// One function because there are two drivers — ``REPL`` and the play-test
+    /// session — and the harness's brief tells every tester to read this field
+    /// rather than compute it. Nine of a round's slots are reached by
+    /// `restore`. (#350)
+    ///
+    /// - Parameters:
+    ///   - result: the turn that just ran.
+    ///   - audit: what the parser made of the line.
+    ///   - movesBefore: the move counter as of the line before this one.
+    /// - Returns: whether to print `turn=cost`.
+    static func turnCost(_ result: TurnResult, audit: TurnAudit, movesBefore: Int) -> Bool {
+        guard !audit.answeredPrompt, audit.intent?.isMeta != true else { return false }
+        return result.status.moves > movesBefore
+    }
+
     /// Renders one footer line.
     ///
     /// The four standard fields come first and always, in a fixed order, so a

@@ -1,10 +1,10 @@
 import Foundation
-import Gnusto
 import GnustoTestSupport
 import Testing
 
 @testable import CloakOfDarkness
 @testable import Fulminate
+@testable import Gnusto
 
 /// The `[status]` footer: one out-of-fiction line per turn saying where the
 /// player is standing, what the move counter reads, and whether the command
@@ -90,6 +90,56 @@ struct StatusFooterTests {
         #expect(
             turnOutput(of: "inventory", in: transcript).contains(
                 "moves=2 | score=0 | turn=cost"))
+    }
+
+    /// **`turn=` is a claim about world time, and RESTORE broke the arithmetic
+    /// it was computed from.** The field was the move counter's delta across
+    /// the line — right for everything the parser reads, and meaningless for a
+    /// verb that replaces the whole world including the counter. Restoring a
+    /// slot cut at move 644 from a fresh start read `turn=free`; restoring the
+    /// other way read `turn=cost`. Both are the sign of a difference between
+    /// two unrelated counters.
+    ///
+    /// The contract test the box asked for: every intent in
+    /// `Intent.metaIntents`, typed, reports free — and the set is read off the
+    /// engine, so a meta intent added later fails here rather than shipping a
+    /// wrong footer. It matters to the harness in particular: a round's slots
+    /// are reached by `restore`, every blind seat is told a restore is one free
+    /// turn, and the brief tells every tester to read this field rather than
+    /// compute it. (#350)
+    @Test func everyMetaIntentIsReportedFree() async throws {
+        let spelling: [Intent: String] = [
+            .score: "score", .version: "version", .quit: "quit",
+            .undo: "undo", .restart: "restart", .save: "save", .restore: "restore",
+        ]
+        #expect(Set(spelling.keys) == Intent.metaIntents)
+
+        let transcript = try await playWithFooter(
+            OperaHouse(),
+            // Three real turns, then every meta verb there is. The save and the
+            // restore each answer a prompt, and the answering line was never
+            // parsed as a command either — so it is free by the same rule.
+            ["look", "look", "look"]
+                + [spelling[.save]!, "three", spelling[.restart]!]
+                + [spelling[.restore]!, "three"]
+                + [spelling[.version]!, spelling[.undo]!, spelling[.score]!]
+                + [spelling[.quit]!])
+
+        // The turn the box is about: RESTART put the counter back to zero and
+        // the restore raised it to three, which is not three turns of world
+        // time however the subtraction comes out.
+        let afterRestore = try #require(transcript.components(separatedBy: "Restored.").last)
+        let restoreFooter = try #require(
+            afterRestore.components(separatedBy: "[status]").dropFirst().first)
+        #expect(
+            restoreFooter.hasPrefix(
+                " room=Foyer of the Opera House | moves=3 | score=0 | turn=free"))
+
+        // And nothing else in the session claims a turn either: the opening and
+        // all nine meta lines are free, and the three LOOKs are the only cost.
+        let footers = transcript.split(separator: "\n").filter { $0.hasPrefix("[status]") }
+        #expect(footers.count == 13)
+        #expect(footers.filter { $0.hasSuffix("turn=cost") }.count == 3)
     }
 
     // MARK: - Opt-in by construction

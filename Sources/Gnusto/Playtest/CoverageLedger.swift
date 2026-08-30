@@ -659,7 +659,10 @@ struct CoverageLedger: Sendable {
     ///   - room: the room the status line named *after* the turn.
     ///   - moves: the move counter after the turn.
     ///   - line: the line's 1-based index in `commands.txt`.
-    ///   - turnCost: whether the move counter advanced across it.
+    ///   - turnCost: whether world time passed across it, as
+    ///     ``StatusFooter/turnCost(_:audit:movesBefore:)`` decides — the move
+    ///     counter's delta everywhere except the meta path, which is free
+    ///     whatever the counters did.
     mutating func observe(
         command: String,
         audit: TurnAudit,
@@ -872,7 +875,10 @@ struct CoverageLedger: Sendable {
     ///   - command: the raw line, for the object labels.
     ///   - departed: the room the tester was standing in.
     ///   - line: the line index.
-    ///   - turnCost: whether world time passed.
+    ///   - turnCost: whether world time passed, per
+    ///     ``StatusFooter/turnCost(_:audit:movesBefore:)``. Every reader below
+    ///     sits behind the `audit.intent` guard, and a line with no intent is
+    ///     the only place the meta carve-out and a raw delta can disagree.
     /// - Returns: the depth new nouns from this turn's output belong at.
     private mutating func apply(
         audit: TurnAudit, command: String, departed: String, line: Int, turnCost: Bool

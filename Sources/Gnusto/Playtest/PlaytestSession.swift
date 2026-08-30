@@ -211,8 +211,10 @@ actor PlaytestSession {
     private var statusLine = ""
 
     /// The move counter as of the last turn — read *before* the next one, the
-    /// way `REPL.run` does, because `turn=cost|free` is the counter's delta
-    /// and not a guess from the verb.
+    /// way `REPL.run` does, because `turn=cost|free` is the counter's delta on
+    /// every line the parser reads. The one carve-out is the meta path, where
+    /// the two counters need not belong to the same world; that is
+    /// ``StatusFooter/turnCost(_:audit:movesBefore:)``'s. (#350)
     private var lastMoves = 0
 
     /// True once a turn reported `isFinished`. Nothing runs after that.
@@ -1636,11 +1638,14 @@ actor PlaytestSession {
 
         // Read before the turn runs: `turn=cost|free` is the move counter's
         // delta across it, which is the engine's own definition of whether
-        // world time passed.
+        // world time passed — except across the meta path, where the counter
+        // this line started from and the counter it ended on need not belong to
+        // the same world. ``StatusFooter/turnCost(_:audit:movesBefore:)`` is
+        // that rule, written once for both drivers. (#350)
         let movesBefore = lastMoves
         let (result, audit) = await world.performAudited(line)
         let fields = await world.statusFields()
-        let turnCost = result.status.moves > movesBefore
+        let turnCost = StatusFooter.turnCost(result, audit: audit, movesBefore: movesBefore)
         let annotated = footer.annotate(result, turnCost: turnCost, fields: fields)
         recorder?.record(command: line, output: annotated)
 
