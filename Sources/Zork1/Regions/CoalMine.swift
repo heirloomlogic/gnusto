@@ -135,7 +135,6 @@ struct ZorkCoalMine: GameContent {
         adjectives("jade", "exquisite")
         synonyms("figurine")
         firstSight(Prose.jadeFirstSight)
-        description(Prose.jade)
         trait(.weight, 10)
         trait(.takeValue, 5)  // find
         trait(.depositValue, 5)  // case
@@ -172,7 +171,6 @@ struct ZorkCoalMine: GameContent {
         adjectives("huge", "enormous")
         synonyms("diamond")
         firstSight(Prose.diamondFirstSight)
-        description(Prose.diamond)
         trait(.takeValue, 10)  // find
         trait(.depositValue, 10)  // case
     }

@@ -83,17 +83,20 @@ struct DemoGameStubVerbTests {
             ], "\(report)")
     }
 
+    /// Every other shipped game boots with nothing to say — Dungeon and
+    /// KindlyDeep included, which the hand-written list this replaced had
+    /// silently never covered.
+    ///
+    /// Asked of the whole set rather than four named games because a bootstrap
+    /// warning is the engine's one channel to an author, and a warning nobody
+    /// asserts about is a warning nobody reads. #350 added one — a listing line
+    /// wired to the examine channel — and it was true of eleven declarations in
+    /// two games before anything checked.
     @Test func theOtherDemoGamesBootWithNoWarnings() throws {
-        let (lighthouse, _) = try Bootstrap.build(Lighthouse())
-        #expect(lighthouse.warnings.isEmpty, "\(lighthouse.warningReport ?? "no report")")
-
-        let (gramarye, _) = try Bootstrap.build(Gramarye())
-        #expect(gramarye.warnings.isEmpty, "\(gramarye.warningReport ?? "no report")")
-
-        let (cloak, _) = try Bootstrap.build(OperaHouse())
-        #expect(cloak.warnings.isEmpty, "\(cloak.warningReport ?? "no report")")
-
-        let (fulminate, _) = try Bootstrap.build(Fulminate())
-        #expect(fulminate.warnings.isEmpty, "\(fulminate.warningReport ?? "no report")")
+        for (title, definition) in try ShippedGames.definitions() where title != "Zork1" {
+            #expect(
+                definition.warnings.isEmpty,
+                "\(title): \(definition.warningReport ?? "no report")")
+        }
     }
 }

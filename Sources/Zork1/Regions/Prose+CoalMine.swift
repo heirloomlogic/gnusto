@@ -97,10 +97,6 @@ extension Prose {
 
     // MARK: - Items
 
-    static let jade = """
-        There is an exquisite jade figurine here.
-        """
-
     static let sapphireBracelet = """
         A heavy bracelet, thick with sapphires that catch what little light
         there is and throw it back blue.
@@ -109,10 +105,6 @@ extension Prose {
     static let coal = """
         It is an ordinary small pile of coal — black, dusty, and unremarkable,
         whatever a machine might make of it.
-        """
-
-    static let diamond = """
-        There is an enormous diamond (perfectly cut) here.
         """
 
     static let basket = """
@@ -135,9 +127,13 @@ extension Prose {
 
     // MARK: - First sights
 
+    /// `JADE`'s `LDESC` (`1dungeon.zil:497`). See
+    /// ``Prose/rustyKnifeFirstSight``. (#350)
     static let jadeFirstSight = "There is an exquisite jade figurine here."
     static let sapphireBraceletFirstSight = "A sapphire-encrusted bracelet lies here."
     static let coalFirstSight = "A small pile of coal is heaped against the wall."
+    /// `DIAMOND`'s `LDESC` (`1dungeon.zil:488`). See
+    /// ``Prose/rustyKnifeFirstSight``. (#350)
     static let diamondFirstSight = "There is an enormous diamond (perfectly cut) here."
 
     // MARK: - Mechanics

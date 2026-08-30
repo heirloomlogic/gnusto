@@ -143,9 +143,19 @@ extension Prose {
         which is very likely what happened to the last owner as well.
         """
 
-    /// Trilogy verbatim. One line does for the listing and the examine both,
-    /// because in the trilogy they are the same line.
-    static let burnedOutLantern = "The deceased adventurer's useless lantern is here."
+    /// Trilogy verbatim, and the *listing* line — which is the whole of what
+    /// the trilogy does with it. `BURNED-OUT-LANTERN` (`1dungeon.zil:524`) has
+    /// one string on one channel, an `FDESC`, and no `TEXT` at all, so the
+    /// original answers EXAMINE with its stock shrug and never with this. (#350)
+    static let burnedOutLanternInPlace = "The deceased adventurer's useless lantern is here."
+
+    /// Written fresh, for the same reason ``rustyKnife`` is: a listing line
+    /// stops being true the moment the thing is in your hand.
+    static let burnedOutLantern = """
+        Brass, and of a good make. The cells corroded through a long time ago
+        and the glass has fogged from the inside, which between them is why the
+        man carrying it did not get out.
+        """
 
     /// Written fresh.
     static let skeletonKeys = """

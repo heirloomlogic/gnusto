@@ -492,6 +492,61 @@ struct BuriedListingGame: Game {
     }
 }
 
+/// The listing line and the examine line, and what happens when they are the
+/// same sentence. A room listing is spent on first touch; EXAMINE is not, so
+/// one string in both makes EXAMINE assert where a held thing is lying.
+///
+/// The actor is the boundary and not an oversight: a person's listing line is a
+/// *standing* presence line, reprinted on every look, so it is as true of the
+/// examine channel as of the listing one — which is why the source's own
+/// `TROLL-FCN` answers EXAMINE with the troll's `LDESC`. (#350)
+struct DoubledChannelGame: Game {
+    let title = "Doubled Channel"
+    let intro = ""
+
+    let landing = Location {
+        name("Landing")
+        description("A landing at the top of the stairs.")
+    }
+
+    /// The defect: one sentence, both channels.
+    let lamp = Item {
+        name("dead lamp")
+        firstSight("A dead lamp is lying on the boards.")
+        description("A dead lamp is lying on the boards.")
+    }
+
+    /// The same two channels, told apart. Spared.
+    let ledger = Item {
+        name("ledger")
+        firstSight("A ledger lies open on the boards.")
+        description("Columns of figures, none of them adding up.")
+    }
+
+    /// A listing line and no examine line at all. Spared: the stock shrug
+    /// answers, which is what the trilogy does for the objects this warning
+    /// was written about.
+    let comb = Item {
+        name("tortoiseshell comb")
+        firstSight("A tortoiseshell comb is lying on the boards.")
+    }
+
+    /// An actor with one sentence on both channels. Spared, on purpose.
+    let porter = Actor {
+        name("porter")
+        firstSight("A porter is leaning against the banister.")
+        description("A porter is leaning against the banister.")
+    }
+
+    var map: WorldMap {
+        player.starts(in: landing)
+        lamp.starts(in: landing)
+        ledger.starts(in: landing)
+        comb.starts(in: landing)
+        porter.starts(in: landing)
+    }
+}
+
 /// Two containers placed inside each other. Both placements resolve — each
 /// holder is a declared `container`, which is the only thing the placement
 /// branch checks — so before this diagnostic existed the game booted with the

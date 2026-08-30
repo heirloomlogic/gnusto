@@ -91,7 +91,6 @@ struct ZorkRoundRoom: GameContent {
         name("platinum bar")
         adjectives("platinum", "large")
         firstSight(Prose.platinumBarFirstSight)
-        description(Prose.platinumBar)
         trait(.weight, 20)  // the original's SIZE
         trait(.takeValue, 10)  // find
         trait(.depositValue, 5)  // case

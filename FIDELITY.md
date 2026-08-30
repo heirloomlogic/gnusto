@@ -24,6 +24,26 @@ Zork 1's across is the mistake it exists to prevent.
   *names* ("West of House", "brass lantern", "jewel-encrusted egg") are the
   iconic proper nouns and were always used as-is; the descriptive prose
   around them now carries the original Zork I text too.
+- **A listing line is not an examine line, and nine items had been given the
+  same sentence on both channels.** The burned-out lantern, the rusty knife,
+  the jade figurine, the huge diamond, the folded pile of plastic, the red
+  buoy, the pot of gold, the platinum bar and the bird's nest each carry one
+  string in the source — an `FDESC` or an `LDESC`, both of them *listing*
+  properties — and none of the nine has a `TEXT`. So the original answers
+  `EXAMINE` on every one of them with `V-EXAMINE`'s stock
+  *"There's nothing special about the X."* (`gverbs.zil:623`), and reproducing
+  it means the item declares `firstSight(…)` and no `description(…)`. Wiring
+  the listing line to both channels made `x pot of gold` answer *"At the end
+  of the rainbow is a pot of gold."* while the pot was in the player's hands.
+  `ListingLineChannelTests` is the standing guard. (#350)
+- **The troll keeps the pairing, because he is a person.** `TROLL-FCN`'s
+  `<VERB? EXAMINE>` branch answers with `<GETP ,TROLL ,P?LDESC>` by the
+  source's own choice, and an actor's listing line is standing state reprinted
+  on every look rather than a line spent on first touch — so the sentence is
+  true of both channels. The bootstrap warning skips actors for that reason and
+  needs no entry for him. **Not reproduced:** `P?LDESC` is live in the original,
+  rewritten on knockout, on being disarmed and on death, where this troll's is a
+  static trait frozen upright with his axe.
 
 ### Map topology
 
@@ -2070,7 +2090,9 @@ the committed document rather than out of `dung.355`.
 bucket and `RIVR1` and `RAINB` in its `minor` one, so those are the trilogy
 verbatim, as are Aragain Falls, the White Cliffs' southern beach, the Grating
 Room and its three overhead lines, the skeleton and its curse, the bag of coins,
-the rusty knife, the burned-out lantern, the boat's inflate and deflate answers,
+the rusty knife, the burned-out lantern's *listing* line (the trilogy gives it no
+other, and #350 took its second channel back), the boat's inflate and deflate
+answers,
 the three digging lines, and the cyclops's whole repertoire — his blocking, his
 eyeing, his gasping, his sleep, the wrath ladder and the meal.
 

@@ -75,10 +75,6 @@ extension Prose {
 
     // MARK: - Items
 
-    static let pileOfPlastic = """
-        There is a folded pile of plastic here which has a small valve attached.
-        """
-
     static let magicBoat = """
         It is a small plastic boat, taut and seaworthy, easily large enough to
         carry you and a fair load of cargo down the river.
@@ -87,10 +83,6 @@ extension Prose {
     static let puncturedBoat = """
         It is a sad, deflated ruin of a boat, hissing softly through the hole
         some fool put in it. It will float nobody anywhere.
-        """
-
-    static let buoy = """
-        There is a red buoy here (probably a warning).
         """
 
     static let emerald = """
@@ -108,16 +100,18 @@ extension Prose {
         back the light in a dozen colours.
         """
 
-    static let potOfGold = """
-        At the end of the rainbow is a pot of gold.
-        """
-
     // MARK: - First sights
 
+    /// `INFLATABLE-BOAT`'s `LDESC` (`1dungeon.zil:713`); `IBOAT-FUNCTION` does
+    /// not answer EXAMINE with it. See ``Prose/rustyKnifeFirstSight``. (#350)
     static let pileOfPlasticFirstSight = "There is a folded pile of plastic here which has a small valve attached."
+    /// `BUOY`'s `FDESC` (`1dungeon.zil:782`). It is `CONTBIT`, so the original
+    /// examines it by looking inside. See ``Prose/rustyKnifeFirstSight``. (#350)
     static let buoyFirstSight = "There is a red buoy here (probably a warning)."
     static let shovelFirstSight = "A shovel has been left lying in the sand."
     static let scarabFirstSight = "You can see a scarab here in the sand."
+    /// `POT-OF-GOLD`'s `FDESC` (`1dungeon.zil:736`): a claim about the floor
+    /// and not about the pot. See ``Prose/rustyKnifeFirstSight``. (#350)
     static let potOfGoldFirstSight = "At the end of the rainbow is a pot of gold."
 
     // MARK: - Boat mechanics

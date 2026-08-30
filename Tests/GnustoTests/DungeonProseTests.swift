@@ -2860,6 +2860,32 @@ struct DungeonProseTests {
         #expect(!drowned.contains("One of the matches starts to burn."))
     }
 
+    /// The burned-out lantern lists where it is lying and examines as what it
+    /// is — two sentences, because the first stops being true the moment the
+    /// lantern is in your hand.
+    ///
+    /// It went unrepaired for a round on the strength of a note claiming the
+    /// trilogy gives one line to both channels. It does not:
+    /// `BURNED-OUT-LANTERN` (`1dungeon.zil:524`) has one string on one channel,
+    /// an `FDESC`, and no `TEXT` at all. Eleven sites in two games had the
+    /// pairing; the bootstrap warns for it now. (#350)
+    @Test func theBurnedOutLanternListsWhereItIsAndExaminesAsWhatItIs() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toMazeFive + ["take useless lantern", "x useless lantern"],
+            seed: 18)
+
+        expectInOrder(
+            transcript,
+            [
+                "The deceased adventurer's useless lantern is here.",
+                "Taken.",
+                "The cells corroded through a long time ago",
+            ])
+        // Spent once, on the floor, and never again as an answer to the verb.
+        #expect(occurrences(of: "useless lantern is here", in: transcript) == 1)
+    }
+
     /// Pinned against the real prose rather than a fixture, because the defect
     /// was that the engine and the game disagreed about which of the two this
     /// text is.

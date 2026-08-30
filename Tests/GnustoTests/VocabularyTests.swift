@@ -155,15 +155,7 @@ struct VocabularyTests {
     /// through the splitter, which is exactly how #102 happened, and no
     /// transcript test would notice.
     @Test func noShippedGameHasAWordThePlayerCannotType() throws {
-        let definitions: [(String, GameDefinition)] = [
-            ("CloakOfDarkness", try Bootstrap.build(OperaHouse()).0),
-            ("Lighthouse", try Bootstrap.build(Lighthouse()).0),
-            ("Gramarye", try Bootstrap.build(Gramarye()).0),
-            ("Fulminate", try Bootstrap.build(Fulminate()).0),
-            ("Zork1", try Bootstrap.build(Zork1()).0),
-            ("KindlyDeep", try Bootstrap.build(KindlyDeep()).0),
-        ]
-        for (title, definition) in definitions {
+        for (title, definition) in try ShippedGames.definitions() {
             let parser = StandardParser(
                 vocabulary: definition.vocabulary, syntaxRules: definition.syntaxRules)
             for (id, lexicon) in definition.vocabulary.itemLexicons {

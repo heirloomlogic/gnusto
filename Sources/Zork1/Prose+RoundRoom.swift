@@ -43,9 +43,9 @@ extension Prose {
 
     // MARK: - The platinum bar
 
+    /// `BAR`'s `LDESC` (`1dungeon.zil:725`): the listing channel, and the
+    /// object's only string. See ``Prose/rustyKnifeFirstSight``. (#350)
     static let platinumBarFirstSight = "On the ground is a large platinum bar."
-
-    static let platinumBar = "On the ground is a large platinum bar."
 
     /// The bar is sacred while the room roars — the original's SACREDBIT.
     /// Reaching for it in the din, the acoustics beat it out of your hands.

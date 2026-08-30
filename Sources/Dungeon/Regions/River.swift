@@ -136,7 +136,7 @@ struct DungeonRiver: GameContent {
         name("pile of plastic")
         adjectives("plastic", "folded", "inflatable")
         synonyms("boat", "pile", "plastic", "valve")
-        firstSight(Prose.pileOfPlastic)
+        firstSight(Prose.pileOfPlasticInPlace)
         description(Prose.pileOfPlastic)
         trait(.weight, 20)
     }
