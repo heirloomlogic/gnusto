@@ -100,7 +100,7 @@ public struct DangerousDark: GameContent {
     /// word "room", "and devoured you!" — and is the one that fits. Both games
     /// here had been handed the first. (#350)
     ///
-    /// That branch is why ``death`` takes a subject: the vehicle the player was
+    /// That branch is why `death` takes a subject: the vehicle the player was
     /// aboard, or nothing. Both halves are the game's own words. A library that
     /// has never seen the game has no business deciding what to call the place
     /// somebody was taken from, so the stock line names none.

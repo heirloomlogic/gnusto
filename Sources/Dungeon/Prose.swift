@@ -39,7 +39,7 @@ enum Prose {
 
     /// Verbatim (`gverbs.zil:2110-2114`; mainframe `rooms.394:1407`), and the *second* of
     /// the source's two grue deaths — the one that fits this mechanic. See
-    /// ``DangerousDark/timers`` for which and why. (#350)
+    /// `DangerousDark.timers` for which and why. (#350)
     static let grueDeath = GameText.Line<GameText.Noun?>.naming(
         orBare: "Oh, no! A lurking grue slithered into the room and devoured you!"
     ) {
