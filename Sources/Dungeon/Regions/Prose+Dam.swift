@@ -174,6 +174,18 @@ extension Prose {
 
     static let matchesGone = "I'm afraid that you have run out of matches."
 
+    /// The wet branch. Written fresh, because neither source floods a room a
+    /// matchbook can be carried into: the mainframe's `MATCH` checks its count
+    /// and nothing else, which is exactly what this rule did.
+    ///
+    /// Says nothing about the book, only about the strike: a player who walks
+    /// out of this room is dry again, and a line asserting a soaked matchbook
+    /// would be contradicted by the next match that lit one room away. (#350)
+    static let matchDrowned = """
+        A match will not strike under water, and this is very much under
+        water.
+        """
+
     static let matchIsOut = "The match is out."
 
     /// A second `light match` used to fall past the rule and reach the

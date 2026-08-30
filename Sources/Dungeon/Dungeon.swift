@@ -881,11 +881,11 @@ struct Dungeon: Game, GameMain {
         return underWater ? wet : dry
     }
 
-    /// Whether the reader is in over their head. The threshold is
-    /// ``DungeonDam/waterOverYourHead``'s, because the ladder is that bundle's.
-    private var underWater: Bool {
-        player.location == dam.maintenanceRoom && dam.waterOverYourHead
-    }
+    /// Whether the reader is in over their head. The rung *and* the room are
+    /// ``DungeonDam/readerIsUnderWater``'s, because the ladder is that bundle's
+    /// and the matchbook standing in the same water has to ask the identical
+    /// question. It used to be spelled out here and only here. (#350)
+    private var underWater: Bool { dam.readerIsUnderWater }
 
     /// Milestone 4 — the grating
     @RuleBuilder private var gratingRules: Rules {

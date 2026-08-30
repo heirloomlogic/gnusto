@@ -161,6 +161,18 @@ struct DungeonDam: GameContent {
     /// an off-by-one to live. ``Dungeon/torchRules`` is the caller. (#329)
     var waterOverYourHead: Bool { floodLevel >= Prose.floodLadder.count - 1 }
 
+    /// Whether whoever is reading this is *in* that water: the rung and the
+    /// room, which is the whole question a sentence about a flame has to ask
+    /// before it prints.
+    ///
+    /// The pair used to be spelled out privately in ``Dungeon/torchRules`` and
+    /// nowhere else, so the ivory torch knew it was under water and the
+    /// matchbook two lines away in the same transcript did not — a match was
+    /// struck and reported burning with the flood over the player's head.
+    /// #329 published the rung for exactly this and the second flame never
+    /// read it. One reader now, and both flames ask it. (#350)
+    var readerIsUnderWater: Bool { player.location == maintenanceRoom && waterOverYourHead }
+
     // MARK: - Dam controls
 
     let dam = Item {
@@ -766,6 +778,13 @@ struct DungeonDam: GameContent {
             // turn fell through to the engine's switch language: "It's already
             // on.", about a matchbook. (#329)
             try require(!matchbook.isLit, else: Prose.matchAlreadyBurning)
+            // The third branch, and the one #329 missed while it was giving the
+            // ivory torch its own: `light match` reported a match burning with
+            // the flood over the player's head, two lines above the torch
+            // saying it was burning under water. A struck match is the one
+            // flame in this game the water simply wins against, so this is a
+            // refusal rather than a wet-burning line. (#350)
+            try require(!readerIsUnderWater, else: Prose.matchDrowned)
             try require(matchesLeft > 0, else: Prose.matchesGone)
             matchesLeft -= 1
             matchbook.isLit = true
