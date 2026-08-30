@@ -7,11 +7,19 @@ on:
   # Build on PRs that touch documentation, without deploying. A broken doc link
   # is a warning DocC degrades to plain text, so nothing fails at the tag — it
   # just ships wrong. Catching it on the PR is the only place it costs nothing.
+  #
+  # Every PR, with no `paths:` filter, and that is load-bearing rather than
+  # careless. `documentation` is a *required* status check on the default
+  # branch, and a filtered workflow does not report a skip — it reports
+  # nothing. So a PR that touched no Swift and no `.docc` sat forever on
+  # "Expected — Waiting for status to be reported", unmergeable with nothing
+  # to fix and no run to look at. The four sibling workflows all trigger on a
+  # bare `pull_request:` for the same reason; this file was the one exception,
+  # and the exception cost a doc-only PR its merge. The price is ~7m of macOS
+  # runner on a PR that could not have changed the docs, which is free on a
+  # public repo. Re-adding a filter here means removing the check from the
+  # ruleset in the same change.
   pull_request:
-    paths:
-      - "Sources/**/*.docc/**"
-      - "Sources/**/*.swift"
-      - ".github/workflows/documentation.yml"
   workflow_dispatch:
 
 # This workflow has one job, and that job pushes gh-pages at a tag, so `contents: write`
