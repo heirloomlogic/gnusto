@@ -987,3 +987,21 @@ of the turn, and the confirming rater's — "the contract makes an unanswerable 
 noun non-negotiable" — named the symptom rather than the cause. The cause was a line the
 source prints and this game does not, and it took reading `VILLAIN-RESULT` rather than
 reading either rater harder.
+
+## 2026-08-30 — the round's last `needs-human` row marked `fixed`; #350 closed
+
+| Class | Row | What was done |
+|---|---|---|
+| `prose-untrue-of-frame` | `Prose+Systems.swift::resurrection` (the grue's death line) | **The source has two grue deaths and this game had the wrong one.** `V-WALK` (`gverbs.zil:1578`) prints the fangs line on a *blocked* move in the dark — and even there guards it with `<NOT <FSET? ,HERE ,NONLANDBIT>>`; `GOTO` (`:2110-2114`) prints "A lurking grue slithered into " + the vehicle's name or "room" + " and devoured you!" `GnustoDangerousDark` has no blocked-move branch and cannot kill before the third dark turn — *"lingering is lethal, movement is not"* is its own doc — so every death it has ever dealt was the second kind. The chute did not make the line false; it made it visible. The plugin now hands its death line the rendered phrase for where the player was taken, which is the source's own `VEHBIT` branch and covers Dungeon's balloon and river as well as its rope. Rule 1 is satisfied rather than breached: still the trilogy line, just the other one. |
+
+**All twelve boxes of the 2026-08-29 round are now `fixed`** — nine by the chain
+#352→#355, three by #369→#370→#371. Withhold every one of them from `ledgerKeys`:
+a `fixed` key that comes back is a regression, and a round told to swallow it cannot
+report it.
+
+**When two careful raters argue to a standstill, read the source rather than the
+raters.** All three of this round's `needs-human` rows were split verdicts, and none
+was a judgment call: two turned on a doc comment in this repo that misstates what the
+trilogy does — and in both, the *refuting* rater cited it — and the third on a sentence
+the source prints that this game did not. `needs-human` was the right flag. The human's
+job was to open `gverbs.zil`.

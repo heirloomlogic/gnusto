@@ -2741,6 +2741,33 @@ struct DungeonProseTests {
         #expect(turnOutput(of: "x chute", in: transcript).contains("Sheet metal"))
     }
 
+    /// **The grue's line asserted a walk, in a room the game says cannot be
+    /// walked in.** Four `wait`s on a rope, in a chute "too smooth to stand in",
+    /// answered "Oh, no! You have walked into the slavering fangs of a lurking
+    /// grue!"
+    ///
+    /// The source has two grue deaths and this was the wrong one.
+    /// `gverbs.zil:1578` is `V-WALK`'s, fired by a **blocked** move in the dark
+    /// — a branch `GnustoDangerousDark` does not have, and could not reach
+    /// anyway, since its counter cannot deal a death before the third dark
+    /// turn. `gverbs.zil:2110` is `GOTO`'s, for a player the grue came to, and
+    /// is the one this mechanic is. (#350)
+    @Test func theGrueComesToThePlayerRatherThanBeingWalkedInto() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            DungeonTests.toTheChuteWithTheTimber
+                // Down the rope with the lamp lit, so the chute names itself,
+                // and then out with it.
+                + ["drop timber", "tie rope to timber", "down", "turn off lamp"]
+                + Array(repeating: "wait", count: 8),
+            seed: 18)
+
+        #expect(transcript.contains("You are hanging on a rope in a chute of sheet metal"))
+        #expect(transcript.contains("A lurking grue slithered into the room and devoured you"))
+        // The claim the chute's own paragraph contradicts, gone from the game.
+        #expect(!transcript.contains("walked into the slavering fangs"))
+    }
+
     /// **The Wide Ledge watched the balloon climb away over its head, and was
     /// then told about the tear as a sound in the distance.** `rise(_:…)` is
     /// handed a `watched` flag and re-derived a narrower answer —

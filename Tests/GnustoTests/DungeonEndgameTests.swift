@@ -415,8 +415,10 @@ struct DungeonEndgameTests {
         // cancelled, so the Crypt never took him anywhere.
         #expect(!transcript.contains("You have passed"))
         #expect(!transcript.contains("Top of Stairs"))
-        // And the dark is dangerous again.
-        #expect(transcript.contains("slavering fangs of a lurking grue"))
+        // And the dark is dangerous again. The line is `GOTO`'s rather than
+        // `V-WALK`'s — this player was eaten standing still, eight `wait`s deep
+        // in the dark, and never walked anywhere. (#350)
+        #expect(transcript.contains("A lurking grue slithered into the room and devoured you"))
     }
 
     // MARK: - The mirror box

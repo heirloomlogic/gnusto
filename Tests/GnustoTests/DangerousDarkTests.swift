@@ -212,6 +212,20 @@ struct DangerousDarkTests {
             ])
     }
 
+    /// The death line is handed where the player was taken. On foot that is
+    /// "the room"; aboard a vehicle it is the vehicle, because a sentence about
+    /// a grue coming into the room is not true of somebody sitting in a boat.
+    /// `GOTO` (`gverbs.zil:2110-2113`) makes the same branch on `VEHBIT`. (#350)
+    @Test func theDeathLineIsHandedWhereThePlayerWasTaken() async throws {
+        let onFoot = try await play(PuntableDarkGame(), ["north", "wait"], seed: 0)
+        #expect(onFoot.contains("Something in the dark takes you out of the room."))
+
+        let afloat = try await play(
+            PuntableDarkGame(), ["board punt", "north", "wait"], seed: 0)
+        #expect(
+            afloat.contains("Something in the dark takes you out of the flat-bottomed punt."))
+    }
+
     /// Order-independence. A fuse says the sentence and *then* moves the player
     /// into the dark, so this turn's emitters are the fuse, the room describer
     /// and the grue daemon — three claims, one sentence. Only the describer

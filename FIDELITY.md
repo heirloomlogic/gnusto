@@ -1346,6 +1346,35 @@ than one per villain, because that is what `VILLAIN-RESULT` is: `Prose.carcassVa
 **Not reproduced:** Zork 1's thief-death loot line stops at the trilogy's colon;
 Dungeon's names what fell, which is its own adaptation and is ledgered above.
 
+## The grue has two deaths, and this is the other one (#350)
+
+The source prints one of two sentences, keyed on how the player was taken:
+
+- `V-WALK` (`gverbs.zil:1578`) — *"Oh, no! You have walked into the slavering
+  fangs of a lurking grue!"* — on a **blocked** move in the dark, and guarded by
+  `<NOT <FSET? ,HERE ,NONLANDBIT>>` so it declines to say "walked" where the
+  player is not on their feet.
+- `GOTO` (`gverbs.zil:2110-2114`) — *"Oh, no! A lurking grue slithered into "* +
+  the vehicle's name or the word "room" + *" and devoured you!"* — for a player
+  the grue came to. The mainframe has the pair at `rooms.394:1402` and `:1407`.
+
+`GnustoDangerousDark` has no blocked-move branch and cannot deal a death before
+the third dark turn, so every death it deals is the second kind — and both games
+had been given the first line. It was untrue of every `wait`-in-the-dark death in
+either game; Dungeon's rope chute, *"too smooth to stand in"*, is only where it
+became obvious.
+
+**Reproduced**, in both games: `GOTO`'s line, with the plugin handing it the
+rendered phrase for where the player was taken so the `VEHBIT` branch works —
+the balloon in Dungeon's four `openAir` rooms, the boat on its five river
+stretches. The three chute rooms take the generic branch, which is what the
+source prints there too: a rope is not a vehicle in either game, and
+`NONLANDBIT` suppresses `V-WALK`'s line rather than varying `GOTO`'s.
+
+**Not reproduced:** `V-WALK`'s line, because the mechanic it belongs to does not
+exist here — a blocked move in the dark answers "You can't go that way" and kills
+nobody. Nor Zork III's `DARK-1`/`DARK-2` den variants, which are that game's.
+
 ## Fidelity pass — the long tail (post-Phase 10)
 
 A follow-up pass closing the last small divergences a player would actually hit. Each is

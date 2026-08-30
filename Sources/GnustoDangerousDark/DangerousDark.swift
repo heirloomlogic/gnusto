@@ -48,7 +48,7 @@ public struct DangerousDark: GameContent {
     @Global public var suspended = false
 
     let warning: String
-    let death: String
+    let death: GameText.Line<GameText.Noun?>
     let graceTurns: Int
     let lethality: Int
 
@@ -58,14 +58,18 @@ public struct DangerousDark: GameContent {
     ///     (Zork does: there, the dark-room line is the threat) reads it a
     ///     single time on the turn it walks into the dark. Two different
     ///     sentences are two different sentences, and both print.
-    ///   - death: the `die(_:)` message.
+    ///   - death: the `die(_:)` message, handed the **vehicle the player was
+    ///     aboard** — or nothing, when they were on their own feet. Write it
+    ///     with `.naming(orBare:)`; see ``timers`` for why it takes a subject
+    ///     at all.
     ///   - graceTurns: guaranteed-safe dark turns after the warning — warn on
     ///     dark turn 1, safe through dark turn `graceTurns + 1`, then dice.
     ///   - lethality: per-turn percent chance of death once the dice begin (on
     ///     dark turn `graceTurns + 2` and every dark turn after).
     public init(
         warning: String = "The darkness is absolute, and something in it is breathing.",
-        death: String = "Something in the dark finds you before you find it.",
+        death: GameText.Line<GameText.Noun?> =
+            "Something in the dark finds you before you find it.",
         graceTurns: Int = 1,
         lethality: Int = 50
     ) {
@@ -84,6 +88,22 @@ public struct DangerousDark: GameContent {
     /// The warning goes out through `sayOnceThisTurn(_:)`, which changes what
     /// is printed and nothing else: a warning swallowed for repeating the room's
     /// own dark line is still a warned turn.
+    ///
+    /// **The death is always the lingering one, and the line has to say so.**
+    /// The counter cannot reach the dice before the third dark turn, so nothing
+    /// this daemon kills was killed on the turn it walked into the dark — which
+    /// is the distinction Zork draws with two separate sentences. `V-WALK`
+    /// (`gverbs.zil:1578`) says "You have walked into the slavering fangs of a
+    /// lurking grue!" and fires only on a *blocked* move in the dark, a mechanic
+    /// this plugin does not have at all; `GOTO` (`gverbs.zil:2110-2114`) says
+    /// "A lurking grue slithered into " and then the vehicle's name, or the
+    /// word "room", "and devoured you!" — and is the one that fits. Both games
+    /// here had been handed the first. (#350)
+    ///
+    /// That branch is why ``death`` takes a subject: the vehicle the player was
+    /// aboard, or nothing. Both halves are the game's own words. A library that
+    /// has never seen the game has no business deciding what to call the place
+    /// somebody was taken from, so the stock line names none.
     public var timers: [TimedEvent] {
         daemon("grue", autostart: true) {
             guard !suspended, !player.location.isLit else {
@@ -94,7 +114,8 @@ public struct DangerousDark: GameContent {
             if darkTurns == 1 {
                 sayOnceThisTurn(warning)
             } else if darkTurns >= graceTurns + 2, chance(lethality) {
-                try die(death)
+                // `<FSET? <LOC ,WINNER> ,VEHBIT>`.
+                try die(death(player.vehicle?.definiteNoun))
             }
         }
     }

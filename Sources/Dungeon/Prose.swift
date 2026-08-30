@@ -1,3 +1,5 @@
+import Gnusto
+
 /// Every line of prose in the game, gathered as named constants.
 ///
 /// **Dungeon adapts; it does not reproduce.** That is the sharpest difference
@@ -35,9 +37,14 @@ enum Prose {
         It is pitch black. You are likely to be eaten by a grue.
         """
 
-    static let grueDeath = """
-        Oh, no! You have walked into the slavering fangs of a lurking grue!
-        """
+    /// Verbatim (`gverbs.zil:2110-2114`; mainframe `rooms.394:1407`), and the *second* of
+    /// the source's two grue deaths — the one that fits this mechanic. See
+    /// ``DangerousDark/timers`` for which and why. (#350)
+    static let grueDeath = GameText.Line<GameText.Noun?>.naming(
+        orBare: "Oh, no! A lurking grue slithered into the room and devoured you!"
+    ) {
+        "Oh, no! A lurking grue slithered into \($0) and devoured you!"
+    }
 
     // MARK: - The melee mechanism's own line
 
