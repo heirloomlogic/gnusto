@@ -2534,3 +2534,80 @@ engine offers one slot.
     leaves him on the floor and stops there leaves a body nothing holds. That
     sentence is in the plugin's doc now, where an author writing a third game
     reads it.
+
+29. **The grue's line asserted a walk, in a room this game says cannot be walked
+    in.** Four `wait`s on a rope in the chute — *"wide enough to fall down and
+    too smooth to stand in"* — answered *"Oh, no! You have walked into the
+    slavering fangs of a lurking grue!"*, and the killing turn's footer read
+    `room=Forest` because the death teleports before it prints.
+
+    The rater who called it `needs-human` laid out three repairs and thought all
+    three expensive: an engine change to a shared plugin's API, a per-room
+    override the plugin does not take, or rewording the chute so that hanging on
+    a rope stops excluding walking. The other refuted it outright on source
+    policy — the line is trilogy-verbatim, so rule 1 governs it.
+
+    **The source has two grue deaths, and this is the wrong one of them.**
+    `V-WALK` (`gverbs.zil:1578`) prints the fangs line, and only on a *blocked*
+    move in the dark — and even there the source guards it with
+    `<NOT <FSET? ,HERE ,NONLANDBIT>>`, so it already declines to say "walked" in
+    a place the player is not standing in. `GOTO` (`gverbs.zil:2110-2114`) prints
+    the other one: *"Oh, no! A lurking grue slithered into "* and then the
+    vehicle's name, or the word "room", *" and devoured you!"* The mainframe has
+    the same pair at `rooms.394:1402` and `:1407`.
+
+    `GnustoDangerousDark` has no blocked-move branch at all, and cannot deal a
+    death before the third dark turn — its own doc says what it models: *"lingering
+    is lethal, movement is not."* So **every** death it has ever dealt was the
+    second kind, and both games had been handed the first line. The chute did not
+    make the sentence false; it made it visible. It was equally untrue of every
+    `wait` in the dark in either game.
+
+    So it is not a per-room override, and rule 1 is satisfied rather than
+    breached: this is the trilogy line verbatim, just the other one. What the
+    plugin gained is the argument the source's own branch needs — the death line
+    is handed the rendered phrase for where the player was taken, the vehicle
+    they are aboard or "the room". That names the balloon in the four `openAir`
+    rooms and the boat on the five river stretches.
+
+    **It does not fire on the rope**, and the three chute rooms take the generic
+    branch — which is what the source prints there too, and is enough. The
+    defect was the verb: "walked" is what *"too smooth to stand in"* refutes.
+    "The room" claims only an enclosed space, which a `Location` with a name and
+    a description is, and the source uses `NONLANDBIT` to *suppress* `V-WALK`'s
+    line rather than to vary `GOTO`'s. A third branch would be an invention, not
+    a restoration — and this engine has no non-land predicate to hang one on:
+    `.waterSource` is shared by five river stretches and six beaches you stand
+    on, so it means "you can fill a bottle here" and nothing else.
+
+### What the seventeenth pass changed, and what it did not
+
+The map, the puzzles, the treasure values and `maxScore` are untouched, and both
+walkthroughs score what they scored. Four notes:
+
+- **Two of the three boxes were `needs-human` because a note in this repo was
+  wrong about the source, and in both the note is what a rater cited.** The
+  lantern's said the trilogy gives one line to both channels; it gives one line
+  to one. The grue's rested on "this is the trilogy line, so source policy
+  governs" — true, and the policy points at the *other* trilogy line. A doc
+  comment that makes a claim about the source is evidence a round will weigh, and
+  it should be checked against the source like any other claim.
+- **The third was not a judgment call either.** Both raters on the thief's body
+  argued about the sentence, and the answer was a sentence that was missing: one
+  routine, three prints, and this game had two of them.
+- **Two of the three repairs landed in the engine rather than in the game**, and
+  both are the same move — the thing that knew the answer was the mechanism.
+  `Bootstrap` warns for a listing line wired to the examine channel, because it
+  can see both channels; `DangerousDark` hands its death line the place, because
+  it is the only thing that knows whether the player is in a boat.
+- **`GnustoDangerousDark`'s stock death line still names no place** and ignores
+  the argument it is handed. A library that has not seen the game should not
+  invent one, and every other game in this package is unaffected.
+
+**The class's diagnostic.** The sixteenth pass asked *what does the game already
+say it decided?* This one asks the question a round cannot ask itself: **when two
+readers disagree about a sentence, which of them is quoting the source and which
+is quoting us?** All three boxes had been argued to a standstill between two
+careful raters, and all three were settled in an afternoon by reading `gverbs.zil`
+and `1actions.zil` instead of reading either rater harder. `needs-human` was the
+right flag; the human's job was to open the source.

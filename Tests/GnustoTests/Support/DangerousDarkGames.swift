@@ -252,3 +252,49 @@ struct PatientDarkGame: Game {
         player.starts(in: camp)
     }
 }
+
+/// A dark the player can be taken from on foot or afloat. The death line is
+/// handed where it happened, and where it happened is the boat when there is
+/// one — `<FSET? <LOC ,WINNER> ,VEHBIT>` (`gverbs.zil:2112`).
+struct PuntableDarkGame: Game {
+    let title = "Puntable Dark"
+    let intro = "The lamp went out an hour ago."
+
+    let jetty = Location {
+        name("Jetty")
+        description("Boards over black water.")
+    }
+
+    let channel = Location {
+        name("Channel")
+        description("Walls close on both sides.")
+        dark
+    }
+
+    let punt = Item {
+        name("flat-bottomed punt")
+        synonyms("punt", "boat")
+        enterable
+        capacity(100)
+    }
+
+    let dangerousDark = DangerousDark(
+        warning: "W.",
+        death: .naming(orBare: "Something in the dark takes you out of the room.") {
+            "Something in the dark takes you out of \($0)."
+        },
+        graceTurns: 0,
+        lethality: 100
+    )
+
+    var content: GameContents {
+        dangerousDark
+    }
+
+    var map: WorldMap {
+        jetty.north(channel)
+        channel.south(jetty)
+        punt.starts(in: jetty)
+        player.starts(in: jetty)
+    }
+}

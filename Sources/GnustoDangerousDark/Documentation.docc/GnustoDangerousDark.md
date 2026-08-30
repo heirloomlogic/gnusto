@@ -14,8 +14,9 @@ counter, one daemon, four knobs on `init`. Wiring is a single line: list the
 instance in the game's `content` block. It reads `player.location.isLit`, which
 already answers the whole question of whether there is light here from anything,
 so a host that has declared its dark rooms and a lamp has declared everything
-this needs. Nothing is passed in per rule; the prose and the schedule are settled
-at `init`.
+this needs. The schedule is settled at `init`, and so is the prose — with one
+subject passed at the moment it is spoken: the death line is handed the vehicle
+the player was aboard, because a sentence about being found has to say where.
 
 The daemon counts consecutive turns *ending* in darkness, wherever they are
 spent. Lingering is lethal and movement is not, so a lightless dash toward the
@@ -55,6 +56,29 @@ let dark = DangerousDark(
     graceTurns: 1,
     lethality: 50)
 ```
+
+`death` takes a subject where the other three lines do not: the **vehicle the
+player was aboard**, or nothing when they were on their own feet. Write both
+halves with `.naming(orBare:)`:
+
+```swift
+static let grueDeath = GameText.Line<GameText.Noun?>.naming(
+    orBare: "…the room…"
+) {
+    "…\($0)…"
+}
+```
+
+**The death this daemon deals is always the lingering one**, and the line has to
+be true of that. The counter cannot reach the dice before the third dark turn, so
+nothing it kills was killed on the turn it walked into the dark. Zork draws the
+distinction with two separate sentences and this is the second of them: `V-WALK`
+(`gverbs.zil:1578`) says *"You have walked into the slavering fangs of a lurking
+grue!"* and fires only on a **blocked** move in the dark, which is a branch this
+library does not have; `GOTO` (`:2110-2114`) names the vehicle you are sitting in,
+or says "room". Both halves are the game's words — the stock line names no place
+at all, because a library that has not seen the game should not decide what to
+call the place somebody was taken from.
 
 `warning` is said *once* per turn, through the engine's `sayOnceThisTurn(_:)`.
 A game that also points `text.pitchBlack` at the same sentence — Zork does,
