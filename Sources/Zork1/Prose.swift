@@ -8,7 +8,8 @@
 /// lives in `Prose+AboveGround.swift`, the interior in `Prose+House.swift`,
 /// the cellar and its inhabitants in `Prose+Cellar.swift`, and the systems
 /// layer (custom verbs, score ranks, liquids) in `Prose+Systems.swift`. This
-/// file holds only the truly shared prose the host wires directly — the grue.
+/// file holds the prose that belongs to no region: the grue, and the sentence
+/// the melee mechanism prints over every villain it removes.
 enum Prose {
     // MARK: - The grue
 
@@ -19,4 +20,33 @@ enum Prose {
     static let grueDeath = """
         Oh, no! You have walked into the slavering fangs of a lurking grue!
         """
+
+    // MARK: - The melee mechanism's own line
+
+    /// Verbatim (Zork I `1actions.zil:3568`; the mainframe's is byte-identical
+    /// at `melee.137:274`, so both grants that cover prose carry it and no 1981
+    /// text is reproduced).
+    ///
+    /// `VILLAIN-RESULT` prints three things in order and this is the second:
+    /// the melee table's fatal-blow line, **this**, then `REMOVE-CAREFULLY` and
+    /// the villain's own `F-DEAD`. It belongs to the mechanism rather than to
+    /// any one villain, which is why it takes a name instead of being written
+    /// into each villain's death line.
+    ///
+    /// - Parameter villain: the villain's **rendered definite phrase** — "the
+    ///   thief", not "thief". The sentence supplies no article of its own.
+    /// - Returns: the disposal sentence, naming that villain.
+    ///
+    /// It is what accounts for the body. `MeleeCombat` removes the actor the
+    /// same way `REMOVE-CAREFULLY` does, so a death line that leaves a villain
+    /// slumped on the floor and stops there leaves a corpse the world does not
+    /// hold: one turn later `x thief` and `x body` both refuse and LOOK lists
+    /// nothing. (#350)
+    static func carcassVanishes(_ villain: String) -> String {
+        """
+        Almost as soon as \(villain) breathes his last breath, a cloud of
+        sinister black fog envelops him, and when the fog lifts, the carcass has
+        disappeared.
+        """
+    }
 }

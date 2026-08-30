@@ -1321,6 +1321,31 @@ terms: `DungeonEndgameTests` builds its route from the walkthrough's, and three 
 tests riding it scan the whole transcript for exactly that line. The spares were reverted
 and the narrow seed kept.
 
+## A villain's death disposes of the carcass (#350)
+
+`VILLAIN-RESULT` (`1actions.zil:3566`) prints **three** things in order, for every
+villain in the game:
+
+1. the melee table's *"The X takes a fatal blow and slumps to the floor dead."*
+2. *"Almost as soon as the X breathes his last breath, a cloud of sinister black
+   fog envelops him, and when the fog lifts, the carcass has disappeared."*
+3. `REMOVE-CAREFULLY`, then the villain's own `F-DEAD` — which for the thief
+   moves the stiletto to `HERE` and reveals the hoard, and says nothing at all
+   about a body, because by then there is none.
+
+Both games printed 1 and 3 and had dropped 2, and `MeleeCombat` removes the actor
+exactly where `REMOVE-CAREFULLY` does — so `x thief` and `x body` refused one turn
+after the prose put a corpse on the floor. Dungeon had gone one further than Zork 1
+and sited the stiletto "beside him".
+
+**Reproduced, in both games.** The sentence is byte-identical in the trilogy's ZIL
+and in the mainframe's `melee.137:274`, so it is covered by the MIT grant and the
+MIT-0 one alike and no 1981 text is reproduced. It is one constant per game rather
+than one per villain, because that is what `VILLAIN-RESULT` is: `Prose.carcassVanishes(_:)`.
+
+**Not reproduced:** Zork 1's thief-death loot line stops at the trilogy's colon;
+Dungeon's names what fell, which is its own adaptation and is ledgered above.
+
 ## Fidelity pass — the long tail (post-Phase 10)
 
 A follow-up pass closing the last small divergences a player would actually hit. Each is

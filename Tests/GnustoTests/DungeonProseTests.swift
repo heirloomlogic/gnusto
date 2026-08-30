@@ -2860,6 +2860,37 @@ struct DungeonProseTests {
         #expect(!drowned.contains("One of the matches starts to burn."))
     }
 
+    /// A villain's death disposes of the carcass, because the world will not
+    /// hold one. The fog is `VILLAIN-RESULT`'s own sentence
+    /// (`1actions.zil:3568`), which the source prints between the fatal-blow
+    /// line and `REMOVE-CAREFULLY` — and `MeleeCombat` removes the actor the
+    /// same way. Without it the game put a troll on the floor and then refused
+    /// every noun for him. (#350)
+    @Test func theTrollsDeathTakesTheCarcassWithIt() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.pastTheTroll + ["look", "x troll", "x body"],
+            seed: 18)
+
+        expectInOrder(
+            transcript,
+            [
+                "The troll takes a fatal blow and slumps to the floor dead.",
+                "when the fog lifts, the carcass has disappeared",
+            ])
+
+        // And nothing after it claims a body the room does not hold: the LOOK
+        // lists no corpse, and both nouns the old line printed now refuse.
+        let afterDeath = output(after: "carcass has disappeared", in: transcript)
+        #expect(!afterDeath.contains("nasty-looking troll"))
+        expectInOrder(
+            afterDeath,
+            [
+                "> x troll", "You can't see any such thing.",
+                "> x body", "You can't see any such thing.",
+            ])
+    }
+
     /// The burned-out lantern lists where it is lying and examines as what it
     /// is — two sentences, because the first stops being true the moment the
     /// lantern is in your hand.

@@ -62,6 +62,22 @@ public func output(after marker: String, in transcript: String) -> String {
     return String(transcript[range.upperBound...])
 }
 
+/// Everything a transcript printed after its **last** occurrence of `marker`.
+///
+/// The slice for a beat that fires more than once on a route. One villain's
+/// death line is every villain's — a route that kills a troll on the way to a
+/// thief prints the same disposal twice, and `output(after:)` would hand back
+/// the tail from the troll.
+///
+/// - Parameters:
+///   - marker: the text to slice after.
+///   - transcript: the transcript to search.
+/// - Returns: the text following the last `marker`, or "" when it never appears.
+public func output(afterLast marker: String, in transcript: String) -> String {
+    guard let range = transcript.range(of: marker, options: .backwards) else { return "" }
+    return String(transcript[range.upperBound...])
+}
+
 /// Everything a transcript printed before its first occurrence of `marker`.
 ///
 /// - Parameters:

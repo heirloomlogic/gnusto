@@ -9,7 +9,8 @@ and answers it with a sentence. This library takes the word over and puts a body
 behind it. A swing resolves a weapon, rolls once out of a hundred against a
 per-weapon table, and spends the villain's health; a knockout puts him on the
 floor for 2 turns; the last hit prints his death line, runs the host's
-`onDefeat` hook, and removes him from play. The exchange a player recognizes
+`onDefeat` hook, and removes him from play — so the death line is the last thing
+said about him, and has to account for the body. The exchange a player recognizes
 from Zork — swing, answer, swing — is written nowhere. It falls out of the turn
 pipeline: the player's blow resolves in the command stages and the villain's
 lands with the end-of-turn timers.
@@ -68,6 +69,8 @@ struct Cavern: Game {
                 miss: ["The troll swings; the axe bites air."],
                 wound: ["Your blow lands, and the troll grunts."],
                 knockout: "The troll drops where he stood, out cold.",
+                // The body dissolves in the line, because the actor is
+                // removed a moment later and nothing else will say so.
                 death: "The troll dies, and his body dissolves."),
             onDefeat: {
                 passageClear = true          // unbar the door
