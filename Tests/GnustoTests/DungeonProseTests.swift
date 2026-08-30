@@ -2295,6 +2295,56 @@ struct DungeonProseTests {
                 .contains("temporarily unable to hear anything at all"))
     }
 
+    /// **The third channel, which #329 counted as two.** The listing line and
+    /// the greeting both learned to read `isUnconscious`; the examine text was
+    /// a static `description(Prose.thief)`, so `x thief` went on reporting a
+    /// blade aimed menacingly in your direction one turn after the man holding
+    /// it stopped being able to hold anything. All three are asserted here, in
+    /// both states, because "how many channels read this?" is the question the
+    /// last sweep answered wrong. Seed 9: the second blow puts him down without
+    /// killing him. (#350)
+    @Test func everyChannelThatReadsTheThiefKnowsHeIsDown() async throws {
+        // One run per channel: the knockout lasts two turns at this seed and
+        // three questions do not fit inside it. Each probe is the last command,
+        // so the tail after the knockout line is that channel's answer.
+        for (probe, knowsHeIsDown, stale) in [
+            (
+                "examine thief", "face down on the floor with his arms under him",
+                "aimed menacingly in your direction"
+            ),
+            (
+                "look", "face down against the wall he was leaning on",
+                "leaning against one wall. He is armed"
+            ),
+            (
+                "thief, hello", "temporarily unable to hear anything at all",
+                "without ever once taking the"
+            ),
+        ] {
+            let transcript = try await play(
+                Dungeon(),
+                Self.toTheHoard
+                    + ["attack thief with sword", "attack thief with sword", probe],
+                seed: 9)
+
+            let down = output(after: "battered into unconsciousness", in: transcript)
+            #expect(down.contains(knowsHeIsDown))
+            #expect(!down.contains(stale))
+        }
+
+        // The control, from a run in which he stays on his feet: all three
+        // channels are the ones the trilogy prints, and all three are unchanged.
+        let upright = try await play(
+            Dungeon(), Self.toTheHoard + ["x thief", "thief, hello"], seed: 9)
+        #expect(
+            turnOutput(of: "x thief", in: upright)
+                .contains("whose blade is aimed menacingly in your direction"))
+        #expect(upright.contains("There is a suspicious-looking individual, holding a large bag"))
+        #expect(
+            turnOutput(of: "thief, hello", in: upright)
+                .contains("without ever once taking the"))
+    }
+
     /// The troll had the identical fault and is not in the round's list — the
     /// charter met him standing up. His one constant served both channels and
     /// it claims he *blocks all passages*, which is not what a man face down in
@@ -2697,6 +2747,45 @@ struct DungeonProseTests {
             ])
         let drowning = turnOutput(of: "examine torch", in: transcript)
         #expect(!drowning.hasPrefix("The torch is burning."))
+    }
+
+    /// **The other flame in the same room.** #329 taught the ivory torch to
+    /// read `DungeonDam.waterOverYourHead` and published the rung for exactly
+    /// that purpose; the matchbook, which the player is holding in the same
+    /// water, checked its count and whether one was already lit and nothing
+    /// else. So the round's transcript reads "One of the matches starts to
+    /// burn." with the flood over the player's head, two lines above the torch
+    /// saying it was burning under water.
+    ///
+    /// The two flames answer differently on purpose. The torch is the
+    /// mainframe's supernatural light and goes on burning, saying so; a match
+    /// is a match, and the water wins. What they now share is the *reader* —
+    /// `DungeonDam.readerIsUnderWater`, one place the rung and the room are put
+    /// together, where the room half used to be spelled out privately in
+    /// `Dungeon.torchRules` and nowhere else. (#350)
+    @Test func aMatchWillNotStrikeUnderTheFloodTheTorchBurnsIn() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheDam
+                + ["north", "take matchbook", "light matchbook", "north"]
+                + ["push blue button"] + Array(repeating: "wait", count: 7)
+                + ["light match"],
+            seed: 18)
+
+        // The control, in a dry room: the match strikes, and the line is the
+        // one the round's do-not-report list already cleared.
+        #expect(
+            turnOutput(of: "light matchbook", in: transcript)
+                .contains("One of the matches starts to burn."))
+
+        expectInOrder(
+            transcript,
+            [
+                "The water level here is now over your head.",
+                "A match will not strike under water",
+            ])
+        let drowned = turnOutput(of: "light match", in: transcript)
+        #expect(!drowned.contains("One of the matches starts to burn."))
     }
 
     /// Pinned against the real prose rather than a fixture, because the defect

@@ -59,13 +59,13 @@ struct DungeonThief: GameContent {
     /// answer, and one of these two was a person. The bag is ``thiefBag``
     /// now. (#329)
     ///
-    /// His listing line is a rule, not a trait: an actor's listing line prints
-    /// on every look forever, so a constant cannot know he is face down.
+    /// Neither his listing line nor his examine text is a trait: both are
+    /// sentences about a man who can be on his feet or face down on the floor,
+    /// and a constant cannot know which. See ``rules``.
     let thief = Actor {
         name("thief")
         adjectives("shadowy", "suspicious", "looking", "seedy")
         synonyms("robber", "figure", "individual", "man", "bandit")
-        description(Prose.thief)
     }
 
     /// Set the moment he falls. Read by every rule that has to know whether the
@@ -141,6 +141,16 @@ struct DungeonThief: GameContent {
         // were two channels needing it. (#329)
         thief.presence {
             thief.isUnconscious ? Prose.thiefOnTheFloor : Prose.thiefPresence
+        }
+
+        // The third channel, and the one #329 missed while counting to two: a
+        // static `description(Prose.thief)` answered `x thief` with a blade
+        // aimed menacingly in your direction one turn after the man holding it
+        // stopped being able to hold anything. The trait and this rule are
+        // mutually exclusive, so the repair is the same shape the listing line
+        // took — the trait goes and the branch comes here. (#350)
+        thief.describe {
+            thief.isUnconscious ? Prose.thiefUnconscious : Prose.thief
         }
 
         // The bag is his and stays his while he is on his feet.

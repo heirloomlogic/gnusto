@@ -32,6 +32,16 @@ extension Prose {
         against one wall. He is armed with a deadly stiletto.
         """
 
+    /// The examine text with the man face down. Written fresh, for the same
+    /// reason ``thiefOnTheFloor`` is: `ROBBER-FUNCTION` swaps his whole
+    /// description out for one line rather than branching this one. The eyes
+    /// and the aimed blade go, because neither is doing anything. (#350)
+    static let thiefUnconscious = """
+        The thief is face down on the floor with his arms under him, breathing,
+        and a good deal less slippery than he was a moment ago. The stiletto is
+        somewhere beneath all that, and so is the bag.
+        """
+
     /// The same listing line with him face down on it. Written fresh: neither
     /// source prints a listing paragraph for an unconscious thief, because
     /// `ROBBER-FUNCTION` swaps his whole description out for one. The clause
