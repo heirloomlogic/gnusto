@@ -677,6 +677,17 @@ struct DungeonDam: GameContent {
         reservoirWater.describe {
             gatesOpen ? Prose.reservoirWaterDrained : Prose.reservoirWater
         }
+        // `search mud` is a fair question in a room whose own listing line says
+        // the trunk is *half buried in the mud*, and it was answered by the
+        // stock `.lookIn` refusal — which renders the item's name, and this
+        // item's name is "reservoir", which is also the room's. So a question
+        // about the mud came back as a claim about the whole place the player
+        // was standing in. The mud answers for itself now, the way the trunk
+        // already does one rule below. (#350)
+        reservoirWater.before(.lookIn) {
+            try reply(
+                trunk.isIn(reservoir) ? Prose.mudHidesTheTrunk : Prose.mudSearched)
+        }
         reservoirNorth.describe {
             gatesOpen ? Prose.reservoirNorthDrained : Prose.reservoirNorthFull
         }
@@ -799,9 +810,11 @@ struct DungeonDam: GameContent {
         }
 
         // SEARCH lands on the stock `.lookIn` path, which refuses anything not
-        // declared a `container` with "You find nothing of interest in the …"
-        // — a denial about a trunk this room's own listing calls *bulging with
-        // jewels*. The trait is not the answer here; the line is. (#329)
+        // declared a `container`. The trait is not the answer here; the line
+        // is — and it is still not the game-wide one, which since #350 reports
+        // the refusal rather than an outcome and would say "There is no inside
+        // to the trunk" about a trunk this room's own listing calls *bulging
+        // with jewels*. (#329, #350)
         trunk.before(.lookIn) { try reply(Prose.trunkSearched) }
 
         // The tube gives up its gunk when squeezed — the mainframe's own verb

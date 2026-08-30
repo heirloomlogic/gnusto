@@ -388,12 +388,19 @@ extension Prose {
     /// The wreck's own examine text. Written fresh: the intact egg's
     /// description is about a clasp and a delicate hinge, neither of which
     /// survived.
+    ///
+    /// The mother-of-pearl used to be "somewhere on the forest floor", which
+    /// this line has no way to know: the egg comes out of a tree above ground
+    /// and can be carried the length of the Empire before anybody forces it,
+    /// and the round that filed this broke it in the Maze, which has neither a
+    /// forest nor a floor of leaves. The clause about the lapis anchors the
+    /// damage to the turn the player just took, so the place could not be read
+    /// as history either. It says the pearl is gone and stops there. (#350)
     static let brokenEgg = """
         The lid is sprung and will not sit true again. Gold inlay has lifted
         away from the shell in curls, the lapis is starred where your thumb
-        went through it, and half the mother-of-pearl is somewhere on the
-        forest floor. It is still, unmistakably, an egg, and worth nothing
-        at all.
+        went through it, and half the mother-of-pearl is simply gone. It is
+        still, unmistakably, an egg, and worth nothing at all.
         """
 
     /// Verbatim Zork I: the shell's room line.

@@ -221,9 +221,18 @@ extension Prose {
     /// two doorways were answerable only in the Lobby next door. Not synonyms
     /// on ``toolChests``: that line is about the chests, which are the thing
     /// still here. (#233)
+    /// "The hurry" was a definite reference with no antecedent: the only remark
+    /// this room makes about the ransacker's pace is ``toolChests``, which
+    /// denies there was one. The chests line is the mainframe's own joke and
+    /// came in with M2; this line was added later, by a commit whose whole job
+    /// was making `wreckage` and `equipment` answerable, and it did not read
+    /// the sentence already standing in the room. So this is the one that
+    /// moves, and it now agrees with the chests instead of contradicting
+    /// them. (#350)
     static let maintenanceWreckage = """
         Bent metal, cut cable ends and a good deal of broken glass, swept into
-        the corners by whoever was in the hurry.
+        the corners and left in neat heaps by somebody who had all the time in
+        the world.
         """
 
     static let maintenanceDoorways = """
@@ -475,6 +484,19 @@ extension Prose {
 
     static let handPump = "A small hand-held air pump, of the kind used to inflate a boat."
 
+    /// What the mud says when it is asked, rather than what the stock `.lookIn`
+    /// refusal said for it. Written fresh. The two branches are the room's own
+    /// listing line and the room after somebody has lifted it out. (#350)
+    static let mudHidesTheTrunk = """
+        You turn over a double handful of the stuff. The trunk is still half
+        buried in it, and still bulging.
+        """
+
+    static let mudSearched = """
+        You turn over a double handful of the stuff. It is mud a long way
+        down, and there is nothing else in it.
+        """
+
     static let trunkFirstSight = "Lying half buried in the mud is an old trunk, bulging with jewels."
 
     static let trunk = """
@@ -482,12 +504,15 @@ extension Prose {
         will be making the climb home in one trip and one trip only.
         """
 
-    /// SEARCH on a thing that is not a `container` refuses with the stock
-    /// "You find nothing of interest in the …", which reads as a denial about
-    /// a trunk the room has just called *bulging with jewels*. Declaring it a
-    /// container is worse: it could then be neither opened nor closed, `put`
-    /// would make it a bottomless sack with a treasure value, and an empty one
-    /// would answer that it was empty. So the trunk answers for itself. (#329)
+    /// SEARCH on a thing that is not a `container` refuses with the game-wide
+    /// stock line, which reads as a denial about a trunk the room has just
+    /// called *bulging with jewels* — "You find nothing of interest in the
+    /// trunk" when this was written, "There is no inside to the trunk" since
+    /// #350 re-skinned it, and wrong about a trunk full of jewels either way.
+    /// Declaring it a container is worse: it could then be neither opened nor
+    /// closed, `put` would make it a bottomless sack with a treasure value, and
+    /// an empty one would answer that it was empty. So the trunk answers for
+    /// itself. (#329, #350)
     static let trunkSearched = """
         You turn a few of the topmost jewels over. Under them are more jewels,
         which is the whole of what an old trunk bulging with jewels has to

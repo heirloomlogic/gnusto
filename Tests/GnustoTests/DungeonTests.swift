@@ -5221,6 +5221,34 @@ struct DungeonTests {
             ])
     }
 
+    /// **The window's dark branch was written for the keyhole.** `barredWindow()`
+    /// and `keyhole()` are separate factory declarations, both filed in both
+    /// rooms, each with its own rule — and both dark branches replied
+    /// `Prose.keyholeDark`. The Dreary Room is permanently lit by its red glow,
+    /// so the window's dark branch is only ever reachable from the Dreary side,
+    /// looking into the unlit Tiny Room; and the Dreary Room's description
+    /// prints "a door made of oak, and beside it a small barred window" and no
+    /// keyhole at all. So the one frame that line could print in was the one
+    /// frame it was not written for. (#350)
+    @Test func theBarredWindowHasItsOwnWordForTheDark() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheTinyRoom + ["look through window"] + Self.theOakDoorSolve
+                + ["look through window"],
+            seed: 18)
+
+        // From the Tiny Room the far room is lit, and the window still shows it
+        // entire — the control, and the whole trick of the window.
+        #expect(
+            turnOutput(of: "look through window", in: transcript)
+                .contains("This is a dreary room, lit by a red glow"))
+
+        // From the Dreary Room, looking back into the dark.
+        let fromDreary = output(after: "Dreary Room", in: transcript)
+        #expect(fromDreary.contains("The bars give onto nothing but dark"))
+        #expect(!fromDreary.contains("No light comes through the keyhole at all."))
+    }
+
     /// **Punching the key out with no mat under the door loses it for good.**
     /// The source removes it from the game rather than dropping it, and nothing
     /// anywhere puts it back — so the wing is unwinnable from that turn on, and
