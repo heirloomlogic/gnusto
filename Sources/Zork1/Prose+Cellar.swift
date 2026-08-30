@@ -77,8 +77,12 @@ extension Prose {
     static let trollKnockout = """
         The troll is battered into unconsciousness.
         """
+    /// The melee table's blow line and `VILLAIN-RESULT`'s disposal, in the
+    /// order the source prints them. See ``Prose/carcassVanishes(_:)``. (#350)
     static let trollDeath = """
         The troll takes a fatal blow and slumps to the floor dead.
+
+        \(Prose.carcassVanishes("the troll"))
         """
 
     static let axe = """
@@ -129,8 +133,12 @@ extension Prose {
     static let thiefKnockout = """
         The thief is battered into unconsciousness.
         """
+    /// The melee table's blow line and `VILLAIN-RESULT`'s disposal, in the
+    /// order the source prints them. See ``Prose/carcassVanishes(_:)``. (#350)
     static let thiefDeath = """
         The thief takes a fatal blow and slumps to the floor dead.
+
+        \(Prose.carcassVanishes("the thief"))
         """
 
     static let thiefLootScatters = """

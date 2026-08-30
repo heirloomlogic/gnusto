@@ -974,3 +974,16 @@ is the sixteenth pass's diagnostic arriving from the other direction: there, thr
 a written reason for being left alone and the reason was stale; here, a *verifier* was
 overruled by one. A doc comment that makes a claim about the source is evidence to the round
 and should be checked against the source like any other claim.
+
+## 2026-08-30 — the round's second `needs-human` row marked `fixed`
+
+| Class | Row | What was done |
+|---|---|---|
+| `unanswerable-noun` | `Prose+Thief.swift::thiefLootScatters` | **Both raters were right about what they were looking at, and neither looked at the routine.** `VILLAIN-RESULT` (`1actions.zil:3566`) prints three things in order — the melee table's fatal-blow line, the black-fog disposal, then `REMOVE-CAREFULLY` and the villain's `F-DEAD`. This game printed the first and third and had dropped the second, then sited the stiletto "beside him" against a body already gone. The disposal is restored **verbatim** (byte-identical in the ZIL and in the mainframe's `melee.137:274`, so both prose grants carry it and no 1981 text is reproduced), as one line for the mechanism rather than one per villain — `Prose.carcassVanishes(_:)`, in the file that holds what belongs to no region. Four sites: this game's thief and troll, and `Sources/Zork1/`'s, which had the identical omission. No corpse item and no plugin change; what the plugin lacked was a *stated contract*, and `VillainProse.death` now carries it. |
+
+**A split verdict is not always a judgment call.** The refuting rater's argument —
+"nothing printed is false at the instant it prints" — is true of the sentence and false
+of the turn, and the confirming rater's — "the contract makes an unanswerable printed
+noun non-negotiable" — named the symptom rather than the cause. The cause was a line the
+source prints and this game does not, and it took reading `VILLAIN-RESULT` rather than
+reading either rater harder.

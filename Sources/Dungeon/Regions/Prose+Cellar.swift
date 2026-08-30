@@ -75,8 +75,13 @@ extension Prose {
     static let trollKnockout = """
         The troll is battered into unconsciousness.
         """
+    /// Verbatim (Zork I) for the blow, and the mechanism's fog after it —
+    /// `VILLAIN-RESULT` is one routine for every villain and the troll goes the
+    /// same way the thief does. See ``Prose/carcassVanishes(_:)``. (#350)
     static let trollDeath = """
         The troll takes a fatal blow and slumps to the floor dead.
+
+        \(Prose.carcassVanishes("the troll"))
         """
 
     static let trollSwipeMiss = "The troll swings his axe, but it misses."

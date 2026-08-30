@@ -111,8 +111,13 @@ extension Prose {
     static let thiefKnockout = """
         The thief is battered into unconsciousness.
         """
+    /// Verbatim (Zork I) for the blow; the fog is the mechanism's, and both
+    /// halves are one `say`. See ``Prose/carcassVanishes(_:)`` for why the
+    /// second sentence is not optional.
     static let thiefDeath = """
         The thief takes a fatal blow and slumps to the floor dead.
+
+        \(Prose.carcassVanishes("the thief"))
         """
 
     static let thiefSwipeMiss = "The thief stabs nonchalantly with his stiletto and misses."
@@ -127,19 +132,23 @@ extension Prose {
     /// about the trap door, which in this game the thief never touched — see
     /// `FIDELITY.md`.
     ///
+    /// Nor where the stiletto fell *relative to him*. By the time this prints
+    /// the fog has taken the carcass, exactly as `F-DEAD` runs after
+    /// `REMOVE-CAREFULLY` in the source; `<MOVE ,STILETTO ,HERE>` puts the
+    /// blade in the room, and the room is where it is. (#350)
+    ///
     /// - Parameter loot: the rendered names of everything but the stiletto.
     /// - Returns: the line, with or without the hoard.
     static func thiefLootScatters(_ loot: [String]) -> String {
         guard !loot.isEmpty else {
             return """
                 As the thief dies, the power of his magic decreases. His stiletto
-                clatters to the floor beside him.
+                clatters to the floor.
                 """
         }
         return """
             As the thief dies, the power of his magic decreases, and his treasures
-            reappear: \(GameText.list(loot)). His stiletto clatters to the floor
-            beside him.
+            reappear: \(GameText.list(loot)). His stiletto clatters to the floor.
             """
     }
 

@@ -4304,7 +4304,7 @@ struct DungeonTests {
             Dungeon(),
             Self.toTheHoard
                 + Array(repeating: "attack thief with sword", count: 4)
-                + ["look"],
+                + ["look", "x thief", "x body"],
             seed: 120)
 
         expectInOrder(
@@ -4312,10 +4312,27 @@ struct DungeonTests {
             [
                 "You suddenly notice that the silver chalice vanished.",
                 "The thief takes a fatal blow and slumps to the floor dead.",
+                // `VILLAIN-RESULT`'s disposal, which the source prints before
+                // `REMOVE-CAREFULLY` and this game had dropped. (#350)
+                "when the fog lifts, the carcass has disappeared",
                 "reappear: the silver chalice",
                 "His stiletto clatters to the floor",
                 "There is a silver chalice, intricately engraved, here.",
                 "There is a stiletto here.",
+            ])
+
+        // The stiletto falls in the room, not "beside him": the fog has taken
+        // him by the time the loot line prints, exactly as `F-DEAD` runs after
+        // `REMOVE-CAREFULLY` in the source.
+        #expect(!transcript.contains("clatters to the floor beside him"))
+        // The *last* fog is the thief's; the troll's is back at the top of the
+        // route, and one routine prints both.
+        let afterDeath = output(afterLast: "carcass has disappeared", in: transcript)
+        expectInOrder(
+            afterDeath,
+            [
+                "> x thief", "You can't see any such thing.",
+                "> x body", "You can't see any such thing.",
             ])
     }
 

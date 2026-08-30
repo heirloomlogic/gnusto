@@ -85,7 +85,13 @@ public struct MeleeCombat: GameContent {
         public var wound: [String]
         /// Printed when a blow knocks the villain unconscious.
         public var knockout: String
-        /// Printed when the villain is killed.
+        /// Printed when the villain is killed — and the **last thing said about
+        /// him**: `onDefeat` runs next, then the actor is removed from play.
+        ///
+        /// So this line has to account for the body. A death that leaves him
+        /// slumped on the floor and stops there leaves a corpse the world does
+        /// not hold, and one turn later the noun the sentence printed refuses.
+        /// (#350)
         public var death: String
 
         /// Creates a villain's prose. All lines are required — villains carry no stock defaults.
@@ -94,7 +100,8 @@ public struct MeleeCombat: GameContent {
         ///   - miss: lines rotated when the player's blow misses.
         ///   - wound: lines rotated when the player's blow wounds.
         ///   - knockout: printed when a blow knocks the villain unconscious.
-        ///   - death: printed when the villain is killed.
+        ///   - death: printed when the villain is killed, and the last thing
+        ///     said about him — see ``death``.
         public init(miss: [String], wound: [String], knockout: String, death: String) {
             self.miss = miss
             self.wound = wound

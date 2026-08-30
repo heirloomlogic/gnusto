@@ -2501,3 +2501,36 @@ engine offers one slot.
     `TROLL-FCN` rewrites it on knockout, on being disarmed and on death — so its
     `x troll` is frozen upright with his axe. That is the class #353 closed for
     this game's thief, and it is still open one game over.
+
+28. **A villain's death put a body on the floor and the world held none.** The
+    thief slumped dead, his stiletto clattered "to the floor beside him", and one
+    turn later `x thief` and `x body` both refused and the LOOK listed no corpse.
+    One rater confirmed it and the other refuted it — nothing printed was false
+    at the instant it printed, and removing a defeated villain is what this
+    engine and both of this repo's Zork games do — and both were right about what
+    they were looking at. Neither looked at the routine.
+
+    `VILLAIN-RESULT` (`1actions.zil:3566`) prints **three** things in order: the
+    melee table's *"The X takes a fatal blow and slumps to the floor dead."*,
+    then *"Almost as soon as the X breathes his last breath, a cloud of sinister
+    black fog envelops him, and when the fog lifts, the carcass has
+    disappeared."*, and only then `REMOVE-CAREFULLY` and the villain's own
+    `F-DEAD`. This game printed the first and the third and had dropped the
+    second — and then went one further than Zork 1 ever did by siting the
+    stiletto against a body that was already gone.
+
+    So the repair is the missing sentence, and it is available **verbatim**: the
+    line is byte-identical in the trilogy's ZIL and in the mainframe's own
+    `melee.137:274`, so both grants that cover prose carry it and no 1981 text is
+    reproduced. It is one line for the mechanism rather than one per villain,
+    which is what `VILLAIN-RESULT` is, so it lives in `Prose.swift` beside the
+    grue's — the two things in this game that belong to no region. The troll goes
+    the same way the thief does, and `Sources/Zork1/` had the identical omission
+    at both of its villains.
+
+    No corpse item, and no plugin change. What the plugin lacked was a *stated*
+    contract: `VillainProse.death` is the last thing said about a villain —
+    `onDefeat` runs next and then the actor is removed — so a death line that
+    leaves him on the floor and stops there leaves a body nothing holds. That
+    sentence is in the plugin's doc now, where an author writing a third game
+    reads it.

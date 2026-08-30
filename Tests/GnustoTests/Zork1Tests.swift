@@ -472,6 +472,10 @@ struct Zork1Tests {
                 "A nasty-looking troll, brandishing a bloody axe",
                 "The troll fends you off",  // west barred while he lives
                 "The troll takes a fatal blow",
+                // `VILLAIN-RESULT` (`1actions.zil:3568`) prints the disposal
+                // between the blow and `REMOVE-CAREFULLY`, for every villain.
+                // Without it the room emptied and the prose did not say so.
+                "when the fog lifts, the carcass has disappeared",
                 "Maze",  // west now drops into the maze
             ])
         // Defeat is permanent and the room empties.
@@ -681,6 +685,7 @@ struct Zork1Tests {
             [
                 "the painting vanished",
                 "The thief takes a fatal blow",
+                "when the fog lifts, the carcass has disappeared",
                 "treasures reappear",
                 "Taken.",
                 "Opened.",
