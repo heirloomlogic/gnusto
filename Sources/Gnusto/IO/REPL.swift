@@ -60,7 +60,12 @@ public struct REPL: Sendable {
         while !result.isFinished, let input = io.readLine(prompt: "> ") {
             // Read before the turn runs: `turn=cost|free` is the move counter's
             // delta across it, which is the engine's own definition of whether
-            // world time passed — not a guess from the intent or the reply.
+            // world time passed — not a guess from the intent or the reply. The
+            // one exception is the meta path, where the counter the line
+            // started from and the counter it ended on need not belong to the
+            // same world; ``StatusFooter/turnCost(_:audit:movesBefore:)`` holds
+            // that rule for both drivers, which is why the audited `perform` is
+            // the one called here. (#350)
             let movesBefore = result.status.moves
             switch input {
             case .line(let line):
@@ -74,12 +79,18 @@ public struct REPL: Sendable {
                     recorder = toggleTranscript(command, recorder: recorder)
                     continue
                 }
-                result = await world.perform(line)
-                output = await annotated(result, turnCost: result.status.moves > movesBefore)
+                let audited = await world.performAudited(line)
+                result = audited.result
+                output = await annotated(
+                    result,
+                    turnCost: StatusFooter.turnCost(
+                        result, audit: audited.audit, movesBefore: movesBefore))
                 recorder?.record(command: line, output: output)
             case .quit:
+                // QUIT is meta and the world's clock never notices it, so there
+                // is no delta to consult and no parse to audit.
                 result = await world.requestQuit()
-                output = await annotated(result, turnCost: result.status.moves > movesBefore)
+                output = await annotated(result, turnCost: false)
                 recorder?.record(command: "quit", output: output)
             }
             io.write("\(output)\n\n")
