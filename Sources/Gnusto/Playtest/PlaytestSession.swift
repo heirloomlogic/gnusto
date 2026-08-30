@@ -211,8 +211,10 @@ actor PlaytestSession {
     private var statusLine = ""
 
     /// The move counter as of the last turn — read *before* the next one, the
-    /// way `REPL.run` does, because `turn=cost|free` is the counter's delta
-    /// and not a guess from the verb.
+    /// way `REPL.run` does, because `turn=cost|free` is the counter's delta on
+    /// every line the parser reads. The one carve-out is the meta path, where
+    /// the two counters need not belong to the same world; that is
+    /// ``StatusFooter/turnCost(_:audit:movesBefore:)``'s. (#350)
     private var lastMoves = 0
 
     /// True once a turn reported `isFinished`. Nothing runs after that.

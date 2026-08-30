@@ -145,8 +145,10 @@ counter reads, and whether the command you just typed cost anything:
 ```
 
 `turn=cost|free` is the move counter's own delta across the turn, so it is right about
-the meta verbs, the parse errors, and the custom verb nothing answered, without you
-knowing which is which. `time=` appears in games that use `GnustoClock`; a game's
+the parse errors and the custom verb nothing answered without you knowing which is
+which — and a **meta** verb is free by the engine's own reckoning rather than by the
+subtraction, because RESTORE swaps the counter along with the world and the two numbers
+then belong to different games. `time=` appears in games that use `GnustoClock`; a game's
 bundles and plugins add their own fields after the four standard ones.
 
 **The two halves of the line are sampled at different instants, deliberately.**
