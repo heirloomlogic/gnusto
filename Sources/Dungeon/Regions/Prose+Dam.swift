@@ -504,12 +504,15 @@ extension Prose {
         will be making the climb home in one trip and one trip only.
         """
 
-    /// SEARCH on a thing that is not a `container` refuses with the stock
-    /// "You find nothing of interest in the …", which reads as a denial about
-    /// a trunk the room has just called *bulging with jewels*. Declaring it a
-    /// container is worse: it could then be neither opened nor closed, `put`
-    /// would make it a bottomless sack with a treasure value, and an empty one
-    /// would answer that it was empty. So the trunk answers for itself. (#329)
+    /// SEARCH on a thing that is not a `container` refuses with the game-wide
+    /// stock line, which reads as a denial about a trunk the room has just
+    /// called *bulging with jewels* — "You find nothing of interest in the
+    /// trunk" when this was written, "There is no inside to the trunk" since
+    /// #350 re-skinned it, and wrong about a trunk full of jewels either way.
+    /// Declaring it a container is worse: it could then be neither opened nor
+    /// closed, `put` would make it a bottomless sack with a treasure value, and
+    /// an empty one would answer that it was empty. So the trunk answers for
+    /// itself. (#329, #350)
     static let trunkSearched = """
         You turn a few of the topmost jewels over. Under them are more jewels,
         which is the whole of what an old trunk bulging with jewels has to
