@@ -14,6 +14,15 @@
 // So there is one declaration and two readers. `bin/playtest-preflight` reads it to
 // check the slots exist before dispatching anybody; `bin/playtest-slots` reads it
 // to cut them. Neither has a list of its own.
+//
+// The focus file is what the module is named for and no longer all it holds: the
+// same rule pulled in the game-doc naming, the product resolver and the shared
+// check colours, and now `ledgerScan`, which parses
+// `docs/games/<game>-playtest-ledger.md`. The ledger has the same shape of problem
+// and the same reason to live here — `bin/playtest-preflight` and
+// `.claude/workflows/playtest.dryrun.mjs` both have to decide whether a ledger can
+// hand a round anything, and a parser with two implementations is a parser that
+// disagrees with itself in the one run where it matters.
 
 'use strict'
 
@@ -327,6 +336,92 @@ function slotStatus(plan) {
   })
 }
 
+// `ledgerKeys` means **rejections**, and only rejections: `playtest.js` folds them
+// into `seen`, and `seen.has(key)` drops a finding unreported. So the verdict column
+// decides, and every other row in the file has to stay out.
+//
+// The first draft scraped every backticked `a::b` string in the whole markdown, and
+// the cost was not cosmetic. On Dungeon's ledger that is 220 keys against 44 real
+// refutations: it swallowed 61 `fixed` rows — which the ledger's own preamble says
+// must come back, at raised severity, because a `fixed` key that reappears is a
+// **regression** — and 48 still-open `confirmed` rows, telling testers that live
+// defects were already rejected. It also swept up the prose placeholders, so
+// `"a::b"` and `"<ownerFile>::<normalized offending text>"` led the list, and
+// `playtest.js`'s 60-key prompt cap was spent on them.
+//
+// The columns are right there. The ledger's rows are `| key | class | verdict | note |`
+// — a human reading record that is already machine-readable — so this reads the
+// verdict rather than guessing from the shape of the key.
+//
+// Returns the usable keys, the number of refutations that could not become one,
+// and the verdict — because a count of zero has two entirely different causes: a
+// game nothing has been refuted about, and a file whose every refutation was
+// written down in a form that cannot match. `bin/playtest-preflight`'s `ledger`
+// row and `playtest.dryrun.mjs`'s ledger assertion are the two readers, and the
+// verdict ships with the parse so the rule they enforce has one owner. Writing it
+// out at both call sites is the drift this whole file exists to prevent.
+function ledgerScan(p) {
+  // **Read the header, never an index.** Five ledgers have put the verdict in three
+  // different places — `| Key | Verdict | Category |`, `| key | verdict | class |
+  // severity |`, and Fulminate's `| Key (abbreviated) | Tree | Verdict | Note |` —
+  // and a fixed column is wrong for at least one of them whichever one you pick.
+  // Reading `cells[2]` picked the *category* out of every Dungeon table, so no row
+  // ever matched `refuted`; a fallback heuristic then let the whole of the one
+  // three-column table through instead, and the round of 2026-08-29 was handed 55
+  // keys of which the true useful count was zero.
+  //
+  // Both mistakes are silent, which is why this is parsed rather than assumed: a
+  // round handed the wrong keys re-finds everything it should skip, and a round
+  // handed a `fixed` key drops the regression this file exists to catch, unverified
+  // and unreported.
+  let verdictAt = null
+  let wholeTableIsRefuted = false
+  const keys = []
+  let inert = 0
+  for (const line of read(p).split('\n')) {
+    if (!line.trimStart().startsWith('|')) {
+      // A table ends at the first line that is not a row. Forgetting this carried
+      // one table's column layout into the next one down the file.
+      verdictAt = null
+      wholeTableIsRefuted = false
+      continue
+    }
+    const cells = line.split('|').slice(1, -1).map((c) => c.trim())
+    if (cells.length < 3) continue
+    const key = (cells[0].match(/^`([^`]+::[^`]+)`$/) || [])[1]
+
+    if (!key) {
+      // A header, a separator, or a table with no key column at all. Only the first
+      // teaches us anything.
+      const lower = cells.map((c) => c.toLowerCase())
+      if (!/^key$/.test(lower[0]) && !/^key \(/.test(lower[0])) continue
+      verdictAt = lower.findIndex((c) => c === 'verdict')
+      if (verdictAt < 0) verdictAt = null
+      // The older shape, where the row is a refutation by virtue of the table it is
+      // in rather than by a word in it: its third column is the refutation's reason.
+      wholeTableIsRefuted = lower.includes('refutation kind')
+      continue
+    }
+    // The suffixed spellings are deliberate — `fixed (by #331)`,
+    // `confirmed (needs-human)` — so match the leading word, not the whole cell.
+    const refuted = wholeTableIsRefuted
+      || (verdictAt !== null && /^refuted\b/.test(cells[verdictAt] || ''))
+    if (!refuted) continue
+    // A key the ledger stored abbreviated can never match one a round produces:
+    // `normalize()` emits nothing but `[a-z0-9 ]`, so an ellipsis is inert by
+    // construction. Dropping them is what makes the count preflight prints the
+    // number of keys that can actually do something, and counting them is what
+    // stops the drop from being silent.
+    if (key.includes('\u2026')) { inert++; continue }
+    keys.push(key)
+  }
+  const distinct = [...new Set(keys)]
+  // A file that holds refutations and hands over none of them is broken. A file
+  // that holds none at all is a game nothing has been refuted about yet, which is
+  // a perfectly good state for a ledger to be in and must stay green.
+  return { keys: distinct, inert, ok: distinct.length > 0 || inert === 0 }
+}
+
 module.exports = {
   ROOT,
   SCRATCH,
@@ -348,4 +443,5 @@ module.exports = {
   seedFor,
   savesDir,
   slotStatus,
+  ledgerScan,
 }

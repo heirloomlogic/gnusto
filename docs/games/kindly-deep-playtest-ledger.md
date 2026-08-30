@@ -7,13 +7,22 @@ rediscovers everything a previous round already rejected, forever — the harnes
 with itself instead of converging. And with it, a key marked `fixed` that shows up again
 is not a new finding, it is a **regression**, and it goes back at raised severity.
 
-Pass `ledgerKeys` into the workflow with every key below whose verdict is `refuted` or
-`fixed`.
+Pass `ledgerKeys` into the workflow with every key below whose verdict is `refuted`,
+and only those. A `fixed` key carries the opposite instruction: it is meant to come
+back, at raised severity, so passing it suppresses the regression this file exists to
+catch. `ledgerScan` in `bin/lib/playtest-focus.js` reads the verdict column and enforces
+that.
 
-The key is `<ownerFile>::<normalized offending text>`, with the frame deliberately
-excluded — one untrue sentence seen in two frames is one defect, so keying on the frame
-would dispatch two fixers at one branch. Keys are abbreviated here for reading; the
-full ones are in the round reports.
+The key is the declaration that emits the offending prose — `decl::<file>::<name>` —
+with the frame deliberately excluded, because one untrue sentence seen in two frames is
+one defect and keying on the frame would dispatch two fixers at one branch. A finding
+the round cannot locate falls back to `<ownerFile>::<normalized excerpt>`.
+
+**Never write a key abbreviated.** A round matches keys against `normalize()`, which
+emits nothing but `[a-z0-9 ]`, so a stored key holding an ellipsis can never equal a
+produced one. It is inert, and a file full of them looks exactly like a game nothing has
+ever been refuted about. Every key below was once written that way; preflight's `ledger`
+row now fails rather than quietly reporting zero.
 
 ## 2026-08-02 — first round, `0b78ad8` (`fix: none`, nothing applied)
 
@@ -106,17 +115,17 @@ aggregate.
 | `KindlyDeep.swift::whitewashed walls worn brick underfoot and the deep sweet smell of…` | confirmed | unanswerable-noun |
 | `KindlyDeep.swift::x walls i dont know the word walls  x wall i dont know the word wa…` | confirmed | unanswerable-noun |
 | `KindlyDeep.swift::x stopper i dont know the word stopper` | confirmed | unanswerable-noun |
-| `KindlyDeep.swift::the low crawl rock above rock below  the crawl runs east and west …` | refuted | exit-prose-mismatch |
-| `KindlyDeep.swift::the entry forks here at the mouth of the old works north the old h…` | refuted | exit-prose-mismatch |
-| `KindlyDeep.swift::sing your singing is better kept to yourself  dig you have nothing…` | refuted | register-mismatch |
-| `KindlyDeep.swift::sing your singing is better kept to yourself  buy rails nothing he…` | refuted | register-mismatch |
-| `Actions/StubVerbs.swift::ask biscuit about water i dont know the word ask  tell bisc…` | refuted | unanswerable-noun |
-| `KindlyDeep.swift::rest you pinch the lamp out first  and lie down in the straw and l…` | refuted | prose-untrue-of-state |
-| `KindlyDeep.swift::take beam you get your back under one end and achieve at considera…` | refuted | prose-untrue-of-state |
-| `KindlyDeep.swift::talk to lamp you say a few words into the dark the dark profession…` | refuted | prose-untrue-of-state |
-| `KindlyDeep.swift::x me you look much as you always do  x myself you look much as you…` | refuted | register-mismatch |
-| `KindlyDeep.swift::east the low crawl  east the shaft bottom biscuit walks in and sta…` | refuted | repeat-behavior |
-| `KindlyDeep.swift::east the airdoor stands in its frame  and past it the shaft   x ai…` | refuted | exit-prose-mismatch |
+| `decl::Sources/KindlyDeep/KindlyDeep.swift::lowCrawl` | refuted | exit-prose-mismatch |
+| `decl::Sources/KindlyDeep/KindlyDeep.swift::forks` | refuted | exit-prose-mismatch |
+| ~~`KindlyDeep.swift::sing your singing is better kept to yourself  dig you have nothing…`~~ | refuted | register-mismatch |
+| ~~`KindlyDeep.swift::sing your singing is better kept to yourself  buy rails nothing he…`~~ | refuted | register-mismatch |
+| ~~`Actions/StubVerbs.swift::ask biscuit about water i dont know the word ask  tell bisc…`~~ | refuted | unanswerable-noun |
+| `decl::Sources/KindlyDeep/KindlyDeep.swift::map` | refuted | prose-untrue-of-state |
+| ~~`KindlyDeep.swift::take beam you get your back under one end and achieve at considera…`~~ | refuted | prose-untrue-of-state |
+| ~~`KindlyDeep.swift::talk to lamp you say a few words into the dark the dark profession…`~~ | refuted | prose-untrue-of-state |
+| `decl::Sources/Gnusto/Actions/GameText.swift::selfDescription` | refuted | register-mismatch |
+| `decl::Sources/KindlyDeep/KindlyDeep.swift::lowCrawl` | refuted | repeat-behavior |
+| `decl::Sources/KindlyDeep/KindlyDeep.swift::forks` | refuted | exit-prose-mismatch |
 
 ## 2026-08-03 — #126 fixed, `e148364`..HEAD
 
@@ -153,3 +162,34 @@ And one thing the round did not find, which the fix did: the Old Works' `onEnter
 on arrival, and `onEnter` runs *before* the room is auto-described, so the room's new
 description would never have printed. It calls `describeSurroundings()` first. Worth
 knowing, because it is a trap any lethal room in any game walks into.
+
+## 2026-08-30 — the `refuted` rows re-keyed on their declarations
+
+Every key in the 2026-08-02 table was written in the abbreviated display form, and an
+abbreviated key is inert: a round matches against `normalize()`, which emits nothing but
+`[a-z0-9 ]`, so none of them could ever equal a key a round produced. KindlyDeep's dedupe
+set has been empty since the day it was written. See
+[#351](https://github.com/heirloomlogic/gnusto/issues/351).
+
+The full excerpts are not recoverable — the round report quotes claims, not transcripts —
+so the eleven `refuted` rows are re-keyed on the declaration that emits the line, the
+form the harness has produced since declaration clustering landed. Six were re-keyed,
+onto four distinct declarations, each checked against the current source and against a
+replay. Five are struck: a struck row keeps its reading record and hands the round
+nothing.
+
+A row is struck for one of two reasons, and neither of them is "we could not find it".
+
+- **The sentence no longer prints.** The two aggregate register rows quoted the engine's
+  `sing` and `dig` stubs, and #126's fix moved both into the game's own `text.stubs`
+  block.
+- **The only declaration it resolves to would swallow a class.** `ask`/`tell` resolve to
+  `GameText.unknownWord`, which is every unknown-word reply in every game; `talk to lamp`
+  resolves to `var actions`, which is six unrelated replies. A refuted key on either
+  would suppress the whole category, and a key that merges two real defects is worse than
+  an extra class. `take beam` is the third version of the same problem: `take` and `push`
+  are one rule now, so its key *is* the `push beam` row's key — and that row is `fixed`,
+  so passing it would mask a regression rather than a rediscovery.
+
+One row keys on `map`: the sentence it objected to is the game's only `blocked:` literal,
+declared on no entity.

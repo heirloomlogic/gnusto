@@ -70,7 +70,11 @@ bin/playtest-slots Dungeon         # only when preflight's `slots` row is red
    products. It builds once, drives the game's MCP server over a pipe of its own, and
    checks the things a dry run structurally cannot: that the server answers, that all
    14 tools are there, that it is not frozen at an older commit, and that the
-   `.mcp.json` key matches what the workflow will look for. Green means dispatchable.
+   `.mcp.json` key matches what the workflow will look for. Its `ledger` row is the
+   one check that is about the *round* rather than the server: a key stored with an
+   ellipsis in it can never match one `normalize()` produces, so a ledger holding
+   refutations and no usable key is red, not a zero in dim text.
+   Green means dispatchable.
 2. **If it reports the tools unregistered, try again, then restart.** The MCP client
    re-attempts a server that failed, so a session that has just warmed the tree can
    reach one it could not a minute earlier. Restart only if that doesn't take — and
