@@ -231,9 +231,18 @@ extension Prose {
 
     // MARK: - The boat
 
-    /// Trilogy verbatim.
-    static let pileOfPlastic = """
+    /// Trilogy verbatim, and the *listing* line: `INFLATABLE-BOAT`'s `LDESC`
+    /// (`1dungeon.zil:720`). `IBOAT-FUNCTION` does not answer `EXAMINE` with
+    /// it. (#350)
+    static let pileOfPlasticInPlace = """
         There is a folded pile of plastic here which has a small valve attached.
+        """
+
+    /// Written fresh, for the channel the listing line was standing in for.
+    static let pileOfPlastic = """
+        A heavy square of plastic, creased white where it has been folded and
+        refolded, with a small brass valve set into one edge. There is a great
+        deal more of it than the folding suggests.
         """
 
     /// Trilogy verbatim.

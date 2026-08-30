@@ -216,7 +216,6 @@ struct ZorkMaze: GameContent {
         adjectives("rusty")
         synonyms("knife", "blade")
         firstSight(Prose.rustyKnifeFirstSight)
-        description(Prose.rustyKnife)
         trait(.weight, 20)
         trait(.sharp, true)
     }
@@ -240,7 +239,6 @@ struct ZorkMaze: GameContent {
         adjectives("burned", "out", "rusty", "dead", "useless")
         synonyms("lantern", "lamp")
         firstSight(Prose.burnedOutLanternFirstSight)
-        description(Prose.burnedOutLantern)
         trait(.weight, 20)
     }
 

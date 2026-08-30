@@ -125,11 +125,11 @@ struct ZorkAboveGround: GameContent {
     }
 
     /// Two channels, not one. "Beside you on the branch is a small bird's
-    /// nest." is a sentence about *where the nest is* — the `LDESC`, this
+    /// nest." is a sentence about *where the nest is* — the `FDESC`, this
     /// engine's `firstSight` — and it was declared as the examine text alone,
     /// so Up a Tree named no nest and then the egg's listing line said "On the
-    /// nest is…" about a thing the room had never mentioned. The nest never
-    /// leaves its branch, so the one sentence is true in both channels.
+    /// nest is…" about a thing the room had never mentioned. It is the listing
+    /// line, and only that. (#350)
     ///
     /// `scenery` is kept: it withholds the *engine's* stock listing sentence
     /// and never the author's. `bird` is an adjective alongside `birds`
@@ -139,7 +139,6 @@ struct ZorkAboveGround: GameContent {
         name("nest")
         adjectives("small", "bird", "birds")
         firstSight(Prose.nest)
-        description(Prose.nest)
         surface
         scenery
     }

@@ -40,6 +40,9 @@ struct Zork1MazeTests {
                 "take skeleton key",
                 "take bag of coins",  // +10 on the find
                 "take rusty knife",
+                "x rusty knife",
+                "take burned-out lantern",
+                "x burned-out lantern",
                 "score",
             ],
             seed: 39)
@@ -52,6 +55,12 @@ struct Zork1MazeTests {
                 "bulging with coins",
                 "Beside the skeleton is a rusty knife.",
                 "Taken.",
+                // Both listing lines are listing lines only. Neither object has
+                // a `TEXT` in the source, so EXAMINE answers with the shrug
+                // `V-EXAMINE` gives them (`gverbs.zil:623`) rather than with a
+                // sentence about where they are lying. (#350)
+                "There's nothing special about the rusty knife.",
+                "There's nothing special about the burned-out lantern.",
                 // Kitchen (10) + cellar (25) + the bag of coins (10) = 45.
                 "Your score is 45 of a possible 350",
             ])

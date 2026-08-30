@@ -957,3 +957,20 @@ share is 5/14 = 36%, which clears the brief's two-in-five line. The larger numbe
 that died on **documented engine behaviour** — `.lookIn`/`nothingToSearch`, `cantReach`, actor
 scope, the stub-verb floor — four of them on rules written in CLAUDE.md in plain language. That
 is the T0 kernel, which no charter is blind to on purpose, and withholding it is buying nothing.
+
+## 2026-08-30 — one of the round's three `needs-human` rows marked `fixed`
+
+The 2026-08-29 round left three rows `confirmed (needs-human)`. All three are settled by
+the ZIL/MDL sources rather than by a judgment call, and #350's acceptance criteria put the
+decision in `docs/games/dungeon.md` before the code moves — the seventeenth pass, items
+27–29. This is the first of the three.
+
+| Class | Row | What was done |
+|---|---|---|
+| `presence-line-location-blind` | `Prose+Maze.swift::burnedOutLantern` | **The doc comment the refuting rater cited was false.** It said the trilogy puts this sentence on the listing and the examine channels both; `BURNED-OUT-LANTERN` (`1dungeon.zil:524`) has one string on one channel, an `FDESC`, and no `TEXT` at all, so the original answers EXAMINE with its stock shrug. The mainframe has `ODESCO` *and* `ODESC1` (`dung.355:4563`) — two listing lines, still no examine. The class ran to **eleven sites in two games**; Zork 1's nine lose the `description(…)` (the shrug is what the original prints) and Dungeon's two get a written-fresh examine line. The standing guard is a **bootstrap warning**, not a test — the family already had three, and a test cannot reach an author outside this repo. Actors are exempt: an actor's listing line is standing state reprinted on every look, which is why `TROLL-FCN` may answer EXAMINE with `<GETP ,TROLL ,P?LDESC>` and why the corpus needs no allow-list. |
+
+**A rater refuted a true finding on the strength of a note, and the note was wrong.** That
+is the sixteenth pass's diagnostic arriving from the other direction: there, three sites had
+a written reason for being left alone and the reason was stale; here, a *verifier* was
+overruled by one. A doc comment that makes a claim about the source is evidence to the round
+and should be checked against the source like any other claim.

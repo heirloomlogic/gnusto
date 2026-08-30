@@ -130,12 +130,21 @@ extension Prose {
 
     static let silverChaliceFirstSight = "There is a silver chalice, intricately engraved, here."
 
-    static let rustyKnife = "Beside the skeleton is a rusty knife."
-
+    /// `RUSTY-KNIFE`'s `FDESC` (`1dungeon.zil:807`), and the reference note for
+    /// the eight siblings that point here.
+    ///
+    /// `FDESC` and `LDESC` are both *listing* properties: `DESCRIBE-OBJECT`
+    /// (`gverbs.zil:1692`) spends an `FDESC` while the object is untouched and
+    /// on the floor and an `LDESC` thereafter, and neither ever answers a verb.
+    /// None of the nine objects has a `TEXT`, so `V-EXAMINE` (`gverbs.zil:623`)
+    /// answers all nine with "There's nothing special about the X." Declaring
+    /// the listing line as `description(…)` too made EXAMINE assert a floor
+    /// position for a thing in the player's hand; the bootstrap warns for it
+    /// now. (#350)
     static let rustyKnifeFirstSight = "Beside the skeleton is a rusty knife."
 
-    static let burnedOutLantern = "The deceased adventurer's useless lantern is here."
-
+    /// `BURNED-OUT-LANTERN`'s `FDESC` (`1dungeon.zil:524`), and the object's
+    /// only string. See ``Prose/rustyKnifeFirstSight``. (#350)
     static let burnedOutLanternFirstSight = "The deceased adventurer's useless lantern is here."
 
     // MARK: - Host-wired seams

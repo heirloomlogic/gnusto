@@ -622,6 +622,25 @@ enum Bootstrap {
                 "item \"\(id)\" declares takesOrders but is not an actor; only a "
                     + "person can be given an order, and the flag has no effect.")
         }
+        // The two description channels are two. `firstSight` is spent on the
+        // room listing and only until the item is touched; `description` answers
+        // EXAMINE forever. One string in both makes EXAMINE assert a floor
+        // position — "The deceased adventurer's useless lantern is here." — for
+        // a thing the player is holding, and the transcript reads fine right up
+        // until they pick it up.
+        //
+        // Actors are exempt, and not as a courtesy: an actor's listing line is
+        // a *standing* presence line, reprinted on every look rather than spent
+        // on first touch, so the same sentence is as true of the examine channel
+        // as of the listing one. ZIL says so too — `TROLL-FCN` answers EXAMINE
+        // with `<GETP ,TROLL ,P?LDESC>` on purpose. (#350)
+        for (id, item) in items
+        where !item.isActor && item.firstSight != nil && item.firstSight == item.description {
+            traitWarnings.append(
+                "item \"\(id)\" gives one sentence to firstSight(…) and description(…); "
+                    + "the room listing is spent on first touch and EXAMINE is not, so "
+                    + "examining it while it is held will assert where it is lying.")
+        }
         // A capitalized name is very nearly a proper name, and the stock lines
         // put an article in front of anything that isn't one — "the Mrs. Vane".
         // Not inferred, because "Elvish sword" is a common noun and so is

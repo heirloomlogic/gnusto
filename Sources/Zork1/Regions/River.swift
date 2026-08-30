@@ -103,7 +103,6 @@ struct ZorkRiver: GameContent {
         adjectives("plastic", "folded", "inflatable")
         synonyms("boat", "pile", "plastic", "valve")
         firstSight(Prose.pileOfPlasticFirstSight)
-        description(Prose.pileOfPlastic)
         trait(.weight, 20)
     }
 
@@ -151,7 +150,6 @@ struct ZorkRiver: GameContent {
         adjectives("red")
         synonyms("buoy")
         firstSight(Prose.buoyFirstSight)
-        description(Prose.buoy)
         container
         openable
         capacity(20)
@@ -209,7 +207,6 @@ struct ZorkRiver: GameContent {
         adjectives("gold", "golden")
         synonyms("pot", "gold")
         firstSight(Prose.potOfGoldFirstSight)
-        description(Prose.potOfGold)
         hidden
         trait(.weight, 15)
         trait(.takeValue, 10)  // find

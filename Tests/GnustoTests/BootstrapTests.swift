@@ -103,6 +103,31 @@ struct BootstrapTests {
         #expect(definition.warnings.count == 1, "\(definition.warnings)")
     }
 
+    /// One sentence in both channels warns, because the two channels are spent
+    /// differently: the listing line stops at first touch and EXAMINE does not,
+    /// so `x lamp` with the lamp in hand answers by saying where it is lying.
+    ///
+    /// Eleven declarations across `Sources/Dungeon/` and `Sources/Zork1/` had
+    /// this, and the one a play-test round typed at survived verification —
+    /// a rater refuted it on the strength of a doc comment claiming the trilogy
+    /// does the same. It does not, and nothing in the toolchain could say so.
+    /// (#350)
+    @Test func oneSentenceInBothDescriptionChannelsWarns() throws {
+        let (definition, _) = try Bootstrap.build(DoubledChannelGame())
+        let report = try #require(definition.warningReport)
+
+        #expect(report.contains("item \"lamp\" gives one sentence to firstSight(…)"))
+        #expect(report.contains("examining it while it is held will assert where it is lying"))
+
+        // The ledger tells its channels apart, the comb declares only one, and
+        // the porter is a person — whose listing line is standing state and is
+        // reprinted on every look, so the same sentence is true of both.
+        #expect(definition.warnings.count == 1, "\(definition.warnings)")
+        for spared in ["\"ledger\"", "\"comb\"", "\"porter\""] {
+            #expect(!report.contains(spared))
+        }
+    }
+
     /// The boundaries around it: the rule channel warns as the trait does, the
     /// count is the walk's own, and an item with no static room position is
     /// nobody's mistake yet.

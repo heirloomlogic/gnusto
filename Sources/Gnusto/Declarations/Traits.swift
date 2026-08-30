@@ -77,6 +77,9 @@ public func description(_ text: String) -> LocationTrait {
 
 /// The text shown when the item is examined (or read).
 ///
+/// Not the room-listing paragraph — that is ``firstSight(_:)``, and giving one
+/// sentence to both is a warning at bootstrap.
+///
 /// - Parameter text: the item's examine text.
 /// - Returns: the description trait.
 public func description(_ text: String) -> ItemTrait {
@@ -155,6 +158,11 @@ public let plural = ItemTrait(kind: .plural)
 ///
 /// - Parameter text: the first-sight paragraph.
 /// - Returns: the first-sight trait.
+/// - Note: this is **not** the examine text. ``description(_:)`` is, and the
+///   two are spent differently: a listing line stops at first touch and EXAMINE
+///   never does, so one sentence in both channels answers `x lamp` with a claim
+///   about where the lamp is lying while the player is holding it. The
+///   bootstrap warns for it.
 public func firstSight(_ text: String) -> ItemTrait {
     ItemTrait(kind: .firstSight(text))
 }

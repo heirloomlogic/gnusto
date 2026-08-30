@@ -98,9 +98,9 @@ extension Prose {
         branches. The nearest branch above you is above your reach.
         """
 
-    /// The nest's `LDESC` — where it is, which is this engine's `firstSight`.
-    /// The nest never leaves its branch, so the same sentence also serves as
-    /// its examine text, which is what the original prints.
+    /// `NEST`'s `FDESC` (`1dungeon.zil:1145`), the listing channel and nothing
+    /// else — it is `CONTBIT OPENBIT`, so the original examines it by looking
+    /// inside. See ``Prose/rustyKnifeFirstSight``. (#350)
     static let nest = "Beside you on the branch is a small bird's nest."
 
     /// The egg as the nest holds it: the `FDESC`, printed in place of a stock

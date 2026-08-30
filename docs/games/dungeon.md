@@ -2439,3 +2439,65 @@ written note saying they were settled, and the note was the thing that was
 wrong — twice because a better mechanism had arrived since, and once because
 the fix had been filed against the wrong verb by somebody reading the symptom
 rather than the grammar.
+
+### The seventeenth pass: three boxes a round could not decide, and a source that had
+
+The 2026-08-29 round confirmed twelve defects and marked three of them
+`needs-human` — the verifier confirmed a false clause in each and declined to let
+a fixer near it, because in all three the repair looked like a source-policy or
+plugin-API trade rather than a wording change. #350's acceptance criteria say a
+decision goes in this document before any code moves.
+
+Here it is, and it is the same decision three times: **read the source.** None of
+the three is a trade. Two of them were `needs-human` only because a note in this
+repo makes a claim about the trilogy that the trilogy does not support, and the
+third because nobody had noticed the source prints *two* sentences where this
+engine offers one slot.
+
+27. **A room-listing sentence was answering EXAMINE, at eleven sites in two
+    games.** `x useless lantern`, with the lantern in hand, printed *"The
+    deceased adventurer's useless lantern is here."* One rater confirmed it; the
+    other refuted it, on the strength of the doc comment beside the constant:
+    *"Trilogy verbatim. One line does for the listing and the examine both,
+    because in the trilogy they are the same line."*
+
+    The second sentence is false. `BURNED-OUT-LANTERN` (`1dungeon.zil:524`) has
+    **one string on one channel** — an `FDESC`, no `LDESC`, no `TEXT`, no
+    `ACTION` — and `DESCRIBE-OBJECT` (`gverbs.zil:1692`) spends an `FDESC` only
+    while the object is untouched and on the floor. With no `TEXT`, `V-EXAMINE`
+    (`gverbs.zil:623`) answers *"There's nothing special about the burned-out
+    lantern."* The mainframe splits it further still: `ODESCO` **and** `ODESC1`
+    (`dung.355:4563`), two *listing* lines, neither of them an examine. So the
+    pairing is this repo's, at every site — and there were eleven of them, two
+    here and nine in `Sources/Zork1/`, including a pot of gold that examined as
+    *"At the end of the rainbow is a pot of gold."* in the player's hands.
+
+    Zork 1 reproduces, so its nine lose the `description(…)` line and answer with
+    the stock shrug, which is what the original prints. Dungeon adapts, so its
+    two get a written-fresh examine line — the shape ``rustyKnife`` already uses
+    two constants above the lantern in the same file, for the reason its own doc
+    comment gives: *"The trilogy's examine text is its listing line over again,
+    which stops being true the moment the knife is in your hand."*
+
+    **The guard is a bootstrap warning, not a test.** A test would have caught
+    the twelfth site; it would not have caught the thirteenth, written a year
+    from now by somebody outside this repo, and the family already exists —
+    `Bootstrap` warns for `startsLit` on a thing that is not a light source, for
+    `takesOrders` on a thing that is not a person, and for a `firstSight` the map
+    buries where no describer will reach it. Its own note on that last one says
+    what they have in common: a declaration that "compiles, reads as live, and
+    can never print a word", where "the silence is indistinguishable from the
+    line working." This is the same defect rotated — it compiles, reads as live,
+    and prints the *wrong* word.
+
+    **Actors are exempt, and that is the rule rather than an exception.** The
+    first draft carved out Zork 1's troll by name, because
+    `TROLL-FCN` answers EXAMINE with `<GETP ,TROLL ,P?LDESC>` on purpose. But
+    the reason it may is general: an item's listing line is spent on first touch
+    and an actor's is *standing state*, reprinted on every look, so the sentence
+    an actor's room paragraph prints is as true of EXAMINE as of the listing.
+    One `!item.isActor` and the corpus has no exceptions at all. What Zork 1
+    still does not reproduce is that `P?LDESC` is **live** in the original —
+    `TROLL-FCN` rewrites it on knockout, on being disarmed and on death — so its
+    `x troll` is frozen upright with his axe. That is the class #353 closed for
+    this game's thief, and it is still open one game over.

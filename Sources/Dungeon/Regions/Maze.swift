@@ -204,7 +204,7 @@ struct DungeonMaze: GameContent {
         name("burned-out lantern")
         adjectives("burned-out", "useless", "dead")
         synonyms("lantern", "lamp")
-        firstSight(Prose.burnedOutLantern)
+        firstSight(Prose.burnedOutLanternInPlace)
         description(Prose.burnedOutLantern)
         trait(.weight, 20)
     }
