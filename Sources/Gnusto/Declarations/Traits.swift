@@ -158,7 +158,7 @@ public let plural = ItemTrait(kind: .plural)
 ///
 /// - Parameter text: the first-sight paragraph.
 /// - Returns: the first-sight trait.
-/// - Note: this is **not** the examine text. ``description(_:)`` is, and the
+/// - Note: this is **not** the examine text. `description(…)` is, and the
 ///   two are spent differently: a listing line stops at first touch and EXAMINE
 ///   never does, so one sentence in both channels answers `x lamp` with a claim
 ///   about where the lamp is lying while the player is holding it. The
