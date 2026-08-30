@@ -1171,6 +1171,58 @@ struct DungeonProseTests {
                 .contains("A chimney of rock, barely wide enough for one"))
     }
 
+    /// **The Slide Room distinguishes three things in three places and one of
+    /// them answered for all three.** The paragraph puts the player in a small
+    /// chamber, a steep metal slide twisting downward, and a small opening to
+    /// the north — and `opening` and `chamber` were both synonyms of the slide,
+    /// so the way north was described as a chute nobody climbs back up. The way
+    /// north is real: walking it reaches the Mine Entrance. (#350)
+    @Test func theSlideRoomsOpeningIsNotTheChuteAndNeitherIsTheChamber() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheMirrors
+                + ["west", "west", "x opening", "x chamber", "x slide", "go north"],
+            seed: 18)
+
+        #expect(transcript.contains("Slide Room"))
+        let chute = "A chute of sheet metal, twisting down into the dark"
+        #expect(turnOutput(of: "x opening", in: transcript).contains("A low gap in the north wall"))
+        #expect(!turnOutput(of: "x opening", in: transcript).contains(chute))
+        #expect(
+            turnOutput(of: "x chamber", in: transcript)
+                .contains("A working cut out of the coal seam"))
+        #expect(!turnOutput(of: "x chamber", in: transcript).contains(chute))
+        // Two controls: the slide is still the slide, and the opening really is
+        // a separate way out of the room.
+        #expect(turnOutput(of: "x slide", in: transcript).contains(chute))
+        #expect(turnOutput(of: "go north", in: transcript).contains("Mine Entrance"))
+    }
+
+    /// **The Mirror Room prints "the south wall" and answered about its
+    /// ceiling.** Both ceilings carried `wall`, `walls`, `exits` and `exit`, so
+    /// the printed noun bound to a fitting whose own sentence names a different
+    /// feature — and `x south wall`, the exact adjective-plus-noun the room
+    /// prints, bound to nothing at all and got "You can't see any such thing".
+    /// (#350)
+    @Test func theMirrorRoomsSouthWallAnswersAndIsNotTheCeiling() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheMirrors + ["x south wall", "x walls", "x ceiling", "x exits"],
+            seed: 18)
+
+        #expect(transcript.contains("Mirror Room"))
+        let ceiling = "The ceiling is a long way up"
+        let wall = "The south wall is mirror from floor to ceiling"
+        for printed in ["x south wall", "x walls", "x exits"] {
+            let answer = turnOutput(of: printed, in: transcript)
+            #expect(answer.contains(wall))
+            #expect(!answer.contains(ceiling))
+            #expect(!answer.contains("You can't see any such thing"))
+        }
+        // The control: the ceiling is still the ceiling.
+        #expect(turnOutput(of: "x ceiling", in: transcript).contains(ceiling))
+    }
+
     // MARK: - Three facts about one machine, in one paragraph
 
     /// **The balloon's listing line and its examine text are each one

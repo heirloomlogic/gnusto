@@ -46,6 +46,16 @@ extension Prose {
         who cut this room or why.
         """
 
+    /// Written fresh, for the noun the room's own paragraph prints and nothing
+    /// answered to. It says the two things the paragraph says about the walls
+    /// — the mirror fills the south one, the other three have ways out — and
+    /// nothing the room does not know. (#350)
+    static let mirrorRoomWall = """
+        The south wall is mirror from floor to ceiling and edge to edge. The
+        other three are dressed stone, and each has a way out of the room cut
+        through it.
+        """
+
     // MARK: - The Caves
 
     /// Adapted from the trilogy's tiny cave, which has an entrance west that
@@ -199,5 +209,18 @@ extension Prose {
     static let metalSlide = """
         A chute of sheet metal, twisting down into the dark at an angle no
         one would climb back up.
+        """
+
+    /// Written fresh. The opening is the room's way north onto the Mine
+    /// Entrance, and until #350 the word answered with the chute's line. (#350)
+    static let slideRoomOpening = """
+        A low gap in the north wall, cut by hand and never finished, with more
+        of the coal workings beyond it.
+        """
+
+    /// Written fresh, for the word the room's first sentence uses of itself.
+    static let slideRoomChamber = """
+        A working cut out of the coal seam and abandoned in it, square enough
+        at the corners to have been meant for something.
         """
 }

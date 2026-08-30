@@ -133,10 +133,17 @@ struct DungeonMirror: GameContent {
         scenery
     }
 
+    /// The ceiling answers for the ceiling. It used to carry `wall`, `walls`,
+    /// `exits` and `exit` as well, so the room's own printed nouns — "the south
+    /// wall", "exits on the other three sides" — bound to it and were answered
+    /// with a sentence whose subject it names as something else. A synonym is
+    /// right when the word names what the thing *is* and wrong when it names
+    /// something the thing is merely near; the walls are ``mirrorRoomNorthWall``
+    /// and ``mirrorRoomSouthWall`` now. (#350)
     let mirrorRoomNorthCeiling = Item {
         name("tall ceiling")
         adjectives("tall")
-        synonyms("ceilings", "ceiling", "wall", "walls", "exits", "exit")
+        synonyms("ceilings", "ceiling")
         description(Prose.mirrorRoomCeiling)
         scenery
     }
@@ -144,8 +151,29 @@ struct DungeonMirror: GameContent {
     let mirrorRoomSouthCeiling = Item {
         name("tall ceiling")
         adjectives("tall")
-        synonyms("ceilings", "ceiling", "wall", "walls", "exits", "exit")
+        synonyms("ceilings", "ceiling")
         description(Prose.mirrorRoomCeiling)
+        scenery
+    }
+
+    /// The four walls of a Mirror Room, one item per room. Named `south wall`
+    /// because that is the phrase the room's paragraph prints, and the
+    /// adjective is what makes the printed phrase answer; `wall`, `walls` and
+    /// `sides` reach the same fitting, because the paragraph's other clause
+    /// counts the room's sides rather than naming a second feature. (#350)
+    let mirrorRoomNorthWall = Item {
+        name("south wall")
+        adjectives("south", "square")
+        synonyms("wall", "walls", "sides", "side", "exits", "exit")
+        description(Prose.mirrorRoomWall)
+        scenery
+    }
+
+    let mirrorRoomSouthWall = Item {
+        name("south wall")
+        adjectives("south", "square")
+        synonyms("wall", "walls", "sides", "side", "exits", "exit")
+        description(Prose.mirrorRoomWall)
         scenery
     }
 
@@ -227,11 +255,38 @@ struct DungeonMirror: GameContent {
         scenery
     }
 
+    /// The chute down to the Cellar. `opening` and `chamber` used to be
+    /// synonyms of it, and the room's paragraph distinguishes three things in
+    /// three places: a chamber you are standing in, a slide twisting downward,
+    /// and a small opening north. Both words named something the slide is near
+    /// rather than what it is, so `x opening` described the north hole as a
+    /// chute. They are ``slideRoomOpening`` and ``slideRoomChamber`` now. (#350)
     let metalSlide = Item {
         name("metal slide")
         adjectives("steep", "metal")
-        synonyms("slide", "chute", "opening", "chamber")
+        synonyms("slide", "chute")
         description(Prose.metalSlide)
+        scenery
+    }
+
+    /// The way north onto the Mine Entrance — a real and separate exit, which
+    /// is why answering about it with the chute's description was a positive
+    /// misdescription rather than a stand-in. (#350)
+    let slideRoomOpening = Item {
+        name("small opening")
+        adjectives("small")
+        synonyms("opening", "hole", "gap")
+        description(Prose.slideRoomOpening)
+        scenery
+    }
+
+    /// The room itself, which its own first sentence calls a chamber and part
+    /// of a coal mine. (#350)
+    let slideRoomChamber = Item {
+        name("chamber")
+        adjectives("small", "coal")
+        synonyms("mine", "room", "workings")
+        description(Prose.slideRoomChamber)
         scenery
     }
 
@@ -287,6 +342,8 @@ struct DungeonMirror: GameContent {
         mirrorSouth.starts(in: mirrorRoomSouth)
         mirrorRoomNorthCeiling.starts(in: mirrorRoomNorth)
         mirrorRoomSouthCeiling.starts(in: mirrorRoomSouth)
+        mirrorRoomNorthWall.starts(in: mirrorRoomNorth)
+        mirrorRoomSouthWall.starts(in: mirrorRoomSouth)
 
         caveNorthStairway.starts(in: caveNorth)
         caveSouthStairway.starts(in: caveSouth)
@@ -301,6 +358,8 @@ struct DungeonMirror: GameContent {
 
         graniteWallLettering.starts(in: slideRoom)
         metalSlide.starts(in: slideRoom)
+        slideRoomOpening.starts(in: slideRoom)
+        slideRoomChamber.starts(in: slideRoom)
     }
 
     // MARK: - Rules
