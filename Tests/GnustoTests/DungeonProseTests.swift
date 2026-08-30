@@ -1223,6 +1223,78 @@ struct DungeonProseTests {
         #expect(turnOutput(of: "x ceiling", in: transcript).contains(ceiling))
     }
 
+    /// **The broken egg scattered its mother-of-pearl on a forest floor while
+    /// it was broken underground.** `brokenEgg` was one unbranched literal, and
+    /// the egg comes out of a tree above ground and can be carried the length
+    /// of the Empire before anybody forces it. The clause about the lapis
+    /// anchors the damage to the turn the player just took, so the place could
+    /// not be read as history either. The line says the pearl is gone and stops
+    /// there. (#350)
+    @Test func theBrokenEggDoesNotNameWhereItWasNotBroken() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            ["north", "north", "up", "take egg", "down"]
+                + ["east", "southwest", "open window", "west"]
+                + Self.downTheTrapDoor + ["open egg", "x egg"],
+            seed: 18)
+
+        #expect(transcript.contains("Cellar"))
+        let wreck = turnOutput(of: "x egg", in: transcript)
+        #expect(wreck.contains("The lid is sprung and will not sit true again."))
+        #expect(wreck.contains("half the mother-of-pearl is simply gone"))
+        #expect(!wreck.contains("forest floor"))
+    }
+
+    /// **`search mud` denied a trunk the room had just listed, and denied it in
+    /// the name of the whole room.** `mud` is a synonym of the reservoir's
+    /// water, whose `name` is "reservoir" — which is also the room's — so the
+    /// stock `.lookIn` refusal rendered a question about the mud as a claim
+    /// about the place the player was standing in, on the same screen as the
+    /// listing line saying the trunk was *half buried in the mud*. The mud
+    /// answers for itself now, the way the trunk already did. (#350)
+    @Test func theMudAnswersForItselfAndKnowsWhatIsInIt() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheReservoirShore + ["north", "search mud", "take trunk", "look in mud"],
+            seed: 18)
+
+        #expect(transcript.contains("Lying half buried in the mud is an old trunk"))
+
+        let withTrunk = turnOutput(of: "search mud", in: transcript)
+        #expect(withTrunk.contains("The trunk is still half buried in it"))
+        #expect(!withTrunk.contains("nothing of interest in the reservoir"))
+
+        // And once it has been lifted out, the mud says so rather than denying
+        // it was ever there.
+        let without = turnOutput(of: "look in mud", in: transcript)
+        #expect(without.contains("It is mud a long way down"))
+        #expect(!without.contains("nothing of interest"))
+    }
+
+    /// **The Maintenance Room contradicted itself about the hurry.** The chests
+    /// say the ransacker was "thorough and in no hurry"; the wreckage line —
+    /// added later, by a commit whose job was making two nouns answerable, and
+    /// which did not read the sentence already in the room — swept the glass
+    /// into the corners "by whoever was in the hurry". A definite reference
+    /// whose only antecedent denies it. The wreckage is the line that
+    /// moves. (#350)
+    @Test func theMaintenanceRoomAgreesWithItselfAboutTheHurry() async throws {
+        let transcript = try await play(
+            Dungeon(),
+            Self.toTheDam
+                + ["north", "north", "push red button", "x chests", "x wreckage", "x equipment"],
+            seed: 18)
+
+        #expect(turnOutput(of: "x chests", in: transcript).contains("thorough and in no hurry"))
+        // Both nouns the later commit made answerable, and neither of them
+        // still refers to a hurry the room denies.
+        for noun in ["x wreckage", "x equipment"] {
+            let answer = turnOutput(of: noun, in: transcript)
+            #expect(answer.contains("somebody who had all the time in the world"))
+            #expect(!answer.contains("the hurry"))
+        }
+    }
+
     // MARK: - Three facts about one machine, in one paragraph
 
     /// **The balloon's listing line and its examine text are each one

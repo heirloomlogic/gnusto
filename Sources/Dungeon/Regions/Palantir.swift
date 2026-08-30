@@ -647,7 +647,13 @@ extension DungeonPalantir {
     /// - Returns: the window's two rules.
     @RuleBuilder fileprivate func seeThroughWindow(_ window: Item, into room: Location) -> Rules {
         window.before(.lookThrough) {
-            guard room.isLit else { try reply(Prose.keyholeDark) }
+            // Its own line, not the keyhole's. The two apertures are separate
+            // declarations with separate rules and they shared one dark
+            // branch, so `look through window` in the Dreary Room — whose
+            // description prints an oak door and a small barred window and no
+            // keyhole at all — answered "No light comes through the keyhole at
+            // all." about a fitting the room never named. (#350)
+            guard room.isLit else { try reply(Prose.windowDark) }
             // The same "what can be made out in there" the palantirs use, so
             // *loose* means one thing in both. Deliberately nothing nested: the
             // far keyhole is a container with the key in it, and a window that

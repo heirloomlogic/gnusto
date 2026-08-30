@@ -143,6 +143,15 @@ struct Dungeon: Game, GameMain {
         text.alreadyHave = "You already have that!"
         text.didntUnderstand = "That sentence isn't one I recognize."
         text.nothingToTakeHere = "There's nothing here you can take."
+        // The stock line — "You find nothing of interest in the X." — asserts
+        // that a search happened and turned up nothing, which is a claim about
+        // the inside of a thing that has no inside. The round found it on the
+        // reservoir's mud, on the same screen as the room's own listing line
+        // saying the trunk was in it; the trunk and the mud both answer for
+        // themselves now, and this is the floor under every other noun in the
+        // game the verb can reach. It reports the refusal instead of an
+        // outcome. (#350)
+        text.nothingToSearch = .naming { "There is no inside to \($0)." }
         // The dark says one sentence, whichever way it arrives.
         //
         // `TurnFrame.sayOnceThisTurn` dedupes on the exact text and on nothing

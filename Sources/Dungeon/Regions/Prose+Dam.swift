@@ -221,9 +221,18 @@ extension Prose {
     /// two doorways were answerable only in the Lobby next door. Not synonyms
     /// on ``toolChests``: that line is about the chests, which are the thing
     /// still here. (#233)
+    /// "The hurry" was a definite reference with no antecedent: the only remark
+    /// this room makes about the ransacker's pace is ``toolChests``, which
+    /// denies there was one. The chests line is the mainframe's own joke and
+    /// came in with M2; this line was added later, by a commit whose whole job
+    /// was making `wreckage` and `equipment` answerable, and it did not read
+    /// the sentence already standing in the room. So this is the one that
+    /// moves, and it now agrees with the chests instead of contradicting
+    /// them. (#350)
     static let maintenanceWreckage = """
         Bent metal, cut cable ends and a good deal of broken glass, swept into
-        the corners by whoever was in the hurry.
+        the corners and left in neat heaps by somebody who had all the time in
+        the world.
         """
 
     static let maintenanceDoorways = """
@@ -474,6 +483,19 @@ extension Prose {
     static let handPumpInPlace = "A small hand-held pump has been left on the shore."
 
     static let handPump = "A small hand-held air pump, of the kind used to inflate a boat."
+
+    /// What the mud says when it is asked, rather than what the stock `.lookIn`
+    /// refusal said for it. Written fresh. The two branches are the room's own
+    /// listing line and the room after somebody has lifted it out. (#350)
+    static let mudHidesTheTrunk = """
+        You turn over a double handful of the stuff. The trunk is still half
+        buried in it, and still bulging.
+        """
+
+    static let mudSearched = """
+        You turn over a double handful of the stuff. It is mud a long way
+        down, and there is nothing else in it.
+        """
 
     static let trunkFirstSight = "Lying half buried in the mud is an old trunk, bulging with jewels."
 

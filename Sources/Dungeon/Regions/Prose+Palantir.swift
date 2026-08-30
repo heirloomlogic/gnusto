@@ -61,6 +61,15 @@ extension Prose {
 
     static let windowNotAWay = "Not unless somebody dices you first."
 
+    /// The window's own dark branch. It used to share ``keyholeDark`` with the
+    /// keyhole, and the Dreary Room is permanently lit by its red glow — so
+    /// that line was only ever reachable from the Dreary side, where the room
+    /// prints a window and no keyhole whatever. (#350)
+    static let windowDark = """
+        The bars give onto nothing but dark, and whatever is behind them is
+        keeping it.
+        """
+
     static func metalLid(open: Bool) -> String {
         open
             ? """

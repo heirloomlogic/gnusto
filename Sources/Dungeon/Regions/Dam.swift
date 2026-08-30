@@ -677,6 +677,17 @@ struct DungeonDam: GameContent {
         reservoirWater.describe {
             gatesOpen ? Prose.reservoirWaterDrained : Prose.reservoirWater
         }
+        // `search mud` is a fair question in a room whose own listing line says
+        // the trunk is *half buried in the mud*, and it was answered by the
+        // stock `.lookIn` refusal — which renders the item's name, and this
+        // item's name is "reservoir", which is also the room's. So a question
+        // about the mud came back as a claim about the whole place the player
+        // was standing in. The mud answers for itself now, the way the trunk
+        // already does one rule below. (#350)
+        reservoirWater.before(.lookIn) {
+            try reply(
+                trunk.isIn(reservoir) ? Prose.mudHidesTheTrunk : Prose.mudSearched)
+        }
         reservoirNorth.describe {
             gatesOpen ? Prose.reservoirNorthDrained : Prose.reservoirNorthFull
         }
