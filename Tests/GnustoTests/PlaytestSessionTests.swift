@@ -66,30 +66,26 @@ struct PlaytestSessionTests {
             tools = PlaytestTools.table(for: prepared, environment: environment)
         }
 
-        /// Writes a route pair — the commands and the manifest — where this
-        /// harness's server will look for them.
+        /// Writes a route file — commands, seed and landing in one — where this
+        /// harness's server will look for it.
         ///
         /// - Parameters:
-        ///   - name: the route's name, which is both file stems.
+        ///   - name: the route's name, which is also the file stem.
         ///   - commands: the walk, one command per element.
         ///   - seed: the seed to declare. A session opening at another one is
         ///     refused, which is the point of the field.
         ///   - landing: the room to declare, or `nil` to declare none — a route
         ///     with no landing is not checked, which is what lets one be written
         ///     by hand before anything exists to fill the field in.
-        /// - Throws: whatever creating the directory or writing the two files
-        ///   throws.
+        /// - Throws: whatever creating the directory or writing the file throws.
         func writeRoute(
             _ name: String, _ commands: [String], seed: Int = 0, landing: String? = nil
         ) throws {
             try FileManager.default.createDirectory(
                 at: routes, withIntermediateDirectories: true)
-            try (commands.joined(separator: "\n") + "\n").write(
-                to: routes.appendingPathComponent("\(name).txt"), atomically: true,
-                encoding: .utf8)
-            let manifest =
-                landing.map { #"{"seed":\#(seed),"landing":{"room":"\#($0)"}}"# }
-                ?? #"{"seed":\#(seed)}"#
+            let commandList = commands.map { "\"\($0)\"" }.joined(separator: ",")
+            let landingJSON = landing.map { #","landing":{"room":"\#($0)"}"# } ?? ""
+            let manifest = #"{"seed":\#(seed),"commands":[\#(commandList)]\#(landingJSON)}"#
             try manifest.write(
                 to: routes.appendingPathComponent("\(name).json"), atomically: true,
                 encoding: .utf8)

@@ -22,14 +22,13 @@ import Foundation
 /// than `cut from a1b2c3 — the route is now d4e5f6`.
 ///
 /// ```
-/// .playtest/<TypeName>/routes/<name>.txt      the commands, one per line
-/// .playtest/<TypeName>/routes/<name>.json     { seed, derivedFrom, landing }
+/// .playtest/<TypeName>/routes/<name>.json     one file: { seed, commands, derivedFrom, landing }
 /// ```
 ///
 /// A game with no routes needs nothing: `.playtest/` starts empty, testers play
 /// cold, and the round's own output is the next round's deep starts.
 struct PlaytestRoute: Sendable {
-    /// The name the tester passed to `open`, which is also both file stems.
+    /// The name the tester passed to `open`, which is also the file stem.
     let name: String
 
     /// The commands, in order, exactly as they will be typed. Blank lines are
@@ -79,9 +78,8 @@ struct PlaytestRoute: Sendable {
     ///   - game: the game type name the routes are filed under.
     ///   - environment: the process environment, for `GNUSTO_PLAYTEST_ROUTES`.
     /// - Throws: ``PlaytestError`` naming the directory it looked in and the
-    ///   routes that are in it, for a name that isn't there, a `.txt` with no
-    ///   commands in it, a missing or unreadable manifest, or a manifest with no
-    ///   seed.
+    ///   routes that are in it, for a name that isn't there, a file that is
+    ///   unreadable or not JSON, one with no seed, and one with no commands.
     /// - Returns: the route.
     static func load(
         named name: String, game: String, environment: [String: String]
@@ -95,46 +93,40 @@ struct PlaytestRoute: Sendable {
                 hyphen and hold nothing but those and dots. Nothing ran.
                 """)
         }
-        let commandsURL = directory.appendingPathComponent("\(name).txt")
-        let manifestURL = directory.appendingPathComponent("\(name).json")
+        let url = directory.appendingPathComponent("\(name).json")
 
-        guard let commandsText = try? String(contentsOf: commandsURL, encoding: .utf8) else {
+        guard let text = try? String(contentsOf: url, encoding: .utf8),
+            let manifest = try? JSONValue(text: text)
+        else {
             let known = available(in: directory)
             throw PlaytestError(
                 """
-                No route "\(name)": nothing to read at \(commandsURL.path). \(known) Nothing \
+                No route "\(name)": nothing readable at \(url.path). \(known) Nothing \
                 ran — a session that cannot start where it was told to start would play from \
                 turn zero and report on the wrong end of the map.
-                """)
-        }
-        let commands =
-            commandsText
-            .components(separatedBy: .newlines)
-            .map { $0.trimmingCharacters(in: .whitespaces) }
-            .filter { !$0.isEmpty }
-        guard !commands.isEmpty else {
-            throw PlaytestError(
-                """
-                Route "\(name)" holds no commands: \(commandsURL.path) is empty. Nothing ran.
-                """)
-        }
-
-        guard let manifestText = try? String(contentsOf: manifestURL, encoding: .utf8),
-            let manifest = try? JSONValue(text: manifestText)
-        else {
-            throw PlaytestError(
-                """
-                Route "\(name)" has no readable manifest at \(manifestURL.path). Every route \
-                needs one, because a route is only valid at the seed it was recorded under \
-                and one with no declared seed cannot be checked against the session's — it \
-                would land somewhere nobody meant, silently. Nothing ran.
                 """)
         }
         guard let declared = manifest["seed"]?.intValue, declared >= 0 else {
             throw PlaytestError(
                 """
-                Route "\(name)"'s manifest declares no seed: \(manifestURL.path) needs a \
+                Route "\(name)" declares no seed: \(url.path) needs a \
                 "seed" field holding a whole number of zero or more. Nothing ran.
+                """)
+        }
+
+        // Blank lines are dropped; a `//` or `#` line is kept, because the session
+        // records it as a comment that costs no turn and it is how a route explains
+        // itself in the operator's transcript.
+        let commands =
+            (manifest["commands"]?.arrayValue ?? [])
+            .compactMap { $0.stringValue }
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+        guard !commands.isEmpty else {
+            throw PlaytestError(
+                """
+                Route "\(name)" holds no commands: \(url.path) needs a "commands" array \
+                with at least one command in it. Nothing ran.
                 """)
         }
 
@@ -158,7 +150,7 @@ struct PlaytestRoute: Sendable {
     /// - Parameters:
     ///   - game: the game type name, from ``PreparedGame/typeName``.
     ///   - environment: the process environment.
-    /// - Returns: the directory `<name>.txt` and `<name>.json` sit in.
+    /// - Returns: the directory `<name>.json` sits in.
     static func root(game: String, environment: [String: String]) -> URL {
         let base: URL
         if let override = environment["GNUSTO_PLAYTEST_ROUTES"], !override.isEmpty {
@@ -188,8 +180,8 @@ struct PlaytestRoute: Sendable {
     private static func available(in directory: URL) -> String {
         let names =
             ((try? FileManager.default.contentsOfDirectory(atPath: directory.path)) ?? [])
-            .filter { $0.hasSuffix(".txt") }
-            .map { String($0.dropLast(4)) }
+            .filter { $0.hasSuffix(".json") }
+            .map { String($0.dropLast(5)) }
             .sorted()
         guard !names.isEmpty else {
             return "There are no routes in that directory at all."
