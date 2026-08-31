@@ -37,8 +37,9 @@ xcrun swift-format lint --strict --parallel --recursive --configuration .swift-f
 
 node .claude/workflows/playtest.dryrun.mjs     # CI gate on the play-test harness
 
-bin/playtest-slots Dungeon                     # cut the round's saves; verify each landing
-bin/playtest-slots Dungeon --verify            # check what's on disk, cut nothing
+bin/playtest-routes Dungeon list               # the committed deep starts, and where each lands
+bin/playtest-routes Dungeon verify             # replay each; refuse one that has gone stale
+bin/playtest-routes Dungeon cut d-2 --from-commands d2.txt     # a new one
 
 bin/playtest-replay --build Fulminate                              # once
 bin/playtest-replay Fulminate --commands probe.txt --seed 0 --label mine --tail 60
@@ -62,7 +63,6 @@ last several rounds.
 
 ```sh
 bin/playtest-preflight Dungeon     # builds; proves the server answers; non-zero if not
-bin/playtest-slots Dungeon         # only when preflight's `slots` row is red
 ```
 
 1. **Run preflight.** It takes the game in whatever words you have — `Dungeon`,
@@ -79,15 +79,7 @@ bin/playtest-slots Dungeon         # only when preflight's `slots` row is red
    re-attempts a server that failed, so a session that has just warmed the tree can
    reach one it could not a minute earlier. Restart only if that doesn't take — and
    always after editing `Sources/Gnusto/Playtest/`, where no retry helps.
-3. **Cut the slots if preflight says to.** A game whose map outruns a round's budget
-   declares saved games in `docs/games/<game>-playtest-focus.md` — a name and a depth,
-   `` `d-1` (cut at `route[0:113]`) `` — and `bin/playtest-slots` plays that prefix of
-   the committed walkthrough, saves, then restores each and prints where it landed and
-   what the player is holding. **Read those against the region's own sentence**: a slot
-   is chosen by route state, never by the room the `[status]` footer names. The bytes
-   live under `.context/`, which is gitignored, so a fresh checkout has none of them
-   however carefully the focus file describes them.
-4. **Dispatch** with the args preflight wrote to `.context/playtest-round-args.json`:
+3. **Dispatch** with the args preflight wrote to `.context/playtest-round-args.json`:
    `Workflow({scriptPath: ".claude/workflows/playtest.js", args: <that JSON>})`.
    `bin/playtest-preflight <Game> --headless` does it for you through `claude -p`,
    which is the fallback for an agent whose tool surface has no `Workflow`.

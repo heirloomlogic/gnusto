@@ -1,12 +1,13 @@
 //
 // Driving `bin/playtest-replay` from a front-door script.
 //
-// Both `bin/playtest-slots` and `bin/playtest-routes` cut and verify by replaying a
-// command list and reading the landing off the transcript, so the scaffold is
-// written once here. The `[status]`-footer parser has an additional reason to live
-// in one place: the footer is the harness's own line, and two JS copies of its
-// parser plus the engine's `StatusFooter` is already three — a fourth way to
-// disagree is not wanted.
+// `bin/playtest-routes` cuts and verifies by replaying a command list and reading
+// the landing off the transcript, and the scaffold for that lives here rather than
+// in it. It had a second caller once — `bin/playtest-slots`, which cut a round's
+// saved games — and the reason to keep it separate outlived that one: the
+// `[status]` footer is the harness's own line, and a JS copy of its parser beside
+// the engine's `StatusFooter` is already two ways to disagree about it. A third
+// would live in whatever front door came next.
 
 'use strict'
 
