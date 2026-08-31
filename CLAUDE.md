@@ -43,11 +43,18 @@ bin/playtest-routes Dungeon cut d-2 --from-commands d2.txt     # a new one
 
 bin/playtest-replay --build Fulminate                              # once
 bin/playtest-replay Fulminate --commands probe.txt --seed 0 --label mine --tail 60
+bin/playtest-replay Dungeon --start d-1 --commands repro.txt --label mine
+                                               # start deep. --start plays a committed
+                                               # route ahead of the list and takes its
+                                               # seed from the manifest, so reproducing
+                                               # a deep finding stages nothing and a
+                                               # --seed that disagrees is refused
 bin/playtest-replay Fulminate --commands repro.txt --label mine --saves-from deep
-                                               # a reproducer that begins `restore` needs
-                                               # the slot: --saves-from takes a label, or
-                                               # the path of a <probe>/saves-in directory,
-                                               # which outlives the label it came from
+                                               # a reproducer that begins `restore` because
+                                               # the TESTER saved needs the slot: --saves-from
+                                               # takes a label, or the path of a
+                                               # <probe>/saves-in directory, which outlives
+                                               # the label it came from
 
 bin/gnusto-mcp Fulminate                       # what an MCP client runs; stdout is the protocol
                                                # execs at connect, and a running server is frozen

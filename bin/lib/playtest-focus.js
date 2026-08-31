@@ -133,6 +133,49 @@ function routesDir(game) {
   return path.join(base, game, 'routes')
 }
 
+/// A route name is a file stem, and it travels through a path on both sides. The
+/// same alphabet and the same 64-character cap the engine's
+/// `PlaytestSessions.isPlainName` keeps one to: a stem `open` would refuse must not
+/// be one a script will cut or replay. `loadRoute` applies it before its `path.join`,
+/// where `PlaytestRoute.load` applies its own, so no caller has to remember; `cut`
+/// asks separately because it is naming a file nothing has read yet.
+const isPlainName = (s) => /^[A-Za-z0-9_-][A-Za-z0-9._-]*$/.test(s) && s.length <= 64
+
+/// The command the harness appends after a route so that whoever reads the
+/// transcript opens on a frame rather than on `Taken.`
+///
+/// `PlaytestRoute.landingProbe` in the engine is the same string, and
+/// `playtest.dryrun.mjs` holds the two together — a session started with `start:`
+/// and a replay started with `--start` that appended different probes would put a
+/// tester and the verifier checking their finding on different frames.
+const LANDING_PROBE = 'look'
+
+/// The whole prefix a run plays before its own first command: the route's commands,
+/// then the landing probe. `PlaytestRoute.prefix` is the engine's copy of this rule,
+/// and it is what makes `bin/playtest-replay --start` and `open({start: …})` open on
+/// one frame; `bin/playtest-routes verify` reads it here rather than re-spelling it.
+///
+/// Keyed on a resolved directory, like `loadRoute` and `routeNames`, because the
+/// directory is not always this checkout's: `bin/playtest-replay --package-path`
+/// drives a worktree at an older commit, and its routes are the ones its binary was
+/// cut against. `routesDir(game)` is the resolver.
+///
+/// - Returns: `{ seed, commands, landing }`, or `{ error }` naming the directory it
+///   looked in and what is in it. Never both.
+function routePrefix(name, dir) {
+  const route = loadRoute(name, dir)
+  if (route.error) {
+    return {
+      error: `${route.error}. Routes in ${dir}: ${routeNames(dir).join(', ') || '(none)'}`,
+    }
+  }
+  return {
+    seed: route.seed,
+    commands: [...route.commands, LANDING_PROBE],
+    landing: route.landing?.room || '',
+  }
+}
+
 /// One route file, read and checked the way the engine checks it at `open`
 /// (`PlaytestRoute.load`): a whole-number seed of zero or more, and a commands array
 /// with at least one command in it.
@@ -144,6 +187,14 @@ function routesDir(game) {
 /// - Returns: `{ name, seed, commands, landing, derivedFrom }`, or `{ name, error }`
 ///   for a file that cannot be used. Never both — a caller reads `error` first.
 function loadRoute(name, dir) {
+  // Before the join, not after it: an unchecked stem reads any JSON on the disk.
+  if (!isPlainName(name)) {
+    return {
+      name,
+      error: `"${name}" is not a route name — a route name is a file stem, so it starts`
+        + ' with a letter, digit, underscore or hyphen and holds nothing but those and dots',
+    }
+  }
   let m
   try {
     m = JSON.parse(fs.readFileSync(path.join(dir, `${name}.json`), 'utf8'))
@@ -361,7 +412,10 @@ module.exports = {
   focusParts,
   routesDir,
   routeNames,
+  isPlainName,
+  LANDING_PROBE,
   loadRoute,
+  routePrefix,
   routeManifests,
   routeSeeds,
   seedFor,

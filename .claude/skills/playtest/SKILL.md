@@ -323,7 +323,7 @@ which the harness writes and no game can re-voice, is the acceptable middle.
     report-shape.md                    the round report and the ledger
     issue-shape.md                     the one issue a round files
 bin/playtest-preflight                 the front door — run this first, always
-bin/playtest-replay                    the replay helper
+bin/playtest-replay                    the replay helper; --start begins deep
 bin/playtest-routes                    cuts a deep start, and verifies each by replay
 bin/lib/playtest-focus.js              the focus split, the ledger, and where routes live
 .claude/workflows/playtest.dryrun.mjs  zero-agent dry run — a CI gate, not a suggestion
@@ -439,6 +439,16 @@ find the tools.
 told so in as many words, and told to stop rather than improvise — a blind charter has
 no CLI fallback by design, and handing it one to route around an operator's mistake
 would breach the firewall to fix the wrong problem.
+
+**A reproducer taken from a deep start is replayed with `--start`, and stages
+nothing.** `bin/playtest-replay <Game> --start <route> --commands <file>` plays the
+committed route ahead of the list and takes the seed off its manifest — a route
+replayed at another seed lands somewhere else and says nothing about it, so a `--seed`
+that disagrees is refused rather than honored. It reads the same
+`.playtest/<Game>/routes/` store `open({start: …})` plays and appends the same `look`
+after it, which is what makes the verifier's opening frame the tester's opening frame.
+Everything below is what is left once that case is gone: a **tester's own** mid-session
+`save`.
 
 **A reproducer that starts with `restore` needs a save door, and both harnesses have
 one.** The MCP `replay` tool takes `savesFrom`; `bin/playtest-replay` takes

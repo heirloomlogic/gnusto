@@ -19,6 +19,30 @@
 #                       stripping them. The one reason to: probing what the
 #                       parser does with empty input, which is otherwise
 #                       unreachable. Every blank line then costs a turn.
+#   --start NAME        Play a committed route before the command list, so a probe can
+#                       start deep in the map without staging saved games. NAME is a
+#                       route in .playtest/<Game>/routes/ — the same store the session
+#                       server's `open({start: …})` reads and `bin/playtest-routes`
+#                       writes, and `bin/playtest-routes <Game> list` says what is
+#                       there and where each one lands. The route's commands are fed
+#                       ahead of yours and one `look` after them, so the transcript
+#                       opens on the frame the route landed in and a reader can check
+#                       it against the room the manifest claims.
+#
+#                       **The seed is the route's, not the caller's.** A route
+#                       replayed at another seed lands somewhere else and says nothing
+#                       about it, and a caller passing --seed by hand is exactly how
+#                       that goes wrong quietly — so a --seed that disagrees is
+#                       refused rather than honored or silently re-pinned. --restore
+#                       is refused alongside it too: both are prologues, and a route
+#                       walked on top of a restored save ends nowhere its manifest
+#                       describes.
+#
+#                       The prefix does not count against --max-turns, which is a
+#                       runaway guard on the list YOU wrote and not a budget for a
+#                       committed one; the wall clock comes off the route unless you
+#                       pass --timeout yourself. This is the one flag here that needs
+#                       node on PATH — bin/lib/playtest-route-prefix.js says why.
 #   --seed N            GNUSTO_SEED (default 0). Pins the one random stream, so
 #                       the transcript you read is the transcript that
 #                       play(Game(), commands, seed: N) produces in the suite.
@@ -38,7 +62,11 @@
 #                       a deep state without replaying its prologue.
 #   --save SLOT         Epilogue: save to SLOT before quitting, so a later probe
 #                       can --restore it.
-#   --saves-from SRC    Copy *.gnusto slots into this run's saves before it starts,
+#   --saves-from SRC    For a tester's own mid-session `save`. A ROUND's deep starts are
+#                       committed routes now and come through --start above; this is
+#                       the narrower case that is left.
+#
+#                       Copy *.gnusto slots into this run's saves before it starts,
 #                       so --restore can reach a save this run never wrote. SRC is
 #                       another LABEL, or — anything holding a slash — the PATH of
 #                       a directory of slots. One way: the copy lands in THIS
@@ -135,13 +163,19 @@ plain_name() { [[ "$1" =~ ^[A-Za-z0-9_-][A-Za-z0-9._-]*$ ]]; }
 
 game=""; commands=""; seed=0; tail_lines=0; restore_slot=""; save_slot=""
 max_turns=250; timeout_secs=60; label=""; probe=""; pkg="$PWD"; build_only=0
-keep_blanks=0; saves_from=""
+keep_blanks=0; saves_from=""; start_route=""
+# Both flags have a default this script picked, and --start has an answer of its own
+# for each. So the question is not what they hold but whether the CALLER set them: a
+# --seed the route disagrees with is a refusal, and a --timeout the caller pinned is
+# never widened underneath them.
+seed_set=0; timeout_set=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --build)        build_only=1; shift ;;
     --commands)     commands="${2:-}"; shift 2 ;;
-    --seed)         seed="${2:-}"; shift 2 ;;
+    --seed)         seed="${2:-}"; seed_set=1; shift 2 ;;
+    --start)        start_route="${2:-}"; shift 2 ;;
     --tail)         tail_lines="${2:-}"; shift 2 ;;
     --label)        label="${2:-}"; shift 2 ;;
     --probe)        probe="${2:-}"; shift 2 ;;
@@ -149,7 +183,7 @@ while [[ $# -gt 0 ]]; do
     --save)         save_slot="${2:-}"; shift 2 ;;
     --saves-from)   saves_from="${2:-}"; shift 2 ;;
     --max-turns)    max_turns="${2:-}"; shift 2 ;;
-    --timeout)      timeout_secs="${2:-}"; shift 2 ;;
+    --timeout)      timeout_secs="${2:-}"; timeout_set=1; shift 2 ;;
     --package-path) pkg="${2:-}"; shift 2 ;;
     --keep-blank-lines) keep_blanks=1; shift ;;
     -h|--help)      usage; exit 0 ;;
@@ -206,6 +240,40 @@ fi
 read -r binary < "$binpath_cache"
 [[ -x "$binary" ]] \
   || die "recorded binary '$binary' is gone — re-run: bin/playtest-replay --build $game"
+
+# --- --start: the deep start, read before anything is allocated ---------------
+# Fail here or not at all. A route that cannot be read must not leave a probe
+# directory behind, must not stage slots into a label, and must not boot the game —
+# a run that started from turn zero because its route was misspelled is a report
+# about the wrong end of the map, which is the whole failure this flag exists to
+# retire.
+#
+# The routes come from the checkout being DRIVEN, the same way $playtest_root does;
+# `routePrefix` in bin/lib/playtest-focus.js says why that is not this one.
+if [[ -n "$start_route" ]]; then
+  [[ -z "$restore_slot" ]] \
+    || die "--start '$start_route' and --restore '$restore_slot' are two prologues; a route walked on top of a restored save ends nowhere its manifest describes"
+  command -v node >/dev/null 2>&1 \
+    || die "--start reads .playtest/$game/routes/$start_route.json through node, which is not on PATH; no other flag here needs it"
+  # The reader's own words reach stderr; this only says which run they were about.
+  if ! route_read="$( node bin/lib/playtest-route-prefix.js "$pkg" "$game" "$start_route" )"; then
+    die "--start '$start_route' could not be read (above); nothing ran"
+  fi
+  # Four header lines then the commands, peeled off with parameter expansion. A
+  # `printf | sed -n Np` per field would fork eight processes and rescan seven
+  # hundred lines four times for the deepest route; bash already holds the string.
+  rest="$route_read"
+  route_seed="${rest%%$'\n'*}";    rest="${rest#*$'\n'}"
+  route_length="${rest%%$'\n'*}";  rest="${rest#*$'\n'}"
+  route_landing="${rest%%$'\n'*}"; rest="${rest#*$'\n'}"
+  route_timeout="${rest%%$'\n'*}"; route_prefix="${rest#*$'\n'}"
+  # One spelling of the unclaimed case, for the two lines below that print it.
+  [[ -n "$route_landing" ]] || route_landing="a room the manifest does not name"
+  if [[ $seed_set -eq 1 && "$seed" != "$route_seed" ]]; then
+    die "--seed $seed contradicts route '$start_route', which was cut at seed $route_seed; a route replayed at another seed lands somewhere else. Drop --seed, or pick a route cut at $seed"
+  fi
+  seed="$route_seed"
+fi
 
 [[ -n "$label" ]] || label="$game-adhoc"
 plain_name "$label" || die "bad --label '$label'"
@@ -341,8 +409,25 @@ engine_lines="$(grep -cvE '^[[:space:]]*(//|#|$)' "$commands" || true)"
 [[ "$engine_lines" -le "$max_turns" ]] \
   || die "$engine_lines commands exceeds --max-turns $max_turns"
 
+# A committed route is not a runaway probe, so it is outside --max-turns above — but
+# it is still turns the wall clock has to cover, and Dungeon's deepest is seven
+# hundred of them against a 60-second default. The number is `timeoutFor`'s, computed
+# by the reader rather than re-derived here, because a second spelling of one formula
+# is a formula that drifts; a --timeout somebody pinned is theirs and wins.
+if [[ -n "$start_route" && $timeout_set -eq 0 ]]; then timeout_secs="$route_timeout"; fi
+
+if [[ -n "$start_route" ]]; then
+  echo "[playtest] start=$start_route — $route_length prefix turn(s) at seed $seed," >&2
+  echo "[playtest]   landing in $route_landing, then your $engine_lines." >&2
+fi
+
 fed="$probe_dir/commands.txt"
 {
+  # The deep start first: the route's own commands, then the `look` the reader
+  # opens on. It is fed rather than restored, so the transcript holds every turn of
+  # it and a reader can see where the player actually ended up — which is what makes
+  # a route checkable at all, and what a save file could never show.
+  [[ -n "$start_route" ]] && printf '%s\n' "$route_prefix"
   # save and restore are two-turn interactions: the parser knows only the bare
   # verbs, and the engine then asks for a filename on the *next* input line.
   [[ -n "$restore_slot" ]] && printf 'restore\n%s\n' "$restore_slot"
@@ -419,6 +504,13 @@ fi
 summary="$probe_dir/summary.txt"
 {
   echo "[playtest] game=$game seed=$seed label=$label probe=$probe commands=$engine_lines exit=$status"
+  # Only when there was one. A probe that began deep did not start where every other
+  # probe's receipt says it started, and the route name plus the room it claims is
+  # what lets a reader re-run this line — or notice that the transcript's first
+  # [status] footer names a different room, which is a stale route and not a finding.
+  if [[ -n "$start_route" ]]; then
+    echo "[playtest] start=$start_route prefix=$route_length landing=$route_landing"
+  fi
   echo "[playtest] transcript=$transcript"
   echo "[playtest] commands=$fed"
   # Only when there was one, so an ordinary probe's summary reads as it always
