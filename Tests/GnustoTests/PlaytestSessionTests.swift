@@ -30,6 +30,14 @@ struct PlaytestSessionTests {
         let sessions: PlaytestSessions
         let root: URL
 
+        /// Where this harness's deep starts live — `GNUSTO_PLAYTEST_ROUTES`,
+        /// pointed at a directory of its own for the same reason
+        /// `GNUSTO_PLAYTEST_DIR` is. The override replaces `.playtest` and not
+        /// the whole path, so `<TypeName>/routes/` still applies and the keying
+        /// that keeps a seven-game package's routes apart is exercised here
+        /// rather than bypassed.
+        let routes: URL
+
         /// The tool table over the same root, for the rows whose subject is
         /// what a *client* meets. Its registry is a second one — a table always
         /// builds its own — which costs nothing and is safe: the disk layout is
@@ -40,13 +48,51 @@ struct PlaytestSessionTests {
         init(_ game: some Game, maxSessions: Int? = nil) throws {
             root = FileManager.default.temporaryDirectory
                 .appendingPathComponent(UUID().uuidString)
-            var environment = ["GNUSTO_PLAYTEST_DIR": root.path]
+            // A directory of its own rather than one under `root`: `root` is the
+            // play-test root, whose children are labels, and a routes directory
+            // sitting among them would turn up in the "labels that do exist"
+            // sentence.
+            var environment = [
+                "GNUSTO_PLAYTEST_DIR": root.path,
+                "GNUSTO_PLAYTEST_ROUTES": FileManager.default.temporaryDirectory
+                    .appendingPathComponent(UUID().uuidString).path,
+            ]
             if let maxSessions {
                 environment["GNUSTO_MCP_MAX_SESSIONS"] = "\(maxSessions)"
             }
             let prepared = try PreparedGame(game)
+            routes = PlaytestRoute.root(game: prepared.typeName, environment: environment)
             sessions = PlaytestSessions(prepared: prepared, environment: environment)
             tools = PlaytestTools.table(for: prepared, environment: environment)
+        }
+
+        /// Writes a route pair — the commands and the manifest — where this
+        /// harness's server will look for them.
+        ///
+        /// - Parameters:
+        ///   - name: the route's name, which is both file stems.
+        ///   - commands: the walk, one command per element.
+        ///   - seed: the seed to declare. A session opening at another one is
+        ///     refused, which is the point of the field.
+        ///   - landing: the room to declare, or `nil` to declare none — a route
+        ///     with no landing is not checked, which is what lets one be written
+        ///     by hand before anything exists to fill the field in.
+        /// - Throws: whatever creating the directory or writing the two files
+        ///   throws.
+        func writeRoute(
+            _ name: String, _ commands: [String], seed: Int = 0, landing: String? = nil
+        ) throws {
+            try FileManager.default.createDirectory(
+                at: routes, withIntermediateDirectories: true)
+            try (commands.joined(separator: "\n") + "\n").write(
+                to: routes.appendingPathComponent("\(name).txt"), atomically: true,
+                encoding: .utf8)
+            let manifest =
+                landing.map { #"{"seed":\#(seed),"landing":{"room":"\#($0)"}}"# }
+                ?? #"{"seed":\#(seed)}"#
+            try manifest.write(
+                to: routes.appendingPathComponent("\(name).json"), atomically: true,
+                encoding: .utf8)
         }
     }
 
@@ -955,6 +1001,253 @@ struct PlaytestSessionTests {
         #expect(session.directory.deletingLastPathComponent().lastPathComponent == "durable")
         #expect(session.saveDirectory.lastPathComponent == "saves")
         #expect(FileManager.default.fileExists(atPath: session.transcriptURL.path))
+    }
+
+    // MARK: - Deep starts
+
+    /// The crown jewel again, one level deeper. A session given a route records
+    /// the same bytes a REPL fed the route, the landing probe and the tester's
+    /// own lines records.
+    ///
+    /// This is the whole design in one assertion. The prefix goes into `turns`
+    /// like any other line rather than being replayed into a world behind the
+    /// session's back, so `transcript.txt` and `commands.txt` stay what they
+    /// always were, `export`'s identity proof is untouched, and a finding filed
+    /// from a deep session still replays from line one.
+    @Test func aDeepStartsTranscriptIsByteIdenticalToTheREPLs() async throws {
+        let harness = try Harness(OperaHouse())
+        try harness.writeRoute("cloakroom", ["west"], landing: "Cloakroom")
+
+        let session = try await harness.sessions.open(
+            label: "deep", seed: 0, start: "cloakroom")
+        _ = try await session.opening()
+        _ = try await session.move(commands: ["x hook", "east"], allowPrompts: false)
+
+        let recorded = try text(at: session.transcriptURL)
+        let replayed = try await replTranscript(
+            OperaHouse(), ["west", "look", "x hook", "east"], seed: 0,
+            saveDirectory: session.saveDirectory)
+        #expect(recorded == replayed)
+
+        // The command list is the same list, which is what makes a reproducer
+        // filed from here reproduce.
+        #expect(
+            try text(at: session.commandsURL) == "west\nlook\nx hook\neast\n")
+        #expect(await session.prefixCount == 2)
+    }
+
+    /// And it still exports as a verified regression test: `export` replays the
+    /// whole list, prefix included, through a fresh REPL and refuses to hand
+    /// back a citable path unless the bytes match.
+    @Test func aDeepStartStillExportsAsAVerifiedRegressionTest() async throws {
+        let harness = try Harness(OperaHouse())
+        try harness.writeRoute("cloakroom", ["west"], landing: "Cloakroom")
+
+        let session = try await harness.sessions.open(
+            label: "deep-export", seed: 0, start: "cloakroom")
+        _ = try await session.move(commands: ["x hook"], allowPrompts: false)
+
+        let exported = try await session.export()
+        #expect(exported.verified)
+        // Three, not one: the route and its probe are recorded lines, and a
+        // count that hid them would be a count the replay could not reproduce.
+        #expect(exported.lines == 3)
+    }
+
+    /// The opening is the landing, not turn zero.
+    ///
+    /// Handing back the game's intro would open the session on a description of
+    /// a room the tester is not standing in — the failure this whole issue is
+    /// about, one screen earlier than the coverage queue.
+    @Test func openingAtADeepStartHandsBackTheLandingRatherThanTurnZero() async throws {
+        let harness = try Harness(OperaHouse())
+        try harness.writeRoute("cloakroom", ["west"], landing: "Cloakroom")
+
+        let session = try await harness.sessions.open(
+            label: "landing", seed: 0, start: "cloakroom")
+        let opening = try await session.opening()
+
+        #expect(opening.text.contains("The walls of this small room"))
+        #expect(!opening.text.contains("splendidly decorated in red"))
+        #expect(opening.status.contains("room=Cloakroom"))
+    }
+
+    /// An evicted deep session comes back to the same landing, having replayed
+    /// its route as well as its own lines — and the tester never learns.
+    ///
+    /// The reseeding of the ledger lives in the replay loop rather than in
+    /// `boot()` for exactly this: one branch, run identically the first time and
+    /// every time after, so nothing has to be carried across an eviction.
+    @Test func anEvictedDeepStartRehydratesToTheSameLanding() async throws {
+        let harness = try Harness(OperaHouse(), maxSessions: 1)
+        try harness.writeRoute("cloakroom", ["west"], landing: "Cloakroom")
+
+        let first = try await harness.sessions.open(
+            label: "deep-evicted", seed: 0, start: "cloakroom")
+        _ = try await first.move(commands: ["x hook"], allowPrompts: false)
+        let before = try text(at: first.transcriptURL)
+        let queueBefore = try await first.coverage(limit: 200).items.map(\.id)
+        #expect(await first.isLive())
+
+        // Opening a second session puts the process over the cap of one.
+        let second = try await harness.sessions.open(label: "survivor", seed: 0)
+        _ = try await second.opening()
+        #expect(!(await first.isLive()))
+
+        let opening = try await first.opening()
+        #expect(await first.isLive())
+        #expect(opening.status.contains("room=Cloakroom"))
+        #expect(try text(at: first.transcriptURL) == before)
+        // The queue came back too, still seeded at the landing rather than at
+        // the game's own opening.
+        #expect(try await first.coverage(limit: 200).items.map(\.id) == queueBefore)
+    }
+
+    /// `recall` will not read the route back, however it is asked.
+    ///
+    /// A blind explorer that called `recall` from line 1 would be handed the
+    /// walkthrough three lines under a brief telling it that it has no map —
+    /// the shape of the firewall bug `chunkRegions` fixed, one layer down. It is
+    /// raised rather than refused because a tester asking for line 1 is making
+    /// an honest mistake, and it is told what happened so the next call is right.
+    @Test func recallWillNotReadBackTheRouteASessionWasGiven() async throws {
+        let harness = try Harness(OperaHouse())
+        try harness.writeRoute("cloakroom", ["west"], landing: "Cloakroom")
+
+        let session = try await harness.sessions.open(
+            label: "deep-recall", seed: 0, start: "cloakroom")
+        _ = try await session.move(commands: ["x hook"], allowPrompts: false)
+
+        let all = try await session.recall(from: 0, to: 99, grep: nil)
+        #expect(!all.contains("> west"))
+        #expect(!all.contains("splendidly decorated in red"))
+        #expect(all.contains("> x hook"))
+        #expect(all.contains("lines 1–2 are the deep start"))
+        // Counted as the tester's own, which is the number it is asking about.
+        #expect(all.contains("recalled=1 of 1 lines"))
+
+        // A window lying wholly inside the prefix returns none of it.
+        let inside = try await session.recall(from: 1, to: 2, grep: nil)
+        #expect(!inside.contains("> west"))
+        #expect(inside.contains("are the deep start"))
+    }
+
+    /// A rewind cannot reach back into the route.
+    ///
+    /// Two reasons, and either would do: it would write the route into
+    /// `branch-NNN.txt` and hand the tester the file as evidence, and it would
+    /// leave the session standing somewhere its `open` never described.
+    @Test func rewindingPastTheDeepStartIsRefused() async throws {
+        let harness = try Harness(OperaHouse())
+        try harness.writeRoute("cloakroom", ["west"], landing: "Cloakroom")
+
+        let session = try await harness.sessions.open(
+            label: "deep-rewind", seed: 0, start: "cloakroom")
+        _ = try await session.move(commands: ["x hook"], allowPrompts: false)
+
+        let refusal = await #expect(throws: PlaytestError.self) {
+            try await session.rewind(turns: 3)
+        }
+        #expect(refusal?.description.contains("opened at a deep start") == true)
+        #expect(refusal?.description.contains("Nothing moved") == true)
+
+        // Back to the landing itself is allowed — that is where it began.
+        let back = try await session.rewind(turns: 1)
+        #expect(back.line == 2)
+        #expect(back.room == "Cloakroom")
+    }
+
+    /// A route is only a deep start at the seed it was recorded under. Replayed
+    /// at another the same commands land somewhere else, silently, and the
+    /// tester reports on a room nobody meant to send it to — so the mismatch is
+    /// refused before anything is played, and no session is left behind.
+    @Test func aRouteRecordedAtAnotherSeedIsRefusedAndNothingIsOpened() async throws {
+        let harness = try Harness(OperaHouse())
+        try harness.writeRoute("cloakroom", ["west"], seed: 52, landing: "Cloakroom")
+
+        let refusal = await #expect(throws: PlaytestError.self) {
+            try await harness.sessions.open(label: "wrong-seed", seed: 0, start: "cloakroom")
+        }
+        #expect(refusal?.description.contains("recorded at seed 52") == true)
+        #expect(refusal?.description.contains("Nothing ran") == true)
+
+        let opened = await harness.sessions.count()
+        #expect(opened == 0)
+        #expect(
+            !FileManager.default.fileExists(
+                atPath: harness.root.appendingPathComponent("wrong-seed/probe-001").path))
+    }
+
+    /// A name nothing answers to is refused with the names that do — the
+    /// `session(_:)` policy, for the same reason: the caller is a language model
+    /// that mistyped, and it can recover from a sentence.
+    @Test func aStartNamingNoRouteIsRefusedAndSaysWhatIsThere() async throws {
+        let harness = try Harness(OperaHouse())
+        try harness.writeRoute("cloakroom", ["west"], landing: "Cloakroom")
+        try harness.writeRoute("bar", ["south"], landing: "Foyer Bar")
+
+        let refusal = await #expect(throws: PlaytestError.self) {
+            try await harness.sessions.open(label: "typo", seed: 0, start: "cloackroom")
+        }
+        #expect(refusal?.description.contains("No route \"cloackroom\"") == true)
+        #expect(refusal?.description.contains("bar, cloakroom") == true)
+
+        let opened = await harness.sessions.count()
+        #expect(opened == 0)
+    }
+
+    /// A route is verified by replay, never by a hash — so a stale one is caught
+    /// by running it, and the harness says the sentence that helps.
+    ///
+    /// The machinery this replaces could only fingerprint the seed, the route
+    /// and the depths, and report `cut from a1b2c3 — the route is now d4e5f6`,
+    /// because bytes on disk cannot say what they are a save of. A command list
+    /// can simply be run.
+    @Test func aRouteThatNoLongerLandsWhereItsManifestSaysIsRefused() async throws {
+        let harness = try Harness(OperaHouse())
+        try harness.writeRoute("cloakroom", ["south"], landing: "Cloakroom")
+
+        let refusal = await #expect(throws: PlaytestError.self) {
+            try await harness.sessions.open(label: "stale", seed: 0, start: "cloakroom")
+        }
+        #expect(refusal?.description.contains("now ends in a different room") == true)
+        #expect(refusal?.description.contains("Foyer Bar") == true)
+
+        let opened = await harness.sessions.count()
+        #expect(opened == 0)
+    }
+
+    /// A manifest that declares no landing is not checked, which is what lets a
+    /// route be written by hand before there is anything to fill the field in.
+    @Test func aRouteThatDeclaresNoLandingIsPlayedWithoutOne() async throws {
+        let harness = try Harness(OperaHouse())
+        try harness.writeRoute("cloakroom", ["west"])
+
+        let session = try await harness.sessions.open(
+            label: "unchecked", seed: 0, start: "cloakroom")
+        #expect(try await session.opening().status.contains("room=Cloakroom"))
+    }
+
+    /// Over the tool table: the receipt names the route and how many lines it
+    /// took, because every index this session reports counts from that number
+    /// and a tester whose first command comes back numbered 3 has to know why.
+    @Test func openReportsTheRouteAndHowManyLinesItTook() async throws {
+        let harness = try Harness(OperaHouse())
+        try harness.writeRoute("cloakroom", ["west"], landing: "Cloakroom")
+        let open = try #require(harness.tools.first { $0.name == "open" })
+
+        let result = try await open.call(["label": "wired", "start": "cloakroom"])
+
+        let structured = try #require(result.structured)
+        #expect(structured["start"] == .string("cloakroom"))
+        #expect(structured["prefixTurns"] == .integer(2))
+        #expect(structured["status"]?.stringValue?.contains("room=Cloakroom") == true)
+        #expect(structured["opening"]?.stringValue?.contains("The walls of this small room") == true)
+
+        // An ordinary open answers with exactly the fields it always has.
+        let plain = try await open.call(["label": "cold"])
+        #expect(try #require(plain.structured)["start"] == nil)
+        #expect(try #require(plain.structured)["prefixTurns"] == nil)
     }
 
     // MARK: - Eviction

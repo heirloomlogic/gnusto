@@ -152,6 +152,28 @@ actor PlaytestSession {
     /// under the same label sees them whether it asked for staging or not.
     nonisolated let staged: PlaytestSessions.StagedSlots?
 
+    /// How many recorded lines belong to the deep start this session was opened
+    /// at rather than to the tester — the route's commands plus the harness's
+    /// one landing probe. `0` for an ordinary session.
+    ///
+    /// Everything the tester can see counts from here: ``opening()`` hands back
+    /// the landing rather than turn zero, ``coverage(limit:)`` reads a ledger
+    /// reseeded at the landing, ``recall(from:to:grep:)`` never returns a prefix
+    /// block, and ``truncate(to:naming:)`` refuses a target below it. A blind
+    /// explorer handed the route it was supposed to be exploring blind is the
+    /// firewall bug `chunkRegions` fixed, one layer down.
+    ///
+    /// `nonisolated` for the same reason ``staged`` is: it is fixed at
+    /// construction, and the `open` handler reports it in the same breath as the
+    /// opening.
+    nonisolated let prefixCount: Int
+
+    /// The route this session was opened at, by name, or `nil`. The only part
+    /// of a ``PlaytestRoute`` that outlives the replay: the commands are in
+    /// ``turns`` and the landing has been checked, so keeping the whole value
+    /// would be keeping a copy of the prefix beside the prefix.
+    nonisolated let routeName: String?
+
     /// The recorded transcript.
     nonisolated let transcriptURL: URL
 
@@ -187,6 +209,24 @@ actor PlaytestSession {
 
     /// The game, booted once for the whole process.
     private let prepared: PreparedGame
+
+    /// The landing frame — what the prefix's last line printed, and the status
+    /// under it — captured as the replay crosses ``prefixCount`` and handed back
+    /// by ``opening()`` in place of turn zero. `nil` until then, and for every
+    /// session that has no prefix.
+    private var landing: (text: String, status: String)?
+
+    /// The last command's output, rendered and without its footer — what
+    /// ``CoverageLedger/observeOpening(output:room:)`` needs at the prefix
+    /// boundary, where there is no `begin()` result to read it from. The room it
+    /// wants alongside is ``CoverageLedger/currentRoom``, which is the same
+    /// value one field further along and does not need copying out.
+    private var lastOutput = ""
+
+    /// Whether a world has ever been built here. The one thing that tells a
+    /// first play apart from a rehydration, which otherwise run the identical
+    /// code — and they deserve different sentences on standard error.
+    private var everBooted = false
 
     /// A session always runs with the footer on: its reader is a machine that
     /// needs to know which room printed a line and whether the last command
@@ -413,6 +453,8 @@ actor PlaytestSession {
     ///   - directory: this probe's directory.
     ///   - saveDirectory: the label's saves directory.
     ///   - staged: the slots `open` copied into that directory, or `nil`.
+    ///   - route: the deep start to play before the tester's first turn, or
+    ///     `nil` for an ordinary session opening at turn zero.
     init(
         id: String,
         label: String,
@@ -423,7 +465,8 @@ actor PlaytestSession {
         prepared: PreparedGame,
         directory: URL,
         saveDirectory: URL,
-        staged: PlaytestSessions.StagedSlots? = nil
+        staged: PlaytestSessions.StagedSlots? = nil,
+        route: PlaytestRoute? = nil
     ) {
         self.id = id
         self.label = label
@@ -436,6 +479,20 @@ actor PlaytestSession {
         self.directory = directory
         self.saveDirectory = saveDirectory
         self.staged = staged
+        self.routeName = route?.name
+        self.prefixCount = route.map { $0.prefix.count } ?? 0
+        // The prefix goes into `turns` here, blocks empty, and that is the whole
+        // mechanism: `liveWorld()` already replays `turns` to bring an evicted
+        // session back, so a route needs no second replay path, `transcript.txt`
+        // and `commands.txt` stay byte-identical to a REPL fed the same list,
+        // and `export`'s identity proof is untouched.
+        if let route {
+            self.turns = route.prefix.enumerated().map { offset, line in
+                Turn(
+                    index: offset + 1, line: line,
+                    isComment: TesterInput.isComment(line), block: "")
+            }
+        }
         self.transcriptURL = directory.appendingPathComponent("transcript.txt")
         self.commandsURL = directory.appendingPathComponent("commands.txt")
         self.transcriptWithoutStatusURL =
@@ -465,7 +522,44 @@ actor PlaytestSession {
     /// - Returns: the opening frame.
     func opening() async throws -> Opening {
         _ = try await liveWorld()
+        // A session opened at a deep start begins where the route put it. The
+        // game's own intro is turn zero, and turn zero is somewhere the tester
+        // is not — handing it over would open the session on a description of a
+        // room hundreds of commands behind the one it is standing in.
+        if let landing {
+            return Opening(text: landing.text, status: landing.status, awaiting: pending)
+        }
         return Opening(text: openingOutput, status: statusLine, awaiting: pending)
+    }
+
+    /// Plays this session's deep start and checks it landed where its manifest
+    /// says it does.
+    ///
+    /// **A route is verified by replay, never by a hash.** A saved game cannot
+    /// be asked what it is a save *of*, which is why the machinery this replaces
+    /// had to fingerprint the seed, the route and every depth and write a
+    /// receipt nobody could read. A command list needs none of that: run it, and
+    /// see where it ends. If that is not what the manifest claims, the route is
+    /// stale — and this is the sentence that helps, rather than *cut from
+    /// a1b2c3 — the route is now d4e5f6*.
+    ///
+    /// A manifest that declares no landing is not checked. That is what lets a
+    /// route be written by hand before anything exists to fill the field in.
+    ///
+    /// - Parameter route: the route this session was opened at.
+    /// - Throws: ``PlaytestError`` when the route ends somewhere else.
+    func verifyLanding(against route: PlaytestRoute) async throws {
+        _ = try await liveWorld()
+        guard let declared = route.landingRoom, declared != ledger.currentRoom else { return }
+        throw PlaytestError(
+            """
+            Route "\(route.name)" is stale: its manifest says it lands in \(declared), and \
+            replaying its \(route.commands.count) commands at seed \(seed) now ends in \
+            \(ledger.currentRoom). The route now ends in a different room, so a session \
+            started from \
+            it would be somewhere nobody meant. Nothing was opened. Re-cut the route, or fix \
+            the landing its manifest declares.
+            """)
     }
 
     /// Runs a batch of commands and reports what happened, in the transcript
@@ -559,11 +653,24 @@ actor PlaytestSession {
         // way and the caller never learns which happened.
         _ = try await liveWorld()
 
+        // The prefix is not this session's to read back. A blind explorer that
+        // called `recall` from line 1 would be handed the winning walkthrough
+        // three lines under a brief telling it that it has no map — the shape of
+        // the firewall bug `chunkRegions` fixed. Raised rather than refused: a
+        // tester asking for line 1 is making an honest mistake, and a hard error
+        // costs it a call to recover from something the tool can simply do.
+        let floor = max(from, prefixCount + 1)
+        let clamped =
+            floor > from
+            ? "[playtest] session=\(id): lines 1–\(prefixCount) are the deep start this "
+                + "session was given and are not readable here; recalling from \(floor).\n"
+            : ""
+
         var blocks: [(index: Int, text: String)] = []
-        if from <= 0 && !openingBlock.isEmpty {
+        if from <= 0 && prefixCount == 0 && !openingBlock.isEmpty {
             blocks.append((0, openingBlock))
         }
-        for turn in turns where turn.index >= from && turn.index <= to {
+        for turn in turns where turn.index >= floor && turn.index <= to {
             blocks.append((turn.index, turn.block))
         }
         if let needle = grep?.lowercased(), !needle.isEmpty {
@@ -571,13 +678,18 @@ actor PlaytestSession {
         }
         guard !blocks.isEmpty else {
             let matching = grep.map { " matching \"\($0)\"" } ?? ""
-            return """
-                [playtest] session=\(id): nothing in lines \(from)–\(to)\(matching). \
-                This session has \(turns.count) recorded lines.
+            // `turns.count` less the prefix: the count a tester is asking about
+            // is how many lines *it* has recorded, and a window that fell
+            // entirely inside the deep start is already explained by `clamped`.
+            return clamped
+                + """
+                [playtest] session=\(id): nothing in lines \(floor)–\(max(to, floor))\
+                \(matching). This session has \(turns.count - prefixCount) recorded lines.
                 """
         }
-        return Self.capped(head: blocks)
-            + "[playtest] session=\(id) recalled=\(blocks.count) of \(turns.count) lines\n"
+        return clamped + Self.capped(head: blocks)
+            + "[playtest] session=\(id) recalled=\(blocks.count) of "
+            + "\(turns.count - prefixCount) lines\n"
     }
 
     // MARK: - The queue
@@ -1275,6 +1387,19 @@ actor PlaytestSession {
     /// - Returns: what was dropped.
     private func truncate(to target: Int, naming name: String?) async throws -> Rewound {
         _ = try await liveWorld()
+        // The deep start is the floor. Going below it would write the route into
+        // `branch-NNN.txt` and hand the tester the file as evidence, which is
+        // the one thing a silent prefix exists to prevent; it would also leave
+        // the session standing somewhere its `open` never described.
+        guard target >= prefixCount else {
+            throw PlaytestError(
+                """
+                Can't go back to line \(target): this session was opened at a deep start, and \
+                lines 1–\(prefixCount) are the route that put it there rather than anything \
+                it played. Line \(prefixCount) is as far back as it goes — that is where the \
+                session began. Nothing moved.
+                """)
+        }
         let dropped = Array(turns[target...])
         let usable = ring.first { $0.line == target && $0.pending == .none }
         guard usable != nil || !pinned else {
@@ -1526,18 +1651,69 @@ actor PlaytestSession {
     /// - Returns: the world, booted and caught up.
     private func liveWorld() async throws -> GameWorld {
         if let world { return world }
+        let first = !everBooted
         let world = try await boot()
+        everBooted = true
         guard !turns.isEmpty else { return world }
         writeToStandardError(
-            """
-            [gnusto-mcp] rehydrating session \(id): replaying \(turns.count) \
-            recorded lines at seed \(seed).
-            """)
+            first
+                ? """
+                [gnusto-mcp] session \(id) starts deep: playing route \
+                \(routeName ?? "?") — \(turns.count) lines at seed \(seed), silently.
+                """
+                : """
+                [gnusto-mcp] rehydrating session \(id): replaying \(turns.count) \
+                recorded lines at seed \(seed).
+                """)
         for index in turns.indices {
             guard !finished else { break }
             turns[index].block = await run(turns[index].line, at: index + 1, in: world)
+            if index + 1 == prefixCount { await land(in: world) }
         }
         return world
+    }
+
+    /// Makes the line the prefix ended on this session's beginning.
+    ///
+    /// Called from the replay loop rather than from `boot()`, which is what
+    /// makes it exact: a rehydration re-runs the same lines through the same
+    /// branch, so a session that is evicted and comes back lands where it landed
+    /// the first time without anything being carried across.
+    ///
+    /// The ledger is rebuilt rather than trimmed. It cannot be trimmed — an item
+    /// is not tagged with the turn that raised it — and rebuilding is the seam
+    /// `boot()` already uses: a fresh ``CoverageLedger`` seeded from the landing
+    /// room's block alone. Without it the queue opens holding a hundred rooms the
+    /// tester never saw, which is worse than no queue, because the explorer
+    /// charter is measured on burning the queue down and every one of those items
+    /// sends it hundreds of commands away.
+    ///
+    ///
+    /// - Parameter world: the world the prefix was just played in, for the one
+    ///   snapshot the ring is left holding.
+    private func land(in world: GameWorld) async {
+        landing = (text: lastOutput, status: statusLine)
+        let room = ledger.currentRoom
+        ledger = CoverageLedger(divergence: divergence)
+        ledger.observeOpening(output: lastOutput, room: room)
+        // A prefix room is one the harness walked the player through, not one a
+        // discarded branch was the only witness to. Saying so here is what keeps
+        // `Closing.roomsOnlyInBranches` — visited, minus the ledger's rooms,
+        // minus these — from reporting the whole route as a branch nobody took
+        // the moment the ledger above forgets it. Subtracting the prefix from
+        // the other tallies is issue #361's, and is deliberately not done here.
+        roomsPassedThrough.formUnion(visitedIDs)
+        // The nudge interval counts the *ledger's* commands, and the ledger just
+        // went back to zero, so this goes with it — the tester's first inline
+        // note is due twenty of its own lines in, not twenty of the route's.
+        lastNudge = 0
+        // And the ring starts here. Every snapshot in it is a prefix line the
+        // tester cannot rewind to, and the one at this line was taken by `run`
+        // a moment ago — *before* the ledger above was rebuilt, so restoring it
+        // would put the route's whole queue back. Taking it again is the fix
+        // and the cheaper half of it: 32 prefix snapshots go too.
+        ring = []
+        await remember(line: prefixCount, in: world)
     }
 
     /// Boots a fresh world at this session's seed and records the opening.
@@ -1649,10 +1825,15 @@ actor PlaytestSession {
         let annotated = footer.annotate(result, turnCost: turnCost, fields: fields)
         recorder?.record(command: line, output: annotated)
 
+        // Rendered once. `<br>` is a marker rather than a word, and both the
+        // ledger and the prefix boundary read the same words on a different
+        // channel from the recorder's — folding it twice a turn would be the
+        // only per-turn work this file does twice.
+        let plain = TextWrap.plain(result.output)
         ledger.observe(
             command: line,
             audit: audit,
-            output: TextWrap.plain(result.output),
+            output: plain,
             room: result.status.locationName,
             moves: result.status.moves,
             line: index,
@@ -1663,6 +1844,11 @@ actor PlaytestSession {
         visit(result.status)
 
         statusLine = footer.line(result.status, turnCost: turnCost, fields: fields)
+        // Held for the prefix boundary, which has to reseed a ledger from a turn
+        // rather than from `begin()`, and which is the one place that needs the
+        // rendered output after `run` has returned it. The room it landed in
+        // needs no field of its own: the ledger has just been told it.
+        lastOutput = plain
         lastMoves = result.status.moves
         finished = result.isFinished
         pending = await world.awaiting()

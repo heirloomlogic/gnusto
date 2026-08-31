@@ -53,6 +53,12 @@ actor PlaytestSessions {
     /// The live-session cap. See ``evictIfNeeded()``.
     private let maxSessions: Int
 
+    /// The process environment, kept because ``PlaytestRoute`` reads
+    /// `GNUSTO_PLAYTEST_ROUTES` out of it at every `open` rather than at
+    /// construction — a route directory is read per session, not cached, so a
+    /// route dropped in while the server is up is found.
+    private let environment: [String: String]
+
     /// Every session ever opened in this process, live or evicted to a stub.
     /// An id stays valid for the life of the server: an evicted session
     /// answers exactly as it did before, having replayed itself first.
@@ -80,6 +86,7 @@ actor PlaytestSessions {
         self.prepared = prepared
         self.root = Self.root(environment: environment)
         self.maxSessions = Self.maxSessions(environment: environment)
+        self.environment = environment
     }
 
     // MARK: - Opening and finding
@@ -106,12 +113,18 @@ actor PlaytestSessions {
     ///     one source and each tester's own `open` stages it, where before an
     ///     operator had to hand-copy the files into directories whose names
     ///     the workflow had not chosen yet.
+    ///   - start: the name of a route under `.playtest/<Game>/routes/` to play
+    ///     before the tester's first turn, or `nil` for a session opening at
+    ///     turn zero. The route is read and seed-checked before a probe exists,
+    ///     and played before the session is registered, so every way of getting
+    ///     it wrong refuses with nothing left behind.
     /// - Throws: ``PlaytestError`` for an unusable label, a directory that
     ///   can't be made, or a `savesFrom` holding no slots.
     /// - Returns: the new session.
     func open(
         label: String, seed: UInt64, role: PlaytestRole = .unrestricted,
-        divergence: DivergencePolicy = .commit, savesFrom: URL? = nil
+        divergence: DivergencePolicy = .commit, savesFrom: URL? = nil,
+        start: String? = nil
     ) async throws -> PlaytestSession {
         guard Self.isPlainName(label) else {
             throw PlaytestError(
@@ -138,6 +151,24 @@ actor PlaytestSessions {
         // leave a probe directory belonging to a session that never opened.
         let staged = try savesFrom.map { try Self.stageSlots(from: $0, into: saveDirectory) }
 
+        // Read and seed-checked before a probe is allocated, on the same
+        // argument staging uses: a `start` that names nothing, or names a route
+        // recorded under another seed, must refuse while the only thing on disk
+        // is a directory this label was going to have anyway.
+        let route = try start.map {
+            try PlaytestRoute.load(named: $0, game: prepared.typeName, environment: environment)
+        }
+        if let route, route.seed != seed {
+            throw PlaytestError(
+                """
+                Route "\(route.name)" was recorded at seed \(route.seed) and this session \
+                asked for seed \(seed). A route is only a deep start at the seed it was \
+                recorded under: replayed at another one the same commands land somewhere \
+                else, silently, and the tester reports on a room nobody meant to send it to. \
+                Open at seed \(route.seed), or pick a route recorded at \(seed). Nothing ran.
+                """)
+        }
+
         let (probe, directory) = try Self.allocateProbe(in: labelDirectory)
         let id = "\(label)/\(probe)"
         let session = PlaytestSession(
@@ -150,7 +181,15 @@ actor PlaytestSessions {
             prepared: prepared,
             directory: directory,
             saveDirectory: saveDirectory,
-            staged: staged)
+            staged: staged,
+            route: route)
+        // A deep start is played here rather than lazily, so that a route that
+        // no longer lands where its manifest says refuses out of `open` — the
+        // one call that can still say "nothing ran" — instead of quietly handing
+        // a tester a landing nobody meant. Registered only once it stands.
+        if let route {
+            try await session.verifyLanding(against: route)
+        }
         sessions[id] = session
         touch(id)
         await evictIfNeeded()
@@ -621,9 +660,13 @@ actor PlaytestSessions {
     /// character may not be a dot — that is what keeps a label out of `.bin`,
     /// the build-path cache the script keeps beside the labels.
     ///
+    /// Shared with ``PlaytestRoute``, which files by the same alphabet for the
+    /// same reason: a route name is a file stem under the routes directory, and
+    /// one alphabet is one thing to be right about.
+    ///
     /// - Parameter name: the candidate.
     /// - Returns: true when it may become a directory name.
-    private static func isPlainName(_ name: String) -> Bool {
+    static func isPlainName(_ name: String) -> Bool {
         let start = Set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-")
         let rest = start.union(".")
         guard let first = name.first, start.contains(first), name.count <= 64 else {

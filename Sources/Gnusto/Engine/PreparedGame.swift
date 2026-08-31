@@ -18,6 +18,17 @@ public struct PreparedGame: Sendable {
     /// so it is prepared here and shared rather than re-sorted per world.
     let parser: StandardParser
 
+    /// The game type's own name — `Dungeon`, `OperaHouse` — as spelled in the
+    /// source.
+    ///
+    /// Not the title. A title is prose the author is free to rewrite (`Zork I:
+    /// The Great Underground Empire`), and it has to survive being a directory
+    /// name, which that one does not. The type name is a Swift identifier by
+    /// construction, so it is the key ``PlaytestRoute`` files deep starts under
+    /// and the reason a package building seven games keeps their routes apart
+    /// while a package building one needs no configuration at all.
+    let typeName: String
+
     /// Boots `game` through the full validation and bootstrap pipeline.
     ///
     /// - Parameter game: the game to build.
@@ -27,5 +38,9 @@ public struct PreparedGame: Sendable {
         parser = StandardParser(
             vocabulary: definition.vocabulary,
             syntaxRules: definition.syntaxRules)
+        // `type(of:)` rather than the generic parameter: the dynamic type is
+        // the one the author wrote, and it is what a route directory has to be
+        // named after whatever static type this was called through.
+        typeName = String(describing: type(of: game))
     }
 }
