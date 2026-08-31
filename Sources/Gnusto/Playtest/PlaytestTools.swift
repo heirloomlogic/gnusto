@@ -579,9 +579,14 @@ enum PlaytestTools {
                 save to start from: the slots are copied into your label's \
                 saves before the game boots, so `restore` reaches them from \
                 this session and from every later probe under the same label. \
-                The queue of things the game has already shown you comes back \
-                with the opening, so you can plan from it before spending a \
-                turn.
+                Pass `start` when the round has a deep start for you: the server \
+                plays that route silently before your first turn and the opening \
+                you get back is where it lands, not turn zero. You are never \
+                shown the commands, and you are not charged for them — the queue \
+                is rebuilt at the landing, so it names what is in the room you \
+                are standing in. The queue of things the game has already shown \
+                you comes back with the opening, so you can plan from it before \
+                spending a turn.
                 """,
             inputSchema: [
                 "type": "object",
@@ -645,6 +650,20 @@ enum PlaytestTools {
                                 + "you can now restore — check the name you were given is "
                                 + "in it before you spend a turn on it."),
                     ],
+                    "start": [
+                        "type": "string",
+                        "description": .string(
+                            "The name of a route to start deep from — a walk the harness "
+                                + "keeps so that a session can begin at the far end of the "
+                                + "map instead of spending its whole budget getting there. "
+                                + "The server plays it before your first turn and hands "
+                                + "back the landing; the commands are not yours to see, "
+                                + "and recall will not read them back. A route is only "
+                                + "valid at the seed it was recorded under, so open at "
+                                + "that seed — a mismatch is refused rather than played. "
+                                + "Without it the session starts at turn zero, which is "
+                                + "the ordinary case."),
+                    ],
                 ],
                 "required": ["label"],
                 "additionalProperties": false,
@@ -661,7 +680,7 @@ enum PlaytestTools {
                 }
                 let session = try await sessions.open(
                     label: label, seed: seed, role: role, divergence: divergence,
-                    savesFrom: savesFrom)
+                    savesFrom: savesFrom, start: arguments["start"]?.stringValue)
                 let opening = try await session.opening()
                 let coverage = try await session.coverage(limit: queueLimit)
                 var fields: [String: JSONValue] = [
@@ -687,6 +706,15 @@ enum PlaytestTools {
                 if let staged = session.staged {
                     fields["savesStaged"] = .array(staged.restorable.map { .string($0) })
                     fields["savesFrom"] = .string(staged.from.path)
+                }
+                // Same policy as the staging receipt: an ordinary `open` answers
+                // with exactly the fields it always has. `prefixTurns` is here
+                // rather than left implicit because every line index this
+                // session reports counts from it — a tester whose first command
+                // comes back numbered 720 needs to have been told why.
+                if let start = session.routeName {
+                    fields["start"] = .string(start)
+                    fields["prefixTurns"] = .integer(session.prefixCount)
                 }
                 return PlaytestToolResult(.object(fields))
             })
@@ -717,7 +745,9 @@ enum PlaytestTools {
             ],
             "opening": [
                 "type": "string",
-                "description": "The intro, the banner and the first room description.",
+                "description": .string(
+                    "The intro, the banner and the first room description — or, for a "
+                        + "session opened with a start, the frame the route landed in."),
             ],
             "open": [
                 "type": "integer",
@@ -729,8 +759,9 @@ enum PlaytestTools {
             "status": [
                 "type": "string",
                 "description": .string(
-                    "The [status] line for turn zero: room, moves, score, whether the "
-                        + "turn cost one, and any field the game's plugins contribute."),
+                    "The [status] line the session opens on: room, moves, score, whether "
+                        + "the turn cost one, and any field the game's plugins contribute. "
+                        + "Turn zero, or the landing when a start was given."),
             ],
             "awaiting": [
                 "type": "string",
@@ -754,6 +785,21 @@ enum PlaytestTools {
                         + "name it wherever you cite this session, because a transcript "
                         + "that begins with a restore reproduces only while those slots "
                         + "survive."),
+            ],
+            "start": [
+                "type": "string",
+                "description": .string(
+                    "The route this session was started from. Absent when it began at "
+                        + "turn zero, which is the ordinary case. Name it wherever you "
+                        + "cite this session — the transcript begins with the route, so a "
+                        + "line number in a finding means nothing without it."),
+            ],
+            "prefixTurns": [
+                "type": "integer",
+                "description": .string(
+                    "How many recorded lines the route took, including the look that "
+                        + "landed it. Your own first line is the one after this, and every "
+                        + "index this session reports counts from zero, not from here."),
             ],
         ],
         "required": [

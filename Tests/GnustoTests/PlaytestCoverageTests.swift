@@ -44,6 +44,33 @@ struct PlaytestCoverageTests {
         return session
     }
 
+    /// A registry whose game has one deep start written where the server will
+    /// look for it.
+    ///
+    /// - Parameters:
+    ///   - game: the game to play.
+    ///   - name: the route's name.
+    ///   - commands: the walk.
+    /// - Throws: whatever writing the route throws.
+    /// - Returns: the registry.
+    private func sessionsWithRoute(
+        _ game: some Game, _ name: String, _ commands: [String]
+    ) throws -> PlaytestSessions {
+        let temporary = FileManager.default.temporaryDirectory
+        let environment = [
+            "GNUSTO_PLAYTEST_DIR": temporary.appendingPathComponent(UUID().uuidString).path,
+            "GNUSTO_PLAYTEST_ROUTES": temporary.appendingPathComponent(UUID().uuidString).path,
+        ]
+        let prepared = try PreparedGame(game)
+        let routes = PlaytestRoute.root(game: prepared.typeName, environment: environment)
+        try FileManager.default.createDirectory(at: routes, withIntermediateDirectories: true)
+        try (commands.joined(separator: "\n") + "\n").write(
+            to: routes.appendingPathComponent("\(name).txt"), atomically: true, encoding: .utf8)
+        try #"{"seed":0}"#.write(
+            to: routes.appendingPathComponent("\(name).json"), atomically: true, encoding: .utf8)
+        return PlaytestSessions(prepared: prepared, environment: environment)
+    }
+
     /// The ids of a session's open queue.
     private func ids(_ session: PlaytestSession, limit: Int = 200) async throws -> Set<String> {
         Set(try await session.coverage(limit: limit).items.map(\.id))
@@ -243,6 +270,35 @@ struct PlaytestCoverageTests {
                 "noun:bricks@Yard", "noun:oak@Yard", "noun:wall@Yard",
                 "noun:gap@Yard", "noun:nest@Yard", "noun:pebble@Yard",
             ])
+    }
+
+    /// A session opened at a deep start queues the landing room, and nothing the
+    /// route walked past.
+    ///
+    /// This is the sibling of the test above and the one that makes `start`
+    /// worth having. The ledger is rebuilt at the landing rather than trimmed —
+    /// it cannot be trimmed, because an item is not tagged with the turn that
+    /// raised it — so what comes back is a fresh queue seeded from the landing
+    /// room's block alone. Without it the queue opens holding every room the
+    /// route crossed, which is worse than no queue: the explorer charter is
+    /// measured on burning the queue down, and every one of those items sends it
+    /// to examine something a hundred commands away, which then answers *you
+    /// can't see any such thing* — so the round pays for the turn twice, once in
+    /// the tester and once in the verifier refuting what it filed.
+    @Test func theQueueAtADeepStartIsTheLandingRoomAndNotTheRoute() async throws {
+        let registry = try sessionsWithRoute(AviaryGame(), "shed", ["north"])
+        let session = try await registry.open(
+            label: "deep", seed: 0, role: .explorer, start: "shed")
+
+        // The exact set, so that over-cutting fails here too: the Shed's own
+        // description and the things standing in it, and not one item from the
+        // Yard the route walked out of.
+        #expect(
+            try await ids(session) == [
+                "noun:bell@Shed", "noun:bench@Shed", "noun:lean@Shed",
+                "noun:match@Shed", "noun:wall@Shed",
+            ])
+        #expect(try await ids(session).allSatisfy { $0.hasSuffix("@Shed") })
     }
 
     /// The intro's scene-setting is not the starting room's queue.
