@@ -1656,7 +1656,7 @@ enum PlaytestTools {
                     "The ids of the rooms above you did something in, as against merely "
                         + "stood in: a line typed while standing there parsed to an "
                         + "intent that was neither go nor meta. Entered is not worked — a "
-                        + "pasted routes/*.txt prefix walks dozens of rooms without "
+                        + "pasted routes/*.json prefix walks dozens of rooms without "
                         + "reading a line of any of them, and every one of them appears "
                         + "in roomsVisited. This is an upper bound rather than a "
                         + "measurement: the session cannot tell a pasted command from a "

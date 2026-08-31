@@ -64,9 +64,9 @@ struct PlaytestCoverageTests {
         let prepared = try PreparedGame(game)
         let routes = PlaytestRoute.root(game: prepared.typeName, environment: environment)
         try FileManager.default.createDirectory(at: routes, withIntermediateDirectories: true)
-        try (commands.joined(separator: "\n") + "\n").write(
-            to: routes.appendingPathComponent("\(name).txt"), atomically: true, encoding: .utf8)
-        try #"{"seed":0}"#.write(
+        let commandList = commands.map { "\"\($0)\"" }.joined(separator: ",")
+        let manifest = #"{"seed":0,"commands":[\#(commandList)]}"#
+        try manifest.write(
             to: routes.appendingPathComponent("\(name).json"), atomically: true, encoding: .utf8)
         return PlaytestSessions(prepared: prepared, environment: environment)
     }

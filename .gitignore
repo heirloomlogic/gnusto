@@ -1,8 +1,10 @@
 .context/
-# A backstop, not a sanctioned path. Play-test scratch belongs under
-# .context/playtest/; a round in July 2026 left a stray .playtest/ at the root, and
-# an untracked directory nobody notices is how somebody's evidence gets committed.
-/.playtest/
+# .playtest/ is committed, not ignored: .playtest/<Game>/routes/ holds the deep
+# starts a round ships (#362), and a fresh checkout needs them the way it needs the
+# focus files. The old backstop that ignored all of .playtest/ guarded against a
+# stray scratch directory — play-test *scratch* still belongs under
+# .context/playtest/, and anything under .playtest/ that is not a route or a round
+# record is a bug worth noticing rather than hiding.
 # .claude/settings.json is tracked — it allowlists the play-test harness's own
 # commands so a round doesn't stall on twenty permission prompts. Personal
 # overrides belong in the local file, which is not.
