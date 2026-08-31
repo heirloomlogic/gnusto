@@ -47,10 +47,13 @@ function lastStatus(text) {
   return fields
 }
 
-/// The reply to one command, read out of a transcript by its prompt line.
+/// The reply to one command, read out of a transcript by its prompt line. The
+/// *last* prompt of that name wins: a route replayed in one run may issue the same
+/// command more than once (its own `inventory` before the landing probe appends
+/// another), and the landing is the final one, never the first.
 function answerTo(text, command) {
   const needle = `\n> ${command}\n`
-  const at = text.indexOf(needle)
+  const at = text.lastIndexOf(needle)
   if (at < 0) return null
   const rest = text.slice(at + needle.length)
   const end = rest.search(/\n\[status\]/)

@@ -212,11 +212,18 @@ function verifyOne(game, dir, name) {
 
   const landing = readLanding(label)
   if (!landing.ok) return landing
-  if (landing.room !== route.landing?.room) {
+  // A route that declares no landing is unchecked, not failed: the engine loads one
+  // and does not check it either (it is what lets a route be hand-written before
+  // anything exists to fill the field in). The replay above still proves the
+  // commands run to the end; there is simply no claimed room to hold them to.
+  if (!route.landing?.room) {
+    return { ok: true, ...landing, note: 'no landing declared — replayed, not checked' }
+  }
+  if (landing.room !== route.landing.room) {
     return {
       ok: false,
       detail: `the route now ends in ${landing.room},`
-        + ` not the ${route.landing?.room || '(no room declared)'} it claims`,
+        + ` not the ${route.landing.room} it claims`,
     }
   }
   return { ok: true, ...landing }
@@ -386,7 +393,8 @@ function main() {
     const r = verifyOne(game, dir, name)
     if (r.ok) {
       console.log(`  ${GREEN}ok  ${OFF} ${name.padEnd(width)} ${r.room}`
-        + ` · moves=${r.moves} score=${r.score}`)
+        + ` · moves=${r.moves} score=${r.score}`
+        + (r.note ? ` ${DIM}(${r.note})${OFF}` : ''))
       if (r.carrying) console.log(`       ${' '.repeat(width)} ${DIM}${r.carrying}${OFF}`)
     } else {
       failed += 1

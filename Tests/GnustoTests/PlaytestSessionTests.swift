@@ -1028,8 +1028,9 @@ struct PlaytestSessionTests {
         // The command list is the same list, which is what makes a reproducer
         // filed from here reproduce.
         #expect(
-            try text(at: session.commandsURL) == "west\nlook\nx hook\neast\n")
-        #expect(await session.prefixCount == 2)
+            try text(at: session.commandsURL) == "west\nlook\nx hook\neast\n"
+        )
+        #expect(session.prefixCount == 2)
     }
 
     /// And it still exports as a verified regression test: `export` replays the
