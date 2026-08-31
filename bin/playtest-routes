@@ -11,11 +11,11 @@
 // **Why these are committed and slots are not.** A slot is `.gnusto` bytes under
 // gitignored `.context/`, and a fresh checkout holds none of them however carefully
 // a focus file describes them — which is how four real defects were discarded as
-// `not-reproducible` in one round. A route is text: `.playtest/<Game>/routes/<name>.txt`
-// plus a `.json` manifest, both committed, so a fresh checkout and a downstream clone
-// hold the same deep starts the round that made them did. The MCP `open` tool's
-// `start:` parameter reads them (see `PlaytestRoute` in the engine), and this script
-// is what writes them.
+// `not-reproducible` in one round. A route is text: one committed file,
+// `.playtest/<Game>/routes/<name>.json`, holding the commands and where they land,
+// so a fresh checkout and a downstream clone hold the same deep starts the round
+// that made them did. The MCP `open` tool's `start:` parameter reads them (see
+// `PlaytestRoute` in the engine), and this script is what writes them.
 //
 // **Why verification is replay and never a hash.** A save file cannot be asked what
 // it is a save of, which is why slots need a fingerprint receipt. A command list can
@@ -31,77 +31,17 @@
 
 'use strict'
 
-const { spawnSync } = require('node:child_process')
 const fs = require('node:fs')
 const os = require('node:os')
 const path = require('node:path')
 
 const focus = require('./lib/playtest-focus')
+const {
+  replay, turnCap, timeoutFor, lastStatus, answerTo, runReplay,
+} = require('./lib/playtest-replay')
 const { GREEN, RED, DIM, OFF } = focus
 
 process.chdir(focus.ROOT)
-
-// ---------------------------------------------------------------------------
-// Driving bin/playtest-replay
-// ---------------------------------------------------------------------------
-
-// The replay script is the one thing that knows how to boot the game with a pinned
-// seed and a transcript beside it. Cutting a route is replaying it and reading the
-// landing off the transcript; nothing about that is reimplemented here.
-function replay(args) {
-  const r = spawnSync('bin/playtest-replay', args, { encoding: 'utf8' })
-  return { status: r.status, out: `${r.stdout || ''}${r.stderr || ''}` }
-}
-
-// `--max-turns` refuses a list longer than 250 by default, which is a runaway guard
-// and not a budget: a 719-command route is exactly the case it is not for. Same for
-// the 60-second wall clock, which a seven-hundred-turn replay outgrows on a cold page
-// cache. Both are raised from the work rather than from a constant, so a longer route
-// needs no edit here.
-const turnCap = (n) => String(n + 50)
-const timeoutFor = (n) => String(Math.max(120, Math.ceil(n / 2)))
-
-/// The last `[status]` footer in a transcript, as its fields.
-///
-/// The footer is the harness's own line, not the game's, so it is the one thing in a
-/// transcript no game can re-voice — which is what makes reading it safe across seven
-/// games that share nothing else.
-function lastStatus(text) {
-  const hits = [...text.matchAll(/^\[status\] (.+)$/gm)]
-  if (!hits.length) return null
-  const fields = {}
-  for (const pair of hits[hits.length - 1][1].split('|')) {
-    const [k, ...v] = pair.trim().split('=')
-    fields[k.trim()] = v.join('=').trim()
-  }
-  return fields
-}
-
-/// The reply to one command, read out of a transcript by its prompt line.
-function answerTo(text, command) {
-  const needle = `\n> ${command}\n`
-  const at = text.indexOf(needle)
-  if (at < 0) return null
-  const rest = text.slice(at + needle.length)
-  const end = rest.search(/\n\[status\]/)
-  return (end < 0 ? rest : rest.slice(0, end)).trim()
-}
-
-// One command list, one replay, one temp file cleaned up either way. The failure
-// detail is the replay script's own last words, which is the only thing worth
-// showing when a cut of seven hundred commands stops early.
-function runReplay(name, commands, args) {
-  const list = path.join(os.tmpdir(), `playtest-routes-${process.pid}-${name}.txt`)
-  fs.writeFileSync(list, `${commands.join('\n')}\n`)
-  try {
-    const r = replay(['--commands', list, ...args])
-    return r.status === 0
-      ? { ok: true, out: r.out }
-      : { ok: false, detail: r.out.trim().split('\n').slice(-3).join(' / ') }
-  } finally {
-    fs.rmSync(list, { force: true })
-  }
-}
 
 // The newest transcript under a label. `bin/playtest-replay` allocates a fresh
 // probe-NNN per run precisely so a re-used label cannot overwrite evidence, so the
@@ -137,8 +77,10 @@ function routesDir(game) {
 }
 
 // The same alphabet the engine's `PlaytestSessions.isPlainName` keeps a route name
-// to — it is a file stem, and it travels through paths on both sides.
-const isPlainName = (s) => /^[A-Za-z0-9_-][A-Za-z0-9._-]*$/.test(s)
+// to — it is a file stem, and it travels through paths on both sides. The 64-character
+// cap included: a stem the engine's `open` would refuse must not be one this script
+// will cut.
+const isPlainName = (s) => /^[A-Za-z0-9_-][A-Za-z0-9._-]*$/.test(s) && s.length <= 64
 
 // Blank lines are dropped on read by the engine, so they are dropped here rather
 // than committed as something a reader might think meant something. A `//` or `#`
@@ -154,24 +96,34 @@ function readCommands(file) {
   return { commands }
 }
 
-function loadManifest(name, dir) {
+// One route file, read and checked the way the engine checks it at `open`
+// (`PlaytestRoute.load`): a whole-number seed of zero or more, and a commands
+// array with at least one command in it.
+function loadRoute(name, dir) {
+  let m
   try {
-    const m = JSON.parse(fs.readFileSync(path.join(dir, `${name}.json`), 'utf8'))
-    if (typeof m.seed !== 'number' || !Number.isInteger(m.seed) || m.seed < 0) {
-      return { error: `${name}.json declares no usable "seed"` }
-    }
-    return { manifest: m }
+    m = JSON.parse(fs.readFileSync(path.join(dir, `${name}.json`), 'utf8'))
   } catch (e) {
     return { error: `${name}.json is missing or unreadable (${e.message})` }
   }
+  if (!Number.isInteger(m.seed) || m.seed < 0) {
+    return { error: `${name}.json declares no usable "seed"` }
+  }
+  const commands = Array.isArray(m.commands)
+    ? m.commands.map((c) => String(c).trim()).filter((c) => c.length > 0)
+    : []
+  if (!commands.length) {
+    return { error: `${name}.json declares no "commands" array with a command in it` }
+  }
+  return { route: m, commands }
 }
 
 // The stems of the routes on disk, sorted. `list` and `verify` read the same
-// directory the engine does, and a `.txt` with no manifest is caught by whoever
-// reads its manifest, not silently dropped here.
+// directory the engine does, and a file that fails to parse is caught by whoever
+// reads it, not silently dropped here.
 function routeNames(dir) {
   return (fs.existsSync(dir) ? fs.readdirSync(dir) : [])
-    .filter((f) => f.endsWith('.txt')).map((f) => f.slice(0, -4)).sort()
+    .filter((f) => f.endsWith('.json')).map((f) => f.slice(0, -5)).sort()
 }
 
 // ---------------------------------------------------------------------------
@@ -206,7 +158,7 @@ function cut(game, dir, name, commands, seed, derivedFrom) {
   // A fresh label per route: the cut run's transcript is the evidence the manifest
   // was written from, and re-using one label would bury it under the next cut.
   const label = `routes-cut-${name}`
-  const r = runReplay(`cut-${name}`, landingCommands(commands), [
+  const r = runReplay('playtest-routes', `cut-${name}`, landingCommands(commands), [
     game,
     '--seed', String(seed),
     '--label', label,
@@ -220,13 +172,13 @@ function cut(game, dir, name, commands, seed, derivedFrom) {
   if (!landing.ok) return landing
 
   fs.mkdirSync(dir, { recursive: true })
-  fs.writeFileSync(path.join(dir, `${name}.txt`), `${commands.join('\n')}\n`)
-  // `landing.room` is the one field the engine checks at `open` (`PlaytestRoute`
-  // reads it and nothing else), but the rest is written because a person choosing
-  // between routes reads it — a deep start is chosen by what is true there, not by
-  // the room name alone.
+  // One file, commands and landing both: `landing.room` is the one field the
+  // engine checks at `open` (`PlaytestRoute` reads it and nothing else), but the
+  // rest is written because a person choosing between routes reads it — a deep
+  // start is chosen by what is true there, not by the room name alone.
   fs.writeFileSync(path.join(dir, `${name}.json`), `${JSON.stringify({
     seed,
+    commands,
     ...(derivedFrom ? { derivedFrom } : {}),
     landing: {
       room: landing.room,
@@ -240,26 +192,17 @@ function cut(game, dir, name, commands, seed, derivedFrom) {
 
 // A separate run from the cut — that is the whole point. Trusting the cut run's own
 // footer would make `verify` a restatement of what cut already printed; replayed
-// fresh, a route that no longer lands where its manifest claims is caught here,
+// fresh, a route that no longer lands where it claims is caught here,
 // which is the check a hash could never make.
 function verifyOne(game, dir, name) {
-  const loaded = loadManifest(name, dir)
+  const loaded = loadRoute(name, dir)
   if (loaded.error) return { ok: false, detail: loaded.error }
-  const { manifest } = loaded
-
-  let commands
-  try {
-    commands = fs.readFileSync(path.join(dir, `${name}.txt`), 'utf8')
-      .split('\n').map((l) => l.trim()).filter((l) => l.length > 0)
-  } catch {
-    return { ok: false, detail: `${name}.txt is missing` }
-  }
-  if (!commands.length) return { ok: false, detail: `${name}.txt holds no commands` }
+  const { route, commands } = loaded
 
   const label = `routes-verify-${name}`
-  const r = runReplay(`verify-${name}`, landingCommands(commands), [
+  const r = runReplay('playtest-routes', `verify-${name}`, landingCommands(commands), [
     game,
-    '--seed', String(manifest.seed),
+    '--seed', String(route.seed),
     '--label', label,
     '--max-turns', turnCap(commands.length),
     '--timeout', timeoutFor(commands.length),
@@ -269,11 +212,11 @@ function verifyOne(game, dir, name) {
 
   const landing = readLanding(label)
   if (!landing.ok) return landing
-  if (landing.room !== manifest.landing?.room) {
+  if (landing.room !== route.landing?.room) {
     return {
       ok: false,
       detail: `the route now ends in ${landing.room},`
-        + ` not the ${manifest.landing?.room || '(no room declared)'} its manifest claims`,
+        + ` not the ${route.landing?.room || '(no room declared)'} it claims`,
     }
   }
   return { ok: true, ...landing }
@@ -336,13 +279,16 @@ function main() {
   const derivedFrom = flags.get('--derived-from')
   const force = flags.has('--force')
 
-  // Building here rather than letting the first cut pay for it: a build inside a
-  // timed replay looks like a slow route, and the mtime gate in `bin/gnusto-mcp`
-  // exists so this is cheap on a warm tree.
-  const built = replay(['--build', game])
-  if (built.status !== 0) {
-    console.error(built.out)
-    process.exit(1)
+  // Building before any replay rather than letting the first cut pay for it: a
+  // build inside a timed replay looks like a slow route, and the mtime gate in
+  // `bin/gnusto-mcp` exists so this is cheap on a warm tree. `list` never boots the
+  // engine, so it never asks for the build.
+  if (verb !== 'list') {
+    const built = replay(['--build', game])
+    if (built.status !== 0) {
+      console.error(built.out)
+      process.exit(1)
+    }
   }
 
   if (verb === 'list') {
@@ -355,20 +301,18 @@ function main() {
     console.log(`\n  ${gameKey}: ${names.length} route(s) in ${DIM}${dir}${OFF}\n`)
     const width = Math.max(...names.map((n) => n.length)) + 2
     for (const name of names) {
-      const loaded = loadManifest(name, dir)
+      const loaded = loadRoute(name, dir)
       if (loaded.error) {
         console.log(`  ${RED}bad ${OFF} ${name.padEnd(width)} ${loaded.error}`)
         continue
       }
-      const { manifest } = loaded
-      const commands = fs.readFileSync(path.join(dir, `${name}.txt`), 'utf8')
-        .split('\n').filter((l) => l.trim().length > 0).length
-      const room = manifest.landing?.room || '?'
-      const from = manifest.derivedFrom ? `${DIM}from ${manifest.derivedFrom}${OFF}` : ''
-      console.log(`      ${name.padEnd(width)} seed=${manifest.seed} · ${commands} commands`
-        + ` · ${room} ${from}`)
-      if (manifest.landing?.inventory) {
-        console.log(`      ${' '.repeat(width)} ${DIM}${manifest.landing.inventory}${OFF}`)
+      const room = loaded.route.landing?.room || '?'
+      const from = loaded.route.derivedFrom
+        ? `${DIM}from ${loaded.route.derivedFrom}${OFF}` : ''
+      console.log(`      ${name.padEnd(width)} seed=${loaded.route.seed}`
+        + ` · ${loaded.commands.length} commands · ${room} ${from}`)
+      if (loaded.route.landing?.inventory) {
+        console.log(`      ${' '.repeat(width)} ${DIM}${loaded.route.landing.inventory}${OFF}`)
       }
     }
     console.log('')
@@ -384,12 +328,10 @@ function main() {
         + ' stem: letters, digits, underscore, hyphen and dots, starting with none of "."')
       process.exit(2)
     }
-    for (const ext of ['.txt', '.json']) {
-      if (!force && fs.existsSync(path.join(dir, `${name}${ext}`))) {
-        console.error(`playtest-routes: ${dir}/${name}${ext} already exists —`
-          + ' pass --force to re-cut it.')
-        process.exit(2)
-      }
+    if (!force && fs.existsSync(path.join(dir, `${name}.json`))) {
+      console.error(`playtest-routes: ${dir}/${name}.json already exists —`
+        + ' pass --force to re-cut it.')
+      process.exit(2)
     }
     const read = readCommands(fromFile)
     if (read.error) {
@@ -433,14 +375,14 @@ function main() {
     console.log(`  ${gameKey}: no routes to verify in ${DIM}${dir}${OFF}.`)
     return
   }
-  const missing = wanted.filter((n) => !dirNames.includes(n))
+  const missing = new Set(wanted.filter((n) => !dirNames.includes(n)))
   for (const n of missing) console.error(`playtest-routes: no route "${n}" in ${dir}`)
 
   console.log(`\n  ${gameKey}: verifying ${wanted.length} route(s) in ${DIM}${dir}${OFF}\n`)
   const width = Math.max(...wanted.map((n) => n.length)) + 2
   let failed = 0
   for (const name of wanted) {
-    if (missing.includes(name)) { failed += 1; continue }
+    if (missing.has(name)) { failed += 1; continue }
     const r = verifyOne(game, dir, name)
     if (r.ok) {
       console.log(`  ${GREEN}ok  ${OFF} ${name.padEnd(width)} ${r.room}`
