@@ -221,8 +221,7 @@ deep start a *round* should ship — somewhere worth returning to that a tester 
 inside a turn budget — commit a route instead:
 
 ```
-.playtest/<Game>/routes/<name>.txt      the commands, one per line
-.playtest/<Game>/routes/<name>.json     { seed, derivedFrom, landing: {room, moves, score, inventory} }
+.playtest/<Game>/routes/<name>.json     one file: { seed, commands, derivedFrom, landing }
 ```
 
 ```sh
@@ -231,8 +230,8 @@ bin/playtest-routes Dungeon verify          # re-replay; check each landing
 bin/playtest-routes Dungeon list
 ```
 
-A route is verified by **replay, never a hash**: `verify` runs it fresh at its manifest seed
-and refuses it if it no longer ends in the room the manifest claims. The MCP `open` tool takes
+A route is verified by **replay, never a hash**: `verify` runs it fresh at its declared seed
+and refuses it if it no longer ends in the room it claims. The MCP `open` tool takes
 `start: "<route name>"` and hands the tester the landing — the tester never sees the commands.
 A game with no routes needs nothing: testers play cold, and the round's own output is the next
 round's deep starts.
