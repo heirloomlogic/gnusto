@@ -51,6 +51,8 @@ Building is a separate one-shot on purpose: a replay that also builds cannot be 
 
 `bin/playtest-measure` reads a probe directory and reports what the run covered: rooms entered, distinct verbs, objects examined, objects touched and then re-examined. Its counting rules are frozen deliberately, so a number from last year still compares.
 
+Both scripts live in the Gnusto repository. `Templates/NewGame/bin/` ships only `bin/gnusto-mcp`, because everything the next section describes is in the engine itself, while these two are the engine's own operating tools — read them there and adapt what you need.
+
 `docs/playtesting.md` in the repository is the operating manual for doing this by hand, and carries the calibration answer key — the defects a round is supposed to find. A round that finds nothing is a broken harness before it is a clean game.
 
 ## Serving the game to an agent
@@ -83,13 +85,14 @@ Two things worth knowing before the first run. A cold start builds the game, whi
 
 ## The tools
 
-Thirteen of them. The ones that advance a world are applied in the order they arrived on the wire, so two `move` calls in flight cannot land in an order nobody picked; the rest are answered concurrently.
+Fourteen of them. The ones that advance a world are applied in the order they arrived on the wire, so two `move` calls in flight cannot land in an order nobody picked; the rest are answered concurrently.
 
 | Tool | Turns | What it does |
 |---|---|---|
 | `survey` | none | Everything true of the game before anybody plays it: rooms and connections, declared fuses and daemons, the verb table, the cast, the maximum score, and the bootstrap's warnings. This is the answer key, so a session opened in a play-testing role is refused it. |
 | `vocabulary` | none | Whether the parser knows each of a list of words, in one call. Also answer-key data, and refused to a tester for the same reason: somebody who can look up the vocabulary can never find the defect where a room description prints a noun the parser has never heard of. |
-| `open` | — | Boots the game at a pinned seed and returns the session id, the opening text, and the status line. The session records to disk from this moment, so a crash anywhere still leaves evidence. |
+| `resolve` | none | What each of a list of words actually names in the room the session is standing in — not whether the game knows the word, which is what `vocabulary` answers. Answer-key data too, and refused to a tester for a sharper version of the same reason: several words all answered by the *same* thing is a defect no other instrument here can see, and somebody who can ask has been handed it. |
+| `open` | — | Boots the game at a pinned seed and returns the session id, the opening text, and the status line. It also takes `start`, the name of a committed route: the server plays that walk before the session's first turn and hands back the frame it ends on. The session records to disk from this moment, so a crash anywhere still leaves evidence. |
 | `move` | yes | Plays one or more commands and returns transcript form with a `[status]` line under every turn. The batch stops early, and says how many commands went unrun, when the game ends. |
 | `recall` | none | Reads a numbered slice of the transcript back, optionally filtered — each matching turn returned whole, so the command that caused a line comes with it. |
 | `coverage` | none | What the game has shown you and you never followed up, cheapest first, each one a command to paste: a noun the prose printed that you never named, a direction a room described that you never took, an object you changed and never looked at again. |
@@ -102,6 +105,20 @@ Thirteen of them. The ones that advance a world are applied in the order they ar
 | `replay` | none | Plays a command list in a brand-new copy with no session at all. Give it an excerpt to `expect` and you get a verdict instead — whether that text really printed, at which turn, in which room, and the whole turn it printed in. |
 
 The refusals in the first two rows are the design, not a limitation. A tester holding the answer key stops being a player, and the defect that matters most is the one only a player can see.
+
+### Deep starts
+
+A game whose map outruns a session's budget cannot be tested at its far end on foot. So a route — a command list, the seed it was recorded at, and the frame it ends in — is committed beside the game:
+
+```
+.playtest/<Game>/routes/<name>.json
+```
+
+`open` takes one by name and plays it silently. The tester is handed the frame it stopped on and never the commands: `recall` will not read them back, and the rooms the route crossed are not credited as anything the tester covered. `closing.json` records `prefixTurns`, so a round can say how much of a session was the harness walking rather than the tester playing.
+
+A route is checked by **replay, never by a hash**. Bytes on disk cannot say what they were cut from; a command list can be run. If it no longer ends where its manifest claims, it is stale, and the failure says which room it ends in now.
+
+**A game with no routes needs nothing.** `.playtest/` starts empty, every session opens at turn zero, and a game's routes accumulate out of the sessions that found somewhere worth returning to.
 
 ### Where sessions live
 

@@ -19,6 +19,7 @@ that covers your task before writing code.
 | `docs/games/*.md` | per-game design docs — **story-and-copy source of truth**, iterated separately from code. Not every game has one; alongside each, its play-test round reports and ledger |
 | `docs/playtesting.md` | how to play a game by hand and read the transcript as prose, plus the calibration answer key |
 | `.claude/skills/playtest/`, `.claude/workflows/playtest.js` | the automated play-test harness: subagents play, read prose, and report lines untrue of their frame. `bin/playtest-preflight` is its front door — see "Kicking off a play-test round" |
+| `.playtest/<Game>/routes/`, `bin/playtest-routes` | committed **deep starts**: a named command list, its seed and the frame it ends in, one JSON file each. `open({start:})` and `bin/playtest-replay --start` are the two doors, and a game with none needs none |
 | `bin/playtest-replay` | one-line non-interactive replay of any game, seed pinned |
 | `bin/gnusto-mcp`, `.mcp.json` | every demo game as an MCP play-test server — an agent opens a session, takes turns, and is told what it was shown and never followed up. One binary is one game, so no tool takes a game name |
 | `FIDELITY.md` | Zork 1 and Dungeon only: where their content departs from the original. Nothing else uses it. The two do **not** share a prose rule: Zork 1 reproduces verbatim, Dungeon adapts, and the Dungeon section states its rule before any region entry |
@@ -65,8 +66,9 @@ bin/playtest-measure .context/playtest/mine/probe-*   # rooms, verbs, objects �
 
 ## Kicking off a play-test round
 
-Three steps, in order. There is no fourth, and skipping the first is what killed the
-last several rounds.
+Two steps, in order, and skipping the first is what killed the last several rounds.
+There used to be a third, cutting the round's saved games. A deep start is a committed
+route now, so a fresh checkout already has every one and there is nothing left to cut.
 
 ```sh
 bin/playtest-preflight Dungeon     # builds; proves the server answers; non-zero if not
@@ -81,12 +83,17 @@ bin/playtest-preflight Dungeon     # builds; proves the server answers; non-zero
    one check that is about the *round* rather than the server: a key stored with an
    ellipsis in it can never match one `normalize()` produces, so a ledger holding
    refutations and no usable key is red, not a zero in dim text.
+   Its `routes` row is the other: it reads `.playtest/<Game>/routes/`, refuses a route
+   that declares no seed, no commands or no landing, and refuses a game whose routes
+   disagree about a seed, because a round pins one and every seat uses it. A game with
+   no routes at all is green and its testers play cold.
    Green means dispatchable.
-2. **If it reports the tools unregistered, try again, then restart.** The MCP client
+
+   *If it reports the tools unregistered, try again, then restart.* The MCP client
    re-attempts a server that failed, so a session that has just warmed the tree can
    reach one it could not a minute earlier. Restart only if that doesn't take — and
    always after editing `Sources/Gnusto/Playtest/`, where no retry helps.
-3. **Dispatch** with the args preflight wrote to `.context/playtest-round-args.json`:
+2. **Dispatch** with the args preflight wrote to `.context/playtest-round-args.json`:
    `Workflow({scriptPath: ".claude/workflows/playtest.js", args: <that JSON>})`.
    `bin/playtest-preflight <Game> --headless` does it for you through `claude -p`,
    which is the fallback for an agent whose tool surface has no `Workflow`.
@@ -103,12 +110,15 @@ Four facts that bite and are not guessable from the code:
   between them is chunked across the blind seats and pasted into their prompts
   verbatim; everything below the second reaches the *sighted* charters only. That is
   where a row belongs if it is keyed to a sighted charter — `solver:`, `wrong-footer:`
-  — or names the walkthrough by type, the ledger, or a slot's contents. Not "anything
-  with a route index in it": a region has to tell its tester how deep a slot stands,
-  so `` `d-1` (cut at `route[0:113]`) `` stays in the blind half and is the one place
-  slots are declared. It used to be "region four", which worked only because the
-  old modulo seating handed region four to nobody — and the day `chunkRegions` fixed
-  the seating, the same paragraph went straight into a blind explorer's prompt.
+  — or names the walkthrough by type, the ledger's verdicts, or the room a deep start
+  lands in. Not "anything that mentions a deep start": a region has to tell its tester
+  which route to open with and roughly how deep it stands, or the tester walks instead,
+  so `` `d-1` (about 110 moves in) `` stays in the blind half and the regions are the
+  one place a round's routes are declared. The *landing* is what stays below the rule,
+  because it is a room name and a blind explorer is there to discover it. The line used
+  to be "region four", which worked only because the old modulo seating handed region
+  four to nobody — and the day `chunkRegions` fixed the seating, the same paragraph
+  went straight into a blind explorer's prompt.
 - **`roundId` is required, and nothing needs clearing between rounds.** Every label
   leads with it, so `.context/playtest/` can hold every round this checkout ever ran
   without one round's turns landing in another's arithmetic. That used to be wrong

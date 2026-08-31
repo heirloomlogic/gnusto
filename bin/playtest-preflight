@@ -39,7 +39,7 @@ const path = require('node:path')
 // list of its own.
 const {
   ROOT, SCRATCH, GREEN, RED, DIM, OFF,
-  gameDoc, focusParts, seedFor, routesDir, routeManifests, routeSeeds,
+  gameDoc, focusParts, seedFor, routesDir, routeManifests, usableRoutes, routeSeeds,
   describePackage, executableProducts, resolveGame, ledgerScan,
 } = require('./lib/playtest-focus')
 
@@ -328,7 +328,8 @@ function routesRows(game) {
   // cold, and the round's own output is the next round's deep starts.
   if (!routes.length) return []
 
-  const broken = routes.filter((r) => r.error || !r.landing?.room).map((r) => r.name)
+  const usable = new Set(usableRoutes(game))
+  const broken = routes.filter((r) => !usable.has(r.name)).map((r) => r.name)
   const seeds = routeSeeds(game)
   const ok = !broken.length && seeds.length === 1
   return [{
@@ -374,6 +375,32 @@ function focusRows(game, roster) {
   // A roster arrives only if the session above opened. Reporting green on an empty
   // one would let the check that exists *because* the manual version got skipped be
   // skipped itself, silently, in the run where the server was broken.
+  // *The routes.* A region tells its tester which deep start to open with, and the
+  // name is now free text where it used to be a declaration a script parsed — the
+  // slot machinery read `` `d-1` (cut at `route[0:113]`) `` out of these sentences and
+  // failed loudly on one that would not parse. Losing that parse lost the check with
+  // it, and a renamed or mistyped route now reaches a live tester and dies at `open`,
+  // which is the class of failure "green means dispatchable" exists to move earlier.
+  //
+  // Both halves are scanned: the sighted addendum names routes too.
+  //
+  // **The shape is the convention and the check fails open.** A backticked token is a
+  // route reference when it reads `<letters>-<digits>`, which every route this repo
+  // has ever cut does and no verb, tool name or file path does. A route named outside
+  // it goes unchecked rather than falsely red — a heuristic that invents failures is
+  // one an operator learns to skip past, and this row has to stay worth reading.
+  const { sighted } = focusParts(focusPath)
+  const usable = new Set(usableRoutes(game))
+  const named = [...new Set(
+    [...`${blind}\n${sighted}`.matchAll(/`([A-Za-z]{1,4}-\d+)`/g)].map((m) => m[1])
+  )]
+  const missing = named.filter((name) => !usable.has(name))
+  add('focus routes', missing.length === 0,
+    named.length ? `${named.length} named, ${missing.length} missing` : 'none named',
+    missing.length
+      ? `${focusPath} sends a tester to ${missing.join(', ')}, which ${routesDir(game)} does not hold`
+      : null)
+
   add('focus rooms', roster.length > 0 && leaks.length === 0,
     roster.length ? `${leaks.length ? leaks.slice(0, 3).join(', ') : 'none'} of ${roster.length} named` : 'no roster to check against',
     !roster.length
@@ -446,8 +473,16 @@ function roundArgs(game, mcpKey) {
     // pair of fields can enforce.
     focus: split.blind,
     focusSighted: split.sighted,
-    // No `slots` field: nothing cuts saved games any more. #366 replaces it with
-    // the round's route names.
+    // The deep starts this round can hand out, by name — the same predicate the
+    // `routes` row above turns red on, so a game cannot be dispatchable and broken in
+    // the same breath about the same file.
+    //
+    // **Names only.** The manifest also holds the room each route lands in, and that
+    // room is precisely what the firewall withholds: a blind explorer's coverage plan
+    // is written in affordances because a display name in its prompt is a room it was
+    // meant to discover. The landings are printed by the `routes` row, for the
+    // operator, and go no further.
+    routes: usableRoutes(game),
     ledgerKeys: ledgerPath ? ledgerScan(ledgerPath).keys : [],
     // Issues that OWN a defect class the round should forward rather than judge.
     // Ownership is a judgement and not a query, so this stays empty — the safe
@@ -557,7 +592,8 @@ async function main() {
   fs.writeFileSync(ARGS_OUT, JSON.stringify(args, null, 2) + '\n')
   console.log(`\n  Round args -> ${ARGS_OUT}`)
   console.log(`    ${DIM}seed ${args.seed} | roundId ${args.roundId}`
-    + ` | capabilities [${args.capabilities.join(', ')}]${OFF}`)
+    + ` | capabilities [${args.capabilities.join(', ')}]`
+    + ` | routes [${args.routes.join(', ') || 'none — testers play cold'}]${OFF}`)
   console.log(`    ${DIM}docPath ${args.docPath || 'null'} | ledgerKeys ${args.ledgerKeys.length}`
     + ` | focus ${args.focus ? args.focus.length + ' chars' : 'none'}`
     + ` | sighted-only ${args.focusSighted ? args.focusSighted.length + ' chars' : 'none'}`

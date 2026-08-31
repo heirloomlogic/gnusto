@@ -268,6 +268,7 @@ actually ringing.
 | `.context/playtest/<label>/<probe>/` | no | one run: transcript, effective command list, stderr, summary |
 | `.context/playtest/<label>/saves/` | no | the label's save slots, shared by its probes |
 | `.context/playtest/<label>/<probe>/saves-in/` | no | the slots a `--saves-from` run was staged with, kept where they outlive the label |
+| `.playtest/<Game>/routes/<name>.json` | yes | a deep start: the commands, the seed and the frame they end in. The one piece of a round's provenance that is in git, which is why a finding taken from a route cites it by name and needs nothing else |
 | `docs/games/<game>-playtest-<date>.md` | yes | the round report |
 | `docs/games/<game>-playtest-ledger.md` | yes | append-only dedupe keys and verdicts |
 | one GitHub issue | — | every confirmed class as a checklist — see `.claude/skills/playtest/references/issue-shape.md` |

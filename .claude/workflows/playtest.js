@@ -97,13 +97,27 @@ const focus = typeof ARGS.focus === 'string' ? ARGS.focus.trim() : ''
 // it is never chunked, never seated, and asserted absent from every blind prompt.
 const focusSighted = typeof ARGS.focusSighted === 'string' ? ARGS.focusSighted.trim() : ''
 
-// `slots` is the label a round's pre-cut saves were written to by
-// `bin/playtest-slots`. A tester's `open` stages them into its own label, so a
-// region that says "restore `d-1`" can be obeyed. Without it the game answers
-// `Restore failed.`, and SKILL.md records that answer producing four false
-// `not-reproducible` verdicts in one round: it is about the harness, and it reads
-// like a finding about the game.
-const slotsFrom = typeof ARGS.slots === 'string' ? ARGS.slots.trim() : ''
+// The deep starts this round can hand out: the names of the committed routes under
+// `.playtest/<game>/routes/`, read by `bin/playtest-preflight` and passed straight
+// through. A region that says "start from `d-1`" is obeyed by putting `start: "d-1"`
+// on the `open` call, and a name that is not in this list has nothing behind it.
+//
+// **Names only, and never a landing.** A route's manifest also holds the room it ends
+// in, and that room is exactly what the firewall withholds: the coverage plan is
+// written in affordances because a display name pasted into a blind explorer's prompt
+// is a room it was supposed to discover. `bin/playtest-preflight`'s `routes` row prints
+// the landings for the operator, which is where they belong; this list is what travels.
+const routes = Array.isArray(ARGS.routes) ? ARGS.routes : []
+// The names as the prompt prints them, built here rather than inline: inline would be
+// a third level of nested template literal, where the backticks around a route name
+// need three escapes to survive. One level, one place to read.
+const routeList = routes.map((r) => '`' + r + '`').join(', ')
+// The paragraph's first sentence, hoisted so `playtest.dryrun.mjs` can read it out of
+// this source with `layoutConst` and assert that it reached every seat. A dry run that
+// hardcodes its own copy of a prompt sentence goes quietly vacuous the day the
+// sentence is reworded, which is the failure `REGION_RESIDUAL` is declared this way to
+// avoid.
+const DEEP_START_LEAD = 'This round ships deep starts, and the routes it can hand you are'
 // Reasoning effort for the verifiers, which are the round's largest fan-out: two
 // independent raters over each batch of 25, so they set its cost. Left inheriting
 // by default. Turning it down is a budget call and belongs to the operator, not to
@@ -280,27 +294,18 @@ const VERIFY_GLOB = `${ROUND_PREFIX}-r*-${VERIFY_SEGMENT}-*`
 // told to name rather than absorb.
 const ROUND_GLOB = `${ROUND_PREFIX}-*`
 
-// The fifth tree, and the newest. `bin/playtest-slots` cuts the round's saved games
-// by walking the committed walkthrough, and it verifies each cut by restoring it —
-// real world turns, hundreds of them, under a label of the tool's own choosing.
+// There is no fifth tree, and there used to be. A round's deep starts were `.gnusto`
+// saves cut under a label with no round id in it, because the bytes were cut once and
+// reused by every round the walkthrough had not moved under — so no round glob could
+// see them, and 758 turns arrived in `unattributed` on 2026-08-29 as a mystery for the
+// critic to reconcile by hand. It cost a named row held out of `total`, an exclusion
+// negating it out of the harness row, and an exemption from the rule that every glob
+// carries a round id.
 //
-// That label is deliberately *not* round-scoped: slots are cut once and reused by
-// every round the route has not moved under, so `${ROUND_GLOB}` cannot see them and
-// they landed in `unattributed`. On 2026-08-29 that was 758 turns — 704 in the cut
-// and 54 in its checks — handed to the critic as a mystery it had to reconcile by
-// hand. `playtest.js:247` already says what to do about a tree that is *known* to
-// exist and known not to be coverage: give it a named row, because the residual is
-// for the tree nobody has thought of yet.
-//
-// The trailing `*` catches the `-check` sibling the verification pass writes.
-const SLOTS_GLOB = slotsFrom ? `${slotsFrom}*` : null
-
-// The harness row is counted by exclusion, so every tree with a row of its own has
-// to be negated out of it or it is counted twice. Today the two cannot overlap —
-// the harness recipe is scoped to `ROUND_GLOB` and the slots label is not round
-// scoped — but that is a coincidence of two naming schemes, and the day somebody
-// round-scopes the slots label the double count arrives silently.
-const SLOTS_EXCLUDE = SLOTS_GLOB ? ` ! -path "*/${SLOTS_GLOB}/*"` : ''
+// A deep start is now a route the session plays inside the tester's own label, so those
+// turns land in `sessions` where they were always going to, `prefixTurns` off each
+// `closing.json` says how many the harness walked, and all three special cases went
+// with the tree.
 
 // The probe layout, declared once. Everything below that names a directory or a
 // file under the scratch tree is built from these, and `playtest.dryrun.mjs`
@@ -424,8 +429,8 @@ somebody else's finding.
 
 ${focus}
 ` : ''}${focusSighted ? `
-**Rows for the sighted seats only.** These name the walkthrough, route indices, ledger
-verdicts or what a slot is holding — answer-key material a blind charter is not given.
+**Rows for the sighted seats only.** These name the walkthrough, the ledger's verdicts,
+or the room a deep start lands in — answer-key material a blind charter is not given.
 Find your own charter here too.
 
 ${focusSighted}
@@ -620,16 +625,20 @@ const FINDINGS_SCHEMA = {
           },
           reproducer: {
             type: 'array',
-            description: 'Shortest command list from a clean start — or, when it begins `restore`, from the save slots named in `savesFrom`. Replayed before reporting.',
+            description: 'Shortest command list from a clean start — or, when it begins `restore`, from the save you wrote yourself, named in `savesFrom`. A list taken from a deep start begins at the landing and needs no prologue: the verifier replays it with `--start`, which is a flag and not a command.',
             items: { type: 'string' },
+          },
+          startedFrom: {
+            type: 'string',
+            description: 'Set ONLY when the reproducer begins at a deep start: the name of the route you opened with, exactly as you passed it to `start`. The verifier replays it as `--start <name>`, which plays the committed route ahead of your list and takes the seed off its manifest. A deep finding filed without this is replayed from turn zero, where its commands mean something else or nothing at all.',
           },
           savesFrom: {
             type: 'string',
-            description: 'Set ONLY when the reproducer begins `restore`: the play label whose slot it restores, which is the label you opened under. A reproducer that needs a save is a legitimate reproducer, and this field is how it says so — without it the replay answers "Restore failed." and the finding is dropped as not-reproducible, which is how four real defects were lost in the 2026-08-25 Dungeon round.',
+            description: 'Set ONLY when the reproducer begins `restore`: the play label holding the save it restores, which is the label you opened under. This is about a save YOU wrote mid-session — a deep start is a route and wants `startedFrom` instead. A reproducer that needs a save is a legitimate reproducer, and this field is how it says so; without it the replay answers "Restore failed." and the finding is dropped as not-reproducible, which is how four real defects were lost in the 2026-08-25 Dungeon round.',
           },
           replayedCleanly: {
             type: 'boolean',
-            description: 'True only if the trimmed reproducer was re-run and produced the excerpt — from a clean start, or from the slots named in `savesFrom`. A staged re-run counts; a re-run you did not do does not.',
+            description: 'True only if the trimmed reproducer was re-run and produced the excerpt — from a clean start, from the route named in `startedFrom`, or from the save named in `savesFrom`. A staged or deep re-run counts; a re-run you did not do does not.',
           },
           transcriptPath: {
             type: 'string',
@@ -836,8 +845,7 @@ const COLLATOR_SCHEMA = {
         'sessions', 'branches', 'replays', 'replayProbes',
         'playReplays', 'playProbes', 'verifyReplays', 'verifyProbes',
         'harnessReplays', 'harnessProbes',
-        ...(SLOTS_GLOB ? ['slotsReplays', 'slotsProbes'] : []),
-        'all',
+        'all', 'prefixTurns',
       ],
       description:
         'World turns counted off the `[status]` footers — every `turn=cost` is one turn the game charged, and every `turn=free` is a parse failure or a meta command that charged nothing. Counted, never asked: the 2026-08-17 round reported 295 against artifacts holding about 1,493, and the 2026-08-18 round reported 11,238 while 32,987 typed commands sat in trees nothing globbed.',
@@ -852,8 +860,7 @@ const COLLATOR_SCHEMA = {
         verifyProbes: { type: 'integer', description: 'How many probe directories exist under the verify labels.' },
         harnessReplays: { type: 'integer', description: 'In every other probe transcript this round wrote: the round\'s own machinery — the cartographer\'s survey session, and whatever ad-hoc label an operator replayed under to check a route prefix or a random rate before dispatching anybody. Counted by exclusion, because an operator\'s label cannot be listed in advance. This used to land in the residual and be handed to the critic as a mystery: 8,095 turns on 2026-08-24.' },
         harnessProbes: { type: 'integer', description: 'How many probe directories that count belongs to.' },
-        slotsReplays: { type: 'integer', description: 'In the probes `bin/playtest-slots` wrote cutting and verifying this round\'s saved games. Real turns — the cut walks the committed walkthrough — but neither coverage nor checking, so they get a row of their own rather than inflating the testers\'. The label is not round-scoped, because slots outlive the round that cut them, so no round glob can see it: 758 of these arrived as an unexplained residual on 2026-08-29.' },
-        slotsProbes: { type: 'integer', description: 'How many probe directories that count belongs to — the cut is one, and each verification restore is another.' },
+        prefixTurns: { type: 'integer', description: 'The `prefixTurns` of every `closing.json`, summed. Not a twelfth tree: these turns are already inside `sessions`, because a deep start is a route the server plays into the tester\'s own transcript. This is the share of that number the harness walked rather than the tester typed. Zero is the ordinary answer, since most sessions open at turn zero. A round whose servers all predate the field reports zero too, which is what `bin/playtest-preflight`\'s `closing.json` row is checked for before dispatch.' },
         all: { type: 'integer', description: 'Every `turn=cost` anywhere under `.context/playtest`, with no glob applied — the residual against the five turn counts above is how a label tree nobody globs for announces itself instead of reading as zero.' },
       },
     },
@@ -1527,9 +1534,11 @@ with \`ToolSearch\`, query \`select:${tools}\`.
 
 ${toolsOrStop}
 
-Open with \`label: "${sessionLabelFor(round, assignment.key)}"\`, \`seed: ${seed}\`, \`role: "${charter.blind ? 'explorer' : 'unrestricted'}"\`${charter.blind ? `, \`divergence: "${assignment.divergence}"\`` : ''}${slotsFrom ? `, \`savesFrom: "${slotsFrom}"\`` : ''}.
-${slotsFrom ? `\`savesFrom\` copies this round's pre-cut saved games into your label, and your \`open\` reply lists them under \`savesStaged\`. They are what your assignment means by "restore \`x-1\`": a slot is a state hundreds of moves deep that you are not expected to walk to. \`restore\` asks for a file name, so send it and the slot name in ONE \`move\` call with \`allowPrompts: true\` — \`commands: ["restore", "<slot>", "look"], allowPrompts: true\` — or the batch stops at the prompt and the rest of your commands are thrown away.
-` : ''}
+Open with \`label: "${sessionLabelFor(round, assignment.key)}"\`, \`seed: ${seed}\`, \`role: "${charter.blind ? 'explorer' : 'unrestricted'}"\`${charter.blind ? `, \`divergence: "${assignment.divergence}"\`` : ''}.
+${routes.length ? `${DEEP_START_LEAD} ${routeList}. Your assignment names the one it means; \`open\` takes it as \`start: "<name>"\`, the route's turns are not charged to you, and the commands are not yours to read. The tool's own description has the rest.
+${routes.length > 1 ? `
+A session takes one route, at \`open\`. If your assignment names a second, work the first to the end, \`finish\` it, then \`open\` a fresh session under \`label: "${sessionLabelFor(round, assignment.key)}-b"\` with the other \`start\`. Keep the suffix on the end of that label — everything the round counts is globbed off it.
+` : ''}` : ''}
 ${charter.blind ? `**Read the \`instruction\` your open returns and follow it for the whole session.** It tells you what to do the first time the game offers you something you cannot take back. Another tester has been given the opposite orders, so the branch you leave alone is covered and the one you take is yours to describe.\n` : ''}
 Every turn's output ends with a \`[status]\` line naming the room, the move counter and
 whether the command cost a turn. \`note\` writes a comment into your transcript at the
@@ -1551,17 +1560,27 @@ ${!charter.blind && seen.size ? `\nAlready seen in earlier rounds or the ledger 
 The session records to disk from the moment you open it, so the evidence is already
 attached: carry the transcript path your \`open\` returned into \`transcriptPath\`. Use
 \`replay\` to re-run a trimmed reproducer from a clean start before you report it — it
-boots a fresh world and touches nothing, so it cannot disturb your session. If your
-reproducer begins \`restore\`, pass \`savesFrom: "${sessionLabelFor(round, assignment.key)}"\`
-so the replay can read the slot you wrote; without it the game answers "Restore failed."
-and the verdict is about the harness rather than about your finding — and the answer says
-so, on a \`restore-unreachable\` line. **Put that same label in the finding's own
-\`savesFrom\` field.** A reproducer that needs a save is a legitimate reproducer, and that
-field is the only way it can say so; a staged reproducer filed without it reaches the
+boots a fresh world and touches nothing, so it cannot disturb your session.
+
+Two reproducers do not start clean, and each has one field that says so.
+
+**One taken from a deep start** cannot go through \`replay\` at all, which always boots at
+turn zero. Take a \`checkpoint\` on the turn your session opens — that is the frame the
+route stopped on — and \`restore\` to it to re-run a trimmed list from exactly where you
+began. **Put the route name in the finding's \`startedFrom\` field**, or the verifier
+replays your commands from turn zero, where they mean something else or nothing at all.
+
+**One that begins \`restore\`** needs the save you wrote: pass
+\`savesFrom: "${sessionLabelFor(round, assignment.key)}"\` to \`replay\`, or the game answers
+"Restore failed." and the verdict is about the harness rather than about your finding —
+and the answer says so, on a \`restore-unreachable\` line. **Put that same label in the
+finding's own \`savesFrom\` field.** A staged reproducer filed without it reaches the
 verifier looking like one that starts clean, and is refuted for a reason that is about the
-harness. Set \`replayedCleanly\` honestly either way — it means you re-ran the trimmed list
-and saw the excerpt, from clean or from those slots. A finding whose reproducer you did not
-re-verify is dropped at triage, so guessing gains you nothing.
+harness.
+
+Set \`replayedCleanly\` honestly in all three cases — it means you re-ran the trimmed list
+and saw the excerpt, from clean, from the route, or from your save. A finding whose
+reproducer you did not re-verify is dropped at triage, so guessing gains you nothing.
 
 Your coverage note is not a formality. Name what you did not reach. A charter that
 reports findings and hides its gaps makes the round look thorough when it was not.`,
@@ -1588,7 +1607,7 @@ reports findings and hides its gaps makes the round look thorough when it was no
     for (const f of report.findings || []) {
       f.charter = report.charter
       // The tester's own `savesFrom` wins over the label they opened under: a
-      // reproducer may restore a slot written under a different label, and the
+      // reproducer may restore a save written under a different label, and the
       // session label is only the fallback for one that named none.
       f.sessionLabel = f.savesFrom || report.sessionLabel
       if (f.routedTo) {
@@ -1596,7 +1615,7 @@ reports findings and hides its gaps makes the round look thorough when it was no
         continue
       }
       if (!f.replayedCleanly) {
-        record(refuted, { ...f, refutationKind: 'not-reproducible', reason: 'The tester did not re-verify the trimmed reproducer — from a clean start, or from the slots its `savesFrom` named.' })
+        record(refuted, { ...f, refutationKind: 'not-reproducible', reason: 'The tester did not re-verify the trimmed reproducer — from a clean start, from the route its `startedFrom` named, or from the save its `savesFrom` named.' })
         continue
       }
       candidates.push(f)
@@ -1734,7 +1753,8 @@ ${batch
   Frame:      ${f.frame.room}${f.frame.hour ? ' @ ' + f.frame.hour : ''} — ${f.frame.state}
   Reproducer: ${JSON.stringify(f.reproducer)}
   Fault:      ${f.fault}
-  Owner file: ${f.ownerFile}
+  Owner file: ${f.ownerFile}${f.startedFrom ? `
+  Start:      ${f.startedFrom}` : ''}
   Saves:      ${f.sessionLabel || 'unknown'}`
   )
   .join('\n')}
@@ -1757,15 +1777,17 @@ repo's testers have actually been wrong, most frequent first.
    commands and parse failures cost no turn. If the quoted text is not in the tree, or
    the frame does not match the footer, refute and say which.
 
-   **A reproducer taken from a deep start needs the route, not a save.** A round's deep
-   starts are committed routes, and one flag plays the route ahead of your command list:
-   \`bin/playtest-replay ${game} --start <route> --commands <file> --seed ${seed} --label ${verifyLabel}-<n>\`.
+${routes.length ? `   **A finding with a \`Start:\` row was taken from a deep start, and needs its route
+   rather than a save.** One flag plays it ahead of your command list:
+   \`bin/playtest-replay ${game} --start <that route> --commands <file> --seed ${seed} --label ${verifyLabel}-<n>\`.
    The seed above is the routes' own — a round takes its seed from them — so it agrees and
    the run proceeds; a \`--seed\` that DISAGREED would be refused rather than quietly
-   winning, because a route replayed at another seed lands somewhere else.
+   winning, because a route replayed at another seed lands somewhere else. Drop the flag
+   on a finding that carries the row and you walk its commands somewhere else entirely,
+   then refute a real defect. No row means the reproducer begins at turn zero.
    \`bin/playtest-routes ${game} list\` says which routes exist and where each one lands.
 
-   **A reproducer whose first command is \`restore\` needs the tester's save slots.**
+` : ''}   **A reproducer whose first command is \`restore\` needs the save the tester wrote.**
    Add \`--saves-from <the finding's \`Saves:\` label>\` and those slots are copied into your
    own label before the run, so \`restore\` reaches the slot the tester wrote. The copy is
    one way and cannot touch their label. \`--saves-from\` also takes a **path** — anything
@@ -2210,23 +2232,19 @@ function countedTurns(turns) {
     (t.sessions || 0) + (t.branches || 0) + (t.playReplays || 0) + (t.replays || 0)
   const verifiers = t.verifyReplays || 0
   const harness = t.harnessReplays || 0
-  // Counted and named, but deliberately **not** in `total`. The slots label carries
-  // no `roundId` — slots are cut once and reused by every round the route has not
-  // moved under — so a second round in the same checkout would charge itself the
-  // first one's cutting, which is the exact arithmetic the round id was added to
-  // labels to stop. What these turns are owed is an explanation, not a column in
-  // somebody's spend: they are subtracted from the residual instead, so
-  // `unattributed` goes back to meaning "a tree nobody has thought of".
-  const slots = t.slotsReplays || 0
+  // `prefixTurns` rides through on the spread and is added to nothing: a deep start
+  // is a route the server plays into the tester's own transcript, so its turns are
+  // already inside `sessions`. It replaces a sixth term that had to be held OUT of
+  // `total` and subtracted from the residual, and the day that term stopped existing
+  // the residual went back to meaning what it says.
   const total = testers + verifiers + harness
   return {
     ...t,
     testers,
     verifiers,
     harness,
-    slots,
     total,
-    unattributed: Math.max(0, (t.all || 0) - total - slots),
+    unattributed: Math.max(0, (t.all || 0) - total),
   }
 }
 
@@ -2257,8 +2275,10 @@ and a \`name\`, in the order the session first stood in them),
 \`roomsWorked\` (a bare list of ids, the subset of those the session did something
 in rather than only stood in),
 \`unknownWords\` (token → how many times it was typed),
-\`forks\` (each with an \`id\`, a \`command\`, a \`room\` and a \`taken\` flag) and
-\`firedTimers\` (timer name → how many times the engine ran its body).
+\`forks\` (each with an \`id\`, a \`command\`, a \`room\` and a \`taken\` flag),
+\`firedTimers\` (timer name → how many times the engine ran its body) and
+\`prefixTurns\` (how many recorded lines a deep start took before that session's own
+first line — \`0\` for a session that opened at turn zero, which is most of them).
 
 Report:
 
@@ -2292,9 +2312,9 @@ Report:
 - \`turns\`: the round's world turns, counted off the \`[status]\` footers. Every
   footer says \`turn=cost\` or \`turn=free\`, and only the first is a turn the game
   charged — a parse failure and a meta command both print \`turn=free\` and cost
-  nothing, which is why counting \`> \` lines instead would be wrong. Eleven numbers,
+  nothing, which is why counting \`> \` lines instead would be wrong. Twelve numbers,
   run from \`${pkg}\`. Run them exactly as written; one shell invocation holding all
-  ${SLOTS_GLOB ? 'thirteen' : 'eleven'} lines is fine and cheaper, since they print in the order below:
+  twelve lines is fine and cheaper, since they print in the order below:
 
       find ${SCRATCH} -path "*/${SESSION_GLOB}/*/${TRANSCRIPT}" -exec grep -h 'turn=cost' {} + | wc -l
       find ${SCRATCH} -path "*/${SESSION_GLOB}/*/${BRANCH}" -exec grep -h 'turn=cost' {} + | wc -l
@@ -2304,19 +2324,18 @@ Report:
       find ${SCRATCH} -path "*/${PLAY_GLOB}/*/${TRANSCRIPT}" | wc -l
       find ${SCRATCH} -path "*/${VERIFY_GLOB}/*/${TRANSCRIPT}" -exec grep -h 'turn=cost' {} + | wc -l
       find ${SCRATCH} -path "*/${VERIFY_GLOB}/*/${TRANSCRIPT}" | wc -l
-      find ${SCRATCH} -path "*/${ROUND_GLOB}/${PROBE}/${TRANSCRIPT}" ! -path "*/${SESSION_GLOB}/*" ! -path "*/${PLAY_GLOB}/*" ! -path "*/${VERIFY_GLOB}/*" ! -path "*/${REPLAY_TREE}/*"${SLOTS_EXCLUDE} -exec grep -h 'turn=cost' {} + | wc -l
-      find ${SCRATCH} -path "*/${ROUND_GLOB}/${PROBE}/${TRANSCRIPT}" ! -path "*/${SESSION_GLOB}/*" ! -path "*/${PLAY_GLOB}/*" ! -path "*/${VERIFY_GLOB}/*" ! -path "*/${REPLAY_TREE}/*"${SLOTS_EXCLUDE} | wc -l
-${SLOTS_GLOB ? `      find ${SCRATCH} -path "*/${SLOTS_GLOB}/*/${TRANSCRIPT}" -exec grep -h 'turn=cost' {} + | wc -l
-      find ${SCRATCH} -path "*/${SLOTS_GLOB}/*/${TRANSCRIPT}" | wc -l
-` : ''}      find ${SCRATCH} \\( -name ${TRANSCRIPT} -o -name '${BRANCH}' \\) -exec grep -h 'turn=cost' {} + | wc -l
+      find ${SCRATCH} -path "*/${ROUND_GLOB}/${PROBE}/${TRANSCRIPT}" ! -path "*/${SESSION_GLOB}/*" ! -path "*/${PLAY_GLOB}/*" ! -path "*/${VERIFY_GLOB}/*" ! -path "*/${REPLAY_TREE}/*" -exec grep -h 'turn=cost' {} + | wc -l
+      find ${SCRATCH} -path "*/${ROUND_GLOB}/${PROBE}/${TRANSCRIPT}" ! -path "*/${SESSION_GLOB}/*" ! -path "*/${PLAY_GLOB}/*" ! -path "*/${VERIFY_GLOB}/*" ! -path "*/${REPLAY_TREE}/*" | wc -l
+      find ${SCRATCH} \\( -name ${TRANSCRIPT} -o -name '${BRANCH}' \\) -exec grep -h 'turn=cost' {} + | wc -l
+      find ${SCRATCH} -path "*/${SESSION_GLOB}/*/${CLOSING}" -exec grep -ho '"prefixTurns":[0-9]*' {} + | awk -F: '{s+=$2} END {print s+0}'
 
   In order: \`sessions\`, \`branches\`, \`replays\`, \`replayProbes\`, \`playReplays\`,
   \`playProbes\`, \`verifyReplays\`, \`verifyProbes\`, \`harnessReplays\`,
-  \`harnessProbes\`, ${SLOTS_GLOB ? '\`slotsReplays\`, \`slotsProbes\`, ' : ''}\`all\`. Use \`find\` and
+  \`harnessProbes\`, \`all\`, \`prefixTurns\`. Use \`find\` and
   not a bare shell glob: \`find\` does its own matching, so a pattern that matches
   nothing prints \`0\` in every shell, where an unmatched glob **aborts the whole
   command** under zsh and would hand you a shell error to interpret as a count.
-  A genuine zero is a real answer; say in \`note\` which of the eleven it was.
+  A genuine zero is a real answer; say in \`note\` which of the twelve it was.
 
   For the same reason every one of them starts at \`${SCRATCH}\` and nowhere
   narrower. A start directory \`find\` cannot open is the one thing the pattern
@@ -2352,6 +2371,15 @@ ${SLOTS_GLOB ? `      find ${SCRATCH} -path "*/${SLOTS_GLOB}/*/${TRANSCRIPT}" -e
   \`${SCRATCH}\`, which is what the ten above are a breakdown *of*. Report it
   exactly as \`find\` gives it, even when it exceeds their sum — that difference is
   the point of asking, and the critic is the one who judges it.
+
+  \`prefixTurns\` is the twelfth, and the only one that is a sum rather than a count:
+  it reads the number out of each \`closing.json\` and adds them. It is **not** a
+  thirteenth tree and is added to nothing, because those turns are inside \`sessions\`
+  already — a deep start is a route the server plays into the tester's own transcript,
+  and this is the share of that number the harness walked rather than the tester typed.
+  \`0\` is the ordinary answer and means every session opened at turn zero. Like the
+  other eleven it is counted rather than asked: this block's whole history is of numbers
+  that were asked of somebody and came back wrong by a factor of five, then three.
 - \`sessionsFinished\`: how many \`closing.json\` files you read.
 - \`sessionsUnfinished\`: probe directories holding a \`transcript.txt\` with no
   \`closing.json\` beside it. Find them with:
@@ -2496,7 +2524,7 @@ truth and they win over anything here.
   is worth a sentence.
 - Sessions that wrote a closing record: ${sessionsFinished}.${sessionsUnfinished.length ? ` **${sessionsUnfinished.length} session(s) never called \`finish\`** (${sessionsUnfinished.slice(0, 8).join(', ')}) — their rooms and words are missing from every count above, so the coverage figure is a floor and you should say so in as many words.` : ''}
 - Forks no session took: ${forksNobodyTook.length ? forksNobodyTook.join(', ') : 'none'}. Each is an action the ledger judged committing and every session declined, which is a coverage gap nothing else in the harness can see. **Read it as an upper bound.** The flag is raised before the command is typed, from what the tester was holding and what the game had said about the thing — so a row here may turn out to be a free refusal. Name the ones you believe, say which you do not, and make one a target for next round.
-- Turns: **${turns.total} world turns**, counted off the \`[status]\` footers rather than asked of anybody. Testers spent ${turns.testers} of ~${turnBudget * playRoster.length} budgeted (${turns.sessions} in their session transcripts, ${turns.branches} in branches a rewind wrote off but that were really played, ${turns.replays} across ${turns.replayProbes} probes under \`${SCRATCH}/${REPLAY_TREE}/\`, ${turns.playReplays} across ${turns.playProbes} \`bin/playtest-replay\` probes of their own); the verifiers spent ${turns.verifiers} across ${turns.verifyProbes} \`bin/playtest-replay\` probes; the round's own machinery spent ${turns.harness} across ${turns.harnessProbes} probes under every other label.${turns.slots ? ` Beside all of that and counted into none of it, \`bin/playtest-slots\` spent ${turns.slots} turns across ${turns.slotsProbes} probes cutting and verifying the round's saved games — real turns, but neither coverage nor checking, and under a label with no round id in it because slots outlive the round that cut them.` : ''} **The \`${REPLAY_TREE}/\` tree is the testers'**, and used to be credited to the verifiers: \`replay\` is an MCP tool on a play session and a verifier has no session, so it replays through the CLI under its verify label. That one term reported the 2026-08-24 round at 3:1 verifier-to-tester when it was 1.2:1. A round whose verifiers outspend its testers several times over is normal and not by itself a problem — but if \`${turns.testers}\` is far under budget while \`${turns.verifiers}\` is large, the round argued more than it played, and that is worth a sentence. This field used to be the sum of the testers' self-reports and was wrong by a factor of five; then it was counted off two trees out of four and wrong by a factor of three.${turns.unattributed ? ` **${turns.unattributed} further \`turn=cost\` lines sit under \`${SCRATCH}/\` and are attributed to none of the trees above.** The harness row already absorbs the round's own errands, so this is a tree nobody has thought of — or another game's artifacts sharing this checkout. Say which, name the directories, and treat the total as a floor until somebody does.` : ' The residual against an unglobbed count of the whole scratch tree is zero, so nothing was played under a label this round does not attribute.'}
+- Turns: **${turns.total} world turns**, counted off the \`[status]\` footers rather than asked of anybody. Testers spent ${turns.testers} of ~${turnBudget * playRoster.length} budgeted (${turns.sessions} in their session transcripts, ${turns.branches} in branches a rewind wrote off but that were really played, ${turns.replays} across ${turns.replayProbes} probes under \`${SCRATCH}/${REPLAY_TREE}/\`, ${turns.playReplays} across ${turns.playProbes} \`bin/playtest-replay\` probes of their own); the verifiers spent ${turns.verifiers} across ${turns.verifyProbes} \`bin/playtest-replay\` probes; the round's own machinery spent ${turns.harness} across ${turns.harnessProbes} probes under every other label.${turns.prefixTurns ? ` Of the ${turns.sessions} in the session transcripts, ${turns.prefixTurns} are the deep starts the server played before anybody's first line — the harness walking, not a tester, and inside the seats' own labels rather than beside them.` : ''} **The \`${REPLAY_TREE}/\` tree is the testers'**, and used to be credited to the verifiers: \`replay\` is an MCP tool on a play session and a verifier has no session, so it replays through the CLI under its verify label. That one term reported the 2026-08-24 round at 3:1 verifier-to-tester when it was 1.2:1. A round whose verifiers outspend its testers several times over is normal and not by itself a problem — but if \`${turns.testers}\` is far under budget while \`${turns.verifiers}\` is large, the round argued more than it played, and that is worth a sentence. This field used to be the sum of the testers' self-reports and was wrong by a factor of five; then it was counted off two trees out of four and wrong by a factor of three.${turns.unattributed ? ` **${turns.unattributed} further \`turn=cost\` lines sit under \`${SCRATCH}/\` and are attributed to none of the trees above.** The harness row already absorbs the round's own errands, so this is a tree nobody has thought of — or another game's artifacts sharing this checkout. Say which, name the directories, and treat the total as a floor until somebody does.` : ' The residual against an unglobbed count of the whole scratch tree is zero, so nothing was played under a label this round does not attribute.'}
 - There is deliberately no "cells probed" count: free-text cell labels are not comparable between charters, so any total would be a number that means nothing. Build the real cross-product yourself from the transcripts, against the ${declaredRooms.length}-room roster and the timers above.
 - Testers run: ${playRoster.map((r) => `${r.key}${r.charter.blind ? ` (${r.divergence}${r.regions.length ? `, ${renderRegions(r.regions)}` : ''})` : ''}`).join(', ')}. Charters NOT run: ${skipped.map((c) => c.key).join(', ') || 'none'}.
 - The blind charters were given no room list, no timer list and no design doc, deliberately. A finding of theirs that the doc licenses is the expected cost of that, not a harness failure — but if more than about two in five are refuted that way, say so: the brief needs tightening, not the doc handing back.
