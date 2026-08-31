@@ -352,6 +352,13 @@ actor PlaytestSession {
     /// A replayed prefix re-walks rooms already held, so both ways back from a
     /// rewind — the ring and the replay — leave this list unchanged.
     ///
+    /// **A deep start's route is not in it.** ``land(in:)`` empties this at the
+    /// landing and seeds it with the landing room, on the same argument the
+    /// ledger is rebuilt on: a room the harness walked the player through is not
+    /// a room this session covered, and eight seats each carrying a ninety-room
+    /// route would otherwise publish a round that covered the map and worked
+    /// none of it.
+    ///
     /// **Keyed by the room's `EntityID`, and carrying the display name beside
     /// it**, for the reason ``Closing/roomsVisited`` gives: a display name is
     /// prose, two rooms may share one, and this list is the numerator of a
@@ -396,8 +403,14 @@ actor PlaytestSession {
     ///
     /// ``Closing/roomsWorked`` states what "worked" means and what it cannot
     /// see. It is the stricter half of a pair, and the pair is the point — a
-    /// round that reports only the entered count reports a prefix's mileage as
-    /// its own coverage.
+    /// round that reports only the entered count reports a hand-pasted route's
+    /// mileage as its own coverage.
+    ///
+    /// Emptied at a deep start's landing along with ``roomsEverVisited``, and
+    /// for the same reason. The route's own lines are the harness's, and so is
+    /// the `look` ``PlaytestRoute/landingProbe`` appends — which on its own
+    /// would credit every seat with the room it was put down in, having read
+    /// nothing.
     private var roomsWorkedEver: [EntityID] = []
 
     /// The room the *next* line will be typed in.
@@ -426,7 +439,41 @@ actor PlaytestSession {
     /// the timers the discarded tally already counted and adding the two would
     /// report a daemon as running twice per turn. The round's question is "was
     /// this declared timer ever exercised?", which membership answers exactly.
+    ///
+    /// **A timer the route fired is not a timer this session exercised**, so a
+    /// deep start's landing empties this too — and, because the fold reads the
+    /// world's *running* total, takes ``prefixFiredTimers`` as the baseline to
+    /// subtract from it.
     private var firedTimersEver: [String: Int] = [:]
+
+    /// What ``GameWorld/firedTimers`` already held when a deep start landed —
+    /// the route's fires, subtracted from the fold in ``remember(line:in:)`` so
+    /// that it cannot credit this session with them. Empty for a session that
+    /// opened at turn zero.
+    ///
+    /// Held here rather than reset on the world, which would be exact but would
+    /// make this file mutate an engine tally it exists to read as an oracle.
+    /// Recapturing it at the landing on every replay is the same value every
+    /// time, which is what makes a rehydrated session report what it reported
+    /// before.
+    private var prefixFiredTimers: [String: Int] = [:]
+
+    /// How much of ``GameWorld/roomsOccupied`` the route had already filled at
+    /// the landing — the same baseline as ``prefixFiredTimers``, as a length
+    /// rather than a set.
+    ///
+    /// A count is exact here because that array is append-if-new, in
+    /// first-arrival order, and is rolled back by nothing: not a restore, not
+    /// UNDO, not a rewind. So the route's rooms are permanently its leading
+    /// slice, and ``remember(line:in:)`` reads the tail.
+    ///
+    /// The cost is one imprecision, in the direction that under-counts: a room
+    /// the route crossed and the tester later crosses again *mid-turn*, without
+    /// ending a line in it, is not re-credited, because the world can only say
+    /// a room was occupied and not how often. Ending a line there credits it —
+    /// that goes through ``visit(_:)`` off the status line, which has no
+    /// baseline to clear.
+    private var prefixRoomsOccupied = 0
 
     /// True once the session has used the player-facing `save` or `restore`.
     ///
@@ -912,13 +959,18 @@ actor PlaytestSession {
         /// player was walked out of is a room they never got to type a line in,
         /// so the stricter half of the pair is right to leave it out; the gap
         /// between the two counts is the point of having both.
+        ///
+        /// **A deep start counts from its landing.** The route a `start:`
+        /// session was given is the harness's walk and not the tester's, so the
+        /// rooms it crossed are not here and the landing room is the first
+        /// entry. ``prefixTurns`` is how many lines that took.
         let roomsVisited: [VisitedRoom]
 
         /// The IDs of the rooms in ``roomsVisited`` the session did something
         /// in, as against merely stood in.
         ///
         /// ``roomsVisited`` is entered, and entered is not worked. A tester who
-        /// pastes a `routes/*.txt` walkthrough as a prefix walks fifty rooms
+        /// pastes a `routes/*.txt` walkthrough into `move` walks fifty rooms
         /// without reading a line of any of them, and every one of those rooms
         /// lands in ``roomsVisited`` looking exactly like a room somebody
         /// probed. The 2026-08-24 Dungeon round published 128 of 181 rooms
@@ -934,14 +986,19 @@ actor PlaytestSession {
         /// `take`, `open`, `wait`, `look` — is the tester's attention landing
         /// somewhere, so it counts.
         ///
-        /// **This is an upper bound on hand-worked rooms, not a measurement of
-        /// them.** The session cannot see where a line came from: a `move` call
-        /// carrying a pasted route is indistinguishable from one the agent
-        /// composed, so a route file's own `take lamp` credits its room here.
+        /// **Which of the two it is depends on how the session was opened, and
+        /// ``prefixTurns`` says which.** A session given a route with
+        /// `start:` never sees the route's lines: they are played before it
+        /// opens and ``PlaytestSession/land(in:)`` clears this at the landing,
+        /// so for that session the count is a *measurement* of rooms it worked
+        /// by hand. A session opened cold and then handed a route to paste is
+        /// the other case, and there the count is an **upper bound**: the
+        /// session cannot see where a line came from, so a pasted `take lamp`
+        /// is indistinguishable from a composed one and credits its room here.
         /// The bound is still worth having, because the gap between the two
-        /// counts is where a round's coverage claim is soft, and a prefix is
-        /// overwhelmingly travel. A parse failure credits nothing — it names no
-        /// intent, and what it does tell us is already in ``unknownWords``.
+        /// counts is where a round's coverage claim is soft, and a pasted route
+        /// is overwhelmingly travel. A parse failure credits nothing — it names
+        /// no intent, and what it does tell us is already in ``unknownWords``.
         ///
         /// Credited to the room the line was typed in rather than the room it
         /// ended in, so that the command which launches the balloon counts for
@@ -980,7 +1037,32 @@ actor PlaytestSession {
         let firedTimers: [String: Int]
 
         /// Every token the vocabulary did not know, and how often it was typed.
+        ///
+        /// A deep start's route contributes none of them, and gets that free:
+        /// the tally lives on the ledger, and the ledger is rebuilt at the
+        /// landing. The signal wanted here is the tester's typing, and a route
+        /// contains no typos.
         let unknownWords: [String: Int]
+
+        /// How many recorded lines the deep start took before this session's
+        /// own first line — `0` for a session that opened at turn zero, which
+        /// is most of them.
+        ///
+        /// **Always written, including the zero.** This is what lets a round
+        /// subtract the prefix *per seat*, and per seat is strictly better than
+        /// what it replaces: the cut's turns used to sit outside the round's
+        /// total under a label with no `roundId` in it, and 758 of them arrived
+        /// on 2026-08-29 as an unexplained residual. A key that appeared only
+        /// for a deep session could not be checked, because an absent key is
+        /// exactly how `bin/playtest-preflight` recognises a server too old to
+        /// write the field at all — and a silently wrong coverage number is the
+        /// failure `CLOSING_FIELDS` exists to turn into an absent one.
+        ///
+        /// Every other number in this record already starts from the landing,
+        /// so this is not a correction to apply to them. It is the turn count,
+        /// and the answer to "why is this session's first line numbered 720?".
+        let prefixTurns: Int
+
         /// Where the evidence is.
         let transcript: String
         /// The prose the agent reads.
@@ -1064,6 +1146,7 @@ actor PlaytestSession {
             },
             firedTimers: firedTimersEver,
             unknownWords: ledger.unknownWords,
+            prefixTurns: prefixCount,
             transcript: transcriptURL.path,
             message: message)
         writeClosingRecord(closing)
@@ -1688,6 +1771,12 @@ actor PlaytestSession {
     /// charter is measured on burning the queue down and every one of those items
     /// sends it hundreds of commands away.
     ///
+    /// Rebuilding it is also what makes ``Closing/unknownWords`` right for free:
+    /// the word tally lives on the ledger, and a route contains no typos. Every
+    /// other coverage tally is kept deliberately out of the ledger's reach — a
+    /// rewind must not be able to take one back — so each is cleared by hand
+    /// here, and the two the world keeps are baselined rather than cleared. See
+    /// ``prefixFiredTimers``.
     ///
     /// - Parameter world: the world the prefix was just played in, for the one
     ///   snapshot the ring is left holding.
@@ -1696,13 +1785,25 @@ actor PlaytestSession {
         let room = ledger.currentRoom
         ledger = CoverageLedger(divergence: divergence)
         ledger.observeOpening(output: lastOutput, room: room)
-        // A prefix room is one the harness walked the player through, not one a
-        // discarded branch was the only witness to. Saying so here is what keeps
-        // `Closing.roomsOnlyInBranches` — visited, minus the ledger's rooms,
-        // minus these — from reporting the whole route as a branch nobody took
-        // the moment the ledger above forgets it. Subtracting the prefix from
-        // the other tallies is issue #361's, and is deliberately not done here.
-        roomsPassedThrough.formUnion(visitedIDs)
+        // And so does every tally the ledger cannot roll back. The route is the
+        // harness's mileage, not this session's, and a round that counted it
+        // would report eight seats carrying a ninety-room start as having
+        // covered the map and worked none of it. The landing room itself stays,
+        // seeded from `standingIn`: it is where the tester opens, exactly as a
+        // cold session's opening room is where that tester opens.
+        roomsEverVisited = []
+        visitedIDs = []
+        roomsPassedThrough = []
+        roomsWorkedEver = []
+        firedTimersEver = [:]
+        if let standingIn { visit(standingIn) }
+        // The two the *world* keeps are the oracle and are not this file's to
+        // reset, so what they already hold becomes the baseline the folds in
+        // `remember(line:in:)` net off. Taken here rather than carried across a
+        // rehydration for the same reason `land` is called from the replay loop
+        // at all: the same lines through the same branch give the same numbers.
+        prefixFiredTimers = await world.firedTimers
+        prefixRoomsOccupied = await world.roomsOccupied.count
         // The nudge interval counts the *ledger's* commands, and the ledger just
         // went back to zero, so this goes with it — the tester's first inline
         // note is due twenty of its own lines in, not twenty of the route's.
@@ -1886,11 +1987,21 @@ actor PlaytestSession {
     /// nothing back, which is exactly what an eviction and a rewind past the
     /// ring both need.
     ///
+    /// Both also net off what the world already held when a deep start landed.
+    /// The world's tallies run from turn zero and the session's run from the
+    /// landing, so without the subtraction the very next line would fold a
+    /// ninety-room route straight back in — the one thing ``land(in:)`` exists
+    /// to prevent. See ``prefixFiredTimers``.
+    ///
     /// - Parameters:
     ///   - line: the recorded-line index this snapshot stands at.
     ///   - world: the live world.
     private func remember(line: Int, in world: GameWorld) async {
-        firedTimersEver.merge(await world.firedTimers, uniquingKeysWith: max)
+        for (name, fires) in await world.firedTimers {
+            let mine = fires - (prefixFiredTimers[name] ?? 0)
+            guard mine > 0 else { continue }
+            firedTimersEver[name] = max(firedTimersEver[name] ?? 0, mine)
+        }
         // Rooms the status line could not report, because the turn moved the
         // player on before it ended. The room a line *finished* in is already
         // held — `visit(_:)` ran on the status line a moment ago — so a room
@@ -1900,7 +2011,8 @@ actor PlaytestSession {
         // final room ahead of a room it only passed through; nothing is counted
         // off the order, and the alternative is reading the world's tally
         // before the turn that filled it has been applied.
-        for room in await world.roomsOccupied where visit(room) {
+        for room in await world.roomsOccupied.dropFirst(prefixRoomsOccupied)
+        where visit(room) {
             roomsPassedThrough.insert(room)
         }
         ring.append(
