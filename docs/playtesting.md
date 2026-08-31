@@ -214,6 +214,29 @@ The path form is the one that keeps working. Labels are cleaned between rounds, 
 staged run keeps a copy of the slots it used in `saves-in/` beside its own transcript —
 point `--saves-from` at that and a finding still replays with its label long gone.
 
+## Committed deep starts: routes
+
+A label's saves die when the label is cleaned, and a fresh checkout has none of them. For a
+deep start a *round* should ship — somewhere worth returning to that a tester cannot walk to
+inside a turn budget — commit a route instead:
+
+```
+.playtest/<Game>/routes/<name>.txt      the commands, one per line
+.playtest/<Game>/routes/<name>.json     { seed, derivedFrom, landing: {room, moves, score, inventory} }
+```
+
+```sh
+bin/playtest-routes Dungeon cut dam-buttons --from-commands route.txt --seed 52
+bin/playtest-routes Dungeon verify          # re-replay; check each landing
+bin/playtest-routes Dungeon list
+```
+
+A route is verified by **replay, never a hash**: `verify` runs it fresh at its manifest seed
+and refuses it if it no longer ends in the room the manifest claims. The MCP `open` tool takes
+`start: "<route name>"` and hands the tester the landing — the tester never sees the commands.
+A game with no routes needs nothing: testers play cold, and the round's own output is the next
+round's deep starts.
+
 ## What to look for
 
 `.claude/skills/playtest/references/playtester-brief.md` has the full judgement kernel
