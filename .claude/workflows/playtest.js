@@ -10,6 +10,7 @@ export const meta = {
     { title: 'Play', detail: 'one playtester per charter, each replaying its own reproducers' },
     { title: 'Cluster', detail: 'one agent maps each excerpt to the declaration that printed it' },
     { title: 'Triage', detail: 'dedup on the declaration, then two independent refuters per batch of 25, disagreement going to a person' },
+    { title: 'Distill', detail: 'one agent names states worth returning to; the shrink that turns each into a committed route is mechanical' },
     { title: 'Critic', detail: 'coverage collated off the sessions’ own closing records, and what the round missed' },
   ],
 }
@@ -1942,6 +1943,161 @@ by coin flip.`,
   }
 }
 
+// ---------------------------------------------------------------------------
+// Phase 3.5 — Distill
+// ---------------------------------------------------------------------------
+
+// Where next round's deep starts come from.
+//
+// The round has just walked further into this game than anything else will, and
+// until now all of that was thrown away: a route had to be cut by hand from a
+// walkthrough, which is a thing Dungeon has because somebody spent a milestone on
+// one and a downstream author will never have at all. So the round learns its own,
+// and #358's property — **a game with no routes needs nothing** — is what that buys.
+// `.playtest/` starts empty, the testers play cold, and the round's own output is
+// round two's deep starts.
+//
+// **A session cannot simply be replayed as a route.** Sixty turns reached somewhere
+// of which perhaps twelve mattered, and the other forty-eight are the tester trying
+// fifty ways of working a lever with the lantern burning down the whole time. That is
+// the concern that started the umbrella, and it is true of a *learned* route even
+// though it was never true of a walkthrough cut. So a proposal is distilled before it
+// is committed: `bin/playtest-routes <Game> distill` drops a contiguous run, replays,
+// and keeps the cut if it still lands.
+//
+// **The agent names targets and nothing else.** Recognising that a state is worth
+// being able to return to, and giving it a name a region can refer to, is judgement
+// and is the half an agent is good at. Which of sixty commands mattered is causality,
+// `bin/playtest-replay` can decide it exactly, and an agent reasoning about it from
+// prose is guessing at something a machine knows — so the tool takes a session
+// directory and a line number, never a command list, and there is nothing here for an
+// agent to edit.
+const DISTILL_LEAD = 'You are the distiller. The round has finished playing'
+
+// How many targets one round distils, and what each may spend.
+//
+// Both are named because a cap nobody names is a cap that lies. #359 measured
+// convergence at ~2,400 replays for a 113-command list and ~16,500 for a 719-command
+// one, so a phase that ran to convergence would outlast the round that produced it —
+// and #358 asks for *shorter*, never *minimal*, with the phase saying what it dropped
+// when it hit the bound. The script prints the drops; `capped` carries the fact up
+// here, and a capped target is logged rather than quietly reported as distilled.
+const DISTILL_TARGETS = 3
+const DISTILL_BUDGET = 300
+
+phase('Distill')
+
+const distilled = await agent(
+  `${groundMin(labelFor('distill'))}
+
+${DISTILL_LEAD} and every session has written down where it got to. Your job is to
+turn the best of that into deep starts the *next* round can open at, so this game's
+far side stops costing a round its whole turn budget to reach on foot.
+
+You do not play, judge prose, or report findings. You name targets and run one command
+per target.
+
+**1. Read what the round wrote.** From \`${pkg}\`:
+
+    find ${SCRATCH} -path "*/${SESSION_GLOB}/*/${CLOSING}"
+
+Each \`${CLOSING}\` has a \`commands.txt\` and a \`${TRANSCRIPT}\` beside it in the same
+directory. \`roomsVisited\` and \`roomsWorked\` say where that session went, in the order
+it first stood in each room; the transcript says what was true when it got there.
+
+**2. Name up to ${DISTILL_TARGETS} targets.** A target is a *state worth being able to
+return to*: past a lock, past a light source, past a puzzle the next round should not
+have to re-solve, or simply deep in a region a tester spent its whole budget walking
+into. For each one, find the line in that session's \`commands.txt\` on which it was
+first reached — count lines, and read the transcript's \`[status]\` footers beside them
+if you need to place it. Prefer the *earliest* line that reached the state and the
+*shortest* session that reached it.
+
+Skip a state a committed route already reaches. This game already has: ${routes.length ? routeList : 'none — every target you name is new'}.
+Give each new one a short stem — a letter, a hyphen and a digit, like \`d-1\` — that is
+not one of those.
+
+**Do not distil a session that died or won.** Its last lines are an open prompt rather
+than play, and the tool will refuse it; pick an earlier line, before the end.
+
+**3. Run the tool, once per target.** It takes a directory and a line, never a command
+list:
+
+    bin/playtest-routes ${game} distill <name> \\
+      --from-session <the directory holding that commands.txt> \\
+      --upto <the line number> \\
+      --seed ${seed} \\
+      --budget ${DISTILL_BUDGET} \\
+      --derived-from "${roundId} <that session's label> lines 1-<the line number>"
+
+It replays the list, drops the commands that cost no turn, then drops contiguous runs
+and replays after each — keeping a cut only when the replay still lands in the same
+place. Then it replays the survivor once more from nothing and records where that
+**actually** landed. Read its output; it prints every segment it dropped, the landing,
+and whether it stopped at the budget rather than at the end.
+
+**Nothing here is yours to decide.** Do not edit a command list, do not trim one by
+hand, do not reason about which commands mattered, and do not re-word the tool's
+answer. If a target refuses, say so and move on: a route the tool declined because a
+shorter one already reaches the same landing is the rule working, not a failure.
+
+Report one row per target you attempted, whatever came back.`,
+  {
+    label: 'distill',
+    phase: 'Distill',
+    schema: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['targets'],
+      properties: {
+        targets: {
+          type: 'array',
+          description: `One row per target you ran the tool on, at most ${DISTILL_TARGETS}. Empty is a real answer and means the round reached nowhere a route does not already reach — say why in note.`,
+          items: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['name', 'session', 'upto', 'why', 'outcome'],
+            properties: {
+              name: { type: 'string', description: 'The route stem you passed to the tool.' },
+              session: { type: 'string', description: 'The directory you passed to --from-session, exactly.' },
+              upto: { type: 'integer', description: 'The line number you passed to --upto.' },
+              why: { type: 'string', description: 'One sentence: what is true where this lands that makes it worth returning to. This is the judgement half and it is the only judgement asked of you.' },
+              outcome: {
+                type: 'string',
+                enum: ['committed', 'kept-existing', 'refused'],
+                description: '`committed` if the tool wrote the route, `kept-existing` if it declined because a shorter route already reaches that landing, `refused` for anything else. Copy the tool\'s own words into detail.',
+              },
+              from: { type: 'integer', description: 'Commands in, as the tool reported.' },
+              to: { type: 'integer', description: 'Commands out, as the tool reported. Omit for a target that was not committed.' },
+              landing: { type: 'string', description: 'The room the cold verification actually landed in, copied from the tool. Not the room you were aiming at.' },
+              capped: { type: 'boolean', description: 'True if the tool said it stopped at the replay budget. A capped route is shorter, not minimal, and the round has to say so rather than report it as distilled.' },
+              detail: { type: 'string', description: 'The tool\'s own last words for a target that was not committed.' },
+            },
+          },
+        },
+        note: { type: 'string', description: 'Only if something needs saying: no sessions on disk, every target already covered, a tool failure you could not act on.' },
+      },
+    },
+  }
+)
+
+const distilledTargets = (distilled && distilled.targets) || []
+for (const t of distilledTargets) {
+  if (t.outcome === 'committed') {
+    log(`Distilled \`${t.name}\`: ${t.from ?? '?'} → ${t.to ?? '?'} commands, landing in `
+      + `${t.landing || '?'}${t.capped ? ' — CAPPED at the replay budget, so it is shorter '
+        + 'rather than minimal' : ''}. ${t.why || ''}`)
+  } else {
+    log(`Distilled nothing for \`${t.name}\` (${t.outcome}): ${t.detail || 'no detail given'}`)
+  }
+}
+if (distilled && distilled.note) log(`Distiller note: ${distilled.note}`)
+if (distilledTargets.some((t) => t.outcome === 'committed')) {
+  log(`New routes are written to .playtest/${game}/routes/ and are NOT committed by this `
+    + 'round. Run `bin/playtest-routes ' + game + ' verify` and commit them with the report — '
+    + 'a route nobody commits is a deep start the next fresh checkout does not have.')
+}
+
 /// The one door into `confirmed`, `refuted` and `routed`, so a verdict row
 /// cannot exist without every rater's own words beside it — labelled, whole, and
 /// in the order the raters were dispatched. Reconciliation used to pick one
@@ -2597,6 +2753,13 @@ return {
     agreementRate: agreementTotal ? agreementMatched / agreementTotal : null,
     singleRated,
     disagreements,
+  },
+  // What the round learned, which is the half of it that outlives the report. A
+  // route committed here is a deep start every later round of this game opens at,
+  // and a fresh checkout has it where a saved game never survived one.
+  routes: {
+    used: routes,
+    distilled: distilledTargets,
   },
   coverage: {
     // Room ids on both sides — every room the game declares, against the ids the

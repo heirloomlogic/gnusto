@@ -1,7 +1,7 @@
 # The round report
 
-Two committed artifacts per round, one tracker entry, and a scratch directory that
-isn't committed.
+Two committed artifacts per round, whatever routes the round learned, one tracker
+entry, and a scratch directory that isn't committed.
 
 | Path | Committed | Contents |
 |---|---|---|
@@ -11,6 +11,8 @@ isn't committed.
 | `<probe>/saves-in/` | no | the `.gnusto` slots a **staged** probe was run against, copied in beside its transcript. Present only when the run passed `savesFrom` / `--saves-from`, and the reason a staged finding still replays after its label is cleaned |
 | `docs/games/<game>-playtest-<YYYY-MM-DD>.md` | **yes** | the round report below |
 | `docs/games/<game>-playtest-ledger.md` | **yes** | append-only: every dedupe key ever seen, with its verdict |
+| `.playtest/<game>/routes/<name>.json` | **yes** | what the Distill phase learned from this round's own play: the commands, the seed, the `derivedFrom` naming the round, and the frame the cold verification actually landed in. Written by the phase, committed by you, in the same commit as the report — a route nobody commits is a deep start the next fresh checkout does not have |
+| `.context/playtest/routes-distill-<name>/` | no | the shrink's own working replays, one directory re-made per candidate. Not evidence of anything: the run that is evidence is the cold verification, which allocates a `probe-NNN` of its own like every other cut |
 | one GitHub issue | — | every confirmed class as a checklist — see `issue-shape.md` |
 
 What a reader needs in order to *judge* a finding goes in the report; what a fixer needs
@@ -39,6 +41,13 @@ that appears in **no file in the tree**, and three charters whose load-bearing f
 came from free replays nobody could re-read. If you read a line off a replay and quote
 it, quote the path with it; a claim whose only witness was a tool result that scrolled
 past is a claim the next reader cannot check.
+
+**A distilled route is reported as what it is.** The round logs each one's name, how
+many commands went in and came out, the room the cold verification landed in — never
+the room it was aiming at — and whether the shrink stopped at its replay budget. A
+capped route is *shorter*, not minimal, and the report says so: a cap nobody names is a
+cap that lies. Say in the report which routes the round was handed and which it
+produced, so "built up over time" is auditable rather than asserted.
 
 The report is committed even when the round found nothing. "We ran and found
 nothing" is the single most useful thing to be able to prove six months later, and

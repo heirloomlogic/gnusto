@@ -151,6 +151,25 @@ const isPlainName = (s) => /^[A-Za-z0-9_-][A-Za-z0-9._-]*$/.test(s) && s.length 
 /// tester and the verifier checking their finding on different frames.
 const LANDING_PROBE = 'look'
 
+/// The command that says what the player is holding when a route stops.
+///
+/// Named beside the probe rather than typed at each of its four sites: two runners
+/// feed it, `readLanding` reads its answer back as the manifest's `inventory`, and
+/// the shrink compares it. A literal in any one of those is a shadow of a constant
+/// its neighbour deliberately named.
+const LANDING_INVENTORY = 'inventory'
+
+/// The whole tail a landing is read from: the probe the tester opens on, then what
+/// they are holding. `PlaytestRoute.prefix` and ``routePrefix`` stop at the probe,
+/// because a session is *opened* on that frame and never asked its inventory; a route
+/// being cut, distilled or verified is being *described*, and the manifest has a field
+/// for what is carried.
+const LANDING_SUFFIX = [LANDING_PROBE, LANDING_INVENTORY]
+
+/// A command list with that tail on it — one spelling, for every caller that replays
+/// a route in order to write down where it ends.
+const landingFeed = (commands) => [...commands, ...LANDING_SUFFIX]
+
 /// The whole prefix a run plays before its own first command: the route's commands,
 /// then the landing probe. `PlaytestRoute.prefix` is the engine's copy of this rule,
 /// and it is what makes `bin/playtest-replay --start` and `open({start: …})` open on
@@ -433,6 +452,9 @@ module.exports = {
   routeNames,
   isPlainName,
   LANDING_PROBE,
+  LANDING_INVENTORY,
+  LANDING_SUFFIX,
+  landingFeed,
   loadRoute,
   routePrefix,
   routeManifests,

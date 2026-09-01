@@ -121,11 +121,18 @@ silence.
 
 ## Afterwards
 
-Three artifacts, in this order — the ledger's preamble names the issue, so it goes last:
+Four artifacts, in this order — the ledger's preamble names the issue, so it goes last:
 
 1. the round report, `docs/games/<game>-playtest-<YYYY-MM-DD>.md`
-2. **exactly one issue** for the round
-3. every dedupe key, appended to `docs/games/<game>-playtest-ledger.md`
+2. **any routes the Distill phase wrote**, under `.playtest/<game>/routes/`
+3. **exactly one issue** for the round
+4. every dedupe key, appended to `docs/games/<game>-playtest-ledger.md`
+
+**The routes are the one artifact the round writes and does not commit.** The Distill
+phase leaves them on disk and logs their names; `bin/playtest-routes <game> verify`
+proves each from a second replay, and then they go in the same commit as the report. A
+route nobody commits is a deep start the next fresh checkout does not have — which is
+the whole failure the saved games were retired for.
 
 `references/report-shape.md` has the two files, `references/issue-shape.md` the issue.
 Commit the report even when the round found nothing — a provable empty round is the
@@ -325,7 +332,8 @@ which the harness writes and no game can re-voice, is the acceptable middle.
     issue-shape.md                     the one issue a round files
 bin/playtest-preflight                 the front door — run this first, always
 bin/playtest-replay                    the replay helper; --start begins deep
-bin/playtest-routes                    cuts a deep start, and verifies each by replay
+bin/playtest-routes                    cuts, distils and verifies a deep start
+bin/lib/playtest-distill.js            the shrink: the ddmin pass and its predicate
 bin/lib/playtest-focus.js              the focus split, the ledger, and where routes live
 .claude/workflows/playtest.dryrun.mjs  zero-agent dry run — a CI gate, not a suggestion
 bin/playtest-measure                   how curiously a session played, off its artifacts
@@ -499,6 +507,42 @@ right room. And check who is alive in it — every deep start that round shipped
 `attack thief with sword`, which silently removed the thief from three of four regions.
 Both of those are read off the script's own `cut` and `verify` lines, which print the
 landing room, the move count, the score and the inventory for exactly this.
+
+**A round with no routes to ship is not stuck**, and this is the property worth
+knowing before you go looking for a walkthrough to cut one from. `.playtest/` starts
+empty, the testers play cold, and the round's **Distill** phase turns its own play into
+the deep starts the *next* round opens at. A downstream author on day one has no
+walkthrough and never will; they run a round, and the second one is faster than the
+first without their having written anything.
+
+The phase runs after play and before the report. An agent reads the sessions' own
+`commands.txt` and `closing.json` files and names up to three **targets** — states worth
+being able to return to — and for each one the session and the line that first reached
+it. That is the whole of its judgement. It never decides which of sixty commands
+mattered: it passes a directory and a line number to `bin/playtest-routes <game>
+distill`, which drops the commands that cost no turn, then drops contiguous runs and
+replays after each, keeping a cut only when the game still lands in the same place. An
+agent inferring causality from prose is guessing at something a replay can know.
+
+**The budget is 300 replays a target and it is printed, not hidden.** Running to
+convergence is not something a round can buy — measured on Dungeon, ~2,400 replays for a
+113-command list and ~16,500 for a 719-command one (#359) — so the goal is *shorter*,
+never *minimal*, and a target that stopped at the bound is logged as `CAPPED` with every
+segment it managed to drop above it. A phase that silently truncated its own coverage
+would read as one that covered everything.
+
+Two things the shrink cannot check, both worth reading a new route against by hand
+before you trust it. The predicate compares the landing — room, score, the `look` and
+the `inventory` — so **timer state and where the actors are are outside it**: a route can
+preserve the room and still have left the thief somewhere else. And a route whose
+session died or won is refused rather than committed, because an ended game answers
+`look` and `inventory` with the same line and a deep start has to be somewhere a tester
+can play from.
+
+The shrink's own replays are not the round's turns and are counted by nobody: they run
+under a `routes-distill-<name>` label, outside every glob the collator reads, because
+they are neither a tester's coverage nor a finding's evidence. The number of them is on
+the script's own output. Do not widen a glob to catch them.
 
 **The session door for a tester's own saves is `savesFrom` on `open`.** A round's deep
 starts do not come through it — those are routes, and `start:` is their door. Before
