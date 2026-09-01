@@ -13,8 +13,12 @@
 
 set -euo pipefail
 
-# Run from the package root regardless of where the script is invoked.
-cd "$(dirname "$0")/.."
+# Run from the package root regardless of where the script is invoked. That root
+# is normally this script's own package — but a game written by bin/new-game runs
+# this script through a shim that execs it out of Gnusto's checkout, and then $0
+# points at the engine rather than at the game. GNUSTO_PACKAGE_PATH is how the
+# shim says which package it meant; unset, nothing changes.
+cd "${GNUSTO_PACKAGE_PATH:-$(dirname "$0")/..}"
 
 # Discover this package's executable products from the live manifest, so a game
 # written by bin/new-game can export itself with no edits to

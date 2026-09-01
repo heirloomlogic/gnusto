@@ -256,7 +256,11 @@ if [[ -n "$start_route" ]]; then
   command -v node >/dev/null 2>&1 \
     || die "--start reads .playtest/$game/routes/$start_route.json through node, which is not on PATH; no other flag here needs it"
   # The reader's own words reach stderr; this only says which run they were about.
-  if ! route_read="$( node bin/lib/playtest-route-prefix.js "$pkg" "$game" "$start_route" )"; then
+  # Resolved against this script rather than the working directory: a shimmed
+  # game execs this script from Gnusto's checkout while standing in its own
+  # package, and only the engine's checkout has bin/lib. Identical to `bin/lib/…`
+  # when run from this repository.
+  if ! route_read="$( node "$(dirname "$0")/lib/playtest-route-prefix.js" "$pkg" "$game" "$start_route" )"; then
     die "--start '$start_route' could not be read (above); nothing ran"
   fi
   # Four header lines then the commands, peeled off with parameter expansion. A
