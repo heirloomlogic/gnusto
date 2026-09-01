@@ -130,3 +130,14 @@ jobs:
       # below it.
       - name: Template (Debug)
         run: swift test --package-path bin/templates --build-system swiftbuild --disable-experimental-prebuilts
+
+      # The step above proves the generator's *input* builds. This one proves its
+      # output does — which is what an author actually receives, shims and all.
+      # --dep-path points the generated package at this working tree rather than
+      # at the last published tag, so a change to the engine is tested by the
+      # thing that will ship with it.
+      - name: Generated package (Debug)
+        run: |
+          bin/new-game Scratch "$RUNNER_TEMP/Scratch" --dep-path "$PWD"
+          swift test --package-path "$RUNNER_TEMP/Scratch" --build-system swiftbuild --disable-experimental-prebuilts
+          cd "$RUNNER_TEMP/Scratch" && bin/export-game | grep -qx Scratch

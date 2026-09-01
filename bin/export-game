@@ -38,10 +38,14 @@ if [[ ${#products[@]} -eq 0 ]]; then
   exit 2
 fi
 
+# No argument names a genuine mode, not an error: the doc comment above has always
+# promised "bin/export-game (lists the executable products)". List one product per
+# line and exit 0, rather than folding the listing into a usage error — a generated
+# package normally has exactly one product, and the CI step in test.yml pipes this
+# straight into `grep -qx <Product>`, which needs that bare line to match.
 if [[ $# -lt 1 ]]; then
-  echo "usage: bin/export-game <Product>"
-  echo "available products: ${products[*]}"
-  exit 2
+  printf '%s\n' "${products[@]}"
+  exit 0
 fi
 
 product="$1"

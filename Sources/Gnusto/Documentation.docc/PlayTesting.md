@@ -51,7 +51,7 @@ Building is a separate one-shot on purpose: a replay that also builds cannot be 
 
 `bin/playtest-measure` reads a probe directory and reports what the run covered: rooms entered, distinct verbs, objects examined, objects touched and then re-examined. Its counting rules are frozen deliberately, so a number from last year still compares.
 
-Both scripts live in the Gnusto repository. `Templates/NewGame/bin/` ships only `bin/gnusto-mcp`, because everything the next section describes is in the engine itself, while these two are the engine's own operating tools — read them there and adapt what you need.
+A package written by `bin/new-game` has all three: `bin/playtest-replay`, `bin/playtest-measure` and `bin/export-game` are shims over the copies in the Gnusto checkout it depends on, so they are never a version behind the engine they are driving. Run `swift build` once before the first one, since the tools live in a checkout SwiftPM has to have resolved.
 
 `docs/playtesting.md` in the repository is the operating manual for doing this by hand, and carries the calibration answer key — the defects a round is supposed to find. A round that finds nothing is a broken harness before it is a clean game.
 
@@ -61,7 +61,7 @@ Every Gnusto game is also a play-test server. ``GameMain`` answers `--mcp` — o
 
 Nothing in your game has to know about this. The switch lives in the ``GameMain`` protocol extension every game already conforms to, so a game written by somebody who has never read this page becomes a server for the cost of a flag.
 
-`bin/gnusto-mcp` is the launcher, and a copy ships in `Templates/NewGame/bin/`:
+`bin/gnusto-mcp` is the launcher, and a generated package gets a shim over it:
 
 ```sh
 bin/gnusto-mcp MyGame
@@ -79,7 +79,7 @@ Register the game with a `.mcp.json` at your package root, one entry per game:
 }
 ```
 
-One binary is one game, so no tool ever takes a game name. If you copied `Templates/NewGame`, both files are already there and renaming the product in `.mcp.json` is the only edit.
+One binary is one game, so no tool ever takes a game name. If you started with `bin/new-game`, both files are already there and already carry your game's name — there is no edit.
 
 Two things worth knowing before the first run. A cold start builds the game, which can take longer than a client's startup timeout — get the build out of the way once with `swift build`, or raise the timeout (`MCP_TIMEOUT`, in milliseconds). And a running server is frozen at the commit it started on, so restart the session after editing the engine.
 

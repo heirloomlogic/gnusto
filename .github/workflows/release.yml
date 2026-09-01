@@ -5,8 +5,8 @@ name: Release
 # `bin/export-game`: it discovers products the same way (`swift package describe`),
 # so it needs no edits when products come and go.
 #
-# Downstream authors: a ready-to-copy version of this lives at
-# `Templates/NewGame/.github/workflows/release.yml` — drop the NewGame folder at
+# Downstream authors: a copy of this lives at
+# `bin/templates/.github/workflows/release.yml` — bin/new-game copies it into
 # your repo root and tagging a version publishes your game with no changes.
 
 on:

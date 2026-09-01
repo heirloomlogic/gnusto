@@ -6,9 +6,9 @@
 #         bin/new-game Zwank ~/dev/Zwank
 #         bin/new-game Zwank /tmp/scratch --dep-path /path/to/gnusto
 #
-# There used to be a Templates/NewGame directory and a README telling you to copy
-# it and then rename MyGame in ten places by hand. This does that, and does the
-# part the README could not: the generated bin/ holds shims over Gnusto's own
+# There used to be a checked-in starter directory and a README telling you to
+# copy it and then rename MyGame in ten places by hand. This does that, and does
+# the part the README could not: the generated bin/ holds shims over Gnusto's own
 # tools rather than copies of them, so an author's tooling cannot drift from the
 # engine it is driving.
 #
