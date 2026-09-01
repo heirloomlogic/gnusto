@@ -3,8 +3,9 @@ import Testing
 
 /// `bin/new-game`, exercised by running it.
 ///
-/// This is the only suite in the package that shells out. It earns that: the
-/// generator's whole job is to leave a directory in a particular state, and the
+/// One of the two suites in the package that shell out; ``PlaytestPathTests`` is
+/// the other. It earns that: the generator's whole job is to leave a directory
+/// in a particular state, and the
 /// nearest thing to a unit test — reimplementing the substitution in Swift and
 /// asserting the two agree — would assert that a copy of the code matches the
 /// code. Running it costs a file copy and a `sed`, so the suite stays sub-second;

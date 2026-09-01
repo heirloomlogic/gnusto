@@ -101,7 +101,16 @@
 #   --timeout SECS      Wall-clock kill (default 60).
 #   --package-path DIR  Drive a different checkout — used to replay against an
 #                       older commit in a git worktree, which has no bin/ of
-#                       its own.
+#                       its own. Defaults to the directory you ran this from,
+#                       which for a game written by bin/new-game is that game's
+#                       package rather than Gnusto's.
+#
+# Every path above — --commands, --saves-from, --package-path — is read relative
+# to the directory you ran the command from, and never to the Gnusto checkout
+# this script lives in. That is worth saying because the script cd's there before
+# it reads a single argument, and until #382 the three flags disagreed about it.
+# For a game written by bin/new-game the shim cd's to that game's package root
+# first, on purpose, so there "where you ran it" means the package root.
 #
 # Why the built binary and not `swift run`: SharingYourGame.md warns that
 # `swift run` interferes with stdin for this project, it prints build chatter
@@ -152,7 +161,7 @@ set -euo pipefail
 # follow-up — a reviewer reproduced it by cd-ing into Sources/ first).
 script_dir="$(cd "$(dirname "$0")" && pwd)"
 
-# Same reason, same fix, for --package-path's default a few lines down. A
+# Same reason, same fix, for every path this script takes from its caller. A
 # shim's whole job is to name the OTHER package — gnusto_exec cd's there before
 # it execs this script — and reading $PWD after the cd below throws that away
 # and answers with Gnusto's own checkout instead. Reproduced from a generated
@@ -161,6 +170,22 @@ script_dir="$(cd "$(dirname "$0")" && pwd)"
 invocation_dir="$PWD"
 
 cd "$(dirname "$0")/.."
+
+# A relative path in an argument is the caller's, resolved against where they
+# stood — and by the time any of them is read this shell has already cd'd to the
+# repository root, so resolving it there would name a file in Gnusto's checkout
+# instead. Every path-taking flag goes through this, because the alternative is
+# what #382 records: three flags, three answers, and the explicit
+# `--package-path .` meaning something the default form never did. Absolute
+# paths (the common case, since a shim runs from the package root anyway) pass
+# through untouched, and so does the empty string — an unset flag stays unset
+# rather than becoming the invocation directory with a slash on the end.
+from_invocation() {
+  case "$1" in
+    "" | /*) printf '%s' "$1" ;;
+    *)       printf '%s/%s' "$invocation_dir" "$1" ;;
+  esac
+}
 
 die() { echo "playtest-replay: $*" >&2; exit 2; }
 
@@ -206,13 +231,10 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# Same defect as --package-path's default, same fix: a relative --commands is the
-# caller's file, resolved against where they stood, and by the time it is opened
-# below this shell has already cd'd to the repo root. Absolute paths (the common
-# case, since a shim runs from the package root anyway) pass through untouched.
-if [[ -n "$commands" && "$commands" != /* ]]; then
-  commands="$invocation_dir/$commands"
-fi
+commands="$(from_invocation "$commands")"
+# --package-path's default is $invocation_dir, which is already absolute, so this
+# is a no-op on it and the flag's explicit form finally agrees with its absence.
+pkg="$(from_invocation "$pkg")"
 
 [[ -n "$game" ]] || die "usage: bin/playtest-replay <Game> --commands FILE"
 # The game name reaches a shell command and a file path, so keep it to the
@@ -319,10 +341,14 @@ if [[ -n "$saves_from" ]]; then
   # The path form is the one that still works after a round's labels are cleaned:
   # it names a probe's own saves-in/, which is where the bytes durably live.
   if [[ "$saves_from" == */* || "$saves_from" == "~"* ]]; then
-    from_dir="${saves_from/#\~/$HOME}"
+    from_dir="$(from_invocation "${saves_from/#\~/$HOME}")"
     [[ -d "$from_dir" ]] \
       || die "--saves-from '$saves_from' was read as a path, and '$from_dir' is not a directory"
-    [[ "$(cd "$from_dir" && pwd)" != "$(cd "$scratch/saves" && pwd)" ]] \
+    # Canonicalized once the directory is known to exist, so the identity check
+    # below compares two absolute paths and the receipt this run prints names a
+    # directory a reader can paste back — not `…/./deep` as the caller typed it.
+    from_dir="$(cd "$from_dir" && pwd)"
+    [[ "$from_dir" != "$(cd "$scratch/saves" && pwd)" ]] \
       || die "--saves-from '$saves_from' is this run's own saves directory; it already reads those slots"
   else
     plain_name "$saves_from" || die "bad --saves-from '$saves_from'"

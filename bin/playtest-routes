@@ -37,6 +37,11 @@
 // forty-eight that were a tester trying fifty ways of working a lever, lantern and
 // all. A distilled route is one whose every command survived an attempt to delete it.
 //
+// `--from-commands` and `--from-session` are read relative to the directory you ran
+// the command from, never to this repository — the script chdir's to the repository
+// root before it reads an argument, and a path resolved after that names a file
+// nobody meant (#382).
+//
 // A walkthrough is an accelerant, never a requirement — a downstream author on day
 // one has none, the round plays cold, and the round's own output is round two's deep
 // starts (#358).
@@ -56,7 +61,16 @@ const {
   isPlainName, routesDir, routeNames, routePrefix,
 } = focus
 
+// Captured before the chdir, and for the same reason bin/playtest-replay captures
+// it before its own cd: a relative `--from-commands` or `--from-session` is the
+// caller's, and resolving it after this line names a file in the Gnusto checkout
+// instead (#382).
+const INVOCATION_DIR = process.cwd()
+
 process.chdir(focus.ROOT)
+
+/// A path argument, as the caller meant it. Absolute paths pass through.
+const fromInvocation = (p) => path.resolve(INVOCATION_DIR, p)
 
 // The newest transcript under a label. `bin/playtest-replay` allocates a fresh
 // probe-NNN per run precisely so a re-used label cannot overwrite evidence, so the
@@ -557,7 +571,7 @@ function main() {
         + ' pass --force to re-cut it.')
       process.exit(2)
     }
-    const read = readCommands(fromFile)
+    const read = readCommands(fromInvocation(fromFile))
     if (read.error) {
       console.error(`playtest-routes: ${read.error}`)
       process.exit(2)
@@ -591,7 +605,7 @@ function main() {
     // that, and the two would be worth little apart.
     const fromSession = flags.get('--from-session')
     if (!fromSession) usage()
-    const source = path.join(fromSession, 'commands.txt')
+    const source = path.join(fromInvocation(fromSession), 'commands.txt')
     const uptoFlag = flags.get('--upto')
     const upto = uptoFlag === undefined ? undefined : Number(uptoFlag)
     if (upto !== undefined && (!Number.isInteger(upto) || upto < 1)) {
