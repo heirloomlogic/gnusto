@@ -1640,7 +1640,9 @@ enum PlaytestTools {
                         + "cannot reach the survey's room roster. Counted off this "
                         + "session, not recalled: a round reads it rather than asking you "
                         + "how far you got. signals.roomsVisited counts only the canonical "
-                        + "transcript, so the two may differ for a session that rewound."),
+                        + "transcript, so the two may differ for a session that rewound. "
+                        + "A session opened with start: counts from its landing, so the "
+                        + "rooms its route crossed are not here."),
                 "items": [
                     "type": "object",
                     "properties": [
@@ -1656,12 +1658,13 @@ enum PlaytestTools {
                     "The ids of the rooms above you did something in, as against merely "
                         + "stood in: a line typed while standing there parsed to an "
                         + "intent that was neither go nor meta. Entered is not worked — a "
-                        + "pasted routes/*.json prefix walks dozens of rooms without "
-                        + "reading a line of any of them, and every one of them appears "
-                        + "in roomsVisited. This is an upper bound rather than a "
-                        + "measurement: the session cannot tell a pasted command from a "
-                        + "composed one, so a route file's own 'take lamp' credits its "
-                        + "room here too."),
+                        + "routes/*.txt walkthrough pasted into move walks dozens of "
+                        + "rooms without reading a line of any of them, and every one of "
+                        + "them appears in roomsVisited. For a session opened with start: "
+                        + "this is a measurement, because the route was played before the "
+                        + "session began and nothing it did is counted here. For one that "
+                        + "pastes a route into move it is an upper bound, because the "
+                        + "session cannot tell a pasted command from a composed one."),
                 "items": ["type": "string"],
             ],
             "roomsOnlyInBranches": [
@@ -1689,8 +1692,17 @@ enum PlaytestTools {
                 "description": .string(
                     "Every token the vocabulary did not know, and how often it was "
                         + "typed. The parser's own record, so a game that re-voices the "
-                        + "'I don't know the word' line does not hide it."),
+                        + "'I don't know the word' line does not hide it. A route played "
+                        + "by start: contributes none of them; the signal is your typing."),
                 "additionalProperties": ["type": "integer"],
+            ],
+            "prefixTurns": [
+                "type": "integer",
+                "description": .string(
+                    "How many recorded lines the deep start took before your first one — "
+                        + "0 for a session that opened at turn zero. Every other number "
+                        + "in this record already starts from the landing, so this is a "
+                        + "turn count and not a correction to apply to them."),
             ],
             "hint": ["type": "string"],
             "transcript": ["type": "string"],
@@ -1699,7 +1711,7 @@ enum PlaytestTools {
         "required": [
             "accepted", "open", "items", "signals", "forks", "roomsVisited",
             "roomsWorked", "roomsOnlyInBranches", "firedTimers", "unknownWords",
-            "transcript", "message",
+            "prefixTurns", "transcript", "message",
         ],
     ]
 
@@ -2027,6 +2039,7 @@ extension PlaytestSession.Closing {
             "firedTimers": .object(firedTimers.mapValues { .integer($0) }),
             "unknownWords": .object(
                 unknownWords.mapValues { .integer($0) }),
+            "prefixTurns": .integer(prefixTurns),
             "transcript": .string(transcript),
             "message": .string(message),
         ]

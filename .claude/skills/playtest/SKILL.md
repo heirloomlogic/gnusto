@@ -268,7 +268,17 @@ also carries `firedTimers`, the engine's count of every fuse and daemon body tha
 ran — which is what lets the round name a timer that was **declared and never fired in any
 session**. Nothing else can: a timer whose body only sets a flag prints nothing, so silence
 in a transcript is not evidence either way, and the 2026-08-18 round needed a completeness
-critic with two hand-built controls to settle it for six of Dungeon's thirty-five. The third is
+critic with two hand-built controls to settle it for six of Dungeon's thirty-five.
+
+**Every one of those numbers starts at the landing for a session opened with `start:`.**
+A route is the harness's walk, not the tester's, so the rooms it crossed, the rooms it
+worked, the timers it fired and the words it typed are all cleared before the tester's
+first line — otherwise eight seats each carrying Dungeon's ninety-room start would
+publish a round that covered the map and worked none of it. `prefixTurns` is how many
+lines the route took, written into every `closing.json` and `0` for a cold session, and
+it is a turn count rather than a correction to apply to the rest.
+
+The third number is
 counted off the `[status]` footers: every footer says `turn=cost` or `turn=free`, so the
 round greps for the first across four places — the testers' transcripts, the `branch-NNN.txt`
 files a rewind wrote off, the probes under `.context/playtest/.replays/` that the server's
@@ -405,8 +415,8 @@ restarting really is the answer.
 
 Preflight proves the binary is current by opening a session, finishing it, and reading
 the result: a current server returns `roomsVisited` — one `{id, name}` row per room —
-plus `roomsWorked`, `unknownWords` and `firedTimers`, and leaves a `closing.json` in
-the probe directory. A stale one returns none of them and writes no file, and a round
+plus `roomsWorked`, `unknownWords`, `firedTimers` and `prefixTurns`, and leaves a
+`closing.json` in the probe directory. A stale one returns none of them and writes no file, and a round
 dispatched against it collates nothing, reports every session as never having finished,
 and looks exactly like a round where the testers all crashed. It checks the other half
 in the same breath, because the round's turn count depends on it: a `replay` that

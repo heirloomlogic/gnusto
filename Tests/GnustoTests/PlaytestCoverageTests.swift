@@ -71,6 +71,28 @@ struct PlaytestCoverageTests {
         return PlaytestSessions(prepared: prepared, environment: environment)
     }
 
+    /// A session opened at one of a registry's deep starts, booted.
+    ///
+    /// Takes the registry rather than the game so that two seats can be opened
+    /// on the same route — one to read what the landing alone accounts for, one
+    /// to play on from it.
+    ///
+    /// - Parameters:
+    ///   - registry: a registry from ``sessionsWithRoute(_:_:_:)``.
+    ///   - label: the tester's namespace, which is a session's only distinct
+    ///     part here.
+    ///   - start: the route's name.
+    /// - Throws: whatever opening or booting throws.
+    /// - Returns: the session, landed.
+    private func deepSession(
+        _ registry: PlaytestSessions, label: String, start: String
+    ) async throws -> PlaytestSession {
+        let session = try await registry.open(
+            label: label, seed: 0, role: .explorer, start: start)
+        _ = try await session.opening()
+        return session
+    }
+
     /// The ids of a session's open queue.
     private func ids(_ session: PlaytestSession, limit: Int = 200) async throws -> Set<String> {
         Set(try await session.coverage(limit: limit).items.map(\.id))
@@ -287,8 +309,7 @@ struct PlaytestCoverageTests {
     /// the tester and once in the verifier refuting what it filed.
     @Test func theQueueAtADeepStartIsTheLandingRoomAndNotTheRoute() async throws {
         let registry = try sessionsWithRoute(AviaryGame(), "shed", ["north"])
-        let session = try await registry.open(
-            label: "deep", seed: 0, role: .explorer, start: "shed")
+        let session = try await deepSession(registry, label: "deep", start: "shed")
 
         // The exact set, so that over-cutting fails here too: the Shed's own
         // description and the things standing in it, and not one item from the
@@ -1125,6 +1146,139 @@ struct PlaytestCoverageTests {
         // A word the game does know is not in the tally at all.
         #expect(closing.unknownWords["oak"] == nil)
         #expect(try text(at: session.closingURL).contains("\"frotz\":2"))
+    }
+
+    // MARK: - What a deep start does not get credited for
+
+    /// A room the route walked through is not a room this session visited.
+    ///
+    /// This is the arithmetic the whole deep-start feature would otherwise
+    /// break. Dungeon's deepest start walks roughly ninety rooms; eight seats
+    /// each given one would publish a round that covered the map and worked none
+    /// of it. The session's counting starts at the landing, and the landing room
+    /// itself counts — it is where the tester opens, exactly as a cold session's
+    /// opening room is.
+    ///
+    /// The second half is the one that keeps this from being an exclusion list:
+    /// a tester who walks *back* into a room the route crossed has entered it,
+    /// and gets the credit.
+    @Test func theClosingRecordCountsNoRoomTheRouteWalked() async throws {
+        let registry = try sessionsWithRoute(AviaryGame(), "shed", ["north"])
+        let session = try await deepSession(registry, label: "deep-rooms", start: "shed")
+
+        let landed = try await session.finish(
+            summary: "landed and stopped", leaving: nil, limit: 3)
+        #expect(landed.roomsVisited.map(\.id.raw) == ["shed"])
+
+        // A second session, because `finish` is a report and the tester carries
+        // on: this one walks back to the Yard the route left.
+        let walker = try await deepSession(registry, label: "deep-rooms-back", start: "shed")
+        _ = try await walker.move(commands: ["south"], allowPrompts: false)
+        let closing = try await walker.finish(
+            summary: "walked back out", leaving: nil, limit: 3)
+        #expect(closing.roomsVisited.map(\.id.raw) == ["shed", "yard"])
+        #expect(closing.roomsVisited.map(\.name) == ["Shed", "Yard"])
+    }
+
+    /// Nor is a room the route worked. The route's own commands are the
+    /// harness's, and so is the `look` every route lands on.
+    ///
+    /// `roomsWorked` is the stricter half of the pair and the half a round
+    /// quotes, so a prefix leaking into it is the more expensive of the two
+    /// leaks: the landing probe alone would credit every seat with the room it
+    /// was put down in, having read nothing.
+    @Test func theClosingRecordCountsNoRoomTheRouteWorked() async throws {
+        let registry = try sessionsWithRoute(AviaryGame(), "shed", ["x oak", "north"])
+        let session = try await deepSession(registry, label: "deep-worked", start: "shed")
+
+        // `x oak` worked the Yard and the appended `look` worked the Shed —
+        // both the harness's doing, and neither is this session's.
+        let landed = try await session.finish(
+            summary: "landed and stopped", leaving: nil, limit: 3)
+        #expect(landed.roomsWorked.isEmpty)
+
+        // And the tester's own first look is credited normally.
+        let worker = try await deepSession(registry, label: "deep-worked-own", start: "shed")
+        _ = try await worker.move(commands: ["x bench"], allowPrompts: false)
+        let closing = try await worker.finish(summary: "read the bench", leaving: nil, limit: 3)
+        #expect(closing.roomsWorked.map(\.raw) == ["shed"])
+    }
+
+    /// A timer the route fired is not a timer the round exercised.
+    ///
+    /// The fold is `max` against `GameWorld.firedTimers`, which is the world's
+    /// running total and still holds the prefix's fires — so clearing the
+    /// session's copy at the landing is not enough on its own, and the landing
+    /// takes a baseline to subtract. `dawn` fires inside the route and never
+    /// again, so it must come back **absent** rather than zero: absence is the
+    /// signal a round reads as "no session exercised this".
+    @Test func theClosingRecordCountsNoTimerTheRouteFired() async throws {
+        let registry = try sessionsWithRoute(HeartbeatGame(), "waited", ["z", "z"])
+        let session = try await deepSession(registry, label: "deep-timers", start: "waited")
+        _ = try await session.move(commands: ["z"], allowPrompts: false)
+
+        let closing = try await session.finish(summary: "waited once", leaving: nil, limit: 3)
+        // Three lines of route (two `z` and the landing `look`) fired the
+        // heartbeat three times; the tester's own `z` is the fourth, and the
+        // one this session may claim.
+        #expect(closing.firedTimers["heartbeat"] == 1)
+        #expect(closing.firedTimers["dawn"] == nil)
+        #expect(!(try text(at: session.closingURL).contains("\"dawn\"")))
+    }
+
+    /// The route contains no typos; the tester's typing is the signal.
+    ///
+    /// Free, as it turns out — the ledger is rebuilt at the landing and the word
+    /// tally lives on it — so this is here to hold that, not to fix it. A later
+    /// change that moved the tally beside the room counts would go silently
+    /// wrong otherwise.
+    @Test func theClosingRecordCountsNoWordTheRouteTyped() async throws {
+        let registry = try sessionsWithRoute(AviaryGame(), "shed", ["frotz", "north"])
+        let session = try await deepSession(registry, label: "deep-words", start: "shed")
+        _ = try await session.move(commands: ["frotz"], allowPrompts: false)
+
+        let closing = try await session.finish(summary: "tried a word", leaving: nil, limit: 3)
+        #expect(closing.unknownWords["frotz"] == 1)
+    }
+
+    /// A deep start is not a rewind, so nothing it walked is reported as
+    /// evidence hiding in a branch file.
+    ///
+    /// `roomsOnlyInBranches` is `roomsVisited` minus what the ledger names, and
+    /// the ledger is rebuilt at the landing — so before the rooms themselves
+    /// started counting from the landing, this said the whole route was a branch
+    /// nobody took, and sent a reader grepping `branch-NNN.txt` files that do
+    /// not exist.
+    @Test func aDeepStartReportsNoRoomAsBranchOnlyEvidence() async throws {
+        let registry = try sessionsWithRoute(AviaryGame(), "shed", ["north"])
+        let session = try await deepSession(registry, label: "deep-branches", start: "shed")
+        _ = try await session.move(commands: ["x bench"], allowPrompts: false)
+
+        let closing = try await session.finish(summary: "read the bench", leaving: nil, limit: 3)
+        #expect(closing.roomsOnlyInBranches.isEmpty)
+    }
+
+    /// `closing.json` says how many lines the route took, always.
+    ///
+    /// This is what lets the round subtract the prefix **per seat**. The turn
+    /// arithmetic it replaces counted the cut's turns outside the round's total
+    /// under a label carrying no `roundId`, and 758 of them arrived on
+    /// 2026-08-29 as an unexplained residual. Written for a cold session too,
+    /// as `0`: an absent key is how `bin/playtest-preflight` recognises a stale
+    /// server, so a field that appears only sometimes could never be checked.
+    @Test func theClosingRecordAlwaysSaysHowManyLinesTheRouteTook() async throws {
+        let registry = try sessionsWithRoute(AviaryGame(), "shed", ["north"])
+        let deep = try await deepSession(registry, label: "deep-prefix", start: "shed")
+
+        // The walk plus the `look` every route lands on.
+        let closing = try await deep.finish(summary: "landed", leaving: nil, limit: 3)
+        #expect(closing.prefixTurns == 2)
+        #expect(try text(at: deep.closingURL).contains("\"prefixTurns\":2"))
+
+        let cold = try await session(AviaryGame())
+        let coldClosing = try await cold.finish(summary: "started cold", leaving: nil, limit: 3)
+        #expect(coldClosing.prefixTurns == 0)
+        #expect(try text(at: cold.closingURL).contains("\"prefixTurns\":0"))
     }
 
     /// A queue that has run dry says so in player-visible terms — how many
