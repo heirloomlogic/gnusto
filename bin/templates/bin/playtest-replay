@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+#
+# Replay a list of commands against this game with the random seed pinned, so a
+# hand-played session reproduces exactly.
+#
+# Usage:  bin/playtest-replay <Game> --commands probe.txt --seed 0 --label mine
+#         bin/playtest-replay --build <Game>
+#
+# A shim. The real script lives in the Gnusto checkout this package depends on,
+# so it is never out of step with the engine — see bin/lib/gnusto-tooling.sh.
+#
+# Its --start flag needs bin/playtest-routes, which this package does not ship;
+# the flag refuses in a sentence rather than failing obscurely.
+
+set -euo pipefail
+. "$(dirname "$0")/lib/gnusto-tooling.sh"
+gnusto_exec playtest-replay "$@"

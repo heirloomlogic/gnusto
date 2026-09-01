@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+#
+# Measure how much of the game a play-test round actually reached — rooms, verbs
+# and objects — read off the artifacts a probe leaves behind.
+#
+# Usage:  bin/playtest-measure .context/playtest/mine/probe-*
+#
+# A shim. The real script lives in the Gnusto checkout this package depends on,
+# so it is never out of step with the engine — see bin/lib/gnusto-tooling.sh.
+
+set -euo pipefail
+. "$(dirname "$0")/lib/gnusto-tooling.sh"
+gnusto_exec playtest-measure "$@"

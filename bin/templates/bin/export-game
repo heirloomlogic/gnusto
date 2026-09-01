@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+#
+# Build this game as a standalone executable under ./dist.
+#
+# Usage:  bin/export-game <Product>     (bin/export-game with no argument lists them)
+#
+# A shim. The real script lives in the Gnusto checkout this package depends on,
+# so it is never out of step with the engine — see bin/lib/gnusto-tooling.sh.
+
+set -euo pipefail
+. "$(dirname "$0")/lib/gnusto-tooling.sh"
+gnusto_exec export-game "$@"

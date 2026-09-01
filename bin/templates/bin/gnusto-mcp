@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+#
+# Serve this game to an MCP client over stdio. Registered in .mcp.json; not
+# something you normally run by hand.
+#
+# Usage:  bin/gnusto-mcp <Game>
+#
+# A shim. The real script lives in the Gnusto checkout this package depends on,
+# so it is never out of step with the engine — see bin/lib/gnusto-tooling.sh.
+#
+# Stdout is the protocol, so this file prints nothing on the way to the exec.
+
+set -euo pipefail
+. "$(dirname "$0")/lib/gnusto-tooling.sh"
+gnusto_exec gnusto-mcp "$@"
