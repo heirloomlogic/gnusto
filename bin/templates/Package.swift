@@ -7,12 +7,13 @@ let package = Package(
     platforms: [
         .macOS(.v15)
     ],
+    // bin/new-game rewrites the single line carrying the marker below, to a
+    // version-pinned URL by default or to another path under --dep-path. It is
+    // one line so that rewriting it is one substitution rather than a parse.
+    // The explicit `name:` is needed only by the path form, because a checkout
+    // directory does not have to be called "Gnusto".
     dependencies: [
-        // In your own copy, depend on Gnusto by URL instead:
-        // .package(url: "https://github.com/HeirloomLogic/Gnusto", from: "0.1.0"),
-        // (The explicit name is only needed by the path form, because the
-        // repo's checkout directory doesn't have to be called "Gnusto".)
-        .package(name: "Gnusto", path: "../..")
+        .package(name: "Gnusto", path: "../..")  // gnusto-dependency
     ],
     targets: [
         .executableTarget(

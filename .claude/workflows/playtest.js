@@ -171,7 +171,7 @@ const labelFor = (...parts) =>
 //
 // **Derived when the caller knows, assumed only when it doesn't.** The lowercased
 // game name is the convention every game in this repo follows and the one
-// `Templates/NewGame` ships, but nothing enforces it, and a repo that spells its key
+// `bin/new-game` writes, and now enforces — it lowercases the key itself. A repo that spells its key
 // differently gets no error at all: `ToolSearch` matches nothing and every tester
 // fails identically, which is indistinguishable from the server being down. So
 // `bin/playtest-preflight` reads the real key out of `.mcp.json` — matching on the

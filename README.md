@@ -35,7 +35,7 @@ struct TinyGame: Game {
 }
 ```
 
-That is a complete game. The player can `look`, `examine coin`, `take coin`, check their `inventory`, and try to go `north`. To build one from scratch, read [Getting Started](https://heirloomlogic.github.io/gnusto/documentation/gnusto/gettingstarted); to skip the setup, copy the ready-to-run package in [`Templates/NewGame`](Templates/NewGame).
+That is a complete game. The player can `look`, `examine coin`, `take coin`, check their `inventory`, and try to go `north`. To build one from scratch, read [Getting Started](https://heirloomlogic.github.io/gnusto/documentation/gnusto/gettingstarted); to skip the setup, run `bin/new-game Zwank ~/dev/Zwank` and start writing rooms.
 
 ## What it plays like
 

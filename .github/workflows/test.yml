@@ -81,6 +81,12 @@ jobs:
           # executes third-party build-tool plugin code. Left at the default, the
           # token sits in .git/config for all of it.
           persist-credentials: false
+          # NewGameTests runs bin/new-game with no --dep-path, which pins the
+          # generated package to this repository's newest release tag. The
+          # default checkout is shallow and fetches no tags at all, so that
+          # generation refuses (#384). Tags are small; this is not the `.build`
+          # cache tradeoff the comment two steps down is guarding against.
+          fetch-tags: true
 
       # The container runs as root over a checkout git considers foreign;
       # without this, git refuses ("dubious ownership") wherever SwiftPM or a
@@ -124,7 +130,35 @@ jobs:
         if: github.event_name == 'push'
         run: swift test -c release --build-system swiftbuild --disable-experimental-prebuilts
 
-      # The starter template is a standalone package with a path dependency on
-      # this repo; building it here keeps the template from rotting.
+      # The template is a standalone package with a path dependency on this repo;
+      # building it here keeps it from rotting. It is also the generator's input,
+      # so a green run here is the precondition for the generated-package step
+      # below it.
       - name: Template (Debug)
-        run: swift test --package-path Templates/NewGame --build-system swiftbuild --disable-experimental-prebuilts
+        run: swift test --package-path bin/templates --build-system swiftbuild --disable-experimental-prebuilts
+
+      # The step above proves the generator's *input* builds. This one proves its
+      # output does — which is what an author actually receives, shims and all.
+      # --dep-path points the generated package at this working tree rather than
+      # at the last published tag, so a change to the engine is tested by the
+      # thing that will ship with it.
+      - name: Generated package (Debug)
+        run: |
+          bin/new-game Scratch "$RUNNER_TEMP/Scratch" --dep-path "$PWD"
+          swift test --package-path "$RUNNER_TEMP/Scratch" --build-system swiftbuild --disable-experimental-prebuilts
+          cd "$RUNNER_TEMP/Scratch" && bin/export-game | grep -qx Scratch
+          # A shim that dispatches correctly still isn't proof the dispatched tool
+          # ran against THIS package: bin/playtest-replay derives --package-path
+          # from its own $PWD, and a whole-branch review found that read happening
+          # after this script's own `cd` to Gnusto's checkout, so it silently built
+          # Gnusto instead of the generated package. Grepping the printed binary
+          # path for $RUNNER_TEMP/Scratch is what actually discriminates that —
+          # an exit-code check alone passes whichever package got built.
+          built="$(bin/playtest-replay Scratch --build)"
+          case "$built" in
+            "$RUNNER_TEMP/Scratch"/*) ;;
+            *)
+              echo "bin/playtest-replay --build built the wrong package: $built" >&2
+              exit 1
+              ;;
+          esac

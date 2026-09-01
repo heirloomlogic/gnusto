@@ -15,6 +15,7 @@ that covers your task before writing code.
 | `Sources/Gnusto/` | the engine. `Declarations/` is the author-facing DSL; `Engine/` is the runtime; `Actions/` is verbs, default actions and player-facing text; `Parser/` is the parser and vocabulary |
 | `Sources/Gnusto*/` | optional libraries spliced in as `GameContent`/`GamePlugin`: `GnustoClock`, `GnustoConversation`, `GnustoScoring`, `GnustoSpellcasting`, `GnustoMeleeCombat`, `GnustoDangerousDark`, `GnustoActors`. Plus `GnustoMacros` (the `#verb` macro) and `GnustoTestSupport` (the `play` harness) |
 | `Sources/CloakOfDarkness`, `Lighthouse`, `Zork1`, `Gramarye`, `Fulminate`, `KindlyDeep`, `Dungeon` | demo games, also the engine's real test corpus. `Dungeon` (mainframe Zork) is built one milestone at a time and **adapts** its prose where the others reproduce or invent — read `FIDELITY.md`'s Dungeon section before writing a line of it |
+| `bin/templates/` | the starter game the generator reads — a real package, built in CI so it can't rot. Its `bin/` is shims, not copies |
 | `Tests/GnustoTests/` | one suite per subject; `Support/` holds the fixture games |
 | `docs/games/*.md` | per-game design docs — **story-and-copy source of truth**, iterated separately from code. Not every game has one; alongside each, its play-test round reports and ledger |
 | `docs/playtesting.md` | how to play a game by hand and read the transcript as prose, plus the calibration answer key |
@@ -28,7 +29,7 @@ that covers your task before writing code.
 
 ```sh
 swift build
-swift test                                    # ~1,060 tests, sub-second
+swift test                                    # ~2,120 tests, ~10s
 swift test --filter FulminateTests
 swift run Fulminate                            # pipe stdin to play scripted; GNUSTO_PLAIN=1 forces plain output
 swift package --allow-writing-to-package-directory format-source-code
@@ -67,6 +68,14 @@ bin/gnusto-mcp Fulminate                       # what an MCP client runs; stdout
                                                # at its session's commit — so restart the session
                                                # after editing anything under Sources/Gnusto/Playtest/
 bin/playtest-measure .context/playtest/mine/probe-*   # rooms, verbs, objects — off the artifacts
+
+bin/new-game Zwank ~/dev/Zwank                 # a new game package, named for itself,
+                                               # written from bin/templates. Its bin/ holds
+                                               # shims over this repo's tools rather than
+                                               # copies, so an author's tooling cannot drift
+                                               # from the engine. --dep-path pins the
+                                               # dependency to a checkout instead of a tag,
+                                               # which is what CI uses
 ```
 
 ## Kicking off a play-test round

@@ -59,8 +59,12 @@ die() { echo "gnusto-mcp: $*" >&2; exit 2; }
 
 # Run from the package root regardless of where the client invoked us from: an
 # MCP client chooses its own working directory, and `swift build` has to be
-# standing in the package.
-cd "$(dirname "$0")/.."
+# standing in the package. GNUSTO_PACKAGE_PATH names that package when a game
+# written by bin/new-game reaches this script through a shim, because then $0 is
+# in Gnusto's checkout and the game is somewhere else entirely. Unset, nothing
+# changes — and the binpath cache below stays relative to the root either way,
+# so a shimmed game records its binary under its own .context/.
+cd "${GNUSTO_PACKAGE_PATH:-$(dirname "$0")/..}"
 
 game="${1:-}"
 [[ -n "$game" ]] || die "usage: bin/gnusto-mcp <Game>"

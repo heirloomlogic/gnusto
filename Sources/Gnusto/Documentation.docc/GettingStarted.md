@@ -6,7 +6,7 @@ Build and run your first text adventure, one piece at a time.
 
 By the end of this guide you will have a game with two rooms, one object, one rule, and a test that plays it. It assumes you can write basic Swift; it assumes nothing about interactive fiction.
 
-Prefer to start from something that already runs? The repo ships a complete starter package at `Templates/NewGame` — copy it out, rename it, and skim this guide for the *why* behind each piece.
+Prefer to start from something that already runs? `bin/new-game Zwank ~/dev/Zwank` writes a complete starter package named for your game — then skim this guide for the *why* behind each piece.
 
 ## Add Gnusto to your package
 
@@ -201,7 +201,7 @@ Gnusto ships with **Cloak of Darkness**, Roger Firth's classic one-room demonstr
 
 ## Next steps
 
-- `Templates/NewGame` in the repo — the complete starter package this guide builds up to
+- `bin/new-game` in the repo — writes the complete starter package this guide builds up to
 - <doc:AnatomyOfAGame> — how declarations, identity, and live references fit together
 - <doc:TheTurnPipeline> — exactly what happens each turn
 - <doc:WritingRules> — the full vocabulary of game logic

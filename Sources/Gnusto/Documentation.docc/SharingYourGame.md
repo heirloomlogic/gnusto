@@ -28,7 +28,7 @@ When the game's declarations live in one place, `@main` sits right on the game t
 extension OperaHouse: GameMain {}
 ```
 
-Either way, the executable target in your `Package.swift` produces a binary you can run with `swift run`. If you started from `Templates/NewGame`, this is already wired up. New to Gnusto? Begin with <doc:GettingStarted>.
+Either way, the executable target in your `Package.swift` produces a binary you can run with `swift run`. If you started with `bin/new-game`, this is already wired up. New to Gnusto? Begin with <doc:GettingStarted>.
 
 ## What running gives the player
 
@@ -100,7 +100,7 @@ bin/export-game Lighthouse   # → dist/Lighthouse
 bin/export-game              # lists the available products
 ```
 
-It discovers the current package's executable products from its manifest, so it lists whatever your package ships — the seven demo games here, or the `MyGame` in a fresh `Templates/NewGame` copy, with no edits to the script. Under the hood it's `swift build -c release --product <Product>` followed by a copy of the built binary to `dist/<Product>` — no bundle, no installer, one file.
+It discovers the current package's executable products from its manifest, so it lists whatever your package ships — the seven demo games here, or the one game in a package `bin/new-game` wrote, with no edits to the script. Under the hood it's `swift build -c release --product <Product>` followed by a copy of the built binary to `dist/<Product>` — no bundle, no installer, one file.
 
 ## Share it on macOS 15+
 
@@ -131,7 +131,7 @@ git tag 1.0.0
 git push origin 1.0.0        # → a release with runnable macOS + Linux binaries
 ```
 
-The workflow reads your products from the manifest the same way `bin/export-game` does, so it needs no edits as products change. A copy ships with the starter template at `Templates/NewGame/.github/workflows/release.yml`: drop the NewGame folder at your repo root and tagging publishes your game unchanged.
+The workflow reads your products from the manifest the same way `bin/export-game` does, so it needs no edits as products change. A generated package already has it at `.github/workflows/release.yml`, so tagging publishes your game unchanged.
 
 In this repo the workflow excludes the `Zork1` demo, and the binaries it publishes exist to exercise the workflow, not to feature a game.
 
