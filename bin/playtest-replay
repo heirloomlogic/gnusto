@@ -146,6 +146,12 @@
 
 set -euo pipefail
 
+# Captured before the cd below moves the shell: a relative $0 re-derived after
+# that cd resolves against the new cwd instead of where the script actually
+# lives, which is exactly wrong for the bin/lib lookup further down (#368
+# follow-up — a reviewer reproduced it by cd-ing into Sources/ first).
+script_dir="$(cd "$(dirname "$0")" && pwd)"
+
 cd "$(dirname "$0")/.."
 
 die() { echo "playtest-replay: $*" >&2; exit 2; }
@@ -260,7 +266,7 @@ if [[ -n "$start_route" ]]; then
   # game execs this script from Gnusto's checkout while standing in its own
   # package, and only the engine's checkout has bin/lib. Identical to `bin/lib/…`
   # when run from this repository.
-  if ! route_read="$( node "$(dirname "$0")/lib/playtest-route-prefix.js" "$pkg" "$game" "$start_route" )"; then
+  if ! route_read="$( node "$script_dir/lib/playtest-route-prefix.js" "$pkg" "$game" "$start_route" )"; then
     die "--start '$start_route' could not be read (above); nothing ran"
   fi
   # Four header lines then the commands, peeled off with parameter expansion. A
