@@ -97,8 +97,10 @@ gnusto_exec() {
   shift
   # $0 is this shim even though the function is sourced, so this is the game's
   # root and not the engine's.
-  local pkg="$(cd "$(dirname "$0")/.." && pwd)"
-  local repo="$(gnusto_find_repo "$pkg")"
+  local pkg
+  pkg="$(cd "$(dirname "$0")/.." && pwd)"
+  local repo
+  repo="$(gnusto_find_repo "$pkg")"
   [ -x "$repo/bin/$tool" ] \
     || gnusto_die "$repo/bin/$tool is missing or not executable"
   # Both halves are needed: cd for the tools that read the working directory
