@@ -1757,6 +1757,14 @@ repo's testers have actually been wrong, most frequent first.
    commands and parse failures cost no turn. If the quoted text is not in the tree, or
    the frame does not match the footer, refute and say which.
 
+   **A reproducer taken from a deep start needs the route, not a save.** A round's deep
+   starts are committed routes, and one flag plays the route ahead of your command list:
+   \`bin/playtest-replay ${game} --start <route> --commands <file> --seed ${seed} --label ${verifyLabel}-<n>\`.
+   The seed above is the routes' own — a round takes its seed from them — so it agrees and
+   the run proceeds; a \`--seed\` that DISAGREED would be refused rather than quietly
+   winning, because a route replayed at another seed lands somewhere else.
+   \`bin/playtest-routes ${game} list\` says which routes exist and where each one lands.
+
    **A reproducer whose first command is \`restore\` needs the tester's save slots.**
    Add \`--saves-from <the finding's \`Saves:\` label>\` and those slots are copied into your
    own label before the run, so \`restore\` reaches the slot the tester wrote. The copy is

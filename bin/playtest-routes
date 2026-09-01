@@ -38,7 +38,9 @@ const focus = require('./lib/playtest-focus')
 const {
   replay, turnCap, timeoutFor, lastStatus, answerTo, runReplay,
 } = require('./lib/playtest-replay')
-const { GREEN, RED, DIM, OFF, routesDir, routeNames, loadRoute } = focus
+const {
+  GREEN, RED, DIM, OFF, LANDING_PROBE, isPlainName, routesDir, routeNames, routePrefix,
+} = focus
 
 process.chdir(focus.ROOT)
 
@@ -62,12 +64,6 @@ function newestTranscript(label) {
 // Route storage
 // ---------------------------------------------------------------------------
 
-// The same alphabet the engine's `PlaytestSessions.isPlainName` keeps a route name
-// to — it is a file stem, and it travels through paths on both sides. The 64-character
-// cap included: a stem the engine's `open` would refuse must not be one this script
-// will cut.
-const isPlainName = (s) => /^[A-Za-z0-9_-][A-Za-z0-9._-]*$/.test(s) && s.length <= 64
-
 // Blank lines are dropped on read by the engine, so they are dropped here rather
 // than committed as something a reader might think meant something. A `//` or `#`
 // line is kept: the session records it as a comment that costs no turn, and it is
@@ -85,15 +81,6 @@ function readCommands(file) {
 // ---------------------------------------------------------------------------
 // Cut and verify
 // ---------------------------------------------------------------------------
-
-// What a replay of a route lands on: the route, then the engine's own landing probe
-// (`look` — `PlaytestRoute.landingProbe`, which every session appends and every
-// verifier must too), then `inventory` so the manifest can record what is held. A
-// route ends wherever its last command left the player; these two make the landing
-// a frame somebody can read.
-function landingCommands(commands) {
-  return [...commands, 'look', 'inventory']
-}
 
 function readLanding(label) {
   const file = newestTranscript(label)
@@ -114,7 +101,14 @@ function cut(game, dir, name, commands, seed, derivedFrom) {
   // A fresh label per route: the cut run's transcript is the evidence the manifest
   // was written from, and re-using one label would bury it under the next cut.
   const label = `routes-cut-${name}`
-  const r = runReplay('playtest-routes', `cut-${name}`, landingCommands(commands), [
+  // The route, then the engine's own landing probe (`PlaytestRoute.landingProbe`,
+  // which every session appends and every verifier must too), then `inventory` so the
+  // manifest can record what is held. A route ends wherever its last command left the
+  // player; these two make the landing a frame somebody can read. `verify` builds the
+  // same list off `routePrefix`, which is where the rule lives — a cut has no manifest
+  // to read it out of yet.
+  const fed = [...commands, LANDING_PROBE, 'inventory']
+  const r = runReplay('playtest-routes', `cut-${name}`, fed, [
     game,
     '--seed', String(seed),
     '--label', label,
@@ -151,17 +145,20 @@ function cut(game, dir, name, commands, seed, derivedFrom) {
 // fresh, a route that no longer lands where it claims is caught here,
 // which is the check a hash could never make.
 function verifyOne(game, dir, name) {
-  const route = loadRoute(name, dir)
+  // The same reader `bin/playtest-replay --start` plays a route through, so a route
+  // that verifies here is a route that opens there. `inventory` is verify's own and
+  // is appended after it.
+  const route = routePrefix(name, dir)
   if (route.error) return { ok: false, detail: route.error }
-  const { commands } = route
+  const fed = [...route.commands, 'inventory']
 
   const label = `routes-verify-${name}`
-  const r = runReplay('playtest-routes', `verify-${name}`, landingCommands(commands), [
+  const r = runReplay('playtest-routes', `verify-${name}`, fed, [
     game,
     '--seed', String(route.seed),
     '--label', label,
-    '--max-turns', turnCap(commands.length),
-    '--timeout', timeoutFor(commands.length),
+    '--max-turns', turnCap(fed.length),
+    '--timeout', timeoutFor(fed.length),
     '--tail', '4',
   ])
   if (!r.ok) return r
@@ -172,14 +169,14 @@ function verifyOne(game, dir, name) {
   // and does not check it either (it is what lets a route be hand-written before
   // anything exists to fill the field in). The replay above still proves the
   // commands run to the end; there is simply no claimed room to hold them to.
-  if (!route.landing?.room) {
+  if (!route.landing) {
     return { ok: true, ...landing, note: 'no landing declared — replayed, not checked' }
   }
-  if (landing.room !== route.landing.room) {
+  if (landing.room !== route.landing) {
     return {
       ok: false,
       detail: `the route now ends in ${landing.room},`
-        + ` not the ${route.landing.room} it claims`,
+        + ` not the ${route.landing} it claims`,
     }
   }
   return { ok: true, ...landing }

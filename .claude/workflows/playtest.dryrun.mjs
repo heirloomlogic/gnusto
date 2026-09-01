@@ -11,9 +11,10 @@
 // Prompts land in /tmp/prompts.txt. Grep them: the firewall is a property of the
 // generated text, and this is the only place it can be asserted cheaply.
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 // The round's own ledger parser, imported rather than re-implemented. Node reads
 // the CommonJS module's static `module.exports` and gives ESM the named binding.
-import { ledgerScan } from '../../bin/lib/playtest-focus.js'
+import { LANDING_PROBE, ledgerScan, routeManifests, routePrefix, routesDir } from '../../bin/lib/playtest-focus.js'
 const src = readFileSync('.claude/workflows/playtest.js', 'utf8').replace('export const meta =', 'const meta =')
 
 const prompts = []
@@ -877,6 +878,7 @@ const SOURCES = {
   sessionServer: 'Sources/Gnusto/Playtest/PlaytestSession.swift',
   sessionDirectories: 'Sources/Gnusto/Playtest/PlaytestSessions.swift',
   measurer: 'bin/playtest-measure',
+  route: 'Sources/Gnusto/Playtest/PlaytestRoute.swift',
   tools: 'Sources/Gnusto/Playtest/PlaytestTools.swift',
   preflight: 'bin/playtest-preflight',
   fixerBrief: '.claude/skills/playtest/references/fixer-brief.md',
@@ -929,6 +931,24 @@ check(
 check(
   SOURCE.replayScript.includes('--saves-from'),
   `${SOURCES.replayScript} has no --saves-from, so a verifier cannot replay a reproducer that begins \`restore\``
+)
+// The deep-start door, which is the same shape one layer up. A round's deep starts
+// are committed routes now, so the reproducer a verifier is handed usually begins
+// deep rather than begins `restore` — and a CLI without `--start` sends that
+// verifier back to staging bytes, which is the recipe #358 deleted. The prefix has
+// to be the one `open` plays, or the two doors put a reader on different frames:
+// `PlaytestRoute.prefix` is commands + landing probe, and both sides spell the
+// probe here.
+check(
+  /^\s*--start\)/m.test(SOURCE.replayScript),
+  `${SOURCES.replayScript} has no --start, so a verifier reproducing a deep finding has to stage saved games to do it`
+)
+const swiftProbe = (SOURCE.route.match(/landingProbe = "([^"]+)"/) || [])[1]
+check(
+  swiftProbe === LANDING_PROBE,
+  swiftProbe === undefined
+    ? `${SOURCES.route} declares no landingProbe string literal, so nothing holds the session's route prefix and ${SOURCES.replayScript}'s together`
+    : `the session appends "${swiftProbe}" after a route and ${SOURCES.replayScript} appends "${LANDING_PROBE}" — one flag and one \`start:\` land on different frames`
 )
 check(
   /"savesFrom"/.test(code(SOURCES.replayTool.replace('PlaytestReplay', 'PlaytestTools'))),
@@ -989,6 +1009,64 @@ for (const key of ['replayScript', 'sessionDirectories']) {
     SOURCE[key].includes(`${probeStem}%03d`),
     `${SOURCES[key]} names its probe directories something other than ${LAYOUT.PROBE}`
   )
+}
+
+// ---------------------------------------------------------------------------
+// A deep start, read by the reader that hands it out
+// ---------------------------------------------------------------------------
+//
+// `routePrefix` is what `bin/playtest-replay --start` plays before the verifier's
+// own first command, and the checks above only prove the flag is spelled somewhere
+// in the script. These run the reader. A route store this package commits is the
+// only fixture worth running it against — a hand-made one would prove the function
+// parses its own output — so the assertion is against whatever Dungeon has, and
+// against the manifest rather than against a number written here.
+// Found the way the ledger block below finds ledgers, and for the same reason: a
+// game with no routes needs nothing (`PlaytestRoute`'s own doc says so), so naming
+// one here would turn a rename or a downstream checkout into a CI failure phrased
+// as a content failure. What has to hold is that SOME committed store reads.
+const stores = readdirSync('.playtest', { withFileTypes: true })
+  .filter((e) => e.isDirectory())
+  .map((game) => ({ game, routes: routeManifests(game.name).filter((r) => !r.error) }))
+  .filter((s) => s.routes.length)
+check(
+  stores.length > 0,
+  'no game under .playtest/ has a readable committed route, so nothing below proves a deep start can be handed out'
+)
+for (const { game, routes } of stores.slice(0, 1)) {
+  const dir = resolve(routesDir(game.name))
+  const route = routes[0]
+  const prefix = routePrefix(route.name, dir)
+  check(
+    !prefix.error,
+    `routePrefix("${route.name}") will not read a committed route: ${prefix.error}`
+  )
+  if (prefix.error) break
+  check(
+    prefix.seed === route.seed,
+    `routePrefix("${route.name}") hands out seed ${prefix.seed} where the manifest declares ${route.seed}, and a route replayed at another seed lands somewhere else`
+  )
+  check(
+    prefix.commands.length === route.commands.length + 1
+      && prefix.commands[prefix.commands.length - 1] === LANDING_PROBE,
+    `routePrefix("${route.name}") does not end in the landing probe, so a replay opens on whatever the route's last command printed`
+  )
+  check(
+    prefix.landing === (route.landing?.room || ''),
+    `routePrefix("${route.name}") reports a landing the manifest does not claim`
+  )
+  // A name that is not there, and a name that is a path. The first is the ordinary
+  // typo and has to name the directory it looked in — a caller told only "no such
+  // route" cannot tell a misspelling from an empty checkout. The second is why the
+  // stem is checked at all: `loadRoute` joins the name onto the directory, so an
+  // unchecked one reads any JSON on the disk.
+  for (const bad of ['no-such-route-here', '../../package']) {
+    const r = routePrefix(bad, dir)
+    check(
+      Boolean(r.error) && r.error.includes(dir),
+      `routePrefix("${bad}") does not refuse with the directory it looked in: ${JSON.stringify(r)}`
+    )
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -1061,6 +1139,10 @@ check(
 // reproducer that begins `restore` and cannot reach its slot is recorded
 // `not-reproducible`, which is the harness scoring itself as a defeated
 // finding; that cost four real defects on 2026-08-25.
+check(
+  /--start/.test(verifierPrompt),
+  'the verifier brief never mentions --start, so a reproducer taken from a deep start is replayed from turn zero'
+)
 check(
   /--saves-from/.test(verifierPrompt),
   'the verifier brief never mentions --saves-from, so a `restore` reproducer cannot be replayed'

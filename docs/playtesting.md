@@ -228,11 +228,16 @@ inside a turn budget — commit a route instead:
 bin/playtest-routes Dungeon cut dam-buttons --from-commands route.txt --seed 52
 bin/playtest-routes Dungeon verify          # re-replay; check each landing
 bin/playtest-routes Dungeon list
+bin/playtest-replay Dungeon --start d-1 --commands probe.txt --label mine
 ```
 
 A route is verified by **replay, never a hash**: `verify` runs it fresh at its declared seed
 and refuses it if it no longer ends in the room it claims. The MCP `open` tool takes
 `start: "<route name>"` and hands the tester the landing — the tester never sees the commands.
+`bin/playtest-replay --start <route name>` is the same door for a hand-driven probe: the
+route is played ahead of your command list and the seed comes off its manifest, so a `--seed`
+that disagrees is refused rather than honored — a route replayed at another seed lands
+somewhere else and says nothing about it.
 A game with no routes needs nothing: testers play cold, and the round's own output is the next
 round's deep starts.
 
