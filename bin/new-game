@@ -96,7 +96,18 @@ if [ -n "$dep_path" ]; then
 else
   # Pin to whatever this checkout's newest release is, read now rather than
   # hardcoded, so the generator cannot fall behind the tags.
-  version="$(git describe --tags --abbrev=0 2>/dev/null || true)"
+  #
+  # This asks "what is the newest tag by version, full stop" rather than
+  # `git describe --tags --abbrev=0`, which asks "what is the newest tag
+  # reachable from HEAD" -- a different question, and one this script cannot
+  # answer at all from a shallow clone: CI checks out at depth 1, so no tag's
+  # commit is an ancestor of HEAD and `git describe` fails with "No tags can
+  # describe" even once the tags themselves have been fetched (#384). A
+  # version sort needs only the tag objects, which `fetch-tags: true` in
+  # .github/workflows/test.yml supplies, and it is also the better question
+  # on a branch that isn't a descendant of the release tag, where `describe`
+  # would answer wrong instead of just failing.
+  version="$(git tag --sort=-v:refname | head -1)"
   [ -n "$version" ] || die "no git tag found to pin against; pass --dep-path instead"
   dependency=".package(url: \"https://github.com/HeirloomLogic/Gnusto\", from: \"$version\")"
 

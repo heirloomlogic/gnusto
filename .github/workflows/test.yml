@@ -81,6 +81,12 @@ jobs:
           # executes third-party build-tool plugin code. Left at the default, the
           # token sits in .git/config for all of it.
           persist-credentials: false
+          # NewGameTests runs bin/new-game with no --dep-path, which pins the
+          # generated package to this repository's newest release tag. The
+          # default checkout is shallow and fetches no tags at all, so that
+          # generation refuses (#384). Tags are small; this is not the `.build`
+          # cache tradeoff the comment two steps down is guarding against.
+          fetch-tags: true
 
       # The container runs as root over a checkout git considers foreign;
       # without this, git refuses ("dubious ownership") wherever SwiftPM or a
