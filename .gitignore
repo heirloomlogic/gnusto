@@ -22,7 +22,7 @@ DerivedData/
 # the version ranges in Package.swift, and the dev-only tooling (docc, Persnicket)
 # would otherwise churn it. The template resolves its own too.
 /Package.resolved
-Templates/NewGame/Package.resolved
+bin/templates/Package.resolved
 xcuserdata/
 .build
 # Exported game binaries produced by bin/export-game.
