@@ -252,13 +252,14 @@ const dryArgs = {
   // blind explorer, so it moved below the focus file's second `---` rule instead.
   // The assertions below are the regression test for the move.
   focusSighted:
-    'solver: the winning chain is `FulminateWalkthroughTests.route`, and this round'
-    + " slots are cuts of it at indices 12 and 40."
-    + ' | wrong-footer: run your generated rows at the boarder from slot `b-1`.',
-  // A round that ships pre-cut saves names the label they live under, and every
-  // session stages from it. Without this the region text tells testers to
-  // `restore` a slot their session has never been given.
-  slots: 'Fulminate-r1-slots',
+    'solver: the winning chain is `FulminateWalkthroughTests.route`, and both of this'
+    + " round's deep starts were distilled out of it."
+    + ' | wrong-footer: run your generated rows at the boarder from `b-1`.',
+  // The deep starts this round can hand out, by name. Every seat has to be told the
+  // set, or the region text tells a tester to start from `b-1` and its `open` call has
+  // nowhere to put the name. Names only: a route's landing is a room name, and a room
+  // name is the thing the firewall exists to withhold.
+  routes: ['a-1', 'b-1'],
   ledgerKeys: dryLedgerKeys,
 }
 const fn = new Function('__stub','__phases','__logs','__args', body)
@@ -496,7 +497,7 @@ for (const p of blind) {
     check(!p.prompt.includes(prose), `${p.label} was handed a ledger excerpt: "${prose.slice(0, 48)}…"`)
   }
   // The sighted-only half of the coverage plan, which is where a row naming the
-  // walkthrough, a route index or a slot's contents belongs. This is the check
+  // walkthrough, the ledger's verdicts or the room a deep start lands in belongs. This is the check
   // that makes the focus file's second `---` rule mean something: before it, the
   // solver's and the wrong-footer's rows were region four, withheld from blind
   // seats only by a seating bug, and they went into a blind prompt the day the
@@ -546,18 +547,31 @@ for (const row of sightedRows) {
   )
 }
 
-// **A round that ships saved games says so on every session.** The slots live under
-// one label and each tester stages them into its own; a session that never asks
-// answers `Restore failed.` to the region text telling it to restore, and SKILL.md
-// records that reply producing four false `not-reproducible` verdicts in one round.
-// It is checked on the `open` line rather than anywhere in the prose, because the
-// prose is advice and the argument is the thing that works.
-if (dryArgs.slots) {
-  const wants = `savesFrom: "${dryArgs.slots}"`
+// **A round that ships deep starts says so on every session.** A route is played by
+// `open` and by nothing else, so a seat that is never told the names cannot obey a
+// region saying "start from `b-1`" — it improvises, walks, and spends its budget on
+// travel.
+//
+// Two assertions, and neither is a copy of the prompt. The sentence is read out of
+// `playtest.js` with `layoutConst`, the same way `REGION_RESIDUAL` is, so a reword
+// fails on the declaration check below rather than going quietly vacuous here; and the
+// name list is built from the args, so it cannot be satisfied by a region that happens
+// to mention one route — which the fixture's own `focusSighted` row does.
+//
+// The names, and only the names. A landing is a room name; asserting one reached a
+// blind prompt would be asserting the leak the firewall check two screens up refutes.
+if (dryArgs.routes?.length) {
+  const lead = layoutConst('DEEP_START_LEAD')
+  check(!!lead, 'playtest.js no longer declares DEEP_START_LEAD as one line, so this is unchecked')
+  const wants = dryArgs.routes.map((r) => `\`${r}\``).join(', ')
   for (const p of play) {
     check(
-      p.prompt.split('\n').some((l) => l.startsWith('Open with') && l.includes(wants)),
-      `${p.label} opens without savesFrom, so every restore in its region will fail`
+      lead ? p.prompt.includes(lead) : false,
+      `${p.label} is never told this round ships deep starts, so it cannot reach one`
+    )
+    check(
+      p.prompt.includes(wants),
+      `${p.label} is not given the round's route names (${wants}), so a region naming one is unusable`
     )
   }
 }
@@ -1391,33 +1405,18 @@ check(
 // — which is not hypothetical: three rounds running reported coverage arithmetic
 // with a previous round's sessions folded in.
 //
-// **One tree is legitimately round-agnostic, and it is exempt because it is not
-// summed.** `bin/playtest-slots` cuts a round's saved games under a label with no
-// round id in it, on purpose: slots are cut once and reused by every round the
-// walkthrough has not moved under, so round-scoping the label would mean re-cutting
-// them every round and would make two rounds' bytes two directories. Its turns are
-// counted and given a named row, but `countedTurns` deliberately keeps them out of
-// `total` and subtracts them from the residual instead — so a previous round's
-// cutting being swept in changes no number anybody spends. The rule this assertion
-// enforces is about *spend*; the exemption is only ever safe while that holds, which
-// is why it is keyed to the args field rather than to a name that looks harmless.
-const unscopedExempt = dryArgs.slots ? [`${dryArgs.slots}*`] : []
+// **Every glob, with no exemption.** There used to be one, for the label a round's
+// saved games were cut under — see `playtest.js`'s "There is no fifth tree". A deep
+// start is now a route played inside the tester's own label, so no tree is
+// round-agnostic and the rule has no exception left to keep.
 for (const [name, globs] of [['session', closingGlobs], ['turn', turnGlobs]]) {
-  const unscoped = globs.filter(
-    (g) => !g.includes(dryRoundId) && !g.startsWith('.') && !unscopedExempt.includes(g)
-  )
+  const unscoped = globs.filter((g) => !g.includes(dryRoundId) && !g.startsWith('.'))
   check(
     unscoped.length === 0,
     `${name} glob(s) carry no roundId, so a previous round of this game is collated `
     + `into this one: ${unscoped.join(', ')}`
   )
 }
-// The exemption is only as good as the promise it rests on, so check the promise.
-check(
-  !/const total = testers \+ verifiers \+ harness \+ slots/.test(src),
-  'the slots tree is summed into `total` while its glob is exempt from the roundId '
-  + 'rule, so a previous round of this game is charged to this one'
-)
 
 const preflightPrompt = prompts.find((p) => String(p.label || '').startsWith('preflight'))
 

@@ -9,7 +9,20 @@ were given rather than one you invent. That path is a probe directory, written o
 and never rewritten; a label on its own holds every probe a tester ran and tells you
 nothing about which one the finding is about.
 
-**If the reproducer begins `restore`, it needs the slot it restores** — without it the
+**If the reproducer starts deep, it needs its route.** A finding filed with a
+`startedFrom` was taken from a committed deep start, and one flag reproduces it:
+
+```sh
+bin/playtest-replay <Game> --start <that route> --commands repro.txt --label fix-<n>
+```
+
+The seed comes off the route's manifest, so you do not pass one. Nothing is staged and
+nothing expires — the route is committed, so this reproduces as well next year as today.
+`bin/playtest-routes <Game> list` says which routes the checkout has. Drop the flag and
+you replay the commands from turn zero, where they walk somewhere else entirely and the
+prose you go on to "fix" is prose nobody reported.
+
+**If the reproducer begins `restore`, it needs the save it restores** — without it the
 game answers *"Restore failed."*, every turn after that line is the wrong game, and you
 will "fix" prose you never actually saw. Pass `--saves-from`, which takes either the
 label the finding's `savesFrom` names, or a **path**:

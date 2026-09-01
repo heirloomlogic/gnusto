@@ -154,7 +154,8 @@ whoever remembered the rule.
 | `turns` | `60` | Engine turns per charter. Token cost, not CPU cost, is the real budget. **It is scored against all four of a tester's turn trees** — its session, the branches a rewind wrote off, its `replay` probes and its `bin/playtest-replay` probes — while the `[status]` move counter shows only the first. Testers spent 8x their budget without feeling it on 2026-08-25; the tester prompt now says so in as many words. |
 | `charters` | all applicable | Comma-separated subset, e.g. `"tourist,clock-watcher"`. |
 | `focus` | none | The coverage split, as **one string** with regions separated by `\|` — an array is silently read as a single region. Each region becomes one `explorer` *and* one `timekeeper`, up to three of each; the explorers are handed different divergence policies. Say how each region is reached, and **name no room**. See below. |
-| `focusSighted` | none | The half of the split a blind seat may not have — a row keyed to a sighted charter, or one naming the walkthrough by type, the ledger, or a slot's contents. **Not** every mention of a route index: a region must tell its tester how deep a slot stands. Never chunked, never seated, appended to the sighted charters' plan. It is everything below the focus file's **second** `---` rule. See below. |
+| `focusSighted` | none | The half of the split a blind seat may not have — a row keyed to a sighted charter, or one naming the walkthrough by type, the ledger's verdicts, or the room a deep start lands in. **Not** every mention of a deep start: a region must tell its tester which route to open with and roughly how deep it stands, or the tester walks instead. Never chunked, never seated, appended to the sighted charters' plan. It is everything below the focus file's **second** `---` rule. See below. |
+| `routes` | `[]` | The names of the committed deep starts `open({start: …})` will accept, read off `.playtest/<Game>/routes/`. Every seat is told the whole set, so a region saying "start from `d-1`" is obeyed rather than guessed at. **Names only** — a route's landing is a room name, and a room name is what the firewall exists to withhold. An empty list is a game whose testers play cold, which is what a downstream game has on day one. |
 | `verifyEffort` | inherit | Reasoning effort for the verifiers — the round's largest fan-out, and so its cost. Turn it down to buy a bigger round; read the warning below first. |
 | `rounds` / `dryRounds` | `1` / `2` | Loop until N consecutive rounds surface nothing new. |
 | `packagePath` | `"."` | Drive another checkout — a worktree at an older commit, for calibration. |
@@ -447,6 +448,14 @@ replayed at another seed lands somewhere else and says nothing about it, so a `-
 that disagrees is refused rather than honored. It reads the same
 `.playtest/<Game>/routes/` store `open({start: …})` plays and appends the same `look`
 after it, which is what makes the verifier's opening frame the tester's opening frame.
+
+**The tester's own door is not that one.** The MCP `replay` tool always boots at turn
+zero and takes no route, and a blind charter has no CLI by design — so a tester
+re-verifies a deep reproducer by taking a `checkpoint` on the turn its session opens,
+which is the frame the route stopped on, and restoring to it. The finding then carries
+`startedFrom`, and the route name is what turns a list that only means something at the
+landing into one anybody can run.
+
 Everything below is what is left once that case is gone: a **tester's own** mid-session
 `save`.
 
@@ -486,7 +495,7 @@ slots exist, which is weaker evidence than a clean start and is labelled as such
 `bin/playtest-routes` cut it. It is chosen by *route state*, not by the room name the
 `[status]` footer reports: `wf-1` on 2026-08-25 was cut three hundred commands past
 `take trunk`, so `object:trunk:open` was offered to nobody while the footer said the
-right room. And check who is alive in it — every slot that round shipped was cut past
+right room. And check who is alive in it — every deep start that round shipped ran past
 `attack thief with sword`, which silently removed the thief from three of four regions.
 Both of those are read off the script's own `cut` and `verify` lines, which print the
 landing room, the move count, the score and the inventory for exactly this.

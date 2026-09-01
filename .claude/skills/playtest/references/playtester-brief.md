@@ -77,6 +77,12 @@ it produced. If the trimmed list does not produce the line you are reporting, yo
 have not found the reproducer yet; say so in your coverage note rather than
 reporting a sequence that does not work.
 
+**A list that begins where a deep start stopped is still the shortest list**, and it
+is short precisely because it does not walk there. It only replays for somebody else if
+it says which route it started from, so put the name in `startedFrom`; without it the
+verifier runs your commands from turn zero, where they mean something else or nothing
+at all.
+
 `replay` writes its own probe directory and hands back `transcript=<path>` on the
 first line. Copy that path into your finding whenever the frame you are quoting
 came from a replay rather than from your own session — it is the file that holds

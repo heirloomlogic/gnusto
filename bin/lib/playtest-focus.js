@@ -5,7 +5,8 @@
 // it to a round as `focus`, and `playtest.js` chunks it across the blind seats.
 //
 // It also owns where a round's **deep starts** live and what they say —
-// `routesDir`, `loadRoute`, `routeManifests`, `routeSeeds`, `seedFor` — for the same
+// `routesDir`, `loadRoute`, `routeManifests`, `usableRoutes`, `routeSeeds`, `seedFor`
+// — for the same
 // reason: `bin/playtest-preflight` decides whether a route can be handed out and
 // `bin/playtest-routes` decides whether it can be replayed, and two judgements of
 // one file is two answers to one question. ``PlaytestRoute`` in the engine is where
@@ -246,6 +247,24 @@ function routeNames(dir) {
     .filter((f) => f.endsWith('.json')).map((f) => f.slice(0, -5)).sort()
 }
 
+/// The routes a round may actually hand out, by name, in name order.
+///
+/// One predicate, three readers: `bin/playtest-preflight`'s `routes` row turns a
+/// failure into a red check, its `roundArgs` puts the survivors on every tester's
+/// `open` line, and `playtest.dryrun.mjs` asks whether any committed store reads at
+/// all. Spelled out at each of them, the three drifted immediately — the row already
+/// refused a route with no `landing.room` while the args shipped it, so a round could
+/// be red and dispatchable in the same breath about the same file.
+///
+/// A route is usable when it parses **and** claims a landing. The landing is not
+/// decoration: `bin/playtest-routes verify` replays each route and compares where it
+/// ends against that claim, so a route that claims nothing can never be found stale.
+function usableRoutes(game) {
+  return routeManifests(game)
+    .filter((r) => !r.error && r.landing?.room)
+    .map((r) => r.name)
+}
+
 /// The distinct seeds this game's readable routes declare, ascending.
 ///
 /// One of them is the round's seed. More than one is a round that would turn half
@@ -417,6 +436,7 @@ module.exports = {
   loadRoute,
   routePrefix,
   routeManifests,
+  usableRoutes,
   routeSeeds,
   seedFor,
   ledgerScan,

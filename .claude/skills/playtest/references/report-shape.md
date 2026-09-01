@@ -23,7 +23,9 @@ printed — and a citation ending at the label points at a directory, not at evi
 
 **A staged probe is weaker evidence, and the citation has to say so.** Most probes
 reproduce from `commands.txt` and a seed alone. One whose list begins `restore` does
-not: it reproduces only while the slots it was staged from survive. So cite the source
+not: it reproduces only while the saves it was staged from survive. A probe that started
+from a **route** is not this case — a route is committed, so its name is a citation that
+keeps. So cite the source
 with it — the label from the finding's `savesFrom`, and the `saves-in/` directory in the
 probe, which holds the same bytes and is the one that still exists after the round's
 labels are cleaned. `bin/playtest-replay --saves-from` and the `replay` tool's
