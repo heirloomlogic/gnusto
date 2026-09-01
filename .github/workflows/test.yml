@@ -151,12 +151,22 @@ jobs:
           # ran against THIS package: bin/playtest-replay derives --package-path
           # from its own $PWD, and a whole-branch review found that read happening
           # after this script's own `cd` to Gnusto's checkout, so it silently built
-          # Gnusto instead of the generated package. Grepping the printed binary
-          # path for $RUNNER_TEMP/Scratch is what actually discriminates that —
-          # an exit-code check alone passes whichever package got built.
+          # Gnusto instead of the generated package. Checking that the printed
+          # binary lies under $RUNNER_TEMP/Scratch is what actually discriminates
+          # that — an exit-code check alone passes whichever package got built.
+          #
+          # Both sides go through `realpath`, because the two paths can name one
+          # directory in different words: `swift build --show-bin-path` answers
+          # with the physical path, while $RUNNER_TEMP is whatever the runner
+          # set. On macOS that is under /var/folders, which resolves to
+          # /private/var/folders, so comparing the two as text fails while they
+          # name the same package — a false failure that reads exactly like a
+          # real regression in the generator.
           built="$(bin/playtest-replay Scratch --build)"
-          case "$built" in
-            "$RUNNER_TEMP/Scratch"/*) ;;
+          built_real="$(realpath "$built")"
+          want_real="$(realpath "$RUNNER_TEMP/Scratch")"
+          case "$built_real" in
+            "$want_real"/*) ;;
             *)
               echo "bin/playtest-replay --build built the wrong package: $built" >&2
               exit 1

@@ -347,8 +347,13 @@ if [[ -n "$saves_from" ]]; then
     # Canonicalized once the directory is known to exist, so the identity check
     # below compares two absolute paths and the receipt this run prints names a
     # directory a reader can paste back — not `…/./deep` as the caller typed it.
-    from_dir="$(cd "$from_dir" && pwd)"
-    [[ "$from_dir" != "$(cd "$scratch/saves" && pwd)" ]] \
+    # `pwd -P` on both sides, because the check asks whether the two paths name
+    # one directory and not whether they are spelled alike: the caller's is
+    # whatever they typed, $scratch is built from --package-path, and on macOS
+    # /var and /tmp are symlinks. Spelled the other way the guard let a label
+    # stage its own slots onto itself, and the run died further down in `cp`.
+    from_dir="$(cd "$from_dir" && pwd -P)"
+    [[ "$from_dir" != "$(cd "$scratch/saves" && pwd -P)" ]] \
       || die "--saves-from '$saves_from' is this run's own saves directory; it already reads those slots"
   else
     plain_name "$saves_from" || die "bad --saves-from '$saves_from'"

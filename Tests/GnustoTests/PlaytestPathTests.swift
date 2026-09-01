@@ -156,6 +156,37 @@ struct PlaytestPathTests {
             "expected a bare name to stay a label; it said: \(result.stderr)")
     }
 
+    @Test func savesFromRefusesThisRunsOwnDirectoryUnderAnySpelling() throws {
+        let here = try Self.scratch()
+        defer { try? FileManager.default.removeItem(at: here) }
+        try Self.recordBinary("Zwank", in: here)
+        try "look\n".write(
+            to: here.appendingPathComponent("probe.txt"), atomically: true, encoding: .utf8)
+
+        // A second name for the package, so --package-path and --saves-from
+        // reach one directory by two spellings — which is what a macOS runner's
+        // /var and /tmp do to every path underneath them, without anyone asking.
+        let alias = here.deletingLastPathComponent()
+            .appendingPathComponent("alias-\(UUID().uuidString)")
+        try FileManager.default.createSymbolicLink(at: alias, withDestinationURL: here)
+        defer { try? FileManager.default.removeItem(at: alias) }
+
+        // The guard asks whether the two paths name one directory. Compared as
+        // text it missed, staging the label's own slots onto themselves, and the
+        // run died in `cp` several steps later instead of in a sentence here.
+        let own = here.appendingPathComponent(".context/playtest/mine/saves")
+        let result = try Self.replay(
+            [
+                "Zwank", "--commands", "probe.txt", "--label", "mine",
+                "--package-path", alias.path, "--saves-from", own.path,
+            ],
+            from: here)
+        #expect(
+            result.stderr.contains("is this run's own saves directory"),
+            "expected \(own.path) to be recognized through \(alias.path); it said: \(result.stderr)"
+        )
+    }
+
     // MARK: - --commands
 
     @Test func aRelativeCommandFileNamesTheCallersFile() throws {
