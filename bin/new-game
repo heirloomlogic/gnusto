@@ -1,0 +1,135 @@
+#!/usr/bin/env bash
+#
+# Write a new Gnusto game package, named for your game, from bin/templates.
+#
+# Usage:  bin/new-game <GameName> <destination-dir>
+#         bin/new-game Zwank ~/dev/Zwank
+#         bin/new-game Zwank /tmp/scratch --dep-path /path/to/gnusto
+#
+# There used to be a Templates/NewGame directory and a README telling you to copy
+# it and then rename MyGame in ten places by hand. This does that, and does the
+# part the README could not: the generated bin/ holds shims over Gnusto's own
+# tools rather than copies of them, so an author's tooling cannot drift from the
+# engine it is driving.
+#
+# --dep-path makes the generated package depend on a Gnusto checkout by path
+# instead of by version. CI uses it to test the working tree; an author does not
+# need it.
+
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+
+die() { echo "new-game: $*" >&2; exit 2; }
+
+usage() {
+  echo "usage: bin/new-game <GameName> <destination-dir> [--dep-path <path>]" >&2
+  exit 2
+}
+
+game=""
+destination=""
+dep_path=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --dep-path) dep_path="${2:-}"; [ -n "$dep_path" ] || usage; shift 2 ;;
+    -h|--help) usage ;;
+    -*) die "unknown option '$1'" ;;
+    *)
+      if [ -z "$game" ]; then game="$1"
+      elif [ -z "$destination" ]; then destination="$1"
+      else die "unexpected argument '$1'"
+      fi
+      shift
+      ;;
+  esac
+done
+
+[ -n "$game" ] && [ -n "$destination" ] || usage
+
+# The name becomes a struct, two target names and two directory names, so it has
+# to be something Swift will accept in all five places. Checked here rather than
+# left to the compiler, because the compiler's complaint arrives after the files
+# are already on disk under the bad name.
+case "$game" in
+  [A-Za-z_]*) ;;
+  *) die "'$game' is not a valid Swift identifier: it must start with a letter or underscore" ;;
+esac
+case "$game" in
+  *[!A-Za-z0-9_]*) die "'$game' is not a valid Swift identifier: only letters, digits and underscores" ;;
+esac
+
+if [ -e "$destination" ]; then
+  [ -d "$destination" ] || die "'$destination' exists and is not a directory"
+  if [ -n "$(ls -A "$destination" 2>/dev/null)" ]; then
+    die "'$destination' is not empty"
+  fi
+fi
+
+if [ -n "$dep_path" ]; then
+  [ -d "$dep_path" ] || die "--dep-path '$dep_path' is not a directory"
+  dep_path="$(cd "$dep_path" && pwd)"
+  dependency=".package(name: \"Gnusto\", path: \"$dep_path\")"
+else
+  # Pin to whatever this checkout's newest release is, read now rather than
+  # hardcoded, so the generator cannot fall behind the tags.
+  version="$(git describe --tags --abbrev=0 2>/dev/null || true)"
+  [ -n "$version" ] || die "no git tag found to pin against; pass --dep-path instead"
+  dependency=".package(url: \"https://github.com/HeirloomLogic/Gnusto\", from: \"$version\")"
+fi
+
+mkdir -p "$destination"
+destination="$(cd "$destination" && pwd)"
+
+# bin/templates/.build can run to hundreds of megabytes on any machine that has
+# ever run `swift test --package-path bin/templates` (Tasks 1 and 3 both did, and
+# so does CI). Copying it and then deleting it would multiply that cost by every
+# game generated, so it is excluded from the copy itself -- via a tar pipe rather
+# than cp, because cp has no --exclude and a post-hoc `find -prune` would still
+# have to walk the tree it is throwing away. Both BSD tar (macOS) and GNU tar
+# (Linux/CI) accept -C and --exclude, and both preserve the executable bits the
+# shims need.
+tar -c -f - -C bin/templates --exclude .build --exclude Package.resolved . \
+  | tar -x -f - -C "$destination"
+
+lower="$(echo "$game" | tr '[:upper:]' '[:lower:]')"
+
+# Rename the directories and the one file that carry the name, before rewriting
+# contents, so nothing is edited twice.
+mv "$destination/Sources/MyGame" "$destination/Sources/$game"
+mv "$destination/Sources/$game/MyGame.swift" "$destination/Sources/$game/$game.swift"
+mv "$destination/Tests/MyGameTests" "$destination/Tests/${game}Tests"
+mv "$destination/Tests/${game}Tests/MyGameTests.swift" \
+   "$destination/Tests/${game}Tests/${game}Tests.swift"
+
+# MyGameTests is MyGame + Tests, so one substitution covers both. The lowercase
+# pass is for the .mcp.json server key, which is keyed lowercase by convention —
+# .claude/workflows/playtest.js reads it that way.
+while IFS= read -r file; do
+  sed -e "s/MyGame/$game/g" -e "s/mygame/$lower/g" "$file" > "$file.new"
+  # Preserve the mode: sed writing to a new file would otherwise strip the
+  # executable bit off every shim.
+  chmod --reference="$file" "$file.new" 2>/dev/null \
+    || chmod "$(stat -f '%OLp' "$file")" "$file.new"
+  mv "$file.new" "$file"
+done < <(find "$destination" -type f ! -path "*/.git/*")
+
+# The dependency is one marked line, by construction, so this is a substitution
+# rather than a parse. See the comment above it in bin/templates/Package.swift.
+manifest="$destination/Package.swift"
+sed -e "s|^ *\.package(name: \"Gnusto\", path: \"\.\./\.\.\") *// gnusto-dependency\$|        $dependency|" \
+  "$manifest" > "$manifest.new"
+mv "$manifest.new" "$manifest"
+# The success path is grep finding nothing, i.e. exiting 1 -- which under
+# set -e would make the `&&` form's *correct* run the one that kills the script.
+# Written as an if instead, so failing to find the marker (the good outcome)
+# does not itself trip set -e.
+if grep -q "gnusto-dependency" "$manifest"; then
+  die "internal error: the dependency marker survived rewriting"
+fi
+
+echo "Wrote $game to $destination"
+echo
+echo "  cd $destination"
+echo "  swift test        # run the transcript tests"
+echo "  swift build && \"\$(swift build --show-bin-path)/$game\"   # play it"
