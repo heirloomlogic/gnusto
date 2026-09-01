@@ -3,7 +3,7 @@ export const meta = {
   description:
     'Automated play-test round for a Gnusto demo game: charter-diverse subagents read transcripts as prose, every finding is replayed and then adversarially refuted by two independent raters, and a critic reads the coverage off what the sessions themselves wrote down rather than believing the testers.',
   whenToUse:
-    'Invoked by /playtest <game>. Needs args {game, packagePath, docPath, capabilities, turns, charters, rounds}. The calling session builds the binary first (bin/playtest-replay --build <Game>) and writes the returned report; this script has no filesystem access of its own.',
+    'Invoked by /playtest <game>. Needs args {game, packagePath, docPath, capabilities, turns, charters, rounds}. A package that is not this repository also passes its layout — {projectName, enginePath, conventionsPath, gameDocsDir} — since this script has no filesystem access of its own and cannot derive any of it. The calling session builds the binary first (bin/playtest-replay --build <Game>) and writes the returned report.',
   phases: [
     { title: 'Preflight', detail: 'one agent proves this session can reach the game’s MCP server, before eight testers find out it cannot' },
     { title: 'Survey', detail: 'one cartographer: rooms, timers, vocabulary, and which oracle tiers exist' },
@@ -68,6 +68,48 @@ if (/(^|\/)\.\.(\/|$)/.test(pkg) || pkg.startsWith('-')) {
 // design doc the copy source of truth and requires a prose change to land there
 // in the same commit. No doc, nothing to keep in sync, so nothing to rewrite.
 const docPath = ARGS.docPath || null
+
+// ---------------------------------------------------------------------------
+// The package's own layout, as arguments
+// ---------------------------------------------------------------------------
+//
+// A round is dispatched against `packagePath`, and everything *else* about that
+// package used to be spelled here rather than passed in — so a downstream author's
+// package could be played by this workflow and could not be described by it.
+//
+// None of it is derivable: this script has no filesystem access at all (see
+// `meta.whenToUse`), which is what makes it safe to run against any tree. So each fact
+// arrives in args, defaulted to this repository. A round dispatched by
+// `bin/playtest-preflight` therefore generates exactly the text it always did, and a
+// package written by `bin/new-game` overrides only what differs. Preflight passes none
+// of them deliberately: restating the same four values there would put them in two
+// places, and the dry run exercises the defaults, so a drift would be silent.
+//
+// A path arrives absent as `''`, which is the generated case — no conventions file, no
+// design-doc directory — and the bullet, the exclusion and the classifier row that
+// name it all drop out together.
+const layoutPath = (value, fallback) => String(value ?? fallback).trim().replace(/\/+$/, '')
+
+// How the prompts name the repository under test. Three preambles open with it.
+const projectName = String(ARGS.projectName ?? 'Gnusto engine').trim()
+
+// Where the engine's own source sits, as a path prefix: `ownerClass` calls anything
+// under it `engine`, and the cartographer is sent into it for the stub-verb roster.
+//
+// **When Gnusto is a dependency rather than the package under test**, the prefix is
+// wherever SwiftPM resolved it — `.build/checkouts/Gnusto/Sources/Gnusto` for a tag or
+// branch pin, `<path>/Sources/Gnusto` for a path dependency. The caller knows which;
+// this script cannot look, so it is told.
+const enginePath = layoutPath(ARGS.enginePath, 'Sources/Gnusto')
+
+// The conventions file the sighted charters read, the one the blind charters are told
+// not to open, and the one row `ownerClass` calls `engine` without its being under
+// `enginePath`.
+const conventionsPath = layoutPath(ARGS.conventionsPath, 'CLAUDE.md')
+
+// Where design docs live. `docPath` already names the one doc this round reads; this is
+// the directory a *finding* can cite, which is what `ownerClass` needs.
+const gameDocsDir = layoutPath(ARGS.gameDocsDir, 'docs/games')
 const capabilities = new Set(ARGS.capabilities || [])
 const ledger = new Set(ARGS.ledgerKeys || [])
 // [{number, owns}] — issues that are OPEN right now and own a defect class the
@@ -359,7 +401,7 @@ only part of the tree that is gitignored for this purpose.
 // Where and what, with no doctrine. Every agent gets this much; only the ones
 // that actually judge prose pay for the briefs (`ground`, below).
 const groundMin = (label) => `
-You are working on the Gnusto engine repo. The package under test is at \`${pkg}\`
+You are working on the ${projectName} repo. The package under test is at \`${pkg}\`
 and the game is \`${game}\`. The pinned seed for this round is \`${seed}\`.
 
 ${replayHowTo(label)}
@@ -387,12 +429,12 @@ ${replayHowTo(label)}
 // DocC article teaching the convention, so the trade came out ahead rather than
 // merely even.
 const groundBlind = (label) => `
-You are play-testing \`${game}\` for the Gnusto engine repo. The pinned seed for this
+You are play-testing \`${game}\` for the ${projectName} repo. The pinned seed for this
 round is \`${seed}\`.
 
 Read \`${REF}/finding-contract.md\` before you report anything: it is what a finding must
 carry. Read nothing else. In particular do **not** open the game's source, its design
-doc, its tests, or \`CLAUDE.md\` — you are judging whether the prose is true of the
+doc, its tests${conventionsPath ? `, or \`${conventionsPath}\`` : ''} — you are judging whether the prose is true of the
 situation it printed in, and that is decided by what the game told you and nothing else.
 Somebody handed the map navigates instead of exploring; somebody handed the vocabulary
 can never discover that a printed noun has nothing behind it.
@@ -410,17 +452,17 @@ Your label for this session is \`${label}\`.
 `
 
 const ground = (label) => `
-You are working on the Gnusto engine repo. The package under test is at \`${pkg}\`
+You are working on the ${projectName} repo. The package under test is at \`${pkg}\`
 and the game is \`${game}\`. The pinned seed for this round is \`${seed}\`.
 
 Read these before you do anything else:
 - \`${REF}/playtester-brief.md\` — the doctrine, the judgement kernel K1..K13, and
   what is never a finding. This is your oracle when the design doc is silent.
 - \`${REF}/finding-contract.md\` — what a finding must carry.
-${docPath ? `- \`${docPath}\` — the design doc: the mechanics contract, the map, the timeline, the solution. Its "free to change" / "not free to change" lists decide what is even arguable.` : `- There is NO design doc for ${game}. Read \`Sources/${game}/${game}.swift\` instead: its type doc comment lists the idioms the game exists to demonstrate, which is the nearest thing to a contract, and \`maxScore\` plus the score line is a machine-checkable win oracle.`}
-- \`CLAUDE.md\` — repo conventions. Its rules are load-bearing but it can be stale;
+${docPath ? `- \`${docPath}\` — the design doc: the mechanics contract, the map, the timeline, the solution. Its "free to change" / "not free to change" lists decide what is even arguable.` : `- There is NO design doc for ${game}. Read \`Sources/${game}/${game}.swift\` instead: its type doc comment lists the idioms the game exists to demonstrate, which is the nearest thing to a contract, and \`maxScore\` plus the score line is a machine-checkable win oracle.`}${conventionsPath ? `
+- \`${conventionsPath}\` — repo conventions. Its rules are load-bearing but it can be stale;
   where it disagrees with the code, the code wins and that disagreement is itself a
-  \`doc-drift\` finding.
+  \`doc-drift\` finding.` : ''}
 
 ${replayHowTo(label)}
 ${focus ? `
@@ -447,7 +489,7 @@ every symptom you find is yours to judge. In particular, do not assume an unknow
 word, an odd stock line or a rough edge is "already tracked" — check, or report it.`}
 ${pkg === '.' ? '' : `
 **You are playing an OLDER TREE than the one the briefs describe.** The binary is built
-from \`${pkg}\`; the judgement kernel, the checklists and \`CLAUDE.md\` all come from the
+from \`${pkg}\`; the judgement kernel, the checklists${conventionsPath ? ` and \`${conventionsPath}\`` : ''} all come from the
 current checkout, because some of them did not exist at the commit under test. So engine
 facts can legitimately disagree with what you were told: a stock text key the kernel
 names may not exist yet, a verb the kernel treats as known may not be in the table yet,
@@ -1265,7 +1307,7 @@ Report:
    whether every printed noun has a word behind it is checkable before a single turn.
 5. Which stock text keys the game overrides in its \`text\` block, AND which stub-verb
    replies it overrides via \`text.stubs.<verb>\`. The COMPLEMENT of each is a vandal
-   target list. Read \`Sources/Gnusto/Actions/GameText.swift\` for the full stub roster
+   target list. Read \`${enginePath}/Actions/GameText.swift\` for the full stub roster
    (the \`StubReplies\` struct) — a game that overrides none of them answers ~48 verbs in
    the engine's voice.
 6. Which actors have proper names or honorifics.
@@ -2198,19 +2240,19 @@ function ownerClass(file) {
   // round's doctrine, the replay tool, and the hand-driven counterpart the same
   // skill documents itself in.
   if (f.startsWith('.claude/') || f.startsWith('bin/') || f === 'docs/playtesting.md') return 'harness'
-  if (f.startsWith('Sources/Gnusto')) return 'engine'
+  if (enginePath && f.startsWith(enginePath)) return 'engine'
   // Repo conventions, and the one genuinely arguable row. `ground` tells every
-  // tester that a CLAUDE.md line the code contradicts is a doc-drift finding, so
-  // the harness solicits these; filing them forever at every setting is the
-  // complaint this classifier exists to answer. `engine` reaches them under
+  // tester that a line in the conventions file the code contradicts is a doc-drift
+  // finding, so the harness solicits these; filing them forever at every setting is
+  // the complaint this classifier exists to answer. `engine` reaches them under
   // `fix: "all"` and nowhere narrower.
-  if (f === 'CLAUDE.md') return 'engine'
+  if (conventionsPath && f === conventionsPath) return 'engine'
   // The game suites share a tree with the engine's, so split them by name. A
   // suite not named for its game (CloakTranscriptTests.swift) reads as engine,
   // which is the safe direction for an issue checklist to guess.
   if (f.startsWith('Tests/')) return f.includes(game) ? 'game' : 'engine'
   if (f.startsWith(`Sources/${game}/`)) return 'game'
-  if (f.startsWith('docs/games/')) return 'game'
+  if (gameDocsDir && f.startsWith(`${gameDocsDir}/`)) return 'game'
   return 'unknown'
 }
 
