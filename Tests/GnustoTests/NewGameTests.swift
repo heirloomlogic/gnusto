@@ -62,6 +62,14 @@ struct NewGameTests {
     }
 
     /// Every path under a directory, relative to it, files and directories alike.
+    ///
+    /// Every failure mode of `FileManager`'s enumerator -- a nil enumerator because
+    /// the root does not exist, an `allObjects` cast that fails, a root that is
+    /// really there but empty -- collapses to the same `[]` a truly clean generated
+    /// tree would produce. Nothing downstream can tell those apart from the return
+    /// value alone, which is why a caller that means to prove the tree is clean
+    /// has to assert the enumeration found *something* before trusting an empty
+    /// loop as good news, rather than reading silence as success.
     private static func entries(under root: URL) -> [String] {
         let enumerator = FileManager.default.enumerator(atPath: root.path)
         return (enumerator?.allObjects as? [String] ?? []).sorted()
@@ -71,7 +79,17 @@ struct NewGameTests {
         let game = try Self.generate()
         defer { try? FileManager.default.removeItem(at: game) }
 
-        for entry in Self.entries(under: game) {
+        let entries = Self.entries(under: game)
+        #expect(
+            !entries.isEmpty,
+            "found nothing under \(game.path) -- that means the enumerator or the root is wrong, not that the generated tree is clean"
+        )
+
+        // Which files this loop actually opened and read as text, so the absence
+        // of "MyGame" below is evidence about files that were checked rather than
+        // an artifact of the UTF-8 guard silently skipping past them.
+        var filesRead: Set<String> = []
+        for entry in entries {
             #expect(!entry.contains("MyGame"), "\(entry) still carries the template name")
             let url = game.appendingPathComponent(entry)
             var isDirectory: ObjCBool = false
@@ -79,8 +97,20 @@ struct NewGameTests {
                 !isDirectory.boolValue,
                 let text = try? String(contentsOf: url, encoding: .utf8)
             else { continue }
+            filesRead.insert(entry)
             #expect(!text.contains("MyGame"), "\(entry) still mentions MyGame")
             #expect(!text.contains("mygame"), "\(entry) still mentions mygame")
+        }
+
+        #expect(!filesRead.isEmpty, "no file under \(game.path) was read as text")
+        let namedFiles = [
+            "Package.swift", ".mcp.json", "README.md", "Sources/Zwank/Zwank.swift",
+            "Tests/ZwankTests/ZwankTests.swift",
+        ]
+        for file in namedFiles {
+            #expect(
+                filesRead.contains(file),
+                "\(file) was never opened, so its clean bill of health proves nothing")
         }
     }
 
