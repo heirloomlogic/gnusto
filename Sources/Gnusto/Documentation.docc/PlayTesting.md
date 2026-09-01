@@ -51,7 +51,7 @@ Building is a separate one-shot on purpose: a replay that also builds cannot be 
 
 `bin/playtest-measure` reads a probe directory and reports what the run covered: rooms entered, distinct verbs, objects examined, objects touched and then re-examined. Its counting rules are frozen deliberately, so a number from last year still compares.
 
-A package written by `bin/new-game` has all three: `bin/playtest-replay`, `bin/playtest-measure` and `bin/export-game` are shims over the copies in the Gnusto checkout it depends on, so they are never a version behind the engine they are driving. Run `swift build` once before the first one, since the tools live in a checkout SwiftPM has to have resolved.
+A package written by `bin/new-game` has all three: `bin/playtest-replay`, `bin/playtest-measure` and `bin/export-game` are shims over the copies in the Gnusto checkout it depends on, so they are never a version behind the engine they are driving. Run `swift build` once before the first one, since the tools live in a checkout SwiftPM has to have resolved. That promise holds once the pinned Gnusto is recent enough to carry `GNUSTO_PACKAGE_PATH`, the variable a shim sets to tell the tool which package it meant; `bin/new-game` checks the tag it just pinned and prints a warning naming the two tools that need it (`bin/gnusto-mcp` and `bin/export-game`) when the default pin predates it. `--dep-path` against a fixed-up checkout is unaffected.
 
 `docs/playtesting.md` in the repository is the operating manual for doing this by hand, and carries the calibration answer key — the defects a round is supposed to find. A round that finds nothing is a broken harness before it is a clean game.
 

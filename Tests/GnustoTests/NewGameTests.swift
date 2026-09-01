@@ -23,14 +23,15 @@ struct NewGameTests {
     /// this suite asserts against, not an error.
     @discardableResult
     private static func newGame(
-        _ arguments: [String]
+        _ arguments: [String],
+        currentDirectory: URL = packageRoot
     ) throws -> (
         status: Int32, stdout: String, stderr: String
     ) {
         let process = Process()
         process.executableURL = packageRoot.appendingPathComponent("bin/new-game")
         process.arguments = arguments
-        process.currentDirectoryURL = packageRoot
+        process.currentDirectoryURL = currentDirectory
         let out = Pipe()
         let err = Pipe()
         process.standardOutput = out
@@ -149,6 +150,22 @@ struct NewGameTests {
             #expect(
                 FileManager.default.isExecutableFile(atPath: path),
                 "bin/\(tool) is missing or not executable")
+
+            // The executable bit alone would pass four empty executable files.
+            // A whole-branch review found that no test or CI step short of
+            // actually running a shim proved it dispatches anywhere at all — so
+            // assert the body sources the library and ends by handing off to the
+            // ONE tool named for it. Naming the tool per file, rather than just
+            // checking for *some* `gnusto_exec` call, is what catches a
+            // copy-paste mistake where two shims dispatch to the same tool.
+            let body = try String(contentsOfFile: path, encoding: .utf8)
+            #expect(
+                body.contains(#". "$(dirname "$0")/lib/gnusto-tooling.sh""#),
+                "bin/\(tool) does not source gnusto-tooling.sh")
+            let lines = body.split(separator: "\n", omittingEmptySubsequences: true)
+            #expect(
+                lines.last == Substring(#"gnusto_exec \#(tool) "$@""#),
+                "bin/\(tool) does not end by dispatching gnusto_exec \(tool), got: \(lines.last ?? "")")
         }
         let library = game.appendingPathComponent("bin/lib/gnusto-tooling.sh").path
         #expect(FileManager.default.fileExists(atPath: library))
@@ -191,6 +208,59 @@ struct NewGameTests {
         let result = try Self.newGame(["Zwank", destination.path])
         #expect(result.status == 2)
         #expect(result.stderr.contains("not empty"))
+    }
+
+    @Test func aRelativeDestinationResolvesAgainstTheCallersDirectory() throws {
+        // bin/new-game cd's to the repo root before it even parses its arguments,
+        // so a relative destination re-resolved after that cd lands inside the
+        // repo instead of wherever the caller actually stood. Verified by hand
+        // from /tmp/relcheck: `…/bin/new-game Relgame ./Relgame` wrote the
+        // package inside this checkout, not /tmp/relcheck/Relgame (whole-branch
+        // review, #368 follow-up).
+        let cwd = FileManager.default.temporaryDirectory
+            .appendingPathComponent("new-game-relcheck-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: cwd, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: cwd) }
+        defer {
+            try? FileManager.default.removeItem(
+                at: Self.packageRoot.appendingPathComponent("Zwank"))
+        }
+
+        let result = try Self.newGame(["Zwank", "./Zwank"], currentDirectory: cwd)
+        #expect(result.status == 0, "bin/new-game failed: \(result.stderr)")
+
+        let landedWhereCalled = cwd.appendingPathComponent("Zwank/Package.swift")
+        #expect(
+            FileManager.default.fileExists(atPath: landedWhereCalled.path),
+            "expected \(landedWhereCalled.path) to exist")
+
+        let landedInTheRepo = Self.packageRoot.appendingPathComponent("Zwank/Package.swift")
+        #expect(
+            !FileManager.default.fileExists(atPath: landedInTheRepo.path),
+            "a relative destination wrote the package inside the Gnusto checkout instead of the caller's directory")
+    }
+
+    @Test func aRelativeDepPathResolvesAgainstTheCallersDirectory() throws {
+        // Same bug, same fix, for the other path this script reads off the
+        // command line: a relative --dep-path is parsed after the same cd, so it
+        // needs the same resolution. `cwd` here is a subdirectory of the repo one
+        // level down, so "--dep-path .." unambiguously means the repo root if
+        // resolved against the caller and something else entirely (or nothing)
+        // if resolved against wherever the script happened to cd to first.
+        let cwd = Self.packageRoot.appendingPathComponent(
+            ".new-game-relcheck-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: cwd, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: cwd) }
+
+        let destination = cwd.appendingPathComponent("Zwank")
+        let result = try Self.newGame(
+            ["Zwank", "./Zwank", "--dep-path", ".."], currentDirectory: cwd)
+        #expect(result.status == 0, "bin/new-game failed: \(result.stderr)")
+
+        let manifest = try String(
+            contentsOf: destination.appendingPathComponent("Package.swift"), encoding: .utf8)
+        #expect(manifest.contains(#"name: "Gnusto", path: ""#))
+        #expect(manifest.contains(Self.packageRoot.path))
     }
 
     @Test func anInvalidGameNameIsRefused() throws {

@@ -29,7 +29,7 @@ that covers your task before writing code.
 
 ```sh
 swift build
-swift test                                    # ~1,060 tests, sub-second
+swift test                                    # ~2,120 tests, ~10s
 swift test --filter FulminateTests
 swift run Fulminate                            # pipe stdin to play scripted; GNUSTO_PLAIN=1 forces plain output
 swift package --allow-writing-to-package-directory format-source-code

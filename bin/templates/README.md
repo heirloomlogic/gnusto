@@ -27,6 +27,8 @@ An MCP client asks once to approve a project-scoped server, then runs `bin/gnust
 - `bin/playtest-replay MyGame --commands probe.txt --seed 0 --label mine` replays a command list with the random seed pinned, so a hand-played session reproduces exactly.
 - `bin/playtest-measure .context/playtest/mine/probe-*` reports how much of the game a round actually reached.
 
+If `bin/new-game` printed a warning about the Gnusto version it pinned, `bin/gnusto-mcp` and `bin/export-game` will run against the Gnusto engine checkout instead of this game until you depend on a newer release — `swift package update` once one ships, or regenerate with `--dep-path`; `bin/playtest-replay` and `bin/playtest-measure` are unaffected either way.
+
 ## What this game already demonstrates
 
 - A `Game` struct with rooms, items, a blocked exit, and scored victory

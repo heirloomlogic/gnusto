@@ -25,7 +25,12 @@ gnusto_is_checkout() { [ -d "$1/Sources/Gnusto" ] && [ -x "$1/bin/gnusto-mcp" ];
 
 # $1 is this package's root. Prints the Gnusto checkout, or dies saying what to do.
 gnusto_find_repo() {
-  pkg="$1"
+  # local: this is sourced into each shim's top-level shell, not run as its own
+  # process, so an unscoped assignment here would leak into and clobber the
+  # caller's own variables of the same name (gnusto_exec below sets its own
+  # "pkg" right after calling this).
+  local pkg="$1"
+  local candidate
 
   # An explicit override wins, so somebody working against a local clone of the
   # engine never has to argue with the search below.
@@ -49,6 +54,21 @@ gnusto_find_repo() {
   # A path dependency is used in place and produces no checkout at all, so the
   # probe above finds nothing. Read the path out of the manifest instead: the
   # dependency is one line, written by bin/new-game, and reading it costs nothing.
+  #
+  # This is a bare assignment under `set -e`, unguarded by an `if`, and gnusto_exec
+  # calls this whole function as `repo="$(gnusto_find_repo "$pkg")"` — a command
+  # substitution, which runs the function body in a subshell. That is what makes a
+  # missing Package.swift fall through to the gnusto_die below instead of vanishing
+  # silently: bash does not carry errexit into a command substitution's subshell by
+  # default, so this pipeline failing does not itself end the subshell early, and
+  # execution reaches the friendly message — confirmed by running this exact shape
+  # standalone, with and without the assignment guarded, rather than trusting the
+  # theory. `shopt -s inherit_errexit` (bash 4.4+) turns errexit back on inside the
+  # subshell and documents itself as aborting a substitution at its first failing
+  # command, which would skip straight past this die with nothing printed. Moot on
+  # macOS regardless: /bin/bash there is 3.2, which does not have the shopt at all
+  # (`shopt: inherit_errexit: invalid shell option name`) — checked on this
+  # machine, not assumed.
   candidate="$(
     sed -n 's/.*\.package(name: "Gnusto", path: "\([^"]*\)").*/\1/p' \
       "$pkg/Package.swift" 2>/dev/null | head -1
@@ -69,12 +89,16 @@ gnusto_find_repo() {
 
 # Hand the process to one of Gnusto's tools, standing in this package.
 gnusto_exec() {
-  tool="$1"
+  # local for the same reason as gnusto_find_repo above: sourced functions share
+  # one shell with the shim that called them, so an unscoped "tool" or "repo"
+  # here would be visible (and wrong) if the shim itself ever read a variable
+  # by that name.
+  local tool="$1"
   shift
   # $0 is this shim even though the function is sourced, so this is the game's
   # root and not the engine's.
-  pkg="$(cd "$(dirname "$0")/.." && pwd)"
-  repo="$(gnusto_find_repo "$pkg")"
+  local pkg="$(cd "$(dirname "$0")/.." && pwd)"
+  local repo="$(gnusto_find_repo "$pkg")"
   [ -x "$repo/bin/$tool" ] \
     || gnusto_die "$repo/bin/$tool is missing or not executable"
   # Both halves are needed: cd for the tools that read the working directory

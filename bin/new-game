@@ -18,6 +18,14 @@
 
 set -euo pipefail
 
+# Captured before the cd below moves the shell: a relative destination or
+# --dep-path is the caller's to interpret, and once we cd into the repo root a
+# relative path re-resolved from there lands inside the repo instead of where
+# the caller stood. Verified from /tmp/relcheck: `…/bin/new-game Relgame
+# ./Relgame` wrote the package inside this checkout, not /tmp/relcheck/Relgame
+# (whole-branch review, #368 follow-up).
+invocation_dir="$PWD"
+
 cd "$(dirname "$0")/.."
 
 die() { echo "new-game: $*" >&2; exit 2; }
@@ -30,6 +38,7 @@ usage() {
 game=""
 destination=""
 dep_path=""
+stale_pin_warning=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --dep-path) dep_path="${2:-}"; [ -n "$dep_path" ] || usage; shift 2 ;;
@@ -46,6 +55,20 @@ while [ $# -gt 0 ]; do
 done
 
 [ -n "$game" ] && [ -n "$destination" ] || usage
+
+# Resolve both against the invocation directory captured above, not against
+# the repo root this script already cd'd to -- see the comment on
+# invocation_dir. An already-absolute path is left alone.
+case "$destination" in
+  /*) ;;
+  *) destination="$invocation_dir/$destination" ;;
+esac
+if [ -n "$dep_path" ]; then
+  case "$dep_path" in
+    /*) ;;
+    *) dep_path="$invocation_dir/$dep_path" ;;
+  esac
+fi
 
 # The name becomes a struct, two target names and two directory names, so it has
 # to be something Swift will accept in all five places. Checked here rather than
@@ -76,6 +99,18 @@ else
   version="$(git describe --tags --abbrev=0 2>/dev/null || true)"
   [ -n "$version" ] || die "no git tag found to pin against; pass --dep-path instead"
   dependency=".package(url: \"https://github.com/HeirloomLogic/Gnusto\", from: \"$version\")"
+
+  # bin/gnusto-mcp and bin/export-game read GNUSTO_PACKAGE_PATH to find out which
+  # package a shim meant, because $0 by then points into Gnusto's own checkout
+  # rather than the game's. A released tag can predate that -- 0.4.0 does -- and a
+  # package pinned to one gets two tools that quietly build and list Gnusto's own
+  # demo games instead of this one (caught in the whole-branch review after #368
+  # shipped shims but not a release containing them). Checked against the tag
+  # actually pinned, not hardcoded against "0.4.0", so this warning retires itself
+  # the day a fixed tag ships and nobody has to remember to come back and delete it.
+  if ! git show "$version:bin/export-game" 2>/dev/null | grep -q GNUSTO_PACKAGE_PATH; then
+    stale_pin_warning="1"
+  fi
 fi
 
 mkdir -p "$destination"
@@ -133,3 +168,15 @@ echo
 echo "  cd $destination"
 echo "  swift test        # run the transcript tests"
 echo "  swift build && \"\$(swift build --show-bin-path)/$game\"   # play it"
+
+if [ -n "$stale_pin_warning" ]; then
+  echo
+  echo "warning: pinned to Gnusto $version, which predates shim support in"
+  echo "  bin/gnusto-mcp and bin/export-game. Until a newer Gnusto release ships,"
+  echo "  those two tools will run against the Gnusto engine checkout instead of"
+  echo "  $game -- bin/gnusto-mcp will try to build $game inside the engine repo,"
+  echo "  and bin/export-game will list the engine's own demo games. bin/playtest-replay"
+  echo "  and bin/playtest-measure are unaffected. --dep-path is also unaffected:"
+  echo "  re-run with it against a checkout that has the fix, or re-run without it"
+  echo "  once a newer tag exists."
+fi

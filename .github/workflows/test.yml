@@ -141,3 +141,18 @@ jobs:
           bin/new-game Scratch "$RUNNER_TEMP/Scratch" --dep-path "$PWD"
           swift test --package-path "$RUNNER_TEMP/Scratch" --build-system swiftbuild --disable-experimental-prebuilts
           cd "$RUNNER_TEMP/Scratch" && bin/export-game | grep -qx Scratch
+          # A shim that dispatches correctly still isn't proof the dispatched tool
+          # ran against THIS package: bin/playtest-replay derives --package-path
+          # from its own $PWD, and a whole-branch review found that read happening
+          # after this script's own `cd` to Gnusto's checkout, so it silently built
+          # Gnusto instead of the generated package. Grepping the printed binary
+          # path for $RUNNER_TEMP/Scratch is what actually discriminates that —
+          # an exit-code check alone passes whichever package got built.
+          built="$(bin/playtest-replay Scratch --build)"
+          case "$built" in
+            "$RUNNER_TEMP/Scratch"/*) ;;
+            *)
+              echo "bin/playtest-replay --build built the wrong package: $built" >&2
+              exit 1
+              ;;
+          esac

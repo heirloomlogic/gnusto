@@ -39,7 +39,7 @@ Substitution is therefore a rename of one known string across a small, curated t
 
 `.github/workflows/release.yml` needs no substitution at all: it discovers products from `swift package describe` (`:48,102`) and its only knob is `EXCLUDE_PRODUCTS`.
 
-One file does *not* move across: `Templates/NewGame/bin/gnusto-mcp`. `bin/templates/` holds no `bin/` directory at all, because `bin/` is the one part of a generated package the generator writes rather than copies. So `bin/templates/` is a package you can build and test but not play-test in place, which is correct — the repository's own seven servers are what `.mcp.json` at the root is for.
+One file does *not* move across unchanged: `Templates/NewGame/bin/gnusto-mcp`. The implementation ships `bin/templates/bin/` — the five shim files themselves, `bin/new-game` copies rather than generates — which is better than the plan above: a shim is not a duplicate of anything, so keeping the five as real, reviewable, lintable files beats reconstructing them from heredocs at generation time. `bin/templates/Package.swift` path-depends on the repository root, so `bin/templates/` is itself playable and play-testable in place, same as any generated package.
 
 ### `bin/new-game` — bash, house style
 

@@ -152,6 +152,14 @@ set -euo pipefail
 # follow-up — a reviewer reproduced it by cd-ing into Sources/ first).
 script_dir="$(cd "$(dirname "$0")" && pwd)"
 
+# Same reason, same fix, for --package-path's default a few lines down. A
+# shim's whole job is to name the OTHER package — gnusto_exec cd's there before
+# it execs this script — and reading $PWD after the cd below throws that away
+# and answers with Gnusto's own checkout instead. Reproduced from a generated
+# package: `./bin/playtest-replay Zwank --build` built Zwank inside the Gnusto
+# repo and then failed to find its product there.
+invocation_dir="$PWD"
+
 cd "$(dirname "$0")/.."
 
 die() { echo "playtest-replay: $*" >&2; exit 2; }
@@ -168,7 +176,7 @@ need_number() { [[ "$2" =~ ^[0-9]+$ ]] || die "$1 must be a whole number, got '$
 plain_name() { [[ "$1" =~ ^[A-Za-z0-9_-][A-Za-z0-9._-]*$ ]]; }
 
 game=""; commands=""; seed=0; tail_lines=0; restore_slot=""; save_slot=""
-max_turns=250; timeout_secs=60; label=""; probe=""; pkg="$PWD"; build_only=0
+max_turns=250; timeout_secs=60; label=""; probe=""; pkg="$invocation_dir"; build_only=0
 keep_blanks=0; saves_from=""; start_route=""
 # Both flags have a default this script picked, and --start has an answer of its own
 # for each. So the question is not what they hold but whether the CALLER set them: a
@@ -197,6 +205,14 @@ while [[ $# -gt 0 ]]; do
     *)              [[ -z "$game" ]] || die "unexpected argument '$1'"; game="$1"; shift ;;
   esac
 done
+
+# Same defect as --package-path's default, same fix: a relative --commands is the
+# caller's file, resolved against where they stood, and by the time it is opened
+# below this shell has already cd'd to the repo root. Absolute paths (the common
+# case, since a shim runs from the package root anyway) pass through untouched.
+if [[ -n "$commands" && "$commands" != /* ]]; then
+  commands="$invocation_dir/$commands"
+fi
 
 [[ -n "$game" ]] || die "usage: bin/playtest-replay <Game> --commands FILE"
 # The game name reaches a shell command and a file path, so keep it to the
