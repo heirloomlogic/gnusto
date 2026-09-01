@@ -300,8 +300,12 @@ const dryArgs = {
   routes: ['a-1', 'b-1'],
   ledgerKeys: dryLedgerKeys,
 }
-const fn = new Function('__stub','__phases','__logs','__args', body)
-const result = await fn(stub, phases, logs, dryArgs)
+// Compiled once and called three times: the smoke run below, the failed-preflight run
+// at the bottom of the file, and the downstream-layout run beside it. `new Function`
+// over a 120KB body is the most expensive thing this script does, and the wrapper's
+// four parameters are the kind of signature that drifts when it is spelled thrice.
+const runRound = new Function('__stub','__phases','__logs','__args', body)
+const result = await runRound(stub, phases, logs, dryArgs)
 
 console.log('PHASES   :', phases.join(' -> '))
 console.log('AGENTS   :', prompts.length)
@@ -1680,8 +1684,7 @@ for (const tool of ['rewind', 'replay', 'coverage', 'note']) {
     throw new Error(`agent "${opts.label}" ran after preflight failed`)
   }
   const noLogs = []
-  const fn2 = new Function('__stub', '__phases', '__logs', '__args', body)
-  const outcome = await fn2(noStub, [], noLogs, dryArgs)
+  const outcome = await runRound(noStub, [], noLogs, dryArgs)
   check(
     noPrompts.length === 1,
     `preflight failed and the round dispatched anyway: ${noPrompts.join(', ')}`
@@ -1694,6 +1697,100 @@ for (const tool of ['rewind', 'replay', 'coverage', 'note']) {
     noLogs.some((l) => /playtest-preflight/.test(l)) && noLogs.some((l) => /restart the session/.test(l)),
     'a round that cannot reach its server does not log the remedy, so the operator gets a mystery'
   )
+}
+
+// The package's own layout is four arguments now, not four literals: the words the
+// preambles name the repo with, the engine's source prefix, the conventions file and
+// the design-doc directory. Run the whole script a third time the way a package
+// written by `bin/new-game` would call it — no design doc, no conventions file, the
+// engine resolved into `.build/checkouts/` — and read the generated text for anything
+// that still names *this* repository.
+//
+// It has to be checked on the text rather than on the source, for the same reason the
+// firewall is: a default that reaches a prompt through three levels of template
+// literal is not visible in a grep of the argument block, and a round dispatched
+// against somebody else's game is the only other way to find out.
+//
+// What is deliberately *not* asserted is the harness's own furniture — `${REF}`,
+// `bin/playtest-replay`, `.claude/` — which every prompt still names as literals. Those
+// are the same wherever the harness is installed, and where they resolve to for a
+// package that is not this one is the delivery vehicle's question, not the layout's.
+{
+  // The realistic shape, deliberately: a tag or branch pin resolves the engine to
+  // `.build/checkouts/<name>/`, and a path dependency to `<path>/`. Either way the
+  // prefix legitimately *ends* in `Sources/Gnusto` — so what the assertion below
+  // forbids is the repo-rooted spelling, not the substring.
+  const downEngine = '.build/checkouts/Gnusto/Sources/Gnusto'
+  const downPrompts = []
+  const downLogs = []
+  // Delegates for the replies, so the fixtures stay in one place. The one thing it
+  // rewrites is each finding's owner: `ownerClass` is the half of the unbinding no
+  // prompt can show, and pointing every finding at the downstream engine prefix is
+  // what makes its verdict readable off the result.
+  const downStub = async (prompt, opts = {}) => {
+    downPrompts.push(String(prompt))
+    const reply = await stub(prompt, opts)
+    if (String(opts.label || '').startsWith('play:')) {
+      for (const f of reply.findings || []) f.ownerFile = `${downEngine}/Actions/GameText.swift`
+    }
+    return reply
+  }
+  // Spread from `dryArgs` so this fixture cannot fall behind a newly required argument
+  // the way it would if it restated the round's whole shape; the overrides are the
+  // downstream package's, and the deletions are the furniture it does not have.
+  const down = await runRound(downStub, [], downLogs, {
+    ...dryArgs,
+    game: 'Zwank', docPath: null, capabilities: [], focus: '', focusSighted: '',
+    routes: [], ledgerKeys: [],
+    projectName: 'Zwank', enginePath: downEngine, conventionsPath: '', gameDocsDir: '',
+  })
+  const downText = downPrompts.join('\n')
+  for (const bound of ['Gnusto engine', 'docs/games', 'CLAUDE.md']) {
+    check(
+      !downText.includes(bound),
+      `a downstream round's prompts still name ${bound}, so playtest.js describes this `
+      + "repository's tree rather than the package it was pointed at"
+    )
+  }
+  check(
+    !/(^|[^/])Sources\/Gnusto/.test(downText),
+    "a downstream round's prompts name a repo-rooted `Sources/Gnusto`, which exists only "
+    + 'in the package that *is* the engine'
+  )
+  // And the other direction, so none of the above can pass by the prompts having gone
+  // empty or the overrides having been dropped on the floor.
+  check(
+    downText.includes('You are working on the Zwank repo.'),
+    "the projectName argument does not reach the charters' preamble"
+  )
+  check(
+    downText.includes(`\`${downEngine}/Actions/GameText.swift\``),
+    'the enginePath argument does not reach the cartographer, so a downstream round is '
+    + 'sent to a stub roster that is not in its tree'
+  )
+  check(
+    down.confirmed.length > 0 && down.confirmed.every((f) => f.ownerClass === 'engine'),
+    'ownerClass does not recognise the engine when it is a resolved dependency rather '
+    + `than the package under test: ${JSON.stringify(down.confirmed.map((f) => f.ownerClass))}`
+  )
+  check(
+    !downLogs.some((l) => /Unrecognised ownerFile/.test(l)),
+    'a downstream round reports its own engine files as unrecognised owners'
+  )
+}
+
+// The static half of the same property. `ownerClass` is the one place the layout is
+// read rather than printed, so a literal reintroduced there would survive every
+// assertion above that reads a prompt.
+{
+  const ownerClassSrc = (src.match(/function ownerClass\(file\) \{[\s\S]*?\n\}/) || [''])[0]
+  check(ownerClassSrc.length > 0, 'ownerClass() no longer parses out of playtest.js, so the check below is vacuous')
+  for (const bound of ['Sources/Gnusto', 'CLAUDE.md', 'docs/games']) {
+    check(
+      !ownerClassSrc.includes(bound),
+      `ownerClass() spells ${bound} itself instead of taking it in args`
+    )
+  }
 }
 
 console.log('\nASSERTIONS:', failures.length ? `${failures.length} FAILED` : 'all passed')
