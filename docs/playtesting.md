@@ -226,6 +226,7 @@ inside a turn budget — commit a route instead:
 
 ```sh
 bin/playtest-routes Dungeon cut dam-buttons --from-commands route.txt --seed 52
+bin/playtest-routes Dungeon distill d-3 --from-session <probe dir> --upto 44
 bin/playtest-routes Dungeon verify          # re-replay; check each landing
 bin/playtest-routes Dungeon list
 bin/playtest-replay Dungeon --start d-1 --commands probe.txt --label mine
@@ -240,6 +241,23 @@ that disagrees is refused rather than honored — a route replayed at another se
 somewhere else and says nothing about it.
 A game with no routes needs nothing: testers play cold, and the round's own output is the next
 round's deep starts.
+
+`distill` is how that last sentence is true. `cut` takes a command list somebody wrote;
+`distill` takes a *session* — the probe directory holding a `commands.txt` — and the line
+it got somewhere worth returning to on, and shrinks it before committing it. A played
+session cannot be replayed verbatim as a deep start: sixty turns reached somewhere of
+which perhaps twelve mattered, and the other forty-eight were a tester trying fifty ways
+of working a lever with the lantern burning down. So it drops the commands the run's own
+`[status]` footers called `turn=free` (one replay confirms the whole batch), then drops
+contiguous runs and replays after each, keeping a cut only when the game still lands in
+the same room with the same score, the same `look` and the same `inventory`. Then it
+replays the survivor from nothing and records where that **actually** landed.
+
+Two honest limits, both printed rather than implied. The shrink stops at a **replay
+budget** — `--budget`, 400 by default — so a route it produces is *shorter*, not minimal,
+and it says which it was when it stopped. And the predicate compares the landing, so it
+does not check timer state or where the actors are: a route can preserve the room and
+still have left the thief somewhere else.
 
 ## What to look for
 

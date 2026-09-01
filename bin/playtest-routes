@@ -4,6 +4,10 @@
 //
 //   bin/playtest-routes <Game> cut <name> --from-commands FILE [--seed N]
 //                                            [--derived-from LABEL] [--force]
+//   bin/playtest-routes <Game> distill <name> --from-session DIR [--upto N]
+//                                            [--budget N] [--seed N]
+//                                            [--derived-from LABEL] [--force]
+//                                            learn one from a round's own play
 //   bin/playtest-routes <Game> verify [name…]  re-replay; check the landing
 //   bin/playtest-routes <Game> list            what is committed, and where each lands
 //
@@ -24,22 +28,32 @@
 // and the sentence that helps is *the route now ends in a different room*, not a
 // hash comparison.
 //
-// **Where routes come from.** A hand-written command file today, and after #364 a
-// distiller phase at the end of a round. A walkthrough is an accelerant, never a
-// requirement — a downstream author on day one has none, and the harness has no
-// business demanding one (#358).
+// **Where routes come from.** `cut` takes a hand-written command file. `distill`
+// takes a round's own play: `--from-session` names the probe directory of a session
+// that got somewhere worth returning to, `--upto` the line it got there on, and the
+// list is then shrunk against a replay predicate — drop a contiguous run, replay,
+// keep the cut if it still lands — before it is cut cold. That is what makes learning
+// a route from a round safe: replayed verbatim, a session's sixty turns carry the
+// forty-eight that were a tester trying fifty ways of working a lever, lantern and
+// all. A distilled route is one whose every command survived an attempt to delete it.
+//
+// A walkthrough is an accelerant, never a requirement — a downstream author on day
+// one has none, the round plays cold, and the round's own output is round two's deep
+// starts (#358).
 
 'use strict'
 
 const fs = require('node:fs')
 const path = require('node:path')
 
+const distill = require('./lib/playtest-distill')
 const focus = require('./lib/playtest-focus')
 const {
-  replay, turnCap, timeoutFor, lastStatus, answerTo, runReplay,
+  replay, turnCap, timeoutFor, runReplay,
 } = require('./lib/playtest-replay')
 const {
-  GREEN, RED, DIM, OFF, LANDING_PROBE, isPlainName, routesDir, routeNames, routePrefix,
+  GREEN, RED, DIM, OFF, LANDING_PROBE, LANDING_INVENTORY, landingFeed,
+  isPlainName, routesDir, routeNames, routePrefix,
 } = focus
 
 process.chdir(focus.ROOT)
@@ -66,14 +80,25 @@ function newestTranscript(label) {
 
 // Blank lines are dropped on read by the engine, so they are dropped here rather
 // than committed as something a reader might think meant something. A `//` or `#`
-// line is kept: the session records it as a comment that costs no turn, and it is
-// how a route explains itself.
-function readCommands(file) {
+// line is kept by default: the session records it as a comment that costs no turn,
+// and it is how a route explains itself.
+//
+// `dropComments` is `distill`'s. A session's `commands.txt` holds a tester's own
+// annotations — `note` writes them — which are not the route, and which the engine
+// records without a `[status]` line under them; the free-command mask aligns command
+// `i` against footer `i + 1`, so one annotation shifts every command after it. The
+// rule lives here, with the other line policy, rather than as a fourth spelling of
+// `TesterInput`'s comment test at a call site.
+//
+// `upto` cuts at a line of the **file**, before either filter, because that is the
+// number whoever counted the file counted. Filtering first would silently renumber it.
+function readCommands(file, { dropComments = false, upto } = {}) {
   if (!fs.existsSync(file)) return { error: `no such command file: ${file}` }
-  const commands = fs.readFileSync(file, 'utf8')
-    .split('\n')
-    .map((l) => l.trim())
+  let lines = fs.readFileSync(file, 'utf8').split('\n').map((l) => l.trim())
+  if (upto !== undefined) lines = lines.slice(0, upto)
+  const commands = lines
     .filter((l) => l.length > 0)
+    .filter((l) => !dropComments || !/^(\/\/|#)/.test(l))
   if (!commands.length) return { error: `${file} holds no commands` }
   return { commands }
 }
@@ -85,30 +110,50 @@ function readCommands(file) {
 function readLanding(label) {
   const file = newestTranscript(label)
   if (!file) return { ok: false, detail: `no transcript under ${label}` }
-  const text = fs.readFileSync(file, 'utf8')
-  const status = lastStatus(text)
-  if (!status || !status.room) return { ok: false, detail: 'no [status] footer in the transcript' }
+  // One reader, and the same one the shrink's oracle uses — so a landing this accepts
+  // and a landing the shrink was preserving are the same fact rather than two
+  // spellings of it, and the footer grammar is known in one place.
+  const sig = distill.landingSignature(fs.readFileSync(file, 'utf8'))
+  if (!sig || !sig.room) return { ok: false, detail: 'no [status] footer in the transcript' }
+  // **A landing has to be somewhere a tester can play from.** An ended game answers
+  // the landing probe and `inventory` with the same line — the death prompt, or
+  // whatever a game has re-skinned it to — because neither was parsed as itself, and
+  // a live game never can. That is what `playable` reads. It matters most for
+  // `distill`, which learns its routes from a round's own play and so is the one
+  // caller whose input regularly ends in a corpse; it is checked here, where `cut`
+  // and `verify` reach it too, rather than three times.
+  if (!sig.playable) {
+    return {
+      ok: false,
+      detail: `it ends on a frame the game will not take a command in — \`${LANDING_PROBE}\``
+        + ` and \`${LANDING_INVENTORY}\` both answered "${sig.inventory.slice(0, 60)}", which is a death,`
+        + ' a win, or an open prompt. A deep start has to be somewhere a tester can play.',
+    }
+  }
   return {
-    ok: true,
-    room: status.room,
-    moves: status.moves || '?',
-    score: status.score || '?',
-    carrying: (answerTo(text, 'inventory') || '').replace(/\s+/g, ' ').trim(),
+    ok: true, room: sig.room, moves: sig.moves, score: sig.score, carrying: sig.inventory,
   }
 }
 
-function cut(game, dir, name, commands, seed, derivedFrom) {
+// One cold replay of a command list, and the landing it actually produced.
+//
+// Shared by `cut` and by `distill`'s final step, which are the same act: a route is
+// written from a replay that started from nothing, never from the run that proposed
+// it. `distill` in particular has just spent hundreds of replays deciding what to
+// drop, and none of them is evidence — #364's third step is *verify cold*, and this
+// is it.
+function probeLanding(game, name, commands, seed, verb) {
   // A fresh label per route: the cut run's transcript is the evidence the manifest
   // was written from, and re-using one label would bury it under the next cut.
-  const label = `routes-cut-${name}`
+  const label = `routes-${verb}-${name}`
   // The route, then the engine's own landing probe (`PlaytestRoute.landingProbe`,
   // which every session appends and every verifier must too), then `inventory` so the
   // manifest can record what is held. A route ends wherever its last command left the
-  // player; these two make the landing a frame somebody can read. `verify` builds the
-  // same list off `routePrefix`, which is where the rule lives — a cut has no manifest
-  // to read it out of yet.
-  const fed = [...commands, LANDING_PROBE, 'inventory']
-  const r = runReplay('playtest-routes', `cut-${name}`, fed, [
+  // player; these two make the landing a frame somebody can read. `landingFeed` is
+  // where that rule lives, so the shrink's oracle and the reader that parses the
+  // answers back cannot spell it differently.
+  const fed = landingFeed(commands)
+  const r = runReplay('playtest-routes', `${verb}-${name}`, fed, [
     game,
     '--seed', String(seed),
     '--label', label,
@@ -117,10 +162,10 @@ function cut(game, dir, name, commands, seed, derivedFrom) {
     '--tail', '4',
   ])
   if (!r.ok) return r
+  return readLanding(label)
+}
 
-  const landing = readLanding(label)
-  if (!landing.ok) return landing
-
+function writeRoute(dir, name, { seed, commands, derivedFrom, landing }) {
   fs.mkdirSync(dir, { recursive: true })
   // One file, commands and landing both: `landing.room` is the one field the
   // engine checks at `open` (`PlaytestRoute` reads it and nothing else), but the
@@ -137,6 +182,12 @@ function cut(game, dir, name, commands, seed, derivedFrom) {
       inventory: landing.carrying,
     },
   }, null, 2)}\n`)
+}
+
+function cut(game, dir, name, commands, seed, derivedFrom) {
+  const landing = probeLanding(game, name, commands, seed, 'cut')
+  if (!landing.ok) return landing
+  writeRoute(dir, name, { seed, commands, derivedFrom, landing })
   return { ok: true, ...landing }
 }
 
@@ -183,12 +234,195 @@ function verifyOne(game, dir, name) {
 }
 
 // ---------------------------------------------------------------------------
+// Distill
+// ---------------------------------------------------------------------------
+
+/// The most replays one target's shrink may spend, absent `--budget`.
+///
+/// **Named because a cap nobody names is a cap that lies.** #359 measured the honest
+/// price of running to convergence: ~2,400 replays and 49 s for a 113-command list,
+/// ~16,500 replays and 37 minutes for a 719-command one. A round distils several
+/// targets inside one phase, so convergence is not a thing a round can buy — and
+/// #358 states the goal as *shorter*, never *minimal*. What the bound costs is
+/// printed, along with every segment the shrink managed to drop before it hit it.
+const DEFAULT_BUDGET = 400
+
+/// A replay predicate over one target, and the count of what it spent.
+///
+/// Every candidate goes through one probe directory, re-made each time, rather than
+/// through `bin/playtest-replay`'s usual `probe-NNN` allocation. Four hundred
+/// replays would exhaust that script's 999-probe limit inside two targets, and the
+/// directories are not evidence of anything: the run that *is* evidence is the cold
+/// verification at the end, which allocates a probe of its own like every other cut.
+function oracleFor(game, name, seed) {
+  const label = `routes-distill-${name}`
+  const probe = 'try'
+  const dir = path.join(focus.SCRATCH, label, probe)
+  const file = path.join(dir, 'transcript.txt')
+  // A candidate decided is a candidate decided: the replay is deterministic at a
+  // pinned seed, so a list seen twice needs no second process. It is not a
+  // micro-optimization — ddmin's chunking re-derives the tail partition across
+  // granularities and after every accepted cut, which on a 200-command list is around
+  // one replay in twenty. Memoizing also keeps `spent()` the count of candidates
+  // actually tried, which is the number the budget is supposed to be about.
+  const seen = new Map()
+  let replays = 0
+  const play = (commands) => {
+    const key = commands.join('\n')
+    if (seen.has(key)) return seen.get(key)
+    replays += 1
+    fs.rmSync(dir, { recursive: true, force: true })
+    const fed = landingFeed(commands)
+    const r = runReplay('playtest-routes', `distill-${name}`, fed, [
+      game,
+      '--seed', String(seed),
+      '--label', label,
+      '--probe', probe,
+      '--max-turns', turnCap(fed.length),
+      '--timeout', timeoutFor(fed.length),
+      // One line, not the whole transcript. Without it the replay script `cat`s the
+      // file to stdout and `runReplay` buffers all of it into a string this path uses
+      // only for a failure message — a second read of every transcript, hundreds of
+      // times per target. The failure detail is the last three lines either way.
+      '--tail', '1',
+    ])
+    const out = (!r.ok || !fs.existsSync(file))
+      ? { detail: r.detail || `no transcript at ${file}` }
+      : (() => {
+        const text = fs.readFileSync(file, 'utf8')
+        return { text, landing: distill.landingSignature(text) }
+      })()
+    seen.set(key, out)
+    return out
+  }
+  return { play, spent: () => replays }
+}
+
+/// One target, shrunk and then cut.
+///
+/// The four steps are #364's, in its order and for its reasons: propose (the caller's
+/// — a session and a line, never a command list), minimize mechanically, verify cold,
+/// keep the shorter.
+function distillOne(game, gameKey, name, commands, { seed, derivedFrom, budget, force }) {
+  const dir = routesDir(gameKey)
+  const oracle = oracleFor(game, name, seed)
+
+  // The baseline is the target. Whatever the caller *meant* by the line range, what
+  // this list actually does is the only thing a shrink can preserve — and reading the
+  // aim off the proposer rather than off a replay is exactly the guess the mechanical
+  // half exists to remove.
+  const base = oracle.play(commands)
+  if (!base.landing) {
+    return { ok: false, detail: `the list as given did not replay — ${base.detail || 'no landing'}` }
+  }
+  // Refused here rather than four hundred replays later. A session that drowned is an
+  // ordinary thing for a round to produce, and every command after the death is free
+  // and unparsed — so the shrink would happily preserve a landing on a corpse, and
+  // the cold verification at the end would be the first thing to say so.
+  if (!base.landing.playable) {
+    return {
+      ok: false,
+      detail: 'the list as given ends on a frame the game will not take a command in —'
+        + ' a death, a win, or an open prompt. Distil a shorter line range: a deep'
+        + ' start has to be somewhere a tester can play from.',
+    }
+  }
+  console.log(`  ${DIM}target${OFF} ${base.landing.room} · score=${base.landing.score}`
+    + ` · from ${commands.length} commands`)
+
+  // Step 1 of the shrink, and the one that costs nothing: the commands this run's own
+  // footers called `turn=free`. They move no seed, so dropping them disturbs nothing
+  // downstream — but `undo` and `restore` are free and load-bearing, so the batch is
+  // an offer and the single replay below is what accepts it.
+  let current = commands
+  const free = distill.freeRuns(base.text, commands.length)
+  let freeDropped = 0
+  if (free && free.length) {
+    const drop = new Set(free)
+    const stripped = commands.filter((_, i) => !drop.has(i))
+    const r = stripped.length ? oracle.play(stripped) : { landing: null }
+    if (distill.sameLanding(r.landing, base.landing)) {
+      freeDropped = free.length
+      current = stripped
+      console.log(`  ${DIM}free  ${OFF} ${free.length} command(s) that cost no turn,`
+        + ' dropped for one replay')
+    } else {
+      console.log(`  ${DIM}free  ${OFF} ${free.length} free command(s) — kept:`
+        + ' dropping them changed the landing, so at least one of them is load-bearing')
+    }
+  }
+
+  // Step 2: mechanical, and nothing but. No agent reads this loop's mind about which
+  // command mattered; `bin/playtest-replay` answers it once per candidate.
+  const shrunk = distill.shrink(
+    current, (c) => distill.sameLanding(oracle.play(c).landing, base.landing), budget)
+  for (const drop of shrunk.dropped) {
+    console.log(`  ${DIM}drop  ${OFF} ${drop.commands.length} at ${drop.at}:`
+      + ` ${DIM}${drop.commands.join(' · ')}${OFF}`)
+  }
+  console.log(`  ${DIM}ddmin ${OFF} ${shrunk.replays} replay(s),`
+    + ` ${current.length} → ${shrunk.commands.length} commands`)
+  if (shrunk.capped) {
+    console.log(`  ${DIM}capped${OFF} at the ${budget}-replay budget — this route is`
+      + ' shorter, not minimal. Raise it with --budget, and read the drops above as'
+      + ' what it managed rather than as all there was.')
+  }
+
+  // Step 3: verify cold. A fresh replay from nothing, and the landing it *actually*
+  // produced — never the one the shrink was aiming at.
+  const landing = probeLanding(game, name, shrunk.commands, seed, 'distill')
+  if (!landing.ok) return landing
+
+  // Step 4: keep the shorter. A route that reaches a place another route already
+  // reaches wins only by being shorter, and "the same place" is the whole landing —
+  // two routes into one room holding different things are two targets, not one.
+  const rival = shorterRoute(gameKey, seed, landing, shrunk.commands.length)
+  if (rival && !force) {
+    return {
+      ok: false,
+      keep: rival.name,
+      detail: `${rival.name} already lands there in ${rival.commands.length} command(s),`
+        + ` against this ${shrunk.commands.length} — kept the shorter.`
+        + ' Pass --force to write this one anyway.',
+    }
+  }
+
+  writeRoute(dir, name, { seed, commands: shrunk.commands, derivedFrom, landing })
+  return {
+    ok: true,
+    ...landing,
+    from: commands.length,
+    to: shrunk.commands.length,
+    freeDropped,
+    replays: oracle.spent(),
+    capped: shrunk.capped,
+  }
+}
+
+/// A committed route that reaches this landing in no more commands, or `null`.
+///
+/// Compared on room, score and inventory, and never on `moves`: a shorter route has
+/// fewer moves by construction, so a comparison that read them would find every route
+/// distinct and the rule would never fire once.
+function shorterRoute(gameKey, seed, landing, length) {
+  return focus.routeManifests(gameKey).find((r) => !r.error
+    && r.seed === seed
+    && r.landing
+    && r.landing.room === landing.room
+    && String(r.landing.score) === String(landing.score)
+    && (r.landing.inventory || '') === (landing.carrying || '')
+    && r.commands.length <= length) || null
+}
+
+// ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
 
 function usage() {
   console.error('usage: bin/playtest-routes <Game> cut <name> --from-commands FILE'
     + ' [--seed N] [--derived-from LABEL] [--force] [--type-name NAME]')
+  console.error('       bin/playtest-routes <Game> distill <name> --from-session DIR'
+    + ' [--upto N] [--budget N] [--seed N] [--derived-from LABEL] [--force]')
   console.error('       bin/playtest-routes <Game> verify [name…] [--type-name NAME]')
   console.error('       bin/playtest-routes <Game> list [--type-name NAME]')
   process.exit(2)
@@ -200,7 +434,10 @@ function main() {
   // parser reads only `--from-commands=FILE` is a coin flip the first user loses.
   // Value flags consume the next argument; unknown `--x y` pairs are left to be
   // rejected as unknown booleans rather than silently eaten.
-  const VALUE_FLAGS = new Set(['--from-commands', '--seed', '--derived-from', '--type-name'])
+  const VALUE_FLAGS = new Set([
+    '--from-commands', '--from-session', '--upto', '--budget',
+    '--seed', '--derived-from', '--type-name',
+  ])
   const flags = new Map()
   const positional = []
   for (let i = 0; i < argv.length; i += 1) {
@@ -220,7 +457,7 @@ function main() {
   const typeName = flags.get('--type-name')
   const [gameWord, verb, ...rest] = positional
 
-  if (!gameWord || !['cut', 'verify', 'list'].includes(verb)) usage()
+  if (!gameWord || !['cut', 'distill', 'verify', 'list'].includes(verb)) usage()
   const { game, products } = focus.resolveGame(gameWord)
   if (!game) {
     console.error(`playtest-routes: no executable product matches "${gameWord}"`)
@@ -238,6 +475,40 @@ function main() {
   const seedFlag = flags.get('--seed')
   const derivedFrom = flags.get('--derived-from')
   const force = flags.has('--force')
+
+  // The seed defaults to the one this game's other routes were recorded under
+  // (`seedFor`), because `open` refuses a session whose seed is not the route's: a
+  // second route cut at a different seed could never be handed out beside the first.
+  // A game with no routes yet gets 0, and `--seed` is how the first one picks
+  // something else. `--seed` wins when there is one — and an empty one (`--seed` as
+  // the last argument) is refused, not silently defaulted: `Number('')` is 0, which
+  // would pin a different round than the one the tester meant.
+  //
+  // Read once for both writing verbs. `cut` and `distill` produce the same artifact
+  // and a route whose seed each picked by its own rule would be one `open` refuses
+  // depending on which command made it.
+  function resolveSeed() {
+    if (seedFlag === '') {
+      console.error('playtest-routes: --seed needs a value')
+      process.exit(2)
+    }
+    const raw = seedFlag !== undefined ? Number(seedFlag) : focus.seedFor(game)
+    if (!Number.isInteger(raw) || raw < 0) {
+      console.error('playtest-routes: --seed must be a whole number of zero or more,'
+        + ` got "${seedFlag}"`)
+      process.exit(2)
+    }
+    return raw
+  }
+
+  // A route name is a file stem on both sides of the harness, so it is checked
+  // before it reaches a path — the same alphabet `open` keeps to.
+  function checkName(name) {
+    if (isPlainName(name)) return
+    console.error(`playtest-routes: bad route name "${name}" — a route name is a file`
+      + ' stem: letters, digits, underscore, hyphen and dots, starting with none of "."')
+    process.exit(2)
+  }
 
   // Building before any replay rather than letting the first cut pay for it: a
   // build inside a timed replay looks like a slow route, and the mtime gate in
@@ -280,11 +551,7 @@ function main() {
     const [name] = rest
     const fromFile = flags.get('--from-commands')
     if (!name || !fromFile) usage()
-    if (!isPlainName(name)) {
-      console.error(`playtest-routes: bad route name "${name}" — a route name is a file`
-        + ' stem: letters, digits, underscore, hyphen and dots, starting with none of "."')
-      process.exit(2)
-    }
+    checkName(name)
     if (!force && fs.existsSync(path.join(dir, `${name}.json`))) {
       console.error(`playtest-routes: ${dir}/${name}.json already exists —`
         + ' pass --force to re-cut it.')
@@ -295,23 +562,7 @@ function main() {
       console.error(`playtest-routes: ${read.error}`)
       process.exit(2)
     }
-    // The seed defaults to the one this game's other routes were recorded under
-    // (`seedFor`), because `open` refuses a session whose seed is not the route's:
-    // a second route cut at a different seed could never be handed out beside the
-    // first. A game with no routes yet gets 0, and `--seed` is how the first one
-    // picks something else. `--seed` wins when there is one — and an empty one
-    // (`--seed` as the last argument) is refused, not silently defaulted: `Number('')`
-    // is 0, which would pin a different round than the one the tester meant.
-    if (seedFlag === '') {
-      console.error('playtest-routes: --seed needs a value')
-      process.exit(2)
-    }
-    const seedRaw = seedFlag !== undefined ? Number(seedFlag) : focus.seedFor(game)
-    if (!Number.isInteger(seedRaw) || seedRaw < 0) {
-      console.error(`playtest-routes: --seed must be a whole number of zero or more,`
-        + ` got "${seedFlag}"`)
-      process.exit(2)
-    }
+    const seedRaw = resolveSeed()
     console.log(`\n  ${gameKey}: cutting ${DIM}${name}${OFF} from`
       + ` ${read.commands.length} commands at seed ${seedRaw} …`)
     const r = cut(game, dir, name, read.commands, seedRaw, derivedFrom)
@@ -323,6 +574,64 @@ function main() {
       + ` score=${r.score}`)
     if (r.carrying) console.log(`       ${DIM}${r.carrying}${OFF}`)
     console.log(`  ${DIM}committed to ${dir}${OFF}`
+      + ` — run \`verify ${name}\` to prove it from a second replay.\n`)
+    return
+  }
+
+  if (verb === 'distill') {
+    const [name] = rest
+    if (!name) usage()
+    checkName(name)
+    // **A session directory, and never a command file.** `cut` is where a hand-written
+    // list belongs; the only thing `distill` will take is a session and a line into
+    // it. That is not an ergonomic choice — the moment a caller can hand over a list
+    // it edited, it is deciding which commands mattered, which is exactly the
+    // judgement #364 takes off an agent and gives to the replay predicate. The round's
+    // dry run asserts the prompt never offers such a flag; this is the other half of
+    // that, and the two would be worth little apart.
+    const fromSession = flags.get('--from-session')
+    if (!fromSession) usage()
+    const source = path.join(fromSession, 'commands.txt')
+    const uptoFlag = flags.get('--upto')
+    const upto = uptoFlag === undefined ? undefined : Number(uptoFlag)
+    if (upto !== undefined && (!Number.isInteger(upto) || upto < 1)) {
+      console.error('playtest-routes: --upto must be a whole number of one or more,'
+        + ` got "${uptoFlag}"`)
+      process.exit(2)
+    }
+    const read = readCommands(source, { dropComments: true, upto })
+    if (read.error) {
+      console.error(`playtest-routes: ${read.error}`)
+      process.exit(2)
+    }
+    const commands = read.commands
+    const budgetFlag = flags.get('--budget')
+    const budget = budgetFlag === undefined ? DEFAULT_BUDGET : Number(budgetFlag)
+    if (!Number.isInteger(budget) || budget < 1) {
+      console.error(`playtest-routes: --budget must be a whole number of one or more,`
+        + ` got "${budgetFlag}"`)
+      process.exit(2)
+    }
+    const seedRaw = resolveSeed()
+    console.log(`\n  ${gameKey}: distilling ${DIM}${name}${OFF} from`
+      + ` ${commands.length} played commands at seed ${seedRaw},`
+      + ` budget ${budget} replay(s) …`)
+    const r = distillOne(game, gameKey, name, commands,
+      { seed: seedRaw, derivedFrom, budget, force })
+    if (!r.ok) {
+      console.error(r.keep
+        ? `  ${DIM}kept${OFF} ${r.keep} — ${r.detail}`
+        : `  ${RED}distill failed${OFF} — ${r.detail}`)
+      // A route refused because a shorter one already reaches the same landing is the
+      // rule working, not a failure: #364's fourth step. It exits 0 so a phase
+      // distilling six targets is not stopped by the two that were already covered.
+      process.exit(r.keep ? 0 : 1)
+    }
+    console.log(`  ${GREEN}cut ${OFF} ${name} · ${r.room} · moves=${r.moves}`
+      + ` score=${r.score}`)
+    if (r.carrying) console.log(`       ${DIM}${r.carrying}${OFF}`)
+    console.log(`  ${DIM}${r.from} → ${r.to} commands in ${r.replays} replay(s)`
+      + `${r.capped ? ', capped' : ''}; committed to ${dir}${OFF}`
       + ` — run \`verify ${name}\` to prove it from a second replay.\n`)
     return
   }

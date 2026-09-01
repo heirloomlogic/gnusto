@@ -195,6 +195,44 @@ const stub = async (prompt, opts = {}) => {
       note: '',
     }
   }
+  // One target of each outcome, and the committed one is CAPPED — the case the
+  // phase is required to say out loud rather than report as distilled. A stub that
+  // returned three clean rows would leave the one honest-about-its-bound path,
+  // which is the only thing #358 asks this phase to promise, unexercised.
+  if (l === 'distill') {
+    return {
+      targets: [
+        {
+          name: 'c-1',
+          session: '.context/playtest/Fulminate-2026-08-26-r1-session-solver/probe-001',
+          upto: 44,
+          why: 'past the locked cellar door with the lamp lit',
+          outcome: 'committed',
+          from: 44,
+          to: 19,
+          landing: 'Cellar',
+          capped: true,
+        },
+        {
+          name: 'c-2',
+          session: '.context/playtest/Fulminate-2026-08-26-r1-session-explorer-1/probe-001',
+          upto: 12,
+          why: 'the floor above, before the clock turns',
+          outcome: 'kept-existing',
+          detail: 'a-1 already lands there in 9 command(s), against this 11 — kept the shorter.',
+        },
+        {
+          name: 'c-3',
+          session: '.context/playtest/Fulminate-2026-08-26-r1-session-explorer-2/probe-001',
+          upto: 60,
+          why: 'the end of the evening',
+          outcome: 'refused',
+          detail: 'the list as given ends on a frame the game will not take a command in.',
+        },
+      ],
+      note: '',
+    }
+  }
   if (l === 'critic') return { summary: 'thin but honest' }
   return {}
 }
@@ -1499,6 +1537,134 @@ for (const tool of ['rewind', 'replay', 'coverage', 'note']) {
       `.claude/settings.json sets no ${v}, so a round depends on whoever dispatched it remembering to`
     )
   }
+}
+
+// ---------------------------------------------------------------------------
+// Distill — the phase that turns a round's own play into the next round's deep starts
+// ---------------------------------------------------------------------------
+//
+// Three properties, and only the third is about the prompt's words.
+//
+// **Where it sits.** After play, before the report: it reads what the sessions
+// wrote, and a phase that ran before them would have nothing to read.
+//
+// **What the agent is allowed to hand over.** A session directory and a line
+// number, never a command list. The moment the prompt offers a flag that takes a
+// file, the agent can trim a list by hand and the round is back to an agent
+// inferring causality from prose — which is the one thing #364 takes off it.
+//
+// **That the bound is spoken.** A cap nobody names is a cap that lies, so a capped
+// target has to reach the operator as capped. The stub returns one deliberately.
+{
+  const distillPrompt = prompts.find((p) => p.label === 'distill')
+  check(!!distillPrompt, 'no distiller ran, so the round learned nothing from its own play')
+  const at = (title) => phases.indexOf(title)
+  check(
+    at('Distill') > at('Play') && at('Distill') < at('Critic'),
+    `Distill runs at ${at('Distill')} in ${phases.join(' -> ')}; it reads what the sessions `
+    + 'wrote, so it belongs after Play and before the report'
+  )
+  check(
+    metaPhases.includes('Distill'),
+    'meta.phases does not list Distill, so the progress tree shows a phase that is not there'
+  )
+  if (distillPrompt) {
+    const lead = layoutConst('DISTILL_LEAD')
+    check(!!lead, 'playtest.js no longer declares DISTILL_LEAD as one line, so this is unchecked')
+    check(lead ? distillPrompt.prompt.includes(lead) : false, 'the distiller is not told what it is')
+    check(
+      distillPrompt.prompt.includes('--from-session') && distillPrompt.prompt.includes('--upto'),
+      'the distiller prompt does not hand the tool a session and a line, so nothing stops the '
+      + 'agent from deciding which commands mattered'
+    )
+    check(
+      !distillPrompt.prompt.includes('--from-commands'),
+      'the distiller prompt offers --from-commands, which lets the agent hand over a list it '
+      + 'trimmed itself — the judgement #364 gives to the replay predicate'
+    )
+    check(
+      /--budget \d+/.test(distillPrompt.prompt),
+      'the distiller is given no replay budget, so its shrink is unbounded and the round has '
+      + 'no number to be honest about'
+    )
+  }
+  // The firewall, one altitude down from the region check: a blind seat must not be
+  // told what a route walks. It never sees this prompt — but the tool's name in a
+  // *play* prompt would be an invitation to read a route's commands, which is
+  // exactly what `open`'s `start:` withholds.
+  for (const p of blind) {
+    check(
+      !/playtest-routes/.test(p.prompt),
+      `${p.label} is told about bin/playtest-routes, which reads out a route's commands — `
+      + 'the thing a deep start hands over as a landing and never as a list'
+    )
+  }
+  const rows = (result.routes && result.routes.distilled) || []
+  check(rows.length > 0, 'the round returns no distilled routes, so nothing it learned is reportable')
+  check(
+    Array.isArray(result.routes && result.routes.used),
+    'the round does not report which routes it was handed, so a route record names nothing'
+  )
+  const capped = rows.find((r) => r.capped)
+  check(!!capped, 'the distiller fixture no longer returns a capped target, so the bound is unchecked')
+  check(
+    logs.some((l) => /CAPPED/.test(l)),
+    'a capped route is logged as though it were minimized; a cap nobody names is a cap that lies'
+  )
+  // The two non-committed outcomes are reported at all, and with the tool's own words
+  // rather than the round's paraphrase of them: a target the tool declined because a
+  // shorter route already reaches the landing is the rule working, and a round that
+  // logged it as a failure would send an operator looking for a bug.
+  for (const t of rows.filter((r) => r.outcome !== 'committed')) {
+    check(
+      logs.some((l) => l.includes(t.name) && l.includes(t.outcome) && l.includes(t.detail)),
+      `the ${t.outcome} target \`${t.name}\` is not reported with the tool's own reason`
+    )
+  }
+  check(
+    logs.some((l) => /NOT committed by this round/.test(l)),
+    'the round writes routes into .playtest/ and never says they are uncommitted, so the next '
+    + 'fresh checkout has none of them'
+  )
+}
+
+// The tool the distiller prompt drives, checked against the tool that exists. Same
+// cross-language treatment the probe layout gets: nothing compiles a workflow prompt
+// against a node script, so reading its source is the only check available, and a
+// prompt naming a flag the script never grew is a phase that fails at run time in
+// front of eight testers' worth of spent budget.
+{
+  const routesScript = code('bin/playtest-routes')
+  check(
+    /'distill'/.test(routesScript),
+    'bin/playtest-routes has no distill verb, so the Distill phase drives a command that does '
+    + 'not exist'
+  )
+  // Read out of the parser's own flag table, never off the file. The usage banner
+  // names every flag too, and a check that matched anywhere in the source would go
+  // green on a script that prints `--upto` and then throws it away as an unknown
+  // boolean — which is the shape of failure that is silent at run time.
+  const valueFlags = (routesScript.match(/VALUE_FLAGS = new Set\(\[([^\]]*)\]/) || [])[1] || ''
+  for (const flag of ['--from-session', '--upto', '--budget']) {
+    check(
+      valueFlags.includes(`'${flag}'`),
+      `bin/playtest-routes' VALUE_FLAGS does not take a value for ${flag}, which the Distill `
+      + "phase's prompt tells the agent to pass"
+    )
+  }
+  // The shrink's own landing probe and the one a session opens on. `PlaytestRoute`'s
+  // is checked against the replay script above; this is the third reader, and a
+  // distiller comparing landings on a different probe would be measuring a different
+  // frame from the one the tester is handed. Asserted as an *absence of a literal*
+  // rather than as the presence of one: the constant lives in `playtest-focus.js`, and
+  // a check that matched the string would go green on a copy of it, which is the shadow
+  // it exists to forbid.
+  const distillLib = code('bin/lib/playtest-distill.js')
+  check(
+    distillLib.includes('LANDING_PROBE') && !new RegExp(`'${literal(swiftProbe)}'`).test(distillLib),
+    `bin/lib/playtest-distill.js spells its landing probe itself instead of importing `
+    + 'LANDING_PROBE, so the shrink can end up preserving a frame no tester opens on'
+  )
 }
 
 // And the other half of the preflight phase: when the tools do NOT resolve, the

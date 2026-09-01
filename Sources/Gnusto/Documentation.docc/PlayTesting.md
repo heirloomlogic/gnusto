@@ -120,6 +120,10 @@ A route is checked by **replay, never by a hash**. Bytes on disk cannot say what
 
 **A game with no routes needs nothing.** `.playtest/` starts empty, every session opens at turn zero, and a game's routes accumulate out of the sessions that found somewhere worth returning to.
 
+That accumulation is not a session replayed verbatim. Sixty turns reached somewhere of which perhaps twelve mattered, and the other forty-eight were a tester trying fifty ways of working a lever with the lantern burning down — so a learned route is **distilled** before it is committed. The commands that cost no turn go first, for one confirming replay; then contiguous runs are dropped and replayed after each, and a cut is kept only when the game still lands in the same room with the same score, the same `look` and the same `inventory`. The survivor is replayed once more from nothing and the manifest records where that actually landed. `bin/playtest-routes <Game> distill` is that tool, and the harness's own round runs it as a phase.
+
+The shrink is bounded and says so. It stops at a replay budget rather than at minimality, and its predicate compares the landing — so it does not check timer state or where the actors are, and a route can preserve the room and still have left the thief somewhere else.
+
 ### Where sessions live
 
 Under `.context/playtest`, or wherever `GNUSTO_PLAYTEST_DIR` points. `GNUSTO_MCP_MAX_SESSIONS` caps how many hold a live world at once — 32 by default. Past the cap the oldest is evicted to its command list and replays itself on next use, so an evicted session answers exactly as it did before; it just costs more to ask.
