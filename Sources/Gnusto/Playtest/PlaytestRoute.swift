@@ -42,8 +42,16 @@ struct PlaytestRoute: Sendable {
     /// the one manifest field that is required.
     let seed: UInt64
 
-    /// The round a distiller learned this route from, or `nil` for one written
-    /// by hand. Resolves against the per-round record `.playtest/` also holds.
+    /// Where this route came from, or `nil` when nothing was recorded.
+    ///
+    /// A distilled route names the **round** it was learned from, which resolves
+    /// against the per-round record `.playtest/` also holds. A hand-cut one names
+    /// whatever it was cut out of — Dungeon's nine name the walkthrough test and
+    /// the index, `DungeonWalkthroughTests.route[0:113]` — because the whole point
+    /// of committing a route is that the machinery which produced it can then be
+    /// deleted, and a provenance nobody wrote down is deleted with it.
+    ///
+    /// The engine never resolves the string. It is for a person reading the file.
     let derivedFrom: String?
 
     /// The room the manifest says the route ends in, or `nil` when it declares
@@ -175,14 +183,21 @@ struct PlaytestRoute: Sendable {
     /// wrong is a language model that mistyped, and it can recover from being
     /// told what the right names look like — but only if it is told.
     ///
+    /// The route stems in a directory, sorted — the names `load` answers to.
+    ///
     /// - Parameter directory: the routes directory.
-    /// - Returns: one sentence, naming up to eight routes.
-    private static func available(in directory: URL) -> String {
-        let names =
-            ((try? FileManager.default.contentsOfDirectory(atPath: directory.path)) ?? [])
+    /// - Returns: the stems, or `[]` for a directory that is missing or holds none.
+    static func names(in directory: URL) -> [String] {
+        ((try? FileManager.default.contentsOfDirectory(atPath: directory.path)) ?? [])
             .filter { $0.hasSuffix(".json") }
             .map { String($0.dropLast(5)) }
             .sorted()
+    }
+
+    /// - Parameter directory: the routes directory.
+    /// - Returns: one sentence, naming up to eight routes.
+    private static func available(in directory: URL) -> String {
+        let names = names(in: directory)
         guard !names.isEmpty else {
             return "There are no routes in that directory at all."
         }

@@ -453,11 +453,11 @@ actor PlaytestSessions {
             throw PlaytestError(
                 """
                 savesFrom names \(source.path), which holds no saved games. Nothing ran. \
-                A session opened onto a round's slots, and a reproducer whose first \
-                command is `restore`, both need a slot somebody wrote — and nothing \
-                wrote one there. Check the label; for a round, `bin/playtest-slots \
-                <Game>` is what cuts them, and `bin/playtest-preflight` says when it \
-                needs to.
+                A reproducer whose first command is `restore` needs a slot somebody \
+                wrote, and nothing wrote one there. Check the label: these are a \
+                tester's own mid-session `save`, so the label is the one that saved. A \
+                round's deep starts are not saved games at all — they are routes, and \
+                `start:` is the door they come through.
                 """)
         }
         // Through the save store both ways, so the extension and the 0700 the

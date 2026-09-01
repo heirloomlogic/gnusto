@@ -2,18 +2,14 @@
 // What `docs/games/<game>-playtest-focus.md` declares, read once.
 //
 // The focus file is the committed coverage split: `bin/playtest-preflight` passes
-// it to a round as `focus`, and `playtest.js` chunks it across the blind seats. It
-// also declares the round's *saved games* — which slot stands where, as a cut of
-// the walkthrough route — because those two facts belong in one place. A region
-// that says "restore `d-1` and push the buttons" and a slot table that says `d-1`
-// is `route[0:113]` are the same sentence written twice if they live apart, and a
-// round dies quietly when they disagree: every tester's `restore` answers
-// `Restore failed.`, which reads as a finding about the game rather than about the
-// harness.
+// it to a round as `focus`, and `playtest.js` chunks it across the blind seats.
 //
-// So there is one declaration and two readers. `bin/playtest-preflight` reads it to
-// check the slots exist before dispatching anybody; `bin/playtest-slots` reads it
-// to cut them. Neither has a list of its own.
+// It also owns where a round's **deep starts** live and what they say —
+// `routesDir`, `loadRoute`, `routeManifests`, `routeSeeds`, `seedFor` — for the same
+// reason: `bin/playtest-preflight` decides whether a route can be handed out and
+// `bin/playtest-routes` decides whether it can be replayed, and two judgements of
+// one file is two answers to one question. ``PlaytestRoute`` in the engine is where
+// the story of what these replaced is told.
 //
 // The focus file is what the module is named for and no longer all it holds: the
 // same rule pulled in the game-doc naming, the product resolver and the shared
@@ -27,8 +23,8 @@
 'use strict'
 
 const { spawnSync } = require('node:child_process')
-const crypto = require('node:crypto')
 const fs = require('node:fs')
+const os = require('node:os')
 const path = require('node:path')
 
 const ROOT = path.resolve(__dirname, '..', '..')
@@ -46,12 +42,13 @@ function read(relative) {
   return cache.get(full)
 }
 
-/// The play-test scratch tree, which is also where a label's saves live.
+/// The play-test scratch tree, which is also where a label's saves live — a
+/// tester's own mid-session `save`, which is the only kind there is now.
 const SCRATCH = '.context/playtest'
 
 /// The table both front-door scripts print their checks in. Shared because an
 /// operator reads them back to back — `bin/playtest-preflight` then
-/// `bin/playtest-slots` — so the two formats are required to match and nothing
+/// `bin/playtest-routes` — so the two formats are required to match and nothing
 /// else would make them.
 const GREEN = '\x1b[32m'
 const RED = '\x1b[31m'
@@ -119,146 +116,113 @@ function focusParts(focusPath) {
   return { blind: blind.trim(), sighted: sighted.trim() }
 }
 
-// The `Slots:` line in the header, which is the one place a round's saved games are
-// named. It sits above the first rule on purpose: it is operator plumbing, and a
-// tester handed the label and the route symbol is a tester handed the answer key.
-//
-//     Slots: `Dungeon-r1-slots`, cut from `DungeonWalkthroughTests.route`
-//
-const SLOT_LABEL = /^Slots:\s*`([A-Za-z0-9][A-Za-z0-9._-]*)`\s*,\s*cut from\s*`([A-Za-z_][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_]*)`/m
-
-// Anything at all that meant to be that line. A `Slots:` the strict pattern cannot
-// read — bolded to `**Slots:**`, a backtick dropped — would otherwise return `null`,
-// which this module cannot tell apart from a game that ships no saves: no `slots`
-// row in preflight, `slots: null` in the round's arguments, `savesFrom` never
-// passed, and every tester answering `Restore failed.` That is precisely the failure
-// this file exists to end, so an unreadable declaration is loud and a missing one is
-// silent.
-const SLOT_LABEL_LOOSE = /^\s*\**Slots:\**/m
-
-// Where each slot stands, taken from the regions' own prose rather than from a
-// second table. The regions already have to say this — a tester is told "`d-1`
-// (cut at `route[0:113]`)" so it knows how deep it is standing — and a table beside
-// them would be a copy to keep in step. Parse the sentence instead.
-//
-// The array's own name, never the literal `route`: a second game whose walkthrough
-// calls it `solution` declares that in the header, and a pattern that ignored the
-// header would answer "no slots" rather than "I could not read yours".
-const slotCut = (routeName) =>
-  new RegExp(`\`([A-Za-z0-9][A-Za-z0-9._-]*)\`\\s*\\(cut at\\s*\`${routeName}\\[0:(\\d+)\\]\`\\)`, 'g')
-
-// The same sentence read loosely, so a declaration that failed the strict pattern is
-// counted rather than skipped. A dropped backtick used to cost one slot out of nine
-// and leave preflight reporting `8/8` green.
-const slotCutLoose = (routeName) => new RegExp(`\\(cut at[^)]*${routeName}\\[0:`, 'g')
-
-/// What a focus file declares about the round's saved games.
+/// Where a game's routes live, mirroring `PlaytestRoute.root(game:environment:)`.
 ///
-/// - Returns: `{ label, routeType, routeName, slots: [{ name, cut }] }`, slots in
-///   ascending cut order, or `null` when the file declares no `Slots:` line. A file
-///   with a `Slots:` line and no `(cut at …)` mentions returns an empty `slots`,
-///   which is a different thing from declaring none and is reported as such.
-function slotPlan(focusPath) {
-  const text = read(focusPath)
-  const header = SLOT_LABEL.exec(text)
-  if (!header) {
-    if (!SLOT_LABEL_LOOSE.test(text)) return null
-    throw new Error(
-      `${focusPath} has a \`Slots:\` line this cannot read. It must be exactly:\n`
-      + '    Slots: `<label>`, cut from `<TestType>.<arrayName>`\n'
-      + '  with the backticks, unbolded, above the first rule.')
+/// `GNUSTO_PLAYTEST_ROUTES` replaces the `.playtest` base and the `<game>/routes/`
+/// tail applies either way, so the keying that keeps a seven-game package's routes
+/// apart is exercised rather than bypassed. Shared with `bin/playtest-routes`
+/// because a second copy of a path is a second answer to where a route is.
+///
+/// Keyed by the game's **type name**, which is what the engine files routes under
+/// (`PreparedGame.typeName`). For this package's games that is the product name.
+function routesDir(game) {
+  const override = process.env.GNUSTO_PLAYTEST_ROUTES
+  const base = override && override.trim()
+    ? path.resolve(override.replace(/^~/, os.homedir()))
+    : '.playtest'
+  return path.join(base, game, 'routes')
+}
+
+/// One route file, read and checked the way the engine checks it at `open`
+/// (`PlaytestRoute.load`): a whole-number seed of zero or more, and a commands array
+/// with at least one command in it.
+///
+/// The one parser, because `bin/playtest-preflight` decides whether a route can be
+/// handed out and `bin/playtest-routes` decides whether it can be replayed, and two
+/// judgements of one file is two answers to the same question.
+///
+/// - Returns: `{ name, seed, commands, landing, derivedFrom }`, or `{ name, error }`
+///   for a file that cannot be used. Never both — a caller reads `error` first.
+function loadRoute(name, dir) {
+  let m
+  try {
+    m = JSON.parse(fs.readFileSync(path.join(dir, `${name}.json`), 'utf8'))
+  } catch (e) {
+    return { name, error: `${name}.json is missing or unreadable (${e.message})` }
   }
-  const routeName = header[3]
-  // Only the regions, never the whole file. The header explains the format, and an
-  // example of a declaration is a declaration to a scan that reads everything — so
-  // documenting the syntax used to enter the plan as a phantom slot, or collide with
-  // a real one and refuse to parse the file at all.
-  const { blind } = focusParts(focusPath)
-  const loose = [...blind.matchAll(slotCutLoose(routeName))].length
-  const seen = new Map()
-  for (const m of blind.matchAll(slotCut(routeName))) {
-    const name = m[1]
-    const cut = Number(m[2])
-    // A slot named twice at two depths is the drift this whole module exists to
-    // stop, and it is cheaper to refuse than to pick one.
-    if (seen.has(name) && seen.get(name) !== cut) {
-      throw new Error(
-        `${focusPath} declares slot "${name}" at both route[0:${seen.get(name)}] and `
-        + `route[0:${cut}]. One of them is stale.`)
-    }
-    seen.set(name, cut)
+  if (!Number.isInteger(m.seed) || m.seed < 0) {
+    return { name, error: `${name}.json declares no usable "seed"` }
   }
-  // The join the prose form otherwise lacks. A tester reads the sentence and this
-  // reads the sentence, but only this one is parsed — so a malformed declaration is
-  // a slot the round promises and does not ship, and it looked exactly like a round
-  // that promised eight.
-  if (loose !== seen.size) {
-    throw new Error(
-      `${focusPath} has ${loose} slot declarations and ${seen.size} that parse. `
-      + 'Each must read exactly: `<name>` (cut at `'
-      + `${routeName}[0:<n>]\`).`)
+  const commands = Array.isArray(m.commands)
+    ? m.commands.map((c) => String(c).trim()).filter((c) => c.length > 0)
+    : []
+  if (!commands.length) {
+    return { name, error: `${name}.json declares no "commands" array with a command in it` }
   }
   return {
-    label: header[1],
-    routeType: header[2],
-    routeName,
-    slots: [...seen].map(([name, cut]) => ({ name, cut })).sort((a, b) => a.cut - b.cut),
+    name, commands, seed: m.seed, landing: m.landing || null, derivedFrom: m.derivedFrom,
   }
 }
 
-/// The commands of a walkthrough route, read out of the committed test.
+/// Every committed route of a game, in name order, each as ``loadRoute`` returns it.
 ///
-/// The route is a `static let <name>: [String] = [ … ]` literal in the suite that
-/// pins it, and it is the single source of truth for what a slot's depth means:
-/// indices drift between commits — `38e27b8` removed a `drop rope` and moved every
-/// index after it — so a cut depth is only meaningful against the route as it
-/// stands right now. Re-deriving it from the test on every cut is what keeps a
-/// stale index from producing a plausible slot in the wrong room.
-///
-/// - Returns: `{ file, commands }`, or `null` when the declaration isn't found.
-function routeCommands(routeType, routeName) {
-  const hit = spawnSync(
-    'grep',
-    ['-rl', '--include=*.swift', `struct ${routeType}`, 'Tests'],
-    { encoding: 'utf8', cwd: ROOT })
-  const file = (hit.stdout || '').trim().split('\n').filter(Boolean)[0]
-  if (!file) return null
-
-  const lines = read(file).split('\n')
-  const opens = new RegExp(`static\\s+let\\s+${routeName}\\s*:\\s*\\[String\\]\\s*=\\s*\\[`)
-  const at = lines.findIndex((l) => opens.test(l))
-  if (at < 0) return null
-
-  const commands = []
-  for (let i = at + 1; i < lines.length; i += 1) {
-    // The literal's own closing bracket, alone on its line — the house style for
-    // every route in this suite, and the only terminator that cannot be confused
-    // with a bracket inside a comment.
-    if (/^\s*\]\s*$/.test(lines[i])) return { file, commands }
-    // Comments are the route's own narration and they hold no quoted strings, so
-    // cutting at `//` is exact rather than approximate.
-    for (const m of lines[i].split('//')[0].matchAll(/"((?:[^"\\]|\\.)*)"/g)) commands.push(m[1])
+/// A file that will not parse rides along carrying its `error` rather than being
+/// skipped: `bin/playtest-preflight`'s `routes` row reports it, and a reader that
+/// dropped it silently would let a round be dispatched against a deep start no
+/// session can open.
+/// One read per directory per process, for the reason `read()` is cached and not for
+/// the microseconds: `bin/playtest-preflight` asks twice in a single-game run — once
+/// for its `routes` row, once through `seedFor` for the round's pinned seed — and two
+/// reads of one directory can return two states of it. A `cut` landing between them
+/// would give a green row over routes the seed was never checked against, which is
+/// precisely what the row exists to stop.
+const routeCache = new Map()
+function routeManifests(game) {
+  // `resolve`, never `join`: under `GNUSTO_PLAYTEST_ROUTES` the directory is already
+  // absolute, and joining an absolute path onto the package root produces a path
+  // under it that holds nothing — which reads exactly like a game with no routes.
+  const dir = path.resolve(ROOT, routesDir(game))
+  if (!routeCache.has(dir)) {
+    routeCache.set(dir, routeNames(dir).map((name) => loadRoute(name, dir)))
   }
-  return null
+  return routeCache.get(dir)
 }
 
-// A finding without a seed is not reproducible, and a game with a pinned
-// walkthrough has already chosen one. Read it rather than defaulting past it.
+/// The route stems in a directory, sorted. Read the same way the engine reads them,
+/// so a file that fails to parse is caught by whoever reads it and not dropped here.
+function routeNames(dir) {
+  return (fs.existsSync(dir) ? fs.readdirSync(dir) : [])
+    .filter((f) => f.endsWith('.json')).map((f) => f.slice(0, -5)).sort()
+}
+
+/// The distinct seeds this game's readable routes declare, ascending.
+///
+/// One of them is the round's seed. More than one is a round that would turn half
+/// its testers away at `open`, and none is a game with no deep starts yet — three
+/// answers a caller has to tell apart, which is why this is a set and not a number.
+function routeSeeds(game) {
+  return [...new Set(routeManifests(game).filter((r) => !r.error).map((r) => r.seed))]
+    .sort((a, b) => a - b)
+}
+
+/// The seed a round of this game must run at.
+///
+/// A finding without a seed is not reproducible, so a round pins one and every seat
+/// uses it. This used to be scraped out of a walkthrough test — `grep` for
+/// `<Game>Walkthrough`, then for a `static let seed` — which asked a Swift source
+/// what the harness should do, and parsed one of this repo's two walkthroughs.
+///
+/// The committed routes answer it better, because they *constrain* it: `open`
+/// refuses a session whose seed is not the route's, since a route replayed at
+/// another seed lands somewhere else and says nothing about it.
+///
+/// - Returns: the seed the routes agree on; **`null` when they disagree**, which no
+///   caller may paper over — picking one of two entrenches the split, and picking
+///   the lowest does it silently; and 0 when there are no routes, which is
+///   reproducible because it is pinned and is what a downstream game has on day one.
 function seedFor(game) {
-  const found = spawnSync(
-    'grep', ['-rl', '--include=*.swift', `${game}Walkthrough`, 'Tests'],
-    { encoding: 'utf8', cwd: ROOT })
-    .stdout.trim().split('\n').filter(Boolean)
-  // The walkthrough file first when there is one: several suites pin the same
-  // seed, and the walkthrough is the one whose route the round is measured against.
-  found.sort((a, b) => (b.includes('Walkthrough') ? 1 : 0) - (a.includes('Walkthrough') ? 1 : 0))
-  for (const file of found) {
-    // Any annotation, not just `Int`. Dungeon's is `static let seed: UInt64 = 52`,
-    // and a regex that named the type read it as 0 — which is a different round.
-    const m = read(file).match(/\bstatic\s+let\s+seed\b[^=\n]*=\s*([0-9]+)/)
-    if (m) return Number(m[1])
-  }
-  return 0
+  const seeds = routeSeeds(game)
+  return seeds.length > 1 ? null : (seeds[0] ?? 0)
 }
 
 // One manifest read per invocation. Every caller wants the same answer and each
@@ -294,46 +258,6 @@ function resolveGame(words) {
     game: products.find((p) => fold(p) === fold(words)) || null,
     products,
   }
-}
-
-/// Where `bin/playtest-replay --label <label> --save <slot>` puts its bytes, and
-/// therefore where `--saves-from <label>` and the MCP `savesFrom` read them back.
-const savesDir = (label) => path.join(SCRATCH, label, 'saves')
-
-/// What a set of slots was cut from, in twelve hex characters.
-///
-/// **Existing is not the same as being current.** A slot is `route[0:N]` of a route
-/// that moves: `38e27b8` removed a `drop rope` and shifted every index after it, so a
-/// slot cut last month stands somewhere else today while its file sits there reading
-/// green. That is the same failure the `slots` row was added for — a description and
-/// the thing described drifting apart with nothing to notice — one level in.
-///
-/// So the cut records what it was a cut *of*: the route as it stands, the seed, and
-/// the depths asked for. Change any of the three and the fingerprint changes, and
-/// `bin/playtest-preflight` says to cut again rather than shipping yesterday's rooms.
-const slotFingerprint = (plan, route, seed) =>
-  crypto.createHash('sha256')
-    .update(`${seed}\n${route.commands.join('\n')}\n`)
-    .update(plan.slots.map((s) => `${s.name}:${s.cut}`).join(','))
-    .digest('hex')
-    .slice(0, 12)
-
-/// The marker a cut leaves beside its bytes, and a reader for it.
-const fingerprintFile = (label) => path.join(savesDir(label), '.cut-from')
-const fingerprintOf = (label) => {
-  try { return fs.readFileSync(path.join(ROOT, fingerprintFile(label)), 'utf8').trim() }
-  catch { return null }
-}
-
-/// Each declared slot, and whether its bytes are on disk.
-///
-/// `.context/` is gitignored, so a fresh checkout has none of them however
-/// carefully the focus file describes them. That is the failure this answers.
-function slotStatus(plan) {
-  return plan.slots.map((slot) => {
-    const file = path.join(savesDir(plan.label), `${slot.name}.gnusto`)
-    return { ...slot, file, exists: fs.existsSync(path.join(ROOT, file)) }
-  })
 }
 
 // `ledgerKeys` means **rejections**, and only rejections: `playtest.js` folds them
@@ -425,9 +349,6 @@ function ledgerScan(p) {
 module.exports = {
   ROOT,
   SCRATCH,
-  slotFingerprint,
-  fingerprintFile,
-  fingerprintOf,
   GREEN,
   RED,
   DIM,
@@ -438,10 +359,11 @@ module.exports = {
   resolveGame,
   gameDoc,
   focusParts,
-  slotPlan,
-  routeCommands,
+  routesDir,
+  routeNames,
+  loadRoute,
+  routeManifests,
+  routeSeeds,
   seedFor,
-  savesDir,
-  slotStatus,
   ledgerScan,
 }

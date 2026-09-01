@@ -113,13 +113,23 @@
     "east",
     "north",
     "take matchbook",
+    "north",
+    "push yellow button",
+    "take wrench",
+    "take screwdriver",
+    "south",
+    "south",
+    "turn bolt with wrench",
+    "drop wrench",
+    "south",
+    "northwest",
     "north"
   ],
-  "derivedFrom": "DungeonWalkthroughTests.route[0:113]",
+  "derivedFrom": "DungeonWalkthroughTests.route[0:123]",
   "landing": {
-    "room": "Maintenance Room",
-    "moves": "112",
+    "room": "Reservoir",
+    "moves": "122",
     "score": "142",
-    "inventory": "You are carrying a matchbook, a brass lantern, a platinum bar, and an ivory torch."
+    "inventory": "You are carrying a matchbook, a screwdriver, a brass lantern, a platinum bar, and an ivory torch."
   }
 }

@@ -1,28 +1,28 @@
 #!/usr/bin/env node
 //
-// Cut, verify and list a game's deep-start routes — the committed counterpart of
-// `bin/playtest-slots`.
+// Cut, verify and list a game's deep-start routes.
 //
 //   bin/playtest-routes <Game> cut <name> --from-commands FILE [--seed N]
 //                                            [--derived-from LABEL] [--force]
 //   bin/playtest-routes <Game> verify [name…]  re-replay; check the landing
 //   bin/playtest-routes <Game> list            what is committed, and where each lands
 //
-// **Why these are committed and slots are not.** A slot is `.gnusto` bytes under
-// gitignored `.context/`, and a fresh checkout holds none of them however carefully
-// a focus file describes them — which is how four real defects were discarded as
-// `not-reproducible` in one round. A route is text: one committed file,
-// `.playtest/<Game>/routes/<name>.json`, holding the commands and where they land,
-// so a fresh checkout and a downstream clone hold the same deep starts the round
-// that made them did. The MCP `open` tool's `start:` parameter reads them (see
-// `PlaytestRoute` in the engine), and this script is what writes them.
+// **Why these are committed, where the saved games they replace were not.** A slot
+// was `.gnusto` bytes under gitignored `.context/`, and a fresh checkout held none
+// of them however carefully a focus file described them — which is how four real
+// defects were discarded as `not-reproducible` in one round. A route is text: one
+// committed file, `.playtest/<Game>/routes/<name>.json`, holding the commands and
+// where they land, so a fresh checkout and a downstream clone hold the same deep
+// starts the round that made them did. The MCP `open` tool's `start:` parameter
+// reads them (see `PlaytestRoute` in the engine), and this script writes them.
 //
 // **Why verification is replay and never a hash.** A save file cannot be asked what
-// it is a save of, which is why slots need a fingerprint receipt. A command list can
-// simply be run: `verify` replays each route at its manifest seed in a fresh run —
-// never the cut run's own footer — and refuses it if the landing room is not the room
-// the manifest claims. A route that no longer lands right is stale, and the sentence
-// that helps is *the route now ends in a different room*, not a hash comparison.
+// it is a save of, which is why the slots needed a fingerprint receipt. A command
+// list can simply be run: `verify` replays each route at its manifest seed in a
+// fresh run — never the cut run's own footer — and refuses it if the landing room
+// is not the room the manifest claims. A route that no longer lands right is stale,
+// and the sentence that helps is *the route now ends in a different room*, not a
+// hash comparison.
 //
 // **Where routes come from.** A hand-written command file today, and after #364 a
 // distiller phase at the end of a round. A walkthrough is an accelerant, never a
@@ -32,14 +32,13 @@
 'use strict'
 
 const fs = require('node:fs')
-const os = require('node:os')
 const path = require('node:path')
 
 const focus = require('./lib/playtest-focus')
 const {
   replay, turnCap, timeoutFor, lastStatus, answerTo, runReplay,
 } = require('./lib/playtest-replay')
-const { GREEN, RED, DIM, OFF } = focus
+const { GREEN, RED, DIM, OFF, routesDir, routeNames, loadRoute } = focus
 
 process.chdir(focus.ROOT)
 
@@ -63,19 +62,6 @@ function newestTranscript(label) {
 // Route storage
 // ---------------------------------------------------------------------------
 
-// Mirrors `PlaytestRoute.root(game:environment:)`: `GNUSTO_PLAYTEST_ROUTES`
-// replaces the `.playtest` base, and the `<game>/routes/` tail applies either way —
-// so the keying that keeps a seven-game package's routes apart is exercised rather
-// than bypassed, and a test driving this script points somewhere else the same way
-// the engine does.
-function routesDir(game) {
-  const override = process.env.GNUSTO_PLAYTEST_ROUTES
-  const base = override && override.trim()
-    ? path.resolve(override.replace(/^~/, os.homedir()))
-    : '.playtest'
-  return path.join(base, game, 'routes')
-}
-
 // The same alphabet the engine's `PlaytestSessions.isPlainName` keeps a route name
 // to — it is a file stem, and it travels through paths on both sides. The 64-character
 // cap included: a stem the engine's `open` would refuse must not be one this script
@@ -94,36 +80,6 @@ function readCommands(file) {
     .filter((l) => l.length > 0)
   if (!commands.length) return { error: `${file} holds no commands` }
   return { commands }
-}
-
-// One route file, read and checked the way the engine checks it at `open`
-// (`PlaytestRoute.load`): a whole-number seed of zero or more, and a commands
-// array with at least one command in it.
-function loadRoute(name, dir) {
-  let m
-  try {
-    m = JSON.parse(fs.readFileSync(path.join(dir, `${name}.json`), 'utf8'))
-  } catch (e) {
-    return { error: `${name}.json is missing or unreadable (${e.message})` }
-  }
-  if (!Number.isInteger(m.seed) || m.seed < 0) {
-    return { error: `${name}.json declares no usable "seed"` }
-  }
-  const commands = Array.isArray(m.commands)
-    ? m.commands.map((c) => String(c).trim()).filter((c) => c.length > 0)
-    : []
-  if (!commands.length) {
-    return { error: `${name}.json declares no "commands" array with a command in it` }
-  }
-  return { route: m, commands }
-}
-
-// The stems of the routes on disk, sorted. `list` and `verify` read the same
-// directory the engine does, and a file that fails to parse is caught by whoever
-// reads it, not silently dropped here.
-function routeNames(dir) {
-  return (fs.existsSync(dir) ? fs.readdirSync(dir) : [])
-    .filter((f) => f.endsWith('.json')).map((f) => f.slice(0, -5)).sort()
 }
 
 // ---------------------------------------------------------------------------
@@ -195,9 +151,9 @@ function cut(game, dir, name, commands, seed, derivedFrom) {
 // fresh, a route that no longer lands where it claims is caught here,
 // which is the check a hash could never make.
 function verifyOne(game, dir, name) {
-  const loaded = loadRoute(name, dir)
-  if (loaded.error) return { ok: false, detail: loaded.error }
-  const { route, commands } = loaded
+  const route = loadRoute(name, dir)
+  if (route.error) return { ok: false, detail: route.error }
+  const { commands } = route
 
   const label = `routes-verify-${name}`
   const r = runReplay('playtest-routes', `verify-${name}`, landingCommands(commands), [
@@ -299,27 +255,24 @@ function main() {
   }
 
   if (verb === 'list') {
-    const names = routeNames(dir)
-    if (!names.length) {
+    const routes = focus.routeManifests(gameKey)
+    if (!routes.length) {
       console.log(`  ${gameKey}: no routes in ${DIM}${dir}${OFF}`
         + ' — testers play cold, and the round learns its own.')
       return
     }
-    console.log(`\n  ${gameKey}: ${names.length} route(s) in ${DIM}${dir}${OFF}\n`)
-    const width = Math.max(...names.map((n) => n.length)) + 2
-    for (const name of names) {
-      const loaded = loadRoute(name, dir)
-      if (loaded.error) {
-        console.log(`  ${RED}bad ${OFF} ${name.padEnd(width)} ${loaded.error}`)
+    console.log(`\n  ${gameKey}: ${routes.length} route(s) in ${DIM}${dir}${OFF}\n`)
+    const width = Math.max(...routes.map((r) => r.name.length)) + 2
+    for (const route of routes) {
+      if (route.error) {
+        console.log(`  ${RED}bad ${OFF} ${route.name.padEnd(width)} ${route.error}`)
         continue
       }
-      const room = loaded.route.landing?.room || '?'
-      const from = loaded.route.derivedFrom
-        ? `${DIM}from ${loaded.route.derivedFrom}${OFF}` : ''
-      console.log(`      ${name.padEnd(width)} seed=${loaded.route.seed}`
-        + ` · ${loaded.commands.length} commands · ${room} ${from}`)
-      if (loaded.route.landing?.inventory) {
-        console.log(`      ${' '.repeat(width)} ${DIM}${loaded.route.landing.inventory}${OFF}`)
+      const from = route.derivedFrom ? `${DIM}from ${route.derivedFrom}${OFF}` : ''
+      console.log(`      ${route.name.padEnd(width)} seed=${route.seed}`
+        + ` · ${route.commands.length} commands · ${route.landing?.room || '?'} ${from}`)
+      if (route.landing?.inventory) {
+        console.log(`      ${' '.repeat(width)} ${DIM}${route.landing.inventory}${OFF}`)
       }
     }
     console.log('')
@@ -345,9 +298,11 @@ function main() {
       console.error(`playtest-routes: ${read.error}`)
       process.exit(2)
     }
-    // The seed defaults to the round's own convention (`seedFor` reads the pinned
-    // walkthrough seed), so a route cut beside a round lands with the sessions it
-    // will be opened against. `--seed` wins when there is one — and an empty one
+    // The seed defaults to the one this game's other routes were recorded under
+    // (`seedFor`), because `open` refuses a session whose seed is not the route's:
+    // a second route cut at a different seed could never be handed out beside the
+    // first. A game with no routes yet gets 0, and `--seed` is how the first one
+    // picks something else. `--seed` wins when there is one — and an empty one
     // (`--seed` as the last argument) is refused, not silently defaulted: `Number('')`
     // is 0, which would pin a different round than the one the tester meant.
     if (seedFlag === '') {

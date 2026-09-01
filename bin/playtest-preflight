@@ -33,14 +33,13 @@ const { spawn, spawnSync } = require('node:child_process')
 const fs = require('node:fs')
 const path = require('node:path')
 
-// What the game's focus file declares — the coverage split, the sighted-only half
-// of it, and the round's saved games. Shared with `bin/playtest-slots`, which cuts
-// the slots this checks for: one declaration, two readers, and neither with a list
-// of its own.
+// What the game's focus file declares — the coverage split and the sighted-only
+// half of it — plus the committed deep starts a round hands out, which are read
+// here and cut by `bin/playtest-routes`: one store, two readers, and neither with a
+// list of its own.
 const {
   ROOT, SCRATCH, GREEN, RED, DIM, OFF,
-  gameDoc, focusParts, slotPlan, slotStatus, seedFor, savesDir,
-  routeCommands, slotFingerprint, fingerprintOf,
+  gameDoc, focusParts, seedFor, routesDir, routeManifests, routeSeeds,
   describePackage, executableProducts, resolveGame, ledgerScan,
 } = require('./lib/playtest-focus')
 
@@ -290,7 +289,7 @@ async function checkGame(game, mcpKey) {
   //    re-finding and re-refuting the same symptoms, and the only signal was a
   //    `ledgerKeys 0` in a line of dim text at the bottom of this script.
   //
-  //    So the count is a check and not a note, the same shape the `slots` row
+  //    So the count is a check and not a note, the same shape the `routes` row
   //    uses. The inert count rides along even when the row is green, because two
   //    ledgers still carry abbreviated rows beside working ones and a number in
   //    the detail column is how that stops being invisible.
@@ -305,15 +304,52 @@ async function checkGame(game, mcpKey) {
           + ' — re-key them as `decl::<file>::<declaration>`')
   }
 
+  rows.push(...routesRows(game))
   rows.push(...focusRows(game, roster))
   return rows
+}
+
+// The deep starts this game ships, checked as files rather than as replays.
+//
+// A deep start that cannot be handed out is a round dispatched to the wrong end of
+// the map, and neither way it happens is visible without opening the files. A route
+// that will not parse, or declares no landing, is one `open` refuses or replays
+// unchecked. And the seeds have to agree: `open` refuses a session whose seed is not
+// the route's, a round pins ONE seed for every seat, and `seedFor` derives that seed
+// from these same manifests — so this row is what stops it being derived from a
+// disagreement.
+//
+// Deliberately *not* checked: whether a route still lands where it claims. That is
+// `bin/playtest-routes verify`, which replays every one of them. A front door costing
+// four thousand turns stops being run.
+function routesRows(game) {
+  const routes = routeManifests(game)
+  // A game with no routes needs nothing: `.playtest/` starts empty, testers play
+  // cold, and the round's own output is the next round's deep starts.
+  if (!routes.length) return []
+
+  const broken = routes.filter((r) => r.error || !r.landing?.room).map((r) => r.name)
+  const seeds = routeSeeds(game)
+  const ok = !broken.length && seeds.length === 1
+  return [{
+    game,
+    name: 'routes',
+    ok,
+    detail: `${routes.length} in ${routesDir(game)} `
+      + (seeds.length === 1 ? `at seed ${seeds[0]}` : `across seeds ${seeds.join(', ') || '(none)'}`),
+    remedy: ok
+      ? null
+      : (broken.length
+        ? `bin/playtest-routes ${game} list   # ${broken.join(', ')}: no seed, no commands, or no landing`
+        : `the round pins one seed and \`open\` refuses any other — re-cut whichever is the odd one out`),
+  }]
 }
 
 // ---------------------------------------------------------------------------
 // What the focus file promises, checked against what is actually there
 // ---------------------------------------------------------------------------
 
-// Both of these are checks only this script can perform, and both are failures that
+// A check only this script can perform, and a failure that
 // used to be invisible at dispatch time.
 //
 // *The rooms.* A region between the two `---` rules is pasted verbatim into a blind
@@ -323,12 +359,6 @@ async function checkGame(game, mcpKey) {
 // 2026-08-25 Dungeon operator did this by hand, against 129 display names, and wrote
 // in the report that it had been done. A check performed from memory is a check that
 // gets skipped.
-//
-// *The slots.* `.context/` is gitignored, so a focus file describing nine saved games
-// and a checkout holding none of them look exactly alike. Every tester's `restore`
-// then answers `Restore failed.` — which SKILL.md records producing four false
-// `not-reproducible` verdicts in one round, because that answer is about the harness
-// and reads like a finding about the game.
 function focusRows(game, roster) {
   const rows = []
   const add = (name, ok, detail, remedy) => rows.push({ game, name, ok, detail, remedy })
@@ -352,25 +382,6 @@ function focusRows(game, roster) {
         ? `${focusPath} names a room a blind explorer is meant to find; say the affordance instead`
         : null))
 
-  const plan = slotPlan(focusPath)
-  if (!plan) return rows // no `Slots:` line: this round ships no saves, which is fine
-  const status = slotStatus(plan)
-  const missing = status.filter((s) => !s.exists)
-  // Current, not merely present. A slot is `route[0:N]` of a route whose indices move
-  // between commits, so bytes on disk prove only that somebody once cut something.
-  const route = routeCommands(plan.routeType, plan.routeName)
-  const want = route ? slotFingerprint(plan, route, seedFor(game)) : null
-  const have = fingerprintOf(plan.label)
-  const stale = !missing.length && want !== null && have !== want
-  add('slots', missing.length === 0 && !stale,
-    stale
-      ? `${status.length} on disk, cut from ${have || 'an unrecorded route'} — the route is now ${want}`
-      : `${status.length - missing.length}/${status.length} in ${savesDir(plan.label)}`,
-    stale
-      ? `bin/playtest-slots ${game} --force   # the walkthrough moved under them`
-      : (missing.length
-        ? `bin/playtest-slots ${game}   # ${missing.map((s) => s.name).join(', ')}`
-        : null))
   return rows
 }
 
@@ -410,7 +421,6 @@ function roundArgs(game, mcpKey) {
   const focusPath = gameDoc(game, '-playtest-focus')
   // One read, so the two halves cannot come from two different states of the file.
   const split = focusPath ? focusParts(focusPath) : { blind: '', sighted: '' }
-  const slots = focusPath ? slotPlan(focusPath) : null
 
   return {
     game,
@@ -419,6 +429,8 @@ function roundArgs(game, mcpKey) {
     mcpServer: mcpKey || null,
     docPath,
     capabilities: capabilitiesOf(game),
+    // Never `null` here: the `routes` row refuses a game whose routes disagree about
+    // a seed, and a failed row exits before this is reached.
     seed: seedFor(game),
     turns: 60,
     // Workflow scripts cannot call Date.now(), so the round's identity has to
@@ -434,11 +446,8 @@ function roundArgs(game, mcpKey) {
     // pair of fields can enforce.
     focus: split.blind,
     focusSighted: split.sighted,
-    // The label `bin/playtest-slots` wrote this round's saved games to. Each
-    // tester stages it into its own session, so a region that says "restore
-    // `d-1`" can be obeyed. Null when the focus file declares no slots, which is
-    // the right answer for a game whose whole map is walkable in a round.
-    slots: slots ? slots.label : null,
+    // No `slots` field: nothing cuts saved games any more. #366 replaces it with
+    // the round's route names.
     ledgerKeys: ledgerPath ? ledgerScan(ledgerPath).keys : [],
     // Issues that OWN a defect class the round should forward rather than judge.
     // Ownership is a judgement and not a query, so this stays empty — the safe
@@ -552,7 +561,7 @@ async function main() {
   console.log(`    ${DIM}docPath ${args.docPath || 'null'} | ledgerKeys ${args.ledgerKeys.length}`
     + ` | focus ${args.focus ? args.focus.length + ' chars' : 'none'}`
     + ` | sighted-only ${args.focusSighted ? args.focusSighted.length + ' chars' : 'none'}`
-    + ` | slots ${args.slots || 'none'}${OFF}`)
+    + `${OFF}`)
 
   if (headless) {
     // The fallback two of the last three rounds needed by hand: the `Workflow`
