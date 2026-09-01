@@ -1,0 +1,17 @@
+# What the tools in bin/ leave behind, and what SwiftPM builds. A copy of this
+# template is a package of its own, so it carries its own ignore file rather than
+# inheriting the Gnusto repository's.
+.build/
+.swiftpm/
+DerivedData/
+Package.resolved
+
+# Exported game binaries, from bin/export-game.
+dist/
+
+# Play-test scratch: transcripts, command lists and saved games from
+# bin/playtest-replay and the MCP session server. Routes are the opposite —
+# .playtest/<Game>/routes/ is committed text, so it is deliberately not here.
+.context/
+
+.DS_Store

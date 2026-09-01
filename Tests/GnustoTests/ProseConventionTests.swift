@@ -406,15 +406,8 @@ struct ProseConventionTests {
         var description: String { "\(path):\(line) — \(fault)\n    \(excerpt)" }
     }
 
-    /// The package's `Sources/` directory, found relative to this file rather
-    /// than to the working directory, which a test process does not control.
-    private static var sourcesDirectory: URL {
-        URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()  // GnustoTests
-            .deletingLastPathComponent()  // Tests
-            .deletingLastPathComponent()  // the package
-            .appendingPathComponent("Sources", isDirectory: true)
-    }
+    /// The package's `Sources/` directory.
+    private static var sourcesDirectory: URL { PackageDirectory.subdirectory("Sources") }
 
     /// Every Swift file under `Sources/`, plus the DocC articles, whose code
     /// samples teach the convention and so have to obey it.

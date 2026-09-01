@@ -3,7 +3,7 @@
 # Serve one Gnusto game to an MCP client over stdio. Registered per game in
 # .mcp.json; not something you normally run by hand.
 #
-# Usage:  bin/gnusto-mcp <Game>          (e.g. bin/gnusto-mcp MyGame)
+# Usage:  bin/gnusto-mcp <Game>          (the name of an executable product)
 #
 # Every Gnusto game is `@main struct Game: Game, GameMain {}`, and `GameMain`
 # answers `--mcp` by serving the play-test protocol instead of playing. So this

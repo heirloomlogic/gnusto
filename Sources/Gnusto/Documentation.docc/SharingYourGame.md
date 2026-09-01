@@ -100,7 +100,7 @@ bin/export-game Lighthouse   # → dist/Lighthouse
 bin/export-game              # lists the available products
 ```
 
-It discovers the current package's executable products from its manifest, so it lists whatever your package ships — the seven demo games here, or the `MyGame` in a fresh `Templates/NewGame` copy, with no edits to the script. Under the hood it's `swift build -c release --product <Product>` followed by a copy of the built binary to `dist/<Product>` — no bundle, no installer, one file.
+The script ships in `Templates/NewGame/bin/`, so a package copied out of the template already has it. It discovers the current package's executable products from its manifest, so it lists whatever your package ships — the seven demo games in the Gnusto repository, or your own game — with no edits. Under the hood it's `swift build -c release --product <Product>` followed by a copy of the built binary to `dist/<Product>` — no bundle, no installer, one file.
 
 ## Share it on macOS 15+
 

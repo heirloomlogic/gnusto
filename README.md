@@ -143,6 +143,8 @@ bin/playtest-replay --build Fulminate
 bin/playtest-replay Fulminate --commands probe.txt --seed 0
 ```
 
+Those two scripts, a coverage report (`bin/playtest-measure`) and the launcher above all ship in `Templates/NewGame/bin/`, so a game started from the template gets the same tooling against its own name.
+
 [`docs/playtesting.md`](docs/playtesting.md) is how to do it by hand, and it carries the calibration answer key — the defects a round is supposed to find, so a round that finds nothing is a broken harness rather than a clean game.
 
 ## Share your game

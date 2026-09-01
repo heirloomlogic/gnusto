@@ -17,14 +17,8 @@ import Testing
 /// Each of those is silent until a round is dispatched, which is the worst moment
 /// to find out.
 struct PlaytestRouteTests {
-    /// The package's `.playtest/` directory, found relative to this file rather
-    /// than to the working directory, which a test process does not control.
-    private static let playtestDirectory =
-        URL(fileURLWithPath: #filePath)
-        .deletingLastPathComponent()  // GnustoTests
-        .deletingLastPathComponent()  // Tests
-        .deletingLastPathComponent()  // the package
-        .appendingPathComponent(".playtest", isDirectory: true)
+    /// The package's `.playtest/` directory.
+    private static let playtestDirectory = PackageDirectory.subdirectory(".playtest")
 
     /// The environment that points the loader at the committed routes rather than
     /// at whatever `.playtest/` the working directory happens to hold.

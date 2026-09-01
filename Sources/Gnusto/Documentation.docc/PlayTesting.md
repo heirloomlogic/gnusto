@@ -51,7 +51,9 @@ Building is a separate one-shot on purpose: a replay that also builds cannot be 
 
 `bin/playtest-measure` reads a probe directory and reports what the run covered: rooms entered, distinct verbs, objects examined, objects touched and then re-examined. Its counting rules are frozen deliberately, so a number from last year still compares.
 
-Both scripts live in the Gnusto repository. `Templates/NewGame/bin/` ships only `bin/gnusto-mcp`, because everything the next section describes is in the engine itself, while these two are the engine's own operating tools — read them there and adapt what you need.
+Both scripts ship in `Templates/NewGame/bin/`, so a package copied out of the template runs them against its own game with no edits. Neither knows anything about the Gnusto repository: `playtest-replay` discovers the binary through SwiftPM and `playtest-measure` reads only the two evidence files, so what they need from a package is a game and a command list.
+
+One flag is the exception. `--start` plays a committed route before your command list, and a route is read and cut by `bin/playtest-routes` and `bin/lib/`, which are the repository's own harness and are not shipped. A copied package refuses `--start` in a sentence rather than failing obscurely; everything else here works.
 
 `docs/playtesting.md` in the repository is the operating manual for doing this by hand, and carries the calibration answer key — the defects a round is supposed to find. A round that finds nothing is a broken harness before it is a clean game.
 
