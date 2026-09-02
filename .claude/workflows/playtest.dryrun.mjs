@@ -1528,23 +1528,28 @@ for (const tool of ['rewind', 'replay', 'coverage', 'note']) {
 // The tool namespace and the server registration are two halves of one fact that
 // nothing compiles together. Get them out of step and every tester fails
 // identically, with `ToolSearch` matching nothing and no diagnostic anywhere.
-{
-  const mcp = JSON.parse(readFileSync('.mcp.json', 'utf8'))
-  const settings = JSON.parse(readFileSync('.claude/settings.json', 'utf8'))
+//
+// Checked in the TEMPLATE too, which has both files now. A generated package that
+// registers a server it never enables fails preflight's `mcp key` row on the day it
+// is written, and `NewGameTests` only reaches that after running the generator —
+// this reaches it with no toolchain at all, off the files an author will receive.
+for (const root of ['.', 'bin/templates']) {
+  const mcp = JSON.parse(readFileSync(`${root}/.mcp.json`, 'utf8'))
+  const settings = JSON.parse(readFileSync(`${root}/.claude/settings.json`, 'utf8'))
   for (const key of settings.enabledMcpjsonServers || []) {
     check(
       Boolean((mcp.mcpServers || {})[key]),
-      `.claude/settings.json enables the MCP server "${key}", which .mcp.json does not register`
+      `${root}/.claude/settings.json enables the MCP server "${key}", which ${root}/.mcp.json does not register`
     )
   }
   for (const [key, server] of Object.entries(mcp.mcpServers || {})) {
     check(
       (settings.enabledMcpjsonServers || []).includes(key),
-      `.mcp.json registers "${key}" but .claude/settings.json does not enable it, so it never connects`
+      `${root}/.mcp.json registers "${key}" but ${root}/.claude/settings.json does not enable it, so it never connects`
     )
     check(
       (server.args || []).some((a) => a.toLowerCase() === key),
-      `.mcp.json keys "${key}" against args ${JSON.stringify(server.args)} — the workflow's `
+      `${root}/.mcp.json keys "${key}" against args ${JSON.stringify(server.args)} — the workflow's `
       + 'fallback namespace is the lowercased product name, so this game resolves no tools'
     )
   }
@@ -1553,7 +1558,7 @@ for (const tool of ['rewind', 'replay', 'coverage', 'note']) {
   for (const v of ['MCP_TIMEOUT', 'CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS']) {
     check(
       Boolean(settings.env && settings.env[v] !== undefined),
-      `.claude/settings.json sets no ${v}, so a round depends on whoever dispatched it remembering to`
+      `${root}/.claude/settings.json sets no ${v}, so a round depends on whoever dispatched it remembering to`
     )
   }
 }
@@ -1751,6 +1756,14 @@ for (const tool of ['rewind', 'replay', 'coverage', 'note']) {
   // rewrites is each finding's owner: `ownerClass` is the half of the unbinding no
   // prompt can show, and pointing every finding at the downstream engine prefix is
   // what makes its verdict readable off the result.
+  //
+  // **This fixture is weaker than it looks, and #393 is why.** Copying the prefix out
+  // of the argument makes the `ownerClass` assertion below true by construction for
+  // any `enginePath` at all. A real `ownerFile` is a tester's hand-written guess —
+  // the blind charters cannot open source and cannot know where SwiftPM resolved the
+  // checkout — so the input worth simulating is the guess, not the answer. Left as it
+  // is deliberately: changing the fixture without changing the classifier turns this
+  // red for a defect that is already filed.
   const downStub = async (prompt, opts = {}) => {
     downPrompts.push(String(prompt))
     const reply = await stub(prompt, opts)

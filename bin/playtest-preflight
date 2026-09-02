@@ -66,9 +66,6 @@ const ARGS_OUT = '.context/playtest-round-args.json'
 // relative path resolves against the *package* everywhere it is read.
 const fromEngine = (relative) => (ENGINE === ROOT ? relative : path.join(ENGINE, relative))
 
-const REF_RELATIVE = '.claude/skills/playtest/references'
-const WORKFLOW_RELATIVE = '.claude/workflows/playtest.js'
-
 // Every tool the session server declares. A server listing fewer is older than the
 // harness about to drive it, and the round would fail at whichever call reached the
 // gap first rather than here.
@@ -526,10 +523,10 @@ function roundArgs(game, mcpKey) {
     conventionsPath: exists(path.join(ROOT, 'CLAUDE.md')) ? 'CLAUDE.md' : '',
     gameDocsDir: exists(path.join(ROOT, 'docs/games')) ? 'docs/games' : '',
     gameSourceDir: gameSourceDirOf(game),
-    refPath: fromEngine(REF_RELATIVE),
+    refPath: fromEngine('.claude/skills/playtest/references'),
     // Always absolute, unlike `refPath`: this one is a tool argument rather than
     // prompt text, so nothing compares it and the unambiguous spelling is free.
-    workflowPath: path.join(ENGINE, WORKFLOW_RELATIVE),
+    workflowPath: path.join(ENGINE, '.claude/workflows/playtest.js'),
     // Whether the round files its findings or writes them into its own report.
     tracker: hasTracker(),
     capabilities: capabilitiesOf(game),

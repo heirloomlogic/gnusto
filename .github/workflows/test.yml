@@ -182,9 +182,14 @@ jobs:
   # `closing.json` field check, `.mcp.json` against `.claude/settings.json`, and the
   # layout derivation. Nothing else in this file reaches past the first of those.
   #
-  # Its own job rather than a step in `test-linux`, for the reason harness.yml:9-11
-  # already gives: this needs Node, and the container that runs the whole suite
-  # should not carry a second runtime to get it.
+  # Its own job rather than a step in `test-linux`, and the tradeoff is worth stating
+  # plainly because half of it is a real cost. `test-linux` already generates and
+  # builds `Scratch`, so this job pays for that build a second time on a runner where
+  # `.build` is deliberately not cached — several minutes of runner time. What it buys
+  # is that the suite's container stays free of a second runtime, which is the point
+  # harness.yml:9-11 makes, and that a failed preflight names itself instead of
+  # arriving at the end of a sixteen-minute suite. The two run in parallel and this is
+  # the shorter of them, so the wall clock is unchanged.
   generated-round:
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 30
@@ -241,7 +246,6 @@ jobs:
             const path = require("node:path")
             const a = JSON.parse(fs.readFileSync(".context/playtest-round-args.json", "utf8"))
             const engine = fs.realpathSync(process.env.GITHUB_WORKSPACE)
-            const pkg = fs.realpathSync(".")
             const fail = []
             const eq = (key, want) => {
               if (a[key] !== want) fail.push(`${key} is ${JSON.stringify(a[key])}, want ${JSON.stringify(want)}`)
@@ -256,14 +260,19 @@ jobs:
             // try to file an issue against nothing.
             eq("conventionsPath", "")
             eq("tracker", false)
-            // The three that belong to the HARNESS. Absolute, and under the engine
-            // checkout rather than under the package — which is the assertion the
-            // engine repo cannot make about itself.
+            // The three that belong to the HARNESS: they resolve into the engine
+            // checkout, which is the assertion the engine repo cannot make about
+            // itself — there the two roots are one directory and every one of these
+            // is a relative path that happens to be right.
+            //
+            // Deliberately NOT asserting that they fall outside the package. With a
+            // git dependency, which is the ordinary case, SwiftPM resolves the engine
+            // to <pkg>/.build/checkouts/Gnusto — so "outside the package" is true only
+            // of the --dep-path layout this job happens to generate with, and encoding
+            // it would make the ordinary topology read as a generator regression.
             for (const key of ["enginePath", "refPath", "workflowPath"]) {
               const value = String(a[key] || "")
-              if (!path.isAbsolute(value)) { fail.push(`${key} is relative: ${value}`); continue }
               if (!value.startsWith(engine + path.sep)) fail.push(`${key} is not in the engine checkout: ${value}`)
-              if (value.startsWith(pkg + path.sep)) fail.push(`${key} points into the package: ${value}`)
               if (!fs.existsSync(value)) fail.push(`${key} does not exist: ${value}`)
             }
             if (fail.length) { console.error(fail.join("\n")); process.exit(1) }

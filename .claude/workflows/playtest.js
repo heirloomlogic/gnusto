@@ -2278,10 +2278,15 @@ function ownerClass(file) {
   // round's doctrine, the replay tool, and the hand-driven counterpart the same
   // skill documents itself in.
   //
-  // Deliberately still literals. A generated package holds `.claude/` and `bin/` at
-  // exactly these paths — that is what `bin/new-game` writes — and it holds no
-  // `docs/playtesting.md` at all, so the last clause matches nothing downstream and
-  // costs nothing. Both are residue by design rather than sites the unbinding missed.
+  // `docs/playtesting.md` is residue by design: a generated package has no such file,
+  // so the clause matches nothing downstream and costs nothing.
+  //
+  // The other two are **not** clean, and #393 tracks it. A generated package does hold
+  // `.claude/` and `bin/` at exactly these paths, but what it holds there is its own
+  // settings, its own skill and its own shims — package-owned — while the real harness
+  // sits at `refPath` and `workflowPath`. So downstream a finding against an author's
+  // shim is blamed on the engine. Left alone here rather than half-fixed: it is the
+  // same frame mismatch as the `enginePath` prefix below, and the two want one answer.
   if (f.startsWith('.claude/') || f.startsWith('bin/') || f === 'docs/playtesting.md') return 'harness'
   if (enginePath && f.startsWith(enginePath)) return 'engine'
   // Repo conventions, and the one genuinely arguable row. `ground` tells every
@@ -2772,7 +2777,7 @@ truth and they win over anything here.
 - There is deliberately no "cells probed" count: free-text cell labels are not comparable between charters, so any total would be a number that means nothing. Build the real cross-product yourself from the transcripts, against the ${declaredRooms.length}-room roster and the timers above.
 - Testers run: ${playRoster.map((r) => `${r.key}${r.charter.blind ? ` (${r.divergence}${r.regions.length ? `, ${renderRegions(r.regions)}` : ''})` : ''}`).join(', ')}. Charters NOT run: ${skipped.map((c) => c.key).join(', ') || 'none'}.
 - The blind charters were given no room list, no timer list and no design doc, deliberately. A finding of theirs that the doc licenses is the expected cost of that, not a harness failure — but if more than about two in five are refuted that way, say so: the brief needs tightening, not the doc handing back.
-- Confirmed ${confirmed.length}, refuted ${refuted.length}, findings routed to another issue ${routed.length}. Every confirmed finding is filed; this round edits nothing.${tracker ? '' : ' **This package has no issue tracker**, so there is nowhere to file them: write the issue body into the report under its own heading, per `issue-shape.md`, rather than dropping it.'}
+- Confirmed ${confirmed.length}, refuted ${refuted.length}, findings routed to another issue ${routed.length}. Every confirmed finding is filed; this round edits nothing.${tracker ? '' : ' **This package has no issue tracker**, so there is nowhere to file them: write the issue body into the report under its own heading, per \`${refPath}/issue-shape.md\`, rather than dropping it.'}
 - **Verifier agreement: ${agreementTotal ? `${Math.round((agreementMatched / agreementTotal) * 100)}% (${agreementMatched} of ${agreementTotal} findings judged the same way by both raters)` : 'not measurable — no finding got two raters'}.**${singleRated ? ` ${singleRated} finding(s) got only one rater, so the denominator is thinner than the finding count.` : ''} Verification is batched now — up to ${VERIFY_BATCH_SIZE} findings per verifier, ${VERIFY_RATERS} raters each — and this number is the check on that. Near-total agreement is not automatically good news: it is what both careful raters and two rubber-stampers produce. **Read the paired refutation attempts printed below** and say whether the two raters reasoned separately or interchangeably. That judgement is yours and nothing else in the round makes it.
 - Unknown words: ${unknownWordTotal} occurrence(s) over ${words.length} distinct token(s), taken from the parse record rather than by grepping for the engine's refusal line. Not findings in themselves and not coverage — but ~48 verbs are stubs now, so a large number here is worth a sentence. A word the *game itself printed* and could not answer is a defect and should have arrived as an ordinary finding; if the count is high and no such finding was filed, that is a gap in the round, not in the game.
 - Timers declared: ${timers.declared.join(', ') || 'none'}.${timerNote}

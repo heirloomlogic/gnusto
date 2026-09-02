@@ -19,20 +19,22 @@ struct NewGameTests {
         .deletingLastPathComponent()  // Tests
         .deletingLastPathComponent()  // the package
 
-    /// Run `bin/new-game` with the given arguments, returning its exit status and
-    /// the two streams. Never throws on a non-zero exit — a refusal is a result
-    /// this suite asserts against, not an error.
-    @discardableResult
-    private static func newGame(
+    /// Run a command, returning its exit status and both streams. Never throws on a
+    /// non-zero exit — a refusal is a result this suite asserts against, not an error.
+    private static func run(
+        _ tool: URL,
         _ arguments: [String],
-        currentDirectory: URL = packageRoot
-    ) throws -> (
-        status: Int32, stdout: String, stderr: String
-    ) {
+        currentDirectory: URL = packageRoot,
+        environment: [String: String]? = nil
+    ) throws -> (status: Int32, stdout: String, stderr: String) {
         let process = Process()
-        process.executableURL = packageRoot.appendingPathComponent("bin/new-game")
+        process.executableURL = tool
         process.arguments = arguments
         process.currentDirectoryURL = currentDirectory
+        if let environment {
+            process.environment = ProcessInfo.processInfo.environment
+                .merging(environment) { _, new in new }
+        }
         let out = Pipe()
         let err = Pipe()
         process.standardOutput = out
@@ -46,6 +48,19 @@ struct NewGameTests {
             String(decoding: outData, as: UTF8.self),
             String(decoding: errData, as: UTF8.self)
         )
+    }
+
+    /// Run `bin/new-game` with the given arguments.
+    @discardableResult
+    private static func newGame(
+        _ arguments: [String],
+        currentDirectory: URL = packageRoot
+    ) throws -> (
+        status: Int32, stdout: String, stderr: String
+    ) {
+        try run(
+            packageRoot.appendingPathComponent("bin/new-game"), arguments,
+            currentDirectory: currentDirectory)
     }
 
     /// A fresh empty directory that does not exist yet, so the generator is the
@@ -346,62 +361,42 @@ struct NewGameTests {
     @Test func theFocusModuleRootsAtThePackageAndNotAtTheEngine() throws {
         guard let node = Self.which("node") else { return }  // no node, no check
 
+        // The module path travels as an argument rather than interpolated into the
+        // script, so a directory with a quote in its name cannot rewrite the
+        // one-liner around it. `node -e` puts trailing operands at `process.argv[1]`.
         let module = Self.packageRoot.appendingPathComponent("bin/lib/playtest-focus").path
-        let script = "console.log(require(\(Self.quoted(module))).ROOT)"
+        let script = "console.log(require(process.argv[1]).ROOT)"
 
-        let here = try Self.run(node, ["-e", script], env: nil)
+        let here = try Self.run(node, ["-e", script, module])
         #expect(
-            here.trimmingCharacters(in: .whitespacesAndNewlines) == Self.packageRoot.path,
-            "with no GNUSTO_PACKAGE_PATH the root should be this checkout, got: \(here)")
+            here.stdout.trimmingCharacters(in: .whitespacesAndNewlines) == Self.packageRoot.path,
+            "with no GNUSTO_PACKAGE_PATH the root should be this checkout: \(here)")
 
         let elsewhere = FileManager.default.temporaryDirectory
             .appendingPathComponent("focus-root-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: elsewhere, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: elsewhere) }
 
-        let there = try Self.run(node, ["-e", script], env: ["GNUSTO_PACKAGE_PATH": elsewhere.path])
+        let there = try Self.run(
+            node, ["-e", script, module],
+            environment: ["GNUSTO_PACKAGE_PATH": elsewhere.path])
         #expect(
-            there.trimmingCharacters(in: .whitespacesAndNewlines)
+            there.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
                 == elsewhere.resolvingSymlinksInPath().path,
             "GNUSTO_PACKAGE_PATH does not move the root, so a shimmed tool would check the engine: \(there)")
-    }
-
-    /// A JavaScript string literal for a path, so a directory with a quote or a
-    /// backslash in it cannot rewrite the one-liner around it.
-    private static func quoted(_ value: String) -> String {
-        let escaped = value.replacingOccurrences(of: "\\", with: "\\\\")
-            .replacingOccurrences(of: "\"", with: "\\\"")
-        return "\"\(escaped)\""
     }
 
     /// The first `node` on PATH, or nil. Skipping rather than failing: `node` is not
     /// a build dependency of this package and CI's Swift container ships none, which
     /// is why the check that needs it lives in a job of its own.
-    private static func which(_ tool: String) -> String? {
+    private static func which(_ tool: String) -> URL? {
         let paths = (ProcessInfo.processInfo.environment["PATH"] ?? "").split(separator: ":")
         for directory in paths {
             let candidate = "\(directory)/\(tool)"
-            if FileManager.default.isExecutableFile(atPath: candidate) { return candidate }
+            if FileManager.default.isExecutableFile(atPath: candidate) {
+                return URL(fileURLWithPath: candidate)
+            }
         }
         return nil
-    }
-
-    /// Run a command and return its stdout.
-    private static func run(
-        _ tool: String, _ arguments: [String], env: [String: String]?
-    ) throws -> String {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: tool)
-        process.arguments = arguments
-        if let env {
-            process.environment = ProcessInfo.processInfo.environment.merging(env) { _, new in new }
-        }
-        let out = Pipe()
-        process.standardOutput = out
-        process.standardError = Pipe()
-        try process.run()
-        let data = out.fileHandleForReading.readDataToEndOfFile()
-        process.waitUntilExit()
-        return String(decoding: data, as: UTF8.self)
     }
 }
