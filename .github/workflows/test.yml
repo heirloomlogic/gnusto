@@ -183,13 +183,16 @@ jobs:
   # layout derivation. Nothing else in this file reaches past the first of those.
   #
   # Its own job rather than a step in `test-linux`, and the tradeoff is worth stating
-  # plainly because half of it is a real cost. `test-linux` already generates and
-  # builds `Scratch`, so this job pays for that build a second time on a runner where
-  # `.build` is deliberately not cached — several minutes of runner time. What it buys
-  # is that the suite's container stays free of a second runtime, which is the point
-  # harness.yml:9-11 makes, and that a failed preflight names itself instead of
-  # arriving at the end of a sixteen-minute suite. The two run in parallel and this is
-  # the shorter of them, so the wall clock is unchanged.
+  # plainly rather than justified by harness.yml's argument, which does not quite
+  # apply: that job is containerless because the suite's image ships no Node, and this
+  # one adds Node to that same image anyway. The real trade is that `test-linux`
+  # already generates and builds `Scratch`, so this pays for that build a second time
+  # on a runner where `.build` is deliberately not cached. Measured on the first run:
+  # 1m53s for the whole job, 67s of it the build and the MCP handshake together —
+  # cheap because `Scratch` is one file over a cached dependency graph, and a third of
+  # `test-linux`'s 6m41s, so the two in parallel leave the wall clock unchanged. What
+  # it buys is a suite container with no second runtime in it, and a failed preflight
+  # that names itself instead of arriving at the end of a seven-minute suite.
   generated-round:
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 30
