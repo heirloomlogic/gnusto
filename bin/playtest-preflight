@@ -43,10 +43,31 @@ const {
   describePackage, executableProducts, resolveGame, ledgerScan,
 } = require('./lib/playtest-focus')
 
+// The other root, and the only script that needs both. `ROOT` is the package under
+// test — the author's game downstream, this repository here. `ENGINE` is the checkout
+// the harness itself lives in: `.claude/workflows/playtest.js` and the briefs the
+// round's agents read. `__dirname` answers it by construction rather than by search,
+// because a shim `exec`s the engine's own copy of this file (see
+// `bin/templates/bin/lib/gnusto-tooling.sh`), so this is always the checkout SwiftPM
+// actually resolved and never a guess about where one might be.
+//
+// In this repository the two are equal and every derivation below returns the value
+// it used to hardcode.
+const ENGINE = path.resolve(__dirname, '..')
+
 process.chdir(ROOT)
 
 const REPLAY_TREE = path.join(SCRATCH, '.replays')
 const ARGS_OUT = '.context/playtest-round-args.json'
+
+// A path the round has to be told rather than derive, spelled from whichever root
+// owns it. Relative when the two roots coincide, so a round dispatched in this
+// repository generates the text it always did; absolute when they do not, because a
+// relative path resolves against the *package* everywhere it is read.
+const fromEngine = (relative) => (ENGINE === ROOT ? relative : path.join(ENGINE, relative))
+
+const REF_RELATIVE = '.claude/skills/playtest/references'
+const WORKFLOW_RELATIVE = '.claude/workflows/playtest.js'
 
 // Every tool the session server declares. A server listing fewer is older than the
 // harness about to drive it, and the round would fail at whichever call reached the
@@ -280,7 +301,16 @@ async function checkGame(game, mcpKey) {
       ? `add a .mcp.json server whose args are ["${game}"]`
       : (enabled.includes(mcpKey) ? null : `add "${mcpKey}" to enabledMcpjsonServers`))
 
-  // 6. What the ledger can actually hand over. A dedupe set that silently holds
+  // 6. Where the game's own source is, which four prompts and the clusterer's grep
+  //    all take from the round's arguments. Red rather than defaulted: with no
+  //    answer the clusterer greps a tree that does not exist, every finding comes
+  //    back `unlocated`, dedup degrades to per-excerpt, and the round reports more
+  //    distinct defect classes than it found — none of which looks like a failure.
+  const gameSource = gameSourceDirOf(game)
+  add('game source', !!gameSource, gameSource || 'neither Sources/ nor the manifest names it',
+    gameSource ? null : `add a target named ${game}, or put its sources in Sources/${game}`)
+
+  // 7. What the ledger can actually hand over. A dedupe set that silently holds
   //    nothing looks exactly like a game nothing has ever been refuted about, and
   //    three ledgers spent their whole lives in that state: Gramarye, KindlyDeep
   //    and Lighthouse recorded every key in the abbreviated *display* form,
@@ -439,6 +469,33 @@ const localDate = () => {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
 
+// Where the game's own source sits, which the clusterer greps and `ownerClass` reads.
+// `Sources/<Game>` is SwiftPM's default and what `bin/new-game` writes, but a package
+// is free to say otherwise, so the manifest is asked second rather than assumed first.
+//
+// Returns `''` when neither answers, and the `game source` row turns red on that. A
+// wrong game source path does not produce an error anywhere downstream; it produces a
+// plausible round whose clusterer cites declarations in files nobody has.
+function gameSourceDirOf(game) {
+  const conventional = path.join('Sources', game)
+  if (exists(path.join(ROOT, conventional))) return conventional
+  const target = (describePackage()?.targets || []).find((t) => t.name === game)
+  return target?.path || ''
+}
+
+// Whether findings can be filed as issues at all. Probed once, against the package —
+// a fork with no issues enabled, a package that is not a git repository, and a
+// container with no `gh` on PATH are all the same answer, and `spawnSync` reports the
+// last of those as `error` rather than as a status, so both have to be read.
+//
+// Not a check row. A package with no tracker is a perfectly good state, and a red row
+// for it is a row an operator learns to skip past — the argument `focusRows` already
+// makes for failing open.
+function hasTracker() {
+  const r = sh('gh', ['repo', 'view', '--json', 'nameWithOwner'])
+  return !r.error && r.status === 0
+}
+
 // Six paragraphs of SKILL.md an operator used to re-derive by hand every round.
 // SKILL.md's own rule is "don't work from a list, here or anywhere" — which is an
 // argument for computing these, not for remembering to.
@@ -455,6 +512,26 @@ function roundArgs(game, mcpKey) {
     // Derived, not assumed — see the `mcp key` check above for what assuming costs.
     mcpServer: mcpKey || null,
     docPath,
+    // ---- The package's layout, derived rather than assumed --------------------
+    //
+    // `playtest.js` has no filesystem access of its own and defaults every one of
+    // these to this repository's value, which is what makes the dry run meaningful.
+    // Preflight can look, so it does: a generated package overrides only what
+    // differs, and here every derivation returns the literal it replaced.
+    //
+    // A path that does not exist arrives as `''`, and the bullet, exclusion or
+    // classifier row that names it drops out on the far side.
+    projectName: describePackage()?.name || game,
+    enginePath: fromEngine('Sources/Gnusto'),
+    conventionsPath: exists(path.join(ROOT, 'CLAUDE.md')) ? 'CLAUDE.md' : '',
+    gameDocsDir: exists(path.join(ROOT, 'docs/games')) ? 'docs/games' : '',
+    gameSourceDir: gameSourceDirOf(game),
+    refPath: fromEngine(REF_RELATIVE),
+    // Always absolute, unlike `refPath`: this one is a tool argument rather than
+    // prompt text, so nothing compares it and the unambiguous spelling is free.
+    workflowPath: path.join(ENGINE, WORKFLOW_RELATIVE),
+    // Whether the round files its findings or writes them into its own report.
+    tracker: hasTracker(),
     capabilities: capabilitiesOf(game),
     // Never `null` here: the `routes` row refuses a game whose routes disagree about
     // a seed, and a failed row exits before this is reached.
@@ -559,6 +636,17 @@ async function main() {
   }
 
   const keys = new Map(games.map((g) => [g, mcpKeyFor(g)]))
+
+  // The two roots, before the work rather than after it, because the work begins
+  // with a build that can take minutes and can fail. Every row below is about the
+  // package on the first line — so an exported GNUSTO_PACKAGE_PATH, which is exactly
+  // what a shim sets, would otherwise turn every row green about somebody else's
+  // game with nothing on screen saying whose. The silent failure it makes visible is
+  // `routeManifests` rooted at the wrong tree, which has no row at all: it answers
+  // `[]`, and a game with no routes yet answers `[]` too.
+  console.log(`\n  ${DIM}package ${ROOT}${OFF}`)
+  console.log(`  ${DIM}harness ${ENGINE}${ENGINE === ROOT ? ' (same checkout)' : ''}${OFF}`)
+
   const rows = []
   for (const game of games) rows.push(...await checkGame(game, keys.get(game)))
 
@@ -589,6 +677,11 @@ async function main() {
 
   const game = games[0]
   const args = roundArgs(game, keys.get(game))
+  // A package that has never run a play-test tool has no `.context/`, and a
+  // generated one is exactly that. It has always existed here by the time this runs
+  // — `bin/playtest-replay --build` above writes under it — which is why the write
+  // worked without this and why it would have failed on the first downstream round.
+  fs.mkdirSync(path.dirname(ARGS_OUT), { recursive: true })
   fs.writeFileSync(ARGS_OUT, JSON.stringify(args, null, 2) + '\n')
   console.log(`\n  Round args -> ${ARGS_OUT}`)
   console.log(`    ${DIM}seed ${args.seed} | roundId ${args.roundId}`
@@ -598,6 +691,9 @@ async function main() {
     + ` | focus ${args.focus ? args.focus.length + ' chars' : 'none'}`
     + ` | sighted-only ${args.focusSighted ? args.focusSighted.length + ' chars' : 'none'}`
     + `${OFF}`)
+  console.log(`    ${DIM}${args.projectName} | game source ${args.gameSourceDir}`
+    + ` | docs ${args.gameDocsDir || 'none'} | conventions ${args.conventionsPath || 'none'}`
+    + ` | tracker ${args.tracker ? 'yes' : 'no — the issue body goes in the report'}${OFF}`)
 
   if (headless) {
     // The fallback two of the last three rounds needed by hand: the `Workflow`
@@ -615,7 +711,7 @@ async function main() {
     // timeout there would have left this path on the old number.
     console.log('\n  Dispatching through `claude -p` ...\n')
     const prompt = 'Run the play-test round, and write the report it returns:'
-      + ` Workflow({scriptPath: ".claude/workflows/playtest.js", args: ${JSON.stringify(args)}})`
+      + ` Workflow({scriptPath: ${JSON.stringify(args.workflowPath)}, args: ${JSON.stringify(args)}})`
     const r = spawnSync('claude', ['-p', prompt], {
       cwd: ROOT,
       stdio: 'inherit',
@@ -624,8 +720,11 @@ async function main() {
     process.exit(r.status === null ? 1 : r.status)
   }
 
+  // The workflow is the harness's, not the package's — the one path in this banner
+  // that resolves against the engine checkout while everything around it resolves
+  // against the game. Printed from the args so the two cannot disagree.
   console.log('\n  Dispatch with:\n')
-  console.log('    Workflow({ scriptPath: ".claude/workflows/playtest.js",')
+  console.log(`    Workflow({ scriptPath: ${JSON.stringify(args.workflowPath)},`)
   console.log(`               args: <the JSON at ${ARGS_OUT}> })\n`)
 }
 

@@ -1,0 +1,5 @@
+# Where a play-test round files what it found: mygame-playtest-<date>.md is the
+# report and mygame-playtest-ledger.md is every finding ever refuted, so the next
+# round does not re-find them. A design doc at mygame.md is optional and the round
+# says so out loud when there is none — write one when you have something true to
+# put in it, not before.

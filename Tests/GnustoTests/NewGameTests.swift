@@ -77,6 +77,14 @@ struct NewGameTests {
         return (enumerator?.allObjects as? [String] ?? []).sorted()
     }
 
+    /// One JSON file, parsed. Throws rather than returning an empty dictionary,
+    /// because a malformed file and a file that says nothing are the same `[:]` and
+    /// only one of them is a passing test.
+    private static func json(at url: URL) throws -> [String: Any] {
+        let data = try Data(contentsOf: url)
+        return try JSONSerialization.jsonObject(with: data) as? [String: Any] ?? [:]
+    }
+
     @Test func generatedPackageKeepsNoTraceOfTheTemplateName() throws {
         let game = try Self.generate()
         defer { try? FileManager.default.removeItem(at: game) }
@@ -106,8 +114,8 @@ struct NewGameTests {
 
         #expect(!filesRead.isEmpty, "no file under \(game.path) was read as text")
         let namedFiles = [
-            "Package.swift", ".mcp.json", "README.md", "Sources/Zwank/Zwank.swift",
-            "Tests/ZwankTests/ZwankTests.swift",
+            "Package.swift", ".mcp.json", ".claude/settings.json", "README.md",
+            "Sources/Zwank/Zwank.swift", "Tests/ZwankTests/ZwankTests.swift",
         ]
         for file in namedFiles {
             #expect(
@@ -142,11 +150,55 @@ struct NewGameTests {
         #expect(json.contains(#"["Zwank"]"#))
     }
 
+    /// The pair `bin/playtest-preflight`'s `mcp key` row checks, asserted here so a
+    /// generated package cannot fail preflight on the day it is written.
+    ///
+    /// Two files have to agree on one word and neither knows about the other:
+    /// `.mcp.json` registers the server and `.claude/settings.json` enables it. A
+    /// package registering a server it never enables looks completely fine until a
+    /// round dispatches, at which point every tester's `ToolSearch` returns nothing
+    /// and each of them reports, accurately and uselessly, that it cannot use MCP.
+    @Test func theMcpKeyAndTheEnabledServerAreTheSameWord() throws {
+        let game = try Self.generate()
+        defer { try? FileManager.default.removeItem(at: game) }
+
+        let mcp = try Self.json(at: game.appendingPathComponent(".mcp.json"))
+        let servers = mcp["mcpServers"] as? [String: Any] ?? [:]
+        #expect(servers.count == 1, "expected exactly one registered server, got \(servers.keys)")
+
+        let settings = try Self.json(at: game.appendingPathComponent(".claude/settings.json"))
+        let enabled = settings["enabledMcpjsonServers"] as? [String] ?? []
+        #expect(enabled == ["zwank"])
+        #expect(Array(servers.keys) == enabled, "\(servers.keys) is not \(enabled)")
+
+        // Both are load-bearing on the headless path, and both are read out of THIS
+        // file rather than repeated in the script: `bin/playtest-preflight` spreads
+        // the package's own `env` into `claude -p`, so a package missing them runs a
+        // round that dies at 600 seconds at whatever phase it had reached, silently.
+        let env = settings["env"] as? [String: String] ?? [:]
+        #expect(env["MCP_TIMEOUT"] == "180000")
+        #expect(env["CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS"] == "0")
+
+        // Every shim a round actually runs. `playtest-routes` is the one the Distill
+        // phase needs, and an un-allowlisted tool there stalls the whole round on a
+        // permission prompt rather than failing.
+        let allow = (settings["permissions"] as? [String: Any])?["allow"] as? [String] ?? []
+        for tool in ["playtest-preflight", "playtest-replay", "playtest-routes"] {
+            #expect(
+                allow.contains("Bash(bin/\(tool):*)"),
+                "bin/\(tool) is not allowlisted, so a round stalls on a permission prompt")
+        }
+        #expect(allow.contains("mcp__zwank"))
+    }
+
     @Test func toolsAreShimsAndTheLibraryIsNotExecutable() throws {
         let game = try Self.generate()
         defer { try? FileManager.default.removeItem(at: game) }
 
-        for tool in ["export-game", "gnusto-mcp", "playtest-replay", "playtest-measure"] {
+        for tool in [
+            "export-game", "gnusto-mcp", "playtest-replay", "playtest-measure",
+            "playtest-preflight", "playtest-routes",
+        ] {
             let path = game.appendingPathComponent("bin/\(tool)").path
             #expect(
                 FileManager.default.isExecutableFile(atPath: path),
@@ -274,5 +326,82 @@ struct NewGameTests {
         let result = try Self.newGame([])
         #expect(result.status == 2)
         #expect(result.stderr.contains("usage"))
+    }
+
+    /// The one line the whole shim mechanism rests on.
+    ///
+    /// `bin/lib/playtest-focus.js` answers with the package under test, which is not
+    /// the checkout it lives in: `bin/lib/gnusto-tooling.sh` exports
+    /// `GNUSTO_PACKAGE_PATH` and then execs the ENGINE's copy of
+    /// `bin/playtest-preflight`, so a `__dirname`-derived root would have both
+    /// front-door scripts chdir into the engine and check a package the author does
+    /// not have. Get it wrong and `routeManifests` returns `[]` — indistinguishable
+    /// from a game that has cut no routes yet, so the round dispatches and plays
+    /// cold with nothing anywhere saying why.
+    ///
+    /// A node one-liner, because it pins that line in well under a second with no
+    /// toolchain. Everything heavier belongs to CI, which runs a real preflight
+    /// inside a real generated package; ``PlaytestPathTests`` records why this suite
+    /// refuses to run `swift`.
+    @Test func theFocusModuleRootsAtThePackageAndNotAtTheEngine() throws {
+        guard let node = Self.which("node") else { return }  // no node, no check
+
+        let module = Self.packageRoot.appendingPathComponent("bin/lib/playtest-focus").path
+        let script = "console.log(require(\(Self.quoted(module))).ROOT)"
+
+        let here = try Self.run(node, ["-e", script], env: nil)
+        #expect(
+            here.trimmingCharacters(in: .whitespacesAndNewlines) == Self.packageRoot.path,
+            "with no GNUSTO_PACKAGE_PATH the root should be this checkout, got: \(here)")
+
+        let elsewhere = FileManager.default.temporaryDirectory
+            .appendingPathComponent("focus-root-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: elsewhere, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: elsewhere) }
+
+        let there = try Self.run(node, ["-e", script], env: ["GNUSTO_PACKAGE_PATH": elsewhere.path])
+        #expect(
+            there.trimmingCharacters(in: .whitespacesAndNewlines)
+                == elsewhere.resolvingSymlinksInPath().path,
+            "GNUSTO_PACKAGE_PATH does not move the root, so a shimmed tool would check the engine: \(there)")
+    }
+
+    /// A JavaScript string literal for a path, so a directory with a quote or a
+    /// backslash in it cannot rewrite the one-liner around it.
+    private static func quoted(_ value: String) -> String {
+        let escaped = value.replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "\"", with: "\\\"")
+        return "\"\(escaped)\""
+    }
+
+    /// The first `node` on PATH, or nil. Skipping rather than failing: `node` is not
+    /// a build dependency of this package and CI's Swift container ships none, which
+    /// is why the check that needs it lives in a job of its own.
+    private static func which(_ tool: String) -> String? {
+        let paths = (ProcessInfo.processInfo.environment["PATH"] ?? "").split(separator: ":")
+        for directory in paths {
+            let candidate = "\(directory)/\(tool)"
+            if FileManager.default.isExecutableFile(atPath: candidate) { return candidate }
+        }
+        return nil
+    }
+
+    /// Run a command and return its stdout.
+    private static func run(
+        _ tool: String, _ arguments: [String], env: [String: String]?
+    ) throws -> String {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: tool)
+        process.arguments = arguments
+        if let env {
+            process.environment = ProcessInfo.processInfo.environment.merging(env) { _, new in new }
+        }
+        let out = Pipe()
+        process.standardOutput = out
+        process.standardError = Pipe()
+        try process.run()
+        let data = out.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
+        return String(decoding: data, as: UTF8.self)
     }
 }

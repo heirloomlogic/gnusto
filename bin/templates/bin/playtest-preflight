@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+#
+# Make a play-test round dispatchable against this game, and say so — or exit
+# non-zero and say why. This is the front door: run it before dispatching a round.
+#
+# Usage:  bin/playtest-preflight <Game>
+#         bin/playtest-preflight <Game> --headless    (dispatch through `claude -p`)
+#
+# It builds, speaks the MCP protocol to the server over a pipe of its own, checks
+# .mcp.json against .claude/settings.json, and writes the round's arguments to
+# .context/playtest-round-args.json. Dispatch with the scriptPath it prints.
+#
+# A shim. The real script lives in the Gnusto checkout this package depends on,
+# so it is never out of step with the engine — see bin/lib/gnusto-tooling.sh.
+# It reports both roots on its first two lines: the package is this one, the
+# harness is that checkout.
+
+set -euo pipefail
+. "$(dirname "$0")/lib/gnusto-tooling.sh"
+gnusto_exec playtest-preflight "$@"
