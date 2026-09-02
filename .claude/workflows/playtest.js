@@ -3,7 +3,7 @@ export const meta = {
   description:
     'Automated play-test round for a Gnusto demo game: charter-diverse subagents read transcripts as prose, every finding is replayed and then adversarially refuted by two independent raters, and a critic reads the coverage off what the sessions themselves wrote down rather than believing the testers.',
   whenToUse:
-    'Invoked by /playtest <game>. Needs args {game, packagePath, docPath, capabilities, turns, charters, rounds}. A package that is not this repository also passes its layout — {projectName, enginePath, conventionsPath, gameDocsDir} — since this script has no filesystem access of its own and cannot derive any of it. The calling session builds the binary first (bin/playtest-replay --build <Game>) and writes the returned report.',
+    'Invoked by /playtest <game>. Needs args {game, packagePath, docPath, capabilities, turns, charters, rounds}. A package that is not this repository also passes its layout — {projectName, enginePath, gameSourceDir, conventionsPath, gameDocsDir, refPath} and {tracker: false} when it has no issue tracker — since this script has no filesystem access of its own and cannot derive any of it. The calling session builds the binary first (bin/playtest-replay --build <Game>) and writes the returned report.',
   phases: [
     { title: 'Preflight', detail: 'one agent proves this session can reach the game’s MCP server, before eight testers find out it cannot' },
     { title: 'Survey', detail: 'one cartographer: rooms, timers, vocabulary, and which oracle tiers exist' },
@@ -91,7 +91,13 @@ const docPath = ARGS.docPath || null
 const layoutPath = (value, fallback) => String(value ?? fallback).trim().replace(/\/+$/, '')
 
 // How the prompts name the repository under test. Three preambles open with it.
-const projectName = String(ARGS.projectName ?? 'Gnusto engine').trim()
+//
+// The bare manifest name, because that is what preflight can derive and what a
+// generated package will send: `describePackage()?.name`. It used to default to
+// "Gnusto engine", which no manifest anywhere says — so the default and the value
+// preflight actually passes disagreed by a word, and the dry run exercised only the
+// half nobody dispatches.
+const projectName = String(ARGS.projectName ?? 'Gnusto').trim()
 
 // Where the engine's own source sits, as a path prefix: `ownerClass` calls anything
 // under it `engine`, and the cartographer is sent into it for the stub-verb roster.
@@ -110,6 +116,26 @@ const conventionsPath = layoutPath(ARGS.conventionsPath, 'CLAUDE.md')
 // Where design docs live. `docPath` already names the one doc this round reads; this is
 // the directory a *finding* can cite, which is what `ownerClass` needs.
 const gameDocsDir = layoutPath(ARGS.gameDocsDir, 'docs/games')
+
+// Where the game's OWN source sits, as a path prefix — the counterpart to
+// `enginePath`, and the other half of the tree a finding can be located in.
+// `Sources/<Game>` is SwiftPM's default and what `bin/new-game` writes, but a
+// monorepo is free to say otherwise, so preflight derives it off the manifest.
+const gameSourceDir = layoutPath(ARGS.gameSourceDir, `Sources/${ARGS.game}`)
+
+// The briefs every agent reads: the judgement kernel, the finding contract, the
+// report shape. These belong to the HARNESS rather than to the package under test —
+// downstream they sit inside the Gnusto checkout SwiftPM resolved, which is not
+// under the author's tree at all. Preflight spells it relative when the two roots
+// coincide and absolute when they do not; either way the reader is an agent with a
+// working directory of the package, so a bare relative path would be the game's.
+const refPath = layoutPath(ARGS.refPath, '.claude/skills/playtest/references')
+
+// Whether a confirmed finding can be filed. With a tracker the round's issue is
+// created against it; without one — the ordinary case for a package written by
+// `bin/new-game` — the same body goes into the report under its own heading, so
+// nothing is dropped and the shapes do not fork.
+const tracker = ARGS.tracker !== false
 const capabilities = new Set(ARGS.capabilities || [])
 const ledger = new Set(ARGS.ledgerKeys || [])
 // [{number, owns}] — issues that are OPEN right now and own a defect class the
@@ -182,8 +208,9 @@ function clamp(value, lo, hi, fallback) {
 // ---------------------------------------------------------------------------
 
 // Identical is the point. N testers judging against N slightly different
-// oracles produce findings that cannot be deduplicated or cross-verified.
-const REF = '.claude/skills/playtest/references'
+// oracles produce findings that cannot be deduplicated or cross-verified. The
+// directory they are read from is `refPath`, above — an argument, because the briefs
+// travel with the harness and the harness is not always the package under test.
 
 // Every agent is HANDED its replay label rather than asked to invent one. Asking
 // produced `verify-1` from three verifiers at once, and before probe directories
@@ -432,7 +459,7 @@ const groundBlind = (label) => `
 You are play-testing \`${game}\` for the ${projectName} repo. The pinned seed for this
 round is \`${seed}\`.
 
-Read \`${REF}/finding-contract.md\` before you report anything: it is what a finding must
+Read \`${refPath}/finding-contract.md\` before you report anything: it is what a finding must
 carry. Read nothing else. In particular do **not** open the game's source, its design
 doc, its tests${conventionsPath ? `, or \`${conventionsPath}\`` : ''} — you are judging whether the prose is true of the
 situation it printed in, and that is decided by what the game told you and nothing else.
@@ -456,10 +483,10 @@ You are working on the ${projectName} repo. The package under test is at \`${pkg
 and the game is \`${game}\`. The pinned seed for this round is \`${seed}\`.
 
 Read these before you do anything else:
-- \`${REF}/playtester-brief.md\` — the doctrine, the judgement kernel K1..K13, and
+- \`${refPath}/playtester-brief.md\` — the doctrine, the judgement kernel K1..K13, and
   what is never a finding. This is your oracle when the design doc is silent.
-- \`${REF}/finding-contract.md\` — what a finding must carry.
-${docPath ? `- \`${docPath}\` — the design doc: the mechanics contract, the map, the timeline, the solution. Its "free to change" / "not free to change" lists decide what is even arguable.` : `- There is NO design doc for ${game}. Read \`Sources/${game}/${game}.swift\` instead: its type doc comment lists the idioms the game exists to demonstrate, which is the nearest thing to a contract, and \`maxScore\` plus the score line is a machine-checkable win oracle.`}${conventionsPath ? `
+- \`${refPath}/finding-contract.md\` — what a finding must carry.
+${docPath ? `- \`${docPath}\` — the design doc: the mechanics contract, the map, the timeline, the solution. Its "free to change" / "not free to change" lists decide what is even arguable.` : `- There is NO design doc for ${game}. Read \`${gameSourceDir}/${game}.swift\` instead: its type doc comment lists the idioms the game exists to demonstrate, which is the nearest thing to a contract, and \`maxScore\` plus the score line is a machine-checkable win oracle.`}${conventionsPath ? `
 - \`${conventionsPath}\` — repo conventions. Its rules are load-bearing but it can be stale;
   where it disagrees with the code, the code wins and that disagreement is itself a
   \`doc-drift\` finding.` : ''}
@@ -1313,7 +1340,7 @@ Report:
 6. Which actors have proper names or honorifics.
 7. Which oracle tiers were actually available to you.
 
-Read \`Sources/${game}/\` and ${docPath ? `\`${docPath}\`` : 'the game type\'s doc comment'} for everything above that the tool does not answer. The rosters themselves are the tool's, verbatim; that is what coverage is scored against.`,
+Read \`${gameSourceDir}/\` and ${docPath ? `\`${docPath}\`` : 'the game type\'s doc comment'} for everything above that the tool does not answer. The rosters themselves are the tool's, verbatim; that is what coverage is scored against.`,
   { label: `survey:${game}`, phase: 'Survey', schema: SURVEY_SCHEMA }
 )
 
@@ -1679,6 +1706,16 @@ reports findings and hides its gaps makes the round look thorough when it was no
   // that is the point of them. So it is one cheap mechanical agent whose whole
   // job is the lookup, and the dedup below is plain code over what it returns.
   // One agent here removes tens of verifiers downstream.
+  //
+  // **Two trees, and the second is not under the first.** Most excerpts a round
+  // reports were declared by the ENGINE rather than by the game — a stub reply, a
+  // stock refusal, a listing line. When the engine is the package under test those
+  // sit under `Sources/`, so one grep root found both; when it is a dependency they
+  // sit wherever SwiftPM resolved it, outside the author's tree entirely. A
+  // clusterer told to search one root then physically cannot locate them, answers
+  // `unlocated`, and every engine-owned finding loses its dedup key — so the round
+  // buys a verifier per excerpt and reports more distinct defect classes than it
+  // found, with nothing anywhere saying so.
   const clustered = candidates.length
     ? await agent(
         `${groundMin(labelFor(`r${round}`, 'cluster'))}
@@ -1688,9 +1725,10 @@ You are the clusterer. You do not judge findings; you locate the code that print
 For each finding below, find the **declaration** whose text the excerpt came from and
 report its id as \`<file>::<declaration>\` — the property or constant the string is
 declared on, not the line number and not the file alone. \`grep -rn\` a distinctive
-fragment of the excerpt under \`${pkg}/Sources/\` and read outward to the enclosing
-\`let\`/\`static let\`/trait. Prose tables are the common case in this repo: a hit in a
-\`Prose\` enum is the declaration, and the entity that references it is not.
+fragment of the excerpt under BOTH \`${pkg}/${gameSourceDir}\` and \`${enginePath}\` —
+a line the game never declared was printed by the engine — and read outward to the
+enclosing \`let\`/\`static let\`/trait. Prose tables are the common case here: a hit in
+a \`Prose\` enum is the declaration, and the entity that references it is not.
 
 Two findings that quote different sentences of the same declaration get the SAME id.
 Two findings quoting one sentence printed in different rooms get the same id as well —
@@ -2239,6 +2277,16 @@ function ownerClass(file) {
   // The harness itself: the workflow being executed, the briefs that define the
   // round's doctrine, the replay tool, and the hand-driven counterpart the same
   // skill documents itself in.
+  //
+  // `docs/playtesting.md` is residue by design: a generated package has no such file,
+  // so the clause matches nothing downstream and costs nothing.
+  //
+  // The other two are **not** clean, and #393 tracks it. A generated package does hold
+  // `.claude/` and `bin/` at exactly these paths, but what it holds there is its own
+  // settings, its own skill and its own shims — package-owned — while the real harness
+  // sits at `refPath` and `workflowPath`. So downstream a finding against an author's
+  // shim is blamed on the engine. Left alone here rather than half-fixed: it is the
+  // same frame mismatch as the `enginePath` prefix below, and the two want one answer.
   if (f.startsWith('.claude/') || f.startsWith('bin/') || f === 'docs/playtesting.md') return 'harness'
   if (enginePath && f.startsWith(enginePath)) return 'engine'
   // Repo conventions, and the one genuinely arguable row. `ground` tells every
@@ -2250,8 +2298,11 @@ function ownerClass(file) {
   // The game suites share a tree with the engine's, so split them by name. A
   // suite not named for its game (CloakTranscriptTests.swift) reads as engine,
   // which is the safe direction for an issue checklist to guess.
+  //
+  // `Tests/` stays a literal for the same reason `.claude/` does: it is SwiftPM's
+  // default layout and what `bin/new-game` writes, so it is right in both packages.
   if (f.startsWith('Tests/')) return f.includes(game) ? 'game' : 'engine'
-  if (f.startsWith(`Sources/${game}/`)) return 'game'
+  if (gameSourceDir && f.startsWith(`${gameSourceDir}/`)) return 'game'
   if (gameDocsDir && f.startsWith(`${gameDocsDir}/`)) return 'game'
   return 'unknown'
 }
@@ -2726,7 +2777,7 @@ truth and they win over anything here.
 - There is deliberately no "cells probed" count: free-text cell labels are not comparable between charters, so any total would be a number that means nothing. Build the real cross-product yourself from the transcripts, against the ${declaredRooms.length}-room roster and the timers above.
 - Testers run: ${playRoster.map((r) => `${r.key}${r.charter.blind ? ` (${r.divergence}${r.regions.length ? `, ${renderRegions(r.regions)}` : ''})` : ''}`).join(', ')}. Charters NOT run: ${skipped.map((c) => c.key).join(', ') || 'none'}.
 - The blind charters were given no room list, no timer list and no design doc, deliberately. A finding of theirs that the doc licenses is the expected cost of that, not a harness failure — but if more than about two in five are refuted that way, say so: the brief needs tightening, not the doc handing back.
-- Confirmed ${confirmed.length}, refuted ${refuted.length}, findings routed to another issue ${routed.length}. Every confirmed finding is filed; this round edits nothing.
+- Confirmed ${confirmed.length}, refuted ${refuted.length}, findings routed to another issue ${routed.length}. Every confirmed finding is filed; this round edits nothing.${tracker ? '' : ' **This package has no issue tracker**, so there is nowhere to file them: write the issue body into the report under its own heading, per \`${refPath}/issue-shape.md\`, rather than dropping it.'}
 - **Verifier agreement: ${agreementTotal ? `${Math.round((agreementMatched / agreementTotal) * 100)}% (${agreementMatched} of ${agreementTotal} findings judged the same way by both raters)` : 'not measurable — no finding got two raters'}.**${singleRated ? ` ${singleRated} finding(s) got only one rater, so the denominator is thinner than the finding count.` : ''} Verification is batched now — up to ${VERIFY_BATCH_SIZE} findings per verifier, ${VERIFY_RATERS} raters each — and this number is the check on that. Near-total agreement is not automatically good news: it is what both careful raters and two rubber-stampers produce. **Read the paired refutation attempts printed below** and say whether the two raters reasoned separately or interchangeably. That judgement is yours and nothing else in the round makes it.
 - Unknown words: ${unknownWordTotal} occurrence(s) over ${words.length} distinct token(s), taken from the parse record rather than by grepping for the engine's refusal line. Not findings in themselves and not coverage — but ~48 verbs are stubs now, so a large number here is worth a sentence. A word the *game itself printed* and could not answer is a defect and should have arrived as an ordinary finding; if the count is high and no such finding was filed, that is a gap in the round, not in the game.
 - Timers declared: ${timers.declared.join(', ') || 'none'}.${timerNote}
@@ -2746,7 +2797,7 @@ looking at:
 ${pairedRationales}
 
 Write the Coverage and Refuted sections of the report, per
-\`${REF}/report-shape.md\`. Include the state cross-product as an actual grid of
+\`${refPath}/report-shape.md\`, filed under \`${gameDocsDir || '.'}/\`. Include the state cross-product as an actual grid of
 ticks and blanks. Then answer three questions plainly:
 
 1. **Which charters found nothing, and is that because the game is clean there or
@@ -2771,6 +2822,10 @@ const roomTally = await roomTallyPromise
 return {
   game,
   packagePath: pkg,
+  // Whether the caller can file what this round confirmed, or has to keep it in
+  // the report. Returned rather than assumed by the reader for the same reason it
+  // arrived as an argument: only preflight can look.
+  tracker,
   seed,
   tiers: survey.tiers,
   charters: {

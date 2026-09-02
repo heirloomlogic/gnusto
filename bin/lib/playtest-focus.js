@@ -28,7 +28,21 @@ const fs = require('node:fs')
 const os = require('node:os')
 const path = require('node:path')
 
-const ROOT = path.resolve(__dirname, '..', '..')
+// The package under test, which downstream is not the checkout this file lives in.
+// `bin/lib/gnusto-tooling.sh` in a generated package exports GNUSTO_PACKAGE_PATH and
+// then `exec`s *this* checkout's copy of the script, so a `__dirname`-derived root
+// would name the engine while every consumer here means the author's game: `read`,
+// `gameDoc`, `routeManifests`, `describePackage`'s cwd, and the `process.chdir(ROOT)`
+// that opens both `bin/playtest-preflight` and `bin/playtest-routes`. Nothing in this
+// file is engine-relative — preflight draws that distinction for itself, with a second
+// constant, because it is the only script that needs both answers at once.
+//
+// `routeManifests` is the reader whose wrong answer is SILENT. Rooted at the engine it
+// returns `[]` for a downstream game, which is indistinguishable from a game that has
+// cut no routes yet — so the round dispatches, plays cold, and nobody is told why.
+const ROOT = process.env.GNUSTO_PACKAGE_PATH
+  ? path.resolve(process.env.GNUSTO_PACKAGE_PATH)
+  : path.resolve(__dirname, '..', '..')
 
 // One read per file per process. Both parsers below want the whole focus file, and
 // `bin/playtest-preflight` asks four times in one run — twice for the two halves of

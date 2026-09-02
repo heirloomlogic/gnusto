@@ -11,7 +11,7 @@
 // Prompts land in /tmp/prompts.txt. Grep them: the firewall is a property of the
 // generated text, and this is the only place it can be asserted cheaply.
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { dirname, resolve } from 'node:path'
 // The round's own ledger parser, imported rather than re-implemented. Node reads
 // the CommonJS module's static `module.exports` and gives ESM the named binding.
 import { LANDING_PROBE, ledgerScan, routeManifests, routePrefix, routesDir } from '../../bin/lib/playtest-focus.js'
@@ -752,6 +752,21 @@ for (const label of cliLabels) {
 const promptFor = (match) =>
   (prompts.find((p) => (typeof match === 'function' ? match(p) : p.label === match)) || {}).prompt || ''
 const criticPrompt = () => promptFor('critic')
+
+// The other side of the `tracker` branch, checked here rather than only downstream:
+// a round in a package that HAS a tracker must read exactly as it always did, with no
+// instruction to keep the issue body in its own report. A branch checked in one
+// direction is a branch that can be inverted without a single assertion moving.
+check(
+  result.tracker === true,
+  'a round in a package with a tracker does not report tracker: true, so the caller '
+  + 'cannot tell that its findings are filable'
+)
+check(
+  !/no issue tracker/i.test(criticPrompt()),
+  'a round in a package WITH a tracker is told to keep its issue body in the report, '
+  + 'which is the no-tracker branch firing on the wrong side'
+)
 const stubTesters =
   stubTurns.sessions + stubTurns.branches + stubTurns.playReplays + stubTurns.replays
 const stubVerifiers = stubTurns.verifyReplays
@@ -1513,23 +1528,28 @@ for (const tool of ['rewind', 'replay', 'coverage', 'note']) {
 // The tool namespace and the server registration are two halves of one fact that
 // nothing compiles together. Get them out of step and every tester fails
 // identically, with `ToolSearch` matching nothing and no diagnostic anywhere.
-{
-  const mcp = JSON.parse(readFileSync('.mcp.json', 'utf8'))
-  const settings = JSON.parse(readFileSync('.claude/settings.json', 'utf8'))
+//
+// Checked in the TEMPLATE too, which has both files now. A generated package that
+// registers a server it never enables fails preflight's `mcp key` row on the day it
+// is written, and `NewGameTests` only reaches that after running the generator —
+// this reaches it with no toolchain at all, off the files an author will receive.
+for (const root of ['.', 'bin/templates']) {
+  const mcp = JSON.parse(readFileSync(`${root}/.mcp.json`, 'utf8'))
+  const settings = JSON.parse(readFileSync(`${root}/.claude/settings.json`, 'utf8'))
   for (const key of settings.enabledMcpjsonServers || []) {
     check(
       Boolean((mcp.mcpServers || {})[key]),
-      `.claude/settings.json enables the MCP server "${key}", which .mcp.json does not register`
+      `${root}/.claude/settings.json enables the MCP server "${key}", which ${root}/.mcp.json does not register`
     )
   }
   for (const [key, server] of Object.entries(mcp.mcpServers || {})) {
     check(
       (settings.enabledMcpjsonServers || []).includes(key),
-      `.mcp.json registers "${key}" but .claude/settings.json does not enable it, so it never connects`
+      `${root}/.mcp.json registers "${key}" but ${root}/.claude/settings.json does not enable it, so it never connects`
     )
     check(
       (server.args || []).some((a) => a.toLowerCase() === key),
-      `.mcp.json keys "${key}" against args ${JSON.stringify(server.args)} — the workflow's `
+      `${root}/.mcp.json keys "${key}" against args ${JSON.stringify(server.args)} — the workflow's `
       + 'fallback namespace is the lowercased product name, so this game resolves no tools'
     )
   }
@@ -1538,7 +1558,7 @@ for (const tool of ['rewind', 'replay', 'coverage', 'note']) {
   for (const v of ['MCP_TIMEOUT', 'CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS']) {
     check(
       Boolean(settings.env && settings.env[v] !== undefined),
-      `.claude/settings.json sets no ${v}, so a round depends on whoever dispatched it remembering to`
+      `${root}/.claude/settings.json sets no ${v}, so a round depends on whoever dispatched it remembering to`
     )
   }
 }
@@ -1699,34 +1719,51 @@ for (const tool of ['rewind', 'replay', 'coverage', 'note']) {
   )
 }
 
-// The package's own layout is four arguments now, not four literals: the words the
-// preambles name the repo with, the engine's source prefix, the conventions file and
-// the design-doc directory. Run the whole script a third time the way a package
-// written by `bin/new-game` would call it — no design doc, no conventions file, the
-// engine resolved into `.build/checkouts/` — and read the generated text for anything
-// that still names *this* repository.
+// The package's own layout is arguments now, not literals: the words the preambles
+// name the repo with, the engine's source prefix, the game's own source prefix, the
+// conventions file, the design-doc directory and the briefs the round is judged
+// against. Run the whole script a third time the way a package written by
+// `bin/new-game` would call it — no design doc, no conventions file, the engine
+// resolved into `.build/checkouts/`, the briefs inside that checkout — and read the
+// generated text for anything that still names *this* repository.
 //
 // It has to be checked on the text rather than on the source, for the same reason the
 // firewall is: a default that reaches a prompt through three levels of template
 // literal is not visible in a grep of the argument block, and a round dispatched
 // against somebody else's game is the only other way to find out.
 //
-// What is deliberately *not* asserted is the harness's own furniture — `${REF}`,
-// `bin/playtest-replay`, `.claude/` — which every prompt still names as literals. Those
-// are the same wherever the harness is installed, and where they resolve to for a
-// package that is not this one is the delivery vehicle's question, not the layout's.
+// `bin/playtest-replay` and the `.replays` tree stay unasserted, and stay literals:
+// they are the package's own shims, which `bin/new-game` writes at these exact paths.
+// The briefs are the opposite case and used to be exempted here on the same grounds —
+// they live with the HARNESS, which downstream is a resolved dependency, so a prompt
+// naming them relative cites a file the author does not have. That is `refPath` now,
+// and it is asserted below in both directions.
 {
   // The realistic shape, deliberately: a tag or branch pin resolves the engine to
   // `.build/checkouts/<name>/`, and a path dependency to `<path>/`. Either way the
   // prefix legitimately *ends* in `Sources/Gnusto` — so what the assertion below
   // forbids is the repo-rooted spelling, not the substring.
   const downEngine = '.build/checkouts/Gnusto/Sources/Gnusto'
+  const downRef = '.build/checkouts/Gnusto/.claude/skills/playtest/references'
+  // Monorepo-shaped on purpose. With the natural `Sources/Zwank` the assertion that
+  // no prompt names a repo-rooted `Sources/` would fail on a round that had done
+  // everything right — so the fixture has to be a layout this repository could not
+  // have produced by accident.
+  const downGameSource = 'Packages/Zwank/Sources/Zwank'
   const downPrompts = []
   const downLogs = []
   // Delegates for the replies, so the fixtures stay in one place. The one thing it
   // rewrites is each finding's owner: `ownerClass` is the half of the unbinding no
   // prompt can show, and pointing every finding at the downstream engine prefix is
   // what makes its verdict readable off the result.
+  //
+  // **This fixture is weaker than it looks, and #393 is why.** Copying the prefix out
+  // of the argument makes the `ownerClass` assertion below true by construction for
+  // any `enginePath` at all. A real `ownerFile` is a tester's hand-written guess —
+  // the blind charters cannot open source and cannot know where SwiftPM resolved the
+  // checkout — so the input worth simulating is the guess, not the answer. Left as it
+  // is deliberately: changing the fixture without changing the classifier turns this
+  // red for a defect that is already filed.
   const downStub = async (prompt, opts = {}) => {
     downPrompts.push(String(prompt))
     const reply = await stub(prompt, opts)
@@ -1743,9 +1780,10 @@ for (const tool of ['rewind', 'replay', 'coverage', 'note']) {
     game: 'Zwank', docPath: null, capabilities: [], focus: '', focusSighted: '',
     routes: [], ledgerKeys: [],
     projectName: 'Zwank', enginePath: downEngine, conventionsPath: '', gameDocsDir: '',
+    gameSourceDir: downGameSource, refPath: downRef, tracker: false,
   })
   const downText = downPrompts.join('\n')
-  for (const bound of ['Gnusto engine', 'docs/games', 'CLAUDE.md']) {
+  for (const bound of ['the Gnusto repo', 'docs/games', 'CLAUDE.md']) {
     check(
       !downText.includes(bound),
       `a downstream round's prompts still name ${bound}, so playtest.js describes this `
@@ -1757,6 +1795,23 @@ for (const tool of ['rewind', 'replay', 'coverage', 'note']) {
     "a downstream round's prompts name a repo-rooted `Sources/Gnusto`, which exists only "
     + 'in the package that *is* the engine'
   )
+  // The game's own tree, same shape. `Sources/Zwank` here would be this script
+  // guessing SwiftPM's default rather than reading the argument, which is exactly
+  // what the monorepo fixture above exists to tell apart.
+  check(
+    !downText.includes('`Sources/Zwank'),
+    "a downstream round's prompts spell the game's source as `Sources/<Game>` instead "
+    + 'of taking gameSourceDir from args'
+  )
+  // The briefs. A relative `.claude/skills/...` downstream is a path under the
+  // AUTHOR's package, where nothing of the kind exists — so every agent told to read
+  // the finding contract before reporting anything reads nothing, and judges by
+  // whatever it already believed.
+  check(
+    !/(^|[^/])\.claude\/skills/.test(downText),
+    "a downstream round's prompts name a repo-rooted `.claude/skills/`, which is the "
+    + "author's package rather than the checkout the briefs are in"
+  )
   // And the other direction, so none of the above can pass by the prompts having gone
   // empty or the overrides having been dropped on the floor.
   check(
@@ -1767,6 +1822,36 @@ for (const tool of ['rewind', 'replay', 'coverage', 'note']) {
     downText.includes(`\`${downEngine}/Actions/GameText.swift\``),
     'the enginePath argument does not reach the cartographer, so a downstream round is '
     + 'sent to a stub roster that is not in its tree'
+  )
+  check(
+    downText.includes(`\`${downRef}/finding-contract.md\``),
+    'the refPath argument does not reach the briefs, so a downstream round judges '
+    + 'against a finding contract nobody can open'
+  )
+  check(
+    downText.includes(`\`${downGameSource}/Zwank.swift\``),
+    'the gameSourceDir argument does not reach the no-design-doc fallback, which is the '
+    + 'ONLY oracle a day-one package has'
+  )
+  // Two trees, and the second is the whole point: downstream the engine is not under
+  // the package, so a clusterer sent to one root cannot locate an engine-owned line —
+  // it answers `unlocated`, dedup degrades to per-excerpt, and the round reports more
+  // distinct defect classes than it found.
+  const downCluster = downPrompts.find((p) => p.includes('You are the clusterer.')) || ''
+  check(
+    downCluster.includes(`\`./${downGameSource}\``) && downCluster.includes(`\`${downEngine}\``),
+    'the clusterer is not sent into both the game tree and the engine tree, so every '
+    + 'engine-owned finding downstream loses its dedup key'
+  )
+  check(
+    down.tracker === false,
+    'the tracker argument does not round-trip into the result, so the caller cannot tell '
+    + 'whether the round has anywhere to file what it confirmed'
+  )
+  check(
+    /no issue tracker/i.test(downText),
+    'a package with no tracker is never told to keep the issue body in its report, so a '
+    + "round's findings have nowhere to go and nothing says so"
   )
   check(
     down.confirmed.length > 0 && down.confirmed.every((f) => f.ownerClass === 'engine'),
@@ -1785,12 +1870,49 @@ for (const tool of ['rewind', 'replay', 'coverage', 'note']) {
 {
   const ownerClassSrc = (src.match(/function ownerClass\(file\) \{[\s\S]*?\n\}/) || [''])[0]
   check(ownerClassSrc.length > 0, 'ownerClass() no longer parses out of playtest.js, so the check below is vacuous')
-  for (const bound of ['Sources/Gnusto', 'CLAUDE.md', 'docs/games']) {
+  // `Sources/` outright, not just `Sources/Gnusto`: the game's own prefix used to be
+  // spelled here as `Sources/${game}`, which no prompt prints and so no assertion
+  // above could ever see. A function that classifies without printing is invisible to
+  // every text check in this file, which is what this block is for.
+  //
+  // `Tests/` is deliberately absent from the list. It is SwiftPM's default layout and
+  // what `bin/new-game` writes, so it is correct in both packages — the same standing
+  // the `.claude/` and `bin/` literals in the same function have.
+  for (const bound of ['Sources/', 'CLAUDE.md', 'docs/games']) {
     check(
       !ownerClassSrc.includes(bound),
       `ownerClass() spells ${bound} itself instead of taking it in args`
     )
   }
+}
+
+// The default that every prompt in this repository still resolves through. Once
+// `refPath` is an argument, the default is the only thing tying four prompts to the
+// briefs — and a typo in it ships a round whose agents are told to read a file that
+// does not exist, while every assertion above stays green because they only ever
+// check the OVERRIDDEN value. `DEEP_START_LEAD` and `DISTILL_LEAD` get this same
+// treatment for the same reason.
+//
+// Scraped with its own pattern because `layoutConst` matches `const X = '...'` and
+// these arrive through `layoutPath(ARGS.x, '...')`. Checked against the directory the
+// `SOURCES` map above already reads three of those briefs out of, rather than a
+// fourth spelling of the path.
+{
+  const defaultArg = (name) =>
+    (src.match(new RegExp(`^const ${name} = layoutPath\\(ARGS\\.${name}, [\`']([^\`']*)[\`']\\)`, 'm')) || [])[1]
+  const ref = defaultArg('refPath')
+  check(!!ref, 'playtest.js no longer declares refPath with a literal default, so this is unchecked')
+  check(
+    ref === dirname(SOURCES.findingContract),
+    `the default refPath (${ref}) is not the directory the briefs are actually in `
+    + `(${dirname(SOURCES.findingContract)}), so every prompt cites a file nobody can open`
+  )
+  const gameSource = defaultArg('gameSourceDir')
+  check(
+    gameSource === 'Sources/${ARGS.game}',
+    `the default gameSourceDir (${gameSource}) is no longer SwiftPM's layout, so a round `
+    + 'dispatched without one is sent to a tree that does not exist'
+  )
 }
 
 console.log('\nASSERTIONS:', failures.length ? `${failures.length} FAILED` : 'all passed')

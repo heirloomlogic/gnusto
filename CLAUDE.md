@@ -108,7 +108,10 @@ bin/playtest-preflight Dungeon     # builds; proves the server answers; non-zero
    reach one it could not a minute earlier. Restart only if that doesn't take — and
    always after editing `Sources/Gnusto/Playtest/`, where no retry helps.
 2. **Dispatch** with the args preflight wrote to `.context/playtest-round-args.json`:
-   `Workflow({scriptPath: ".claude/workflows/playtest.js", args: <that JSON>})`.
+   `Workflow({scriptPath: <the workflowPath in that JSON>, args: <that JSON>})`. Take the
+   path from the args rather than typing it — the workflow belongs to the *engine*, and in
+   a package that only depends on Gnusto that is somewhere under `.build/checkouts/`. Here
+   the two are the same checkout, so preflight prints this repository's own copy.
    `bin/playtest-preflight <Game> --headless` does it for you through `claude -p`,
    which is the fallback for an agent whose tool surface has no `Workflow`.
 

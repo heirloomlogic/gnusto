@@ -172,3 +172,116 @@ jobs:
               exit 1
               ;;
           esac
+
+  # A generated package's round is dispatchable, proved by dispatching everything
+  # short of the agents.
+  #
+  # `bin/playtest-preflight` is the front door and the only check that can say this:
+  # in one command it exercises the shim, `gnusto_find_repo`, the build, a live MCP
+  # handshake over a pipe of its own, `open`/`survey`/`finish`/`replay`, the
+  # `closing.json` field check, `.mcp.json` against `.claude/settings.json`, and the
+  # layout derivation. Nothing else in this file reaches past the first of those.
+  #
+  # Its own job rather than a step in `test-linux`, and the tradeoff is worth stating
+  # plainly rather than justified by harness.yml's argument, which does not quite
+  # apply: that job is containerless because the suite's image ships no Node, and this
+  # one adds Node to that same image anyway. The real trade is that `test-linux`
+  # already generates and builds `Scratch`, so this pays for that build a second time
+  # on a runner where `.build` is deliberately not cached. Measured on the first run:
+  # 1m53s for the whole job, 67s of it the build and the MCP handshake together —
+  # cheap because `Scratch` is one file over a cached dependency graph, and a third of
+  # `test-linux`'s 6m41s, so the two in parallel leave the wall clock unchanged. What
+  # it buys is a suite container with no second runtime in it, and a failed preflight
+  # that names itself instead of arriving at the end of a seven-minute suite.
+  generated-round:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 30
+    container: swift:6.3.3-noble
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Trust the workspace
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      # The container ships no Node at all, which is the whole reason this job is
+      # separate. `bin/playtest-preflight` and `bin/lib/playtest-focus.js` are both
+      # node scripts.
+      - name: Set up Node
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: '22'
+
+      - name: Cache SwiftPM downloads
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: /root/.cache/org.swift.swiftpm
+          key: swiftpm-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Package.swift') }}
+          restore-keys: |
+            swiftpm-${{ runner.os }}-${{ runner.arch }}-
+
+      # Preflight builds for itself, but it builds the GAME product; resolving here
+      # keeps a network failure from reading as a failed handshake.
+      - name: Generate the package
+        run: |
+          bin/new-game Scratch "$RUNNER_TEMP/Scratch" --dep-path "$PWD"
+          swift package --package-path "$RUNNER_TEMP/Scratch" resolve --disable-experimental-prebuilts
+
+      - name: Preflight the generated package
+        working-directory: ${{ runner.temp }}/Scratch
+        run: bin/playtest-preflight Scratch
+
+      # An exit code alone passes whichever package got described — the same hole the
+      # realpath check in `Generated package (Debug)` exists to close. What
+      # discriminates here is that the package-relative answers name the GAME and the
+      # three harness-relative ones point into the engine checkout, which is a
+      # distinction this repository's own preflight run cannot make: here the two
+      # roots are the same directory and every derivation returns the literal it
+      # replaced.
+      - name: The layout was derived, not assumed
+        working-directory: ${{ runner.temp }}/Scratch
+        run: |
+          node -e '
+            const fs = require("node:fs")
+            const path = require("node:path")
+            const a = JSON.parse(fs.readFileSync(".context/playtest-round-args.json", "utf8"))
+            const engine = fs.realpathSync(process.env.GITHUB_WORKSPACE)
+            const fail = []
+            const eq = (key, want) => {
+              if (a[key] !== want) fail.push(`${key} is ${JSON.stringify(a[key])}, want ${JSON.stringify(want)}`)
+            }
+            eq("game", "Scratch")
+            eq("projectName", "Scratch")
+            eq("gameSourceDir", "Sources/Scratch")
+            eq("gameDocsDir", "docs/games")
+            eq("mcpServer", "scratch")
+            // No CLAUDE.md and no `gh` in this container: both degrade rather than
+            // guess, and a round that guessed either would cite a file nobody has or
+            // try to file an issue against nothing.
+            eq("conventionsPath", "")
+            eq("tracker", false)
+            // The three that belong to the HARNESS: they resolve into the engine
+            // checkout, which is the assertion the engine repo cannot make about
+            // itself — there the two roots are one directory and every one of these
+            // is a relative path that happens to be right.
+            //
+            // Deliberately NOT asserting that they fall outside the package. With a
+            // git dependency, which is the ordinary case, SwiftPM resolves the engine
+            // to <pkg>/.build/checkouts/Gnusto — so "outside the package" is true only
+            // of the --dep-path layout this job happens to generate with, and encoding
+            // it would make the ordinary topology read as a generator regression.
+            for (const key of ["enginePath", "refPath", "workflowPath"]) {
+              const value = String(a[key] || "")
+              if (!value.startsWith(engine + path.sep)) fail.push(`${key} is not in the engine checkout: ${value}`)
+              if (!fs.existsSync(value)) fail.push(`${key} does not exist: ${value}`)
+            }
+            if (fail.length) { console.error(fail.join("\n")); process.exit(1) }
+            console.log("layout derived:", JSON.stringify(a, null, 2))
+          '
+
+      - name: The routes tool answers in a package that has none
+        working-directory: ${{ runner.temp }}/Scratch
+        run: bin/playtest-routes Scratch list

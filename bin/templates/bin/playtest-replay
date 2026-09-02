@@ -9,8 +9,9 @@
 # A shim. The real script lives in the Gnusto checkout this package depends on,
 # so it is never out of step with the engine — see bin/lib/gnusto-tooling.sh.
 #
-# Its --start flag needs bin/playtest-routes, which this package does not ship;
-# the flag refuses in a sentence rather than failing obscurely.
+# Its --start flag opens at one of this game's committed deep starts, reading
+# .playtest/<Game>/routes/ and taking that route's seed from the manifest.
+# bin/playtest-routes is how a route gets made in the first place.
 
 set -euo pipefail
 . "$(dirname "$0")/lib/gnusto-tooling.sh"

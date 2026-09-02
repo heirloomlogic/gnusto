@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+#
+# The committed deep starts for this game: a named command list, its seed and the
+# frame it ends in, one JSON file each under .playtest/<Game>/routes/.
+#
+# Usage:  bin/playtest-routes <Game> list
+#         bin/playtest-routes <Game> verify
+#         bin/playtest-routes <Game> cut <name> --from-commands file.txt
+#         bin/playtest-routes <Game> distill <name> --from-session <probe> --upto N
+#
+# A game with no routes needs none, and a fresh package has none. They are what a
+# round's Distill phase learns, which is how the second round starts deeper than
+# the first without anyone having written a walkthrough.
+#
+# A shim. The real script lives in the Gnusto checkout this package depends on,
+# so it is never out of step with the engine — see bin/lib/gnusto-tooling.sh.
+
+set -euo pipefail
+. "$(dirname "$0")/lib/gnusto-tooling.sh"
+gnusto_exec playtest-routes "$@"
