@@ -88,4 +88,40 @@ extension Prose {
 
     /// Attacking a mirror that is already shattered.
     static let mirrorAlreadyBroken = "Haven't you done enough damage already?"
+
+    // MARK: - Mirror region: (#407) scenery examine lines
+
+    static let mirrorRoomWall = """
+        The south wall, from floor to tall ceiling, is the enormous
+        mirror itself.
+        """
+
+    static let mirrorRoomCeiling = """
+        Tall ceilings, far above the mirror's glass.
+        """
+
+    static let smallCaveStaircase = """
+        A staircase leading down, into the dark below.
+        """
+
+    static let atlantisStaircase = """
+        A staircase leading up, back the way you came.
+        """
+
+    static let etchedLetters = """
+        The letters "Granite Wall", etched in the rock of the south wall —
+        old mining marks, cut deep.
+        """
+
+    static let metalSlide = """
+        A steep metal slide twisting downward, into darkness.
+        """
+
+    static let slideRoomRock = """
+        Bare rock, close-walled, the chamber cut straight out of it.
+        """
+
+    static let slideRoomOpening = """
+        A small opening to the north, just big enough to crawl through.
+        """
 }

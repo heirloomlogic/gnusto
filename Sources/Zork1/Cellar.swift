@@ -83,11 +83,93 @@ struct ZorkCellar: GameContent {
     let painting = Item {
         name("painting")
         adjectives("beautiful")
+        // (#407) The Gallery's prose speaks of paintings; the plural noun is
+        // this one and its stolen fellows.
+        synonyms("paintings")
         firstSight(Prose.paintingFirstSight)
         description(Prose.painting)
         // The original's values: 4 for the find, 6 for the case.
         trait(.takeValue, 4)
         trait(.depositValue, 6)
+    }
+
+    // MARK: - (#407) scenery: nouns the room prose prints
+
+    /// (#407) Named by `Prose.gallery` — narrative, not a fixture, but the
+    /// engine's rule is that every noun a room description prints must be
+    /// answerable.
+    let vandals = Item {
+        name("vandals")
+        description(Prose.galleryVandals)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.studio`.
+    let studioFireplace = Item {
+        name("fireplace")
+        description(Prose.studioFireplace)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.studio`.
+    let studioDoor = Item {
+        name("open door")
+        adjectives("open")
+        synonyms("door")
+        description(Prose.studioDoor)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.studio` — the paints and the splattered walls
+    /// and floors they cover are one fixture.
+    let studioPaints = Item {
+        name("splattered walls")
+        adjectives("splattered")
+        synonyms("paints", "paint", "walls", "wall", "floors", "floor")
+        description(Prose.studioPaints)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.trollRoom`.
+    let bloodstains = Item {
+        name("bloodstains")
+        synonyms("stains", "blood")
+        description(Prose.trollBloodstains)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.trollRoom`.
+    let scratches = Item {
+        name("deep scratches")
+        adjectives("deep")
+        synonyms("scratches", "scratch")
+        description(Prose.trollScratches)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.trollRoom`.
+    let forbiddingHole = Item {
+        name("forbidding hole")
+        adjectives("forbidding")
+        synonyms("hole")
+        description(Prose.trollHole)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.eastOfChasm`, beyond the audit's list.
+    let chasmPassage = Item {
+        name("narrow passage")
+        adjectives("narrow")
+        synonyms("passage")
+        description(Prose.chasmPassage)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.eastOfChasm`, beyond the audit's list.
+    let chasmPath = Item {
+        name("path")
+        description(Prose.chasmPath)
+        scenery
     }
 
     let chimney = Item {
@@ -106,8 +188,17 @@ struct ZorkCellar: GameContent {
         studio.south(gallery)
 
         chasm.starts(in: eastOfChasm)
+        chasmPassage.starts(in: eastOfChasm)
+        chasmPath.starts(in: eastOfChasm)
         painting.starts(in: gallery)
         chimney.starts(in: studio)
+        vandals.starts(in: gallery)
+        studioFireplace.starts(in: studio)
+        studioDoor.starts(in: studio)
+        studioPaints.starts(in: studio)
+        bloodstains.starts(in: trollRoom)
+        scratches.starts(in: trollRoom)
+        forbiddingHole.starts(in: trollRoom)
         troll.starts(in: trollRoom)
         // The thief's start (Gallery) is host-wired in ``Zork1``: he lives in
         // ``ZorkThief`` now and can't be placed from this bundle's map.

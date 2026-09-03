@@ -281,6 +281,309 @@ struct ZorkAboveGround: GameContent {
         description(Prose.insideBarrow)
     }
 
+    // MARK: - (#407) scenery: nouns the room prose prints
+
+    // The house exterior and forest rooms' prose names field, windows, trees
+    // and paths that nothing declared; one scenery fixture per room answers
+    // each (a single `Item` occupies one place, so shared nouns repeat per
+    // room — see `whiteHouseAt*` above).
+
+    /// (#407) Named by `Prose.westOfHouse`.
+    let field = Item {
+        name("open field")
+        adjectives("open")
+        synonyms("field")
+        description(Prose.field)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.northOfHouse` and `Prose.southOfHouse` — one per
+    /// side of the house.
+    let windowsAtNorth = Item {
+        name("boarded windows")
+        adjectives("boarded")
+        synonyms("windows", "window")
+        description(Prose.boardedWindows)
+        scenery
+    }
+
+    let windowsAtSouth = Item {
+        name("boarded windows")
+        adjectives("boarded")
+        synonyms("windows", "window")
+        description(Prose.boardedWindows)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.northOfHouse` and `Prose.southOfHouse`.
+    let treesAtNorth = Item {
+        name("trees")
+        description(Prose.houseTrees)
+        scenery
+    }
+
+    let treesAtSouth = Item {
+        name("trees")
+        description(Prose.houseTrees)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.northOfHouse` — the path north through the trees.
+    let pathAtNorth = Item {
+        name("narrow path")
+        adjectives("narrow")
+        synonyms("path")
+        description(Prose.housePath)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.behindHouse` — the path east into the forest.
+    let pathAtBehind = Item {
+        name("path")
+        description(Prose.housePath)
+        scenery
+    }
+
+    /// (#407) Named by the three forest descriptions — one per room.
+    let treesAtForestWest = Item {
+        name("trees")
+        description(Prose.forestTrees)
+        scenery
+    }
+
+    let treesAtForestEast = Item {
+        name("trees")
+        description(Prose.forestTrees)
+        scenery
+    }
+
+    let treesAtForestNortheast = Item {
+        name("trees")
+        description(Prose.forestTrees)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.forestWest` — the sunlight to the east.
+    let sunlightAtForestWest = Item {
+        name("sunlight")
+        description(Prose.eastSunlight)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.forestPath`; `branches` and `branch` are nouns
+    /// the prose names too.
+    let lowBranches = Item {
+        name("low branches")
+        adjectives("low")
+        synonyms("branches", "branch")
+        description(Prose.treeBranches)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.upATree`; a separate fixture from the path's
+    /// branches — these are the boughs you sit among.
+    let perchBranches = Item {
+        name("large branches")
+        adjectives("large")
+        synonyms("branches", "branch")
+        description(Prose.perchBranches)
+        scenery
+    }
+
+    // Canyon View's paragraph names the whole canyon country; each named
+    // feature answers here.
+
+    /// (#407) Named by `Prose.canyonView`.
+    let greatCanyon = Item {
+        name("great canyon")
+        adjectives("great")
+        synonyms("canyon")
+        description(Prose.greatCanyon)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.canyonView`.
+    let riverFromCanyonView = Item {
+        name("frigid river")
+        adjectives("frigid")
+        synonyms("river")
+        description(Prose.frigidRiver)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.canyonView`.
+    let cliffsFromCanyonView = Item {
+        name("white cliffs")
+        adjectives("white")
+        synonyms("cliffs", "cliff")
+        description(Prose.whiteCliffs)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.canyonView`; `ramparts` is the same wall of
+    /// mountains by its other word.
+    let flatheadMountains = Item {
+        name("flathead mountains")
+        adjectives("flathead")
+        synonyms("mountains", "ramparts")
+        description(Prose.flatheadMountains)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.canyonView`.
+    let fallsFromCanyonView = Item {
+        name("aragain falls")
+        adjectives("aragain")
+        synonyms("falls", "waterfall")
+        description(Prose.fallsFromCanyonView)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.canyonView`. No rainbow item exists anywhere
+    /// before this one, though three rooms print the word.
+    let rainbowFromCanyonView = Item {
+        name("rainbow")
+        description(Prose.rainbowArch)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.canyonView`.
+    let riverCavern = Item {
+        name("dark cavern")
+        adjectives("dark", "great")
+        synonyms("cavern")
+        description(Prose.riverCavern)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.rockyLedge`.
+    let canyonCliff = Item {
+        name("cliff")
+        description(Prose.canyonCliff)
+        scenery
+    }
+
+    // End of Rainbow's paragraph names the falls from below, the cliffs, the
+    // sunlight, the beach and the rainbow.
+
+    /// (#407) Named by `Prose.endOfRainbow` — the same rainbow
+    /// ``rainbowFromCanyonView`` names, seen from its end.
+    let rainbowAtEnd = Item {
+        name("rainbow")
+        description(Prose.rainbowArch)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.endOfRainbow`.
+    let fallsAtEnd = Item {
+        name("aragain falls")
+        adjectives("aragain")
+        synonyms("falls", "waterfall")
+        description(Prose.fallsFromBelow)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.endOfRainbow`.
+    let cliffsAtEnd = Item {
+        name("white cliffs")
+        adjectives("white")
+        synonyms("cliffs", "cliff")
+        description(Prose.whiteCliffs)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.endOfRainbow`.
+    let sunlightAtEnd = Item {
+        name("sunlight")
+        description(Prose.eastSunlight)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.endOfRainbow`.
+    let beachAtEnd = Item {
+        name("rocky beach")
+        adjectives("rocky", "small")
+        synonyms("beach")
+        description(Prose.riverBeach)
+        scenery
+    }
+
+    // The Stone Barrow's paragraph names the barrow, its door and the tomb
+    // behind it.
+
+    /// (#407) Named by `Prose.stoneBarrow`.
+    let barrowStone = Item {
+        name("stone barrow")
+        adjectives("stone", "massive")
+        synonyms("barrow")
+        description(Prose.barrowStone)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.stoneBarrow`.
+    let barrowDoor = Item {
+        name("stone door")
+        adjectives("stone", "huge")
+        synonyms("door")
+        description(Prose.barrowDoor)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.stoneBarrow`.
+    let barrowTomb = Item {
+        name("tomb")
+        description(Prose.barrowTomb)
+        scenery
+    }
+
+    // Inside the Barrow's description — and the epilogue the win prints —
+    // name the cavern, the stream, the footbridge, the sign and the tunnel.
+
+    /// (#407) Named by `Prose.insideBarrow` and `Prose.stoneBarrowEpilogue`.
+    let barrowCavern = Item {
+        name("enormous cavern")
+        adjectives("enormous", "brightly", "lit")
+        synonyms("cavern")
+        description(Prose.barrowCavern)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.stoneBarrowEpilogue`.
+    let barrowStream = Item {
+        name("wide stream")
+        adjectives("wide")
+        synonyms("stream")
+        description(Prose.barrowStream)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.stoneBarrowEpilogue`; `bridge` is its other word.
+    let barrowFootbridge = Item {
+        name("wooden footbridge")
+        adjectives("wooden", "small")
+        synonyms("footbridge", "bridge")
+        description(Prose.barrowFootbridge)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.stoneBarrowEpilogue`.
+    let barrowSign = Item {
+        name("large sign")
+        adjectives("large")
+        synonyms("sign")
+        description(Prose.barrowSign)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.stoneBarrowEpilogue`.
+    let barrowTunnel = Item {
+        name("dark tunnel")
+        adjectives("dark")
+        synonyms("tunnel")
+        description(Prose.barrowTunnel)
+        scenery
+    }
+
     // MARK: - Map
 
     var map: WorldMap {
@@ -338,6 +641,41 @@ struct ZorkAboveGround: GameContent {
         stoneBarrow.in(insideBarrow)
 
         // Entities.
+        field.starts(in: westOfHouse)
+        windowsAtNorth.starts(in: northOfHouse)
+        windowsAtSouth.starts(in: southOfHouse)
+        treesAtNorth.starts(in: northOfHouse)
+        treesAtSouth.starts(in: southOfHouse)
+        pathAtNorth.starts(in: northOfHouse)
+        pathAtBehind.starts(in: behindHouse)
+        treesAtForestWest.starts(in: forestWest)
+        treesAtForestEast.starts(in: forestEast)
+        treesAtForestNortheast.starts(in: forestNortheast)
+        sunlightAtForestWest.starts(in: forestWest)
+        lowBranches.starts(in: forestPath)
+        perchBranches.starts(in: upATree)
+        greatCanyon.starts(in: canyonView)
+        riverFromCanyonView.starts(in: canyonView)
+        cliffsFromCanyonView.starts(in: canyonView)
+        flatheadMountains.starts(in: canyonView)
+        fallsFromCanyonView.starts(in: canyonView)
+        rainbowFromCanyonView.starts(in: canyonView)
+        riverCavern.starts(in: canyonView)
+        canyonCliff.starts(in: rockyLedge)
+        rainbowAtEnd.starts(in: endOfRainbow)
+        fallsAtEnd.starts(in: endOfRainbow)
+        cliffsAtEnd.starts(in: endOfRainbow)
+        sunlightAtEnd.starts(in: endOfRainbow)
+        beachAtEnd.starts(in: endOfRainbow)
+        barrowStone.starts(in: stoneBarrow)
+        barrowDoor.starts(in: stoneBarrow)
+        barrowTomb.starts(in: stoneBarrow)
+        barrowCavern.starts(in: insideBarrow)
+        barrowStream.starts(in: insideBarrow)
+        barrowFootbridge.starts(in: insideBarrow)
+        barrowSign.starts(in: insideBarrow)
+        barrowTunnel.starts(in: insideBarrow)
+
         whiteHouseAtWest.starts(in: westOfHouse)
         whiteHouseAtNorth.starts(in: northOfHouse)
         whiteHouseAtSouth.starts(in: southOfHouse)

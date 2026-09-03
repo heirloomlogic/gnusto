@@ -278,4 +278,91 @@ extension Prose {
         """
 
     static let sceptreSparkles = "A dazzling display of color briefly emanates from the sceptre."
+
+    // MARK: - River region: (#407) scenery examine lines
+
+    static let damFromRiver = """
+        Flood Control Dam #3, rising behind you and upstream.
+        """
+
+    static let westShoreAtRiver1 = """
+        A landing on the west shore, where the water runs quietly.
+        """
+
+    static let cliffsFromRiver = """
+        The White Cliffs, pale and sheer, hard against the river.
+        """
+
+    static let riverRocks = """
+        Large rocks, black and wet, guarding the west bank.
+        """
+
+    static let riverValley = """
+        The river descends here into a broad valley, its walls falling
+        away on both sides.
+        """
+
+    static let riverBeachWest = """
+        A narrow beach on the west shore, below the cliffs.
+        """
+
+    static let sandyEastBeach = """
+        A sandy beach on the east shore, wide and pale.
+        """
+
+    static let cliffsFromRiver4 = """
+        The cliffs on the west shore, with a small strip of beach below
+        them.
+        """
+
+    static let riverLandingArea = """
+        A large landing area on the east shore, though the roar drowns
+        everything else.
+        """
+
+    static let cliffsPath = """
+        A narrow path heading south along the base of the Cliffs.
+        """
+
+    static let cliffsPathNorth = """
+        A narrow path leading north along the shore.
+        """
+
+    static let tightPassage = """
+        A tight passage leading west into the cliffs themselves.
+        """
+
+    static let shoreCorner = """
+        The south end of the path, quickly turning around a sharp corner.
+        """
+
+    static let eastShore = """
+        The eastern bank itself, the water running treacherous at your feet.
+        """
+
+    static let buriedPassage = """
+        A passage partially buried in sand, opening to the northeast.
+        """
+
+    static let beachSand = """
+        Pale river sand, thick underfoot and marked only by your own
+        tracks.
+        """
+
+    static let fallsFromTop = """
+        Aragain Falls itself, an enormous waterfall with a drop of about
+        450 feet.
+        """
+
+    static let fallsPath = """
+        The only path here, at the north end of the falls.
+        """
+
+    static let rainbowUnderfoot = """
+        The rainbow you stand on, arching east-west above the roar.
+        """
+
+    static let fallsFromRainbow = """
+        The Falls, plunging away beneath the rainbow's arc.
+        """
 }

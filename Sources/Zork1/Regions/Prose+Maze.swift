@@ -166,4 +166,29 @@ extension Prose {
     static let cyclopsNotThirsty = "The cyclops apparently is not thirsty and refuses your generous offer."
 
     static let cyclopsWontEatThat = "The cyclops is not so stupid as to eat THAT!"
+
+    // MARK: - Maze region: (#407) scenery examine lines
+
+    static let cyclopsStaircase = """
+        A staircase leading up, which the cyclops guards.
+        """
+
+    static let discardedBags = """
+        A number of discarded bags, which crumble at your touch — scattered
+        about on the floor.
+        """
+
+    static let treasureRoomGranite = """
+        The east wall is solid granite, unmoved since the room was cut.
+        """
+
+    static let strangePassageDoor = """
+        An old wooden door, with a large opening in it — about cyclops
+        sized. The door is on the east.
+        """
+
+    static let strangePassageOpening = """
+        A large opening in the wooden door, smashed clean through by
+        something very strong.
+        """
 }

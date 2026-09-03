@@ -45,6 +45,48 @@ extension Prose {
         The chimney leads upward, and looks climbable.
         """
 
+    // MARK: - Cellar region: (#407) scenery examine lines
+
+    static let galleryVandals = """
+        Whoever they were, the vandals are long gone — through either the
+        north or west exits, like as not. Only their leavings remain.
+        """
+
+    static let studioFireplace = """
+        A broad fireplace, black with old soot, the chimney rising from it.
+        """
+
+    static let studioDoor = """
+        An open door at the south end of the room, itself covered with
+        paint.
+        """
+
+    static let studioPaints = """
+        The walls and floors are splattered with paints of 69 different
+        colors, every one of them dry.
+        """
+
+    static let trollBloodstains = """
+        Dark bloodstains spatter the walls, some of them unmistakably
+        recent.
+        """
+
+    static let trollScratches = """
+        Deep scratches, perhaps made by an axe, gouge the stone.
+        """
+
+    static let trollHole = """
+        A forbidding hole leading west, out of which no light comes.
+        """
+
+    static let chasmPassage = """
+        A narrow passage going north from the chasm's edge.
+        """
+
+    static let chasmPath = """
+        The path you are on, continuing east along the chasm.
+        """
+
     // MARK: - The Troll Room
     //
     // Original prose only, as ever: the troll's name and his room's name

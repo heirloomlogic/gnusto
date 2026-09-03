@@ -104,8 +104,148 @@ struct ZorkDam: GameContent {
     let controlPanel = Item {
         name("control panel")
         adjectives("control")
-        synonyms("panel")
+        // (#407) The panel's examine line names dials and fittings; they are
+        // its studs, not a thing apart.
+        synonyms("panel", "dials", "dial", "fittings", "fitting")
         description(Prose.controlPanel)
+        scenery
+    }
+
+    // MARK: - (#407) scenery: nouns the room prose prints
+
+    /// (#407) Named by `Prose.damLobby`.
+    let lobbyDoorways = Item {
+        name("open doorways")
+        adjectives("open")
+        synonyms("doorways", "doorway")
+        description(Prose.lobbyDoorways)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.guidebook`'s first-sight line — the desk the
+    /// guidebooks sit on.
+    let receptionDesk = Item {
+        name("reception desk")
+        adjectives("reception")
+        synonyms("desk")
+        description(
+            """
+            A reception desk, long abandoned, its surface gone gray with
+            dust.
+            """)
+        surface
+        scenery
+    }
+
+    /// (#407) Named by `Prose.maintenanceRoom`.
+    let maintenanceDoorways = Item {
+        name("doorways")
+        synonyms("doorway")
+        description(Prose.maintenanceDoorways)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.maintenanceRoom`.
+    let maintenanceWall = Item {
+        name("wall")
+        description(Prose.maintenanceWall)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.maintenanceRoom`.
+    let equipment = Item {
+        name("valuable equipment")
+        adjectives("valuable")
+        synonyms("equipment")
+        description(Prose.maintenanceEquipment)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.damBase`.
+    let cliffsFromDamBase = Item {
+        name("white cliffs")
+        adjectives("white")
+        synonyms("cliffs", "cliff")
+        description(Prose.cliffsFromDamBase)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.damBase`.
+    let riverAtDamBase = Item {
+        name("frigid river")
+        adjectives("frigid")
+        synonyms("river", "shores")
+        description(Prose.riverAtDamBase)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.reservoirSouth`.
+    let reservoirLake = Item {
+        name("large lake")
+        adjectives("large")
+        synonyms("lake")
+        description(Prose.reservoirLake)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.reservoirSouth`.
+    let reservoirChasm = Item {
+        name("chasm")
+        description(Prose.reservoirChasm)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.reservoirSouth`.
+    let reservoirCanyon = Item {
+        name("canyon")
+        description(Prose.reservoirCanyon)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.reservoir`.
+    let reservoirMud = Item {
+        name("mud")
+        description(Prose.reservoirMud)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.reservoir`.
+    let reservoirShores = Item {
+        name("shores")
+        synonyms("shore")
+        description(Prose.reservoirShores)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.reservoirNorth`.
+    let reservoirStairway = Item {
+        name("slimy stairway")
+        adjectives("slimy")
+        synonyms("stairway", "stairs")
+        description(Prose.reservoirStairway)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.stream`.
+    let streamBeach = Item {
+        name("narrow beach")
+        adjectives("narrow")
+        synonyms("beach")
+        description(Prose.streamBeach)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.streamView`, beyond the audit's list.
+    let streamViewPath = Item {
+        name("path")
+        description(Prose.streamViewPath)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.streamView`, beyond the audit's list.
+    let streamViewStream = Item {
+        name("stream")
+        description(Prose.streamViewStream)
         scenery
     }
 
@@ -282,6 +422,22 @@ struct ZorkDam: GameContent {
         bolt.starts(in: damRoom)
         bubble.starts(in: damRoom)
         controlPanel.starts(in: damRoom)
+        lobbyDoorways.starts(in: damLobby)
+        receptionDesk.starts(in: damLobby)
+        maintenanceDoorways.starts(in: maintenanceRoom)
+        maintenanceWall.starts(in: maintenanceRoom)
+        equipment.starts(in: maintenanceRoom)
+        cliffsFromDamBase.starts(in: damBase)
+        riverAtDamBase.starts(in: damBase)
+        reservoirLake.starts(in: reservoirSouth)
+        reservoirChasm.starts(in: reservoirSouth)
+        reservoirCanyon.starts(in: reservoirSouth)
+        reservoirMud.starts(in: reservoir)
+        reservoirShores.starts(in: reservoir)
+        reservoirStairway.starts(in: reservoirNorth)
+        streamBeach.starts(in: stream)
+        streamViewPath.starts(in: streamView)
+        streamViewStream.starts(in: streamView)
         guidebook.starts(in: damLobby)
         matchbook.starts(in: damLobby)
         blueButton.starts(in: maintenanceRoom)

@@ -229,4 +229,95 @@ extension Prose {
     static let matchesGone = "I'm afraid that you have run out of matches."
 
     static let matchBurnsOut = "The match has gone out."
+
+    // MARK: - Temple region: (#407) scenery examine lines
+
+    static let dome = """
+        A large dome, forming the ceiling of the room below — high above,
+        at the edge of sight.
+        """
+
+    static let torchRoomDoorway = """
+        A prominent doorway, leading to a down staircase.
+        """
+
+    static let marblePedestal = """
+        A white marble pedestal, standing in the center of the room.
+        """
+
+    static let templeInscription = """
+        An ancient inscription on the east wall, probably a prayer in a
+        long-forgotten language.
+        """
+
+    static let templeStaircase = """
+        A staircase leading down, beneath the inscription.
+        """
+
+    static let templePillars = """
+        Huge marble pillars, framing the exit to the north end of the
+        room.
+        """
+
+    static let templeGraniteWall = """
+        The west wall is solid granite, unbroken and uncarved.
+        """
+
+    static let egyptTomb = """
+        The room looks like an Egyptian tomb — and was used as one, to
+        judge by what stands in it.
+        """
+
+    static let egyptStaircase = """
+        An ascending staircase to the west, back toward the temple.
+        """
+
+    static let caveStaircase = """
+        A dark, forbidding staircase leading down, toward Hades.
+        """
+
+    static let deadPassage = """
+        A passage exiting to the north, back toward the gate.
+        """
+
+    static let altarStone = """
+        What appears to be an altar, standing before you at the south end
+        of the temple.
+        """
+
+    static let altarHole = """
+        A small hole in the floor, in one corner, leading into darkness.
+        You probably could not get back up it.
+        """
+
+    static let hadesInscription = """
+        Inscribed on the gateway:
+
+          Abandon every hope
+          all ye who enter here!
+        """
+
+    static let hadesGateway = """
+        A large gateway, its inscription grim, standing open on the
+        desolation beyond.
+        """
+
+    static let mangledBodies = """
+        A pile of mangled bodies, heaped in one corner of the desolation.
+        """
+
+    static let lamentingVoices = """
+        Thousands of voices, lamenting some hideous fate, borne on the air
+        from beyond the gate.
+        """
+
+    static let lostSouls = """
+        Thousands of lost souls, weeping and moaning, unseen in the dark
+        of the place.
+        """
+
+    static let adventurerRemains = """
+        The remains of dozens of previous adventurers, stacked in the
+        corner — none, you hope, fresher than they look.
+        """
 }

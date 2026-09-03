@@ -244,6 +244,52 @@ struct ZorkMaze: GameContent {
         trait(.weight, 20)
     }
 
+    // MARK: - (#407) scenery: nouns the room prose prints
+
+    /// (#407) Named by `Prose.cyclopsRoom`.
+    let cyclopsStaircase = Item {
+        name("staircase")
+        synonyms("stairs")
+        description(Prose.cyclopsStaircase)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.treasureRoom`.
+    let discardedBags = Item {
+        name("discarded bags")
+        adjectives("discarded")
+        synonyms("bags", "bag")
+        description(Prose.discardedBags)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.treasureRoom`.
+    let graniteWall = Item {
+        name("granite wall")
+        adjectives("granite", "solid", "east")
+        synonyms("granite", "wall")
+        description(Prose.treasureRoomGranite)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.strangePassage`.
+    let strangePassageDoor = Item {
+        name("old wooden door")
+        adjectives("old", "wooden")
+        synonyms("door")
+        description(Prose.strangePassageDoor)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.strangePassage`.
+    let cyclopsOpening = Item {
+        name("large opening")
+        adjectives("large")
+        synonyms("opening")
+        description(Prose.strangePassageOpening)
+        scenery
+    }
+
     // MARK: - State
 
     /// Whether the cyclops is past caring — asleep (fed) or fled (routed). The
@@ -384,6 +430,11 @@ struct ZorkMaze: GameContent {
         bagOfCoins.starts(in: maze5)
         burnedOutLantern.starts(in: maze5)
         cyclops.starts(in: cyclopsRoom)
+        cyclopsStaircase.starts(in: cyclopsRoom)
+        discardedBags.starts(in: treasureRoom)
+        graniteWall.starts(in: treasureRoom)
+        strangePassageDoor.starts(in: strangePassage)
+        cyclopsOpening.starts(in: strangePassage)
         silverChalice.starts(in: treasureRoom)
     }
 

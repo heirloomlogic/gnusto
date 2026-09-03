@@ -200,4 +200,92 @@ extension Prose {
 
               ** BOOOOOOOOOOOM **
         """
+
+    // MARK: - Coal Mine region: (#407) scenery examine lines
+
+    static let entranceShaft = """
+        The shaft, entering the west wall of the mine.
+        """
+
+    static let batRoomDoors = """
+        Doors to the east and south — the room's only ways out.
+        """
+
+    static let squeakyPassage = """
+        A passage at the north end, from which the squeaky sounds come.
+        """
+
+    static let timberPassages = """
+        A wide passage from the east, turning at the west end of the room
+        into a very narrow passageway.
+        """
+
+    static let strongDraft = """
+        A strong draft, blowing cold from the west.
+        """
+
+    static let shaftRoomShaft = """
+        A small shaft descending through the floor into darkness below.
+        """
+
+    static let shaftFramework = """
+        A metal framework constructed over the top of the shaft.
+        """
+
+    static let ironChain = """
+        A heavy iron chain, attached to the framework and running down the
+        shaft.
+        """
+
+    static let smellyStaircase = """
+        A small descending staircase, from the direction of which the odor
+        comes.
+        """
+
+    static let foulOdor = """
+        A foul odor, drifting up from whatever lies below the staircase.
+        """
+
+    static let smellyTunnel = """
+        A narrow tunnel leading south.
+        """
+
+    static let gasStairs = """
+        A short climb up some stairs, back the way you came.
+        """
+
+    static let gasTunnel = """
+        A narrow tunnel leading east.
+        """
+
+    static let coalGas = """
+        Coal gas, thick and dangerous. An open flame here would be the
+        last thing you smell.
+        """
+
+    static let ricketyLadder = """
+        A rickety wooden ladder leading downward. It might be safe to
+        descend.
+        """
+
+    static let ladderTopStaircase = """
+        A staircase leading upward, out of the very small room.
+        """
+
+    static let ladderBottomLadder = """
+        The bottom of a narrow wooden ladder, rising into the dark.
+        """
+
+    static let brokenTimbers = """
+        Broken timbers, cluttering the long and narrow passage — old mine
+        shoring, collapsed where it stood.
+        """
+
+    static let draftyShaft = """
+        The bottom of a long shaft, rising into darkness above.
+        """
+
+    static let draftyChain = """
+        A heavy iron chain, hanging in the shaft.
+        """
 }

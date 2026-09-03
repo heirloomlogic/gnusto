@@ -114,6 +114,95 @@ struct ZorkMirror: GameContent {
         scenery
     }
 
+    // MARK: - (#407) scenery: nouns the room prose prints
+
+    /// (#407) Named by `Prose.mirrorRoomNorth` — the wall the mirror fills.
+    let wallAtMirrorNorth = Item {
+        name("south wall")
+        adjectives("south")
+        synonyms("wall")
+        description(Prose.mirrorRoomWall)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.mirrorRoomSouth`.
+    let wallAtMirrorSouth = Item {
+        name("south wall")
+        adjectives("south")
+        synonyms("wall")
+        description(Prose.mirrorRoomWall)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.mirrorRoomNorth` and `Prose.mirrorRoomSouth` —
+    /// beyond the audit's list; one per room.
+    let ceilingAtMirrorNorth = Item {
+        name("tall ceiling")
+        adjectives("tall")
+        synonyms("ceiling", "ceilings")
+        description(Prose.mirrorRoomCeiling)
+        scenery
+    }
+
+    let ceilingAtMirrorSouth = Item {
+        name("tall ceiling")
+        adjectives("tall")
+        synonyms("ceiling", "ceilings")
+        description(Prose.mirrorRoomCeiling)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.smallCave`.
+    let smallCaveStaircase = Item {
+        name("staircase")
+        synonyms("stairs")
+        description(Prose.smallCaveStaircase)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.atlantisRoom`.
+    let atlantisStaircase = Item {
+        name("staircase")
+        synonyms("stairs")
+        description(Prose.atlantisStaircase)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.slideRoom`; the quoted "Granite Wall" and the
+    /// word `granite` name the same etching.
+    let etchedLetters = Item {
+        name("etched letters")
+        adjectives("etched")
+        synonyms("letters", "lettering", "granite wall", "granite")
+        description(Prose.etchedLetters)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.slideRoom`.
+    let metalSlide = Item {
+        name("steep metal slide")
+        adjectives("steep", "metal")
+        synonyms("slide")
+        description(Prose.metalSlide)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.slideRoom`.
+    let slideRoomRock = Item {
+        name("rock")
+        description(Prose.slideRoomRock)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.slideRoom`.
+    let slideRoomOpening = Item {
+        name("small opening")
+        adjectives("small")
+        synonyms("opening")
+        description(Prose.slideRoomOpening)
+        scenery
+    }
+
     // MARK: - State
 
     /// Whether a mirror has been smashed (the original's `MIRROR-MUNG`). Once
@@ -167,6 +256,16 @@ struct ZorkMirror: GameContent {
         crystalTrident.starts(in: atlantisRoom)
         mirrorNorth.starts(in: mirrorRoomNorth)
         mirrorSouth.starts(in: mirrorRoomSouth)
+        wallAtMirrorNorth.starts(in: mirrorRoomNorth)
+        wallAtMirrorSouth.starts(in: mirrorRoomSouth)
+        ceilingAtMirrorNorth.starts(in: mirrorRoomNorth)
+        ceilingAtMirrorSouth.starts(in: mirrorRoomSouth)
+        smallCaveStaircase.starts(in: smallCave)
+        atlantisStaircase.starts(in: atlantisRoom)
+        etchedLetters.starts(in: slideRoom)
+        metalSlide.starts(in: slideRoom)
+        slideRoomRock.starts(in: slideRoom)
+        slideRoomOpening.starts(in: slideRoom)
     }
 
     // MARK: - Rules

@@ -275,6 +275,128 @@ extension Prose {
         mastered ZORK: The Great Underground Empire.
         """
 
+    // MARK: - AboveGround: (#407) scenery examine lines
+
+    // One short answer per noun the room prose names and nothing declared.
+    // Written fresh (the original leaves these unexaminable) and kept terse.
+
+    static let field = """
+        Open grassland stretching west toward the forest's edge.
+        """
+
+    static let boardedWindows = """
+        Every window is boarded over; nothing shows through the planks.
+        """
+
+    static let houseTrees = """
+        The trees crowd close to the house, their branches brushing the eaves.
+        """
+
+    static let housePath = """
+        A narrow path packed hard by feet, winding away through the trees.
+        """
+
+    static let forestTrees = """
+        Tall trees all around, their trunks lost in the dim green light.
+        """
+
+    static let eastSunlight = """
+        Brighter air between the trunks to the east, as of open sky beyond.
+        """
+
+    static let treeBranches = """
+        Low, gnarled branches, thick enough to bear a climber's weight.
+        """
+
+    static let perchBranches = """
+        Great boughs spread around you; the one overhead is out of reach.
+        """
+
+    static let greatCanyon = """
+        The canyon drops away sheer, its walls falling hundreds of feet to
+        the river below.
+        """
+
+    static let frigidRiver = """
+        The Frigid River, cold and quick, hurrying along the canyon floor.
+        """
+
+    static let whiteCliffs = """
+        Pale cliffs rising from the far bank, walling the river from north
+        to south.
+        """
+
+    static let flatheadMountains = """
+        Mighty ramparts of the Flathead Mountains, white-topped, far to the
+        east.
+        """
+
+    static let fallsFromCanyonView = """
+        Aragain Falls, a bright ribbon of falling water crowned by a
+        rainbow.
+        """
+
+    static let rainbowArch = """
+        A rainbow spanning the falls, too faint to hold anything.
+        """
+
+    static let riverCavern = """
+        A great dark cavern out of which the river flows, its mouth lost in
+        shadow.
+        """
+
+    static let canyonCliff = """
+        The canyon wall rises sheer above and falls away below; the ledge
+        clings to it halfway.
+        """
+
+    static let fallsFromBelow = """
+        The falls thunder past, their spray drifting cool across the beach.
+        """
+
+    static let riverBeach = """
+        A narrow beach of pale sand and rock, littered with river-borne
+        stones.
+        """
+
+    static let barrowStone = """
+        A massive barrow of ancient stone, heaved up from the earth long
+        ago.
+        """
+
+    static let barrowDoor = """
+        A huge stone door, standing open. Beyond it lies only darkness.
+        """
+
+    static let barrowTomb = """
+        The dark of the tomb. Whatever lies within is past seeing from
+        here.
+        """
+
+    static let barrowCavern = """
+        An enormous cavern, brightly lit, into which the way leads on.
+        """
+
+    static let barrowStream = """
+        A wide stream, running quiet and clear through the cavern's
+        center.
+        """
+
+    static let barrowFootbridge = """
+        A small wooden footbridge spanning the stream.
+        """
+
+    static let barrowSign = """
+        A large sign floating above the bridge. It reads: "All ye who
+        stand before this bridge have completed a great and perilous
+        adventure which has tested your wit and courage. You have
+        mastered ZORK: The Great Underground Empire."
+        """
+
+    static let barrowTunnel = """
+        A dark tunnel leading away beyond the bridge.
+        """
+
     static let barrowPathBlocked = """
         There is no path southwest from here — only the forest, and the
         house at your back.

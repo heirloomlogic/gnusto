@@ -190,6 +190,183 @@ struct ZorkTemple: GameContent {
         trait(.openFlame, true)
     }
 
+    // MARK: - (#407) scenery: nouns the room prose prints
+
+    /// (#407) Named by `Prose.domeRoom`.
+    let dome = Item {
+        name("large dome")
+        adjectives("large", "wooden")
+        synonyms("dome")
+        description(Prose.dome)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.torchRoom`.
+    let torchRoomDoorway = Item {
+        name("prominent doorway")
+        adjectives("prominent")
+        synonyms("doorway", "door")
+        description(Prose.torchRoomDoorway)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.torchRoom` — the same dome ``dome`` names,
+    /// seen from below it.
+    let domeAtTorch = Item {
+        name("dome")
+        description(Prose.dome)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.torchRoom`.
+    let marblePedestal = Item {
+        name("white marble pedestal")
+        adjectives("white", "marble")
+        synonyms("pedestal")
+        description(Prose.marblePedestal)
+        surface
+        scenery
+    }
+
+    /// (#407) Named by `Prose.temple`; `prayer` is the same inscription by
+    /// what it probably is.
+    let templeInscription = Item {
+        name("ancient inscription")
+        adjectives("ancient")
+        synonyms("inscription", "prayer")
+        description(Prose.templeInscription)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.temple`.
+    let templeStaircase = Item {
+        name("staircase")
+        synonyms("stairs")
+        description(Prose.templeStaircase)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.temple`.
+    let marblePillars = Item {
+        name("huge marble pillars")
+        adjectives("huge", "marble")
+        synonyms("pillars", "pillar")
+        description(Prose.templePillars)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.temple`.
+    let templeGraniteWall = Item {
+        name("granite wall")
+        adjectives("granite", "west", "solid")
+        synonyms("granite", "wall")
+        description(Prose.templeGraniteWall)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.egyptRoom`.
+    let egyptTomb = Item {
+        name("egyptian tomb")
+        adjectives("egyptian")
+        synonyms("tomb")
+        description(Prose.egyptTomb)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.egyptRoom`, beyond the audit's list.
+    let egyptStaircase = Item {
+        name("ascending staircase")
+        adjectives("ascending")
+        synonyms("staircase", "stairs")
+        description(Prose.egyptStaircase)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.templeCave`, beyond the audit's list.
+    let caveStaircase = Item {
+        name("dark staircase")
+        adjectives("dark", "forbidding")
+        synonyms("staircase", "stairs")
+        description(Prose.caveStaircase)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.landOfDead`, beyond the audit's list.
+    let deadPassage = Item {
+        name("passage")
+        description(Prose.deadPassage)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.altar`.
+    let altarStone = Item {
+        name("altar")
+        description(Prose.altarStone)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.altar`.
+    let altarHole = Item {
+        name("small hole")
+        adjectives("small")
+        synonyms("hole")
+        description(Prose.altarHole)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.entranceToHades`.
+    let hadesGateway = Item {
+        name("large gateway")
+        adjectives("large")
+        synonyms("gate", "gateway")
+        description(Prose.hadesGateway)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.entranceToHades` — the verse inscribed on the
+    /// gateway, kept as a form because its arrangement is the content.
+    let hadesInscription = Item {
+        name("inscription")
+        synonyms("verse", "writing")
+        description(Prose.hadesInscription)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.entranceToHades`.
+    let mangledBodies = Item {
+        name("pile of mangled bodies")
+        adjectives("mangled")
+        synonyms("bodies", "body", "pile")
+        description(Prose.mangledBodies)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.entranceToHades` — narrative, not a fixture,
+    /// but the engine's rule is that every noun a room description prints
+    /// must be answerable.
+    let lamentingVoices = Item {
+        name("voices")
+        synonyms("voice")
+        description(Prose.lamentingVoices)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.landOfDead`.
+    let lostSouls = Item {
+        name("lost souls")
+        adjectives("lost")
+        synonyms("souls", "soul")
+        description(Prose.lostSouls)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.landOfDead`.
+    let adventurerRemains = Item {
+        name("remains")
+        description(Prose.adventurerRemains)
+        scenery
+    }
+
     // MARK: - State
 
     /// Whether the rope is made fast to the dome railing — gates the descent to
@@ -268,6 +445,26 @@ struct ZorkTemple: GameContent {
         // Entities. (The burning match is unplaced — it starts .nowhere.)
         torch.starts(in: torchRoom)
         railing.starts(in: domeRoom)
+        dome.starts(in: domeRoom)
+        torchRoomDoorway.starts(in: torchRoom)
+        domeAtTorch.starts(in: torchRoom)
+        marblePedestal.starts(in: torchRoom)
+        templeInscription.starts(in: temple)
+        templeStaircase.starts(in: temple)
+        marblePillars.starts(in: temple)
+        templeGraniteWall.starts(in: temple)
+        egyptTomb.starts(in: egyptRoom)
+        egyptStaircase.starts(in: egyptRoom)
+        caveStaircase.starts(in: cave)
+        deadPassage.starts(in: landOfDead)
+        altarStone.starts(in: altar)
+        altarHole.starts(in: altar)
+        hadesGateway.starts(in: entranceToHades)
+        hadesInscription.starts(in: entranceToHades)
+        mangledBodies.starts(in: entranceToHades)
+        lamentingVoices.starts(in: entranceToHades)
+        lostSouls.starts(in: landOfDead)
+        adventurerRemains.starts(in: landOfDead)
         bell.starts(in: temple)
         book.starts(in: altar)
         candles.starts(in: altar)

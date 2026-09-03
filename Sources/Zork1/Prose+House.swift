@@ -109,4 +109,55 @@ extension Prose {
         north, and a crawlway to the south. On the west is the bottom of a
         steep metal ramp which is unclimbable.
         """
+
+    // MARK: - House: (#407) scenery examine lines
+
+    static let kitchenTable = """
+        A sturdy kitchen table, dusted with flour and marked with knife
+        scores.
+        """
+
+    static let kitchenStaircase = """
+        A dark staircase, climbing up out of the kitchen's light.
+        """
+
+    static let kitchenPassage = """
+        A passage leading west, toward the front of the house.
+        """
+
+    static let kitchenChimney = """
+        A dark chimney leading down — the flue from the fireplace above.
+        Too narrow to climb back up.
+        """
+
+    static let livingRoomDoorway = """
+        A doorway opening east, into the kitchen.
+        """
+
+    static let livingRoomDoor = """
+        A wooden door, with strange gothic lettering on it. It appears to
+        be nailed shut.
+        """
+
+    static let gothicLettering = """
+        Strange gothic lettering, in a language you cannot read — though
+        the letters look old, and somehow important.
+        """
+
+    static let atticStairway = """
+        The stairway down to the kitchen, the attic's only way out.
+        """
+
+    static let cellarPassageway = """
+        A narrow passageway leading north, into darkness.
+        """
+
+    static let cellarCrawlway = """
+        A crawlway to the south, low enough to walk through bent double.
+        """
+
+    static let cellarRamp = """
+        The bottom of a steep metal ramp, rising up out of reach. It
+        cannot be climbed.
+        """
 }

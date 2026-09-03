@@ -241,4 +241,71 @@ extension Prose {
     static let streamTooSmall = "The stream emerges from a spot too small for you to enter."
 
     static let channelTooNarrow = "The channel is too narrow."
+
+    // MARK: - Dam region: (#407) scenery examine lines
+
+    static let lobbyDoorways = """
+        Open doorways to the north and east, each marked "Private".
+        """
+
+    static let maintenanceDoorways = """
+        Doorways to the west and south, back toward the lobby.
+        """
+
+    static let maintenanceWall = """
+        The wall in front of you, holding the group of colored buttons and
+        little else of use.
+        """
+
+    static let maintenanceEquipment = """
+        Most of the valuable equipment is gone — ransacked recently, by
+        the look of the place.
+        """
+
+    static let cliffsFromDamBase = """
+        The White Cliffs, rising like giant walls from north to south
+        along the river's shores.
+        """
+
+    static let riverAtDamBase = """
+        The river Frigid, flowing by here on its way downstream.
+        """
+
+    static let reservoirLake = """
+        The large lake behind the dam, far too deep and wide for
+        crossing.
+        """
+
+    static let reservoirChasm = """
+        A chasm, its edge running southwest beside the steep pathway.
+        """
+
+    static let reservoirCanyon = """
+        A canyon, opening to the southeast.
+        """
+
+    static let reservoirMud = """
+        A large mud pile — the bed of the drained lake, slick underfoot.
+        """
+
+    static let reservoirShores = """
+        "Shores" to the north and south, where the lake's edge used to
+        be.
+        """
+
+    static let reservoirStairway = """
+        A slimy stairway leaving the room to the north.
+        """
+
+    static let streamBeach = """
+        A narrow beach to land on, beside the stream.
+        """
+
+    static let streamViewPath = """
+        The path you stand on, following the stream from west to east.
+        """
+
+    static let streamViewStream = """
+        A gently flowing stream, running from west to east.
+        """
 }
