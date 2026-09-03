@@ -33,12 +33,48 @@ import Glibc
 /// Split out from the read loop, and a value type, because "a frame split
 /// across two reads is reassembled" is the kind of claim that should be
 /// testable without a pipe, a subprocess or a thread.
+///
+/// The scan is linear. Reads arrive in chunks of whatever the pipe had, and a
+/// large frame — an `export` of a long game is megabytes — spans many of them.
+/// Rescanning the whole buffer from its head on every chunk would cost the
+/// square of the frame size in bytes examined; instead each chunk is scanned
+/// once from where the last scan stopped, and only the tail after the last
+/// newline is ever carried over. A byte is looked at exactly once.
 struct LineBuffer {
-    /// Bytes seen since the last newline.
+    /// Bytes since the last newline — the frame still being assembled.
     private var pending: [UInt8] = []
 
+    /// How many bytes of `pending` have already been scanned for a newline
+    /// without finding one. Where the next scan resumes, which is the whole
+    /// trick: nothing before this is ever looked at again.
+    private var scanned = 0
+
+    /// The most bytes one unfinished frame may occupy before the buffer gives
+    /// up. Generous by design — bigger than any frame this protocol produces —
+    /// so hitting it means a client that has stopped speaking JSON, and the
+    /// answer is to fail the connection rather than buffer it forever.
+    let maxPendingBytes: Int
+
+    /// The default cap: 64 MiB, against megabytes for the largest real frame.
+    static let defaultMaxPendingBytes = 64 * 1024 * 1024
+
     /// An empty buffer.
-    init() {}
+    ///
+    /// - Parameter maxPendingBytes: the cap on one unfinished frame;
+    ///   ``defaultMaxPendingBytes`` unless there is a reason to be tighter.
+    init(maxPendingBytes: Int = LineBuffer.defaultMaxPendingBytes) {
+        self.maxPendingBytes = maxPendingBytes
+    }
+
+    /// Why a buffer gave up on its client.
+    struct FrameLimitError: Error, CustomStringConvertible, Equatable {
+        var description: String {
+            "a frame exceeded the \(maxPendingBytes)-byte pending limit"
+        }
+
+        /// The cap that was passed, for the message.
+        let maxPendingBytes: Int
+    }
 
     /// Adds bytes and hands back every line they completed.
     ///
@@ -51,17 +87,34 @@ struct LineBuffer {
     /// - Parameter bytes: the bytes just read.
     /// - Returns: the complete lines now available, in order, without their
     ///   newlines.
-    mutating func frames(in bytes: [UInt8]) -> [String] {
+    /// - Throws: ``FrameLimitError`` when the frame still being assembled
+    ///   passes ``maxPendingBytes``. The caller should stop reading and fail
+    ///   the connection: there is no resynchronizing with a client whose
+    ///   framing is gone. Frames completed by the same call are lost with it —
+    ///   they were answered-for requests whose answers now go nowhere, since
+    ///   the connection is being failed.
+    mutating func frames<S: Sequence>(in bytes: S) throws -> [String] where S.Element == UInt8 {
         pending.append(contentsOf: bytes)
         var frames: [String] = []
-        while let newline = pending.firstIndex(of: UInt8(ascii: "\n")) {
-            let line = Array(pending[..<newline])
-            pending.removeSubrange(...newline)
-            let text = String(decoding: line, as: UTF8.self)
-                .trimmingCharacters(in: .whitespacesAndNewlines)
-            if !text.isEmpty {
-                frames.append(text)
+        var start = 0
+        var cursor = scanned
+        while cursor < pending.count {
+            if pending[cursor] == UInt8(ascii: "\n") {
+                let text = String(decoding: pending[start..<cursor], as: UTF8.self)
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                start = cursor + 1
+                if !text.isEmpty {
+                    frames.append(text)
+                }
             }
+            cursor += 1
+        }
+        scanned = pending.count - start
+        if start > 0 {
+            pending.removeSubrange(..<start)
+        }
+        guard pending.count <= maxPendingBytes else {
+            throw FrameLimitError(maxPendingBytes: maxPendingBytes)
         }
         return frames
     }
@@ -71,6 +124,10 @@ struct LineBuffer {
 
 /// The incoming half of the transport.
 enum StdioReader {
+    /// How many bytes one `read(2)` asks for. The tests feed frames in chunks
+    /// of this size, so a change here is a change to what they prove.
+    static let readChunkSize = 64 * 1024
+
     /// Every frame the client sends, until end of input.
     ///
     /// The read is blocking and runs on a `Thread` of its own rather than on
@@ -79,7 +136,10 @@ enum StdioReader {
     /// client is thinking — which is most of a play-test round.
     ///
     /// The stream finishes on end of input, which is how the server learns the
-    /// client has gone and how the process exits cleanly.
+    /// client has gone and how the process exits cleanly. It also finishes —
+    /// with a report on standard error naming the limit — when one unfinished
+    /// frame passes ``LineBuffer/defaultMaxPendingBytes``, because a client
+    /// that has stopped framing is a client to hang up on, not to buffer.
     ///
     /// - Parameter descriptor: the file descriptor to read, standard input in
     ///   production.
@@ -88,15 +148,25 @@ enum StdioReader {
         AsyncStream { continuation in
             let thread = Thread {
                 var buffer = LineBuffer()
-                var chunk = [UInt8](repeating: 0, count: 64 * 1024)
+                var chunk = [UInt8](repeating: 0, count: readChunkSize)
                 while true {
                     let count = chunk.withUnsafeMutableBytes { raw -> Int in
                         guard let base = raw.baseAddress else { return 0 }
                         return readBytes(descriptor, base, raw.count)
                     }
                     if count > 0 {
-                        for frame in buffer.frames(in: Array(chunk[0..<count])) {
-                            continuation.yield(frame)
+                        do {
+                            for frame in try buffer.frames(in: chunk[0..<count]) {
+                                continuation.yield(frame)
+                            }
+                        } catch {
+                            // A frame that will not end is a client that has
+                            // stopped speaking the framing; there is no
+                            // resynchronizing with it, so report and hang up.
+                            // End of input would shut the server down anyway;
+                            // here the client learns why on its own log.
+                            writeToStandardError("gnusto-mcp: \(error)")
+                            break
                         }
                         continue
                     }
@@ -137,27 +207,37 @@ actor StdioWriter {
 
     /// Writes one frame and its newline, in full.
     ///
-    /// A short write is resumed rather than reported: the caller has no
-    /// recourse — the channel it would complain on is the one that just
-    /// failed — and half a frame is worse than none. A dead pipe ends the
-    /// attempt silently for the same reason; end of input will shut the server
-    /// down a moment later anyway.
+    /// Short writes are `writeAllBytes`' problem, not the caller's; see there.
     ///
     /// - Parameter frame: one JSON document, without its newline.
     func write(_ frame: String) {
-        let bytes = Array("\(frame)\n".utf8)
-        bytes.withUnsafeBytes { raw in
-            guard let base = raw.baseAddress else { return }
-            var offset = 0
-            while offset < raw.count {
-                let written = writeBytes(descriptor, base + offset, raw.count - offset)
-                if written > 0 {
-                    offset += written
-                } else if written < 0 && (errno == EINTR || errno == EAGAIN) {
-                    continue
-                } else {
-                    return
-                }
+        writeAllBytes(descriptor, Array("\(frame)\n".utf8))
+    }
+}
+
+/// `write(2)` until every byte is gone, resuming short writes.
+///
+/// The writer's loop, shared with the transport tests so the test's idea of a
+/// full write and the writer's cannot drift: both resume `EINTR` and `EAGAIN`,
+/// and both give up on anything else. A dead pipe ends the attempt silently —
+/// the channel a caller would complain on is the one that just failed, and
+/// end of input will shut the server down a moment later anyway.
+///
+/// - Parameters:
+///   - descriptor: the descriptor to write to.
+///   - bytes: everything to write, in order.
+func writeAllBytes(_ descriptor: Int32, _ bytes: [UInt8]) {
+    bytes.withUnsafeBytes { raw in
+        guard let base = raw.baseAddress else { return }
+        var offset = 0
+        while offset < raw.count {
+            let written = writeBytes(descriptor, base + offset, raw.count - offset)
+            if written > 0 {
+                offset += written
+            } else if written < 0 && (errno == EINTR || errno == EAGAIN) {
+                continue
+            } else {
+                return
             }
         }
     }

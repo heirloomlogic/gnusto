@@ -247,7 +247,7 @@ struct MCPProtocolTests {
     /// Newline-delimited JSON, and `read(2)` returns whatever the pipe has.
     /// A frame that arrives in two pieces — or eight, mid-word and mid-brace —
     /// is one frame.
-    @Test func aFrameSplitAcrossReadsIsReassembled() {
+    @Test func aFrameSplitAcrossReadsIsReassembled() throws {
         var buffer = LineBuffer()
         let frame = #"{"jsonrpc":"2.0","id":1,"method":"ping"}"#
         let bytes = Array("\(frame)\n".utf8)
@@ -255,29 +255,29 @@ struct MCPProtocolTests {
         var seen: [String] = []
         for chunk in stride(from: 0, to: bytes.count, by: 7) {
             let piece = Array(bytes[chunk..<min(chunk + 7, bytes.count)])
-            seen += buffer.frames(in: piece)
+            seen += try buffer.frames(in: piece)
         }
         #expect(seen == [frame])
     }
 
     /// Three frames in one read, the last of them incomplete: two come out
     /// now, the third when its newline does.
-    @Test func severalFramesInOneReadComeOutSeparately() {
+    @Test func severalFramesInOneReadComeOutSeparately() throws {
         var buffer = LineBuffer()
         let read = "{\"a\":1}\n{\"b\":2}\n{\"c\":"
-        let first = buffer.frames(in: Array(read.utf8))
+        let first = try buffer.frames(in: Array(read.utf8))
         #expect(first == [#"{"a":1}"#, #"{"b":2}"#])
 
-        let second = buffer.frames(in: Array("3}\n".utf8))
+        let second = try buffer.frames(in: Array("3}\n".utf8))
         #expect(second == [#"{"c":3}"#])
     }
 
     /// Blank padding is politeness, not a frame. `\r\n` line endings are the
     /// same frame as `\n`.
-    @Test func blankLinesAndCarriageReturnsAreTolerated() {
+    @Test func blankLinesAndCarriageReturnsAreTolerated() throws {
         var buffer = LineBuffer()
-        #expect(buffer.frames(in: Array("\n\n".utf8)).isEmpty)
-        #expect(buffer.frames(in: Array("{\"a\":1}\r\n".utf8)) == [#"{"a":1}"#])
+        #expect(try buffer.frames(in: Array("\n\n".utf8)).isEmpty)
+        #expect(try buffer.frames(in: Array("{\"a\":1}\r\n".utf8)) == [#"{"a":1}"#])
     }
 
     // MARK: - The mode switch
