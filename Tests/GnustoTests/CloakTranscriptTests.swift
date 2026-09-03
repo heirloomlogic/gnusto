@@ -121,6 +121,28 @@ struct CloakTranscriptTests {
             ])
     }
 
+    /// Every noun the foyer's description prints must answer an `x` — the
+    /// defect class #407 was filed for. The bar's `opulence` is deliberately
+    /// left unanswerable: it is an abstract, and the coverage queue's stop
+    /// list exists so no tester ever spends a turn on it.
+    @Test func theFoyerAnswersEveryNounItPrints() async throws {
+        let transcript = try await play(
+            OperaHouse(),
+            [
+                "x hall", "x street", "x chandeliers", "x gold", "x red", "x doorways",
+                "west", "x hooks", "x peg",
+            ])
+        #expect(!transcript.contains("You can't see any such thing."))
+        expectInOrder(
+            transcript,
+            [
+                "glittering chandeliers",
+                "splendidly decorated",
+                "doorways south and west",
+                "just a small brass hook",
+            ])
+    }
+
     @Test func quitReportsTheScore() async throws {
         let transcript = try await play(OperaHouse(), ["quit"])
         #expect(transcript.contains("Your score is 0 of a possible 2, in 0 turns."))
