@@ -92,6 +92,18 @@ struct SaveStoreTests {
         #expect(url.lastPathComponent == "Zork-I-The-Great-Underground-Empire")
     }
 
+    // MARK: directoryIsInjected
+
+    /// `GNUSTO_SAVE_DIR` set to a non-empty value is what makes a session
+    /// program-driven, and so slot-only — including the `GameMain` path where
+    /// no `saveDirectory:` argument was passed and the injection is invisible
+    /// to the initializer.
+    @Test func directoryIsInjectedReadsTheEnvOverride() {
+        #expect(SaveStore.directoryIsInjected(environment: ["GNUSTO_SAVE_DIR": "/tmp/s"]))
+        #expect(!SaveStore.directoryIsInjected(environment: [:]))
+        #expect(!SaveStore.directoryIsInjected(environment: ["GNUSTO_SAVE_DIR": ""]))
+    }
+
     // MARK: file permissions
 
     @Test func resolveForWriteCreatesTheSavesDirectoryOwnerOnly() throws {

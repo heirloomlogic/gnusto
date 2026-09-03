@@ -105,6 +105,21 @@ enum SaveStore {
             .sorted()
     }
 
+    /// Whether the given environment injects a saves directory via
+    /// `GNUSTO_SAVE_DIR` — the way replay tools and scripted drivers point a
+    /// world they built through `GameMain` at a scratch directory. Such a
+    /// session is program-driven, not a human at a terminal, and its save
+    /// prompts are slot-only; see `GameWorld.savePathsRestricted`.
+    ///
+    /// - Parameter environment: the environment to read (injectable for tests;
+    ///   defaults to the process environment).
+    /// - Returns: whether `GNUSTO_SAVE_DIR` is set to a non-empty value.
+    static func directoryIsInjected(
+        environment: [String: String] = ProcessInfo.processInfo.environment
+    ) -> Bool {
+        !(environment["GNUSTO_SAVE_DIR"] ?? "").isEmpty
+    }
+
     /// The default per-user directory for a game's saves:
     /// `<app-support>/Gnusto/Saves/<sanitized title>`, or the directory named by
     /// the `GNUSTO_SAVE_DIR` environment variable when it is set.
