@@ -49,9 +49,17 @@ public actor GameWorld {
     /// rewinds to. Actor state, never part of `WorldState` itself.
     private let initialState: WorldState
     /// Where bare save names (`save autumn`) resolve to, and the directory the
-    /// restore prompt lists. Explicit paths the player types bypass it. See
-    /// `SaveStore`.
+    /// restore prompt lists. Explicit paths the player types bypass it — unless
+    /// ``savePathsRestricted`` forbids them. See `SaveStore`.
     let saveDirectory: URL
+    /// Whether answers to the save/restore prompts may name explicit
+    /// filesystem paths (`/` or `~`). True whenever a save directory was
+    /// injected — the play-test harness, replay tools, and every other
+    /// session a program set up rather than a human at a terminal — so a
+    /// batched prompt answer cannot land a file outside `saveDirectory`. A
+    /// human running the game themselves keeps the classic
+    /// save-to-any-path behavior.
+    let savePathsRestricted: Bool
     /// The one-level UNDO snapshot: the state as it stood before the last
     /// turn that actually ran stages. Kept on the actor so history never
     /// leaks into save files.
@@ -169,6 +177,7 @@ public actor GameWorld {
         self.saveDirectory =
             saveDirectory
             ?? SaveStore.defaultDirectory(forGameTitled: definition.title)
+        self.savePathsRestricted = saveDirectory != nil
     }
 
     /// The opening of the game: intro, banner, and the first look around.

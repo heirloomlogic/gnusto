@@ -346,6 +346,10 @@ public struct GameText: Sendable {
     public var restoreFailed: Line<Nothing> = "Restore failed."
     /// A `restore` from a save that belongs to a different game.
     public var wrongGameSave: Line<Nothing> = "That save file is from a different game."
+    /// A save or restore that named a filesystem path in a session where only
+    /// plain slot names are allowed — headless runs, the play-test harness.
+    public var savePathRefused: Line<Nothing> =
+        "Paths aren't allowed here; enter a plain name."
     /// An empty answer to a filename prompt.
     public var cancelled: Line<Nothing> = "Cancelled."
 

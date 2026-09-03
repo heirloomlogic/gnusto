@@ -185,6 +185,42 @@ struct SaveRestoreTests {
         #expect(turnOutput(of: "inventory", in: transcript).contains("gold coin"))
     }
 
+    /// A session whose saves directory was injected — the play-test harness,
+    /// the replay tools, any driver that set one up — is slot-only: an explicit
+    /// path at either prompt is refused and nothing is written or read there.
+    /// (A human running the game themselves keeps the classic path behavior.)
+    @Test func anInjectedSaveDirectoryRefusesExplicitPaths() async throws {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("gnusto-escape-\(UUID().uuidString)", isDirectory: true)
+        let outside = temporarySavePath("escape")
+        defer {
+            try? FileManager.default.removeItem(at: dir)
+            try? FileManager.default.removeItem(atPath: outside)
+        }
+        let transcript = try await play(
+            StrongboxGame(),
+            [
+                "save", outside,  // refused; the file is never written
+                "restore", outside,  // refused; the file is never read
+                "save", "slot",  // the plain name still works
+                "restore", "slot",
+                "look",
+            ],
+            saveDirectory: dir)
+        expectInOrder(transcript, ["Save to what file?", "Saved.", "Restored."])
+        #expect(
+            transcript.components(
+                separatedBy: "Paths aren't allowed here; enter a plain name."
+            ).count == 3)
+        #expect(!FileManager.default.fileExists(atPath: outside))
+        #expect(
+            FileManager.default.fileExists(
+                atPath: dir.appendingPathComponent("slot.gnusto").path))
+        // Both refusals were free, and the round trip through the slot worked.
+        let look = turnOutput(of: "look", in: transcript)
+        #expect(look.contains("Anteroom"))
+    }
+
     /// LOAD is RESTORE. It is the word a player who has just typed SAVE reaches
     /// for next, and it went to "I don't know the word "load"." — which reads,
     /// wrongly, as if the game had no way to bring a save back.
