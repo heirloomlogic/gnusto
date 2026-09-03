@@ -241,4 +241,77 @@ extension Prose {
     static let streamTooSmall = "The stream emerges from a spot too small for you to enter."
 
     static let channelTooNarrow = "The channel is too narrow."
+
+    // MARK: - Dam region: (#407) scenery examine lines
+
+    static let receptionDesk = """
+        The reception desk is long abandoned, and its surface has gone gray
+        with dust.
+        """
+
+    static let lobbyDoorways = """
+        The doorways open north and east. Both of them are marked "Private".
+        """
+
+    static let maintenanceDoorways = """
+        The doorways lead west and south. Both of them return to the lobby.
+        """
+
+    static let maintenanceWall = """
+        The wall in front of you carries the group of colored buttons, and
+        nothing else worth the trouble.
+        """
+
+    static let maintenanceEquipment = """
+        Whatever the maintenance crews kept here is gone. The room was
+        ransacked, and recently.
+        """
+
+    static let cliffsFromDamBase = """
+        The White Cliffs stand like giant walls along the shores of the river,
+        stretching from north to south.
+        """
+
+    static let riverAtDamBase = """
+        The river Frigid flows past the base of the dam on its way
+        downstream.
+        """
+
+    static let reservoirLake = """
+        The lake stretches away to the north, far too deep and too wide for
+        crossing.
+        """
+
+    static let reservoirChasm = """
+        The steep pathway climbs southwest along the edge of the chasm.
+        """
+
+    static let reservoirCanyon = """
+        The canyon opens to the southeast, and a path leads down into it.
+        """
+
+    static let reservoirMud = """
+        The bed of the drained lake is one great pile of mud, and it is slick
+        underfoot.
+        """
+
+    static let reservoirShores = """
+        The old shores of the lake lie north and south of you, high and dry.
+        """
+
+    static let reservoirStairway = """
+        The stairway leaves the room to the north. It is slick with slime.
+        """
+
+    static let streamBeach = """
+        A narrow beach lies beside the stream, wide enough to land on.
+        """
+
+    static let streamViewPath = """
+        The path follows the stream from west to east.
+        """
+
+    static let streamViewStream = """
+        The stream flows gently past, from west to east.
+        """
 }

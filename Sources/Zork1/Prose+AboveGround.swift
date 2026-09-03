@@ -275,6 +275,120 @@ extension Prose {
         mastered ZORK: The Great Underground Empire.
         """
 
+    // MARK: - AboveGround: (#407) scenery examine lines
+
+    // One short answer per noun the room prose names and nothing declared.
+    // Written fresh (the original leaves these unexaminable) in the room
+    // descriptions' own voice: plain declarative sentences, what the thing is
+    // and where it goes, and no more.
+
+    static let field = """
+        It is an open field, running west from the house to the edge of the
+        forest.
+        """
+
+    static let boardedWindows = """
+        The windows are boarded over, and the boards are securely fastened.
+        """
+
+    static let houseTrees = """
+        The trees stand close about the house, and their branches brush
+        against the eaves.
+        """
+
+    static let housePath = """
+        The path is a narrow one, beaten hard by long use, and it leads away
+        among the trees.
+        """
+
+    static let forestTrees = """
+        The trees stand thick in every direction, and very little light comes
+        down between them.
+        """
+
+    static let eastSunlight = """
+        Sunlight shows between the trunks to the east, where the forest seems
+        to end.
+        """
+
+    static let canyonSunlight = """
+        The canyon opens above you here, and the daylight falls a long way
+        down to reach the beach.
+        """
+
+    static let treeBranches = """
+        The lower branches are gnarled and thick, and would easily bear your
+        weight.
+        """
+
+    static let perchBranches = """
+        Large branches spread on every side of you. The next one up is well
+        out of reach.
+        """
+
+    static let greatCanyon = """
+        The canyon falls away sheer beneath you, hundreds of feet down to the
+        river.
+        """
+
+    static let frigidRiver = """
+        The Frigid River runs cold and fast along the canyon floor below.
+        """
+
+    static let whiteCliffs = """
+        The White Cliffs rise pale and sheer from the far bank, and wall the
+        river from north to south.
+        """
+
+    static let flatheadMountains = """
+        The ramparts of the Flathead Mountains stand white-capped along the
+        eastern sky.
+        """
+
+    static let fallsFromCanyonView = """
+        Aragain Falls hangs white and small upstream to the north, with a
+        rainbow standing over it.
+        """
+
+    static let rainbowArch = """
+        The rainbow arches over Aragain Falls in bands of color, bright
+        against the spray.
+        """
+
+    static let riverCavern = """
+        The river issues from a great dark cavern in the canyon wall. Nothing
+        of the inside of it can be seen from here.
+        """
+
+    static let canyonCliff = """
+        The cliff rises above the ledge and falls away below it. The rock
+        above appears climbable.
+        """
+
+    static let fallsFromBelow = """
+        Aragain Falls thunders down at the head of the beach, and its spray
+        drifts over everything here.
+        """
+
+    static let riverBeach = """
+        The beach is a narrow strip of sand and rock, pinned between the
+        cliffs and the water.
+        """
+
+    static let barrowStone = """
+        The barrow is a great mound of ancient stone, raised here long before
+        the Empire.
+        """
+
+    static let barrowDoor = """
+        The stone door stands open in the east face of the barrow. Beyond it
+        there is only darkness.
+        """
+
+    static let barrowTomb = """
+        You can see nothing of the tomb from outside it.
+        """
+
     static let barrowPathBlocked = """
         There is no path southwest from here — only the forest, and the
         house at your back.

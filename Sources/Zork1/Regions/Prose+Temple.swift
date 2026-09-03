@@ -71,8 +71,8 @@ extension Prose {
     static let ivoryTorch = "The torch is burning."
 
     static let templeRailing = """
-        A stone railing runs around the rim of the dome — the kind of thing a
-        rope might be made fast to.
+        A wooden railing runs around the rim of the dome. It is the kind of
+        thing a rope might be made fast to.
         """
 
     static let bell = """
@@ -229,4 +229,98 @@ extension Prose {
     static let matchesGone = "I'm afraid that you have run out of matches."
 
     static let matchBurnsOut = "The match has gone out."
+
+    // MARK: - Temple region: (#407) scenery examine lines
+
+    static let dome = """
+        The dome forms the ceiling of another room far below, and you are
+        standing at the edge of it.
+        """
+
+    static let domeFromBelow = """
+        The dome is the ceiling of this room. The railing around its rim is
+        twenty feet above you.
+        """
+
+    static let torchRoomDoorway = """
+        The doorway is a prominent one, and leads to a staircase going down.
+        """
+
+    static let marblePedestal = """
+        The pedestal is white marble, and stands in the center of the room.
+        """
+
+    static let templeInscription = """
+        The inscription is cut into the east wall in a language long
+        forgotten. It is probably a prayer.
+        """
+
+    static let templeStaircase = """
+        The staircase leads down from beneath the inscription.
+        """
+
+    static let templePillars = """
+        Huge marble pillars frame the exit at the north end of the room.
+        """
+
+    static let templeGraniteWall = """
+        The west wall of the temple is solid granite, unbroken and uncarved.
+        """
+
+    static let egyptTomb = """
+        The room was built as an Egyptian tomb, and by the look of what stands
+        in it, used as one.
+        """
+
+    static let egyptStaircase = """
+        The staircase ascends to the west, back toward the temple.
+        """
+
+    static let caveStaircase = """
+        The staircase leads down, and it is dark and forbidding.
+        """
+
+    static let deadPassage = """
+        The passage leads north out of the Land of the Dead.
+        """
+
+    static let altarStone = """
+        The altar stands at the south end of the temple, and it is very old.
+        """
+
+    static let altarHole = """
+        The hole is in one corner of the floor, and leads down into darkness.
+        You would not be able to climb back up it.
+        """
+
+    static let hadesInscription = """
+        The inscription on the gateway reads:
+
+          Abandon every hope
+          all ye who enter here!
+        """
+
+    static let hadesGateway = """
+        The gateway is a large one, and stands open on the desolation beyond.
+        """
+
+    static let mangledBodies = """
+        The bodies are heaped in one corner. You do not care to look at them
+        closely.
+        """
+
+    static let lamentingVoices = """
+        The voices come from beyond the gate, thousands of them, lamenting
+        some hideous fate.
+        """
+
+    static let lostSouls = """
+        The lost souls cannot be seen, only heard. There are thousands of
+        them, and they weep and moan without stopping.
+        """
+
+    static let adventurerRemains = """
+        The remains of dozens of adventurers are stacked in the corner. None
+        of them was as fortunate as you.
+        """
 }

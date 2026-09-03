@@ -196,4 +196,97 @@ extension Prose {
 
               ** BOOOOOOOOOOOM **
         """
+
+    // MARK: - Coal Mine region: (#407) scenery examine lines
+
+    static let entranceShaft = """
+        The shaft enters the mine through the west wall.
+        """
+
+    static let batRoomDoors = """
+        There are doors to the east and south. They are the room's only ways
+        out.
+        """
+
+    static let squeakyPassage = """
+        The passage opens at the north end of the room, and the squeaking
+        comes from somewhere down it.
+        """
+
+    static let timberPassages = """
+        The wide passage comes in from the east and narrows at the west end of
+        the room.
+        """
+
+    static let strongDraft = """
+        The draft comes from the west, and it is cold.
+        """
+
+    static let shaftRoomShaft = """
+        The shaft descends through the floor into darkness. There is no seeing
+        the bottom of it.
+        """
+
+    static let shaftFramework = """
+        The framework is built of metal over the mouth of the shaft, and the
+        chain hangs from it.
+        """
+
+    static let ironChain = """
+        The chain is heavy iron, attached to the framework and running down
+        into the shaft.
+        """
+
+    static let smellyStaircase = """
+        The staircase descends from the room, and the odor comes up it.
+        """
+
+    static let foulOdor = """
+        The odor rises from below the staircase, and it does not improve on
+        acquaintance.
+        """
+
+    static let smellyTunnel = """
+        The tunnel leads south out of the room. It is a narrow one.
+        """
+
+    static let gasStairs = """
+        The stairs climb a short way out of the room.
+        """
+
+    static let gasTunnel = """
+        The tunnel leads east out of the room. It is a narrow one.
+        """
+
+    static let coalGas = """
+        The room is thick with coal gas. This is no place to strike a match.
+        """
+
+    static let ricketyLadder = """
+        The ladder is wooden and rickety, and leads downward. It might be safe
+        to descend.
+        """
+
+    static let ladderTopStaircase = """
+        The staircase leads up out of the little room.
+        """
+
+    static let ladderBottomLadder = """
+        The bottom of the narrow wooden ladder stands against one side of the
+        room, and the rest of it rises into the dark.
+        """
+
+    static let brokenTimbers = """
+        Broken timbers lie the length of the passage. They are the old shoring
+        of the mine, fallen where it stood.
+        """
+
+    static let draftyShaft = """
+        The bottom of the long shaft is here, and it rises out of sight above
+        you.
+        """
+
+    static let draftyChain = """
+        The heavy iron chain hangs down the shaft from somewhere far above.
+        """
 }

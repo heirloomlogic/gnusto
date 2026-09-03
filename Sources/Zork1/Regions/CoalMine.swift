@@ -225,6 +225,184 @@ struct ZorkCoalMine: GameContent {
         scenery
     }
 
+    // MARK: - (#407) scenery: nouns the room prose prints
+
+    /// (#407) Named by `Prose.mineEntrance`.
+    let entranceShaft = Item {
+        name("shaft")
+        description(Prose.entranceShaft)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.batRoom`, beyond the audit's list.
+    let batRoomDoors = Item {
+        name("doors")
+        synonyms("door")
+        description(Prose.batRoomDoors)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.squeakyRoom`, beyond the audit's list.
+    let squeakyPassage = Item {
+        name("passage")
+        description(Prose.squeakyPassage)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.timberRoom`, beyond the audit's list.
+    let timberPassages = Item {
+        name("wide passage")
+        adjectives("wide")
+        synonyms("passage", "passageway")
+        description(Prose.timberPassages)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.timberRoom`, beyond the audit's list.
+    let strongDraft = Item {
+        name("strong draft")
+        adjectives("strong")
+        synonyms("draft")
+        description(Prose.strongDraft)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.shaftRoom`.
+    let shaftRoomShaft = Item {
+        name("small shaft")
+        adjectives("small")
+        synonyms("shaft")
+        description(Prose.shaftRoomShaft)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.shaftRoom`.
+    let shaftFramework = Item {
+        name("metal framework")
+        adjectives("metal")
+        synonyms("framework")
+        description(Prose.shaftFramework)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.shaftRoom` — the chain the basket rides.
+    let ironChain = Item {
+        name("heavy iron chain")
+        adjectives("heavy", "iron")
+        synonyms("chain")
+        description(Prose.ironChain)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.smellyRoom`.
+    let smellyStaircase = Item {
+        name("descending staircase")
+        adjectives("descending", "small")
+        synonyms("staircase", "stairs")
+        description(Prose.smellyStaircase)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.smellyRoom` — a smell the prose asserts, so a
+    /// noun the parser owes an answer for.
+    let foulOdor = Item {
+        name("foul odor")
+        adjectives("foul")
+        synonyms("odor", "smell", "stench")
+        description(Prose.foulOdor)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.smellyRoom`.
+    let smellyTunnel = Item {
+        name("narrow tunnel")
+        adjectives("narrow")
+        synonyms("tunnel")
+        description(Prose.smellyTunnel)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.gasRoom`.
+    let gasStairs = Item {
+        name("stairs")
+        synonyms("staircase")
+        description(Prose.gasStairs)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.gasRoom`.
+    let gasTunnel = Item {
+        name("narrow tunnel")
+        adjectives("narrow")
+        synonyms("tunnel")
+        description(Prose.gasTunnel)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.gasRoom` — the gas the room's own prose warns
+    /// of and its rule enforces.
+    let coalGas = Item {
+        name("coal gas")
+        adjectives("coal")
+        synonyms("gas")
+        description(Prose.coalGas)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.ladderTop`.
+    let ricketyLadder = Item {
+        name("rickety wooden ladder")
+        adjectives("rickety", "wooden")
+        synonyms("ladder")
+        description(Prose.ricketyLadder)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.ladderTop`.
+    let ladderTopStaircase = Item {
+        name("staircase")
+        synonyms("stairs")
+        description(Prose.ladderTopStaircase)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.ladderBottom` — the ladder's far end, a
+    /// different fixture from ``ricketyLadder`` above.
+    let ladderBottomLadder = Item {
+        name("wooden ladder")
+        adjectives("wooden", "narrow")
+        synonyms("ladder")
+        description(Prose.ladderBottomLadder)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.timberRoom`.
+    let brokenTimbers = Item {
+        name("broken timbers")
+        adjectives("broken")
+        synonyms("timbers", "timber")
+        description(Prose.brokenTimbers)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.draftyRoom`.
+    let draftyShaft = Item {
+        name("long shaft")
+        adjectives("long")
+        synonyms("shaft")
+        description(Prose.draftyShaft)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.draftyRoom`.
+    let draftyChain = Item {
+        name("iron chain")
+        adjectives("iron", "heavy")
+        synonyms("chain")
+        description(Prose.draftyChain)
+        scenery
+    }
+
     // MARK: - State
 
     /// Whether the basket hangs at the bottom of the shaft (in the Drafty Room)
@@ -309,6 +487,26 @@ struct ZorkCoalMine: GameContent {
         basketStandin.starts(in: draftyRoom)
         machine.starts(in: machineRoom)
         machineSwitch.starts(in: machineRoom)
+        entranceShaft.starts(in: mineEntrance)
+        batRoomDoors.starts(in: batRoom)
+        squeakyPassage.starts(in: squeakyRoom)
+        timberPassages.starts(in: timberRoom)
+        strongDraft.starts(in: timberRoom)
+        shaftRoomShaft.starts(in: shaftRoom)
+        shaftFramework.starts(in: shaftRoom)
+        ironChain.starts(in: shaftRoom)
+        smellyStaircase.starts(in: smellyRoom)
+        foulOdor.starts(in: smellyRoom)
+        smellyTunnel.starts(in: smellyRoom)
+        gasStairs.starts(in: gasRoom)
+        gasTunnel.starts(in: gasRoom)
+        coalGas.starts(in: gasRoom)
+        ricketyLadder.starts(in: ladderTop)
+        ladderTopStaircase.starts(in: ladderTop)
+        ladderBottomLadder.starts(in: ladderBottom)
+        brokenTimbers.starts(in: timberRoom)
+        draftyShaft.starts(in: draftyRoom)
+        draftyChain.starts(in: draftyRoom)
     }
 
     // MARK: - Rules

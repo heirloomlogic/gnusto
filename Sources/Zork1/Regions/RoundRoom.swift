@@ -96,6 +96,72 @@ struct ZorkRoundRoom: GameContent {
         trait(.depositValue, 5)  // case
     }
 
+    // MARK: - (#407) scenery: nouns the room prose prints
+
+    /// (#407) Named by `Prose.eastWestPassage`.
+    let passageStairway = Item {
+        name("narrow stairway")
+        adjectives("narrow")
+        synonyms("stairway", "staircase", "stairs")
+        description(Prose.passageStairway)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.roundRoom`. The splitter cuts `cave-ins` at the
+    /// hyphen, so the declared name carries the same split.
+    let caveIns = Item {
+        name("cave-ins")
+        synonyms("cave-in", "rubble")
+        description(Prose.caveIns)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.chasmRoom`. A different chasm from
+    /// ``ZorkCellar/chasm`` at East of Chasm.
+    let chasmAtChasmRoom = Item {
+        name("chasm")
+        description(Prose.chasmRoomChasm)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.chasmRoom`.
+    let chasmRoomCrack = Item {
+        name("crack")
+        description(Prose.chasmRoomCrack)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.deepCanyon`.
+    let deepCanyonStairway = Item {
+        name("stairway")
+        synonyms("stairs")
+        description(Prose.deepCanyonStairway)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.dampCave`.
+    let dampCaveCrack = Item {
+        name("crack")
+        description(Prose.dampCaveCrack)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.loudRoom`.
+    let loudRoomCeiling = Item {
+        name("ceiling")
+        description(Prose.loudRoomCeiling)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.loudRoom`.
+    let loudRoomStairway = Item {
+        name("stone stairway")
+        adjectives("stone")
+        synonyms("stairway", "staircase", "stairs")
+        description(Prose.loudRoomStairway)
+        scenery
+    }
+
     // MARK: - Map
 
     var map: WorldMap {
@@ -138,6 +204,14 @@ struct ZorkRoundRoom: GameContent {
         dampCave.south(blocked: Prose.dampCaveTooNarrow)
 
         platinumBar.starts(in: loudRoom)
+        passageStairway.starts(in: eastWestPassage)
+        caveIns.starts(in: roundRoom)
+        chasmAtChasmRoom.starts(in: chasmRoom)
+        chasmRoomCrack.starts(in: chasmRoom)
+        deepCanyonStairway.starts(in: deepCanyon)
+        dampCaveCrack.starts(in: dampCave)
+        loudRoomCeiling.starts(in: loudRoom)
+        loudRoomStairway.starts(in: loudRoom)
     }
 
     // MARK: - Rules

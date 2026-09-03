@@ -213,6 +213,231 @@ struct ZorkRiver: GameContent {
         trait(.depositValue, 10)  // case
     }
 
+    // MARK: - (#407) scenery: nouns the room prose prints
+
+    // The river runs carry the region's shared nouns — the dam, the cliffs,
+    // the shores — and each stretch names its own handful, so the fixtures
+    // repeat per room rather than per noun.
+
+    /// (#407) Named by `Prose.river1`.
+    let damFromRiver1 = Item {
+        name("flood control dam")
+        adjectives("flood", "control")
+        synonyms("dam")
+        description(Prose.damFromRiver)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.river1`.
+    let westShoreAtRiver1 = Item {
+        name("west shore")
+        adjectives("west")
+        synonyms("shore", "landing")
+        description(Prose.westShoreAtRiver1)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.river2`.
+    let damFromRiver2 = Item {
+        name("dam")
+        description(Prose.damFromRiver)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.river2`.
+    let cliffsAtRiver2 = Item {
+        name("white cliffs")
+        adjectives("white")
+        synonyms("cliffs", "cliff")
+        description(Prose.cliffsFromRiver)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.river2`.
+    let rocksAtRiver2 = Item {
+        name("large rocks")
+        adjectives("large")
+        synonyms("rocks", "rock", "landing")
+        description(Prose.riverRocks)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.river3`.
+    let valleyAtRiver3 = Item {
+        name("valley")
+        description(Prose.riverValley)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.river3`.
+    let beachAtRiver3 = Item {
+        name("narrow beach")
+        adjectives("narrow")
+        synonyms("beach", "shore")
+        description(Prose.riverBeachWest)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.river3`.
+    let cliffsAtRiver3 = Item {
+        name("cliffs")
+        synonyms("cliff")
+        description(Prose.cliffsFromRiver)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.river4`.
+    let beachAtRiver4 = Item {
+        name("sandy beach")
+        adjectives("sandy")
+        synonyms("beach", "shore")
+        description(Prose.sandyEastBeach)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.river4`.
+    let cliffsAtRiver4 = Item {
+        name("cliffs")
+        synonyms("cliff")
+        description(Prose.cliffsFromRiver4)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.river5`.
+    let landingAtRiver5 = Item {
+        name("landing area")
+        adjectives("large", "east")
+        synonyms("shore")
+        description(Prose.riverLandingArea)
+        scenery
+    }
+
+    // The White Cliffs beaches, on foot between the cliffs and the water.
+
+    /// (#407) Named by `Prose.whiteCliffsNorth`.
+    let cliffsAtBeachNorth = Item {
+        name("white cliffs")
+        adjectives("white")
+        synonyms("cliffs", "cliff")
+        description(Prose.cliffsFromRiver)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.whiteCliffsNorth`.
+    let pathAtCliffsNorth = Item {
+        name("narrow path")
+        adjectives("narrow")
+        synonyms("path")
+        description(Prose.cliffsPath)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.whiteCliffsNorth`.
+    let tightPassage = Item {
+        name("tight passage")
+        adjectives("tight")
+        synonyms("passage")
+        description(Prose.tightPassage)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.whiteCliffsSouth`.
+    let cliffsAtBeachSouth = Item {
+        name("cliffs")
+        synonyms("cliff")
+        description(Prose.cliffsFromRiver)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.whiteCliffsSouth`.
+    let pathAtCliffsSouth = Item {
+        name("narrow path")
+        adjectives("narrow")
+        synonyms("path")
+        description(Prose.cliffsPathNorth)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.shore`.
+    let shorePath = Item {
+        name("path")
+        description(Prose.eastShorePath)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.shore`.
+    let sharpCorner = Item {
+        name("sharp corner")
+        adjectives("sharp")
+        synonyms("corner")
+        description(Prose.shoreCorner)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.shore` — the bank the room stands on.
+    let eastShore = Item {
+        name("east shore")
+        adjectives("east")
+        synonyms("shore")
+        description(Prose.eastShore)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.sandyBeach`, whose path runs south rather than
+    /// north — the White Cliffs line does not answer for this one.
+    let pathAtSandyBeach = Item {
+        name("path")
+        description(Prose.sandyBeachPath)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.sandyBeach`.
+    let buriedPassage = Item {
+        name("passage")
+        description(Prose.buriedPassage)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.sandyBeach`. The ``sand`` item is the Sandy
+    /// Cave's diggable fill; this is the open beach's.
+    let sandAtBeach = Item {
+        name("sand")
+        description(Prose.beachSand)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.aragainFalls`.
+    let waterfallTop = Item {
+        name("enormous waterfall")
+        adjectives("enormous", "aragain")
+        synonyms("falls", "waterfall", "aragain falls")
+        description(Prose.fallsFromTop)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.aragainFalls`.
+    let pathAtFalls = Item {
+        name("path")
+        description(Prose.fallsPath)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.onRainbow`. The rainbow no room owned before
+    /// this one; from up here it is underfoot.
+    let rainbowUnderfoot = Item {
+        name("rainbow")
+        description(Prose.rainbowUnderfoot)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.onRainbow`.
+    let fallsFromRainbow = Item {
+        name("falls")
+        synonyms("waterfall", "aragain falls")
+        description(Prose.fallsFromRainbow)
+        scenery
+    }
+
     // MARK: - State
 
     /// Whether the sceptre has been waved to turn the rainbow solid and walkable.
@@ -290,6 +515,32 @@ struct ZorkRiver: GameContent {
         shovel.starts(in: sandyBeach)
         scarab.starts(in: sandyCave)
         sand.starts(in: sandyCave)
+        damFromRiver1.starts(in: river1)
+        westShoreAtRiver1.starts(in: river1)
+        damFromRiver2.starts(in: river2)
+        cliffsAtRiver2.starts(in: river2)
+        rocksAtRiver2.starts(in: river2)
+        valleyAtRiver3.starts(in: river3)
+        beachAtRiver3.starts(in: river3)
+        cliffsAtRiver3.starts(in: river3)
+        beachAtRiver4.starts(in: river4)
+        cliffsAtRiver4.starts(in: river4)
+        landingAtRiver5.starts(in: river5)
+        cliffsAtBeachNorth.starts(in: whiteCliffsNorth)
+        pathAtCliffsNorth.starts(in: whiteCliffsNorth)
+        tightPassage.starts(in: whiteCliffsNorth)
+        cliffsAtBeachSouth.starts(in: whiteCliffsSouth)
+        pathAtCliffsSouth.starts(in: whiteCliffsSouth)
+        shorePath.starts(in: shore)
+        eastShore.starts(in: shore)
+        sharpCorner.starts(in: shore)
+        pathAtSandyBeach.starts(in: sandyBeach)
+        buriedPassage.starts(in: sandyBeach)
+        sandAtBeach.starts(in: sandyBeach)
+        waterfallTop.starts(in: aragainFalls)
+        pathAtFalls.starts(in: aragainFalls)
+        rainbowUnderfoot.starts(in: onRainbow)
+        fallsFromRainbow.starts(in: onRainbow)
     }
 
     // MARK: - Rules

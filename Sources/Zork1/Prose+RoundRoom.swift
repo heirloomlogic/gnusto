@@ -77,4 +77,43 @@ extension Prose {
     static let chasmDownRefusal = "Are you out of your mind?"
 
     static let dampCaveTooNarrow = "It is too narrow for most insects."
+
+    // MARK: - Round Room hub: (#407) scenery examine lines
+
+    static let passageStairway = """
+        The stairway leads down from the north end of the passage.
+        """
+
+    static let caveIns = """
+        Rubble from the cave-ins blocks several of the passages. You will not
+        clear it by hand.
+        """
+
+    static let chasmRoomChasm = """
+        The chasm runs southwest to northeast past the path, and the bottom of
+        it cannot be seen.
+        """
+
+    static let chasmRoomCrack = """
+        The crack opens in the south side of the chasm and widens into a
+        passage.
+        """
+
+    static let dampCaveCrack = """
+        Toward the south the cave narrows to a crack. It is too narrow for
+        most insects.
+        """
+
+    static let loudRoomCeiling = """
+        The ceiling is somewhere above you in the dark. No light of yours
+        reaches it.
+        """
+
+    static let deepCanyonStairway = """
+        The stairway is cut into the rock of the canyon, and leads down.
+        """
+
+    static let loudRoomStairway = """
+        The stone stairway leads upward, out of the noise.
+        """
 }

@@ -60,6 +60,9 @@ struct ZorkHouse: GameContent {
     let sack = Item {
         name("brown sack")
         adjectives("brown")
+        // (#407) The listing line names hot peppers; the pepper nouns are the
+        // sack's smell, not a thing apart.
+        synonyms("peppers", "pepper")
         description(Prose.sack)
         container
         openable
@@ -90,6 +93,100 @@ struct ZorkHouse: GameContent {
         name("quantity of water")
         adjectives("quantity")
         description(Prose.water)
+    }
+
+    // MARK: - (#407) scenery: nouns the room prose prints
+
+    /// (#407) Named by `Prose.kitchen(windowOpen:)`.
+    let kitchenTable = Item {
+        name("kitchen table")
+        adjectives("kitchen", "wooden")
+        synonyms("table")
+        description(Prose.kitchenTable)
+        surface
+        scenery
+    }
+
+    /// (#407) Named by `Prose.kitchen(windowOpen:)`.
+    let kitchenStaircase = Item {
+        name("dark staircase")
+        adjectives("dark")
+        synonyms("stairway", "stairs")
+        description(Prose.kitchenStaircase)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.kitchen(windowOpen:)`.
+    let kitchenPassage = Item {
+        name("passage")
+        description(Prose.kitchenPassage)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.kitchen(windowOpen:)`. The Studio's chimney is
+    /// a ``ZorkCellar`` item in another room; this is the kitchen's own flue.
+    let kitchenChimney = Item {
+        name("dark chimney")
+        adjectives("dark")
+        synonyms("chimney")
+        description(Prose.kitchenChimney)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.livingRoom`.
+    let livingRoomDoorway = Item {
+        name("doorway")
+        description(Prose.livingRoomDoorway)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.livingRoom` — the west door, not the trap door.
+    let livingRoomDoor = Item {
+        name("wooden door")
+        adjectives("wooden")
+        description(Prose.livingRoomDoor)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.livingRoom`.
+    let gothicLettering = Item {
+        name("gothic lettering")
+        adjectives("gothic", "strange")
+        synonyms("lettering", "letters", "writing")
+        description(Prose.gothicLettering)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.attic`.
+    let atticStairway = Item {
+        name("stairway")
+        description(Prose.atticStairway)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.cellar`.
+    let cellarPassageway = Item {
+        name("narrow passageway")
+        adjectives("narrow")
+        synonyms("passageway", "passage")
+        description(Prose.cellarPassageway)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.cellar`.
+    let cellarCrawlway = Item {
+        name("crawlway")
+        description(Prose.cellarCrawlway)
+        scenery
+    }
+
+    /// (#407) Named by `Prose.cellar`.
+    let cellarRamp = Item {
+        name("steep metal ramp")
+        adjectives("steep", "metal")
+        synonyms("ramp")
+        description(Prose.cellarRamp)
+        scenery
     }
 
     // MARK: - Living Room
@@ -244,6 +341,17 @@ struct ZorkHouse: GameContent {
         lunch.starts(inside: sack)
         bottle.starts(in: kitchen)
         water.starts(inside: bottle)
+        kitchenTable.starts(in: kitchen)
+        kitchenStaircase.starts(in: kitchen)
+        kitchenPassage.starts(in: kitchen)
+        kitchenChimney.starts(in: kitchen)
+        livingRoomDoorway.starts(in: livingRoom)
+        livingRoomDoor.starts(in: livingRoom)
+        gothicLettering.starts(in: livingRoom)
+        atticStairway.starts(in: attic)
+        cellarPassageway.starts(in: cellar)
+        cellarCrawlway.starts(in: cellar)
+        cellarRamp.starts(in: cellar)
 
         lantern.starts(in: livingRoom)
         sword.starts(in: livingRoom)
