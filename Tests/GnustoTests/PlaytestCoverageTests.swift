@@ -1471,4 +1471,30 @@ struct PlaytestCoverageTests {
         #expect(listing.contains("dam"))
         #expect(listing.contains("the river"))
     }
+
+    // MARK: - The abstract filter
+
+    /// `nounCandidates` queues only nouns a tester could examine. Abstract
+    /// qualities the prose names — `the opulence of the foyer`, `Your score
+    /// is …` — are words the parser can never answer, and one costs a blind
+    /// seat a whole turn; #407 is the round that proved the class. Concrete
+    /// nouns sharing the same shapes must survive: `a cup of twigs and moss`
+    /// is still three things, and `the opulence of the foyer` still yields
+    /// `foyer` on its own side of the `of`.
+    @Test func theQueueDoesNotQueueAbstractNouns() {
+        #expect(
+            CoverageLedger.nounCandidates(
+                in: "much rougher than you'd have guessed after the opulence of the foyer to the north"
+            ) == ["foyer"])
+        #expect(
+            !CoverageLedger.nounCandidates(in: "Your score is 2 of a possible 2")
+                .contains("score"))
+        #expect(
+            CoverageLedger.nounCandidates(in: "a cup of twigs and moss")
+                == ["cup", "twigs", "moss"])
+        #expect(
+            CoverageLedger.nounCandidates(
+                in: "the silence, the grandeur and the gloom of the empty house"
+            ) == ["house"])
+    }
 }

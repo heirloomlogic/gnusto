@@ -1666,6 +1666,7 @@ struct CoverageLedger: Sendable {
         func emit() {
             defer { run = [] }
             guard let head = head(of: run), head.count >= 3, !stopWords.contains(head),
+                !abstractNouns.contains(head),
                 directions[head] == nil, head.contains(where: \.isLetter),
                 seen.insert(head).inserted
             else { return }
@@ -1751,6 +1752,22 @@ struct CoverageLedger: Sendable {
         guard run.count > 1, last.count >= 6, last.hasSuffix("ed") else { return last }
         return run[run.count - 2]
     }
+
+    /// Qualities the prose names as if they were things, which no parser can
+    /// answer.
+    ///
+    /// Not a claim that the word is unanswerable everywhere — a game can hang
+    /// a scenery item off any of these and should — but a queue candidate is
+    /// a turn a blind seat spends, and `the opulence of the foyer` and
+    /// `Your score is …` are printed by nearly every game in this genre while
+    /// being examinable in none (#407). The list stays short and unashamedly
+    /// a list, like ``phraseBreaks``: the cost of a miss here is one
+    /// unqueued word, not a false turn.
+    private static let abstractNouns: Set<String> = [
+        "opulence", "splendor", "splendour", "grandeur", "magnificence", "glory",
+        "radiance", "darkness", "gloom", "silence", "stillness", "desolation",
+        "emptiness", "misery", "score",
+    ]
 
     /// The stand-in for a punctuation mark. Not a word, so it can never be a
     /// token the splitter also produces.

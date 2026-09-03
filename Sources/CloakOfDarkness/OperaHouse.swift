@@ -69,10 +69,54 @@ struct OperaHouse: Game {
     let hook = Item {
         name("small brass hook")
         adjectives("small", "brass")
-        synonyms("peg")
+        synonyms("peg", "hooks")
         firstSight("A small brass hook is on the wall.")
         scenery
         surface
+    }
+
+    /// Scenery for the nouns the foyer's description prints — the defect
+    /// class #407 was filed for. The bar's `opulence` stays deliberately
+    /// unanswerable: it is an abstract, not a fitting.
+    let hallFittings = Item {
+        name("spacious hall")
+        adjectives("spacious")
+        synonyms("hall")
+        description(
+            """
+            You are standing in the hall itself, splendidly decorated in red
+            and gold.
+            """)
+        scenery
+    }
+
+    let chandeliers = Item {
+        name("glittering chandelier")
+        adjectives("glittering")
+        synonyms("chandeliers", "chandelier")
+        description("Glittering chandeliers hang overhead.")
+        scenery
+    }
+
+    let gildedDecor = Item {
+        name("gold decoration")
+        synonyms("gold", "red", "gilt")
+        description("The walls are splendidly decorated in red and gold.")
+        scenery
+    }
+
+    let streetDoors = Item {
+        name("street entrance")
+        synonyms("street")
+        description("The entrance from the street is to the north; the street itself is behind it.")
+        scenery
+    }
+
+    let doorways = Item {
+        name("doorway")
+        synonyms("doorways", "doorway")
+        description("There are doorways south and west.")
+        scenery
     }
 
     let message = Item {
@@ -126,6 +170,11 @@ struct OperaHouse: Game {
         cloak.startsWorn
         hook.starts(in: cloakroom)
         message.starts(in: bar)
+        hallFittings.starts(in: foyer)
+        chandeliers.starts(in: foyer)
+        gildedDecor.starts(in: foyer)
+        streetDoors.starts(in: foyer)
+        doorways.starts(in: foyer)
     }
 
     // MARK: - Rules

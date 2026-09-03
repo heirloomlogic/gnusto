@@ -197,12 +197,12 @@ struct PlaytestSeamTests {
     /// twenty lines and could change the world on the way past.
     @Test func vocabularyQuestionsAreBatchedAndCostNothing() async throws {
         let world = try GameWorld(game: OperaHouse(), seed: 1, saveDirectory: tempDirectory())
-        let answers = await world.knows(["cloak", "chandeliers", "hook"])
+        let answers = await world.knows(["cloak", "opulence", "hook"])
 
-        #expect(answers.map(\.word) == ["cloak", "chandeliers", "hook"])
+        #expect(answers.map(\.word) == ["cloak", "opulence", "hook"])
         #expect(answers[0].known)
-        // Named by the foyer's description and answerable by nothing — the
-        // shape of defect this seam is for.
+        // Named by the bar's description and answerable by nothing — the
+        // shape of defect this seam is for, and deliberately left so (#407).
         #expect(!answers[1].known)
         #expect(answers[2].known)
         #expect(await world.snapshot().moves == 0)
