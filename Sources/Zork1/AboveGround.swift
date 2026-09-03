@@ -492,10 +492,11 @@ struct ZorkAboveGround: GameContent {
         scenery
     }
 
-    /// (#407) Named by `Prose.endOfRainbow`.
+    /// (#407) Named by `Prose.endOfRainbow`, where the light falls in from
+    /// the open canyon overhead rather than through the forest's trunks.
     let sunlightAtEnd = Item {
         name("sunlight")
-        description(Prose.eastSunlight)
+        description(Prose.canyonSunlight)
         scenery
     }
 
@@ -533,54 +534,6 @@ struct ZorkAboveGround: GameContent {
     let barrowTomb = Item {
         name("tomb")
         description(Prose.barrowTomb)
-        scenery
-    }
-
-    // Inside the Barrow's description — and the epilogue the win prints —
-    // name the cavern, the stream, the footbridge, the sign and the tunnel.
-
-    /// (#407) Named by `Prose.insideBarrow` and `Prose.stoneBarrowEpilogue`.
-    let barrowCavern = Item {
-        name("enormous cavern")
-        adjectives("enormous", "brightly", "lit")
-        synonyms("cavern")
-        description(Prose.barrowCavern)
-        scenery
-    }
-
-    /// (#407) Named by `Prose.stoneBarrowEpilogue`.
-    let barrowStream = Item {
-        name("wide stream")
-        adjectives("wide")
-        synonyms("stream")
-        description(Prose.barrowStream)
-        scenery
-    }
-
-    /// (#407) Named by `Prose.stoneBarrowEpilogue`; `bridge` is its other word.
-    let barrowFootbridge = Item {
-        name("wooden footbridge")
-        adjectives("wooden", "small")
-        synonyms("footbridge", "bridge")
-        description(Prose.barrowFootbridge)
-        scenery
-    }
-
-    /// (#407) Named by `Prose.stoneBarrowEpilogue`.
-    let barrowSign = Item {
-        name("large sign")
-        adjectives("large")
-        synonyms("sign")
-        description(Prose.barrowSign)
-        scenery
-    }
-
-    /// (#407) Named by `Prose.stoneBarrowEpilogue`.
-    let barrowTunnel = Item {
-        name("dark tunnel")
-        adjectives("dark")
-        synonyms("tunnel")
-        description(Prose.barrowTunnel)
         scenery
     }
 
@@ -670,11 +623,6 @@ struct ZorkAboveGround: GameContent {
         barrowStone.starts(in: stoneBarrow)
         barrowDoor.starts(in: stoneBarrow)
         barrowTomb.starts(in: stoneBarrow)
-        barrowCavern.starts(in: insideBarrow)
-        barrowStream.starts(in: insideBarrow)
-        barrowFootbridge.starts(in: insideBarrow)
-        barrowSign.starts(in: insideBarrow)
-        barrowTunnel.starts(in: insideBarrow)
 
         whiteHouseAtWest.starts(in: westOfHouse)
         whiteHouseAtNorth.starts(in: northOfHouse)

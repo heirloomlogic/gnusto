@@ -122,18 +122,14 @@ struct ZorkDam: GameContent {
         scenery
     }
 
-    /// (#407) Named by `Prose.guidebook`'s first-sight line — the desk the
-    /// guidebooks sit on.
+    /// (#407) Named by `Prose.guidebook`, the listing line the guidebooks
+    /// print — which had never been wired to the item that speaks it, so the
+    /// room named no desk at all until now.
     let receptionDesk = Item {
         name("reception desk")
         adjectives("reception")
         synonyms("desk")
-        description(
-            """
-            A reception desk, long abandoned, its surface gone gray with
-            dust.
-            """)
-        surface
+        description(Prose.receptionDesk)
         scenery
     }
 
@@ -254,7 +250,8 @@ struct ZorkDam: GameContent {
     let guidebook = Item {
         name("tour guidebook")
         adjectives("tour", "guide")
-        synonyms("book")
+        synonyms("book", "guidebooks")
+        firstSight(Prose.guidebook)
         description(Prose.guidebookText)
     }
 

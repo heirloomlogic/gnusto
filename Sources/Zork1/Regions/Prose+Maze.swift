@@ -170,25 +170,25 @@ extension Prose {
     // MARK: - Maze region: (#407) scenery examine lines
 
     static let cyclopsStaircase = """
-        A staircase leading up, which the cyclops guards.
+        The staircase leads up out of the room.
         """
 
     static let discardedBags = """
-        A number of discarded bags, which crumble at your touch — scattered
-        about on the floor.
+        The bags lie scattered about the floor, and they crumble at your
+        touch.
         """
 
     static let treasureRoomGranite = """
-        The east wall is solid granite, unmoved since the room was cut.
+        The east wall is solid granite, and has not moved since the room was
+        cut.
         """
 
     static let strangePassageDoor = """
-        An old wooden door, with a large opening in it — about cyclops
-        sized. The door is on the east.
+        The wooden door is old, and something very strong has smashed an
+        opening clean through it.
         """
 
     static let strangePassageOpening = """
-        A large opening in the wooden door, smashed clean through by
-        something very strong.
+        The opening in the door is a large one, about cyclops sized.
         """
 }

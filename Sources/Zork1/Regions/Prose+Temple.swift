@@ -71,8 +71,8 @@ extension Prose {
     static let ivoryTorch = "The torch is burning."
 
     static let templeRailing = """
-        A stone railing runs around the rim of the dome — the kind of thing a
-        rope might be made fast to.
+        A wooden railing runs around the rim of the dome. It is the kind of
+        thing a rope might be made fast to.
         """
 
     static let bell = """
@@ -233,91 +233,94 @@ extension Prose {
     // MARK: - Temple region: (#407) scenery examine lines
 
     static let dome = """
-        A large dome, forming the ceiling of the room below — high above,
-        at the edge of sight.
+        The dome forms the ceiling of another room far below, and you are
+        standing at the edge of it.
+        """
+
+    static let domeFromBelow = """
+        The dome is the ceiling of this room. The railing around its rim is
+        twenty feet above you.
         """
 
     static let torchRoomDoorway = """
-        A prominent doorway, leading to a down staircase.
+        The doorway is a prominent one, and leads to a staircase going down.
         """
 
     static let marblePedestal = """
-        A white marble pedestal, standing in the center of the room.
+        The pedestal is white marble, and stands in the center of the room.
         """
 
     static let templeInscription = """
-        An ancient inscription on the east wall, probably a prayer in a
-        long-forgotten language.
+        The inscription is cut into the east wall in a language long
+        forgotten. It is probably a prayer.
         """
 
     static let templeStaircase = """
-        A staircase leading down, beneath the inscription.
+        The staircase leads down from beneath the inscription.
         """
 
     static let templePillars = """
-        Huge marble pillars, framing the exit to the north end of the
-        room.
+        Huge marble pillars frame the exit at the north end of the room.
         """
 
     static let templeGraniteWall = """
-        The west wall is solid granite, unbroken and uncarved.
+        The west wall of the temple is solid granite, unbroken and uncarved.
         """
 
     static let egyptTomb = """
-        The room looks like an Egyptian tomb — and was used as one, to
-        judge by what stands in it.
+        The room was built as an Egyptian tomb, and by the look of what stands
+        in it, used as one.
         """
 
     static let egyptStaircase = """
-        An ascending staircase to the west, back toward the temple.
+        The staircase ascends to the west, back toward the temple.
         """
 
     static let caveStaircase = """
-        A dark, forbidding staircase leading down, toward Hades.
+        The staircase leads down, and it is dark and forbidding.
         """
 
     static let deadPassage = """
-        A passage exiting to the north, back toward the gate.
+        The passage leads north out of the Land of the Dead.
         """
 
     static let altarStone = """
-        What appears to be an altar, standing before you at the south end
-        of the temple.
+        The altar stands at the south end of the temple, and it is very old.
         """
 
     static let altarHole = """
-        A small hole in the floor, in one corner, leading into darkness.
-        You probably could not get back up it.
+        The hole is in one corner of the floor, and leads down into darkness.
+        You would not be able to climb back up it.
         """
 
     static let hadesInscription = """
-        Inscribed on the gateway:
+        The inscription on the gateway reads:
 
           Abandon every hope
           all ye who enter here!
         """
 
     static let hadesGateway = """
-        A large gateway, its inscription grim, standing open on the
-        desolation beyond.
+        The gateway is a large one, and stands open on the desolation beyond.
         """
 
     static let mangledBodies = """
-        A pile of mangled bodies, heaped in one corner of the desolation.
+        The bodies are heaped in one corner. You do not care to look at them
+        closely.
         """
 
     static let lamentingVoices = """
-        Thousands of voices, lamenting some hideous fate, borne on the air
-        from beyond the gate.
+        The voices come from beyond the gate, thousands of them, lamenting
+        some hideous fate.
         """
 
     static let lostSouls = """
-        Thousands of lost souls, weeping and moaning, unseen in the dark
-        of the place.
+        The lost souls cannot be seen, only heard. There are thousands of
+        them, and they weep and moan without stopping.
         """
 
     static let adventurerRemains = """
-        The remains of dozens of previous adventurers, stacked in the
-        corner — none, you hope, fresher than they look.
+        The remains of dozens of adventurers are stacked in the corner. None
+        of them was as fortunate as you.
         """
 }

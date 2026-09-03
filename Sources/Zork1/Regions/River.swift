@@ -364,7 +364,7 @@ struct ZorkRiver: GameContent {
     /// (#407) Named by `Prose.shore`.
     let shorePath = Item {
         name("path")
-        description(Prose.cliffsPathNorth)
+        description(Prose.eastShorePath)
         scenery
     }
 
@@ -386,10 +386,11 @@ struct ZorkRiver: GameContent {
         scenery
     }
 
-    /// (#407) Named by `Prose.sandyBeach`.
+    /// (#407) Named by `Prose.sandyBeach`, whose path runs south rather than
+    /// north — the White Cliffs line does not answer for this one.
     let pathAtSandyBeach = Item {
         name("path")
-        description(Prose.cliffsPathNorth)
+        description(Prose.sandyBeachPath)
         scenery
     }
 

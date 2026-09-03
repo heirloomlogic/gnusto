@@ -204,88 +204,93 @@ extension Prose {
     // MARK: - Coal Mine region: (#407) scenery examine lines
 
     static let entranceShaft = """
-        The shaft, entering the west wall of the mine.
+        The shaft enters the mine through the west wall.
         """
 
     static let batRoomDoors = """
-        Doors to the east and south — the room's only ways out.
+        There are doors to the east and south. They are the room's only ways
+        out.
         """
 
     static let squeakyPassage = """
-        A passage at the north end, from which the squeaky sounds come.
+        The passage opens at the north end of the room, and the squeaking
+        comes from somewhere down it.
         """
 
     static let timberPassages = """
-        A wide passage from the east, turning at the west end of the room
-        into a very narrow passageway.
+        The wide passage comes in from the east and narrows at the west end of
+        the room.
         """
 
     static let strongDraft = """
-        A strong draft, blowing cold from the west.
+        The draft comes from the west, and it is cold.
         """
 
     static let shaftRoomShaft = """
-        A small shaft descending through the floor into darkness below.
+        The shaft descends through the floor into darkness. There is no seeing
+        the bottom of it.
         """
 
     static let shaftFramework = """
-        A metal framework constructed over the top of the shaft.
+        The framework is built of metal over the mouth of the shaft, and the
+        chain hangs from it.
         """
 
     static let ironChain = """
-        A heavy iron chain, attached to the framework and running down the
-        shaft.
+        The chain is heavy iron, attached to the framework and running down
+        into the shaft.
         """
 
     static let smellyStaircase = """
-        A small descending staircase, from the direction of which the odor
-        comes.
+        The staircase descends from the room, and the odor comes up it.
         """
 
     static let foulOdor = """
-        A foul odor, drifting up from whatever lies below the staircase.
+        The odor rises from below the staircase, and it does not improve on
+        acquaintance.
         """
 
     static let smellyTunnel = """
-        A narrow tunnel leading south.
+        The tunnel leads south out of the room. It is a narrow one.
         """
 
     static let gasStairs = """
-        A short climb up some stairs, back the way you came.
+        The stairs climb a short way out of the room.
         """
 
     static let gasTunnel = """
-        A narrow tunnel leading east.
+        The tunnel leads east out of the room. It is a narrow one.
         """
 
     static let coalGas = """
-        Coal gas, thick and dangerous. An open flame here would be the
-        last thing you smell.
+        The room is thick with coal gas. This is no place to strike a match.
         """
 
     static let ricketyLadder = """
-        A rickety wooden ladder leading downward. It might be safe to
-        descend.
+        The ladder is wooden and rickety, and leads downward. It might be safe
+        to descend.
         """
 
     static let ladderTopStaircase = """
-        A staircase leading upward, out of the very small room.
+        The staircase leads up out of the little room.
         """
 
     static let ladderBottomLadder = """
-        The bottom of a narrow wooden ladder, rising into the dark.
+        The bottom of the narrow wooden ladder stands against one side of the
+        room, and the rest of it rises into the dark.
         """
 
     static let brokenTimbers = """
-        Broken timbers, cluttering the long and narrow passage — old mine
-        shoring, collapsed where it stood.
+        Broken timbers lie the length of the passage. They are the old shoring
+        of the mine, fallen where it stood.
         """
 
     static let draftyShaft = """
-        The bottom of a long shaft, rising into darkness above.
+        The bottom of the long shaft is here, and it rises out of sight above
+        you.
         """
 
     static let draftyChain = """
-        A heavy iron chain, hanging in the shaft.
+        The heavy iron chain hangs down the shaft from somewhere far above.
         """
 }

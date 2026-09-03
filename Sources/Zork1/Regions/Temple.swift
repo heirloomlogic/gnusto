@@ -108,8 +108,8 @@ struct ZorkTemple: GameContent {
     }
 
     let railing = Item {
-        name("stone railing")
-        adjectives("stone")
+        name("wooden railing")
+        adjectives("wooden")
         synonyms("rail", "railing")
         description(Prose.templeRailing)
         scenery
@@ -195,7 +195,7 @@ struct ZorkTemple: GameContent {
     /// (#407) Named by `Prose.domeRoom`.
     let dome = Item {
         name("large dome")
-        adjectives("large", "wooden")
+        adjectives("large")
         synonyms("dome")
         description(Prose.dome)
         scenery
@@ -210,11 +210,11 @@ struct ZorkTemple: GameContent {
         scenery
     }
 
-    /// (#407) Named by `Prose.torchRoom` — the same dome ``dome`` names,
-    /// seen from below it.
+    /// (#407) Named by `Prose.torchRoom` — the same dome ``dome`` names, but
+    /// this room is the one it is the ceiling of, so it gets its own line.
     let domeAtTorch = Item {
         name("dome")
-        description(Prose.dome)
+        description(Prose.domeFromBelow)
         scenery
     }
 

@@ -81,37 +81,39 @@ extension Prose {
     // MARK: - Round Room hub: (#407) scenery examine lines
 
     static let passageStairway = """
-        A narrow stairway leading down, at the north end of the passage.
+        The stairway leads down from the north end of the passage.
         """
 
     static let caveIns = """
-        Rubble chokes several of the passages, fallen from above — the
-        cave-ins. They are not clearable by hand.
+        Rubble from the cave-ins blocks several of the passages. You will not
+        clear it by hand.
         """
 
     static let chasmRoomChasm = """
-        The chasm runs southwest to northeast beside you, bottomless.
+        The chasm runs southwest to northeast past the path, and the bottom of
+        it cannot be seen.
         """
 
     static let chasmRoomCrack = """
-        A crack in the south side of the chasm, opening into a passage.
+        The crack opens in the south side of the chasm and widens into a
+        passage.
         """
 
     static let dampCaveCrack = """
-        A crack toward the south, narrowing to too little for most
-        insects.
+        Toward the south the cave narrows to a crack. It is too narrow for
+        most insects.
         """
 
     static let loudRoomCeiling = """
-        The ceiling is lost somewhere in the black above — no light of
-        yours reaches it.
+        The ceiling is somewhere above you in the dark. No light of yours
+        reaches it.
         """
 
     static let deepCanyonStairway = """
-        A stairway leading down, hewn from the canyon rock.
+        The stairway is cut into the rock of the canyon, and leads down.
         """
 
     static let loudRoomStairway = """
-        A stone stairway leading upward, out of the roar.
+        The stone stairway leads upward, out of the noise.
         """
 }

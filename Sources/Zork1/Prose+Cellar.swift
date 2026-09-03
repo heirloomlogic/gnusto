@@ -48,43 +48,45 @@ extension Prose {
     // MARK: - Cellar region: (#407) scenery examine lines
 
     static let galleryVandals = """
-        Whoever they were, the vandals are long gone — through either the
-        north or west exits, like as not. Only their leavings remain.
+        The vandals are long gone, north or west by the look of the place.
+        Whatever they did not care to steal is still hanging here.
         """
 
     static let studioFireplace = """
-        A broad fireplace, black with old soot, the chimney rising from it.
+        The fireplace is broad and black with old soot, and the chimney rises
+        out of it.
         """
 
     static let studioDoor = """
-        An open door at the south end of the room, itself covered with
-        paint.
+        The door stands open at the south end of the room. Like everything
+        else here, it is covered with paint.
         """
 
     static let studioPaints = """
-        The walls and floors are splattered with paints of 69 different
-        colors, every one of them dry.
+        The paint is splashed across the walls and the floors in sixty-nine
+        different colors. All of it dried a long time ago.
         """
 
     static let trollBloodstains = """
-        Dark bloodstains spatter the walls, some of them unmistakably
-        recent.
+        Bloodstains mar the walls of the room. Some of them look distressingly
+        fresh.
         """
 
     static let trollScratches = """
-        Deep scratches, perhaps made by an axe, gouge the stone.
+        The scratches are gouged deep into the stone. An axe would make marks
+        like these.
         """
 
     static let trollHole = """
-        A forbidding hole leading west, out of which no light comes.
+        The hole leads west out of the room, and no light comes out of it.
         """
 
     static let chasmPassage = """
-        A narrow passage going north from the chasm's edge.
+        The passage runs north from the edge of the chasm.
         """
 
     static let chasmPath = """
-        The path you are on, continuing east along the chasm.
+        The path runs along the east edge of the chasm and continues east.
         """
 
     // MARK: - The Troll Room

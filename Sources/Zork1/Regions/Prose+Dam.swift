@@ -244,68 +244,74 @@ extension Prose {
 
     // MARK: - Dam region: (#407) scenery examine lines
 
+    static let receptionDesk = """
+        The reception desk is long abandoned, and its surface has gone gray
+        with dust.
+        """
+
     static let lobbyDoorways = """
-        Open doorways to the north and east, each marked "Private".
+        The doorways open north and east. Both of them are marked "Private".
         """
 
     static let maintenanceDoorways = """
-        Doorways to the west and south, back toward the lobby.
+        The doorways lead west and south. Both of them return to the lobby.
         """
 
     static let maintenanceWall = """
-        The wall in front of you, holding the group of colored buttons and
-        little else of use.
+        The wall in front of you carries the group of colored buttons, and
+        nothing else worth the trouble.
         """
 
     static let maintenanceEquipment = """
-        Most of the valuable equipment is gone — ransacked recently, by
-        the look of the place.
+        Whatever the maintenance crews kept here is gone. The room was
+        ransacked, and recently.
         """
 
     static let cliffsFromDamBase = """
-        The White Cliffs, rising like giant walls from north to south
-        along the river's shores.
+        The White Cliffs stand like giant walls along the shores of the river,
+        stretching from north to south.
         """
 
     static let riverAtDamBase = """
-        The river Frigid, flowing by here on its way downstream.
+        The river Frigid flows past the base of the dam on its way
+        downstream.
         """
 
     static let reservoirLake = """
-        The large lake behind the dam, far too deep and wide for
+        The lake stretches away to the north, far too deep and too wide for
         crossing.
         """
 
     static let reservoirChasm = """
-        A chasm, its edge running southwest beside the steep pathway.
+        The steep pathway climbs southwest along the edge of the chasm.
         """
 
     static let reservoirCanyon = """
-        A canyon, opening to the southeast.
+        The canyon opens to the southeast, and a path leads down into it.
         """
 
     static let reservoirMud = """
-        A large mud pile — the bed of the drained lake, slick underfoot.
+        The bed of the drained lake is one great pile of mud, and it is slick
+        underfoot.
         """
 
     static let reservoirShores = """
-        "Shores" to the north and south, where the lake's edge used to
-        be.
+        The old shores of the lake lie north and south of you, high and dry.
         """
 
     static let reservoirStairway = """
-        A slimy stairway leaving the room to the north.
+        The stairway leaves the room to the north. It is slick with slime.
         """
 
     static let streamBeach = """
-        A narrow beach to land on, beside the stream.
+        A narrow beach lies beside the stream, wide enough to land on.
         """
 
     static let streamViewPath = """
-        The path you stand on, following the stream from west to east.
+        The path follows the stream from west to east.
         """
 
     static let streamViewStream = """
-        A gently flowing stream, running from west to east.
+        The stream flows gently past, from west to east.
         """
 }

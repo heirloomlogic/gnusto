@@ -278,123 +278,115 @@ extension Prose {
     // MARK: - AboveGround: (#407) scenery examine lines
 
     // One short answer per noun the room prose names and nothing declared.
-    // Written fresh (the original leaves these unexaminable) and kept terse.
+    // Written fresh (the original leaves these unexaminable) in the room
+    // descriptions' own voice: plain declarative sentences, what the thing is
+    // and where it goes, and no more.
 
     static let field = """
-        Open grassland stretching west toward the forest's edge.
+        It is an open field, running west from the house to the edge of the
+        forest.
         """
 
     static let boardedWindows = """
-        Every window is boarded over; nothing shows through the planks.
+        The windows are boarded over, and the boards are securely fastened.
         """
 
     static let houseTrees = """
-        The trees crowd close to the house, their branches brushing the eaves.
+        The trees stand close about the house, and their branches brush
+        against the eaves.
         """
 
     static let housePath = """
-        A narrow path packed hard by feet, winding away through the trees.
+        The path is a narrow one, beaten hard by long use, and it leads away
+        among the trees.
         """
 
     static let forestTrees = """
-        Tall trees all around, their trunks lost in the dim green light.
+        The trees stand thick in every direction, and very little light comes
+        down between them.
         """
 
     static let eastSunlight = """
-        Brighter air between the trunks to the east, as of open sky beyond.
+        Sunlight shows between the trunks to the east, where the forest seems
+        to end.
+        """
+
+    static let canyonSunlight = """
+        The canyon opens above you here, and the daylight falls a long way
+        down to reach the beach.
         """
 
     static let treeBranches = """
-        Low, gnarled branches, thick enough to bear a climber's weight.
+        The lower branches are gnarled and thick, and would easily bear your
+        weight.
         """
 
     static let perchBranches = """
-        Great boughs spread around you; the one overhead is out of reach.
+        Large branches spread on every side of you. The next one up is well
+        out of reach.
         """
 
     static let greatCanyon = """
-        The canyon drops away sheer, its walls falling hundreds of feet to
-        the river below.
+        The canyon falls away sheer beneath you, hundreds of feet down to the
+        river.
         """
 
     static let frigidRiver = """
-        The Frigid River, cold and quick, hurrying along the canyon floor.
+        The Frigid River runs cold and fast along the canyon floor below.
         """
 
     static let whiteCliffs = """
-        Pale cliffs rising from the far bank, walling the river from north
-        to south.
+        The White Cliffs rise pale and sheer from the far bank, and wall the
+        river from north to south.
         """
 
     static let flatheadMountains = """
-        Mighty ramparts of the Flathead Mountains, white-topped, far to the
-        east.
+        The ramparts of the Flathead Mountains stand white-capped along the
+        eastern sky.
         """
 
     static let fallsFromCanyonView = """
-        Aragain Falls, a bright ribbon of falling water crowned by a
-        rainbow.
+        Aragain Falls hangs white and small upstream to the north, with a
+        rainbow standing over it.
         """
 
     static let rainbowArch = """
-        A rainbow spanning the falls, too faint to hold anything.
+        The rainbow arches over Aragain Falls in bands of color, bright
+        against the spray.
         """
 
     static let riverCavern = """
-        A great dark cavern out of which the river flows, its mouth lost in
-        shadow.
+        The river issues from a great dark cavern in the canyon wall. Nothing
+        of the inside of it can be seen from here.
         """
 
     static let canyonCliff = """
-        The canyon wall rises sheer above and falls away below; the ledge
-        clings to it halfway.
+        The cliff rises above the ledge and falls away below it. The rock
+        above appears climbable.
         """
 
     static let fallsFromBelow = """
-        The falls thunder past, their spray drifting cool across the beach.
+        Aragain Falls thunders down at the head of the beach, and its spray
+        drifts over everything here.
         """
 
     static let riverBeach = """
-        A narrow beach of pale sand and rock, littered with river-borne
-        stones.
+        The beach is a narrow strip of sand and rock, pinned between the
+        cliffs and the water.
         """
 
     static let barrowStone = """
-        A massive barrow of ancient stone, heaved up from the earth long
-        ago.
+        The barrow is a great mound of ancient stone, raised here long before
+        the Empire.
         """
 
     static let barrowDoor = """
-        A huge stone door, standing open. Beyond it lies only darkness.
+        The stone door stands open in the east face of the barrow. Beyond it
+        there is only darkness.
         """
 
     static let barrowTomb = """
-        The dark of the tomb. Whatever lies within is past seeing from
-        here.
-        """
-
-    static let barrowCavern = """
-        An enormous cavern, brightly lit, into which the way leads on.
-        """
-
-    static let barrowStream = """
-        A wide stream, running quiet and clear through the cavern's
-        center.
-        """
-
-    static let barrowFootbridge = """
-        A small wooden footbridge spanning the stream.
-        """
-
-    static let barrowSign = """
-        A large sign floating above the bridge. It reads: "All ye who
-        stand before this bridge have completed a great and perilous
-        adventure which has tested your wit and courage. You have
-        mastered ZORK: The Great Underground Empire."
-        """
-
-    static let barrowTunnel = """
-        A dark tunnel leading away beyond the bridge.
+        You can see nothing of the tomb from outside it.
         """
 
     static let barrowPathBlocked = """

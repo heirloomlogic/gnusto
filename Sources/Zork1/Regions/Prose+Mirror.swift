@@ -92,36 +92,38 @@ extension Prose {
     // MARK: - Mirror region: (#407) scenery examine lines
 
     static let mirrorRoomWall = """
-        The south wall, from floor to tall ceiling, is the enormous
-        mirror itself.
+        The south wall of the room is given over entirely to the mirror, from
+        the floor to the tall ceiling.
         """
 
     static let mirrorRoomCeiling = """
-        Tall ceilings, far above the mirror's glass.
+        The ceiling is a tall one, well above the top of the mirror.
         """
 
     static let smallCaveStaircase = """
-        A staircase leading down, into the dark below.
+        The staircase leads down out of the cave.
         """
 
     static let atlantisStaircase = """
-        A staircase leading up, back the way you came.
+        The staircase leads up out of the room.
         """
 
     static let etchedLetters = """
-        The letters "Granite Wall", etched in the rock of the south wall —
-        old mining marks, cut deep.
+        The words "Granite Wall" are cut deep into the rock of the south wall.
+        They are old work, and they mean nothing that you can see.
         """
 
     static let metalSlide = """
-        A steep metal slide twisting downward, into darkness.
+        The slide is of metal, and twists steeply downward into the dark.
         """
 
     static let slideRoomRock = """
-        Bare rock, close-walled, the chamber cut straight out of it.
+        The chamber is cut straight out of the bare rock, and its walls stand
+        close.
         """
 
     static let slideRoomOpening = """
-        A small opening to the north, just big enough to crawl through.
+        The opening in the north wall is small, but big enough to crawl
+        through.
         """
 }

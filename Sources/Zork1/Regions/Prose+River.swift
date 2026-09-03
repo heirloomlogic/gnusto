@@ -282,87 +282,102 @@ extension Prose {
     // MARK: - River region: (#407) scenery examine lines
 
     static let damFromRiver = """
-        Flood Control Dam #3, rising behind you and upstream.
+        Flood Control Dam #3 stands upstream behind you.
         """
 
     static let westShoreAtRiver1 = """
-        A landing on the west shore, where the water runs quietly.
+        There is a landing on the west shore, and the water runs quietly
+        beside it.
         """
 
     static let cliffsFromRiver = """
-        The White Cliffs, pale and sheer, hard against the river.
+        The White Cliffs rise pale and sheer out of the water.
         """
 
     static let riverRocks = """
-        Large rocks, black and wet, guarding the west bank.
+        Large rocks stand out of the water along the west bank. There is no
+        landing among them.
         """
 
     static let riverValley = """
-        The river descends here into a broad valley, its walls falling
-        away on both sides.
+        The river descends into a broad valley here, and its walls fall away
+        on either side.
         """
 
     static let riverBeachWest = """
-        A narrow beach on the west shore, below the cliffs.
+        A narrow beach lies on the west shore, below the cliffs.
         """
 
     static let sandyEastBeach = """
-        A sandy beach on the east shore, wide and pale.
+        The beach on the east shore is broad and sandy.
         """
 
     static let cliffsFromRiver4 = """
-        The cliffs on the west shore, with a small strip of beach below
-        them.
+        The cliffs stand along the west shore, with a small area of beach
+        below them.
         """
 
     static let riverLandingArea = """
-        A large landing area on the east shore, though the roar drowns
-        everything else.
+        A large landing area runs along the east shore. Nothing can be heard
+        over the water.
         """
 
     static let cliffsPath = """
-        A narrow path heading south along the base of the Cliffs.
+        The path is a narrow one, and runs south along the base of the Cliffs.
         """
 
     static let cliffsPathNorth = """
-        A narrow path leading north along the shore.
+        The path is a narrow one, and runs north along the shore.
+        """
+
+    static let eastShorePath = """
+        The path travels north and south along the shore.
+        """
+
+    static let sandyBeachPath = """
+        The path runs south beside the river.
         """
 
     static let tightPassage = """
-        A tight passage leading west into the cliffs themselves.
+        The passage leads west, into the cliffs themselves. It is a tight
+        one.
         """
 
     static let shoreCorner = """
-        The south end of the path, quickly turning around a sharp corner.
+        At its south end the path turns sharply around the corner, and nothing
+        beyond it can be seen.
         """
 
     static let eastShore = """
-        The eastern bank itself, the water running treacherous at your feet.
+        You are standing on the east bank of the river. The water runs
+        treacherously fast at your feet.
         """
 
     static let buriedPassage = """
-        A passage partially buried in sand, opening to the northeast.
+        The passage opens to the northeast, and the sand has half buried it.
         """
 
     static let beachSand = """
-        Pale river sand, thick underfoot and marked only by your own
+        The sand is thick underfoot, and marked with nothing but your own
         tracks.
         """
 
     static let fallsFromTop = """
-        Aragain Falls itself, an enormous waterfall with a drop of about
-        450 feet.
+        Aragain Falls drops about 450 feet from where you stand.
         """
 
     static let fallsPath = """
-        The only path here, at the north end of the falls.
+        The path runs off the north end of the falls. It is the only one
+        here.
         """
 
     static let rainbowUnderfoot = """
-        The rainbow you stand on, arching east-west above the roar.
+        The rainbow arches east and west beneath your feet, and holds you
+        without any trouble at all.
         """
 
     static let fallsFromRainbow = """
-        The Falls, plunging away beneath the rainbow's arc.
+        The Falls drop away beneath the rainbow, and the view of them is
+        magnificent.
         """
 }

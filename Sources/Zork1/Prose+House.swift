@@ -113,51 +113,53 @@ extension Prose {
     // MARK: - House: (#407) scenery examine lines
 
     static let kitchenTable = """
-        A sturdy kitchen table, dusted with flour and marked with knife
-        scores.
+        The table is a sturdy one, dusted with flour and scored with knife
+        marks.
         """
 
     static let kitchenStaircase = """
-        A dark staircase, climbing up out of the kitchen's light.
+        The staircase climbs into darkness above the kitchen.
         """
 
     static let kitchenPassage = """
-        A passage leading west, toward the front of the house.
+        The passage leads west, toward the front of the house.
         """
 
     static let kitchenChimney = """
-        A dark chimney leading down — the flue from the fireplace above.
-        Too narrow to climb back up.
+        The chimney drops away into the dark below the kitchen. It is far too
+        narrow to climb down.
         """
 
     static let livingRoomDoorway = """
-        A doorway opening east, into the kitchen.
+        The doorway opens east, into the kitchen.
         """
 
     static let livingRoomDoor = """
-        A wooden door, with strange gothic lettering on it. It appears to
-        be nailed shut.
+        The wooden door is covered with strange gothic lettering, and appears
+        to be nailed shut.
         """
 
     static let gothicLettering = """
-        Strange gothic lettering, in a language you cannot read — though
-        the letters look old, and somehow important.
+        The lettering is in no language you know. It is very old, and it was
+        cut with great care.
         """
 
     static let atticStairway = """
-        The stairway down to the kitchen, the attic's only way out.
+        The stairway leads down to the kitchen. It is the attic's only way
+        out.
         """
 
     static let cellarPassageway = """
-        A narrow passageway leading north, into darkness.
+        The passageway runs north out of the cellar, into the dark.
         """
 
     static let cellarCrawlway = """
-        A crawlway to the south, low enough to walk through bent double.
+        The crawlway leads south. It is low, but you could manage it bent
+        double.
         """
 
     static let cellarRamp = """
-        The bottom of a steep metal ramp, rising up out of reach. It
-        cannot be climbed.
+        The metal ramp rises steeply to the west. It is far too smooth to
+        climb.
         """
 }
