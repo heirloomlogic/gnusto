@@ -34,6 +34,9 @@ extension GameWorld {
             guard !line.isEmpty else {
                 return freeReply(definition.text.cancelled())
             }
+            if savePathsRestricted, SaveStore.isExplicitPath(line) {
+                return freeReply(definition.text.savePathRefused())
+            }
             do {
                 let url = try SaveStore.resolveForWrite(line, in: saveDirectory)
                 try SaveFile.write(state, title: definition.title, to: url)
@@ -45,6 +48,11 @@ extension GameWorld {
         case .restoreFilename(let returnToDeathPrompt):
             guard !line.isEmpty else {
                 return restoreFailed(definition.text.cancelled(), returnToDeathPrompt)
+            }
+            if savePathsRestricted, SaveStore.isExplicitPath(line) {
+                return
+                    restoreFailed(
+                        definition.text.savePathRefused(), returnToDeathPrompt)
             }
             do {
                 let url = SaveStore.resolve(line, in: saveDirectory)

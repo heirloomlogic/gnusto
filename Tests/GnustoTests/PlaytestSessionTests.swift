@@ -669,6 +669,30 @@ struct PlaytestSessionTests {
             SaveStore.existingSaveNames(in: session.saveDirectory) == ["autumn"])
     }
 
+    /// The escape the slot-only policy exists to close: a batched `save` whose
+    /// answer is an absolute path used to write the save file wherever the
+    /// path pointed — outside the session's saves directory, onto any file the
+    /// game process could write. A session's saves directory is injected, so
+    /// the answer is refused outright and the only writes are slot writes.
+    @Test func aBatchedSaveWithAPathNeverLeavesTheSessionDirectory() async throws {
+        let harness = try Harness(OperaHouse())
+        let escape = FileManager.default.temporaryDirectory
+            .appendingPathComponent("gnusto-\(UUID().uuidString).sav")
+            .path
+        defer { try? FileManager.default.removeItem(atPath: escape) }
+
+        let session = try await harness.sessions.open(label: "escaping", seed: 0)
+        _ = try await session.opening()
+
+        let report = try await session.move(
+            commands: ["save", escape, "look"], allowPrompts: true)
+
+        #expect(report.contains("Paths aren't allowed here; enter a plain name."))
+        #expect(report.contains("ran=3/3"))
+        #expect(!FileManager.default.fileExists(atPath: escape))
+        #expect(SaveStore.existingSaveNames(in: session.saveDirectory).isEmpty)
+    }
+
     /// The death prompt is the same mechanism with the highest stakes: while it
     /// is armed *every* line is an answer, so a batch that kept going would
     /// spend its remaining commands on "I don't understand" and look like a
