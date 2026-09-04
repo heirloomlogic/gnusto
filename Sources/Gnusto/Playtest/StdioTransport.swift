@@ -34,12 +34,17 @@ import Glibc
 /// across two reads is reassembled" is the kind of claim that should be
 /// testable without a pipe, a subprocess or a thread.
 ///
-/// The scan is linear. Reads arrive in chunks of whatever the pipe had, and a
-/// large frame — an `export` of a long game is megabytes — spans many of them.
-/// Rescanning the whole buffer from its head on every chunk would cost the
-/// square of the frame size in bytes examined; instead each chunk is scanned
-/// once from where the last scan stopped, and only the tail after the last
-/// newline is ever carried over. A byte is looked at exactly once.
+/// This is the inbound half only — one buffer, over standard input, in
+/// `MCPServer.serve`. The megabyte frames are the ones going the other way,
+/// and a result leaves through ``StdioWriter``, which never frames by line.
+///
+/// The scan is linear even so. Reads arrive in chunks of whatever the pipe
+/// had, and a request larger than one of them — a `finish` report, a `replay`
+/// command list — spans several. Rescanning the whole buffer from its head on
+/// every chunk would cost the square of the frame size in bytes examined;
+/// instead each chunk is scanned once from where the last scan stopped, and
+/// only the tail after the last newline is ever carried over. A byte is looked
+/// at exactly once.
 struct LineBuffer {
     /// Bytes since the last newline — the frame still being assembled.
     private var pending: [UInt8] = []
@@ -50,12 +55,15 @@ struct LineBuffer {
     private var scanned = 0
 
     /// The most bytes one unfinished frame may occupy before the buffer gives
-    /// up. Generous by design — bigger than any frame this protocol produces —
+    /// up. Generous by design — far bigger than any request a client sends —
     /// so hitting it means a client that has stopped speaking JSON, and the
     /// answer is to fail the connection rather than buffer it forever.
     let maxPendingBytes: Int
 
-    /// The default cap: 64 MiB, against megabytes for the largest real frame.
+    /// The default cap: 64 MiB, against tens of kilobytes for the largest real
+    /// request. Three orders of magnitude of room, deliberately — the number
+    /// is not a budget for legitimate traffic, it is the point past which a
+    /// client cannot be framing at all.
     static let defaultMaxPendingBytes = 64 * 1024 * 1024
 
     /// An empty buffer.
@@ -141,13 +149,20 @@ enum StdioReader {
     /// frame passes ``LineBuffer/defaultMaxPendingBytes``, because a client
     /// that has stopped framing is a client to hang up on, not to buffer.
     ///
-    /// - Parameter descriptor: the file descriptor to read, standard input in
-    ///   production.
+    /// - Parameters:
+    ///   - descriptor: the file descriptor to read, standard input in
+    ///     production.
+    ///   - maxPendingBytes: the cap on one unfinished frame. Production takes
+    ///     the default; a test passes a small one, because the only way to
+    ///     reach a 64 MiB cap over a real pipe is to write 64 MiB.
     /// - Returns: the frames, one per element, without their newlines.
-    static func frames(from descriptor: Int32) -> AsyncStream<String> {
+    static func frames(
+        from descriptor: Int32,
+        maxPendingBytes: Int = LineBuffer.defaultMaxPendingBytes
+    ) -> AsyncStream<String> {
         AsyncStream { continuation in
             let thread = Thread {
-                var buffer = LineBuffer()
+                var buffer = LineBuffer(maxPendingBytes: maxPendingBytes)
                 var chunk = [UInt8](repeating: 0, count: readChunkSize)
                 while true {
                     let count = chunk.withUnsafeMutableBytes { raw -> Int in
