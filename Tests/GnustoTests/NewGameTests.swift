@@ -27,27 +27,9 @@ struct NewGameTests {
         currentDirectory: URL = packageRoot,
         environment: [String: String]? = nil
     ) throws -> (status: Int32, stdout: String, stderr: String) {
-        let process = Process()
-        process.executableURL = tool
-        process.arguments = arguments
-        process.currentDirectoryURL = currentDirectory
-        if let environment {
-            process.environment = ProcessInfo.processInfo.environment
-                .merging(environment) { _, new in new }
-        }
-        let out = Pipe()
-        let err = Pipe()
-        process.standardOutput = out
-        process.standardError = err
-        try process.run()
-        let outData = out.fileHandleForReading.readDataToEndOfFile()
-        let errData = err.fileHandleForReading.readDataToEndOfFile()
-        process.waitUntilExit()
-        return (
-            process.terminationStatus,
-            String(decoding: outData, as: UTF8.self),
-            String(decoding: errData, as: UTF8.self)
-        )
+        try ToolProcess.run(
+            tool, arguments, from: currentDirectory,
+            environment: ProcessInfo.processInfo.environment.merging(environment ?? [:]) { _, new in new })
     }
 
     /// Run `bin/new-game` with the given arguments.

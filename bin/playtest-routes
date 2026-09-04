@@ -65,7 +65,7 @@ const {
 // it before its own cd: a relative `--from-commands` or `--from-session` is the
 // caller's, and resolving it after this line names a file in the Gnusto checkout
 // instead (#382).
-const INVOCATION_DIR = process.cwd()
+const INVOCATION_DIR = process.env.GNUSTO_INVOCATION_DIR || process.cwd()
 
 process.chdir(focus.ROOT)
 
