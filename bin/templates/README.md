@@ -15,19 +15,22 @@ Run the built binary directly to play — piping input through `swift run` swall
 
 ## Let an agent play-test it
 
-`.mcp.json` and `bin/gnusto-mcp` are already wired up: your game is an MCP play-test server, and an agent can open a session, take turns, and read back what the prose actually printed. Nothing in your game has to know about it — `GameMain` answers `--mcp` for every Gnusto game, yours included.
+Run `bin/playtest-preflight MyGame`, then use `/playtest` in Claude Code. This package includes the skill, MCP registration, and tool settings. For a terminal dispatch, use `bin/playtest-preflight MyGame --headless`; findings stay in a report for review.
 
-An MCP client asks once to approve a project-scoped server, then runs `bin/gnusto-mcp MyGame` itself; stdout is the protocol. The first run builds, which can outlast a client's startup timeout — run `swift build` once first, or raise the client's timeout (`MCP_TIMEOUT`, in milliseconds).
+Automated rounds require Node.js, Python 3, and an authenticated Claude Code installation with the `Workflow` tool, in addition to Swift and Git. The [play-testing guide](docs/playtesting.md) covers setup, permissions, server restarts, and reading the report.
 
 ## The tools in `bin/`
 
-`bin/export-game`, `bin/playtest-replay` and `bin/playtest-measure` are shims. The real scripts live in the Gnusto checkout this package depends on, so they are never out of step with the engine — `swift package update` moves both together. They need Gnusto resolved, so run `swift build` once before the first one.
+All six tools are shims over the resolved Gnusto checkout. Run `swift build` once to resolve the dependency. Updating Gnusto updates the tools too.
 
-- `bin/export-game MyGame` builds a standalone binary under `dist/` you can hand to a friend.
-- `bin/playtest-replay MyGame --commands probe.txt --seed 0 --label mine` replays a command list with the random seed pinned, so a hand-played session reproduces exactly.
-- `bin/playtest-measure .context/playtest/mine/probe-*` reports how much of the game a round actually reached.
+- `bin/gnusto-mcp MyGame` serves the game's MCP protocol on stdio; `.mcp.json` runs it for your client.
+- `bin/playtest-preflight MyGame` checks the server and prepares the round arguments. Add `--headless` to dispatch through Claude Code.
+- `bin/playtest-routes MyGame list` lists committed deep starts; `verify` replays them to check their landings.
+- `bin/playtest-replay MyGame --commands probe.txt --seed 0 --label mine` replays a command list with a fixed random seed.
+- `bin/playtest-measure .context/playtest/mine/probe-*` measures how much of the game the probes reached.
+- `bin/export-game MyGame` builds a standalone binary under `dist/`.
 
-If `bin/new-game` printed a warning about the Gnusto version it pinned, `bin/gnusto-mcp` and `bin/export-game` will run against the Gnusto engine checkout instead of this game until you depend on a newer release — `swift package update` once one ships, or regenerate with `--dep-path`; `bin/playtest-replay` and `bin/playtest-measure` are unaffected either way.
+If the generator warns about the pinned Gnusto version, use a release containing the required tools or regenerate with `--dep-path` pointing at a current engine checkout. `swift package update` can select a compatible newer release once one exists.
 
 ## What this game already demonstrates
 
