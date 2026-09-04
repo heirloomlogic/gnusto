@@ -3,7 +3,7 @@ export const meta = {
   description:
     'Automated play-test round for a Gnusto demo game: charter-diverse subagents read transcripts as prose, every finding is replayed and then adversarially refuted by two independent raters, and a critic reads the coverage off what the sessions themselves wrote down rather than believing the testers.',
   whenToUse:
-    'Invoked by /playtest <game>. Needs args {game, packagePath, docPath, capabilities, turns, charters, rounds}. A package that is not this repository also passes its layout — {projectName, enginePath, gameSourceDir, conventionsPath, gameDocsDir, refPath} and {tracker: false} when it has no issue tracker — since this script has no filesystem access of its own and cannot derive any of it. The calling session builds the binary first (bin/playtest-replay --build <Game>) and writes the returned report.',
+    'Invoked by /playtest <game>. Needs args {game, packagePath, docPath, capabilities, turns, charters, rounds}. A package that is not this repository also passes its layout — {projectName, enginePath, engineRoot, gameSourceDir, conventionsPath, gameDocsDir, refPath} and {tracker: false} when it has no issue tracker — since this script has no filesystem access of its own and cannot derive any of it. The calling session builds the binary first (bin/playtest-replay --build <Game>) and writes the returned report.',
   phases: [
     { title: 'Preflight', detail: 'one agent proves this session can reach the game’s MCP server, before eight testers find out it cannot' },
     { title: 'Survey', detail: 'one cartographer: rooms, timers, vocabulary, and which oracle tiers exist' },
@@ -88,7 +88,12 @@ const docPath = ARGS.docPath || null
 // A path arrives absent as `''`, which is the generated case — no conventions file, no
 // design-doc directory — and the bullet, the exclusion and the classifier row that
 // name it all drop out together.
-const layoutPath = (value, fallback) => String(value ?? fallback).trim().replace(/\/+$/, '')
+// A leading `./` comes off here as well as off a cited path, because the two are
+// compared against each other: an `enginePath` of `./Sources/Gnusto` would otherwise
+// enter every prefix test — and the common-prefix derivation below — unnormalized
+// while the tester's side was normalized.
+const layoutPath = (value, fallback) =>
+  String(value ?? fallback).trim().replace(/^\.\//, '').replace(/\/+$/, '')
 
 // How the prompts name the repository under test. Three preambles open with it.
 //
@@ -130,6 +135,94 @@ const gameSourceDir = layoutPath(ARGS.gameSourceDir, `Sources/${ARGS.game}`)
 // coincide and absolute when they do not; either way the reader is an agent with a
 // working directory of the package, so a bare relative path would be the game's.
 const refPath = layoutPath(ARGS.refPath, '.claude/skills/playtest/references')
+
+// ---------------------------------------------------------------------------
+// Two trees, one frame
+// ---------------------------------------------------------------------------
+//
+// Downstream the engine is not under the package, so a path a round handles belongs
+// to one of two trees — and arrives spelled in whichever frame its writer had.
+//
+// `enginePath` is a **grep root**: the clusterer and the cartographer open real
+// directories with it, so downstream it is `.build/checkouts/Gnusto/Sources/Gnusto`.
+// A tester's `ownerFile` is a **guess** at the file that would change, written by
+// hand — `finding-contract.md` asks for one, the blind charters may not open source
+// at all, and nobody anywhere can know where SwiftPM put the checkout. So the same
+// engine file arrives as two strings, and comparing them without putting them in one
+// frame is what made every engine-owned finding `unknown` downstream and minted a
+// dedupe key that matched nothing on the next machine.
+//
+// The directory two paths share, to a whole segment, and `''` when they share none.
+const sharedDirPrefix = (one, other) => {
+  const a = one.split('/')
+  const b = other.split('/')
+  let i = 0
+  while (i < a.length - 1 && i < b.length - 1 && a[i] === b[i]) i++
+  return a.slice(0, i).join('/')
+}
+
+// `engineRoot` is the checkout the engine — and with it the harness — was resolved
+// into: `''` when the engine IS the package under test, which is this repository.
+//
+// **Preflight states it**, because it holds the fact by construction rather than by
+// search: `ENGINE` there is `__dirname/..`, which is the checkout SwiftPM actually
+// resolved. The default derives the same value from the two arguments already
+// pointing into it, so an args set written by hand — or one produced before this
+// field existed — still lands in the right frame instead of silently regressing to
+// the package's.
+const engineRoot = layoutPath(ARGS.engineRoot, sharedDirPrefix(enginePath, refPath))
+
+// `enginePath` with that checkout taken off: the engine's layout inside its own
+// repository, which is what a tester writes and what a portable dedupe key holds.
+const engineOwnPath = engineRoot ? enginePath.slice(engineRoot.length + 1) : enginePath
+
+/// A path as somebody wrote it, reduced to what the tests below compare. A leading
+/// `./` is what a grep root of `./Sources/Zwank` puts on a clusterer's answer, and it
+/// is the whole difference between a key that matches and one that quietly does not.
+const citedPath = (file) => String(file || '').trim().replace(/^\.\//, '')
+
+/// The engine's source and the optional libraries beside it. A bare prefix rather
+/// than a directory test, deliberately: `GnustoClock`, `GnustoScoring` and the rest
+/// are siblings of `Sources/Gnusto` named `Sources/Gnusto<Something>`, and all of
+/// them are the engine's to fix.
+const underEngineSource = (f) => !!engineOwnPath && f.startsWith(engineOwnPath)
+
+/// A cited path in the frame of the tree that owns it, or `null` when the engine does
+/// not own it.
+///
+/// Two ways in: the path points into the resolved checkout, or it is already spelled
+/// the way the engine names its own files. Both mean one file, and both come back
+/// relative to the engine's own repository — `Sources/Gnusto/Actions/GameText.swift`
+/// in every package, because that is the engine's tree and not the caller's.
+///
+/// When the engine IS the package under test the two trees coincide and every path is
+/// already in this frame, so every derivation below returns what it used to.
+function inEngineFrame(file) {
+  const f = citedPath(file)
+  if (!engineRoot) return f
+  if (f.startsWith(`${engineRoot}/`)) return f.slice(engineRoot.length + 1)
+  if (underEngineSource(f)) return f
+  return null
+}
+
+/// A path as a **key** holds it: the engine's own frame for an engine file, the
+/// package's for everything else.
+///
+/// The clusterer greps directories, so downstream its answer carries the checkout
+/// SwiftPM resolved — which changes with the machine and again with
+/// `swift package update`. A key built from that is a key the next round cannot match,
+/// and the ledger is the loop's whole memory.
+const inKeyFrame = (file) => inEngineFrame(file) ?? citedPath(file)
+
+/// The clusterer's answer, `<file>::<declaration>`, with its file half reframed. Split
+/// at the FIRST separator: the file is a path and the declaration is what the string is
+/// declared on, so a dotted member (`stubs.xyzzy`) stays whole either way.
+const keyDeclaration = (declaration) => {
+  const answer = String(declaration).trim()
+  const at = answer.indexOf('::')
+  if (at < 0) return answer
+  return `${inKeyFrame(answer.slice(0, at))}::${answer.slice(at + 2).trim()}`
+}
 
 // Whether a confirmed finding can be filed. With a tracker the round's issue is
 // created against it when filing is enabled. A package without a tracker and an
@@ -420,8 +513,8 @@ Read the transcript FILE it points at, never stdout — the plain IO handler pri
 the "> " prompt but not the piped command, so stdout is answers with the questions
 missing. Comments (\`//\` or \`#\`) are recorded and never reach the parser.
 
-Write nothing outside \`${SCRATCH}/\`. It is the sanctioned scratch and the
-only part of the tree that is gitignored for this purpose.
+Write nothing outside \`${SCRATCH}/\`. It is the sanctioned scratch: a round writes
+there and nowhere else, so nothing a round produces lands in the package's own tree.
 `.trim()
 
 // Where and what, with no doctrine. Every agent gets this much; only the ones
@@ -1724,8 +1817,11 @@ You are the clusterer. You do not judge findings; you locate the code that print
 For each finding below, find the **declaration** whose text the excerpt came from and
 report its id as \`<file>::<declaration>\` — the property or constant the string is
 declared on, not the line number and not the file alone. \`grep -rn\` a distinctive
-fragment of the excerpt under BOTH \`${pkg}/${gameSourceDir}\` and \`${enginePath}\` —
-a line the game never declared was printed by the engine — and read outward to the
+fragment of the excerpt under BOTH \`${pkg}/${gameSourceDir}\` and \`${enginePath}*\` —
+a line the game never declared was printed by the engine, and the trailing glob is
+deliberate: the engine's optional libraries are siblings of its source directory named
+for it, so a combat line or a conversation reply is declared beside it rather than in
+it — and read outward to the
 enclosing \`let\`/\`static let\`/trait. Prose tables are the common case here: a hit in
 a \`Prose\` enum is the declaration, and the entity that references it is not.
 
@@ -1754,10 +1850,18 @@ ${candidates.map((f, i) => `${i + 1}. [${f.charter}] ${f.ownerFile}
     const declaration = declarations.get(i + 1)
     // Falling back to the old text key rather than dropping the finding: an
     // unlocated excerpt is still a defect, it just dedups less well.
+    //
+    // Both halves go through `inKeyFrame` because both are paths and neither is
+    // written in a frame that survives the machine. The clusterer greps the
+    // directories it was handed, so downstream it answers with the checkout SwiftPM
+    // resolved; the tester's `ownerFile` is a guess written in the engine's own
+    // frame. A ledger is only worth keeping if a key written in it last round still
+    // matches one minted this round, on another machine and after a
+    // `swift package update` has moved the checkout.
     const key =
       declaration && declaration !== 'unlocated'
-        ? `decl::${declaration}`
-        : `${f.ownerFile}::${normalize(f.excerpt)}`
+        ? `decl::${keyDeclaration(declaration)}`
+        : `${inKeyFrame(f.ownerFile)}::${normalize(f.excerpt)}`
     if (seen.has(key)) {
       merged.push({ ...f, key })
       continue
@@ -1899,11 +2003,16 @@ ${routes.length ? `   **A finding with a \`Start:\` row was taken from a deep st
    to catch and the easiest to lose, because the fix looks like progress. Blame the
    offending sentence rather than guessing:
 
-       git log -S '<a distinctive fragment of the excerpt>' --oneline HEAD -- <ownerFile> | grep -v ' checkpoint:'
+       git -C <the checkout that owns the file> log -S '<a distinctive fragment of the excerpt>' --oneline HEAD -- <ownerFile, relative to that checkout> | grep -v ' checkpoint:'
+
+   ${engineRoot
+     ? `**The engine is a separate repository in this round**, checked out at \`${engineRoot}\`, and most of the sentences a round reports were declared by it. A file the engine owns is dated in the engine's own history — \`git -C ${engineRoot}\`, with \`ownerFile\` spelled relative to that checkout. Run it in the package's repository instead and it answers nothing, so every engine-owned finding dates as \`unknown\` and the one signal worth catching cannot fire.`
+     : 'The package under test and the engine are one checkout here, so the repository is `.` and `ownerFile` is already relative to it.'}
 
    The **last** line is where the text entered the file; the first is the most recent
-   touch. Filter the \`checkpoint:\` refs — this repo carries session checkpoints that
-   will otherwise bury the answer. Set \`provenance.age\` to \`introduced\` when the
+   touch. Filter the \`checkpoint:\` refs — a repository carrying session checkpoints
+   will otherwise bury the answer under them, and the filter costs nothing in one that
+   does not. Set \`provenance.age\` to \`introduced\` when the
    sentence arrived in the last few commits (name the commit and its subject),
    \`preexisting\` when it has been there for a while, and \`unknown\` when the fragment
    is too generic to blame — do not guess. If the commit that introduced it describes
@@ -2272,37 +2381,49 @@ function normalize(text) {
 // path. The harness's own files used to land there too, which made a real owner
 // indistinguishable from a tester who invented or misspelled an `ownerFile`.
 function ownerClass(file) {
-  const f = String(file || '')
-  // The harness itself: the workflow being executed, the briefs that define the
-  // round's doctrine, the replay tool, and the hand-driven counterpart the same
-  // skill documents itself in.
-  //
-  // `docs/playtesting.md` is residue by design: a generated package has no such file,
-  // so the clause matches nothing downstream and costs nothing.
-  //
-  // The other two are **not** clean, and #393 tracks it. A generated package does hold
-  // `.claude/` and `bin/` at exactly these paths, but what it holds there is its own
-  // settings, its own skill and its own shims — package-owned — while the real harness
-  // sits at `refPath` and `workflowPath`. So downstream a finding against an author's
-  // shim is blamed on the engine. Left alone here rather than half-fixed: it is the
-  // same frame mismatch as the `enginePath` prefix below, and the two want one answer.
-  if (f.startsWith('.claude/') || f.startsWith('bin/') || f === 'docs/playtesting.md') return 'harness'
-  if (enginePath && f.startsWith(enginePath)) return 'engine'
+  const f = citedPath(file)
+  // Which tree owns it, before anything is compared — see `inEngineFrame`. A tester's
+  // guess and the clusterer's grep hit are two spellings of one file, and until they
+  // are in one frame every engine-owned finding downstream reads as a typo.
+  const inEngine = inEngineFrame(f)
+  if (inEngine !== null) {
+    // The harness itself: the workflow being executed, the briefs that define the
+    // round's doctrine, the replay tool, and the hand-driven counterpart the same
+    // skill documents itself in. Literals, and legitimately so — this is the ENGINE's
+    // own layout now, which is the one tree this file may claim to know, and the
+    // author's identically-named directories are handled at the bottom.
+    if (inEngine.startsWith('.claude/') || inEngine.startsWith('bin/')
+      || inEngine === 'docs/playtesting.md') return 'harness'
+    // Under the engine's source, or anywhere else in a checkout that is not the
+    // package under test — its suite, its manifest, its own design docs are all the
+    // engine's. When the two trees coincide every path is in this frame, so only the
+    // first half may answer and the package rules below decide the rest.
+    if (engineRoot || underEngineSource(inEngine)) return 'engine'
+  }
   // Repo conventions, and the one genuinely arguable row. `ground` tells every
   // tester that a line in the conventions file the code contradicts is a doc-drift
   // finding, so the harness solicits these; filing them forever at every setting is
   // the complaint this classifier exists to answer. `engine` reaches them under
-  // `fix: "all"` and nowhere narrower.
-  if (conventionsPath && f === conventionsPath) return 'engine'
-  // The game suites share a tree with the engine's, so split them by name. A
-  // suite not named for its game (CloakTranscriptTests.swift) reads as engine,
-  // which is the safe direction for an issue checklist to guess.
+  // `fix: "all"` and nowhere narrower — and only when the package under test is the
+  // engine, since downstream this file holds the author's conventions and not ours.
+  if (conventionsPath && f === conventionsPath) return engineRoot ? 'game' : 'engine'
+  // The game suites share a tree with the engine's when the engine is the package
+  // under test, so split those by name: a suite not named for its game
+  // (CloakTranscriptTests.swift) reads as engine, which is the safe direction for an
+  // issue checklist to guess. Downstream there is nothing to split — the engine's
+  // suite is in the checkout above, so a package-frame `Tests/` is the author's.
   //
-  // `Tests/` stays a literal for the same reason `.claude/` does: it is SwiftPM's
-  // default layout and what `bin/new-game` writes, so it is right in both packages.
-  if (f.startsWith('Tests/')) return f.includes(game) ? 'game' : 'engine'
+  // `Tests/` stays a literal because it is SwiftPM's default layout and what
+  // `bin/new-game` writes, so it is right in both packages.
+  if (f.startsWith('Tests/')) return (engineRoot || f.includes(game)) ? 'game' : 'engine'
   if (gameSourceDir && f.startsWith(`${gameSourceDir}/`)) return 'game'
   if (gameDocsDir && f.startsWith(`${gameDocsDir}/`)) return 'game'
+  // The package's own tooling, which downstream sits at exactly the paths the harness
+  // occupies here: `bin/new-game` writes the author a `.claude/` skill and settings, a
+  // `bin/` of shims over the engine's tools, and a `docs/playtesting.md`. Those are
+  // theirs to change, so they are `game` — the harness proper was matched in the
+  // engine's frame above, and cannot reach this line.
+  if (f.startsWith('.claude/') || f.startsWith('bin/') || f === 'docs/playtesting.md') return 'game'
   return 'unknown'
 }
 

@@ -76,6 +76,16 @@ const OFF = '\x1b[0m'
 // everything that cannot appear in both.
 const fold = (s) => String(s).toLowerCase().replace(/[^a-z0-9]/g, '')
 
+/// Where a package keeps its design docs, its focus files and its ledgers. Stated once
+/// because it is read twice: `gameDoc` looks in it, and `bin/playtest-preflight` sends
+/// it to a round as `gameDocsDir` for `ownerClass` to classify against. Two spellings
+/// of one convention is two answers to where a game's documents are.
+///
+/// A convention rather than a knob, deliberately: `bin/new-game` writes this directory,
+/// the briefs name it, and there is no per-package config anywhere in this harness for
+/// an author to say otherwise in.
+const GAME_DOCS_DIR = 'docs/games'
+
 // `docs/games/` is named for the game, but not by a rule a `toLowerCase()` can
 // reproduce: the doc for `KindlyDeep` is `kindly-deep.md`. Assuming the naming made
 // `bin/playtest-preflight KindlyDeep` derive `docPath: null` and `ledgerKeys: []` in
@@ -84,13 +94,13 @@ const fold = (s) => String(s).toLowerCase().replace(/[^a-z0-9]/g, '')
 // match the directory rather than predict it, with the same `fold` that already
 // lets `Zork IV` reach the `ZorkIV` product.
 function gameDoc(game, suffix) {
-  const dir = path.join(ROOT, 'docs/games')
+  const dir = path.join(ROOT, GAME_DOCS_DIR)
   if (!fs.existsSync(dir)) return null
   const want = fold(game) + fold(suffix)
   const hit = fs.readdirSync(dir)
     .filter((f) => f.endsWith('.md'))
     .find((f) => fold(path.basename(f, '.md')) === want)
-  return hit ? path.join('docs/games', hit) : null
+  return hit ? path.join(GAME_DOCS_DIR, hit) : null
 }
 
 // The split, and only the split — plus the half of it a blind seat may not have.
@@ -341,11 +351,27 @@ function describePackage() {
   return describedPackage
 }
 
+/// Every game this package builds, as the manifest describes it. SwiftPM emits a
+/// product's type in two shapes depending on its version, and this is the one place
+/// that knows both.
+const gameProducts = () => (describePackage()?.products || [])
+  .filter((p) => p.type === 'executable' || (p.type && 'executable' in p.type))
+
 /// Every game this package builds, as the identifiers a product name can be.
 function executableProducts() {
-  return (describePackage()?.products || [])
-    .filter((p) => p.type === 'executable' || (p.type && 'executable' in p.type))
-    .map((p) => p.name)
+  return gameProducts().map((p) => p.name)
+}
+
+/// The targets a game is built from.
+///
+/// **A product name is not a target name.** Every game in this package has the two
+/// equal, so looking a product up in `describePackage().targets` has been right in
+/// every round ever run and is wrong by construction: SwiftPM lets an author name
+/// them separately, and a package that does gets an empty target graph with nothing
+/// anywhere saying so — no game source path, and a capability list that reads exactly
+/// like a game with no clock in it.
+function targetsOfProduct(name) {
+  return gameProducts().find((p) => p.name === name)?.targets || []
 }
 
 /// The product somebody's words meant, or `null`.
@@ -362,6 +388,25 @@ function resolveGame(words) {
     products,
   }
 }
+
+/// A stored key with the noise taken off its path half: a leading `./`, which is what
+/// a hand-written row picks up from a grep and is the whole difference between a key
+/// that matches and one that quietly does not. `$1` is empty when the group did not
+/// match, so a fallback key (`<ownerFile>::<excerpt>`) is handled by the same rule.
+const storedKey = (key) => key.replace(/^(decl::)?\.\//, '$1')
+
+/// Whether a stored key can never equal one a round mints, whatever it says.
+///
+/// Two shapes, one meaning. **Abbreviated**: a round matches against `normalize()`,
+/// which emits nothing but `[a-z0-9 ]`, so an ellipsis is inert by construction.
+/// **Written from outside the owning checkout**: a round mints its keys in the frame
+/// of the repository that owns the file, so a path that leads with `/`, walks up with
+/// `..`, or reaches through SwiftPM's `.build/` names a directory on whoever's machine
+/// wrote the row and cannot match on another. That last is the spelling a downstream
+/// grep produces — `.build/checkouts/Gnusto/Sources/Gnusto/…` — and the one an
+/// absolute-path test alone would let through as usable.
+const unusableKey = (key) =>
+  key.includes('\u2026') || /^(?:decl::)?(?:\/|\.\.\/)|(?:^|[:/])\.build\//.test(key)
 
 // `ledgerKeys` means **rejections**, and only rejections: `playtest.js` folds them
 // into `seen`, and `seen.has(key)` drops a finding unreported. So the verdict column
@@ -434,13 +479,12 @@ function ledgerScan(p) {
     const refuted = wholeTableIsRefuted
       || (verdictAt !== null && /^refuted\b/.test(cells[verdictAt] || ''))
     if (!refuted) continue
-    // A key the ledger stored abbreviated can never match one a round produces:
-    // `normalize()` emits nothing but `[a-z0-9 ]`, so an ellipsis is inert by
-    // construction. Dropping them is what makes the count preflight prints the
-    // number of keys that can actually do something, and counting them is what
-    // stops the drop from being silent.
-    if (key.includes('\u2026')) { inert++; continue }
-    keys.push(key)
+    // Dropping the keys that cannot match is what makes the count preflight prints the
+    // number of keys that can actually do something, and counting them is what stops
+    // the drop from being silent. `unusableKey` holds the two shapes and why.
+    const stored = storedKey(key)
+    if (unusableKey(stored)) { inert++; continue }
+    keys.push(stored)
   }
   const distinct = [...new Set(keys)]
   // A file that holds refutations and hands over none of them is broken. A file
@@ -452,6 +496,7 @@ function ledgerScan(p) {
 module.exports = {
   ROOT,
   SCRATCH,
+  GAME_DOCS_DIR,
   GREEN,
   RED,
   DIM,
@@ -459,6 +504,7 @@ module.exports = {
   fold,
   describePackage,
   executableProducts,
+  targetsOfProduct,
   resolveGame,
   gameDoc,
   focusParts,

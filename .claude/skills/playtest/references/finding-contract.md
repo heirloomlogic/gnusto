@@ -21,7 +21,7 @@ Plus, for routing:
 |---|---|
 | `category` | `presence-line-location-blind`, `prose-untrue-of-frame`, `prose-untrue-of-state`, `unanswerable-noun`, `stock-line-not-reskinned`, `register-mismatch`, `exit-prose-mismatch`, `mechanic-contradicts-prose`, `repeat-behavior`, `unwinnable`, `gate-not-gating`, `doc-drift`, `contract-violation`, `crash-or-hang`, `prose-taste` |
 | `severity` | `blocking` (the game cannot be finished), `major` (a line is false), `minor` (true but misleading), `note` (taste) |
-| `ownerFile` | The file that would change. This is what decides prose-vs-engine, so guess it honestly rather than conveniently. |
+| `ownerFile` | The file that would change. This is what decides prose-vs-engine, so guess it honestly rather than conveniently. Spell it the way the repository that owns it does — `Sources/Gnusto/Actions/GameText.swift` for an engine file, whatever your own package calls its own — and never as a path into a resolved dependency checkout. When the engine is a dependency it sits somewhere you cannot know and nobody's ledger could match; the round puts your spelling and that one in a single frame, and yours is the one it can always read. |
 | `routedTo` | An issue number from the set your prompt named, or empty. Set it and the finding leaves the pipeline. **Only an issue your prompt listed belongs here** — never one you remember, because a closed issue turns its replies back into regressions, and that has already happened three times. |
 | `alsoSeenIn` | Other frames where the same sentence was also false. One sentence wrong at two hours is **one** defect with two frames, not two defects. |
 

@@ -66,6 +66,8 @@ every round since was handed nothing; `bin/playtest-preflight`'s `ledger` row an
 Prefer `decl::<file>::<declaration>`, which is short enough that abbreviating it never
 tempts anybody.
 
+**And write the file half relative to the checkout that owns it** — `Sources/Gnusto/Actions/GameText.swift`, never `/Users/…/.build/checkouts/Gnusto/Sources/Gnusto/Actions/GameText.swift`. A round mints its keys in that frame, so an absolute one is inert for exactly the reason an abbreviated one is: it names a directory on the machine that wrote it. Preflight counts both.
+
 A ledger section's preamble names the one issue its `confirmed` rows were filed as, so
 a key traces to a ticket without a column per row: *"Every `confirmed` row is an open
 defect in the game as it ships, filed as #<N>."* Which is why the ledger is appended

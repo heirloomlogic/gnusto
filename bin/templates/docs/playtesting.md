@@ -43,6 +43,6 @@ A focus file splits blind and sighted instructions with two `---` rules. The tex
 
 `roundId` is required, and the workflow uses it to separate session labels and counts. Preflight defaults to today's local date, so headless dispatches for the same game on the same day share an ID. For a separate interactive round that day, give `args.roundId` a distinct suffix before dispatching. Earlier rounds with different IDs do not need clearing.
 
-Transcripts, probes, and staged saves live under `.context/playtest/`. Keep `.context/`, `.build/`, and `dist/` out of version control. Reports and ledgers belong with the game's documents. Routes under `.playtest/MyGame/routes/` should be committed: a fresh checkout needs their commands to reproduce a deep start. Run `bin/playtest-routes MyGame verify` before committing routes returned by a round.
+Transcripts, probes, and staged saves live under `.context/playtest/`, which this package's `.gitignore` already keeps out of version control along with `.build/` and `dist/`. Reports and ledgers belong with the game's documents. Routes under `.playtest/MyGame/routes/` should be committed: a fresh checkout needs their commands to reproduce a deep start. Run `bin/playtest-routes MyGame verify` before committing routes returned by a round.
 
 The report preserves confirmed and refuted findings and any proposed issue body. Review it before changing the game; the round itself makes no game fixes.
