@@ -1,7 +1,8 @@
 import Gnusto
 
 /// Exercises the pronoun binding: "it" follows the last direct object the
-/// player named, across rooms and across refused actions.
+/// player named, across rooms and across refused actions, and "them" follows
+/// a plural one.
 struct PronounGame: Game {
     let title = "Pronoun Practice"
     let intro = "A study and a hall."
@@ -29,10 +30,37 @@ struct PronounGame: Game {
         description("A hook bolted to the wall.")
     }
 
+    let stairs = Item {
+        name("stone stairs")
+        adjectives("stone")
+        plural
+        scenery
+        description("Worn stone stairs, going nowhere.")
+    }
+
+    let gloves = Item {
+        name("leather gloves")
+        adjectives("leather")
+        plural
+        description("A pair of cracked leather gloves.")
+    }
+
+    let shelves = Item {
+        name("oak shelves")
+        adjectives("oak")
+        plural
+        container
+        startsOpen
+        description("Three sagging oak shelves.")
+    }
+
     var map: WorldMap {
         player.starts(in: study)
         lantern.starts(in: study)
         hook.starts(in: study)
+        stairs.starts(in: study)
+        gloves.starts(in: study)
+        shelves.starts(in: study)
         study.north(hall)
         hall.south(study)
     }

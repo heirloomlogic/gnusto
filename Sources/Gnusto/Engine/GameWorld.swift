@@ -334,6 +334,16 @@ public actor GameWorld {
         // `unhandled` path, so a free turn steals no pronoun.
         if let direct = parsed.directObject {
             state.pronounIt = direct
+            // A plural thing is one thing, and the pronoun English gives it
+            // is "them" — so naming the stairs binds that word the way naming
+            // the lantern binds "it". Same slot the last group went in,
+            // because the word does not distinguish the two and the thing
+            // named last is the thing meant. A singular object leaves the
+            // slot alone: `take all` then `x sword` then `drop them` still
+            // means the group. (#403)
+            if definition.items[direct]?.isPlural == true {
+                state.pronounThem = [direct]
+            }
         }
         if let multiple = parsed.multiple {
             return runMultiTurn(parsed, multiple, snapshot: snapshot)
@@ -892,7 +902,8 @@ public actor GameWorld {
             return Scope(
                 visibleItems: visible,
                 visibleActors: visible.intersection(definition.castIDs),
-                pronounIt: state.pronounIt)
+                pronounIt: state.pronounIt,
+                pronounThem: state.pronounThem)
         }
         // Walked once and handed to both reaches: FOLLOW's quarry and an
         // order-taker's name ask the same question about distance.
@@ -908,6 +919,7 @@ public actor GameWorld {
             distantActors: elsewhere.withinReach,
             elsewhereActors: elsewhere.all,
             pronounIt: state.pronounIt,
+            pronounThem: state.pronounThem,
             orderTakers: orderTakers,
             allOrderTakers: orderTakersStandingSomewhere())
     }
