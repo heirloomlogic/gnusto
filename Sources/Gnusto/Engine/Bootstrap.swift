@@ -682,7 +682,9 @@ enum Bootstrap {
         // action for the same intent beats a bundle's (last-wins), matching
         // the verb merge. A row whose intent matches a built-in reclaims it,
         // with the same non-fatal warning policy as verbs.
-        let customActions = modules.flatMap { $0.actions } + game.actions
+        let customActions =
+            modules.flatMap { module in module.actions.map { $0.owned(by: module.namespace) } }
+            + game.actions
         var actionWarnings: [String] = []
         var actionOverrides: [Intent: IntentAction] = [:]
         for action in customActions {
@@ -766,9 +768,25 @@ enum Bootstrap {
         let registrationFrame = TurnFrame(definition: definition, state: state)
         let (declaredRules, declaredTimers, declaredScores) = Ctx.$frame.withValue(
             registrationFrame
-        ) { () -> ([Rule], [TimedEvent], [Int]) in
-            let rules: [Rule] = game.rules.rules + modules.flatMap { $0.rules.rules }
-            let timers: [TimedEvent] = game.timers + modules.flatMap { $0.timers }
+        ) { () -> ([Rule], [(String?, TimedEvent)], [Int]) in
+            // Each rule, action and timer body is filed under its owner: the
+            // game's own (`nil`) or the declaring bundle's namespace. The
+            // `owned(by:)` wrappers bind that owner while the body runs, so a
+            // bundle's rules start its timers by the bare literal it declared
+            // even when another bundle uses the same name.
+            let ownedRules =
+                [(nil, game.rules.rules)]
+                + modules.map { ($0.namespace as String?, $0.rules.rules) }
+            let rules: [Rule] =
+                ownedRules.flatMap { namespace, ruleList in
+                    ruleList.map { $0.owned(by: namespace) }
+                }
+            let timers: [(String?, [TimedEvent])] =
+                [(nil, game.timers)]
+                + modules.map { ($0.namespace as String?, $0.timers) }
+            let namedTimers: [(String?, TimedEvent)] = timers.flatMap {
+                namespace, events in events.map { (namespace, $0.owned(by: namespace)) }
+            }
             // Content that can total its own awards is asked here rather than
             // later, because the totals may be declared as item traits and a
             // trait read needs a live frame.
@@ -776,7 +794,7 @@ enum Bootstrap {
             let scores: [Int] = modules.compactMap {
                 ($0 as? ScoreDeclaring)?.declaredMaxScore(items: declaredItems)
             }
-            return (rules, timers, scores)
+            return (rules, namedTimers, scores)
         }
         _ = registrationFrame.retire()  // discard any stray writes
 
@@ -883,25 +901,39 @@ enum Bootstrap {
             }
         }
 
-        // Timers: names are global (a bundle's own rules start them by the
-        // literal string it declared, so namespacing would break the author's
-        // own name) — a shared name is the collision to catch. Zero-or-
-        // negative fuse counts can never fire and are wiring errors too.
+        // Timers: the schedule keeps bare names wherever they are
+        // unambiguous, because a bundle's own rules start them by the
+        // literal string it declared. A bare name two owners both declare
+        // cannot stay bare — each bundle-owned declaration moves into its
+        // namespace ("Clock.roam") while the game's own stays bare, and a
+        // body running for its owner resolves the bare literal against that
+        // owner first (`Ctx.namespace`). One owner declaring a name twice is
+        // still the collision to catch. Zero- or negative fuse counts can
+        // never fire and are wiring errors too.
+        let namesByOwner: [String: [(String?, TimedEvent)]] = declaredTimers.reduce(into: [:]) {
+            $0[$1.1.name, default: []].append($1)
+        }
         var timers: [String: TimedEvent] = [:]
-        for event in declaredTimers {
-            if timers[event.name] != nil {
+        for (name, declarations) in namesByOwner.sorted(by: { $0.key < $1.key }) {
+            if Set(declarations.map(\.0)).count < declarations.count {
                 ruleDiagnostics.append(
-                    "two timers are both named \"\(event.name)\"; timer names must "
-                        + "be unique across the game and its bundles.")
+                    "two timers are both named \"\(name)\"; timer names must be "
+                        + "unique within the game and within each bundle.")
                 continue
             }
-            if case .fuse(let turns) = event.kind, turns < 1 {
-                ruleDiagnostics.append(
-                    "fuse \"\(event.name)\" declares after: \(turns); a fuse needs "
-                        + "at least one turn.")
-                continue
+            for (owner, event) in declarations {
+                if case .fuse(let turns) = event.kind, turns < 1 {
+                    ruleDiagnostics.append(
+                        "fuse \"\(name)\" declares after: \(turns); a fuse needs "
+                            + "at least one turn.")
+                    continue
+                }
+                if let owner, declarations.count > 1 {
+                    timers["\(owner).\(name)"] = event
+                } else {
+                    timers[name] = event
+                }
             }
-            timers[event.name] = event
         }
 
         guard ruleDiagnostics.isEmpty else {
@@ -1051,10 +1083,10 @@ enum Bootstrap {
 
         definition.rules = table
         definition.timers = timers
-        for event in timers.values where event.autostart {
+        for (key, event) in timers where event.autostart {
             switch event.kind {
-            case .fuse(let turns): state.activeFuses[event.name] = turns
-            case .daemon: state.activeDaemons.insert(event.name)
+            case .fuse(let turns): state.activeFuses[key] = turns
+            case .daemon: state.activeDaemons.insert(key)
             }
         }
         return (definition, state)

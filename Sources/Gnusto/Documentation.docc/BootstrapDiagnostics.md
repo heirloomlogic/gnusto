@@ -116,7 +116,7 @@ to be silently so.
 | `item "chest" has a beforeEachTurn rule, which only locations support.` | Also `afterEachTurn` and `onEnter`. |
 | `location "hall" has a presence rule, which only items and actors support.` | Also `reach`. |
 | `a world-level onEnter rule is not supported.` | Also `describe`, `presence`, `reach`. |
-| `two timers are both named "lantern"; timer names must be unique across the game and its bundles.` | Timer names are global, not namespaced, because a bundle's own rules start them by the literal string it declared. |
+| `two timers are both named "lantern"; timer names must be unique within the game and within each bundle.` | A bare name two *different* owners (game and bundle, or two bundles) both declare is namespaced at bootstrap and legal. This one is the same owner declaring the name twice — split the block or rename one. |
 | `fuse "lantern" declares after: 0; a fuse needs at least one turn.` | |
 
 ## Non-fatal: the warning list
