@@ -69,7 +69,11 @@ struct WorldState: Sendable, Codable {
     /// named (naming binds, even when the action then refuses).
     var pronounIt: EntityID?
     /// What "them" currently refers to: the group the last multi-object
-    /// command expanded to.
+    /// command expanded to, or the one `plural` thing the player last named
+    /// — the stairs, the gloves. One slot for both, because the word does not
+    /// distinguish them and the thing named last is the thing meant; a *count*
+    /// of one is what makes the word a noun phrase rather than a group marker,
+    /// and `StandardParser.Scope.soleThem` is where that is read.
     var pronounThem: [EntityID] = []
     /// The `enterable` the player has boarded, or nil on foot. The player
     /// still never appears in `placements`; `playerLocation` stays the room.

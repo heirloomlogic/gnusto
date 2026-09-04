@@ -23,6 +23,12 @@ struct ParsedCommand: Equatable {
         /// what the parser builds when a phrase splits on a conjunction — and
         /// most callers use this as the question "is this phrase a keyword?"
         /// rather than as a way to make one.
+        ///
+        /// It is the *spelling* alone. `them` spells a keyword and does not
+        /// always mean one — bound to a single plural thing it is a noun
+        /// phrase — so no slot asks this directly; they all go through
+        /// ``StandardParser/spellsKeyword(_:in:)``, which has the scope to
+        /// tell the two apart. (#403)
         static func keyword(phrase: [String], excluding: [EntityID] = []) -> MultiObject? {
             switch phrase {
             case ["all"], ["everything"]: .all(excluding: excluding)
@@ -81,6 +87,17 @@ struct Scope: Sendable {
     let elsewhereActors: Set<EntityID>
     /// What "it" currently refers to, if anything.
     var pronounIt: EntityID?
+    /// What "them" currently refers to: the group the last multi-object
+    /// command expanded to, or the one plural thing the player last named.
+    /// Both live in the same slot because the word does not distinguish
+    /// them and the last one named wins either way.
+    var pronounThem: [EntityID]
+    /// The one thing "them" names, when it names one thing. `nil` for a real
+    /// group and for a word bound to nothing — the two cases where "them"
+    /// is not a noun phrase.
+    var soleThem: EntityID? {
+        pronounThem.count == 1 ? pronounThem[0] : nil
+    }
     /// For each actor declared `takesOrders` the player could make hear them —
     /// here, met, or next door — what *that* actor could name from where it
     /// stands, keyed by the ones the player could make hear them. The parser has no world
@@ -100,6 +117,7 @@ struct Scope: Sendable {
         distantActors: Set<EntityID> = [],
         elsewhereActors: Set<EntityID> = [],
         pronounIt: EntityID? = nil,
+        pronounThem: [EntityID] = [],
         orderTakers: [EntityID: Set<EntityID>] = [:],
         allOrderTakers: Set<EntityID> = []
     ) {
@@ -108,6 +126,7 @@ struct Scope: Sendable {
         self.distantActors = distantActors
         self.elsewhereActors = elsewhereActors
         self.pronounIt = pronounIt
+        self.pronounThem = pronounThem
         self.orderTakers = orderTakers
         self.allOrderTakers = allOrderTakers
     }
@@ -185,7 +204,9 @@ struct StandardParser {
                 guard !rest.isEmpty,
                     !isGreeting(
                         rest, at: addressee, address: address,
-                        scope: Scope(visibleItems: theirs, pronounIt: scope.pronounIt))
+                        scope: Scope(
+                            visibleItems: theirs, pronounIt: scope.pronounIt,
+                            pronounThem: scope.pronounThem))
                 else {
                     return .failure(.notInScope)
                 }
@@ -269,7 +290,8 @@ struct StandardParser {
         scope: Scope, rawInput: String
     ) -> Result<ParsedCommand, ParseError> {
         let theirs = Scope(
-            visibleItems: scope.orderTakers[addressee] ?? [], pronounIt: scope.pronounIt)
+            visibleItems: scope.orderTakers[addressee] ?? [], pronounIt: scope.pronounIt,
+            pronounThem: scope.pronounThem)
         return parse(tokens: rest, rawInput: rawInput, scope: theirs)
             .map { parsed in
                 var parsed = parsed
@@ -496,7 +518,7 @@ struct StandardParser {
         var directID: EntityID?
         var multiple: ParsedCommand.MultiObject?
         if let phrase = directPhrase {
-            if let split = keywordSplit(of: phrase) {
+            if let split = keywordSplit(of: phrase, in: scope) {
                 // `all`, or `all but the sword`. Only the exclusion resolves
                 // here; what the keyword stands for needs world state.
                 switch excludedObjects(
@@ -522,7 +544,7 @@ struct StandardParser {
             // `put the coin in all`, and `put the coin in all but the sack`
             // with it: a keyword names a group either way, and only the direct
             // slot is several.
-            guard keywordSplit(of: phrase) == nil else {
+            guard keywordSplit(of: phrase, in: scope) == nil else {
                 return .nearMiss(.multipleNotAllowed)
             }
             switch resolve(phrase, in: scope, alsoConsidering: distant) {
@@ -832,7 +854,7 @@ struct StandardParser {
     ) -> Result<[EntityID], ParseError> {
         // `take the coin, all` asks for one thing and everything at once. Only
         // a whole phrase may be a keyword, and `fit` has already read that one.
-        guard ParsedCommand.MultiObject.keyword(phrase: Array(group)) == nil else {
+        guard !spellsKeyword(Array(group), in: scope) else {
             return .failure(.multipleNotAllowed)
         }
         let whole = resolve(Array(group), in: scope, alsoConsidering: distant)
@@ -848,7 +870,7 @@ struct StandardParser {
 
         var ids: [EntityID] = []
         for piece in pieces {
-            guard ParsedCommand.MultiObject.keyword(phrase: Array(piece)) == nil else {
+            guard !spellsKeyword(Array(piece), in: scope) else {
                 return .failure(.multipleNotAllowed)
             }
             switch resolve(Array(piece), in: scope, alsoConsidering: distant) {
@@ -889,6 +911,27 @@ struct StandardParser {
     /// conjunctions, and the comma the player wrote in place of one.
     private static let separators = Vocabulary.conjunctions.union([","])
 
+    /// Whether the phrase spells a multi-object keyword *as things stand*.
+    ///
+    /// `all` and `everything` always do: what they stand for needs world
+    /// state, which is the definition of a marker. `them` does only while it
+    /// names a group of two or more. A "them" standing for one plural thing —
+    /// the stairs, the gloves — is a noun phrase and wants
+    /// ``resolve(_:in:alsoConsidering:)``, which is what lets `x them` answer
+    /// for a verb that takes no group at all; a "them" standing for nothing is
+    /// an unbound pronoun, and gets the same "I don't know what that refers
+    /// to" that an unbound `it` gets, from every verb rather than only from
+    /// the four that expand groups. (#403)
+    ///
+    /// - Parameters:
+    ///   - phrase: a whole slot phrase, or one comma-separated piece of one.
+    ///   - scope: what the player can name this turn, pronouns included.
+    /// - Returns: whether the group machinery should claim this phrase.
+    private func spellsKeyword(_ phrase: [String], in scope: Scope) -> Bool {
+        guard ParsedCommand.MultiObject.keyword(phrase: phrase) != nil else { return false }
+        return phrase != ["them"] || scope.pronounThem.count > 1
+    }
+
     /// The multi-object keyword a phrase spells and the exclusion trimming it:
     /// `all but the sword` is the keyword `all` and the phrase `sword`, and a
     /// bare `all` is the keyword and nothing.
@@ -900,16 +943,22 @@ struct StandardParser {
     /// `take last but one ticket` spells no keyword, never reaches the split,
     /// and resolves as the one object it names.
     ///
-    /// - Parameter phrase: the slot's tokens.
+    /// - Parameters:
+    ///   - phrase: the slot's tokens.
+    ///   - scope: what the player can name this turn, which is what decides
+    ///     whether a bare `them` is a keyword or a noun.
     /// - Returns: the keyword's own words and the exclusion phrase — an
     ///   `ArraySlice`, so it keeps its place in the line and a question about
     ///   it is answered there — or nil when the phrase spells no keyword.
     private func keywordSplit(
-        of phrase: [String]
+        of phrase: [String], in scope: Scope
     ) -> (group: [String], exclusion: ArraySlice<String>)? {
-        if ParsedCommand.MultiObject.keyword(phrase: phrase) != nil {
+        if spellsKeyword(phrase, in: scope) {
             return (phrase, [])
         }
+        // Behind an exclusion the bare spelling is enough, and deliberately:
+        // `take them but the sword` is the player saying they meant a group,
+        // whatever the word happens to stand for this turn.
         guard let mark = phrase.firstIndex(where: Vocabulary.exclusions.contains),
             ParsedCommand.MultiObject.keyword(phrase: Array(phrase[..<mark])) != nil
         else { return nil }
@@ -934,7 +983,7 @@ struct StandardParser {
         guard !phrase.isEmpty else { return .success([]) }
         let words = Array(phrase)
         // `take all but everything` asks for the group and then for the group.
-        guard ParsedCommand.MultiObject.keyword(phrase: words) == nil else {
+        guard !spellsKeyword(words, in: scope) else {
             return .failure(.multipleNotAllowed)
         }
         return resolveDirect(
@@ -962,17 +1011,21 @@ struct StandardParser {
     func resolve(
         _ tokens: [String], in scope: Scope, alsoConsidering distant: Set<EntityID> = []
     ) -> Result<EntityID, ParseError> {
-        // Pronouns resolve ahead of any item lexicon: "it" is whatever the
-        // player last named — if it's still in sight, or still nameable.
-        if tokens == ["it"] {
-            guard let referent = scope.pronounIt else {
-                return .failure(.noReferent("it"))
-            }
+        // Pronouns resolve ahead of any item lexicon, and both take the same
+        // two questions: is the word bound, and is what it names still
+        // nameable. "it" is whatever the player last named. "them" reaches
+        // here only when it names one thing — a plural item, or a group come
+        // down to one — because `spellsKeyword(_:in:)` keeps a real group away
+        // from this branch, and every slot asks that question first. (#403)
+        func pronoun(_ word: String, _ referent: EntityID?) -> Result<EntityID, ParseError> {
+            guard let referent else { return .failure(.noReferent(word)) }
             guard scope.visibleItems.contains(referent) || distant.contains(referent) else {
                 return .failure(.notInScope)
             }
             return .success(referent)
         }
+        if tokens == ["it"] { return pronoun("it", scope.pronounIt) }
+        if tokens == ["them"] { return pronoun("them", scope.soleThem) }
 
         let first = matches(tokens, among: scope.visibleItems)
         guard case .failure(.notInScope) = first, !distant.isEmpty else { return first }
