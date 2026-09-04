@@ -10,7 +10,7 @@
 /// bootstrap moves each bundle-owned declaration into its namespace
 /// (`"Clock.roam"`) while the game's own stays bare, and a body running for
 /// its owner resolves the bare literal it declared against that owner first
-/// (see ``startFuse(_:_:)`` and friends). A host game addresses a bundle's
+/// (see ``startFuse(_:after:)`` and friends). A host game addresses a bundle's
 /// collided timer by the qualified name.
 ///
 /// Timers tick once per typed command, at the very end of the turn (after

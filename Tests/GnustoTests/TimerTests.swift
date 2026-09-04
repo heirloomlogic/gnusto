@@ -213,6 +213,19 @@ struct TimerTests {
         }
     }
 
+    /// A bare declaration whose name equals the qualified key another
+    /// owner's namespaced declaration produces is fatal — the second write
+    /// would otherwise silently take the schedule slot.
+    @Test func aBareNameMayNotCollideWithANamespacedKey() {
+        #expect {
+            try Bootstrap.build(NamespacedClashGame())
+        } throws: { error in
+            guard let bootstrapError = error as? BootstrapError else { return false }
+            return bootstrapError.description.contains(
+                "two timers both resolve to \"AlphaRoamBundle.roam\"")
+        }
+    }
+
     // MARK: - Schedule state round-trips (consumed by save/restore)
 
     @Test func scheduleLivesInWorldState() throws {

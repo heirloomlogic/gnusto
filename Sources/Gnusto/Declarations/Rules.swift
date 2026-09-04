@@ -56,10 +56,19 @@ public struct Rule: Sendable {
     func owned(by namespace: String?) -> Rule {
         guard let namespace else { return self }
         let body = self.body
-        return Rule(
+        var copy = Rule(
             scope: scope, phase: phase, intents: intents,
             body: { try Ctx.owned(namespace, body) },
             describeBody: describeBody, reachRule: reachRule)
+        if let describeBody {
+            copy.describeBody = { Ctx.owned(namespace, describeBody) }
+        }
+        if let reachRule {
+            copy.reachRule = Reach.Rule(
+                allows: { Ctx.owned(namespace, reachRule.allows) },
+                refusal: reachRule.refusal)
+        }
+        return copy
     }
 }
 

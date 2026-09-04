@@ -928,11 +928,23 @@ enum Bootstrap {
                             + "at least one turn.")
                     continue
                 }
+                // A bare declaration can land on the key another owner's
+                // namespaced declaration produces (the game names a timer
+                // "Clock.roam" while "roam" is contested) — fatal, because
+                // whichever writes second silently takes the schedule slot.
+                let key: String
                 if let owner, declarations.count > 1 {
-                    timers["\(owner).\(name)"] = event
+                    key = "\(owner).\(name)"
                 } else {
-                    timers[name] = event
+                    key = name
                 }
+                if timers[key] != nil {
+                    ruleDiagnostics.append(
+                        "two timers both resolve to \"\(key)\"; a bare timer name "
+                            + "must not collide with a bundle's namespaced timer key.")
+                    continue
+                }
+                timers[key] = event
             }
         }
 

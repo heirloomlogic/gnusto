@@ -117,6 +117,7 @@ to be silently so.
 | `location "hall" has a presence rule, which only items and actors support.` | Also `reach`. |
 | `a world-level onEnter rule is not supported.` | Also `describe`, `presence`, `reach`. |
 | `two timers are both named "lantern"; timer names must be unique within the game and within each bundle.` | A bare name two *different* owners (game and bundle, or two bundles) both declare is namespaced at bootstrap and legal. This one is the same owner declaring the name twice — split the block or rename one. |
+| `two timers both resolve to "Clock.roam"; a bare timer name must not collide with a bundle's namespaced timer key.` | The game (or a bundle) declares a timer whose bare name is exactly `"Namespace.name"` while that same `name` is contested and gets namespaced into `Namespace` — both declarations land on one schedule key and the second would silently win. Rename one. |
 | `fuse "lantern" declares after: 0; a fuse needs at least one turn.` | |
 
 ## Non-fatal: the warning list

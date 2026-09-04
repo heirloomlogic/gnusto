@@ -287,6 +287,34 @@ struct RoamGame: Game {
     }
 }
 
+/// Broken on purpose: the host names its own daemon
+/// `"AlphaRoamBundle.roam"` — the qualified key the bundle's contested `roam`
+/// resolves to once the host also declares a `roam`. Both land on one
+/// schedule key, and whichever wrote second would silently take the slot.
+struct NamespacedClashGame: Game {
+    let title = "Clash"
+    let intro = "?"
+
+    let alpha = AlphaRoamBundle()
+
+    var content: GameContents {
+        alpha
+    }
+
+    var map: WorldMap {
+        player.starts(in: alpha.porch)
+    }
+
+    var timers: [TimedEvent] {
+        daemon("roam", autostart: true) {
+            say("[game] Something roams.")
+        }
+        daemon("AlphaRoamBundle.roam") {
+            say("[shadow] Something roams.")
+        }
+    }
+}
+
 /// One fuse, one daemon, and a verb per way of confusing them.
 ///
 /// **This game cannot be played to the end of a turn**: every verb it answers
