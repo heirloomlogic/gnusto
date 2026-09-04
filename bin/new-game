@@ -92,7 +92,12 @@ fi
 if [ -n "$dep_path" ]; then
   [ -d "$dep_path" ] || die "--dep-path '$dep_path' is not a directory"
   dep_path="$(cd "$dep_path" && pwd)"
-  dependency=".package(name: \"Gnusto\", path: \"$dep_path\")"
+  swift_path="${dep_path//\\/\\\\}"
+  swift_path="${swift_path//\"/\\\"}"
+  swift_path="${swift_path//$'\n'/\\n}"
+  swift_path="${swift_path//$'\r'/\\r}"
+  swift_path="${swift_path//$'\t'/\\t}"
+  dependency=".package(name: \"Gnusto\", path: \"$swift_path\")"
 else
   # Pin to whatever this checkout's newest release is, read now rather than
   # hardcoded, so the generator cannot fall behind the tags.
@@ -160,19 +165,20 @@ while IFS= read -r file; do
   mv "$file.new" "$file"
 done < <(find "$destination" -type f ! -path "*/.git/*")
 
-# The dependency is one marked line, by construction, so this is a substitution
-# rather than a parse. See the comment above it in bin/templates/Package.swift.
+# Write the marked dependency line literally: paths may contain sed syntax.
 manifest="$destination/Package.swift"
-sed -e "s|^ *\.package(name: \"Gnusto\", path: \"\.\./\.\.\") *// gnusto-dependency\$|        $dependency|" \
-  "$manifest" > "$manifest.new"
+replaced=""
+while IFS= read -r line || [ -n "$line" ]; do
+  case "$line" in
+    *'// gnusto-dependency')
+      printf '        %s\n' "$dependency"
+      replaced=1
+      ;;
+    *) printf '%s\n' "$line" ;;
+  esac
+done < "$manifest" > "$manifest.new"
+[ -n "$replaced" ] || die "internal error: dependency marker missing"
 mv "$manifest.new" "$manifest"
-# The success path is grep finding nothing, i.e. exiting 1 -- which under
-# set -e would make the `&&` form's *correct* run the one that kills the script.
-# Written as an if instead, so failing to find the marker (the good outcome)
-# does not itself trip set -e.
-if grep -q "gnusto-dependency" "$manifest"; then
-  die "internal error: the dependency marker survived rewriting"
-fi
 
 echo "Wrote $game to $destination"
 echo

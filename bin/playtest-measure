@@ -24,10 +24,16 @@ Usage: bin/playtest-measure <probe-dir> [<probe-dir> ...]
 
   bin/playtest-measure .context/playtest/mine/probe-*
 """
+import os
 import re
 import sys
 from collections import Counter
 from pathlib import Path
+
+# The generated shim changes into the game package before dispatch. Probe paths
+# still belong to the directory the caller invoked it from.
+if os.environ.get('GNUSTO_INVOCATION_DIR'):
+    os.chdir(os.environ['GNUSTO_INVOCATION_DIR'])
 
 # The status footer the engine appends to every turn, e.g.
 #   [status] room=West of House | moves=12 | score=0 | turn=cost

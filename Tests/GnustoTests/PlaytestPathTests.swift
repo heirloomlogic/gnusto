@@ -33,25 +33,17 @@ struct PlaytestPathTests {
     @discardableResult
     private static func replay(
         _ arguments: [String],
-        from currentDirectory: URL
+        from currentDirectory: URL,
+        shimPackage: URL? = nil
     ) throws -> (status: Int32, stdout: String, stderr: String) {
-        let process = Process()
-        process.executableURL = packageRoot.appendingPathComponent("bin/playtest-replay")
-        process.arguments = arguments
-        process.currentDirectoryURL = currentDirectory
-        let out = Pipe()
-        let err = Pipe()
-        process.standardOutput = out
-        process.standardError = err
-        try process.run()
-        let outData = out.fileHandleForReading.readDataToEndOfFile()
-        let errData = err.fileHandleForReading.readDataToEndOfFile()
-        process.waitUntilExit()
-        return (
-            process.terminationStatus,
-            String(decoding: outData, as: UTF8.self),
-            String(decoding: errData, as: UTF8.self)
-        )
+        var environment = ProcessInfo.processInfo.environment
+        for name in ["GNUSTO_PACKAGE_PATH", "GNUSTO_INVOCATION_DIR", "GNUSTO_REPO"] {
+            environment.removeValue(forKey: name)
+        }
+        if shimPackage != nil { environment["GNUSTO_REPO"] = packageRoot.path }
+        return try ToolProcess.run(
+            (shimPackage ?? packageRoot).appendingPathComponent("bin/playtest-replay"),
+            arguments, from: currentDirectory, environment: environment)
     }
 
     /// A fresh directory that is not the repository root, standing in for the
@@ -83,6 +75,44 @@ struct PlaytestPathTests {
     }
 
     // MARK: - --package-path
+
+    @Test func shimKeepsCallerPathsAndDefaultPackageSeparate() throws {
+        let game = try Self.scratch()
+        defer { try? FileManager.default.removeItem(at: game) }
+        try FileManager.default.copyItem(
+            at: Self.packageRoot.appendingPathComponent("bin/templates/bin"),
+            to: game.appendingPathComponent("bin"))
+        let notes = game.appendingPathComponent("notes")
+        try FileManager.default.createDirectory(at: notes, withIntermediateDirectories: true)
+        try Self.recordBinary("Zwank", in: game)
+        try "look\n".write(to: game.appendingPathComponent("probe.txt"), atomically: true, encoding: .utf8)
+        let saves = game.appendingPathComponent("deep")
+        try FileManager.default.createDirectory(at: saves, withIntermediateDirectories: true)
+        try "slot".write(to: saves.appendingPathComponent("one.gnusto"), atomically: true, encoding: .utf8)
+
+        for commands in ["../probe.txt", game.appendingPathComponent("probe.txt").path] {
+            let result = try Self.replay(
+                ["Zwank", "--commands", commands, "--saves-from", "../deep"],
+                from: notes, shimPackage: game)
+            #expect(result.stderr.contains("staged 1 slot(s)"), "\(result.stderr)")
+            #expect(FileManager.default.fileExists(atPath: game.appendingPathComponent(".context/playtest").path))
+            #expect(!FileManager.default.fileExists(atPath: notes.appendingPathComponent(".context").path))
+        }
+    }
+
+    @Test func shimResolvesExplicitPackagePathAgainstCaller() throws {
+        let game = try Self.scratch()
+        defer { try? FileManager.default.removeItem(at: game) }
+        try FileManager.default.copyItem(
+            at: Self.packageRoot.appendingPathComponent("bin/templates/bin"),
+            to: game.appendingPathComponent("bin"))
+        let notes = game.appendingPathComponent("notes")
+        let other = notes.appendingPathComponent("Other")
+        try FileManager.default.createDirectory(at: other, withIntermediateDirectories: true)
+        let result = try Self.replay(
+            ["Zwank", "--package-path", "Other"], from: notes, shimPackage: game)
+        #expect(result.stderr.contains("--commands FILE is required"), "\(result.stderr)")
+    }
 
     @Test func aRelativePackagePathNamesTheCallersPackage() throws {
         let here = try Self.scratch()
