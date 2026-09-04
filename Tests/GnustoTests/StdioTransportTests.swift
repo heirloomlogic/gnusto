@@ -23,7 +23,13 @@ import Glibc
 /// `read(2)`/`write(2)` paths the spawned binary would.
 struct StdioTransportTests {
     /// A pipe pair, with each end closed exactly once.
-    private struct Pipe {
+    ///
+    /// A reference type so that `closeWrite()` can record itself on a `let`
+    /// binding. Closing a descriptor twice is not a harmless no-op here: the
+    /// tests run in parallel, so between the two closes another test's
+    /// `pipe(2)` can be handed the same number and the second close would shut
+    /// down *its* stream.
+    private final class Pipe {
         let readEnd: Int32
         let writeEnd: Int32
         private var writeClosed = false
@@ -37,14 +43,14 @@ struct StdioTransportTests {
 
         /// Ends the stream: the reader sees end of input here.
         func closeWrite() {
+            guard !writeClosed else { return }
+            writeClosed = true
             _ = Self.close(writeEnd)
         }
 
         func close() {
             _ = Self.close(readEnd)
-            if !writeClosed {
-                _ = Self.close(writeEnd)
-            }
+            closeWrite()
         }
 
         // Named once so the platform choice stays out of the tests.
@@ -128,7 +134,7 @@ struct StdioTransportTests {
     }
 
     /// Gathers every frame a reader yields from one descriptor, until end of
-    /// input — the same handful of lines three of the pipe tests need.
+    /// input — the same handful of lines two of the pipe tests need.
     private func collect(from descriptor: Int32) -> Task<[String], Never> {
         Task { () -> [String] in
             var out: [String] = []
@@ -176,17 +182,31 @@ struct StdioTransportTests {
 
     /// A frame past the cap ends the reader's stream, with the frames that
     /// were already complete delivered first.
+    ///
+    /// Three things make the claim testable rather than accidental. The cap is
+    /// passed in, because reaching the 64 MiB default over a pipe would mean
+    /// writing 64 MiB and writing less would pass with the cap never firing.
+    /// The write end stays open, so the stream can only finish by giving up —
+    /// end of input would finish it either way. And the good frame is taken
+    /// from the iterator *before* the overrun is written, which is what puts
+    /// the two in separate `read(2)`s: sharing one read is the documented case
+    /// where the completed frame is lost with the call that threw.
     @Test func theReaderStopsAtAFramePastTheCap() async throws {
         let pipe = Pipe()
         defer { pipe.close() }
 
-        let collected = collect(from: pipe.readEnd)
+        var frames = StdioReader.frames(
+            from: pipe.readEnd,
+            maxPendingBytes: 16
+        ).makeAsyncIterator()
 
         writeAllBytes(pipe.writeEnd, Array("{\"a\":1}\n".utf8))
-        writeAllBytes(pipe.writeEnd, Array(repeating: UInt8(ascii: "{"), count: 100_000))
-        pipe.closeWrite()
+        let first = await frames.next()
+        #expect(first == #"{"a":1}"#)
 
-        #expect(await collected.value == [#"{"a":1}"#])
+        writeAllBytes(pipe.writeEnd, Array(repeating: UInt8(ascii: "{"), count: 32))
+        let afterOverrun = await frames.next()
+        #expect(afterOverrun == nil)
     }
 
     // MARK: - The writer, over a real pipe
