@@ -149,27 +149,19 @@ struct ProxyFrameTests {
             "stored properties of your Game type")
     }
 
-    /// `command` is turn-only, and nothing at the call site says so — a
-    /// describer reading it works for every LOOK the player types and dies on
-    /// the opening look, which no command produced. The trap names the
-    /// condition; a bare "unexpectedly found nil" would send the author hunting
-    /// through their describer instead. Issue #229.
-    @Test("reading command where no command ran traps, and says when it is available")
-    func readingCommandWithNoCommandTraps() async throws {
-        let result = await #expect(
-            processExitsWith: .failure, observing: [\.standardErrorContent]
-        ) {
-            // No commands at all: the trap is reached by `GameWorld.begin()`
-            // describing the starting room, which is the case an author cannot
-            // reach by testing their describer against LOOK.
-            _ = try await play(OpeningCommandGame(), [])
-        }
-        // "only available inside rule bodies" is shared with the sibling guard
-        // above, so the needles have to include the half that isn't.
-        expectTrap(
-            result,
-            says: "`command` is only available",
-            "performing a player command")
+    /// `command` is available in every rule body and every live-text closure
+    /// the engine evaluates. This includes the opening look, which #395
+    /// deliberately reversed from #229: the opening, UNDO and RESTORE looks
+    /// used to build a command-less frame whose `command` accessor trapped, so
+    /// a describer that worked for every LOOK the player typed died on the
+    /// game's first look. They now describe as a LOOK — in fiction what they
+    /// are — and the trap is left only for reads outside the engine.
+    @Test("a describer reading command sees the opening look as a look")
+    func theOpeningLookHasACommandToRead() async throws {
+        // No commands at all: the read happens during `GameWorld.begin()`
+        // describing the starting room.
+        let transcript = try await play(OpeningCommandGame(), [])
+        #expect(transcript.contains("Bare boards, and an echo of look."))
     }
 
     #endif

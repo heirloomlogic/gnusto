@@ -178,8 +178,8 @@ struct InlineEntityGame: Game {
 /// daemon or each-turn rule reached that way. The trap's job is to say that the
 /// property is turn-only, since nothing at the call site suggests it.
 ///
-/// **This game cannot be played.** It traps on the opening banner, before the
-/// player has typed anything.
+/// The opening look hands the describer a synthesized LOOK command (#395), so
+/// the describer below reads `look` and the game plays.
 struct OpeningCommandGame: Game {
     let title = "Opening"
     let intro = "A hall that would like to know what you asked for."
