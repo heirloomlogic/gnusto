@@ -56,20 +56,15 @@ true where it lands and never by the room the `[status]` footer names**. `wf-1` 
 right room while the trunk was already in the trophy case and the pairing the round
 existed to judge was offered to nobody.
 
-Then invoke the workflow **by path**, handing it that JSON:
+Read `.context/playtest-round-args.json` into `args`, then invoke the workflow using its resolved path and the complete object:
 
+```javascript
+Workflow({ scriptPath: args.workflowPath, args })
 ```
-Workflow({ scriptPath: ".claude/workflows/playtest.js", args: {
-  game: "Fulminate",
-  packagePath: ".",
-  roundId: "2026-08-26",                // required: the round's own identity
-  mcpServer: "fulminate",               // the .mcp.json key, read rather than assumed
-  docPath: "docs/games/fulminate.md",   // null when the game has no design doc
-  capabilities: ["clock", "talk"],
-  seed: 0,
-  turns: 60
-}})
-```
+
+Use the generated path and arguments. In a generated package the workflow lives in the Gnusto dependency checkout; preflight resolves that location and the package layout together.
+
+If this session has no `Workflow` tool, run `bin/playtest-preflight <Game> --headless`. It dispatches through `claude -p` with explicit tool permissions and `tracker: false`: confirmed findings go into the report for review, without attempting issue creation. The Claude installation must provide `Workflow`; allowing a tool does not install it. A missing tool or denied operation must be reported, not replaced with a claimed successful round.
 
 **`roundId` is required and has no default.** It is what keeps one round's artifacts
 out of the next round's arithmetic: every label the harness generates leads with it,
@@ -125,7 +120,7 @@ Four artifacts, in this order — the ledger's preamble names the issue, so it g
 
 1. the round report, `docs/games/<game>-playtest-<YYYY-MM-DD>.md`
 2. **any routes the Distill phase wrote**, under `.playtest/<game>/routes/`
-3. **exactly one issue** for the round
+3. **one issue** for confirmed findings when `tracker` is true and creation is approved; otherwise the proposed issue body stays in the report
 4. every dedupe key, appended to `docs/games/<game>-playtest-ledger.md`
 
 **The routes are the one artifact the round writes and does not commit.** The Distill
@@ -144,7 +139,7 @@ class, not a separate one for the engine's share. 2026-07-30 filed thirteen in a
 `routedIssues`, which runs the other way: those are open issues that *receive*
 forwarded symptoms.
 
-The title is the key, so search before you create:
+When `tracker` is true, the title is the key, so search before you create:
 
 ```sh
 gh issue list --state all --search "<Game>: play-test round <YYYY-MM-DD>"
@@ -169,7 +164,7 @@ whoever remembered the rule.
 | `ledgerKeys` | `[]` | Keys from previous reports, so the loop doesn't re-find its own rejections. |
 | `routedIssues` | `[]` | `[{number, owns}]` for open issues that own a defect class. Derive it fresh — see above. |
 
-**A round finds and files; it does not fix.** The fix phase is gone, and with it the
+**A round finds and reports; it does not fix.** The fix phase is gone, and with it the
 gate that existed to check the fixers. Fixing was where the harness stopped being
 safe: the failure mode was never a crash, it was a *plausible* wrong fix in a densely
 prose-coupled suite, applied by an agent that had read the finding and not the game.

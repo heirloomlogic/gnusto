@@ -186,6 +186,24 @@ struct NewGameTests {
                 "bin/\(tool) is not allowlisted, so a round stalls on a permission prompt")
         }
         #expect(allow.contains("mcp__zwank"))
+        #expect(allow.contains("Workflow"))
+        #expect(allow.contains("Bash(gh issue list:*)"))
+        #expect(!allow.contains("Bash(gh issue create:*)"))
+        let ask = (settings["permissions"] as? [String: Any])?["ask"] as? [String] ?? []
+        #expect(ask.contains("Bash(gh issue create:*)"))
+    }
+
+    @Test func generatedPlaytestEntryPointsUseTheResolvedWorkflow() throws {
+        let game = try Self.generate()
+        defer { try? FileManager.default.removeItem(at: game) }
+
+        let skill = try String(
+            contentsOf: game.appendingPathComponent(".claude/skills/playtest/SKILL.md"), encoding: .utf8)
+        #expect(skill.contains("bin/playtest-preflight Zwank"))
+        #expect(skill.contains(".context/playtest-round-args.json"))
+        #expect(skill.contains("args.workflowPath"))
+        #expect(!skill.contains("scriptPath: \".claude/workflows/playtest.js\""))
+        #expect(FileManager.default.fileExists(atPath: game.appendingPathComponent("docs/playtesting.md").path))
     }
 
     @Test func toolsAreShimsAndTheLibraryIsNotExecutable() throws {

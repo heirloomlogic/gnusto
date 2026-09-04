@@ -28,7 +28,9 @@
       "mcp__gramarye",
       "mcp__kindlydeep",
       "mcp__lighthouse",
-      "mcp__zork1"
+      "mcp__zork1",
+      "Workflow",
+      "Bash(bin/playtest-routes:*)"
     ],
     "ask": [
       "Bash(gh issue create:*)"

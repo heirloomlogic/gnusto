@@ -132,9 +132,8 @@ const gameSourceDir = layoutPath(ARGS.gameSourceDir, `Sources/${ARGS.game}`)
 const refPath = layoutPath(ARGS.refPath, '.claude/skills/playtest/references')
 
 // Whether a confirmed finding can be filed. With a tracker the round's issue is
-// created against it; without one — the ordinary case for a package written by
-// `bin/new-game` — the same body goes into the report under its own heading, so
-// nothing is dropped and the shapes do not fork.
+// created against it when filing is enabled. A package without a tracker and an
+// unattended round both keep the same issue body in the report for review.
 const tracker = ARGS.tracker !== false
 const capabilities = new Set(ARGS.capabilities || [])
 const ledger = new Set(ARGS.ledgerKeys || [])
@@ -2777,7 +2776,7 @@ truth and they win over anything here.
 - There is deliberately no "cells probed" count: free-text cell labels are not comparable between charters, so any total would be a number that means nothing. Build the real cross-product yourself from the transcripts, against the ${declaredRooms.length}-room roster and the timers above.
 - Testers run: ${playRoster.map((r) => `${r.key}${r.charter.blind ? ` (${r.divergence}${r.regions.length ? `, ${renderRegions(r.regions)}` : ''})` : ''}`).join(', ')}. Charters NOT run: ${skipped.map((c) => c.key).join(', ') || 'none'}.
 - The blind charters were given no room list, no timer list and no design doc, deliberately. A finding of theirs that the doc licenses is the expected cost of that, not a harness failure — but if more than about two in five are refuted that way, say so: the brief needs tightening, not the doc handing back.
-- Confirmed ${confirmed.length}, refuted ${refuted.length}, findings routed to another issue ${routed.length}. Every confirmed finding is filed; this round edits nothing.${tracker ? '' : ' **This package has no issue tracker**, so there is nowhere to file them: write the issue body into the report under its own heading, per \`${refPath}/issue-shape.md\`, rather than dropping it.'}
+- Confirmed ${confirmed.length}, refuted ${refuted.length}, findings routed to another issue ${routed.length}. ${tracker ? 'Every confirmed finding is filed; this round edits nothing.' : `**Issue filing is disabled for this round.** Write each confirmed issue body into the report under its own heading, per \`${refPath}/issue-shape.md\`, for review. Do not create GitHub issues.`}
 - **Verifier agreement: ${agreementTotal ? `${Math.round((agreementMatched / agreementTotal) * 100)}% (${agreementMatched} of ${agreementTotal} findings judged the same way by both raters)` : 'not measurable — no finding got two raters'}.**${singleRated ? ` ${singleRated} finding(s) got only one rater, so the denominator is thinner than the finding count.` : ''} Verification is batched now — up to ${VERIFY_BATCH_SIZE} findings per verifier, ${VERIFY_RATERS} raters each — and this number is the check on that. Near-total agreement is not automatically good news: it is what both careful raters and two rubber-stampers produce. **Read the paired refutation attempts printed below** and say whether the two raters reasoned separately or interchangeably. That judgement is yours and nothing else in the round makes it.
 - Unknown words: ${unknownWordTotal} occurrence(s) over ${words.length} distinct token(s), taken from the parse record rather than by grepping for the engine's refusal line. Not findings in themselves and not coverage — but ~48 verbs are stubs now, so a large number here is worth a sentence. A word the *game itself printed* and could not answer is a defect and should have arrived as an ordinary finding; if the count is high and no such finding was filed, that is a gap in the round, not in the game.
 - Timers declared: ${timers.declared.join(', ') || 'none'}.${timerNote}

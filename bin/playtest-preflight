@@ -32,6 +32,7 @@
 const { spawn, spawnSync } = require('node:child_process')
 const fs = require('node:fs')
 const path = require('node:path')
+const { checkHeadlessCLI, dispatchHeadless } = require('./lib/playtest-headless')
 
 // What the game's focus file declares — the coverage split and the sighted-only
 // half of it — plus the committed deep starts a round hands out, which are read
@@ -496,7 +497,7 @@ function hasTracker() {
 // Six paragraphs of SKILL.md an operator used to re-derive by hand every round.
 // SKILL.md's own rule is "don't work from a list, here or anywhere" — which is an
 // argument for computing these, not for remembering to.
-function roundArgs(game, mcpKey) {
+function roundArgs(game, mcpKey, headless) {
   const docPath = gameDoc(game, '')
   const ledgerPath = gameDoc(game, '-playtest-ledger')
   const focusPath = gameDoc(game, '-playtest-focus')
@@ -528,7 +529,7 @@ function roundArgs(game, mcpKey) {
     // prompt text, so nothing compares it and the unambiguous spelling is free.
     workflowPath: path.join(ENGINE, '.claude/workflows/playtest.js'),
     // Whether the round files its findings or writes them into its own report.
-    tracker: hasTracker(),
+    tracker: !headless && hasTracker(),
     capabilities: capabilitiesOf(game),
     // Never `null` here: the `routes` row refuses a game whose routes disagree about
     // a seed, and a failed row exits before this is reached.
@@ -633,6 +634,14 @@ async function main() {
   }
 
   const keys = new Map(games.map((g) => [g, mcpKeyFor(g)]))
+  const headlessOptions = {
+    cwd: ROOT,
+    env: { ...process.env, ...(readJSON('.claude/settings.json', {}) || {}).env },
+  }
+  if (headless && !all) {
+    const problem = checkHeadlessCLI(headlessOptions)
+    if (problem) { console.error(`playtest-preflight: ${problem}`); process.exit(1) }
+  }
 
   // The two roots, before the work rather than after it, because the work begins
   // with a build that can take minutes and can fail. Every row below is about the
@@ -673,7 +682,9 @@ async function main() {
   if (all) { console.log(''); return }
 
   const game = games[0]
-  const args = roundArgs(game, keys.get(game))
+  // Issue creation intentionally requires approval. No operator can give it in
+  // print mode, so persist the same report-only arguments that we dispatch.
+  const args = roundArgs(game, keys.get(game), headless)
   // A package that has never run a play-test tool has no `.context/`, and a
   // generated one is exactly that. It has always existed here by the time this runs
   // — `bin/playtest-replay --build` above writes under it — which is why the write
@@ -706,14 +717,10 @@ async function main() {
     // them made two owners of one pair of values, kept in sync by hand, with the
     // dry run asserting only that the settings copy exists — so raising the
     // timeout there would have left this path on the old number.
-    console.log('\n  Dispatching through `claude -p` ...\n')
-    const prompt = 'Run the play-test round, and write the report it returns:'
-      + ` Workflow({scriptPath: ${JSON.stringify(args.workflowPath)}, args: ${JSON.stringify(args)}})`
-    const r = spawnSync('claude', ['-p', prompt], {
-      cwd: ROOT,
-      stdio: 'inherit',
-      env: { ...process.env, ...(readJSON('.claude/settings.json', {}) || {}).env },
-    })
+    console.log('\n  Dispatching through `claude -p` (report only; issue creation disabled) ...\n')
+    const r = dispatchHeadless(args, headlessOptions)
+    if (r.error) console.error(`playtest-preflight: Cannot dispatch claude: ${r.error.message}. Check that claude is on PATH and retry --headless.`)
+    else if (r.status !== 0) console.error('playtest-preflight: Headless dispatch failed. Read the Claude diagnostic above; this round needs Workflow and the selected game’s MCP tools. Retry in an interactive session if a required tool is unavailable or denied.')
     process.exit(r.status === null ? 1 : r.status)
   }
 

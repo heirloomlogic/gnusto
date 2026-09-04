@@ -48,3 +48,5 @@ jobs:
           node .claude/workflows/playtest.dryrun.mjs
       - name: Generated tool paths and export
         run: node --test bin/tests/generated-paths.test.mjs
+      - name: Headless dispatch permissions and diagnostics
+        run: node --test bin/tests/playtest-headless.test.mjs
