@@ -97,7 +97,7 @@ if [ -n "$dep_path" ]; then
   swift_path="${swift_path//$'\n'/\\n}"
   swift_path="${swift_path//$'\r'/\\r}"
   swift_path="${swift_path//$'\t'/\\t}"
-  dependency=".package(name: \"Gnusto\", path: \"$swift_path\")"
+  dependency=".package(name: \"Gnusto\", path: \"$swift_path\", traits: gnusto)"
 else
   # Pin to whatever this checkout's newest release is, read now rather than
   # hardcoded, so the generator cannot fall behind the tags.
@@ -114,7 +114,7 @@ else
   # would answer wrong instead of just failing.
   version="$(git tag --sort=-v:refname | head -1)"
   [ -n "$version" ] || die "no git tag found to pin against; pass --dep-path instead"
-  dependency=".package(url: \"https://github.com/HeirloomLogic/Gnusto\", from: \"$version\")"
+  dependency=".package(url: \"https://github.com/HeirloomLogic/Gnusto\", from: \"$version\", traits: gnusto)"
 
   # bin/gnusto-mcp and bin/export-game read GNUSTO_PACKAGE_PATH to find out which
   # package a shim meant, because $0 by then points into Gnusto's own checkout

@@ -61,6 +61,16 @@ Every Gnusto game is also a play-test server. ``GameMain`` answers `--mcp` — o
 
 Nothing in your game has to know about this. The switch lives in the ``GameMain`` protocol extension every game already conforms to, so a game written by somebody who has never read this page becomes a server for the cost of a flag.
 
+### Leaving it out
+
+The server is a second program, and it is larger than the engine it rides in. So it is a **package trait** — `Playtest`, on by default — and a build that turns it off does not compile `Sources/Gnusto/Playtest/` at all. `GNUSTO_MCP` is then refused on standard error rather than honoured, because a client has already started writing JSON-RPC into the process's stdin and answering it with parser output would be the worse lie.
+
+```sh
+swift build -c release --disable-default-traits --product MyGame
+```
+
+`bin/export-game` and the release workflow already build that way: a binary you hand to somebody else is the one that should not carry a server. Everything else — a development build, `bin/gnusto-mcp`, `swift test` — gets the default and keeps the harness. A package `bin/new-game` wrote declares a `Playtest` trait of its own and forwards it to the engine's, which is what makes `--disable-default-traits` reach past the game and into Gnusto.
+
 `bin/gnusto-mcp` is the launcher, and a generated package gets a shim over it:
 
 ```sh

@@ -22,7 +22,7 @@ that covers your task before writing code.
 | `.claude/skills/playtest/`, `.claude/workflows/playtest.js` | the automated play-test harness: subagents play, read prose, and report lines untrue of their frame. `bin/playtest-preflight` is its front door — see "Kicking off a play-test round" |
 | `.playtest/<Game>/routes/`, `bin/playtest-routes` | committed **deep starts**: a named command list, its seed and the frame it ends in, one JSON file each. `open({start:})` and `bin/playtest-replay --start` are the two doors, and a game with none needs none. `distill` is where new ones come from — a round's own play, shrunk against a replay predicate |
 | `bin/playtest-replay` | one-line non-interactive replay of any game, seed pinned |
-| `bin/gnusto-mcp`, `.mcp.json` | every demo game as an MCP play-test server — an agent opens a session, takes turns, and is told what it was shown and never followed up. One binary is one game, so no tool takes a game name |
+| `bin/gnusto-mcp`, `.mcp.json` | every demo game as an MCP play-test server — an agent opens a session, takes turns, and is told what it was shown and never followed up. One binary is one game, so no tool takes a game name. The server is the `Playtest` package trait, on by default; `--disable-default-traits` drops `Sources/Gnusto/Playtest/` out of the build entirely |
 | `FIDELITY.md` | Zork 1 and Dungeon only: where their content departs from the original. Nothing else uses it. The two do **not** share a prose rule: Zork 1 reproduces verbatim, Dungeon adapts, and the Dungeon section states its rule before any region entry |
 
 ## Commands
@@ -140,6 +140,18 @@ Four facts that bite and are not guessable from the code:
   leads with it, so `.context/playtest/` can hold every round this checkout ever ran
   without one round's turns landing in another's arithmetic. That used to be wrong
   three rounds running.
+
+**The play-test server is a package trait, `Playtest`, and it is on by default.**
+That is what makes any game play-testable for the cost of one `.mcp.json` entry, and
+it is why `swift build`, `swift test` and `bin/gnusto-mcp` need no flag. The other
+configuration is what ships: `bin/export-game` and both release workflows pass
+`--disable-default-traits`, and then `Sources/Gnusto/Playtest/` does not compile and a
+binary asked for MCP refuses on stderr instead of playing the game at a client writing
+JSON-RPC into its stdin. Two consequences worth knowing before you move code: anything
+the *playing* path needs must live outside `Playtest/` (`TurnAudit` and
+`GameWorld.statusFields()` are there for that reason, not by accident), and the only
+build that proves it is the traits-off step in `.github/workflows/test.yml`, since the
+suite is always built with the trait on.
 
 `bin/gnusto-mcp` does **not** build unless a source is newer than its last build.
 That is load-bearing rather than an optimization: a client starts all seven servers at

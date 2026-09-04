@@ -1,3 +1,6 @@
+// Gated on the `Playtest` package trait. See `Package.swift`.
+#if Playtest
+
 /// The seams a play-test driver needs into a running world.
 ///
 /// Everything here is `internal` and stays that way: a driver lives in this
@@ -8,82 +11,6 @@
 /// The theme is that `GameWorld` is an actor, so nothing outside it can read a
 /// stored property — a driver that wants the room roster or a state copy has to
 /// ask for it across the actor boundary, and these are those questions.
-
-// MARK: - The parse record
-
-/// What the parser made of one line, alongside what the turn printed.
-///
-/// It exists because the transcript is not a complete record of a turn. Two
-/// facts in particular cannot be recovered from the text:
-///
-/// - **What was examined.** `examine` does not touch its object — the default
-///   action calls `describeItem`, which only `say`s — so `isTouched` never
-///   learns that the player looked. "Have I looked at this yet?" is otherwise
-///   answerable only by re-reading the transcript and guessing which noun a
-///   description belonged to.
-/// - **Which words the game has never heard of.** The parse-failure line names
-///   at most one word, and only on some paths. Matching the reply against
-///   "You can't see any such thing" is a string-match on prose the game is
-///   free to re-skin; asking the vocabulary is exact, and it answers for lines
-///   that parsed as well as lines that didn't.
-///
-/// Built by `GameWorld.performAudited(_:)`, which is where the parse result is
-/// still in hand.
-struct TurnAudit: Sendable {
-    /// True when the parser produced a command. False for a parse error, an
-    /// open clarifying question, and for the line that answered an engine
-    /// prompt — none of which named a verb.
-    var understood: Bool = false
-
-    /// The intent the line resolved to, or `nil` when it didn't resolve.
-    var intent: Intent?
-
-    /// The direct object the parser bound, as the parser bound it. A bare
-    /// `hello` in a room with one person in it is *later* addressed to them by
-    /// `GameWorld.run`; that fill-in happens after the parse and is not
-    /// recorded here, because this is a record of what the player's words
-    /// picked out.
-    var directObject: EntityID?
-
-    /// The indirect object the parser bound, if the pattern had one.
-    var indirectObject: EntityID?
-
-    /// The direction the line asked for, for a movement command.
-    ///
-    /// Here for the same reason as the rest of this record: which way somebody
-    /// went is not recoverable from the prose. `n`, `north` and `go north` are
-    /// one move and three spellings, an exit refused by a shut door prints text
-    /// that names no direction at all, and a room description that mentions
-    /// three ways out has to be matched against the ones actually taken. The
-    /// parse knows; the transcript does not.
-    var direction: Direction?
-
-    /// Every token of the input the game's vocabulary does not know, in the
-    /// order typed. Normally empty on a line that parsed, since the parser
-    /// requires every token to be consumed.
-    var unknownWords: [String] = []
-
-    /// True when the line was consumed as the answer to an open engine prompt
-    /// — a save/restore filename, or the post-death choice — rather than
-    /// parsed as a command. Nothing else in the record is filled in.
-    var answeredPrompt: Bool = false
-
-    /// A line the parser never got a command out of.
-    init(unknownWords: [String] = [], answeredPrompt: Bool = false) {
-        self.unknownWords = unknownWords
-        self.answeredPrompt = answeredPrompt
-    }
-
-    /// A line the parser did get a command out of.
-    init(_ parsed: ParsedCommand, unknownWords: [String]) {
-        self.understood = true
-        self.intent = parsed.intent
-        self.directObject = parsed.directObject
-        self.indirectObject = parsed.indirectObject
-        self.direction = parsed.direction
-        self.unknownWords = unknownWords
-    }
-}
 
 // MARK: - What the world is waiting for
 
@@ -133,7 +60,7 @@ enum PlaytestAwaiting: String, Sendable, CaseIterable {
     }
 }
 
-// MARK: - State, rosters, and the footer's fields
+// MARK: - State and rosters
 
 extension GameWorld {
     /// What the world will do with the next line of input. See
@@ -293,46 +220,6 @@ extension GameWorld {
                 return PlaytestResolution(word: word, known: true)
             }
         }
-    }
-
-    /// The extra status-footer fields the game's bundles and plugins
-    /// contribute, evaluated now.
-    ///
-    /// A field reads live state — `Clock`'s hour is a function of the `moves`
-    /// counter — so it needs a turn frame, and there is none between turns.
-    /// This builds a throwaway one exactly as `begin()` does, and then
-    /// **discards** it rather than committing: the scratch's writes go nowhere,
-    /// which is the read-only contract stated on `GameContent.statusFields`
-    /// made literal. The caller only asks when a footer is in force, so a game
-    /// nobody is play-testing never runs an author's closure at all.
-    ///
-    /// **Which world it reads.** Not the live one, when the last turn cost a
-    /// move: the frame is built over the world as that turn stood at its
-    /// *close* — after its each-turn rules and its timer tick, before its
-    /// counter advanced — which is the instant every word the turn printed was
-    /// written at. So `time=` names the minute of the prose above it, while
-    /// the `moves=` beside it names the count the turn left behind. The two
-    /// are sampled at different instants deliberately; see
-    /// ``Scratch/statusFieldState`` and issue #280. A turn that advanced no
-    /// counter has no such instant and falls back to live state, which for
-    /// that turn is the same world.
-    ///
-    /// **What the empty check does not mean.** It is not "this game
-    /// contributes nothing": `Bootstrap` collects one closure per content
-    /// module whether or not the module overrides the protocol's default, so
-    /// any game with a bundle gets past this guard and pays for a scratch
-    /// frame whose `flatMap` then returns nothing. Only a game with no
-    /// bundles and no stored plugin returns here.
-    ///
-    /// - Returns: the contributed `name`/`value` pairs, in declaration order.
-    func statusFields() -> [(String, String)] {
-        guard !definition.statusFields.isEmpty else { return [] }
-        let scratch = TurnFrame(definition: definition, state: statusFieldState ?? state)
-        let fields = Ctx.$frame.withValue(scratch) {
-            definition.statusFields.flatMap { $0() }
-        }
-        _ = scratch.retire()  // discard: a status field is read-only by contract
-        return fields
     }
 }
 
@@ -545,3 +432,5 @@ extension PlaytestSurvey.Exit {
         }
     }
 }
+
+#endif

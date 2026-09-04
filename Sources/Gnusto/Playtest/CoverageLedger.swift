@@ -1,3 +1,6 @@
+// Gated on the `Playtest` package trait. See `Package.swift`.
+#if Playtest
+
 import Foundation
 
 /// The curiosity engine: what the game has shown a tester that the tester has
@@ -2005,3 +2008,5 @@ struct CoverageLedger: Sendable {
         "towards", "along", "against", "beside", "beyond", "within", "throughout",
     ]
 }
+
+#endif

@@ -1,3 +1,6 @@
+// Gated on the `Playtest` package trait. See `Package.swift`.
+#if Playtest
+
 import Foundation
 
 /// A JSON value, exactly as the wire carries it.
@@ -241,3 +244,5 @@ extension JSONValue: ExpressibleByDictionaryLiteral {
         self = .object(Dictionary(elements) { _, last in last })
     }
 }
+
+#endif

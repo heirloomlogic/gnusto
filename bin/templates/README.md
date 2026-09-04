@@ -28,7 +28,7 @@ All six tools are shims over the resolved Gnusto checkout. Run `swift build` onc
 - `bin/playtest-routes MyGame list` lists committed deep starts; `verify` replays them to check their landings.
 - `bin/playtest-replay MyGame --commands probe.txt --seed 0 --label mine` replays a command list with a fixed random seed.
 - `bin/playtest-measure .context/playtest/mine/probe-*` measures how much of the game the probes reached.
-- `bin/export-game MyGame` builds a standalone binary under `dist/`.
+- `bin/export-game MyGame` builds a standalone binary under `dist/`, without the play-test server. That is this package's `Playtest` trait, on by default and forwarded to the engine's: a development build and `bin/gnusto-mcp` keep the harness, and the binary you hand to somebody else does not carry it or answer `GNUSTO_MCP`.
 
 If the generator warns about the pinned Gnusto version, use a release containing the required tools or regenerate with `--dep-path` pointing at a current engine checkout. `swift package update` can select a compatible newer release once one exists.
 
