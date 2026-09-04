@@ -191,7 +191,7 @@ public actor GameWorld {
     ///
     /// - Returns: the opening turn's output and status.
     public func begin() -> TurnResult {
-        let frame = TurnFrame(definition: definition, state: state)
+        let frame = TurnFrame(definition: definition, state: state, command: lookCommand)
         Ctx.$frame.withValue(frame) {
             frame.say(definition.intro)
             frame.say(definition.text.banner(definition.title, definition.tagline))
@@ -340,6 +340,15 @@ public actor GameWorld {
 
     // MARK: - The turn pipeline
 
+    /// The command the engine's own describing passes — `begin`, UNDO and
+    /// RESTORE — hand the room describer. Those passes don't run a player
+    /// command, but a `describe { }` or `presence { }` closure may ask
+    /// `command.intent` just the same, and in fiction they are all a LOOK: it
+    /// is what the player sees. #395.
+    var lookCommand: Command {
+        Command(intent: .look, verbPhrase: "look", rawInput: "")
+    }
+
     private func runTurn(_ command: Command, snapshot: WorldState) -> TurnResult {
         let frame = TurnFrame(definition: definition, state: state, command: command)
         Ctx.$frame.withValue(frame) {
@@ -463,22 +472,19 @@ public actor GameWorld {
 
         state.pronounThem = objects
 
-        let indirectItem = parsed.indirectObject.flatMap { definition.registry.items[$0] }
-        let frame = TurnFrame(definition: definition, state: state)
+        // The upkeep pass runs before any object's command exists, but its
+        // rules are rule bodies and may ask `command.intent`. What the player
+        // typed was the group's intent, so that is what they are handed — no
+        // object, because none has been named yet.
+        let frame = TurnFrame(
+            definition: definition, state: state, command: command(from: parsed))
         Ctx.$frame.withValue(frame) {
             do {
                 try runUpkeepBefore(intent, frame: frame)
                 for id in objects {
                     guard frame.with({ $0.state.status }) == .playing else { break }
                     guard let item = definition.registry.items[id] else { continue }
-                    let command = Command(
-                        intent: intent,
-                        directObject: item,
-                        indirectObject: indirectItem,
-                        preposition: parsed.preposition,
-                        topic: parsed.topic.map(Topic.init),
-                        verbPhrase: parsed.verbPhrase,
-                        rawInput: parsed.rawInput)
+                    let command = command(from: parsed, overridingDirectObject: item)
                     // `unhandled` is not reset alongside `defaultRan`: every
                     // intent in `multiObjectIntents` is a core verb with a
                     // handler, so stage 4 always answers here and the flag
@@ -535,7 +541,7 @@ public actor GameWorld {
         state = snapshot
         undoSnapshot = nil
         pendingClarification = nil
-        let frame = TurnFrame(definition: definition, state: state)
+        let frame = TurnFrame(definition: definition, state: state, command: lookCommand)
         Ctx.$frame.withValue(frame) {
             frame.say(definition.text.undone())
             RoomDescriber.describeCurrentLocation(mode: .entry, frame: frame)
@@ -842,10 +848,14 @@ public actor GameWorld {
 
     // MARK: - Support
 
-    private func command(from parsed: ParsedCommand) -> Command {
+    private func command(
+        from parsed: ParsedCommand,
+        overridingDirectObject: Item? = nil
+    ) -> Command {
         Command(
             intent: parsed.intent,
-            directObject: parsed.directObject.flatMap { definition.registry.items[$0] },
+            directObject: overridingDirectObject
+                ?? parsed.directObject.flatMap { definition.registry.items[$0] },
             indirectObject: parsed.indirectObject.flatMap { definition.registry.items[$0] },
             preposition: parsed.preposition,
             direction: parsed.direction,

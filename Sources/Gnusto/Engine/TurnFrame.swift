@@ -358,8 +358,11 @@ final class TurnFrame: Sendable {
         guard let command = with({ $0.command }) else {
             fatalError(
                 """
-                Gnusto: `command` is only available inside rule bodies while \
-                the engine is performing a player command.
+                Gnusto: `command` is only available inside rule bodies and \
+                live-text closures while the engine is running a turn or \
+                describing — including the multi-object upkeep pass and the \
+                opening, UNDO and RESTORE looks, which run under a \
+                synthesized command. Nothing is performing a command now.
                 """)
         }
         return command
