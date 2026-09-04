@@ -22,6 +22,29 @@ struct DeathTests {
         #expect(!look.contains("Slab Room"))
     }
 
+    /// The fatal turn counts a move, like any turn the world answered: the
+    /// death line is that turn's output, and parser-IF convention counts it
+    /// (the score epilogue on the death turn reads `moves`). Pinned here so a
+    /// later guard on `status == .playing` cannot silently move it.
+    @Test func theDeathTurnCountsAMoveExactlyOnce() async throws {
+        let transcript = try await play(MorgueGame(), ["take poison"])
+        #expect(turnOutput(of: "take poison", in: transcript).contains("in 1 turn."))
+    }
+
+    @Test func turnsBeforeTheDeathCountNormally() async throws {
+        let transcript = try await play(MorgueGame(), ["take apple", "take poison"])
+        let fatal = turnOutput(of: "take poison", in: transcript)
+        #expect(fatal.contains("Your score is"))
+        #expect(fatal.contains("in 2 turns."))
+    }
+
+    /// A meta verb and a parse error cost nothing, even with death waiting.
+    @Test func metaAndFreeTurnsBeforeTheDeathDoNotCount() async throws {
+        let transcript = try await play(MorgueGame(), ["score", "frotz", "take poison"])
+        #expect(turnOutput(of: "score", in: transcript).contains("in 0 turns."))
+        #expect(turnOutput(of: "take poison", in: transcript).contains("in 1 turn."))
+    }
+
     @Test func undoFromTheDeathPromptRevives() async throws {
         let transcript = try await play(
             MorgueGame(),

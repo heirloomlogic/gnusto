@@ -666,7 +666,9 @@ public actor GameWorld {
     /// Stage 6 and the epilogue: world time passes even on refused turns —
     /// but not for meta intents, not for a command nothing answered, and not
     /// once the game has ended. Runs once per typed command, however many
-    /// objects it covered.
+    /// objects it covered. The turn that kills the player counts a move like
+    /// any other cost turn: the death line is that turn's output, and the
+    /// counter is read by its score epilogue.
     private func finishTurn(intent: Intent, frame: TurnFrame) {
         let rules = definition.rules
         // A command stage 4 had no answer for is free, like a parse error:
