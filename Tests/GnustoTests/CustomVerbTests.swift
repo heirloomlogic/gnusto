@@ -127,6 +127,36 @@ struct CustomVerbTests {
         #expect(turnOutput(of: "inventory", in: transcript).contains("empty-handed"))
     }
 
+    /// A `before` rule that mutates state and then answers nothing hands the
+    /// turn to stage 4, which throws `unhandled` — and a turn nothing answered
+    /// never happened, so the mutation must not survive it.
+    @Test func anUnhandledVerbRollsBackBeforeRuleMutations() async throws {
+        let transcript = try await play(UnhandledRollbackGame(), ["salute banner", "ring dial"])
+        #expect(transcript.contains("You can't do that."))
+        #expect(turnOutput(of: "ring dial", in: transcript).contains("The dial reads 0."))
+    }
+
+    /// The pronoun half of the same contract: `run` binds `it` before the
+    /// pipeline runs, so an unhandled turn that names a thing would otherwise
+    /// steal `it` from the last turn that actually happened.
+    @Test func anUnhandledVerbDoesNotRebindIt() async throws {
+        let transcript = try await play(
+            UnhandledRollbackGame(),
+            ["examine dial", "salute banner", "examine it"])
+
+        let it = turnOutput(of: "examine it", in: transcript)
+        #expect(it.contains("brushed brass"))
+        #expect(!it.contains("sun-bleached"))
+    }
+
+    /// The positive control for the rollback: a turn a rule *does* answer
+    /// commits its mutations and its pronoun binding like any other.
+    @Test func anAnsweredVerbStillCommitsItsMutations() async throws {
+        let transcript = try await play(UnhandledRollbackGame(), ["salute dial", "ring dial"])
+        #expect(transcript.contains("It reads 1."))
+        #expect(turnOutput(of: "ring dial", in: transcript).contains("The dial reads 1."))
+    }
+
     // MARK: - #verb
 
     @Test func verbMacroIntentsMatchTheirStringlyTwins() {

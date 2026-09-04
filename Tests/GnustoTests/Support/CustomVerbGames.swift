@@ -245,6 +245,60 @@ struct SentryPostGame: Game {
     }
 }
 
+/// The rollback contract for a free turn, reduced to its bones: one noun whose
+/// `salute` rule mutates a `@Global` and answers nothing (so stage 4 throws
+/// `unhandled`), one whose rule answers, and a dial that reports the count.
+/// `examine it` is the pronoun half: an unhandled turn that names a thing must
+/// not steal `it` from the turn before it.
+struct UnhandledRollbackGame: Game {
+    let title = "Rollback"
+    let intro = "A gate where almost nothing answers."
+
+    let gate = Location {
+        name("Gate")
+        description("A stone arch over a road going nowhere.")
+    }
+
+    /// The noun the rule mutates state for but doesn't cover — the unhandled
+    /// path, whose mutations and pronoun binding must both be rolled back.
+    let banner = Item {
+        name("faded banner")
+        adjectives("faded")
+        description("A regimental banner, sun-bleached to no colour at all.")
+    }
+
+    let dial = Item {
+        name("brass dial")
+        adjectives("brass")
+        description("A dial of brushed brass.")
+    }
+
+    @Global var flips = 0
+
+    var map: WorldMap {
+        player.starts(in: gate)
+        banner.starts(in: gate)
+        dial.starts(in: gate)
+    }
+
+    var verbs: [SyntaxRule] {
+        [.salute, .ring]
+    }
+
+    var rules: Rules {
+        banner.before(.salute) {
+            flips += 1
+        }
+        dial.before(.salute) {
+            flips += 1
+            try reply("You salute the dial. It reads \(flips).")
+        }
+        dial.before(.ring) {
+            try reply("The dial reads \(flips).")
+        }
+    }
+}
+
 /// The mistake #283 names, in the shape Dungeon carried it: two rows for one
 /// pattern, differing only in how the preposition is spelled. `in` already
 /// answers to `into`, so the second row is dead — and the bootstrap has to say

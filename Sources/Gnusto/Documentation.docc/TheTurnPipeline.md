@@ -77,6 +77,8 @@ This is what makes timed puzzles work. A lantern burning down, a guard on patrol
 
 There is exactly one exception, and it is the case where *nobody* refused. If a custom verb reaches stage 5 with no action, no rule and no stub line to answer it, the player is told "You can't do that." — and that turn is free, like a parse error. The message says nothing happened, so nothing may: no each-turn rules, no timer tick, no move, and the UNDO snapshot still points at the last command that did something. A refusal is the game answering; this is the game having no answer.
 
+Free means free all the way down, too. The `before` rules of stages 1–3 have already run by the time stage 4 gives up, and any of them may have mutated the scratch state — so the engine commits the *pre-turn* state on this path instead of the scratch copy, and the turn's mutations vanish with it. The same rollback covers the `it` binding: naming a thing binds the pronoun before the pipeline runs, but a turn nothing answered never happened, so it leaves `it` pointing where the last real turn left it. A `before` rule that mutates state and then answers nothing has mutated nothing.
+
 ## Meta intents skip everything
 
 A few intents talk to the *game program*, not the game world: ``Intent/score``, ``Intent/quit``, ``Intent/version``, and the four state-management verbs ``Intent/save``, ``Intent/restore``, ``Intent/undo``, and ``Intent/restart``. These are **meta** intents. They run no rules at all and do not consume a turn — asking for your score is not an action the world should react to, and it should not advance a timed puzzle. Everything in the numbered list above is gated on the intent not being meta.
