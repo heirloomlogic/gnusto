@@ -176,8 +176,21 @@ struct WorldState: Sendable, Codable {
     /// one here, one in ``encode(to:)``) and no format bump. Forgetting any of
     /// the three is caught by `SaveFormatTests`, which is the trade that makes
     /// hand-writing this safe: the synthesized coder could not read an old
-    /// save, but it also could not silently drop a property, and these tests
-    /// buy that second guarantee back.
+    /// save, but it also could not silently drop a property, and those tests
+    /// buy that second guarantee back. It takes three of them to do it, one
+    /// per line — and the third is the one that is easy not to think of.
+    /// `theEncodedKeysAreExactlyTheCodingKeys` and
+    /// `everyStoredPropertyHasACodingKey` are structural, and between them they
+    /// prove only that every property has a key and every key is written. A
+    /// property that has both and is never *read* here compiles cleanly — a
+    /// stored property with a default is already initialized, so a hand-written
+    /// `init` is under no obligation to assign it — and then resets to that
+    /// default on every restore, with both structural tests green.
+    /// `everyPropertySurvivesARoundTrip` is what hears that one: it sets every
+    /// property to a value a fresh state doesn't hold, round-trips through
+    /// JSON, and compares child by child over `Mirror`, so a property added
+    /// later and left out of this list fails without anyone having to
+    /// remember it.
     init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         // The fallbacks are read off a fresh state rather than written out

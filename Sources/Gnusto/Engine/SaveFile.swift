@@ -23,6 +23,24 @@ struct SaveFile: Codable {
     /// as "this save predates it" and supplies the default, which is the whole
     /// point of hand-writing that coder. Bumping for an additive field would
     /// mean nothing and cost the reader nothing, so don't.
+    ///
+    /// What the bump does **not** buy, and this is the part to know before
+    /// reaching for it: nothing threads `format` into `WorldState.init(from:)`.
+    /// There is no `decoder.userInfo` plumbing and no per-format branch, so a
+    /// build at format 2 with ``minimumReadableFormat`` still at 1 decodes a
+    /// format-1 save with the format-2 decoder — and a renamed key would find
+    /// no match and silently take its default, which is the quiet version of
+    /// the very bug this file exists to prevent. The number by itself is a
+    /// label, not a migration.
+    ///
+    /// So a genuine shape change costs a decision rather than a constant. Raise
+    /// ``minimumReadableFormat`` with it and the old saves are refused
+    /// honestly, in words the player can act on, at the price of every save
+    /// they are holding. Leave the floor where it is and the decoder has to
+    /// earn it: the renamed key falls back to the old key by hand, the changed
+    /// encoding is read both ways, and the fallbacks stay until the floor
+    /// finally rises past them. Both are real options; picking neither and
+    /// bumping the number is the one that looks like it worked.
     static let currentFormat = 1
 
     /// The oldest format this build still reads.
@@ -97,10 +115,18 @@ struct SaveFile: Codable {
         guard let data = try? Data(contentsOf: url),
             let envelope = try? JSONDecoder().decode(Envelope.self, from: data)
         else { throw .unreadable }
+        // Title before format, because the title is the more fundamental
+        // answer and the two can both be wrong at once: a save for *another
+        // game* in a format this build doesn't read is not "written by a
+        // different version of this game", and told that, a player goes looking
+        // for an old build of something they were never playing. Which game a
+        // file belongs to is knowable whatever its format — the envelope is
+        // two scalars and doesn't move — so nothing is gained by asking about
+        // the shape first.
+        guard envelope.title == definition.title else { throw .wrongGame }
         guard (minimumReadableFormat...currentFormat).contains(envelope.format) else {
             throw .unsupportedFormat
         }
-        guard envelope.title == definition.title else { throw .wrongGame }
         guard let file = try? JSONDecoder().decode(SaveFile.self, from: data)
         else { throw .unreadable }
         guard file.state.isConsistent(with: definition) else { throw .inconsistent }

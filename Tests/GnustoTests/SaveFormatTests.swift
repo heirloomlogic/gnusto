@@ -23,9 +23,13 @@ import Testing
 /// Hand-writing the coder is what makes an old save readable, and it also
 /// introduces a failure the synthesized coder made impossible: a property added
 /// later and not wired into `init(from:)`/`encode(to:)` silently vanishes from
-/// every save, and nothing says so. `theEncodedKeysAreExactlyTheCodingKeys` and
-/// `everyStoredPropertyHasACodingKey` are that guard, and they are the reason
-/// the hand-written coder is safe to have.
+/// every save, and nothing says so. Three tests are that guard, and they are the
+/// reason the hand-written coder is safe to have — one per line the coder costs.
+/// `theEncodedKeysAreExactlyTheCodingKeys` covers keys ↔ encode,
+/// `everyStoredPropertyHasACodingKey` covers properties ↔ keys, and
+/// `everyPropertySurvivesARoundTrip` covers keys ↔ *decode*, which the first two
+/// structurally cannot see: a property that encodes and never decodes compiles,
+/// satisfies both of them, and resets to its default on every restore.
 struct SaveFormatTests {
     // MARK: - Fixtures
 
@@ -153,6 +157,112 @@ struct SaveFormatTests {
             """)
     }
 
+    /// A `WorldState` with every stored property set to a value no fresh state
+    /// holds, built through the mutating funnels where the property is
+    /// `private(set)`.
+    ///
+    /// Every collection holds exactly *one* element on purpose. The comparison
+    /// this feeds is over `String(describing:)`, and a `Set` or a `Dictionary`
+    /// of two prints in whatever order hashing chose that run — so a
+    /// two-element probe would flicker red against a coder that is perfectly
+    /// correct.
+    private static func probeState() -> WorldState {
+        let room = EntityID("probe-playerLocation")
+        var state = WorldState(playerLocation: room)
+        // `placements` and `playerVehicle` are `private(set)`, and `place(_:_:)`
+        // and `board(_:)` are their funnels. Order matters between the two:
+        // `board` settles the boarding through `strandIfSeparated()`, which
+        // drops a vehicle that isn't in the player's room, so the placement has
+        // to land first. That one placement is therefore the vehicle's, which
+        // is also all `placements` needs to be distinguishable from empty.
+        state.place(EntityID("probe-vehicle"), .room(room))
+        state.board(EntityID("probe-vehicle"))
+        state.litRooms = [EntityID("probe-litRooms")]
+        state.litItems = [EntityID("probe-litItems")]
+        state.wornItems = [EntityID("probe-wornItems")]
+        state.openItems = [EntityID("probe-openItems")]
+        state.lockedItems = [EntityID("probe-lockedItems")]
+        state.revealedItems = [EntityID("probe-revealedItems")]
+        state.unconsciousActors = [EntityID("probe-unconsciousActors")]
+        state.pronounIt = EntityID("probe-pronounIt")
+        state.pronounThem = [EntityID("probe-pronounThem")]
+        state.score = 101
+        state.moves = 102
+        state.touched = [EntityID("probe-touched")]
+        state.visited = [EntityID("probe-visited")]
+        state.metActors = [EntityID("probe-metActors")]
+        state.descriptionOverrides = [EntityID("probe-descriptionOverrides"): "a description"]
+        state.globals = [EntityID("probe-globals"): .int(103)]
+        state.activeFuses = ["probe-activeFuses": 104]
+        state.activeDaemons = ["probe-activeDaemons"]
+        state.status = .won
+        state.rngState = 105
+        return state
+    }
+
+    /// Every stored property of `state` as label → `String(describing:)`, minus
+    /// the never-serialized `containmentCache`.
+    ///
+    /// Reflection rather than a written-out list of 23 comparisons, because a
+    /// written-out list is a fourth line to forget: the property added next
+    /// year appears here the moment it is declared, whether or not anyone
+    /// remembered this file.
+    private static func described(_ state: WorldState) -> [String: String] {
+        var described: [String: String] = [:]
+        for child in Mirror(reflecting: state).children {
+            guard let label = child.label, label != "containmentCache" else { continue }
+            described[label] = String(describing: child.value)
+        }
+        return described
+    }
+
+    @Test("every property survives a round trip")
+    func everyPropertySurvivesARoundTrip() throws {
+        // The third line, and the one the two structural tests above cannot
+        // see. They cover keys ↔ encode and properties ↔ keys; nothing covered
+        // keys ↔ *decode*. A property with a declared default, a CodingKeys
+        // case and an encode(to:) line but no init(from:) line compiles
+        // perfectly — a stored property with a default is pre-initialized, so
+        // a hand-written init need not assign it — and it silently resets to
+        // that default on every restore. That is #396's failure mode with the
+        // sound turned off, and it is what this test hears.
+        let probe = Self.probeState()
+        let sent = Self.described(probe)
+        let readBack = try Self.described(
+            JSONDecoder().decode(WorldState.self, from: JSONEncoder().encode(probe)))
+        // What a property looks like when nobody has touched it. Comparing the
+        // probe against this is what keeps the test maintenance-free in the
+        // other direction: a property added later and *not* given a probe value
+        // would round-trip its default to its default and pass while proving
+        // nothing, so the probe is required to distinguish every property it
+        // claims to cover.
+        let untouched = Self.described(WorldState(playerLocation: EntityID("untouched")))
+
+        for (label, value) in sent.sorted(by: { $0.key < $1.key }) {
+            #expect(
+                value != untouched[label],
+                """
+                The round-trip probe leaves "\(label)" at the value a fresh \
+                WorldState already has, so a missing init(from:) line for it is \
+                invisible here: the property would round-trip its default to its \
+                default and this test would pass while proving nothing. Give \
+                "\(label)" a distinguishable value in probeState() — one element \
+                for a collection, so String(describing:) stays order-stable — \
+                and re-run. If it then fails, the missing init(from:) line is \
+                what it is telling you about.
+                """)
+            #expect(
+                readBack[label] == value,
+                """
+                "\(label)" did not survive an encode/decode round trip: wrote \
+                \(value), read back \(readBack[label] ?? "<absent>"). A property \
+                with a declared default, a CodingKeys case and an encode(to:) \
+                line but no init(from:) line compiles and then resets to its \
+                default on every restore. Add the missing init(from:) line.
+                """)
+        }
+    }
+
     // MARK: - What an old save may leave out
 
     @Test("every key but playerLocation may be absent")
@@ -270,6 +380,16 @@ struct SaveFormatTests {
     /// they were on disk. Frozen on purpose — regenerating it would defeat the
     /// test, which is that a file written by an *older build* still reads.
     ///
+    /// `playerVehicle` is absent rather than `null`, which is the *other* thing
+    /// this fixture is pinning and the only place the two dialects differ in
+    /// shape. The build that wrote this had a synthesized `encode(to:)`, and a
+    /// synthesized encoder spells an Optional with `encodeIfPresent` — so a nil
+    /// vehicle left no key at all, where the hand-written encoder now writes an
+    /// explicit `null`. A fixture carrying `"playerVehicle" : null` would be
+    /// forged in the new encoder's dialect while claiming to be an artifact of
+    /// the old one, and would quietly stop testing the absence it exists to
+    /// test.
+    ///
     /// The player has walked north to the Strongroom carrying the coin, so the
     /// restore has something to prove beyond not throwing.
     private static let formatOneSave = """
@@ -298,7 +418,6 @@ struct SaveFormatTests {
               { "nowhere" : {} }
             ],
             "playerLocation" : { "raw" : "strongroom" },
-            "playerVehicle" : null,
             "pronounIt" : { "raw" : "coin" },
             "pronounThem" : [],
             "revealedItems" : [],
@@ -340,6 +459,11 @@ struct SaveFormatTests {
         let state = try #require(object["state"] as? [String: Any])
         #expect(state["unconsciousActors"] == nil)
         #expect(state["metActors"] == nil)
+        // The dialect, not just the vintage: the synthesized encoder that wrote
+        // this omitted a nil Optional rather than writing `null`, so a
+        // `playerVehicle` key here at all would mean the fixture had been
+        // re-forged in the current encoder's spelling.
+        #expect(state["playerVehicle"] == nil)
     }
 
     // MARK: - A format we cannot read says so
@@ -373,6 +497,25 @@ struct SaveFormatTests {
             // reachable: the title is knowable without decoding a `WorldState`
             // this build cannot parse.
             #expect(transcript.contains(GameText().wrongGameSave()))
+        }
+    }
+
+    @Test("a save that is both another game's and a newer format says the game")
+    func aSaveThatIsBothAnotherGamesAndANewerFormatSaysTheGame() async throws {
+        try await withStagedSave("othergamefuture") { save in
+            save["title"] = "Some Other Game"
+            save["format"] = SaveFile.currentFormat + 1
+            save["state"] = ["nothing": "recognizable"]
+        } _: { path in
+            let transcript = try await play(LedgerGame(), ["restore", path])
+
+            // Both checks fail on this file, so which one `read` asks first is
+            // what the player hears. "A different version of this game" would
+            // send them hunting for an old build of something they were never
+            // playing; the title is the answer that is true and actionable, so
+            // it is the one asked first.
+            #expect(transcript.contains(GameText().wrongGameSave()))
+            #expect(!transcript.contains(GameText().saveVersionMismatch()))
         }
     }
 
