@@ -253,6 +253,66 @@ struct NewGameTests {
         #expect(!manifest.contains("path: \"../..\""))
     }
 
+    /// The default pin may forward a trait only if the release it pins declares one.
+    ///
+    /// SwiftPM validates trait forwarding at resolution, not at compile time, and
+    /// refuses a dependency that enables a trait the dependency never declared:
+    /// *"Package 'zwank' (Zwank) enables traits [Playtest] on package 'gnusto'
+    /// (Gnusto) that declares no traits."* Every release up to and including 0.5.0
+    /// declares none, so the generated package would not resolve at all — and a
+    /// suite that only string-matches the manifest is exactly what let that
+    /// through, since the emitted line looks perfectly correct on its own.
+    ///
+    /// So this asks the pinned tag rather than a constant: read the version out of
+    /// the line the generator wrote, read that tag's own manifest out of git, and
+    /// require the two to agree. It costs a `git show` rather than a resolve, which
+    /// keeps this suite's no-`swift` rule, and it retires itself — the day a tag
+    /// declaring the trait ships, the same assertion starts demanding the
+    /// forwarding instead of forbidding it.
+    @Test func theDefaultPinForwardsTheTraitOnlyIfTheReleaseDeclaresIt() throws {
+        guard let git = Self.which("git") else { return }  // no git, no check
+
+        let destination = Self.scratch()
+        defer { try? FileManager.default.removeItem(at: destination) }
+        let generated = try Self.newGame(["Zwank", destination.path])
+        #expect(generated.status == 0, "bin/new-game failed: \(generated.stderr)")
+
+        let manifest = try String(
+            contentsOf: destination.appendingPathComponent("Package.swift"), encoding: .utf8)
+        let dependency = try #require(
+            manifest.split(separator: "\n").first { $0.contains("HeirloomLogic/Gnusto") },
+            "the generated manifest carries no pinned Gnusto dependency")
+
+        let version = try #require(
+            dependency.range(of: #"from: ""#).map { start in
+                String(dependency[start.upperBound...].prefix { $0 != "\"" })
+            },
+            "no `from:` version in \(dependency)")
+
+        let released = try Self.run(git, ["show", "\(version):Package.swift"])
+        #expect(released.status == 0, "could not read the pinned tag's manifest: \(released.stderr)")
+        // Whitespace-stripped, because the declaration is one line in the template
+        // and four in the engine's own manifest, and only one of those spellings
+        // would survive a literal grep.
+        let declares = released.stdout
+            .filter { !$0.isWhitespace }
+            .contains(#".trait(name:"Playtest""#)
+
+        #expect(
+            dependency.contains("traits: gnusto") == declares,
+            declares
+                ? "Gnusto \(version) declares the Playtest trait, so the generated package should forward it: \(dependency)"
+                : "Gnusto \(version) declares no Playtest trait, so forwarding one makes the generated package unresolvable: \(dependency)"
+        )
+
+        // A pin that cannot carry the forwarding is a pin whose `--disable-default-traits`
+        // does not reach the engine, and the author has to be told so at the one
+        // moment they are looking at this output.
+        #expect(
+            generated.stdout.contains("predates the Playtest trait") == !declares,
+            "the traitless-pin warning does not match what was emitted: \(generated.stdout)")
+    }
+
     @Test func depPathOverridesTheURL() throws {
         let game = try Self.generate(["--dep-path", Self.packageRoot.path])
         defer { try? FileManager.default.removeItem(at: game) }

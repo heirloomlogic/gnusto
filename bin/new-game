@@ -39,6 +39,7 @@ game=""
 destination=""
 dep_path=""
 stale_pin_warning=""
+traitless_pin_warning=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --dep-path) dep_path="${2:-}"; [ -n "$dep_path" ] || usage; shift 2 ;;
@@ -89,6 +90,27 @@ if [ -e "$destination" ]; then
   fi
 fi
 
+# Does the Gnusto whose manifest is on stdin declare the Playtest trait?
+#
+# SwiftPM validates trait forwarding when it resolves, not when it compiles, and
+# it refuses outright: "Package 'zwank' (Zwank) enables traits [Playtest] on
+# package 'gnusto' (Gnusto) that declares no traits." So a generated package that
+# forwards the trait to a Gnusto predating it does not resolve at all -- and every
+# release up to and including 0.5.0 predates it. The generated line looks perfectly
+# correct in isolation, which is why a manifest a test only string-matches sails
+# past this.
+#
+# Asked of the Gnusto actually depended on rather than hardcoded against a tag, so
+# the forwarding comes back by itself the day a release declaring the trait ships
+# and nobody has to remember to come back and delete this.
+#
+# Whitespace is stripped before the match because the declaration is one line in
+# bin/templates/Package.swift and four in the engine's own, and a literal grep
+# would see only one of those spellings.
+declares_playtest_trait() {
+  tr -d ' \t\n' | grep -q '\.trait(name:"Playtest"'
+}
+
 if [ -n "$dep_path" ]; then
   [ -d "$dep_path" ] || die "--dep-path '$dep_path' is not a directory"
   dep_path="$(cd "$dep_path" && pwd)"
@@ -97,7 +119,12 @@ if [ -n "$dep_path" ]; then
   swift_path="${swift_path//$'\n'/\\n}"
   swift_path="${swift_path//$'\r'/\\r}"
   swift_path="${swift_path//$'\t'/\\t}"
-  dependency=".package(name: \"Gnusto\", path: \"$swift_path\", traits: gnusto)"
+  if [ -f "$dep_path/Package.swift" ] && declares_playtest_trait < "$dep_path/Package.swift"; then
+    dependency=".package(name: \"Gnusto\", path: \"$swift_path\", traits: gnusto)"
+  else
+    dependency=".package(name: \"Gnusto\", path: \"$swift_path\")"
+    traitless_pin_warning="1"
+  fi
 else
   # Pin to whatever this checkout's newest release is, read now rather than
   # hardcoded, so the generator cannot fall behind the tags.
@@ -114,7 +141,12 @@ else
   # would answer wrong instead of just failing.
   version="$(git tag --sort=-v:refname | head -1)"
   [ -n "$version" ] || die "no git tag found to pin against; pass --dep-path instead"
-  dependency=".package(url: \"https://github.com/HeirloomLogic/Gnusto\", from: \"$version\", traits: gnusto)"
+  if git show "$version:Package.swift" 2>/dev/null | declares_playtest_trait; then
+    dependency=".package(url: \"https://github.com/HeirloomLogic/Gnusto\", from: \"$version\", traits: gnusto)"
+  else
+    dependency=".package(url: \"https://github.com/HeirloomLogic/Gnusto\", from: \"$version\")"
+    traitless_pin_warning="1"
+  fi
 
   # bin/gnusto-mcp and bin/export-game read GNUSTO_PACKAGE_PATH to find out which
   # package a shim meant, because $0 by then points into Gnusto's own checkout
@@ -185,6 +217,16 @@ echo
 echo "  cd $destination"
 echo "  swift test        # run the transcript tests"
 echo "  swift build && \"\$(swift build --show-bin-path)/$game\"   # play it"
+
+if [ -n "$traitless_pin_warning" ]; then
+  echo
+  echo "warning: the Gnusto this package depends on predates the Playtest trait, so"
+  echo "  Package.swift forwards nothing to it and $game's own Playtest trait reaches"
+  echo "  only $game. The play-test server is compiled into the engine unconditionally"
+  echo "  on that version, so bin/export-game and .github/workflows/release.yml still"
+  echo "  ship a binary carrying it. Nothing else is affected, and the forwarding comes"
+  echo "  back on its own once you depend on a Gnusto that declares the trait."
+fi
 
 if [ -n "$stale_pin_warning" ]; then
   echo
