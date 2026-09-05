@@ -36,11 +36,21 @@ extension GameMain where Self: Game {
     /// with this engine — including one whose author has never heard of the
     /// play-test harness — reachable by an agent for the cost of one
     /// `.mcp.json` entry. See `PlaytestMode` and `PlaytestServer.serve`.
+    ///
+    /// That branch exists only when the package's `Playtest` trait is enabled,
+    /// which it is by default. Without it the harness is not in the binary and
+    /// the request is refused on standard error, rather than answered by
+    /// playing the game at a client writing JSON-RPC into its stdin.
     public static func main() async {
         let environment = ProcessInfo.processInfo.environment
         if PlaytestMode.requested(arguments: CommandLine.arguments, environment: environment) {
+            #if Playtest
             await PlaytestServer.serve(game: Self.init, environment: environment)
             return
+            #else
+            writeToStandardError(PlaytestMode.unavailable)
+            exit(1)
+            #endif
         }
         do {
             let seed = SeedRequest(environment: environment)

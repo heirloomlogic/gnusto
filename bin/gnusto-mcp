@@ -52,6 +52,18 @@
 # (milliseconds) buys time instead.
 #
 # GNUSTO_MCP_BUILD=1 forces the build, whatever the mtimes say.
+#
+# **The server is the `Playtest` package trait, and this script relies on its
+# default.** It builds with no trait flags, so the harness is compiled in and
+# nothing here has to know the trait exists. The one way to confuse it is to run
+# a `--disable-default-traits` build of the *same* configuration first: that
+# writes a server-less binary into the same products directory, the mtime gate
+# below correctly decides no build is needed, and every server then refuses
+# `--mcp` in words rather than pretending. Give a traits-off build its own
+# `--scratch-path` — `.github/workflows/test.yml` does, and .gitignore already
+# has the directory. `GNUSTO_MCP_BUILD=1` also recovers, but it recovers by
+# forcing all seven builds at once, which is the lock stampede the gate exists
+# to avoid.
 
 set -euo pipefail
 

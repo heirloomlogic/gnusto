@@ -44,11 +44,12 @@ jobs:
           set -euo pipefail
           mkdir -p dist
           arch="$(uname -m)"
-          bindir="$(swift build -c release --show-bin-path)"
+          # Ships without the `Playtest` trait, exactly as bin/export-game does.
+          bindir="$(swift build -c release --disable-default-traits --show-bin-path)"
           for product in $(swift package describe | awk '$1=="Name:"{n=$2} $1=="Executable:"{print n}'); do
             case " $EXCLUDE_PRODUCTS " in *" $product "*) echo "Skipping $product (excluded)"; continue ;; esac
             echo "Building $product (release)…"
-            swift build -c release --product "$product"
+            swift build -c release --disable-default-traits --product "$product"
             codesign -s - "$bindir/$product"
             tar czf "dist/${product}-macos-${arch}.tar.gz" -C "$bindir" "$product"
           done
@@ -98,11 +99,12 @@ jobs:
           swift --version
           mkdir -p dist
           arch="$(uname -m)"
-          bindir="$(swift build -c release --show-bin-path)"
+          # Ships without the `Playtest` trait, exactly as bin/export-game does.
+          bindir="$(swift build -c release --disable-default-traits --show-bin-path)"
           for product in $(swift package describe | awk '$1=="Name:"{n=$2} $1=="Executable:"{print n}'); do
             case " $EXCLUDE_PRODUCTS " in *" $product "*) echo "Skipping $product (excluded)"; continue ;; esac
             echo "Building $product (release)…"
-            swift build -c release --product "$product"
+            swift build -c release --disable-default-traits --product "$product"
             tar czf "dist/${product}-linux-${arch}.tar.gz" -C "$bindir" "$product"
           done
           ls -la dist

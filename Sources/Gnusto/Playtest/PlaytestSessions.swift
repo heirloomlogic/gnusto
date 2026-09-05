@@ -1,3 +1,6 @@
+// Gated on the `Playtest` package trait. See `Package.swift`.
+#if Playtest
+
 import Foundation
 
 /// Every open play-test session in this process, and the disk layout they
@@ -675,3 +678,5 @@ actor PlaytestSessions {
         return name.dropFirst().allSatisfy(rest.contains)
     }
 }
+
+#endif

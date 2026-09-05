@@ -75,6 +75,29 @@ let package = Package(
         .executable(name: "Fulminate", targets: ["Fulminate"]),
         .executable(name: "KindlyDeep", targets: ["KindlyDeep"]),
     ],
+    // `Sources/Gnusto/Playtest/` is a second program — an MCP server that hands
+    // an agent a live world over stdio — and it is larger than the engine it
+    // rides in. Every game is `@main struct G: Game, GameMain`, so it used to
+    // compile into all of them and switch on from an environment variable, with
+    // no way for an author to say no. The trait is that word.
+    //
+    // Default **on**, because the point of putting the switch in `GameMain` was
+    // that a game whose author has never heard of the harness is still
+    // play-testable for the cost of one `.mcp.json` entry. Off, the directory
+    // does not compile and `PlaytestMode` answers `.unavailable`.
+    //
+    // SwiftPM passes an enabled trait's name to the compiler as a conditional
+    // compilation flag, so the gate in the sources is `#if Playtest` and there
+    // is nothing to keep in step here. `bin/export-game` and the release
+    // workflows build with `--disable-default-traits`, since a binary that
+    // ships is the one that should not carry a server.
+    traits: [
+        .trait(
+            name: "Playtest",
+            description: "Compile the MCP play-test server into every game built from this package."
+        ),
+        .default(enabledTraits: ["Playtest"]),
+    ],
     dependencies: devDependencies + [
         // The #verb macro's expansion machinery. Unlike the dev tooling above,
         // a macro target cannot hide behind the sentinel: the macro is public

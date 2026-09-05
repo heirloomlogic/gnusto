@@ -1,3 +1,6 @@
+// Gated on the `Playtest` package trait. See `Package.swift`.
+#if Playtest
+
 import Foundation
 
 /// A play-test tool failure, phrased for the agent that has to recover from
@@ -2307,3 +2310,5 @@ actor PlaytestSession {
             + String(text.suffix(resultCharacterCap))
     }
 }
+
+#endif

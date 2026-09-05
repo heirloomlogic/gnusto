@@ -309,6 +309,58 @@ struct MCPProtocolTests {
             }
             #expect(!PlaytestMode.requested(arguments: ["Fulminate"], environment: ["GNUSTO_PLAIN": "1"]))
         }
+
+        /// A build without the `Playtest` trait refuses rather than plays, and
+        /// the refusal has to name both channels and the way out — an operator
+        /// reading it has a client's stderr pane and no other clue. The branch
+        /// that prints it is a `#if` in `GameMain`, so this suite can only
+        /// check the words; `.github/workflows/test.yml` builds the other
+        /// configuration and drives a binary through it.
+        ///
+        /// `built without it` is in the list because that workflow greps for
+        /// it. Without that row the two assertions on one sentence could
+        /// disagree, and rewording the complaint would turn CI red on a phrase
+        /// this test regards as free.
+        @Test func theRefusalNamesBothChannelsAndTheTrait() {
+            for fragment in [
+                "--mcp", "GNUSTO_MCP", "Playtest", "--disable-default-traits", "built without it",
+            ] {
+                #expect(PlaytestMode.unavailable.contains(fragment))
+            }
+        }
+
+        /// Every source under `Playtest/` is inside the trait's `#if`, checked
+        /// as a directory rather than trusted file by file.
+        ///
+        /// The gate cannot be a separate target — the harness reaches
+        /// `internal` seams on `GameWorld`, and `GameMain` has to dispatch to
+        /// the server without an author ever naming it, so a target would have
+        /// to depend back on `Gnusto` — which leaves ten `#if`s and no
+        /// structural reason a new file would carry one. A new file that
+        /// happened to reference only engine types would compile in both
+        /// configurations and ship inside every exported binary, which is the
+        /// one thing the trait exists to prevent, and nothing would fail.
+        @Test func everySourceUnderPlaytestIsGatedOnTheTrait() throws {
+            let directory = URL(fileURLWithPath: #filePath)
+                .deletingLastPathComponent().deletingLastPathComponent()
+                .deletingLastPathComponent()
+                .appendingPathComponent("Sources/Gnusto/Playtest")
+            let sources = try FileManager.default
+                .contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
+                .filter { $0.pathExtension == "swift" }
+            #expect(sources.count > 1)
+            for source in sources {
+                let lines = try String(contentsOf: source, encoding: .utf8)
+                    .components(separatedBy: .newlines)
+                    .filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+                #expect(
+                    lines.first { !$0.hasPrefix("//") } == "#if Playtest",
+                    "\(source.lastPathComponent) does not open with #if Playtest")
+                #expect(
+                    lines.last == "#endif",
+                    "\(source.lastPathComponent) does not close with #endif")
+            }
+        }
     }
 
     /// Which frames `serve` has to run in wire order, and which it may answer

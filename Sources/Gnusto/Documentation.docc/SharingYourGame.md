@@ -100,7 +100,7 @@ bin/export-game Lighthouse   # → dist/Lighthouse
 bin/export-game              # lists the available products
 ```
 
-It discovers the current package's executable products from its manifest, so it lists whatever your package ships — the seven demo games here, or the one game in a package `bin/new-game` wrote, with no edits to the script. Under the hood it's `swift build -c release --product <Product>` followed by a copy of the built binary to `dist/<Product>` — no bundle, no installer, one file.
+It discovers the current package's executable products from its manifest, so it lists whatever your package ships — the seven demo games here, or the one game in a package `bin/new-game` wrote, with no edits to the script. Under the hood it's `swift build -c release --disable-default-traits --product <Product>` followed by a copy of the built binary to `dist/<Product>` — no bundle, no installer, one file. The trait flag leaves the MCP play-test server out: it is on by default so that any game is play-testable out of the box, and off here because a stranger's copy has no business carrying a second program or answering `GNUSTO_MCP`. See <doc:PlayTesting>.
 
 ## Share it on macOS 15+
 

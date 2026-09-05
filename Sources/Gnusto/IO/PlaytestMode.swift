@@ -5,6 +5,13 @@
 /// third party who has never read this file — becomes a play-test server for
 /// the cost of a command-line flag.
 ///
+/// That reach is also why the server is a package trait. `Playtest` is on by
+/// default; a build that turns it off does not compile `Playtest/` at all, and
+/// the request is answered with ``unavailable`` rather than by quietly playing
+/// the game at a client speaking JSON-RPC into its stdin. Which of the two
+/// happens is a `#if` in ``GameMain``, so this type stays a reader of the
+/// environment and nothing more.
+///
 /// Modelled on ``SeedRequest`` and ``StatusFooter``: a value that reads the
 /// environment, hands back what it found, and never reaches for
 /// `ProcessInfo` itself. `GameMain` is the composition root and passes both
@@ -17,6 +24,17 @@ enum PlaytestMode {
     /// The environment variable that asks for the same thing, for a client
     /// that can set an environment but not an argument vector.
     static let variable = "GNUSTO_MCP"
+
+    /// What to tell an operator who asked for a server this build does not
+    /// carry. Fatal, unlike ``SeedRequest/complaint``: a client has already
+    /// begun writing JSON-RPC frames into this process's stdin, and answering
+    /// them with parser output would be the worse lie.
+    static let unavailable = """
+        \(flag) (or \(variable)) asks for the play-test server, and this binary was built \
+        without it. Rebuild with the Gnusto package's `Playtest` trait enabled — it is on \
+        by default, so the likely culprit is a release build made with \
+        --disable-default-traits.
+        """
 
     /// Whether either channel asked for the play-test server.
     ///

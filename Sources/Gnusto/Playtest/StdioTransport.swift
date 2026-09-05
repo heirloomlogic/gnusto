@@ -1,3 +1,6 @@
+// Gated on the `Playtest` package trait. See `Package.swift`.
+#if Playtest
+
 import Foundation
 
 #if canImport(Darwin)
@@ -291,3 +294,5 @@ private func writeBytes(_ descriptor: Int32, _ buffer: UnsafeRawPointer, _ count
     Glibc.write(descriptor, buffer, count)
     #endif
 }
+
+#endif

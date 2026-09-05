@@ -27,9 +27,15 @@ gnusto_is_checkout() {
 
 # Decode the ordinary Swift string literal emitted by bin/new-game. No eval:
 # backslashes in a filesystem name must never become shell or Swift code.
+#
+# The pattern stops at the literal's closing quote and says nothing about what
+# follows it, because arguments do get added there: the generated manifest now
+# passes `traits:` as well. Requiring `")` found nothing the day that argument
+# arrived, and a shim that cannot locate the engine reports it as a missing
+# tool rather than as a manifest it could not read.
 gnusto_dependency_path() {
   local literal character decoded=""
-  literal="$(sed -En 's/.*\.package\(name: "Gnusto", path: "(([^"\\]|\\.)*)"\).*/\1/p' "$1" 2>/dev/null | head -1)"
+  literal="$(sed -En 's/.*\.package\(name: "Gnusto", path: "(([^"\\]|\\.)*)".*/\1/p' "$1" 2>/dev/null | head -1)"
   while [ -n "$literal" ]; do
     character="${literal:0:1}"
     literal="${literal:1}"

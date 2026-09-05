@@ -1,3 +1,6 @@
+// Gated on the `Playtest` package trait. See `Package.swift`.
+#if Playtest
+
 import Foundation
 
 /// A game played once, from the beginning, by nobody — the stateless half of
@@ -417,3 +420,5 @@ enum PlaytestReplay {
         text.split(whereSeparator: \.isWhitespace).joined(separator: " ")
     }
 }
+
+#endif

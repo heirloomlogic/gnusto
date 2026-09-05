@@ -55,10 +55,23 @@ if [[ ! " ${products[*]} " == *" ${product} "* ]]; then
   exit 2
 fi
 
-echo "Building ${product} (release)…"
-swift build -c release --product "${product}"
+# The exported binary is the one that ships, so it is built without the
+# `Playtest` trait: the MCP play-test server is a second program larger than the
+# engine, and a stranger's copy of the game has no business carrying it or
+# answering `GNUSTO_MCP`. The trait is on by default everywhere else, so a
+# development build, `bin/gnusto-mcp` and the test suite are unaffected.
+#
+# `--disable-default-traits` is an error on a root package that declares no
+# traits, which is deliberate on SwiftPM's part — it is how a package adopts
+# traits without breaking its API. So this script requires the package it is
+# standing in to declare a `Playtest` trait and forward it to the engine's, the
+# way bin/templates/Package.swift does. A game generated before that template
+# existed and then moved onto a newer Gnusto gets SwiftPM's "declares no
+# traits" error here; the fix is the three lines in that template, not a flag.
+echo "Building ${product} (release, no play-test server)…"
+swift build -c release --disable-default-traits --product "${product}"
 
-binpath="$(swift build -c release --product "${product}" --show-bin-path)/${product}"
+binpath="$(swift build -c release --disable-default-traits --product "${product}" --show-bin-path)/${product}"
 mkdir -p dist
 
 # Never overwrite dist/<Product> in place. If a previously exported copy is

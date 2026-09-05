@@ -1,3 +1,6 @@
+// Gated on the `Playtest` package trait. See `Package.swift`.
+#if Playtest
+
 import Foundation
 
 /// The tools the play-test server offers, as one table.
@@ -2281,3 +2284,5 @@ extension PlaytestSurvey.Timer {
         return .object(entry)
     }
 }
+
+#endif

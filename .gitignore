@@ -25,6 +25,11 @@ DerivedData/
 bin/templates/Package.resolved
 xcuserdata/
 .build
+# A traits-off build (`--disable-default-traits`, the configuration `bin/export-game`
+# and the release workflows ship) gets its own scratch directory. Sharing `.build`
+# would evict the ordinary build's artifacts every time and hand `bin/gnusto-mcp` a
+# server-less binary its mtime gate has no reason to rebuild.
+/.build-notraits
 # Exported game binaries produced by bin/export-game.
 /dist
 # The rendered DocC site. Not `docs/`, which is hand-written and tracked: the

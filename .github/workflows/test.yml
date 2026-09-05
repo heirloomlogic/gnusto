@@ -121,6 +121,48 @@ jobs:
       - name: Test (Debug)
         run: swift test --build-system swiftbuild --disable-experimental-prebuilts
 
+      # The play-test server is a package trait, on by default, and this is the
+      # one place the other configuration is compiled. Without it the whole
+      # `Sources/Gnusto/Playtest/` directory drops out, so anything on the
+      # playing path that quietly leaned on a type declared in there — as
+      # `TurnAudit` and `GameWorld.statusFields()` both did — fails here and
+      # nowhere else. The suite itself is not built this way: it drives the
+      # harness directly and is meant to.
+      #
+      # One product, not the whole package. Nothing under `Playtest/` is
+      # `public`, so no game target and no plugin module can name a symbol from
+      # it — only Gnusto's own sources can, and `--product CloakOfDarkness`
+      # builds Gnusto and the 245-line game the runtime check below launches.
+      # Building all seven games would add ~45k lines that cannot fail this.
+      #
+      # Its own scratch directory, because a trait reaches the compiler as
+      # `-D Playtest`: this configuration shares no artifacts with the suite's
+      # and would otherwise evict them from a products directory whose path is
+      # unchanged. That is also the footgun `bin/gnusto-mcp` warns about, so
+      # the command a developer copies from here is the one that avoids it.
+      #
+      # Then prove the switch is actually dead rather than merely uncompiled:
+      # a binary built this way must refuse `GNUSTO_MCP`, not play the game at
+      # a client that is writing JSON-RPC into its stdin.
+      #
+      # POSIX sh, deliberately: a container job's default shell is `sh`, which
+      # on Ubuntu is dash — `.github/workflows/release.yml` has the scar from
+      # discovering that. So no arrays and no `set -o pipefail`; `$flags`
+      # word-splits on purpose and none of the flags contains a space.
+      - name: Build without the Playtest trait
+        run: |
+          set -eu
+          flags="--disable-default-traits --scratch-path .build-notraits"
+          flags="$flags --build-system swiftbuild --disable-experimental-prebuilts"
+          bindir="$(swift build $flags --show-bin-path)"
+          swift build $flags --product CloakOfDarkness
+          if GNUSTO_MCP=1 "$bindir/CloakOfDarkness" </dev/null >"$RUNNER_TEMP/refusal.txt" 2>&1; then
+            echo "error: a Playtest-less binary answered GNUSTO_MCP instead of refusing" >&2
+            cat "$RUNNER_TEMP/refusal.txt" >&2
+            exit 1
+          fi
+          grep -q "built without it" "$RUNNER_TEMP/refusal.txt"
+
       # Release run guards against optimization-only regressions (e.g. generic
       # `#Predicate` miscompiles) that the Debug suite passes through silently.
       # It is the most expensive step by a wide margin, so it runs on pushes to
@@ -172,6 +214,24 @@ jobs:
               exit 1
               ;;
           esac
+
+          # And that the generated manifest's trait actually reaches the engine.
+          # `--disable-default-traits` acts on the *root* package, while a
+          # dependency's default traits are enabled whatever the root does — so
+          # the template forwards its own `Playtest` trait to Gnusto's, and a
+          # forwarding line that was dropped or misspelled would still ship the
+          # server with CI green. The only check that can tell is a binary:
+          # build the generated game with no traits and make it refuse MCP.
+          flags="--disable-default-traits --scratch-path .build-notraits"
+          flags="$flags --build-system swiftbuild --disable-experimental-prebuilts"
+          bindir="$(swift build $flags --show-bin-path)"
+          swift build $flags --product Scratch
+          if GNUSTO_MCP=1 "$bindir/Scratch" </dev/null >"$RUNNER_TEMP/scratch-refusal.txt" 2>&1; then
+            echo "error: the generated package does not forward the Playtest trait" >&2
+            cat "$RUNNER_TEMP/scratch-refusal.txt" >&2
+            exit 1
+          fi
+          grep -q "built without it" "$RUNNER_TEMP/scratch-refusal.txt"
 
   # A generated package's round is dispatchable, proved by dispatching everything
   # short of the agents.

@@ -79,12 +79,16 @@ test('export lists and builds the generated package from a subdirectory', (t) =>
   const products = path.join(f.game, 'products')
   mkdirSync(products)
   writeFileSync(path.join(products, 'Probe'), '#!/bin/sh\necho playable\n', { mode: 0o755 })
+  // The build arms glob over whatever flags export-game puts between `-c release`
+  // and the product, so this stub answers a release build rather than doubling as
+  // an unwritten spec for its flag list. Which flags a build must carry is stated
+  // below, against swift.log, where a failure can say so in words.
   writeFileSync(path.join(f.fakeBin, 'swift'), `#!/bin/sh
 printf '%s|%s\\n' "$PWD" "$*" >> "$GNUSTO_PACKAGE_PATH/swift.log"
 case "$*" in
   'package describe') printf 'Name: Probe\\nType:\\n    Executable:\\n' ;;
-  'build -c release --product Probe') ;;
-  'build -c release --product Probe --show-bin-path') printf '%s/products\\n' "$PWD" ;;
+  'build -c release'*'--product Probe --show-bin-path') printf '%s/products\\n' "$PWD" ;;
+  'build -c release'*'--product Probe') ;;
   *) exit 98 ;;
 esac
 `, { mode: 0o755 })
@@ -97,6 +101,13 @@ esac
   const calls = readFileSync(path.join(f.game, 'swift.log'), 'utf8').trim().split('\n')
   assert.equal(calls.length, 4)
   assert.ok(calls.every((line) => line.startsWith(`${f.game}|`)), calls.join('\n'))
+  // The exported binary is the one that ships, so it is built without the Playtest
+  // trait. Nothing else checks that: the traits-off steps in test.yml build the
+  // package directly, so export-game could lose the flag and start shipping the
+  // MCP server with CI green.
+  const builds = calls.filter((line) => line.includes('build -c release'))
+  assert.equal(builds.length, 2, calls.join('\n'))
+  assert.ok(builds.every((line) => line.includes('--disable-default-traits')), builds.join('\n'))
   const refused = f.run('export-game', ['Unknown'])
   assert.equal(refused.status, 2)
   assert.match(refused.stdout, /unknown product/)

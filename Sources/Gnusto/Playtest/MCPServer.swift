@@ -1,3 +1,6 @@
+// Gated on the `Playtest` package trait. See `Package.swift`.
+#if Playtest
+
 import Foundation
 
 #if canImport(Darwin)
@@ -369,3 +372,5 @@ enum PlaytestServer {
         return duplicate
     }
 }
+
+#endif

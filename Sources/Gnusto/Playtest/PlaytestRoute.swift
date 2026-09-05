@@ -1,3 +1,6 @@
+// Gated on the `Playtest` package trait. See `Package.swift`.
+#if Playtest
+
 import Foundation
 
 /// A deep start: the commands that walk a player to somewhere worth testing, and
@@ -207,3 +210,5 @@ struct PlaytestRoute: Sendable {
             : "The routes there are: \(listed)."
     }
 }
+
+#endif
