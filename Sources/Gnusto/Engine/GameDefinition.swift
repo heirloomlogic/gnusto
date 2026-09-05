@@ -190,7 +190,9 @@ struct GameDefinition: Sendable {
     /// it to keep from naming somebody the player has no business knowing
     /// about yet.
     let reachableRooms: Set<EntityID>
-    let globalDefaults: [EntityID: StateValue]
+    /// Every declared `@Global`: its default, and whether a stored value can
+    /// be read back as the type it was declared with. See ``GlobalDefinition``.
+    let globals: [EntityID: GlobalDefinition]
     let playerStart: EntityID
     /// `var` so the bootstrap can install the rule table after evaluating the
     /// `rules` block inside a registration frame (which needs the rest of the

@@ -34,11 +34,11 @@ struct ContentPluginTests {
         #expect(definition.locations[EntityID("ShrineContent.shrine")] != nil)
         #expect(definition.items[EntityID("ShrineContent.offeringBowl")] != nil)
         // … the plugin's private @Global is namespaced too …
-        #expect(definition.globalDefaults[EntityID("ShrineContent.visits")] != nil)
+        #expect(definition.globals[EntityID("ShrineContent.visits")] != nil)
         // … while the host's own entities and global keep their bare names.
         #expect(definition.locations[EntityID("plaza")] != nil)
         #expect(definition.items[EntityID("coin")] != nil)
-        #expect(definition.globalDefaults[EntityID("merit")] != nil)
+        #expect(definition.globals[EntityID("merit")] != nil)
     }
 
     @Test func hostAndBundleShareALabelWithoutColliding() throws {

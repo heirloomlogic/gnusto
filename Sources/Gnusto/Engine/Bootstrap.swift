@@ -49,7 +49,7 @@ enum Bootstrap {
         var registry = Registry()
         var locations: [EntityID: LocationDefinition] = [:]
         var items: [EntityID: ItemDefinition] = [:]
-        var globalDefaults: [EntityID: StateValue] = [:]
+        var globals: [EntityID: GlobalDefinition] = [:]
         var declaredBy: [EntityID: String] = [:]
 
         // The game's content bundles, read once so every phase below sees the
@@ -170,7 +170,8 @@ enum Bootstrap {
                 case let global as AnyGlobal:
                     guard claim(id) else { continue }
                     registry.ids[ObjectIdentifier(global.token)] = id
-                    globalDefaults[id] = global.defaultStateValue
+                    globals[id] = GlobalDefinition(
+                        defaultValue: global.defaultStateValue, accepts: global.accepts)
 
                 default:
                     continue
@@ -754,7 +755,7 @@ enum Bootstrap {
                         nil
                     }
                 }),
-            globalDefaults: globalDefaults,
+            globals: globals,
             playerStart: playerStart,
             rules: RuleTable(),
             registry: registry,
