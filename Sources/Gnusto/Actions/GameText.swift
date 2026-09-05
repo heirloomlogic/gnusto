@@ -346,6 +346,11 @@ public struct GameText: Sendable {
     public var restoreFailed: Line<Nothing> = "Restore failed."
     /// A `restore` from a save that belongs to a different game.
     public var wrongGameSave: Line<Nothing> = "That save file is from a different game."
+    /// A `restore` from a save whose format this build doesn't read — written
+    /// by a newer version, or older than the oldest one still supported. Told
+    /// apart from ``restoreFailed`` for the reason `SaveFile.ReadError` gives.
+    public var saveVersionMismatch: Line<Nothing> =
+        "That save file was written by a different version of this game."
     /// A save or restore that named a filesystem path in a session where only
     /// plain slot names are allowed — headless runs, the play-test harness.
     public var savePathRefused: Line<Nothing> =

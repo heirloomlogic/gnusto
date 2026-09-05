@@ -116,10 +116,22 @@ struct WorldState: Sendable, Codable {
     private var containmentCache: ContainmentIndex?
 
     /// Every stored property except `containmentCache`, which is derived and
-    /// must stay out of the save format. Listing the cases by their exact
-    /// property names keeps the encoded JSON byte-identical to the pre-index
-    /// format; the sole omission is the cache.
-    private enum CodingKeys: String, CodingKey {
+    /// must stay out of the save format. The cases carry their exact property
+    /// names, so the encoded JSON matches the pre-index format key for key;
+    /// the sole omission is the cache.
+    ///
+    /// The one difference from what the synthesized coder wrote: a nil
+    /// ``pronounIt`` or ``playerVehicle`` is now an explicit `null` rather than
+    /// an absent key. That is deliberate and is what ``init(from:)`` rests on —
+    /// absence has to mean exactly one thing, "this save predates the
+    /// property", and a coder that also omitted nils would make it mean two.
+    /// Saves written either way still read, since `decodeIfPresent` answers nil
+    /// to both.
+    ///
+    /// `CaseIterable` and internal rather than private so `SaveFormatTests` can
+    /// ask the two questions a hand-written coder cannot answer for itself:
+    /// that every key is encoded, and that every stored property has a key.
+    enum CodingKeys: String, CodingKey, CaseIterable {
         case placements
         case playerLocation
         case litRooms
@@ -143,6 +155,113 @@ struct WorldState: Sendable, Codable {
         case activeDaemons
         case status
         case rngState
+    }
+
+    /// Decodes a save written by *any* build whose format this one still reads.
+    ///
+    /// Hand-written for one reason: the synthesized `init(from:)` makes every
+    /// key required, so the day a property was added, every save already on
+    /// disk began throwing `keyNotFound` and the player was told "Restore
+    /// failed." — indistinguishable from a corrupt file. Two properties went in
+    /// that way before anyone noticed (#396).
+    ///
+    /// The rule, and it is the whole design: **a property with a declared
+    /// default is a property an old save may omit.** Absence means the save
+    /// predates the property, and the default is what that build would have
+    /// behaved as. ``playerLocation`` is the one property with no default —
+    /// there is no answer to "where is the player" to fall back on — so its
+    /// absence is corruption rather than age, and it stays required.
+    ///
+    /// Adding a property therefore costs three lines (a ``CodingKeys`` case,
+    /// one here, one in ``encode(to:)``) and no format bump. Forgetting any of
+    /// the three is caught by `SaveFormatTests`, which is the trade that makes
+    /// hand-writing this safe: the synthesized coder could not read an old
+    /// save, but it also could not silently drop a property, and those tests
+    /// buy that second guarantee back. It takes three of them to do it, one
+    /// per line — and the third is the one that is easy not to think of.
+    /// `theEncodedKeysAreExactlyTheCodingKeys` and
+    /// `everyStoredPropertyHasACodingKey` are structural, and between them they
+    /// prove only that every property has a key and every key is written. A
+    /// property that has both and is never *read* here compiles cleanly — a
+    /// stored property with a default is already initialized, so a hand-written
+    /// `init` is under no obligation to assign it — and then resets to that
+    /// default on every restore, with both structural tests green.
+    /// `everyPropertySurvivesARoundTrip` is what hears that one: it sets every
+    /// property to a value a fresh state doesn't hold, round-trips through
+    /// JSON, and compares child by child over `Mirror`, so a property added
+    /// later and left out of this list fails without anyone having to
+    /// remember it.
+    init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        // The fallbacks are read off a fresh state rather than written out
+        // again here, so "what an absent key means" and "what the property is
+        // declared as" cannot drift apart — the property declaration stays the
+        // single place either is stated.
+        let fresh = WorldState(
+            playerLocation: try container.decode(EntityID.self, forKey: .playerLocation))
+
+        func value<T: Decodable>(_ key: CodingKeys, _ fallback: T) throws -> T {
+            try container.decodeIfPresent(T.self, forKey: key) ?? fallback
+        }
+
+        placements = try value(.placements, fresh.placements)
+        playerLocation = fresh.playerLocation
+        litRooms = try value(.litRooms, fresh.litRooms)
+        litItems = try value(.litItems, fresh.litItems)
+        wornItems = try value(.wornItems, fresh.wornItems)
+        openItems = try value(.openItems, fresh.openItems)
+        lockedItems = try value(.lockedItems, fresh.lockedItems)
+        revealedItems = try value(.revealedItems, fresh.revealedItems)
+        unconsciousActors = try value(.unconsciousActors, fresh.unconsciousActors)
+        pronounIt = try container.decodeIfPresent(EntityID.self, forKey: .pronounIt)
+        pronounThem = try value(.pronounThem, fresh.pronounThem)
+        playerVehicle = try container.decodeIfPresent(EntityID.self, forKey: .playerVehicle)
+        score = try value(.score, fresh.score)
+        moves = try value(.moves, fresh.moves)
+        touched = try value(.touched, fresh.touched)
+        visited = try value(.visited, fresh.visited)
+        metActors = try value(.metActors, fresh.metActors)
+        descriptionOverrides = try value(.descriptionOverrides, fresh.descriptionOverrides)
+        globals = try value(.globals, fresh.globals)
+        activeFuses = try value(.activeFuses, fresh.activeFuses)
+        activeDaemons = try value(.activeDaemons, fresh.activeDaemons)
+        status = try value(.status, fresh.status)
+        rngState = try value(.rngState, fresh.rngState)
+    }
+
+    /// Writes every key, always.
+    ///
+    /// Spelled out rather than synthesized so that it and ``init(from:)`` are
+    /// the same list in the same order, and a property added to one but not the
+    /// other is a line a reader can see missing. Nothing here is conditional:
+    /// omitting a default-valued key would shrink the file at the cost of
+    /// making "absent" mean two different things, and the decoder above rests
+    /// on it meaning exactly one.
+    func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(placements, forKey: .placements)
+        try container.encode(playerLocation, forKey: .playerLocation)
+        try container.encode(litRooms, forKey: .litRooms)
+        try container.encode(litItems, forKey: .litItems)
+        try container.encode(wornItems, forKey: .wornItems)
+        try container.encode(openItems, forKey: .openItems)
+        try container.encode(lockedItems, forKey: .lockedItems)
+        try container.encode(revealedItems, forKey: .revealedItems)
+        try container.encode(unconsciousActors, forKey: .unconsciousActors)
+        try container.encode(pronounIt, forKey: .pronounIt)
+        try container.encode(pronounThem, forKey: .pronounThem)
+        try container.encode(playerVehicle, forKey: .playerVehicle)
+        try container.encode(score, forKey: .score)
+        try container.encode(moves, forKey: .moves)
+        try container.encode(touched, forKey: .touched)
+        try container.encode(visited, forKey: .visited)
+        try container.encode(metActors, forKey: .metActors)
+        try container.encode(descriptionOverrides, forKey: .descriptionOverrides)
+        try container.encode(globals, forKey: .globals)
+        try container.encode(activeFuses, forKey: .activeFuses)
+        try container.encode(activeDaemons, forKey: .activeDaemons)
+        try container.encode(status, forKey: .status)
+        try container.encode(rngState, forKey: .rngState)
     }
 }
 
@@ -385,14 +504,18 @@ extension WorldState {
         guard pronounThem.allSatisfy(isItem) else { return false }
         if let vehicle = playerVehicle, items[vehicle]?.isEnterable != true { return false }
 
-        // Every global is declared, and its stored value's case matches the
-        // declared default's case — a scalar mismatch would trap when a rule
-        // reads it back through `@Global`. The type-erased `.data` case matches
-        // any `.data` regardless of its `typeName`; the decode there is already
-        // fallible and handled at read time.
+        // Every global this build still declares must hold a value a rule
+        // could read back, asked by running the very unboxing `@Global` would
+        // run — so a mistyped scalar *and* a struct whose `Codable` shape moved
+        // are both refused here, at the prompt, rather than trapping mid-turn
+        // on first read.
+        //
+        // A name this build no longer declares is dropped rather than refused —
+        // see `SaveFile.reconcile(_:with:)`, which owns that policy for globals
+        // and timers alike.
         for (id, value) in globals {
-            guard let expected = definition.globalDefaults[id] else { return false }
-            guard StateValue.sameCase(value, expected) else { return false }
+            guard let global = definition.globals[id] else { continue }
+            guard global.accepts(value) else { return false }
         }
 
         // Live fuses count down; a non-positive count would already have fired.
@@ -435,19 +558,5 @@ extension StateValue {
     /// - Returns: the clause, with no leading capital and no trailing stop.
     func cannotBeRead(as wanted: Any.Type) -> String {
         "is stored as \(declaredTypeName), which cannot be read as \(wanted)"
-    }
-
-    /// Whether two boxed values share the same case, ignoring their payloads —
-    /// the check a restored global needs so a rule reading it back through
-    /// `@Global` never unboxes the wrong scalar. `.data` matches `.data`
-    /// regardless of `typeName`.
-    static func sameCase(_ lhs: StateValue, _ rhs: StateValue) -> Bool {
-        switch (lhs, rhs) {
-        case (.bool, .bool), (.int, .int), (.double, .double),
-            (.string, .string), (.data, .data):
-            return true
-        default:
-            return false
-        }
     }
 }

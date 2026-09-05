@@ -14,7 +14,7 @@ struct CustomStateTests {
 
     @Test func customStructGlobalDefaultIsBoxedAsData() throws {
         let (definition, _) = try Bootstrap.build(ShopGame())
-        guard case .data(let typeName, _)? = definition.globalDefaults[EntityID("purse")]
+        guard case .data(let typeName, _)? = definition.globals[EntityID("purse")]?.defaultValue
         else {
             Issue.record("purse default should be boxed into the .data case")
             return

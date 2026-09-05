@@ -21,8 +21,8 @@ struct BootstrapTests {
 
     @Test func globalsAreDiscoveredWithUnderscoreStripped() throws {
         let (definition, _) = try Bootstrap.build(OrderProbeGame())
-        #expect(definition.globalDefaults[EntityID("armed")] == .bool(false))
-        #expect(definition.globalDefaults[EntityID("blunders")] == .int(0))
+        #expect(definition.globals[EntityID("armed")]?.defaultValue == .bool(false))
+        #expect(definition.globals[EntityID("blunders")]?.defaultValue == .int(0))
     }
 
     @Test func declaredTraitsReachTheDefinition() throws {

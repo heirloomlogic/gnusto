@@ -66,6 +66,11 @@ extension GameWorld {
                     // failed." A crafted file learns nothing about which check
                     // caught it.
                     return restoreFailed(definition.text.restoreFailed(), returnToDeathPrompt)
+                case .unsupportedFormat:
+                    // Told apart from the pair above on purpose; see
+                    // `SaveFile.ReadError`.
+                    return restoreFailed(
+                        definition.text.saveVersionMismatch(), returnToDeathPrompt)
                 case .wrongGame:
                     return restoreFailed(definition.text.wrongGameSave(), returnToDeathPrompt)
                 }
@@ -99,12 +104,9 @@ extension GameWorld {
 
     /// Swaps a validated save's state in and shows the player where they are.
     private func performRestore(_ restored: WorldState) -> TurnResult {
-        var next = restored
-        // Re-bind the saved timer schedule to the declared bodies by name;
-        // names this build doesn't declare are dropped (see `SaveFile`).
-        next.activeFuses = next.activeFuses.filter { definition.timers[$0.key] != nil }
-        next.activeDaemons = next.activeDaemons.filter { definition.timers[$0] != nil }
-        state = next
+        // Already reconciled with what this build declares — see
+        // `SaveFile.reconcile(_:with:)`.
+        state = restored
         undoSnapshot = nil
         pendingClarification = nil
         let frame = TurnFrame(definition: definition, state: state, command: lookCommand)
