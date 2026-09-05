@@ -328,9 +328,22 @@ public actor GameWorld {
         // must not clobber the snapshot of the last real turn.
         let snapshot = state
 
-        // Naming a thing binds "it" — even if the action then refuses.
+        // Naming a thing binds "it" — even if the action then refuses. The
+        // one exception is a turn nothing answers: the snapshot below predates
+        // the binding, and `runTurn` hands it back to `commit` on the
+        // `unhandled` path, so a free turn steals no pronoun.
         if let direct = parsed.directObject {
             state.pronounIt = direct
+            // A plural thing is one thing, and the pronoun English gives it
+            // is "them" — so naming the stairs binds that word the way naming
+            // the lantern binds "it". Same slot the last group went in,
+            // because the word does not distinguish the two and the thing
+            // named last is the thing meant. A singular object leaves the
+            // slot alone: `take all` then `x sword` then `drop them` still
+            // means the group. (#403)
+            if definition.items[direct]?.isPlural == true {
+                state.pronounThem = [direct]
+            }
         }
         if let multiple = parsed.multiple {
             return runMultiTurn(parsed, multiple, snapshot: snapshot)
@@ -359,10 +372,15 @@ public actor GameWorld {
         // `run` states for a free reply, and a command nothing answered is no
         // more a turn than a parse error was. Nothing in the pipeline reads
         // the snapshot, so the decision keeps until the frame comes back.
-        if !command.intent.isMeta, !frame.with({ $0.unhandled }) {
+        let unhandled = frame.with({ $0.unhandled })
+        if !command.intent.isMeta, !unhandled {
             undoSnapshot = snapshot
         }
-        return commit(frame)
+        // A turn nothing answered never happened: hand the pre-turn snapshot
+        // back to `commit` instead of the frame's state, so neither the "it"
+        // binding `run` made nor any `before` rule's mutation survives. The
+        // snapshot predates both — `run` takes it before binding the pronoun.
+        return commit(frame, restoring: unhandled && !command.intent.isMeta ? snapshot : nil)
     }
 
     /// The intents that accept several objects in the direct slot — "all",
@@ -894,7 +912,8 @@ public actor GameWorld {
             return Scope(
                 visibleItems: visible,
                 visibleActors: visible.intersection(definition.castIDs),
-                pronounIt: state.pronounIt)
+                pronounIt: state.pronounIt,
+                pronounThem: state.pronounThem)
         }
         // Walked once and handed to both reaches: FOLLOW's quarry and an
         // order-taker's name ask the same question about distance.
@@ -910,6 +929,7 @@ public actor GameWorld {
             distantActors: elsewhere.withinReach,
             elsewhereActors: elsewhere.all,
             pronounIt: state.pronounIt,
+            pronounThem: state.pronounThem,
             orderTakers: orderTakers,
             allOrderTakers: orderTakersStandingSomewhere())
     }
@@ -1023,9 +1043,21 @@ public actor GameWorld {
             saveNames: SaveStore.existingSaveNames(in: saveDirectory))
     }
 
-    func commit(_ frame: TurnFrame) -> TurnResult {
+    /// Adopts a finished frame: its state becomes the live world, its output
+    /// becomes the turn result.
+    ///
+    /// - Parameters:
+    ///   - frame: the turn frame to retire.
+    ///   - restoring: a pre-turn state to adopt instead of the frame's — the
+    ///     rollback a free turn takes. A command nothing answered never
+    ///     happened, so the world (pronouns and `@Global`s included) goes back
+    ///     to where it stood, while the turn's words still print. The caller
+    ///     passes the same snapshot `run` took, which predates the pronoun
+    ///     binding and every `before` rule.
+    /// - Returns: the finished turn's output and status.
+    func commit(_ frame: TurnFrame, restoring: WorldState? = nil) -> TurnResult {
         let scratch = frame.retire()
-        state = scratch.state
+        state = restoring ?? scratch.state
         // Whoever the player can see has now been met. This is the only place
         // it is sampled, and it is enough: `commit` is the single exit of
         // every turn, so `begin()` records the opening room before the first
