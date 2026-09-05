@@ -87,7 +87,10 @@ once a session has picked the file up.
 deliberately no per-game config. `swift package describe` or `Package.swift` shows
 what a game depends on: `GnustoClock` → `clock`, `GnustoConversation` → `talk`,
 `GnustoScoring` → `score`, `GnustoSpellcasting` → `magic`. Charters filter themselves
-on that, so a game with no clock gets no clock-watcher.
+on that, so a game with no clock gets no clock-watcher. A game is a **product**, and a
+product name is not a target name: read the product's own `targets` and walk the graph
+from there, or a package that names the two differently answers with an empty list that
+reads exactly like a game with nothing in it.
 
 **`docPath` is `docs/games/<game>.md` if it exists and `null` if it doesn't.** Check
 with `ls docs/games/`; don't work from a list, here or anywhere.

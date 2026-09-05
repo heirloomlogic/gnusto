@@ -1,0 +1,17 @@
+# Build products, and the scratch a play-test round writes.
+#
+# `.context/` is where every play-test tool writes: probe directories, transcripts,
+# the round's derived arguments, and the saved games a tester cuts mid-session. A
+# round tells each of its agents to write there and nowhere else, which is only a
+# safe instruction if this line exists — without it the first round an author dispatches
+# arrives at `git status` as a few hundred untracked files.
+.context/
+/.build
+/dist
+.DS_Store
+
+# `.playtest/` is committed, not ignored. `.playtest/<Game>/routes/` holds the deep
+# starts a round ships, and a fresh checkout needs them: a route nobody commits is a
+# deep start the next clone does not have. Play-test *scratch* belongs under
+# `.context/playtest/`, so anything under `.playtest/` that is not a route or a round
+# record is a bug worth noticing rather than hiding.

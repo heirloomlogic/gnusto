@@ -41,7 +41,8 @@ const { checkHeadlessCLI, dispatchHeadless } = require('./lib/playtest-headless'
 const {
   ROOT, SCRATCH, GREEN, RED, DIM, OFF,
   gameDoc, focusParts, seedFor, routesDir, routeManifests, usableRoutes, routeSeeds,
-  describePackage, executableProducts, resolveGame, ledgerScan,
+  describePackage, executableProducts, targetsOfProduct, resolveGame, ledgerScan,
+  GAME_DOCS_DIR,
 } = require('./lib/playtest-focus')
 
 // The other root, and the only script that needs both. `ROOT` is the package under
@@ -328,8 +329,10 @@ async function checkGame(game, mcpKey) {
     add('ledger', ledger.ok, `${ledger.keys.length} usable${ledger.inert ? `, ${ledger.inert} inert` : ''}`,
       ledger.ok
         ? null
-        : `${ledgerPath} stores every refutation abbreviated`
-          + ' — re-key them as `decl::<file>::<declaration>`')
+        : `${ledgerPath} stores every refutation in a form that cannot match`
+          + ' — abbreviated, or spelled from outside the checkout that owns the file.'
+          + ' Re-key them as `decl::<file>::<declaration>`, with the file as its own'
+          + ' repository names it')
   }
 
   rows.push(...routesRows(game))
@@ -477,7 +480,12 @@ const localDate = () => {
 function gameSourceDirOf(game) {
   const conventional = path.join('Sources', game)
   if (exists(path.join(ROOT, conventional))) return conventional
-  const target = (describePackage()?.targets || []).find((t) => t.name === game)
+  // The product's own targets, never a target that happens to share its name — see
+  // `targetsOfProduct`. The executable among them is the game; a product with none is
+  // not one this script was asked about, so the first target is the honest fallback.
+  const owned = new Set(targetsOfProduct(game))
+  const mine = (describePackage()?.targets || []).filter((t) => owned.has(t.name))
+  const target = mine.find((t) => t.type === 'executable') || mine[0]
   return target?.path || ''
 }
 
@@ -521,8 +529,13 @@ function roundArgs(game, mcpKey, headless) {
     // classifier row that names it drops out on the far side.
     projectName: describePackage()?.name || game,
     enginePath: fromEngine('Sources/Gnusto'),
+    // The checkout the engine and the harness were resolved into, which decides which
+    // of two trees owns a path a finding cites. Stated here rather than inferred over
+    // there: this is `__dirname/..`, the checkout SwiftPM actually resolved, and
+    // `playtest.js` can only pattern-match it out of the paths below.
+    engineRoot: ENGINE === ROOT ? '' : ENGINE,
     conventionsPath: exists(path.join(ROOT, 'CLAUDE.md')) ? 'CLAUDE.md' : '',
-    gameDocsDir: exists(path.join(ROOT, 'docs/games')) ? 'docs/games' : '',
+    gameDocsDir: exists(path.join(ROOT, GAME_DOCS_DIR)) ? GAME_DOCS_DIR : '',
     gameSourceDir: gameSourceDirOf(game),
     refPath: fromEngine('.claude/skills/playtest/references'),
     // Always absolute, unlike `refPath`: this one is a tool argument rather than
@@ -569,6 +582,33 @@ function roundArgs(game, mcpKey, headless) {
   }
 }
 
+// What is true of the package rather than of a game, so it is not repeated seven times
+// under `--all`.
+//
+// The scratch is the one thing here every agent in a round is *told* about: write under
+// `.context/playtest/` and nowhere else. That instruction is only safe if the package
+// agrees, and until `bin/templates/.gitignore` shipped none of them did — so a
+// generated package tracked its own probe directories, transcripts and staged saves,
+// and the author found out at `git status` after the first round. A shipped file fixes
+// the packages generated after it; a check fixes the ones generated before it too, and
+// checked-rather-than-trusted is what every other row here is for.
+//
+// A package that is not a git repository gets no row: `git check-ignore` answers 128,
+// there is nothing to be wrong about, and the same standing is what a game with no
+// ledger has.
+function packageRows() {
+  const r = sh('git', ['check-ignore', '-q', SCRATCH])
+  if (r.error || r.status === 128) return []
+  return [{
+    game: '',
+    name: 'scratch ignored',
+    ok: r.status === 0,
+    detail: SCRATCH,
+    remedy: `add \`${SCRATCH.split('/')[0]}/\` to .gitignore — a round writes every probe,`
+      + ' transcript and staged save under it, and every agent is told it may',
+  }]
+}
+
 // Off the manifest, never a table here: a game with no clock must get no
 // clock-watcher, and the manifest is the only thing that knows which it is.
 function capabilitiesOf(game) {
@@ -588,7 +628,9 @@ function capabilitiesOf(game) {
     for (const d of t.product_dependencies || []) seen.add(d)
     for (const d of t.target_dependencies || []) walk(d)
   }
-  walk(game)
+  // From the product's own targets, never from a target that happens to share its
+  // name — see `targetsOfProduct`.
+  for (const root of targetsOfProduct(game)) walk(root)
   const caps = []
   for (const name of seen) {
     const cap = byProduct[name]
@@ -653,14 +695,17 @@ async function main() {
   console.log(`\n  ${DIM}package ${ROOT}${OFF}`)
   console.log(`  ${DIM}harness ${ENGINE}${ENGINE === ROOT ? ' (same checkout)' : ''}${OFF}`)
 
-  const rows = []
+  const rows = [...packageRows()]
   for (const game of games) rows.push(...await checkGame(game, keys.get(game)))
 
-  const width = Math.max(...rows.map((r) => `${r.game} ${r.name}`.length)) + 2
+  // A package-level row carries no game, so the label is joined rather than
+  // interpolated — `${r.game} ${r.name}` would indent it by one space against the rest.
+  const label = (r) => [r.game, r.name].filter(Boolean).join(' ')
+  const width = Math.max(...rows.map((r) => label(r).length)) + 2
   console.log('')
   for (const r of rows) {
     const mark = r.ok ? `${GREEN}ok  ${OFF}` : `${RED}FAIL${OFF}`
-    console.log(`  ${mark} ${`${r.game} ${r.name}`.padEnd(width)} ${DIM}${r.detail || ''}${OFF}`)
+    console.log(`  ${mark} ${label(r).padEnd(width)} ${DIM}${r.detail || ''}${OFF}`)
     if (!r.ok && r.remedy) console.log(`       ${' '.repeat(width)} ${RED}->${OFF} ${r.remedy}`)
   }
 
@@ -695,6 +740,16 @@ async function main() {
   console.log(`    ${DIM}seed ${args.seed} | roundId ${args.roundId}`
     + ` | capabilities [${args.capabilities.join(', ')}]`
     + ` | routes [${args.routes.join(', ') || 'none — testers play cold'}]${OFF}`)
+  // An empty capability list has two causes and they want telling apart: a game that
+  // depends on none of the optional libraries, and a product whose target graph could
+  // not be resolved at all. The second reads exactly like the first — no
+  // clock-watcher, no talk charter, no score or magic charter — so it says so here
+  // rather than leaving a round to look thin for a reason nobody can see.
+  if (!targetsOfProduct(game).length) {
+    console.log(`    ${DIM}note: the manifest lists no targets for the product ${game}, so`
+      + ' capabilities are empty for want of a target graph rather than for want of a clock'
+      + `${OFF}`)
+  }
   console.log(`    ${DIM}docPath ${args.docPath || 'null'} | ledgerKeys ${args.ledgerKeys.length}`
     + ` | focus ${args.focus ? args.focus.length + ' chars' : 'none'}`
     + ` | sighted-only ${args.focusSighted ? args.focusSighted.length + ' chars' : 'none'}`

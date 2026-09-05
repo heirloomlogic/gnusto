@@ -1165,8 +1165,9 @@ for (const p of ledgers) {
   const { inert, ok } = ledgerScan(p)
   check(
     ok,
-    `${p} holds ${inert} refutation(s) and no usable key — every one is abbreviated, `
-    + 'so the round is handed an empty dedupe set and re-refutes all of them'
+    `${p} holds ${inert} refutation(s) and no usable key — every one is abbreviated or `
+    + 'written from outside the checkout that owns the file, so the round is handed an '
+    + 'empty dedupe set and re-refutes all of them'
   )
 }
 
@@ -1752,23 +1753,64 @@ for (const root of ['.', 'bin/templates']) {
   const downGameSource = 'Packages/Zwank/Sources/Zwank'
   const downPrompts = []
   const downLogs = []
-  // Delegates for the replies, so the fixtures stay in one place. The one thing it
-  // rewrites is each finding's owner: `ownerClass` is the half of the unbinding no
-  // prompt can show, and pointing every finding at the downstream engine prefix is
-  // what makes its verdict readable off the result.
+  // The engine file as a TESTER names it, which is the input worth simulating.
+  // `finding-contract.md` asks for a guess at the file that would change, the blind
+  // charters may not open source at all, and nobody anywhere can know where SwiftPM
+  // resolved the checkout — so a downstream round's `ownerFile` arrives in the
+  // engine's own frame and never in `enginePath`'s. This fixture used to copy the
+  // prefix straight out of the argument, which made the `ownerClass` assertion below
+  // true by construction for any `enginePath` at all: the one check covering the half
+  // of the unbinding no prompt can show could not fail.
+  const downOwnerGuess = 'Sources/Gnusto/Actions/GameText.swift'
+  // One owner per confirmed finding, so the three classes a downstream round has to
+  // tell apart are all exercised: the engine as a tester spells it, a brief inside the
+  // resolved checkout, and the author's own shim at the path this repository keeps the
+  // harness at. The last is the one that used to come back `harness` and send a fixer
+  // at the engine over a file the author wrote.
   //
-  // **This fixture is weaker than it looks, and #393 is why.** Copying the prefix out
-  // of the argument makes the `ownerClass` assertion below true by construction for
-  // any `enginePath` at all. A real `ownerFile` is a tester's hand-written guess —
-  // the blind charters cannot open source and cannot know where SwiftPM resolved the
-  // checkout — so the input worth simulating is the guess, not the answer. Left as it
-  // is deliberately: changing the fixture without changing the classifier turns this
-  // red for a defect that is already filed.
+  // One table, keyed on the claim rather than on a position in the batch, so what
+  // seeds a finding and what asserts its class cannot drift. `seed: false` is the
+  // explorer's own fixture finding, already in the batch and needing only its owner
+  // rewritten; the other two are added to that charter because it is the one a package
+  // with no design doc and no capabilities actually seats.
+  const downOwned = [
+    { claim: 'listing line is location-blind', ownerClass: 'engine', seed: false },
+    {
+      claim: 'the finding contract contradicts itself',
+      excerpt: 'guess it honestly rather than conveniently',
+      ownerFile: `${downRef}/finding-contract.md`,
+      ownerClass: 'harness',
+      seed: true,
+    },
+    {
+      claim: 'the replay shim drops the seed',
+      excerpt: 'bin/playtest-replay Zwank --commands repro.txt',
+      ownerFile: 'bin/playtest-replay',
+      ownerClass: 'game',
+      seed: true,
+    },
+  ]
+  const downExtraBugs = downOwned
+    .filter((row) => row.seed)
+    .map((row) => bug(row.claim, row.excerpt, row.ownerFile))
+  // Delegates for the replies, so the fixtures stay in one place. What it rewrites is
+  // each finding's owner, because `ownerClass` is the half of the unbinding no prompt
+  // can show and its verdict has to be readable off the result. The clusterer is the
+  // other half and answers in the other frame — it greps real directories, so
+  // downstream it reports the checkout — and the two have to produce one key.
   const downStub = async (prompt, opts = {}) => {
     downPrompts.push(String(prompt))
     const reply = await stub(prompt, opts)
     if (String(opts.label || '').startsWith('play:')) {
-      for (const f of reply.findings || []) f.ownerFile = `${downEngine}/Actions/GameText.swift`
+      for (const f of reply.findings || []) f.ownerFile = downOwnerGuess
+      if (String(opts.label).startsWith('play:explorer')) {
+        reply.findings = [...(reply.findings || []), ...downExtraBugs]
+      }
+    }
+    if (String(opts.label || '').startsWith('cluster:')) {
+      for (const a of reply.assignments || []) {
+        a.declaration = `${downEngine}/Actions/GameText.swift::${a.declaration.split('::').pop()}`
+      }
     }
     return reply
   }
@@ -1790,8 +1832,15 @@ for (const root of ['.', 'bin/templates']) {
       + "repository's tree rather than the package it was pointed at"
     )
   }
+  // The tester's own words are quoted back — the clusterer's candidate list and the
+  // verifiers' `Owner file:` line both carry `ownerFile` verbatim — and downstream a
+  // tester's guess at an engine file IS the repo-rooted spelling, because that is how
+  // the engine names its own files and nobody can know where SwiftPM put the checkout.
+  // So the check drops the lines that quote one: it is about the paths playtest.js
+  // *generates*, never about the ones it repeats.
+  const downGenerated = downText.split('\n').filter((l) => !l.includes(downOwnerGuess)).join('\n')
   check(
-    !/(^|[^/])Sources\/Gnusto/.test(downText),
+    !/(^|[^/])Sources\/Gnusto/.test(downGenerated),
     "a downstream round's prompts name a repo-rooted `Sources/Gnusto`, which exists only "
     + 'in the package that *is* the engine'
   )
@@ -1839,9 +1888,10 @@ for (const root of ['.', 'bin/templates']) {
   // distinct defect classes than it found.
   const downCluster = downPrompts.find((p) => p.includes('You are the clusterer.')) || ''
   check(
-    downCluster.includes(`\`./${downGameSource}\``) && downCluster.includes(`\`${downEngine}\``),
-    'the clusterer is not sent into both the game tree and the engine tree, so every '
-    + 'engine-owned finding downstream loses its dedup key'
+    downCluster.includes(`\`./${downGameSource}\``) && downCluster.includes(`\`${downEngine}*\``),
+    'the clusterer is not sent into both the game tree and the engine tree — the glob '
+    + 'included, since the engine\'s optional libraries are siblings of its source '
+    + 'directory — so an engine-owned finding downstream loses its dedup key'
   )
   check(
     down.tracker === false,
@@ -1853,16 +1903,56 @@ for (const root of ['.', 'bin/templates']) {
     'a package with no tracker is never told to keep the issue body in its report, so a '
     + "round's findings have nowhere to go and nothing says so"
   )
-  check(
-    down.confirmed.length > 0 && down.confirmed.every((f) => f.ownerClass === 'engine'),
-    'ownerClass does not recognise the engine when it is a resolved dependency rather '
-    + `than the package under test: ${JSON.stringify(down.confirmed.map((f) => f.ownerClass))}`
-  )
+  // One loop over the table, asserting presence and class together. Presence is the
+  // half that matters most: without it a class assertion passes by matching nothing,
+  // which is the shape the old `every(... === 'engine')` check failed in.
+  for (const row of downOwned) {
+    const found = down.confirmed.find((f) => f.claim === row.claim)
+    check(
+      !!found,
+      `the downstream fixture's "${row.claim}" finding is no longer confirmed, so the `
+      + 'ownerClass assertion it carries proves nothing'
+    )
+    check(
+      !found || found.ownerClass === row.ownerClass,
+      `ownerClass answered ${found?.ownerClass} for ${found?.ownerFile}, not `
+      + `${row.ownerClass}: downstream the engine is a resolved dependency, the briefs `
+      + "are inside that checkout, and `.claude/` and `bin/` in the package are the "
+      + "AUTHOR's"
+    )
+  }
   check(
     !downLogs.some((l) => /Unrecognised ownerFile/.test(l)),
     'a downstream round reports its own engine files as unrecognised owners'
   )
+  // The dedupe key, which is the ledger's whole memory. The clusterer greps the
+  // directories it was handed, so downstream its answer carries the checkout SwiftPM
+  // resolved — a path that changes with the machine and again with
+  // `swift package update`. A key built from that matches nothing next round, and
+  // nothing anywhere says so.
+  const downKeys = down.confirmed.map((f) => f.key)
+  check(
+    downKeys.includes(`decl::${downOwnerGuess}::vaneHere`),
+    'the clusterer\'s answer is not put back in the engine\'s own frame, so a '
+    + `downstream ledger key is machine-local: ${JSON.stringify(downKeys)}`
+  )
+  check(
+    downKeys.every((k) => !k.includes(downEngine) && !k.includes(downRef)),
+    `a downstream dedupe key carries the resolved checkout: ${JSON.stringify(downKeys)}`
+  )
 }
+
+// The frame itself, checked on the source: it has to be an argument (so preflight can
+// state a fact it holds by construction) AND a derivation (so an args set written by
+// hand, or one produced before the field existed, still lands in the engine's frame
+// rather than silently regressing to the package's). The downstream round above
+// deliberately passes no `engineRoot`, so it is the derivation that is exercised there.
+check(
+  /^const engineRoot = layoutPath\(ARGS\.engineRoot, sharedDirPrefix\(enginePath, refPath\)\)$/m
+    .test(src),
+  'engineRoot is no longer both an argument and a derivation, so a round can either not '
+  + 'be told which checkout the engine is in or not work it out'
+)
 
 // The static half of the same property. `ownerClass` is the one place the layout is
 // read rather than printed, so a literal reintroduced there would survive every
