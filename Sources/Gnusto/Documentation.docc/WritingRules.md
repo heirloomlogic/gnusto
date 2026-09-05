@@ -87,7 +87,7 @@ player.item.describe {
 
 Without a rule, examining yourself prints ``GameText/selfDescription``, alongside the other stock lines a game can re-skin — ``GameText/cantTakeSelf``, ``GameText/cantSearchSelf``, ``GameText/cantGreetSelf``, ``GameText/cantFollowSelf``. In the dark it prints ``GameText/tooDarkToSeeSelf`` instead: an observer is always in their own scope, dark or light, so `x me` is answerable in a room where every noun on the floor answers ``GameText/cantSeeAnySuchThing`` — and the ordinary line would assert a look the room has just said was impossible.
 
-The command being performed is available as `command` (``Command``): its ``Command/intent``, ``Command/directObject``, ``Command/indirectObject``, ``Command/direction``, ``Command/preposition``, and the raw ``Command/verbPhrase`` the player typed.
+The command being performed is available as `command` (``Command``): its ``Command/intent``, ``Command/directObject``, ``Command/indirectObject``, ``Command/direction``, ``Command/preposition``, and the raw ``Command/verbPhrase`` the player typed. It is available in every rule body and in every live-text closure (`describe { }`, `presence { }`) that the engine evaluates. Two frames carry a synthesized command rather than one a rule parsed: a multi-object turn's each-turn stages run before any object's command exists, and hand the group's intent with no direct object — what the player typed — while the opening look and the UNDO and RESTORE looks describe as a LOOK (`command.intent == .look`), which is in fiction what they are. There is no turn anywhere a rule body runs with no command to ask.
 
 ```swift
 bar.beforeEachTurn {

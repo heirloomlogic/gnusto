@@ -26,8 +26,8 @@
 # at once looks exactly like a broken .mcp.json. It is nothing of the kind, and
 # it cost two play-test rounds before anybody diagnosed it.
 #
-# So the build is gated on whether it would do anything: it runs when no source
-# has been touched since the last build this script performed, and otherwise the
+# So the build is gated on whether it would do anything: it runs when a source
+# has changed since the last build this script performed, and otherwise the
 # binary is exec'd straight away. The gate is mtimes rather than swiftpm's own
 # answer because asking swiftpm takes the very lock we are trying not to queue
 # for. It errs the safe way — it never skips a build that is needed — so the
@@ -64,7 +64,8 @@ die() { echo "gnusto-mcp: $*" >&2; exit 2; }
 # in Gnusto's checkout and the game is somewhere else entirely. Unset, nothing
 # changes — and the binpath cache below stays relative to the root either way,
 # so a shimmed game records its binary under its own .context/.
-cd "${GNUSTO_PACKAGE_PATH:-$(dirname "$0")/..}"
+engine_root="$(cd "$(dirname "$0")/.." && pwd -P)"
+cd "${GNUSTO_PACKAGE_PATH:-$engine_root}"
 
 game="${1:-}"
 [[ -n "$game" ]] || die "usage: bin/gnusto-mcp <Game>"
@@ -82,14 +83,21 @@ fi
 # Would a build do anything? Only if we have no binary, or something it is built
 # from has been touched since the last build. `find -newer` answers that without
 # taking the package lock. `-quit` stops at the first hit: this is a yes/no
-# question and a large Sources tree is no reason to walk all of it.
+# question and a large Sources tree is no reason to walk all of it. The script's
+# own checkout supplies the engine inputs, whether it is a local dependency or
+# under the game's .build/checkouts: discovering it must not invoke SwiftPM.
+# Include directories too, so removing a source invalidates the stamp.
 needs_build=0
 if [[ -z "$binary" || -n "${GNUSTO_MCP_BUILD:-}" ]]; then
   needs_build=1
 else
   inputs=()
-  for path in Sources Package.swift Package.resolved; do
-    [[ -e "$path" ]] && inputs+=("$path")
+  roots=(.)
+  [[ "$engine_root" -ef . ]] || roots+=("$engine_root")
+  for root in "${roots[@]}"; do
+    for path in "$root/Sources" "$root/Package.swift" "$root/Package.resolved"; do
+      [[ -e "$path" ]] && inputs+=("$path")
+    done
   done
   if [[ ${#inputs[@]} -gt 0 ]] \
     && [[ -n "$(find "${inputs[@]}" -newer "$binpath_cache" -print -quit 2>/dev/null)" ]]; then

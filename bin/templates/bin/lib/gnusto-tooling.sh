@@ -18,10 +18,36 @@
 
 gnusto_die() { echo "gnusto: $*" >&2; exit 2; }
 
-# Does this directory hold the Gnusto engine? Both halves matter: Sources/Gnusto
-# says it is the engine rather than some other dependency, and bin/gnusto-mcp
-# says it is a git checkout rather than an unpacked release with no tools in it.
-gnusto_is_checkout() { [ -d "$1/Sources/Gnusto" ] && [ -x "$1/bin/gnusto-mcp" ]; }
+# Generated games can also be named Gnusto and carry an MCP shim. The focus
+# module belongs only to the engine's tooling.
+gnusto_is_checkout() {
+  [ -d "$1/Sources/Gnusto" ] && [ -x "$1/bin/gnusto-mcp" ] \
+    && [ -f "$1/bin/lib/playtest-focus.js" ]
+}
+
+# Decode the ordinary Swift string literal emitted by bin/new-game. No eval:
+# backslashes in a filesystem name must never become shell or Swift code.
+gnusto_dependency_path() {
+  local literal character decoded=""
+  literal="$(sed -En 's/.*\.package\(name: "Gnusto", path: "(([^"\\]|\\.)*)"\).*/\1/p' "$1" 2>/dev/null | head -1)"
+  while [ -n "$literal" ]; do
+    character="${literal:0:1}"
+    literal="${literal:1}"
+    if [ "$character" = '\' ]; then
+      character="${literal:0:1}"
+      literal="${literal:1}"
+      case "$character" in
+        '\'|'"') ;;
+        n) character=$'\n' ;;
+        r) character=$'\r' ;;
+        t) character=$'\t' ;;
+        *) return 1 ;;
+      esac
+    fi
+    decoded="$decoded$character"
+  done
+  printf '%s' "$decoded"
+}
 
 # $1 is this package's root. Prints the Gnusto checkout, or dies saying what to do.
 gnusto_find_repo() {
@@ -37,7 +63,7 @@ gnusto_find_repo() {
   if [ -n "${GNUSTO_REPO:-}" ]; then
     gnusto_is_checkout "$GNUSTO_REPO" \
       || gnusto_die "GNUSTO_REPO=$GNUSTO_REPO is not a Gnusto checkout"
-    echo "$GNUSTO_REPO"
+    (cd "$GNUSTO_REPO" && pwd -P)
     return
   fi
 
@@ -46,7 +72,7 @@ gnusto_find_repo() {
   # literal "Gnusto" because that name is the URL's spelling, not a guarantee.
   for candidate in "$pkg"/.build/checkouts/*; do
     if gnusto_is_checkout "$candidate"; then
-      echo "$candidate"
+      (cd "$candidate" && pwd -P)
       return
     fi
   done
@@ -54,32 +80,14 @@ gnusto_find_repo() {
   # A path dependency is used in place and produces no checkout at all, so the
   # probe above finds nothing. Read the path out of the manifest instead: the
   # dependency is one line, written by bin/new-game, and reading it costs nothing.
-  #
-  # This is a bare assignment under `set -e`, unguarded by an `if`, and gnusto_exec
-  # calls this whole function as `repo="$(gnusto_find_repo "$pkg")"` — a command
-  # substitution, which runs the function body in a subshell. That is what makes a
-  # missing Package.swift fall through to the gnusto_die below instead of vanishing
-  # silently: bash does not carry errexit into a command substitution's subshell by
-  # default, so this pipeline failing does not itself end the subshell early, and
-  # execution reaches the friendly message — confirmed by running this exact shape
-  # standalone, with and without the assignment guarded, rather than trusting the
-  # theory. `shopt -s inherit_errexit` (bash 4.4+) turns errexit back on inside the
-  # subshell and documents itself as aborting a substitution at its first failing
-  # command, which would skip straight past this die with nothing printed. Moot on
-  # macOS regardless: /bin/bash there is 3.2, which does not have the shopt at all
-  # (`shopt: inherit_errexit: invalid shell option name`) — checked on this
-  # machine, not assumed.
-  candidate="$(
-    sed -n 's/.*\.package(name: "Gnusto", path: "\([^"]*\)").*/\1/p' \
-      "$pkg/Package.swift" 2>/dev/null | head -1
-  )"
+  candidate="$(gnusto_dependency_path "$pkg/Package.swift")" || candidate=""
   if [ -n "$candidate" ]; then
     case "$candidate" in
       /*) ;;
       *) candidate="$pkg/$candidate" ;;
     esac
     if gnusto_is_checkout "$candidate"; then
-      echo "$candidate"
+      (cd "$candidate" && pwd -P)
       return
     fi
   fi
@@ -98,15 +106,18 @@ gnusto_exec() {
   # $0 is this shim even though the function is sourced, so this is the game's
   # root and not the engine's.
   local pkg
-  pkg="$(cd "$(dirname "$0")/.." && pwd)"
+  pkg="$(cd "$(dirname "$0")/.." && pwd -P)"
   local repo
   repo="$(gnusto_find_repo "$pkg")"
+  [ ! "$repo" -ef "$pkg" ] \
+    || gnusto_die "resolved Gnusto checkout is the same package as the invoking shim: $pkg"
+  [ ! "$repo/bin/$tool" -ef "$0" ] \
+    || gnusto_die "$repo/bin/$tool resolves to the invoking shim"
   [ -x "$repo/bin/$tool" ] \
     || gnusto_die "$repo/bin/$tool is missing or not executable"
-  # Both halves are needed: cd for the tools that read the working directory
-  # (playtest-replay defaults --package-path to $PWD), and the variable for the
-  # tools that derive their root from $0, which after this exec points into the
-  # engine's checkout.
+  # Package identity and caller-relative paths are separate after this cd.
+  export GNUSTO_INVOCATION_DIR="$PWD"
+  if [ -n "${GNUSTO_REPO:-}" ]; then export GNUSTO_REPO="$repo"; fi
   cd "$pkg"
   GNUSTO_PACKAGE_PATH="$pkg" exec "$repo/bin/$tool" "$@"
 }

@@ -27,27 +27,9 @@ struct NewGameTests {
         currentDirectory: URL = packageRoot,
         environment: [String: String]? = nil
     ) throws -> (status: Int32, stdout: String, stderr: String) {
-        let process = Process()
-        process.executableURL = tool
-        process.arguments = arguments
-        process.currentDirectoryURL = currentDirectory
-        if let environment {
-            process.environment = ProcessInfo.processInfo.environment
-                .merging(environment) { _, new in new }
-        }
-        let out = Pipe()
-        let err = Pipe()
-        process.standardOutput = out
-        process.standardError = err
-        try process.run()
-        let outData = out.fileHandleForReading.readDataToEndOfFile()
-        let errData = err.fileHandleForReading.readDataToEndOfFile()
-        process.waitUntilExit()
-        return (
-            process.terminationStatus,
-            String(decoding: outData, as: UTF8.self),
-            String(decoding: errData, as: UTF8.self)
-        )
+        try ToolProcess.run(
+            tool, arguments, from: currentDirectory,
+            environment: ProcessInfo.processInfo.environment.merging(environment ?? [:]) { _, new in new })
     }
 
     /// Run `bin/new-game` with the given arguments.
@@ -204,6 +186,24 @@ struct NewGameTests {
                 "bin/\(tool) is not allowlisted, so a round stalls on a permission prompt")
         }
         #expect(allow.contains("mcp__zwank"))
+        #expect(allow.contains("Workflow"))
+        #expect(allow.contains("Bash(gh issue list:*)"))
+        #expect(!allow.contains("Bash(gh issue create:*)"))
+        let ask = (settings["permissions"] as? [String: Any])?["ask"] as? [String] ?? []
+        #expect(ask.contains("Bash(gh issue create:*)"))
+    }
+
+    @Test func generatedPlaytestEntryPointsUseTheResolvedWorkflow() throws {
+        let game = try Self.generate()
+        defer { try? FileManager.default.removeItem(at: game) }
+
+        let skill = try String(
+            contentsOf: game.appendingPathComponent(".claude/skills/playtest/SKILL.md"), encoding: .utf8)
+        #expect(skill.contains("bin/playtest-preflight Zwank"))
+        #expect(skill.contains(".context/playtest-round-args.json"))
+        #expect(skill.contains("args.workflowPath"))
+        #expect(!skill.contains("scriptPath: \".claude/workflows/playtest.js\""))
+        #expect(FileManager.default.fileExists(atPath: game.appendingPathComponent("docs/playtesting.md").path))
     }
 
     @Test func toolsAreShimsAndTheLibraryIsNotExecutable() throws {

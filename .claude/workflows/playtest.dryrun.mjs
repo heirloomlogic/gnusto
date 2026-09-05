@@ -763,7 +763,7 @@ check(
   + 'cannot tell that its findings are filable'
 )
 check(
-  !/no issue tracker/i.test(criticPrompt()),
+  !/issue filing is disabled/i.test(criticPrompt()),
   'a round in a package WITH a tracker is told to keep its issue body in the report, '
   + 'which is the no-tracker branch firing on the wrong side'
 )
@@ -1849,7 +1849,7 @@ for (const root of ['.', 'bin/templates']) {
     + 'whether the round has anywhere to file what it confirmed'
   )
   check(
-    /no issue tracker/i.test(downText),
+    /issue filing is disabled/i.test(downText) && !/Every confirmed finding is filed/.test(downText),
     'a package with no tracker is never told to keep the issue body in its report, so a '
     + "round's findings have nowhere to go and nothing says so"
   )

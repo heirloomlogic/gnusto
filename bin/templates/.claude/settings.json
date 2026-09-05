@@ -17,7 +17,12 @@
       "Bash(swift build:*)",
       "Bash(swift test:*)",
       "Bash(swift package describe)",
-      "mcp__mygame"
+      "mcp__mygame",
+      "Workflow",
+      "Bash(gh issue list:*)"
+    ],
+    "ask": [
+      "Bash(gh issue create:*)"
     ]
   }
 }
