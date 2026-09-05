@@ -32,6 +32,16 @@ public struct IntentAction: Sendable {
         self.intent = intent
         self.body = body
     }
+
+    /// A copy of this action whose body runs with `namespace` bound as the
+    /// owning bundle (``Ctx/owned(_:_:)``), so timer helpers inside resolve
+    /// bare timer names against the owner's declarations. The game's own
+    /// actions (`nil`) come back unchanged.
+    func owned(by namespace: String?) -> IntentAction {
+        guard let namespace else { return self }
+        let body = self.body
+        return IntentAction(intent) { try Ctx.owned(namespace, body) }
+    }
 }
 
 /// Builds a stage-4 default action for `intent` — shorthand for

@@ -47,9 +47,11 @@ public protocol GameContent: Sendable {
     var noiseWords: [String] { get }
 
     /// The bundle's fuses and daemons, in the same form as a game's `timers`.
-    /// Defaults to empty. Timer names are global — NOT namespaced, since the
-    /// bundle's own rules start them by the literal name — so a name shared
-    /// with the host or another bundle is a fatal bootstrap diagnostic.
+    /// Defaults to empty. A bare timer name declared by this bundle and also
+    /// by the host or another bundle is namespaced into the bundle's own
+    /// namespace at bootstrap, so the bundles coexist — and this bundle's own
+    /// rules keep starting it by the literal name it declared. Unambiguous
+    /// names keep their bare schedule keys.
     @TimerBuilder var timers: [TimedEvent] { get }
 
     /// Extra `name=value` pairs for the play-test status footer — the hour, the

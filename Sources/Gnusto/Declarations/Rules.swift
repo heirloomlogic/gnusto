@@ -48,6 +48,28 @@ public struct Rule: Sendable {
     func matches(_ intent: Intent) -> Bool {
         intents.isEmpty || intents.contains(intent)
     }
+
+    /// A copy of this rule whose body runs with `namespace` bound as the
+    /// owning bundle (``Ctx/owned(_:_:)``), so timer helpers inside resolve
+    /// bare timer names against the owner's declarations. The game's own
+    /// rules (`nil`) come back unchanged.
+    func owned(by namespace: String?) -> Rule {
+        guard let namespace else { return self }
+        let body = self.body
+        var copy = Rule(
+            scope: scope, phase: phase, intents: intents,
+            body: { try Ctx.owned(namespace, body) },
+            describeBody: describeBody, reachRule: reachRule)
+        if let describeBody {
+            copy.describeBody = { Ctx.owned(namespace, describeBody) }
+        }
+        if let reachRule {
+            copy.reachRule = Reach.Rule(
+                allows: { Ctx.owned(namespace, reachRule.allows) },
+                refusal: reachRule.refusal)
+        }
+        return copy
+    }
 }
 
 /// The collected rules of a game, declared in one `rules` block. Large games

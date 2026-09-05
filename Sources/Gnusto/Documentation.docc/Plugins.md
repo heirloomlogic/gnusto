@@ -26,7 +26,7 @@ struct CommercePlugin: GamePlugin {
 
 Note what *isn't* declared here. `buy` and `sell` are engine stub verbs (see <doc:StubVerbs>), so the words are already in every game's vocabulary; a commerce plugin only has to supply the behavior, which it does with the rules below. `haggle` is genuinely the plugin's own, so it needs the `#verb`. `GnustoMeleeCombat` splits the same way: the `attack` family is promoted, `stab` and `strike` are added.
 
-A plugin's `timers` splice the same way (`var timers: [TimedEvent] { actors.timers }`), and parameterized timer *factories* — methods returning a ``TimedEvent`` for the host's own `timers` block — are how a plugin animates the host's actors on the end-of-turn clock. Timer names are global to the game: prefix yours by convention (`"actors.roam"`).
+A plugin's `timers` splice the same way (`var timers: [TimedEvent] { actors.timers }`), and parameterized timer *factories* — methods returning a ``TimedEvent`` for the host's own `timers` block — are how a plugin animates the host's actors on the end-of-turn clock. A bare timer name the host or another bundle also declares is namespaced into the declaring bundle's namespace at bootstrap, so prefixes are a courtesy rather than a requirement (`"actors.roam"`) — but an unambiguous name keeps its bare schedule key, which is also its save-file key.
 
 ## The host splices verbs and rules
 

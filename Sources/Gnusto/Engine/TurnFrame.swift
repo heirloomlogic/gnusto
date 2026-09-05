@@ -455,6 +455,19 @@ final class TurnFrame: Sendable {
 enum Ctx {
     @TaskLocal static var frame: TurnFrame?
 
+    /// The content bundle whose rule body, action body or timer body is
+    /// currently running — `nil` for the game's own. Bound by `Bootstrap`
+    /// around every body it files for a bundle, so a timer helper inside
+    /// resolves a bare timer name against its owner's declarations first.
+    @TaskLocal static var namespace: String?
+
+    /// Runs `body` with `namespace` bound as the owning bundle. A `nil`
+    /// namespace (the game's own bodies) binds nothing.
+    static func owned<T>(_ namespace: String?, _ body: () throws -> T) rethrows -> T {
+        guard let namespace else { return try body() }
+        return try $namespace.withValue(namespace, operation: body)
+    }
+
     /// The live frame, or a clear diagnostic about why there isn't one.
     ///
     /// Two ways to arrive with no frame to hand, and they want different

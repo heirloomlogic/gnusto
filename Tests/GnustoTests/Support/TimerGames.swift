@@ -192,6 +192,129 @@ enum TimerMisuse: String, CaseIterable, Codable, Sendable {
     var command: String { rawValue.lowercased() }
 }
 
+/// Two content bundles that each declare a daemon with the bare name `roam` —
+/// the collision issue #403 exists to allow — plus a host whose own daemon
+/// claims the same bare name. Each bundle starts its own daemon from its own
+/// rule, by the literal name it declared; the host can stop either bundle's
+/// daemon only by its qualified name.
+struct AlphaRoamBundle: GameContent {
+    let porch = Location {
+        name("Alpha Porch")
+        description("A sagging porch.")
+    }
+
+    var rules: Rules {
+        world.before(Intent("rousea")) {
+            startDaemon("roam")
+            try reply("The alpha roam wakes.")
+        }
+    }
+
+    var verbs: [SyntaxRule] {
+        SyntaxRule("rousea", intent: Intent("rousea"))
+    }
+
+    var timers: [TimedEvent] {
+        daemon("roam") {
+            say("[alpha] Something roams.")
+        }
+    }
+}
+
+struct BetaRoamBundle: GameContent {
+    let yard = Location {
+        name("Beta Yard")
+        description("A fenced yard.")
+    }
+
+    var rules: Rules {
+        world.before(Intent("rouseb")) {
+            startDaemon("roam")
+            try reply("The beta roam wakes.")
+        }
+    }
+
+    var verbs: [SyntaxRule] {
+        SyntaxRule("rouseb", intent: Intent("rouseb"))
+    }
+
+    var timers: [TimedEvent] {
+        daemon("roam") {
+            say("[beta] Something roams.")
+        }
+    }
+}
+
+/// The host of the two roaming bundles. Its own daemon is *also* named `roam`
+/// and autostarts, so the schedule holds one bare key and two namespaced ones
+/// at once.
+struct RoamGame: Game {
+    let title = "Roam"
+    let intro = "Two porches and whatever roams between them."
+
+    let alpha = AlphaRoamBundle()
+    let beta = BetaRoamBundle()
+
+    var content: GameContents {
+        alpha
+        beta
+    }
+
+    var map: WorldMap {
+        player.starts(in: alpha.porch)
+    }
+
+    var verbs: [SyntaxRule] {
+        SyntaxRule("hushalpha", intent: Intent("hushalpha"))
+        SyntaxRule("hushbeta", intent: Intent("hushbeta"))
+    }
+
+    var rules: Rules {
+        world.before(Intent("hushalpha")) {
+            stopDaemon("AlphaRoamBundle.roam")
+            try reply("The alpha roam sleeps.")
+        }
+        world.before(Intent("hushbeta")) {
+            stopDaemon("BetaRoamBundle.roam")
+            try reply("The beta roam sleeps.")
+        }
+    }
+
+    var timers: [TimedEvent] {
+        daemon("roam", autostart: true) {
+            say("[game] Something roams.")
+        }
+    }
+}
+
+/// Broken on purpose: the host names its own daemon
+/// `"AlphaRoamBundle.roam"` — the qualified key the bundle's contested `roam`
+/// resolves to once the host also declares a `roam`. Both land on one
+/// schedule key, and whichever wrote second would silently take the slot.
+struct NamespacedClashGame: Game {
+    let title = "Clash"
+    let intro = "?"
+
+    let alpha = AlphaRoamBundle()
+
+    var content: GameContents {
+        alpha
+    }
+
+    var map: WorldMap {
+        player.starts(in: alpha.porch)
+    }
+
+    var timers: [TimedEvent] {
+        daemon("roam", autostart: true) {
+            say("[game] Something roams.")
+        }
+        daemon("AlphaRoamBundle.roam") {
+            say("[shadow] Something roams.")
+        }
+    }
+}
+
 /// One fuse, one daemon, and a verb per way of confusing them.
 ///
 /// **This game cannot be played to the end of a turn**: every verb it answers

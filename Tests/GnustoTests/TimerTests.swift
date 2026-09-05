@@ -4,6 +4,11 @@ import Testing
 
 @testable import Gnusto
 
+private func temporarySavePath(_ label: String) -> String {
+    FileManager.default.temporaryDirectory
+        .appendingPathComponent("gnusto-\(label)-\(UUID().uuidString).sav").path
+}
+
 struct TimerTests {
     // MARK: - Fuses
 
@@ -128,6 +133,74 @@ struct TimerTests {
         #expect(!turn.contains("Thump."))
     }
 
+    // MARK: - Namespacing (issue #403)
+
+    /// Two bundles that both name a daemon `roam` load together, and the
+    /// host's own `roam` daemon is untouched by either.
+    @Test func twoBundlesAndTheGameMayShareADaemonName() async throws {
+        let (definition, state) = try Bootstrap.build(RoamGame())
+        #expect(
+            definition.timers.keys.sorted() == [
+                "AlphaRoamBundle.roam", "BetaRoamBundle.roam", "roam",
+            ])
+        // The game's own autostarted daemon is the bare key; the bundles'
+        // daemons wait for their starting rules.
+        #expect(state.activeDaemons == ["roam"])
+
+        let transcript = try await play(RoamGame(), ["look", "look"])
+        // The game's own daemon runs from turn one; neither bundle's has
+        // been started.
+        #expect(transcript.contains("[game] Something roams."))
+        #expect(!transcript.contains("[alpha] Something roams."))
+        #expect(!transcript.contains("[beta] Something roams."))
+    }
+
+    /// Each bundle's rule starts its own daemon by the bare literal it
+    /// declared, even though the name is now three ways ambiguous in the
+    /// schedule — the owner context decides.
+    @Test func aBundleRuleStartsItsOwnDaemonByBareName() async throws {
+        let transcript = try await play(RoamGame(), ["rousea", "look"])
+        let wake = turnOutput(of: "rousea", in: transcript)
+        #expect(wake.contains("[alpha] Something roams."))
+        #expect(!wake.contains("[beta] Something roams."))
+        let look = turnOutput(of: "look", in: transcript)
+        #expect(look.contains("[alpha] Something roams."))
+        #expect(!look.contains("[beta] Something roams."))
+    }
+
+    /// The host game reaches a bundle's collided daemon only by its qualified
+    /// name — and the qualified name stops exactly that one.
+    @Test func theGameAddressesACollidingDaemonByQualifiedName() async throws {
+        let transcript = try await play(
+            RoamGame(), ["rousea", "rouseb", "hushalpha", "look"])
+        let hush = turnOutput(of: "hushalpha", in: transcript)
+        #expect(hush.contains("[beta] Something roams."))
+        #expect(!hush.contains("[alpha] Something roams."))
+        let look = turnOutput(of: "look", in: transcript)
+        #expect(look.contains("[beta] Something roams."))
+        #expect(!look.contains("[alpha] Something roams."))
+    }
+
+    /// A namespaced schedule key saves, restores, and re-binds to the right
+    /// bundle's body.
+    @Test func aCollidedDaemonScheduleRoundTripsThroughSaveAndRestore() async throws {
+        let path = temporarySavePath("roam")
+        defer { try? FileManager.default.removeItem(atPath: path) }
+        let transcript = try await play(
+            RoamGame(),
+            [
+                "rouseb", "save", path,
+                "look",
+                "restore", path,
+                "look", "hushbeta", "look",
+            ])
+        // The beta roam runs on the rouseb turn, the pre-save look, the
+        // restore turn itself, and the first look after it; the hush turn
+        // stops it before its tick, so the final look is silent.
+        #expect(transcript.components(separatedBy: "[beta] Something roams.").count == 4)
+        #expect(!transcript.contains("[alpha] Something roams."))
+    }
+
     // MARK: - Bootstrap validation
 
     @Test func duplicateNamesAndZeroCountsReportTogether() {
@@ -137,6 +210,19 @@ struct TimerTests {
             guard let bootstrapError = error as? BootstrapError else { return false }
             let text = bootstrapError.description
             return text.contains("dup") && text.contains("zero")
+        }
+    }
+
+    /// A bare declaration whose name equals the qualified key another
+    /// owner's namespaced declaration produces is fatal — the second write
+    /// would otherwise silently take the schedule slot.
+    @Test func aBareNameMayNotCollideWithANamespacedKey() {
+        #expect {
+            try Bootstrap.build(NamespacedClashGame())
+        } throws: { error in
+            guard let bootstrapError = error as? BootstrapError else { return false }
+            return bootstrapError.description.contains(
+                "two timers both resolve to \"AlphaRoamBundle.roam\"")
         }
     }
 
