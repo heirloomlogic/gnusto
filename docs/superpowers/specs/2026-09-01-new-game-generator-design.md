@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-01
 
-**Status:** Approved in discussion; spec pending review
+**Status:** Implemented
 
 **Issue:** #368, scope item 2 (supersedes PR #381)
 

@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-01
 
-**Status:** Approved in discussion; spec pending review
+**Status:** Implemented
 
 **Issue:** #368, scope items 1, 4, 5 and 6, plus what item 3 left behind
 

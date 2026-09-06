@@ -114,11 +114,12 @@ var text: GameText {
 
 This is the part that makes the whole design worth it: the parser already knows
 the word, so a game only has to add a rule. No `#verb`, no `verbs` entry, no
-warning. Zork's climbable tree is one line:
+warning. Zork's climbable tree needs only its movement rule:
 
 ```swift
 tree.before(.climb) {
-    try reply(Prose.treeClimb)
+    try enter(upATree)
+    try handled()
 }
 ```
 
@@ -190,11 +191,11 @@ the stock line — the player gets both. Promote a stub with ``reply(_:)`` or
 Not "item beats room". `before` rules run outside-in, so whoever `reply`s or
 `refuse`s **first** wins:
 
-1. World `before`
+0. Item `reach`
+1. World `beforeEachTurn`, then world `before`
 2. Location `beforeEachTurn`, then location `before`
-3. Item `before` — indirect object, then direct object
-4. The game's `actions` row for that intent
-5. The engine's stub line
+3. Item `before` — addressee, indirect object, then direct object
+4. The game's `actions` row for that intent, or the engine's stub line
 
 So a `world.before(.dig)` pre-empts a `sand.before(.dig)`. See
 <doc:TheTurnPipeline>.

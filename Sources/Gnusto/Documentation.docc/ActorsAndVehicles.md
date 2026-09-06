@@ -217,7 +217,7 @@ keeper.before(.greet) { try reply("\"Evening,\" she says, and means it.") }
 ```
 
 Bare `hello`, `talk to <somebody>` and `say hello to <somebody>` come from
-`GnustoConversation`, which also gives you `greeting(of:reply:again:)` — one
+`GnustoConversation`, which also gives you `greeting(of:for:learning:again:reply:)` — one
 declaration answering GREET and TALK together, with a second line for the
 second time, because nobody introduces themselves twice.
 
