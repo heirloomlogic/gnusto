@@ -183,31 +183,27 @@ struct DungeonCoalMine: GameContent {
 
     // MARK: - Items
 
-    let mineEntrances = Item {
-        name("entrances")
-        synonyms("entrance", "openings", "opening", "mine", "shaft")
-        description(Prose.mineEntrances)
-        scenery
+    let mineEntrances = Item.backdrop(
+        "entrances",
+        synonyms: ["entrance", "openings", "opening", "mine", "shaft"],
+        description: Prose.mineEntrances
+    ) {
         plural
     }
 
-    let squeakySounds = Item {
-        name("squeaky sounds")
-        adjectives("strange", "squeaky")
-        synonyms("sounds", "sound", "squeaking", "passage")
-        description(Prose.squeakySounds)
-        scenery
+    let squeakySounds = Item.backdrop(
+        "squeaky sounds",
+        adjectives: ["strange", "squeaky"],
+        synonyms: ["sounds", "sound", "squeaking", "passage"],
+        description: Prose.squeakySounds
+    ) {
         plural
     }
 
     /// The bat. Nothing to be done about it; the garlic is the answer, and the
     /// host holds the rule because the garlic is a ``DungeonHouse`` item.
-    let bat = Item {
-        name("vampire bat")
-        adjectives("vampire", "deranged", "giant", "large")
-        description(Prose.bat)
-        scenery
-    }
+    let bat = Item.backdrop(
+        "vampire bat", adjectives: ["vampire", "deranged", "giant", "large"], description: Prose.bat)
 
     /// The jade figurine: five to find and five to case.
     let jade = Item {
@@ -221,54 +217,36 @@ struct DungeonCoalMine: GameContent {
         trait(.depositValue, 5)
     }
 
-    let ironChain = Item {
-        name("iron chain")
-        adjectives("heavy", "iron", "metal")
-        synonyms("chain", "framework")
-        description(Prose.ironChain)
-        scenery
-    }
+    let ironChain = Item.backdrop(
+        "iron chain", adjectives: ["heavy", "iron", "metal"], synonyms: ["chain", "framework"],
+        description: Prose.ironChain)
 
     /// The hole the chain hangs in, which is not the chain. Both chains
     /// carried `shaft` as a synonym, so `x shaft` in the room the word names
     /// answered with a sentence about the ironmongery over it. (#329)
-    let mineShaft = Item {
-        name("shaft")
-        adjectives("small", "square")
-        synonyms("shaft", "hole")
-        description(Prose.shaftFromAbove)
-        scenery
-    }
+    let mineShaft = Item.backdrop(
+        "shaft", adjectives: ["small", "square"], synonyms: ["shaft", "hole"], description: Prose.shaftFromAbove)
 
     /// The same chain from the other end, and the shaft around it. ``ironChain``
     /// is a hundred feet up in the Shaft Room, so `x shaft` and `x chain` both
     /// went unanswered in the room whose paragraph is about them. (#233)
-    let lowerShaftChain = Item {
-        // One chain, so one vocabulary: the whole of the difference between
-        // this and ``ironChain`` is which end of it you are standing at, and
-        // that is the description's business.
-        name("iron chain")
-        adjectives("heavy", "iron", "metal")
-        synonyms("chain", "framework")
-        description(Prose.lowerShaftChain)
-        scenery
-    }
+    // One chain, so one vocabulary: the whole of the difference between
+    // this and ``ironChain`` is which end of it you are standing at, and
+    // that is the description's business.
+    let lowerShaftChain = Item.backdrop(
+        "iron chain", adjectives: ["heavy", "iron", "metal"], synonyms: ["chain", "framework"],
+        description: Prose.lowerShaftChain)
 
     /// And the same shaft from the bottom of it. (#329)
-    let lowerShaftHole = Item {
-        name("shaft")
-        adjectives("long", "square")
-        synonyms("shaft", "hole")
-        description(Prose.shaftFromBelow)
-        scenery
-    }
+    let lowerShaftHole = Item.backdrop(
+        "shaft", adjectives: ["long", "square"], synonyms: ["shaft", "hole"], description: Prose.shaftFromBelow)
 
-    let lowerShaftPassages = Item {
-        name("passages")
-        adjectives("narrow")
-        synonyms("passage", "passages", "passageway")
-        description(Prose.lowerShaftPassages)
-        scenery
+    let lowerShaftPassages = Item.backdrop(
+        "passages",
+        adjectives: ["narrow"],
+        synonyms: ["passage", "passages", "passageway"],
+        description: Prose.lowerShaftPassages
+    ) {
         plural
     }
 
@@ -290,62 +268,43 @@ struct DungeonCoalMine: GameContent {
     /// container and cannot be worked from here; one ``Item/reach(otherwise:)``
     /// rule says so once, and `take`, `open`, `put in` and `look in` all
     /// inherit the mainframe's own sentence.
-    let basketFarEnd = Item {
-        name("basket")
-        synonyms("cage", "dumbwaiter")
-        description(Prose.basketFarEndExamined)
-        scenery
-    }
+    let basketFarEnd = Item.backdrop(
+        "basket", synonyms: ["cage", "dumbwaiter"], description: Prose.basketFarEndExamined)
 
-    let woodenBeams = Item {
-        name("wooden beams")
-        adjectives("large", "wooden")
-        synonyms("beams", "beam", "timber", "ceiling", "walls", "wall")
-        description(Prose.woodenBeams)
-        scenery
+    let woodenBeams = Item.backdrop(
+        "wooden beams",
+        adjectives: ["large", "wooden"],
+        synonyms: ["beams", "beam", "timber", "ceiling", "walls", "wall"],
+        description: Prose.woodenBeams
+    ) {
         plural
     }
 
     /// The smell, and only the smell. `staircase` and `stairs` used to be on
     /// this list, so `x stairs` in the Smelly Room answered with a sentence
     /// about what is coming *up* them. The staircase is ``smellyRoomStairs``.
-    let foulOdor = Item {
-        name("foul odor")
-        adjectives("foul")
-        synonyms("odour", "odor", "smell")
-        description(Prose.foulOdor)
-        scenery
-    }
+    let foulOdor = Item.backdrop(
+        "foul odor", adjectives: ["foul"], synonyms: ["odour", "odor", "smell"], description: Prose.foulOdor)
 
     /// The gas, and only the gas. `stairs` used to be on this list, so the Gas
     /// Room answered `x stairs` — a noun its own description prints — with "The
     /// air here is thick enough to lean on, and it is not air." (#233)
-    let coalGas = Item {
-        name("coal gas")
-        adjectives("coal")
-        synonyms("gas", "air")
-        description(Prose.coalGas)
-        scenery
-    }
+    let coalGas = Item.backdrop("coal gas", adjectives: ["coal"], synonyms: ["gas", "air"], description: Prose.coalGas)
 
     /// One staircase, two items, because it reads differently from its two
     /// ends: from the top it is what the odor comes up, and from the bottom it
     /// is the only way out. The Rocky Ledge's repair applied again — the noun
     /// belongs to whichever item is about the right place.
-    let smellyRoomStairs = Item {
-        name("staircase")
-        adjectives("small", "descending")
-        synonyms("stairs", "staircase", "steps", "stair")
-        description(Prose.smellyRoomStairs)
-        scenery
-    }
+    let smellyRoomStairs = Item.backdrop(
+        "staircase", adjectives: ["small", "descending"], synonyms: ["stairs", "staircase", "steps", "stair"],
+        description: Prose.smellyRoomStairs)
 
-    let gasRoomStairs = Item {
-        name("stairs")
-        adjectives("short")
-        synonyms("stairs", "staircase", "steps", "stair", "climb")
-        description(Prose.gasRoomStairs)
-        scenery
+    let gasRoomStairs = Item.backdrop(
+        "stairs",
+        adjectives: ["short"],
+        synonyms: ["stairs", "staircase", "steps", "stair", "climb"],
+        description: Prose.gasRoomStairs
+    ) {
         plural
     }
 
@@ -366,62 +325,30 @@ struct DungeonCoalMine: GameContent {
     // so each gets its own — the tax the "every printed noun answers" rule
     // charges on a maze. Seven identical declarations, as the seven identical
     // rooms deserve.
-    let coalMineWalls1 = Item {
-        name("coal")
-        synonyms("mine", "walls", "wall", "props", "prop", "seam")
-        description(Prose.coalMineWalls)
-        scenery
-    }
+    let coalMineWalls1 = Item.backdrop(
+        "coal", synonyms: ["mine", "walls", "wall", "props", "prop", "seam"], description: Prose.coalMineWalls)
 
-    let coalMineWalls2 = Item {
-        name("coal")
-        synonyms("mine", "walls", "wall", "props", "prop", "seam")
-        description(Prose.coalMineWalls)
-        scenery
-    }
+    let coalMineWalls2 = Item.backdrop(
+        "coal", synonyms: ["mine", "walls", "wall", "props", "prop", "seam"], description: Prose.coalMineWalls)
 
-    let coalMineWalls3 = Item {
-        name("coal")
-        synonyms("mine", "walls", "wall", "props", "prop", "seam")
-        description(Prose.coalMineWalls)
-        scenery
-    }
+    let coalMineWalls3 = Item.backdrop(
+        "coal", synonyms: ["mine", "walls", "wall", "props", "prop", "seam"], description: Prose.coalMineWalls)
 
-    let coalMineWalls4 = Item {
-        name("coal")
-        synonyms("mine", "walls", "wall", "props", "prop", "seam")
-        description(Prose.coalMineWalls)
-        scenery
-    }
+    let coalMineWalls4 = Item.backdrop(
+        "coal", synonyms: ["mine", "walls", "wall", "props", "prop", "seam"], description: Prose.coalMineWalls)
 
-    let coalMineWalls5 = Item {
-        name("coal")
-        synonyms("mine", "walls", "wall", "props", "prop", "seam")
-        description(Prose.coalMineWalls)
-        scenery
-    }
+    let coalMineWalls5 = Item.backdrop(
+        "coal", synonyms: ["mine", "walls", "wall", "props", "prop", "seam"], description: Prose.coalMineWalls)
 
-    let coalMineWalls6 = Item {
-        name("coal")
-        synonyms("mine", "walls", "wall", "props", "prop", "seam")
-        description(Prose.coalMineWalls)
-        scenery
-    }
+    let coalMineWalls6 = Item.backdrop(
+        "coal", synonyms: ["mine", "walls", "wall", "props", "prop", "seam"], description: Prose.coalMineWalls)
 
-    let coalMineWalls7 = Item {
-        name("coal")
-        synonyms("mine", "walls", "wall", "props", "prop", "seam")
-        description(Prose.coalMineWalls)
-        scenery
-    }
+    let coalMineWalls7 = Item.backdrop(
+        "coal", synonyms: ["mine", "walls", "wall", "props", "prop", "seam"], description: Prose.coalMineWalls)
 
-    let woodenLadder = Item {
-        name("wooden ladder")
-        adjectives("rickety", "wooden", "narrow")
-        synonyms("ladder", "staircase", "stairs")
-        description(Prose.woodenLadder)
-        scenery
-    }
+    let woodenLadder = Item.backdrop(
+        "wooden ladder", adjectives: ["rickety", "wooden", "narrow"], synonyms: ["ladder", "staircase", "stairs"],
+        description: Prose.woodenLadder)
 
     /// A small pile of coal — not a treasure, but the machine's raw material.
     let coal = Item {
@@ -442,22 +369,17 @@ struct DungeonCoalMine: GameContent {
         trait(.weight, 50)
     }
 
-    let machine = Item {
-        name("machine")
-        adjectives("large")
-        synonyms("dryer", "lid", "pdp10", "box")
-        description(Prose.machine)
+    let machine = Item.backdrop(
+        "machine",
+        adjectives: ["large"],
+        synonyms: ["dryer", "lid", "pdp10", "box"],
+        description: Prose.machine
+    ) {
         container
         openable
-        scenery
     }
 
-    let machineSwitch = Item {
-        name("switch")
-        synonyms("start")
-        description(Prose.machineSwitch)
-        scenery
-    }
+    let machineSwitch = Item.backdrop("switch", synonyms: ["start"], description: Prose.machineSwitch)
 
     /// The huge diamond: ten to find and **six** to case, where the trilogy
     /// pays ten. It starts nowhere; the machine makes it.

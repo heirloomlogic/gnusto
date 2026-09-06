@@ -222,33 +222,24 @@ struct DungeonEndgame: GameContent {
 
     /// `TOMB`, the object. A slab of marble that `HEAD-FUNCTION` answers for
     /// until the herald has been.
-    let cryptDoor = Item {
-        name("crypt door")
-        adjectives("marble", "heavy")
-        synonyms("crypt", "door", "slab")
+    let cryptDoor = Item.backdrop(
+        "crypt door",
+        adjectives: ["marble", "heavy"],
+        synonyms: ["crypt", "door", "slab"]
+    ) {
         openable
-        scenery
     }
 
     /// `HEADS`. Touching, taking, attacking, burning, opening or rubbing them
     /// costs you everything of value you are carrying and then your life.
-    let heads = Item {
-        name("set of heads")
-        adjectives("severed", "poled")
-        synonyms("heads", "head", "poles", "pole", "implementers")
-        description(Prose.tombHeads)
-        scenery
-    }
+    let heads = Item.backdrop(
+        "set of heads", adjectives: ["severed", "poled"], synonyms: ["heads", "head", "poles", "pole", "implementers"],
+        description: Prose.tombHeads)
 
     /// The floor the poles stand in and the bottles lie about. Its own item
     /// rather than a synonym of ``heads``, because any liberty taken with the
     /// heads is fatal and touching the floor is not a liberty.
-    let tombFloor = Item {
-        name("tomb floor")
-        synonyms("floor", "ground")
-        description(Prose.tombFloor)
-        scenery
-    }
+    let tombFloor = Item.backdrop("tomb floor", synonyms: ["floor", "ground"], description: Prose.tombFloor)
 
     /// `COKES`. `OSIZE 15`, and takable — the one thing in the Tomb that is.
     /// Carries its own listing line, because the room's description used to
@@ -277,13 +268,9 @@ struct DungeonEndgame: GameContent {
     /// the Stone Room at the foot, and the parapet — so three rooms answer for
     /// one. `DungeonHouse`'s Kitchen staircase set the precedent.
     private static func steps() -> Item {
-        Item {
-            name("stairs")
-            adjectives("stone", "long")
-            synonyms("stair", "stairs", "staircase", "steps", "flight")
-            description(Prose.endgameStairs)
-            scenery
-        }
+        Item.backdrop(
+            "stairs", adjectives: ["stone", "long"], synonyms: ["stair", "stairs", "staircase", "steps", "flight"],
+            description: Prose.endgameStairs)
     }
 
     let stairsAtTheTop = steps()
@@ -292,35 +279,23 @@ struct DungeonEndgame: GameContent {
 
     /// The Stone Room's masonry, which its paragraph spends two of its three
     /// sentences on. (#332)
-    let stoneRoomMasonry = Item {
-        name("dressed stone")
-        adjectives("dressed", "large")
-        synonyms("stone", "stones", "joints", "joint", "masonry", "wall", "walls", "block", "blocks")
-        description(Prose.stoneRoomMasonry)
-        scenery
-    }
+    let stoneRoomMasonry = Item.backdrop(
+        "dressed stone", adjectives: ["dressed", "large"],
+        synonyms: ["stone", "stones", "joints", "joint", "masonry", "wall", "walls", "block", "blocks"],
+        description: Prose.stoneRoomMasonry)
 
     /// And the landing the room one flight above it is named for. (#332)
-    let topOfStairsLanding = Item {
-        name("landing")
-        adjectives("rough")
-        synonyms("landing", "shelf", "head")
-        description(Prose.topOfStairsLanding)
-        scenery
-    }
+    let topOfStairsLanding = Item.backdrop(
+        "landing", adjectives: ["rough"], synonyms: ["landing", "shelf", "head"], description: Prose.topOfStairsLanding)
 
     /// The hallway, from every room that is in it or opens off it. Five hallway
     /// rooms and six narrow rooms — all eleven print the word, and it belonged
     /// to nothing. A factory rather than twelve declarations,
     /// for ``steps()``' reason: an item lives in one room. (#332)
     private static func hallwayScenery() -> Item {
-        Item {
-            name("hallway")
-            adjectives("long", "narrow")
-            synonyms("hallway", "hall", "corridor", "passage")
-            description(Prose.hallwayItself)
-            scenery
-        }
+        Item.backdrop(
+            "hallway", adjectives: ["long", "narrow"], synonyms: ["hallway", "hall", "corridor", "passage"],
+            description: Prose.hallwayItself)
     }
 
     let hallwayAtA = hallwayScenery()
@@ -339,41 +314,23 @@ struct DungeonEndgame: GameContent {
     /// description names. Both were words the endgame printed and neither
     /// answered about itself: `staff` was a synonym on the man, so `x staff`
     /// described the man. (#332)
-    let dungeonMasterStaff = Item {
-        name("staff")
-        adjectives("long", "dark", "wooden")
-        synonyms("staff", "stick", "rod")
-        description(Prose.dungeonMasterStaff)
-        scenery
-    }
+    let dungeonMasterStaff = Item.backdrop(
+        "staff", adjectives: ["long", "dark", "wooden"], synonyms: ["staff", "stick", "rod"],
+        description: Prose.dungeonMasterStaff)
 
-    let dungeonMasterRobe = Item {
-        name("robe")
-        adjectives("old", "colourless")
-        synonyms("robe", "robes", "gown")
-        description(Prose.dungeonMasterRobe)
-        scenery
-    }
+    let dungeonMasterRobe = Item.backdrop(
+        "robe", adjectives: ["old", "colourless"], synonyms: ["robe", "robes", "gown"],
+        description: Prose.dungeonMasterRobe)
 
     // MARK: - The beam and the button
 
     /// `RBEAM`. Broken by anything left lying on the floor of the Small Room.
-    let redBeam = Item {
-        name("red beam of light")
-        adjectives("red", "thin")
-        synonyms("beam", "light", "ray")
-        scenery
-    }
+    let redBeam = Item.backdrop("red beam of light", adjectives: ["red", "thin"], synonyms: ["beam", "light", "ray"])
 
     /// `RSWIT`. Opens the mirror for seven turns, but only with the beam
     /// broken; otherwise it pops straight back out.
-    let redButton = Item {
-        name("red button")
-        adjectives("red", "large")
-        synonyms("button", "switch")
-        description(Prose.stoneRoomButton)
-        scenery
-    }
+    let redButton = Item.backdrop(
+        "red button", adjectives: ["red", "large"], synonyms: ["button", "switch"], description: Prose.stoneRoomButton)
 
     // MARK: - The channel
 
@@ -382,13 +339,9 @@ struct DungeonEndgame: GameContent {
     /// has no global objects, so it is five scenery items over exactly those
     /// five rooms.
     private static func channel() -> Item {
-        Item {
-            name("stone channel")
-            adjectives("stone", "narrow")
-            synonyms("channel", "groove", "slot", "track")
-            description(Prose.stoneChannel)
-            scenery
-        }
+        Item.backdrop(
+            "stone channel", adjectives: ["stone", "narrow"], synonyms: ["channel", "groove", "slot", "track"],
+            description: Prose.stoneChannel)
     }
 
     let channelA = channel()
@@ -407,13 +360,13 @@ struct DungeonEndgame: GameContent {
     ///
     /// The count is not fastidiousness: an object in a room whose description
     /// never prints is a noun the player can name and nothing can answer.
-    let guardians = Item {
-        name("Guardians of Zork")
-        adjectives("enormous", "stone")
-        synonyms("guardians", "guardian", "statues", "statue", "figures")
-        description(Prose.guardians)
+    let guardians = Item.backdrop(
+        "Guardians of Zork",
+        adjectives: ["enormous", "stone"],
+        synonyms: ["guardians", "guardian", "statues", "statue", "figures"],
+        description: Prose.guardians
+    ) {
         properName
-        scenery
     }
 
     // MARK: - The box, from outside
@@ -429,12 +382,8 @@ struct DungeonEndgame: GameContent {
     /// rather than leaving to be noticed: both were once put down to issue
     /// #174's budget, and neither ever needed that excuse.
     private static func boxFromOutside() -> Item {
-        Item {
-            name("mirror box")
-            adjectives("enormous", "rectangular", "mirrored")
-            synonyms("box", "mirror", "mirrors")
-            scenery
-        }
+        Item.backdrop(
+            "mirror box", adjectives: ["enormous", "rectangular", "mirrored"], synonyms: ["box", "mirror", "mirrors"])
     }
 
     let boxSeenFromA = boxFromOutside()
@@ -459,32 +408,18 @@ struct DungeonEndgame: GameContent {
     // MARK: - The box, from inside
 
     /// `OAKND`. Pushing it slides the box one room along the channel.
-    let mahoganyEnd = Item {
-        name("mahogany wall")
-        adjectives("mahogany", "dark")
-        synonyms("mahogany", "wall", "end")
-        description(Prose.mahoganyEnd)
-        scenery
-    }
+    let mahoganyEnd = Item.backdrop(
+        "mahogany wall", adjectives: ["mahogany", "dark"], synonyms: ["mahogany", "wall", "end"],
+        description: Prose.mahoganyEnd)
 
     /// `PINND`. Pushing it swings it open for five turns — and does it in the
     /// Guardians' sight, if the box is standing where they can see that end.
-    let pineEnd = Item {
-        name("pine wall")
-        adjectives("pine", "pale")
-        synonyms("pine", "wall", "end", "door")
-        scenery
-    }
+    let pineEnd = Item.backdrop("pine wall", adjectives: ["pine", "pale"], synonyms: ["pine", "wall", "end", "door"])
 
     /// `MR1` and `MR2`. The first is the one the red button opens; both break,
     /// and breaking either loses the game.
     private static func mirrorPanel(_ ordinal: String) -> Item {
-        Item {
-            name("\(ordinal) mirror")
-            adjectives(ordinal, "large")
-            synonyms("mirror", "mirrors", "glass")
-            scenery
-        }
+        Item.backdrop("\(ordinal) mirror", adjectives: [ordinal, "large"], synonyms: ["mirror", "mirrors", "glass"])
     }
 
     let mirrorOne = mirrorPanel("first")
@@ -493,12 +428,7 @@ struct DungeonEndgame: GameContent {
     /// `RDWAL`, `YLWAL`, `WHWAL`, `BLWAL`. Red and yellow turn the box
     /// clockwise, white and black counterclockwise.
     private static func panel(_ colour: String) -> Item {
-        Item {
-            name("\(colour) panel")
-            adjectives(colour)
-            synonyms("panel", "panels")
-            scenery
-        }
+        Item.backdrop("\(colour) panel", adjectives: [colour], synonyms: ["panel", "panels"])
     }
 
     let redPanel = panel("red")
@@ -509,112 +439,85 @@ struct DungeonEndgame: GameContent {
     /// `LPOLE` and `SPOLE` in one. The source carries two objects for the two
     /// lengths of one pole; here `POLEUP` is the state and a `describe` rule
     /// reads it.
-    let pole = Item {
-        name("pole")
-        adjectives("long", "short", "wooden")
-        synonyms("pole", "rod", "shaft")
-        scenery
-    }
+    let pole = Item.backdrop("pole", adjectives: ["long", "short", "wooden"], synonyms: ["pole", "rod", "shaft"])
 
     /// `TBAR`. The handle the pole is raised and lowered by.
-    let tBar = Item {
-        name("crossbar")
-        adjectives("iron", "t")
-        synonyms("bar", "t-bar", "handle", "tbar", "crossbar")
-        description(Prose.tBar)
-        scenery
-    }
+    let tBar = Item.backdrop(
+        "crossbar", adjectives: ["iron", "t"], synonyms: ["bar", "t-bar", "handle", "tbar", "crossbar"],
+        description: Prose.tBar)
 
     /// `WDBAR`. What holds the pine end shut.
-    let woodenBar = Item {
-        name("wooden bar")
-        adjectives("wooden", "stout")
-        synonyms("bar", "brace")
-        description(Prose.woodenBar)
-        scenery
-    }
+    let woodenBar = Item.backdrop(
+        "wooden bar", adjectives: ["wooden", "stout"], synonyms: ["bar", "brace"], description: Prose.woodenBar)
 
     /// `ARROW` and `ROSE` in one item, because they are one instrument: the
     /// arrow is the pointer and the rose is the dial it turns over. The five
     /// floor roses `ROSEBIT` carries in the hallway are not reproduced — see
     /// `FIDELITY.md`.
-    let compassArrow = Item {
-        name("compass arrow")
-        adjectives("compass", "brass")
-        synonyms("arrow", "rose", "compass", "dial", "needle")
-        scenery
-    }
+    let compassArrow = Item.backdrop(
+        "compass arrow", adjectives: ["compass", "brass"], synonyms: ["arrow", "rose", "compass", "dial", "needle"])
 
     // MARK: - The doors
 
     /// `QDOOR`. The quiz is on the far side of it. Distinct from the Living
     /// Room's `WDOOR`, which is also a wooden door.
-    let woodenDoor = Item {
-        name("massive wooden door")
-        adjectives("massive", "wooden", "oaken")
+    let woodenDoor = Item.backdrop(
+        "massive wooden door",
+        adjectives: ["massive", "wooden", "oaken"],
+        synonyms: ["door", "doors", "planks", "plank", "wood"]
+    ) {
         // `planks` and `wood`: its own description calls it *a door of heavy
         // wooden planks* and the room north of it answers a blocked move with
         // *a wall of wood*, and neither word was known to the parser at all.
         // What the door is made of, not a second thing beside it. (#332)
-        synonyms("door", "doors", "planks", "plank", "wood")
         openable
-        scenery
     }
 
     /// `CDOOR`. The ordinary door of whichever cell is in the slot.
-    let cellDoor = Item {
-        name("cell door")
-        adjectives("cell", "barred")
-        synonyms("door")
-        description(Prose.cellDoor)
+    let cellDoor = Item.backdrop(
+        "cell door",
+        adjectives: ["cell", "barred"],
+        synonyms: ["door"],
+        description: Prose.cellDoor
+    ) {
         openable
-        scenery
     }
 
     /// `ODOOR`. Cell four's other door, and the only way into the Treasury.
     /// Hidden until cell four docks.
-    let bronzeDoor = Item {
-        name("bronze door")
-        adjectives("bronze")
-        synonyms("door")
+    let bronzeDoor = Item.backdrop(
+        "bronze door",
+        adjectives: ["bronze"],
+        synonyms: ["door"]
+    ) {
         openable
-        scenery
         hidden
     }
 
     /// `MDOOR` and `LDOOR` in one. Whichever cell rides out of the slot with
     /// you in it, the door you came through is locked behind you; the item
     /// follows the player into the cell that took them.
-    let lockedCellDoor = Item {
-        name("locked door")
-        adjectives("locked", "iron")
-        synonyms("door")
-        description(Prose.lockedCellDoor)
-        scenery
+    let lockedCellDoor = Item.backdrop(
+        "locked door",
+        adjectives: ["locked", "iron"],
+        synonyms: ["door"],
+        description: Prose.lockedCellDoor
+    ) {
         // Never opens, so it is never an exit; still a door to knock on.
         door
     }
 
     /// The Parapet's own description names the pit it is a ledge over, and the
     /// pit is the whole reason the room reads as high up.
-    let greatPit = Item {
-        name("great pit")
-        adjectives("great", "deep")
-        synonyms("pit", "ledge", "drop", "shaft")
-        description(Prose.parapetPit)
-        scenery
-    }
+    let greatPit = Item.backdrop(
+        "great pit", adjectives: ["great", "deep"], synonyms: ["pit", "ledge", "drop", "shaft"],
+        description: Prose.parapetPit)
 
     /// The doorway each of the two corridors names, and the slot behind it.
     /// Two items rather than one because scope in this engine is per-room, and
     /// both corridors print the word.
     private static func slot() -> Item {
-        Item {
-            name("doorway")
-            adjectives("cut", "stone")
-            synonyms("doorway", "slot", "opening", "shaft")
-            scenery
-        }
+        Item.backdrop("doorway", adjectives: ["cut", "stone"], synonyms: ["doorway", "slot", "opening", "shaft"])
     }
 
     let southSlot = slot()
@@ -623,12 +526,7 @@ struct DungeonEndgame: GameContent {
     // MARK: - The sundial
 
     /// `DIAL`. Eight numbers, one of which is the one with the bronze door.
-    let sundial = Item {
-        name("sundial")
-        adjectives("stone", "sun")
-        synonyms("dial", "sundial", "pointer")
-        scenery
-    }
+    let sundial = Item.backdrop("sundial", adjectives: ["stone", "sun"], synonyms: ["dial", "sundial", "pointer"])
 
     /// `NUMBERS`. The eight numerals around the dial's face, one object each.
     ///
@@ -642,14 +540,9 @@ struct DungeonEndgame: GameContent {
     /// - Parameter number: which numeral, from one to eight.
     /// - Returns: one numeral on the dial's face.
     private static func numeral(_ number: Int) -> Item {
-        Item {
-            // ``DungeonEndgame/numberWord(_:)`` is the one place the eight words
-            // are spelled, so `read dial` and `set dial to …` cannot disagree.
-            name(numberWord(number))
-            synonyms("\(number)")
-            description(Prose.sundialNumeral)
-            scenery
-        }
+        // ``DungeonEndgame/numberWord(_:)`` is the one place the eight words
+        // are spelled, so `read dial` and `set dial to …` cannot disagree.
+        Item.backdrop(numberWord(number), synonyms: ["\(number)"], description: Prose.sundialNumeral)
     }
 
     let numeralOne = numeral(1)
@@ -670,28 +563,23 @@ struct DungeonEndgame: GameContent {
     }
 
     /// `DBUTT`. Turns the carousel and brings the selected cell into the slot.
-    let parapetButton = Item {
-        name("large button")
-        adjectives("large", "square")
-        synonyms("button")
-        description(Prose.parapetButton)
-        scenery
-    }
+    let parapetButton = Item.backdrop(
+        "large button", adjectives: ["large", "square"], synonyms: ["button"], description: Prose.parapetButton)
 
     /// One per corridor, because a scenery item stands in a room and the prison
     /// is four of them. The nouns are the ones the four descriptions print; the
     /// text is the same walls seen from anywhere in the square.
     private static func marbleWalls() -> Item {
-        Item {
-            name("marble walls")
-            adjectives("polished")
+        Item.backdrop(
+            "marble walls",
+            adjectives: ["polished"],
+            synonyms: ["marble", "wall", "corridor", "hall"],
+            description: Prose.prisonMarble
+        ) {
             // "marble" twice over on purpose: the name makes it an adjective,
             // and the description calls the stuff itself marble, so it has to
             // be a noun too.
-            synonyms("marble", "wall", "corridor", "hall")
-            description(Prose.prisonMarble)
             plural
-            scenery
         }
     }
 
@@ -710,17 +598,17 @@ struct DungeonEndgame: GameContent {
     ///
     /// It answers for everything the room's first paragraph piles up, which is
     /// more nouns than it was since the description became the trilogy's.
-    let hoard = Item {
-        name("precious jewels")
-        adjectives("vast", "heaped", "ancient", "rare")
-        synonyms(
+    let hoard = Item.backdrop(
+        "precious jewels",
+        adjectives: ["vast", "heaped", "ancient", "rare"],
+        synonyms: [
             "treasure", "treasures", "hoard", "gold", "jewel",
             "chests", "chest", "zorkmids", "paintings", "painting", "statuary",
-            "curios", "wealth"
-        )
-        description(Prose.treasuryHoard)
+            "curios", "wealth",
+        ],
+        description: Prose.treasuryHoard
+    ) {
         plural
-        scenery
     }
 
     // The other two things the Treasury's description names. Nobody will ever
@@ -728,21 +616,12 @@ struct DungeonEndgame: GameContent {
     // describes itself and ends the story on the paragraph after — but a named
     // thing the parser does not know reads as a bug the one time somebody tries.
 
-    let treasuryMap = Item {
-        name("annotated map")
-        adjectives("great")
-        synonyms("empire")
-        description(Prose.treasuryMap)
-        scenery
-    }
+    let treasuryMap = Item.backdrop(
+        "annotated map", adjectives: ["great"], synonyms: ["empire"], description: Prose.treasuryMap)
 
-    let treasuryDesk = Item {
-        name("desk")
-        adjectives("far")
-        synonyms("certificates", "certificate", "stock", "frobozzco")
-        description(Prose.treasuryDesk)
-        scenery
-    }
+    let treasuryDesk = Item.backdrop(
+        "desk", adjectives: ["far"], synonyms: ["certificates", "certificate", "stock", "frobozzco"],
+        description: Prose.treasuryDesk)
 
     // MARK: - The Dungeon Master
 

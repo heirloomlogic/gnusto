@@ -302,194 +302,169 @@ struct KindlyDeep: Game, GameMain {
         hidden
     }
 
-    let hay = Item {
-        name("hay")
-        adjectives("good", "dry")
-        description(
+    let hay = Item.backdrop(
+        "hay",
+        adjectives: ["good", "dry"],
+        description:
             """
             Good hay, kept dry. Biscuit's, by rights. It is no use to you at all, which is the first honest thing
             this mine has said today.
-            """)
-        scenery
-    }
+            """
+    )
 
-    let straw = Item {
-        name("straw")
-        adjectives("clean", "deep")
-        synonyms("heap", "bed")
-        description(
+    let straw = Item.backdrop(
+        "straw", adjectives: ["clean", "deep"], synonyms: ["heap", "bed"],
+        description:
             "Clean straw, deep enough to lie in. It has been a long time since anything looked more like a bed.")
-        scenery
-    }
 
-    let bench = Item {
-        name("bench")
-        adjectives("timber", "worn")
-        synonyms("seat", "initials")
-        description(
+    let bench = Item.backdrop(
+        "bench",
+        adjectives: ["timber", "worn"],
+        synonyms: ["seat", "initials"],
+        description:
             """
             A plank bench worn smooth by men waiting out a trip, with two initials cut into the end of it by
             somebody with time and a knife. It is a good bench. It is not a bed.
-            """)
-        scenery
-    }
+            """
+    )
 
-    let rubble = Item {
-        name("fall")
-        adjectives("fresh", "fallen")
-        synonyms("rubble", "rock", "rocks", "roof", "timber", "timbers", "wall", "prop", "props", "dust")
-        description(
+    let rubble = Item.backdrop(
+        "fall",
+        adjectives: ["fresh", "fallen"],
+        synonyms: ["rubble", "rock", "rocks", "roof", "timber", "timbers", "wall", "prop", "props", "dust"],
+        description:
             """
             Rock and splintered prop, packed tight and gone quiet — the settled kind of fall, the kind that has
             finished moving and has no interest in being moved. Somewhere on the far side of it, men are timbering
             toward you at the pace of men who think they are recovering bodies.
-            """)
-        scenery
-    }
+            """
+    )
 
-    let rails = Item {
-        name("rails")
-        adjectives("iron", "buried")
-        synonyms("rail", "track", "tracks", "gauge")
-        plural
-        description(
+    let rails = Item.backdrop(
+        "rails",
+        adjectives: ["iron", "buried"],
+        synonyms: ["rail", "track", "tracks", "gauge"],
+        description:
             """
             Two iron rails running out of the fall and away east, the gauge of a mine car and a mule. They are the
             reason you know these workings in the dark: you have walked them, alongside Biscuit, for two years.
-            """)
-        scenery
+            """
+    ) {
+        plural
     }
 
-    let stall = Item {
-        name("stall")
-        adjectives("open")
-        synonyms("name", "chalk")
-        description(
+    let stall = Item.backdrop(
+        "stall",
+        adjectives: ["open"],
+        synonyms: ["name", "chalk"],
+        description:
             """
             Biscuit's stall, swept and standing open, his name chalked over it by somebody who took trouble with
             the letters. He has not looked at it once since the roof came down.
-            """)
-        scenery
-    }
+            """
+    )
 
     /// The stable's own water, dry — the reason the canteen is the whole clock.
-    let trough = Item {
-        name("water trough")
-        adjectives("dry", "empty")
-        synonyms("basin")
-        description(
+    let trough = Item.backdrop(
+        "water trough",
+        adjectives: ["dry", "empty"],
+        synonyms: ["basin"],
+        description:
             """
             The mule trough, dry as a flue. The line that fed it came down the main entry, and the main entry is the
             wall of rock behind you. What was in it went into the brick hours ago.
-            """)
-        scenery
-    }
+            """
+    )
 
-    let cornBin = Item {
-        name("corn bin")
-        adjectives("loose")
-        synonyms("board", "boards")
-        description(
+    let cornBin = Item.backdrop(
+        "corn bin",
+        adjectives: ["loose"],
+        synonyms: ["board", "boards"],
+        description:
             """
             A corn bin with a loose board along its foot — the sort of gap a man uses when he wants a thing to be
             where he left it. Biscuit has clearly known about it longer than you have.
-            """)
-        scenery
-    }
+            """
+    )
 
     /// The jammed ventilation door. It lives physically in the Forks (so it is
     /// examinable and refuses `open` from that side, §8) and gates the shaft's
     /// west exit (so `open door` at the Shaft Bottom triggers the rejoin, §6).
     /// A door with a bad side and a good one has to say which side you are on:
     /// its description is a `describe` rule keyed on where you are standing.
-    let airDoor = Item {
-        name("air-door")
-        adjectives("ventilation", "stout", "jammed")
-        synonyms("airdoor", "bar", "frame", "hinges")
-        scenery
+    let airDoor = Item.backdrop(
+        "air-door",
+        adjectives: ["ventilation", "stout", "jammed"],
+        synonyms: ["airdoor", "bar", "frame", "hinges"]
+    ) {
         openable
     }
 
-    let crawl = Item {
-        name("crawl")
-        adjectives("low", "dark")
-        synonyms("gap", "floor")
-        description(
+    let crawl = Item.backdrop(
+        "crawl",
+        adjectives: ["low", "dark"],
+        synonyms: ["gap", "floor"],
+        description:
             """
             Room enough for a man on his hands and knees, if the man is motivated. It was not cut; it was left, by
             rock that could just as easily not have left it. It runs east, toward the shaft.
-            """)
-        scenery
-    }
+            """
+    )
 
     /// The mouth of the bad air, named by the room and by Biscuit's refusal —
     /// so it had better answer when the player looks at it.
-    let oldHeading = Item {
-        name("old works")
-        adjectives("abandoned")
-        synonyms("heading", "workings", "mouth", "silence")
-        description(
+    let oldHeading = Item.backdrop(
+        "old works",
+        adjectives: ["abandoned"],
+        synonyms: ["heading", "workings", "mouth", "silence"],
+        description:
             """
             An old heading, worked out and left, running north into a dark that gives nothing back. The air coming
             out of it is sweetish, almost pleasant, which is the single most alarming thing in these workings.
-            """)
-        scenery
-    }
+            """
+    )
 
     /// Its examine text is a `describe` rule keyed on `beamHauled` (§D): the
     /// static trait went on putting it across the gate one turn after the game
     /// narrated it being dragged off.
-    let beam = Item {
-        name("beam")
-        adjectives("twelve-foot", "poplar", "fallen")
-        synonyms("timber")
-        scenery
-    }
+    let beam = Item.backdrop("beam", adjectives: ["twelve-foot", "poplar", "fallen"], synonyms: ["timber"])
 
-    let shaft = Item {
-        name("hoisting shaft")
-        adjectives("cold")
-        synonyms("ladderway", "air")
-        description(
+    let shaft = Item.backdrop(
+        "hoisting shaft",
+        adjectives: ["cold"],
+        synonyms: ["ladderway", "air"],
+        description:
             """
             The shaft, going up out of the lamplight and on going up: four hundred feet of it, with weather at the
             top. The air coming down it is cold and moving and smells of the outside, and you have to make yourself
             stop breathing it and get on.
-            """)
-        scenery
-    }
+            """
+    )
 
     /// Likewise a `describe` rule: the gate is the way out once the beam is off
     /// it, and calling it "perfectly useless" at that point is the room telling
     /// the player the opposite of what just happened.
-    let cageGate = Item {
-        name("cage gate")
-        adjectives("barred")
-        synonyms("cage", "frame")
-        scenery
-    }
+    let cageGate = Item.backdrop("cage gate", adjectives: ["barred"], synonyms: ["cage", "frame"])
 
-    let bell = Item {
-        name("signal bell")
-        synonyms("rope", "pull", "cord", "bracket")
-        description(
+    let bell = Item.backdrop(
+        "signal bell",
+        synonyms: ["rope", "pull", "cord", "bracket"],
+        description:
             """
             The signal bell and its rope, polished by a thousand gloved pulls. One ring travels all the way up the
             shaft to the engineer's ear, and the hoisting engineer never sleeps on shift. Allegedly.
-            """)
-        scenery
-    }
+            """
+    )
 
-    let tack = Item {
-        name("haul tack")
-        synonyms("collar", "chains", "harness", "singletree", "peg")
-        description(
+    let tack = Item.backdrop(
+        "haul tack",
+        synonyms: ["collar", "chains", "harness", "singletree", "peg"],
+        description:
             """
             Haul tack on its peg: collar, trace chains, and a singletree, all sized for a mule who has worn them
             daily for years.
-            """)
-        scenery
-    }
+            """
+    )
 
     // MARK: - The companion
 

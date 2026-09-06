@@ -44,13 +44,7 @@ extension TraitKey<Bool> {
 /// - Parameter text: what `x rope` answers in the room this one stands in.
 /// - Returns: a scenery rope answering every word the coil answers to.
 func hangingRope(_ text: String) -> Item {
-    Item {
-        name("rope")
-        adjectives("large", "hemp", "stout")
-        synonyms("rope", "hemp")
-        description(text)
-        scenery
-    }
+    Item.backdrop("rope", adjectives: ["large", "hemp", "stout"], synonyms: ["rope", "hemp"], description: text)
 }
 
 extension Item {

@@ -34,53 +34,33 @@ struct ZorkAboveGround: GameContent {
     // needs one scenery item per room rather than one item placed four
     // times; all four share the same name and `Prose.whiteHouse` text so
     // they read as the same house.
-    let whiteHouseAtWest = Item {
-        name("white house")
-        adjectives("white")
-        description(Prose.whiteHouse)
-        scenery
-    }
+    let whiteHouseAtWest = Item.backdrop("white house", adjectives: ["white"], description: Prose.whiteHouse)
 
-    let whiteHouseAtNorth = Item {
-        name("white house")
-        adjectives("white")
-        description(Prose.whiteHouse)
-        scenery
-    }
+    let whiteHouseAtNorth = Item.backdrop("white house", adjectives: ["white"], description: Prose.whiteHouse)
 
-    let whiteHouseAtSouth = Item {
-        name("white house")
-        adjectives("white")
-        description(Prose.whiteHouse)
-        scenery
-    }
+    let whiteHouseAtSouth = Item.backdrop("white house", adjectives: ["white"], description: Prose.whiteHouse)
 
-    let whiteHouseAtBehind = Item {
-        name("white house")
-        adjectives("white")
-        description(Prose.whiteHouse)
-        scenery
-    }
+    let whiteHouseAtBehind = Item.backdrop("white house", adjectives: ["white"], description: Prose.whiteHouse)
 
     /// Nailed shut: opening it always refuses, so the only way into the
     /// house in this slice is the kitchen window `ZorkHouse` owns.
-    let frontDoor = Item {
-        name("front door")
-        adjectives("front")
-        description(Prose.frontDoor)
-        scenery
+    let frontDoor = Item.backdrop(
+        "front door",
+        adjectives: ["front"],
+        description: Prose.frontDoor
+    ) {
         // Boarded, so no exit hangs on it and the map cannot say what it is.
         // `FRONT-DOOR` carries `DOORBIT` all the same (`1dungeon.zil:424`).
         door
     }
 
-    let mailbox = Item {
-        name("small mailbox")
-        adjectives("small")
-        description(Prose.mailbox)
+    let mailbox = Item.backdrop(
+        "small mailbox",
+        adjectives: ["small"],
+        description: Prose.mailbox
+    ) {
         container
         openable
-        scenery
     }
 
     let leaflet = Item {
@@ -117,12 +97,7 @@ struct ZorkAboveGround: GameContent {
 
     /// Scenery in `forestPath`. `climb tree` reaches the perch above (the
     /// `climb` rule in this bundle's `rules`), the same place `up` leads.
-    let tree = Item {
-        name("large tree")
-        adjectives("large", "gnarled")
-        description(Prose.tree)
-        scenery
-    }
+    let tree = Item.backdrop("large tree", adjectives: ["large", "gnarled"], description: Prose.tree)
 
     /// Two channels, not one. "Beside you on the branch is a small bird's
     /// nest." is a sentence about *where the nest is* — the `FDESC`, this
@@ -135,12 +110,12 @@ struct ZorkAboveGround: GameContent {
     /// and never the author's. `bird` is an adjective alongside `birds`
     /// because the tokenizer drops a trailing `'s`, so a player typing `bird's
     /// nest` hands the parser `["bird", "nest"]`.
-    let nest = Item {
-        name("nest")
-        adjectives("small", "bird", "birds")
+    let nest = Item.backdrop(
+        "nest",
+        adjectives: ["small", "bird", "birds"]
+    ) {
         firstSight(Prose.nest)
         surface
-        scenery
     }
 
     /// The jewel-encrusted egg, found up the tree. The living room's trophy
@@ -184,13 +159,13 @@ struct ZorkAboveGround: GameContent {
     /// Clearing listed nothing at all. `firstSight` is what announces the pile;
     /// `scenery` is kept so the announcement is the author's sentence rather
     /// than a stock one, and so the pile still cannot be picked up.
-    let leaves = Item {
-        name("pile of leaves")
-        adjectives("dead")
-        synonyms("leaf", "pile")
+    let leaves = Item.backdrop(
+        "pile of leaves",
+        adjectives: ["dead"],
+        synonyms: ["leaf", "pile"],
+        description: Prose.leavesExamined
+    ) {
         firstSight(Prose.leaves)
-        description(Prose.leavesExamined)
-        scenery
     }
 
     /// Openable, and locked by `skeletonKey` via the `map` block below, so it
@@ -200,14 +175,14 @@ struct ZorkAboveGround: GameContent {
     /// names a heavy lock — and neither was declared, so `x grate` and `x lock`
     /// both answered "You can't see any such thing". `grating` needs no synonym
     /// of its own: it is the last word of the name, which is the noun.
-    let grating = Item {
-        name("iron grating")
-        adjectives("iron", "metal")
-        synonyms("grate", "lock")
-        description(Prose.grating)
+    let grating = Item.backdrop(
+        "iron grating",
+        adjectives: ["iron", "metal"],
+        synonyms: ["grate", "lock"],
+        description: Prose.grating
+    ) {
         container
         openable
-        scenery
         hidden
     }
 
@@ -288,253 +263,121 @@ struct ZorkAboveGround: GameContent {
     // room — see `whiteHouseAt*` above).
 
     /// (#407) Named by `Prose.westOfHouse`.
-    let field = Item {
-        name("open field")
-        adjectives("open")
-        synonyms("field")
-        description(Prose.field)
-        scenery
-    }
+    let field = Item.backdrop("open field", adjectives: ["open"], synonyms: ["field"], description: Prose.field)
 
     /// (#407) Named by `Prose.northOfHouse` and `Prose.southOfHouse` — one per
     /// side of the house.
-    let windowsAtNorth = Item {
-        name("boarded windows")
-        adjectives("boarded")
-        synonyms("windows", "window")
-        description(Prose.boardedWindows)
-        scenery
-    }
+    let windowsAtNorth = Item.backdrop(
+        "boarded windows", adjectives: ["boarded"], synonyms: ["windows", "window"], description: Prose.boardedWindows)
 
-    let windowsAtSouth = Item {
-        name("boarded windows")
-        adjectives("boarded")
-        synonyms("windows", "window")
-        description(Prose.boardedWindows)
-        scenery
-    }
+    let windowsAtSouth = Item.backdrop(
+        "boarded windows", adjectives: ["boarded"], synonyms: ["windows", "window"], description: Prose.boardedWindows)
 
     /// (#407) Named by `Prose.northOfHouse` and `Prose.southOfHouse`.
-    let treesAtNorth = Item {
-        name("trees")
-        description(Prose.houseTrees)
-        scenery
-    }
+    let treesAtNorth = Item.backdrop("trees", description: Prose.houseTrees)
 
-    let treesAtSouth = Item {
-        name("trees")
-        description(Prose.houseTrees)
-        scenery
-    }
+    let treesAtSouth = Item.backdrop("trees", description: Prose.houseTrees)
 
     /// (#407) Named by `Prose.northOfHouse` — the path north through the trees.
-    let pathAtNorth = Item {
-        name("narrow path")
-        adjectives("narrow")
-        synonyms("path")
-        description(Prose.housePath)
-        scenery
-    }
+    let pathAtNorth = Item.backdrop(
+        "narrow path", adjectives: ["narrow"], synonyms: ["path"], description: Prose.housePath)
 
     /// (#407) Named by `Prose.behindHouse` — the path east into the forest.
-    let pathAtBehind = Item {
-        name("path")
-        description(Prose.housePath)
-        scenery
-    }
+    let pathAtBehind = Item.backdrop("path", description: Prose.housePath)
 
     /// (#407) Named by the three forest descriptions — one per room.
-    let treesAtForestWest = Item {
-        name("trees")
-        description(Prose.forestTrees)
-        scenery
-    }
+    let treesAtForestWest = Item.backdrop("trees", description: Prose.forestTrees)
 
-    let treesAtForestEast = Item {
-        name("trees")
-        description(Prose.forestTrees)
-        scenery
-    }
+    let treesAtForestEast = Item.backdrop("trees", description: Prose.forestTrees)
 
-    let treesAtForestNortheast = Item {
-        name("trees")
-        description(Prose.forestTrees)
-        scenery
-    }
+    let treesAtForestNortheast = Item.backdrop("trees", description: Prose.forestTrees)
 
     /// (#407) Named by `Prose.forestWest` — the sunlight to the east.
-    let sunlightAtForestWest = Item {
-        name("sunlight")
-        description(Prose.eastSunlight)
-        scenery
-    }
+    let sunlightAtForestWest = Item.backdrop("sunlight", description: Prose.eastSunlight)
 
     /// (#407) Named by `Prose.forestPath`; `branches` and `branch` are nouns
     /// the prose names too.
-    let lowBranches = Item {
-        name("low branches")
-        adjectives("low")
-        synonyms("branches", "branch")
-        description(Prose.treeBranches)
-        scenery
-    }
+    let lowBranches = Item.backdrop(
+        "low branches", adjectives: ["low"], synonyms: ["branches", "branch"], description: Prose.treeBranches)
 
     /// (#407) Named by `Prose.upATree`; a separate fixture from the path's
     /// branches — these are the boughs you sit among.
-    let perchBranches = Item {
-        name("large branches")
-        adjectives("large")
-        synonyms("branches", "branch")
-        description(Prose.perchBranches)
-        scenery
-    }
+    let perchBranches = Item.backdrop(
+        "large branches", adjectives: ["large"], synonyms: ["branches", "branch"], description: Prose.perchBranches)
 
     // Canyon View's paragraph names the whole canyon country; each named
     // feature answers here.
 
     /// (#407) Named by `Prose.canyonView`.
-    let greatCanyon = Item {
-        name("great canyon")
-        adjectives("great")
-        synonyms("canyon")
-        description(Prose.greatCanyon)
-        scenery
-    }
+    let greatCanyon = Item.backdrop(
+        "great canyon", adjectives: ["great"], synonyms: ["canyon"], description: Prose.greatCanyon)
 
     /// (#407) Named by `Prose.canyonView`.
-    let riverFromCanyonView = Item {
-        name("frigid river")
-        adjectives("frigid")
-        synonyms("river")
-        description(Prose.frigidRiver)
-        scenery
-    }
+    let riverFromCanyonView = Item.backdrop(
+        "frigid river", adjectives: ["frigid"], synonyms: ["river"], description: Prose.frigidRiver)
 
     /// (#407) Named by `Prose.canyonView`.
-    let cliffsFromCanyonView = Item {
-        name("white cliffs")
-        adjectives("white")
-        synonyms("cliffs", "cliff")
-        description(Prose.whiteCliffs)
-        scenery
-    }
+    let cliffsFromCanyonView = Item.backdrop(
+        "white cliffs", adjectives: ["white"], synonyms: ["cliffs", "cliff"], description: Prose.whiteCliffs)
 
     /// (#407) Named by `Prose.canyonView`; `ramparts` is the same wall of
     /// mountains by its other word.
-    let flatheadMountains = Item {
-        name("flathead mountains")
-        adjectives("flathead")
-        synonyms("mountains", "ramparts")
-        description(Prose.flatheadMountains)
-        scenery
-    }
+    let flatheadMountains = Item.backdrop(
+        "flathead mountains", adjectives: ["flathead"], synonyms: ["mountains", "ramparts"],
+        description: Prose.flatheadMountains)
 
     /// (#407) Named by `Prose.canyonView`.
-    let fallsFromCanyonView = Item {
-        name("aragain falls")
-        adjectives("aragain")
-        synonyms("falls", "waterfall")
-        description(Prose.fallsFromCanyonView)
-        scenery
-    }
+    let fallsFromCanyonView = Item.backdrop(
+        "aragain falls", adjectives: ["aragain"], synonyms: ["falls", "waterfall"],
+        description: Prose.fallsFromCanyonView)
 
     /// (#407) Named by `Prose.canyonView`. No rainbow item exists anywhere
     /// before this one, though three rooms print the word.
-    let rainbowFromCanyonView = Item {
-        name("rainbow")
-        description(Prose.rainbowArch)
-        scenery
-    }
+    let rainbowFromCanyonView = Item.backdrop("rainbow", description: Prose.rainbowArch)
 
     /// (#407) Named by `Prose.canyonView`.
-    let riverCavern = Item {
-        name("dark cavern")
-        adjectives("dark", "great")
-        synonyms("cavern")
-        description(Prose.riverCavern)
-        scenery
-    }
+    let riverCavern = Item.backdrop(
+        "dark cavern", adjectives: ["dark", "great"], synonyms: ["cavern"], description: Prose.riverCavern)
 
     /// (#407) Named by `Prose.rockyLedge`.
-    let canyonCliff = Item {
-        name("cliff")
-        description(Prose.canyonCliff)
-        scenery
-    }
+    let canyonCliff = Item.backdrop("cliff", description: Prose.canyonCliff)
 
     // End of Rainbow's paragraph names the falls from below, the cliffs, the
     // sunlight, the beach and the rainbow.
 
     /// (#407) Named by `Prose.endOfRainbow` — the same rainbow
     /// ``rainbowFromCanyonView`` names, seen from its end.
-    let rainbowAtEnd = Item {
-        name("rainbow")
-        description(Prose.rainbowArch)
-        scenery
-    }
+    let rainbowAtEnd = Item.backdrop("rainbow", description: Prose.rainbowArch)
 
     /// (#407) Named by `Prose.endOfRainbow`.
-    let fallsAtEnd = Item {
-        name("aragain falls")
-        adjectives("aragain")
-        synonyms("falls", "waterfall")
-        description(Prose.fallsFromBelow)
-        scenery
-    }
+    let fallsAtEnd = Item.backdrop(
+        "aragain falls", adjectives: ["aragain"], synonyms: ["falls", "waterfall"], description: Prose.fallsFromBelow)
 
     /// (#407) Named by `Prose.endOfRainbow`.
-    let cliffsAtEnd = Item {
-        name("white cliffs")
-        adjectives("white")
-        synonyms("cliffs", "cliff")
-        description(Prose.whiteCliffs)
-        scenery
-    }
+    let cliffsAtEnd = Item.backdrop(
+        "white cliffs", adjectives: ["white"], synonyms: ["cliffs", "cliff"], description: Prose.whiteCliffs)
 
     /// (#407) Named by `Prose.endOfRainbow`, where the light falls in from
     /// the open canyon overhead rather than through the forest's trunks.
-    let sunlightAtEnd = Item {
-        name("sunlight")
-        description(Prose.canyonSunlight)
-        scenery
-    }
+    let sunlightAtEnd = Item.backdrop("sunlight", description: Prose.canyonSunlight)
 
     /// (#407) Named by `Prose.endOfRainbow`.
-    let beachAtEnd = Item {
-        name("rocky beach")
-        adjectives("rocky", "small")
-        synonyms("beach")
-        description(Prose.riverBeach)
-        scenery
-    }
+    let beachAtEnd = Item.backdrop(
+        "rocky beach", adjectives: ["rocky", "small"], synonyms: ["beach"], description: Prose.riverBeach)
 
     // The Stone Barrow's paragraph names the barrow, its door and the tomb
     // behind it.
 
     /// (#407) Named by `Prose.stoneBarrow`.
-    let barrowStone = Item {
-        name("stone barrow")
-        adjectives("stone", "massive")
-        synonyms("barrow")
-        description(Prose.barrowStone)
-        scenery
-    }
+    let barrowStone = Item.backdrop(
+        "stone barrow", adjectives: ["stone", "massive"], synonyms: ["barrow"], description: Prose.barrowStone)
 
     /// (#407) Named by `Prose.stoneBarrow`.
-    let barrowDoor = Item {
-        name("stone door")
-        adjectives("stone", "huge")
-        synonyms("door")
-        description(Prose.barrowDoor)
-        scenery
-    }
+    let barrowDoor = Item.backdrop(
+        "stone door", adjectives: ["stone", "huge"], synonyms: ["door"], description: Prose.barrowDoor)
 
     /// (#407) Named by `Prose.stoneBarrow`.
-    let barrowTomb = Item {
-        name("tomb")
-        description(Prose.barrowTomb)
-        scenery
-    }
+    let barrowTomb = Item.backdrop("tomb", description: Prose.barrowTomb)
 
     // MARK: - Map
 

@@ -66,75 +66,60 @@ struct OperaHouse: Game {
         wearable
     }
 
-    let hook = Item {
-        name("small brass hook")
-        adjectives("small", "brass")
-        synonyms("peg", "hooks")
+    let hook = Item.backdrop(
+        "small brass hook",
+        adjectives: ["small", "brass"],
+        synonyms: ["peg", "hooks"]
+    ) {
         firstSight("A small brass hook is on the wall.")
-        scenery
         surface
     }
 
     /// Scenery for the nouns the foyer's description prints — the defect
     /// class #407 was filed for. The bar's `opulence` stays deliberately
     /// unanswerable: it is an abstract, not a fitting.
-    let hallFittings = Item {
-        name("spacious hall")
-        adjectives("spacious")
-        synonyms("hall")
-        description(
+    let hallFittings = Item.backdrop(
+        "spacious hall",
+        adjectives: ["spacious"],
+        synonyms: ["hall"],
+        description:
             """
             You are standing in the hall itself, splendidly decorated in red
             and gold.
-            """)
-        scenery
-    }
+            """
+    )
 
-    let chandeliers = Item {
-        name("glittering chandelier")
-        adjectives("glittering")
-        synonyms("chandeliers", "chandelier")
-        description("Glittering chandeliers hang overhead.")
-        scenery
-    }
+    let chandeliers = Item.backdrop(
+        "glittering chandelier", adjectives: ["glittering"], synonyms: ["chandeliers", "chandelier"],
+        description: "Glittering chandeliers hang overhead.")
 
-    let gildedDecor = Item {
-        name("gold decoration")
-        synonyms("gold", "red", "gilt")
-        description("The walls are splendidly decorated in red and gold.")
-        scenery
-    }
+    let gildedDecor = Item.backdrop(
+        "gold decoration", synonyms: ["gold", "red", "gilt"],
+        description: "The walls are splendidly decorated in red and gold.")
 
-    let streetDoors = Item {
-        name("street entrance")
-        synonyms("street")
-        description("The entrance from the street is to the north; the street itself is behind it.")
-        scenery
-    }
+    let streetDoors = Item.backdrop(
+        "street entrance", synonyms: ["street"],
+        description: "The entrance from the street is to the north; the street itself is behind it.")
 
-    let doorways = Item {
-        name("doorway")
-        synonyms("doorways", "doorway")
-        description("There are doorways south and west.")
-        scenery
-    }
+    let doorways = Item.backdrop(
+        "doorway", synonyms: ["doorways", "doorway"], description: "There are doorways south and west.")
 
-    let message = Item {
-        name("scrawled message")
-        adjectives("scrawled")
-        synonyms("sawdust", "floor")
+    let message = Item.backdrop(
+        "scrawled message",
+        adjectives: ["scrawled"],
+        synonyms: ["sawdust", "floor"],
+        description:
+            """
+            The message, neatly marked in the sawdust, reads...
+
+                "You win."
+            """
+    ) {
         firstSight(
             """
             There seems to be some sort of message scrawled in the sawdust
             on the floor.
             """)
-        description(
-            """
-            The message, neatly marked in the sawdust, reads...
-
-                "You win."
-            """)
-        scenery
     }
 
     // MARK: - State

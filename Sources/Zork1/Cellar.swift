@@ -74,11 +74,7 @@ struct ZorkCellar: GameContent {
 
     // MARK: - Items
 
-    let chasm = Item {
-        name("chasm")
-        description(Prose.chasm)
-        scenery
-    }
+    let chasm = Item.backdrop("chasm", description: Prose.chasm)
 
     let painting = Item {
         name("painting")
@@ -98,86 +94,39 @@ struct ZorkCellar: GameContent {
     /// (#407) Named by `Prose.gallery` — narrative, not a fixture, but the
     /// engine's rule is that every noun a room description prints must be
     /// answerable.
-    let vandals = Item {
-        name("vandals")
-        description(Prose.galleryVandals)
-        scenery
-    }
+    let vandals = Item.backdrop("vandals", description: Prose.galleryVandals)
 
     /// (#407) Named by `Prose.studio`.
-    let studioFireplace = Item {
-        name("fireplace")
-        description(Prose.studioFireplace)
-        scenery
-    }
+    let studioFireplace = Item.backdrop("fireplace", description: Prose.studioFireplace)
 
     /// (#407) Named by `Prose.studio`.
-    let studioDoor = Item {
-        name("open door")
-        adjectives("open")
-        synonyms("door")
-        description(Prose.studioDoor)
-        scenery
-    }
+    let studioDoor = Item.backdrop("open door", adjectives: ["open"], synonyms: ["door"], description: Prose.studioDoor)
 
     /// (#407) Named by `Prose.studio` — the paints and the splattered walls
     /// and floors they cover are one fixture.
-    let studioPaints = Item {
-        name("splattered walls")
-        adjectives("splattered")
-        synonyms("paints", "paint", "walls", "wall", "floors", "floor")
-        description(Prose.studioPaints)
-        scenery
-    }
+    let studioPaints = Item.backdrop(
+        "splattered walls", adjectives: ["splattered"],
+        synonyms: ["paints", "paint", "walls", "wall", "floors", "floor"], description: Prose.studioPaints)
 
     /// (#407) Named by `Prose.trollRoom`.
-    let bloodstains = Item {
-        name("bloodstains")
-        synonyms("stains", "blood")
-        description(Prose.trollBloodstains)
-        scenery
-    }
+    let bloodstains = Item.backdrop("bloodstains", synonyms: ["stains", "blood"], description: Prose.trollBloodstains)
 
     /// (#407) Named by `Prose.trollRoom`.
-    let scratches = Item {
-        name("deep scratches")
-        adjectives("deep")
-        synonyms("scratches", "scratch")
-        description(Prose.trollScratches)
-        scenery
-    }
+    let scratches = Item.backdrop(
+        "deep scratches", adjectives: ["deep"], synonyms: ["scratches", "scratch"], description: Prose.trollScratches)
 
     /// (#407) Named by `Prose.trollRoom`.
-    let forbiddingHole = Item {
-        name("forbidding hole")
-        adjectives("forbidding")
-        synonyms("hole")
-        description(Prose.trollHole)
-        scenery
-    }
+    let forbiddingHole = Item.backdrop(
+        "forbidding hole", adjectives: ["forbidding"], synonyms: ["hole"], description: Prose.trollHole)
 
     /// (#407) Named by `Prose.eastOfChasm`, beyond the audit's list.
-    let chasmPassage = Item {
-        name("narrow passage")
-        adjectives("narrow")
-        synonyms("passage")
-        description(Prose.chasmPassage)
-        scenery
-    }
+    let chasmPassage = Item.backdrop(
+        "narrow passage", adjectives: ["narrow"], synonyms: ["passage"], description: Prose.chasmPassage)
 
     /// (#407) Named by `Prose.eastOfChasm`, beyond the audit's list.
-    let chasmPath = Item {
-        name("path")
-        description(Prose.chasmPath)
-        scenery
-    }
+    let chasmPath = Item.backdrop("path", description: Prose.chasmPath)
 
-    let chimney = Item {
-        name("chimney")
-        adjectives("dark", "narrow")
-        description(Prose.chimney)
-        scenery
-    }
+    let chimney = Item.backdrop("chimney", adjectives: ["dark", "narrow"], description: Prose.chimney)
 
     // MARK: - Map
 

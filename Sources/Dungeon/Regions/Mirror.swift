@@ -119,19 +119,9 @@ struct DungeonMirror: GameContent {
 
     // MARK: - Items
 
-    let mirrorNorth = Item {
-        name("mirror")
-        adjectives("enormous", "large")
-        synonyms("reflection", "glass")
-        scenery
-    }
+    let mirrorNorth = Item.backdrop("mirror", adjectives: ["enormous", "large"], synonyms: ["reflection", "glass"])
 
-    let mirrorSouth = Item {
-        name("mirror")
-        adjectives("enormous", "large")
-        synonyms("reflection", "glass")
-        scenery
-    }
+    let mirrorSouth = Item.backdrop("mirror", adjectives: ["enormous", "large"], synonyms: ["reflection", "glass"])
 
     /// The ceiling answers for the ceiling. It used to carry `wall`, `walls`,
     /// `exits` and `exit` as well, so the room's own printed nouns — "the south
@@ -140,97 +130,55 @@ struct DungeonMirror: GameContent {
     /// right when the word names what the thing *is* and wrong when it names
     /// something the thing is merely near; the walls are ``mirrorRoomNorthWall``
     /// and ``mirrorRoomSouthWall`` now. (#350)
-    let mirrorRoomNorthCeiling = Item {
-        name("tall ceiling")
-        adjectives("tall")
-        synonyms("ceilings", "ceiling")
-        description(Prose.mirrorRoomCeiling)
-        scenery
-    }
+    let mirrorRoomNorthCeiling = Item.backdrop(
+        "tall ceiling", adjectives: ["tall"], synonyms: ["ceilings", "ceiling"], description: Prose.mirrorRoomCeiling)
 
-    let mirrorRoomSouthCeiling = Item {
-        name("tall ceiling")
-        adjectives("tall")
-        synonyms("ceilings", "ceiling")
-        description(Prose.mirrorRoomCeiling)
-        scenery
-    }
+    let mirrorRoomSouthCeiling = Item.backdrop(
+        "tall ceiling", adjectives: ["tall"], synonyms: ["ceilings", "ceiling"], description: Prose.mirrorRoomCeiling)
 
     /// The four walls of a Mirror Room, one item per room. Named `south wall`
     /// because that is the phrase the room's paragraph prints, and the
     /// adjective is what makes the printed phrase answer; `wall`, `walls` and
     /// `sides` reach the same fitting, because the paragraph's other clause
     /// counts the room's sides rather than naming a second feature. (#350)
-    let mirrorRoomNorthWall = Item {
-        name("south wall")
-        adjectives("south", "square")
-        synonyms("wall", "walls", "sides", "side", "exits", "exit")
-        description(Prose.mirrorRoomWall)
-        scenery
-    }
+    let mirrorRoomNorthWall = Item.backdrop(
+        "south wall", adjectives: ["south", "square"], synonyms: ["wall", "walls", "sides", "side", "exits", "exit"],
+        description: Prose.mirrorRoomWall)
 
-    let mirrorRoomSouthWall = Item {
-        name("south wall")
-        adjectives("south", "square")
-        synonyms("wall", "walls", "sides", "side", "exits", "exit")
-        description(Prose.mirrorRoomWall)
-        scenery
-    }
+    let mirrorRoomSouthWall = Item.backdrop(
+        "south wall", adjectives: ["south", "square"], synonyms: ["wall", "walls", "sides", "side", "exits", "exit"],
+        description: Prose.mirrorRoomWall)
 
-    let caveNorthStairway = Item {
-        name("staircase")
-        synonyms("stairway", "stairs", "entrance")
-        description(Prose.caveStairway)
-        scenery
-    }
+    let caveNorthStairway = Item.backdrop(
+        "staircase", synonyms: ["stairway", "stairs", "entrance"], description: Prose.caveStairway)
 
-    let caveSouthStairway = Item {
-        name("staircase")
-        adjectives("dark", "forbidding")
-        synonyms("stairway", "stairs", "entrances", "entrance")
-        description(Prose.caveStairway)
-        scenery
-    }
+    let caveSouthStairway = Item.backdrop(
+        "staircase", adjectives: ["dark", "forbidding"], synonyms: ["stairway", "stairs", "entrances", "entrance"],
+        description: Prose.caveStairway)
 
-    let steepCrawlwayWalls = Item {
-        name("crawlway")
-        adjectives("steep", "narrow")
-        synonyms("walls", "wall", "rock", "ways", "way")
-        description(Prose.crawlwayWalls)
-        scenery
-    }
+    let steepCrawlwayWalls = Item.backdrop(
+        "crawlway", adjectives: ["steep", "narrow"], synonyms: ["walls", "wall", "rock", "ways", "way"],
+        description: Prose.crawlwayWalls)
 
-    let narrowCrawlwayWalls = Item {
-        name("crawlway")
-        adjectives("narrow")
-        synonyms("walls", "wall", "rock", "branch", "branches", "end")
-        description(Prose.crawlwayWalls)
-        scenery
-    }
+    let narrowCrawlwayWalls = Item.backdrop(
+        "crawlway", adjectives: ["narrow"], synonyms: ["walls", "wall", "rock", "branch", "branches", "end"],
+        description: Prose.crawlwayWalls)
 
-    let coldPassageWalls = Item {
-        name("corridor")
-        adjectives("cold", "damp")
-        synonyms("passageway", "passage", "path", "walls", "wall")
-        description(Prose.crawlwayWalls)
-        scenery
-    }
+    let coldPassageWalls = Item.backdrop(
+        "corridor", adjectives: ["cold", "damp"], synonyms: ["passageway", "passage", "path", "walls", "wall"],
+        description: Prose.crawlwayWalls)
 
     /// Described by ``Dungeon/whirringRules``, for the reason ``windingPassage``
     /// gives: the sound is the Round Room's, and it can stop.
-    let whirring = Item {
-        name("whirring")
-        adjectives("faint")
-        synonyms("whir", "sound", "machinery", "rock", "wall")
-        scenery
-    }
+    let whirring = Item.backdrop(
+        "whirring", adjectives: ["faint"], synonyms: ["whir", "sound", "machinery", "rock", "wall"])
 
-    let atlantisWalls = Item {
-        name("ancient walls")
-        adjectives("ancient")
-        synonyms("wall", "walls", "water", "room", "shore")
-        description(Prose.atlantisWalls)
-        scenery
+    let atlantisWalls = Item.backdrop(
+        "ancient walls",
+        adjectives: ["ancient"],
+        synonyms: ["wall", "walls", "water", "room", "shore"],
+        description: Prose.atlantisWalls
+    ) {
         plural
     }
 
@@ -247,13 +195,9 @@ struct DungeonMirror: GameContent {
         trait(.depositValue, 11)
     }
 
-    let graniteWallLettering = Item {
-        name("granite wall")
-        adjectives("granite", "south")
-        synonyms("letters", "lettering", "wall", "walls", "rock")
-        description(Prose.graniteWallLettering)
-        scenery
-    }
+    let graniteWallLettering = Item.backdrop(
+        "granite wall", adjectives: ["granite", "south"], synonyms: ["letters", "lettering", "wall", "walls", "rock"],
+        description: Prose.graniteWallLettering)
 
     /// The chute down to the Cellar. `opening` and `chamber` used to be
     /// synonyms of it, and the room's paragraph distinguishes three things in
@@ -261,34 +205,21 @@ struct DungeonMirror: GameContent {
     /// and a small opening north. Both words named something the slide is near
     /// rather than what it is, so `x opening` described the north hole as a
     /// chute. They are ``slideRoomOpening`` and ``slideRoomChamber`` now. (#350)
-    let metalSlide = Item {
-        name("metal slide")
-        adjectives("steep", "metal")
-        synonyms("slide", "chute")
-        description(Prose.metalSlide)
-        scenery
-    }
+    let metalSlide = Item.backdrop(
+        "metal slide", adjectives: ["steep", "metal"], synonyms: ["slide", "chute"], description: Prose.metalSlide)
 
     /// The way north onto the Mine Entrance — a real and separate exit, which
     /// is why answering about it with the chute's description was a positive
     /// misdescription rather than a stand-in. (#350)
-    let slideRoomOpening = Item {
-        name("small opening")
-        adjectives("small")
-        synonyms("opening", "hole", "gap")
-        description(Prose.slideRoomOpening)
-        scenery
-    }
+    let slideRoomOpening = Item.backdrop(
+        "small opening", adjectives: ["small"], synonyms: ["opening", "hole", "gap"],
+        description: Prose.slideRoomOpening)
 
     /// The room itself, which its own first sentence calls a chamber and part
     /// of a coal mine. (#350)
-    let slideRoomChamber = Item {
-        name("chamber")
-        adjectives("small", "coal")
-        synonyms("mine", "room", "workings")
-        description(Prose.slideRoomChamber)
-        scenery
-    }
+    let slideRoomChamber = Item.backdrop(
+        "chamber", adjectives: ["small", "coal"], synonyms: ["mine", "room", "workings"],
+        description: Prose.slideRoomChamber)
 
     // MARK: - Map
 

@@ -126,12 +126,12 @@ struct DungeonBank: GameContent {
 
     // MARK: - Items
 
-    let bankSigns = Item {
-        name("signs")
-        adjectives("painted")
-        synonyms("sign", "arrows", "arrow", "furniture")
-        description(Prose.bankSigns)
-        scenery
+    let bankSigns = Item.backdrop(
+        "signs",
+        adjectives: ["painted"],
+        synonyms: ["sign", "arrows", "arrow", "furniture"],
+        description: Prose.bankSigns
+    ) {
         plural
     }
 
@@ -139,13 +139,9 @@ struct DungeonBank: GameContent {
     let eastTellerCounter = Self.tellerCounter()
 
     private static func tellerCounter() -> Item {
-        Item {
-            name("stone counter")
-            adjectives("stone", "brass")
-            synonyms("counter", "grille", "slot", "station")
-            description(Prose.tellerCounter)
-            scenery
-        }
+        Item.backdrop(
+            "stone counter", adjectives: ["stone", "brass"], synonyms: ["counter", "grille", "slot", "station"],
+            description: Prose.tellerCounter)
     }
 
     let westTellerDoorways = Self.tellerDoorways("west")
@@ -156,12 +152,12 @@ struct DungeonBank: GameContent {
     /// what made the denial here read as a bug rather than as a missing word.
     /// (#332)
     private static func tellerDoorways(_ side: String) -> Item {
-        Item {
-            name("doorways")
-            adjectives("large", "wide")
-            synonyms("doorway", "doorways", "door", "doors")
-            description(Prose.tellerDoorways(side))
-            scenery
+        Item.backdrop(
+            "doorways",
+            adjectives: ["large", "wide"],
+            synonyms: ["doorway", "doorways", "door", "doors"],
+            description: Prose.tellerDoorways(side)
+        ) {
             plural
         }
     }
@@ -172,37 +168,25 @@ struct DungeonBank: GameContent {
     /// And the room the large one opens into, which both stations name and
     /// neither could answer for.
     private static func depositoryFromTheTeller() -> Item {
-        Item {
-            name("depository")
-            adjectives("safety")
-            synonyms("depository", "strongroom")
-            description(Prose.depositoryFromTheTeller)
-            scenery
-        }
+        Item.backdrop(
+            "depository", adjectives: ["safety"], synonyms: ["depository", "strongroom"],
+            description: Prose.depositoryFromTheTeller)
     }
 
     let westViewingSign = Self.viewingSign()
     let eastViewingSign = Self.viewingSign()
 
     private static func viewingSign() -> Item {
-        Item {
-            name("sign")
-            adjectives("printed")
-            synonyms("notice", "sign", "writing")
-            description(Prose.viewingRoomSign)
-            scenery
-        }
+        Item.backdrop(
+            "sign", adjectives: ["printed"], synonyms: ["notice", "sign", "writing"], description: Prose.viewingRoomSign
+        )
     }
 
     /// `VAULT`. The stone cube in the middle of the Depository, and the only
     /// thing in the room that says what is behind the curtain.
-    let stoneCube = Item {
-        name("large stone cube")
-        adjectives("large", "stone", "grey")
-        synonyms("cube", "lettering", "letters", "block")
-        description(Prose.stoneCube)
-        scenery
-    }
+    let stoneCube = Item.backdrop(
+        "large stone cube", adjectives: ["large", "stone", "grey"],
+        synonyms: ["cube", "lettering", "letters", "block"], description: Prose.stoneCube)
 
     /// `SCOL`. Carries *wall* in its vocabulary as well as its own name,
     /// because the atlas puts `WALL-NBIT` on `BKBOX` too and the room's own
@@ -213,44 +197,37 @@ struct DungeonBank: GameContent {
     /// Described by a rule rather than a constant, for the same reason: the
     /// curtain moves, and the sentence is about where it is standing. See
     /// ``rules``.
-    let curtain = Item {
-        name("shimmering curtain of light")
-        adjectives("shimmering")
-        synonyms("curtain", "light", "wall")
-        scenery
-    }
+    let curtain = Item.backdrop(
+        "shimmering curtain of light", adjectives: ["shimmering"], synonyms: ["curtain", "light", "wall"])
 
     /// The east and west walls, which is not the north one. ``curtain`` keeps
     /// singular `wall` — it is the thing standing where that wall ought to be —
     /// and this takes the plural the room actually prints. `boxes` and not
     /// `box`: the dented steel box and the mailbox both travel. (#233)
-    let depositoryWalls = Item {
-        name("walls")
-        adjectives("side", "east", "west", "eastern", "western")
-        synonyms("walls", "boxes")
-        description(Prose.depositoryWalls)
-        scenery
+    let depositoryWalls = Item.backdrop(
+        "walls",
+        adjectives: ["side", "east", "west", "eastern", "western"],
+        synonyms: ["walls", "boxes"],
+        description: Prose.depositoryWalls
+    ) {
         plural
     }
 
     /// And the room's other printed plural: "To the east, west, and south of
     /// the room are large doorways." No `door` — nothing in this room has one.
-    let depositoryDoorways = Item {
-        name("doorways")
-        adjectives("large")
-        synonyms("doorway", "doorways")
-        description(Prose.depositoryDoorways)
-        scenery
+    let depositoryDoorways = Item.backdrop(
+        "doorways",
+        adjectives: ["large"],
+        synonyms: ["doorway", "doorways"],
+        description: Prose.depositoryDoorways
+    ) {
         plural
     }
 
-    let officeWreckage = Item {
-        name("wreckage")
-        adjectives("vandalized", "broken")
-        synonyms("desk", "chair", "drawers", "paint", "furniture", "wall")
-        description(Prose.chairmansOfficeWreckage)
-        scenery
-    }
+    let officeWreckage = Item.backdrop(
+        "wreckage", adjectives: ["vandalized", "broken"],
+        synonyms: ["desk", "chair", "drawers", "paint", "furniture", "wall"], description: Prose.chairmansOfficeWreckage
+    )
 
     /// `BILLS`. Ten to find and fifteen to case — the largest single treasure
     /// this milestone adds.
@@ -286,13 +263,9 @@ struct DungeonBank: GameContent {
     /// it to a line each, and the PR that landed this milestone files it as
     /// further evidence for the feature the atlas's Globals section describes.
     private static func bankWall(_ face: String) -> Item {
-        Item {
-            name("\(face)ern wall")
-            adjectives(face, "\(face)ern")
-            synonyms("wall", "walls")
-            description(Prose.bankWall(face))
-            scenery
-        }
+        Item.backdrop(
+            "\(face)ern wall", adjectives: [face, "\(face)ern"], synonyms: ["wall", "walls"],
+            description: Prose.bankWall(face))
     }
 
     let westViewingNorthWall = Self.bankWall("north")

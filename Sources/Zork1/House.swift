@@ -50,11 +50,11 @@ struct ZorkHouse: GameContent {
     /// The door between `ZorkAboveGround.behindHouse` and `kitchen`. Starts
     /// closed; "slightly ajar" (Prose.kitchenWindow) is flavor text, not a
     /// distinct open/closed state of its own.
-    let window = Item {
-        name("kitchen window")
-        adjectives("kitchen", "narrow")
+    let window = Item.backdrop(
+        "kitchen window",
+        adjectives: ["kitchen", "narrow"]
+    ) {
         openable
-        scenery
     }
 
     let sack = Item {
@@ -98,96 +98,52 @@ struct ZorkHouse: GameContent {
     // MARK: - (#407) scenery: nouns the room prose prints
 
     /// (#407) Named by `Prose.kitchen(windowOpen:)`.
-    let kitchenTable = Item {
-        name("kitchen table")
-        adjectives("kitchen", "wooden")
-        synonyms("table")
-        description(Prose.kitchenTable)
+    let kitchenTable = Item.backdrop(
+        "kitchen table",
+        adjectives: ["kitchen", "wooden"],
+        synonyms: ["table"],
+        description: Prose.kitchenTable
+    ) {
         surface
-        scenery
     }
 
     /// (#407) Named by `Prose.kitchen(windowOpen:)`.
-    let kitchenStaircase = Item {
-        name("dark staircase")
-        adjectives("dark")
-        synonyms("stairway", "stairs")
-        description(Prose.kitchenStaircase)
-        scenery
-    }
+    let kitchenStaircase = Item.backdrop(
+        "dark staircase", adjectives: ["dark"], synonyms: ["stairway", "stairs"], description: Prose.kitchenStaircase)
 
     /// (#407) Named by `Prose.kitchen(windowOpen:)`.
-    let kitchenPassage = Item {
-        name("passage")
-        description(Prose.kitchenPassage)
-        scenery
-    }
+    let kitchenPassage = Item.backdrop("passage", description: Prose.kitchenPassage)
 
     /// (#407) Named by `Prose.kitchen(windowOpen:)`. The Studio's chimney is
     /// a ``ZorkCellar`` item in another room; this is the kitchen's own flue.
-    let kitchenChimney = Item {
-        name("dark chimney")
-        adjectives("dark")
-        synonyms("chimney")
-        description(Prose.kitchenChimney)
-        scenery
-    }
+    let kitchenChimney = Item.backdrop(
+        "dark chimney", adjectives: ["dark"], synonyms: ["chimney"], description: Prose.kitchenChimney)
 
     /// (#407) Named by `Prose.livingRoom`.
-    let livingRoomDoorway = Item {
-        name("doorway")
-        description(Prose.livingRoomDoorway)
-        scenery
-    }
+    let livingRoomDoorway = Item.backdrop("doorway", description: Prose.livingRoomDoorway)
 
     /// (#407) Named by `Prose.livingRoom` — the west door, not the trap door.
-    let livingRoomDoor = Item {
-        name("wooden door")
-        adjectives("wooden")
-        description(Prose.livingRoomDoor)
-        scenery
-    }
+    let livingRoomDoor = Item.backdrop("wooden door", adjectives: ["wooden"], description: Prose.livingRoomDoor)
 
     /// (#407) Named by `Prose.livingRoom`.
-    let gothicLettering = Item {
-        name("gothic lettering")
-        adjectives("gothic", "strange")
-        synonyms("lettering", "letters", "writing")
-        description(Prose.gothicLettering)
-        scenery
-    }
+    let gothicLettering = Item.backdrop(
+        "gothic lettering", adjectives: ["gothic", "strange"], synonyms: ["lettering", "letters", "writing"],
+        description: Prose.gothicLettering)
 
     /// (#407) Named by `Prose.attic`.
-    let atticStairway = Item {
-        name("stairway")
-        description(Prose.atticStairway)
-        scenery
-    }
+    let atticStairway = Item.backdrop("stairway", description: Prose.atticStairway)
 
     /// (#407) Named by `Prose.cellar`.
-    let cellarPassageway = Item {
-        name("narrow passageway")
-        adjectives("narrow")
-        synonyms("passageway", "passage")
-        description(Prose.cellarPassageway)
-        scenery
-    }
+    let cellarPassageway = Item.backdrop(
+        "narrow passageway", adjectives: ["narrow"], synonyms: ["passageway", "passage"],
+        description: Prose.cellarPassageway)
 
     /// (#407) Named by `Prose.cellar`.
-    let cellarCrawlway = Item {
-        name("crawlway")
-        description(Prose.cellarCrawlway)
-        scenery
-    }
+    let cellarCrawlway = Item.backdrop("crawlway", description: Prose.cellarCrawlway)
 
     /// (#407) Named by `Prose.cellar`.
-    let cellarRamp = Item {
-        name("steep metal ramp")
-        adjectives("steep", "metal")
-        synonyms("ramp")
-        description(Prose.cellarRamp)
-        scenery
-    }
+    let cellarRamp = Item.backdrop(
+        "steep metal ramp", adjectives: ["steep", "metal"], synonyms: ["ramp"], description: Prose.cellarRamp)
 
     // MARK: - Living Room
 
@@ -225,12 +181,7 @@ struct ZorkHouse: GameContent {
 
     /// Pushing the rug reveals the hidden trap door — the same Task 4
     /// acceptance pattern the leaves/grating pair in `ZorkAboveGround` uses.
-    let rug = Item {
-        name("oriental rug")
-        adjectives("oriental")
-        description(Prose.rug)
-        scenery
-    }
+    let rug = Item.backdrop("oriental rug", adjectives: ["oriental"], description: Prose.rug)
 
     /// Shared between `livingRoom` and the stub `cellar`: opening it from
     /// either side is the same state, so the classic "trap door slams shut
@@ -238,11 +189,11 @@ struct ZorkHouse: GameContent {
     /// Whether the bolt above is actually thrown is `trapDoorBarred` —
     /// set and cleared by the host's thief rules (`Zork1.rules`), since
     /// the bar spans this bundle's door and `ZorkCellar`'s thief.
-    let trapDoor = Item {
-        name("trap door")
-        description(Prose.trapDoor)
+    let trapDoor = Item.backdrop(
+        "trap door",
+        description: Prose.trapDoor
+    ) {
         openable
-        scenery
         hidden
     }
 
@@ -253,12 +204,10 @@ struct ZorkHouse: GameContent {
     /// Its examine text — empty vs. holding the egg — is a `describe` rule.
     /// The egg lives in `ZorkAboveGround`, so that rule is cross-bundle and
     /// the host declares it (`Zork1.rules`), not this bundle.
-    let trophyCase = Item {
-        name("trophy case")
+    let trophyCase = Item.backdrop("trophy case") {
         container
         openable
         transparent
-        scenery
     }
 
     /// The golden clockwork canary nested inside the egg. Intact only while

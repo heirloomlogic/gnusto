@@ -220,13 +220,13 @@ struct DungeonRiver: GameContent {
 
     /// The thing you dig. `container` so `search sand` answers as a search
     /// rather than as the engine's refusal.
-    let sand = Item {
-        name("sand")
-        adjectives("sandy")
-        synonyms("sand", "beach", "ground", "shore")
-        description(Prose.sand)
+    let sand = Item.backdrop(
+        "sand",
+        adjectives: ["sandy"],
+        synonyms: ["sand", "beach", "ground", "shore"],
+        description: Prose.sand
+    ) {
         container
-        scenery
     }
 
     /// Ten to find and **thirteen** to case — the mainframe's own values, and
@@ -305,12 +305,12 @@ struct DungeonRiver: GameContent {
     /// The Frigid River, seen from the eight rooms that name it. Each takes
     /// the nouns its own description prints.
     private static func riverScenery(_ adjective: String, _ nouns: ItemTrait) -> Item {
-        Item {
-            name("river")
-            adjectives("frigid", adjective)
+        Item.backdrop(
+            "river",
+            adjectives: ["frigid", adjective],
+            description: Prose.frigidRiverHere
+        ) {
             nouns
-            description(Prose.frigidRiverHere)
-            scenery
         }
     }
 
@@ -325,12 +325,12 @@ struct DungeonRiver: GameContent {
         _ nouns: ItemTrait,
         _ text: String = Prose.whiteCliffsFromBelow
     ) -> Item {
-        Item {
-            name("white cliffs")
-            adjectives("white", adjective)
+        Item.backdrop(
+            "white cliffs",
+            adjectives: ["white", adjective],
+            description: text
+        ) {
             nouns
-            description(text)
-            scenery
             plural
         }
     }
@@ -339,22 +339,17 @@ struct DungeonRiver: GameContent {
     /// is a rule rather than a constant, because whether it is solid is a
     /// thing you can see about it.
     private static func rainbowScenery(_ nouns: ItemTrait) -> Item {
-        Item {
-            name("rainbow")
-            adjectives("beautiful", "solid")
+        Item.backdrop(
+            "rainbow",
+            adjectives: ["beautiful", "solid"]
+        ) {
             nouns
-            scenery
         }
     }
 
     private static func deadEndScenery() -> Item {
-        Item {
-            name("rock")
-            adjectives("blank")
-            synonyms("rock", "wall", "passage")
-            description(Prose.deadEndWall)
-            scenery
-        }
+        Item.backdrop(
+            "rock", adjectives: ["blank"], synonyms: ["rock", "wall", "passage"], description: Prose.deadEndWall)
     }
 
     /// Six bank rooms name a path and not one of them modelled it, so `x path`
@@ -363,13 +358,8 @@ struct DungeonRiver: GameContent {
     /// nouns are fixed and the text is the parameter, because every one of them
     /// is a path and the whole of what differs is where it goes. (#286)
     private static func pathScenery(_ text: String) -> Item {
-        Item {
-            name("path")
-            adjectives("beaten", "narrow")
-            synonyms("path", "track", "trail")
-            description(text)
-            scenery
-        }
+        Item.backdrop(
+            "path", adjectives: ["beaten", "narrow"], synonyms: ["path", "track", "trail"], description: text)
     }
 
     /// Aragain Falls, from the three rooms that name it — the lip you stand on
@@ -377,12 +367,12 @@ struct DungeonRiver: GameContent {
     /// answering for the water it crosses in both of the latter, which is the
     /// near thing speaking for the far one. (#286)
     private static func fallsScenery(_ nouns: ItemTrait) -> Item {
-        Item {
-            name("waterfall")
-            adjectives("enormous", "aragain")
+        Item.backdrop(
+            "waterfall",
+            adjectives: ["enormous", "aragain"],
+            description: Prose.aragainFallsItself
+        ) {
             nouns
-            description(Prose.aragainFallsItself)
-            scenery
         }
     }
 
@@ -403,12 +393,7 @@ struct DungeonRiver: GameContent {
     /// name it as something upstream. ``DungeonDam``'s own dam is the one you
     /// stand on; this is the one you are being carried away from.
     private static func damFromTheWater() -> Item {
-        Item {
-            name("dam")
-            adjectives("flood", "control", "abandoned")
-            description(Prose.damFromTheWater)
-            scenery
-        }
+        Item.backdrop("dam", adjectives: ["flood", "control", "abandoned"], description: Prose.damFromTheWater)
     }
 
     /// The landing on the west shore — small on River-1, large on River-5, and
@@ -416,25 +401,21 @@ struct DungeonRiver: GameContent {
     private static func landingScenery(
         _ size: String, _ nouns: ItemTrait = synonyms("landing")
     ) -> Item {
-        Item {
-            name("landing")
-            adjectives(size)
+        Item.backdrop(
+            "landing",
+            adjectives: [size],
+            description: Prose.riverLanding(size)
+        ) {
             nouns
-            description(Prose.riverLanding(size))
-            scenery
         }
     }
 
     /// The west bank, from a boat going past it. Four stretches print `shore`
     /// or `bank` and none of them modelled either.
     private static func westBankScenery() -> Item {
-        Item {
-            name("shore")
-            adjectives("west", "western")
-            synonyms("shore", "bank")
-            description(Prose.westBankFromTheWater)
-            scenery
-        }
+        Item.backdrop(
+            "shore", adjectives: ["west", "western"], synonyms: ["shore", "bank"],
+            description: Prose.westBankFromTheWater)
     }
 
     let damAtRiverOne = damFromTheWater()
@@ -449,31 +430,27 @@ struct DungeonRiver: GameContent {
     let bankAtRiverFive = westBankScenery()
 
     /// The rocks that are River-2's reason the west bank is no landing.
-    let rocksAtRiverTwo = Item {
-        name("rocks")
-        adjectives("large")
-        synonyms("rocks", "rock")
-        description(Prose.riverRocks)
-        scenery
+    let rocksAtRiverTwo = Item.backdrop(
+        "rocks",
+        adjectives: ["large"],
+        synonyms: ["rocks", "rock"],
+        description: Prose.riverRocks
+    ) {
         plural
     }
 
     /// The valley River-3 descends into.
-    let valleyAtRiverThree = Item {
-        name("valley")
-        description(Prose.riverValley)
-        scenery
-    }
+    let valleyAtRiverThree = Item.backdrop("valley", description: Prose.riverValley)
 
     /// The strip of beach under the east cliffs, from the water. River-3 calls
     /// it narrow and River-4 calls it a small area; it is the same sand.
     private static func eastBeachScenery(_ nouns: ItemTrait = synonyms("beach")) -> Item {
-        Item {
-            name("beach")
-            adjectives("narrow", "east", "eastern", "small")
+        Item.backdrop(
+            "beach",
+            adjectives: ["narrow", "east", "eastern", "small"],
+            description: Prose.beachFromTheWater
+        ) {
             nouns
-            description(Prose.beachFromTheWater)
-            scenery
         }
     }
 
@@ -481,13 +458,9 @@ struct DungeonRiver: GameContent {
     let beachAtRiverFour = eastBeachScenery(synonyms("beach", "area"))
 
     /// And River-4's other one, which is the sand you can actually land on.
-    let sandyBeachAtRiverFour = Item {
-        name("sandy beach")
-        adjectives("sandy", "west", "western")
-        synonyms("beach", "sand", "shore")
-        description(Prose.sandyBeachFromTheWater)
-        scenery
-    }
+    let sandyBeachAtRiverFour = Item.backdrop(
+        "sandy beach", adjectives: ["sandy", "west", "western"], synonyms: ["beach", "sand", "shore"],
+        description: Prose.sandyBeachFromTheWater)
 
     private static func cliffsFromTheWater() -> Item {
         cliffScenery("sheer", synonyms("cliffs", "cliff"), Prose.cliffsFromTheWater)
@@ -534,62 +507,42 @@ struct DungeonRiver: GameContent {
     /// The ground the End of Rainbow stands you on, which its own first
     /// sentence is about and which the rainbow overhead was answering for.
     /// (#286)
-    let beachAtEndOfRainbow = Item {
-        name("beach")
-        adjectives("small", "rocky", "narrow")
-        synonyms("beach", "shore", "ground")
-        description(Prose.endOfRainbowBeach)
-        scenery
-    }
+    let beachAtEndOfRainbow = Item.backdrop(
+        "beach", adjectives: ["small", "rocky", "narrow"], synonyms: ["beach", "shore", "ground"],
+        description: Prose.endOfRainbowBeach)
 
     /// The White Cliffs from the third room that names them. The beach here is
     /// narrow *because* of them, so the word had to answer for something.
     /// (#286)
     let cliffsAtEndOfRainbow = cliffScenery("pale", synonyms("cliff", "cliffs"))
 
-    let canyonAtEndOfRainbow = Item {
-        name("river canyon")
-        adjectives("river")
-        synonyms("canyon", "sunlight", "river", "water", "walls", "wall")
-        description(Prose.riverCanyonHere)
-        scenery
-    }
+    let canyonAtEndOfRainbow = Item.backdrop(
+        "river canyon", adjectives: ["river"], synonyms: ["canyon", "sunlight", "river", "water", "walls", "wall"],
+        description: Prose.riverCanyonHere)
 
-    let caveAtSmallCave = Item {
-        name("cave")
-        adjectives("small", "low", "dry")
-        synonyms("cave", "exits", "exit", "walls", "wall")
-        description(Prose.caveMouth)
-        scenery
-    }
+    let caveAtSmallCave = Item.backdrop(
+        "cave", adjectives: ["small", "low", "dry"], synonyms: ["cave", "exits", "exit", "walls", "wall"],
+        description: Prose.caveMouth)
 
     /// The mouth Rocky Shore points at to the northwest. The river carried
     /// `cave`, `mouth` and `entrance`, which put a description of the water on
     /// the room's one working exit. (#286)
-    let caveAtRockyShore = Item {
-        name("cave")
-        adjectives("dark")
-        synonyms("cave", "mouth", "entrance", "opening")
-        description(Prose.caveMouthFromTheShore)
-        scenery
-    }
+    let caveAtRockyShore = Item.backdrop(
+        "cave", adjectives: ["dark"], synonyms: ["cave", "mouth", "entrance", "opening"],
+        description: Prose.caveMouthFromTheShore)
 
     /// The hole the beach's dig progression starts printing on the first turn
     /// of digging, and nothing modelled. Hidden until there is one. (#286)
-    let beachHole = Item {
-        name("hole")
-        synonyms("hole", "pit")
-        scenery
+    let beachHole = Item.backdrop(
+        "hole",
+        synonyms: ["hole", "pit"]
+    ) {
         hidden
     }
 
-    let chasmAtAncientChasm = Item {
-        name("chasm")
-        adjectives("ancient", "deep")
-        synonyms("chasm", "cave", "river", "passages", "passage")
-        description(Prose.ancientChasmItself)
-        scenery
-    }
+    let chasmAtAncientChasm = Item.backdrop(
+        "chasm", adjectives: ["ancient", "deep"], synonyms: ["chasm", "cave", "river", "passages", "passage"],
+        description: Prose.ancientChasmItself)
 
     // MARK: - State
 
