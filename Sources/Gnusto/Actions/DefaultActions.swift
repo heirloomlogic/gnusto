@@ -786,13 +786,15 @@ enum DefaultActions {
 
     /// Also used by the pipeline's end-of-game epilogue, so the score-report
     /// format lives in exactly one place.
+    ///
+    /// The numbers are read under the lock and the author's closure is called
+    /// *outside* it — the engine-wide rule, stated once in <doc:TheTurnPipeline>.
+    /// Calling it under the lock hung SCORE and the epilogue alike for any game
+    /// whose line read a `@Global`, which `Score` carrying only score, max and
+    /// moves is precisely the pressure to do. Issue #402.
     static func score(_ frame: TurnFrame) {
-        let line = frame.with { scratch in
-            frame.definition.text.scoreLine(
-                scratch.state.score,
-                frame.definition.maxScore,
-                scratch.state.moves)
-        }
+        let (points, moves) = frame.with { ($0.state.score, $0.state.moves) }
+        let line = frame.definition.text.scoreLine(points, frame.definition.maxScore, moves)
         frame.say(line)
     }
 
