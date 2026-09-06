@@ -191,8 +191,8 @@ the stock line — the player gets both. Promote a stub with ``reply(_:)`` or
 Not "item beats room". `before` rules run outside-in, so whoever `reply`s or
 `refuse`s **first** wins:
 
-0. Item `reach`
-1. World `beforeEachTurn`, then world `before`
+0. Item `reach` (for player commands; addressed orders skip reach rules)
+1. World `beforeEachTurn` and world `before`, interleaved in declaration order
 2. Location `beforeEachTurn`, then location `before`
 3. Item `before` — addressee, indirect object, then direct object
 4. The game's `actions` row for that intent, or the engine's stub line
