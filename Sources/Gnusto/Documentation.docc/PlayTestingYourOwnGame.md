@@ -50,6 +50,7 @@ A focus file is optional. When you add one, put it in `docs/games/` and name it 
 
 The harness comes from the resolved Gnusto dependency. `swift package update` can change it when it changes the engine, even if none of your game files changed. Record the resolved dependency when you compare rounds before and after an update.
 
-## Topics
+## See also
 
 - <doc:PlayTesting>
+- <doc:TestingYourGame>
