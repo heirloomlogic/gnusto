@@ -109,7 +109,7 @@ Worth knowing rather than working around: this is a discipline the engine keeps 
 | `enter(_:)` | an `onEnter` rule that enters the room it is already entering |
 | `reach { }` | a reach rule that asks whether something is reachable |
 
-Legitimate nesting is ordinary and passes: a chain of rooms whose `onEnter` rules pass the player along, or a lid whose reach rule is expressed in terms of its latch. What the counts catch is a cycle, and what they buy is a diagnostic naming the game, the entity and the shape of the mistake, where the failure was once an unattributed crash. The caps are measured against the tightest stack the engine runs in, not chosen — see the engine's `Reentry` type.
+Legitimate nesting is ordinary and passes: a chain of rooms whose `onEnter` rules pass the player along, or a lid whose reach rule is expressed in terms of its latch. What the counts catch is a cycle, and what they buy is a diagnostic naming the game, the entity and the shape of the mistake, where the failure was once an unattributed crash. Each cap is bracketed by measurement against the tightest stack the engine runs in — the depth where that stack actually gives out is known for all three, and every cap sits well under it — see the engine's `Reentry` type.
 
 > Note: How the turn's context is carried — an ambient task-local versus a context parameter threaded through every author-facing closure — is an open design question, and so is whether the discipline above should be a mechanism instead. Issue #402 holds both. What is written here is what the engine does today.
 

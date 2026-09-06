@@ -16,7 +16,11 @@ import Testing
 /// Both tests below are about the *lock*, not the wording. What they assert is
 /// that a turn which reads state from inside the line comes back at all.
 struct AmbientLockTests {
-    @Test("a score line that reads a global answers the SCORE verb")
+    // The time limits are the point of these two rather than decoration: the
+    // regression they guard is a *hang*, so without one a reintroduced deadlock
+    // burns the whole CI budget and reports no test name — exactly the failure
+    // mode issue #402 describes at the prompt.
+    @Test("a score line that reads a global answers the SCORE verb", .timeLimit(.minutes(1)))
     func scoreLineReadingAGlobalAnswersScore() async throws {
         let output = try await play(
             RankedScoreGame(),
@@ -28,7 +32,9 @@ struct AmbientLockTests {
         #expect(output.contains("Rank: Adept."))
     }
 
-    @Test("a score line that reads a global answers the end-of-game epilogue")
+    @Test(
+        "a score line that reads a global answers the end-of-game epilogue",
+        .timeLimit(.minutes(1)))
     func scoreLineReadingAGlobalAnswersTheEpilogue() async throws {
         // The second caller of `DefaultActions.score`, and the one a game
         // reaches without typing SCORE at all.

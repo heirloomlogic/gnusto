@@ -91,9 +91,11 @@ struct ReentryGuardTests {
         for seam in [Reentry.liveText, .walk, .reach] {
             #expect(seam.cap > Self.deepestObserved)
         }
-        // And they are genuinely different numbers — a describer level costs
-        // twenty times a walk level, so one cap for all three would have to be
-        // the smallest, rationing the cheap seams by the expensive one's ceiling.
+        // And the expensive seam is rationed harder than the cheap ones: a
+        // describer level costs twenty times a walk level, so a single cap for
+        // all three would have to be the describer's and would ration the other
+        // two by a ceiling that is not theirs. `walk` and `reach` share 32 —
+        // they are not distinct from each other, only from `liveText`.
         #expect(Reentry.walk.cap > Reentry.liveText.cap)
         #expect(Reentry.reach.cap > Reentry.liveText.cap)
     }
