@@ -36,7 +36,7 @@ Preflight fills in the values below. Keep those generated values unless you are 
 | `ledgerKeys` and `routedIssues` | Previously refuted finding keys to avoid re-reporting, and open issues that own a defect class and should receive forwarded symptoms. Preflight derives ledger keys; add routed issues only when they currently own the class. |
 | `verifyEffort` | Optional reasoning effort for the independent verifiers. This is the principal cost dial: verification fans out two raters per finding batch. Lower it only to fund more turns or charters, record that choice in the report, and expect less reliable refutation. |
 
-Other optional planning controls are `charters` (a comma-separated subset) and `rounds` or `dryRounds` (how many consecutive quiet rounds end the loop). They are absent from preflight's defaults, so add them only when that narrower plan is intentional.
+Other optional planning controls are `charters` (a comma-separated subset), `rounds` (the maximum total iterations), and `dryRounds` (how many consecutive quiet rounds end the loop). They are absent from preflight's defaults, so add them only when that narrower plan is intentional.
 
 ## The first round plays cold
 
