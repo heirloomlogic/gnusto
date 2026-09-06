@@ -160,36 +160,26 @@ struct DungeonVolcano: GameContent {
     }
 
     /// `CBAG`. Part of the basket, and not removable from it.
-    let clothBag = Item {
-        name("cloth bag")
-        adjectives("cloth", "enormous")
-        synonyms("bag", "envelope")
-        scenery
-    }
+    let clothBag = Item.backdrop("cloth bag", adjectives: ["cloth", "enormous"], synonyms: ["bag", "envelope"])
 
     /// `RECEP`. The fire goes in here, and whether its lid is open is what
     /// decides which way the balloon is going.
-    let receptacle = Item {
-        name("metal receptacle")
-        adjectives("metal", "shallow")
-        synonyms("receptacle", "pan", "lid")
-        description(Prose.receptacle)
+    let receptacle = Item.backdrop(
+        "metal receptacle",
+        adjectives: ["metal", "shallow"],
+        synonyms: ["receptacle", "pan", "lid"],
+        description: Prose.receptacle
+    ) {
         container
         openable
         startsOpen
         capacity(6)
-        scenery
     }
 
     /// `BROPE`. Spliced to the basket at one end; the other end is what makes a
     /// ledge safe to stand on.
-    let braidedWire = Item {
-        name("braided wire")
-        adjectives("braided")
-        synonyms("wire", "rope", "cable")
-        description(Prose.braidedWire)
-        scenery
-    }
+    let braidedWire = Item.backdrop(
+        "braided wire", adjectives: ["braided"], synonyms: ["wire", "rope", "cable"], description: Prose.braidedWire)
 
     /// `BLABE`. Drops into the basket the first time the bag fills.
     ///
@@ -324,27 +314,27 @@ struct DungeonVolcano: GameContent {
     /// `openable` and closed, so the crown does not list through the door: the
     /// two rules that answer `open` and `close` refuse both, and the blast sets
     /// `isOpen` itself.
-    let rustyBox = Item {
-        name("rusty box")
-        adjectives("rusty", "steel", "old")
-        synonyms("box", "safe")
+    let rustyBox = Item.backdrop(
+        "rusty box",
+        adjectives: ["rusty", "steel", "old"],
+        synonyms: ["box", "safe"]
+    ) {
         container
         openable
         capacity(15)
-        scenery
     }
 
     /// `SSLOT`. Somebody chipped it out of the front of the box and gave up.
     /// The brick fits it and nothing else in the game does.
-    let oblongHole = Item {
-        name("oblong hole")
-        adjectives("oblong", "chipped")
-        synonyms("hole", "slot")
-        description(Prose.oblongHole)
+    let oblongHole = Item.backdrop(
+        "oblong hole",
+        adjectives: ["oblong", "chipped"],
+        synonyms: ["hole", "slot"],
+        description: Prose.oblongHole
+    ) {
         container
         startsOpen
         capacity(10)
-        scenery
     }
 
     /// `CARD`. The Frobozz Magic Cave Company's opinion of what you are about
@@ -373,25 +363,21 @@ struct DungeonVolcano: GameContent {
     }
 
     /// The watch he arrives glancing at and leaves glancing at. (#332)
-    let gnomeWatch = Item {
-        name("watch")
-        adjectives("pocket", "gold")
-        synonyms("watch", "chain", "timepiece")
-        description(Prose.gnomeWatch)
-        scenery
-    }
+    let gnomeWatch = Item.backdrop(
+        "watch", adjectives: ["pocket", "gold"], synonyms: ["watch", "chain", "timepiece"],
+        description: Prose.gnomeWatch)
 
     // MARK: - Scenery
 
     /// Takes its nouns as a builder result, the way ``DungeonRiver``'s three
     /// scenery factories do.
     private static func shaftScenery(_ text: String, _ nouns: ItemTrait) -> Item {
-        Item {
-            name("volcano")
-            adjectives("dormant", "old")
+        Item.backdrop(
+            "volcano",
+            adjectives: ["dormant", "old"],
+            description: text
+        ) {
             nouns
-            description(text)
-            scenery
         }
     }
 
@@ -403,25 +389,21 @@ struct DungeonVolcano: GameContent {
     /// "close enough to touch", and `x floor` on the floor answered with the
     /// sky. (#233)
     private static func distanceScenery(_ text: String, _ nouns: ItemTrait) -> Item {
-        Item {
-            name("view")
-            adjectives("distant", "far")
+        Item.backdrop(
+            "view",
+            adjectives: ["distant", "far"],
+            description: text
+        ) {
             nouns
-            description(text)
-            scenery
         }
     }
 
     let coneAtBottom = shaftScenery(
         Prose.volcanoCone,
         synonyms("volcano", "cone", "light", "daylight", "shaft"))
-    let volcanoBottomAsh = Item {
-        name("ash")
-        adjectives("grey", "gray", "deep")
-        synonyms("ash", "floor", "ground", "bottom", "walls", "wall", "exit")
-        description(Prose.volcanoBottomAsh)
-        scenery
-    }
+    let volcanoBottomAsh = Item.backdrop(
+        "ash", adjectives: ["grey", "gray", "deep"],
+        synonyms: ["ash", "floor", "ground", "bottom", "walls", "wall", "exit"], description: Prose.volcanoBottomAsh)
 
     /// The rock beside the basket, which is the same rock and the same sentence
     /// at the three levels that have one. No noun parameter: what a hand can
@@ -458,31 +440,23 @@ struct DungeonVolcano: GameContent {
         Prose.shaftFromWideLedgeAir,
         synonyms("view", "ledge", "place", "shelf", "floor", "bottom"))
 
-    let lavaFlow = Item {
-        name("old lava flow")
-        adjectives("old", "lava")
-        synonyms("flow", "lava", "walls", "wall", "rock", "exits", "exit")
-        description(Prose.lavaFlow)
-        scenery
-    }
+    let lavaFlow = Item.backdrop(
+        "old lava flow", adjectives: ["old", "lava"],
+        synonyms: ["flow", "lava", "walls", "wall", "rock", "exits", "exit"], description: Prose.lavaFlow)
 
-    let narrowLedgeRock = Item {
-        name("narrow ledge")
-        adjectives("narrow")
-        synonyms("ledge", "rock", "shelf", "volcano", "exit")
-        description(Prose.narrowLedgeRock)
-        scenery
-    }
+    let narrowLedgeRock = Item.backdrop(
+        "narrow ledge", adjectives: ["narrow"], synonyms: ["ledge", "rock", "shelf", "volcano", "exit"],
+        description: Prose.narrowLedgeRock)
     let narrowLedgeView = distanceScenery(
         Prose.narrowLedgeDistance,
         synonyms("view", "floor", "bottom", "rim", "top", "shaft"))
 
-    let libraryShelves = Item {
-        name("gnawed shelves")
-        adjectives("gnawed", "royal")
-        synonyms("shelves", "shelf", "library", "splinters", "pieces", "gnomes", "exit")
-        description(Prose.libraryShelves)
-        scenery
+    let libraryShelves = Item.backdrop(
+        "gnawed shelves",
+        adjectives: ["gnawed", "royal"],
+        synonyms: ["shelves", "shelf", "library", "splinters", "pieces", "gnomes", "exit"],
+        description: Prose.libraryShelves
+    ) {
         plural
     }
 
@@ -492,21 +466,13 @@ struct DungeonVolcano: GameContent {
     /// The ledge the player is standing on, which the room's paragraph calls
     /// "this ledge" and which nothing here answered for. No `ledges` — the pair
     /// across the shaft keeps the plural.
-    let volcanoViewLedge = Item {
-        name("ledge")
-        adjectives("stone")
-        synonyms("ledge", "rock", "shelf", "wall", "walls", "exit")
-        description(Prose.volcanoViewLedge)
-        scenery
-    }
+    let volcanoViewLedge = Item.backdrop(
+        "ledge", adjectives: ["stone"], synonyms: ["ledge", "rock", "shelf", "wall", "walls", "exit"],
+        description: Prose.volcanoViewLedge)
 
-    let wideLedgeRock = Item {
-        name("wide ledge")
-        adjectives("wide", "broad")
-        synonyms("ledge", "rock", "shelf", "apron", "volcano")
-        description(Prose.wideLedgeRock)
-        scenery
-    }
+    let wideLedgeRock = Item.backdrop(
+        "wide ledge", adjectives: ["wide", "broad"], synonyms: ["ledge", "rock", "shelf", "apron", "volcano"],
+        description: Prose.wideLedgeRock)
     let wideLedgeView = distanceScenery(
         Prose.wideLedgeDistance,
         synonyms("view", "rim", "top", "drop", "bottom", "floor", "shaft"))
@@ -517,21 +483,17 @@ struct DungeonVolcano: GameContent {
     /// room's paragraph has always branched on this and the examine channel
     /// never did. `south`/`southern` tell it from the gnome's west door in the
     /// one frame where both stand on this ledge.
-    let wideLedgeDoorway = Item {
-        name("small door")
-        adjectives("small", "low", "south", "southern")
-        synonyms("door", "doorway", "opening", "rubble")
-        scenery
+    let wideLedgeDoorway = Item.backdrop(
+        "small door",
+        adjectives: ["small", "low", "south", "southern"],
+        synonyms: ["door", "doorway", "opening", "rubble"]
+    ) {
         door
     }
 
-    let dustyRoomDust = Item {
-        name("dust")
-        adjectives("thick")
-        synonyms("dust", "floor", "walls", "wall", "room", "exit")
-        description(Prose.dustyRoomDust)
-        scenery
-    }
+    let dustyRoomDust = Item.backdrop(
+        "dust", adjectives: ["thick"], synonyms: ["dust", "floor", "walls", "wall", "room", "exit"],
+        description: Prose.dustyRoomDust)
 
     /// The chimney the gnome's fee opens. Offstage until it exists, and then in
     /// whichever ledge he was paid on.
@@ -542,13 +504,9 @@ struct DungeonVolcano: GameContent {
     /// player has just been handed. Paid on the Wide Ledge there really are two
     /// doors, and asking which is the true answer — it costs no turn, and
     /// `west`/`south` resolve it. (#233)
-    let gnomeChimney = Item {
-        name("narrow chimney")
-        adjectives("narrow", "sloping", "west", "western")
-        synonyms("chimney", "door", "doorway")
-        description(Prose.gnomeChimney)
-        scenery
-    }
+    let gnomeChimney = Item.backdrop(
+        "narrow chimney", adjectives: ["narrow", "sloping", "west", "western"],
+        synonyms: ["chimney", "door", "doorway"], description: Prose.gnomeChimney)
 
     // MARK: - State
 

@@ -192,12 +192,7 @@ struct ZorkRiver: GameContent {
     }
 
     /// The sand of the Sandy Cave — scenery, but the thing you `dig`.
-    let sand = Item {
-        name("sand")
-        synonyms("sand")
-        description(Prose.sandyCave)
-        scenery
-    }
+    let sand = Item.backdrop("sand", synonyms: ["sand"], description: Prose.sandyCave)
 
     /// The pot of gold, ten and ten. A river treasure, but it materialises at the
     /// End of Rainbow (a ``ZorkAboveGround`` room) when the rainbow turns solid,
@@ -220,223 +215,102 @@ struct ZorkRiver: GameContent {
     // repeat per room rather than per noun.
 
     /// (#407) Named by `Prose.river1`.
-    let damFromRiver1 = Item {
-        name("flood control dam")
-        adjectives("flood", "control")
-        synonyms("dam")
-        description(Prose.damFromRiver)
-        scenery
-    }
+    let damFromRiver1 = Item.backdrop(
+        "flood control dam", adjectives: ["flood", "control"], synonyms: ["dam"], description: Prose.damFromRiver)
 
     /// (#407) Named by `Prose.river1`.
-    let westShoreAtRiver1 = Item {
-        name("west shore")
-        adjectives("west")
-        synonyms("shore", "landing")
-        description(Prose.westShoreAtRiver1)
-        scenery
-    }
+    let westShoreAtRiver1 = Item.backdrop(
+        "west shore", adjectives: ["west"], synonyms: ["shore", "landing"], description: Prose.westShoreAtRiver1)
 
     /// (#407) Named by `Prose.river2`.
-    let damFromRiver2 = Item {
-        name("dam")
-        description(Prose.damFromRiver)
-        scenery
-    }
+    let damFromRiver2 = Item.backdrop("dam", description: Prose.damFromRiver)
 
     /// (#407) Named by `Prose.river2`.
-    let cliffsAtRiver2 = Item {
-        name("white cliffs")
-        adjectives("white")
-        synonyms("cliffs", "cliff")
-        description(Prose.cliffsFromRiver)
-        scenery
-    }
+    let cliffsAtRiver2 = Item.backdrop(
+        "white cliffs", adjectives: ["white"], synonyms: ["cliffs", "cliff"], description: Prose.cliffsFromRiver)
 
     /// (#407) Named by `Prose.river2`.
-    let rocksAtRiver2 = Item {
-        name("large rocks")
-        adjectives("large")
-        synonyms("rocks", "rock", "landing")
-        description(Prose.riverRocks)
-        scenery
-    }
+    let rocksAtRiver2 = Item.backdrop(
+        "large rocks", adjectives: ["large"], synonyms: ["rocks", "rock", "landing"], description: Prose.riverRocks)
 
     /// (#407) Named by `Prose.river3`.
-    let valleyAtRiver3 = Item {
-        name("valley")
-        description(Prose.riverValley)
-        scenery
-    }
+    let valleyAtRiver3 = Item.backdrop("valley", description: Prose.riverValley)
 
     /// (#407) Named by `Prose.river3`.
-    let beachAtRiver3 = Item {
-        name("narrow beach")
-        adjectives("narrow")
-        synonyms("beach", "shore")
-        description(Prose.riverBeachWest)
-        scenery
-    }
+    let beachAtRiver3 = Item.backdrop(
+        "narrow beach", adjectives: ["narrow"], synonyms: ["beach", "shore"], description: Prose.riverBeachWest)
 
     /// (#407) Named by `Prose.river3`.
-    let cliffsAtRiver3 = Item {
-        name("cliffs")
-        synonyms("cliff")
-        description(Prose.cliffsFromRiver)
-        scenery
-    }
+    let cliffsAtRiver3 = Item.backdrop("cliffs", synonyms: ["cliff"], description: Prose.cliffsFromRiver)
 
     /// (#407) Named by `Prose.river4`.
-    let beachAtRiver4 = Item {
-        name("sandy beach")
-        adjectives("sandy")
-        synonyms("beach", "shore")
-        description(Prose.sandyEastBeach)
-        scenery
-    }
+    let beachAtRiver4 = Item.backdrop(
+        "sandy beach", adjectives: ["sandy"], synonyms: ["beach", "shore"], description: Prose.sandyEastBeach)
 
     /// (#407) Named by `Prose.river4`.
-    let cliffsAtRiver4 = Item {
-        name("cliffs")
-        synonyms("cliff")
-        description(Prose.cliffsFromRiver4)
-        scenery
-    }
+    let cliffsAtRiver4 = Item.backdrop("cliffs", synonyms: ["cliff"], description: Prose.cliffsFromRiver4)
 
     /// (#407) Named by `Prose.river5`.
-    let landingAtRiver5 = Item {
-        name("landing area")
-        adjectives("large", "east")
-        synonyms("shore")
-        description(Prose.riverLandingArea)
-        scenery
-    }
+    let landingAtRiver5 = Item.backdrop(
+        "landing area", adjectives: ["large", "east"], synonyms: ["shore"], description: Prose.riverLandingArea)
 
     // The White Cliffs beaches, on foot between the cliffs and the water.
 
     /// (#407) Named by `Prose.whiteCliffsNorth`.
-    let cliffsAtBeachNorth = Item {
-        name("white cliffs")
-        adjectives("white")
-        synonyms("cliffs", "cliff")
-        description(Prose.cliffsFromRiver)
-        scenery
-    }
+    let cliffsAtBeachNorth = Item.backdrop(
+        "white cliffs", adjectives: ["white"], synonyms: ["cliffs", "cliff"], description: Prose.cliffsFromRiver)
 
     /// (#407) Named by `Prose.whiteCliffsNorth`.
-    let pathAtCliffsNorth = Item {
-        name("narrow path")
-        adjectives("narrow")
-        synonyms("path")
-        description(Prose.cliffsPath)
-        scenery
-    }
+    let pathAtCliffsNorth = Item.backdrop(
+        "narrow path", adjectives: ["narrow"], synonyms: ["path"], description: Prose.cliffsPath)
 
     /// (#407) Named by `Prose.whiteCliffsNorth`.
-    let tightPassage = Item {
-        name("tight passage")
-        adjectives("tight")
-        synonyms("passage")
-        description(Prose.tightPassage)
-        scenery
-    }
+    let tightPassage = Item.backdrop(
+        "tight passage", adjectives: ["tight"], synonyms: ["passage"], description: Prose.tightPassage)
 
     /// (#407) Named by `Prose.whiteCliffsSouth`.
-    let cliffsAtBeachSouth = Item {
-        name("cliffs")
-        synonyms("cliff")
-        description(Prose.cliffsFromRiver)
-        scenery
-    }
+    let cliffsAtBeachSouth = Item.backdrop("cliffs", synonyms: ["cliff"], description: Prose.cliffsFromRiver)
 
     /// (#407) Named by `Prose.whiteCliffsSouth`.
-    let pathAtCliffsSouth = Item {
-        name("narrow path")
-        adjectives("narrow")
-        synonyms("path")
-        description(Prose.cliffsPathNorth)
-        scenery
-    }
+    let pathAtCliffsSouth = Item.backdrop(
+        "narrow path", adjectives: ["narrow"], synonyms: ["path"], description: Prose.cliffsPathNorth)
 
     /// (#407) Named by `Prose.shore`.
-    let shorePath = Item {
-        name("path")
-        description(Prose.eastShorePath)
-        scenery
-    }
+    let shorePath = Item.backdrop("path", description: Prose.eastShorePath)
 
     /// (#407) Named by `Prose.shore`.
-    let sharpCorner = Item {
-        name("sharp corner")
-        adjectives("sharp")
-        synonyms("corner")
-        description(Prose.shoreCorner)
-        scenery
-    }
+    let sharpCorner = Item.backdrop(
+        "sharp corner", adjectives: ["sharp"], synonyms: ["corner"], description: Prose.shoreCorner)
 
     /// (#407) Named by `Prose.shore` — the bank the room stands on.
-    let eastShore = Item {
-        name("east shore")
-        adjectives("east")
-        synonyms("shore")
-        description(Prose.eastShore)
-        scenery
-    }
+    let eastShore = Item.backdrop("east shore", adjectives: ["east"], synonyms: ["shore"], description: Prose.eastShore)
 
     /// (#407) Named by `Prose.sandyBeach`, whose path runs south rather than
     /// north — the White Cliffs line does not answer for this one.
-    let pathAtSandyBeach = Item {
-        name("path")
-        description(Prose.sandyBeachPath)
-        scenery
-    }
+    let pathAtSandyBeach = Item.backdrop("path", description: Prose.sandyBeachPath)
 
     /// (#407) Named by `Prose.sandyBeach`.
-    let buriedPassage = Item {
-        name("passage")
-        description(Prose.buriedPassage)
-        scenery
-    }
+    let buriedPassage = Item.backdrop("passage", description: Prose.buriedPassage)
 
     /// (#407) Named by `Prose.sandyBeach`. The ``sand`` item is the Sandy
     /// Cave's diggable fill; this is the open beach's.
-    let sandAtBeach = Item {
-        name("sand")
-        description(Prose.beachSand)
-        scenery
-    }
+    let sandAtBeach = Item.backdrop("sand", description: Prose.beachSand)
 
     /// (#407) Named by `Prose.aragainFalls`.
-    let waterfallTop = Item {
-        name("enormous waterfall")
-        adjectives("enormous", "aragain")
-        synonyms("falls", "waterfall", "aragain falls")
-        description(Prose.fallsFromTop)
-        scenery
-    }
+    let waterfallTop = Item.backdrop(
+        "enormous waterfall", adjectives: ["enormous", "aragain"], synonyms: ["falls", "waterfall", "aragain falls"],
+        description: Prose.fallsFromTop)
 
     /// (#407) Named by `Prose.aragainFalls`.
-    let pathAtFalls = Item {
-        name("path")
-        description(Prose.fallsPath)
-        scenery
-    }
+    let pathAtFalls = Item.backdrop("path", description: Prose.fallsPath)
 
     /// (#407) Named by `Prose.onRainbow`. The rainbow no room owned before
     /// this one; from up here it is underfoot.
-    let rainbowUnderfoot = Item {
-        name("rainbow")
-        description(Prose.rainbowUnderfoot)
-        scenery
-    }
+    let rainbowUnderfoot = Item.backdrop("rainbow", description: Prose.rainbowUnderfoot)
 
     /// (#407) Named by `Prose.onRainbow`.
-    let fallsFromRainbow = Item {
-        name("falls")
-        synonyms("waterfall", "aragain falls")
-        description(Prose.fallsFromRainbow)
-        scenery
-    }
+    let fallsFromRainbow = Item.backdrop(
+        "falls", synonyms: ["waterfall", "aragain falls"], description: Prose.fallsFromRainbow)
 
     // MARK: - State
 

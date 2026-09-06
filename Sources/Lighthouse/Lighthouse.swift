@@ -85,17 +85,17 @@ struct Lighthouse: Game {
     /// the first visit and go on saying it after the key was pocketed, because a
     /// listing line runs until its own item is touched and nothing ever touches
     /// a shelf.
-    let shelf = Item {
-        name("stone shelf")
-        adjectives("worn")
-        synonyms("ledge", "slab")
-        description(
+    let shelf = Item.backdrop(
+        "stone shelf",
+        adjectives: ["worn"],
+        synonyms: ["ledge", "slab"],
+        description:
             """
             A slab set into the wall at hand height, and one spot on it is
             polished where forty years of hands have put the same key down.
-            """)
+            """
+    ) {
         surface
-        scenery
     }
 
     let brassKey = Item {
@@ -110,17 +110,17 @@ struct Lighthouse: Game {
     /// is all this needs to add — the parser knows "storeroom" and "door" from
     /// the name. The `storeroom` synonym is what makes the *noun* answer, since
     /// the base's description names the storeroom before the player has seen it.
-    let storeroomDoor = Item {
-        name("storeroom door")
-        adjectives("stout")
-        synonyms("storeroom")
-        description(
+    let storeroomDoor = Item.backdrop(
+        "storeroom door",
+        adjectives: ["stout"],
+        synonyms: ["storeroom"],
+        description:
             """
             Stout, salt-swollen, and hung to open inward, which is how you hang a
             door on a rock.
-            """)
+            """
+    ) {
         openable
-        scenery
     }
 
     /// A `container` with a lid (`openable` ⇒ starts closed). It holds the lamp
@@ -131,18 +131,18 @@ struct Lighthouse: Game {
     /// way the shelf used to announce the key twice. Scenery also makes it a
     /// fixture, which it is — see the refusal in `rules`, which says so in the
     /// game's voice rather than the engine's.
-    let chest = Item {
-        name("heavy chest")
-        adjectives("sea")
-        synonyms("clasp", "wire", "trunk")
-        description(
+    let chest = Item.backdrop(
+        "heavy chest",
+        adjectives: ["sea"],
+        synonyms: ["clasp", "wire", "trunk"],
+        description:
             """
             A brine-swollen sea chest, its clasp mended twice with copper wire —
             both times by somebody who meant it to last.
-            """)
+            """
+    ) {
         container
         openable
-        scenery
     }
 
     /// The portable `lightSource`. It starts unlit inside the chest; lighting it

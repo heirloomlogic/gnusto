@@ -30,56 +30,53 @@ struct Tower: GameContent {
     /// a live ``Item/describe(_:)`` keyed on ``Item/isLit``, and the winning rule
     /// sets that trait before it ends the game — so the lit branch is reachable,
     /// and a save taken at the final move restores a lighthouse that is lit.
-    let beacon = Item {
-        name("beacon")
-        adjectives("great", "brass")
-        synonyms("beam", "light", "reservoir", "carriage", "ring")
-        scenery
+    let beacon = Item.backdrop(
+        "beacon",
+        adjectives: ["great", "brass"],
+        synonyms: ["beam", "light", "reservoir", "carriage", "ring"]
+    ) {
         lightSource
     }
 
     // MARK: - The nouns the Lamp Room's description prints
 
-    let glass = Item {
-        name("glass")
-        adjectives("curved", "salt")
-        synonyms("panes", "pane", "window", "windows")
-        description(
+    let glass = Item.backdrop(
+        "glass",
+        adjectives: ["curved", "salt"],
+        synonyms: ["panes", "pane", "window", "windows"],
+        description:
             """
             Curved panes in a brass frame, every one of them clean on the inside.
             The salt on the outside is nobody's fault and nobody's to fix.
-            """)
-        scenery
-    }
+            """
+    )
 
-    let night = Item {
-        name("night")
-        adjectives("black")
-        synonyms("sky")
-        description(
+    let night = Item.backdrop(
+        "night",
+        adjectives: ["black"],
+        synonyms: ["sky"],
+        description:
             """
             Black, and up against the glass on every side of you. Somewhere out
             in it is water, and somewhere on the water are people who would like
             to know where this rock is.
-            """)
-        scenery
-    }
+            """
+    )
 
     /// The same synonym list as the base's stone flight, deliberately: two
     /// staircases in one game should answer to the same words and let the room
     /// decide which one the player means.
-    let stairs = Item {
-        name("spiral stairs")
-        adjectives("iron")
-        synonyms("stair", "staircase", "steps", "step", "treads", "tread", "rail")
-        description(
+    let stairs = Item.backdrop(
+        "spiral stairs",
+        adjectives: ["iron"],
+        synonyms: ["stair", "staircase", "steps", "step", "treads", "tread", "rail"],
+        description:
             """
             Iron, and narrow enough that two people meeting on them would have to
             settle it between themselves. Hollowed at the center, the same as the
             stone ones below.
-            """)
-        scenery
-    }
+            """
+    )
 
     /// Where the tower's own things start. Cross-bundle geography — the stair
     /// down to the base — is wired by the host in ``Lighthouse``.

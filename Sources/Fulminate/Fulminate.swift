@@ -472,20 +472,13 @@ struct Fulminate: Game, GameMain {
     ///
     /// `corner` because the hall's description puts it in one, and that is the
     /// only corner the room has.
-    let hallClock = Item {
-        name("longcase clock")
-        adjectives("longcase", "hall", "grandfather", "tall")
-        synonyms("clock", "case", "corner")
-        scenery
-    }
+    let hallClock = Item.backdrop(
+        "longcase clock", adjectives: ["longcase", "hall", "grandfather", "tall"],
+        synonyms: ["clock", "case", "corner"])
 
-    let telephone = Item {
-        name("telephone")
-        adjectives("black")
-        synonyms("phone", "receiver", "pad", "notepad")
-        description("A black telephone on a half-moon table, with a pad beside it and nothing written on the pad.")
-        scenery
-    }
+    let telephone = Item.backdrop(
+        "telephone", adjectives: ["black"], synonyms: ["phone", "receiver", "pad", "notepad"],
+        description: "A black telephone on a half-moon table, with a pad beside it and nothing written on the pad.")
 
     let coat = Item {
         name("overcoat")
@@ -521,136 +514,123 @@ struct Fulminate: Game, GameMain {
     /// The nouns the hall's description puts on the page. A room that names a
     /// thing and then doesn't know the word for it reads like a bug, and the
     /// first thing a play-tester typed in this house was `X TILE`.
-    let hallFloor = Item {
-        name("tiled floor")
-        adjectives("black", "white", "tiled", "checked", "hall")
-        synonyms("tile", "tiles", "tiling", "floor", "grout", "diamond", "diamonds")
-        description(
+    let hallFloor = Item.backdrop(
+        "tiled floor",
+        adjectives: ["black", "white", "tiled", "checked", "hall"],
+        synonyms: ["tile", "tiles", "tiling", "floor", "grout", "diamond", "diamonds"],
+        description:
             """
             Black and white, laid in a diamond, and worn through to the grout along the exact line between the front
             door and the stairs. Nobody in this house has gone left or right in years.
-            """)
-        scenery
-    }
+            """
+    )
+    // `hat` as a synonym as well as an adjective: the hall's description
+    // names one and a bare `X HAT` has to reach it. Dr. Pike's hat carries
+    // the word in the three rooms he stands in, and he is never in here.
 
-    let hatStand = Item {
-        name("hat stand")
-        // `hat` as a synonym as well as an adjective: the hall's description
-        // names one and a bare `X HAT` has to reach it. Dr. Pike's hat carries
-        // the word in the three rooms he stands in, and he is never in here.
-        adjectives("oak", "bentwood")
-        synonyms("stand", "hatstand", "rack", "hooks", "hook", "hat")
-        description(
+    let hatStand = Item.backdrop(
+        "hat stand",
+        adjectives: ["oak", "bentwood"],
+        synonyms: ["stand", "hatstand", "rack", "hooks", "hook", "hat"],
+        description:
             """
             Oak, with six hooks and one coat on it. A house that rents its rooms puts up a stand this size and then
             uses one hook of it.
-            """)
-        scenery
-    }
+            """
+    )
 
-    let hallTable = Item {
-        name("half-moon table")
-        adjectives("half", "moon", "telephone", "hall")
-        synonyms("table", "marble", "ring", "top")
-        description(
+    let hallTable = Item.backdrop(
+        "half-moon table",
+        adjectives: ["half", "moon", "telephone", "hall"],
+        synonyms: ["table", "marble", "ring", "top"],
+        description:
             """
             Three legs and a marble top, and a ring in the marble where something round used to stand and doesn't now.
-            """)
-        scenery
-    }
+            """
+    )
 
-    let frontDoor = Item {
-        name("front door")
-        adjectives("front", "heavy", "panelled")
-        synonyms("door", "doorway", "fanlight")
-        description(
+    let frontDoor = Item.backdrop(
+        "front door",
+        adjectives: ["front", "heavy", "panelled"],
+        synonyms: ["door", "doorway", "fanlight"],
+        description:
             """
             Heavy, panelled, with a fanlight over it that somebody painted shut a long while ago. It is the way you
             came in.
-            """)
-        scenery
-    }
+            """
+    )
 
-    let frontStairs = Item {
-        name("staircase")
-        adjectives("front", "main", "bare")
-        synonyms("stairs", "staircase", "stair", "banister", "treads", "tread", "rods", "rod", "carpet")
-        description(
+    let frontStairs = Item.backdrop(
+        "staircase",
+        adjectives: ["front", "main", "bare"],
+        synonyms: ["stairs", "staircase", "stair", "banister", "treads", "tread", "rods", "rod", "carpet"],
+        description:
             """
             Bare treads with the carpet rods still in them and no carpet in the rods. These are the ones a visitor
             uses.
-            """)
-        scenery
-    }
+            """
+    )
 
     // MARK: - The parlour
 
-    let parlourFurniture = Item {
-        name("furniture")
-        adjectives("heavy", "good", "victorian")
-        synonyms("furniture", "chair", "chairs", "armchair", "sofa", "settee", "suite")
-        description(
+    let parlourFurniture = Item.backdrop(
+        "furniture",
+        adjectives: ["heavy", "good", "victorian"],
+        synonyms: ["furniture", "chair", "chairs", "armchair", "sofa", "settee", "suite"],
+        description:
             """
             Heavy pieces that came out of a bigger house than this one, too good to sell in 1931 and too good to sell
             now. Mrs. Vane's chair is the only one that has taken the shape of a person.
-            """)
-        scenery
-    }
+            """
+    )
 
-    let grate = Item {
-        name("grate")
-        adjectives("cold", "iron", "empty")
-        synonyms("grate", "fireplace", "hearth", "fender", "fire")
-        description(
+    let grate = Item.backdrop(
+        "grate",
+        adjectives: ["cold", "iron", "empty"],
+        synonyms: ["grate", "fireplace", "hearth", "fender", "fire"],
+        description:
             """
             Swept, laid, and cold. Nothing has been burned in this room in months, in a house where the kitchen stove
             has been going since before you got here.
-            """)
-        scenery
-    }
+            """
+    )
 
-    let parlourLamp = Item {
-        name("standard lamp")
-        adjectives("standard", "unlit", "fringed", "tall")
-        synonyms("lamp", "shade", "fringe", "bulb")
-        description(
+    let parlourLamp = Item.backdrop(
+        "standard lamp",
+        adjectives: ["standard", "unlit", "fringed", "tall"],
+        synonyms: ["lamp", "shade", "fringe", "bulb"],
+        description:
             """
             A standard lamp with a fringed shade and a bulb that has been in it a while. Mrs. Vane does not light it
             until it is properly dark. It is not properly dark.
-            """)
-        scenery
-    }
+            """
+    )
 
     /// Constance's fallback line looks at this. A fallback that names a thing
     /// the game can't show you is the same defect as an unknown word.
-    let wallpaper = Item {
-        name("wallpaper")
-        adjectives("faded", "papered")
-        synonyms("wallpaper", "roses", "rose", "paper", "rectangle", "patch")
-        description(
+    let wallpaper = Item.backdrop(
+        "wallpaper",
+        adjectives: ["faded", "papered"],
+        synonyms: ["wallpaper", "roses", "rose", "paper", "rectangle", "patch"],
+        description:
             """
             Cabbage roses gone the colour of tea, and one rectangle of them a shade lighter than the rest, where
             something used to hang.
-            """)
-        scenery
-    }
+            """
+    )
 
     // MARK: - The kitchen and the cellar
 
-    let stove = Item {
-        name("stove")
-        adjectives("iron", "black")
-        synonyms("stove", "range")
-        description("Cast iron, lit, and putting out more heat than the evening asked for.")
-        scenery
-    }
+    let stove = Item.backdrop(
+        "stove", adjectives: ["iron", "black"], synonyms: ["stove", "range"],
+        description: "Cast iron, lit, and putting out more heat than the evening asked for.")
 
-    let drawer = Item {
-        name("kitchen drawer")
-        adjectives("kitchen", "counter")
-        synonyms("drawer")
-        description("The drawer under the counter, where a house keeps the things it needs twice a year.")
-        scenery
+    let drawer = Item.backdrop(
+        "kitchen drawer",
+        adjectives: ["kitchen", "counter"],
+        synonyms: ["drawer"],
+        description: "The drawer under the counter, where a house keeps the things it needs twice a year."
+    ) {
         container
         openable
     }
@@ -692,48 +672,45 @@ struct Fulminate: Game, GameMain {
             """)
     }
 
-    let pineTable = Item {
-        name("pine table")
-        adjectives("scrubbed", "deal", "kitchen")
-        synonyms("table", "board", "counter", "pine", "deal", "grain")
-        description(
+    let pineTable = Item.backdrop(
+        "pine table",
+        adjectives: ["scrubbed", "deal", "kitchen"],
+        synonyms: ["table", "board", "counter", "pine", "deal", "grain"],
+        description:
             """
             Deal, scrubbed pale over so many years that the grain stands up out of it. Mrs. Kettle's evening is laid
             out along it in the order she means to use it.
-            """)
-        scenery
-    }
+            """
+    )
 
     /// The reason anybody in this house can be placed anywhere: they come down
     /// these and land in front of the one person who never stops looking.
-    let backStairs = Item {
-        name("back stairs")
-        adjectives("back", "narrow", "servants", "boxed")
-        synonyms("stairs", "staircase", "stair")
-        description(
+    let backStairs = Item.backdrop(
+        "back stairs",
+        adjectives: ["back", "narrow", "servants", "boxed"],
+        synonyms: ["stairs", "staircase", "stair"],
+        description:
             """
             Narrow, boxed in, and they turn twice on the way down. You would hear somebody on them from anywhere in
             this room, and so would she.
-            """)
-        scenery
-    }
+            """
+    )
 
     /// The same staircase, from the bottom. Delphine's 6:26 arrival names it in
     /// the cellar — "comes down the cellar steps" — and ``cellarSteps`` is
     /// declared in the Kitchen, so the word left scope at the exact moment the
     /// prose used it. An item is in one room and a staircase joins two, so the
     /// two ends are two declarations. (#334)
-    let cellarStepsBelow = Item {
-        name("cellar steps")
-        adjectives("cellar", "stone", "worn")
-        synonyms("steps", "stairs", "stair")
-        description(
+    let cellarStepsBelow = Item.backdrop(
+        "cellar steps",
+        adjectives: ["cellar", "stone", "worn"],
+        synonyms: ["steps", "stairs", "stair"],
+        description:
             """
             Eight of them, stone, going up into the light from the kitchen. From down here you can see the dish worn
             into each one, and that nobody has swept them in a while.
-            """)
-        scenery
-    }
+            """
+    )
 
     /// What comes down when the carriage house goes up. The aftermath declares
     /// it settled on every flat top in the house, and the word answered in one
@@ -741,74 +718,68 @@ struct Fulminate: Game, GameMain {
     /// with tonight. It arrives in the room the sentence is read in, and where
     /// that room is the cellar the parser asks which dust is meant, which is the
     /// right question rather than a defect. (#334)
-    let blastDust = Item {
-        name("fallen plaster")
-        adjectives("fallen", "fine", "grey", "gray")
-        synonyms("plaster", "dust", "ceiling")
-        description(
+    let blastDust = Item.backdrop(
+        "fallen plaster",
+        adjectives: ["fallen", "fine", "grey", "gray"],
+        synonyms: ["plaster", "dust", "ceiling"],
+        description:
             """
             Plaster and eighty years of ceiling, come down as a powder and lying now on every flat top in the room.
             You can write in it with a finger, and somebody will, before the night is out.
-            """)
-        scenery
+            """
+    ) {
         hidden
     }
 
     /// Shares the word "stairs" with the back stairs on purpose. A room with
     /// two flights in it should ask which one you meant.
-    let cellarSteps = Item {
-        name("cellar steps")
-        // `switch` because the description says there isn't one, and a player
-        // who reads that and types `X SWITCH` is owed the sentence back rather
-        // than a shrug.
-        adjectives("cellar", "stone", "worn")
-        synonyms("steps", "stairs", "stair", "switch")
-        description(
+    // `switch` because the description says there isn't one, and a player
+    // who reads that and types `X SWITCH` is owed the sentence back rather
+    // than a shrug.
+    let cellarSteps = Item.backdrop(
+        "cellar steps",
+        adjectives: ["cellar", "stone", "worn"],
+        synonyms: ["steps", "stairs", "stair", "switch"],
+        description:
             """
             Stone, dished in the middle from use, going down into the dark. There is no switch at the top of them.
-            """)
-        scenery
-    }
+            """
+    )
 
-    let yardDoor = Item {
-        name("yard door")
-        adjectives("yard", "back", "glazed", "kitchen")
-        synonyms("door")
-        description(
+    let yardDoor = Item.backdrop(
+        "yard door",
+        adjectives: ["yard", "back", "glazed", "kitchen"],
+        synonyms: ["door"],
+        description:
             """
             Half-glazed, with a worn place at knee height where it has been pushed open by people carrying things.
-            """)
-        scenery
-    }
+            """
+    )
 
     /// Named in the glove's own description, which made it the most
     /// conspicuous missing noun in the house.
-    let coalBin = Item {
-        name("coal bin")
-        // `dust` is the one that hurt most: the search refusal below ends "the
-        // dust is the interesting part", and the smoothed dust is how the
-        // player reads that something was hidden back there.
-        adjectives("coal", "plank", "wooden")
-        synonyms("bin", "coalbin", "coal", "dust")
-        description(
+    // `dust` is the one that hurt most: the search refusal below ends "the
+    // dust is the interesting part", and the smoothed dust is how the
+    // player reads that something was hidden back there.
+    let coalBin = Item.backdrop(
+        "coal bin",
+        adjectives: ["coal", "plank", "wooden"],
+        synonyms: ["bin", "coalbin", "coal", "dust"],
+        description:
             """
             A plank bin with three winters of coal dust in it and no coal. The dust on the floor behind it has been
             disturbed and then smoothed over, which takes longer than not doing it.
-            """)
-        scenery
-    }
+            """
+    )
 
     // MARK: - The yard and the lab
+    // The scorch and the worn path are both things the grass describes, and
+    // both are read off it. `half-circle` tokenizes to `half` + `circle`,
+    // so the adjective is what makes the printed phrase typeable. (#334)
 
-    let dryGrass = Item {
-        name("dry grass")
-        // The scorch and the worn path are both things the grass describes, and
-        // both are read off it. `half-circle` tokenizes to `half` + `circle`,
-        // so the adjective is what makes the printed phrase typeable. (#334)
-        adjectives("dry", "brown", "long", "scorched", "half")
-        synonyms("grass", "lawn", "yard", "ground", "path", "circle", "scorch")
-        scenery
-    }
+    let dryGrass = Item.backdrop(
+        "dry grass", adjectives: ["dry", "brown", "long", "scorched", "half"],
+        synonyms: ["grass", "lawn", "yard", "ground", "path", "circle", "scorch"])
 
     /// The building from outside it. The room is `carriageHouse`; this is what
     /// the player is looking at from the yard, facing north.
@@ -816,63 +787,40 @@ struct Fulminate: Game, GameMain {
     /// `door` because its own description names one from the yard side, and
     /// `gap` because the patrolman's refusal puts an arm across one. The lamp
     /// is its own item: it stops existing at 5:46 and this one doesn't.
-    let carriageHouseOutside = Item {
-        name("carriage house")
-        adjectives("carriage", "brick", "old")
-        synonyms("house", "shed", "lab", "laboratory", "workshop", "building", "door", "doors", "gap", "doorway")
-        scenery
-    }
+    let carriageHouseOutside = Item.backdrop(
+        "carriage house", adjectives: ["carriage", "brick", "old"],
+        synonyms: ["house", "shed", "lab", "laboratory", "workshop", "building", "door", "doors", "gap", "doorway"])
 
     /// The light the yard's pre-blast description is written around — "with its
     /// lamp burning and its door ajar" — and the reason a player looking north
     /// across the grass can see anything at all. It reads host state, so it is
     /// here rather than in ``Fixtures``.
-    let labLamp = Item {
-        name("lamp")
-        adjectives("tin", "shaded", "yard")
-        synonyms("light", "bulb")
-        scenery
-    }
+    let labLamp = Item.backdrop("lamp", adjectives: ["tin", "shaded", "yard"], synonyms: ["light", "bulb"])
 
-    let toolRack = Item {
-        name("tool rack")
-        adjectives("tool", "iron", "wall")
-        synonyms("rack", "tools", "tool", "nail", "nails", "board", "outline", "pencil")
-        scenery
-    }
+    let toolRack = Item.backdrop(
+        "tool rack", adjectives: ["tool", "iron", "wall"],
+        synonyms: ["rack", "tools", "tool", "nail", "nails", "board", "outline", "pencil"])
 
-    let cot = Item {
-        name("cot")
-        adjectives("army", "canvas", "folding")
-        synonyms("cot", "bunk", "bed", "blanket", "ticking", "frame")
-        scenery
-    }
+    let cot = Item.backdrop(
+        "cot", adjectives: ["army", "canvas", "folding"],
+        synonyms: ["cot", "bunk", "bed", "blanket", "ticking", "frame"])
 
     /// The kitchen stove's flue, running up through the corner past the end of
     /// the bench where the can is sitting. The mechanism, in plain sight, from
     /// the first turn.
-    let stovePipe = Item {
-        name("stove pipe")
-        adjectives("stove", "tin", "hot")
-        synonyms("pipe", "stovepipe", "flue", "chimney", "corner", "tin")
-        scenery
-    }
+    let stovePipe = Item.backdrop(
+        "stove pipe", adjectives: ["stove", "tin", "hot"],
+        synonyms: ["pipe", "stovepipe", "flue", "chimney", "corner", "tin"])
+    // The wall's own post-blast line names what the ivy is out-performing. (#334)
 
-    let gardenWall = Item {
-        name("garden wall")
-        adjectives("garden", "low")
-        // The wall's own post-blast line names what the ivy is out-performing. (#334)
-        synonyms("wall", "walls", "brick", "bricks", "ivy", "courses", "mortar")
-        scenery
-    }
+    let gardenWall = Item.backdrop(
+        "garden wall", adjectives: ["garden", "low"],
+        synonyms: ["wall", "walls", "brick", "bricks", "ivy", "courses", "mortar"])
+    // Julian works at it while he talks, and his replies name both tools. (#334)
 
-    let workbench = Item {
-        name("workbench")
-        adjectives("long", "scarred")
-        // Julian works at it while he talks, and his replies name both tools. (#334)
-        synonyms("bench", "workbench", "vice", "vise", "scorch", "stub", "clamp", "file")
-        scenery
-    }
+    let workbench = Item.backdrop(
+        "workbench", adjectives: ["long", "scarred"],
+        synonyms: ["bench", "workbench", "vice", "vise", "scorch", "stub", "clamp", "file"])
 
     /// The coroner's answer, sitting in plain sight where the stove's heat can
     /// reach it. It goes up with the carriage house.
@@ -894,20 +842,21 @@ struct Fulminate: Game, GameMain {
     /// It carries the words its own description and the yard's prose use for
     /// it: `roof` and `slates` and `timber` are what the blast puts in the
     /// grass, and `body` is the one thing the patrolman will admit is in there.
-    let debris = Item {
-        name("wreckage")
-        adjectives("burned", "burnt", "charred")
-        synonyms(
+    let debris = Item.backdrop(
+        "wreckage",
+        adjectives: ["burned", "burnt", "charred"],
+        synonyms: [
             "wreckage", "debris", "rubble", "ruins", "roof", "slates", "slate",
             // `soot` is what the search refusal says you get to the elbow for
             // your trouble, and the wreckage is the thing it comes off. (#334)
-            "timber", "timbers", "body", "soot")
-        description(
+            "timber", "timbers", "body", "soot",
+        ],
+        description:
             """
             Roof slates, black timber, and a smell with chemistry in it. If the evening has an answer, some of it is
             in there, and none of it is coming out tonight.
-            """)
-        scenery
+            """
+    ) {
         hidden
     }
 
@@ -918,31 +867,28 @@ struct Fulminate: Game, GameMain {
     ///
     /// Revealed by `clock.blast` rather than placed hidden-and-forgotten,
     /// because before 5:46 there is nothing in this garden to look at.
-    let yardFire = Item {
-        name("fire")
-        adjectives("burning", "orange", "small")
-        synonyms("flames", "flame", "blaze", "smoke", "burning")
-        description(
+    let yardFire = Item.backdrop(
+        "fire",
+        adjectives: ["burning", "orange", "small"],
+        synonyms: ["flames", "flame", "blaze", "smoke", "burning"],
+        description:
             """
             Going quietly in three or four places where the roof came down, in the
             unhurried orange way of a fire with nothing left to want. Nobody has thought
             to put it out and nobody is going to.
-            """)
-        scenery
+            """
+    ) {
         hidden
     }
 
     /// The shell, from inside. The room's own paragraph calls it somebody's
     /// workshop and somebody else's chapel and then puts its roof in the yard,
     /// and none of those was a word the room knew.
-    let labShell = Item {
-        name("walls")
-        adjectives("brick", "bare", "scorched")
-        // Post-blast it is "open sky above all of it", and the shell is what the
-        // sky is being seen through. (#334)
-        synonyms("wall", "workshop", "chapel", "roof", "rafters", "shell", "beams", "sky")
-        scenery
-    }
+    // Post-blast it is "open sky above all of it", and the shell is what the
+    // sky is being seen through. (#334)
+    let labShell = Item.backdrop(
+        "walls", adjectives: ["brick", "bare", "scorched"],
+        synonyms: ["wall", "workshop", "chapel", "roof", "rafters", "shell", "beams", "sky"])
 
     let julian = Actor {
         name("Julian Vane")
@@ -1041,40 +987,37 @@ struct Fulminate: Game, GameMain {
 
     // MARK: - Upstairs
 
-    let runner = Item {
-        name("runner")
-        adjectives("worn", "threadbare", "turkey")
-        synonyms("runner", "carpet", "rug")
-        description(
+    let runner = Item.backdrop(
+        "runner",
+        adjectives: ["worn", "threadbare", "turkey"],
+        synonyms: ["runner", "carpet", "rug"],
+        description:
             """
             Turkey pattern, gone to string down the middle where everybody walks and perfectly good along both edges.
-            """)
-        scenery
-    }
+            """
+    )
 
-    let studyLamp = Item {
-        name("desk lamp")
-        adjectives("green", "shaded", "brass", "reading")
-        synonyms("lamp", "shade")
-        description(
+    let studyLamp = Item.backdrop(
+        "desk lamp",
+        adjectives: ["green", "shaded", "brass", "reading"],
+        synonyms: ["lamp", "shade"],
+        description:
             """
             Brass, with a green glass shade of the kind meant to keep the light off everything but the page. It is
             switched off. Whoever went through these drawers did it without turning it on.
-            """)
-        scenery
-    }
+            """
+    )
 
-    let sheet = Item {
-        name("sheet")
-        adjectives("typed", "half", "foolscap")
-        synonyms("sheet", "page", "story")
-        description(
+    let sheet = Item.backdrop(
+        "sheet",
+        adjectives: ["typed", "half", "foolscap"],
+        synonyms: ["sheet", "page", "story"],
+        description:
             """
             Half a page of a sea story: a destroyer, weather, and a man on a bridge who has just noticed something.
             It stops in the middle of the word *torpe*.
-            """)
-        scenery
-    }
+            """
+    )
 
     /// Named by Teague's half past six arrival — "sits on the end of the bed,
     /// and does not put the light on" — and by nothing else in the house. The
@@ -1086,30 +1029,29 @@ struct Fulminate: Game, GameMain {
     /// Back Yard has had all along — `labLamp` answers to `light` there while
     /// the flashlight is in the player's hand — so the parser asks which, and
     /// that is the right question rather than a defect.
-    let ceilingLight = Item {
-        name("ceiling light")
-        adjectives("ceiling", "electric", "bare")
-        // `cord` was added by `9caa400` and `chain` was not, in the commit whose
-        // job was closing an unanswerable noun on this same object. `shade`
-        // because the description says there is none, and that sentence is the
-        // right answer to somebody asking. (#334)
-        synonyms("light", "bulb", "fixture", "cord", "chain", "shade")
-        description(
+    // `cord` was added by `9caa400` and `chain` was not, in the commit whose
+    // job was closing an unanswerable noun on this same object. `shade`
+    // because the description says there is none, and that sentence is the
+    // right answer to somebody asking. (#334)
+    let ceilingLight = Item.backdrop(
+        "ceiling light",
+        adjectives: ["ceiling", "electric", "bare"],
+        synonyms: ["light", "bulb", "fixture", "cord", "chain", "shade"],
+        description:
             """
             A bulb on a cord with a pull chain, and no shade on it. The chain has been wiped where a hand goes.
-            """)
-        scenery
-    }
+            """
+    )
 
-    let bed = Item {
-        name("bed")
-        adjectives("iron", "made", "single")
-        synonyms("bed", "bedstead", "mattress")
-        description(
+    let bed = Item.backdrop(
+        "bed",
+        adjectives: ["iron", "made", "single"],
+        synonyms: ["bed", "bedstead", "mattress"],
+        description:
             """
             Made, and made properly, with the corners squared. Navy the first time around and it never comes off.
-            """)
-        scenery
+            """
+    ) {
         surface
     }
 
@@ -1118,22 +1060,22 @@ struct Fulminate: Game, GameMain {
     /// scenery with no description of its own, so all three of `X DESK`,
     /// `X DRAWERS` and `SEARCH DESK` withheld it and answered with the engine's
     /// shrug instead.
-    let desk = Item {
-        name("desk")
-        adjectives("writing", "oak")
-        // The arrangement is the clue, so the noun cannot simply be deleted from
-        // the description; the desk answers for what is lying in it. Both
-        // numbers, because the splitter is exact and a player types either.
-        // (#334)
-        synonyms("desk", "drawer", "drawers", "paper", "papers")
-        description(
+    let desk = Item.backdrop(
+        "desk",
+        adjectives: ["writing", "oak"],
+        synonyms: ["desk", "drawer", "drawers", "paper", "papers"],
+        description:
             """
             Oak, and too good for the room it ended up in. Every drawer is standing open
             to the same depth, and the papers in them are square to the fronts. Whoever
             went through this desk had time, and knew that having time was the one thing
             he must not leave any sign of.
-            """)
-        scenery
+            """
+    ) {
+        // The arrangement is the clue, so the noun cannot simply be deleted from
+        // the description; the desk answers for what is lying in it. Both
+        // numbers, because the splitter is exact and a player types either.
+        // (#334)
         surface
     }
 
@@ -1160,17 +1102,16 @@ struct Fulminate: Game, GameMain {
             """)
     }
 
-    let typewriter = Item {
-        name("typewriter")
-        adjectives("portable", "royal")
-        synonyms("typewriter", "machine")
-        description(
+    let typewriter = Item.backdrop(
+        "typewriter",
+        adjectives: ["portable", "royal"],
+        synonyms: ["typewriter", "machine"],
+        description:
             """
             A portable with a sheet still in it, stopped mid-sentence in the middle of a word. Whatever took him away
             from it, he did not expect it to take long.
-            """)
-        scenery
-    }
+            """
+    )
 
     /// One of the game's three character tells, and it was declared `container`
     /// with nothing in it — so `SEARCH SUITCASE` answered "The suitcase is
@@ -1179,13 +1120,10 @@ struct Fulminate: Game, GameMain {
     /// instead, on the overcoat's model: it is a boarder's packed case in a
     /// boarder's rented room, and `TAKE ALL` used to lift it while he stood
     /// there being helpful.
-    let suitcase = Item {
-        name("suitcase")
-        adjectives("brown", "packed")
-        synonyms("suitcase", "case", "bag", "luggage", "strap", "buckle", "corners")
-        description("Brown, scuffed at the corners, and packed. The strap is buckled. It has been packed a while.")
-        scenery
-    }
+    let suitcase = Item.backdrop(
+        "suitcase", adjectives: ["brown", "packed"],
+        synonyms: ["suitcase", "case", "bag", "luggage", "strap", "buckle", "corners"],
+        description: "Brown, scuffed at the corners, and packed. The strap is buckled. It has been packed a while.")
 
     // MARK: - The evening, written down
 

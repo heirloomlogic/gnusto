@@ -98,110 +98,52 @@ struct ZorkMirror: GameContent {
 
     /// The enormous mirror in the northern Mirror Room. Touching it (the
     /// `before(.touch)` rule below) whisks you to the southern room.
-    let mirrorNorth = Item {
-        name("mirror")
-        adjectives("enormous")
-        synonyms("mirror", "reflection")
-        scenery
-    }
+    let mirrorNorth = Item.backdrop("mirror", adjectives: ["enormous"], synonyms: ["mirror", "reflection"])
 
     /// The enormous mirror in the southern Mirror Room — touch it to return
     /// north.
-    let mirrorSouth = Item {
-        name("mirror")
-        adjectives("enormous")
-        synonyms("mirror", "reflection")
-        scenery
-    }
+    let mirrorSouth = Item.backdrop("mirror", adjectives: ["enormous"], synonyms: ["mirror", "reflection"])
 
     // MARK: - (#407) scenery: nouns the room prose prints
 
     /// (#407) Named by `Prose.mirrorRoomNorth` — the wall the mirror fills.
-    let wallAtMirrorNorth = Item {
-        name("south wall")
-        adjectives("south")
-        synonyms("wall")
-        description(Prose.mirrorRoomWall)
-        scenery
-    }
+    let wallAtMirrorNorth = Item.backdrop(
+        "south wall", adjectives: ["south"], synonyms: ["wall"], description: Prose.mirrorRoomWall)
 
     /// (#407) Named by `Prose.mirrorRoomSouth`.
-    let wallAtMirrorSouth = Item {
-        name("south wall")
-        adjectives("south")
-        synonyms("wall")
-        description(Prose.mirrorRoomWall)
-        scenery
-    }
+    let wallAtMirrorSouth = Item.backdrop(
+        "south wall", adjectives: ["south"], synonyms: ["wall"], description: Prose.mirrorRoomWall)
 
     /// (#407) Named by `Prose.mirrorRoomNorth` and `Prose.mirrorRoomSouth` —
     /// beyond the audit's list; one per room.
-    let ceilingAtMirrorNorth = Item {
-        name("tall ceiling")
-        adjectives("tall")
-        synonyms("ceiling", "ceilings")
-        description(Prose.mirrorRoomCeiling)
-        scenery
-    }
+    let ceilingAtMirrorNorth = Item.backdrop(
+        "tall ceiling", adjectives: ["tall"], synonyms: ["ceiling", "ceilings"], description: Prose.mirrorRoomCeiling)
 
-    let ceilingAtMirrorSouth = Item {
-        name("tall ceiling")
-        adjectives("tall")
-        synonyms("ceiling", "ceilings")
-        description(Prose.mirrorRoomCeiling)
-        scenery
-    }
+    let ceilingAtMirrorSouth = Item.backdrop(
+        "tall ceiling", adjectives: ["tall"], synonyms: ["ceiling", "ceilings"], description: Prose.mirrorRoomCeiling)
 
     /// (#407) Named by `Prose.smallCave`.
-    let smallCaveStaircase = Item {
-        name("staircase")
-        synonyms("stairs")
-        description(Prose.smallCaveStaircase)
-        scenery
-    }
+    let smallCaveStaircase = Item.backdrop("staircase", synonyms: ["stairs"], description: Prose.smallCaveStaircase)
 
     /// (#407) Named by `Prose.atlantisRoom`.
-    let atlantisStaircase = Item {
-        name("staircase")
-        synonyms("stairs")
-        description(Prose.atlantisStaircase)
-        scenery
-    }
+    let atlantisStaircase = Item.backdrop("staircase", synonyms: ["stairs"], description: Prose.atlantisStaircase)
 
     /// (#407) Named by `Prose.slideRoom`; the quoted "Granite Wall" and the
     /// word `granite` name the same etching.
-    let etchedLetters = Item {
-        name("etched letters")
-        adjectives("etched")
-        synonyms("letters", "lettering", "granite wall", "granite")
-        description(Prose.etchedLetters)
-        scenery
-    }
+    let etchedLetters = Item.backdrop(
+        "etched letters", adjectives: ["etched"], synonyms: ["letters", "lettering", "granite wall", "granite"],
+        description: Prose.etchedLetters)
 
     /// (#407) Named by `Prose.slideRoom`.
-    let metalSlide = Item {
-        name("steep metal slide")
-        adjectives("steep", "metal")
-        synonyms("slide")
-        description(Prose.metalSlide)
-        scenery
-    }
+    let metalSlide = Item.backdrop(
+        "steep metal slide", adjectives: ["steep", "metal"], synonyms: ["slide"], description: Prose.metalSlide)
 
     /// (#407) Named by `Prose.slideRoom`.
-    let slideRoomRock = Item {
-        name("rock")
-        description(Prose.slideRoomRock)
-        scenery
-    }
+    let slideRoomRock = Item.backdrop("rock", description: Prose.slideRoomRock)
 
     /// (#407) Named by `Prose.slideRoom`.
-    let slideRoomOpening = Item {
-        name("small opening")
-        adjectives("small")
-        synonyms("opening")
-        description(Prose.slideRoomOpening)
-        scenery
-    }
+    let slideRoomOpening = Item.backdrop(
+        "small opening", adjectives: ["small"], synonyms: ["opening"], description: Prose.slideRoomOpening)
 
     // MARK: - State
 

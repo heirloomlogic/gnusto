@@ -86,164 +86,76 @@ struct ZorkDam: GameContent {
 
     // MARK: - Dam controls (Dam Room)
 
-    let bolt = Item {
-        name("metal bolt")
-        adjectives("metal", "large")
-        synonyms("nut")
-        description(Prose.bolt)
-        scenery
-    }
+    let bolt = Item.backdrop("metal bolt", adjectives: ["metal", "large"], synonyms: ["nut"], description: Prose.bolt)
 
-    let bubble = Item {
-        name("green bubble")
-        adjectives("green", "small", "plastic")
-        description(Prose.bubble)
-        scenery
-    }
+    let bubble = Item.backdrop("green bubble", adjectives: ["green", "small", "plastic"], description: Prose.bubble)
+    // (#407) The panel's examine line names dials and fittings; they are
+    // its studs, not a thing apart.
 
-    let controlPanel = Item {
-        name("control panel")
-        adjectives("control")
-        // (#407) The panel's examine line names dials and fittings; they are
-        // its studs, not a thing apart.
-        synonyms("panel", "dials", "dial", "fittings", "fitting")
-        description(Prose.controlPanel)
-        scenery
-    }
+    let controlPanel = Item.backdrop(
+        "control panel", adjectives: ["control"], synonyms: ["panel", "dials", "dial", "fittings", "fitting"],
+        description: Prose.controlPanel)
 
     // MARK: - (#407) scenery: nouns the room prose prints
 
     /// (#407) Named by `Prose.damLobby`.
-    let lobbyDoorways = Item {
-        name("open doorways")
-        adjectives("open")
-        synonyms("doorways", "doorway")
-        description(Prose.lobbyDoorways)
-        scenery
-    }
+    let lobbyDoorways = Item.backdrop(
+        "open doorways", adjectives: ["open"], synonyms: ["doorways", "doorway"], description: Prose.lobbyDoorways)
 
     /// (#407) Named by `Prose.guidebook`, the listing line the guidebooks
     /// print — which had never been wired to the item that speaks it, so the
     /// room named no desk at all until now.
-    let receptionDesk = Item {
-        name("reception desk")
-        adjectives("reception")
-        synonyms("desk")
-        description(Prose.receptionDesk)
-        scenery
-    }
+    let receptionDesk = Item.backdrop(
+        "reception desk", adjectives: ["reception"], synonyms: ["desk"], description: Prose.receptionDesk)
 
     /// (#407) Named by `Prose.maintenanceRoom`.
-    let maintenanceDoorways = Item {
-        name("doorways")
-        synonyms("doorway")
-        description(Prose.maintenanceDoorways)
-        scenery
-    }
+    let maintenanceDoorways = Item.backdrop("doorways", synonyms: ["doorway"], description: Prose.maintenanceDoorways)
 
     /// (#407) Named by `Prose.maintenanceRoom`.
-    let maintenanceWall = Item {
-        name("wall")
-        description(Prose.maintenanceWall)
-        scenery
-    }
+    let maintenanceWall = Item.backdrop("wall", description: Prose.maintenanceWall)
 
     /// (#407) Named by `Prose.maintenanceRoom`.
-    let equipment = Item {
-        name("valuable equipment")
-        adjectives("valuable")
-        synonyms("equipment")
-        description(Prose.maintenanceEquipment)
-        scenery
-    }
+    let equipment = Item.backdrop(
+        "valuable equipment", adjectives: ["valuable"], synonyms: ["equipment"], description: Prose.maintenanceEquipment
+    )
 
     /// (#407) Named by `Prose.damBase`.
-    let cliffsFromDamBase = Item {
-        name("white cliffs")
-        adjectives("white")
-        synonyms("cliffs", "cliff")
-        description(Prose.cliffsFromDamBase)
-        scenery
-    }
+    let cliffsFromDamBase = Item.backdrop(
+        "white cliffs", adjectives: ["white"], synonyms: ["cliffs", "cliff"], description: Prose.cliffsFromDamBase)
 
     /// (#407) Named by `Prose.damBase`.
-    let riverAtDamBase = Item {
-        name("frigid river")
-        adjectives("frigid")
-        synonyms("river", "shores")
-        description(Prose.riverAtDamBase)
-        scenery
-    }
+    let riverAtDamBase = Item.backdrop(
+        "frigid river", adjectives: ["frigid"], synonyms: ["river", "shores"], description: Prose.riverAtDamBase)
 
     /// (#407) Named by `Prose.reservoirSouth`.
-    let reservoirLake = Item {
-        name("large lake")
-        adjectives("large")
-        synonyms("lake")
-        description(Prose.reservoirLake)
-        scenery
-    }
+    let reservoirLake = Item.backdrop(
+        "large lake", adjectives: ["large"], synonyms: ["lake"], description: Prose.reservoirLake)
 
     /// (#407) Named by `Prose.reservoirSouth`.
-    let reservoirChasm = Item {
-        name("chasm")
-        description(Prose.reservoirChasm)
-        scenery
-    }
+    let reservoirChasm = Item.backdrop("chasm", description: Prose.reservoirChasm)
 
     /// (#407) Named by `Prose.reservoirSouth`.
-    let reservoirCanyon = Item {
-        name("canyon")
-        description(Prose.reservoirCanyon)
-        scenery
-    }
+    let reservoirCanyon = Item.backdrop("canyon", description: Prose.reservoirCanyon)
 
     /// (#407) Named by `Prose.reservoir`.
-    let reservoirMud = Item {
-        name("mud")
-        description(Prose.reservoirMud)
-        scenery
-    }
+    let reservoirMud = Item.backdrop("mud", description: Prose.reservoirMud)
 
     /// (#407) Named by `Prose.reservoir`.
-    let reservoirShores = Item {
-        name("shores")
-        synonyms("shore")
-        description(Prose.reservoirShores)
-        scenery
-    }
+    let reservoirShores = Item.backdrop("shores", synonyms: ["shore"], description: Prose.reservoirShores)
 
     /// (#407) Named by `Prose.reservoirNorth`.
-    let reservoirStairway = Item {
-        name("slimy stairway")
-        adjectives("slimy")
-        synonyms("stairway", "stairs")
-        description(Prose.reservoirStairway)
-        scenery
-    }
+    let reservoirStairway = Item.backdrop(
+        "slimy stairway", adjectives: ["slimy"], synonyms: ["stairway", "stairs"], description: Prose.reservoirStairway)
 
     /// (#407) Named by `Prose.stream`.
-    let streamBeach = Item {
-        name("narrow beach")
-        adjectives("narrow")
-        synonyms("beach")
-        description(Prose.streamBeach)
-        scenery
-    }
+    let streamBeach = Item.backdrop(
+        "narrow beach", adjectives: ["narrow"], synonyms: ["beach"], description: Prose.streamBeach)
 
     /// (#407) Named by `Prose.streamView`, beyond the audit's list.
-    let streamViewPath = Item {
-        name("path")
-        description(Prose.streamViewPath)
-        scenery
-    }
+    let streamViewPath = Item.backdrop("path", description: Prose.streamViewPath)
 
     /// (#407) Named by `Prose.streamView`, beyond the audit's list.
-    let streamViewStream = Item {
-        name("stream")
-        description(Prose.streamViewStream)
-        scenery
-    }
+    let streamViewStream = Item.backdrop("stream", description: Prose.streamViewStream)
 
     // MARK: - Dam Lobby items
 
@@ -265,37 +177,16 @@ struct ZorkDam: GameContent {
 
     // MARK: - Maintenance Room items
 
-    let blueButton = Item {
-        name("blue button")
-        adjectives("blue")
-        synonyms("switch")
-        description(Prose.blueButton)
-        scenery
-    }
+    let blueButton = Item.backdrop(
+        "blue button", adjectives: ["blue"], synonyms: ["switch"], description: Prose.blueButton)
 
-    let redButton = Item {
-        name("red button")
-        adjectives("red")
-        synonyms("switch")
-        description(Prose.redButton)
-        scenery
-    }
+    let redButton = Item.backdrop("red button", adjectives: ["red"], synonyms: ["switch"], description: Prose.redButton)
 
-    let brownButton = Item {
-        name("brown button")
-        adjectives("brown")
-        synonyms("switch")
-        description(Prose.brownButton)
-        scenery
-    }
+    let brownButton = Item.backdrop(
+        "brown button", adjectives: ["brown"], synonyms: ["switch"], description: Prose.brownButton)
 
-    let yellowButton = Item {
-        name("yellow button")
-        adjectives("yellow")
-        synonyms("switch")
-        description(Prose.yellowButton)
-        scenery
-    }
+    let yellowButton = Item.backdrop(
+        "yellow button", adjectives: ["yellow"], synonyms: ["switch"], description: Prose.yellowButton)
 
     let wrench = Item {
         name("wrench")

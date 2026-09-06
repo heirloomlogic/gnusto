@@ -197,12 +197,7 @@ struct ZorkCoalMine: GameContent {
 
     /// The far end of the chain — the basket seen from the opposite room. Not a
     /// container; you work it only from the Shaft Room. See ``basket``.
-    let basketStandin = Item {
-        name("basket")
-        synonyms("cage", "dumbwaiter")
-        description(Prose.basketFarEnd)
-        scenery
-    }
+    let basketStandin = Item.backdrop("basket", synonyms: ["cage", "dumbwaiter"], description: Prose.basketFarEnd)
 
     /// The dryer-like machine. A closed container with a lid; feed it coal, shut
     /// it, and throw its switch with a screwdriver (host-wired) to make a
@@ -218,190 +213,88 @@ struct ZorkCoalMine: GameContent {
 
     /// The machine's start switch — thrown with a screwdriver (host-wired). Too
     /// small for bare fingers.
-    let machineSwitch = Item {
-        name("switch")
-        synonyms("start")
-        description(Prose.machineSwitch)
-        scenery
-    }
+    let machineSwitch = Item.backdrop("switch", synonyms: ["start"], description: Prose.machineSwitch)
 
     // MARK: - (#407) scenery: nouns the room prose prints
 
     /// (#407) Named by `Prose.mineEntrance`.
-    let entranceShaft = Item {
-        name("shaft")
-        description(Prose.entranceShaft)
-        scenery
-    }
+    let entranceShaft = Item.backdrop("shaft", description: Prose.entranceShaft)
 
     /// (#407) Named by `Prose.batRoom`, beyond the audit's list.
-    let batRoomDoors = Item {
-        name("doors")
-        synonyms("door")
-        description(Prose.batRoomDoors)
-        scenery
-    }
+    let batRoomDoors = Item.backdrop("doors", synonyms: ["door"], description: Prose.batRoomDoors)
 
     /// (#407) Named by `Prose.squeakyRoom`, beyond the audit's list.
-    let squeakyPassage = Item {
-        name("passage")
-        description(Prose.squeakyPassage)
-        scenery
-    }
+    let squeakyPassage = Item.backdrop("passage", description: Prose.squeakyPassage)
 
     /// (#407) Named by `Prose.timberRoom`, beyond the audit's list.
-    let timberPassages = Item {
-        name("wide passage")
-        adjectives("wide")
-        synonyms("passage", "passageway")
-        description(Prose.timberPassages)
-        scenery
-    }
+    let timberPassages = Item.backdrop(
+        "wide passage", adjectives: ["wide"], synonyms: ["passage", "passageway"], description: Prose.timberPassages)
 
     /// (#407) Named by `Prose.timberRoom`, beyond the audit's list.
-    let strongDraft = Item {
-        name("strong draft")
-        adjectives("strong")
-        synonyms("draft")
-        description(Prose.strongDraft)
-        scenery
-    }
+    let strongDraft = Item.backdrop(
+        "strong draft", adjectives: ["strong"], synonyms: ["draft"], description: Prose.strongDraft)
 
     /// (#407) Named by `Prose.shaftRoom`.
-    let shaftRoomShaft = Item {
-        name("small shaft")
-        adjectives("small")
-        synonyms("shaft")
-        description(Prose.shaftRoomShaft)
-        scenery
-    }
+    let shaftRoomShaft = Item.backdrop(
+        "small shaft", adjectives: ["small"], synonyms: ["shaft"], description: Prose.shaftRoomShaft)
 
     /// (#407) Named by `Prose.shaftRoom`.
-    let shaftFramework = Item {
-        name("metal framework")
-        adjectives("metal")
-        synonyms("framework")
-        description(Prose.shaftFramework)
-        scenery
-    }
+    let shaftFramework = Item.backdrop(
+        "metal framework", adjectives: ["metal"], synonyms: ["framework"], description: Prose.shaftFramework)
 
     /// (#407) Named by `Prose.shaftRoom` — the chain the basket rides.
-    let ironChain = Item {
-        name("heavy iron chain")
-        adjectives("heavy", "iron")
-        synonyms("chain")
-        description(Prose.ironChain)
-        scenery
-    }
+    let ironChain = Item.backdrop(
+        "heavy iron chain", adjectives: ["heavy", "iron"], synonyms: ["chain"], description: Prose.ironChain)
 
     /// (#407) Named by `Prose.smellyRoom`.
-    let smellyStaircase = Item {
-        name("descending staircase")
-        adjectives("descending", "small")
-        synonyms("staircase", "stairs")
-        description(Prose.smellyStaircase)
-        scenery
-    }
+    let smellyStaircase = Item.backdrop(
+        "descending staircase", adjectives: ["descending", "small"], synonyms: ["staircase", "stairs"],
+        description: Prose.smellyStaircase)
 
     /// (#407) Named by `Prose.smellyRoom` — a smell the prose asserts, so a
     /// noun the parser owes an answer for.
-    let foulOdor = Item {
-        name("foul odor")
-        adjectives("foul")
-        synonyms("odor", "smell", "stench")
-        description(Prose.foulOdor)
-        scenery
-    }
+    let foulOdor = Item.backdrop(
+        "foul odor", adjectives: ["foul"], synonyms: ["odor", "smell", "stench"], description: Prose.foulOdor)
 
     /// (#407) Named by `Prose.smellyRoom`.
-    let smellyTunnel = Item {
-        name("narrow tunnel")
-        adjectives("narrow")
-        synonyms("tunnel")
-        description(Prose.smellyTunnel)
-        scenery
-    }
+    let smellyTunnel = Item.backdrop(
+        "narrow tunnel", adjectives: ["narrow"], synonyms: ["tunnel"], description: Prose.smellyTunnel)
 
     /// (#407) Named by `Prose.gasRoom`.
-    let gasStairs = Item {
-        name("stairs")
-        synonyms("staircase")
-        description(Prose.gasStairs)
-        scenery
-    }
+    let gasStairs = Item.backdrop("stairs", synonyms: ["staircase"], description: Prose.gasStairs)
 
     /// (#407) Named by `Prose.gasRoom`.
-    let gasTunnel = Item {
-        name("narrow tunnel")
-        adjectives("narrow")
-        synonyms("tunnel")
-        description(Prose.gasTunnel)
-        scenery
-    }
+    let gasTunnel = Item.backdrop(
+        "narrow tunnel", adjectives: ["narrow"], synonyms: ["tunnel"], description: Prose.gasTunnel)
 
     /// (#407) Named by `Prose.gasRoom` — the gas the room's own prose warns
     /// of and its rule enforces.
-    let coalGas = Item {
-        name("coal gas")
-        adjectives("coal")
-        synonyms("gas")
-        description(Prose.coalGas)
-        scenery
-    }
+    let coalGas = Item.backdrop("coal gas", adjectives: ["coal"], synonyms: ["gas"], description: Prose.coalGas)
 
     /// (#407) Named by `Prose.ladderTop`.
-    let ricketyLadder = Item {
-        name("rickety wooden ladder")
-        adjectives("rickety", "wooden")
-        synonyms("ladder")
-        description(Prose.ricketyLadder)
-        scenery
-    }
+    let ricketyLadder = Item.backdrop(
+        "rickety wooden ladder", adjectives: ["rickety", "wooden"], synonyms: ["ladder"],
+        description: Prose.ricketyLadder)
 
     /// (#407) Named by `Prose.ladderTop`.
-    let ladderTopStaircase = Item {
-        name("staircase")
-        synonyms("stairs")
-        description(Prose.ladderTopStaircase)
-        scenery
-    }
+    let ladderTopStaircase = Item.backdrop("staircase", synonyms: ["stairs"], description: Prose.ladderTopStaircase)
 
     /// (#407) Named by `Prose.ladderBottom` — the ladder's far end, a
     /// different fixture from ``ricketyLadder`` above.
-    let ladderBottomLadder = Item {
-        name("wooden ladder")
-        adjectives("wooden", "narrow")
-        synonyms("ladder")
-        description(Prose.ladderBottomLadder)
-        scenery
-    }
+    let ladderBottomLadder = Item.backdrop(
+        "wooden ladder", adjectives: ["wooden", "narrow"], synonyms: ["ladder"], description: Prose.ladderBottomLadder)
 
     /// (#407) Named by `Prose.timberRoom`.
-    let brokenTimbers = Item {
-        name("broken timbers")
-        adjectives("broken")
-        synonyms("timbers", "timber")
-        description(Prose.brokenTimbers)
-        scenery
-    }
+    let brokenTimbers = Item.backdrop(
+        "broken timbers", adjectives: ["broken"], synonyms: ["timbers", "timber"], description: Prose.brokenTimbers)
 
     /// (#407) Named by `Prose.draftyRoom`.
-    let draftyShaft = Item {
-        name("long shaft")
-        adjectives("long")
-        synonyms("shaft")
-        description(Prose.draftyShaft)
-        scenery
-    }
+    let draftyShaft = Item.backdrop(
+        "long shaft", adjectives: ["long"], synonyms: ["shaft"], description: Prose.draftyShaft)
 
     /// (#407) Named by `Prose.draftyRoom`.
-    let draftyChain = Item {
-        name("iron chain")
-        adjectives("iron", "heavy")
-        synonyms("chain")
-        description(Prose.draftyChain)
-        scenery
-    }
+    let draftyChain = Item.backdrop(
+        "iron chain", adjectives: ["iron", "heavy"], synonyms: ["chain"], description: Prose.draftyChain)
 
     // MARK: - State
 

@@ -40,6 +40,7 @@ Each has its own documentation in this archive. They are not linked from here: a
 - ``Game``
 - ``Location``
 - ``Item``
+- ``Item/backdrop(_:adjectives:synonyms:description:_:)``
 - ``Player``
 - ``World``
 
