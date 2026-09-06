@@ -1,7 +1,7 @@
 # Declared-Once Entities: Killing the File-Scope Item Idiom
 
 **Date:** 2026-07-07
-**Status:** Approved in discussion; spec pending review
+**Status:** Implemented
 
 ## Problem
 

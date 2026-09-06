@@ -13,7 +13,7 @@ extension Intent {
     #verb("show", ["show", .directObject, "to", .indirectObject])
     /// Open a conversation: `talk to the butler`. Distinct from the engine's
     /// ``Intent/greet`` — GREET is the hello, TALK is settling in for one —
-    /// though ``Conversation/greeting(of:for:learning:reply:)`` answers both
+    /// though ``Conversation/greeting(of:for:learning:again:reply:)`` answers both
     /// by default, so the player never has to guess which word the game wanted.
     ///
     /// Note `Sources/Lighthouse` mints an `Intent("talk")` of its own for the
