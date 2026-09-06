@@ -143,6 +143,8 @@ bin/playtest-replay --build Fulminate
 bin/playtest-replay Fulminate --commands probe.txt --seed 0
 ```
 
+To run an automated author round from a game package, start with [Run a Play-test Round](https://heirloomlogic.github.io/gnusto/documentation/gnusto/playtestingyourowngame/).
+
 [`docs/playtesting.md`](docs/playtesting.md) is how to do it by hand, and it carries the calibration answer key — the defects a round is supposed to find, so a round that finds nothing is a broken harness rather than a clean game.
 
 ## Share your game

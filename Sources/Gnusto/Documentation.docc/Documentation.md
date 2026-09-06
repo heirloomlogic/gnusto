@@ -19,7 +19,7 @@ Each line the player types is parsed into a ``Command`` and run through a fixed 
 
 <doc:GettingStarted> first, then the **Lighthouse** demo (`Sources/Lighthouse/`, `swift run Lighthouse`) — one small winnable game that exercises containers and a locked door, a fuse and a daemon, a roaming actor, `@Global` state, a content bundle, and two plugins. Most of the guides below link back to it.
 
-After that the articles are a reference, not a sequence: read <doc:WritingRules> and <doc:WorldMapAndExits> when you are building, <doc:TestingYourGame> and <doc:PlayTesting> when you want to know whether it works, and <doc:BootstrapDiagnostics> when the game refuses to start.
+After that the articles are a reference, not a sequence: read <doc:WritingRules> and <doc:WorldMapAndExits> when you are building, <doc:TestingYourGame> and <doc:PlayTesting> when you want to know whether it works, <doc:PlayTestingYourOwnGame> when you are ready to run a round, and <doc:BootstrapDiagnostics> when the game refuses to start.
 
 ### The optional libraries
 
@@ -209,6 +209,7 @@ Each has its own documentation in this archive. They are not linked from here: a
 
 - <doc:TestingYourGame>
 - <doc:PlayTesting>
+- <doc:PlayTestingYourOwnGame>
 
 ### Diagnostics
 

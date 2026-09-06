@@ -53,7 +53,7 @@ Building is a separate one-shot on purpose: a replay that also builds cannot be 
 
 A package written by `bin/new-game` has all three: `bin/playtest-replay`, `bin/playtest-measure` and `bin/export-game` are shims over the copies in the Gnusto checkout it depends on, so they are never a version behind the engine they are driving. Run `swift build` once before the first one, since the tools live in a checkout SwiftPM has to have resolved. That promise holds once the pinned Gnusto is recent enough to carry `GNUSTO_PACKAGE_PATH`, the variable a shim sets to tell the tool which package it meant; `bin/new-game` checks the tag it just pinned and prints a warning naming the two tools that need it (`bin/gnusto-mcp` and `bin/export-game`) when the default pin predates it. `--dep-path` against a fixed-up checkout is unaffected.
 
-`docs/playtesting.md` in the repository is the operating manual for doing this by hand, and carries the calibration answer key — the defects a round is supposed to find. A round that finds nothing is a broken harness before it is a clean game.
+`docs/playtesting.md` in this repository is the maintainer's operating manual and carries the calibration answer key: the defects a round is supposed to find. A round that finds nothing is a broken harness before it is a clean game. To run a portable author round from your game package, read <doc:PlayTestingYourOwnGame>. It covers preflight, dispatch, the first cold round, and the routes it can create for later rounds.
 
 ## Serving the game to an agent
 
@@ -141,6 +141,7 @@ Under `.context/playtest`, or wherever `GNUSTO_PLAYTEST_DIR` points. `GNUSTO_MCP
 ## Topics
 
 - <doc:TestingYourGame>
+- <doc:PlayTestingYourOwnGame>
 - <doc:TheTurnPipeline>
 - <doc:SharingYourGame>
 - ``GameMain``
