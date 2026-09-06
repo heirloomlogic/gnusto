@@ -85,6 +85,11 @@ enum Visibility {
     /// Takes the frame lock for the placement read and then calls the closure
     /// *outside* it: a rule body re-enters the frame through `Ctx.current`, and
     /// the `Mutex` is not reentrant.
+    ///
+    /// The call is counted — see ``Reentry/reach``, issue #402. Counting it here
+    /// rather than at `isReachable` is what makes it cover both ways in: the
+    /// author-facing `Item.isReachable` and the pipeline's own stage-0 guard
+    /// both come through this one function.
     static func reachRuleAllows(_ id: EntityID, for observer: EntityID, frame: TurnFrame) -> Bool {
         // `isEmpty` before the subscript: a dictionary lookup hashes the key
         // even when there is nothing to find, and for every game that declares
@@ -92,7 +97,7 @@ enum Visibility {
         let declared = frame.definition.rules.itemReach
         guard !declared.isEmpty, let rule = declared[id] else { return true }
         if frame.with({ $0.state.placements[id] == .heldBy(observer) }) { return true }
-        return rule.allows()
+        return frame.nested(.reach, within: id) { rule.allows() }
     }
 
     /// Whether `actor` can reach `id` from the room they are standing in —

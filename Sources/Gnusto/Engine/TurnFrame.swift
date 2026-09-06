@@ -30,6 +30,10 @@ struct Scratch: Sendable {
     var liveTextDepth = 0
     /// How many ``enter(_:)`` moves are on the stack — see ``Reentry/walk``.
     var walkDepth = 0
+    /// How many `reach { }` closures are on the stack — see ``Reentry/reach``.
+    /// Nesting, not calls per turn: a rule consulted by every verb that touches
+    /// its item, twenty turns running, never leaves 1.
+    var reachDepth = 0
     /// The world as it stood at the close of this turn, *before* the move
     /// counter advanced — or nil on a turn that never advanced it.
     ///
@@ -94,12 +98,12 @@ struct Scratch: Sendable {
     }
 }
 
-/// The two seams at which the engine calls code the author wrote, and so the
-/// two at which that code can call back into the engine calling it.
+/// The seams at which the engine calls code the author wrote, and so the ones
+/// at which that code can call back into the engine calling it.
 ///
-/// They are counted apart because a level of one costs twenty times a level of
-/// the other, and one cap covering both would have to be the smaller — see
-/// ``Reentry/cap``.
+/// They are counted apart because their levels do not cost the same — a
+/// describer level costs twenty times a walk level — and one cap covering all
+/// of them would have to be the smallest. See ``Reentry/cap``.
 enum Reentry: Sendable {
     /// A `describe { }` or `presence { }` closure, called from inside the room
     /// describer. Anything the closure calls that describes — including
@@ -109,19 +113,24 @@ enum Reentry: Sendable {
     /// ``enter(_:)`` and the `onEnter` rules it runs, one of which may enter
     /// again.
     case walk
+    /// A `reach { }` closure, called from `Visibility.reachRuleAllows`. A rule
+    /// that asks a reach question — `isReachable` on its own item, or on
+    /// another whose rule asks back — lands here again. Issue #402.
+    case reach
 
     /// Where this seam keeps its count on the turn's ``Scratch``.
     var depth: WritableKeyPath<Scratch, Int> {
         switch self {
         case .liveText: \.liveTextDepth
         case .walk: \.walkDepth
+        case .reach: \.reachDepth
         }
     }
 
     /// How far the engine may re-enter itself here before it stops believing
     /// the author meant it.
     ///
-    /// Both numbers are bracketed by measurement, because a guard against a
+    /// Every number is bracketed by measurement, because a guard against a
     /// stack overflow is worth nothing if the stack gets there first. The
     /// ceiling is what a Swift Testing cooperative thread's 512 KB affords in a
     /// debug build on macOS arm64 — the tightest case the engine runs in, and
@@ -132,13 +141,21 @@ enum Reentry: Sendable {
     /// |---|---|---|---|
     /// | ``liveText`` | 1–2 | 10 | 8 |
     /// | ``walk`` | 1 | 216 | 32 |
+    /// | ``reach`` | 1–2 | 318 | 32 |
+    ///
+    /// ``reach`` is the cheapest of the three levels, which is why its ceiling
+    /// is the highest. Its cap is the walk's 32 rather than something
+    /// proportionally larger: the depth is bounded by how many items' reach
+    /// rules a game writes in terms of each other, and a game with more than a
+    /// couple of those has a design problem the engine should not quietly
+    /// accommodate.
     ///
     /// The floor comes from instrumenting every ``TurnFrame/nested(_:within:_:)``
     /// call across the whole suite — 1,479 tests over seven games, Dungeon and
     /// Zork 1 included — which found nothing deeper than 2, and that only in the
-    /// describer. The gap between 10 and 216 is why these are two numbers rather
-    /// than one: a single cap would have to be the smaller, and would ration the
-    /// cheap seam by the expensive seam's ceiling.
+    /// describer. The spread between the three ceilings is why these are three
+    /// numbers rather than one: a single cap would have to be the smallest, and
+    /// would ration the cheap seams by the expensive one's ceiling.
     ///
     /// Why a ``liveText`` level costs twenty times a ``walk`` one is *not*
     /// established here — 512 KB over ten levels is some 50 KB a level, which is
@@ -158,6 +175,7 @@ enum Reentry: Sendable {
         switch self {
         case .liveText: 8
         case .walk: 32
+        case .reach: 32
         }
     }
 
@@ -192,6 +210,14 @@ enum Reentry: Sendable {
                 An `onEnter` rule called `enter(_:)` on the room it is already \
                 entering. Move the player *out* of a room from its rules, never \
                 into it.
+                """
+            case .reach:
+                """
+                A `reach { }` closure asked a reach question that came back to \
+                it — by reading `isReachable` on its own item, or on another \
+                whose rule asks about this one. The closure's job is to answer \
+                whether the thing is within arm's reach, so it cannot be the \
+                thing that asks.
                 """
             }
         return "Gnusto: \(entity()) re-entered the engine \(depth) levels deep. \(shape)"

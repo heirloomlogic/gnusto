@@ -7,8 +7,8 @@ import Testing
 /// before this guard the process died with an unattributed `signal 10` — no test
 /// name, no game, no room.
 ///
-/// The guard sits at the two seams where the engine calls author code rather than
-/// at the entry points that reach them, which is what makes it cover more than the
+/// The guard sits at the seams where the engine calls author code rather than at
+/// the entry points that reach them, which is what makes it cover more than the
 /// issue listed. ``TurnFrame/describedText(of:)`` and
 /// ``TurnFrame/presenceText(of:)`` invoke `describe { }` and `presence { }` from
 /// inside the call producing the text, so everything a closure might call to get
@@ -16,7 +16,10 @@ import Testing
 /// a plain read of the entity's own `description` — the last of which reaches
 /// neither the room describer nor `enter`, and so would have survived a guard
 /// placed on those. ``DefaultActions/enter(_:frame:announcing:)`` is the second
-/// seam, for an `onEnter` rule that enters its own room.
+/// seam, for an `onEnter` rule that enters its own room, and
+/// ``Visibility/reachRuleAllows(_:for:frame:)`` the third, for a `reach { }` rule
+/// that asks a reach question (issue #402). That last one never held the lock —
+/// what it lacked was the count.
 ///
 /// ## How the crash itself is exercised
 ///
@@ -30,14 +33,14 @@ import Testing
 /// is a pure function returning the message or nil, and both thresholds, both
 /// wordings and the named entity are asserted against it directly below, in
 /// process. The `fatalError` it feeds is then run for real, in a child process, by
-/// the two exit tests at the end — because a cap is worth nothing if the stack gets
+/// the exit tests at the end — because a cap is worth nothing if the stack gets
 /// there first, and only a real run can tell you it doesn't. Issue #227.
 struct ReentryGuardTests {
     // MARK: - The diagnostic's threshold and wording
 
     @Test("each seam is silent up to and including its own cap")
     func eachSeamIsSilentUpToItsCap() {
-        for seam in [Reentry.liveText, .walk] {
+        for seam in [Reentry.liveText, .walk, .reach] {
             #expect(seam.diagnostic(depth: 1, entity: "Cell") == nil)
             #expect(seam.diagnostic(depth: seam.cap, entity: "Cell") == nil)
         }
@@ -65,6 +68,15 @@ struct ReentryGuardTests {
         // The two seams say different things; a shared message would send an
         // author reading about `onEnter` to look at a `describe` closure.
         #expect(!walk.contains("describeSurroundings()"))
+
+        let reach = try #require(
+            Reentry.reach.diagnostic(depth: Reentry.reach.cap + 1, entity: "plinth"))
+        #expect(reach.contains("plinth"))
+        #expect(reach.contains("reach { }"))
+        #expect(reach.contains("isReachable"))
+        // Third seam, third wording, for the same reason.
+        #expect(!reach.contains("onEnter"))
+        #expect(!reach.contains("describeSurroundings()"))
     }
 
     /// The deepest nesting any game in the suite was observed to reach, from
@@ -75,14 +87,15 @@ struct ReentryGuardTests {
     func capsClearRealContent() {
         // The floor half of the bracket. The ceiling half — that each cap is
         // still under the depth at which the stack gives out — is not assertable
-        // between constants, and is the two exit tests at the end.
-        for seam in [Reentry.liveText, .walk] {
+        // between constants, and is the exit tests at the end.
+        for seam in [Reentry.liveText, .walk, .reach] {
             #expect(seam.cap > Self.deepestObserved)
         }
-        // And the two are genuinely different numbers — a walk level costs a
-        // twentieth of a describer level, so one cap for both would ration the
-        // cheap seam by the expensive one's ceiling.
+        // And they are genuinely different numbers — a describer level costs
+        // twenty times a walk level, so one cap for all three would have to be
+        // the smallest, rationing the cheap seams by the expensive one's ceiling.
         #expect(Reentry.walk.cap > Reentry.liveText.cap)
+        #expect(Reentry.reach.cap > Reentry.liveText.cap)
     }
 
     // MARK: - The counter
@@ -91,15 +104,25 @@ struct ReentryGuardTests {
     func nestingIsCountedPerSeamAndUnwinds() throws {
         let frame = try Self.freshFrame()
 
-        let depths = frame.nested(.liveText, within: .player) { () -> [Int] in
+        let depths = frame.nested(.liveText, within: .player) {
             let outer = frame.depth(of: .liveText)
             // A walk inside live text must not consume the describer's budget.
             let walk = frame.nested(.walk, within: .player) { frame.depth(of: .walk) }
+            // Nor may a reach question asked from inside a describer, which is
+            // an ordinary thing for one to do.
+            let reach = frame.nested(.reach, within: .player) { frame.depth(of: .reach) }
             let inner = frame.nested(.liveText, within: .player) { frame.depth(of: .liveText) }
-            return [outer, walk, inner]
+            return (outer: outer, walk: walk, reach: reach, inner: inner)
         }
 
-        #expect(depths == [1, 1, 2])
+        // Named rather than positional: three seams and two depths in one
+        // literal is a mapping the reader has to hold, and holding it wrong is
+        // how a swapped keypath passes.
+        #expect(depths.outer == 1)
+        #expect(depths.walk == 1, "a walk inside live text consumed the describer's budget")
+        #expect(depths.reach == 1, "a reach inside live text consumed the describer's budget")
+        #expect(depths.inner == 2)
+        #expect(frame.depth(of: .reach) == 0, "the reach counter did not unwind")
         #expect(frame.depth(of: .liveText) == 0, "the live-text counter did not unwind")
         #expect(frame.depth(of: .walk) == 0, "the walk counter did not unwind")
     }
@@ -132,6 +155,31 @@ struct ReentryGuardTests {
 
         #expect(occurrences(of: "The gallery answers.", in: transcript) == turns)
         #expect(occurrences(of: "Hung with nothing at all.", in: transcript) >= turns)
+    }
+
+    @Test("a reach rule may ask about another item's reach, every turn, forever")
+    func aReachRuleMayAskAboutAnotherItemEveryTurn() async throws {
+        // Two things at once, because one command proves both. The lid's gate is
+        // written in terms of the latch's, so every `open lid` enters the seam
+        // twice — legitimate depth 2, the reach seam's `SlideGame`. Twenty of
+        // them is forty entries against a cap of 32, so a counter that measured
+        // calls per turn, or one that never decremented, traps well before the
+        // crossing. Both bugs die here, as they do for live text in
+        // `lookingEveryTurnIsNeverNesting`.
+        let turns = 20
+        let transcript = try await play(
+            LatchedLidGame(),
+            Array(repeating: "open lid", count: turns) + ["cross", "open lid"])
+
+        // Refused every turn while the latch is out of reach, and the count is
+        // what makes this about frequency rather than one lucky turn.
+        #expect(
+            occurrences(of: "The lid is as far off as its latch.", in: transcript) == turns)
+        #expect(transcript.contains("You cross to the crate."))
+        // Past the crossing both gates open and the verb answers — the one line
+        // here that a trap could not have produced, since the trap is a
+        // `fatalError` and would have taken the process with it.
+        #expect(transcript.contains("Opened."))
     }
 
     @Test("a chain of rooms may pass the player along")
@@ -187,6 +235,16 @@ struct ReentryGuardTests {
             _ = try await play(KnotGame(), ["north"])
         }
         expectTrap(result, says: "Knot", "\(Reentry.walk.cap + 1) levels deep")
+    }
+
+    @Test("the reach cap fires before the stack does")
+    func reachCapFiresBeforeTheStackDoes() async throws {
+        let result = await #expect(
+            processExitsWith: .failure, observing: [\.standardErrorContent]
+        ) {
+            _ = try await play(MirrorReachGame(), ["take plinth"])
+        }
+        expectTrap(result, says: "plinth", "\(Reentry.reach.cap + 1) levels deep")
     }
 
     #endif

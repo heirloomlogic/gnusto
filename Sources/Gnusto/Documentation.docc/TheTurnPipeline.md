@@ -91,6 +91,28 @@ Throughout the turn, rules and the default action read and write a *scratch* cop
 
 Because all mutation funnels through one committed value, a turn is atomic: the player never observes a half-applied turn, and saving the game *is* just serializing that value — that's exactly what the `save` verb writes to disk, and what `undo`'s one-turn snapshot holds in memory. This is the same single-state design described in <doc:AnatomyOfAGame>.
 
+## Where the engine calls your code
+
+A turn's state lives behind a lock. The frame holding it is bound as a task-local so that any proxy can find it without being passed one, which requires the frame to be `Sendable`, which puts its scratch behind a mutex — and that mutex is not reentrant. Everything a rule body does to read or write the world goes through it: `@Global`, every item and location property, `player.score`.
+
+Two rules follow, and between them they are why an author never has to think about any of the above.
+
+**Your closures are called outside the lock.** The engine reads what it needs, closes the lock, and only then calls the code you wrote. That holds for `describe { }` and `presence { }`, for `reach { }`, for a conditional or dynamic exit's closure, and for the ``GameText`` lines a game supplies — so a `text.scoreLine` that wants a rank can read a `@Global` for it, exactly as a rule body would. Nothing you can read is off-limits, and there is no ordering you have to observe.
+
+Worth knowing rather than working around: this is a discipline the engine keeps at each of those sites, not something it checks. It is why the list above is worth stating at all, and why a new kind of author closure is a place to keep it deliberately.
+
+**The three deepest seams count their own nesting.** Because your closure may call back into the engine that is calling it, these keep a depth and trap by name when it runs away:
+
+| Seam | What re-enters it |
+|---|---|
+| `describe { }` / `presence { }` | `describeSurroundings()`, `arrive(at:)`, or reading the entity's own `description` |
+| `enter(_:)` | an `onEnter` rule that enters the room it is already entering |
+| `reach { }` | a reach rule that asks whether something is reachable |
+
+Legitimate nesting is ordinary and passes: a chain of rooms whose `onEnter` rules pass the player along, or a lid whose reach rule is expressed in terms of its latch. What the counts catch is a cycle, and what they buy is a diagnostic naming the game, the entity and the shape of the mistake, where the failure was once an unattributed crash. The caps are measured against the tightest stack the engine runs in, not chosen — see the engine's `Reentry` type.
+
+> Note: How the turn's context is carried — an ambient task-local versus a context parameter threaded through every author-facing closure — is an open design question, and so is whether the discipline above should be a mechanism instead. Issue #402 holds both. What is written here is what the engine does today.
+
 ## See also
 
 - <doc:WritingRules>
