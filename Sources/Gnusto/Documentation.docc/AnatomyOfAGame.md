@@ -54,7 +54,7 @@ let wall = Item.scenery(
 
 This creates an ordinary ``Item`` with a name, vocabulary, examine text, and the ``scenery`` trait. The fixture cannot be taken and gets no stock room-listing sentence. The name and synonyms contribute nouns and adjectives through the usual parser rules: `stone wall` answers to `wall` and `stone wall`; `old brickwork` adds `brickwork` and the adjective `old`.
 
-`adjectives:` and `synonyms:` are variadic, so they read the way ``adjectives(_:)`` and ``synonyms(_:)`` read inside an `Item { }` block — one word per argument, no brackets. Both are omissible.
+`adjectives:` and `synonyms:` are variadic, so they read the way ``adjectives(_:)`` and ``synonyms(_:)`` read inside an `Item { }` block — one phrase per argument, no brackets. A synonym is a noun phrase, not a single word, which is why `old brickwork` above counts as one argument.
 
 Store it on your game or content bundle and place it in `map`, just like any other item:
 

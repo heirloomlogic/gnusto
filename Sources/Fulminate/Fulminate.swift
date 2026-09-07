@@ -845,16 +845,16 @@ struct Fulminate: Game, GameMain {
     let debris = Item.scenery(
         "wreckage",
         adjectives: "burned", "burnt", "charred",
-        // `soot` is what the search refusal says you get to the elbow for
-        // your trouble, and the wreckage is the thing it comes off. (#334)
-        synonyms: "wreckage", "debris", "rubble", "ruins", "roof", "slates", "slate", "timber",
-        "timbers", "body", "soot",
         description:
             """
             Roof slates, black timber, and a smell with chemistry in it. If the evening has an answer, some of it is
             in there, and none of it is coming out tonight.
             """
     ) {
+        synonyms("wreckage", "debris", "rubble", "ruins", "roof", "slates", "slate")
+        // `soot` is what the search refusal says you get to the elbow for
+        // your trouble, and the wreckage is the thing it comes off. (#334)
+        synonyms("timber", "timbers", "body", "soot")
         hidden
     }
 

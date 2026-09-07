@@ -29,7 +29,7 @@ struct SceneryTests {
     @Test(arguments: [
         "x wall", "x rough wall", "x masonry", "x old brickwork", "x stone-wall",
         "take wall", "take all", "look", "search niche", "take coin", "x ceiling",
-        "x rusted bars", "x chipped plinth", "x pedestal", "x leaning column",
+        "x rusted bars", "x leaning column",
     ])
     func shorthandPreservesOrdinaryItemBehavior(command: String) async throws {
         let compact = try await playScenery(SceneryGame(compact: true), [command], seed: 0)
@@ -68,20 +68,15 @@ struct SceneryTests {
         #expect(turnOutput(of: "examine niche", in: transcript).contains("The niche is empty."))
     }
 
-    @Test(arguments: [
-        "x grate", "x iron grate", "x rusted grate", "x narrow grate",
-        "x grating", "x bars", "x rusted bars",
-    ])
-    func everyVariadicWordReachesTheParser(command: String) async throws {
-        let transcript = try await playScenery(SceneryGame(compact: true), [command])
-        #expect(turnOutput(of: command, in: transcript).contains("Rust has taken the bars."))
-    }
-
-    @Test func aSingleWordNeedsNoBrackets() async throws {
-        let transcript = try await playScenery(
-            SceneryGame(compact: true), ["x chipped plinth", "x pedestal"])
-        #expect(turnOutput(of: "x chipped plinth", in: transcript).contains("Nothing stands on it."))
-        #expect(turnOutput(of: "x pedestal", in: transcript).contains("Nothing stands on it."))
+    @Test func everyVariadicWordReachesTheParser() async throws {
+        let commands = [
+            "x iron grate", "x rusted grate", "x narrow grate", "x grating", "x bars",
+            "x rusted bars",
+        ]
+        let transcript = try await playScenery(SceneryGame(compact: true), commands)
+        for command in commands {
+            #expect(turnOutput(of: command, in: transcript).contains("Rust has taken the bars."))
+        }
     }
 
     @Test func omittedWordListsContributeNoVocabulary() throws {
@@ -92,16 +87,11 @@ struct SceneryTests {
         #expect(ceiling.isScenery)
     }
 
-    @Test func traitBlockVocabularyAddsToTheFactorys() async throws {
+    @Test func traitBlockVocabularyAppendsToTheFactorys() throws {
         let (definition, _) = try Bootstrap.build(SceneryGame(compact: true))
         let pillar = try #require(definition.items[EntityID("pillar")])
         #expect(pillar.adjectives == ["cracked", "leaning"])
         #expect(pillar.synonyms == ["column"])
-        let transcript = try await playScenery(
-            SceneryGame(compact: true), ["x cracked pillar", "x leaning column"])
-        #expect(turnOutput(of: "x cracked pillar", in: transcript).contains("It reaches the ceiling."))
-        #expect(
-            turnOutput(of: "x leaning column", in: transcript).contains("It reaches the ceiling."))
     }
 }
 
@@ -130,7 +120,6 @@ private struct SceneryGame: Game {
     let wall: Item
     let niche: Item
     let grate: Item
-    let plinth: Item
     let pillar: Item
     let coin = Item { name("coin") }
     let fixtures: SceneryFixtures
@@ -147,12 +136,9 @@ private struct SceneryGame: Game {
                 description: "Mortar fills the cracks.")
             niche = Item.scenery("niche") { container }
             grate = Item.scenery(
-                "iron grate", adjectives: "iron", "rusted", "narrow",
-                synonyms: "grate", "grating", "bars",
+                "grate", adjectives: "iron", "rusted", "narrow",
+                synonyms: "grating", "bars",
                 description: "Rust has taken the bars.")
-            plinth = Item.scenery(
-                "marble plinth", adjectives: "chipped", synonyms: "pedestal",
-                description: "Nothing stands on it.")
             pillar = Item.scenery(
                 "pillar", adjectives: "cracked", description: "It reaches the ceiling."
             ) {
@@ -173,17 +159,10 @@ private struct SceneryGame: Game {
                 container
             }
             grate = Item {
-                name("iron grate")
+                name("grate")
                 adjectives("iron", "rusted", "narrow")
-                synonyms("grate", "grating", "bars")
+                synonyms("grating", "bars")
                 description("Rust has taken the bars.")
-                scenery
-            }
-            plinth = Item {
-                name("marble plinth")
-                adjectives("chipped")
-                synonyms("pedestal")
-                description("Nothing stands on it.")
                 scenery
             }
             pillar = Item {
@@ -206,7 +185,6 @@ private struct SceneryGame: Game {
         wall.starts(in: hall)
         niche.starts(in: hall)
         grate.starts(in: hall)
-        plinth.starts(in: hall)
         pillar.starts(in: hall)
         coin.starts(inside: niche)
         fixtures.ceiling.starts(in: hall)

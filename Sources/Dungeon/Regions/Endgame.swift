@@ -601,10 +601,10 @@ struct DungeonEndgame: GameContent {
     let hoard = Item.scenery(
         "precious jewels",
         adjectives: "vast", "heaped", "ancient", "rare",
-        synonyms: "treasure", "treasures", "hoard", "gold", "jewel", "chests", "chest", "zorkmids",
-        "paintings", "painting", "statuary", "curios", "wealth",
         description: Prose.treasuryHoard
     ) {
+        synonyms("treasure", "treasures", "hoard", "gold", "jewel", "chests", "chest")
+        synonyms("zorkmids", "paintings", "painting", "statuary", "curios", "wealth")
         plural
     }
 

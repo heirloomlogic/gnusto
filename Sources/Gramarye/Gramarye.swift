@@ -154,9 +154,11 @@ struct Gramarye: Game, GameMain {
 
     let graniteWall = Item.scenery(
         "granite wall",
-        adjectives: "granite", "blank", "dressed",
-        synonyms: "wall", "granite", "seams", "seam", "passage", "mist", "archway", "arch", "curtain"
+        adjectives: "granite", "blank", "dressed"
     ) {
+        // Granite-state nouns, then the mist-state nouns that replace them.
+        synonyms("wall", "granite", "seams", "seam", "passage")
+        synonyms("mist", "archway", "arch", "curtain")
         // Both states of the same item: the granite, and the mist that replaces
         // it. One item, so the gallery's two descriptions answer to one noun
         // set. Not `stone` — the gallery is made of the stuff, and the room's
