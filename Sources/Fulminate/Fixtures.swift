@@ -141,16 +141,11 @@ struct Fixtures: GameContent {
     /// since the ledger moves it from his head to his hands, so that one lives
     /// next to the fact it reads. (#334)
     var rules: Rules {
-        teagueJacket.before(.take) {
-            try refuse("He is wearing it, and he is being helpful, but not that helpful.")
-        }
+        teagueJacket.before(.take, refuse: "He is wearing it, and he is being helpful, but not that helpful.")
 
-        kettleApron.before(.take) {
-            try refuse("\"You'll want to ask for something else,\" she says, and goes on with what she was doing.")
-        }
+        kettleApron.before(
+            .take, refuse: "\"You'll want to ask for something else,\" she says, and goes on with what she was doing.")
 
-        policeNotebook.before(.take) {
-            try refuse("\"That one stays with me,\" the patrolman says, and it does.")
-        }
+        policeNotebook.before(.take, refuse: "\"That one stays with me,\" the patrolman says, and it does.")
     }
 }

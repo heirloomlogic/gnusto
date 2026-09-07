@@ -113,7 +113,7 @@ struct DungeonRiddle: GameContent {
         // the stone above it and a player who names the door means the writing
         // on it. `read the inscription` needs no rule: the engine's own `read`
         // prints the item's description, which is the inscription.
-        stoneDoor.before(.read) { try reply(Prose.riddleInscription) }
+        stoneDoor.before(.read, reply: .init(Prose.riddleInscription))
 
         // The one word the door is listening for. ``Intent/answer`` takes a
         // topic slot, so every word reaches this rule and the door does the
@@ -130,7 +130,7 @@ struct DungeonRiddle: GameContent {
         }
 
         // Hands are no use on it, and neither is a blade.
-        stoneDoor.before(.open, .push, .pull, .attack) { try reply(doorState) }
+        stoneDoor.before(.open, .push, .pull, .attack, reply: .init(doorState))
     }
 
     /// What the door looks like from this side of it, said in three places.

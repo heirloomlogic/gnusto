@@ -346,9 +346,7 @@ struct ZorkDam: GameContent {
         // actually helps. The bolt is the one fixture in the game that needs a
         // tool named, so "The bolt doesn't turn." would be a dead end where
         // pointing at the wrench is a nudge.
-        bolt.before(.turn) {
-            try reply(Prose.boltBareHanded)
-        }
+        bolt.before(.turn, reply: .init(Prose.boltBareHanded))
 
         // The yellow button charges the panel so the bolt will turn; the brown
         // button clears it again.

@@ -411,7 +411,7 @@ struct DungeonBank: GameContent {
 
         // The lettering the Depository's description promises. `examine` gives
         // you the cube; `read` gives you what is cut into it.
-        stoneCube.before(.read) { try reply(Prose.stoneCubeLettering) }
+        stoneCube.before(.read, reply: .init(Prose.stoneCubeLettering))
 
         // The curtain hangs where the Depository's north wall ought to be, and
         // then follows the player into four rooms that have north walls of

@@ -478,9 +478,7 @@ struct Dungeon: Game, GameMain {
             aboveGround.whiteHouseAtNorth,
             aboveGround.whiteHouseAtSouth,
         ] {
-            side.before(.board) {
-                try refuse(Prose.enterHouseNoWayIn)
-            }
+            side.before(.board, refuse: .init(Prose.enterHouseNoWayIn))
         }
 
         // The mainframe's room values, as event awards: getting into the
@@ -573,7 +571,7 @@ struct Dungeon: Game, GameMain {
             house.rope.move(to: templeQuarter.domeRoom)
             try reply(Prose.ropeUntiedFromRailing)
         }
-        templeQuarter.ropeOnTheRailing.before(.tie) { try refuse(Prose.ropeAlreadyOnTheRailing) }
+        templeQuarter.ropeOnTheRailing.before(.tie, refuse: .init(Prose.ropeAlreadyOnTheRailing))
 
         // `tie railing to rope` needs no arm here: the fitting's own rule above
         // runs first, because an indirect object's rules are dispatched ahead

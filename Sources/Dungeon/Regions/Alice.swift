@@ -567,7 +567,7 @@ struct DungeonAlice: GameContent {
     // MARK: - The well
 
     @RuleBuilder private var wellRules: Rules {
-        bucket.before(.take, .push, .pull) { try refuse(Prose.bucketRefusesToBeTaken) }
+        bucket.before(.take, .push, .pull, refuse: .init(Prose.bucketRefusesToBeTaken))
 
         // The bucket is a lift, not a wheelbarrow. Without this the engine
         // carries a boarded vehicle wherever its passenger walks — which is
@@ -671,7 +671,7 @@ struct DungeonAlice: GameContent {
         // note in the PR that landed this milestone.
         blueCake.before(.eat) { try die(Prose.blueCakeKills) }
 
-        mouseHole.before(.board, .climb) { try refuse(Prose.mouseHoleRefused) }
+        mouseHole.before(.board, .climb, refuse: .init(Prose.mouseHoleRefused))
     }
 
     // MARK: - The Pool Room
@@ -738,7 +738,7 @@ struct DungeonAlice: GameContent {
     ]
 
     @RuleBuilder private var robotRules: Rules {
-        robotPaper.before(.read) { try reply(Prose.robotPaperText) }
+        robotPaper.before(.read, reply: .init(Prose.robotPaperText))
 
         // The engine lets an order-taker be *named* out of sight, which is the
         // whole point of this puzzle — the robot goes where you cannot. The engine
@@ -771,28 +771,26 @@ struct DungeonAlice: GameContent {
             try reply(watching == route.to ? Prose.robotArrives : Prose.robotWalks)
         }
 
-        robot.before(.wait) { try reply(Prose.robotIdles) }
+        robot.before(.wait, reply: .init(Prose.robotIdles))
 
         // And a greeting, which reached the engine's placeholder: "The robot
         // nods, and says nothing." It does not nod. `reply` because the
         // `.greet` default is a `say`.
-        robot.before(.greet) { try reply(Prose.robotGreeted) }
+        robot.before(.greet, reply: .init(Prose.robotGreeted))
 
         // The other two buttons. Their effects live in `BUTTONS`, a routine
         // `dung.355` does not carry, so this game declines to invent one: the
         // button is real, it is pressed, and what it spoke to is out of sight.
         // The triangular one is the host's, because what *it* stops is in
         // another bundle.
-        roundButton.before(.push, .turnOn) { try reply(Prose.buttonNoAnswer("round")) }
-        squareButton.before(.push, .turnOn) { try reply(Prose.buttonNoAnswer("square")) }
+        roundButton.before(.push, .turnOn, reply: .init(Prose.buttonNoAnswer("round")))
+        squareButton.before(.push, .turnOn, reply: .init(Prose.buttonNoAnswer("square")))
 
         // Everything else it is told. `take` is deliberately **not** in this
         // list: the addressee's own rules run ahead of the rules on the thing
         // the order names, so a catch-all here would answer `robot, take the
         // sphere` before the pedestal's alarm ever heard about it.
-        robot.before(.push, .pull, .attack, .open) {
-            try reply(Prose.robotCannotDoThat)
-        }
+        robot.before(.push, .pull, .attack, .open, reply: .init(Prose.robotCannotDoThat))
     }
 
     // MARK: - The cage
@@ -859,9 +857,7 @@ struct DungeonAlice: GameContent {
             try handled()
         }
 
-        cageBars.before(.take, .push, .pull, .open, .attack, .raise) {
-            try reply(Prose.cageWontBudge)
-        }
+        cageBars.before(.take, .push, .pull, .open, .attack, .raise, reply: .init(Prose.cageWontBudge))
 
         // What you can see from inside the cage, which is the whole of the
         // hint: the robot is standing three feet away on the other side of the

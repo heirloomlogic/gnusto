@@ -115,6 +115,10 @@ Each has its own documentation in this archive. They are not linked from here: a
 - ``Item/describe(_:)``
 - ``Location/describe(_:)``
 - ``Item/presence(_:)``
+- ``Item/before(_:reply:)-(Intent...,_)``
+- ``Item/before(_:refuse:)-(Intent...,_)``
+- ``Location/before(_:reply:)-(Intent...,_)``
+- ``Location/before(_:refuse:)-(Intent...,_)``
 
 ### Player and World State
 
@@ -133,6 +137,8 @@ Each has its own documentation in this archive. They are not linked from here: a
 - ``Actor``
 - ``Actor/describe(_:)``
 - ``Actor/presence(_:)``
+- ``Actor/before(_:reply:)-(Intent...,_)``
+- ``Actor/before(_:refuse:)-(Intent...,_)``
 - ``Actor/holds(_:)``
 - ``Actor/possesses(_:)``
 - ``takesOrders``

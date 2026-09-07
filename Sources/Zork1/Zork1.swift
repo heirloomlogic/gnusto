@@ -314,9 +314,7 @@ struct Zork1: Game, GameMain {
             aboveGround.whiteHouseAtNorth,
             aboveGround.whiteHouseAtSouth,
         ] {
-            side.before(.board) {
-                try refuse(Prose.enterHouseNoWayIn)
-            }
+            side.before(.board, refuse: .init(Prose.enterHouseNoWayIn))
         }
 
         // Event scoring: the original pays for reaching the kitchen (first
@@ -730,9 +728,7 @@ struct Zork1: Game, GameMain {
         }
 
         // The ruined bird only grinds its stripped gears — no song, no bird.
-        house.brokenCanary.before(.wind) {
-            try reply(Prose.brokenCanaryWinds)
-        }
+        house.brokenCanary.before(.wind, reply: .init(Prose.brokenCanaryWinds))
 
         // Hand the thief anything and he pockets it, weighing you the whole
         // time. Give him the jewel-encrusted egg and — where your own clumsy

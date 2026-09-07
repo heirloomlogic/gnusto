@@ -492,7 +492,7 @@ struct ZorkRiver: GameContent {
 
         // Inflating the already-firm boat, or launching it while it's beached and
         // empty, get polite refusals rather than the stage-4 defaults.
-        magicBoat.before(.inflate) { try reply(Prose.boatAlreadyFirm) }
+        magicBoat.before(.inflate, reply: .init(Prose.boatAlreadyFirm))
 
         // The White Cliffs foot-paths refuse the boat.
         whiteCliffsNorth.before(.go) {

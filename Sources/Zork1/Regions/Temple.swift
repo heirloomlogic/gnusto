@@ -387,9 +387,7 @@ struct ZorkTemple: GameContent {
 
     var rules: Rules {
         // The ivory torch never goes out.
-        torch.before(.turnOff) {
-            try refuse(Prose.torchWontExtinguish)
-        }
+        torch.before(.turnOff, refuse: .init(Prose.torchWontExtinguish))
 
         // The altar crack is too narrow for the gold coffin — the original's
         // coffin-specific `COFFIN-CURE`. Carrying the coffin down is refused;

@@ -559,7 +559,7 @@ struct DungeonDam: GameContent {
             damView, damFromBelow, reservoirWater, reservoirFromSouth,
             reservoirFromNorth, streamWater, streamChannel,
         ] {
-            pool.before(.drink) { try reply(Prose.drinkWater) }
+            pool.before(.drink, reply: .init(Prose.drinkWater))
         }
 
         // The four rooms whose description is the state of the water.
@@ -622,9 +622,7 @@ struct DungeonDam: GameContent {
 
         // Bare `turn bolt`. The bolt is the one fixture in the game that needs
         // a tool named, so pointing at one beats "The bolt doesn't turn."
-        bolt.before(.turn) {
-            try reply(Prose.boltBareHanded)
-        }
+        bolt.before(.turn, reply: .init(Prose.boltBareHanded))
 
         // The bolt with the wrench: the sluice gates. Only with the wrench, and
         // only while the yellow button has the panel charged.
@@ -723,7 +721,7 @@ struct DungeonDam: GameContent {
         // the refusal rather than an outcome and would say "There is no inside
         // to the trunk" about a trunk this room's own listing calls *bulging
         // with jewels*. (#329, #350)
-        trunk.before(.lookIn) { try reply(Prose.trunkSearched) }
+        trunk.before(.lookIn, reply: .init(Prose.trunkSearched))
 
         // The tube gives up its gunk when squeezed — the mainframe's own verb
         // for it, and the only way to get the putty into your hand.

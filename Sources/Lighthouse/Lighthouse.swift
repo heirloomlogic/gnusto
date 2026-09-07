@@ -392,9 +392,7 @@ struct Lighthouse: Game {
         // The chest is furniture, and the storeroom's description says so. A
         // takeable one would let the player carry the room's own prose out of
         // the room.
-        chest.before(.take) {
-            try refuse("Brine-swollen, full of oil, and going nowhere. Take what's in it.")
-        }
+        chest.before(.take, refuse: "Brine-swollen, full of oil, and going nowhere. Take what's in it.")
 
         // Lamp fuel: start the burn on lighting, stop it on dousing.
         oilLamp.after(.turnOn) {
@@ -410,22 +408,15 @@ struct Lighthouse: Game {
         // where they're wrong and left alone everywhere else. `reply`/`refuse`
         // rather than `say`, because the stage-4 default says its line — a rule
         // that only said its own would print both.
-        oilCan.before(.pour, .empty) {
-            try refuse("Not on the floor. That oil has one place to go tonight.")
-        }
-        oilLamp.before(.burn) {
-            try reply("That is what it is for. Light it.")
-        }
-        tower.beacon.before(.burn) {
-            try reply("That is the whole idea. Light it.")
-        }
-        jetty.before(.swim, .dive) {
-            try refuse(
-                """
+        oilCan.before(.pour, .empty, refuse: "Not on the floor. That oil has one place to go tonight.")
+        oilLamp.before(.burn, reply: "That is what it is for. Light it.")
+        tower.beacon.before(.burn, reply: "That is the whole idea. Light it.")
+        jetty.before(
+            .swim, .dive,
+            refuse: """
                 The sea is right there and it is coming to you. Going to meet it
                 would only save it the trip.
                 """)
-        }
 
         // The winning move, and a cross-bundle seam: lighting the beacon (a
         // Tower item) depends on the oil found down here, so the host owns it.

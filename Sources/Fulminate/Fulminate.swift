@@ -1622,16 +1622,13 @@ struct Fulminate: Game, GameMain {
     var rules: Rules {
         // The coat is a container with the case's hinge in it, not luggage.
         // Both refusals point at the pocket, because the pocket is the puzzle.
-        coat.before(.take) {
-            try refuse(
-                """
+        coat.before(
+            .take,
+            refuse: """
                 It isn't yours and the hall isn't private. Leave it on the stand. The pockets are another question.
                 """)
-        }
 
-        coat.before(.wear) {
-            try refuse("It is June, and it is not your coat.")
-        }
+        coat.before(.wear, refuse: "It is June, and it is not your coat.")
 
         // Going through the pockets is what turns the receipt up. Searching a
         // coat in somebody else's hall is the sort of thing the player should
@@ -1674,34 +1671,32 @@ struct Fulminate: Game, GameMain {
         // PULL is on the list because the description hands the player a pull
         // chain and then the stub floor answered "The ceiling light doesn't
         // budge." — the same room denying its own prose, one verb over. (#334)
-        ceilingLight.before(.turnOn, .turnOff, .pull) {
-            try refuse("You leave Mr. Teague's light alone. It is his room, whatever else is true about him.")
-        }
+        ceilingLight.before(
+            .turnOn, .turnOff, .pull,
+            refuse: "You leave Mr. Teague's light alone. It is his room, whatever else is true about him.")
 
         // The study lamp's own description asserts a switch state and then
         // draws a deduction from it, so TURN ON is the next thing typed. It
         // refuses rather than works: how the room was lit while it was being
         // searched is evidence, and evidence the player changed is not
         // evidence. (#334)
-        studyLamp.before(.turnOn, .turnOff) {
-            try refuse(
-                """
+        studyLamp.before(
+            .turnOn, .turnOff,
+            refuse: """
                 You leave the switch where you found it. How this room was lit while somebody went through it is one
                 of the few things the room still has to say, and a man who works the switch has taken that away from
                 himself.
                 """)
-        }
 
         // Both the parlour's description and the lamp's own say it is not lit
         // and say who decides when it will be. Neither of them says the player
         // may. (#334)
-        parlourLamp.before(.turnOn, .turnOff) {
-            try refuse(
-                """
+        parlourLamp.before(
+            .turnOn, .turnOff,
+            refuse: """
                 It is not your lamp and it is not your idea of properly dark. In this house that decision belongs to
                 Mrs. Vane, and she has not made it yet.
                 """)
-        }
 
         carriageHouse.describe {
             blastHappened
@@ -1718,13 +1713,12 @@ struct Fulminate: Game, GameMain {
 
         // The one noun in the house that is making a sound you could take
         // down, answering the re-skinned stub line that says it isn't. (#334)
-        hallClock.before(.listen) {
-            try reply(
-                """
+        hallClock.before(
+            .listen,
+            reply: """
                 It ticks the way a clock ticks when the same person has wound it on the same day of the week for
                 thirty years. You could time a statement by it, and before the evening is out you may have to.
                 """)
-        }
 
         hallClock.describe {
             // Reads the clock's own format, so the house clock and the
@@ -1746,23 +1740,18 @@ struct Fulminate: Game, GameMain {
 
         // DROP, PUT ON and PUT IN each take a worn thing off first, so
         // refusing DOFF alone would leave three ways round it.
-        watch.before(.doff) {
-            try refuse("You would put it straight back on. Tonight is a night for knowing the time.")
-        }
+        watch.before(.doff, refuse: "You would put it straight back on. Tonight is a night for knowing the time.")
 
-        watch.before(.drop, .putIn, .putOn) {
-            try refuse("It has been on that wrist since 1943 and it is staying there.")
-        }
+        watch.before(.drop, .putIn, .putOn, refuse: "It has been on that wrist since 1943 and it is staying there.")
 
         // The hall's front door is not latched, and "You can't open that" is
         // the wrong answer for a door that isn't.
-        frontDoor.before(.open) {
-            try reply(
-                """
+        frontDoor.before(
+            .open,
+            reply: """
                 It isn't latched. Mrs. Vane does not lock her front door in the afternoon, which is a thing you would
                 have told her about if tonight were an ordinary night.
                 """)
-        }
 
         // Unbuckling a stranger's case in his own room while he is downstairs
         // being helpful is a thing the player should have to decide to do, and
@@ -1783,13 +1772,12 @@ struct Fulminate: Game, GameMain {
                 """)
         }
 
-        suitcase.before(.lookIn, .open) {
-            try reply(
-                """
+        suitcase.before(
+            .lookIn, .open,
+            reply: """
                 The strap is buckled and you leave it buckled. A boarder who has packed for a longer trip than
                 anybody has mentioned has told you the only thing this case had to say.
                 """)
-        }
 
         // The can is the coroner's answer sitting in plain sight, and it was
         // takeable in the first five turns — which put a static description of
@@ -1797,34 +1785,31 @@ struct Fulminate: Game, GameMain {
         // `vanish()` it out of the player's hands with no line of prose. The
         // refusal cures both, because a can that cannot be picked up is a can
         // that is still on the bench when the stove reaches it.
-        can.before(.take) {
-            try refuse(
-                """
+        can.before(
+            .take,
+            refuse: """
                 You put a hand on it and take the hand off again. It is somebody's work, it is sealed, and it is
                 sitting where somebody meant it to sit. Ask him about it at six.
                 """)
-        }
 
         // The description's point is the count, and SEARCH answered "You find
         // nothing of interest in the pot." over the top of it. (#334)
-        fixtures.pot.before(.lookIn) {
-            try reply(
-                """
+        fixtures.pot.before(
+            .lookIn,
+            reply: """
                 Supper, and a lot of it, with a ladle standing up in the middle. The interesting part of this pot is
                 the arithmetic, and you have that already.
                 """)
-        }
 
         // Unsealing it is the more obvious move than pocketing it, and it
         // answered "You can't open that." to a description whose last sentence
         // is about what is inside. (#334)
-        can.before(.open) {
-            try refuse(
-                """
+        can.before(
+            .open,
+            refuse: """
                 It is sealed, and it is sealed by somebody who meant it to stay that way. Ask him about it at six,
                 and try not to be holding it when he tells you.
                 """)
-        }
 
         // Not a container — the glove stays loose on the cellar floor — but
         // looking behind it is the obvious move and deserves an answer.
@@ -1833,16 +1818,13 @@ struct Fulminate: Game, GameMain {
         // in this room say something went in behind it, so the stock "You can't
         // move that." was the cellar denying its own clue. It answers where the
         // clue is rather than repeating the search. (#334)
-        coalBin.before(.lookIn) {
-            try reply("Nothing in it but the dust, and the dust is the interesting part.")
-        }
-        coalBin.before(.push) {
-            try reply(
-                """
+        coalBin.before(.lookIn, reply: "Nothing in it but the dust, and the dust is the interesting part.")
+        coalBin.before(
+            .push,
+            reply: """
                 It comes off the wall an inch and no further, and everything worth knowing about it is on the floor
                 behind it rather than in it.
                 """)
-        }
 
         // Left-handed, burned to the lining, and cut for a hand smaller than
         // the player's — so trying it on is the first thing a man who takes
@@ -1863,13 +1845,12 @@ struct Fulminate: Game, GameMain {
         // The kitchen's description names it, its own names the worn place
         // where it gets pushed, and both answered in the engine's voice. It is
         // scenery on an open way, not a door with a state. (#334)
-        yardDoor.before(.open, .close, .push) {
-            try reply(
-                """
+        yardDoor.before(
+            .open, .close, .push,
+            reply: """
                 The door is not what is in your way tonight. It goes when somebody goes west through it carrying
                 something, which is what the worn place at knee height is.
                 """)
-        }
         // And ENTER walks, because a description entirely about people going
         // through a door should not answer "You can't get into the yard door."
         //
@@ -1952,17 +1933,16 @@ struct Fulminate: Game, GameMain {
         }
         // The one flight that refuses, and it refuses in the words `up` already
         // uses — the same principle a shut door goes by, and the same constant.
-        backStairs.before(.climb) { try refuse(Fulminate.backStairsRefusal) }
+        backStairs.before(.climb, refuse: .init(Fulminate.backStairsRefusal))
 
         // TOUCH over the three hot things in the game. The stock line — "You
         // feel nothing out of the ordinary." — was the engine's until now, and
         // a lit range is exactly the frame it cannot survive.
-        stove.before(.touch) {
-            try reply(
-                """
+        stove.before(
+            .touch,
+            reply: """
                 Cast iron with a fire under it. You take the hand back before you have finished deciding to.
                 """)
-        }
         stovePipe.before(.touch) {
             try reply(
                 blastHappened
@@ -1972,36 +1952,33 @@ struct Fulminate: Game, GameMain {
                     goes past the end of that bench.
                     """)
         }
-        yardFire.before(.touch) {
-            try reply(
-                """
+        yardFire.before(
+            .touch,
+            reply: """
                 You get near enough to find out you do not want to be. Nobody is going to get closer to it tonight.
                 """)
-        }
 
         // Its own description ends "Nobody has thought to put it out and nobody
         // is going to", which is a sentence that names the act in order to
         // refuse it — and then the engine refused it again, in its own voice.
         // (#334)
-        yardFire.before(.turnOff) {
-            try refuse(
-                """
+        yardFire.before(
+            .turnOff,
+            refuse: """
                 With what? There is nothing out here to fight it with and nobody who wants the job. It goes out when
                 it has finished, and not before.
                 """)
-        }
 
         // A lit range is the first thing the kitchen says about itself, and the
         // flue off it is how the evening's heat reaches a sealed can sixty feet
         // away — so every verb a lit stove invites landed on the stock line.
         // (#334)
-        stove.before(.turnOff, .turnOn, .open) {
-            try refuse(
-                """
+        stove.before(
+            .turnOff, .turnOn, .open,
+            refuse: """
                 You leave the range where it is. It has been lit since somebody started supper, it is Mrs. Kettle's
                 to manage, and a man who damps down a cook's fire learns nothing and is shown the path.
                 """)
-        }
 
         // Only the pre-blast half is an invitation: "forgets the rest" is the
         // description asking somebody to do it for him. Afterwards the sentence
@@ -2019,13 +1996,12 @@ struct Fulminate: Game, GameMain {
         // The room is built out of armchairs and has a seventy-one-year-old
         // woman sitting in one of them, so "There's nothing comfortable to sit
         // on." is the one place the re-skinned line is still false.
-        parlour.before(.sit) {
-            try refuse(
-                """
+        parlour.before(
+            .sit,
+            refuse: """
                 There is a chair here for every person this house used to hold. Mrs. Vane is in the only one that
                 has taken anybody's shape, and you did not come to keep her company.
                 """)
-        }
 
         // Thirty feet from a building the game has just said took the hair off
         // the back of your hand — and, before that, thirty feet from a building
@@ -2061,13 +2037,12 @@ struct Fulminate: Game, GameMain {
         // and two rooms the player can stand in are not the house. The carriage
         // house is a detached outbuilding — same defect as C11's, one room over
         // — and the cellar has no stove in it and says so.
-        cellar.before(.smell) {
-            try reply(
-                """
+        cellar.before(
+            .smell,
+            reply: """
                 Cold earth and whitewash, and the flat air of a room with another room on top of it. Nothing has
                 been cooked down here in fifty years.
                 """)
-        }
         // The yard's twin, and the frame the round did not sight: the carriage
         // house is a detached outbuilding, so "The house is doing what a house
         // does" and "The stove, and the dust a house like this keeps between
@@ -2199,13 +2174,12 @@ struct Fulminate: Game, GameMain {
         // the desk has to hand them over rather than reporting nothing of
         // interest. `before`, because the stock line would otherwise print
         // first and be contradicted.
-        desk.before(.lookIn) {
-            try reply(
-                """
+        desk.before(
+            .lookIn,
+            reply: """
                 You go through what is in them, which is a man's whole paper life and nothing that does not belong
                 in a desk. Somebody has done this before you, to the same depth, in the same order.
                 """)
-        }
 
         // The patrolman's one job. Some of the answer is literally in the
         // debris, which is why nobody gets to sift it. Before he arrives you

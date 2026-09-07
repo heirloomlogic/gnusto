@@ -642,9 +642,9 @@ struct DungeonTemple: GameContent {
                 command.indirectObject == nil
                     ? Prose.spiritsUnaffected : Prose.spiritsUnaffectedByObject)
         }
-        spirits.before(.take) { try reply(Prose.spiritsUnaffected) }
-        pileOfCorpses.before(.take) { try reply(Prose.corpsesLeaveThemBe) }
-        pileOfBodies.before(.take) { try reply(Prose.corpsesLeaveThemBe) }
+        spirits.before(.take, reply: .init(Prose.spiritsUnaffected))
+        pileOfCorpses.before(.take, reply: .init(Prose.corpsesLeaveThemBe))
+        pileOfBodies.before(.take, reply: .init(Prose.corpsesLeaveThemBe))
 
         // Melting the glacier by holding a flame to it drowns you — the
         // source's own answer, and the reason the torch has to be thrown.

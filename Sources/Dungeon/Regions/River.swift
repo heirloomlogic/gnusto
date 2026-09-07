@@ -776,7 +776,7 @@ struct DungeonRiver: GameContent {
             riverAtNorthBeach, riverAtSouthBeach, riverAtSandyBeach,
             riverAtShore, riverAtRockyShore, fallsAtFalls, canyonAtEndOfRainbow,
         ] {
-            water.before(.drink) { try reply(Prose.drinkWater) }
+            water.before(.drink, reply: .init(Prose.drinkWater))
         }
 
         // Aragain Falls reports the rainbow's state, and only ever from here —
@@ -856,8 +856,8 @@ struct DungeonRiver: GameContent {
             magicBoat.holds(tanLabel) ? Prose.tanLabelInBoat : Prose.tanLabelOnGround
         }
 
-        magicBoat.before(.inflate) { try reply(Prose.boatAlreadyFirm) }
-        puncturedBoat.before(.inflate) { try reply(Prose.boatWillNotInflate) }
+        magicBoat.before(.inflate, reply: .init(Prose.boatAlreadyFirm))
+        puncturedBoat.before(.inflate, reply: .init(Prose.boatWillNotInflate))
     }
 
     /// The second half of the same list. Split when hazard #174 was thought to
@@ -916,8 +916,8 @@ struct DungeonRiver: GameContent {
         }
 
         // The barrel at the lip of the falls: heavy, damp, and enterable.
-        barrel.before(.take) { try refuse(Prose.barrelTooHeavy) }
-        barrel.before(.burn) { try reply(Prose.barrelTooDamp) }
+        barrel.before(.take, refuse: .init(Prose.barrelTooHeavy))
+        barrel.before(.burn, reply: .init(Prose.barrelTooDamp))
         // The rainbow, from all three rooms that can see it. Solid is a thing
         // you can see about a rainbow, so it says so.
         for arc in [rainbowAtFalls, rainbowAtRainbowRoom, rainbowAtEndOfRainbow] {
@@ -925,7 +925,7 @@ struct DungeonRiver: GameContent {
         }
 
         // The one room in the game too loud to hear anything else in.
-        aragainFalls.before(.listen) { try reply(Prose.fallsSound) }
+        aragainFalls.before(.listen, reply: .init(Prose.fallsSound))
 
         // The word cut into the staves. Said at the falls in the barrel it is a
         // decision; anywhere else — including at the falls on your own two

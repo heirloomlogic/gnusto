@@ -127,7 +127,7 @@ extension Dungeon {
             house.rope.move(to: mirrors.slideRoom)
             try reply(Prose.chuteUnrigged)
         }
-        palantirWing.chuteHeadRope.before(.tie) { try refuse(Prose.chuteAlreadyRigged) }
+        palantirWing.chuteHeadRope.before(.tie, refuse: .init(Prose.chuteAlreadyRigged))
 
         // Lifting the anchor unties the knot. `rigTheChute()` refuses to tie
         // the rope to something in your hands because "a rope tied to something

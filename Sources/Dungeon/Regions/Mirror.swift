@@ -317,7 +317,7 @@ struct DungeonMirror: GameContent {
             // to the game-wide "neither doorway nor vehicle" line.
             glass.before(.touch, .board) { try stepThroughMirror(to: far) }
             glass.before(.attack, .throwAt) { try breakMirror() }
-            glass.before(.take) { try reply(Prose.mirrorTakeRefused) }
+            glass.before(.take, reply: .init(Prose.mirrorTakeRefused))
         }
     }
 

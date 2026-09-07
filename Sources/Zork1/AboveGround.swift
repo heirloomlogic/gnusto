@@ -486,9 +486,7 @@ struct ZorkAboveGround: GameContent {
     // MARK: - Rules
 
     var rules: Rules {
-        frontDoor.before(.open) {
-            try refuse(Prose.frontDoorRefusal)
-        }
+        frontDoor.before(.open, refuse: .init(Prose.frontDoorRefusal))
 
         // The `proceed()` acceptance pattern from Task 5: run the built-in
         // open, then embellish with a line about the leaflet.

@@ -446,13 +446,9 @@ struct DungeonHouse: GameContent {
             trapDoor.reveal()
             try reply(Prose.rugMoveEmbellishment)
         }
-        rug.before(.take) {
-            try refuse(Prose.rugTooHeavy)
-        }
+        rug.before(.take, refuse: .init(Prose.rugTooHeavy))
 
-        trophyCase.before(.take) {
-            try refuse(Prose.trophyCaseFastened)
-        }
+        trophyCase.before(.take, refuse: .init(Prose.trophyCaseFastened))
 
         // The case describes itself by what is in it. Written over `contents`
         // rather than against a named treasure, because by the last milestone
@@ -467,19 +463,13 @@ struct DungeonHouse: GameContent {
 
         // The ruined bird only grinds its stripped gears. (The *intact*
         // canary's trick reaches into the forest, so the host owns that one.)
-        brokenCanary.before(.wind) {
-            try reply(Prose.brokenCanaryWinds)
-        }
+        brokenCanary.before(.wind, reply: .init(Prose.brokenCanaryWinds))
 
         // Reading the gothic lettering is the joke, so it gets its own answer
         // rather than the door's description.
-        woodenDoor.before(.read) {
-            try reply(Prose.woodenDoorLettering)
-        }
+        woodenDoor.before(.read, reply: .init(Prose.woodenDoorLettering))
 
-        newspaper.before(.read) {
-            try reply(Prose.newspaperText)
-        }
+        newspaper.before(.read, reply: .init(Prose.newspaperText))
 
         // Opening the trap door. From below, once the bar is across, it does
         // not open at all; from above it opens onto the stair, in place of the
@@ -499,8 +489,8 @@ struct DungeonHouse: GameContent {
     @RuleBuilder private var moreHouseRules: Rules {
         // The two things in this game that are food. See `stubs.eat` in
         // ``Prose/stubFloor`` for why the game-wide line may not rule on them.
-        garlic.before(.eat) { try reply(Prose.eatGarlic) }
-        lunch.before(.eat) { try reply(Prose.eatLunch) }
+        garlic.before(.eat, reply: .init(Prose.eatGarlic))
+        lunch.before(.eat, reply: .init(Prose.eatLunch))
 
         // The classic moment, and in this game it is permanent: the first
         // descent throws the bar, and nothing in this milestone lifts it. The
@@ -516,7 +506,7 @@ struct DungeonHouse: GameContent {
         // the words `down` already uses rather than in the stub floor's, which
         // said nothing about why a chimney the room's paragraph calls "much too
         // narrow to be worth the try" would not take you.
-        kitchenChimney.before(.climb) { try refuse(Prose.chimneyDownRefusal) }
+        kitchenChimney.before(.climb, refuse: .init(Prose.chimneyDownRefusal))
 
         lantern.describe {
             lantern.isLit ? Prose.lanternOn : Prose.lanternOff
@@ -550,9 +540,7 @@ struct DungeonHouse: GameContent {
         // river the rest, and each of those rooms answers `drink` for its own
         // water. These four rules are about the bottled water only, which is
         // why their refusals may still name the room.
-        water.before(.take) {
-            try refuse(Prose.waterSlipsAway)
-        }
+        water.before(.take, refuse: .init(Prose.waterSlipsAway))
         water.before(.drink) {
             try require(bottle.holds(water), else: Prose.nothingToDrink)
             try require(bottle.isOpen, else: Prose.bottleNeedsToBeOpen)

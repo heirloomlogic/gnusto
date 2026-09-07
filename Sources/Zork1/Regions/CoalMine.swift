@@ -429,15 +429,15 @@ struct ZorkCoalMine: GameContent {
         // The basket on the chain. It can't be taken, and it's worked only from
         // the Shaft Room; lowering or raising it swings the real container to
         // the far end and leaves the stand-in behind.
-        basket.before(.take) { try refuse(Prose.basketFastened) }
-        basketStandin.before(.take) { try refuse(Prose.basketFastened) }
+        basket.before(.take, refuse: .init(Prose.basketFastened))
+        basketStandin.before(.take, refuse: .init(Prose.basketFastened))
         basket.before(.lower) { try lowerBasket() }
         basketStandin.before(.lower) { try lowerBasket() }
         basket.before(.raise) { try raiseBasket() }
         basketStandin.before(.raise) { try raiseBasket() }
 
         // The machine is far too large to carry.
-        machine.before(.take) { try refuse(Prose.machineTooBig) }
+        machine.before(.take, refuse: .init(Prose.machineTooBig))
 
         // The two rooms whose own descriptions are about a smell. The stub
         // floor's bare `smell` answers "You smell nothing you could put a name

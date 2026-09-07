@@ -558,9 +558,9 @@ struct DungeonMaze: GameContent {
             try reply(Prose.cyclopsWakes)
         }
 
-        cyclops.before(.take) { try reply(Prose.cyclopsGrabbed) }
-        cyclops.before(.tie) { try reply(Prose.cyclopsTied) }
-        cyclops.before(.listen) { try reply(Prose.cyclopsStomach) }
+        cyclops.before(.take, reply: .init(Prose.cyclopsGrabbed))
+        cyclops.before(.tie, reply: .init(Prose.cyclopsTied))
+        cyclops.before(.listen, reply: .init(Prose.cyclopsStomach))
 
         // And the greeting, which reached the engine's placeholder — "The
         // cyclops nods, and says nothing." `reply` because the `.greet` default

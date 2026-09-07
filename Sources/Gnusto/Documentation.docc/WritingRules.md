@@ -24,7 +24,8 @@ A rule is created by a factory method on the thing it watches. Three owners are 
 
 | Owner | Factories |
 |---|---|
-| An ``Item`` | `before`, `after`, `describe` |
+| An ``Item`` | `before`, `after`, `describe`, `presence`, `reach` |
+| An ``Actor`` | `before`, `after`, `describe`, `presence`, `reach` |
 | A ``Location`` | `before`, `after`, `beforeEachTurn`, `afterEachTurn`, `onEnter`, `describe` |
 | The ``World`` | `before`, `after`, `beforeEachTurn`, `afterEachTurn` |
 
@@ -47,6 +48,22 @@ statue.before() { say("The statue's eyes seem to follow you.") }
 ```
 
 The built-in intents are constants on ``Intent`` (``Intent/take``, ``Intent/drop``, ``Intent/examine``, ``Intent/go``, and so on). Custom verbs mint their own — `Intent("ring")` — which you match the same way. See <doc:AddingCustomVerbs>.
+
+## One thing's answer to one verb
+
+The commonest `before` rule in any game is a closure wrapped around a single canned sentence. Write it as one line instead:
+
+```swift
+oilLamp.before(.burn, reply: "That is what it is for. Light it.")
+oilCan.before(.pour, .empty, refuse: "That oil has one place to go tonight.")
+ladder.before(.climb, reply: .naming { "You can't climb onto \($0)." })
+```
+
+``Item/before(_:reply:)-(Intent...,_)`` is *what happens instead*; ``Item/before(_:refuse:)-(Intent...,_)`` is *no, you can't*. They throw the same interrupt, exactly as ``reply(_:)`` and ``refuse(_:)`` do — two names so the declaration reads correctly. There is no `say` spelling, because a rule that only `say`s prints its line *and* the stock one.
+
+The line takes both shapes ``GameText/stubs`` takes: a string literal is fixed, ``GameText/Line/naming(_:)`` builds the sentence around the thing's rendered name, article and number, and `.init(Prose.someLine)` puts a line held in a constant into the slot. ``Actor/before(_:reply:)-(Intent...,_)`` is the same on a person. ``Location/before(_:reply:)-(Intent...,_)`` is the same in a room, except that its line is handed nothing — the engine articles items and never locations, so a room has no rendered name to build a sentence around, and ``GameText/Line/live(_:)`` is the alternative to a fixed sentence there.
+
+This is the rule it replaces and nothing more: it runs where a `before` rule runs, and stacks with any other rule on the same intent in declaration order. So it pre-empts stage 4 and gives up what stage 4 supplies — the reach guard, the object's rendered name, and the `yourself`/`somebodyElse` guards — exactly as the hand-written rule did. To change what a verb says about *everything*, assign ``GameText/stubs`` instead; see <doc:StubVerbs>.
 
 ## Read and write live state
 

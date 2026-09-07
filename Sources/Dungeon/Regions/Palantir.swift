@@ -648,7 +648,7 @@ extension DungeonPalantir {
                 Prose.seenThroughTheWindow(room.description, remoteView(of: room)))
         }
 
-        window.before(.board, .climb) { try refuse(Prose.windowNotAWay) }
+        window.before(.board, .climb, refuse: .init(Prose.windowNotAWay))
     }
 }
 
@@ -660,7 +660,7 @@ extension DungeonPalantir {
         // after the move, which is exactly when the grip stops mattering.
         slideLedge.onEnter { stopFuse("slideGrip") }
 
-        coalStove.before(.take, .push, .pull) { try refuse(Prose.stoveWontMove) }
+        coalStove.before(.take, .push, .pull, refuse: .init(Prose.stoveWontMove))
     }
 
     /// The shortest a grip ever lasts, which is also the length the fuse is

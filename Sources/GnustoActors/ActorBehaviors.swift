@@ -221,9 +221,7 @@ public struct ActorBehaviors: GamePlugin {
         reply text: String
     ) -> Rules {
         for intent in intents {
-            actor.before(intent) {
-                try reply(text)
-            }
+            actor.before(intent, reply: .init(text))
         }
     }
 }

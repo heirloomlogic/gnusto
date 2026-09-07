@@ -109,7 +109,7 @@ extension DungeonEndgame {
             try robTheAdventurer()
         }
 
-        listings.before(.read) { try reply(Prose.tombListingsText) }
+        listings.before(.read, reply: .init(Prose.tombListingsText))
 
         cokeBottles.before(.throwAt) {
             guard let hurled = command.directObject, hurled != cokeBottles else { return }

@@ -1039,13 +1039,12 @@ struct KindlyDeep: Game, GameMain {
         // dark room cannot be seen, taken or relit: the game becomes unwinnable
         // on turn three, with no death and no warning. The doc comment above has
         // claimed this invariant since the game shipped; now the code does.
-        capLamp.before(.drop, .putIn, .putOn) {
-            try reply(
-                """
+        capLamp.before(
+            .drop, .putIn, .putOn,
+            reply: """
                 It goes on your cap and it stays there. Setting the only light in four hundred feet of workings down
                 on the floor is the kind of decision a man gets to make exactly once.
                 """)
-        }
 
         // Beat 2 — the nose-out. It waits on Biscuit rather than on the door:
         // the follow daemon ticks after this rule, so on the turn you walk in
@@ -1190,28 +1189,22 @@ struct KindlyDeep: Game, GameMain {
                 heroics — and \(professional).
                 """)
         }
-        tack.before(.take) {
-            try reply(
-                """
+        tack.before(
+            .take,
+            reply: """
                 The collar alone is most of what you can lift, and none of it is any use on your shoulders. It goes
                 on the mule, or it stays on the peg.
                 """)
-        }
-        bell.before(.take) {
-            try reply("Bell, rope, and bracket are all one thing, and that thing is bolted to the wall.")
-        }
+        bell.before(.take, reply: "Bell, rope, and bracket are all one thing, and that thing is bolted to the wall.")
 
         // The striker stays on the belt. That is not sentiment; it is procedure.
-        striker.before(.drop, .putIn, .putOn) {
-            try reply(
-                """
+        striker.before(
+            .drop, .putIn, .putOn,
+            reply: """
                 Not down here. It goes on your belt and it stays on your belt, which is a rule you have never once
                 been tempted to test.
                 """)
-        }
-        striker.before(.turnOn) {
-            try reply("The striker lights the lamp. Light the lamp.")
-        }
+        striker.before(.turnOn, reply: "The striker lights the lamp. Light the lamp.")
 
         // The endings — ring the bell, and the game asks the one question it
         // exists to ask before it decides which one you get. The rope invites
@@ -1240,12 +1233,8 @@ struct KindlyDeep: Game, GameMain {
         canteen.before(.drink, .open) {
             try takeASwallow()
         }
-        canteen.before(.close) {
-            try reply("The stopper is in. You saw to that yourself, the way you were taught.")
-        }
-        trough.before(.drink) {
-            try reply("Dry as a flue, and dry since the roof came down. You knew that before you asked.")
-        }
+        canteen.before(.close, reply: "The stopper is in. You saw to that yourself, the way you were taught.")
+        trough.before(.drink, reply: "Dry as a flue, and dry since the roof came down. You knew that before you asked.")
 
         // The canteen counts down what is left of the only water there is.
         canteen.describe {
@@ -1286,17 +1275,11 @@ struct KindlyDeep: Game, GameMain {
 
         // He is a mule. The stock actor-directed stub has no way to know that,
         // so it called him a person and declined to eat him on those grounds.
-        biscuit.before(.eat) {
-            try reply("He is a colleague, and a thin one at that.")
-        }
+        biscuit.before(.eat, reply: "He is a colleague, and a thin one at that.")
 
         // Sitting: the bench obliges, the straw would rather you committed.
-        bench.before(.sit) {
-            try reply(Self.theBench)
-        }
-        straw.before(.sit) {
-            try reply("Sitting in it wastes it. The straw is a bed; lie down in it and rest, and mean it.")
-        }
+        bench.before(.sit, reply: .init(Self.theBench))
+        straw.before(.sit, reply: "Sitting in it wastes it. The straw is a bed; lie down in it and rest, and mean it.")
 
         // MARK: The stock lines the mine was getting wrong about itself
         //
@@ -1308,56 +1291,49 @@ struct KindlyDeep: Game, GameMain {
 
         // A striker on your belt, a lit lamp on your cap, and a room full of
         // straw is not "no way to set fire to" anything.
-        straw.before(.burn) {
-            try reply(
-                """
+        straw.before(
+            .burn,
+            reply: """
                 You have a striker and a lit lamp and no shortage of straw, which between them make this the single
                 worst idea available to you down here.
                 """)
-        }
 
         // The room's own description puts the player on his hands and knees,
         // twice, under rock he cannot stand up in.
-        lowCrawl.before(.stand, .kneel) {
-            try reply("You are on your hands and knees, and the rock has strong opinions about alternatives.")
-        }
+        lowCrawl.before(
+            .stand, .kneel,
+            reply: "You are on your hands and knees, and the rock has strong opinions about alternatives.")
 
         // "You find nothing of interest in the canteen" asserts a completed and
         // fruitless search of the only water in the workings.
-        canteen.before(.lookIn) {
-            try reply(
-                "There is water in it, which is the entire point of it, and no room for anything else.")
-        }
+        canteen.before(
+            .lookIn, reply: "There is water in it, which is the entire point of it, and no room for anything else.")
 
         // Two rooms name a smell in their own first paragraph, and one of them
         // is the smell that kills you.
-        forks.before(.smell) {
-            try reply(
-                """
+        forks.before(
+            .smell,
+            reply: """
                 You smell it the way you have all along: a faint sweetness off the north heading, pleasant, and
                 entirely wrong.
                 """)
-        }
-        stable.before(.smell) {
-            try reply(
-                """
+        stable.before(
+            .smell,
+            reply: """
                 Hay, brick, and mule. If the rest of these workings smelled like this, nobody would ever go up.
                 """)
-        }
-        forks.before(.listen) {
-            try reply(
-                """
+        forks.before(
+            .listen,
+            reply: """
                 Hooves shifting, a mule breathing, and past the door the long cold draught of the shaft — which is
                 the sound of somewhere else, and the only one worth walking toward.
                 """)
-        }
-        shaftBottom.before(.climb) {
-            try reply(
-                """
+        shaftBottom.before(
+            .climb,
+            reply: """
                 Four hundred feet of it, and a ladderway that has not been kept since they sank the second shaft.
                 Men who try it are found at the bottom of it. You came here to ring the bell.
                 """)
-        }
 
         // The bad air. Unreachable in 237 probes until the crawl gained its
         // eastern mouth; now it is what it was always written to be — the price

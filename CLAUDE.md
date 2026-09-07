@@ -404,6 +404,15 @@ computed `static var`, which rebuilds it on every read.
   plugin that claims a verb owns its register too — `GnustoMeleeCombat` answers
   `.attack`, so `MeleeCombat(text:)` is where that verb's voice lives, not
   `text.stubs.attack`.
+- **One *thing's* answer to one verb is `before(_:reply:)`.** `oilLamp.before(.burn,
+  reply: "That is what it is for. Light it.")` is the whole rule — the closure
+  spelling `before(.burn) { try reply(…) }` written once, with `refuse:` for "no,
+  you can't" and no `say` form, because a rule that only `say`s prints the stock
+  line too. Same slot as `text.stubs`: a literal, `.naming { }` for the thing's
+  rendered name and number, `.init(Prose.x)` for a constant. It is a rule, so it
+  keeps *none* of the four above — that is the trade, and it is the same trade the
+  hand-written rule always made. `Location`'s form is handed nothing (the engine
+  articles items, never rooms), so its second spelling is `.live { }`.
 - **UNDO, RESTART, SAVE and RESTORE can't be overridden at all.** `GameWorld.run`
   answers them before the pipeline, so no rule sees them and `action(.save)` never
   runs. That's `DefaultActions.engineIntents`, and declaring one now warns rather

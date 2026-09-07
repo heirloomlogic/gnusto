@@ -389,9 +389,7 @@ struct ZorkHouse: GameContent {
         // refilling needs a water source, of which this slice has none yet
         // (the reservoir arrives with the dam — see `FIDELITY.md`), so `fill`
         // reports there's nothing to fill from.
-        water.before(.take) {
-            try refuse(Prose.waterSlipsAway)
-        }
+        water.before(.take, refuse: .init(Prose.waterSlipsAway))
         water.before(.drink) {
             try require(bottle.holds(water), else: Prose.nothingToDrink)
             try require(bottle.isOpen, else: Prose.bottleNeedsToBeOpen)

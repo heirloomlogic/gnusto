@@ -58,7 +58,7 @@ extension DungeonEndgame {
             guard !quizWon else { return }
             try refuse(Prose.woodenDoorWillNotBeForced)
         }
-        woodenDoor.before(.close) { try refuse(Prose.woodenDoorWillNotBeShut) }
+        woodenDoor.before(.close, refuse: .init(Prose.woodenDoorWillNotBeShut))
 
         // One rule for all eight, because there is one verb for all eight (see
         // ``Intent/answer``). It stands *aside* when no examination is running
@@ -422,7 +422,7 @@ extension DungeonEndgame {
             try reply(departure)
         }
 
-        dungeonMaster.before(.greet, .give, .lookIn) { try reply(Prose.masterSaysNothing) }
+        dungeonMaster.before(.greet, .give, .lookIn, reply: .init(Prose.masterSaysNothing))
     }
 
     /// Where a step in `heading` would take him, or `nil` for the directions he

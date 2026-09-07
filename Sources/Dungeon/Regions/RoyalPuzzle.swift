@@ -591,7 +591,7 @@ extension DungeonRoyalPuzzle {
                 : Prose.puzzleCeilingOpeningAcrossTheRoom
         }
 
-        warningNote.before(.read) { try reply(Prose.warningNoteText) }
+        warningNote.before(.read, reply: .init(Prose.warningNoteText))
     }
 
     /// The room whose description *is* the state of the grid, on its own
@@ -708,7 +708,7 @@ extension DungeonRoyalPuzzle {
         // They teach the syntax instead. Stated on the walls rather than on the
         // room, so `push card` still gets the stock answer.
         for wall in materialWalls + [ladder] {
-            wall.before(.push) { try refuse(Prose.puzzlePushNeedsADirection) }
+            wall.before(.push, refuse: .init(Prose.puzzlePushNeedsADirection))
         }
     }
 
@@ -730,7 +730,7 @@ extension DungeonRoyalPuzzle {
                 ? Prose.goldCardInPlace : Prose.goldCardAcrossTheFloor
         }
 
-        goldCard.before(.read) { try reply(Prose.goldCardText) }
+        goldCard.before(.read, reply: .init(Prose.goldCardText))
 
         slit.reach(otherwise: Prose.puzzleSlitOutOfReach) {
             grid.playerSquare == RoyalPuzzleGrid.doorSquare

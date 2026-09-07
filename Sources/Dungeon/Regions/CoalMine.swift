@@ -583,7 +583,7 @@ struct DungeonCoalMine: GameContent {
         //
         // Only the near end needs a `take` refusal: the far end's reach rule
         // below answers first, at stage 0.
-        basket.before(.take) { try refuse(Prose.basketFastened) }
+        basket.before(.take, refuse: .init(Prose.basketFastened))
         for cage in [basket, basketFarEnd] {
             cage.before(.lower) { try swingBasket(down: true) }
             cage.before(.raise) { try swingBasket(down: false) }
@@ -598,11 +598,11 @@ struct DungeonCoalMine: GameContent {
         basketFarEnd.reach(otherwise: Prose.basketFarEnd) { false }
 
         // The machine is far too large to carry, and its lid is worked by hand.
-        machine.before(.take) { try refuse(Prose.machineTooBig) }
+        machine.before(.take, refuse: .init(Prose.machineTooBig))
 
         // Bare fingers will not throw the switch; the screwdriver that will is
         // a ``DungeonDam`` item, so the host owns the working rule.
-        machineSwitch.before(.turn) { try reply(Prose.switchNeedsTool) }
+        machineSwitch.before(.turn, reply: .init(Prose.switchNeedsTool))
 
         // The slag crumbles at a touch, which is the mainframe's way of saying
         // you fed the machine the wrong thing.

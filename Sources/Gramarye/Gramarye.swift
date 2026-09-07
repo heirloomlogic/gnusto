@@ -587,13 +587,12 @@ struct Gramarye: Game, GameMain {
         // clay cannot abide it, so the stock "you have no way to set fire to
         // this" is the one thing the game must not say about the golem.
         // `reply`, not `say`: stage 4 uses `say`, and both lines would print.
-        golem.before(.burn) {
-            try reply(
-                """
+        golem.before(
+            .burn,
+            reply: """
                 You have nothing to set it alight with, and nothing in the undercroft does either. Fire, if it is
                 coming, will have to come out of you.
                 """)
-        }
 
         // The amulet is out of reach until the golem is dealt with; the reveal
         // in firebolt's effect is what actually makes it takable. Taking it

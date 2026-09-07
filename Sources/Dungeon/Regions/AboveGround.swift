@@ -738,9 +738,7 @@ struct DungeonAboveGround: GameContent {
         egg.describe { egg.isOpen ? Prose.eggOpen : Prose.egg }
         egg.presence { egg.isOpen ? Prose.eggOpenInNest : Prose.eggInNest }
 
-        frontDoor.before(.open) {
-            try refuse(Prose.frontDoorRefusal)
-        }
+        frontDoor.before(.open, refuse: .init(Prose.frontDoorRefusal))
 
         // Run the built-in open, then say what is inside.
         mailbox.before(.open) {
@@ -771,9 +769,7 @@ struct DungeonAboveGround: GameContent {
         // Everywhere else in the wood, the trees refuse the climb in the
         // mainframe's own words — the same line the blocked `up` exit gives.
         for stand in [treesDeep, treesSouth, treesCanyonEdge, treesNorth] {
-            stand.before(.climb) {
-                try refuse(Prose.noTreeToClimb)
-            }
+            stand.before(.climb, refuse: .init(Prose.noTreeToClimb))
         }
     }
 
@@ -793,7 +789,7 @@ struct DungeonAboveGround: GameContent {
         // for, so once it is out the brochure stops behaving as one. Nothing
         // else in the game fits in it anyway; what this stops is `put the coffin
         // in the brochure`.
-        brochure.before(.putIn) { try refuse(Prose.brochureHoldsNothing) }
+        brochure.before(.putIn, refuse: .init(Prose.brochureHoldsNothing))
     }
 
     // MARK: - The wood

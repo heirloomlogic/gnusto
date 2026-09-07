@@ -123,6 +123,22 @@ tree.before(.climb) {
 }
 ```
 
+### When the promotion is only a sentence
+
+Most promotions are not behavior at all. They are one thing's answer to one verb, and the rule they used to need was a closure wrapped around a single line. ``Item/before(_:reply:)-(Intent...,_)`` and ``Item/before(_:refuse:)-(Intent...,_)`` are that rule, said once:
+
+```swift
+oilLamp.before(.burn, reply: "That is what it is for. Light it.")
+oilCan.before(.pour, .empty, refuse: "That oil has one place to go tonight.")
+ladder.before(.climb, reply: .naming { "You can't climb onto \($0)." })
+```
+
+Same slot for both spellings, exactly as ``GameText/stubs`` has: a string literal is a fixed sentence, ``GameText/Line/naming(_:)`` builds one around the thing's rendered name, article and number. A line held in a constant goes in as `.init(Prose.someLine)`.
+
+``Actor/before(_:reply:)-(Intent...,_)`` is the same on a person. ``Location/before(_:reply:)-(Intent...,_)`` is the same in a room, with one difference: a room has no rendered name for a line to be built around — the engine articles items and never locations — so its line is handed nothing, and the alternative to a fixed sentence is ``GameText/Line/live(_:)``.
+
+This is the rule it replaces and not a fourth thing: it runs at stage 3, it stacks with any other rule on the same intent in declaration order, and it inherits what a `before` rule inherits. Which means it gives up everything stage 4 would have supplied — read the next section before choosing it over an assignment to ``GameText/stubs``.
+
 For behavior that spans every object rather than one, use an `actions` row —
 `GnustoMeleeCombat` turns the whole `attack` family into real combat that way:
 
@@ -176,15 +192,16 @@ nothing warns — a row and an assignment look equally reasonable at the call si
 `Sources/Dungeon/` re-skinned seventeen stubs with rows and had given all four
 away without noticing.
 
-**The rule of thumb:** an `actions` row means *this game has behavior here*. If
-all it has is a sentence, assign the sentence.
+**The rule of thumb:** an `actions` row means *this game has behavior here*. If all it has is a sentence, assign the sentence.
+
+The same reading settles the other choice. `text.stubs.climb` is what *this game* says about climbing anything; `ladder.before(.climb, reply: …)` is what *this ladder* says, and it is a rule, so it keeps none of the four. Re-voice the verb in the text table, and answer for one thing with a rule.
 
 ### Use `reply`, not `say`
 
 The stage-4 default *says* its line rather than refusing, so world time passes on
-a stub turn. That means a `before` rule which only `say`s does **not** suppress
-the stock line — the player gets both. Promote a stub with ``reply(_:)`` or
-``refuse(_:)``, which end the turn.
+a stub turn. That means a `before` rule which only `say`s does **not** suppress the stock line — the player gets both. Promote a stub with ``reply(_:)`` or ``refuse(_:)``, which end the turn.
+
+The one-line spellings above have no `say` form for that reason: the trap is not one a game should be able to write.
 
 ### Precedence
 

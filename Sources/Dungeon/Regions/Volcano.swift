@@ -787,7 +787,7 @@ extension DungeonVolcano {
         balloon.describe {
             Prose.balloonExamined(inflated: burningFuel?.name, tied: balloonTied)
         }
-        balloon.before(.take, .push, .pull) { try refuse(Prose.balloonTooHeavy) }
+        balloon.before(.take, .push, .pull, refuse: .init(Prose.balloonTooHeavy))
 
         // A balloon is not steered. Inside the shaft the only headings that
         // mean anything are the two that reach a ledge; on the ground and on a
@@ -827,15 +827,15 @@ extension DungeonVolcano {
         clothBag.describe { bagInflated ? Prose.clothBagInflated : Prose.clothBagSlack }
 
         for part in [clothBag, receptacle] {
-            part.before(.take, .pull) { try reply(Prose.balloonPartIsFixed(part.name)) }
+            part.before(.take, .pull, reply: .init(Prose.balloonPartIsFixed(part.name)))
         }
 
         // The wire is the one part with a verb of its own, so it is the one
         // part whose refusal points at it — and it has its own rule for that,
         // beside the `.tie` and `.untie` rules below.
-        braidedWire.before(.take, .pull) { try reply(Prose.wireIsFixed(braidedWire.name)) }
+        braidedWire.before(.take, .pull, reply: .init(Prose.wireIsFixed(braidedWire.name)))
 
-        clothBag.before(.open) { try reply(Prose.clothBagWontOpen) }
+        clothBag.before(.open, reply: .init(Prose.clothBagWontOpen))
         clothBag.before(.lookIn) {
             try reply(bagInflated ? Prose.clothBagHotAir : Prose.clothBagIsEmpty)
         }
@@ -917,21 +917,21 @@ extension DungeonVolcano {
         }
 
         for hook in [narrowLedgeHook, wideLedgeHook] {
-            hook.before(.take, .pull, .push) { try reply(Prose.hookIsFixed) }
+            hook.before(.take, .pull, .push, reply: .init(Prose.hookIsFixed))
             hook.presence {
                 balloonTied && balloon.isIn(player.location)
                     ? Prose.hookHoldsTheBalloon : Prose.hookInPlace
             }
         }
 
-        volcanoView.before(.cross) { try reply(Prose.volcanoViewNoCrossing) }
+        volcanoView.before(.cross, reply: .init(Prose.volcanoViewNoCrossing))
 
-        zorkmid.before(.read) { try reply(Prose.zorkmidEngraved) }
+        zorkmid.before(.read, reply: .init(Prose.zorkmidEngraved))
     }
 
     @RuleBuilder fileprivate var libraryRules: Rules {
         for book in [blueBook, greenBook, whiteBook] {
-            book.before(.read) { try reply(Prose.bookIsUnreadable) }
+            book.before(.read, reply: .init(Prose.bookIsUnreadable))
         }
 
         // The purple one is unreadable too, but reading it is what shakes the
@@ -946,19 +946,19 @@ extension DungeonVolcano {
             try reply(Prose.purpleBookOpens)
         }
 
-        stamp.before(.read) { try reply(Prose.stamp) }
+        stamp.before(.read, reply: .init(Prose.stamp))
     }
 
     @RuleBuilder fileprivate var dustyRoomRules: Rules {
-        rustyBox.before(.take, .pull, .push) { try reply(Prose.safeIsEmbedded) }
+        rustyBox.before(.take, .pull, .push, reply: .init(Prose.safeIsEmbedded))
         rustyBox.before(.open) {
             try reply(rustyBox.isOpen ? Prose.safeHasNoDoor : Prose.safeWillNotOpen)
         }
         rustyBox.before(.close) {
             try reply(rustyBox.isOpen ? Prose.safeHasNoDoor : Prose.safeIsNotOpen)
         }
-        card.before(.read) { try reply(Prose.cardText) }
-        blueLabel.before(.read) { try reply(Prose.blueLabelText) }
+        card.before(.read, reply: .init(Prose.cardText))
+        blueLabel.before(.read, reply: .init(Prose.blueLabelText))
     }
 
     @RuleBuilder fileprivate var gnomeRules: Rules {
