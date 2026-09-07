@@ -269,9 +269,13 @@ struct DungeonSystems: GameContent {
         // override before `requireReach`, so the row silently gave up the
         // engine's reach guard, the object's name, its number agreement and
         // the `yourself`/`somebodyElse` guards, none of which this game meant
-        // to trade away for a change of voice. (#233) The `say:` rows above
-        // keep the reach guard — that is what the spelling is for — and
-        // bootstrap now warns for one written on a stub intent, where
-        // `text.stubs` keeps all four.
+        // to trade away for a change of voice. (#233) The `say:` rows above are
+        // the other door, for verbs this game invented and the engine has never
+        // heard of: they *can* carry a reach column and a rendered name, and
+        // these take neither, because "You cannot wind that up." is about the
+        // verb and works at whatever distance the mainframe worked at. What
+        // they buy here is that the sentence stops being a claim on the verb.
+        // Bootstrap warns for one written on a stub intent, where `text.stubs`
+        // keeps all four. (#404)
     }
 }

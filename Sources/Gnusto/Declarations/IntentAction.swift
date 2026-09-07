@@ -132,6 +132,28 @@ public func action(
 /// ``action(_:reach:naming:)``, which hands the line the object's rendered name
 /// and answers `wind me` and `wind the troll` in the engine's own words.
 ///
+/// **Choosing this form for a verb whose rows carry a `.directObject` is a
+/// choice, and it has a cost.** The engine forbids the same shape in its own
+/// table — ``StubVerb/namesObject`` and the `everyStubWithAnObjectSlotCanNameIt`
+/// test are #245 — because a line that cannot say what the player pointed at
+/// looks correct from both sides and is wrong from neither. A game is allowed
+/// it, because a game may be reproducing a source whose answer is genuinely
+/// nameless: Zork's `V-WIND` is "You cannot wind up a X." and `Sources/Zork1/`
+/// declines the reproduction for a reason it writes down. What you are
+/// accepting is that the sentence is aimed at the player too — `ring me`
+/// answers whatever `ring the bell` answers, where a `naming:` line would have
+/// said ``GameText/StubReplies/yourself``. Take the cost knowingly or take the
+/// other form.
+///
+/// The sentence is a `String` and not a ``GameText/Line``, which is the type
+/// the engine's own stub lines are held in, and the difference is deliberate:
+/// a `Line` is not convertible from a `String` constant, so every row would
+/// read `say: .init(Prose.cannotWind)` to say what `say: Prose.cannotWind`
+/// says. The one thing the `Line` spelling would add is
+/// ``GameText/Line/live(_:)`` — a nameless sentence assembled when it prints —
+/// and the closure form already covers that with more power, since it runs in
+/// the live turn frame rather than being handed nothing.
+///
 /// - Parameters:
 ///   - intent: the intent this line answers.
 ///   - reach: which object slots the player has to be able to touch. Defaults
@@ -185,7 +207,7 @@ public func action(
     reach: Reach = .notNeeded,
     naming line: @escaping @Sendable (GameText.Noun) -> String
 ) -> IntentAction {
-    IntentAction(intent, reach: reach, render: StubVerb.naming { _, noun in line(noun) })
+    IntentAction(intent, reach: reach, render: StubVerb.nameCascade { _, noun in line(noun) })
 }
 
 /// A custom verb's own default line, for a verb the player may use **with an
@@ -198,8 +220,8 @@ public func action(
 /// answered by somebody else's words.
 ///
 /// ```swift
-/// action(.raise, orBare: Prose.playingWithIt("it"), guardsActors: true) {
-///     Prose.playingWithIt("\($0)")
+/// action(.whistle, orBare: "You whistle at nobody in particular.", guardsActors: true) {
+///     "You whistle at \($0), which changes nothing."
 /// }
 /// ```
 ///
@@ -224,12 +246,14 @@ public func action(
     guardsActors: Bool = false,
     naming line: @escaping @Sendable (GameText.Noun) -> String
 ) -> IntentAction {
-    IntentAction(
+    // The two halves are joined by the same factory a `text.stubs` assignment
+    // uses, rather than by a second copy of its one-line body, so "both halves
+    // or neither" stays one rule with one implementation.
+    let both = GameText.Line<GameText.Noun?>.naming(orBare: bare, line)
+    return IntentAction(
         intent,
         reach: reach,
-        render: StubVerb.optionallyNaming(guardsActors: guardsActors) { _, noun in
-            noun.map(line) ?? bare
-        })
+        render: StubVerb.optionalNameCascade(guardsActors: guardsActors) { _, noun in both(noun) })
 }
 
 /// The result builder for `actions` blocks.

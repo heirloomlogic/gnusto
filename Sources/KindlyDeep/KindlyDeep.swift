@@ -760,17 +760,15 @@ struct KindlyDeep: Game, GameMain {
             try offerToBiscuit()
         }
         action(
-            .talk, reach: .notNeeded,
-            say: "You say a few words into the dark. The dark, professionally, keeps its own counsel.")
-        // Both of these used to claim the room was empty of anything to do it
-        // to, from a row that never read a room — and the room they are most
-        // often typed in is the Shaft Bottom, which has the signal bell on its
-        // wall and Biscuit standing in his collar beside it. The bell and the
-        // mule claim their own nouns in `rules`, so the row only ever fired for
-        // something *else* in that room, and then denied the two things the room
-        // is for. Both name the thing instead. (#325) `naming:` is where the
-        // name comes from now, and with it the `yourself`/`somebodyElse` guards
-        // this file used to write out by hand for `ring me`. (#404)
+            .talk, say: "You say a few words into the dark. The dark, professionally, keeps its own counsel.")
+        // This used to claim the room was empty of anything to ring, from a row
+        // that never read a room — and the room it is most often typed in is
+        // the Shaft Bottom, which has the signal bell on its wall. The bell
+        // claims its own noun in `rules`, so the row only ever fired for
+        // something *else* in that room, and then denied the thing the room is
+        // for. It names the thing instead. (#325) `naming:` is where the name
+        // comes from now, and with it the `yourself`/`somebodyElse` guards this
+        // file used to write out by hand for `ring me`. (#404)
         action(.ring, naming: { "\($0.sentenceCased) \($0.verb("does", "do")) not ring." })
         // Bare `sit` in the shelter hole used to say nothing here was built for
         // sitting, in the room whose bench answers "It is a good bench."

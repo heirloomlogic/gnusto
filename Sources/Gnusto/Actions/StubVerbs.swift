@@ -112,7 +112,7 @@ extension StubVerb {
         reach: Reach,
         _ line: @escaping @Sendable (GameText, GameText.Noun) -> String
     ) -> StubVerb {
-        .init(intent, patterns, reach, line: naming(line))
+        .init(intent, patterns, reach, line: nameCascade(line))
     }
 
     /// A stub whose line **owns a nameless half**, so it is handed an optional
@@ -156,7 +156,7 @@ extension StubVerb {
         guardsActors: Bool = false,
         _ line: @escaping @Sendable (GameText, GameText.Noun?) -> String
     ) -> StubVerb {
-        .init(intent, patterns, reach, line: optionallyNaming(guardsActors: guardsActors, line))
+        .init(intent, patterns, reach, line: optionalNameCascade(guardsActors: guardsActors, line))
     }
 
     /// ``named``'s guard cascade, without the rows — the renderer on its own.
@@ -169,7 +169,7 @@ extension StubVerb {
     ///
     /// - Parameter line: the sentence, given the object's rendered name.
     /// - Returns: a renderer over the whole command.
-    static func naming(
+    static func nameCascade(
         _ line: @escaping @Sendable (GameText, GameText.Noun) -> String
     ) -> @Sendable (GameText, Command) -> String {
         { text, command in
@@ -181,7 +181,7 @@ extension StubVerb {
     }
 
     /// ``optionallyNamed``'s guard cascade, without the rows, for the reason
-    /// ``naming(_:)`` is split out. ``action(_:orBare:reach:guardsActors:naming:)``
+    /// ``nameCascade(_:)`` is split out. ``action(_:orBare:reach:guardsActors:naming:)``
     /// is the other door.
     ///
     /// - Parameters:
@@ -189,7 +189,7 @@ extension StubVerb {
     ///     ``GameText/StubReplies/somebodyElse`` rather than the line.
     ///   - line: the sentence, given the object's rendered name or `nil`.
     /// - Returns: a renderer over the whole command.
-    static func optionallyNaming(
+    static func optionalNameCascade(
         guardsActors: Bool,
         _ line: @escaping @Sendable (GameText, GameText.Noun?) -> String
     ) -> @Sendable (GameText, Command) -> String {

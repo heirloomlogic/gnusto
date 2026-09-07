@@ -189,10 +189,11 @@ struct Fulminate: Game, GameMain {
         // row returns from `actionOverrides` before `requireReach` and gives up
         // the reach guard, the rendered name, number agreement and the
         // `yourself`/`somebodyElse` guards along with it. A `say:`/`naming:`
-        // row keeps all four, but it is still the wrong door here — these verbs
-        // already have engine rows, and a row would throw those away for a
-        // change of voice. It is what `action(_:reach:say:)` is for on a verb
-        // this game *invented*, which is `.accuse`. (#404)
+        // row can keep all four, but it is still the wrong door here — these
+        // verbs already have engine rows, and a row would throw those away for
+        // a change of voice. That spelling is for a verb a game *invented* and
+        // has nothing but a sentence for; this game's one invented verb,
+        // `.accuse`, has a whole ending behind it and stays a closure. (#404)
         //
         // The naming halves are what a bare sentence could not do. A room claim
         // asked about a named thing is wrong twice over — it is a claim about

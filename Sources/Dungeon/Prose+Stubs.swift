@@ -25,7 +25,7 @@ import GnustoMeleeCombat
 ///
 /// Installed as `text.stubs` in ``Dungeon``, not as `action(…)` rows. The rows
 /// were how this game re-skinned its first seventeen, and `DefaultActions.run`
-/// returns from an action override *before* `requireReach`, so each one had
+/// returns from a closure override *before* `requireReach`, so each one had
 /// quietly given up the engine's reach guard, its object naming, its number
 /// agreement, and the `yourself`/`somebodyElse` guards. Assigning the line keeps
 /// all of it; it is also what the play-test harness's own survey measures, so

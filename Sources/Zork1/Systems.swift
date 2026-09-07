@@ -97,6 +97,13 @@ struct ZorkSystems: GameContent {
         SyntaxRule("hi", intent: .greet)
     }
 
+    /// `V-LOWER`'s `HACK-HACK` stem (`gverbs.zil:902`), which `V-RAISE` calls
+    /// outright (`:1131`) — so the two rows below share one line, as they shared
+    /// one helper before the line spelling existed.
+    private static let playingWith: @Sendable (GameText.Noun) -> String = {
+        Prose.playingWithIt("\($0)")
+    }
+
     var actions: [IntentAction] {
         action(.wind, say: Prose.verbWindNothing)
         action(.inflate, say: Prose.verbInflateNothing)
@@ -109,8 +116,8 @@ struct ZorkSystems: GameContent {
         // never says "Playing in this way with yourself has no effect." The
         // game used to write that cascade out by hand, twice, because a row
         // was the only door a custom verb had. (#404)
-        action(.raise, naming: { Prose.playingWithIt("\($0)") })
-        action(.lower, naming: { Prose.playingWithIt("\($0)") })
+        action(.raise, naming: Self.playingWith)
+        action(.lower, naming: Self.playingWith)
         // `TURN OBJECT WITH OBJECT` routes to `V-TURN` in the source
         // (`gsyntax.zil:505`), whose whole body is the line the stub floor's
         // `turn` already carries (`gverbs.zil:1506`). (#325)
@@ -131,10 +138,14 @@ struct ZorkSystems: GameContent {
         // override before `requireReach`, so the row silently gave up the
         // engine's reach guard, the object's name, its number agreement and the
         // `yourself`/`somebodyElse` guards, none of which this game meant to
-        // trade away for a change of voice. (#242) The `say:` and `naming:`
-        // rows above keep all four — that is what the spelling is for — and
-        // bootstrap now warns for one written on a stub intent, where
-        // `text.stubs` is still the shorter road. (#404)
+        // trade away for a change of voice. (#242) The rows above are the other
+        // door, for verbs this game invented and the engine has never heard of.
+        // What each takes is what its own sentence needs: `raise` and `lower`
+        // are `naming:`, so they get the rendered name and the two people
+        // guards this file used to write out by hand; the `say:` rows name
+        // nothing and reach at whatever distance the source reached at, which
+        // is the `reach:` default. Bootstrap warns for one written on a stub
+        // intent, where `text.stubs` is still the shorter road. (#404)
     }
 }
 

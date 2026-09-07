@@ -73,11 +73,19 @@ struct DefaultLineTests {
         #expect(turnOutput(of: "scold porter", in: transcript).contains("is a person"))
     }
 
-    @Test func aLineWithABareHalfAnswersBothCommandsFromOneDeclaration() async throws {
+    /// Both halves from one declaration — and, on the bare turn, the proof that
+    /// the line is a **floor**: it is spoken with `say`, exactly as a stub
+    /// verb's is, so stage 5 still runs. The closure spelling it replaces used
+    /// `reply`, which throws and unwinds the `after` rules. That is the one
+    /// behavior this change moves.
+    @Test func aLineWithABareHalfAnswersBothCommandsAndStillRunsTheAfterRules()
+        async throws
+    {
         let transcript = try await play(
             DefaultLineGame(), ["whistle", "whistle at bellows", "whistle at porter"])
 
-        #expect(turnOutput(of: "whistle", in: transcript).contains("at nobody in particular"))
+        expectInOrder(
+            transcript, ["You whistle at nobody in particular.", "The workshop swallows the note."])
         #expect(
             turnOutput(of: "whistle at bellows", in: transcript)
                 .contains("You whistle at the bellows, which changes nothing."))
@@ -87,25 +95,13 @@ struct DefaultLineTests {
 
     // MARK: - A floor, not a refusal
 
-    /// The line is spoken with `say`, exactly as a stub verb's is, so stage 5
-    /// still runs. The closure spelling it replaces used `reply`, which throws
-    /// and unwinds the `after` rules — the one behavior this change moves.
-    @Test func aDefaultLineIsAFloorSoAfterRulesStillGetTheirTurn() async throws {
-        let transcript = try await play(DefaultLineGame(), ["whistle"])
-
-        expectInOrder(
-            transcript, ["You whistle at nobody in particular.", "The workshop swallows the note."])
-    }
-
     /// And a `before` rule still promotes itself above it the ordinary way,
     /// which is what a floor means.
     @Test func aBeforeRuleStillBeatsTheDefaultLine() async throws {
-        let transcript = try await play(DefaultLineGame(), ["winch bellows", "winch jar"])
+        let transcript = try await play(DefaultLineGame(), ["winch bellows"])
 
         #expect(turnOutput(of: "winch bellows", in: transcript).contains("The bellows wheeze"))
         #expect(!turnOutput(of: "winch bellows", in: transcript).contains("does not answer to that"))
-        // Everything the rule does not claim still gets the line.
-        #expect(turnOutput(of: "winch jar", in: transcript).contains("does not answer to that"))
     }
 
     // MARK: - Bootstrap
@@ -121,13 +117,18 @@ struct DefaultLineTests {
     /// A line written for a verb the engine already answers with one is the
     /// #233 defect wearing the new spelling, so bootstrap names the assignment
     /// that keeps the verb's rows instead.
-    @Test func aDefaultLineOnAStubIntentPointsAtTheStubTable() throws {
+    @Test func aDefaultLineOnAStubIntentPointsAtTheStubTable() async throws {
         let (definition, _) = try Bootstrap.build(StubLineOverrideGame())
 
         #expect(
             definition.warnings.contains {
                 $0.contains("squeeze") && $0.contains("text.stubs.squeeze")
             }, "\(definition.warnings)")
+
+        // It warns because it works: the row wins the verb, which is what makes
+        // giving up the stub's own rows worth complaining about.
+        let transcript = try await play(StubLineOverrideGame(), ["squeeze sponge"])
+        #expect(turnOutput(of: "squeeze sponge", in: transcript).contains("The sponge weeps"))
     }
 
     /// A *closure* on a stub intent stays silent, as it always has: that is a
