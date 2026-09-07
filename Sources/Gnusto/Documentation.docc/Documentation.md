@@ -62,6 +62,10 @@ Each has its own documentation in this archive. They are not linked from here: a
 - ``adjectives(_:)``
 - ``synonyms(_:)``
 - ``firstSight(_:)``
+- ``description(when:_:otherwise:)-vsee``
+- ``description(when:_:otherwise:)-6k474``
+- ``firstSight(when:_:otherwise:)-4m9f``
+- ``firstSight(when:_:otherwise:)-7r6ql``
 - ``dark``
 - ``alwaysDescribed``
 - ``alwaysListed``

@@ -594,13 +594,15 @@ public struct Item: Sendable, Equatable {
     }
 
     /// A live description recomputed every time the item is described, so it
-    /// can react to world state — including its own:
+    /// can react to world state — a `@Global`, another entity, a count:
     ///
     /// ```swift
-    /// lantern.describe { lantern.isLit ? Prose.lanternOn : Prose.lanternOff }
+    /// hook.describe { hook.holds(cloak) ? Prose.hookWithCloak : Prose.hookBare }
     /// ```
     ///
-    /// Declared in a `rules` block. A runtime override
+    /// Two texts on one of the item's **own** Bools want no rule: that is
+    /// ``description(when:_:otherwise:)-vsee`` in the trait block, which the
+    /// bootstrap can check. Declared in a `rules` block. A runtime override
     /// (`item.description = "…"`) still wins over it; a static
     /// `description(…)` trait on the same item, or a second `describe` rule
     /// for it, is a fatal bootstrap diagnostic.
@@ -617,6 +619,9 @@ public struct Item: Sendable, Equatable {
     /// ```swift
     /// bench.presence { blastHappened ? Prose.benchBurnt : Prose.benchWhole }
     /// ```
+    ///
+    /// Two lines on one of the item's **own** Bools want no rule: that is
+    /// ``firstSight(when:_:otherwise:)-4m9f`` in the trait block.
     ///
     /// On an item this is the paragraph shown until the player touches it — in
     /// place of whichever stock listing sentence the room would otherwise have

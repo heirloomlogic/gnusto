@@ -60,6 +60,11 @@ struct DungeonHouse: GameContent {
         synonyms: "window"
     ) {
         openable
+        // The window is the `via:` door on four exits, so `isOpen` is the state
+        // its own description is a claim about: "not enough to allow entry"
+        // read as stock scenery text to a player standing in the kitchen having
+        // just come through it.
+        description(when: \.isOpen, Prose.kitchenWindowOpen, otherwise: Prose.kitchenWindow)
     }
 
     /// The kitchen names a staircase and a chimney; both answer.
@@ -121,10 +126,13 @@ struct DungeonHouse: GameContent {
         adjectives("clear", "glass")
         synonyms("bottle", "container")
         firstSight(Prose.bottleOnTable)
-        // Described by a rule: the stopper is the `openable` trait.
         container
         openable
         transparent
+        // `OPEN BOTTLE` answers "reveals a quantity of water" and the examine
+        // went on saying "stoppered" behind it. The stopper is the openable
+        // trait; the glass is the constant.
+        description(when: \.isOpen, Prose.bottleOpen, otherwise: Prose.bottle)
     }
 
     let water = Item {
@@ -147,6 +155,7 @@ struct DungeonHouse: GameContent {
         synonyms("lamp", "lantern", "light")
         firstSight(Prose.lanternOnCase)
         lightSource
+        description(when: \.isLit, Prose.lanternOn, otherwise: Prose.lanternOff)
         trait(.weight, 15)
     }
 
@@ -422,24 +431,11 @@ struct DungeonHouse: GameContent {
     }
 
     @RuleBuilder private var houseRules: Rules {
-        // The window is the `via:` door on four exits, so `isOpen` is the state
-        // its own description is a claim about: "not enough to allow entry"
-        // read as stock scenery text to a player standing in the kitchen having
-        // just come through it.
-        window.describe {
-            window.isOpen ? Prose.kitchenWindowOpen : Prose.kitchenWindow
-        }
-
         // And the room's own paragraph says the same thing about the same
         // state, because the source's does — see ``Prose/kitchen``. The
         // matching rule for Behind House is the host's, since that room is
         // ``DungeonAboveGround``'s and this window is not.
         kitchen.describe { Prose.kitchen(windowOpen: window.isOpen) }
-
-        // `OPEN BOTTLE` answers "reveals a quantity of water" and the examine
-        // went on saying "stoppered" behind it. The stopper is the openable
-        // trait; the glass is the constant.
-        bottle.describe { bottle.isOpen ? Prose.bottleOpen : Prose.bottle }
 
         rug.before(.push) {
             guard !trapDoor.isRevealed else { try reply(Prose.rugAlreadyMoved) }
@@ -517,10 +513,6 @@ struct DungeonHouse: GameContent {
         // said nothing about why a chimney the room's paragraph calls "much too
         // narrow to be worth the try" would not take you.
         kitchenChimney.before(.climb) { try refuse(Prose.chimneyDownRefusal) }
-
-        lantern.describe {
-            lantern.isLit ? Prose.lanternOn : Prose.lanternOff
-        }
 
         // The lamp's fuel economy: the fuses run only while it burns.
         lantern.before(.turnOn) {

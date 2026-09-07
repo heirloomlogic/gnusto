@@ -32,14 +32,15 @@ struct SceneryTests {
         "x rusted bars", "x leaning column",
     ])
     func shorthandPreservesOrdinaryItemBehavior(command: String) async throws {
-        let compact = try await playScenery(SceneryGame(compact: true), [command], seed: 0)
-        let explicit = try await playScenery(SceneryGame(compact: false), [command], seed: 0)
+        let compact = try await play(fresh: SceneryGame(compact: true), [command], seed: 0)
+        let explicit = try await play(fresh: SceneryGame(compact: false), [command], seed: 0)
         #expect(compact == explicit)
     }
 
     @Test func sceneryAnswersWithoutBecomingLooseLoot() async throws {
-        let transcript = try await playScenery(
-            SceneryGame(compact: true), ["look", "x old brickwork", "take wall", "take all", "i"])
+        let transcript = try await play(
+            fresh:
+                SceneryGame(compact: true), ["look", "x old brickwork", "take wall", "take all", "i"])
         #expect(turnOutput(of: "x old brickwork", in: transcript).contains("Mortar fills the cracks."))
         #expect(!turnOutput(of: "look", in: transcript).contains("There is a stone wall here."))
         #expect(!turnOutput(of: "take wall", in: transcript).contains("Taken."))
@@ -48,20 +49,21 @@ struct SceneryTests {
     }
 
     @Test func sceneryScopeFollowsItsPlacement() async throws {
-        let transcript = try await playScenery(SceneryGame(compact: true), ["north", "x wall"])
+        let transcript = try await play(fresh: SceneryGame(compact: true), ["north", "x wall"], seed: 0)
         #expect(!turnOutput(of: "x wall", in: transcript).contains("Mortar fills the cracks."))
-        let explicit = try await playScenery(SceneryGame(compact: false), ["north", "x wall"])
+        let explicit = try await play(fresh: SceneryGame(compact: false), ["north", "x wall"], seed: 0)
         #expect(transcript == explicit)
     }
 
     @Test func omittedDescriptionUsesTheStockExamineLine() async throws {
-        let transcript = try await playScenery(SceneryGame(compact: true), ["x ceiling"])
+        let transcript = try await play(fresh: SceneryGame(compact: true), ["x ceiling"])
         #expect(turnOutput(of: "x ceiling", in: transcript).contains("You see nothing special about the ceiling."))
     }
 
     @Test func additionalTraitsAndDynamicDescriptionsStillWork() async throws {
-        let transcript = try await playScenery(
-            SceneryGame(compact: true), ["x niche", "search niche", "take coin", "examine niche"])
+        let transcript = try await play(
+            fresh:
+                SceneryGame(compact: true), ["x niche", "search niche", "take coin", "examine niche"])
         #expect(turnOutput(of: "x niche", in: transcript).contains("A coin rests in the niche."))
         #expect(turnOutput(of: "search niche", in: transcript).contains("coin"))
         #expect(turnOutput(of: "take coin", in: transcript).contains("Taken."))
@@ -73,7 +75,7 @@ struct SceneryTests {
             "x iron grate", "x rusted grate", "x narrow grate", "x grating", "x bars",
             "x rusted bars",
         ]
-        let transcript = try await playScenery(SceneryGame(compact: true), commands)
+        let transcript = try await play(fresh: SceneryGame(compact: true), commands)
         for command in commands {
             #expect(turnOutput(of: command, in: transcript).contains("Rust has taken the bars."))
         }
@@ -207,15 +209,4 @@ private struct InvalidSceneryGame: Game {
         player.starts(in: room)
         wall.starts(in: room)
     }
-}
-
-// `play` caches by game type, but this fixture varies its declarations per
-// instance. Build each world afresh so the comparison exercises both forms.
-private func playScenery(
-    _ game: SceneryGame, _ commands: [String], seed: UInt64 = 0
-) async throws -> String {
-    let world = try GameWorld(game: game, seed: seed)
-    let io = ScriptedIOHandler(lines: commands)
-    await REPL(world: world, io: io).run()
-    return io.transcript
 }

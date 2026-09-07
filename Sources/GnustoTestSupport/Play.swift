@@ -33,6 +33,31 @@ public func play(
     return io.transcript
 }
 
+/// ``play(_:_:seed:saveDirectory:)`` over a world built afresh rather than
+/// from the per-type cache — for a fixture whose declarations vary per
+/// instance (`Game(compact: true)` against `Game(compact: false)`), which one
+/// cached world per type cannot tell apart.
+///
+/// - Parameters:
+///   - game: the game to boot.
+///   - commands: the commands to feed it, in order.
+///   - seed: pins the random stream when set; `GNUSTO_SEED` or a fresh stream
+///     when nil.
+/// - Throws: rethrows any error from booting or running the game.
+/// - Returns: the full transcript, with input interleaved as `> command`.
+public func play(
+    fresh game: some Game,
+    _ commands: [String],
+    seed: UInt64? = nil
+) async throws -> String {
+    let world = try GameWorld(
+        game: game,
+        seed: seed ?? environmentSeedRequest.value ?? UInt64.random(in: .min ... .max))
+    let io = ScriptedIOHandler(lines: commands)
+    await REPL(world: world, io: io).run()
+    return io.transcript
+}
+
 /// The output of a single command within a transcript: everything between
 /// the first `> command` line and the next prompt (or the end). Returns ""
 /// when the command never appears.

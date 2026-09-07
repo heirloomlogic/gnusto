@@ -322,6 +322,11 @@ struct DungeonVolcano: GameContent {
         container
         openable
         capacity(15)
+        // The box itself, branching on the flag its listing paragraph has
+        // branched on all along. `x safe` called it intact and stronger than
+        // anything you carry, one line under a listing that had already said
+        // the charge went off. (#329)
+        description(when: \.isOpen, Prose.rustyBoxBlown, otherwise: Prose.rustyBox)
     }
 
     /// `SSLOT`. Somebody chipped it out of the front of the box and gave up.
@@ -907,13 +912,6 @@ extension DungeonVolcano {
         dustyRoom.describe {
             let box = rustyBox.isOpen ? Prose.dustyRoomBoxOpen : Prose.dustyRoomBoxShut
             return "\(Prose.dustyRoom)\n\n\(box)"
-        }
-        // The box itself, branching on the flag the paragraph directly above
-        // has branched on all along. `x safe` called it intact and stronger
-        // than anything you carry, one line under a listing that had already
-        // said the charge went off. (#329)
-        rustyBox.describe {
-            rustyBox.isOpen ? Prose.rustyBoxBlown : Prose.rustyBox
         }
 
         for hook in [narrowLedgeHook, wideLedgeHook] {

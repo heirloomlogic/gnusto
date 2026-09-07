@@ -55,6 +55,11 @@ struct ZorkHouse: GameContent {
         adjectives: "kitchen", "narrow"
     ) {
         openable
+        // Empty means "nothing special about the …", which is exactly what
+        // `KITCHEN-WINDOW-F` falls through to once the flag is set: the engine
+        // supplies `text.nothingSpecial` for a description that is "", so the
+        // stock line is not copied here to drift from its template.
+        description(when: \.isOpen, "", otherwise: Prose.kitchenWindow)
     }
 
     let sack = Item {
@@ -156,6 +161,7 @@ struct ZorkHouse: GameContent {
         adjectives("brass")
         synonyms("lamp")
         lightSource
+        description(when: \.isLit, Prose.lanternOn, otherwise: Prose.lanternOff)
     }
 
     /// Fuel remaining on the dim-warning fuse while the lantern is off.
@@ -325,11 +331,6 @@ struct ZorkHouse: GameContent {
         // about. Behind House's twin of this is the host's, since that room
         // belongs to `ZorkAboveGround` and this window does not.
         kitchen.describe { Prose.kitchen(windowOpen: window.isOpen) }
-        // Empty means "nothing special about the …", which is exactly what
-        // `KITCHEN-WINDOW-F` falls through to once the flag is set: the engine
-        // supplies `text.nothingSpecial` for a `describe` rule that returns "",
-        // so the stock line is not copied here to drift from its template.
-        window.describe { window.isOpen ? "" : Prose.kitchenWindow }
 
         // Not `require`: that helper is hardwired to `refuse` (see
         // `Sources/Gnusto/Declarations/Helpers.swift`), but "already moved"
@@ -354,11 +355,6 @@ struct ZorkHouse: GameContent {
         // Forcing the egg open by hand wrecks the canary inside. Because the
         // egg lives in ``ZorkAboveGround`` and the canary here, that rule spans
         // two bundles and the host declares it (`Zork1.rules`).
-
-        // The lantern's lit/unlit examine text, live on every look.
-        lantern.describe {
-            lantern.isLit ? Prose.lanternOn : Prose.lanternOff
-        }
 
         // The lantern's fuel economy: the fuses run only while it burns.
         lantern.before(.turnOn) {

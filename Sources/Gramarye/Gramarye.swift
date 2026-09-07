@@ -139,6 +139,12 @@ struct Gramarye: Game, GameMain {
     ) {
         openable
         startsOpen
+        description(
+            when: \.isOpen,
+            "The warding-marks are dark and dead. The door stands open on the gallery.",
+            otherwise:
+                "A stout door, held shut by the warding-marks cut into its frame. It is not locked in any sense a key could improve."
+        )
     }
 
     /// The marks the whole first puzzle is about, named in six passages and
@@ -164,6 +170,13 @@ struct Gramarye: Game, GameMain {
         // set. Not `stone` — the gallery is made of the stuff, and the room's
         // own stonework has the better claim on the bare word.
         openable
+        description(
+            when: \.isOpen,
+            """
+            Where the granite stood there hangs a soft grey mist, cool as cellar air. You could walk through it as
+            through a curtain.
+            """,
+            otherwise: "A wall of dressed granite, seamless and cold. No door, no crack — just stone.")
     }
 
     let golem = Actor {
@@ -414,19 +427,6 @@ struct Gramarye: Game, GameMain {
                 Cut deep into the door's frame and burning steadily along every stroke, without smoke and without
                 heat. They are not doing anything, in the sense that a locked door is not doing anything.
                 """
-        }
-        wardedDoor.describe {
-            wardedDoor.isOpen
-                ? "The warding-marks are dark and dead. The door stands open on the gallery."
-                : "A stout door, held shut by the warding-marks cut into its frame. It is not locked in any sense a key could improve."
-        }
-        graniteWall.describe {
-            graniteWall.isOpen
-                ? """
-                Where the granite stood there hangs a soft grey mist, cool as cellar air. You could walk through it as
-                through a curtain.
-                """
-                : "A wall of dressed granite, seamless and cold. No door, no crack — just stone."
         }
         // Four states, not three. The old ladder asked whether the scroll was
         // *held*, so the spent scroll — `vanish()`ed by the reading — fell into

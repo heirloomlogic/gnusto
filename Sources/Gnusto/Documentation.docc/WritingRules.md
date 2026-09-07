@@ -126,25 +126,43 @@ rope.before(.examine) {
 
 If a rule needs something to happen later, that is what a fuse or a daemon is for — see <doc:TheTurnPipeline>.
 
+## Two-state descriptions with `description(when:)`
+
+A `description(…)` trait is fixed text. The commonest thing that is not fixed is a thing with two states — a lantern lit or dark, a trapdoor open or shut — and when the state is the entity's **own**, the two texts go in its trait block, keyed on the Bool that picks between them:
+
+```swift
+let lantern = Item {
+    name("brass lantern")
+    lightSource
+    description(when: \.isLit,
+        "The lantern is on, casting a warm circle of light.",
+        otherwise: "A battered brass lantern, presently dark.")
+}
+```
+
+``description(when:_:otherwise:)-vsee`` reads the key path off the lantern every time it is examined, so the text always reflects the current state. ``firstSight(when:_:otherwise:)-4m9f`` is the same shape one channel over, for the room-listing paragraph, and an ``Actor`` may key either on `\.isUnconscious`. A ``Location`` has no form of this, because both of a room's own Bools are one-armed as the player sees them: the describer marks the room visited before it reads the description, and prints ``GameText/pitchBlack`` in place of it while the room is dark. A room's live text is a `describe { }` rule.
+
+What the trait buys over a closure is a check. `\.isOpen` on an item that is not `openable` is a constant, and so are `\.isLit` without `lightSource`, `\.isLocked` without a lock and `\.isWorn` without `wearable`: one of the two texts can never print. `\.isRevealed` is one-armed on anything, because nothing is described before it is revealed. The listing channel adds two of its own, because it is never asked about a held thing and stops at the first touch unless the item is ``alwaysListed``, so `firstSight(when: \.isHeld, …)` and `firstSight(when: \.isTouched, …)` have a dead branch where the examine channel does not; and nothing is described while it is invisible, so `\.isVisible` is dead on either. The bootstrap **warns** about each, naming the item and why. A closure reading the same Bool is wrong in silence.
+
 ## Live descriptions with `describe`
 
-A `description(…)` trait is fixed text. When what the player should read depends on the world — a lantern that reads differently lit or dark, a trapdoor open or shut — attach a ``Item/describe(_:)`` (or ``Location/describe(_:)``) rule instead. It takes a closure that the engine calls *every time the entity is described*, so it always reflects the current state:
+A trait block runs in a stored-property initializer, where no other declaration is in scope, so it can name only the entity's own Bools. When the text depends on anything else — a `@Global`, another entity's state, a count — attach a ``Item/describe(_:)`` (or ``Location/describe(_:)``) rule instead. It takes a closure that the engine calls *every time the entity is described*:
 
 ```swift
 var rules: Rules {
-    lantern.describe {
-        lantern.isLit
-            ? "The lantern is on, casting a warm circle of light."
-            : "A battered brass lantern, presently dark."
+    hook.describe {
+        hook.holds(cloak)
+            ? "A small brass hook, with a cloak hanging on it."
+            : "A small brass hook, screwed to the wall."
     }
 }
 ```
 
-Like any rule, `describe` is declared in the `rules` block, and the closure reads live state through your declarations — including the entity's own (here, `lantern.isLit`).
+Like any rule, `describe` is declared in the `rules` block, and the closure reads live state through your declarations.
 
 Four things are worth knowing:
 
-- **`describe` and a static `description(…)` are mutually exclusive.** Declaring both on the same entity — or two `describe` rules for it — is a fatal ``BootstrapError`` caught at startup, not a silent last-writer-wins. Pick one per entity.
+- **`describe` and a static `description(…)` are mutually exclusive.** Declaring both on the same entity — or two `describe` rules for it — is a fatal ``BootstrapError`` caught at startup, not a silent last-writer-wins. `description(when:)` counts as the static trait here: it is lowered into the same slot the rule fills, so it excludes a `describe { }` rule and a `description(…)` alike. Pick one per entity.
 - **A runtime assignment still wins.** Setting ``Item/description`` (or ``Location/description``) directly in a rule overrides the `describe` closure from then on — useful for a one-way change like a lever that reveals a passage.
 - **Keep the closure pure.** It runs on every look and examine; read state, return a string, and don't mutate the world from inside it.
 - **Never ask for the text from inside it.** The engine calls this closure *from within* the call that is producing the text, so anything in the body that describes calls back into the machinery calling it, and it recurses. Three ways in: ``describeSurroundings(withRoomName:)``, ``arrive(at:withRoomName:)``, and — the easy one — reading the entity's own ``Item/description``. `chest.describe { "\(chest.description) It is scratched." }` looks like appending to the declared text, but `describe` and `description(…)` are mutually exclusive, so there is no declared text to read and the getter simply calls this closure again. To share a base string, put it in a `let` and interpolate that. The engine counts the nesting and traps with a message naming the entity rather than dying in a stack overflow — but the trap is a diagnostic, not a feature.
@@ -229,7 +247,7 @@ Reach for `arrive(at:)` when the game is *putting* the player somewhere — a tr
 
 ## Live room-listing lines with `presence`
 
-`describe` supplies the *examine* text. The other line the engine prints about an entity is its paragraph in the room description — the ``firstSight(_:)`` trait, shown until the player touches an item and shown on every look for an actor. ``Item/presence(_:)`` (or ``Actor/presence(_:)``) is its live form, and it follows exactly the same rules as `describe`:
+`describe` supplies the *examine* text. The other line the engine prints about an entity is its paragraph in the room description — the ``firstSight(_:)`` trait, shown until the player touches an item and shown on every look for an actor. ``Item/presence(_:)`` (or ``Actor/presence(_:)``) is its live form, and it follows exactly the same rules as `describe` — including the trait form: a paragraph that turns on the entity's own Bool is ``firstSight(when:_:otherwise:)-4m9f`` in the trait block, and needs no rule.
 
 ```swift
 var rules: Rules {

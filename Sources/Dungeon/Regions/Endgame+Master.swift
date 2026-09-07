@@ -40,8 +40,6 @@ extension DungeonEndgame {
     /// Knocking at the wooden door, the questions behind it, and the eight
     /// answers.
     @RuleBuilder var quizRules: Rules {
-        woodenDoor.describe { woodenDoor.isOpen ? Prose.woodenDoorOpen : Prose.woodenDoorClosed }
-
         // The one door in the game that answers. Every other door gets the
         // game-wide `.knock` rule in ``Dungeon``, which names this one to stay
         // out of its way: `before` rules run outside-in, so a world rule speaks
@@ -174,7 +172,6 @@ extension DungeonEndgame {
         southSlot.describe { throughTheSouthDoorway }
         northSlot.describe { throughTheNorthDoorway }
         sundial.describe { Prose.sundialReading(Self.numberWord(dialSetting)) }
-        bronzeDoor.describe { bronzeDoor.isOpen ? Prose.bronzeDoorOpen : Prose.bronzeDoorClosed }
 
         sundial.before(.setTo) { try setTheDial() }
         sundial.before(.turn, .push, .pull, .turnOn) { try turnTheDial() }

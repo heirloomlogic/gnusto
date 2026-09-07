@@ -36,6 +36,14 @@ struct Tower: GameContent {
         synonyms: "beam", "light", "reservoir", "carriage", "ring"
     ) {
         lightSource
+        description(
+            when: \.isLit,
+            "The beacon roars with light, its beam wheeling out across the black water.",
+            otherwise: """
+                The great beacon, cold and dark, its reservoir dry. The brass is
+                bright where hands go and dull where they don't — polished by
+                work, not for visitors.
+                """)
     }
 
     // MARK: - The nouns the Lamp Room's description prints
@@ -85,17 +93,5 @@ struct Tower: GameContent {
         glass.starts(in: lampRoom)
         night.starts(in: lampRoom)
         stairs.starts(in: lampRoom)
-    }
-
-    var rules: Rules {
-        beacon.describe {
-            beacon.isLit
-                ? "The beacon roars with light, its beam wheeling out across the black water."
-                : """
-                The great beacon, cold and dark, its reservoir dry. The brass is
-                bright where hands go and dull where they don't — polished by
-                work, not for visitors.
-                """
-        }
     }
 }

@@ -616,6 +616,21 @@ enum Bootstrap {
                 "item \"\(id)\" declares startsUnlocked but has no lockedBy entry; "
                     + "the flag has no effect.")
         }
+        // A two-state text with a branch that can never print: `isOpen` on
+        // anything not `openable` is a constant, and so are `isLit` without
+        // `lightSource`, `isLocked` without a lock and `isWorn` without
+        // `wearable`; nothing is described before it is revealed; and the
+        // listing channel has gates of its own. The rows are the table in
+        // `TwoStateText`. The closure form is wrong in silence here; the trait
+        // form can say so.
+        for (id, item) in items {
+            for (pair, channel) in item.twoStateTexts {
+                guard let why = pair.deadBranch(on: item, channel: channel) else { continue }
+                traitWarnings.append(
+                    "item \"\(id)\" declares \(channel.traitName)(when: \(pair.conditionName), …) "
+                        + "but \(why), so one of its two texts never prints.")
+            }
+        }
         // Obeying is something a *person* does. On anything else the trait has
         // nobody to describe: the parser only ever addresses an actor.
         for (id, item) in items where item.takesOrders && !item.isActor {
@@ -635,8 +650,12 @@ enum Bootstrap {
         // on first touch, so the same sentence is as true of the examine channel
         // as of the listing one. ZIL says so too — `TROLL-FCN` answers EXAMINE
         // with `<GETP ,TROLL ,P?LDESC>` on purpose. (#350)
+        //
+        // A two-state text is two sentences on its channel, and the check is
+        // about the words: one of them shared across the channels is the same
+        // defect in a different spelling.
         for (id, item) in items
-        where !item.isActor && item.firstSight != nil && item.firstSight == item.description {
+        where !item.isActor && !Set(item.firstSightTexts).isDisjoint(with: item.descriptionTexts) {
             traitWarnings.append(
                 "item \"\(id)\" gives one sentence to firstSight(…) and description(…); "
                     + "the room listing is spent on first touch and EXAMINE is not, so "
@@ -826,6 +845,28 @@ enum Bootstrap {
             }
         }
 
+        // A two-state trait is the static text's slot said twice, so the two are
+        // exclusive the way the text and a `describe { … }` rule are — judged
+        // here, beside that pair. And an `Actor` key path names a Bool only a
+        // person carries: on anything else there is no proxy to apply it to.
+        for (id, item) in items {
+            if item.description != nil, item.twoStateDescription != nil {
+                ruleDiagnostics.append(
+                    "item \"\(id)\" declares both description(…) and "
+                        + "description(when:_:otherwise:); an item may have only one.")
+            }
+            if item.firstSight != nil, item.twoStateFirstSight != nil {
+                ruleDiagnostics.append(
+                    "item \"\(id)\" declares both firstSight(…) and "
+                        + "firstSight(when:_:otherwise:); an item may have only one.")
+            }
+            for (pair, channel) in item.twoStateTexts where pair.needsActor && !item.isActor {
+                ruleDiagnostics.append(
+                    "item \"\(id)\" declares \(channel.traitName)(when: \(pair.conditionName), …) "
+                        + "but is not an actor; only an Actor has that Bool.")
+            }
+        }
+
         for rule in declaredRules {
             // A rule's scope token is opaque, so an unresolved attachment can't
             // be named — but the phase and the intents it watches identify which
@@ -848,14 +889,22 @@ enum Bootstrap {
                 case .before: table.itemBefore[id, default: []].append(rule)
                 case .after: table.itemAfter[id, default: []].append(rule)
                 case .describe:
+                    // Named by the trait actually written, so the author can
+                    // grep for it: the two-state form is static text too.
                     file(
-                        id, noun: "item", rule: "describe", trait: "description(…)",
-                        hasStaticText: items[id]?.description != nil,
+                        id, noun: "item", rule: "describe",
+                        trait: items[id]?.twoStateDescription != nil
+                            ? "description(when:_:otherwise:)" : "description(…)",
+                        hasStaticText: items[id]?.description != nil
+                            || items[id]?.twoStateDescription != nil,
                         into: \.itemDescribe, rule.describeBody)
                 case .presence:
                     file(
-                        id, noun: "item", rule: "presence", trait: "firstSight(…)",
-                        hasStaticText: items[id]?.firstSight != nil,
+                        id, noun: "item", rule: "presence",
+                        trait: items[id]?.twoStateFirstSight != nil
+                            ? "firstSight(when:_:otherwise:)" : "firstSight(…)",
+                        hasStaticText: items[id]?.firstSight != nil
+                            || items[id]?.twoStateFirstSight != nil,
                         into: \.itemPresence, rule.describeBody)
                 case .reach:
                     // No competing trait: reach has no static spelling.
@@ -951,6 +1000,26 @@ enum Bootstrap {
 
         guard ruleDiagnostics.isEmpty else {
             throw BootstrapError(diagnostics: ruleDiagnostics)
+        }
+
+        // A two-state trait is lowered into the slot its rule form fills, and
+        // nothing downstream can tell the two apart: `describedText` finds the
+        // closure where it looks for a `describe { … }`, so the runtime
+        // override still wins, the reentry guard still brackets it, and an
+        // empty text still falls through to `nothingSpecial`. The checks below
+        // — `alwaysDescribed` with nothing to print, a listing line the map
+        // buries — read the same slot and so judge the trait for free. After
+        // the throw above, so a slot is known empty: the trait beside a rule
+        // is already fatal, and a non-actor never reaches `Actor(item)`.
+        for (id, item) in items
+        where item.twoStateDescription != nil || item.twoStateFirstSight != nil {
+            guard let proxy = registry.items[id] else { continue }
+            if let pair = item.twoStateDescription {
+                table.itemDescribe[id] = pair.lowered(onto: proxy)
+            }
+            if let pair = item.twoStateFirstSight {
+                table.itemPresence[id] = pair.lowered(onto: proxy)
+            }
         }
 
         // A #verb-declared intent's rows reach the parser only when a verbs
@@ -1066,6 +1135,8 @@ enum Bootstrap {
             let channel: String? =
                 if item.firstSight != nil {
                     "firstSight(…)"
+                } else if item.twoStateFirstSight != nil {
+                    "firstSight(when:_:otherwise:)"
                 } else if table.itemPresence[id] != nil {
                     "a presence { … } rule"
                 } else {

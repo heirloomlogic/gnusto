@@ -366,6 +366,13 @@ struct DungeonAboveGround: GameContent {
         trait(.depositValue, 5)
         container
         openable
+        // The egg's clasp, on both channels. Only the thief ever gets it
+        // undone, which is why the constants outlived every test: the frame
+        // that falsifies them is a treasure handed to a man and taken back
+        // eighty moves later, with the listing beside it already printing what
+        // was inside. (#329)
+        description(when: \.isOpen, Prose.eggOpen, otherwise: Prose.egg)
+        firstSight(when: \.isOpen, Prose.eggOpenInNest, otherwise: Prose.eggInNest)
     }
 
     /// What is left of the egg once brute fingers have been at it — the
@@ -729,14 +736,6 @@ struct DungeonAboveGround: GameContent {
             let underfoot = grating.isOpen ? Prose.gratingOpenInClearing : Prose.gratingInClearing
             return "\(Prose.clearing)\n\n\(underfoot)"
         }
-
-        // The egg's clasp, on both channels. Only the thief ever gets it
-        // undone, which is why the constants outlived every test: the frame
-        // that falsifies them is a treasure handed to a man and taken back
-        // eighty moves later, with the listing beside it already printing what
-        // was inside. (#329)
-        egg.describe { egg.isOpen ? Prose.eggOpen : Prose.egg }
-        egg.presence { egg.isOpen ? Prose.eggOpenInNest : Prose.eggInNest }
 
         frontDoor.before(.open) {
             try refuse(Prose.frontDoorRefusal)
