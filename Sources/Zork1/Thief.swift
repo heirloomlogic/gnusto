@@ -31,7 +31,7 @@ struct ZorkThief: GameContent {
     /// Set the moment he falls (his `onDefeat`, wired in ``Zork1``). Clears the
     /// trap-door bar and gates the silver chalice: while he lives the Treasure
     /// Room is his, and its hoard stays out of reach.
-    @Global var thiefDefeated = false
+    @Latch var thiefDefeated
 
     // MARK: - Items
 

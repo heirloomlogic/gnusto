@@ -146,7 +146,7 @@ What the trait buys over a closure is a check. `\.isOpen` on an item that is not
 
 ## Live descriptions with `describe`
 
-A trait block runs in a stored-property initializer, where no other declaration is in scope, so it can name only the entity's own Bools. When the text depends on anything else — a `@Global`, another entity's state, a count — attach a ``Item/describe(_:)`` (or ``Location/describe(_:)``) rule instead. It takes a closure that the engine calls *every time the entity is described*:
+A trait block runs in a stored-property initializer, where no other declaration is in scope, so it can name only the entity's own Bools. When the text depends on anything else — a `@Global`, a ``Latch``, another entity's state, a count — attach a ``Item/describe(_:)`` (or ``Location/describe(_:)``) rule instead. It takes a closure that the engine calls *every time the entity is described*:
 
 ```swift
 var rules: Rules {
@@ -288,6 +288,23 @@ var rules: Rules {
 ```
 
 It runs at **stage 0**, ahead of every `before` rule — which is the point, since an item that answers its own verb pre-empts the default action. Two `reach` rules on one entity is a fatal ``BootstrapError``; locations don't take one. <doc:ContainersDoorsAndLocks> has what it does and doesn't cover.
+
+## One-time beats
+
+A rule that is a beat rather than a state — the first greeting, the one shower of leaves, the legend printed the first time a wall moves — asks the same question every time: has this happened yet, and if not, mark it. ``Latch`` is that question written once:
+
+```swift
+@Latch var keeperGreeted
+
+keeper.before(.talk) {
+    guard $keeperGreeted.trips() else {
+        try reply("\"Key's on the shelf,\" the keeper says again.")
+    }
+    try reply("The keeper looks you over once, the way she would look over weather.")
+}
+```
+
+<doc:CustomStateAndTraits#One-way-state-Latch> has what it costs and what it refuses.
 
 ## Produce output and control the turn
 

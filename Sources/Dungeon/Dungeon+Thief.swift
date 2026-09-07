@@ -211,7 +211,7 @@ extension Dungeon {
                 knockout: Prose.thiefKnockout,
                 death: Prose.thiefDeath),
             onDefeat: {
-                thief.thiefDefeated = true
+                thief.$thiefDefeated.trips()
                 stopDaemon("thief.roams")
                 stopDaemon("thief.steals")
                 stopDaemon("thief.stashes")

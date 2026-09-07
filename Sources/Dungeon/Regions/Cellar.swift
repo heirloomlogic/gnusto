@@ -86,7 +86,7 @@ struct DungeonCellar: GameContent {
         trait(.weapon, true)
     }
 
-    @Global var trollDefeated = false
+    @Latch var trollDefeated
 
     // MARK: - Rules
 

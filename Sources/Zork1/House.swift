@@ -174,7 +174,7 @@ struct ZorkHouse: GameContent {
     @Global var lanternLastGaspIn = 225
     /// Fuel remaining on the burn-out fuse while the lantern is off.
     @Global var lanternDiesIn = 230
-    @Global var lanternBurnedOut = false
+    @Latch var lanternBurnedOut
 
     let sword = Item {
         name("elvish sword")
@@ -258,7 +258,7 @@ struct ZorkHouse: GameContent {
 
     /// Whether the songbird has already answered the canary. The bauble drops
     /// exactly once; a second winding only chirps.
-    @Global var baubleDropped = false
+    @Latch var baubleDropped
 
     // MARK: - Attic
 
@@ -423,7 +423,7 @@ struct ZorkHouse: GameContent {
             // the room the player is standing in is the light in that room, and
             // putting it out takes the room's own contents out of sight. The
             // player watched it happen; they get told.
-            lanternBurnedOut = true
+            $lanternBurnedOut.trips()
             say(Prose.lanternDies, from: lantern)
             lantern.isLit = false
         }

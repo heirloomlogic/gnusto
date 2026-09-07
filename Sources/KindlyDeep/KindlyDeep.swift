@@ -184,11 +184,11 @@ struct KindlyDeep: Game, GameMain {
     @Global var canteenDrinks = 3
     /// Whether the striker scene has played. Every later light is ordinary
     /// lamp business, handled by the default action.
-    @Global var lampFirstLit = false
+    @Latch var lampFirstLit
     /// Whether the crawl has parked Biscuit at the Forks (beat 4).
-    @Global var crawlBeatDone = false
+    @Latch var crawlBeatDone
     /// Whether Biscuit has hauled the fallen beam clear of the cage gate (beat 5).
-    @Global var beamHauled = false
+    @Latch var beamHauled
 
     // MARK: - Rooms
 
@@ -848,7 +848,7 @@ struct KindlyDeep: Game, GameMain {
                 was: this is a two-body problem. He is not here. You left him on the other side of a crawl he cannot
                 use.
                 """)
-        beamHauled = true
+        $beamHauled.trips()
         scoring.awardOnce("beam")
         try reply(
             """
@@ -993,11 +993,10 @@ struct KindlyDeep: Game, GameMain {
             try require(
                 !capLamp.isLit,
                 else: "It is lit. Try to stay ahead of the things that are actually wrong.")
-            guard !lampFirstLit else {
+            guard $lampFirstLit.trips() else {
                 try proceed()
                 return
             }
-            lampFirstLit = true
             capLamp.isLit = true
             scoring.awardOnce("lamp")
             try reply(
@@ -1071,8 +1070,7 @@ struct KindlyDeep: Game, GameMain {
         // reason the old works are reachable at all.
         lowCrawl.onEnter {
             stopDaemon("biscuit.follow")
-            guard !crawlBeatDone else { return }
-            crawlBeatDone = true
+            guard $crawlBeatDone.trips() else { return }
             say(
                 """
                 You get down on your hands and knees at the edge of the fall, where the rock left a gap a man can use

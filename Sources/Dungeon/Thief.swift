@@ -81,7 +81,7 @@ struct DungeonThief: GameContent {
 
     /// Set the moment he falls. Read by every rule that has to know whether the
     /// dungeon still has a thief in it — the summons, the gift, the egg fuse.
-    @Global var thiefDefeated = false
+    @Latch var thiefDefeated
 
     /// The move count he stops appraising a gift at, and `-1` before he has
     /// been given anything. Read by the aggression daemon's gate: a man

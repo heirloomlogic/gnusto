@@ -221,7 +221,7 @@ struct Lighthouse: Game {
     @Global var tideStage = 0
 
     /// Whether the keeper has given her one-time briefing yet.
-    @Global var keeperGreeted = false
+    @Latch var keeperGreeted
 
     // MARK: - Content
 
@@ -370,14 +370,13 @@ struct Lighthouse: Game {
         // she is standing or what the player is already carrying, so both stay
         // true wherever she has wandered to and however far along the player is.
         keeper.before(.talk) {
-            guard !keeperGreeted else {
+            guard $keeperGreeted.trips() else {
                 try reply(
                     """
                     "Key's on the shelf, oil's in the chest," the keeper says
                     again, patient as tide. "The light's waited long enough."
                     """)
             }
-            keeperGreeted = true
             try reply(
                 """
                 The keeper looks you over once, the way she would look over

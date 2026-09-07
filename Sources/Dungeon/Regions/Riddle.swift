@@ -39,7 +39,7 @@ struct DungeonRiddle: GameContent {
 
     /// The mainframe's `RIDDLE-FLAG`: whether the door has been talked open.
     /// Nothing shuts it again.
-    @Global var riddleAnswered = false
+    @Latch var riddleAnswered
 
     // MARK: - Items
 
@@ -125,7 +125,7 @@ struct DungeonRiddle: GameContent {
             guard let topic = command.topic else { return }
             try require(!riddleAnswered, else: Prose.riddleAlreadyAnswered)
             try require(topic.text == Prose.riddleWord, else: Prose.riddleWrongWord)
-            riddleAnswered = true
+            $riddleAnswered.trips()
             try reply(Prose.riddleAnswered)
         }
 

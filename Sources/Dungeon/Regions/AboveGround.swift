@@ -541,11 +541,11 @@ struct DungeonAboveGround: GameContent {
     // MARK: - The post
 
     /// Whether the brochure has been asked for. The source's `BROCHURE-FLAG`.
-    @Global var brochureOrdered = false
+    @Latch var brochureOrdered
 
     /// Whether it has come. Asked for again after that, the clerk is sarcastic
     /// rather than helpful.
-    @Global var brochureDelivered = false
+    @Latch var brochureDelivered
 
     // MARK: - Verbs
 
@@ -557,8 +557,7 @@ struct DungeonAboveGround: GameContent {
     var actions: [IntentAction] {
         action(.sendForBrochure) {
             guard !brochureDelivered else { try reply(Prose.brochureAgain) }
-            guard !brochureOrdered else { try reply(Prose.brochureOnItsWay) }
-            brochureOrdered = true
+            guard $brochureOrdered.trips() else { try reply(Prose.brochureOnItsWay) }
             try reply(Prose.brochureOrdered)
         }
     }
@@ -829,7 +828,7 @@ struct DungeonAboveGround: GameContent {
         // cellar. Wrong by any distance, and kept, because it is the mainframe's
         // own joke about a mail-order catalogue that finds you anywhere.
         fuse("brochureArrives", after: 3) {
-            brochureDelivered = true
+            $brochureDelivered.trips()
             brochure.move(inside: mailbox)
             say(Prose.brochureKnock)
         }

@@ -150,7 +150,7 @@ extension Dungeon {
         // Fifteen turns after the last point is banked, whatever the player is
         // doing and wherever they are standing.
         fuse("endgame.herald", after: 15) {
-            endgame.endgameBegun = true
+            endgame.$endgameBegun.trips()
             say(Prose.heraldArrives)
         }
 
@@ -223,7 +223,7 @@ extension Dungeon {
     /// and dark, the sword comes back with it, the thief is finished, and you
     /// are standing at the top of a staircase you have never seen.
     func crossIntoTheEndgame() throws {
-        endgame.pastTheCrypt = true
+        endgame.$pastTheCrypt.trips()
 
         for item in player.inventory { item.vanish() }
 

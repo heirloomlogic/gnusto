@@ -110,7 +110,7 @@ struct DungeonRoundRoom: GameContent {
     /// Whether saying `echo` has settled the Loud Room's acoustics. Once set,
     /// the room stops flinging your words back and the platinum bar can be
     /// lifted.
-    @Global var loudRoomAcousticsFixed = false
+    @Latch var loudRoomAcousticsFixed
 
     // MARK: - Items
 
@@ -305,8 +305,7 @@ struct DungeonRoundRoom: GameContent {
 
         // Saying `echo` settles the acoustics for good.
         loudRoom.before(.echo) {
-            guard !loudRoomAcousticsFixed else { return }
-            loudRoomAcousticsFixed = true
+            guard $loudRoomAcousticsFixed.trips() else { return }
             try reply(Prose.loudRoomAcousticsFixed)
         }
 

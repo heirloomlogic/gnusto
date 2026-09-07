@@ -651,11 +651,11 @@ struct DungeonEndgame: GameContent {
     @Global var box = MirrorBox()
 
     /// `END-GAME!-FLAG`. Set by the herald, and what makes the crypt door open.
-    @Global var endgameBegun = false
+    @Latch var endgameBegun
 
     /// Whether the player has crossed into the endgame proper — the transition
     /// out of the dark crypt. Death is final from here on.
-    @Global var pastTheCrypt = false
+    @Latch var pastTheCrypt
 
     /// Which of the three questions is being asked, which is also how many have
     /// been answered right — they only ever move together. `-1` is "not asking".
@@ -674,7 +674,7 @@ struct DungeonEndgame: GameContent {
     @Global var quizWaitedATurn = false
 
     /// Whether the wooden door has been won.
-    @Global var quizWon = false
+    @Latch var quizWon
 
     /// Which of the eight cells the sundial is pointing at, and which is
     /// currently docked in the slot. `0` is "none docked".

@@ -526,7 +526,7 @@ struct DungeonVolcano: GameContent {
     @Global var balloonTied = false
 
     /// Whether the label has ever dropped out of the bag.
-    @Global var labelDropped = false
+    @Latch var labelDropped
 
     /// Whether the gnome has started counting. The mainframe arms his five-turn
     /// watch the first time you address him and not before, which is why
@@ -536,13 +536,13 @@ struct DungeonVolcano: GameContent {
     /// Whether he has been offered the brick and left for good. The mainframe
     /// disables both of his clocks when that happens, and nothing re-enables
     /// them.
-    @Global var gnomeDismissed = false
+    @Latch var gnomeDismissed
 
     /// Whether the Dusty Room has come down on itself.
-    @Global var dustyRoomWrecked = false
+    @Latch var dustyRoomWrecked
 
     /// And whether the ledge it stood on followed it.
-    @Global var wideLedgeWrecked = false
+    @Latch var wideLedgeWrecked
 
     // MARK: - Derived state
 
@@ -996,7 +996,7 @@ extension DungeonVolcano {
     /// - Throws: always.
     func gnomeRefusesTheCharge(_ charge: Item) throws -> Never {
         gnome.replace(with: charge)
-        gnomeDismissed = true
+        $gnomeDismissed.trips()
         stopFuse("gnomeArrives")
         stopFuse("gnomeLeaves")
         try reply(Prose.gnomeRefusesTheBrick)
@@ -1019,9 +1019,7 @@ extension DungeonVolcano {
         guard !bagInflated else { try handled() }
         bagInflated = true
         startFuse("balloonDrifts")
-        guard !labelDropped else { try reply(Prose.bagInflates) }
-        labelDropped = true
-        blueLabel.move(inside: balloon)
+        if $labelDropped.trips() { blueLabel.move(inside: balloon) }
         try reply(Prose.bagInflates)
     }
 
@@ -1217,14 +1215,14 @@ extension DungeonVolcano {
 
     fileprivate func dustyRoomComesDown() throws {
         let caught = player.location == dustyRoom
-        dustyRoomWrecked = true
+        $dustyRoomWrecked.trips()
         startFuse("wideLedgeFalls")
         guard !caught else { try die(Prose.roomCollapsesOnYou) }
         say(Prose.ominousRumbling, from: insideTheVolcano)
     }
 
     fileprivate func wideLedgeComesDown() throws {
-        wideLedgeWrecked = true
+        $wideLedgeWrecked.trips()
         guard player.location == wideLedge else {
             say(Prose.ledgeCollapsesElsewhere, from: insideTheVolcano)
             return

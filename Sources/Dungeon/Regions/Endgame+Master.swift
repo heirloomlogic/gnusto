@@ -144,7 +144,7 @@ extension DungeonEndgame {
         }
 
         quizAsked = -1
-        quizWon = true
+        $quizWon.trips()
         stopDaemon("endgame.quiz")
         woodenDoor.isOpen = true
         try reply(Prose.quizWonAndTheDoorOpens)

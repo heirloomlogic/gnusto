@@ -268,17 +268,17 @@ struct ZorkMaze: GameContent {
     /// Whether the cyclops has smashed the east wall open on his way out. The
     /// original's `MAGIC-FLAG`. Gates the shortcut east to the Strange Passage
     /// and Living Room — set only by `odysseus`, never by feeding.
-    @Global var eastWallOpen = false
+    @Latch var eastWallOpen
 
     /// Whether the cyclops has eaten the lunch and now wants a drink. The water
     /// only puts him to sleep while this is true.
-    @Global var cyclopsThirsty = false
+    @Latch var cyclopsThirsty
 
     /// Whether the cyclops's hunger has been roused — by an attack, or by the
     /// lunch that leaves him desperate for a drink. Once set, the wrath timer
     /// below mounts each turn you linger (the original's `I-CYCLOPS` daemon,
     /// enabled only when provoked — mere loitering never wakes it).
-    @Global var cyclopsProvoked = false
+    @Latch var cyclopsProvoked
 
     /// How far his hunger has climbed while you stay (the original's
     /// `CYCLOWRATH`). Six escalating turns of menace, then he eats you.
@@ -286,7 +286,7 @@ struct ZorkMaze: GameContent {
 
     /// Whether the grating has been opened from below — the one-time leaf-shower
     /// latch (the original's `GRATE-REVEALED`). Set by the host's grating rule.
-    @Global var gratingOpenedFromBelow = false
+    @Latch var gratingOpenedFromBelow
 
     // MARK: - Map
 
@@ -421,7 +421,7 @@ struct ZorkMaze: GameContent {
     private func rouseCyclops(_ line: String = Prose.cyclopsRudelyAwakened) throws -> Never {
         guard cyclopsSubdued else { try reply(Prose.cyclopsWideAwake) }
         cyclopsSubdued = false
-        cyclopsProvoked = true
+        $cyclopsProvoked.trips()
         try reply(line)
     }
 
@@ -435,7 +435,7 @@ struct ZorkMaze: GameContent {
         cyclopsRoom.before(.odysseus) {
             guard !cyclopsSubdued else { try reply(Prose.cyclopsAlreadyGone) }
             cyclopsSubdued = true
-            eastWallOpen = true
+            $eastWallOpen.trips()
             cyclops.vanish()
             try reply(Prose.cyclopsFlees)
         }
@@ -448,7 +448,7 @@ struct ZorkMaze: GameContent {
         // has vanished, so this only ever fires on the sleeper.)
         cyclops.before(.attack) {
             if cyclopsSubdued { try rouseCyclops(Prose.cyclopsWakesFromAttack) }
-            cyclopsProvoked = true
+            $cyclopsProvoked.trips()
             try reply(Prose.cyclopsShrugsOffAttack)
         }
 

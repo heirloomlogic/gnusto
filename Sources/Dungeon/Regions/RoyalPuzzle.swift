@@ -476,21 +476,21 @@ struct DungeonRoyalPuzzle: GameContent {
 
     /// `CPBLOCK!-FLAG`. Latches when a wall is pushed into the entry square, and
     /// the source never clears it.
-    @Global var entranceBlocked = false
+    @Latch var entranceBlocked
 
     /// `CPOUT!-FLAG`. Set in exactly one place — the slit, which eats the card
     /// doing it.
-    @Global var doorOpen = false
+    @Latch var doorOpen
 
     /// `CPPUSH!-FLAG`. Once a wall has moved, the room stops describing itself
     /// in prose and starts drawing diagrams.
-    @Global var hasPushed = false
+    @Latch var hasPushed
 
     /// Whether the card has been brought into the room's containment. The
     /// source keeps a separate object list per square (`CPOBJS`); Gnusto's
     /// containment is room-granular, so the card joins the room the first time
     /// the player stands in its square. Issue #150.
-    @Global var cardUncovered = false
+    @Latch var cardUncovered
 
     var verbs: [SyntaxRule] { [.pushWall] }
 
@@ -749,7 +749,7 @@ extension DungeonRoyalPuzzle {
                 try reply(Prose.puzzleSlitEatsIt)
             }
             goldCard.vanish()
-            doorOpen = true
+            $doorOpen.trips()
             try reply(Prose.puzzleCardConfiscated)
         }
     }
@@ -826,8 +826,7 @@ extension DungeonRoyalPuzzle {
 
             // The legend, once, on the push that turns the descriptions into
             // diagrams.
-            if !hasPushed {
-                hasPushed = true
+            if $hasPushed.trips() {
                 say(Prose.puzzleDiagramLegend)
             }
 
@@ -835,7 +834,7 @@ extension DungeonRoyalPuzzle {
             // the flag: a wall can only be pushed into open floor, so the entry
             // square cannot be filled twice.
             if filled == RoyalPuzzleGrid.entrySquare {
-                entranceBlocked = true
+                $entranceBlocked.trips()
                 say(Prose.puzzleEntranceSealed)
             }
 
@@ -888,8 +887,7 @@ extension DungeonRoyalPuzzle {
     ///   re-reading it would decode sixty-four cells to recover one `Int` they
     ///   are already holding.
     fileprivate func uncoverTheCard(at square: Int) {
-        guard !cardUncovered, square == RoyalPuzzleGrid.cardSquare else { return }
-        cardUncovered = true
+        guard square == RoyalPuzzleGrid.cardSquare, $cardUncovered.trips() else { return }
         goldCard.move(to: puzzle)
     }
 }

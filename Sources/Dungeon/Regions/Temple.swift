@@ -144,16 +144,16 @@ struct DungeonTemple: GameContent {
 
     /// Whether the torch has been quenched in the melting glacier. One-way:
     /// nothing in the game relights it.
-    @Global var torchBurnedOut = false
+    @Latch var torchBurnedOut
 
     /// Whether the Great Glacier has been thrown down. The mainframe's
     /// `GLACIER-FLAG`, and the only thing that opens the way to the Ruby Room.
-    @Global var glacierMelted = false
+    @Latch var glacierMelted
 
     /// Whether somebody has held a flame against the ice and paid for it. The
     /// mainframe's `GLACIER-MELT`: the drowning is fatal, so this only ever
     /// shows to a player the game has already resurrected once.
-    @Global var glacierScarred = false
+    @Latch var glacierScarred
 
     /// Whether the rung bell is still red hot — the mainframe swaps `BELL` for
     /// a separate `HBELL` object; one item and a flag says the same thing.
@@ -655,7 +655,7 @@ struct DungeonTemple: GameContent {
             try require(
                 tool[default: .openFlame] && tool.isLit,
                 else: Prose.glacierWontMeltWithThat)
-            glacierScarred = true
+            $glacierScarred.trips()
             try die(Prose.glacierDrownsYou)
         }
 
