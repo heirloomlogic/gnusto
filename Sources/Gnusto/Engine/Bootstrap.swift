@@ -616,6 +616,20 @@ enum Bootstrap {
                 "item \"\(id)\" declares startsUnlocked but has no lockedBy entry; "
                     + "the flag has no effect.")
         }
+        // A two-state text keyed on a Bool the item cannot change is a text
+        // with one branch: `isOpen` on anything not `openable` is a constant,
+        // and so are `isLit` without `lightSource`, `isLocked` without a lock,
+        // `isRevealed` without `hidden` and `isWorn` without `wearable`. The
+        // closure form is wrong in silence here; the trait form can say so.
+        for (id, item) in items {
+            for (pair, trait) in item.twoStateTexts {
+                guard let missing = pair.deadBranch(on: item) else { continue }
+                traitWarnings.append(
+                    "item \"\(id)\" declares \(trait)(when: \(pair.conditionName), …) but "
+                        + "\(missing); the flag never changes, so one of its two texts "
+                        + "never prints.")
+            }
+        }
         // Obeying is something a *person* does. On anything else the trait has
         // nobody to describe: the parser only ever addresses an actor.
         for (id, item) in items where item.takesOrders && !item.isActor {
@@ -826,6 +840,34 @@ enum Bootstrap {
             }
         }
 
+        // A two-state trait is the static text's slot said twice, so the two are
+        // exclusive the way the text and a `describe { … }` rule are — judged
+        // here, beside that pair. And an `Actor` key path names a Bool only a
+        // person carries: on anything else there is no proxy to apply it to.
+        for (id, item) in items {
+            if item.description != nil, item.twoStateDescription != nil {
+                ruleDiagnostics.append(
+                    "item \"\(id)\" declares both description(…) and "
+                        + "description(when:_:otherwise:); an item may have only one.")
+            }
+            if item.firstSight != nil, item.twoStateFirstSight != nil {
+                ruleDiagnostics.append(
+                    "item \"\(id)\" declares both firstSight(…) and "
+                        + "firstSight(when:_:otherwise:); an item may have only one.")
+            }
+            for (pair, trait) in item.twoStateTexts where pair.isActorKeyPath && !item.isActor {
+                ruleDiagnostics.append(
+                    "item \"\(id)\" declares \(trait)(when: \(pair.conditionName), …) "
+                        + "but is not an actor; only an Actor has that Bool.")
+            }
+        }
+        for (id, location) in locations
+        where location.description != nil && location.twoStateDescription != nil {
+            ruleDiagnostics.append(
+                "location \"\(id)\" declares both description(…) and "
+                    + "description(when:_:otherwise:); a location may have only one.")
+        }
+
         for rule in declaredRules {
             // A rule's scope token is opaque, so an unresolved attachment can't
             // be named — but the phase and the intents it watches identify which
@@ -850,12 +892,14 @@ enum Bootstrap {
                 case .describe:
                     file(
                         id, noun: "item", rule: "describe", trait: "description(…)",
-                        hasStaticText: items[id]?.description != nil,
+                        hasStaticText: items[id]?.description != nil
+                            || items[id]?.twoStateDescription != nil,
                         into: \.itemDescribe, rule.describeBody)
                 case .presence:
                     file(
                         id, noun: "item", rule: "presence", trait: "firstSight(…)",
-                        hasStaticText: items[id]?.firstSight != nil,
+                        hasStaticText: items[id]?.firstSight != nil
+                            || items[id]?.twoStateFirstSight != nil,
                         into: \.itemPresence, rule.describeBody)
                 case .reach:
                     // No competing trait: reach has no static spelling.
@@ -884,7 +928,8 @@ enum Bootstrap {
                 case .describe:
                     file(
                         id, noun: "location", rule: "describe", trait: "description(…)",
-                        hasStaticText: locations[id]?.description != nil,
+                        hasStaticText: locations[id]?.description != nil
+                            || locations[id]?.twoStateDescription != nil,
                         into: \.locationDescribe, rule.describeBody)
                 case .presence, .reach:
                     ruleDiagnostics.append(
@@ -900,6 +945,31 @@ enum Bootstrap {
                         "a world-level \(rule.phase) rule is not supported.")
                 }
             }
+        }
+
+        // A two-state trait is lowered into the slot its rule form fills, and
+        // nothing downstream can tell the two apart: `describedText` finds the
+        // closure where it looks for a `describe { … }`, so the runtime
+        // override still wins, the reentry guard still brackets it, and an
+        // empty text still falls through to `nothingSpecial`. The checks below
+        // — `alwaysDescribed` with nothing to print, a listing line the map
+        // buries — read the same slot and so judge the trait for free. A slot
+        // already taken has been diagnosed above; the trait yields to nothing.
+        for (id, item) in items
+        where item.twoStateDescription != nil || item.twoStateFirstSight != nil {
+            guard let proxy = registry.items[id] else { continue }
+            if let pair = item.twoStateDescription, table.itemDescribe[id] == nil {
+                table.itemDescribe[id] = pair.lowered(onto: proxy)
+            }
+            if let pair = item.twoStateFirstSight, table.itemPresence[id] == nil {
+                table.itemPresence[id] = pair.lowered(onto: proxy)
+            }
+        }
+        for (id, location) in locations {
+            guard let pair = location.twoStateDescription, table.locationDescribe[id] == nil,
+                let proxy = registry.locations[id]
+            else { continue }
+            table.locationDescribe[id] = pair.lowered(onto: proxy)
         }
 
         // Timers: the schedule keeps bare names wherever they are

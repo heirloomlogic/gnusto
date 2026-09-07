@@ -73,7 +73,7 @@ let niche = Item.scenery("shadowed niche", synonyms: "alcove") {
 }
 ```
 
-The niche can hold things and take item rules. For text that changes during play, omit `description:` and attach a `niche.describe { … }` rule. Without either description, examining it uses the game's stock examine line. Placement determines where a piece of scenery is visible, just as it does for other items.
+The niche can hold things and take item rules. For text that turns on the niche's own state — open or shut, lit or dark — omit `description:` and put `description(when: \.isOpen, …, otherwise: …)` in the trait block; for text that depends on anything else, attach a `niche.describe { … }` rule. Without any description, examining it uses the game's stock examine line. Placement determines where a piece of scenery is visible, just as it does for other items.
 
 ## The parts of the `Game` protocol
 

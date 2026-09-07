@@ -66,6 +66,17 @@ struct DungeonThief: GameContent {
         name("thief")
         adjectives("shadowy", "suspicious", "looking", "seedy")
         synonyms("robber", "figure", "individual", "man", "bandit")
+        // Both channels branch on ``Actor/isUnconscious``. The listing line was
+        // a `firstSight` constant, and an actor's listing line prints on every
+        // look forever — so the turn after "The thief is battered into
+        // unconsciousness" the room went on standing him against a wall with
+        // his blade out, while the greeting two lines below already knew he
+        // could not hear. (#329) The examine text was a static
+        // `description(Prose.thief)`, and answered `x thief` with a blade aimed
+        // menacingly in your direction one turn after the man holding it
+        // stopped being able to hold anything. (#350)
+        firstSight(when: \Actor.isUnconscious, Prose.thiefOnTheFloor, otherwise: Prose.thiefPresence)
+        description(when: \Actor.isUnconscious, Prose.thiefUnconscious, otherwise: Prose.thief)
     }
 
     /// Set the moment he falls. Read by every rule that has to know whether the
@@ -125,27 +136,6 @@ struct DungeonThief: GameContent {
     @RuleBuilder var rules: Rules {
         thief.before(.greet) {
             try reply(thief.isUnconscious ? Prose.thiefGreetedOnTheFloor : Prose.thiefGreeted)
-        }
-
-        // His listing line, which is the same question one channel over. It
-        // was a `firstSight` constant, and an actor's listing line prints on
-        // every look forever — so the turn after "The thief is battered into
-        // unconsciousness" the room went on standing him against a wall with
-        // his blade out, while the greeting two lines below already knew he
-        // could not hear. One reader of ``Actor/isUnconscious`` where there
-        // were two channels needing it. (#329)
-        thief.presence {
-            thief.isUnconscious ? Prose.thiefOnTheFloor : Prose.thiefPresence
-        }
-
-        // The third channel, and the one #329 missed while counting to two: a
-        // static `description(Prose.thief)` answered `x thief` with a blade
-        // aimed menacingly in your direction one turn after the man holding it
-        // stopped being able to hold anything. The trait and this rule are
-        // mutually exclusive, so the repair is the same shape the listing line
-        // took — the trait goes and the branch comes here. (#350)
-        thief.describe {
-            thief.isUnconscious ? Prose.thiefUnconscious : Prose.thief
         }
 
         // The bag is his and stays his while he is on his feet.

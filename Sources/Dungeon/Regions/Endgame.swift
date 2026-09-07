@@ -228,6 +228,7 @@ struct DungeonEndgame: GameContent {
         synonyms: "crypt", "door", "slab"
     ) {
         openable
+        description(when: \.isOpen, Prose.cryptDoorOpen, otherwise: Prose.cryptDoorClosed)
     }
 
     /// `HEADS`. Touching, taking, attacking, burning, opening or rubbing them
@@ -471,6 +472,7 @@ struct DungeonEndgame: GameContent {
         // *a wall of wood*, and neither word was known to the parser at all.
         // What the door is made of, not a second thing beside it. (#332)
         openable
+        description(when: \.isOpen, Prose.woodenDoorOpen, otherwise: Prose.woodenDoorClosed)
     }
 
     /// `CDOOR`. The ordinary door of whichever cell is in the slot.
@@ -492,6 +494,7 @@ struct DungeonEndgame: GameContent {
     ) {
         openable
         hidden
+        description(when: \.isOpen, Prose.bronzeDoorOpen, otherwise: Prose.bronzeDoorClosed)
     }
 
     /// `MDOOR` and `LDOOR` in one. Whichever cell rides out of the slot with

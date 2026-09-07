@@ -277,6 +277,13 @@ struct KindlyDeep: Game, GameMain {
         adjectives("oil")
         synonyms("caplamp", "light", "flame", "wick")
         lightSource
+        description(
+            when: \.isLit,
+            "Your cap-lamp, burning small and steady — a modest flame with a large responsibility.",
+            otherwise: """
+                Your cap-lamp, out cold, smelling of oil and recent failure. The flint striker on your belt has
+                opinions about that.
+                """)
     }
 
     /// Named by the intro and by the pitch-black prose every dark turn, so it
@@ -1023,14 +1030,6 @@ struct KindlyDeep: Game, GameMain {
                 course, dusty to the knees and entirely unsurprised. Whatever happens next, you will not be doing it
                 alone.
                 """)
-        }
-        capLamp.describe {
-            capLamp.isLit
-                ? "Your cap-lamp, burning small and steady — a modest flame with a large responsibility."
-                : """
-                Your cap-lamp, out cold, smelling of oil and recent failure. The flint striker on your belt has
-                opinions about that.
-                """
         }
 
         // The lamp stays on the cap, for the same reason the striker stays on

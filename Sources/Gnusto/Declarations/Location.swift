@@ -292,7 +292,9 @@ public struct Location: Sendable, Equatable {
     /// vault.describe { vaultOpen ? "The vault stands open." : "A sealed door." }
     /// ```
     ///
-    /// Declared in a `rules` block. A runtime override
+    /// Two texts on the room's own light or first visit want no rule: that is
+    /// ``description(when:_:otherwise:)-(KeyPath<Location,Bool>&Sendable,_,_)`` in the trait block. Declared
+    /// in a `rules` block. A runtime override
     /// (`location.description = "…"`) still wins over it; a static
     /// `description(…)` trait on the same location, or a second `describe`
     /// rule for it, is a fatal bootstrap diagnostic.

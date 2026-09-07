@@ -159,10 +159,6 @@ extension DungeonEndgame {
             "\(Prose.tomb)\n\n\(cryptDoor.isOpen ? Prose.tombCryptOpen : Prose.tombCryptShut)"
         }
 
-        cryptDoor.describe {
-            cryptDoor.isOpen ? Prose.cryptDoorOpen : Prose.cryptDoorClosed
-        }
-
         // `HEAD-FUNCTION`: every verb on this door falls through to the heads
         // until `END-GAME!-FLAG` is set, and the heads kill you. A game stalled
         // short of the full six hundred and sixteen can never get in.

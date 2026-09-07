@@ -18,6 +18,10 @@ enum ExitTarget: Sendable {
 struct LocationDefinition: Sendable {
     var name: String?
     var description: String?
+    /// A `description(when:_:otherwise:)` trait, lowered by Bootstrap into the
+    /// rule table's describe slot. Kept here so the trait can be diagnosed
+    /// against a static `description` or a `describe { … }` rule.
+    var twoStateDescription: LocationTwoStateText?
     var inherentlyLit = true
     /// The description is state the player is changing, so it prints on every
     /// description rather than only the first. See the `alwaysDescribed` trait.
@@ -29,6 +33,7 @@ struct LocationDefinition: Sendable {
             switch trait.kind {
             case .name(let text): name = text
             case .description(let text): description = text
+            case .twoStateDescription(let pair): twoStateDescription = pair
             case .dark: inherentlyLit = false
             case .alwaysDescribed: isAlwaysDescribed = true
             case .custom(let key, let value): customTraits[key] = value
@@ -41,6 +46,9 @@ struct LocationDefinition: Sendable {
 struct ItemDefinition: Sendable {
     var name: String?
     var description: String?
+    /// A `description(when:_:otherwise:)` trait, lowered by Bootstrap into the
+    /// rule table's describe slot. See `LocationDefinition.twoStateDescription`.
+    var twoStateDescription: TwoStateText?
     var adjectives: [String] = []
     var synonyms: [String] = []
     /// The name is a proper name: the stock lines render it bare rather than
@@ -50,6 +58,14 @@ struct ItemDefinition: Sendable {
     /// indefinite article becomes "some". See `GameText.Noun`.
     var isPlural = false
     var firstSight: String?
+    /// A `firstSight(when:_:otherwise:)` trait, lowered into the presence slot.
+    var twoStateFirstSight: TwoStateText?
+    /// The two-state texts this item declares, each with the trait's name for
+    /// a diagnostic — the one list every check over them walks.
+    var twoStateTexts: [(pair: TwoStateText, trait: String)] {
+        [(twoStateDescription, "description"), (twoStateFirstSight, "firstSight")]
+            .compactMap { pair, trait in pair.map { ($0, trait) } }
+    }
     var isWearable = false
     var isScenery = false
     var isSurface = false
@@ -92,11 +108,13 @@ struct ItemDefinition: Sendable {
             switch trait.kind {
             case .name(let text): name = text
             case .description(let text): description = text
+            case .twoStateDescription(let pair): twoStateDescription = pair
             case .adjectives(let words): adjectives += words
             case .synonyms(let words): synonyms += words
             case .properName: isProperName = true
             case .plural: isPlural = true
             case .firstSight(let text): firstSight = text
+            case .twoStateFirstSight(let pair): twoStateFirstSight = pair
             case .wearable: isWearable = true
             case .scenery: isScenery = true
             case .surface: isSurface = true
